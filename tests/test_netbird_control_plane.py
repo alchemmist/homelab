@@ -57,6 +57,7 @@ def cleared_audit():
 
 class ControlPlaneTests(unittest.TestCase):
     def test_repo_check_reports_concrete_blockers_without_applying(self):
+        """The repo check reports concrete blockers without applying."""
         result = subprocess.run(
             [os.sys.executable, str(ROOT / "scripts/netbird-deploy.py"), "check"],
             capture_output=True,
@@ -89,6 +90,7 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertIn("/api/setup", blockers)
 
     def test_chart_candidate_is_not_marked_verified(self):
+        """The chart candidate stays unverified in the repository."""
         chart = yaml.safe_load((ROOT / "charts/traefik-edge/values.yaml").read_text())
         candidates = json.loads((ROOT / "deploy/netbird/candidates.json").read_text())
         self.assertNotIn("netbird-edge", chart["watchNamespaces"])
@@ -109,6 +111,7 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertTrue((ROOT / "deploy/argocd/apps").joinpath("netbird.yaml").exists())
 
     def test_control_plane_does_not_require_routers_or_grant_resources(self):
+        """The control plane does not require routers or grant resources."""
         inputs = control_inputs()
         nb.validate_control_plane(inputs)
         with self.assertRaises(ValueError):
@@ -128,6 +131,7 @@ class ControlPlaneTests(unittest.TestCase):
             self.assertIn("/oauth2/.well-known/openid-configuration", text)
 
     def test_cleared_audit_cannot_hide_the_unpatched_chart(self):
+        """A cleared audit cannot hide the unpatched chart."""
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             inputs = root / "inputs.json"
@@ -155,6 +159,7 @@ class ControlPlaneTests(unittest.TestCase):
             self.assertFalse(out.exists())
 
     def test_internal_stage_does_not_wait_for_edge_or_a_listening_udp_port(self):
+        """The internal stage does not wait for edge or a listening UDP port."""
         audit = cleared_audit()
         audit.update(
             traefik_watches_netbird_edge=False,
@@ -176,6 +181,7 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertTrue(any("preexisting listener" in item for item in blocked["edge_blockers"]))
 
     def test_in_memory_scope_can_clear_only_after_the_watch_exists(self):
+        """An in-memory scope clears only after the watch exists."""
         chart = yaml.safe_load((ROOT / "charts/traefik-edge/values.yaml").read_text())
         candidates = json.loads((ROOT / "deploy/netbird/candidates.json").read_text())
         delta = json.loads((ROOT / "deploy/netbird/traefik-scope-delta.json").read_text())
@@ -190,6 +196,7 @@ class ControlPlaneTests(unittest.TestCase):
         )
 
     def test_apply_argv_is_explicit_and_rejects_default_context(self):
+        """The apply argv is explicit and rejects the default context."""
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory) / "rendered"
             nb.render_control_plane(control_inputs(), out, ["203.0.113.10/32"])
@@ -201,6 +208,7 @@ class ControlPlaneTests(unittest.TestCase):
                 deploy.apply_argv(manifest, "default")
 
     def test_auth_modes_match_upstream_startup_rules(self):
+        """Auth modes match the upstream startup rules."""
         secrets = {
             "NB_RELAY_SECRET": "relay-secret-" * 3,
             "NB_COOKIE_KEY": "cookie",
@@ -228,6 +236,7 @@ class ControlPlaneTests(unittest.TestCase):
             self.assertNotIn("owner", disabled["server"]["auth"])
 
     def test_idp_only_cli_refuses_missing_witness_without_writing(self):
+        """The idp-only CLI refuses a missing witness without writing."""
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "inputs.json"
             target = Path(directory) / "config.yaml"
@@ -283,6 +292,7 @@ class ControlPlaneTests(unittest.TestCase):
 
 class BootstrapTests(unittest.TestCase):
     def test_public_origin_and_pat_are_refused(self):
+        """Public origins and PAT creation are refused."""
         for origin in [
             "https://netbird.socrat.alchemmist.xyz",
             "http://netbird.socrat.alchemmist.xyz",
@@ -296,6 +306,7 @@ class BootstrapTests(unittest.TestCase):
         self.assertNotIn("create_pat", body)
 
     def test_claim_redacts_token_and_requires_setup(self):
+        """Claim redacts the token and requires setup."""
         calls = []
 
         def opener(url, body):
@@ -333,6 +344,7 @@ class BootstrapTests(unittest.TestCase):
         "pinned schema not present",
     )
     def test_setup_body_matches_pinned_openapi(self):
+        """The setup body matches the pinned OpenAPI schema."""
         import hashlib
 
         path = Path("/tmp/netbird-v082-repo/shared/management/http/api/openapi.yml")
@@ -394,6 +406,7 @@ class BootstrapTests(unittest.TestCase):
 
 class BackupTests(unittest.TestCase):
     def test_plan_is_quiesced_readonly_and_does_not_call_kubectl(self):
+        """The backup plan is quiesced, read-only and never calls kubectl."""
         image = nb.image("server")
         body = backup.plan("test-node", image)
         self.assertTrue(body["quiesce_required"])
@@ -450,6 +463,7 @@ class BackupTests(unittest.TestCase):
 
 class AnsibleGuardTests(unittest.TestCase):
     def test_role_defaults_to_local_check_without_transport_changes(self):
+        """The role defaults to a local check without transport changes."""
         text = "\n".join(
             path.read_text()
             for path in [

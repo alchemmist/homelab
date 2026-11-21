@@ -20,6 +20,7 @@ class HarborHAPreflightTests(unittest.TestCase):
     """Reject cutover when capacity, health, age, or disk reserve fails."""
 
     def setUp(self):
+        """Load the cutover policy and build a healthy node observation."""
         self.policy = json.loads((ROOT / "deploy/harbor/ha-policy.json").read_text())
         self.otel = {"nodes": {}}  # committed floor works without the in-progress OTel files
         self.now = datetime.now(timezone.utc)
@@ -42,6 +43,7 @@ class HarborHAPreflightTests(unittest.TestCase):
         }
 
     def check(self):
+        """Run the module check against the fixture observation."""
         return module.check(self.policy, self.observation, self.otel, self.now)
 
     def test_capacity_is_not_cutover_permission(self) -> None:

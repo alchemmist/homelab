@@ -17,6 +17,7 @@ SPEC.loader.exec_module(MODULE)
 
 class KumaPrivateMonitorTests(unittest.TestCase):
     def setUp(self):
+        """Build a Kuma database with the control-plane monitor."""
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.path = Path(self.temp.name) / "kuma.db"
@@ -41,6 +42,7 @@ class KumaPrivateMonitorTests(unittest.TestCase):
             db.execute("INSERT INTO monitor_group VALUES (7, 4)")
 
     def snapshot(self, path=None):
+        """Return a snapshot of the relevant tables as a dict."""
         with closing(sqlite3.connect(path or self.path)) as db, db:
             return {
                 table: db.execute(f"SELECT * FROM {table}").fetchall()
@@ -48,6 +50,7 @@ class KumaPrivateMonitorTests(unittest.TestCase):
             }
 
     def test_migration_preserves_history_groups_identity_and_unrelated_fields(self):
+        """Migration preserves history, groups and unrelated fields."""
         before = self.snapshot()
         result = MODULE.configure(self.path)
         self.assertEqual(result["monitor_id"], 7)
@@ -68,6 +71,7 @@ class KumaPrivateMonitorTests(unittest.TestCase):
         self.assertEqual(backup.parent.stat().st_mode & 0o777, 0o700)
 
     def test_check_is_read_only_and_apply_is_idempotent(self):
+        """Check is read-only; apply is idempotent with one backup."""
         before = self.path.read_bytes()
         self.assertEqual(
             MODULE.configure(self.path, check=True), {"changed": True, "monitor_id": 7}
@@ -81,6 +85,7 @@ class KumaPrivateMonitorTests(unittest.TestCase):
         self.assertEqual(len(list((self.path.parent / "backups").iterdir())), 1)
 
     def test_ambiguous_monitor_is_refused_without_writes(self):
+        """Ambiguous matches are refused without touching the database."""
         with closing(sqlite3.connect(self.path)) as db, db:
             db.execute(
                 "UPDATE monitor SET url = ? WHERE id = 8", (f"https://{MODULE.HOSTNAME}/ping",)
@@ -93,6 +98,7 @@ class KumaPrivateMonitorTests(unittest.TestCase):
         self.assertFalse((self.path.parent / "backups").exists())
 
     def test_missing_monitor_and_database_are_not_created(self):
+        """Missing monitors or databases are never created."""
         with closing(sqlite3.connect(self.path)) as db, db:
             db.execute("DELETE FROM monitor WHERE id = 7")
         with self.assertRaisesRegex(ValueError, "found 0"):

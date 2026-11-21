@@ -17,9 +17,11 @@ spec.loader.exec_module(gitops)
 
 class GitOpsTests(unittest.TestCase):
     def values(self):
+        """Load the deployed netbird values file."""
         return yaml.safe_load((ROOT / "deploy/netbird/values.yaml").read_text())
 
     def test_root_discovers_default_project_application_without_new_bootstrap(self):
+        """The Argo CD root discovers the default-project app without new bootstrap."""
         root = yaml.safe_load((ROOT / "deploy/argocd/root.yaml").read_text())
         app = yaml.safe_load((ROOT / "deploy/argocd/apps/netbird.yaml").read_text())
         self.assertEqual(root["spec"]["source"]["path"], "deploy/argocd/apps")
@@ -33,6 +35,7 @@ class GitOpsTests(unittest.TestCase):
         self.assertEqual(app["spec"]["syncPolicy"]["automated"], {"prune": False, "selfHeal": True})
 
     def test_real_helm_render_includes_complete_stack_without_secret_values(self):
+        """A real Helm render includes the full stack without secret values."""
         docs = list(
             yaml.safe_load_all(
                 subprocess.check_output(
@@ -88,6 +91,7 @@ class GitOpsTests(unittest.TestCase):
         )
 
     def test_home_relay_admits_exact_vps_flannel_source_without_weakening_health(self):
+        """The home relay admits exactly the VPS flannel source with health intact."""
         resources = self.values()["resources"]
         policy = next(
             r
@@ -114,6 +118,7 @@ class GitOpsTests(unittest.TestCase):
         )
 
     def inventory(self, address="10.250.0.9"):
+        """Build a synthetic inventory for node socrat-4."""
         return {
             "Socrat": {"hosts": ["socrat-4"]},
             "_meta": {
@@ -127,6 +132,7 @@ class GitOpsTests(unittest.TestCase):
         }
 
     def test_inventory_addition_only_generates_offline_git_resources(self):
+        """Inventory additions generate only offline git resources."""
         values = self.values()
         original = copy.deepcopy(values["resources"])
         image = "netbirdio/netbird:0.82.0@sha256:" + "a" * 64
@@ -150,6 +156,7 @@ class GitOpsTests(unittest.TestCase):
             gitops.desired(values, self.inventory(), image)
 
     def test_controller_has_no_imperative_deployment_escape(self):
+        """The controller has no imperative deployment escape hatch."""
         runtime = object.__new__(gitops.node.Runtime)
         runtime.k = []
         with patch.object(gitops.node.subprocess, "run") as run:
@@ -163,6 +170,7 @@ class GitOpsTests(unittest.TestCase):
             run.assert_not_called()
 
     def test_old_control_plane_cli_cannot_apply(self):
+        """The old control-plane CLI cannot apply."""
         p = subprocess.run(
             ["python3", str(ROOT / "scripts/netbird-deploy.py"), "apply"],
             capture_output=True,

@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class HarborGitopsRuntimeTests(unittest.TestCase):
     def render(self):
+        """Render the Harbor chart via the offline helm template."""
         return subprocess.check_output(
             [
                 "helm",
@@ -27,15 +28,18 @@ class HarborGitopsRuntimeTests(unittest.TestCase):
         )
 
     def test_two_offline_renders_are_identical(self):
+        """Two offline renders produce identical output."""
         self.assertEqual(self.render(), self.render())
 
     def test_runtime_credentials_not_generated(self):
+        """No runtime-generated credentials appear in the render."""
         resources = list(yaml.safe_load_all(self.render()))
         secrets = {r["metadata"]["name"] for r in resources if r and r["kind"] == "Secret"}
         # Trivy's connection config is deterministic, not a generated runtime key.
         self.assertEqual(secrets, {"harbor-trivy"})
 
     def test_home_ingress_disables_request_body_deadline_preserving_arguments(self):
+        """The ingress disables read deadlines while preserving extra args."""
         role = (ROOT / "ansible/roles/home_ingress_ha/tasks/traefik.yml").read_text()
         for entrypoint in ("websecure", "web"):
             self.assertIn(
@@ -45,6 +49,7 @@ class HarborGitopsRuntimeTests(unittest.TestCase):
         self.assertIn("union([", role)
 
     def test_maintenance_policy_never_deletes_artifacts_or_tags(self):
+        """GC maintenance never deletes artifacts or tags."""
         policy = json.loads((ROOT / "deploy/platform/harbor/maintenance-policy.json").read_text())
         self.assertEqual(policy["gc"]["schedule"], {"type": "Weekly", "cron": "0 0 3 * * 0"})
         self.assertIs(policy["gc"]["parameters"]["delete_untagged"], False)
@@ -53,6 +58,7 @@ class HarborGitopsRuntimeTests(unittest.TestCase):
         self.assertEqual(policy["projects"]["homelab"]["auto_scan"], "true")
 
     def test_oidc_config_uses_existing_secret(self):
+        """OIDC configuration is sourced from the existing reviewed secret."""
         values = yaml.safe_load((ROOT / "deploy/platform/harbor/values.yaml").read_text())
         env = next(
             e for e in values["core"]["extraEnvVars"] if e["name"] == "CONFIG_OVERWRITE_JSON"

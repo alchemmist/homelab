@@ -11,6 +11,7 @@ class HarborConfigurationTests(unittest.TestCase):
     """Load Harbor values and check the published configuration pins."""
 
     def setUp(self):
+        """Load the published Harbor values."""
         self.v = yaml.safe_load((ROOT / "deploy/harbor/values.yaml").read_text())
 
     def test_public_tls_and_no_default_admin_password(self) -> None:

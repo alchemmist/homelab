@@ -10,6 +10,7 @@ ROLE = ROOT / "ansible/roles/home_ingress_ha"
 
 class KeepalivedStartupTest(unittest.TestCase):
     def run_wait(self, appear_at):
+        """Run the wait script with an interface appearing after N checks."""
         script = (ROLE / "templates/wait-home-ingress-interface.sh.j2").read_text()
         script = script.replace(
             "{{ home_ingress_ha_nodes[inventory_hostname].interface | quote }}", "wlan0"
@@ -40,22 +41,26 @@ class KeepalivedStartupTest(unittest.TestCase):
             return result, int((directory / "state").read_text())
 
     def test_existing_interface_starts_immediately(self):
+        """An existing interface starts keepalived immediately."""
         result, attempts = self.run_wait(1)
         self.assertEqual(result.returncode, 0)
         self.assertEqual(attempts, 1)
 
     def test_late_interface_is_waited_for(self):
+        """A late-appearing interface is waited for."""
         result, attempts = self.run_wait(4)
         self.assertEqual(result.returncode, 0)
         self.assertEqual(attempts, 4)
 
     def test_missing_interface_fails_after_bounded_wait(self):
+        """A missing interface fails only after a bounded wait."""
         result, attempts = self.run_wait(100)
         self.assertEqual(result.returncode, 1)
         self.assertEqual(attempts, 60)
         self.assertIn("did not appear", result.stderr)
 
     def test_service_retries_and_has_time_for_prestart(self):
+        """The service retries without start limits, after network-online."""
         override = (ROLE / "templates/keepalived-startup.conf.j2").read_text()
         for setting in (
             "After=network-online.target",

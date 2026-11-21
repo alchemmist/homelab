@@ -16,6 +16,7 @@ class WorkerAdmissionSafetyTests(unittest.TestCase):
     def assert_rejected_before_host_changes(
         self, hostname, os_family="Debian", address="10.250.0.5"
     ):
+        """Assert the admission gates abort the playbook before host changes."""
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
             inventory = directory / "inventory.json"
@@ -57,14 +58,17 @@ class WorkerAdmissionSafetyTests(unittest.TestCase):
             self.assertNotIn("Inspect existing server datastore", output)
 
     def test_existing_control_planes_remain_rejected_when_worker_name_is_overridden(self):
+        """Existing control planes stay rejected even with overridden names."""
         for hostname in ["socrat-0", "socrat-1", "socrat-2"]:
             with self.subTest(hostname=hostname):
                 self.assert_rejected_before_host_changes(hostname)
 
     def test_wrong_operating_system_is_rejected_before_package_operations(self):
+        """Unsupported operating systems abort before package operations."""
         self.assert_rejected_before_host_changes("socrat-3", os_family="Archlinux")
 
     def test_management_address_mismatch_is_rejected_before_network_operations(self):
+        """Management address mismatches abort before network operations."""
         self.assert_rejected_before_host_changes("socrat-3", address="10.250.0.4")
 
 

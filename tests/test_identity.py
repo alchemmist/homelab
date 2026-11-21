@@ -63,6 +63,7 @@ class FakeAuthentik:
         self.requests = []
 
     def __call__(self, req, timeout=60):
+        """Serve a fake Authentik HTTP request from the fixture data."""
         uri = urlparse(req.full_url)
         path = uri.path.split("/api/v3/")[1]
         method = req.get_method()
@@ -111,6 +112,7 @@ class FakeAuthentik:
 
 class IdentityTests(unittest.TestCase):
     def configure(self, root, api):
+        """Run the identity configure script against a fake API root."""
         with (
             patch("sys.argv", ["configure.py", str(root)]),
             patch("urllib.request.urlopen", api),
@@ -121,6 +123,7 @@ class IdentityTests(unittest.TestCase):
             )
 
     def setup_root(self, root):
+        """Create credentials, services and the observer readiness receipt."""
         (root / "credentials.json").write_text(
             json.dumps({"AUTHENTIK_BOOTSTRAP_TOKEN": "fake-test-token"})
         )
@@ -144,6 +147,7 @@ class IdentityTests(unittest.TestCase):
         receipt.chmod(0o600)
 
     def setup_reviewed(self, root, api):
+        """Restore the reviewed human account and its login receipt."""
         # Restored current identities, not speculative/future users.
         self.configure(root, api)
         accounts = json.loads((ROOT / "deploy/identity/account-mappings.json").read_text())
@@ -165,6 +169,7 @@ class IdentityTests(unittest.TestCase):
         (root / "account-mappings.json").write_text(json.dumps(accounts))
 
     def test_harbor_observer_stays_gated_even_with_native_readiness_receipt(self):
+        """Harbor observer admission stays gated by the native readiness receipt."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             self.setup_root(root)
@@ -202,6 +207,7 @@ class IdentityTests(unittest.TestCase):
             )
 
     def test_configuration_idempotent_and_mfa_required(self):
+        """Replay is idempotent, single-owner, and requires MFA enrollment."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             self.setup_root(root)
@@ -241,6 +247,7 @@ class IdentityTests(unittest.TestCase):
             self.assertEqual((root / "oidc-clients.json").stat().st_mode & 0o777, 0o600)
 
     def test_existing_litellm_custom_scope_survives_foundation_replay(self):
+        """A separately managed LiteLLM scope survives repeated replays."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             self.setup_root(root)
@@ -261,6 +268,7 @@ class IdentityTests(unittest.TestCase):
             self.assertEqual(len(api.data["core/applications/"]), 7)
 
     def test_existing_owner_never_silently_taken_over(self):
+        """An existing owner account is never silently taken over."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             self.setup_root(root)
@@ -271,6 +279,7 @@ class IdentityTests(unittest.TestCase):
             self.assertFalse(any(path.endswith("/set_password/") for _, path, _, _ in api.requests))
 
     def test_missing_provider_credentials_refuses_rotation(self):
+        """Missing provider credentials refuse rotation outright."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             self.setup_root(root)
@@ -281,6 +290,7 @@ class IdentityTests(unittest.TestCase):
                 self.configure(root, api)
 
     def test_unexpected_owner_member_cannot_be_promoted(self):
+        """Unexpected owner members cannot gain promotion back."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             self.setup_root(root)
@@ -294,6 +304,7 @@ class IdentityTests(unittest.TestCase):
             self.assertFalse(group["is_superuser"])
 
     def test_runtime_is_not_a_cluster_administrator(self):
+        """The Authentik runtime holds no cluster-admin powers or secrets."""
         values = yaml.safe_load((ROOT / "deploy/authentik/values.yaml").read_text())
         self.assertFalse(values["serviceAccount"]["create"])
         for name in ["server", "worker"]:
@@ -303,6 +314,7 @@ class IdentityTests(unittest.TestCase):
         self.assertNotIn("secret_key", values["authentik"])
 
     def test_world_readable_primary_kubeconfig_not_reintroduced(self):
+        """Primary kubeconfigs stay group-restricted, never 0644."""
         source = (ROOT / "ansible/roles/k3s_ha/templates/config.yaml.j2").read_text()
         self.assertNotIn("'0644'", source)
         self.assertIn("write-kubeconfig-group: alchemmist", source)
@@ -310,6 +322,7 @@ class IdentityTests(unittest.TestCase):
         self.assertNotIn("--write-kubeconfig-mode 644", install)
 
     def test_personal_keys_replaced_not_appended(self):
+        """Managed key sets are replaced wholesale, never appended."""
         tasks = yaml.safe_load((ROOT / "ansible/roles/users/tasks/main.yml").read_text())
         key_task = next(t for t in tasks if "Replace managed key sets" in t["name"])
         self.assertIn("ansible.builtin.copy", key_task)
@@ -317,6 +330,7 @@ class IdentityTests(unittest.TestCase):
         self.assertIn("'disabled'", key_task["ansible.builtin.copy"]["content"])
 
     def test_grafana_keeps_local_login_and_uses_secret_reference(self):
+        """Grafana keeps local login and references the OIDC secret."""
         v = yaml.safe_load((ROOT / "deploy/identity/grafana-oidc-values.yaml").read_text())[
             "grafana"
         ]
@@ -332,6 +346,7 @@ class IdentityTests(unittest.TestCase):
 
 class RolloutRegressionTests(unittest.TestCase):
     def test_pinned_icons_match_local_portal_assets(self):
+        """Portal icons match pinned local assets and contain no scripts."""
         import hashlib, xml.etree.ElementTree as ET
 
         manifest = json.loads((ROOT / "assets/service-icons/sources.json").read_text())
@@ -350,6 +365,7 @@ class RolloutRegressionTests(unittest.TestCase):
                 self.assertFalse(any(k.lower().startswith("on") for k in node.attrib))
 
     def test_reviewed_human_reconciliation_keeps_tim_non_privileged(self):
+        """Replay keeps the reviewed human unprivileged."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             helper = IdentityTests()
@@ -366,6 +382,7 @@ class RolloutRegressionTests(unittest.TestCase):
             self.assertEqual((root / "antropophag-login.json").stat().st_mode & 0o777, 0o600)
 
     def test_n8n_native_login_and_machine_paths_have_no_idp_gate(self):
+        """n8n native login paths carry no IdP gate."""
         services = json.loads((ROOT / "deploy/identity/services.json").read_text())
         self.assertEqual(services["n8n"]["managedBy"], "native-n8n")
         self.assertEqual(services["n8n"]["accessManagement"]["state"], "blocked")
@@ -389,6 +406,7 @@ class RolloutRegressionTests(unittest.TestCase):
         )
 
     def test_owner_mapping_is_server_admin_only_for_owner_group(self):
+        """Grafana server-admin mapping is restricted to the owner group."""
         env = yaml.safe_load((ROOT / "deploy/identity/grafana-oidc-values.yaml").read_text())[
             "grafana"
         ]["env"]
@@ -405,6 +423,7 @@ class RolloutRegressionTests(unittest.TestCase):
         self.assertEqual(webui["OAUTH_ADMIN_ROLES"], "homelab-owner")
 
     def test_sudo_listing_rc_zero_is_not_a_privilege_grant(self):
+        """A zero-rc sudo listing is never reported as a privilege grant."""
         from types import SimpleNamespace
         import subprocess
 

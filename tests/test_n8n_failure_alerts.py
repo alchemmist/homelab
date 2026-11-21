@@ -15,6 +15,7 @@ TEMPLATE = json.loads((ROOT / "docs/n8n/workflow-failure-alerts.json").read_text
 
 class FailureAlertsTests(unittest.TestCase):
     def notification(self, payload, handler="4321"):
+        """Run the node template against a payload and return its first item."""
         code = TEMPLATE["nodes"][1]["parameters"]["jsCode"]
         js = 'const vm=require("node:vm");const x=JSON.parse(process.argv[1]);const fn=vm.runInNewContext("(function(){"+x.code+"})",{items:[{json:x.payload}],$execution:{id:x.handler}});console.log(JSON.stringify(fn()));'
         return json.loads(
@@ -29,6 +30,7 @@ class FailureAlertsTests(unittest.TestCase):
         )[0]["json"]
 
     def test_metadata_only_and_trusted_url(self):
+        """Only safe metadata and the trusted URL reach the alert."""
         p = {
             "workflow": {"id": "abc123", "name": "Calendar"},
             "execution": {
@@ -57,6 +59,7 @@ class FailureAlertsTests(unittest.TestCase):
         )
 
     def test_trigger_failure_without_execution_id(self):
+        """Trigger failures alert without leaking the error message."""
         p = {
             "workflow": {"id": "abc", "name": "Calendar"},
             "trigger": {"error": {"message": "password"}},
@@ -69,6 +72,7 @@ class FailureAlertsTests(unittest.TestCase):
         )
 
     def test_no_message_storage_retries_recursion_or_spi_ingress(self):
+        """The template stores no messages, retries or recursion."""
         self.assertNotIn("errorWorkflow", TEMPLATE["settings"])
         self.assertEqual(TEMPLATE["settings"]["saveDataErrorExecution"], "none")
         self.assertEqual(TEMPLATE["settings"]["saveDataSuccessExecution"], "none")
@@ -81,6 +85,7 @@ class FailureAlertsTests(unittest.TestCase):
         )
 
     def wf(self, active=True):
+        """Build a sample workflow object with optional published state."""
         return {
             "id": "abc",
             "name": "Calendar",
@@ -99,6 +104,7 @@ class FailureAlertsTests(unittest.TestCase):
         }
 
     def test_guard_rejects_unpublished_changes_and_other_handler(self):
+        """Guard rejects unpublished changes and foreign handlers."""
         w = self.wf()
         w["activeVersion"]["nodes"] = []
         with self.assertRaises(RuntimeError):
@@ -109,6 +115,7 @@ class FailureAlertsTests(unittest.TestCase):
             sync.guard(w, "handler")
 
     def test_only_settings_change_and_active_state_preserved(self):
+        """Only settings change; active state drives activation alone."""
         for active in (True, False):
             original = self.wf(active)
             current = copy.deepcopy(original)
@@ -135,6 +142,7 @@ class FailureAlertsTests(unittest.TestCase):
             self.assertFalse(any("execute" in path or "deactivate" in path for _, path, _ in calls))
 
     def test_idempotent_and_concurrent_drift_stops(self):
+        """A bound workflow is idempotent until drift appears."""
         w = self.wf()
         w["settings"]["errorWorkflow"] = "handler"
         calls = []
@@ -151,6 +159,7 @@ class FailureAlertsTests(unittest.TestCase):
             sync.bind(api, before, "handler")
 
     def test_only_native_github_registration_may_change(self):
+        """Only native GitHub registration fields may change."""
         before = self.wf()
         before["nodes"] = [{"id": "n", "name": "Push", "type": "n8n-nodes-base.githubTrigger"}]
         before["staticData"] = {
@@ -171,6 +180,7 @@ class FailureAlertsTests(unittest.TestCase):
             sync.check(before, after, "handler")
 
     def test_transient_put_state_requires_authoritative_readback(self):
+        """Transient PUT state requires an authoritative readback."""
         before = self.wf()
         before["staticData"] = {"checkpoint": "must-remain"}
         transient = copy.deepcopy(before)
@@ -184,6 +194,7 @@ class FailureAlertsTests(unittest.TestCase):
         sync.check(before, stable, "handler")
 
     def test_unexpected_settings_drift_stops(self):
+        """Unexpected settings drift stops the sync."""
         before = self.wf()
         after = copy.deepcopy(before)
         after["settings"] = {"errorWorkflow": "handler"}

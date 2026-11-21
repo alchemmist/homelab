@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class Worker5MigrationTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        """Load the chart values and rendered documents once."""
         cls.values = yaml.safe_load((ROOT / "charts/n8n/values.yaml").read_text())
         cls.docs = list(
             yaml.safe_load_all(
@@ -26,11 +27,13 @@ class Worker5MigrationTest(unittest.TestCase):
         )
 
     def resource(self, kind, name):
+        """Find a rendered document by kind and name."""
         return next(
             d for d in self.docs if d and d["kind"] == kind and d["metadata"]["name"] == name
         )
 
     def test_single_writer_local_retained_and_legacy_preserved(self):
+        """A single writer on retained local storage preserves the legacy claim."""
         deployment = self.resource("Deployment", "n8n")["spec"]
         self.assertIn(deployment["replicas"], (0, 1))
         self.assertEqual(deployment["strategy"]["type"], "Recreate")
@@ -46,6 +49,7 @@ class Worker5MigrationTest(unittest.TestCase):
         self.resource("PersistentVolumeClaim", "n8n")  # rollback PVC stays in desired state
 
     def test_backup_daily_readonly_no_api_access(self):
+        """The daily backup is read-only with no API access."""
         cron = self.resource("CronJob", "n8n-backup")["spec"]
         self.assertEqual(cron["schedule"], "15 3 * * *")
         self.assertEqual(cron["timeZone"], "Europe/Moscow")
@@ -62,6 +66,7 @@ class Worker5MigrationTest(unittest.TestCase):
         self.assertEqual(env[0]["valueFrom"]["fieldRef"]["fieldPath"], "spec.nodeName")
 
     def test_recovery_is_separate_retained_and_node_affine(self):
+        """Recovery storage is separate, retained and node-affine."""
         config = self.values["recoveryStorage"]
         self.assertNotEqual(config["name"], "n8n-socrat5")
         pv = self.resource("PersistentVolume", config["name"])["spec"]
@@ -78,6 +83,7 @@ class Worker5MigrationTest(unittest.TestCase):
         )
 
     def test_legacy_volume_does_not_move_when_deployment_moves(self):
+        """The legacy volume stays put when the deployment moves."""
         docs = list(
             yaml.safe_load_all(
                 subprocess.check_output(
@@ -113,6 +119,7 @@ class Worker5MigrationTest(unittest.TestCase):
         self.assertEqual(expr["values"], [self.values["recoveryStorage"]["nodeName"]])
 
     def test_receiver_rejects_commands_and_uses_private_append_versions(self):
+        """The receiver rejects commands and appends private versions."""
         receiver = ROOT / "scripts/n8n/backup_receiver.py"
         with tempfile.TemporaryDirectory() as home:
             env = dict(os.environ, HOME=home, SSH_ORIGINAL_COMMAND="rm -rf /")
@@ -141,6 +148,7 @@ class Worker5MigrationTest(unittest.TestCase):
             self.assertEqual(len(list(archives[0].parent.glob("*.sha256"))), 2)
 
     def test_only_named_local_claim_is_admitted(self):
+        """Only the named local claim is admitted by the policy."""
         policy = next(
             yaml.safe_load_all((ROOT / "deploy/admission/socrat5-local-storage.yaml").read_text())
         )

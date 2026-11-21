@@ -40,11 +40,13 @@ def state(vip=False):
 
 class IngressNeighborsTest(unittest.TestCase):
     def setUp(self):
+        """Provide AF_PACKET on non-Linux test hosts."""
         packet_family = patch.object(NEIGHBORS.socket, "AF_PACKET", 17, create=True)
         packet_family.start()
         self.addCleanup(packet_family.stop)
 
     def test_wire_format_is_directed_ethernet_arp_request(self):
+        """Frames are directed Ethernet ARP requests to each neighbor."""
         frame = NEIGHBORS.frames_for_interface(config(), state())[0]
         self.assertEqual(len(frame), 42)
         self.assertEqual(frame[:6], bytes.fromhex("021122334455"))
@@ -56,6 +58,7 @@ class IngressNeighborsTest(unittest.TestCase):
         self.assertEqual(socket.inet_ntoa(frame[38:42]), "192.168.0.1")
 
     def test_backup_announces_only_physical_address_to_both_neighbors(self):
+        """Backup announces only its physical address, to both neighbors."""
         frames = NEIGHBORS.frames_for_interface(config(), state())
         self.assertEqual([socket.inet_ntoa(frame[28:32]) for frame in frames], ["192.168.0.24"] * 2)
         self.assertEqual(
@@ -63,6 +66,7 @@ class IngressNeighborsTest(unittest.TestCase):
         )
 
     def test_owner_also_announces_vip_to_both_neighbors(self):
+        """The owner also announces the VIP to both neighbors."""
         frames = NEIGHBORS.frames_for_interface(config(), state(vip=True))
         self.assertEqual(
             [socket.inet_ntoa(frame[28:32]) for frame in frames],
@@ -70,6 +74,7 @@ class IngressNeighborsTest(unittest.TestCase):
         )
 
     def test_physical_address_must_exist_before_any_socket_is_opened(self):
+        """A missing physical address aborts before any socket opens."""
         missing = state(vip=True)
         missing["addr_info"] = missing["addr_info"][1:]
         with (
@@ -81,6 +86,7 @@ class IngressNeighborsTest(unittest.TestCase):
             factory.assert_not_called()
 
     def test_invalid_configuration_is_rejected_before_interface_query(self):
+        """Invalid configs are rejected before querying the interface."""
         variants = []
         for field, value in [
             ("interface", "../wlan0"),
@@ -105,6 +111,7 @@ class IngressNeighborsTest(unittest.TestCase):
                 query.assert_not_called()
 
     def test_invalid_local_mac_and_wrong_interface_are_rejected(self):
+        """Invalid local MACs and mismatched interfaces are rejected."""
         for field, value in [
             ("address", "ff:ff:ff:ff:ff:ff"),
             ("address", None),
@@ -116,6 +123,7 @@ class IngressNeighborsTest(unittest.TestCase):
                 NEIGHBORS.frames_for_interface(config(), item)
 
     def test_announcement_sends_once_without_waiting_for_replies(self):
+        """Announcement sends each frame once without reading replies."""
         connection = Mock()
         connection.send.side_effect = lambda frame: len(frame)
         with (
@@ -132,6 +140,7 @@ class IngressNeighborsTest(unittest.TestCase):
         connection.recvfrom.assert_not_called()
 
     def test_interface_query_has_bounded_timeout_and_no_shell(self):
+        """Interface queries run shell-free with a bounded timeout."""
         with patch.object(
             NEIGHBORS.subprocess, "run", return_value=Mock(stdout=json.dumps([state()]))
         ) as run:
@@ -145,6 +154,7 @@ class IngressNeighborsTest(unittest.TestCase):
         )
 
     def test_failed_interface_query_prevents_transmission(self):
+        """A failed interface query prevents any transmission."""
         with (
             patch.object(
                 NEIGHBORS.subprocess, "run", side_effect=subprocess.TimeoutExpired("ip", 2)
@@ -156,6 +166,7 @@ class IngressNeighborsTest(unittest.TestCase):
             factory.assert_not_called()
 
     def test_partial_frame_send_fails(self):
+        """A partial frame send raises rather than continuing."""
         with (
             patch.object(NEIGHBORS, "read_interface", return_value=state()),
             patch.object(NEIGHBORS.socket, "socket") as factory,

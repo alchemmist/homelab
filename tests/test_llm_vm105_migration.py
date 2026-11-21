@@ -33,6 +33,7 @@ def obj(docs, kind, name):
 
 class FourAppMigrationTests(unittest.TestCase):
     def test_stateless_placement_does_not_move_umami_database(self):
+        """Stateless apps move to vm105 while the Umami database stays put."""
         for name in ["umami", "searxng"]:
             d = render(name)
             self.assertEqual(
@@ -44,6 +45,7 @@ class FourAppMigrationTests(unittest.TestCase):
         self.assertEqual(db["volumes"][0]["hostPath"]["path"], "/srv/umami/postgres")
 
     def test_dedicated_retained_vm_storage_and_original_claims(self):
+        """VM storage is retained and dedicated with kept original claims."""
         for name in ["open-webui", "open-terminal"]:
             with self.subTest(app=name):
                 docs = render(name)
@@ -66,6 +68,7 @@ class FourAppMigrationTests(unittest.TestCase):
                 self.assertEqual(claim["spec"]["storageClassName"], "")
 
     def test_activation_requires_verified_existing_data_and_single_writer(self):
+        """Activation demands verified existing data and a single writer."""
         for name, field in [
             ("open-webui", "persistence.claimName"),
             ("open-terminal", "claimName"),
@@ -91,6 +94,7 @@ class FourAppMigrationTests(unittest.TestCase):
                 self.assertFalse(s["automountServiceAccountToken"])
 
     def test_private_gateway_address_and_node_stay_together(self):
+        """The gateway keeps its private address pinned to its node."""
         docs = render("open-webui", "--set", "nodeName=socrat-5")
         s = obj(docs, "Deployment", "open-webui-gateway")["spec"]["template"]["spec"]
         self.assertEqual(s["nodeSelector"], {"kubernetes.io/hostname": "socrat-0"})
@@ -99,6 +103,7 @@ class FourAppMigrationTests(unittest.TestCase):
         self.assertIn("return 308 https://$host$request_uri;", cm)
 
     def test_terminal_is_still_internal_and_webui_only(self):
+        """Open-terminal stays internal and accepts only webui traffic."""
         docs = render("open-terminal")
         self.assertFalse(any(d and d["kind"] == "Ingress" for d in docs))
         policy = obj(docs, "NetworkPolicy", "open-terminal-isolation")["spec"]
@@ -108,6 +113,7 @@ class FourAppMigrationTests(unittest.TestCase):
         self.assertEqual(obj(docs, "Service", "open-terminal")["spec"]["type"], "ClusterIP")
 
     def test_idp_internal_tls_route_is_scoped_to_webui_pod(self):
+        """The IdP TLS alias applies only to the webui pod."""
         docs = render("open-webui")
         spec = obj(docs, "Deployment", "open-webui")["spec"]["template"]["spec"]
         self.assertEqual(

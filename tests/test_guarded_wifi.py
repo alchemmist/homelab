@@ -18,6 +18,7 @@ SPEC.loader.exec_module(GUARD)
 
 class GuardedWifiTests(unittest.TestCase):
     def setUp(self):
+        """Build a fake module tree and patch all guard environment hooks."""
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
@@ -56,6 +57,7 @@ class GuardedWifiTests(unittest.TestCase):
             self.addCleanup(patcher.stop)
 
     def run_command(self, command):
+        """Record guard commands and respond with fixture output."""
         self.calls.append(command)
         if command[0] == "dkms":
             return self.status
@@ -64,6 +66,7 @@ class GuardedWifiTests(unittest.TestCase):
         return b""
 
     def invoke(self, *arguments):
+        """Invoke the guard CLI with stdout and stderr captured."""
         with (
             mock.patch("sys.argv", ["guard", *arguments]),
             contextlib.redirect_stdout(io.StringIO()),
@@ -72,15 +75,18 @@ class GuardedWifiTests(unittest.TestCase):
             return GUARD.main()
 
     def assert_wifi_not_loaded(self):
+        """Assert no modprobe of the wifi driver was attempted."""
         self.assertFalse(any(call[:2] == ["modprobe", "rtl8723ae"] for call in self.calls))
 
     def test_matching_loaded_identity_allows_wifi(self):
+        """The verified identity loads wifi with the reviewed parameters."""
         self.assertEqual(self.invoke(), 0)
         self.assertEqual(
             self.calls[-1], ["modprobe", "rtl8723ae", "msi=1", "ips=0", "fwlps=0", "swlps=0"]
         )
 
     def test_existing_wifi_with_wrong_parameters_fails_without_reload(self):
+        """Existing wifi with wrong parameters fails without reloading."""
         for name in ("msi", "ips", "fwlps", "swlps"):
             with self.subTest(parameter=name):
                 path = self.wifi_parameters / name
@@ -93,16 +99,19 @@ class GuardedWifiTests(unittest.TestCase):
                 path.write_text(original)
 
     def test_missing_wifi_parameter_fails(self):
+        """A missing wifi parameter file aborts the guard."""
         (self.wifi_parameters / "msi").unlink()
         self.assertEqual(self.invoke(), 1)
 
     def test_installed_dkms_with_original_modules_annotation_is_accepted(self):
+        """A dkms status with the original-modules annotation is accepted."""
         self.status = (
             b"homelab-alx/6.12.111-1, test-kernel, x86_64: installed (Original modules exist)\n"
         )
         self.assertEqual(self.invoke(), 0)
 
     def test_unknown_dkms_annotation_is_rejected(self):
+        """Unknown dkms annotations are rejected without loading wifi."""
         self.status = (
             b"homelab-alx/6.12.111-1, test-kernel, x86_64: installed (WARNING: mismatch)\n"
         )
@@ -110,15 +119,18 @@ class GuardedWifiTests(unittest.TestCase):
         self.assert_wifi_not_loaded()
 
     def test_check_never_loads_wifi(self):
+        """Check mode verifies without loading the wifi driver."""
         self.assertEqual(self.invoke("--check"), 0)
         self.assert_wifi_not_loaded()
 
     def test_old_running_module_rejected_even_when_dkms_installed(self):
+        """A stale running module is rejected even with dkms installed."""
         self.note.write_bytes(b"old-in-tree-build-id")
         self.assertEqual(self.invoke(), 1)
         self.assert_wifi_not_loaded()
 
     def test_wrong_kernel_or_uninstalled_dkms_rejected(self):
+        """Wrong kernels or non-installed dkms states are rejected."""
         for status in (
             b"",
             b"homelab-alx/6.12.111-1, other-kernel, x86_64: installed\n",
@@ -131,6 +143,7 @@ class GuardedWifiTests(unittest.TestCase):
                 self.assertNotIn(["modprobe", "alx"], self.calls)
 
     def test_in_tree_module_rejected(self):
+        """An in-tree module path is rejected."""
         self.module = self.modules / "test-kernel/kernel/drivers/alx.ko"
         self.module.parent.mkdir(parents=True)
         self.module.write_bytes(b"in-tree")
@@ -138,16 +151,19 @@ class GuardedWifiTests(unittest.TestCase):
         self.assert_wifi_not_loaded()
 
     def test_missing_loaded_note_rejected(self):
+        """A missing loaded-module note is rejected."""
         self.note.unlink()
         self.assertEqual(self.invoke(), 1)
         self.assert_wifi_not_loaded()
 
     def test_wrong_board_rejected_without_commands(self):
+        """An unexpected board fails before any command is run."""
         self.board.write_text("other-board")
         self.assertEqual(self.invoke(), 1)
         self.assertEqual(self.calls, [])
 
     def test_nonroot_rejected_without_commands(self):
+        """Non-root invocations are refused before any command runs."""
         with mock.patch.object(GUARD.os, "geteuid", return_value=1000):
             self.assertEqual(self.invoke(), 1)
         self.assertEqual(self.calls, [])
@@ -155,6 +171,7 @@ class GuardedWifiTests(unittest.TestCase):
 
 class ModuleNoteTests(unittest.TestCase):
     def test_decompression_and_note_extraction_preserve_original(self):
+        """The module note is extracted for plain, gzipped and xz modules."""
         for suffix, encode in (
             (".ko", lambda value: value),
             (".ko.gz", gzip.compress),
