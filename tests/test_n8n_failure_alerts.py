@@ -119,7 +119,7 @@ class FailureAlertsTests(unittest.TestCase):
             current = copy.deepcopy(original)
             calls = []
 
-            def api(method, path, body=None) -> dict[str, object]:
+            def api(method, path, body=None, original=original, current=current, calls=calls) -> dict[str, object]:
                 calls.append((method, path, body))
                 if method == "PUT":
                     assert body["nodes"] == original["nodes"]

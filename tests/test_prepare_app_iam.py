@@ -409,7 +409,7 @@ class PreparationTests(unittest.TestCase):
         )
         for response in responses:
             with self.assertRaises(RuntimeError):
-                prep.rows(lambda *args: response, "core/users/")
+                prep.rows(lambda *args, response=response: response, "core/users/")
         original = self.api.__call__
 
         def api(method, path, payload=None):

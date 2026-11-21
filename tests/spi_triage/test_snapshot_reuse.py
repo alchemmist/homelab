@@ -99,12 +99,12 @@ class ReviewReuseTests(unittest.TestCase):
             else:
                 current.reverse()
             m.call.reset_mock()
-            saved = []
+            saved: list[dict[str, list[object]]] = []
             result = m.match(
                 f.event(start="2026-11-03T13:00:0%dZ" % index),
                 current,
                 proof,
-                lambda p: saved.append(copy.deepcopy(p)),
+                lambda p, saved=saved: saved.append(copy.deepcopy(p)),
             )
             expected = 1 if index != 3 else 0
             self.assertEqual(m.call.call_count, expected)
