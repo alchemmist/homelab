@@ -115,11 +115,13 @@ def _require_key_state(request, token, master):
 
 
 def verify(args, runner=None, opener=None):
+    """Execute the verify operation."""
     runner = runner or subprocess.run
     opener = opener or urllib.request.build_opener(NoRedirect()).open
     kubectl = ["k3s", "kubectl", "--kubeconfig", args.kubeconfig, "--request-timeout=15s"]
 
     def get(namespace, kind, name):
+        """Execute the get operation."""
         return _get(runner, kubectl, namespace, kind, name)
 
     app = get("argocd", "application", args.release)
@@ -144,6 +146,7 @@ def verify(args, runner=None, opener=None):
         raise RuntimeError("Empty existing key; refusing repair")
 
     def request(path, credential=None, read_json=False):
+        """Execute the request operation."""
         return _request(opener, base, path, credential, read_json)
 
     _require_key_state(request, token, master)
@@ -151,6 +154,7 @@ def verify(args, runner=None, opener=None):
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--namespace", required=True)
     parser.add_argument("--release", required=True)

@@ -9,11 +9,13 @@ FRAME_INTERVAL = 0.05
 
 
 def smooth(value):
+    """Execute the smooth operation."""
     value = min(1.0, max(0.0, value))
     return value * value * (3 - 2 * value)
 
 
 def portrait_frame(sample, colors, seconds):
+    """Execute the portrait_frame operation."""
     height = sample["rows"]
     width = sample["columns"]
     t = seconds * (5.2 / DURATION)
@@ -60,10 +62,12 @@ def portrait_frame(sample, colors, seconds):
 
 
 def play(initial, final, sample, colors, geometry, output):
+    """Execute the play operation."""
     height = sample["rows"]
     resized = False
 
     def draw(seconds) -> None:
+        """Execute the draw operation."""
         output.write(f"\033[{height}A\r")
         for line in portrait_frame(sample, colors, seconds):
             output.write("\033[2C" + line + "\033[1B\r")

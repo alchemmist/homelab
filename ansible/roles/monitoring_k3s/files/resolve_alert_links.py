@@ -24,10 +24,12 @@ GRAFANA_PATH = (
 
 
 def compact(value):
+    """Execute the compact operation."""
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
 
 def js_hash(value):
+    """Execute the js_hash operation."""
     result = 0
     encoded = value.encode("utf-16-le", errors="surrogatepass")
     for index in range(0, len(encoded), 2):
@@ -36,6 +38,7 @@ def js_hash(value):
 
 
 def query_fingerprint(query):
+    """Execute the query_fingerprint operation."""
     query = "\n".join(
         line.strip() for line in re.sub(r"#[^\n]*", "", query).split("\n") if line.strip()
     )
@@ -49,10 +52,12 @@ def query_fingerprint(query):
 
 
 def pairs_fingerprint(values):
+    """Execute the pairs_fingerprint operation."""
     return compact(sorted((values or {}).items(), key=lambda item: item[0]))
 
 
 def rule_hash(rule, primary=False):
+    """Execute the rule_hash operation."""
     fingerprint = [
         rule["name"],
         "alerting",
@@ -64,6 +69,7 @@ def rule_hash(rule, primary=False):
 
 
 def rule_url(group, rule, primary=False):
+    """Execute the rule_url operation."""
     parts = [
         "pri",
         "Prometheus",
@@ -79,12 +85,14 @@ def rule_url(group, rule, primary=False):
 
 
 def panels(dashboard):
+    """Execute the panels operation."""
     for panel in dashboard.get("panels", []):
         yield panel
         yield from panels(panel)
 
 
 def panel_rules(panel, name_prefix=""):
+    """Execute the panel_rules operation."""
     result = set()
     for target in panel.get("targets", []):
         for selector in re.findall(r"\bALERTS\s*\{([^}]*)\}", target.get("expr", "")):
@@ -100,6 +108,7 @@ def panel_rules(panel, name_prefix=""):
 
 
 def resolve(dashboard, response, settings, values_key="nodeAlertLinks", name_prefix=""):
+    """Execute the resolve operation."""
     groups = response["data"]["groups"]
     primary = settings.get("featureToggles", {}).get("alertingPrometheusRulesPrimary", False)
     available = {}
@@ -133,6 +142,7 @@ def resolve(dashboard, response, settings, values_key="nodeAlertLinks", name_pre
 
 
 def expected_rules(dashboard, resources, formatter, name_prefix=""):
+    """Execute the expected_rules operation."""
     names = set().union(*(panel_rules(panel, name_prefix) for panel in panels(dashboard)))
     expected = []
     cache = {}
@@ -167,6 +177,7 @@ def expected_rules(dashboard, resources, formatter, name_prefix=""):
 
 
 def require_convergence(response, expected):
+    """Execute the require_convergence operation."""
     actual = set()
     for group in response["data"]["groups"]:
         for rule in group.get("rules", []):
@@ -186,6 +197,7 @@ def require_convergence(response, expected):
 
 
 def fetch(path):
+    """Execute the fetch operation."""
     if "/format_query?" in path:
         from urllib.parse import parse_qs, urlsplit
 
@@ -238,6 +250,7 @@ def fetch(path):
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--dashboard", required=True)
     parser.add_argument("--output", required=True)
