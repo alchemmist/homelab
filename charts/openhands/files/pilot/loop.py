@@ -1,6 +1,19 @@
 """Two-card #509 pilot. Only validated scalar cases cross the executor/judge boundary."""
+import ast
+import contextlib
+import datetime
 import gzip
-import ast, contextlib, datetime, hashlib, hmac, json, os, re, shutil, sqlite3, subprocess, threading, time, uuid
+import hashlib
+import hmac
+import json
+import os
+import re
+import shutil
+import sqlite3
+import subprocess
+import threading
+import time
+import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError

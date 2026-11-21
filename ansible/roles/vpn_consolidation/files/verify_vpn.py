@@ -3,11 +3,11 @@ import base64
 import hashlib
 import json
 import os
-from pathlib import Path
 import sqlite3
 import sys
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 DATABASES = {"primary": "/srv/x-ui-lab/db/x-ui.db", "legacy": "/etc/x-ui/x-ui.db"}
 TABLES = (

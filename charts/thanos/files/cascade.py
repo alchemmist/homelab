@@ -10,7 +10,6 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-
 RAW_RESOLUTION = 0
 FIVE_RESOLUTION = 300000
 HOUR_RESOLUTION = 3600000

@@ -1,4 +1,6 @@
-import json, os, urllib.request
+import json
+import os
+import urllib.request
 from urllib.parse import urlparse
 
 ENDPOINT = os.environ["VPN_ENDPOINT"]

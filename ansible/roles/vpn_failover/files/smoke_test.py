@@ -3,12 +3,12 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import shutil
 import sqlite3
 import subprocess
 import tempfile
 import time
+from pathlib import Path
 
 NAMESPACE = "homelab-vpn-smoke"
 ROOT = Path("/opt/homelab-vpn-failover")

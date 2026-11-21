@@ -6,12 +6,12 @@ Only two fixed operator routes; no worker token or caller identity is trusted.
 import http.client
 import http.server
 import json
-from pathlib import Path
 import socket
 import threading
-import urllib.request
 import urllib.error
 import urllib.parse
+import urllib.request
+from pathlib import Path
 
 ORIGIN = "https://rustfs.socrat.alchemmist.xyz"
 ASSETS = {

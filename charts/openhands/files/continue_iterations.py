@@ -1,15 +1,16 @@
 """Opt-in continuation for exactly one conversation; no model or GitHub credentials."""
 import json
-from datetime import datetime, timezone
-import re
 import os
-import time
+import re
 import socket
 import sqlite3
-from contextlib import closing
+import time
 import uuid
+from contextlib import closing
+from datetime import datetime, timezone
 from pathlib import Path
-from urllib.request import Request, build_opener, ProxyHandler, HTTPRedirectHandler
+from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
+
 
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self,*args):return None

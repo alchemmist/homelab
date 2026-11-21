@@ -5,13 +5,13 @@ import fcntl
 import hashlib
 import json
 import os
-from pathlib import Path
 import signal
 import socket
 import sqlite3
 import ssl
 import subprocess
 import time
+from pathlib import Path
 
 CONFIG_PATH = "/etc/homelab-vpn-failover/config.json"
 STATE_DIR = "/var/lib/homelab-vpn-failover"

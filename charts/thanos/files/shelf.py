@@ -5,7 +5,6 @@ import shutil
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-
 ULID = re.compile(r"^[0-9A-Z]{26}$")
 
 
