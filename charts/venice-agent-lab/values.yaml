@@ -11,3 +11,4 @@ worker:
       memory: 512Mi
       ephemeral-storage: 128Mi
 controllerServiceAccount: venice-agent-controller
+...

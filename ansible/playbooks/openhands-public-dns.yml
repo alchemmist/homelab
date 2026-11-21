@@ -37,3 +37,4 @@
       when: openhands_public_dns_apply | default(false) | bool
       register: dns_apply
       changed_when: (dns_apply.stdout | from_json).applied
+...

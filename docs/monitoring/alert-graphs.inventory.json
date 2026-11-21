@@ -1337,7 +1337,7 @@
     "resource": "socrat-postgres-platform",
     "group": "postgres-platform",
     "alert": "SocratPgCommonStandbyUnavailable",
-    "expr": "cnpg_pg_replication_streaming_replicas{pg_cluster=\"pg-common\"} < 1",
+    "expr": "cnpg_dr_standbys{pg_cluster=\"pg-common\"} < 1",
     "uid": null,
     "graphs": {
       "version": 1,
@@ -1399,7 +1399,7 @@
     "resource": "socrat-postgres-platform",
     "group": "postgres-platform",
     "alert": "SocratPgCriticalRedundancyReduced",
-    "expr": "cnpg_pg_replication_streaming_replicas{pg_cluster=\"pg-critical\"} < 2",
+    "expr": "cnpg_dr_standbys{pg_cluster=\"pg-critical\"} < 2",
     "uid": null,
     "graphs": {
       "version": 1,
@@ -1461,7 +1461,7 @@
     "resource": "socrat-postgres-platform",
     "group": "postgres-platform",
     "alert": "SocratPgPlatformMetricsMissing",
-    "expr": "absent_over_time(cnpg_pg_replication_streaming_replicas{pg_cluster=\"pg-common\"}[3m]) or absent_over_time(cnpg_collector_sync_replicas{pg_cluster=\"pg-critical\",value=\"observed\"}[3m])",
+    "expr": "absent_over_time(cnpg_dr_standbys{pg_cluster=\"pg-common\"}[3m]) or absent_over_time(cnpg_collector_sync_replicas{pg_cluster=\"pg-critical\",value=\"observed\"}[3m])",
     "uid": null,
     "graphs": {
       "version": 1,
