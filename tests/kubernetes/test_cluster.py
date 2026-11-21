@@ -4,11 +4,15 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 from uuid import uuid4
 
 import pytest
 import yaml
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 
 ROOT = Path(__file__).resolve().parents[2]
 NODE_IMAGE = (
@@ -56,7 +60,7 @@ def cluster(tmp_path_factory):
         )
         config.chmod(0o600)
 
-        def kube(*args, **kwargs):
+        def kube(*args: str, **kwargs: "Incomplete") -> "Incomplete":
             return run(
                 [
                     "kubectl",
