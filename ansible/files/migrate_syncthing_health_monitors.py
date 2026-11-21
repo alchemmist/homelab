@@ -2,11 +2,17 @@ import argparse
 import json
 import os
 import sqlite3
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
 
-def migrate(database, plan, check=False):
+def migrate(
+    database: Path,
+    plan: Sequence[Mapping[str, str]],
+    *,
+    check: bool = False,
+):
     if not database.is_file():
         raise FileNotFoundError(database)
     connection = sqlite3.connect(f"file:{database}?mode=ro", uri=True)
@@ -55,7 +61,7 @@ def main():
     parser.add_argument("--check", action="store_true")
     arguments = parser.parse_args()
     plan = json.loads(arguments.plan.read_text())
-    print(json.dumps(migrate(arguments.database, plan, arguments.check)))
+    print(json.dumps(migrate(arguments.database, plan, check=arguments.check)))
 
 
 if __name__ == "__main__":

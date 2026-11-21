@@ -1,6 +1,8 @@
 import json
+from collections.abc import Mapping
 from functools import lru_cache
 from pathlib import Path
+from typing import NotRequired, TypedDict
 
 
 PANEL_UNITS = {
@@ -15,7 +17,7 @@ READINESS_SUBJECTS = {
 }
 
 
-def apply_alert_descriptions(resource):
+def apply_alert_descriptions(resource: object):
     if not isinstance(resource, dict) or resource.get("kind") != "PrometheusRule":
         return
     for group in resource.get("spec", {}).get("groups", []):
@@ -44,14 +46,34 @@ def load_descriptions():
     return descriptions
 
 
-def panels(dashboard):
+class Panel(TypedDict):
+    """Grafana panel fields this renderer reads and updates."""
+
+    id: int
+    type: str
+    panels: NotRequired[list["Panel"]]
+    description: NotRequired[str]
+    fieldConfig: NotRequired[dict[str, dict[str, object]]]
+
+
+class Dashboard(TypedDict):
+    """Dashboard document addressed by uid."""
+
+    uid: str
+    panels: list[Panel]
+
+
+def panels(dashboard: Dashboard | Panel):
     for panel in dashboard.get("panels", []):
         if panel.get("type") not in {"row", "text"}:
             yield panel
         yield from panels(panel)
 
 
-def apply_descriptions(dashboard, descriptions=None):
+def apply_descriptions(
+    dashboard: Dashboard,
+    descriptions: Mapping[str, Mapping[str, str]] | None = None,
+):
     catalog = load_descriptions() if descriptions is None else descriptions
     uid = dashboard["uid"]
     entries = catalog.get(uid, {})

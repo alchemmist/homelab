@@ -8,6 +8,7 @@ import datetime
 import hashlib
 import json
 import os
+from collections.abc import Mapping
 from pathlib import Path
 import socket
 import urllib.parse
@@ -39,7 +40,7 @@ FIELDS = (
 )
 
 
-def protected_json(path, value):
+def protected_json(path: Path, value: Mapping[str, object]):
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     with open(path, "w", opener=lambda p, flags: os.open(p, flags, 0o600)) as stream:
         json.dump(value, stream, indent=2)
@@ -64,7 +65,7 @@ def main():
     credentials = json.loads((args.root / "credentials.json").read_text())
     headers = {"Authorization": "Bearer " + credentials["AUTHENTIK_BOOTSTRAP_TOKEN"]}
 
-    def api(method, path, data=None):
+    def api(method: str, path: str, data: Mapping[str, object] | None = None):
         request = urllib.request.Request(
             BASE + "/api/v3/" + path,
             method=method,

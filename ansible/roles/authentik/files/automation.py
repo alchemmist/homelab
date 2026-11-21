@@ -6,7 +6,9 @@ apply/check never delete humans; retire-akadmin is a separate explicit guarded a
 import argparse
 import ast
 import fcntl
+from collections.abc import Mapping
 from datetime import datetime, timezone
+from typing import cast
 import json
 import os
 from pathlib import Path
@@ -101,7 +103,7 @@ def bootstrap_is_migration_aware(source: str) -> bool:
     return False
 
 
-def save(path, data):
+def save(path: Path, data: Mapping[str, object]):
     tmp = path.with_name(path.name + ".tmp-" + secrets.token_hex(8))
     fd = os.open(tmp, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     try:
@@ -114,7 +116,12 @@ def save(path, data):
         tmp.unlink(missing_ok=True)
 
 
-def api(token, method, path, data=None):
+def api(
+    token: str,
+    method: str,
+    path: str,
+    data: Mapping[str, object] | None = None,
+):
     req = urllib.request.Request(
         BASE + path,
         method=method,
@@ -126,7 +133,7 @@ def api(token, method, path, data=None):
         return json.loads(raw) if raw else None
 
 
-def exact(token, endpoint, field, value):
+def exact(token: str, endpoint: str, field: str, value: str):
     rows = api(
         token, "GET", endpoint + "?" + field + "=" + quote(value, safe="") + "&page_size=1000"
     )["results"]
@@ -136,9 +143,9 @@ def exact(token, endpoint, field, value):
     return rows[0] if rows else None
 
 
-def verify(token, journal):
+def verify(token: str, journal: Mapping[str, object]):
     user = api(token, "GET", "core/users/" + str(journal["user_pk"]) + "/")
-    group = api(token, "GET", "core/groups/" + journal["group_pk"] + "/")
+    group = api(token, "GET", "core/groups/" + str(journal["group_pk"]) + "/")
     marker = {"homelab_automation_journal": journal["nonce"]}
     if not (
         user["uuid"] == journal["user_uuid"]
@@ -175,7 +182,7 @@ def verify(token, journal):
     return user
 
 
-def migrate(root, action):
+def migrate(root: Path, action: str):
     if root.stat().st_mode & 0o077:
         raise RuntimeError("Deployment directory is not private")
     path = root / "automation-api.json"
@@ -292,7 +299,7 @@ def migrate(root, action):
     )
 
 
-def retire_default_admin(root):
+def retire_default_admin(root: Path):
     """Only after an independent node-admin recovery drill and encrypted backup."""
     import subprocess
 
