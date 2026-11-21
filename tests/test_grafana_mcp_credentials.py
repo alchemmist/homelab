@@ -12,7 +12,7 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
-def secret(**values):
+def secret(**values: str):
     return {
         "data": {key: base64.b64encode(value.encode()).decode() for key, value in values.items()}
     }

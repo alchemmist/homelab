@@ -7,6 +7,7 @@ import hmac
 import json
 import re
 from pathlib import PurePosixPath
+from typing import cast
 
 LANES = {
     "backend": "Find and reproduce a backend correctness bug; add a regression test and a small fix.",
@@ -19,7 +20,7 @@ MAX_BYTES = 600_000
 DEPENDENCY_PATHS = {"web/package.json", "web/package-lock.json"}
 
 
-def validate_changes(changes):
+def validate_changes(changes: list[dict[str, str]]) -> list[dict[str, str]]:
     if not changes or len(changes) > 20:
         raise ValueError("Expected 1..20 changed files")
     if any(i["path"] in DEPENDENCY_PATHS for i in changes) and not dependency_repair(changes):
@@ -49,7 +50,7 @@ def validate_changes(changes):
     return changes
 
 
-def encode_result(result, key=None):
+def encode_result(result: dict[str, object], key: str | None = None) -> str:
     raw = json.dumps(result).encode()
     if len(raw) > 900_000:
         raise ValueError("Result too large")
@@ -59,7 +60,7 @@ def encode_result(result, key=None):
     return "SWE_RESULT:" + payload
 
 
-def decode_result(log, key=None):
+def decode_result(log: str, key: str | None = None) -> dict[str, object]:
     lines = [
         line.removeprefix("SWE_RESULT:")
         for line in log.splitlines()
@@ -79,19 +80,24 @@ def decode_result(log, key=None):
         raw = f.read(900_001)
     if len(raw) > 900_000:
         raise ValueError("Result exceeds limit")
-    return json.loads(raw)
+    return cast("dict[str, object]", json.loads(raw))
 
 
-def dependency_repair(changes):
+def dependency_repair(changes: list[dict[str, str]]) -> bool:
     return {item["path"] for item in changes} == DEPENDENCY_PATHS
 
 
-def validate_dependency_update(changes, original):
+def validate_dependency_update(
+    changes: list[dict[str, str]], original: dict[str, object]
+) -> list[dict[str, str]]:
     if not dependency_repair(changes):
         raise ValueError(
             "Dependency repair must contain exactly manifest and lock, no source changes"
         )
-    files = {i["path"]: json.loads(base64.b64decode(i["content"])) for i in changes}
+    files = {
+        i["path"]: cast("dict[str, object]", json.loads(base64.b64decode(i["content"])))
+        for i in changes
+    }
     updated = files["web/package.json"]
     groups = {"dependencies", "devDependencies"}
     if {k: v for k, v in original.items() if k not in groups} != {
@@ -100,7 +106,10 @@ def validate_dependency_update(changes, original):
         raise ValueError("Dependency repair cannot modify scripts, engines, metadata or tooling")
     changed = False
     for group in groups:
-        before, after = original.get(group, {}), updated.get(group, {})
+        before, after = (
+            cast("dict[str, object]", original.get(group, {})),
+            cast("dict[str, object]", updated.get(group, {})),
+        )
         if before.keys() != after.keys():
             raise ValueError("No dependency additions/removals")
         for name, version in after.items():
@@ -115,8 +124,8 @@ def validate_dependency_update(changes, original):
     lock = files["web/package-lock.json"]
     if lock.get("lockfileVersion") != 3:
         raise ValueError("Unexpected lockfile format")
-    for entry in lock.get("packages", {}).values():
-        url = entry.get("resolved", "")
+    for entry in cast("dict[str, object]", lock.get("packages", {})).values():
+        url = cast("str", cast("dict[str, object]", entry).get("resolved", ""))
         if url and not url.startswith("https://registry.npmjs.org/"):
             raise ValueError("Nonstandard dependency registry")
     return changes

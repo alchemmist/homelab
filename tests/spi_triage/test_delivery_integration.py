@@ -1,12 +1,18 @@
-import unittest, tempfile, json
+import json
+import tempfile
+import unittest
 from pathlib import Path
-from unittest.mock import Mock
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
+from unittest.mock import Mock
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 import test_triage as fixture
-from core import Store, Failure
-from telegram_links import Links
-from telegram_delivery import Delivery
+from core import Failure, Store
 from integrations import GitHub
+from telegram_delivery import Delivery
+from telegram_links import Links
 
 
 class DeliveryIntegrationTests(unittest.TestCase):
@@ -19,7 +25,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
     def tearDown(self):
         fixture.EngineTests.tearDown(self)
 
-    def process(self, *a, **kw):
+    def process(self, *a: object, **kw: object) -> "Incomplete":
         return fixture.EngineTests.process(self, *a, **kw)
 
     def test_new_issue_is_durably_linked_before_artifacts(self):
@@ -305,7 +311,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
     def test_historical_resolved_failure_then_firing_then_resolved_converges(self):
         d, e = self.historical_pair()
 
-        def reference(marker, issue):
+        def reference(marker: str, issue: int) -> dict[str, object]:
             if fixture.event("resolved")["event_key"] in marker:
                 raise Failure("UPSTREAM_NETWORK_ERROR")
             return {
@@ -378,7 +384,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
                 (fixture.event("resolved")["event_key"],),
             )
 
-        def reference(marker, issue):
+        def reference(marker: str, issue: int) -> dict[str, object]:
             if fixture.event("resolved")["event_key"] in marker:
                 raise Failure("PRIMARY_PUBLICATION_MISSING")
             return {

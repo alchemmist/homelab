@@ -1,7 +1,8 @@
 import json
+from collections.abc import Iterator
 from functools import lru_cache
 from pathlib import Path
-
+from typing import cast
 
 PANEL_UNITS = {
     "3e97d1d02672cdd0861f4c97c64f89b2": {9: "pps", 12: "short"},
@@ -15,7 +16,7 @@ READINESS_SUBJECTS = {
 }
 
 
-def apply_alert_descriptions(resource):
+def apply_alert_descriptions(resource) -> None:
     if not isinstance(resource, dict) or resource.get("kind") != "PrometheusRule":
         return
     for group in resource.get("spec", {}).get("groups", []):
@@ -33,7 +34,7 @@ def apply_alert_descriptions(resource):
 
 
 @lru_cache(maxsize=1)
-def load_descriptions():
+def load_descriptions() -> dict[str, dict[str, str]]:
     descriptions = {}
     for path in sorted(Path(__file__).with_name("dashboard-descriptions").glob("*.json")):
         entries = json.loads(path.read_text())
@@ -44,14 +45,14 @@ def load_descriptions():
     return descriptions
 
 
-def panels(dashboard):
+def panels(dashboard) -> Iterator[dict[str, object]]:
     for panel in dashboard.get("panels", []):
         if panel.get("type") not in {"row", "text"}:
             yield panel
         yield from panels(panel)
 
 
-def apply_descriptions(dashboard, descriptions=None):
+def apply_descriptions(dashboard, descriptions=None) -> None:
     catalog = load_descriptions() if descriptions is None else descriptions
     uid = dashboard["uid"]
     entries = catalog.get(uid, {})
@@ -60,6 +61,8 @@ def apply_descriptions(dashboard, descriptions=None):
         if not isinstance(description, str) or not description.strip():
             raise ValueError(f"Missing description for dashboard {uid}, panel {panel['id']}")
         panel["description"] = description
-        unit = PANEL_UNITS.get(uid, {}).get(panel["id"])
+        units = PANEL_UNITS.get(uid, {})
+        unit = units.get(cast("int", panel["id"]))
         if unit:
-            panel.setdefault("fieldConfig", {}).setdefault("defaults", {})["unit"] = unit
+            fields = cast("dict[str, object]", panel.setdefault("fieldConfig", {}))
+            cast("dict[str, object]", fields.setdefault("defaults", {}))["unit"] = unit

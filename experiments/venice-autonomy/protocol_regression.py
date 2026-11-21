@@ -126,7 +126,7 @@ def mask_allowed_methods(source: str) -> str:
 def allowed_edit_report(baseline: str, candidate: str) -> dict:
     try:
 
-        def signatures(source):
+        def signatures(source: str) -> dict[str, tuple[str, str | None, tuple[str, ...], str | None]]:
             tree = ast.parse(source)
             return {
                 child.name: (
@@ -270,7 +270,13 @@ def clean_env(agent: Path, home: Path, rejection: Path) -> dict[str, str]:
     }
 
 
-def bounded_test_process(args, cwd=None, env=None, timeout=120, limit=131072):
+def bounded_test_process(
+    args: list[str],
+    cwd: str | os.PathLike[str] | None = None,
+    env: dict[str, str] | None = None,
+    timeout: float = 120,
+    limit: int = 131072,
+) -> subprocess.CompletedProcess[str]:
     process = subprocess.Popen(
         args,
         cwd=cwd,
@@ -315,7 +321,7 @@ def bounded_test_process(args, cwd=None, env=None, timeout=120, limit=131072):
         process.stderr.close()
 
 
-def test_completed(exit_code, stderr):
+def test_completed(exit_code: int, stderr: str) -> bool:
     return (
         exit_code == 0
         and re.search(r"(?m)^Ran 1 test in [0-9.]+s$", stderr) is not None

@@ -8,7 +8,6 @@ import argparse
 import glob
 import json
 import os
-from pathlib import Path
 import pwd
 import re
 import shutil
@@ -16,12 +15,14 @@ import stat
 import subprocess
 import tempfile
 import uuid
+from pathlib import Path
+from typing import cast
 
 DIRECTORY = Path("/var/lib/homelab-authentik-ssh-bindings")
 CONFIG = Path("/etc/ssh/sshd_config")
 
 
-def reject_contextual_config(path=CONFIG, seen=None):
+def reject_contextual_config(path=CONFIG, seen=None) -> None:
     """We cannot prove all Match contexts via one sshd -T -C probe. Reject them.
 
     Follow OpenSSH Include globs, including inside included files. This deliberately
@@ -60,7 +61,7 @@ def reject_contextual_config(path=CONFIG, seen=None):
                     reject_contextual_config(Path(included), seen)
 
 
-def verify_key_location(name, config=CONFIG):
+def verify_key_location(name, config=CONFIG) -> Path:
     reject_contextual_config(config)
     parsed = subprocess.run(
         [shutil.which("sshd") or "/usr/sbin/sshd", "-T"], text=True, capture_output=True, check=True
@@ -97,10 +98,11 @@ def verify_key_location(name, config=CONFIG):
     ]:
         if path.is_symlink():
             raise ValueError("Symlink home/key location unsupported")
-    return Path("/home") / name / ".ssh/authorized_keys"
+    key_path: Path = Path("/home") / name / ".ssh/authorized_keys"
+    return key_path
 
 
-def verify(name, ident, directory=DIRECTORY):
+def verify(name, ident, directory=DIRECTORY) -> dict[str, object]:
     if not re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", name) or name in {
         "root",
         "alchemmist",
@@ -139,7 +141,7 @@ def verify(name, ident, directory=DIRECTORY):
     return {"bindingVerified": True, "accountExists": exists}
 
 
-def fingerprints(path):
+def fingerprints(path) -> list[str]:
     """Parse every non-comment line; reject options, duplicates and invalid keys."""
     result = []
     for line in path.read_text().splitlines():
@@ -166,7 +168,7 @@ def fingerprints(path):
     return sorted(result)
 
 
-def verify_keys(name, ident, state, expected, directory=DIRECTORY):
+def verify_keys(name, ident, state, expected, directory=DIRECTORY) -> dict[str, object]:
     if (
         state not in {"present", "disabled"}
         or not isinstance(expected, list)
@@ -179,7 +181,7 @@ def verify_keys(name, ident, state, expected, directory=DIRECTORY):
         or (state == "present" and not expected)
     ):
         raise ValueError("Invalid expected key state")
-    if not verify(name, ident, directory)["accountExists"]:
+    if not cast("bool", verify(name, ident, directory)["accountExists"]):
         raise ValueError("Applied account missing")
     actual = fingerprints(verify_key_location(name))
     if actual != sorted(expected):

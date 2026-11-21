@@ -109,10 +109,10 @@ class Deadlines(unittest.TestCase):
                 t.start()
 
                 class Reader:
-                    def authorization(self, cookie):
+                    def authorization(self, cookie: str):
                         return 200 if cookie else 401
 
-                    def read(self, key):
+                    def read(self, key: str):
                         with g.opener().open(url, timeout=1) as response:
                             return g.bounded(response)
 
@@ -186,10 +186,10 @@ class Deadlines(unittest.TestCase):
                 super().setup()
 
         class Reader:
-            def authorization(self, cookie):
+            def authorization(self, cookie: str):
                 return 200
 
-            def read(self, key):
+            def read(self, key: str):
                 return b"x" * g.MAX_BYTES
 
         with patch.object(g, "REQUEST_SECONDS", 0.3), patch.object(g, "MAX_CONNECTIONS", 1):

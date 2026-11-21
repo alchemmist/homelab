@@ -8,16 +8,18 @@ import argparse
 import base64
 import json
 import os
-from pathlib import Path
 import re
 import tempfile
 import urllib.parse
 import urllib.request
+from http.client import HTTPMessage
+from pathlib import Path
+from typing import IO, override
 
 HOST = "harbor.socrat.alchemmist.xyz"
 
 
-def configure(repository):
+def configure(repository: str) -> None:
     if not re.fullmatch(r"homelab/[a-z0-9-]+", repository):
         raise ValueError("INVALID_REPOSITORY")
     username, password = os.environ["HARBOR_USERNAME"], os.environ["HARBOR_PASSWORD"]
@@ -34,7 +36,16 @@ def configure(repository):
     # Normal DNS, native robot auth and certificate verification. No redirects
     # should be involved in the native registry machine endpoint.
     class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, *args, **kwargs):
+        @override
+        def redirect_request(
+            self,
+            req: urllib.request.Request,
+            fp: IO[bytes],
+            code: int,
+            msg: str,
+            headers: HTTPMessage,
+            newurl: str,
+        ) -> urllib.request.Request | None:
             return None
 
     with urllib.request.build_opener(NoRedirect()).open(request, timeout=15) as response:

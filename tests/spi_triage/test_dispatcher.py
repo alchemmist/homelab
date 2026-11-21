@@ -15,7 +15,7 @@ class DispatchTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.store = Store(self.tmp.name + "/queue.sqlite")
 
-    def enqueue(self, key="a"):
+    def enqueue(self, key: str = "a") -> object:
         return self.store.enqueue({"event_key": key, "episode": key})
 
     def test_empty_disabled_and_coalescing(self):
@@ -110,7 +110,7 @@ class ServiceSafetyTests(unittest.TestCase):
         from service import read_request_body
         from core import Failure
 
-        def check(raw, length, code, shutdown=True):
+        def check(raw: bytes, length: str, code: str, *, shutdown: bool = True) -> None:
             left, right = socket.socketpair()
             try:
                 right.sendall(raw)
@@ -129,7 +129,7 @@ class ServiceSafetyTests(unittest.TestCase):
                 right.close()
 
         check(b"{", "2", "INCOMPLETE_BODY")
-        check(b"{", "2", "REQUEST_BODY_TIMEOUT", False)
+        check(b"{", "2", "REQUEST_BODY_TIMEOUT", shutdown=False)
         check(b"[]", "2", "INVALID_REQUEST")
         check(b"", "-1", "INVALID_BODY_SIZE")
         check(b"", "bad", "INVALID_BODY_SIZE")
@@ -142,14 +142,14 @@ class DispatchTransportTests(unittest.TestCase):
         import http.client
 
         class Connection:
-            def __init__(self, *args, **kwargs):
+            def __init__(self, *args: object, **kwargs: object) -> None:
                 self.sock, self.peer = socket.socketpair()
                 self.closed = False
 
             def connect(self):
                 pass
 
-            def request(self, *args, **kwargs):
+            def request(self, *args: object, **kwargs: object) -> None:
                 pass
 
             def getresponse(self):
