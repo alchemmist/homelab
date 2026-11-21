@@ -75,7 +75,7 @@ class Provisioning(unittest.TestCase):
         buckets = []
         calls = []
 
-        def fake(mc, config, args, stdin=None):
+        def fake(mc, config, args, stdin=None) -> list[object]:
             calls.append(args)
             if args[:3] == ["admin", "user", "list"]:
                 return [{"accessKey": k} for k in users]
@@ -233,11 +233,11 @@ class Provisioning(unittest.TestCase):
             def __exit__(self, *a):
                 pass
 
-            def read(self, *a):
+            def read(self, *a) -> bytes:
                 return json.dumps(self.data).encode()
 
         class HTTP:
-            def open(self, request, timeout):
+            def open(self, request, timeout) -> Response:
                 path = urllib.parse.urlsplit(request.full_url).path.removeprefix("/api/v3/")
                 method = request.get_method()
                 if method == "GET":
@@ -348,7 +348,7 @@ class Provisioning(unittest.TestCase):
 
         def claim(
             pk=5, uuid="9e33877a-3eaa-4541-98eb-8cdc10088ef6", username="alchemmist", member=False
-        ):
+        ) -> object:
             user = SimpleNamespace(pk=pk, uuid=uuid, username=username)
             return eval(
                 expression.removeprefix("return "),

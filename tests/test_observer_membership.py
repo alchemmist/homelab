@@ -102,7 +102,7 @@ class MembershipTests(unittest.TestCase):
         """Propagate an identity failure before any cache mutation is planned."""
         users, attrs, auth = fixture()
 
-        def failed(*args):
+        def failed(*args) -> None:
             raise RuntimeError("IdP unavailable")
 
         with self.assertRaises(RuntimeError):
@@ -133,10 +133,10 @@ class MembershipTests(unittest.TestCase):
             oidc_enabled = True
             local_owners = {"owner"}
 
-            def connect(self):
+            def connect(self) -> sqlite3.Connection:
                 return db
 
-            def session(self, token):
+            def session(self, token) -> dict[str, object]:
                 return {
                     "user": {
                         "id": token,
@@ -261,10 +261,10 @@ class MembershipTests(unittest.TestCase):
             def __init__(self, credentials):
                 pass
 
-            def rows(self, path):
+            def rows(self, path) -> list[object]:
                 return [copy.deepcopy(group)]
 
-            def call(self, system, method, path, body=None):
+            def call(self, system, method, path, body=None) -> object:
                 if method == "GET":
                     return copy.deepcopy(user)
                 posts.append((path, body))
@@ -272,6 +272,7 @@ class MembershipTests(unittest.TestCase):
                     user["groups"].append("observer")
                 else:
                     user["groups"].remove(c.READONLY)
+                return None
 
         fake = types.ModuleType("observer_bootstrap")
         fake.Client = Client
@@ -280,7 +281,7 @@ class MembershipTests(unittest.TestCase):
             exact=lambda rows, key, value: next(x for x in rows if x[key] == value)
         )
 
-        def exclusive_save(path, value):
+        def exclusive_save(path, value) -> None:
             with path.open("x") as file:
                 json.dump(value, file)
 
@@ -289,10 +290,10 @@ class MembershipTests(unittest.TestCase):
         class Loader:
             """Supply the prepared bootstrap module instead of its source file."""
 
-            def create_module(self, spec):
+            def create_module(self, spec) -> types.ModuleType:
                 return fake
 
-            def exec_module(self, module):
+            def exec_module(self, module) -> None:
                 pass
 
         boot_spec = importlib.machinery.ModuleSpec("observer_bootstrap", Loader())
