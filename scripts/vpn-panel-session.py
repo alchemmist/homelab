@@ -360,8 +360,10 @@ class NativeSession:
             self.lock = None
 
     def __enter__(self) -> typing.Self:
+        """Return this session as the active context manager resource."""
         enter: typing.Self = self
         return enter
 
     def __exit__(self, *args) -> None:
+        """Clean up the session when leaving its context manager block."""
         self.cleanup()
