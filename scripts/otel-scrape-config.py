@@ -147,7 +147,7 @@ def add_moscow_edge_probe(scrape):
     ]["targets"]
     prefix = "serviceMonitor/cattle-monitoring-system/monitoring-service-probes/"
 
-    def owns(job, identity):
+    def owns(job, identity) -> bool:
         return job.get("job_name", "").startswith(prefix) and any(
             r.get("target_label") == "service_id" and r.get("replacement") == identity
             for r in job.get("relabel_configs", [])

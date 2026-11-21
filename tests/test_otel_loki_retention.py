@@ -10,10 +10,10 @@ spec.loader.exec_module(m)
 
 
 class RetentionTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.policy = json.loads(m.POLICY.read_text())
 
-    def test_copies_and_defaults(self):
+    def test_copies_and_defaults(self) -> None:
         text = m.COPIES[0].read_text()
         self.assertEqual(text, m.COPIES[1].read_text())
         self.assertEqual(text, m.render(text, self.policy))
@@ -24,20 +24,20 @@ class RetentionTests(unittest.TestCase):
         self.assertIn((10, '{severity="warn"}', 336), rules)
         self.assertIn("k8s.namespace.name, severity]", text)
 
-    def test_service_beats_severity(self):
+    def test_service_beats_severity(self) -> None:
         self.policy["services"] = {"example": {"debug": 48, "error": 336}}
         _, rules = m.rules(self.policy)
         self.assertIn((100, '{service_name="example",severity="debug"}', 48), rules)
         self.assertEqual(len({(p, s) for p, s, _ in rules}), len(rules))
 
-    def test_reject_invalid_and_unmeasured_long_retention(self):
+    def test_reject_invalid_and_unmeasured_long_retention(self) -> None:
         for value in (0, 23, 8761, True, "72", 8760):
             with self.subTest(value=value):
                 self.policy["severityHours"]["error"] = value
                 with self.assertRaises(ValueError):
                     m.rules(self.policy)
 
-    def approval(self):
+    def approval(self) -> dict[str, object]:
         return dict(
             measuredAt="2026-11-04",
             evidence="reviewed 7d report",
@@ -53,7 +53,7 @@ class RetentionTests(unittest.TestCase):
             sampleSeconds=604800,
         )
 
-    def test_any_extension_needs_approval(self):
+    def test_any_extension_needs_approval(self) -> None:
         for level in m.LEVELS - {"unknown"}:
             for value in (337, 720):
                 with self.subTest(level=level, value=value):
@@ -65,7 +65,7 @@ class RetentionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             m.rules(self.policy)
 
-    def test_capacity_gate(self):
+    def test_capacity_gate(self) -> None:
         self.policy["capacityApproval"] = self.approval()
         self.policy["severityHours"]["warn"] = 720
         m.rules(self.policy)
@@ -83,7 +83,7 @@ class RetentionTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     m.rules(self.policy)
 
-    def test_unknown_and_fallback_preserved(self):
+    def test_unknown_and_fallback_preserved(self) -> None:
         for field in ("fallback", "unknown", "service"):
             policy = json.loads(m.POLICY.read_text())
             if field == "fallback":
@@ -95,7 +95,7 @@ class RetentionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 m.rules(policy)
 
-    def test_reject_selector_injection(self):
+    def test_reject_selector_injection(self) -> None:
         self.policy["services"] = {'bad"}': {"error": 336}}
         with self.assertRaises(ValueError):
             m.rules(self.policy)

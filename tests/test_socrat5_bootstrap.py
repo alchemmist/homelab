@@ -27,7 +27,7 @@ def has_cas_assertion(tree: ast.Module) -> bool:
 class BootstrapTests(unittest.TestCase):
     """Inventory, guard, and CAS checks for the socrat-5 bootstrap sources."""
 
-    def test_manifest_matches_inventory_and_scoped_template(self):
+    def test_manifest_matches_inventory_and_scoped_template(self) -> None:
         """Match the manifest peer to inventory and the rendered unit allowlist."""
         m = json.loads((ROOT / "deploy/network/socrat-5-bootstrap.json").read_text())
         v = {}

@@ -14,6 +14,7 @@ import tarfile
 import time
 import tokenize
 import uuid
+from typing import NoReturn
 
 from sandbox import bounded_process
 
@@ -288,7 +289,7 @@ class RepositoryEnvironment:
 
 
 def comment_delta(snapshot, candidate):
-    def comments(path):
+    def comments(path) -> collections.Counter[str]:
         return collections.Counter(
             token.string
             for token in tokenize.generate_tokens(io.StringIO(path.read_text()).readline)
@@ -504,7 +505,7 @@ def main(argv=None):
         }
     environment = None
 
-    def deadline(*_):
+    def deadline(*_) -> NoReturn:
         raise TimeoutError("external end-to-end deadline exceeded")
 
     signal.signal(signal.SIGALRM, deadline)

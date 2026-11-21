@@ -14,7 +14,7 @@ ADDRESS = "10.250.0.40/32"
 ENDPOINT = "91.189.82.238:51830"
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     config = Path("/etc/wireguard/wg-socrat.conf")
     old = config.read_bytes()
@@ -46,11 +46,15 @@ def main():
             )
     assert len(matches) <= 1
 
-    def active():
+    def active() -> dict[str, str]:
         lines = subprocess.check_output(
             ["wg", "show", "wg-socrat", "allowed-ips"], text=True
         ).splitlines()
-        return dict(line.split(None, 1) for line in lines)
+        current: dict[str, str] = {}
+        for line in lines:
+            key, value = line.split(None, 1)
+            current[key] = value
+        return current
 
     # A historical restricted admin-client ACL used .8 even though its WG peer
     # was retired. Do not remove that ACL or grant a server identity to a client.
