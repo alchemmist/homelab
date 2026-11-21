@@ -18,16 +18,15 @@ if not path.exists():
         check=True,
     )
     if check.stdout.strip():
-        message = (
-            "Runtime Secret exists but credential file is missing; refusing implicit rotation"
-        )
+        message = "Runtime Secret exists but credential file is missing; refusing implicit rotation"
         raise SystemExit(message)
     claims = subprocess.run(
         kube + ["get", "pvc", "-o", "name"], capture_output=True, text=True, check=True
     )
     if claims.stdout.strip():
         message = (
-            "Identity PVCs already exist without credential file; restore credentials before deployment"
+            "Identity PVCs already exist without credential file; "
+            "restore credentials before deployment"
         )
         raise SystemExit(message)
     values = {

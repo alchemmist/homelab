@@ -107,7 +107,9 @@ owner_path = root / "owner-login.json"
 owner = unique("core/users/", "username", "alchemmist")
 if not owner_path.exists():
     if owner:
-        message = "Owner username already exists without bootstrap journal; review identity manually"
+        message = (
+            "Owner username already exists without bootstrap journal; review identity manually"
+        )
         raise RuntimeError(message)
     fd = os.open(owner_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     with os.fdopen(fd, "w") as f:
