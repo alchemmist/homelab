@@ -1,8 +1,8 @@
 """Two-card #509 pilot. Only validated scalar cases cross the executor/judge boundary."""
-import gzip
 import ast
 import contextlib
 import datetime
+import gzip
 import hashlib
 import hmac
 import json

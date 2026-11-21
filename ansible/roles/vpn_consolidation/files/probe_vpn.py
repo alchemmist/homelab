@@ -1,12 +1,12 @@
 """Probe VPN client state from the x-ui database."""
 
 import json
-from pathlib import Path
 import socket
 import sqlite3
 import subprocess
 import tempfile
 import time
+from pathlib import Path
 
 
 def main():

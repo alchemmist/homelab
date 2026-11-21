@@ -5,7 +5,9 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
+
 from PIL import Image
+
 
 def encode(frames, binary="/encoder/ffmpeg"):
     if not isinstance(frames,list) or not 12<=len(frames)<=180:raise ValueError("Need 12..180 real consecutive frames at 6fps")
