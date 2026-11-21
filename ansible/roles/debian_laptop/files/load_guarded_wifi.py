@@ -16,11 +16,11 @@ LOADED_NOTE = Path("/sys/module/alx/notes/.note.gnu.build-id")
 WIFI_PARAMETERS = Path("/sys/module/rtl8723ae/parameters")
 
 
-def run(arguments):
+def run(arguments: list[str]):
     return subprocess.run(arguments, check=True, capture_output=True, timeout=30).stdout
 
 
-def module_note(path):
+def module_note(path: Path):
     data = path.read_bytes()
     if path.suffix == ".xz":
         data = lzma.decompress(data)

@@ -31,7 +31,7 @@ class NodeSshClientTests(unittest.TestCase):
         self.config = self.root / "config"
         self.config.write_text(f"Include {self.snippet}\nServerAliveCountMax 7\n")
 
-    def resolve(self, host: str, *args: str):
+    def resolve(self, host: str, *args: str) -> dict[str, str]:
         result = subprocess.run(
             ["ssh", "-G", "-F", str(self.config), *args, host],
             text=True,

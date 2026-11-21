@@ -29,13 +29,7 @@ OWNER_GROUPS = [
 TIM_GROUPS = ["b7af46a6-6208-4a32-bfb1-4e61fd3c88ec"]
 
 
-def _text(value: object) -> str:
-    """Narrow a dynamic JSON node to a string."""
-    assert isinstance(value, str)
-    return value
-
-
-def write_json(path: Path, value: object):
+def write_json(path, value):
     path.write_text(json.dumps(value, indent=2) + "\n")
     os.chmod(path, 0o600)
 
@@ -178,7 +172,7 @@ class FakeAuthentik(threading.Thread):
         server = self
 
         class Handler(BaseHTTPRequestHandler):
-            def log_message(self, fmt: str, *args: object):
+            def log_message(self, fmt: str, *args: object) -> None:
                 return
 
             def do_GET(self):
@@ -190,10 +184,10 @@ class FakeAuthentik(threading.Thread):
             def do_PATCH(self):
                 self._handle("PATCH")
 
-            def _handle(self, method: str):
+            def _handle(self, method):
                 length = int(self.headers.get("Content-Length", "0"))
                 raw = self.rfile.read(length) if length else b""
-                payload = json.loads(raw) if raw else {}
+                payload = json.loads(raw) if raw else None
                 parsed = urllib.parse.urlsplit(self.path)
                 server.calls.append((method, parsed.path, parsed.query, payload))
                 if self.headers.get("Authorization") != "Bearer " + TOKEN:
@@ -204,7 +198,7 @@ class FakeAuthentik(threading.Thread):
                     return self._send(500, {"detail": str(error)})
                 self._send(code, body)
 
-            def _send(self, code: int, body: dict[str, object] | None):
+            def _send(self, code, body):
                 data = b"" if body is None else json.dumps(body).encode()
                 self.send_response(code)
                 self.send_header("Content-Type", "application/json")
@@ -226,10 +220,10 @@ class FakeAuthentik(threading.Thread):
         self.httpd.shutdown()
         self.httpd.server_close()
 
-    def page(self, rows: list[object]):
+    def page(self, rows):
         return {"pagination": {"next": None, "count": len(rows)}, "results": rows}
 
-    def route(self, method: str, path: str, query: str, payload: dict[str, object]):
+    def route(self, method, path, query, payload):
         if method == "GET" and path == "/api/v3/admin/version/":
             return 200, {"version_current": oidc.AUTHENTIK_VERSION}
         collections = {
@@ -258,7 +252,7 @@ class FakeAuthentik(threading.Thread):
             self._seq += 1
             created = dict(payload)
             # Match Authentik's trim_whitespace serializer behavior.
-            created["expression"] = _text(created["expression"]).strip()
+            created["expression"] = created["expression"].strip()
             created["pk"] = "map-" + str(self._seq)
             created["managed"] = None
             self.scopes.append(created)
@@ -281,11 +275,11 @@ class FakeAuthentik(threading.Thread):
             self.providers.append(created)
             return 201, created
         if method == "PATCH" and path.startswith("/api/v3/providers/oauth2/"):
-            provider_pk = int(path.rstrip("/").split("/")[-1])
-            row = next(item for item in self.providers if item["pk"] == provider_pk)
+            pk = int(path.rstrip("/").split("/")[-1])
+            row = next(item for item in self.providers if item["pk"] == pk)
             updated = dict(payload)
             if "client_secret" in updated:
-                self.provider_secrets[provider_pk] = updated.pop("client_secret")
+                self.provider_secrets[pk] = updated.pop("client_secret")
             row.update(updated)
             return 200, row
         if method == "POST" and path == "/api/v3/core/applications/":
@@ -360,7 +354,7 @@ class NetBirdOIDCTests(unittest.TestCase):
         self.fake.close()
         self.tmp.cleanup()
 
-    def run_tool(self, *args):
+    def run_tool(self, *args: str):
         from io import StringIO
         import contextlib
 
@@ -378,7 +372,7 @@ class NetBirdOIDCTests(unittest.TestCase):
             )
         return code, stdout.getvalue(), stderr.getvalue()
 
-    def plan(self, *, config: bool = True):
+    def plan(self, config=True):
         args = ["plan"]
         if config:
             args += ["--netbird-config", str(self.config)]

@@ -3,6 +3,13 @@ import json
 import subprocess
 import sys
 import time
+from collections.abc import Iterable, Mapping
+from typing import Protocol, TypedDict
+
+
+class _Condition(Protocol):
+    def __bool__(self) -> bool: ...
+
 
 ENDPOINTS = {
     "socrat-0": "https://192.168.0.23:2379",
@@ -16,7 +23,12 @@ TLS = "/var/lib/rancher/k3s/server/tls/etcd/"
 
 
 class Etcd:
-    def call(self, args, endpoint="https://127.0.0.1:2379", structured=True):
+    def call(
+        self,
+        args: list[str],
+        endpoint: str = "https://127.0.0.1:2379",
+        structured: _Condition = True,
+    ):
         command = [
             "etcdctl",
             "--endpoints=" + endpoint,
@@ -52,24 +64,31 @@ class Etcd:
             }
         return result
 
-    def health(self, name):
+    def health(self, name: str):
         result = self.call(["endpoint", "health"], ENDPOINTS[name])
         if len(result) != 1 or result[0].get("health") is not True:
             raise RuntimeError("Linearizable health check failed for " + name)
 
-    def status(self, name):
+    def status(self, name: str):
         result = self.call(["endpoint", "status"], ENDPOINTS[name])
         if len(result) != 1 or result[0].get("Error"):
             raise RuntimeError("Endpoint status failed for " + name)
         return result[0]["Status"]
 
 
-def require_members(members, names):
+class _Member(TypedDict):
+    id: int
+    id_hex: str
+    peer_urls: list[str]
+    learner: bool
+
+
+def require_members(members: Mapping[str, _Member], names: Iterable[str]):
     if set(members) != set(names) or any(item["learner"] for item in members.values()):
         raise RuntimeError("Unexpected voting membership; refusing reconfiguration")
 
 
-def verify_final(client):
+def verify_final(client: Etcd):
     members = client.members()
     require_members(members, FINAL)
     for name in ("socrat-0", "socrat-3"):
@@ -77,7 +96,7 @@ def verify_final(client):
     return members
 
 
-def remove_socrat_1(client):
+def remove_socrat_1(client: Etcd):
     members = client.members()
     if set(members) == FINAL:
         return {"changed": False, "members": verify_final(client)}
@@ -112,7 +131,7 @@ def remove_socrat_1(client):
     return {"changed": True, "members": verify_final(client)}
 
 
-def inspect(client):
+def inspect(client: Etcd):
     members = client.members()
     endpoints = {}
     for name in members:

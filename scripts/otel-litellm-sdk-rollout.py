@@ -43,7 +43,9 @@ def sdk_environment():
     }
 
 
-def configuration(original):
+def configuration(original: object):
+    if not isinstance(original, dict):
+        raise TypeError
     result = copy.deepcopy(original)
     settings = result.setdefault("litellm_settings", {})
     callbacks = settings.get("callbacks", [])
@@ -55,7 +57,7 @@ def configuration(original):
     return result
 
 
-def run(output, apply):
+def run(output: Path, *, apply: bool) -> None:
     os.umask(0o077)
     parent = Path.home() / "Library/Application Support/homelab/otel-controller"
     if not output.resolve().is_relative_to(parent.resolve()):
@@ -281,4 +283,4 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
-    run(args.output, args.apply)
+    run(args.output, apply=args.apply)

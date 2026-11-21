@@ -6,7 +6,7 @@ import urllib.error
 import urllib.request
 
 
-def kubectl(*args):
+def kubectl(*args: str) -> str:
     return subprocess.check_output(["kubectl", "-n", "llm", *args], text=True)
 
 
@@ -19,7 +19,7 @@ base = "http://" + ip + ":4000"
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def request(path, key=None, data=None):
+def request(path: str, key: str | None = None, data: object = None):
     headers = {"Content-Type": "application/json"}
     if key:
         headers["Authorization"] = "Bearer " + key

@@ -102,7 +102,7 @@ class MembershipTests(unittest.TestCase):
         """Propagate an identity failure before any cache mutation is planned."""
         users, attrs, auth = fixture()
 
-        def failed(*args):
+        def failed(*args: object) -> None:
             raise RuntimeError("IdP unavailable")
 
         with self.assertRaises(RuntimeError):

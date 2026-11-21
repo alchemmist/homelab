@@ -521,7 +521,7 @@ class BootstrapSafetyTests(unittest.TestCase):
 
         self.fake_client = FakeClient
 
-    def run_main(self, *args):
+    def run_main(self, *args: str):
         with (
             patch.object(self.bootstrap, "Client", self.fake_client),
             patch.object(

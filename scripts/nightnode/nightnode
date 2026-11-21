@@ -31,7 +31,10 @@ load_config() {
       key="${line%%=*}"
       value="${line#*=}"
       [[ "${key}" == "${line}" ]] && die "config line is not KEY=VALUE: ${line}"
-      export "${key}=${value}"
+      [[ "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || die "config key is invalid: ${key}"
+      # Keep normal shell assignment semantics (quotes and ${VAR} expansion)
+      # while validating the assignment name before evaluating its value.
+      eval "export ${key}=${value}"
     done < "${CONFIG_FILE}"
   fi
 }

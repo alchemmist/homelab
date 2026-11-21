@@ -6,6 +6,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 
 NAMESPACE = "cattle-monitoring-system"
 SECRET_NAME = "grafana-mcp-credentials"
@@ -17,7 +18,7 @@ class BootstrapError(Exception):
     pass
 
 
-def kubectl(arguments, payload=None):
+def kubectl(arguments: list[str], payload: object | None = None):
     result = subprocess.run(
         KUBECTL + arguments,
         input=json.dumps(payload) if payload is not None else None,
@@ -32,12 +33,14 @@ def kubectl(arguments, payload=None):
 
 
 class Grafana:
-    def __init__(self, url, username, password):
+    def __init__(self, url: str, username: str, password: str):
         self.url = url
         encoded = base64.b64encode((username + ":" + password).encode()).decode()
         self.authorization = "Basic " + encoded
 
-    def request(self, method, path, payload=None, token=None):
+    def request(
+        self, method: str, path: str, payload: object | None = None, token: str | None = None
+    ):
         request = urllib.request.Request(
             self.url + path,
             data=json.dumps(payload).encode() if payload is not None else None,
@@ -56,7 +59,7 @@ class Grafana:
             raise BootstrapError("Grafana request failed") from None
 
 
-def decode_secret(secret):
+def decode_secret(secret: dict[str, dict[str, str]] | None):
     try:
         return {
             key: base64.b64decode(value, validate=True).decode()
@@ -66,7 +69,13 @@ def decode_secret(secret):
         return {}
 
 
-def bootstrap(grafana, existing_secret, persist, has_admin=True):
+def bootstrap(
+    grafana: Grafana,
+    existing_secret: dict[str, dict[str, str]] | None,
+    persist: Callable[[dict[str, object]], object],
+    *,
+    has_admin: bool = True,
+):
     values = decode_secret(existing_secret)
     if not has_admin:
         if not all(
