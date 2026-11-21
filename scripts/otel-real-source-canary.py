@@ -1,3 +1,5 @@
+"""Run the telemetry real-source canary against explicit pinned artifacts."""
+
 import argparse
 import base64
 import hashlib

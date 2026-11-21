@@ -1,3 +1,5 @@
+"""Isolated smoke test for the telemetry signals collector and exporters."""
+
 import argparse
 import hashlib
 import json

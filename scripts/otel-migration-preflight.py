@@ -1,3 +1,5 @@
+"""Collect and evaluate the OpenTelemetry migration inventory against a policy."""
+
 import argparse
 import json
 import math

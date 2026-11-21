@@ -1,3 +1,5 @@
+"""Fetch and validate the live Prometheus scrape configuration against the registry."""
+
 import argparse
 import copy
 import hashlib

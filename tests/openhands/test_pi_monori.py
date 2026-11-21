@@ -1,3 +1,4 @@
+"""Tests for the OpenHands pi-monori service configuration and scripts."""
 import importlib.util
 import os
 import pathlib

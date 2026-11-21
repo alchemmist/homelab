@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry Open WebUI source profile."""
+
 import importlib.util
 from pathlib import Path
 import sys
@@ -75,17 +77,14 @@ class OpenWebuiProfileTests(unittest.TestCase):
             module().activate()
             profile = native.Instrumentor("app", "never-connected-db")
             profile._instrument()
-            self.assertEqual(
-                calls[0],
-                {
-                    "app": "app",
-                    "http_capture_headers_server_request": [],
-                    "http_capture_headers_server_response": [],
-                },
-            )
-            self.assertEqual(calls[1:], ["http"] * 3)
+            assert calls[0] == {
+                "app": "app",
+                "http_capture_headers_server_request": [],
+                "http_capture_headers_server_response": [],
+            }
+            assert calls[1:] == ["http"] * 3
             profile._uninstrument()
-            self.assertEqual(calls[-4:], ["fastapi-stop"] + ["http-stop"] * 3)
+            assert calls[-4:] == ["fastapi-stop"] + ["http-stop"] * 3
 
     def test_guard_and_before_setup_order_required_no_late_fallback(self) -> None:
         calls, native, sdk, modules = fixtures()
@@ -97,4 +96,4 @@ class OpenWebuiProfileTests(unittest.TestCase):
             with patch.dict(sys.modules, {"open_webui.utils.telemetry.setup": ModuleType("setup")}):
                 with self.assertRaises(ValueError):
                     module().activate()
-            self.assertEqual(calls, [])
+            assert calls == []

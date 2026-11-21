@@ -1,3 +1,5 @@
+"""Serve synthetic OpenMetrics endpoints and verify collector/scrape ingestion."""
+
 import argparse
 import copy
 import json

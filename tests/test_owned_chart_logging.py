@@ -1,3 +1,5 @@
+"""Tests for logging in the owned Helm charts."""
+
 import contextlib
 import importlib.util
 import io
@@ -15,11 +17,11 @@ sys.path.insert(0, str(ROOT / "charts/spi-triage/files"))
 
 class OwnedLoggingTests(unittest.TestCase):
     def contract(self, row, service) -> None:
-        self.assertEqual(row["service"], service)
-        self.assertIn(row["level"], ["info", "warn", "error", "debug"])
-        self.assertTrue(row["ts"].endswith("Z"))
+        assert row["service"] == service
+        assert row["level"] in ["info", "warn", "error", "debug"]
+        assert row["ts"].endswith("Z")
         datetime.fromisoformat(row["ts"].replace("Z", "+00:00"))
-        self.assertNotIn("\n", row["msg"])
+        assert "\n" not in row["msg"]
 
     def test_worker_allowlist(self) -> None:
         from service import log_event
@@ -34,13 +36,13 @@ class OwnedLoggingTests(unittest.TestCase):
                 body="private",
                 issue_number=123,
             )
-        self.assertEqual(len(output.getvalue().splitlines()), 1)
+        assert len(output.getvalue().splitlines()) == 1
         row = json.loads(output.getvalue())
         self.contract(row, "spi-triage")
-        self.assertNotIn("private", output.getvalue())
-        self.assertNotIn("issue_number", row)
-        self.assertEqual(row["stage"], "REDACTED")
-        self.assertEqual(row["code"], "REDACTED")
+        assert "private" not in output.getvalue()
+        assert "issue_number" not in row
+        assert row["stage"] == "REDACTED"
+        assert row["code"] == "REDACTED"
 
     def test_js_allowlist(self) -> None:
         script = "const {logEvent}=require('./charts/n8n/extensions/event-log'); logEvent('yandex-calendar','announcement_failed',{code:'HTTP_500',body:'private',id:'private'});"
@@ -49,8 +51,8 @@ class OwnedLoggingTests(unittest.TestCase):
         )
         row = json.loads(output.stderr)
         self.contract(row, "n8n-extensions")
-        self.assertEqual(row["level"], "error")
-        self.assertNotIn("private", output.stderr)
+        assert row["level"] == "error"
+        assert "private" not in output.stderr
 
     def test_watchdog_exception_is_safe(self) -> None:
         spec = importlib.util.spec_from_file_location(
@@ -65,5 +67,5 @@ class OwnedLoggingTests(unittest.TestCase):
             record = logging.LogRecord("test", logging.ERROR, "", 0, "private", (), sys.exc_info())
         raw = module.JsonFormatter().format(record)
         self.contract(json.loads(raw), "open-terminal-browser-watchdog")
-        self.assertNotIn("private", raw)
-        self.assertEqual(len(raw.splitlines()), 1)
+        assert "private" not in raw
+        assert len(raw.splitlines()) == 1

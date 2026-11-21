@@ -1,3 +1,4 @@
+"""Watchdog that monitors open-terminal browser processes and reaps stale sessions."""
 import json
 from datetime import datetime, timezone
 import logging
