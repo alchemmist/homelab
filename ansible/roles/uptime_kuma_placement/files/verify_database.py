@@ -1,3 +1,5 @@
+"""Run read-only integrity and consistency checks on a SQLite database."""
+
 import json
 import pathlib
 import sqlite3

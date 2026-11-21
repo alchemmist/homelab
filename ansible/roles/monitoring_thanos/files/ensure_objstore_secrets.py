@@ -1,3 +1,5 @@
+"""Ensure Thanos object-store credential secrets exist in Kubernetes."""
+
 import base64
 import json
 import secrets

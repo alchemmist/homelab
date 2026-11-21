@@ -10,6 +10,18 @@ import plistlib
 import shutil
 import subprocess
 from pathlib import Path
+from typing import TypedDict
+
+
+class FileRecord(TypedDict):
+    """Fingerprint of an owned resolver file listed for removal."""
+
+    path: str
+    sha256: str
+    mode: int
+    uid: int
+    gid: int
+
 
 LABEL = "xyz.alchemmist.wiki-resolver"
 STATE = Path("/var/db/homelab-public-dns-cleanup")
@@ -34,16 +46,16 @@ SCRIPT = Path("/usr/local/libexec/socrat-wiki-resolver")
 MARKER = Path("/var/db/socrat-wiki-resolver-owned")
 
 
-def need(ok, message):
+def need(ok, message) -> None:
     if not ok:
         raise RuntimeError(message)
 
 
-def run(argv, **kwargs):
+def run(argv, **kwargs) -> subprocess.CompletedProcess[bytes]:
     return subprocess.run(argv, capture_output=True, check=False, **kwargs)
 
 
-def loaded():
+def loaded() -> bool:
     r = run(["/bin/launchctl", "print", "system/" + LABEL])
     need(
         r.returncode == 0 or b"Could not find service" in r.stderr,
@@ -52,7 +64,7 @@ def loaded():
     return r.returncode == 0
 
 
-def baseline(expected_pid):
+def baseline(expected_pid) -> dict[str, object]:
     r = run(["/usr/sbin/scutil"], input=b"show State:/Network/Global/DNS\nquit\n")
     need(r.returncode == 0, "Cannot read global DNS baseline")
     p = run(["/bin/ps", "-axo", "pid=,comm="])
@@ -72,7 +84,7 @@ def baseline(expected_pid):
     }
 
 
-def fingerprint(path):
+def fingerprint(path) -> FileRecord:
     need(path.is_file() and not path.is_symlink(), "Unsafe owned-file type")
     s = path.stat()
     need(s.st_uid == 0 and not s.st_mode & 0o022, "Unsafe owned-file permissions")
@@ -85,7 +97,7 @@ def fingerprint(path):
     }
 
 
-def files():
+def files() -> list[FileRecord]:
     selected = []
     directory = Path("/etc/resolver")
     need(not directory.is_symlink(), "Unsafe resolver directory")
@@ -144,8 +156,10 @@ def files():
             Path(__file__).resolve().parents[1]
             / "ansible/roles/wiki_editor_client/files/wiki-editor-resolver.sh"
         )
-        expected = repo.read_text().replace("wiki.socrat.alchemmist.xyz", "wiki.alchemmist.xyz")
-        need(SCRIPT.read_text() == expected, "Foreign restorer script")
+        expected_script = repo.read_text().replace(
+            "wiki.socrat.alchemmist.xyz", "wiki.alchemmist.xyz"
+        )
+        need(SCRIPT.read_text() == expected_script, "Foreign restorer script")
         selected.append(fingerprint(SCRIPT))
     if MARKER.exists():
         need(MARKER.read_bytes() == b"", "Foreign ownership marker")
@@ -153,7 +167,7 @@ def files():
     return selected
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--expected-tunnelblick-pid", type=int, required=True)
     p.add_argument("--apply", action="store_true")

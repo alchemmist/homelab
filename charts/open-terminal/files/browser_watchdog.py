@@ -1,3 +1,4 @@
+"""Watchdog that monitors open-terminal browser processes and reaps stale sessions."""
 import json
 import logging
 import os
@@ -9,16 +10,19 @@ from pathlib import Path
 
 
 class JsonFormatter(logging.Formatter):
+    """Logging formatter that emits structured JSON records."""
+
     def format(self, record):
+        """Render a log record as JSON, omitting exception text."""
         # Do not render exception text/tracebacks: they can contain process arguments.
         event = getattr(record, "event", "watchdog_error")
-        result = dict(
-            ts=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            level={10: "debug", 20: "info", 30: "warn"}.get(record.levelno, "error"),
-            service="open-terminal-browser-watchdog",
-            msg=event,
-            event=event,
-        )
+        result = {
+            "ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "level": {10: "debug", 20: "info", 30: "warn"}.get(record.levelno, "error"),
+            "service": "open-terminal-browser-watchdog",
+            "msg": event,
+            "event": event,
+        }
         for key in ("pid", "age_seconds", "processes", "signal"):
             value = getattr(record, key, None)
             if isinstance(value, (int, float)):
@@ -28,6 +32,8 @@ class JsonFormatter(logging.Formatter):
 
 @dataclass(frozen=True)
 class Process:
+    """Immutable record of a managed browser process."""
+
     pid: int
     ppid: int
     start: int
@@ -36,6 +42,7 @@ class Process:
 
     @property
     def identity(self):
+        """Stable (pid, start-ticks) identity of the process."""
         return self.pid, self.start
 
 
@@ -104,20 +111,26 @@ def signal_process(identity, sig):
 
 @dataclass
 class Browser:
+    """State of a running supervised browser instance."""
+
     started: float
     members: set = field(default_factory=set)
     terminated: float | None = None
 
 
 class Watchdog:
-    def __init__(self, lifetime=900, grace=5, ticks=None, send=signal_process):
+    """Watchdog that supervises and restarts browser processes."""
+
+    def __init__(self, lifetime=900, grace=5, ticks=None, send=signal_process) -> None:
+
         self.lifetime = lifetime
         self.grace = grace
         self.ticks = ticks or os.sysconf("SC_CLK_TCK")
         self.send = send
-        self.browsers = {}
+        self.browsers: dict[tuple[int, int], Browser] = {}
 
     def step(self, processes, now):
+        """Advance one watchdog tick: track new browsers and reap ended ones."""
         for process in processes.values():
             if is_test_browser(process) and process.identity not in self.browsers:
                 self.browsers[process.identity] = Browser(

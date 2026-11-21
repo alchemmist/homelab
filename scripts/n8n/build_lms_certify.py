@@ -11,10 +11,11 @@ PROM = 'http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.clu
 MODEL = 'qwen3.8-27b'
 RUNNER = 'http://REPLACE_RUNNER:9000/certification/check-suite'
 LLM = 'http://litellm.llm.svc.cluster.local:4000/v1/chat/completions'
-nodes, edges = [], {}
+nodes: list[dict[str, object]] = []
+edges: dict[str, dict[str, list[list[dict[str, object]]]]] = {}
 
 
-def node(name, kind, version, params, x, y, credential=None):
+def node(name: str, kind, version, params, x, y, credential=None) -> str:
     out = dict(id=str(uuid5(NAMESPACE_URL, 'lms-certification/' + name)), name=name,
                type='n8n-nodes-base.' + kind, typeVersion=version, position=[x, y], parameters=params)
     if credential:
@@ -24,30 +25,30 @@ def node(name, kind, version, params, x, y, credential=None):
     return name
 
 
-def link(a, b, port=0):
-    branches = edges.setdefault(a, {'main': []})['main']
+def link(a, b, port=0) -> None:
+    branches: list[list[dict[str, object]]] = edges.setdefault(a, {'main': []})['main']
     while len(branches) <= port:
         branches.append([])
-    branches[port].append(dict(node=b, type='main', index=0))
+    branches[port].append({'node': b, 'type': 'main', 'index': 0})
 
 
-def chain(*names):
-    for a, b in zip(names, names[1:]):
+def chain(*names) -> None:
+    for a, b in zip(names, names[1:], strict=False):
         link(a, b)
 
 
-def code(name, js, x, y):
+def code(name, js, x, y) -> str:
     return node(name, 'code', 2, {'jsCode': js}, x, y)
 
 
-def check(name, expr, x, y):
+def check(name, expr, x, y) -> str:
     return node(name, 'if', 2.2, {'conditions': {'options': {'version': 2, 'typeValidation': 'strict'},
                 'conditions': [{'id': 'yes', 'leftValue': '={{ ' + expr + ' }}', 'rightValue': '',
                                 'operator': {'type': 'boolean', 'operation': 'true', 'singleValue': True}}],
                 'combinator': 'and'}}, x, y)
 
 
-def http(name, url, x, y, *, body=None, role=None, query=None):
+def http(name, url, x, y, *, body=None, role=None, query=None) -> str:
     params = {'url': url, 'options': {'timeout': 180000 if role=='LITELLM' else 90000 if body else 8000,
               'response': {'response': {'fullResponse': True, 'neverError': True, 'responseFormat': 'json'}}}}
     credential = None
@@ -62,12 +63,12 @@ def http(name, url, x, y, *, body=None, role=None, query=None):
     return result
 
 
-def pg(name, sql, args, x, y):
+def pg(name, sql, args, x, y) -> str:
     return node(name, 'postgres', 2.6, {'operation': 'executeQuery', 'query': sql,
                 'options': {'queryReplacement': '={{ ' + args + ' }}'}}, x, y, ('postgres', 'CERTIFICATION_DB'))
 
 
-def idle(prefix, x, y):
+def idle(prefix, x, y) -> tuple[str, str]:
     # Timestamp the original samples, not the Prometheus query evaluation.
     selector = '{__name__=~"vllm:num_requests_(running|waiting)",model_name="' + MODEL + '"}'
     values = http(prefix + ' queue depth', PROM, x, y, query=selector)
@@ -223,11 +224,11 @@ terminal = pg('Private outcome recorded', '''SELECT phase, count(*)::int AS task
 
 
 
-def ref(name):
+def ref(name) -> str:
     return '$(' + json.dumps(name) + ').item.json'
 
 
-def reducer(name, route, js, x, y):
+def reducer(name, route, js, x, y) -> str:
     n = code(name, f'''const {{phase,data}} = {ref(route)};
 const status = $json.statusCode;
 if ($json.error || status === 429 || status >= 500) return {{json: {{pause:true,reason:$json.error?'transport':'http_'+status}}}};
@@ -289,14 +290,17 @@ try { payload = JSON.parse($json.body.choices[0].message.content); } catch { pay
  const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','wrepair','audit','probes'].includes(next) ? 'needs_review' : next,data}});
 '''
         if phase in ('witness','wrepair'):
-            logic='''const w=payload?.source;if(typeof w!=='string'||!w.trim()||w.length>6000||w.replace(/\\s/g,'')===data.source.replace(/\\s/g,'')){data.reviewReason='no_distinct_witness';return out('needs_review');} data.witness=w;return out('wpublic');''';label='Validate blind witness' if phase=='witness' else 'Validate repaired witness'
+            logic='''const w=payload?.source;if(typeof w!=='string'||!w.trim()||w.length>6000||w.replace(/\\s/g,'')===data.source.replace(/\\s/g,'')){data.reviewReason='no_distinct_witness';return out('needs_review');} data.witness=w;return out('wpublic');''';
+            label='Validate blind witness' if phase=='witness' else 'Validate repaired witness'
         elif phase=='audit':
             logic='''if(payload?.approved!==true){data.reviewReason='semantic_review_failed';data.reviewDetail=String(payload?.reason||'').slice(0,500);
 const ids=payload?.badIndices; if(payload?.issue==='cases' && Array.isArray(ids)&&ids.length && ids.every(i=>Number.isInteger(i)&&i>=0&&i<data.cases.length)&& (data.auditRetries||0)<2 && (!data.semanticApproved || (ids.length===1 && ids[0]===data.disputedIndex))){
  data.disputedIndex=null;data.disputeNote=null;data.quarantine=[...(data.quarantine||[]),...data.cases.filter((c,i)=>ids.includes(i))];data.cases=data.cases.filter((c,i)=>!ids.includes(i));data.coverageHints=data.reviewDetail;data.auditRetries=(data.auditRetries||0)+1;return out('expand');
-}return out('needs_review');}data.semanticApproved=true;if(Number.isInteger(data.disputedIndex)){data.reviewReason='both_references_disagree_with_approved_expected';return out('needs_review');}return out(data.faults?.length?'public':'probes');''';label='Require semantic approval'
+}return out('needs_review');}data.semanticApproved=true;if(Number.isInteger(data.disputedIndex)){data.reviewReason='both_references_disagree_with_approved_expected';return out('needs_review');}return out(data.faults?.length?'public':'probes');''';
+            label='Require semantic approval'
         elif phase=='probes':
-            logic='''const probes=Array.isArray(payload?.faults)?payload.faults:[];const seen=new Set([data.source.trim(),data.witness.trim()]);data.faults=[];for(const p of probes){if(typeof p?.source!=='string'||!p.source.includes('input(')||p.source.length>6000||typeof p.label!=='string'||seen.has(p.source.trim()))continue;seen.add(p.source.trim());data.faults.push([p.label.slice(0,100),p.source]);}if(data.faults.length<3){data.reviewReason='insufficient_distinct_probes';return out('needs_review');}data.faults=data.faults.slice(0,5);return out('public');''';label='Require three distinct probes'
+            logic='''const probes=Array.isArray(payload?.faults)?payload.faults:[];const seen=new Set([data.source.trim(),data.witness.trim()]);data.faults=[];for(const p of probes){if(typeof p?.source!=='string'||!p.source.includes('input(')||p.source.length>6000||typeof p.label!=='string'||seen.has(p.source.trim()))continue;seen.add(p.source.trim());data.faults.push([p.label.slice(0,100),p.source]);}if(data.faults.length<3){data.reviewReason='insufficient_distinct_probes';return out('needs_review');}data.faults=data.faults.slice(0,5);return out('public');''';
+            label='Require three distinct probes'
         elif phase in {'solve','repair'}:
             logic = '''const source = typeof payload?.source === 'string' ? payload.source.trim() : '';
 if (!source || source.length > 6000 || (data.contract === 'echo' && (/[\\r\\n]/.test(source) || [...source].length > 14))) return out(phase);
@@ -372,7 +376,8 @@ if (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','mem
         if phase=='triage':
             logic+='''if(verdict==='accepted')return {json:{phase:data.calls<(data.callLimit||12)?'repair':'needs_review',data}};
 if(verdict!=='wrong_answer'){data.reviewReason='dispute_inconclusive';return {json:{phase:'needs_review',data}};}
-data.disputedIndex=data.failure.index;data.disputeNote='Both independently written programs failed this proposed case. Recompute its expected output from the statement; do not change the statement or public examples.';return {json:{phase:data.calls<(data.callLimit||12)?'audit':'needs_review',data}};''';label='Distinguish bad case from bad solution'
+data.disputedIndex=data.failure.index;data.disputeNote='Both independently written programs failed this proposed case. Recompute its expected output from the statement; do not change the statement or public examples.';return {json:{phase:data.calls<(data.callLimit||12)?'audit':'needs_review',data}};''';
+            label='Distinguish bad case from bad solution'
         elif phase in ('wpublic','wsuite'):
             logic+=("if(verdict!=='accepted'){data.witnessFailure=data.examples[$json.body.test_index-1];data.witnessRetries=(data.witnessRetries||0)+1;return {json:{phase:data.witnessRetries<=2 && data.calls<(data.callLimit||12)?'wrepair':'needs_review',data}};}" if phase=='wpublic' else "if(verdict!=='accepted'){data.reviewReason='independent_witness_disagrees';return {json:{phase:'needs_review',data}};}")+ ("return {json:{phase:data.semanticApproved?'wsuite':'tests',data}};" if phase=='wpublic' else "data.variant=0;data.survivors=[];data.faultsKilled=0;return {json:{phase:'mutate',data}};")
             label='Check witness verdict '+phase
@@ -413,9 +418,9 @@ return {{json: {{phase:next,data}}}};'''
 link(previous, terminal, 1)
 
 assert len({n['name'] for n in nodes}) == len(nodes) == len({n['id'] for n in nodes}), 'Duplicate node names or IDs'
-workflow = dict(name='LMS certification — reviewed queue', nodes=nodes, connections=edges,
-                settings=dict(errorWorkflow='iZn7biFh6321a1w8', executionOrder='v1', timezone='Europe/Moscow',
-                              executionTimeout=720, saveDataSuccessExecution='none', saveDataErrorExecution='all',
-                              saveExecutionProgress=False, saveManualExecutions=False))
+workflow = {'name': 'LMS certification — reviewed queue', 'nodes': nodes, 'connections': edges,
+                'settings': {'errorWorkflow': 'iZn7biFh6321a1w8', 'executionOrder': 'v1', 'timezone': 'Europe/Moscow',
+                              'executionTimeout': 720, 'saveDataSuccessExecution': 'none', 'saveDataErrorExecution': 'all',
+                              'saveExecutionProgress': False, 'saveManualExecutions': False}}
 if __name__ == '__main__':
     (ROOT / 'workflow.json').write_text(json.dumps(workflow, ensure_ascii=False, indent=2)+'\n')

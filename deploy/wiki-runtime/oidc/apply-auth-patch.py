@@ -1,5 +1,5 @@
-import hashlib
-import json
+"""Apply a hash-verified edit patch to the wiki runtime auth module."""
+import hashlib, json
 from pathlib import Path
 
 path = Path("/app/runtime/auth.py")

@@ -1,3 +1,5 @@
+"""Configure the private-monitor entry in the Uptime Kuma database."""
+
 import argparse
 import json
 import os

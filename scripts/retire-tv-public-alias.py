@@ -33,11 +33,13 @@ OWNED = [
 
 
 def need(ok, msg):
+    """Execute need."""
     if not ok:
         raise RuntimeError(msg)
 
 
 def get(kind, name):
+    """Execute get."""
     r = subprocess.run(
         ["kubectl", "-n", "identity", "get", kind, name, "--ignore-not-found", "-o", "json"],
         capture_output=True,
@@ -47,6 +49,7 @@ def get(kind, name):
 
 
 def inspect():
+    """Execute inspect."""
     out = []
     for kind, name, uid, path in OWNED:
         o = get(kind, name)
@@ -72,6 +75,7 @@ def inspect():
 
 
 def main():
+    """Execute main."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")
