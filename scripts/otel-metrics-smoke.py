@@ -52,7 +52,8 @@ def query(port, context, expression='{__name__=~"smoke_.+|up"}'):
     ) as response:
         document = json.load(response)
     if document.get("status") != "success":
-        raise ValueError("Synthetic PromQL query failed")
+        message = "Synthetic PromQL query failed"
+        raise ValueError(message)
     return {
         tuple(sorted(item["metric"].items())): item["value"][1]
         for item in document["data"]["result"]
@@ -69,11 +70,13 @@ def semantic_series_view(series):
         if numeric_label in attributes:
             value_float = float(attributes[numeric_label])
             if math.isnan(value_float):
-                raise ValueError("Numeric histogram/summary labels cannot be NaN")
+                message = "Numeric histogram/summary labels cannot be NaN"
+                raise ValueError(message)
             attributes[numeric_label] = value_float.hex()
         normalized = tuple(sorted(attributes.items()))
         if normalized in result:
-            raise ValueError("OTLP semantic comparison would merge distinct series")
+            message = "OTLP semantic comparison would merge distinct series"
+            raise ValueError(message)
         result[normalized] = value
     return result
 
