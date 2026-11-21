@@ -55,7 +55,7 @@ def save(path, value):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args, **kwargs):
+    def redirect_request(self, *_args, **_kwargs):
         return None
 
 

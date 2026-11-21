@@ -119,6 +119,10 @@ class Fake(n.Runtime):
         raise AssertionError(path)
 
     def get(self, kind, name, ns=n.NS, optional=False):
+        # The controller may only read its own namespaces, and must tolerate
+        # absence solely for nodes and its own workloads.
+        assert ns in ("argocd", "default", n.NS), ns
+        assert not optional or kind in ("node", "deployment", "pvc"), (kind, optional)
         if kind == "application":
             return {
                 "metadata": {"labels": {"app.kubernetes.io/instance": "root"}},
@@ -143,14 +147,16 @@ class Fake(n.Runtime):
             return {"metadata": {"name": name, "uid": "secret4", "resourceVersion": "1"}}
         raise AssertionError(kind)
 
-    def status(self, host):
+    def status(self, _host):
         return {"ip": self.peer["ip"], "key": "fixture-public-key"}
 
-    def restart_without_key(self, host, deployment):
+    def restart_without_key(self, _host, _deployment):
         if self.fail_restart:
             raise ValueError("simulated restart failure")
 
-    def kub(self, args, obj=None, optional=False, stdin=None):
+    def kub(self, args, _obj=None, optional=False, stdin=None):
+        # Optional lookups are read-only; the controller never deploys workloads.
+        assert not optional or (args[:1] == ["-n"] and args[2] == "get"), (args, optional)
         if stdin is not None:
             assert args[-4:] == ["netbird", "up", "--setup-key-file", "/dev/stdin"]
             self.enrolled = True

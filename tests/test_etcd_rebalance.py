@@ -38,7 +38,7 @@ class FakeEtcd:
         return {"header": {"member_id": self.membership[name]["id"]}, "leader": self.leader}
 
     def call(self, args, endpoint=None, structured=True):
-        self.calls.append((args, endpoint))
+        self.calls.append((args, endpoint, structured))
         if args[0] == "move-leader":
             self.leader = int(args[1], 16)
         elif args[:2] == ["member", "remove"]:
@@ -65,8 +65,8 @@ class RebalanceTest(unittest.TestCase):
         self.assertEqual(
             client.calls,
             [
-                (["move-leader", "1"], MODULE.ENDPOINTS["socrat-1"]),
-                (["member", "remove", "2"], None),
+                (["move-leader", "1"], MODULE.ENDPOINTS["socrat-1"], False),
+                (["member", "remove", "2"], None, False),
             ],
         )
 

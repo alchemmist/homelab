@@ -172,7 +172,7 @@ class FakeAuthentik(threading.Thread):
         server = self
 
         class Handler(BaseHTTPRequestHandler):
-            def log_message(self, fmt, *args):
+            def log_message(self, _fmt, *_args):
                 return
 
             def do_GET(self):

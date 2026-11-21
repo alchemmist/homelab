@@ -63,6 +63,7 @@ class FakeAuthentik:
         self.requests = []
 
     def __call__(self, req, timeout=60):
+        self.timeout = timeout
         uri = urlparse(req.full_url)
         path = uri.path.split("/api/v3/")[1]
         method = req.get_method()

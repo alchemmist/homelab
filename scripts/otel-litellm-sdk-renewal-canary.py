@@ -74,6 +74,7 @@ def run():
                 pass
 
             def force_flush(self, timeout_millis=30000):
+                audit["flushTimeoutMillis"] = timeout_millis
                 return True
 
         provider = handler._tracer_provider

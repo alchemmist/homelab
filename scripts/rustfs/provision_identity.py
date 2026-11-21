@@ -36,7 +36,7 @@ COLLECTIONS = (
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, request, response, code, message, headers, newurl):
+    def redirect_request(self, _request, response, _code, _message, _headers, _newurl):
         if response is not None:
             response.close()
         raise ValueError("redirect refused")

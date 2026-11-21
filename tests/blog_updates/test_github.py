@@ -23,7 +23,7 @@ class Fake(GitHub):
             return {"html_url": "https://github.com/alchemmist/blog/pull/1"}
         return {}
 
-    def read_updates(self, ref):
+    def read_updates(self, _ref):
         return "original", "file-sha"
 
 

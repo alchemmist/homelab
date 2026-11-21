@@ -154,6 +154,7 @@ def run():
                 pass
 
             def force_flush(self, timeout_millis=30000):
+                audit["flushTimeoutMillis"] = timeout_millis
                 return True
 
         provider.add_span_processor(Audit())

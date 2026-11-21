@@ -35,7 +35,7 @@ class Fake:
         self.tokens = []
         self.writes = []
 
-    def __call__(self, token, method, path, data=None):
+    def __call__(self, _token, method, path, data=None):
         endpoint, _, query = path.partition("?")
         parts = endpoint.strip("/").split("/")
         if method != "GET":
@@ -197,7 +197,7 @@ class AutomationTests(unittest.TestCase):
         a.save(p / "automation-api.json", j)
         (p / "bootstrap.py").write_text((FILES / "bootstrap.py").read_text())
 
-    def kube_read(self, args, **kwargs):
+    def kube_read(self, args, **_kwargs):
         if "secret" in args:
             return json.dumps({"data": {}, "metadata": {"annotations": {}}}).encode()
         return json.dumps({"spec": {"template": {"spec": {"containers": [{"env": []}]}}}}).encode()

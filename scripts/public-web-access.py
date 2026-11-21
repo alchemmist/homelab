@@ -28,7 +28,7 @@ class API:
         self.token = json.loads(Path(path).read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
 
         class NoRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self, *a, **k):
+            def redirect_request(self, *_args, **_kwargs):
                 return None
 
         self.http = urllib.request.build_opener(NoRedirect)

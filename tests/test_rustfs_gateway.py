@@ -231,6 +231,7 @@ class Integrity(unittest.TestCase):
         class HTTP:
             def open(self, req, timeout):
                 self.request = req
+                self.timeout = timeout
                 return response
 
         response = Response()

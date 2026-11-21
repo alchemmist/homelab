@@ -261,10 +261,10 @@ class MembershipTests(unittest.TestCase):
             def __init__(self, credentials):
                 pass
 
-            def rows(self, path):
+            def rows(self, _path):
                 return [copy.deepcopy(group)]
 
-            def call(self, system, method, path, body=None):
+            def call(self, _system, method, path, body=None):
                 if method == "GET":
                     return copy.deepcopy(user)
                 posts.append((path, body))
@@ -289,7 +289,7 @@ class MembershipTests(unittest.TestCase):
         class Loader:
             """Supply the prepared bootstrap module instead of its source file."""
 
-            def create_module(self, spec):
+            def create_module(self, _spec):
                 return fake
 
             def exec_module(self, module):

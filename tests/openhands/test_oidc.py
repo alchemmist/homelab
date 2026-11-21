@@ -23,7 +23,7 @@ class NativeOIDC(unittest.TestCase):
 
     def validate(self):
         class API:
-            def rows(_, path): return self.bindings
+            def rows(_, _path): return self.bindings
         m.validate(API(),self.owner,self.settings,self.provider,self.app,self.journal)
 
     def test_cookie_secret_uses_go_raw_url_alphabet(self):
