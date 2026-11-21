@@ -8,7 +8,7 @@ from urllib.error import HTTPError
 
 REPO='alchemmist/monori'; PREFIX='openhands/issue-509/'
 class NoRedirect(HTTPRedirectHandler):
-    def redirect_request(self,*args):return None
+    def redirect_request(self,*_args):return None
 
 def api(path, data=None,method=None):
     url='https://api.github.com/'+('graphql' if path=='graphql' else 'repos/'+REPO+'/'+path)

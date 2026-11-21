@@ -218,7 +218,7 @@ def run_openhands(
         pass
 
     class BashExecutor(ToolExecutor):
-        def __call__(self, action, conversation=None):
+        def __call__(self, action, _conversation=None):
             result = sandbox.execute({"command": action.command})
             return BashObservation.from_text(json.dumps(result), is_error=result["returncode"] != 0)
 

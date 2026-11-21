@@ -291,7 +291,7 @@ class Sandbox:
             raise ValueError("sandbox security preflight failed")
         return result
 
-    def execute(self, action, input_bytes=None, **kwargs):
+    def execute(self, action, input_bytes=None, **_kwargs):
         command = action["command"]
         wrapped = (
             "timeout -k 2 40 bash -lc "

@@ -193,7 +193,7 @@ class RepositoryEnvironment:
             self.close()
             raise
 
-    def execute(self, action, **kwargs):
+    def execute(self, action, **_kwargs):
         command = action.get("command") if isinstance(action, dict) else None
         if not isinstance(command, str) or len(command.encode()) > 12000:
             raise ValueError("invalid or oversized command")

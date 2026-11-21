@@ -62,7 +62,7 @@ async def run():
             def shutdown(self):
                 pass
 
-            def force_flush(self, timeout_millis=30000):
+            def force_flush(self, _timeout_millis=30000):
                 return True
 
         handler._tracer_provider.add_span_processor(PrivacyAudit())
