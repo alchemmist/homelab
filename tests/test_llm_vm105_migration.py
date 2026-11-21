@@ -1,19 +1,29 @@
 """Contracts for the owner-approved four-app handoff; legacy volumes stay intact."""
 
+from collections.abc import Iterable
 from pathlib import Path
 import subprocess
-from typing import TYPE_CHECKING
 import unittest
-
+from typing import Literal, Protocol, overload
 import yaml
-
-if TYPE_CHECKING:
-    from _typeshed import Incomplete
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def render(name: str, *args: str) -> "list[Incomplete]":
+class _Name(Protocol):
+    def __getitem__(self, key: Literal["name"], /) -> str: ...
+
+
+class _Manifest(Protocol):
+    @overload
+    def __getitem__(self, key: Literal["kind"], /) -> str: ...
+    @overload
+    def __getitem__(self, key: Literal["metadata"], /) -> _Name: ...
+    @overload
+    def __getitem__(self, key: str, /) -> object: ...
+
+
+def render(name: str, *args: str):
     return list(
         yaml.safe_load_all(
             subprocess.check_output(
@@ -32,7 +42,7 @@ def render(name: str, *args: str) -> "list[Incomplete]":
     )
 
 
-def obj(docs, kind, name):
+def obj(docs: Iterable[_Manifest | None], kind: str, name: str):
     return next(d for d in docs if d and d["kind"] == kind and d["metadata"]["name"] == name)
 
 
