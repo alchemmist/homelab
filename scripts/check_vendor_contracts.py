@@ -6,6 +6,7 @@ A reviewed Git baseline is NOT independent upstream provenance or a security aud
 import hashlib
 import json
 from pathlib import Path
+from typing import TypedDict
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -25,39 +26,36 @@ def inventory(root, directory):
     return result
 
 
-def check(root=ROOT):
-    contract = json.loads((root / "deploy/contracts/vendors.json").read_text())
-    if contract["schemaVersion"] != 1:
-        raise ValueError("Unsupported vendor contract schema")
-    seen = set()
-    for tree in contract["trees"]:
-        directory = tree["path"]
-        if directory in seen:
-            raise ValueError("Duplicate vendor tree: " + directory)
-        seen.add(directory)
-        if (
-            tree["basis"] != "reviewed-git-baseline"
-            or not tree["reviewedCommit"]
-            or not tree["provenanceNote"]
-        ):
-            raise ValueError("Missing explicit vendor baseline/provenance boundary")
-        actual, expected = inventory(root, directory), tree["files"]
-        if not expected:
-            raise ValueError("Empty vendor inventory: " + directory)
-        added, removed = set(actual) - set(expected), set(expected) - set(actual)
-        changed = {p for p in actual.keys() & expected.keys() if actual[p] != expected[p]}
-        if added or removed or changed:
-            raise ValueError(
-                f"Vendor drift {directory}: added={sorted(added)}, removed={sorted(removed)}, changed={sorted(changed)}"
-            )
-    links = contract.get("links", {})
-    discovered = {
-        p.relative_to(root).as_posix()
-        for pattern in contract.get("linkInventoryGlobs", [])
-        for p in root.glob(pattern)
-    }
-    if discovered != set(links):
-        raise ValueError("Vendor dependency alias inventory drift")
+class _VendorTree(TypedDict):
+    path: str
+    basis: str
+    reviewedCommit: str
+    provenanceNote: str
+    files: dict[str, str]
+
+
+def _check_tree(root: Path, tree: _VendorTree) -> None:
+    """Require one vendored tree to stay inside its reviewed baseline."""
+    if (
+        tree["basis"] != "reviewed-git-baseline"
+        or not tree["reviewedCommit"]
+        or not tree["provenanceNote"]
+    ):
+        raise ValueError("Missing explicit vendor baseline/provenance boundary")
+    actual, expected = inventory(root, tree["path"]), tree["files"]
+    if not expected:
+        raise ValueError("Empty vendor inventory: " + tree["path"])
+    added, removed = set(actual) - set(expected), set(expected) - set(actual)
+    changed = {p for p in actual.keys() & expected.keys() if actual[p] != expected[p]}
+    if added or removed or changed:
+        raise ValueError(
+            f"Vendor drift {tree['path']}: added={sorted(added)}, removed={sorted(removed)}, "
+            f"changed={sorted(changed)}"
+        )
+
+
+def _check_links(root: Path, links: dict[str, str], trees: list[_VendorTree]) -> None:
+    """Require every declared dependency alias to point into a registered tree."""
     for name, target in links.items():
         link, destination = root / name, root / target
         if (
@@ -70,9 +68,31 @@ def check(root=ROOT):
         if not any(
             target.startswith(tree["path"] + "/")
             and target[len(tree["path"]) + 1 :] in tree["files"]
-            for tree in contract["trees"]
+            for tree in trees
         ):
             raise ValueError("Vendor alias target has no registered inventory: " + name)
+
+
+def check(root=ROOT):
+    contract = json.loads((root / "deploy/contracts/vendors.json").read_text())
+    if contract["schemaVersion"] != 1:
+        raise ValueError("Unsupported vendor contract schema")
+    links = contract.get("links", {})
+    discovered = {
+        p.relative_to(root).as_posix()
+        for pattern in contract.get("linkInventoryGlobs", [])
+        for p in root.glob(pattern)
+    }
+    if discovered != set(links):
+        raise ValueError("Vendor dependency alias inventory drift")
+    seen = set()
+    for tree in contract["trees"]:
+        directory = tree["path"]
+        if directory in seen:
+            raise ValueError("Duplicate vendor tree: " + directory)
+        seen.add(directory)
+        _check_tree(root, tree)
+    _check_links(root, links, contract["trees"])
     return len(seen)
 
 
