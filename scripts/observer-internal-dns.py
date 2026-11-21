@@ -167,9 +167,9 @@ def main() -> None:
 
 
 def verify_readback(
-    before: dict[str, dict[str, object]],
+    before: dict[str, object],
     data: dict[str, str],
-    service: dict[str, dict[str, object]],
+    service: dict[str, object],
     digest: str,
     state: Path,
 ) -> None:

@@ -12,21 +12,36 @@ if __name__=='__main__':
     if not isinstance(profiles_doc, dict):
         reason = "profile list response is not an object"
         raise SystemExit(reason)
-    assert any(p['name']==profile['llm_profile_ref'] for p in profiles_doc['profiles'])
+    profile_rows = profiles_doc.get('profiles')
+    if not isinstance(profile_rows, list) or not all(isinstance(row, dict) for row in profile_rows):
+        raise SystemExit('profile list response has invalid entries')
+    assert any(p.get('name')==profile['llm_profile_ref'] for p in profile_rows)
     doc: object = api('agent-profiles')
     if not isinstance(doc, dict):
         reason = "agent profile list response is not an object"
         raise SystemExit(reason)
-    profiles=doc['profiles'];p=next((p for p in profiles if p['name']==name),None)
+    profiles=doc.get('profiles')
+    if not isinstance(profiles, list) or not all(isinstance(row, dict) for row in profiles):
+        raise SystemExit('agent profile list response has invalid entries')
+    p=next((p for p in profiles if p.get('name')==name),None)
     if p:
         existing_doc: object = api('agent-profiles/'+name)
         if not isinstance(existing_doc, dict):
             reason = "existing agent profile response is not an object"
             raise SystemExit(reason)
-        existing=existing_doc['profile'];assert existing['llm_profile_ref']==profile['llm_profile_ref'] and existing['condenser']['max_tokens']==9000 and [t['name'] for t in existing['tools']]==['terminal','file_editor'], 'Existing compact profile drift'
+        existing=existing_doc.get('profile')
+        if not isinstance(existing, dict):
+            raise SystemExit('existing agent profile payload is invalid')
+        condenser=existing.get('condenser'); tools=existing.get('tools')
+        if not isinstance(condenser, dict) or not isinstance(tools, list) or not all(isinstance(t, dict) for t in tools):
+            raise SystemExit('existing agent profile fields are invalid')
+        assert existing.get('llm_profile_ref')==profile['llm_profile_ref'] and condenser.get('max_tokens')==9000 and [t.get('name') for t in tools]==['terminal','file_editor'], 'Existing compact profile drift'
     else:api('agent-profiles/'+name,profile)
     active_doc: object = api('agent-profiles/'+name)
     if not isinstance(active_doc, dict):
         reason = "agent profile response is not an object"
         raise SystemExit(reason)
-    p=active_doc['profile'];api('agent-profiles/'+p['id']+'/activate',{});print('Active',name,p['id'])
+    p=active_doc.get('profile')
+    if not isinstance(p, dict) or not isinstance(p.get('id'), str):
+        raise SystemExit('active agent profile payload is invalid')
+    api('agent-profiles/'+p['id']+'/activate',{});print('Active',name,p['id'])

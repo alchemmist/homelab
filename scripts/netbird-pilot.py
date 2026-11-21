@@ -231,7 +231,12 @@ def validate(c) -> dict[str, object]:
 
 
 def image(name) -> str:
-    item: dict[str, str] = json.loads(LOCK.read_text())["images"][name]
+    images = json.loads(LOCK.read_text()).get("images")
+    if not isinstance(images, dict) or not isinstance(images.get(name), dict):
+        raise TypeError("image lock entry must be an object")
+    item = images[name]
+    if not all(isinstance(item.get(key), str) for key in ("repository", "tag", "digest")):
+        raise TypeError("image lock fields must be strings")
     if item.get("reference"):
         return item["reference"]
     return item["repository"] + ":" + item["tag"] + "@" + item["digest"]
