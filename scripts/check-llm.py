@@ -4,7 +4,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from typing import cast
+from collections.abc import Mapping, Sequence
 
 BASE_URL = os.environ.get("LLM_BASE_URL", "http://127.0.0.1:8000/v1").rstrip("/")
 API_KEY = os.environ.get("LLM_API_KEY", "")
@@ -12,12 +12,12 @@ MODEL = os.environ.get("LLM_MODEL", "qwen3.8-27b")
 TIMEOUT = 180
 
 
-def require(condition, message):
+def require(condition: object, message: str):
     if not condition:
         raise ValueError(message)
 
 
-def request(path, payload=None):
+def request(path: str, payload: object = None):
     data = None if payload is None else json.dumps(payload).encode()
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
     return urllib.request.urlopen(
@@ -26,7 +26,7 @@ def request(path, payload=None):
     )
 
 
-def report(name, started, usage=None):
+def report(name: str, started: float, usage: Mapping[str, object] | None = None):
     tokens = ""
     if usage:
         tokens = (
@@ -36,33 +36,8 @@ def report(name, started, usage=None):
     print(f"PASS {name}: {time.monotonic() - started:.2f}s{tokens}", flush=True)
 
 
-def _dict(value: object) -> dict[str, object]:
-    if not isinstance(value, dict):
-        raise TypeError(value)
-    mapped: dict[str, object] = {key: item for key, item in value.items() if isinstance(key, str)}
-    return mapped
-
-
-def _list(value: object) -> list[object]:
-    if isinstance(value, list):
-        return list(value)
-    raise TypeError(value)
-
-
-def _text(value: object) -> str:
-    if isinstance(value, str):
-        return value
-    return ""
-
-
-def _loads(value: object) -> object:
-    if not isinstance(value, str):
-        raise TypeError(value)
-    return cast("object", json.loads(value))
-
-
-def complete(messages: object, **options: object) -> dict[str, object]:
-    payload: dict[str, object] = {
+def complete(messages: Sequence[Mapping[str, object]], **options: object):
+    payload = {
         "model": MODEL,
         "messages": messages,
         "max_tokens": 256,
@@ -71,20 +46,9 @@ def complete(messages: object, **options: object) -> dict[str, object]:
         **options,
     }
     with request("chat/completions", payload) as response:
-        loaded = json.load(response)
-    if not isinstance(loaded, dict):
-        raise TypeError(loaded)
-    result: dict[str, object] = {
-        key: value for key, value in loaded.items() if isinstance(key, str)
-    }
-    choices = result.get("choices")
-    require(isinstance(choices, list) and bool(choices), "Response has no choices")
-    if not isinstance(choices, list) or not choices:
-        raise TypeError(choices)
-    first = choices[0]
-    if not isinstance(first, dict):
-        raise TypeError(first)
-    require(first.get("finish_reason") != "length", "Response was truncated")
+        result = json.load(response)
+    require(bool(result.get("choices")), "Response has no choices")
+    require(result["choices"][0].get("finish_reason") != "length", "Response was truncated")
     return result
 
 
@@ -113,7 +77,7 @@ def main():
             }
         ]
     )
-    content = _text(_dict(_dict(_list(result["choices"])[0])["message"]).get("content") or "")
+    content = result["choices"][0]["message"].get("content") or ""
     require(
         "def add(" in content and "return" in content and "+" in content,
         "Coding response lacks the requested function",
@@ -170,7 +134,7 @@ def main():
             },
         }
     ]
-    messages: list[dict[str, object]] = [
+    messages = [
         {
             "role": "system",
             "content": "Use get_weather for current weather. Pass the city name in English. Report its temperature exactly after receiving the result.",
@@ -182,17 +146,17 @@ def main():
     ]
     started = time.monotonic()
     result = complete(messages, tools=tools, tool_choice="auto")
-    choice = _dict(_list(result["choices"])[0])
-    message = _dict(choice["message"])
-    calls = _list(message.get("tool_calls") or [])
+    choice = result["choices"][0]
+    message = choice["message"]
+    calls = message.get("tool_calls") or []
     require(
         choice.get("finish_reason") == "tool_calls" and len(calls) == 1,
         "Expected one automatic tool call",
     )
-    call = _dict(calls[0])
+    call = calls[0]
     require(bool(call.get("id")) and call.get("type") == "function", "Invalid tool call envelope")
-    require(_dict(call["function"])["name"] == "get_weather", "Unexpected tool name")
-    arguments = _loads(_dict(call["function"])["arguments"])
+    require(call["function"]["name"] == "get_weather", "Unexpected tool name")
+    arguments = json.loads(call["function"]["arguments"])
     require(arguments == {"city": "Moscow"}, "Unexpected weather tool arguments")
     report("automatic tool call", started, result.get("usage"))
 
@@ -200,7 +164,7 @@ def main():
     messages.append(
         {
             "role": "tool",
-            "tool_call_id": _text(call["id"]),
+            "tool_call_id": call["id"],
             "content": json.dumps(
                 {
                     "city": "Moscow",
@@ -213,9 +177,9 @@ def main():
     )
     started = time.monotonic()
     result = complete(messages, tools=tools, tool_choice="none")
-    message = _dict(_dict(_list(result["choices"])[0])["message"])
+    message = result["choices"][0]["message"]
     require(
-        not message.get("tool_calls") and "17" in _text(message.get("content") or ""),
+        not message.get("tool_calls") and "17" in (message.get("content") or ""),
         "Continuation did not use the supplied tool result",
     )
     report("tool result continuation", started, result.get("usage"))
@@ -237,16 +201,13 @@ def main():
             ],
             max_tokens=int(os.environ.get("LLM_LONG_CONTEXT_MAX_OUTPUT_TOKENS", "8192")),
         )
-        usage = _dict(result.get("usage") or {})
+        usage = result.get("usage") or {}
         require(
-            isinstance(tokens := usage.get("prompt_tokens", 0), int)
-            and not isinstance(tokens, bool)
-            and tokens > 8192,
+            usage.get("prompt_tokens", 0) > 8192,
             "Long-context check did not exceed the old 8K limit",
         )
         require(
-            "violet-river-7291"
-            in _text(_dict(_dict(_list(result["choices"])[0])["message"]).get("content") or ""),
+            "violet-river-7291" in (result["choices"][0]["message"].get("content") or ""),
             "Long-context response did not recover the value from the beginning",
         )
         report("long context", started, usage)

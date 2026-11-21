@@ -14,12 +14,14 @@ ROOT = Path(__file__).resolve().parents[1]
 NODES = ("socrat-0", "socrat-1", "socrat-2", "socrat-3")
 
 
-def digest(path):
+def digest(path: Path) -> str:
     with path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def pinned_binary(directory, key, filename, images):
+def pinned_binary(directory: Path, key: str, filename: str, images: object):
+    if not isinstance(images, dict):
+        raise TypeError
     receipt = json.loads((directory / "receipt.json").read_text())
     entry = receipt["binaries"][key]
     binary = directory / filename
@@ -32,7 +34,7 @@ def pinned_binary(directory, key, filename, images):
     return entry["sha256"]
 
 
-def create(bundle, binaries, prometheus, exporter_path, backend_ip):
+def create(bundle: Path, binaries: Path, prometheus: Path, exporter_path: Path, backend_ip: str):
     if ipaddress.ip_address(backend_ip) not in ipaddress.ip_network("10.250.0.0/24"):
         raise ValueError("Backend must use an existing private WireGuard address")
     if (

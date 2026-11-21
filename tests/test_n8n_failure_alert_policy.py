@@ -1,5 +1,6 @@
 """Pure offline regression suite; fixtures are not production executions."""
 
+from collections.abc import Mapping, Sequence
 import contextlib
 import copy
 import importlib.util
@@ -32,7 +33,7 @@ class WorkflowPolicyTests(unittest.TestCase):
         self.put(policy.POLICY, self.config)
         (self.root / "workflows").mkdir()
 
-    def put(self, path, data):
+    def put(self, path: str, data: Mapping[str, object] | Sequence[object]) -> Path:
         p = self.root / path
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(json.dumps(data, indent=2) + "\n")
@@ -53,7 +54,7 @@ class WorkflowPolicyTests(unittest.TestCase):
             "settings": {"executionTimeout": 60, **settings},
         }
 
-    def run_policy(self, fix=False):
+    def run_policy(self, *, fix: bool = False):
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             return policy.run(self.root, fix)
 
@@ -63,19 +64,19 @@ class WorkflowPolicyTests(unittest.TestCase):
         before = p.read_bytes()
         self.assertEqual(self.run_policy(), 1)
         self.assertEqual(p.read_bytes(), before)
-        self.assertEqual(self.run_policy(True), 0)
+        self.assertEqual(self.run_policy(fix=True), 0)
         expected = copy.deepcopy(w)
         expected["settings"]["errorWorkflow"] = "handler1"
         self.assertEqual(json.loads(p.read_text()), expected)
         fixed = p.read_bytes()
-        self.assertEqual(self.run_policy(True), 0)
+        self.assertEqual(self.run_policy(fix=True), 0)
         self.assertEqual(p.read_bytes(), fixed)
 
     def test_missing_settings_can_be_generated(self):
         w = self.workflow()
         del w["settings"]
         p = self.put("workflows/new.json", w)
-        self.assertEqual(self.run_policy(True), 0)
+        self.assertEqual(self.run_policy(fix=True), 0)
         self.assertEqual(json.loads(p.read_text())["settings"], {"errorWorkflow": "handler1"})
 
     def test_discovery_includes_new_nested_files(self):
@@ -88,14 +89,14 @@ class WorkflowPolicyTests(unittest.TestCase):
         missing = self.put("workflows/missing.json", self.workflow())
         other = self.put("workflows/other.json", self.workflow(errorWorkflow="another"))
         before = (missing.read_bytes(), other.read_bytes())
-        self.assertEqual(self.run_policy(True), 1)
+        self.assertEqual(self.run_policy(fix=True), 1)
         self.assertEqual((missing.read_bytes(), other.read_bytes()), before)
 
     def test_array_exports(self):
         p = self.put(
             "workflows/export.json", [self.workflow(), self.workflow(errorWorkflow="handler1")]
         )
-        self.assertEqual(self.run_policy(True), 0)
+        self.assertEqual(self.run_policy(fix=True), 0)
         self.assertTrue(
             all(w["settings"]["errorWorkflow"] == "handler1" for w in json.loads(p.read_text()))
         )
@@ -122,7 +123,7 @@ class WorkflowPolicyTests(unittest.TestCase):
         w = json.loads(p.read_text())
         w["settings"]["errorWorkflow"] = "handler1"
         self.put("workflows/handler.json", w)
-        self.assertEqual(self.run_policy(True), 1)
+        self.assertEqual(self.run_policy(fix=True), 1)
         self.assertEqual(json.loads(p.read_text())["settings"]["errorWorkflow"], "handler1")
 
     def test_handler_identity_and_presence_fail_closed(self):
@@ -137,30 +138,30 @@ class WorkflowPolicyTests(unittest.TestCase):
     def test_duplicate_keys_and_invalid_json_fail_closed(self):
         p = self.put("workflows/bad.json", self.workflow())
         p.write_text('{"name":"one","name":"two"}')
-        self.assertEqual(self.run_policy(True), 1)
+        self.assertEqual(self.run_policy(fix=True), 1)
         p.write_text("{invalid")
-        self.assertEqual(self.run_policy(True), 1)
+        self.assertEqual(self.run_policy(fix=True), 1)
 
     def test_bad_settings_or_missing_connections_is_not_silently_skipped(self):
         w = self.workflow()
         w["settings"] = None
         self.put("workflows/bad.json", w)
-        self.assertEqual(self.run_policy(True), 1)
+        self.assertEqual(self.run_policy(fix=True), 1)
         w = self.workflow()
         del w["connections"]
         self.put("workflows/bad.json", w)
-        self.assertEqual(self.run_policy(True), 1)
+        self.assertEqual(self.run_policy(fix=True), 1)
 
     def test_symlink_and_path_traversal_rejected(self):
         self.put("workflows/valid.json", self.workflow(errorWorkflow="handler1"))
         (self.root / "workflows/link.json").symlink_to(self.root / policy.POLICY)
         with self.assertRaises(ValueError):
-            self.run_policy(True)
+            self.run_policy(fix=True)
         (self.root / "workflows/link.json").unlink()
         self.config["workflow_roots"] = ["../outside"]
         self.put(policy.POLICY, self.config)
         with self.assertRaises(ValueError):
-            self.run_policy(True)
+            self.run_policy(fix=True)
 
     def test_symlinked_subdirectory_cannot_hide_unchecked_templates(self):
         self.put("workflows/valid.json", self.workflow(errorWorkflow="handler1"))
@@ -169,7 +170,7 @@ class WorkflowPolicyTests(unittest.TestCase):
             self.root / "elsewhere", target_is_directory=True
         )
         with self.assertRaises(ValueError):
-            self.run_policy(True)
+            self.run_policy(fix=True)
 
     def test_empty_discovery_is_not_a_green_check(self):
         self.assertEqual(self.run_policy(), 1)

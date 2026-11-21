@@ -9,7 +9,8 @@ import tarfile
 import tempfile
 import time
 import uuid
-from typing import TypedDict
+from collections.abc import Mapping, Sequence
+from typing import cast
 
 IMAGE = (
     "docker.io/library/node@sha256:1f70dfa8d7be2321da1247e671217c11a555cd005edf4ccb014af28c9e8f78ca"
@@ -19,7 +20,12 @@ MAX_FILE = 65536
 MAX_OUTPUT = 24000
 
 
-def bounded_process(args, limit, timeout=55, input_bytes=None):
+def bounded_process(
+    args: Sequence[str | None],
+    limit: int,
+    timeout: float = 55,
+    input_bytes: bytes | None = None,
+):
     source = None
     try:
         if input_bytes is not None:
@@ -27,7 +33,10 @@ def bounded_process(args, limit, timeout=55, input_bytes=None):
             source.write(input_bytes)
             source.seek(0)
         process = subprocess.Popen(
-            args, stdin=source, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
+            cast("list[str]", args),
+            stdin=source,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
         )
     finally:
         if source is not None:
@@ -58,12 +67,12 @@ def bounded_process(args, limit, timeout=55, input_bytes=None):
         process.stdout.close()
 
 
-def _raw_member_name(data, offset):
+def _raw_member_name(data: bytes, offset: object):
     if not isinstance(offset, int) or offset < 0 or offset + 512 > len(data):
         raise ValueError("invalid archive")
     header = data[offset : offset + 512]
 
-    def take(field):
+    def take(field: bytes):
         if b"\0" in field:
             head, tail = field.split(b"\0", 1)
             if tail.replace(b"\0", b""):
@@ -79,7 +88,7 @@ def _raw_member_name(data, offset):
     return prefix + "/" + name if prefix else name
 
 
-def inspect_archive(data):
+def inspect_archive(data: bytes):
     result = {}
     try:
         archive = tarfile.open(fileobj=io.BytesIO(data), mode="r:*")
@@ -115,17 +124,17 @@ def inspect_archive(data):
     return result
 
 
-class _CommandResult(TypedDict, total=False):
-    returncode: int
-    output: str
-    exception_info: None
-
-
 class Sandbox:
-    def __init__(self, files, directory, verifier=False):
+    def __init__(
+        self,
+        files: Mapping[str, str],
+        directory: str | pathlib.Path,
+        *,
+        verifier: bool = False,
+    ):
         self.directory = pathlib.Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
-        self.events = []
+        self.events: list[dict[str, object]] = []
         self.container_id = None
         self.volume_name = "venice-lab-" + uuid.uuid4().hex[:12]
         self.verifier = verifier
@@ -300,13 +309,11 @@ class Sandbox:
 
     def execute(
         self,
-        action: dict[str, object],
+        action: Mapping[str, str],
         input_bytes: bytes | None = None,
         **kwargs: object,
-    ) -> _CommandResult:
+    ):
         command = action["command"]
-        if not isinstance(command, str):
-            raise TypeError(command)
         wrapped = (
             "timeout -k 2 40 bash -lc "
             + shlex.quote(command)
