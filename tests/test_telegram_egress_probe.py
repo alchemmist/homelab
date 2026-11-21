@@ -121,3 +121,11 @@ def test_periodic_retains_last_120_batches(tmp_path):
         except StopIteration:
             pass
     assert json.loads((tmp_path / "recent.json").read_text()) == list(range(1, 121))
+
+
+def test_streamable_probe_matches_helm_payload():
+    """The standalone stdin entrypoint and chart payload must remain byte-identical."""
+    root = Path(__file__).resolve().parents[1]
+    assert (root / "scripts/telegram-egress-probe.py").read_bytes() == (
+        root / "charts/socrat-bot/files/telegram-egress-probe.py"
+    ).read_bytes()
