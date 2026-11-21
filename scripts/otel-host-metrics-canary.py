@@ -16,11 +16,11 @@ import urllib.parse
 import urllib.request
 
 
-def command(arguments):
+def command(arguments) -> str:
     return subprocess.run(arguments, check=True, capture_output=True, text=True, timeout=30).stdout
 
 
-def verify(path, expected):
+def verify(path, expected) -> None:
     stat = path.lstat()
     if path.is_symlink() or not path.is_file() or stat.st_uid != 0 or stat.st_mode & 0o022:
         raise ValueError("Native canary executable must be root owned and not writable by others")
@@ -29,7 +29,7 @@ def verify(path, expected):
             raise ValueError("Native executable differs from pinned controller digest")
 
 
-def configs(root, request):
+def configs(root, request) -> tuple[dict[str, object], dict[str, object]]:
     agent = json.loads((root / "agent-source.json").read_text())
     agent["receivers"] = {"prometheus": agent["receivers"]["prometheus"]}
     agent["extensions"] = {"file_storage": agent["extensions"]["file_storage"]}
@@ -76,13 +76,13 @@ def configs(root, request):
     return agent, gateway
 
 
-def context(root):
+def context(root) -> ssl.SSLContext:
     result = ssl.create_default_context(cafile=str(root / "tls/ca.crt"))
     result.load_cert_chain(str(root / "tls/client.crt"), str(root / "tls/client.key"))
     return result
 
 
-def query(root, expression, range_parameters=None):
+def query(root, expression, range_parameters=None) -> list[dict[str, object]]:
     endpoint = "query_range" if range_parameters else "query"
     parameters = {"query": expression, **(range_parameters or {})}
     url = "https://127.0.0.1:19099/api/v1/" + endpoint + "?" + urllib.parse.urlencode(parameters)
@@ -90,20 +90,53 @@ def query(root, expression, range_parameters=None):
         payload = json.load(response)
     if payload.get("status") != "success":
         raise ValueError("Native shadow Prometheus query failed")
-    return payload["data"]["result"]
+    result = payload["data"]["result"]
+    if not isinstance(result, list) or not all(isinstance(point, dict) for point in result):
+        message = "Native shadow Prometheus query returned malformed samples"
+        raise ValueError(message)
+    return result
 
 
-def identity(labels):
+def _sample_value(point: dict[str, object]) -> str:
+    """Return the string sample value of one instant-vector point."""
+    value = point["value"]
+    if not isinstance(value, (list, tuple)):
+        message = "Native instant sample has no value pair"
+        raise TypeError(message)
+    reading = value[1]
+    if not isinstance(reading, str):
+        message = "Native instant sample value is not a string"
+        raise TypeError(message)
+    return reading
+
+
+def _range_values(point: dict[str, object]) -> list[tuple[float, str]]:
+    """Return the timestamp-value pairs of one range-vector point."""
+    values = point["values"]
+    if not isinstance(values, list):
+        message = "Native range sample has no values list"
+        raise TypeError(message)
+    pairs = []
+    for item in values:
+        if not isinstance(item, (list, tuple)):
+            message = "Native range sample entries must be timestamp/value pairs"
+            raise TypeError(message)
+        timestamp, reading = item
+        pairs.append((float(timestamp), str(reading)))
+    return pairs
+
+
+def identity(labels) -> str:
     return hashlib.sha256(
         json.dumps(labels, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
 
 
-def unit(root, label):
-    return root.name + "-" + label + ".service"
+def unit(root, label) -> str:
+    return f"{root.name}-{label}.service"
 
 
-def stop(root, labels):
+def stop(root, labels) -> None:
     for label in labels:
         if (
             command(["systemctl", "show", unit(root, label), "-p", "MainPID", "--value"]).strip()
@@ -112,7 +145,7 @@ def stop(root, labels):
             command(["systemctl", "stop", unit(root, label)])
 
 
-def start(root, label, executable, arguments, memory, environment=None, extra=None):
+def start(root, label, executable, arguments, memory, environment=None, extra=None) -> None:
     properties = [
         f"MemoryMax={memory}",
         "MemorySwapMax=0",
@@ -126,7 +159,7 @@ def start(root, label, executable, arguments, memory, environment=None, extra=No
     command(argv + [str(executable)] + arguments)
 
 
-def wait_port(ip, port):
+def wait_port(ip, port) -> None:
     deadline = time.monotonic() + 20
     while time.monotonic() < deadline:
         try:
@@ -137,7 +170,7 @@ def wait_port(ip, port):
     raise RuntimeError("Owned native listener did not become ready")
 
 
-def environment(root, request):
+def environment(root, request) -> dict[str, str]:
     return {
         "GOMAXPROCS": "2",
         "GOMEMLIMIT": "192MiB",
@@ -151,7 +184,7 @@ def environment(root, request):
     }
 
 
-def telemetry(root):
+def telemetry(root) -> dict[str, float]:
     with urllib.request.urlopen("http://127.0.0.1:18888/metrics", timeout=5) as response:
         lines = response.read(4 * 1024 * 1024 + 1).decode().splitlines()
     selected = {}
@@ -174,7 +207,7 @@ def telemetry(root):
     return selected
 
 
-def classify_shutdown_replay(text):
+def classify_shutdown_replay(text) -> dict[str, object]:
     # Pinned upstream 0.164 logs every Send error as "Dropping data", but
     # persistent_queue.onDone retains IsShutdownErr items for startup replay.
     # Never exempt generic send failures or merely trust the log wording.
@@ -225,7 +258,7 @@ def classify_shutdown_replay(text):
     }
 
 
-def validate_contract(root, request, now=None):
+def validate_contract(root, request, now=None) -> None:
     collected = datetime.fromisoformat(request["scrapeContractCollectedAt"])
     age = ((now or datetime.now(timezone.utc)) - collected).total_seconds()
     if not 0 <= age <= 900:
@@ -237,7 +270,7 @@ def validate_contract(root, request, now=None):
         raise ValueError("Frozen native host source config changed after compilation")
 
 
-def run(root, phase):
+def run(root, phase) -> dict[str, object]:
     if (
         os.geteuid() != 0
         or root.is_symlink()
@@ -382,9 +415,9 @@ def run(root, phase):
             ages = query(root, "time() - timestamp(up)")
             if (
                 {identity(point["metric"]) for point in actual} == expected
-                and all(point["value"][1] == "1" for point in actual)
+                and all(_sample_value(point) == "1" for point in actual)
                 and len(ages) == 4
-                and all(0 <= float(point["value"][1]) < 15 for point in ages)
+                and all(0 <= float(_sample_value(point)) < 15 for point in ages)
             ):
                 consecutive += 1
                 if consecutive >= 3:
@@ -400,7 +433,7 @@ def run(root, phase):
             {
                 "healthyTargetCount": 4,
                 "allTargetLabelsEquivalent": True,
-                "maximumUpAgeSeconds": max(float(p["value"][1]) for p in ages),
+                "maximumUpAgeSeconds": max(float(_sample_value(p)) for p in ages),
             }
         )
     elif phase in ("await-queued", "await-drained"):
@@ -426,8 +459,8 @@ def run(root, phase):
             series = by_identity[identity({**labels, "__name__": "up"})]
             restart = restarts[node]["restartStartedAt"]
             count = sum(
-                stops < float(timestamp) < restart and value == "1"
-                for timestamp, value in series["values"]
+                stops < timestamp < restart and value == "1"
+                for timestamp, value in _range_values(series)
             )
             if count < 1:
                 raise ValueError("No pre-restart outage samples survived durable queue on one host")

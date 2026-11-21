@@ -11,8 +11,8 @@ import pathlib
 import yaml
 
 
-def merge(live, desired):
-    result = copy.deepcopy(live)
+def merge(live, desired) -> dict[str, object]:
+    result = dict(copy.deepcopy(live))
     target = desired["service"]["pipelines"]["logs"]
     other = [v for k, v in live["service"]["pipelines"].items() if k != "logs"]
     for section in ("receivers", "processors", "exporters"):

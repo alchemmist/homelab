@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 
-def literal(value):
+def literal(value) -> object:
     if isinstance(value, dict):
         return {key: literal(item) for key, item in value.items()}
     if isinstance(value, list):
@@ -22,7 +22,7 @@ def literal(value):
     return value.replace("$", "$$") if isinstance(value, str) else value
 
 
-def metrics(counter, gauge):
+def metrics(counter, gauge) -> str:
     text = "# TYPE smoke_requests_total counter\nsmoke_requests_total " + str(counter) + "\n"
     if gauge:
         text += '# TYPE smoke_value gauge\nsmoke_value{region="test"} 42\n'
@@ -42,7 +42,9 @@ smoke_summary_count 3
     )
 
 
-def query(port, context, expression='{__name__=~"smoke_.+|up"}'):
+def query(
+    port, context, expression='{__name__=~"smoke_.+|up"}'
+) -> dict[tuple[tuple[str, str], ...], str]:
     parameters = urllib.parse.urlencode({"query": expression})
     with urllib.request.urlopen(
         "https://127.0.0.1:" + str(port) + "/api/v1/query?" + parameters, context=context, timeout=5
@@ -50,14 +52,15 @@ def query(port, context, expression='{__name__=~"smoke_.+|up"}'):
         document = json.load(response)
     if document.get("status") != "success":
         raise ValueError("Synthetic PromQL query failed")
-    return {
+    result: dict[tuple[tuple[str, str], ...], str] = {
         tuple(sorted(item["metric"].items())): item["value"][1]
         for item in document["data"]["result"]
     }
+    return result
 
 
-def semantic_series_view(series):
-    result = {}
+def semantic_series_view(series) -> dict[tuple[tuple[str, str], ...], str]:
+    result: dict[tuple[tuple[str, str], ...], str] = {}
     for key, value in series.items():
         attributes = dict(key)
         numeric_label = {"smoke_duration_seconds_bucket": "le", "smoke_summary": "quantile"}.get(
@@ -75,11 +78,11 @@ def semantic_series_view(series):
     return result
 
 
-def equivalent_series(legacy, shadow):
+def equivalent_series(legacy, shadow) -> bool:
     return semantic_series_view(legacy) == semantic_series_view(shadow)
 
 
-def promql_checks(context, reset):
+def promql_checks(context, reset) -> int:
     pairs = [
         (
             "histogram_quantile",
@@ -109,7 +112,7 @@ def promql_checks(context, reset):
     return len(pairs)
 
 
-def run(args):
+def run(args) -> dict[str, object]:
     if os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
         raise ValueError("A separate network namespace is mandatory")
     args.workspace.mkdir(mode=0o700, exist_ok=False)
@@ -366,7 +369,7 @@ def run(args):
     return result
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     for name in ["binary", "prometheus", "config", "tls", "workspace"]:
         parser.add_argument("--" + name, type=Path, required=True)

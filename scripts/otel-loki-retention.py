@@ -15,7 +15,7 @@ COPIES = [ROOT / p for p in ("deploy/monitoring/otel/loki.yaml", "charts/loki/fi
 LEVELS = {"trace", "debug", "info", "warn", "error", "fatal", "unknown"}
 
 
-def rules(policy):
+def rules(policy) -> tuple[int, list[tuple[int, str, int]]]:
     if policy.get("schemaVersion") != 1:
         raise ValueError("Unsupported policy schema")
     fallback = policy["fallbackHours"]
@@ -105,7 +105,7 @@ def rules(policy):
     return fallback, result
 
 
-def render(text, policy):
+def render(text, policy) -> str:
     fallback, streams = rules(policy)
     block = "  retention_period: " + str(fallback) + "h\n  retention_stream:\n"
     for priority, selector, period in streams:
@@ -113,15 +113,15 @@ def render(text, policy):
             f"    - selector: '{selector}'\n      priority: {priority}\n      period: {period}h\n"
         )
     # Replace only the limits retention stanza, preserving all unrelated Loki settings.
-    text, count = re.subn(
+    updated, count = re.subn(
         r"  retention_period:.*?\n(?=  allow_structured_metadata:)", block, text, flags=re.DOTALL
     )
     if count != 1:
         raise ValueError("Expected one bounded limits retention stanza")
-    return text
+    return updated
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--policy", type=Path, default=POLICY)

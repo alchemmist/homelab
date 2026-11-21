@@ -15,7 +15,7 @@ TARGETS = [
 NODES = ["socrat-0", "socrat-1"]
 
 
-def placement(document):
+def placement(document) -> tuple[dict[str, object] | None, dict[str, object] | None]:
     metadata, spec = document["metadata"], document["spec"]
     if (metadata["namespace"], metadata["name"]) not in TARGETS:
         raise ValueError("Deployment outside the explicit stateless-controller allowlist")
@@ -59,7 +59,7 @@ def placement(document):
     affinity["nodeAffinity"] = required
     if original == affinity:
         return None, None
-    patch = {
+    patch: dict[str, object] = {
         "metadata": {"resourceVersion": metadata["resourceVersion"]},
         "spec": {
             "strategy": {
@@ -69,7 +69,7 @@ def placement(document):
             "template": {"spec": {"affinity": affinity}},
         },
     }
-    rollback = {
+    rollback: dict[str, object] = {
         "uid": metadata["uid"],
         "originalAffinity": original,
         "originalStrategy": copy.deepcopy(spec.get("strategy")),
@@ -78,7 +78,7 @@ def placement(document):
     return patch, rollback
 
 
-def run(kubeconfig, state_directory):
+def run(kubeconfig, state_directory) -> dict[str, object]:
     state_directory.mkdir(mode=0o700, parents=True, exist_ok=False)
     base = ["k3s", "kubectl", "--kubeconfig", kubeconfig]
 
@@ -99,7 +99,7 @@ def run(kubeconfig, state_directory):
         get = ["-n", namespace, "get", "deployment", name, "-o", "json"]
         document = json.loads(command(get))
         patch, rollback = placement(document)
-        if patch is None:
+        if patch is None or rollback is None:
             result.append({"namespace": namespace, "name": name, "changed": False})
             continue
         with (state_directory / (namespace + "-" + name + ".json")).open("x") as stream:
@@ -183,7 +183,7 @@ def run(kubeconfig, state_directory):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--kubeconfig", default="/etc/rancher/k3s/k3s.yaml")
     parser.add_argument("--state-directory", type=Path, required=True)

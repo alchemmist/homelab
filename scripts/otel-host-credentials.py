@@ -19,14 +19,14 @@ from pathlib import Path
 ROOT = Path("/var/lib/homelab-otel")
 
 
-def atomic(path, value):
+def atomic(path, value) -> None:
     temporary = path.with_name(path.name + ".tmp")
     temporary.write_text(value)
     temporary.chmod(0o600)
     temporary.replace(path)
 
 
-def run(verify_scope=False):
+def run(verify_scope=False) -> None:
     os.umask(0o077)
     if os.geteuid() != 0 or ROOT.is_symlink():
         raise ValueError("Root-owned native host workspace required")

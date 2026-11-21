@@ -14,10 +14,10 @@ import urllib.request
 from pathlib import Path
 
 
-def identifier(value):
+def identifier(value) -> str:
     if re.fullmatch(r"[0-9a-fA-F]{16}|[0-9a-fA-F]{32}", value):
-        return value.lower()
-    return base64.b64decode(value, validate=True).hex()
+        return str(value.lower())
+    return str(base64.b64decode(value, validate=True).hex())
 
 
 def summarize(
@@ -27,7 +27,7 @@ def summarize(
     service_name="homelab-litellm-sdk-canary",
     root_name="homelab.synthetic.litellm-sdk-validation",
     child_name=None,
-):
+) -> dict[str, object]:
     text = json.dumps(document)
     forbidden = [
         "OTEL_CANARY_PRIVATE_CONTENT_MUST_NOT_BE_CAPTURED",
@@ -88,7 +88,9 @@ def summarize(
     return report
 
 
-def summarize_production_litellm(document, trace_id, parent_id, inference=False):
+def summarize_production_litellm(
+    document, trace_id, parent_id, inference=False
+) -> dict[str, object]:
     records = []
 
     def walk(value, service=None):
@@ -181,7 +183,7 @@ def summarize_native_production(
     target_service="vllm",
     target_name="llm_request",
     require_server_kind=False,
-):
+) -> dict[str, object]:
     records = []
 
     def walk(value, service=None):
@@ -237,13 +239,13 @@ def summarize_native_production(
     }
 
 
-def summarize_production_vllm(document, trace_id, parent_id):
+def summarize_production_vllm(document, trace_id, parent_id) -> dict[str, object]:
     report = summarize_native_production(document, trace_id, parent_id)
     report["productionVllmNativeRequestTracingVerified"] = report["success"]
     return report
 
 
-def summarize_production_open_webui(document, trace_id, parent_id):
+def summarize_production_open_webui(document, trace_id, parent_id) -> dict[str, object]:
     report = summarize_native_production(
         document,
         trace_id,
@@ -271,7 +273,7 @@ def run(
     open_webui_canary=False,
     production_open_webui=False,
     production_litellm_inference=False,
-):
+) -> None:
     os.umask(0o077)
     if (
         os.geteuid() != 0

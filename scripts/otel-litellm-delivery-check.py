@@ -9,7 +9,7 @@ import urllib.request
 from pathlib import Path
 
 
-def run(pod, application="litellm"):
+def run(pod, application="litellm") -> None:
     if application not in ("litellm", "vllm") or not re.fullmatch(
         application + r"-[a-z0-9-]+", pod
     ):

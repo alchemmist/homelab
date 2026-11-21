@@ -23,17 +23,17 @@ MARKERS = [
 ]
 
 
-def certificate_hash():
+def certificate_hash() -> str:
     return hashlib.sha256(Path("/etc/otel-client/tls.crt").read_bytes()).hexdigest()
 
 
-def record(value):
+def record(value) -> None:
     temporary = PROGRESS.with_suffix(".new")
     temporary.write_text(json.dumps(value))
     temporary.replace(PROGRESS)
 
 
-def run():
+def run() -> None:
     logging.disable(logging.CRITICAL)
     if os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "").lower() != "connection=close":
         raise ValueError("Fresh native HTTP client handshakes required for leaf reload proof")

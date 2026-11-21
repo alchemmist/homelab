@@ -22,7 +22,7 @@ MARKERS = [
 ]
 
 
-def run():
+def run() -> None:
     logging.disable(logging.CRITICAL)
     renewal = os.environ.get("HOMELAB_AWAIT_LEAF_RENEWAL") == "1"
     loaded = []

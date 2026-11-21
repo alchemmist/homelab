@@ -21,7 +21,7 @@ QUERIES = {
 }
 
 
-def select_counts(document):
+def select_counts(document) -> list[dict[str, object]]:
     if (
         document.get("status") != "success"
         or document.get("warnings")
@@ -29,6 +29,9 @@ def select_counts(document):
     ):
         raise ValueError("Native count query failed/partial/wrong type")
     results = document["data"]["result"]
+    if not isinstance(results, list):
+        message = "Native count query returned malformed results"
+        raise TypeError(message)
     if len(results) > 3000:
         raise ValueError("Metadata-only delivery matrix exceeds source budget")
     for point in results:
@@ -47,14 +50,14 @@ def select_counts(document):
     return results
 
 
-def run(output):
+def run(output) -> None:
     os.umask(0o077)
     if os.geteuid() != 0:
         raise ValueError("Root-only native client credential access required")
     root = Path("/var/lib/homelab-otel/tls")
     context = ssl.create_default_context(cafile=str(root / "ca.crt"))
     context.load_cert_chain(str(root / "client.crt"), str(root / "client.key"))
-    result = {
+    result: dict[str, object] = {
         "observedAtUnix": time.time(),
         "windowSeconds": 3600,
         "logBodiesFetchedOrSaved": False,

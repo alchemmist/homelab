@@ -12,7 +12,7 @@ import urllib.request
 UNIT = "homelab-otel-agent.service"
 
 
-def metrics():
+def metrics() -> dict[str, float]:
     with urllib.request.urlopen("http://127.0.0.1:8888/metrics", timeout=10) as response:
         text = response.read().decode()
     result = {}
@@ -27,12 +27,12 @@ def metrics():
     return result
 
 
-def total(data, prefix):
+def total(data, prefix) -> float:
     base = prefix.removesuffix("_total")
     names = {k.split("{")[0] for k in data if k.split("{")[0] in (base, base + "_total")}
     if len(names) > 1:
         raise ValueError("Ambiguous counter metric suffix: " + base)
-    return sum(v for k, v in data.items() if k.split("{")[0] in names)
+    return float(sum(v for k, v in data.items() if k.split("{")[0] in names))
 
 
 if __name__ != "__main__":
@@ -60,7 +60,7 @@ elif sys.argv[1] == "health":
     first = metrics()
     time.sleep(40)
     last = metrics()
-    report = {"freshMetrics": True}
+    report: dict[str, float] = {"freshMetrics": True}
     for name in [
         "otelcol_exporter_sent_metric_points_total",
         "otelcol_exporter_sent_log_records_total",
