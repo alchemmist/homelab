@@ -246,11 +246,15 @@ def public_keys(value):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         raise Refused("Authentik redirect refused")
 
 
 class Authentik:
+    """Authentik HTTP API client used for SSH identity planning."""
+
     def __init__(self, url, token, ca_file=None):
         parsed = urllib.parse.urlsplit(url)
         require(

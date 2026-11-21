@@ -104,6 +104,8 @@ def harbor_authorization(credentials):
 
 
 class Client:
+    """Observer API client using local credentials."""
+
     def __init__(self, credentials):
         class NoRedirect(urllib.request.HTTPRedirectHandler):
             def redirect_request(self, *args, **kwargs):

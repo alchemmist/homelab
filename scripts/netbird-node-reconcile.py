@@ -234,11 +234,15 @@ def policy_ok(p, admin, resource=None, group=None):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, *a, **kw):
         return None
 
 
 class Runtime:
+    """Runtime wrapper for reconciling NetBird node state."""
+
     def __init__(self, folder, config, apply=False):
         self.folder, self.config, self.apply = folder, validate_config(config), apply
         self.k = [

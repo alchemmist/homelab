@@ -22,6 +22,8 @@ def archive(entries):
 
 
 class ArchiveTests(unittest.TestCase):
+    """Tests for inspect_archive archive scanning."""
+
     def test_regular_files(self):
         result = inspect_archive(
             archive([("lib.cjs", b"code", tarfile.REGTYPE), ("test.cjs", b"test", tarfile.REGTYPE)])
@@ -113,6 +115,8 @@ class ArchiveTests(unittest.TestCase):
 
 
 class VerifierTests(unittest.TestCase):
+    """Tests for the regression verifier helpers."""
+
     def test_expected(self):
         self.assertEqual(expected("median", [[10, 2, 1]]), {"value": 2})
         self.assertEqual(expected("median", [[1, 2]]), {"value": 1.5})
@@ -219,6 +223,8 @@ SPOOF = (
 
 
 class NodeVerifierTests(unittest.TestCase):
+    """Tests for the node-based source verifier."""
+
     def run_source(self, task, source, seed=7):
         import pathlib
         import subprocess
@@ -301,6 +307,8 @@ process.exit(0);
 
 
 class ControllerTests(unittest.TestCase):
+    """Tests for controller settling and blocking semantics."""
+
     def test_rejection_retries_then_blocks(self):
         from controller import settle_task
 
@@ -348,6 +356,8 @@ class ControllerTests(unittest.TestCase):
 
 
 class MiniAdapterTests(unittest.TestCase):
+    """Tests for the mini submission adapter."""
+
     def test_completion_uses_executed_output_not_command_spelling(self):
         from attempt import mini_submission
 

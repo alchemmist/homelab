@@ -11,6 +11,8 @@ import attempt
 
 
 class FakeEnvironment:
+    """Fake repository environment for deterministic tests."""
+
     def __init__(self, snapshot, directory, image, protocol):
         self.container_id = "fake"
         self.events = []
@@ -35,6 +37,8 @@ def passing_verdict():
 
 
 class FinalDecisionTests(unittest.TestCase):
+    """Tests for the final runner decision logic."""
+
     def run_main(self, verdict, candidate_main, clean=True, cleanup_error=False):
         root = tempfile.TemporaryDirectory()
         self.addCleanup(root.cleanup)
@@ -179,6 +183,8 @@ if __name__ == "__main__":
 
 
 class AcceptanceFeedbackTests(unittest.TestCase):
+    """Tests for acceptance feedback diagnostics."""
+
     def test_rejection_contains_bounded_failure_diagnostics(self):
         with tempfile.TemporaryDirectory() as temp:
             root = pathlib.Path(temp)
@@ -215,6 +221,8 @@ class AcceptanceFeedbackTests(unittest.TestCase):
 
 
 class ResumePromptTests(unittest.TestCase):
+    """Tests for the resume prompt contract."""
+
     def test_resume_identifies_original_snapshot_as_the_contract(self):
         with tempfile.TemporaryDirectory() as temp:
             root = pathlib.Path(temp)
@@ -234,6 +242,8 @@ class ResumePromptTests(unittest.TestCase):
 
 
 class SnapshotRejectionTests(unittest.TestCase):
+    """Tests for actionable snapshot archive rejections."""
+
     def test_archive_policy_rejection_is_actionable_without_becoming_a_pass(self):
         with tempfile.TemporaryDirectory() as temp:
             environment = mock.Mock()

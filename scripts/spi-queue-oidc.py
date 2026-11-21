@@ -55,11 +55,15 @@ def save(path, value):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, *args, **kwargs):
         return None
 
 
 class API:
+    """SPI queue OIDC provider API client."""
+
     def __init__(self, credentials, write=False):
         private(credentials)
         value = json.loads(credentials.read_text())

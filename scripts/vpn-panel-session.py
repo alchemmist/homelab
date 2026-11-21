@@ -33,6 +33,8 @@ KUBE = ["/usr/local/bin/kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, *args, **kwargs):
         raise ValueError("API redirect refused")
 
@@ -131,6 +133,8 @@ def pod_identity():
 
 
 class NativeSession:
+    """Panel session reconciler backed by the native VPN database."""
+
     def __init__(self, state, database=DB, worker_scope="node-sync"):
         if worker_scope not in ("node-sync", "admin"):
             raise ValueError("Unreviewed worker scope")

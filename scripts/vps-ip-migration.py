@@ -86,7 +86,7 @@ DATABASES = ("/srv/x-ui-lab/db/x-ui.db", "/etc/x-ui/x-ui.db")
 
 
 class MigrationError(Exception):
-    pass
+    """Exception raised when the VPS IP migration fails."""
 
 
 def addresses(old, new):
@@ -114,6 +114,8 @@ def run(argv):
 
 
 class Preimages:
+    """Store of preimage artifacts keyed by label under a root."""
+
     def __init__(self, root, label):
         raw = Path(root).expanduser()
         if not raw.is_absolute() or raw.is_symlink():

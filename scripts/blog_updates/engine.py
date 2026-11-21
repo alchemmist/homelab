@@ -14,7 +14,7 @@ MAX_ENTRIES = 5
 
 
 class UnsafeInput(ValueError):
-    pass
+    """Value error raised on unsafe blog update input."""
 
 
 def validate_event(event):

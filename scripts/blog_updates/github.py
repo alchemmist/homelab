@@ -10,6 +10,8 @@ from engine import REPO, UPDATES, UnsafeInput
 
 
 class GitHub:
+    """GitHub REST API client for blog updates."""
+
     def __init__(self, token):
         self.token = token
 

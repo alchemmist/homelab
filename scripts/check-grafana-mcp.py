@@ -28,6 +28,8 @@ def load_token(ssh_host):
 
 
 class Client:
+    """Minimal Grafana MCP HTTP client."""
+
     def __init__(self, url, token):
         self.url = url
         self.headers = {

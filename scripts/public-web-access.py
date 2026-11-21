@@ -24,6 +24,8 @@ def unique(rows, key, value):
 
 
 class API:
+    """Public web access policy API client."""
+
     def __init__(self, path):
         self.token = json.loads(Path(path).read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
 

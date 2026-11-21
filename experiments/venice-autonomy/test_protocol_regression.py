@@ -22,6 +22,8 @@ def python_path():
 
 
 class MethodSignatureTests(unittest.TestCase):
+    """Tests that method signature changes are caught."""
+
     baseline = "class BrowserSession:\n    async def _answer(self, page, fallback=None) -> str:\n        return 'answer'\n    async def _generate_on_page(self, page):\n        return page\n"
 
     def test_signature_changes_are_rejected(self):
@@ -53,6 +55,8 @@ class MethodSignatureTests(unittest.TestCase):
 
 
 class TestCompletionTests(unittest.TestCase):
+    """Tests for the test completion flow."""
+
     def grade(self, body):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -78,6 +82,8 @@ class TestCompletionTests(unittest.TestCase):
 
 
 class GraderProcessTests(unittest.TestCase):
+    """Tests for bounded grader subprocess output."""
+
     def test_both_output_channels_are_bounded(self):
         for channel in (1, 2):
             with self.subTest(channel=channel), self.assertRaisesRegex(ValueError, "output limit"):
@@ -107,6 +113,8 @@ class GraderProcessTests(unittest.TestCase):
 
 
 class SnapshotTests(unittest.TestCase):
+    """Tests for snapshot artifact persistence."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.dest = Path(self.temp.name) / "snapshot"

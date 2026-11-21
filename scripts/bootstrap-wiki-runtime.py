@@ -7,10 +7,12 @@ import subprocess
 
 
 class BootstrapError(Exception):
-    pass
+    """Exception raised when the wiki runtime bootstrap fails."""
 
 
 class Kubernetes:
+    """Kubernetes client that shells out to kubectl."""
+
     def __init__(self, command):
         self.command = command
 

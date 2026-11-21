@@ -50,6 +50,8 @@ def admin(method, path, data=None):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, *args):
         return None
 
