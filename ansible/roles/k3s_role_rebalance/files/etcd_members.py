@@ -17,6 +17,7 @@ TLS = "/var/lib/rancher/k3s/server/tls/etcd/"
 
 class Etcd:
     def call(self, args, endpoint="https://127.0.0.1:2379", structured=True):
+        """Run an authenticated etcdctl command and return its output."""
         command = [
             "etcdctl",
             "--endpoints=" + endpoint,
@@ -34,6 +35,7 @@ class Etcd:
         return json.loads(result.stdout) if structured else result.stdout
 
     def members(self):
+        """Map etcd member names to their cluster identifiers."""
         result = {}
         for member in self.call(["member", "list"])["members"]:
             matches = [
@@ -53,11 +55,13 @@ class Etcd:
         return result
 
     def health(self, name):
+        """Assert linearizable health of the named member endpoint."""
         result = self.call(["endpoint", "health"], ENDPOINTS[name])
         if len(result) != 1 or result[0].get("health") is not True:
             raise RuntimeError("Linearizable health check failed for " + name)
 
     def status(self, name):
+        """Return the status header of the named member endpoint."""
         result = self.call(["endpoint", "status"], ENDPOINTS[name])
         if len(result) != 1 or result[0].get("Error"):
             raise RuntimeError("Endpoint status failed for " + name)

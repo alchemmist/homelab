@@ -69,6 +69,7 @@ class ObservedHTTP:
 
     @contextlib.contextmanager
     def open(self, request, *args, **kwargs):
+        """Open a URL while recording timing and phase metrics."""
         started = time.monotonic()
         phase = "https_open"
         response = None

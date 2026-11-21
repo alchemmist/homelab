@@ -8,7 +8,9 @@ from urllib.error import HTTPError
 
 REPO='alchemmist/monori'; PREFIX='openhands/issue-509/'
 class NoRedirect(HTTPRedirectHandler):
-    def redirect_request(self,*args):return None
+    def redirect_request(self,*args):
+        """Refuse redirects so credentials are never forwarded."""
+        return None
 
 def api(path, data=None,method=None):
     url='https://api.github.com/'+('graphql' if path=='graphql' else 'repos/'+REPO+'/'+path)
@@ -139,10 +141,14 @@ def dispatch(x):
     return {'pr':p['number'],'head':oid,'url':p['html_url']}
 
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self,*args):pass
+    def log_message(self,*args):
+        """Silence default request-line logging."""
+        pass
     def send(self,status,obj):
+        """Write a JSON response with explicit content length."""
         raw=json.dumps(obj).encode();self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
     def do_POST(self):
+        """Validate and dispatch a signed steward action to GitHub."""
         try:
             self.connection.settimeout(10);check(self.path=='/v1' and not self.headers.get('Transfer-Encoding'));n=int(self.headers['Content-Length']);check(0<n<=20000000);x=json.loads(self.rfile.read(n));check(x.get('action')=='qa_issue' or n<=250000);self.send(200,dispatch(x))
         except HTTPError as e:self.send(502,{'github_status':e.code,'retry':'Inspect existing branch/PR before retrying'})

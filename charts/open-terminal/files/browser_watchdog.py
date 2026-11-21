@@ -10,6 +10,7 @@ from pathlib import Path
 
 class JsonFormatter(logging.Formatter):
     def format(self, record):
+        """Render a log record as JSON, omitting exception text."""
         # Do not render exception text/tracebacks: they can contain process arguments.
         event = getattr(record, "event", "watchdog_error")
         result = dict(
@@ -36,6 +37,7 @@ class Process:
 
     @property
     def identity(self):
+        """Stable (pid, start-ticks) identity of the process."""
         return self.pid, self.start
 
 
@@ -118,6 +120,7 @@ class Watchdog:
         self.browsers = {}
 
     def step(self, processes, now):
+        """Advance one watchdog tick: track new browsers and reap ended ones."""
         for process in processes.values():
             if is_test_browser(process) and process.identity not in self.browsers:
                 self.browsers[process.identity] = Browser(

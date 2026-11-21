@@ -104,6 +104,7 @@ def loop():
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        """Serve the current metrics snapshot on /metrics."""
         if self.path != "/metrics":
             self.send_error(404)
             return
@@ -130,11 +131,13 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def log_message(self, *_):
+        """Suppress default request-line logging."""
         pass
 
 
 class MetricsServer(ThreadingHTTPServer):
     def server_bind(self):
+        """Bind without reverse DNS and pin the server name."""
         # Avoid slow reverse DNS lookups during HTTPServer initialization.
         socketserver.TCPServer.server_bind(self)
         self.server_name = "n8n-observer"

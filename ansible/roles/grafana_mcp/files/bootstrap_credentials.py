@@ -38,6 +38,7 @@ class Grafana:
         self.authorization = "Basic " + encoded
 
     def request(self, method, path, payload=None, token=None):
+        """Issue a Grafana HTTP request and return the decoded JSON response."""
         request = urllib.request.Request(
             self.url + path,
             data=json.dumps(payload).encode() if payload is not None else None,

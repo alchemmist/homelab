@@ -371,6 +371,7 @@ def execute(api, state, services, expected, receipt):
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
+        """Refuse redirects by closing the body and raising instead."""
         if fp:
             fp.close()
         raise RuntimeError("API redirect refused")

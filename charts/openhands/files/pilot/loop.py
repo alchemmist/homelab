@@ -187,9 +187,12 @@ def background(action):
     finally:LOCK.release()
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
+        """Dispatch the requested pilot action in the background and reply with state."""
         action=self.path.lstrip('/')
         if action not in {*ROUTES.values(),'status','tick'} or self.headers.get('Transfer-Encoding') or int(self.headers.get('Content-Length',0))!=0:self.send_error(400);return
         if action==decision() and LOCK.acquire(False):threading.Thread(target=background,args=(action,),daemon=True).start()
         raw=json.dumps({'next':decision(),'cards':state(),'screened':sql('select name,verdict,count(*) from scans group by name,verdict')}).encode();self.send_response(200);self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(raw)
-    def log_message(self,*a):pass
+    def log_message(self,*a):
+        """Silence default request-line logging."""
+        pass
 if __name__=='__main__':init();ThreadingHTTPServer(('0.0.0.0',8083),Handler).serve_forever()
