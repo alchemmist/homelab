@@ -38,7 +38,7 @@ SPECS = {
  ('deduplicate',"a=int(input());b=int(input());c=int(input());print(*sorted(set([a,b,c]),reverse=True),sep='\\n')"),
  ('lexicographic',"a=input();b=input();c=input();print(*sorted([a,b,c],reverse=True),sep='\\n')")]),
 }
-ORACLE_JS = r'''
+ORACLE_JS = r"""
  const single = lines.length===1 && !input.includes('\r');
  if (['repeat4','python_exact','zen','meow'].includes(data.contract)) {
   if (!single) return null;
@@ -66,7 +66,7 @@ ORACLE_JS = r'''
   if(lines.length!==3 || !lines.every(x=>/^[1-9]\d{0,3}$/.test(x)))return null;
   return lines.map(Number).sort((a,b)=>b-a).join('\n')+'\n';
  }
-'''
+"""
 
 # Three reviewed loop contracts. Data after the sentinel must not be printed.
 for slug, contract, stop, wrong_stop, alternate in [
@@ -78,7 +78,7 @@ for slug, contract, stop, wrong_stop, alternate in [
   return 'import sys\nfor line in sys.stdin:\n s=line.rstrip("\\n")\n if '+condition+':\n  '+('print(s); ' if inclusive else '')+'break\n print(s)'
  SPECS['while-intro/'+slug]=(contract,'','',[
   ('include terminator',probe(stop,True)),('wrong stopping condition',probe(wrong_stop)),('alternate terminator',probe(alternate))])
-ORACLE_JS += r'''
+ORACLE_JS += r"""
  if(['until_zero','until_nonmultiple','until_empty'].includes(data.contract)) {
   if(!lines.length || input.includes('\r'))return null;
   const prefix=[];
@@ -90,7 +90,7 @@ ORACLE_JS += r'''
   }
   return null;
  }
-'''
+"""
 
 for version in (2,3):
  contract=f'xmas{version}'
@@ -100,13 +100,13 @@ for version in (2,3):
  ('accept mixed encodings',probe("all(any(x==v[i] for v in "+repr(valid)+") for i,x in enumerate(a))")),
  ('ignore order',probe('any(sorted(a)==sorted(v) for v in '+repr(valid)+')')),
  ('strip significant spaces',probe('[x.strip() for x in a] in '+repr(valid)))])
-ORACLE_JS += r'''
+ORACLE_JS += r"""
  if(data.contract==='xmas2'||data.contract==='xmas3') {
   if(lines.length!==3 || input.includes('\r'))return null;
   const seq=lines.join('\n');
   return (seq==='раз\nдва\nтри'||seq==='1\n2\n3'||(data.contract==='xmas3'&&seq==='один\nдва\nтри')?'ГОРИ':'НЕ ГОРИ')+'\n';
  }
-'''
+"""
 
 _fb_value="'FizzBuzz' if i%15==0 else 'Fizz' if i%3==0 else 'Buzz' if i%5==0 else i"
 def _fb_loop(bounds, value):
@@ -115,14 +115,14 @@ SPECS['break-continue/fizzbuzz']=('fizzbuzz','','',[
  ('skip right endpoint',_fb_loop('a,b',_fb_value)),
  ('miss common multiple',_fb_loop('a,b+1',"'Fizz' if i%3==0 else 'Buzz' if i%5==0 else i")),
  ('omit plain numbers',_fb_loop('a,b+1',_fb_value).replace(' print(', ' if i%3==0 or i%5==0: print('))])
-ORACLE_JS += r'''
+ORACLE_JS += r"""
  if(data.contract==='fizzbuzz') {
   if(lines.length!==2 || !lines.every(x=>/^[1-9]\d{0,5}$/.test(x)))return null;
   const [a,b]=lines.map(Number); if(a>=b || b-a>50)return null;
   const result=[]; for(let i=a;i<=b;i++)result.push((i%3===0?'Fizz':'')+(i%5===0?'Buzz':'')||String(i));
   return result.join('\n')+'\n';
  }
-'''
+"""
 
 def count_probe(initial, condition):
  return f'n={initial}\nwhile True:\n s=input(); n+=1\n if {condition}: break\nprint(n)'
@@ -137,7 +137,7 @@ SPECS['nested-loops/table-as-list']=('mult_table','','',[
  ('omit last row',table_probe('range(1,n)','range(1,n+1)','i*j')),
  ('upper triangle only',table_probe('range(1,n+1)','range(i,n+1)','i*j')),
  ('add instead of multiply',table_probe('range(1,n+1)','range(1,n+1)','i+j'))])
-ORACLE_JS += r'''
+ORACLE_JS += r"""
  if(data.contract==='thank_count') {
   if(!input.endsWith('\n') || input.includes('\r'))return null;
   const idx=lines.indexOf('Спасибо.'); return idx<0?null:String(idx+1)+'\n';
@@ -148,7 +148,7 @@ ORACLE_JS += r'''
   for(let i=1;i<=n;i++)for(let j=1;j<=n;j++)rows.push(`${i} * ${j} = ${i*j}`);
   return rows.join('\n')+'\n';
  }
-'''
+"""
 
 _digits="a,b,c=map(int,input()); "
 _yes="'Вы ввели красивое число'"; _no="'Жаль, вы ввели обычное число'"
@@ -160,7 +160,7 @@ SPECS['builtin-functions/assemble-number']=('adjacent_sums','','',[
  ('keep input order',_digits+"print(str(a+b)+str(b+c))"),
  ('sort sums as text',_digits+"print(''.join(sorted([str(a+b),str(b+c)],reverse=True)))"),
  ('add instead of concatenating',_digits+'print(a+b+b+c)')])
-ORACLE_JS += r'''
+ORACLE_JS += r"""
  if(data.contract==='beautiful_digits'||data.contract==='adjacent_sums') {
   if(lines.length!==1||!/^[1-9][0-9]{2}$/.test(lines[0]))return null;
   const [a,b,c]=Array.from(lines[0],Number);
@@ -168,7 +168,7 @@ ORACLE_JS += r'''
   const lo=Math.min(a,b,c),hi=Math.max(a,b,c),mid=a+b+c-lo-hi;
   return (2*mid===hi+lo?'Вы ввели красивое число':'Жаль, вы ввели обычное число')+'\n';
  }
-'''
+"""
 
 # A no-input exercise has a singleton input domain. Three invented stdin
 # cases cannot add coverage; compare the entire output, then run fault probes.

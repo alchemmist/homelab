@@ -74,7 +74,7 @@ def idle(prefix, x, y):
                   query=' or '.join('label_replace(timestamp(vllm:num_requests_' + metric +
                       '{model_name="' + MODEL + '"}), "queue_metric", "' + metric + '", "model_name", ".*")'
                       for metric in ('running', 'waiting')))
-    valid = code(prefix + ' verify both metrics', r'''const values = $(__VALUES__).item.json;
+    valid = code(prefix + ' verify both metrics', r"""const values = $(__VALUES__).item.json;
 const stamps = $json;
 const invalid = {json: {idle: false, telemetryValid: false}};
 const model = __MODEL__;
@@ -124,7 +124,7 @@ for (const row of t) {
   if (!Number.isFinite(age) || age < -5 || age > 45) return invalid;
   seen.add(s.key);
 }
-return {json: {idle, telemetryValid: true}};'''.replace('__VALUES__', json.dumps(values)).replace('__MODEL__', json.dumps(MODEL)), x+440, y)
+return {json: {idle, telemetryValid: true}};""".replace('__VALUES__', json.dumps(values)).replace('__MODEL__', json.dumps(MODEL)), x+440, y)
     gate = check(prefix + ' model idle?', '$json.idle === true', x+660, y)
     chain(values, stamps, valid, gate)
     return values, gate
@@ -165,7 +165,7 @@ refill = pg('Admit equivalent import if reviewed queue is empty', """WITH match 
  WHERE NOT EXISTS(SELECT 1 FROM jsonb_array_elements(display.cases) pub WHERE pub->>'input'=x->>'input')) kept
  WHERE d.id=m.id RETURNING d.id
 ) SELECT count(*)::int AS admitted FROM admitted""", '[]', 1060, -160)
-admit = pg('Admit next elementary stdin exercise', f'''WITH candidate AS (
+admit = pg('Admit next elementary stdin exercise', f"""WITH candidate AS (
  SELECT id FROM lms_certification.pilot
  WHERE data->>'contract'='draft_stdin' AND phase='solve'
  AND split_part(id,'/',2) IN ('lists-intro','list-string-methods','strings-indexing','strings-slicing','dicts-intro','sets','nested-lists','split-join-comprehensions','tuples-conversion','for-intro','nested-loops','while-intro','break-continue','builtin-functions')
@@ -175,8 +175,8 @@ admit = pg('Admit next elementary stdin exercise', f'''WITH candidate AS (
  AND NOT EXISTS (SELECT 1 FROM lms_certification.pilot WHERE phase NOT IN ('certified','needs_review') AND data->>'contract' IN ({contract_list}))
  ORDER BY length(data->>'statement'),id LIMIT 1 FOR UPDATE SKIP LOCKED
 ), added AS (UPDATE lms_certification.pilot p SET data=data || jsonb_build_object('contract','differential_v1','certificateScope','bounded_same_model_differential','callLimit',14),updated_at=clock_timestamp()
- FROM candidate c WHERE p.id=c.id RETURNING p.id) SELECT count(*)::int AS admitted FROM added''', '[]',1080,-300)
-claim = pg('Claim next queued task and load checkpoint', f'''WITH candidate AS (
+ FROM candidate c WHERE p.id=c.id RETURNING p.id) SELECT count(*)::int AS admitted FROM added""", '[]',1080,-300)
+claim = pg('Claim next queued task and load checkpoint', f"""WITH candidate AS (
  SELECT id FROM lms_certification.pilot
  WHERE phase NOT IN ('certified','needs_review')
  AND data->>'contract' IN ({contract_list})
@@ -185,7 +185,7 @@ claim = pg('Claim next queued task and load checkpoint', f'''WITH candidate AS (
  ORDER BY CASE WHEN owner IS NOT NULL THEN 0 ELSE 1 END, updated_at, id FOR UPDATE SKIP LOCKED LIMIT 1
 )
 UPDATE lms_certification.pilot p SET owner=$1, lease_until=clock_timestamp()+interval '15 minutes'
-FROM candidate c WHERE p.id=c.id RETURNING p.phase,p.data''', '[$execution.id]', 1100, 0)
+FROM candidate c WHERE p.id=c.id RETURNING p.phase,p.data""", '[$execution.id]', 1100, 0)
 chain(start, entry)
 heartbeat_sql = """INSERT INTO lms_certification.heartbeat(singleton,at,execution_id,decision,ticks)
 VALUES(true,clock_timestamp(),$1,$2,1) ON CONFLICT(singleton) DO UPDATE SET at=EXCLUDED.at,
@@ -195,30 +195,30 @@ skipped = pg('Record busy or telemetry skip',heartbeat_sql,"[$execution.id,$json
 # A busy GPU blocks inference, not a previously checkpointed Docker verdict.
 # No new admission from this branch. Every subsequent LLM phase still has its
 # own strict fresh-series check, including a transition from suite to repair.
-sandbox_claim = pg('Resume sandbox-only checkpoint',f'''WITH candidate AS (
+sandbox_claim = pg('Resume sandbox-only checkpoint',f"""WITH candidate AS (
  SELECT id FROM lms_certification.pilot WHERE phase IN ('public','suite','mutate','plausible','wpublic','wsuite','triage')
  AND data->>'contract' IN ({contract_list}) AND (lease_until IS NULL OR lease_until < clock_timestamp())
  AND NOT EXISTS (SELECT 1 FROM lms_certification.pilot WHERE lease_until>clock_timestamp())
  ORDER BY updated_at,id FOR UPDATE SKIP LOCKED LIMIT 1)
 UPDATE lms_certification.pilot p SET owner=$1,lease_until=clock_timestamp()+interval '15 minutes'
-FROM candidate c WHERE p.id=c.id RETURNING p.phase,p.data''','[$execution.id]',1160,240)
+FROM candidate c WHERE p.id=c.id RETURNING p.phase,p.data""",'[$execution.id]',1160,240)
 link(gate, skipped, 1)
 link(skipped,sandbox_claim)
 chain(gate, ready, refill)
 chain(refill, admit, claim)
-checkpoint = pg('Checkpoint and dispatch next phase', '''UPDATE lms_certification.pilot
+checkpoint = pg('Checkpoint and dispatch next phase', """UPDATE lms_certification.pilot
 SET phase = $2, data = ($3::jsonb - 'transportRetries'), updated_at = clock_timestamp(),
 lease_until = CASE WHEN $2 IN ('certified','needs_review') THEN NULL ELSE clock_timestamp() + interval '15 minutes' END
 WHERE owner = $1 AND lease_until > clock_timestamp()
-RETURNING phase, data''', '[$execution.id, $json.phase, JSON.stringify($json.data)]', 1480, -380)
-release = pg('Pause and release lease', '''UPDATE lms_certification.pilot SET lease_until = NULL,
+RETURNING phase, data""", '[$execution.id, $json.phase, JSON.stringify($json.data)]', 1480, -380)
+release = pg('Pause and release lease', """UPDATE lms_certification.pilot SET lease_until = NULL,
  phase=CASE WHEN $2='transport' AND coalesce((data->>'transportRetries')::int,0)>=2 THEN 'needs_review' ELSE phase END,
  data=data || jsonb_build_object('lastPause',$2::text,'pausedAt',clock_timestamp()) ||
  CASE WHEN $2='transport' THEN jsonb_build_object('transportRetries',coalesce((data->>'transportRetries')::int,0)+1) ELSE '{}'::jsonb END ||
  CASE WHEN $2='transport' AND coalesce((data->>'transportRetries')::int,0)>=2 THEN jsonb_build_object('reviewReason','consecutive_transport_failures','resumePhase',phase) ELSE '{}'::jsonb END
-WHERE owner = $1 RETURNING phase''', "[$execution.id, $json.reason || 'not_idle_or_stale']", 1140, -580)
-terminal = pg('Private outcome recorded', '''SELECT phase, count(*)::int AS tasks,
- max(updated_at) AS latest_update FROM lms_certification.pilot GROUP BY phase ORDER BY phase''', '[]', 4900, -380)
+WHERE owner = $1 RETURNING phase""", "[$execution.id, $json.reason || 'not_idle_or_stale']", 1140, -580)
+terminal = pg('Private outcome recorded', """SELECT phase, count(*)::int AS tasks,
+ max(updated_at) AS latest_update FROM lms_certification.pilot GROUP BY phase ORDER BY phase""", '[]', 4900, -380)
 
 
 
@@ -227,11 +227,11 @@ def ref(name):
 
 
 def reducer(name, route, js, x, y):
-    n = code(name, f'''const {{phase,data}} = {ref(route)};
+    n = code(name, f"""const {{phase,data}} = {ref(route)};
 const status = $json.statusCode;
 if ($json.error || status === 429 || status >= 500) return {{json: {{pause:true,reason:$json.error?'transport':'http_'+status}}}};
 if (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);
-{js}''', x, y)
+{js}""", x, y)
     ok = check(name + ' checkpoint?', '$json.pause !== true', x+220, y)
     chain(n, ok, checkpoint)
     link(ok, release, 1)
@@ -267,11 +267,11 @@ for i, (phase, title) in enumerate(phase_specs):
             prompt = f"({r}.data.contract === 'noinput_reviewed' ? " + json.dumps('У задачи нет ввода. Независимо выведи единственный полный ожидаемый stdout с финальным переводом строки. JSON {"cases":[{"input":"","output":"..."}]}. Условие: ') + f" + {r}.data.statement : (" + prompt + "))"
             prompt += f" + ({r}.data.contract==='differential_v1' ? '\\nИспользуй только бесспорно допустимые входы. Если требуется слово — непустые буквенные слова, в том числе односимвольные. Возьми короткие примеры: для перечисления чисел выбирай n до 8, не используй большие ответы или многоточия. Общий ответ JSON до 700 токенов. Чередуй разные длины и состав входа. Не тестируй неоговоренные пробелы, пустой ввод, ошибки или неоднозначное форматирование. Буквальные публичные примеры не повторяй: '+JSON.stringify({r}.data.examples) : '')"
             if phase == 'expand':
-                prompt += f''' + '\\nУже проверенные входы: ' + JSON.stringify({r}.data.cases.map(c => c.input)) + '\\nЧто не поймано: ' + JSON.stringify({r}.data.survivors) + '\\nЦелевые условия для покрытия: ' + JSON.stringify({r}.data.coverageHints || '')'''
+                prompt += f""" + '\\nУже проверенные входы: ' + JSON.stringify({r}.data.cases.map(c => c.input)) + '\\nЧто не поймано: ' + JSON.stringify({r}.data.survivors) + '\\nЦелевые условия для покрытия: ' + JSON.stringify({r}.data.coverageHints || '')"""
         else:
             prompt = json.dumps('Верни решение на Python 3 в формате JSON {"source":"..."}. Только учебный Python, без файлов и сети. Условие: ', ensure_ascii=False) + f' + {r}.data.statement'
             if phase == 'repair':
-                prompt += f''' + '\\nПредыдущее решение: ' + JSON.stringify({r}.data.source) + '\\nПроваленный проверенный тест: ' + JSON.stringify({r}.data.failure)'''
+                prompt += f""" + '\\nПредыдущее решение: ' + JSON.stringify({r}.data.source) + '\\nПроваленный проверенный тест: ' + JSON.stringify({r}.data.failure)"""
                 prompt += f" + '\\nДиагностика: ' + JSON.stringify({r}.data.repairGuidance || '') + '\\nНе нормализуй пробелы и регистр, если условие этого явно не требует. Исправь причину ошибки, не меняй проверенный тест. Верни JSON с diagnosis и source. Не повторяй прежнюю программу.'"
         if phase in ('witness','wrepair'):
             prompt=json.dumps('Независимо реши задачу на Python 3, только stdin/stdout. По возможности используй альтернативный простой подход. Код краткий, без комментариев и черновых рассуждений. Не считывай вход дважды. JSON {"source":"..."}. Условие: ') + f' + {r}.data.statement'
@@ -281,32 +281,32 @@ for i, (phase, title) in enumerate(phase_specs):
         if phase=='probes':
             prompt=json.dumps('По условию составь от трёх до пяти разных правдоподобных ошибочных решения школьника на Python: ошибка границы, пропущенное условие или неверное преобразование. Каждое должно читать корректный ввод, завершаться без исключений и отличаться от правильного результата на части (не всех) допустимых входов. Не возвращай пустые программы или константы. JSON {"faults":[{"label":"...","source":"..."}]}. Условие: ') + f" + {r}.data.statement + '\\nИзмени одну содержательную операцию в данном решении, сохрани ввод, вывод и все остальные строки. Для каждой версии оставь часть допустимых входов верной. Не подгоняй под примеры. Исходник: ' + JSON.stringify({r}.data.source) + '\\nРанее непригодные модели ошибок: ' + JSON.stringify({r}.data.rejectedProbeLabels||[]) + '\\nСписок входов, на которых будут проверены варианты: '+JSON.stringify([...{r}.data.examples,...{r}.data.cases].map(c=>c.input)) + '\\nДля каждого варианта мысленно проверь два конкретных входа из списка: один проходит, другой нет. Выбери содержательные ошибки (например, ошибочное приведение регистра, неверная граница). Запрещены сравнения с конкретным тестовым входом и зашитые ответы.'"
         req = http('LLM: ' + title, LLM, x+880, y, role='LITELLM', body=
-                   f'''{{model:{json.dumps(MODEL)}, temperature:0, max_tokens:1000, response_format:{{type:'json_object'}}, messages:[{{role:'user', content: {prompt}}}]}}''')
-        parse = '''let payload;
+                   f"""{{model:{json.dumps(MODEL)}, temperature:0, max_tokens:1000, response_format:{{type:'json_object'}}, messages:[{{role:'user', content: {prompt}}}]}}""")
+        parse = """let payload;
 try { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; data.modelFormatErrors=(data.modelFormatErrors||0)+1; data.lastFinishReason=String($json.body?.choices?.[0]?.finish_reason||'unknown').slice(0,40); }
  data.calls = (data.calls || 0) + 1;
  const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','wrepair','audit','probes'].includes(next) ? 'needs_review' : next,data}});
-'''
+"""
         if phase in ('witness','wrepair'):
-            logic='''const w=payload?.source;if(typeof w!=='string'||!w.trim()||w.length>6000||w.replace(/\\s/g,'')===data.source.replace(/\\s/g,'')){data.reviewReason='no_distinct_witness';return out('needs_review');} data.witness=w;return out('wpublic');''';label='Validate blind witness' if phase=='witness' else 'Validate repaired witness'
+            logic="""const w=payload?.source;if(typeof w!=='string'||!w.trim()||w.length>6000||w.replace(/\\s/g,'')===data.source.replace(/\\s/g,'')){data.reviewReason='no_distinct_witness';return out('needs_review');} data.witness=w;return out('wpublic');""";label='Validate blind witness' if phase=='witness' else 'Validate repaired witness'
         elif phase=='audit':
-            logic='''if(payload?.approved!==true){data.reviewReason='semantic_review_failed';data.reviewDetail=String(payload?.reason||'').slice(0,500);
+            logic="""if(payload?.approved!==true){data.reviewReason='semantic_review_failed';data.reviewDetail=String(payload?.reason||'').slice(0,500);
 const ids=payload?.badIndices; if(payload?.issue==='cases' && Array.isArray(ids)&&ids.length && ids.every(i=>Number.isInteger(i)&&i>=0&&i<data.cases.length)&& (data.auditRetries||0)<2 && (!data.semanticApproved || (ids.length===1 && ids[0]===data.disputedIndex))){
  data.disputedIndex=null;data.disputeNote=null;data.quarantine=[...(data.quarantine||[]),...data.cases.filter((c,i)=>ids.includes(i))];data.cases=data.cases.filter((c,i)=>!ids.includes(i));data.coverageHints=data.reviewDetail;data.auditRetries=(data.auditRetries||0)+1;return out('expand');
-}return out('needs_review');}data.semanticApproved=true;if(Number.isInteger(data.disputedIndex)){data.reviewReason='both_references_disagree_with_approved_expected';return out('needs_review');}return out(data.faults?.length?'public':'probes');''';label='Require semantic approval'
+}return out('needs_review');}data.semanticApproved=true;if(Number.isInteger(data.disputedIndex)){data.reviewReason='both_references_disagree_with_approved_expected';return out('needs_review');}return out(data.faults?.length?'public':'probes');""";label='Require semantic approval'
         elif phase=='probes':
-            logic='''const probes=Array.isArray(payload?.faults)?payload.faults:[];const seen=new Set([data.source.trim(),data.witness.trim()]);data.faults=[];for(const p of probes){if(typeof p?.source!=='string'||!p.source.includes('input(')||p.source.length>6000||typeof p.label!=='string'||seen.has(p.source.trim()))continue;seen.add(p.source.trim());data.faults.push([p.label.slice(0,100),p.source]);}if(data.faults.length<3){data.reviewReason='insufficient_distinct_probes';return out('needs_review');}data.faults=data.faults.slice(0,5);return out('public');''';label='Require three distinct probes'
+            logic="""const probes=Array.isArray(payload?.faults)?payload.faults:[];const seen=new Set([data.source.trim(),data.witness.trim()]);data.faults=[];for(const p of probes){if(typeof p?.source!=='string'||!p.source.includes('input(')||p.source.length>6000||typeof p.label!=='string'||seen.has(p.source.trim()))continue;seen.add(p.source.trim());data.faults.push([p.label.slice(0,100),p.source]);}if(data.faults.length<3){data.reviewReason='insufficient_distinct_probes';return out('needs_review');}data.faults=data.faults.slice(0,5);return out('public');""";label='Require three distinct probes'
         elif phase in {'solve','repair'}:
-            logic = '''const source = typeof payload?.source === 'string' ? payload.source.trim() : '';
+            logic = """const source = typeof payload?.source === 'string' ? payload.source.trim() : '';
 if (!source || source.length > 6000 || (data.contract === 'echo' && (/[\\r\\n]/.test(source) || [...source].length > 14))) return out(phase);
 data.repeatedSource = phase === 'repair' && source === data.source;
 data.source = source;
 if(data.contract==='noinput_reviewed'){data.cases=[{input:'',output:data.reviewedOutput}];return out(data.examples.length?'public':'suite');}
 if(data.contract==='differential_v1')return out(phase==='solve'?'witness':'audit');
-return out(phase === 'solve' ? 'tests' : (data.contract==='noinput_reviewed' && !data.examples.length ? 'suite' : 'public'));'''
+return out(phase === 'solve' ? 'tests' : (data.contract==='noinput_reviewed' && !data.examples.length ? 'suite' : 'public'));"""
             label = 'Validate solution format' if phase == 'solve' else 'Validate repaired solution format'
         else:
-            logic = r'''if(data.contract==='differential_v1'){
+            logic = r"""if(data.contract==='differential_v1'){
  const cases=data.cases||[],seen=new Set([...data.examples,...cases,...(data.quarantine||[])].map(c=>c.input));
  for(const c of Array.isArray(payload?.cases)?payload.cases:[]){if(typeof c?.input!=='string'||typeof c.output!=='string'||Math.max(c.input.length,c.output.length)>1500||seen.has(c.input)||cases.length>=16)continue;cases.push({input:c.input,output:c.output});seen.add(c.input);}
  data.cases=cases;return out(cases.length>=4?'audit':phase);
@@ -351,7 +351,7 @@ for (const c of proposals) {
 }
 data.cases=cases;
 if(data.contract==='noinput_reviewed')return out(!cases.length?phase:data.examples.length?'public':'suite');
-return out(cases.length<3?phase:'public');'''
+return out(cases.length<3?phase:'public');"""
             logic = logic.replace('__BATCH_ORACLE__', ORACLE_JS)
             label = 'Verify new tests against reviewed specification' if phase == 'tests' else 'Verify added cases and preserve existing tests'
         chain(free, req, reducer(label, route, parse+logic, x+1100, y))
@@ -364,28 +364,28 @@ return out(cases.length<3?phase:'public');'''
         if phase=='triage':cases='['+r+'.data.failure.case]'
         if phase in ('wpublic','wsuite','triage'):source=r+'.data.witness'
         req = http('Sandbox: ' + title, RUNNER, x, y, role='SANDBOX', body=f'{{source:{source}, cases:{cases}}}')
-        logic = '''const verdict = $json.body?.verdict;
+        logic = """const verdict = $json.body?.verdict;
 if (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','memory_limit'].includes(verdict))
   throw new Error('Invalid sandbox verdict');
-'''
+"""
         if phase=='triage':
-            logic+='''if(verdict==='accepted')return {json:{phase:data.calls<(data.callLimit||12)?'repair':'needs_review',data}};
+            logic+="""if(verdict==='accepted')return {json:{phase:data.calls<(data.callLimit||12)?'repair':'needs_review',data}};
 if(verdict!=='wrong_answer'){data.reviewReason='dispute_inconclusive';return {json:{phase:'needs_review',data}};}
-data.disputedIndex=data.failure.index;data.disputeNote='Both independently written programs failed this proposed case. Recompute its expected output from the statement; do not change the statement or public examples.';return {json:{phase:data.calls<(data.callLimit||12)?'audit':'needs_review',data}};''';label='Distinguish bad case from bad solution'
+data.disputedIndex=data.failure.index;data.disputeNote='Both independently written programs failed this proposed case. Recompute its expected output from the statement; do not change the statement or public examples.';return {json:{phase:data.calls<(data.callLimit||12)?'audit':'needs_review',data}};""";label='Distinguish bad case from bad solution'
         elif phase in ('wpublic','wsuite'):
             logic+=("if(verdict!=='accepted'){data.witnessFailure=data.examples[$json.body.test_index-1];data.witnessRetries=(data.witnessRetries||0)+1;return {json:{phase:data.witnessRetries<=2 && data.calls<(data.callLimit||12)?'wrepair':'needs_review',data}};}" if phase=='wpublic' else "if(verdict!=='accepted'){data.reviewReason='independent_witness_disagrees';return {json:{phase:'needs_review',data}};}")+ ("return {json:{phase:data.semanticApproved?'wsuite':'tests',data}};" if phase=='wpublic' else "data.variant=0;data.survivors=[];data.faultsKilled=0;return {json:{phase:'mutate',data}};")
             label='Check witness verdict '+phase
         elif phase=='plausible':
-            logic+='''if(verdict==='wrong_answer' && ++data.probeCase<data.examples.length+data.cases.length)return {json:{phase:'plausible',data}};
+            logic+="""if(verdict==='wrong_answer' && ++data.probeCase<data.examples.length+data.cases.length)return {json:{phase:'plausible',data}};
 if(verdict==='accepted') data.faultsKilled=(data.faultsKilled||0)+1;
 else {data.rejectedProbeLabels=[...(data.rejectedProbeLabels||[]),data.faults[data.variant][0]];}
 data.variant++; data.probeCase=0;
 if(data.variant<data.faults.length)return {json:{phase:'mutate',data}};
 if(data.faultsKilled>=3)return {json:{phase:'certified',data}};
-data.reviewReason='probe_not_plausible';data.probeRetries=(data.probeRetries||0)+1;return {json:{phase:data.probeRetries<=2 && data.calls<(data.callLimit||12)?'probes':'needs_review',data}};'''
+data.reviewReason='probe_not_plausible';data.probeRetries=(data.probeRetries||0)+1;return {json:{phase:data.probeRetries<=2 && data.calls<(data.callLimit||12)?'probes':'needs_review',data}};"""
             label='Reject crashes and always-wrong probes'
         elif phase == 'mutate':
-            logic += f'''const variants = data.faults;
+            logic += f"""const variants = data.faults;
 if(data.contract==='differential_v1') {{
  if(verdict==='wrong_answer') {{data.probeCase=0;return {{json:{{phase:'plausible',data}}}};}}
  if(verdict!=='accepted') {{data.reviewReason='probe_crashed';return {{json:{{phase:'needs_review',data}}}};}}
@@ -396,17 +396,17 @@ data.variant++;
 const next = data.variant < variants.length ? 'mutate' :
   !data.survivors.length ? 'certified' : data.calls < (data.callLimit || 12) ? 'expand' : 'needs_review';
 data.faultsKilled = data.variant - data.survivors.length;
-return {{json: {{phase:next,data}}}};'''
+return {{json: {{phase:next,data}}}};"""
             label = 'Count killed variants or request more coverage'
         else:
-            logic += f'''let next = {json.dumps('suite' if phase == 'public' else 'mutate')};
+            logic += f"""let next = {json.dumps('suite' if phase == 'public' else 'mutate')};
 if(next==='mutate' && data.contract==='differential_v1')next='wpublic';
 if (verdict !== 'accepted') {{
   data.failure = {{case: ({cases})[$json.body.test_index-1], index:$json.body.test_index-1, verdict}};
   if(data.contract==='differential_v1' && phase==='suite' && verdict==='wrong_answer') return {{json:{{phase:'triage',data}}}};
   next = data.calls < (data.callLimit || 12) ? 'repair' : 'needs_review';
 }} else if (next === 'mutate') {{ data.variant = 0; data.survivors = []; data.faultsKilled = 0; }}
-return {{json: {{phase:next,data}}}};'''
+return {{json: {{phase:next,data}}}};"""
             label = 'Route public example verdict' if phase == 'public' else 'Route private test verdict'
         chain(route, req, reducer(label, route, logic, x+220, y))
 link(previous, terminal, 1)
