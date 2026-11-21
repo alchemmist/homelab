@@ -119,7 +119,7 @@ def validate_history(current: Mapping[str, str], histories: Iterable[Mapping[str
 def binding_history():
     """Fail closed without full Git history. A binding is never reused, even after revoke."""
 
-    def git(*args):
+    def git(*args: str) -> str:
         try:
             return subprocess.run(
                 ["git", "-C", str(ROOT), *args], check=True, capture_output=True, text=True

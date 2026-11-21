@@ -21,7 +21,7 @@ helper = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(helper)
 
 
-def kube(*args):
+def kube(*args: str) -> str:
     r = subprocess.run(
         ["ssh", "-o", "BatchMode=yes", "socrat-0", shlex.join(["kubectl", *args])],
         capture_output=True,

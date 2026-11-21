@@ -12,7 +12,7 @@ args = parser.parse_args()
 password = getpass.getpass("Open WebUI password: ")
 
 
-def kubectl(*argv):
+def kubectl(*argv: str) -> str:
     return subprocess.check_output(["kubectl", "-n", "llm", *argv], text=True)
 
 
