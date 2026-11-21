@@ -1,8 +1,9 @@
 ---
 applicationDatabaseUsername: homelab_kuma_app
 image: louislam/uptime-kuma:2.5.7
-replicaCount: 1
+replicaCount: 0
 database:
+  replicaCount: 0
   # Provision once outside GitOps; never regenerate live DB credentials on sync.
   bootstrapSecret: false
   enabled: true

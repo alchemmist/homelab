@@ -172,6 +172,10 @@ def refresh_public_edge_probe(scrape):
             for rule in job.get("relabel_configs", [])
             if rule.get("target_label") == "service_id"
         ]
+        if identity == ["status"]:
+            if job.get("params", {}).get("module") != ["http_2xx"]:
+                raise ValueError("Unexpected status probe module")
+            job["params"]["target"] = [next(t["url"] for t in targets if t["id"] == "status")]
         if len(identity) == 1 and identity[0] in tcp_targets:
             if job.get("params", {}).get("module") != ["tcp_connect"]:
                 msg = "Unexpected catalog TCP probe module"
