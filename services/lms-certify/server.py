@@ -7,13 +7,13 @@ are waiting on vLLM, the loop saves its place and the next idle minute resumes i
 
 import json
 import os
+import re
 import resource
 import subprocess
 import sys
-import re
 import tempfile
-import time
 import threading
+import time
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer

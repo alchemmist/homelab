@@ -7,9 +7,9 @@ in identity and cleans up those exact resources. No PVC/production writes.
 """
 import hashlib
 import json
-from pathlib import Path
 import secrets
 import subprocess
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = 'ghcr.io/openhands/agent-canvas:1.41.0@sha256:dcae97b63c9845fd1d4313857af6b10fb5888324a154238c4795ef86233d227c'

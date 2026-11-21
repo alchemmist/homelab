@@ -11,10 +11,10 @@ import fcntl
 import hashlib
 import json
 import os
-from pathlib import Path
 import socket
 import subprocess
 import time
+from pathlib import Path
 
 ROOT = Path("/opt/homelab-vpn-failover")
 STATE = Path("/var/lib/homelab-vpn-failover")

@@ -2,18 +2,18 @@
 
 import argparse
 import copy
-from datetime import datetime, timezone
 import hashlib
 import ipaddress
 import json
 import os
-from pathlib import Path
 import socket
 import ssl
 import subprocess
 import time
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
+from pathlib import Path
 
 
 def command(arguments):

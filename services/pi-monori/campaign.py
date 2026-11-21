@@ -1,8 +1,23 @@
 """Full report campaign. Trusted scheduler on socrat-0; no agent or pytest on host."""
-import ast,collections,contextlib,difflib,fcntl,gzip,hashlib,json,os,re,sqlite3,subprocess,sys,time
+import ast
+import collections
+import contextlib
+import difflib
+import fcntl
+import gzip
+import hashlib
+import json
+import os
+import re
+import sqlite3
+import subprocess
+import sys
+import time
 from pathlib import Path
+
 import dispatcher as pilot
 from artifact import artifact_response
+
 R=pilot.ROOT; BASE0=pilot.BASE; D=R/'campaign.sqlite'; A=R/'campaign-artifacts';A.mkdir(exist_ok=True); C=json.load(gzip.open(R/'catalog-full.json.gz')); BACK=json.loads((R/'backlog.json').read_text()); J='/scratch/monori/'; K=pilot.k
 
 ISSUE=509

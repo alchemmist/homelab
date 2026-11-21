@@ -10,9 +10,9 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import socket
 import subprocess
+from pathlib import Path
 
 ROOT = Path("/var/lib/homelab-vpn-transit/home-egress")
 TABLE = "homelab_msk_home_egress"

@@ -5,10 +5,10 @@ import hashlib
 import io
 import json
 import os
-from pathlib import Path
 import platform
-import tarfile
 import subprocess
+import tarfile
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 

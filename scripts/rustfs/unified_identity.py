@@ -10,8 +10,8 @@ contains metadata only, no cookie/client/encryption secrets. Do not auto-retry.
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
+from pathlib import Path
 from urllib.parse import urlsplit
 
 NAME = "spi-rustfs-browser-private"
@@ -45,13 +45,13 @@ def digest(value):
 
 
 def run(action="plan", nonce=None):
-    from django.db import transaction
     from authentik.core.models import Application, Group, User
     from authentik.flows.models import Flow
     from authentik.outposts.models import Outpost
     from authentik.policies.models import PolicyBinding
     from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
     from authentik.providers.proxy.models import ProxyProvider
+    from django.db import transaction
 
     if action not in ("plan", "apply", "rollback") or not re.fullmatch("[a-f0-9]{32}", nonce or ""):
         raise ValueError("explicit action and random 128-bit operator nonce required")
