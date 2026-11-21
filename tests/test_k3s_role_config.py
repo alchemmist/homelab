@@ -1,3 +1,5 @@
+"""Tests for the k3s role rebalance configuration script."""
+
 import argparse
 import importlib.util
 from pathlib import Path

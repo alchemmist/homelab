@@ -1,3 +1,5 @@
+"""Tests for the VPN-accessible monitoring setup."""
+
 import importlib.util
 import io
 import json

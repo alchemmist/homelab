@@ -1,3 +1,5 @@
+"""Tests for the NetBird access helper script."""
+
 import copy
 import base64
 import importlib.util

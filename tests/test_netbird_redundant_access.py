@@ -1,3 +1,5 @@
+"""Tests for the NetBird redundant access policy scripts."""
+
 import importlib.util
 from pathlib import Path
 import types

@@ -1,3 +1,5 @@
+"""Tests for the NetBird node credential helper script."""
+
 import datetime as dt
 import importlib.util
 import json

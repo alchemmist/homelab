@@ -1,3 +1,5 @@
+"""Tests for the NetBird node reconcile script."""
+
 import copy
 import importlib.util
 import json

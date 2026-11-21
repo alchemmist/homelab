@@ -1,3 +1,5 @@
+"""Tests for the Loki marker scratch-directory policy."""
+
 import subprocess
 import unittest
 from pathlib import Path

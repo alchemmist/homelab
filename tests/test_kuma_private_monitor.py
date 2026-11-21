@@ -1,3 +1,5 @@
+"""Tests for the private Uptime Kuma monitoring configuration script."""
+
 from contextlib import closing
 import importlib.util
 from pathlib import Path
