@@ -57,8 +57,12 @@ def _string(value: object) -> str:
 
 
 class FakeAuthentik(threading.Thread):
+<<<<<<< ours
     def __init__(self):
         """Serve the reviewed offline contract fixtures over localhost HTTP."""
+=======
+    def __init__(self) -> None:
+>>>>>>> theirs
         super().__init__(daemon=True)
         self.calls: list[tuple[str, str, str, object]] = []
         self.fail_provider = False
