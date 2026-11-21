@@ -164,17 +164,20 @@ def validate_profiles(profiles: list[object]):
 
 def budget(pods: object, nodes: object, profiles: list[object]):
     validate_profiles(profiles)
-    report = {
+    nodes_report: dict[str, dict[str, object]] = {}
+    unassigned: list[dict[str, object]] = []
+    errors: list[str] = []
+    report: dict[str, object] = {
         "scope": "Current placement only; not a scheduler simulation or an N-1, rollout, peak-use or memory-safety guarantee. Requests are not actual usage. Unassigned pods are not charged to any node.",
-        "nodes": {},
-        "unassigned": [],
-        "errors": [],
+        "nodes": nodes_report,
+        "unassigned": unassigned,
+        "errors": errors,
     }
     for node_raw in items(nodes):
         node = cast("dict[str, object]", node_raw)
         metadata = cast("dict[str, object]", node["metadata"])
         node_status = cast("dict[str, object]", node["status"])
-        report["nodes"][cast("str", metadata["name"])] = {
+        nodes_report[cast("str", metadata["name"])] = {
             "allocatable": vector(cast("dict[str, object]", node_status.get("allocatable", {}))),
             "current_requests": vector(),
             "proposed_requests": vector(),
@@ -192,25 +195,28 @@ def budget(pods: object, nodes: object, profiles: list[object]):
         try:
             proposed = proposed_pod(pod, cast("list[dict[str, object]]", profiles))
         except ValueError as error:
-            report["errors"].append(str(error))
+            errors.append(str(error))
             proposed = pod
         current, future = effective_requests(pod), effective_requests(proposed)
         pod_spec = cast("dict[str, object]", pod.get("spec", {}))
         node_name = cast("str | None", pod_spec.get("nodeName"))
         if not node_name:
-            report["unassigned"].append(
+            unassigned.append(
                 {"pod": label, "current_requests": current, "proposed_requests": future}
             )
             continue
-        if node_name not in report["nodes"]:
-            report["errors"].append(label + ": unknown node " + node_name)
+        if node_name not in nodes_report:
+            errors.append(label + ": unknown node " + node_name)
             continue
-        entry = report["nodes"][node_name]
-        entry["pods"] += 1
-        entry["current_requests"] = add(entry["current_requests"], current)
-        entry["proposed_requests"] = add(entry["proposed_requests"], future)
-    for name, node_raw in report["nodes"].items():
-        node = cast("dict[str, object]", node_raw)
+        entry = nodes_report[node_name]
+        entry["pods"] = cast("int", entry["pods"]) + 1
+        entry["current_requests"] = add(
+            cast("dict[str, Decimal]", entry["current_requests"]), current
+        )
+        entry["proposed_requests"] = add(
+            cast("dict[str, Decimal]", entry["proposed_requests"]), future
+        )
+    for name, node in nodes_report.items():
         for mode in ("current", "proposed"):
             node[mode + "_remaining"] = {
                 resource: cast("dict[str, Decimal]", node["allocatable"])[resource]
@@ -219,8 +225,8 @@ def budget(pods: object, nodes: object, profiles: list[object]):
             }
         for resource, remaining in cast("dict[str, Decimal]", node["proposed_remaining"]).items():
             if remaining < 0:
-                report["errors"].append(name + ": proposed requests exceed allocatable " + resource)
-    report["ok"] = not report["errors"]
+                errors.append(name + ": proposed requests exceed allocatable " + resource)
+    report["ok"] = not errors
     report["units"] = {"cpu": "cores", "memory": "bytes", "ephemeral-storage": "bytes"}
     return report
 

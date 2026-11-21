@@ -128,9 +128,11 @@ def check(root: Path = ROOT, *, write: bool = False):
         if not target.resolve().is_relative_to(root.resolve()):
             raise ValueError("Consumer escapes repository")
         text = target.read_text()
-        value, tree = yaml.safe_load(text), yaml.compose(text)
+        value = yaml.safe_load(text)
+        tree = cast("_YamlNode", yaml.compose(text))
         for key in consumer["path"]:
-            value, tree = value[key], scalar_node(cast("_YamlNode", tree), key)
+            value = value[key]
+            tree = cast("_YamlNode", scalar_node(tree, key))
         matches = [
             (entry, node)
             for entry, node in zip(value, tree.value)

@@ -35,7 +35,7 @@ def converged(
     for pod in pods:
         pod_metadata = cast("dict[str, object]", pod["metadata"])
         pod_spec = cast("dict[str, object]", pod["spec"])
-        if pod_metadata.get("deletionTimestamp") or pod_spec.get("nodeName") != node:
+        if pod_metadata.get("deletionTimestamp") or cast("str | None", pod_spec.get("nodeName")) != node:
             return False
         state = cast("dict[str, object]", pod.get("status", {}))
         if state.get("phase") != "Running" or not any(
