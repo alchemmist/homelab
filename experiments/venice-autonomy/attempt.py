@@ -219,7 +219,7 @@ def run_openhands(
         pass
 
     class BashExecutor(ToolExecutor):
-        def __call__(self, action, conversation=None) -> BashObservation:
+        def __call__(self, action, _conversation=None) -> BashObservation:
             result = sandbox.execute({"command": action.command})
             return cast(
                 "BashObservation",

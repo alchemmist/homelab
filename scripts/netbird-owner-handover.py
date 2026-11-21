@@ -97,7 +97,7 @@ def main():
     token = json.loads((ROOT / "bootstrap.json").read_text())["personal_access_token"]
 
     class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, req, fp, code, msg, headers, newurl) -> None:
+        def redirect_request(self, _req, _fp, _code, _msg, _headers, _newurl) -> None:
             return None  # Never forward a private PAT to a redirect destination.
 
     opener = urllib.request.build_opener(NoRedirect)
