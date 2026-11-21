@@ -1,3 +1,5 @@
+"""Tests for VPN hardening behaviours (sqlite state, io, os paths)."""
+
 import contextlib
 import importlib.util
 import io

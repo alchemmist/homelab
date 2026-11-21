@@ -1,3 +1,5 @@
+"""Tests for the 3x-ui workload configuration."""
+
 import os
 from pathlib import Path
 import shutil

@@ -1,3 +1,5 @@
+"""Tests for wiki runtime migration."""
+
 import importlib.util
 import json
 from pathlib import Path

@@ -1,3 +1,5 @@
+"""Tests for the wiki_openapi engine and stages flow."""
+
 import sys
 import unittest
 from pathlib import Path

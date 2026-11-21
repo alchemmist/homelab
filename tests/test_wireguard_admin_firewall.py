@@ -1,3 +1,5 @@
+"""Tests for the wireguard admin firewall templates."""
+
 from pathlib import Path
 import unittest
 import shlex

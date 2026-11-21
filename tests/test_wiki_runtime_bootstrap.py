@@ -1,3 +1,5 @@
+"""Tests for the wiki runtime bootstrap module."""
+
 import importlib.util
 import json
 from pathlib import Path

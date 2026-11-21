@@ -1,3 +1,5 @@
+"""Tests for wishlist vm105 deployment moves."""
+
 import pathlib, subprocess, tempfile, unittest, yaml
 
 R = pathlib.Path(__file__).resolve().parents[1]
