@@ -1,12 +1,12 @@
 """Secret-free rendering/storage/backup contracts for worker5 migration."""
 
-from pathlib import Path
 import io
-import tarfile
 import os
 import subprocess
+import tarfile
 import tempfile
 import unittest
+from pathlib import Path
 from typing import override
 
 import yaml

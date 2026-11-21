@@ -1,8 +1,9 @@
 """Exact additive delegation contract across every pre-existing health state."""
 
 import importlib.util
-from pathlib import Path
 import types
+from pathlib import Path
+
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]

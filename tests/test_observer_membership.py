@@ -3,9 +3,9 @@
 import copy
 import importlib.util
 import os
-from pathlib import Path
 import sqlite3
 import unittest
+from pathlib import Path
 from typing import TypedDict
 from unittest.mock import Mock, patch
 
@@ -240,7 +240,12 @@ class MembershipTests(unittest.TestCase):
 
     def test_initial_cutover_records_both_steps_without_overwriting_progress(self) -> None:
         """Record both apply steps and preserve the NetBird group."""
-        import tempfile, types, importlib.machinery, io, contextlib, json
+        import contextlib
+        import importlib.machinery
+        import io
+        import json
+        import tempfile
+        import types
 
         spec = importlib.util.spec_from_file_location(
             "initial_driver", ROOT / "scripts/observer-initial-person-cutover.py"
