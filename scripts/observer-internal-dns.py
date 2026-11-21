@@ -68,8 +68,8 @@ def patch(before: Mapping[str, object], data: Mapping[str, object]) -> list[dict
             "path": "/metadata/resourceVersion",
             "value": metadata["resourceVersion"],
         },
-        {"op": "test", "path": "/data", "value": before["data"]},
-        {"op": "add", "path": "/data/" + KEY, "value": data[KEY]},
+        *([{"op": "test", "path": "/data", "value": before["data"]}] if "data" in before else []),
+        {"op": "add", "path": "/data", "value": data} if "data" not in before else {"op": "add", "path": "/data/" + KEY, "value": data[KEY]},
     ]
 
 

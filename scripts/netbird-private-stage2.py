@@ -80,7 +80,7 @@ def evidence(root: Path, name: str) -> None:
 
 
 def settings_body(account: Mapping[str, object]) -> dict[str, object]:
-    settings = as_dict(account["settings"])
+    settings = dict(as_dict(account["settings"]))
     settings.update(
         jwt_groups_enabled=True,
         jwt_groups_claim_name="groups",

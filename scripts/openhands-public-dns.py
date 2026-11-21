@@ -22,18 +22,16 @@ def require(ok: object, message: str) -> None:
 
 def load(path: Path, name: str) -> ModuleType:
     require(path.is_file() and not path.is_symlink(), "Unsafe renderer")
-    spec = importlib.util.spec_from_file_location(name, path)
-    if spec is None or spec.loader is None:
-        error = "Invalid renderer module"
-        raise RuntimeError(error)
-    loader = spec.loader
     try:
+        spec = importlib.util.spec_from_file_location(name, path)
+        if spec is None or spec.loader is None:
+            raise RuntimeError("Invalid renderer module")
+        loader = spec.loader
         module = importlib.util.module_from_spec(spec)
         loader.exec_module(module)
         return module
     except Exception:  # Contain renderer import errors before any DNS write.
         raise RuntimeError("Invalid DNS renderer: " + path.name) from None
-
 
 def stage_renderer(path: Path, content: bytes) -> None:
     """Create a new inode exclusively; never follow/overwrite an existing path."""

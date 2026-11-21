@@ -414,7 +414,7 @@ def _build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[di
             ),
             "Complex app admission; do not broaden it implicitly",
         )
-        own = [b for b in bindings if b.get("group") == group["pk"]]
+        own = [b for b in app_bindings if b.get("group") == group["pk"]]
         require(len(own) <= 1, "Duplicate observer admission")
         if not own:
             ops.append(
