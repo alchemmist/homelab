@@ -3,14 +3,22 @@
 import concurrent.futures
 import tempfile
 import unittest
+from typing import TypedDict, cast
 from unittest.mock import Mock, patch
 import test_triage as f
 from core import Store
 from service import Engine
 
 
+class WaitClaim(TypedDict):
+    """Durable-wait owner state observed while an engine stage holds the lock."""
+
+    fence: int
+    due_at: int
+
+
 class OwnerAdmissionTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.now = 1000
         self.clock = patch("time.time", lambda: self.now)
         self.clock.start()
@@ -25,46 +33,44 @@ class OwnerAdmissionTests(unittest.TestCase):
         self.key = self.store.enqueue(f.event())["job_id"]
         self.data = self.engine.claim(self.identity("100"))
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.clock.stop()
         self.tmp.cleanup()
 
     @staticmethod
-    def identity(execution):
+    def identity(execution) -> dict[str, object]:
         return {"execution_id": execution, "workflow_revision": "durable-v1"}
 
-    def waiting(self):
+    def waiting(self) -> WaitClaim:
         self.engine.lock.acquire()
         try:
-            return self.engine.run_v1("match", self.data)
+            return cast("WaitClaim", self.engine.run_v1("match", self.data))
         finally:
             self.engine.lock.release()
 
-    def queued(self):
-        return self.store.enqueue(f.event(start="2026-11-03T14:00:00Z"))["job_id"]
+    def queued(self) -> str:
+        return cast("str", self.store.enqueue(f.event(start="2026-11-03T14:00:00Z"))["job_id"])
 
-    def test_wait_is_not_a_free_slot_for_another_claim(self):
+    def test_wait_is_not_a_free_slot_for_another_claim(self) -> None:
         waiting = self.waiting()
         key = self.queued()
         with self.store.db() as c:
-            self.assertEqual(
-                c.execute("SELECT lease FROM jobs WHERE id=?", (self.key,)).fetchone()[0], 0
-            )
-        self.assertEqual(self.engine.claim(self.identity("101"))["status"], "empty")
-        self.assertEqual(self.store.claim(), {"job_id": ""})
-        self.assertEqual(self.store.get(key)["state"], "queued")
-        self.assertEqual(self.store.get(key)["attempts"], 0)
-        self.assertEqual(self.engine.claim(self.identity("100"))["fence"], waiting["fence"])
+            assert c.execute("SELECT lease FROM jobs WHERE id=?", (self.key,)).fetchone()[0] == 0
+        assert self.engine.claim(self.identity("101"))["status"] == "empty"
+        assert self.store.claim() == {"job_id": ""}
+        assert self.store.get(key)["state"] == "queued"
+        assert self.store.get(key)["attempts"] == 0
+        assert self.engine.claim(self.identity("100"))["fence"] == waiting["fence"]
         self.model.match.assert_not_called()
 
-    def test_dispatch_does_not_launch_empty_callbacks_while_owner_waits(self):
+    def test_dispatch_does_not_launch_empty_callbacks_while_owner_waits(self) -> None:
         waiting = self.waiting()
         self.queued()
         token, due = self.store.reserve_dispatch(self.now)
-        self.assertIsNone(token)
-        self.assertEqual(due, waiting["due_at"] + 180)
+        assert token is None
+        assert due == waiting["due_at"] + 180
 
-    def test_concurrent_new_claims_cannot_fill_owner_wait_queue(self):
+    def test_concurrent_new_claims_cannot_fill_owner_wait_queue(self) -> None:
         self.waiting()
         key = self.queued()
         with concurrent.futures.ThreadPoolExecutor(2) as pool:
@@ -73,17 +79,17 @@ class OwnerAdmissionTests(unittest.TestCase):
                     lambda execution: self.engine.claim(self.identity(execution)), ["101", "102"]
                 )
             )
-        self.assertEqual([r["status"] for r in results], ["empty", "empty"])
-        self.assertEqual(self.store.get(key)["attempts"], 0)
+        assert [r["status"] for r in results] == ["empty", "empty"]
+        assert self.store.get(key)["attempts"] == 0
         with self.store.db() as c:
-            self.assertEqual(
+            assert (
                 c.execute(
                     "SELECT count(*) FROM workflow_wait_owner WHERE phase IN ('ready','waiting','running')"
-                ).fetchone()[0],
-                1,
+                ).fetchone()[0]
+                == 1
             )
 
-    def test_existing_older_match_owner_wins_even_just_before_wake(self):
+    def test_existing_older_match_owner_wins_even_just_before_wake(self) -> None:
         # Seed a valid pre-upgrade cohort, not a new claim permitted by policy.
         older = self.waiting()
         key = self.queued()
@@ -102,13 +108,13 @@ class OwnerAdmissionTests(unittest.TestCase):
                 c.execute("SELECT * FROM workflow_wait_owner WHERE job_id=?", (key,)).fetchone()
             )
         younger = self.engine.run_v1("match", younger)
-        self.assertEqual(younger["status"], "deferred")
+        assert younger["status"] == "deferred"
         self.model.match.assert_not_called()
         self.now = older["due_at"]
         result = self.engine.run_v1("match", older)
-        self.assertEqual(result["stage"], "collect")
-        self.assertEqual(self.model.match.call_count, 1)
-        self.assertEqual(self.store.get(key)["stage"], 0)
+        assert result["stage"] == "collect"
+        assert self.model.match.call_count == 1
+        assert self.store.get(key)["stage"] == 0
 
 
 if __name__ == "__main__":

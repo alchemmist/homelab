@@ -1,3 +1,5 @@
+"""Tests for the ssh_user role manual check helper."""
+
 import importlib.util
 from pathlib import Path
 import subprocess
@@ -18,7 +20,7 @@ class ManualSSHTests(unittest.TestCase):
     """Check the manual SSH user provisioning policy end to end."""
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         cls.temp = tempfile.TemporaryDirectory(prefix="manual-ssh-test-")
         cls.key = Path(cls.temp.name) / "fixture"
         subprocess.run(
@@ -27,15 +29,15 @@ class ManualSSHTests(unittest.TestCase):
         cls.public = cls.key.with_suffix(".pub").read_text()
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         cls.temp.cleanup()
 
-    def test_real_parser_canonicalizes_public_key_and_reports_fingerprint(self):
+    def test_real_parser_canonicalizes_public_key_and_reports_fingerprint(self) -> None:
         result = check.validate("guest", self.public)
-        self.assertEqual(result["public_key"], " ".join(self.public.split()[:2]))
-        self.assertTrue(result["fingerprint"].startswith("SHA256:"))
+        assert result["public_key"] == " ".join(self.public.split()[:2])
+        assert result["fingerprint"].startswith("SHA256:")
 
-    def test_private_key_options_certificates_multiline_and_controls_are_rejected(self):
+    def test_private_key_options_certificates_multiline_and_controls_are_rejected(self) -> None:
         for bad in [
             self.key.read_text(),
             'command="id" ' + self.public,
@@ -46,11 +48,11 @@ class ManualSSHTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 check.validate("guest", bad)
 
-    def test_invalid_base64_ssh_wire_data_is_rejected_by_actual_parser(self):
+    def test_invalid_base64_ssh_wire_data_is_rejected_by_actual_parser(self) -> None:
         with self.assertRaises(ValueError):
             check.validate("guest", "ssh-ed25519 AAAA")
 
-    def test_protected_and_injectable_names_are_rejected_before_parsing_key(self):
+    def test_protected_and_injectable_names_are_rejected_before_parsing_key(self) -> None:
         with patch.object(check, "fingerprint") as parser:
             for name in [
                 "root",
@@ -68,42 +70,42 @@ class ManualSSHTests(unittest.TestCase):
                     check.validate(name, self.public)
             parser.assert_not_called()
 
-    def test_play_scope_and_all_host_preflight(self):
+    def test_play_scope_and_all_host_preflight(self) -> None:
         play = yaml.safe_load((ROOT / "ansible/playbooks/ssh-user.yml").read_text())[0]
-        self.assertEqual(play["hosts"], "Socrat")
-        self.assertTrue(play["any_errors_fatal"])
-        self.assertEqual(play["strategy"], "linear")
-        self.assertFalse(play["gather_facts"])
-        self.assertEqual(play["roles"], ["ssh_user"])
+        assert play["hosts"] == "Socrat"
+        assert play["any_errors_fatal"]
+        assert play["strategy"] == "linear"
+        assert not play["gather_facts"]
+        assert play["roles"] == ["ssh_user"]
 
-    def test_additive_keys_not_exact_replacement_and_no_existing_group_stripping(self):
+    def test_additive_keys_not_exact_replacement_and_no_existing_group_stripping(self) -> None:
         tasks = yaml.safe_load((ROOT / "ansible/roles/ssh_user/tasks/main.yml").read_text())
         key = next(t for t in tasks if "ansible.posix.authorized_key" in t)
-        self.assertFalse(key["ansible.posix.authorized_key"]["exclusive"])
-        self.assertEqual(key["become_user"], "{{ ssh_user_key.username }}")
-        self.assertTrue(any(t["name"].startswith("Require target-user execution") for t in tasks))
-        self.assertIn("not ssh_user_account.has_requested_key", key["when"])
+        assert not key["ansible.posix.authorized_key"]["exclusive"]
+        assert key["become_user"] == "{{ ssh_user_key.username }}"
+        assert any(t["name"].startswith("Require target-user execution") for t in tasks)
+        assert "not ssh_user_account.has_requested_key" in key["when"]
         user = next(t for t in tasks if "ansible.builtin.user" in t)["ansible.builtin.user"]
-        self.assertTrue(user["password_lock"])
-        self.assertIn("omit if ssh_user_before.exists", user["groups"])
-        self.assertIn("omit if ssh_user_before.exists", user["shell"])
-        self.assertFalse(
-            any("ansible.builtin.service" in t or "ansible.builtin.systemd" in t for t in tasks)
+        assert user["password_lock"]
+        assert "omit if ssh_user_before.exists" in user["groups"]
+        assert "omit if ssh_user_before.exists" in user["shell"]
+        assert not any(
+            "ansible.builtin.service" in t or "ansible.builtin.systemd" in t for t in tasks
         )
 
-    def test_preflight_precedes_account_and_key_mutations(self):
+    def test_preflight_precedes_account_and_key_mutations(self) -> None:
         tasks = yaml.safe_load((ROOT / "ansible/roles/ssh_user/tasks/main.yml").read_text())
         before = next(i for i, t in enumerate(tasks) if t["name"].startswith("Preflight account"))
         mutate = next(i for i, t in enumerate(tasks) if "ansible.builtin.user" in t)
-        self.assertLess(before, mutate)
+        assert before < mutate
         validators = [
             t
             for t in tasks
             if "ansible.builtin.script" in t and "before granting a key" in t["name"]
         ]
-        self.assertEqual(len(validators), 1)
+        assert len(validators) == 1
 
-    def test_missing_inputs_stop_without_contacting_a_host(self):
+    def test_missing_inputs_stop_without_contacting_a_host(self) -> None:
         # Fake local inventory: if the input guard fails, no account action runs.
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "inventory.yml"
@@ -117,6 +119,6 @@ class ManualSSHTests(unittest.TestCase):
                 text=True,
                 timeout=30,
             )
-            self.assertNotEqual(p.returncode, 0)
-            self.assertIn("Supply ssh_username and ssh_public_key_file", p.stdout)
-            self.assertNotIn("Preflight account", p.stdout)
+            assert p.returncode != 0
+            assert "Supply ssh_username and ssh_public_key_file" in p.stdout
+            assert "Preflight account" not in p.stdout

@@ -1,3 +1,5 @@
+"""Fetch and reconcile port-forwarding rules on the home router API."""
+
 import argparse
 import html
 import ipaddress
@@ -22,7 +24,7 @@ def parse_forwards(page):
         values = [html.unescape(re.sub(r"<[^>]*>", "", cell)).strip() for cell in cells]
         if len(values) != 9:
             raise ValueError("Unexpected router forwarding table format")
-        entry = dict(zip(FIELDS, values[:8]))
+        entry = dict(zip(FIELDS, values[:8], strict=True))
         entry["selector"] = selected.group(1)
         rows.append(entry)
     if not rows:
@@ -35,7 +37,7 @@ def canonical(rows):
 
 
 class Router:
-    def __init__(self, credentials, address):
+    def __init__(self, credentials, address) -> None:
         self.base = "http://" + str(ipaddress.IPv4Address(address))
         self.cookie = None
         page = self.request("/login.htm")
@@ -153,7 +155,11 @@ def main():
     for port, comment in [("80", "socrat-http"), ("443", "socrat-https")]:
         matches = [row for row in rows if row["external_port"] == port]
         expected = dict(
-            zip(FIELDS, [old_ip, port, "TCP", "0.0.0.0", port, "Wan2", "Enabled", comment])
+            zip(
+                FIELDS,
+                [old_ip, port, "TCP", "0.0.0.0", port, "Wan2", "Enabled", comment],
+                strict=True,
+            )
         )
         if len(matches) != 1 or canonical(matches) != canonical([expected]):
             raise RuntimeError("Forward does not match explicit expected old state: " + port)

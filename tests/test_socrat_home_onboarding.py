@@ -10,17 +10,16 @@ HTML = (ROOT / "charts/socrat-home/files/index.html").read_text()
 
 class Links(HTMLParser):
     """HTML parser collecting href links from the onboarding page."""
-
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self.urls = []
+        self.urls: list[str] = []
 
-    def handle_starttag(self, tag, attrs):
+    def handle_starttag(self, tag, attrs) -> None:
         if tag == "a":
             self.urls.append(dict(attrs)["href"])
 
 
-def test_onboarding_is_under_title_with_one_final_wiki_sentence():
+def test_onboarding_is_under_title_with_one_final_wiki_sentence() -> None:
     assert HTML.index("</h1>") < HTML.index('class="onboarding"')
     assert "with your assigned username and password, then change your password." in HTML
     assert "to connect to the internal network." in HTML
@@ -33,7 +32,7 @@ def test_onboarding_is_under_title_with_one_final_wiki_sentence():
     assert "start from wiki" not in HTML
 
 
-def test_onboarding_links_use_canonical_hosts_and_netbird_heading():
+def test_onboarding_links_use_canonical_hosts_and_netbird_heading() -> None:
     parser = Links()
     parser.feed(HTML)
     assert len(parser.urls) == 3
@@ -46,27 +45,27 @@ def test_onboarding_links_use_canonical_hosts_and_netbird_heading():
     assert parser.urls[2] == "https://wiki.socrat.alchemmist.xyz/"
 
 
-def test_inline_links_and_existing_artwork_are_preserved():
+def test_inline_links_and_existing_artwork_are_preserved() -> None:
     assert ".onboarding a{display:inline;padding:0;font:inherit;" in HTML
     assert '<h1 id="title">welcome to<br><span>socrat cluster</span></h1>' in HTML
     assert '<img src="/wallpaper.webp"' in HTML
     assert "<script" not in HTML
 
 
-def test_heading_stays_courier_and_prose_uses_wiki_serif():
+def test_heading_stays_courier_and_prose_uses_wiki_serif() -> None:
     assert "h1{font-family:CourierCyr,monospace;" in HTML
     assert 'font:18px/1.6 "Computer Modern Roman",serif}.onboarding p' in HTML
     assert ".onboarding a{display:inline;padding:0;font:inherit;" in HTML
 
 
-def test_links_use_body_color_without_extra_word_emphasis():
+def test_links_use_body_color_without_extra_word_emphasis() -> None:
     assert ".onboarding a{display:inline;padding:0;font:inherit;color:inherit;" in HTML
     assert "color:inherit;text-decoration:underline;" in HTML
     assert ".copy a:hover{color:var(--muted)}" in HTML
     assert "<strong" not in HTML and "<em>" not in HTML
 
 
-def test_wiki_font_is_self_hosted_and_mounted():
+def test_wiki_font_is_self_hosted_and_mounted() -> None:
     import base64
     import hashlib
     import subprocess

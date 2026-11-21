@@ -1,3 +1,5 @@
+"""Tests for the desktop startup configuration script."""
+
 import importlib.util
 import os
 from pathlib import Path
@@ -71,9 +73,9 @@ class LoginRewriteTests(unittest.TestCase):
             ({"DISPLAY": ":0"}, False),
         ]
         for values, expected in cases:
-            assignments = dict(
-                TTY="/dev/tty1", SSH_CONNECTION="", SSH_TTY="", WAYLAND_DISPLAY="", DISPLAY=""
-            )
+            assignments = {
+                "TTY": "/dev/tty1", "SSH_CONNECTION": "", "SSH_TTY": "", "WAYLAND_DISPLAY": "", "DISPLAY": ""
+            }
             assignments.update(values)
             script = (
                 "\n".join(f"{key}={value!r}" for key, value in assignments.items()) + "\n" + block

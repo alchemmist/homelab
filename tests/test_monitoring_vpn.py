@@ -1,3 +1,5 @@
+"""Tests for the VPN-accessible monitoring setup."""
+
 import importlib.util
 import io
 import json
@@ -8,6 +10,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from typing import override
 from urllib.error import URLError
 
 
@@ -19,7 +22,8 @@ SPEC.loader.exec_module(MODULE)
 HTTP_TIMEOUT = object()
 
 
-def counters_payload(users):
+def counters_payload(users) -> io.BytesIO:
+    """Build an xray expvar debug payload for the given per-user counters."""
     body = json.dumps(
         {
             "cmdline": ["xray"],
@@ -32,30 +36,28 @@ def counters_payload(users):
 
 class PeerParsingTests(unittest.TestCase):
     """Verify VPN monitoring parses wg peer endpoint lines."""
-
-    def test_ipv6_mapped_ipv4_peer_is_dotted(self):
+    def test_ipv6_mapped_ipv4_peer_is_dotted(self) -> None:
         line = "0 0 [::ffff:109.120.141.60]:32063 [::ffff:91.78.10.210]:51414"
-        self.assertEqual(MODULE.peer_host(line), "91.78.10.210")
+        assert MODULE.peer_host(line) == "91.78.10.210"
 
-    def test_native_ipv4_peer(self):
+    def test_native_ipv4_peer(self) -> None:
         line = "0 0 10.250.0.2:32087 31.173.86.226:25560"
-        self.assertEqual(MODULE.peer_host(line), "31.173.86.226")
+        assert MODULE.peer_host(line) == "31.173.86.226"
 
-    def test_state_prefix_is_tolerated(self):
+    def test_state_prefix_is_tolerated(self) -> None:
         line = "ESTAB 0 0 [::ffff:109.120.141.60]:32083 [::ffff:31.173.86.226]:25560"
-        self.assertEqual(MODULE.peer_host(line), "31.173.86.226")
+        assert MODULE.peer_host(line) == "31.173.86.226"
 
-    def test_private_ranges_are_filtered(self):
+    def test_private_ranges_are_filtered(self) -> None:
         for host in ("10.250.0.1", "192.168.0.23", "127.0.0.1", "172.17.0.2", "fe80::1", "::1"):
-            self.assertTrue(MODULE.is_private(host), host)
+            assert MODULE.is_private(host), host
         for host in ("109.173.40.247", "109.120.141.60", "91.78.10.210", "172.32.0.1"):
-            self.assertFalse(MODULE.is_private(host), host)
+            assert not MODULE.is_private(host), host
 
 
 class StreamCountTests(unittest.TestCase):
     """Count active streams from mixed monitoring output."""
-
-    def test_streams_from_mixed_output(self):
+    def test_streams_from_mixed_output(self) -> None:
         stdout = (
             "0 0 [::ffff:109.120.141.60]:32063 [::ffff:91.78.10.210]:51414\n"
             "0 0 [::ffff:109.120.141.60]:32063 [::ffff:91.78.10.210]:51415\n"
@@ -65,38 +67,34 @@ class StreamCountTests(unittest.TestCase):
         )
         result = subprocess.CompletedProcess([], 0, stdout=stdout)
         with patch.object(MODULE.subprocess, "run", return_value=result):
-            self.assertEqual(MODULE.observe_streams([32087, 32053, 32083, 32063]), 5)
+            assert MODULE.observe_streams([32087, 32053, 32083, 32063]) == 5
 
-    def test_no_streams_is_zero(self):
+    def test_no_streams_is_zero(self) -> None:
         with patch.object(
             MODULE.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, stdout="")
         ):
-            self.assertEqual(MODULE.observe_streams([32087]), 0)
+            assert MODULE.observe_streams([32087]) == 0
 
-    def test_all_ports_are_passed_to_ss_filter(self):
+    def test_all_ports_are_passed_to_ss_filter(self) -> None:
         with patch.object(
             MODULE.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, stdout="")
         ) as run:
             MODULE.observe_streams([32087, 32053])
-        self.assertEqual(
-            run.call_args[0][0][:6],
-            ["ss", "-H", "-t", "state", "established", "( sport = :32087 or sport = :32053 )"],
-        )
+        assert run.call_args[0][0][:6] == ["ss", "-H", "-t", "state", "established", "( sport = :32087 or sport = :32053 )"]
 
 
 class XrayCountersTests(unittest.TestCase):
     """Sum Xray uplink and downlink counters per user."""
-
-    def test_counters_sums_uplink_and_downlink_per_email(self):
+    def test_counters_sums_uplink_and_downlink_per_email(self) -> None:
         payload = counters_payload(
             {"mom": {"downlink": 100, "uplink": 5}, "tim": {"downlink": 7, "uplink": 50}}
         )
         with patch.object(MODULE.urllib.request, "urlopen", return_value=payload) as urlopen:
             counters = MODULE.read_xray_user_counters("http://x/debug/vars", HTTP_TIMEOUT)
-        self.assertEqual(counters, {"mom": 105, "tim": 57})
+        assert counters == {"mom": 105, "tim": 57}
         urlopen.assert_called_once_with("http://x/debug/vars", timeout=HTTP_TIMEOUT)
 
-    def test_malformed_payload_raises(self):
+    def test_malformed_payload_raises(self) -> None:
         for body in (b'{"memstats": {}}', b"[]", b"not json"):
             with patch.object(MODULE.urllib.request, "urlopen", return_value=io.BytesIO(body)):
                 with self.assertRaises((KeyError, TypeError, ValueError)):
@@ -104,39 +102,43 @@ class XrayCountersTests(unittest.TestCase):
 
 
 class ActiveUsersTests(unittest.TestCase):
-    """Track which users are active within the collection window."""
-
-    def test_growth_marks_user_active_within_window(self):
-        state = {"counters": {"mom": 100, "tim": 50}, "last_active": {"mom": 10.0, "tim": 900.0}}
+    def test_growth_marks_user_active_within_window(self) -> None:
+        state: dict[str, dict[str, float]] = {
+            "counters": {"mom": 100, "tim": 50},
+            "last_active": {"mom": 10.0, "tim": 900.0},
+        }
         counters = {"mom": 100, "tim": 75}
         users = MODULE.active_users(counters, state, now=1000.0, window=60)
-        self.assertEqual(users, ["tim"])
-        self.assertEqual(state["last_active"]["tim"], 1000.0)
-        self.assertEqual(state["counters"], counters)
+        assert users == ["tim"]
+        assert state["last_active"]["tim"] == 1000.0
+        assert state["counters"] == counters
 
-    def test_silent_user_expires_after_window(self):
+    def test_silent_user_expires_after_window(self) -> None:
         state = {"counters": {"mom": 100}, "last_active": {"mom": 100.0}}
         users = MODULE.active_users({"mom": 100}, state, now=1000.0, window=60)
-        self.assertEqual(users, [])
+        assert users == []
 
-    def test_removed_accounts_are_pruned(self):
-        state = {"counters": {"mom": 100, "gone": 5}, "last_active": {"mom": 900.0, "gone": 900.0}}
+    def test_removed_accounts_are_pruned(self) -> None:
+        state: dict[str, dict[str, float]] = {
+            "counters": {"mom": 100, "gone": 5},
+            "last_active": {"mom": 900.0, "gone": 900.0},
+        }
         users = MODULE.active_users({"mom": 130}, state, now=1000.0, window=60)
-        self.assertEqual(users, ["mom"])
-        self.assertNotIn("gone", state["last_active"])
-        self.assertNotIn("gone", state["counters"])
+        assert users == ["mom"]
+        assert "gone" not in state["last_active"]
+        assert "gone" not in state["counters"]
 
-    def test_counter_reset_after_xray_restart_is_not_activity(self):
+    def test_counter_reset_after_xray_restart_is_not_activity(self) -> None:
         state = {"counters": {"mom": 500}, "last_active": {}}
         users = MODULE.active_users({"mom": 10}, state, now=1000.0, window=60)
-        self.assertEqual(users, [])
+        assert users == []
 
 
 class CollectorTests(unittest.TestCase):
     """Exercise the monitoring collector across configured ports."""
-
-    def collect_run(self):
-        return MODULE.collect(
+    def collect_run(self) -> int:
+        """Run the collector once against the per-test output paths."""
+        exit_code: int = MODULE.collect(
             ports=[32087, 32053, 32083, 32063],
             metrics_url="http://127.0.0.1:11112/debug/vars",
             metrics_timeout=5,
@@ -144,16 +146,19 @@ class CollectorTests(unittest.TestCase):
             output=str(self.output),
             state_path=str(self.state),
         )
+        return exit_code
 
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.output = Path(self.directory.name) / "vpn.prom"
         self.state = Path(self.directory.name) / "vpn.state.json"
 
-    def tearDown(self):
+    @override
+    def tearDown(self) -> None:
         self.directory.cleanup()
 
-    def test_registered_clients_read_from_xui_db(self):
+    def test_registered_clients_read_from_xui_db(self) -> None:
         path = Path(self.directory.name) / "x-ui.db"
         connection = sqlite3.connect(path)
         connection.execute("create table inbounds (settings text)")
@@ -176,28 +181,28 @@ class CollectorTests(unittest.TestCase):
             connection.execute("insert into inbounds values (?)", (doc,))
         connection.commit()
         connection.close()
-        self.assertEqual(MODULE.read_registered_clients(str(path)), 3)
-        self.assertIsNone(MODULE.read_registered_clients("/nonexistent/nope.db"))
+        assert MODULE.read_registered_clients(str(path)) == 3
+        assert MODULE.read_registered_clients("/nonexistent/nope.db") is None
 
-    def test_registered_clients_metric_exported(self):
+    def test_registered_clients_metric_exported(self) -> None:
         output = self.directory.name + "/metrics.prom"
         MODULE.write_metrics(output, 3, ["a@x", "b@x"], True, registered=7)
-        self.assertIn("socrat_vpn_registered_clients 7", open(output).read())
+        assert "socrat_vpn_registered_clients 7" in open(output).read()
 
-    def test_full_success_cycle_across_runs(self):
+    def test_full_success_cycle_across_runs(self) -> None:
         ss = subprocess.CompletedProcess([], 0, stdout="line1\nline2\n")
         payload = counters_payload({"mom": {"downlink": 100, "uplink": 5}})
         with (
             patch.object(MODULE.subprocess, "run", return_value=ss),
             patch.object(MODULE.urllib.request, "urlopen", return_value=payload),
         ):
-            self.assertEqual(self.collect_run(), 0)
+            assert self.collect_run() == 0
         text = self.output.read_text()
-        self.assertIn("socrat_vpn_trojan_connections 2", text)
+        assert "socrat_vpn_trojan_connections 2" in text
         # the first sample only records a baseline; nobody is proven active yet
-        self.assertIn("socrat_vpn_active_clients 0", text)
-        self.assertIn("socrat_vpn_collection_success 1", text)
-        self.assertTrue(self.state.exists())
+        assert "socrat_vpn_active_clients 0" in text
+        assert "socrat_vpn_collection_success 1" in text
+        assert self.state.exists()
 
         # counters grow: mom transfers traffic; two more accounts appear active
         payload2 = counters_payload(
@@ -211,14 +216,14 @@ class CollectorTests(unittest.TestCase):
             patch.object(MODULE.subprocess, "run", return_value=ss),
             patch.object(MODULE.urllib.request, "urlopen", return_value=payload2),
         ):
-            self.assertEqual(self.collect_run(), 0)
+            assert self.collect_run() == 0
         text = self.output.read_text()
         # mom keeps transferring and keeps counting; tim is a new account so
         # this sample only baselines his counters
-        self.assertIn("socrat_vpn_active_clients 1", text)
-        self.assertIn('socrat_vpn_client_active{email="mom"} 1', text)
-        self.assertNotIn('email="tim"', text)
-        self.assertNotIn('email="tv"', text)
+        assert "socrat_vpn_active_clients 1" in text
+        assert 'socrat_vpn_client_active{email="mom"} 1' in text
+        assert 'email="tim"' not in text
+        assert 'email="tv"' not in text
 
         # on the third run tim also transfers traffic; tv stays totally idle
         payload3 = counters_payload(
@@ -239,38 +244,38 @@ class CollectorTests(unittest.TestCase):
             patch.object(MODULE.subprocess, "run", return_value=ss),
             patch.object(MODULE.urllib.request, "urlopen", return_value=payload3),
         ):
-            self.assertEqual(self.collect_run(), 0)
+            assert self.collect_run() == 0
         text = self.output.read_text()
-        self.assertIn("socrat_vpn_active_clients 2", text)
-        self.assertIn('socrat_vpn_client_active{email="mom"} 1', text)
-        self.assertIn('socrat_vpn_client_active{email="tim"} 1', text)
-        self.assertNotIn('email="tv"', text)
-        self.assertNotIn('email="tv', "@unused@")
+        assert "socrat_vpn_active_clients 2" in text
+        assert 'socrat_vpn_client_active{email="mom"} 1' in text
+        assert 'socrat_vpn_client_active{email="tim"} 1' in text
+        assert 'email="tv"' not in text
+        assert 'email="tv' not in text
 
-    def test_failure_replaces_previous_values_with_failed_collection(self):
+    def test_failure_replaces_previous_values_with_failed_collection(self) -> None:
         with patch.object(
             MODULE.subprocess, "run", side_effect=subprocess.TimeoutExpired("ss", 10)
         ):
-            self.assertEqual(self.collect_run(), 1)
+            assert self.collect_run() == 1
         text = self.output.read_text()
-        self.assertIn("socrat_vpn_collection_success 0", text)
-        self.assertIn("socrat_vpn_trojan_connections 0", text)
-        self.assertIn("socrat_vpn_active_clients 0", text)
-        self.assertIn("socrat_vpn_collection_timestamp_seconds 0", text)
-        self.assertEqual(self.output.stat().st_mode & 0o777, 0o644)
+        assert "socrat_vpn_collection_success 0" in text
+        assert "socrat_vpn_trojan_connections 0" in text
+        assert "socrat_vpn_active_clients 0" in text
+        assert "socrat_vpn_collection_timestamp_seconds 0" in text
+        assert self.output.stat().st_mode & 511 == 420
         leftovers = [p.name for p in Path(self.directory.name).iterdir() if p.name.startswith(".")]
-        self.assertEqual(sorted(leftovers), [])
+        assert sorted(leftovers) == []
 
-    def test_expvar_outage_is_a_failed_collection(self):
+    def test_expvar_outage_is_a_failed_collection(self) -> None:
         ss = subprocess.CompletedProcess([], 0, stdout="")
         with (
             patch.object(MODULE.subprocess, "run", return_value=ss),
             patch.object(MODULE.urllib.request, "urlopen", side_effect=URLError("down")),
         ):
-            self.assertEqual(self.collect_run(), 1)
-        self.assertIn("socrat_vpn_collection_success 0", self.output.read_text())
+            assert self.collect_run() == 1
+        assert "socrat_vpn_collection_success 0" in self.output.read_text()
 
-    def test_state_corruption_recovered_from_clean_slate(self):
+    def test_state_corruption_recovered_from_clean_slate(self) -> None:
         self.state.write_text("{ not json")
         ss = subprocess.CompletedProcess([], 0, stdout="")
         payload = counters_payload({"mom": {"downlink": 100, "uplink": 0}})
@@ -278,13 +283,13 @@ class CollectorTests(unittest.TestCase):
             patch.object(MODULE.subprocess, "run", return_value=ss),
             patch.object(MODULE.urllib.request, "urlopen", return_value=payload),
         ):
-            self.assertEqual(self.collect_run(), 0)
+            assert self.collect_run() == 0
         # fresh state only baselines the counters: success, but no activity yet
-        self.assertIn("socrat_vpn_active_clients 0", self.output.read_text())
-        self.assertIn("socrat_vpn_collection_success 1", self.output.read_text())
-        self.assertEqual(json.loads(self.state.read_text())["counters"], {"mom": 100})
+        assert "socrat_vpn_active_clients 0" in self.output.read_text()
+        assert "socrat_vpn_collection_success 1" in self.output.read_text()
+        assert json.loads(self.state.read_text())["counters"] == {"mom": 100}
 
-    def test_collector_interval_is_five_seconds(self):
+    def test_collector_interval_is_five_seconds(self) -> None:
         import importlib.util as _ilu
         from pathlib import Path
 
@@ -292,7 +297,7 @@ class CollectorTests(unittest.TestCase):
             Path(__file__).resolve().parent.parent
             / "ansible/roles/monitoring_vpn/defaults/main.yml"
         )
-        self.assertIn("monitoring_vpn_interval: 5s", path.read_text())
+        assert "monitoring_vpn_interval: 5s" in path.read_text()
 
 
 if __name__ == "__main__":
@@ -301,8 +306,7 @@ if __name__ == "__main__":
 
 class FallbackMetricTests(unittest.TestCase):
     """Verify the fallback latch exports even when collection fails."""
-
-    def test_fallback_latch_is_exported_even_when_collection_fails(self):
+    def test_fallback_latch_is_exported_even_when_collection_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             marker = Path(directory) / "active"
             output = Path(directory) / "vpn.prom"
@@ -310,4 +314,4 @@ class FallbackMetricTests(unittest.TestCase):
                 if active:
                     marker.touch()
                 MODULE.write_metrics(str(output), 0, [], False, fallback_marker=str(marker))
-                self.assertIn(f"socrat_vpn_fallback_active {int(active)}\n", output.read_text())
+                assert f"socrat_vpn_fallback_active {int(active)}\n" in output.read_text()

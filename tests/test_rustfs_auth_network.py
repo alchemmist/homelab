@@ -3,13 +3,42 @@
 import pathlib
 import subprocess
 import unittest
+from typing import NotRequired, TypedDict
 
 import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
-def render(enabled):
+class _Peer(TypedDict):
+    """Egress peer by pod or namespace selector."""
+
+    podSelector: NotRequired[dict[str, dict[str, str]]]
+    namespaceSelector: NotRequired[dict[str, dict[str, str]]]
+
+
+class _EgressRule(TypedDict):
+    """One egress rule with optional port and peer lists."""
+
+    ports: NotRequired[list[dict[str, object]]]
+    to: NotRequired[list[_Peer]]
+
+
+class _PolicySpec(TypedDict):
+    """NetworkPolicy spec fields the DNAT contract reads."""
+
+    egress: list[_EgressRule]
+
+
+class _NetworkPolicy(TypedDict):
+    """Rendered manifest document narrowed for ingress policy checks."""
+
+    kind: str
+    metadata: dict[str, object]
+    spec: _PolicySpec
+
+
+def render(enabled) -> dict[tuple[str, str, str], _NetworkPolicy]:
     raw = subprocess.check_output(
         [
             "helm",
@@ -34,20 +63,16 @@ def render(enabled):
 
 class AuthNetworkTests(unittest.TestCase):
     """Check RustFS auth network policies change narrowly."""
-
-    def test_only_two_policies_change_no_pod_or_stateful_resource(self):
+    def test_only_two_policies_change_no_pod_or_stateful_resource(self) -> None:
         before, after = render(False), render(True)
-        self.assertEqual(set(before), set(after))
+        assert set(before) == set(after)
         changed = {k for k in before if before[k] != after[k]}
-        self.assertEqual(
-            changed,
-            {
-                ("NetworkPolicy", "rustfs", "rustfs-isolation"),
-                ("NetworkPolicy", "identity", "rustfs-gateway-isolation"),
-            },
-        )
+        assert changed == {
+            ("NetworkPolicy", "rustfs", "rustfs-isolation"),
+            ("NetworkPolicy", "identity", "rustfs-gateway-isolation"),
+        }
 
-    def test_both_real_https_dnat_hops_are_narrowly_selected(self):
+    def test_both_real_https_dnat_hops_are_narrowly_selected(self) -> None:
         for key, obj in render(True).items():
             if key[0] != "NetworkPolicy" or key[2] not in (
                 "rustfs-isolation",
@@ -64,8 +89,8 @@ class AuthNetworkTests(unittest.TestCase):
                     for p in r.get("to", [])
                 )
             ]
-            self.assertEqual(len(peers), 1)
-            self.assertEqual(peers[0]["ports"], [{"port": 8443, "protocol": "TCP"}])
+            assert len(peers) == 1
+            assert peers[0]["ports"] == [{"port": 8443, "protocol": "TCP"}]
             lbs = [
                 r
                 for r in rows
@@ -77,11 +102,10 @@ class AuthNetworkTests(unittest.TestCase):
                     for p in r.get("to", [])
                 )
             ]
-            self.assertEqual(len(lbs), 1)
-            self.assertEqual(lbs[0]["ports"], [{"port": 443, "protocol": "TCP"}])
+            assert len(lbs) == 1
+            assert lbs[0]["ports"] == [{"port": 443, "protocol": "TCP"}]
             for row in peers + lbs:
-                self.assertEqual(
-                    row["to"][0]["namespaceSelector"]["matchLabels"],
-                    {"kubernetes.io/metadata.name": "kube-system"},
-                )
-            self.assertNotIn("0.0.0.0/0", str(rows))
+                assert row["to"][0]["namespaceSelector"]["matchLabels"] == {
+                    "kubernetes.io/metadata.name": "kube-system"
+                }
+            assert "0.0.0.0/0" not in str(rows)

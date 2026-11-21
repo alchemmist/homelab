@@ -6,6 +6,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+PUBLIC_FILE_MODE = 0o755
+
 
 def load(path, name):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -27,12 +29,11 @@ class SPIOnlyDNSTests(unittest.TestCase):
             with self.subTest(home=home, vps=vps):
                 before = old.render(123, home, vps).splitlines()
                 after = new.render(123, home, vps).splitlines()
-                self.assertEqual([r for r in after if not r.startswith("spi.socrat IN A ")], before)
-                self.assertEqual(
-                    [r for r in after if r.startswith("spi.socrat IN A ")],
-                    ["spi.socrat IN A " + a for a in old.healthy_addresses(home, vps)],
-                )
-                self.assertNotIn("*.socrat", "\n".join(after))
+                assert [r for r in after if not r.startswith("spi.socrat IN A ")] == before
+                assert [r for r in after if r.startswith("spi.socrat IN A ")] == [
+                    "spi.socrat IN A " + a for a in old.healthy_addresses(home, vps)
+                ]
+                assert "*.socrat" not in "\n".join(after)
         new.TTL += 1
         with self.assertRaisesRegex(RuntimeError, "Unrelated DNS record change"):
             guard.delta(old, new)
@@ -93,7 +94,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
             (base / "proposed.py").write_text("VALUE = 2\n")
 
             def acquired(fd, operation):
-                self.assertEqual(operation, guard.fcntl.LOCK_EX)
+                assert operation == guard.fcntl.LOCK_EX
                 # Simulate a prior writer leaving an uncertain marker before releasing its lock.
                 (base / "uncertain.json").write_text("{}")
 
@@ -109,8 +110,8 @@ class DNSPreflightSafetyTests(unittest.TestCase):
             ):
                 guard.main()
             loader.assert_not_called()
-            self.assertFalse((base / "before.py").exists())
-            self.assertEqual(current.read_text(), "VALUE = 1\n")
+            assert not (base / "before.py").exists()
+            assert current.read_text() == "VALUE = 1\n"
 
     def test_missing_state_directory_has_controlled_stop(self):
         import tempfile
@@ -127,7 +128,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
                 self.assertRaisesRegex(RuntimeError, "Unsafe state directory"),
             ):
                 guard.main()
-            self.assertFalse(missing.exists())
+            assert not missing.exists()
 
 
 class ExclusiveRendererTests(unittest.TestCase):
@@ -142,7 +143,7 @@ class ExclusiveRendererTests(unittest.TestCase):
             path.write_bytes(b"original")
             with self.assertRaisesRegex(RuntimeError, "Unexpected temporary renderer"):
                 guard.stage_renderer(path, b"replacement")
-            self.assertEqual(path.read_bytes(), b"original")
+            assert path.read_bytes() == b"original"
 
     def test_existing_and_dangling_symlinks_are_not_followed(self):
         import tempfile
@@ -161,11 +162,11 @@ class ExclusiveRendererTests(unittest.TestCase):
                     self.assertRaisesRegex(RuntimeError, "Unexpected temporary renderer"),
                 ):
                     guard.stage_renderer(link, b"replacement")
-                self.assertTrue(link.is_symlink())
+                assert link.is_symlink()
                 if existing:
-                    self.assertEqual(target.read_bytes(), b"original")
+                    assert target.read_bytes() == b"original"
                 else:
-                    self.assertFalse(target.exists())
+                    assert not target.exists()
 
     def test_new_inode_has_expected_public_renderer_mode_and_contents(self):
         import stat
@@ -175,5 +176,5 @@ class ExclusiveRendererTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "stage.tmp"
             guard.stage_renderer(path, b"VALUE = 1\n")
-            self.assertEqual(path.read_bytes(), b"VALUE = 1\n")
-            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o755)
+            assert path.read_bytes() == b"VALUE = 1\n"
+            assert stat.S_IMODE(path.stat().st_mode) == PUBLIC_FILE_MODE

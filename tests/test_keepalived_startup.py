@@ -1,3 +1,5 @@
+"""Tests for the keepalived startup ordering in the home ingress HA role."""
+
 import os
 from pathlib import Path
 import subprocess
@@ -10,8 +12,8 @@ ROLE = ROOT / "ansible/roles/home_ingress_ha"
 
 class KeepalivedStartupTest(unittest.TestCase):
     """Exercise the keepalived startup wait template."""
-
-    def run_wait(self, appear_at):
+    def run_wait(self, appear_at: int) -> tuple[subprocess.CompletedProcess[str], int]:
+        """Run the wait template against a fake ip tool and count its attempts."""
         script = (ROLE / "templates/wait-home-ingress-interface.sh.j2").read_text()
         script = script.replace(
             "{{ home_ingress_ha_nodes[inventory_hostname].interface | quote }}", "wlan0"
@@ -41,23 +43,27 @@ class KeepalivedStartupTest(unittest.TestCase):
             )
             return result, int((directory / "state").read_text())
 
-    def test_existing_interface_starts_immediately(self):
+    def test_existing_interface_starts_immediately(self) -> None:
+        """Start without polling when the shared interface already exists."""
         result, attempts = self.run_wait(1)
         self.assertEqual(result.returncode, 0)
         self.assertEqual(attempts, 1)
 
-    def test_late_interface_is_waited_for(self):
+    def test_late_interface_is_waited_for(self) -> None:
+        """Keep polling until the shared interface finally appears."""
         result, attempts = self.run_wait(4)
         self.assertEqual(result.returncode, 0)
         self.assertEqual(attempts, 4)
 
-    def test_missing_interface_fails_after_bounded_wait(self):
+    def test_missing_interface_fails_after_bounded_wait(self) -> None:
+        """Fail after exactly sixty bounded attempts when it never appears."""
         result, attempts = self.run_wait(100)
         self.assertEqual(result.returncode, 1)
         self.assertEqual(attempts, 60)
         self.assertIn("did not appear", result.stderr)
 
-    def test_service_retries_and_has_time_for_prestart(self):
+    def test_service_retries_and_has_time_for_prestart(self) -> None:
+        """Give keepalived bounded retries with room for the pre-start wait."""
         override = (ROLE / "templates/keepalived-startup.conf.j2").read_text()
         for setting in (
             "After=network-online.target",

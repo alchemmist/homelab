@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry Open WebUI source profile."""
+
 import importlib.util
 from pathlib import Path
 import sys
@@ -8,7 +10,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module():
+def module() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "webui_profile", ROOT / "scripts/otel-open-webui-source-profile.py"
     )
@@ -17,11 +19,16 @@ def module():
     return result
 
 
-def fixtures():
-    calls = []
+def fixtures() -> tuple[
+    list[str | dict[str, object]],
+    SimpleNamespace,
+    ModuleType,
+    dict[str, ModuleType],
+]:
+    calls: list[str | dict[str, object]] = []
 
     class Native:
-        def __init__(self, app, db_engine):
+        def __init__(self, app, db_engine) -> None:
             self.app = app
             self.db_engine = db_engine
 
@@ -34,11 +41,11 @@ def fixtures():
 
     class FastApi:
         @staticmethod
-        def instrument_app(**kwargs):
+        def instrument_app(**kwargs) -> None:
             calls.append(kwargs)
 
         @staticmethod
-        def uninstrument_app(app):
+        def uninstrument_app(app) -> None:
             calls.append("fastapi-stop")
 
     native = SimpleNamespace(
@@ -65,26 +72,22 @@ def fixtures():
 
 class OpenWebuiProfileTests(unittest.TestCase):
     """Check the Open WebUI instrumentation source profile coverage."""
-
-    def test_only_http_instrumentors_no_body_serializing_or_duplicate_signals(self):
+    def test_only_http_instrumentors_no_body_serializing_or_duplicate_signals(self) -> None:
         calls, native, sdk, modules = fixtures()
         with patch.dict(sys.modules, modules):
             module().activate()
             profile = native.Instrumentor("app", "never-connected-db")
             profile._instrument()
-            self.assertEqual(
-                calls[0],
-                {
-                    "app": "app",
-                    "http_capture_headers_server_request": [],
-                    "http_capture_headers_server_response": [],
-                },
-            )
-            self.assertEqual(calls[1:], ["http"] * 3)
+            assert calls[0] == {
+                "app": "app",
+                "http_capture_headers_server_request": [],
+                "http_capture_headers_server_response": [],
+            }
+            assert calls[1:] == ["http"] * 3
             profile._uninstrument()
-            self.assertEqual(calls[-4:], ["fastapi-stop"] + ["http-stop"] * 3)
+            assert calls[-4:] == ["fastapi-stop"] + ["http-stop"] * 3
 
-    def test_guard_and_before_setup_order_required_no_late_fallback(self):
+    def test_guard_and_before_setup_order_required_no_late_fallback(self) -> None:
         calls, native, sdk, modules = fixtures()
         with patch.dict(sys.modules, modules):
             sdk.TracerProvider._homelab_source_privacy = False
@@ -94,4 +97,4 @@ class OpenWebuiProfileTests(unittest.TestCase):
             with patch.dict(sys.modules, {"open_webui.utils.telemetry.setup": ModuleType("setup")}):
                 with self.assertRaises(ValueError):
                     module().activate()
-            self.assertEqual(calls, [])
+            assert calls == []

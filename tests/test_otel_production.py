@@ -1,6 +1,9 @@
+"""Safety checks for the production OpenTelemetry deployment."""
+
 import importlib.util
 import json
 from pathlib import Path
+from types import ModuleType
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -8,7 +11,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module(name):
+def module(name) -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         name.replace("-", "_"), ROOT / "scripts" / (name + ".py")
     )
@@ -19,8 +22,7 @@ def module(name):
 
 class ProductionSafetyTests(unittest.TestCase):
     """Check production bootstrap token roles and CA key access."""
-
-    def test_host_token_roles_are_named_and_cannot_read_ca_private_key(self):
+    def test_host_token_roles_are_named_and_cannot_read_ca_private_key(self) -> None:
         boot = module("otel-production-bootstrap")
         resources = boot.resources({"requiredSecretKeys": []}, "10.43.1.2", {})
         roles = [
@@ -28,40 +30,39 @@ class ProductionSafetyTests(unittest.TestCase):
             for r in resources
             if r["kind"] == "Role" and r["metadata"]["name"].startswith("otel-host-")
         ]
-        self.assertEqual(
-            {r["metadata"]["name"] for r in roles},
-            {"otel-host-" + node for node in boot.NODES},
-        )
+        assert {r["metadata"]["name"] for r in roles} == {
+            "otel-host-" + node for node in boot.NODES
+        }
         for role in roles:
             for rule in role["rules"]:
-                self.assertNotIn("*", rule["verbs"])
-                self.assertNotIn("otel-root-ca", rule.get("resourceNames", []))
+                assert "*" not in rule["verbs"]
+                assert "otel-root-ca" not in rule.get("resourceNames", [])
                 if rule["resources"] == ["serviceaccounts/token"]:
-                    self.assertEqual(rule["resourceNames"], [role["metadata"]["name"]])
+                    assert rule["resourceNames"] == [role["metadata"]["name"]]
 
-    def test_verified_private_wireguard_addresses_are_not_interchanged(self):
+    def test_verified_private_wireguard_addresses_are_not_interchanged(self) -> None:
         boot = module("otel-production-bootstrap")
-        self.assertEqual(boot.NODES["socrat-0"], "10.250.0.1")
-        self.assertEqual(boot.NODES["socrat-2"], "10.250.0.2")
+        assert boot.NODES["socrat-0"] == "10.250.0.1"
+        assert boot.NODES["socrat-2"] == "10.250.0.2"
 
-    def test_native_overlay_does_not_turn_on_legacy_scraping(self):
+    def test_native_overlay_does_not_turn_on_legacy_scraping(self) -> None:
         import yaml
 
         values = yaml.safe_load(
             (ROOT / "deploy/monitoring/otel-production-values.yaml").read_text()
         )
         spec = values["prometheus"]["prometheusSpec"]
-        self.assertTrue(spec["listenLocal"])
-        self.assertTrue(spec["enableOTLPReceiver"])
-        self.assertEqual(spec["otlp"]["translationStrategy"], "NoTranslation")
+        assert spec["listenLocal"]
+        assert spec["enableOTLPReceiver"]
+        assert spec["otlp"]["translationStrategy"] == "NoTranslation"
         for key in [
             "serviceMonitorSelector",
             "podMonitorSelector",
             "scrapeConfigSelector",
             "probeSelector",
         ]:
-            self.assertEqual(
-                spec[key]["matchLabels"]["homelab.alchemmist.xyz/scrape-owner"],
-                "retired-legacy-prometheus",
+            assert (
+                spec[key]["matchLabels"]["homelab.alchemmist.xyz/scrape-owner"]
+                == "retired-legacy-prometheus"
             )
-        self.assertEqual(spec["evaluationInterval"], "5s")
+        assert spec["evaluationInterval"] == "5s"

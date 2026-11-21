@@ -1,7 +1,10 @@
+"""Tests for the OpenTelemetry source registry."""
+
 import copy
 import importlib.util
 import json
 from pathlib import Path
+from typing import TypedDict
 import unittest
 
 
@@ -13,8 +16,59 @@ REGISTRY = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(REGISTRY)
 
 
-def fixtures():
-    monitor = {
+class _MonitorMeta(TypedDict):
+    namespace: str
+    name: str
+    resourceVersion: str
+    labels: dict[str, str]
+
+
+class _MonitorItem(TypedDict):
+    kind: str
+    metadata: _MonitorMeta
+    spec: dict[str, object]
+
+
+class _Target(TypedDict):
+    scrapePool: str
+    scrapeUrl: str
+    labels: dict[str, str]
+    health: str
+    scrapeInterval: str
+    scrapeTimeout: str
+
+
+class _DashboardItem(TypedDict):
+    metadata: dict[str, str]
+    data: dict[str, str]
+
+
+class _Prometheus(TypedDict):
+    metadata: dict[str, object]
+    spec: dict[str, object]
+
+
+class _Namespaces(TypedDict):
+    items: list[dict[str, object]]
+
+
+class _Rules(TypedDict):
+    groups: list[dict[str, object]]
+
+
+class _Dashboards(TypedDict):
+    items: list[_DashboardItem]
+
+
+def fixtures() -> tuple[
+    dict[str, list[_MonitorItem]],
+    dict[str, list[_Target]],
+    _Prometheus,
+    _Namespaces,
+    _Rules,
+    _Dashboards,
+]:
+    monitor: _MonitorItem = {
         "kind": "ServiceMonitor",
         "metadata": {
             "namespace": "monitoring",
@@ -24,7 +78,7 @@ def fixtures():
         },
         "spec": {"endpoints": [{"port": "metrics", "interval": "5s"}]},
     }
-    target = {
+    target: _Target = {
         "scrapePool": "serviceMonitor/monitoring/nodes/0",
         "scrapeUrl": "http://node:9100/metrics",
         "labels": {"job": "node-exporter", "instance": "node:9100"},
@@ -32,15 +86,17 @@ def fixtures():
         "scrapeInterval": "5s",
         "scrapeTimeout": "4s",
     }
-    prometheus = {
+    prometheus: _Prometheus = {
         "metadata": {"namespace": "monitoring"},
         "spec": {
             "serviceMonitorSelector": {"matchLabels": {"release": "stack"}},
             "serviceMonitorNamespaceSelector": {"matchLabels": {"selected": "yes"}},
         },
     }
-    namespaces = {"items": [{"metadata": {"name": "monitoring", "labels": {"selected": "yes"}}}]}
-    rules = {
+    namespaces: _Namespaces = {
+        "items": [{"metadata": {"name": "monitoring", "labels": {"selected": "yes"}}}]
+    }
+    rules: _Rules = {
         "groups": [
             {
                 "name": "health",
@@ -50,7 +106,7 @@ def fixtures():
             }
         ]
     }
-    dashboards = {
+    dashboards: _Dashboards = {
         "items": [
             {
                 "metadata": {"name": "dashboard", "namespace": "monitoring"},
@@ -78,27 +134,26 @@ def fixtures():
 
 class SourceRegistryTests(unittest.TestCase):
     """Check the source registry's active inventory completeness."""
-
-    def test_complete_active_inventory_preserves_labels_and_ownership(self):
+    def test_complete_active_inventory_preserves_labels_and_ownership(self) -> None:
         args = fixtures()
         before = copy.deepcopy(args)
         result = REGISTRY.build(*args)
-        self.assertTrue(result["liveInventoryVerified"])
-        self.assertFalse(result["readyForCutover"])
-        self.assertFalse(result["sourceCapabilitiesVerified"])
-        self.assertEqual(result["targets"][0]["futureOwner"], "node-systemd-agent")
-        self.assertEqual(result["targets"][0]["labelNames"], ["instance", "job"])
-        self.assertEqual(result["activeIntervals"], {"5s": 1})
-        self.assertEqual(args, before)
+        assert result["liveInventoryVerified"]
+        assert not result["readyForCutover"]
+        assert not result["sourceCapabilitiesVerified"]
+        assert result["targets"][0]["futureOwner"] == "node-systemd-agent"
+        assert result["targets"][0]["labelNames"] == ["instance", "job"]
+        assert result["activeIntervals"] == {"5s": 1}
+        assert args == before
 
-    def test_nondefault_intervals_are_reported_not_rewritten(self):
+    def test_nondefault_intervals_are_reported_not_rewritten(self) -> None:
         args = fixtures()
         args[1]["activeTargets"][0]["scrapeInterval"] = "30s"
         result = REGISTRY.build(*args)
-        self.assertEqual(result["activeIntervals"], {"30s": 1})
-        self.assertEqual(result["findings"][0]["targets"], 1)
+        assert result["activeIntervals"] == {"30s": 1}
+        assert result["findings"][0]["targets"] == 1
 
-    def test_unknown_jobs_and_monitor_endpoints_fail_closed(self):
+    def test_unknown_jobs_and_monitor_endpoints_fail_closed(self) -> None:
         for field, value in [
             ("job", "unknown-new-exporter"),
             ("pool", "serviceMonitor/monitoring/nodes/9"),
@@ -109,9 +164,9 @@ class SourceRegistryTests(unittest.TestCase):
                 target["labels"]["job"] = value
             else:
                 target["scrapePool"] = value
-            self.assertFalse(REGISTRY.build(*args)["liveInventoryVerified"])
+            assert not REGISTRY.build(*args)["liveInventoryVerified"]
 
-    def test_unselected_monitors_are_retained_without_activation(self):
+    def test_unselected_monitors_are_retained_without_activation(self) -> None:
         args = fixtures()
         monitor = copy.deepcopy(args[0]["items"][0])
         monitor["metadata"]["name"] = "excluded"
@@ -119,16 +174,16 @@ class SourceRegistryTests(unittest.TestCase):
         args[0]["items"].append(monitor)
         result = REGISTRY.build(*args)
         item = result["sources"]["serviceMonitor/monitoring/excluded"]
-        self.assertFalse(item["selectedByPrometheus"])
-        self.assertEqual(item["activeTargetCount"], 0)
-        self.assertTrue(result["liveInventoryVerified"])
+        assert not item["selectedByPrometheus"]
+        assert item["activeTargetCount"] == 0
+        assert result["liveInventoryVerified"]
 
-    def test_active_target_outside_selector_is_an_error(self):
+    def test_active_target_outside_selector_is_an_error(self) -> None:
         args = fixtures()
         args[0]["items"][0]["metadata"]["labels"] = {}
-        self.assertFalse(REGISTRY.build(*args)["liveInventoryVerified"])
+        assert not REGISTRY.build(*args)["liveInventoryVerified"]
 
-    def test_kubernetes_selector_semantics(self):
+    def test_kubernetes_selector_semantics(self) -> None:
         cases = [
             (
                 {"matchExpressions": [{"key": "x", "operator": "In", "values": ["a"]}]},
@@ -140,18 +195,18 @@ class SourceRegistryTests(unittest.TestCase):
             ({"matchExpressions": [{"key": "x", "operator": "DoesNotExist"}]}, {}, True),
         ]
         for selector, attributes, expected in cases:
-            self.assertEqual(REGISTRY.selected(selector, attributes), expected)
+            assert REGISTRY.selected(selector, attributes) == expected
         with self.assertRaises(ValueError):
             REGISTRY.selected({"matchExpressions": [{"key": "x", "operator": "unsupported"}]}, {})
 
-    def test_unhealthy_or_missing_targets_block_inventory(self):
+    def test_unhealthy_or_missing_targets_block_inventory(self) -> None:
         args = fixtures()
         args[1]["activeTargets"][0]["health"] = "down"
-        self.assertFalse(REGISTRY.build(*args)["liveInventoryVerified"])
+        assert not REGISTRY.build(*args)["liveInventoryVerified"]
         args[1]["activeTargets"] = []
-        self.assertFalse(REGISTRY.build(*args)["liveInventoryVerified"])
+        assert not REGISTRY.build(*args)["liveInventoryVerified"]
 
-    def test_secrets_urls_and_values_are_not_published(self):
+    def test_secrets_urls_and_values_are_not_published(self) -> None:
         scrubbed = REGISTRY.scrub(
             {
                 "authorization": {"credentials": "actual-secret"},
@@ -168,29 +223,29 @@ class SourceRegistryTests(unittest.TestCase):
             "private-vpn-path",
             "token=abc",
         ):
-            self.assertNotIn(secret, value)
+            assert secret not in value
         target = fixtures()[1]["activeTargets"][0]
         target["labels"]["instance"] = "https://user:pass@host/private-vpn-path?token=abc"
         target["scrapeUrl"] = "http://node:9100/hidden-path?auth=secret"
         summary = json.dumps(REGISTRY.target_summary(target))
         for secret in ("user:pass", "private-vpn-path", "token=abc", "hidden-path", "auth=secret"):
-            self.assertNotIn(secret, summary)
+            assert secret not in summary
 
-    def test_nested_dashboard_queries_are_inventoried_without_mutation(self):
+    def test_nested_dashboard_queries_are_inventoried_without_mutation(self) -> None:
         document = {
             "panels": [{"id": 1, "panels": [{"id": 2, "targets": [{"expr": "up", "refId": "B"}]}]}]
         }
-        self.assertEqual(list(REGISTRY.expressions(document)), [(2, "B", "up")])
+        assert list(REGISTRY.expressions(document)) == [(2, "B", "up")]
 
-    def test_duplicate_dashboard_uid_is_rejected(self):
+    def test_duplicate_dashboard_uid_is_rejected(self) -> None:
         args = fixtures()
         args[-1]["items"].append(copy.deepcopy(args[-1]["items"][0]))
         with self.assertRaises(ValueError):
             REGISTRY.build(*args)
 
-    def test_known_producers_complete_the_registry_not_cutover(self):
+    def test_known_producers_complete_the_registry_not_cutover(self) -> None:
         registry = REGISTRY.build(*fixtures())
-        producers = {
+        producers: dict[str, dict[str, object]] = {
             node: {"files": [], "timers": {}}
             for node in ["socrat-0", "socrat-1", "socrat-2", "socrat-3"]
         }
@@ -219,16 +274,16 @@ class SourceRegistryTests(unittest.TestCase):
             ]
         }
         REGISTRY.attach_producers(registry, producers, daemonsets)
-        self.assertTrue(registry["metricsSourceRegistryVerified"])
-        self.assertFalse(registry["sourceRegistryVerified"])
-        self.assertFalse(registry["readyForCutover"])
-        self.assertEqual(registry["diskProducerRefreshSeconds"], "30")
+        assert registry["metricsSourceRegistryVerified"]
+        assert not registry["sourceRegistryVerified"]
+        assert not registry["readyForCutover"]
+        assert registry["diskProducerRefreshSeconds"] == "30"
 
-    def test_missing_producers_are_not_assumed_healthy(self):
+    def test_missing_producers_are_not_assumed_healthy(self) -> None:
         registry = REGISTRY.build(*fixtures())
         REGISTRY.attach_producers(registry, {}, {"items": []})
-        self.assertFalse(registry["sourceRegistryVerified"])
-        self.assertGreater(len(registry["errors"]), 0)
+        assert not registry["sourceRegistryVerified"]
+        assert len(registry["errors"]) > 0
 
 
 if __name__ == "__main__":

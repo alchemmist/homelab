@@ -1,3 +1,4 @@
+"""Tests for controller behavior under faults and interruptions."""
 import json
 import os
 import pathlib
@@ -10,6 +11,39 @@ import time
 import unittest
 
 
+def _fake_attempt_code(behavior: str) -> str:
+    fake = """import argparse,json,pathlib,sys,time
+p=argparse.ArgumentParser();p.add_argument('--directory');p.add_argument('--task',default='');
+a,rest=p.parse_known_args()
+d=pathlib.Path(a.directory);d.mkdir(parents=True)
+"""
+    suffixes = {
+        "restart": "marker=pathlib.Path(__file__).with_name('once');\n"
+        "if not marker.exists():\n"
+        " marker.write_text('started');time.sleep(600)\n"
+        "(d/'summary.json').write_text(json.dumps({'accepted':False,'run_error_type':'APITimeoutError'}))\n",
+        "premature_final": "(d/'summary.json').write_text("
+        "json.dumps({'accepted':False,'exit_status':'stop','actual_commands':0}))\n",
+        "malformed_summary": "(d/'summary.json').write_text('{broken');sys.exit(7)\n",
+        "bad_gateway": "accepted=str(d).endswith('attempt-2')\n"
+        "(d/'summary.json').write_text(json.dumps({'accepted': accepted, "
+        "'run_error_type': 'BadGatewayError'}))\n",
+        "wrapped_cause": "(d/'summary.json').write_text(json.dumps({'accepted': False, "
+        "'run_error_type': 'SDKError', 'cause_type': 'BadGatewayError', "
+        "'run_error': 'SDK wrapped BadGatewayError'}))\n",
+        "string_only_wrapper": "(d/'summary.json').write_text(json.dumps({'accepted': False, "
+        "'run_error_type': 'SDKError', 'run_error': 'SDK wrapped BadGatewayError'}))\n",
+        "context_window": "(d/'summary.json').write_text(json.dumps({'accepted': False, "
+        "'run_error_type': 'ContextWindowExceededError', "
+        "'error_chain': [{'type': 'ContextWindowExceededError'}]}))\n",
+        "bad_request": "(d/'summary.json').write_text(json.dumps({'accepted': False, "
+        "'run_error_type': 'BadRequestError', 'error_chain': [{'type': 'BadRequestError'}]}))\n",
+        "message_context": "(d/'summary.json').write_text(json.dumps({'accepted': False, "
+        "'run_error_type': 'SDKError', 'run_error': 'context_length_exceeded'}))\n",
+    }
+    return fake + suffixes.get(behavior, "")
+
+
 class ControllerFaultTests(unittest.TestCase):
     def setup_case(self, directory, behavior):
         root = pathlib.Path(directory)
@@ -19,32 +53,7 @@ class ControllerFaultTests(unittest.TestCase):
             shutil.copy(pathlib.Path(__file__).with_name(name), code / name)
         for name in ("fixtures.py", "sandbox.py"):
             (code / name).write_text("")
-        fake = """import argparse,json,pathlib,sys,time
-p=argparse.ArgumentParser();p.add_argument('--directory');p.add_argument('--task',default='');
-a,rest=p.parse_known_args()
-d=pathlib.Path(a.directory);d.mkdir(parents=True)
-"""
-        if behavior == "restart":
-            fake += "marker=pathlib.Path(__file__).with_name('once');\nif not marker.exists():\n marker.write_text('started');time.sleep(600)\n"
-            fake += "(d/'summary.json').write_text(json.dumps({'accepted':False,'run_error_type':'APITimeoutError'}))\n"
-        elif behavior == "premature_final":
-            fake += "(d/'summary.json').write_text(json.dumps({'accepted':False,'exit_status':'stop','actual_commands':0}))\n"
-        elif behavior == "malformed_summary":
-            fake += "(d/'summary.json').write_text('{broken');sys.exit(7)\n"
-        elif behavior == "bad_gateway":
-            fake += "accepted=str(d).endswith('attempt-2')\n"
-            fake += "(d/'summary.json').write_text(json.dumps({'accepted': accepted, 'run_error_type': 'BadGatewayError'}))\n"
-        elif behavior == "wrapped_cause":
-            fake += "(d/'summary.json').write_text(json.dumps({'accepted': False, 'run_error_type': 'SDKError', 'cause_type': 'BadGatewayError', 'run_error': 'SDK wrapped BadGatewayError'}))\n"
-        elif behavior == "string_only_wrapper":
-            fake += "(d/'summary.json').write_text(json.dumps({'accepted': False, 'run_error_type': 'SDKError', 'run_error': 'SDK wrapped BadGatewayError'}))\n"
-        elif behavior == "context_window":
-            fake += "(d/'summary.json').write_text(json.dumps({'accepted': False, 'run_error_type': 'ContextWindowExceededError', 'error_chain': [{'type': 'ContextWindowExceededError'}]}))\n"
-        elif behavior == "bad_request":
-            fake += "(d/'summary.json').write_text(json.dumps({'accepted': False, 'run_error_type': 'BadRequestError', 'error_chain': [{'type': 'BadRequestError'}]}))\n"
-        elif behavior == "message_context":
-            fake += "(d/'summary.json').write_text(json.dumps({'accepted': False, 'run_error_type': 'SDKError', 'run_error': 'context_length_exceeded'}))\n"
-        (code / "attempt.py").write_text(fake)
+        (code / "attempt.py").write_text(_fake_attempt_code(behavior))
         result = root / "private-state"
         return result, [
             sys.executable,
@@ -284,7 +293,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
         self.assertIn("| mini_native | 9 | 0 | 0 | 61 |", report)
 
     def test_exception_chain_records_cause_not_message_text(self):
-        from attempt import exception_chain, record_exception
+        from attempt import record_exception
 
         class SDKError(Exception):
             pass
@@ -388,7 +397,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
                 check=False,
                 stdout=None,
                 stderr=None,
-            ):
+            ) -> object:
                 calls.append(list(args))
 
                 class Result:
@@ -537,7 +546,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
                 check=False,
                 stdout=None,
                 stderr=None,
-            ):
+            ) -> object:
                 calls.append(list(args))
 
                 class Result:
@@ -639,7 +648,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
                 check=False,
                 stdout=None,
                 stderr=None,
-            ):
+            ) -> object:
                 calls.append(list(args))
 
                 class Result:
@@ -697,7 +706,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             check=False,
             stdout=None,
             stderr=None,
-        ):
+        ) -> object:
             calls.append(list(args))
 
             class Result:
@@ -766,7 +775,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             state["running"] = running
             controller.save_state(root / "state.json", state)
 
-            def boom(record):
+            def boom(record) -> None:
                 raise ValueError("docker daemon refused")
 
             original = controller.cleanup_interrupted

@@ -1,3 +1,5 @@
+"""Tests for the SPI triage Telegram link helpers."""
+
 import importlib.util
 from pathlib import Path
 import tempfile
@@ -23,20 +25,20 @@ class OutboxTest(unittest.TestCase):
         self.store = core.Store(Path(self.tmp.name) / "db")
         self.now = 1000
         self.calls = []
-        self.item = dict(
-            link_protocol=1,
-            episode="e",
-            generation=1,
-            copies=[
-                dict(
-                    chat_id=1,
-                    message_id=2,
-                    delivery_state="applied",
-                    applied_revision=1,
-                    applied_url="https://github.com/alchemmist/homelab/issues/42#issuecomment-7",
-                )
+        self.item = {
+            "link_protocol": 1,
+            "episode": "e",
+            "generation": 1,
+            "copies": [
+                {
+                    "chat_id": 1,
+                    "message_id": 2,
+                    "delivery_state": "applied",
+                    "applied_revision": 1,
+                    "applied_url": "https://github.com/alchemmist/homelab/issues/42#issuecomment-7",
+                }
             ],
-        )
+        }
         self.status = 200
         self.outbox = links.Links(
             self.store, self.http, clock=lambda: self.now, guarded_protocol=True
@@ -44,19 +46,19 @@ class OutboxTest(unittest.TestCase):
 
     def http(self, method, path, **kwargs):
         self.calls.append((method, path, kwargs))
-        return self.status, self.item if method == "GET" else dict(
-            key="Alert/pod/ns/name", updated=[dict(chat_id=1, message_id=2)], pending=[]
-        )
+        return self.status, self.item if method == "GET" else {
+            "key": "Alert/pod/ns/name", "updated": [{"chat_id": 1, "message_id": 2}], "pending": []
+        }
 
     def publication(self, **changes):
         return dict(
-            dict(
-                kind="comment",
-                role="primary",
-                issue_number=42,
-                id=7,
-                html_url="https://github.com/alchemmist/homelab/issues/42#issuecomment-7",
-            ),
+            {
+                "kind": "comment",
+                "role": "primary",
+                "issue_number": 42,
+                "id": 7,
+                "html_url": "https://github.com/alchemmist/homelab/issues/42#issuecomment-7",
+            },
             **changes,
         )
 
@@ -66,12 +68,12 @@ class OutboxTest(unittest.TestCase):
     def receipt(self):
         self.outbox.record_card_receipt(
             "e",
-            dict(
-                key="Alert/pod/ns/name",
-                episode="e",
-                immutable_key=True,
-                copies=[dict(chat_id=1, message_id=2)],
-            ),
+            {
+                "key": "Alert/pod/ns/name",
+                "episode": "e",
+                "immutable_key": True,
+                "copies": [{"chat_id": 1, "message_id": 2}],
+            },
         )
 
     def retry(self):
@@ -83,17 +85,17 @@ class OutboxTest(unittest.TestCase):
         self.enqueue()
         self.receipt()
         self.outbox.once()
-        self.assertEqual(self.outbox.snapshot("e")["state"], "applied")
-        self.assertFalse(self.outbox.once())
-        self.assertEqual(len(self.calls), 1)
+        assert self.outbox.snapshot("e")["state"] == "applied"
+        assert not self.outbox.once()
+        assert len(self.calls) == 1
 
     def test_publication_before_card(self):
         self.enqueue()
         self.outbox.once()
-        self.assertEqual(self.outbox.snapshot("e")["error"], "WAIT_RECEIPT")
+        assert self.outbox.snapshot("e")["error"] == "WAIT_RECEIPT"
         self.receipt()
         self.outbox.once()
-        self.assertEqual(self.outbox.snapshot("e")["state"], "applied")
+        assert self.outbox.snapshot("e")["state"] == "applied"
 
     def test_races_and_restart(self):
         self.enqueue()
@@ -101,31 +103,31 @@ class OutboxTest(unittest.TestCase):
         for status in (404, 409, 500):
             self.status = status
             self.retry()
-            self.assertEqual(self.outbox.snapshot("e")["state"], "pending")
+            assert self.outbox.snapshot("e")["state"] == "pending"
         self.outbox = links.Links(
             self.store, self.http, clock=lambda: self.now, guarded_protocol=True
         )
         self.status = 200
         self.retry()
-        self.assertEqual(self.outbox.snapshot("e")["state"], "applied")
+        assert self.outbox.snapshot("e")["state"] == "applied"
 
     def test_partial_readback_not_desired_state(self):
         self.enqueue()
         self.receipt()
         self.outbox.request = lambda *a, **kw: (
             200,
-            dict(
-                key="Alert/pod/ns/name",
-                spi_url=self.publication()["html_url"],
-                updated=[],
-                pending=[dict(chat_id=1, message_id=2)],
-            ),
+            {
+                "key": "Alert/pod/ns/name",
+                "spi_url": self.publication()["html_url"],
+                "updated": [],
+                "pending": [{"chat_id": 1, "message_id": 2}],
+            },
         )
         self.outbox.once()
-        self.assertEqual(self.outbox.snapshot("e")["error"], "COPIES_PENDING")
+        assert self.outbox.snapshot("e")["error"] == "COPIES_PENDING"
         self.outbox.request = self.http
         self.retry()
-        self.assertEqual(self.outbox.snapshot("e")["state"], "applied")
+        assert self.outbox.snapshot("e")["state"] == "applied"
 
     def test_timeout_secret_safe(self):
         self.enqueue()
@@ -136,48 +138,52 @@ class OutboxTest(unittest.TestCase):
 
         self.outbox.request = fail
         self.outbox.once()
-        self.assertEqual(self.outbox.snapshot("e")["error"], "DELIVERY_UNKNOWN")
-        self.assertNotIn("secret-value", str(self.outbox.snapshot("e")))
+        assert self.outbox.snapshot("e")["error"] == "DELIVERY_UNKNOWN"
+        assert "secret-value" not in str(self.outbox.snapshot("e"))
 
     def test_lease_recovery(self):
         self.enqueue()
         self.receipt()
         with self.store.db() as c:
             c.execute("UPDATE spi_links SET owner='crashed',lease=1100")
-        self.assertFalse(self.outbox.once())
+        assert not self.outbox.once()
         self.retry()
-        self.assertEqual(self.outbox.snapshot("e")["state"], "applied")
+        assert self.outbox.snapshot("e")["state"] == "applied"
 
     def test_episode_and_stale_revision(self):
+        # Episode "e" lands on its second revision after re-publication.
+        revision_two = 2
         self.enqueue()
         self.outbox.record_card_receipt(
-            "e", dict(key="legacy", copies=[dict(chat_id=1, message_id=2)])
+            "e", {"key": "legacy", "copies": [{"chat_id": 1, "message_id": 2}]}
         )
         self.outbox.once()
-        self.assertEqual(self.outbox.snapshot("e")["error"], "WAIT_IMMUTABLE_RECEIPT")
-        self.assertFalse(any(c[0] == "POST" for c in self.calls))
+        assert self.outbox.snapshot("e")["error"] == "WAIT_IMMUTABLE_RECEIPT"
+        assert not any(c[0] == "POST" for c in self.calls)
         self.outbox.record_primary_publication(
             "resolved",
             "e",
-            2,
+            revision_two,
             self.publication(
                 id=8, html_url="https://github.com/alchemmist/homelab/issues/42#issuecomment-8"
             ),
         )
         self.enqueue()
-        self.assertEqual(self.outbox.snapshot("e")["revision"], 2)
+        assert self.outbox.snapshot("e")["revision"] == revision_two
 
     def test_out_of_order_completion_cannot_ack_new_revision(self):
         self.enqueue()
         self.receipt()
         original = self.http
+        # Episode "e" sits on its second revision even after the racing POST.
+        revision_two = 2
 
         def racing(method, path, **kwargs):
             if method == "POST":
                 self.outbox.record_primary_publication(
                     "resolved",
                     "e",
-                    2,
+                    revision_two,
                     self.publication(
                         id=8,
                         html_url="https://github.com/alchemmist/homelab/issues/42#issuecomment-8",
@@ -187,32 +193,32 @@ class OutboxTest(unittest.TestCase):
 
         self.outbox.request = racing
         self.outbox.once()
-        self.assertEqual(self.outbox.snapshot("e")["state"], "pending")
-        self.assertEqual(self.outbox.snapshot("e")["revision"], 2)
+        assert self.outbox.snapshot("e")["state"] == "pending"
+        assert self.outbox.snapshot("e")["revision"] == revision_two
 
     def test_legacy_bot_blocked(self):
         self.enqueue()
         self.receipt()
         self.outbox.guarded = False
         self.outbox.once()
-        self.assertEqual(self.calls, [])
-        self.assertEqual(self.outbox.snapshot("e")["error"], "BOT_GUARD_REQUIRED")
+        assert self.calls == []
+        assert self.outbox.snapshot("e")["error"] == "BOT_GUARD_REQUIRED"
 
     def test_urls(self):
-        self.assertEqual(
+        assert (
             links.primary_url(
                 self.publication(
                     kind="issue", html_url="https://github.com/alchemmist/homelab/issues/42"
                 )
-            ),
-            "https://github.com/alchemmist/homelab/issues/42",
+            )
+            == "https://github.com/alchemmist/homelab/issues/42"
         )
         for changes in [
-            dict(role="artifact"),
-            dict(html_url="https://github.com/alchemmist/homelab/issues/42"),
-            dict(html_url="https://evil/issues/42#issuecomment-7"),
-            dict(id=8),
-            dict(html_url=self.publication()["html_url"] + "?token=x"),
+            {"role": "artifact"},
+            {"html_url": "https://github.com/alchemmist/homelab/issues/42"},
+            {"html_url": "https://evil/issues/42#issuecomment-7"},
+            {"id": 8},
+            {"html_url": self.publication()["html_url"] + "?token=x"},
         ]:
             with self.assertRaises(ValueError):
                 links.primary_url(self.publication(**changes))
@@ -224,7 +230,7 @@ class OutboxTest(unittest.TestCase):
                     "event", "e", 1, self.publication(), connection=c
                 )
                 raise RuntimeError()
-        self.assertIsNone(self.outbox.snapshot("e"))
+        assert self.outbox.snapshot("e") is None
 
 
 if __name__ == "__main__":
