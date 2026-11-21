@@ -4,6 +4,25 @@ Personal homelab automation for Socrat nodes.
 
 Ansible manages the common host baseline: persistent SSH access, hostnames, shared users, the machine-wide Starship prompt, and host workload policies. Kubernetes, networking, storage, and applications have separate playbooks.
 
+## Local CI checks
+
+Run `make help` to list Quality Graph nodes, `make python` (or `make tests-fast`)
+for one node, and `make check` to attempt every node and return failure if any
+fails. Local targets execute the commands from the generated graph manifest;
+individual targets do not run upstream nodes or GitHub Actions setup steps.
+
+Start with Make, jq, Bash and `uv sync --locked`. For the full suite use a
+Linux x86_64 runner with Helm 3.19.0, Node 24.11.1, a Kind-compatible container
+runtime and passwordless `sudo -n unshare --net` for isolated tests. Install
+the standalone tools and Ansible collections with:
+
+```sh
+uv run python scripts/quality/install_tools.py
+uv run python scripts/quality/install_collections.py
+```
+
+See [Quality Graph](docs/quality/README.md) for check scope and CI ordering.
+
 ## Current infrastructure contracts
 
 Start with [current context](llm-wiki/context.md), [configuration ownership and

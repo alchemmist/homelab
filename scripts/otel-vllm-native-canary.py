@@ -62,21 +62,24 @@ def audit_on_end(span: EndedSpan, audit: dict[str, int]) -> None:
 def require_flush(provider: Flushable) -> None:
     """Fail unless the first synthetic batch flushes through the native SDK."""
     if not provider.force_flush(timeout_millis=10000):
-        raise ValueError("Initial native SDK flush failed")
+        msg = "Initial native SDK flush failed"
+        raise ValueError(msg)
 
 
 def require_http_protocol() -> None:
     """Fail unless the installed exporter selected the pinned HTTP protocol."""
     if os.environ.get("OTEL_EXPORTER_OTLP_TRACES_PROTOCOL") != "http/protobuf":
+        msg = "vLLM ignores generic protocol for this selector; insecure gRPC path forbidden"
         raise ValueError(
-            "vLLM ignores generic protocol for this selector; insecure gRPC path forbidden"
+            msg
         )
 
 
 def require_fresh_handshakes(*, renewal: bool) -> None:
     """Fail when certificate renewal is requested without fresh HTTP handshakes."""
     if renewal and os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "").lower() != "connection=close":
-        raise ValueError("Fresh native HTTP handshakes required")
+        msg = "Fresh native HTTP handshakes required"
+        raise ValueError(msg)
 
 
 def certificate_hash() -> str:
@@ -101,7 +104,8 @@ def await_leaf_renewal(
 ) -> tuple[str, dict[str, str]]:
     """Wait for the rotated leaf certificate and capture a second trace through it."""
     if before_hash not in loaded:
-        raise ValueError("Initial leaf was not loaded by native HTTP client")
+        msg = "Initial leaf was not loaded by native HTTP client"
+        raise ValueError(msg)
     progress(
         {
             "phase": "await-renewal",
@@ -112,7 +116,8 @@ def await_leaf_renewal(
     deadline = time.monotonic() + 600
     while certificate_hash() == before_hash:
         if time.monotonic() >= deadline:
-            raise ValueError("Projected leaf renewal deadline exceeded")
+            msg = "Projected leaf renewal deadline exceeded"
+            raise ValueError(msg)
         time.sleep(2)
     return certificate_hash(), emit_request()
 
@@ -240,7 +245,8 @@ def run():
         endpoint = "https://10.250.0.3:44318/v1/traces"
         probe_exporter = get_span_exporter(endpoint)
         if not isinstance(probe_exporter, OTLPSpanExporter):
-            raise ValueError("Installed vLLM selected a non-HTTP exporter")
+            msg = "Installed vLLM selected a non-HTTP exporter"
+            raise ValueError(msg)
         probe_exporter.shutdown()
         tracer = init_tracer("homelab.synthetic.vllm-request-validation", endpoint)
         provider = trace.get_tracer_provider()
