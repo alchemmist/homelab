@@ -22,7 +22,9 @@
         mode: "0644"
 
     - name: Record certificate identity and folder pause state
-      ansible.builtin.command: python3 /usr/local/libexec/syncthing-private-snapshot.py /srv/syncthing/config
+      ansible.builtin.command: >-
+        python3 /usr/local/libexec/syncthing-private-snapshot.py
+        /srv/syncthing/config
       register: syncthing_private_ui_snapshot_before
       changed_when: false
 
@@ -68,10 +70,14 @@
   become: true
   tasks:
     - name: Verify certificate identity and folder pause state
-      ansible.builtin.command: python3 /usr/local/libexec/syncthing-private-snapshot.py /srv/syncthing/config
+      ansible.builtin.command: >-
+        python3 /usr/local/libexec/syncthing-private-snapshot.py
+        /srv/syncthing/config
       register: syncthing_private_ui_snapshot_after
       changed_when: false
-      failed_when: syncthing_private_ui_snapshot_after.stdout != syncthing_private_ui_snapshot_before.stdout
+      failed_when: >-
+        syncthing_private_ui_snapshot_after.stdout
+        != syncthing_private_ui_snapshot_before.stdout
 
 - name: Migrate existing Syncthing monitors to private health checks
   hosts: socrat-2

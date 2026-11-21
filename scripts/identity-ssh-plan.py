@@ -423,7 +423,7 @@ def main(argv=None):
             )
             get_user = api.user
         else:
-            get_user = lambda ident: (
+            get_user = lambda _ident: (
                 None
             )  # Disabled assignments deliberately need no IdP availability.
         payload, summary = build_plan(bindings, policy, get_user)

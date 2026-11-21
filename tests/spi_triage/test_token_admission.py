@@ -211,7 +211,10 @@ class AdmissionTests(unittest.TestCase):
         self.assertIn("selection", saved[-1])
         completed = len(calls)
         m.call = Mock(
-            side_effect=lambda t, d, s, dl: {**GOOD, "issue_number": d["open_issues"][0]["number"]}
+            side_effect=lambda _t, d, _s, _dl: {
+                **GOOD,
+                "issue_number": d["open_issues"][0]["number"],
+            }
         )
         result = m.match(f.event(), issues, progress=saved[-1])
         self.assertEqual(result["reviewed_numbers"], list(range(1, 31)))

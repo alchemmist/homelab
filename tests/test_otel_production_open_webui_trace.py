@@ -18,7 +18,7 @@ def module():
 
 
 def document():
-    def resource(service, span):
+    def resource(service, span) -> dict[str, object]:
         return {
             "resource": {
                 "attributes": [{"key": "service.name", "value": {"stringValue": service}}]

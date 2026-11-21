@@ -81,15 +81,15 @@ class RoleConfigTests(unittest.TestCase):
 
     def test_control_plane_removes_conflicting_flags(self):
         self.write(
-            {
-                key: True
-                for key in (
+            dict.fromkeys(
+                (
                     "cluster-init",
                     "disable-apiserver",
                     "disable-controller-manager",
                     "disable-scheduler",
-                )
-            }
+                ),
+                True,
+            )
         )
         self.args.role = "control-plane"
         MODULE.configure(self.args)
