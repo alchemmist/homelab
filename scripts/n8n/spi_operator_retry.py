@@ -155,7 +155,6 @@ def authorize(a: _Authorization):
 def retry(
     path: str,
     authorization: _Authorization,
-    *,
     execute: bool = False,
     manifest: _TargetManifest | None = None,
 ):
