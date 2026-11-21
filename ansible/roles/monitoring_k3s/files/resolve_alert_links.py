@@ -10,9 +10,7 @@ import tempfile
 import time
 from urllib.parse import quote, urlencode
 
-PROMETHEUS_PATH = (
-    "/api/v1/namespaces/cattle-monitoring-system/services/http:thanos-query:9090/proxy/api/v1/rules"
-)
+PROMETHEUS_PATH = "/api/v1/namespaces/cattle-monitoring-system/services/http:thanos-query:9090/proxy/api/v1/rules"
 RULE_RESOURCES_PATH = (
     "/apis/monitoring.coreos.com/v1/namespaces/cattle-monitoring-system/prometheusrules"
 )
@@ -28,13 +26,17 @@ def js_hash(value):
     result = 0
     encoded = value.encode("utf-16-le", errors="surrogatepass")
     for index in range(0, len(encoded), 2):
-        result = (31 * result + int.from_bytes(encoded[index : index + 2], "little")) & 0xFFFFFFFF
+        result = (
+            31 * result + int.from_bytes(encoded[index : index + 2], "little")
+        ) & 0xFFFFFFFF
     return result if result < 0x80000000 else result - 0x100000000
 
 
 def query_fingerprint(query):
     query = "\n".join(
-        line.strip() for line in re.sub(r"#[^\n]*", "", query).split("\n") if line.strip()
+        line.strip()
+        for line in re.sub(r"#[^\n]*", "", query).split("\n")
+        if line.strip()
     )
     if len(query) > 1 and query.startswith("(") and query.endswith(")"):
         query = query[1:-1]
@@ -42,7 +44,9 @@ def query_fingerprint(query):
     query = re.sub(r"`([^`]*)`", r'"\1"', query)
     query = re.sub(r",(?=})", "", query).replace("{}", "")
     query = re.sub(r"""['"()\[\]\\`]""", "", query)
-    return "".join(sorted(query, key=lambda char: char.encode("utf-16-be", errors="surrogatepass")))
+    return "".join(
+        sorted(query, key=lambda char: char.encode("utf-16-be", errors="surrogatepass"))
+    )
 
 
 def pairs_fingerprint(values):
@@ -70,7 +74,8 @@ def rule_url(group, rule, primary=False):
         rule_hash(rule, primary),
     ]
     identifier = "$".join(
-        part.replace("$", "_DOLLAR_").replace("/", "\x1f").replace("\\", "\x1e") for part in parts
+        part.replace("$", "_DOLLAR_").replace("/", "\x1f").replace("\\", "\x1e")
+        for part in parts
     )
     return "/alerting/Prometheus/" + quote(identifier, safe="~!*'()") + "/view"
 
@@ -88,7 +93,9 @@ def panel_rules(panel, name_prefix=""):
             match = re.search(r'\balertname\s*(=~?)\s*"([^"\\]*)"', selector)
             if match:
                 names = match.group(2).split("|")
-                if not all(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) for name in names):
+                if not all(
+                    re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) for name in names
+                ):
                     if match.group(1) == "=~":
                         continue
                     message = "Unsupported alert name selector: " + match.group(2)
@@ -99,7 +106,9 @@ def panel_rules(panel, name_prefix=""):
 
 def resolve(dashboard, response, settings, values_key="nodeAlertLinks", name_prefix=""):
     groups = response["data"]["groups"]
-    primary = settings.get("featureToggles", {}).get("alertingPrometheusRulesPrimary", False)
+    primary = settings.get("featureToggles", {}).get(
+        "alertingPrometheusRulesPrimary", False
+    )
     available = {}
     for group in groups:
         for rule in group.get("rules", []):
@@ -125,7 +134,9 @@ def resolve(dashboard, response, settings, values_key="nodeAlertLinks", name_pre
                         "targetBlank": False,
                     }
                 )
-        result[str(panel["id"])] = sorted(links, key=lambda link: (link["title"], link["url"]))
+        result[str(panel["id"])] = sorted(
+            links, key=lambda link: (link["title"], link["url"])
+        )
     if not result:
         message = "Dashboard has no alert panels"
         raise ValueError(message)
@@ -133,12 +144,21 @@ def resolve(dashboard, response, settings, values_key="nodeAlertLinks", name_pre
 
 
 def expected_rules(dashboard, resources, formatter, name_prefix=""):
-    names = set().union(*(panel_rules(panel, name_prefix) for panel in panels(dashboard)))
+    names = set().union(
+        *(panel_rules(panel, name_prefix) for panel in panels(dashboard))
+    )
     expected = []
     cache = {}
     for resource in resources["items"]:
         metadata = resource["metadata"]
-        suffix = metadata["namespace"] + "-" + metadata["name"] + "-" + metadata["uid"] + ".yaml"
+        suffix = (
+            metadata["namespace"]
+            + "-"
+            + metadata["name"]
+            + "-"
+            + metadata["uid"]
+            + ".yaml"
+        )
         for group in resource["spec"].get("groups", []):
             for rule in group.get("rules", []):
                 if rule.get("alert") not in names:
@@ -160,7 +180,9 @@ def expected_rules(dashboard, resources, formatter, name_prefix=""):
                 )
     missing = names - {rule["name"] for _, _, rule in expected}
     if missing:
-        message = "Referenced rules have no Kubernetes definition: " + ", ".join(sorted(missing))
+        message = "Referenced rules have no Kubernetes definition: " + ", ".join(
+            sorted(missing)
+        )
         raise ValueError(message)
     return expected
 
@@ -171,7 +193,12 @@ def require_convergence(response, expected):
         for rule in group.get("rules", []):
             if rule.get("type") == "alerting":
                 actual.add(
-                    (group["file"].rsplit("/", 1)[-1], group["name"], rule["name"], rule_hash(rule))
+                    (
+                        group["file"].rsplit("/", 1)[-1],
+                        group["name"],
+                        rule["name"],
+                        rule_hash(rule),
+                    )
                 )
     missing = []
     for suffix, group_name, rule in expected:
@@ -179,7 +206,9 @@ def require_convergence(response, expected):
         if identity not in actual:
             missing.append(rule["name"])
     if missing:
-        message = "Prometheus has not loaded current rule definitions: " + ", ".join(sorted(set(missing)))
+        message = "Prometheus has not loaded current rule definitions: " + ", ".join(
+            sorted(set(missing))
+        )
         raise ValueError(message)
 
 
@@ -260,12 +289,18 @@ def main():
             response = fetch(PROMETHEUS_PATH)
             require_convergence(response, expected)
             result = resolve(
-                dashboard, response, fetch(GRAFANA_PATH), args.values_key, args.alert_name_prefix
+                dashboard,
+                response,
+                fetch(GRAFANA_PATH),
+                args.values_key,
+                args.alert_name_prefix,
             )
             break
         except (ValueError, subprocess.SubprocessError) as error:
             if time.monotonic() >= deadline:
-                raise SystemExit("Could not resolve Grafana alert links: " + str(error)) from error
+                raise SystemExit(
+                    "Could not resolve Grafana alert links: " + str(error)
+                ) from error
             time.sleep(min(5, max(0, deadline - time.monotonic())))
     output = Path(args.output)
     fd, temporary = tempfile.mkstemp(prefix=output.name + ".", dir=output.parent)

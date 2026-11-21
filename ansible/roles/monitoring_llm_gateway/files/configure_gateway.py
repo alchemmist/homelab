@@ -64,7 +64,8 @@ def _master_key_ref(deployment):
         e["valueFrom"]["secretKeyRef"]
         for c in deployment["spec"]["template"]["spec"]["containers"]
         for e in c.get("env", [])
-        if e.get("name") == "PROXY_MASTER_KEY" and "secretKeyRef" in e.get("valueFrom", {})
+        if e.get("name") == "PROXY_MASTER_KEY"
+        and "secretKeyRef" in e.get("valueFrom", {})
     ]
     if len(refs) != 1:
         message = "Expected one explicit deployed master-key reference"
@@ -108,7 +109,9 @@ def _request(opener, base, path, credential=None, read_json=False):
 
 def _require_key_state(request, token, master):
     """Require the existing key restricted to metrics and still enforced."""
-    status, info = request("/key/info?" + urllib.parse.urlencode({"key": token}), master, True)
+    status, info = request(
+        "/key/info?" + urllib.parse.urlencode({"key": token}), master, True
+    )
     if status != 200 or info.get("info", {}).get("allowed_routes") != ["/metrics"]:
         message = "Existing key must be restricted to metrics"
         raise RuntimeError(message)
@@ -126,7 +129,13 @@ def _require_key_state(request, token, master):
 def verify(args, runner=None, opener=None):
     runner = runner or subprocess.run
     opener = opener or urllib.request.build_opener(NoRedirect()).open
-    kubectl = ["k3s", "kubectl", "--kubeconfig", args.kubeconfig, "--request-timeout=15s"]
+    kubectl = [
+        "k3s",
+        "kubectl",
+        "--kubeconfig",
+        args.kubeconfig,
+        "--request-timeout=15s",
+    ]
 
     def get(namespace, kind, name):
         return _get(runner, kubectl, namespace, kind, name)
@@ -178,9 +187,7 @@ def main():
         verify(args)
     except Exception:
         # HTTP/key-info errors may contain a token in their URL. Never echo them.
-        message = (
-            "Read-only gateway verification failed; review Git ownership and existing metrics prerequisites privately. No repair or fallback attempted."
-        )
+        message = "Read-only gateway verification failed; review Git ownership and existing metrics prerequisites privately. No repair or fallback attempted."
         raise SystemExit(message) from None
     print("changed=false")
 
