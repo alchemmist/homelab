@@ -43,7 +43,8 @@ class Etcd:
                 and (member.get("name") == name or member.get("name", "").startswith(name + "-"))
             ]
             if len(matches) != 1 or matches[0] in result:
-                raise RuntimeError("Unknown or duplicate etcd member; refusing reconfiguration")
+                msg = "Unknown or duplicate etcd member; refusing reconfiguration"
+                raise RuntimeError(msg)
             result[matches[0]] = {
                 "id": int(member["ID"]),
                 "id_hex": format(int(member["ID"]), "x"),
@@ -66,7 +67,8 @@ class Etcd:
 
 def require_members(members, names):
     if set(members) != set(names) or any(item["learner"] for item in members.values()):
-        raise RuntimeError("Unexpected voting membership; refusing reconfiguration")
+        msg = "Unexpected voting membership; refusing reconfiguration"
+        raise RuntimeError(msg)
 
 
 def verify_final(client):
@@ -97,17 +99,20 @@ def remove_socrat_1(client):
                 break
             time.sleep(0.5)
         else:
-            raise RuntimeError("Leadership transfer did not converge")
+            msg = "Leadership transfer did not converge"
+            raise RuntimeError(msg)
     current = client.members()
     if current != members:
-        raise RuntimeError("Membership changed during preflight; refusing removal")
+        msg = "Membership changed during preflight; refusing removal"
+        raise RuntimeError(msg)
     try:
         client.call(["member", "remove", members["socrat-1"]["id_hex"]], structured=False)
     except (RuntimeError, subprocess.TimeoutExpired):
         current = client.members()
         if "socrat-1" in current:
+            msg = "Removal failed and socrat-1 remains a member; restore its staged configuration"
             raise RuntimeError(
-                "Removal failed and socrat-1 remains a member; restore its staged configuration"
+                msg
             ) from None
     return {"changed": True, "members": verify_final(client)}
 

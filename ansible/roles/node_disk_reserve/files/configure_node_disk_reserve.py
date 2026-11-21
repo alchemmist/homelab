@@ -42,7 +42,8 @@ def pause_folder(config_path, folder_id):
     if running:
         key = tree.findtext("gui/apikey")
         if not key:
-            raise RuntimeError("Syncthing API key is missing")
+            msg = "Syncthing API key is missing"
+            raise RuntimeError(msg)
         endpoint = "http://127.0.0.1:8384/rest/config/folders/" + folder_id
         request = urllib.request.Request(
             endpoint,
@@ -55,7 +56,8 @@ def pause_folder(config_path, folder_id):
         request = urllib.request.Request(endpoint, headers={"X-API-Key": key})
         with urllib.request.urlopen(request, timeout=10) as response:
             if not json.load(response)["paused"]:
-                raise RuntimeError("Syncthing did not confirm folder pause")
+                msg = "Syncthing did not confirm folder pause"
+                raise RuntimeError(msg)
     else:
         if paused is None:
             paused = ET.SubElement(folder, "paused")
@@ -70,20 +72,25 @@ def pause_folder(config_path, folder_id):
 
 def apply(policy):
     if os.geteuid() != 0:
-        raise RuntimeError("Root authentication is required")
+        msg = "Root authentication is required"
+        raise RuntimeError(msg)
     if socket.gethostname().split(".")[0] != policy["node"]:
-        raise RuntimeError("Policy belongs to another node")
+        msg = "Policy belongs to another node"
+        raise RuntimeError(msg)
     service = policy.get("service", "k3s-agent.service")
     config = policy["kubelet"]
     if (
         config["kind"] != "KubeletConfiguration"
         or config["apiVersion"] != "kubelet.config.k8s.io/v1beta1"
     ):
-        raise RuntimeError("Invalid kubelet configuration type")
+        msg = "Invalid kubelet configuration type"
+        raise RuntimeError(msg)
     if not 0 < config["imageGCLowThresholdPercent"] < config["imageGCHighThresholdPercent"] < 100:
-        raise RuntimeError("Invalid image garbage collection thresholds")
+        msg = "Invalid image garbage collection thresholds"
+        raise RuntimeError(msg)
     if not KUBELET_CONFIG.parent.is_dir():
-        raise RuntimeError("K3s kubelet configuration directory does not exist")
+        msg = "K3s kubelet configuration directory does not exist"
+        raise RuntimeError(msg)
     backup = Path("/var/backups/homelab-node-disk-reserve") / datetime.now(timezone.utc).strftime(
         "%Y%m%dT%H%M%S.%fZ"
     )

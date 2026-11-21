@@ -35,12 +35,14 @@ LEGACY_PATHS = {
 def rewrite_login(text, selected):
     matches = list(STARTUP_BLOCK.finditer(text))
     if len(matches) > 1:
-        raise ValueError("Multiple startup blocks require manual review")
+        msg = "Multiple startup blocks require manual review"
+        raise ValueError(msg)
     residual = STARTUP_BLOCK.sub("", text)
     if re.search(
         r"(?m)^[^#\n]*\bexec\s+[^\n]*(?:Hyprland|start-hyprland|wlinitrc|tdm\.sh)", residual
     ):
-        raise ValueError("Unrecognized desktop startup command requires manual review")
+        msg = "Unrecognized desktop startup command requires manual review"
+        raise ValueError(msg)
     if matches:
         return STARTUP_BLOCK.sub(lambda _: LOGIN_BLOCK if selected else "", text)
     if not selected:
@@ -82,17 +84,21 @@ def replace_file(path, content, uid, gid):
 def configure(home, username, login_file, cleanup, disable_shutdown, check=False):
     user = pwd.getpwnam(username)
     if not user.pw_shell.endswith("/zsh"):
-        raise ValueError("This setup requires the existing zsh login shell")
+        msg = "This setup requires the existing zsh login shell"
+        raise ValueError(msg)
     home = home.resolve()
     if home != Path(user.pw_dir).resolve():
-        raise ValueError("Home directory does not match the account")
+        msg = "Home directory does not match the account"
+        raise ValueError(msg)
     if login_file not in [".zprofile", ".zshrc"]:
-        raise ValueError("Unsupported login file")
+        msg = "Unsupported login file"
+        raise ValueError(msg)
     edits = []
     for filename in [".zprofile", ".zshrc", ".zlogin"]:
         path = (home / filename).resolve()
         if not path.is_relative_to(home):
-            raise ValueError("Profile resolves outside the user home")
+            msg = "Profile resolves outside the user home"
+            raise ValueError(msg)
         if not path.exists() and filename != login_file:
             continue
         old = path.read_text() if path.exists() else ""
@@ -108,7 +114,8 @@ def configure(home, username, login_file, cleanup, disable_shutdown, check=False
     if disable_shutdown:
         path = (home / ".config/hypr/hypridle.conf").resolve()
         if not path.is_relative_to(home):
-            raise ValueError("Idle configuration resolves outside the user home")
+            msg = "Idle configuration resolves outside the user home"
+            raise ValueError(msg)
         if path.exists():
             old = path.read_text()
             new = remove_idle_shutdown(old)
@@ -120,7 +127,8 @@ def configure(home, username, login_file, cleanup, disable_shutdown, check=False
         if cleanup and ((home / name).exists() or (home / name).is_symlink())
     ]
     if any(not path.parent.resolve().is_relative_to(home) for path, _ in obsolete):
-        raise ValueError("Legacy configuration parent resolves outside the user home")
+        msg = "Legacy configuration parent resolves outside the user home"
+        raise ValueError(msg)
     if not edits and not obsolete:
         return {"changed": False, "profiles": [], "archived": []}
     if check:

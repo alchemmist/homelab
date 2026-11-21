@@ -76,8 +76,9 @@ def main():
     def kubectl(arguments, data=None):
         r = subprocess.run(kube + arguments, input=data, capture_output=True, timeout=90)
         if r.returncode:
+            msg = "Kubernetes operation failed; output suppressed to protect credentials"
             raise RuntimeError(
-                "Kubernetes operation failed; output suppressed to protect credentials"
+                msg
             )
         return r.stdout
 
@@ -97,15 +98,18 @@ def main():
         )["results"]
         found = [r for r in rows if r[field] == value]
         if len(found) > 1:
-            raise RuntimeError("Ambiguous configuration")
+            msg = "Ambiguous configuration"
+            raise RuntimeError(msg)
         return found[0] if found else None
 
     if api("GET", "admin/version/")["version_current"] != "2026.8.5":
-        raise RuntimeError("Unreviewed Authentik version")
+        msg = "Unreviewed Authentik version"
+        raise RuntimeError(msg)
     deployment = json.loads(kubectl(["get", "deployment", "litellm", "-o", "json"]))
     container = deployment["spec"]["template"]["spec"]["containers"][0]
     if container["image"] != "ghcr.io/berriai/litellm:1.105.1":
-        raise RuntimeError("Unreviewed LiteLLM version")
+        msg = "Unreviewed LiteLLM version"
+        raise RuntimeError(msg)
     query = """import asyncio,json
 from prisma import Prisma
 async def main():
@@ -120,9 +124,11 @@ asyncio.run(main())
     users = json.loads(raw.decode().splitlines()[-1])
     owner_rows = [r for r in users if r["user_id"] == OWNER_ID and r["user_role"] == "proxy_admin"]
     if len(owner_rows) != 1 or len(users) > 5:
-        raise RuntimeError("Reviewed owner identity / free-tier capacity gate failed")
+        msg = "Reviewed owner identity / free-tier capacity gate failed"
+        raise RuntimeError(msg)
     if any(r.get("password") for r in users if r["user_id"] != OWNER_ID):
-        raise RuntimeError("Non-owner password identity requires explicit review")
+        msg = "Non-owner password identity requires explicit review"
+        raise RuntimeError(msg)
     owner = one("core/users/", "username", "alchemmist")
     group = one("core/groups/", "name", "homelab-owner")
     reviewed = json.loads((args.root / "account-mappings.json").read_text())["alchemmist"]
@@ -131,17 +137,21 @@ asyncio.run(main())
         or owner["uuid"] != reviewed.get("idpUserUuid")
         or reviewed.get("litellmUserId") != OWNER_ID
     ):
-        raise RuntimeError("Owner UUID differs from explicit reviewed account mapping")
+        msg = "Owner UUID differs from explicit reviewed account mapping"
+        raise RuntimeError(msg)
     if not group or owner["pk"] not in group.get("users", []):
-        raise RuntimeError("Reviewed owner group boundary missing")
+        msg = "Reviewed owner group boundary missing"
+        raise RuntimeError(msg)
     grants = json.loads((args.root / "litellm-users.json").read_text())
     if not isinstance(grants, dict):
-        raise RuntimeError("Invalid reviewed LiteLLM grants")
+        msg = "Invalid reviewed LiteLLM grants"
+        raise RuntimeError(msg)
     granted_users = []
     for username, grant in grants.items():
         uid = str(uuid.UUID(grant["idpUserUuid"]))
         if uid == owner["uuid"] or grant != {"idpUserUuid": uid, "litellmRole": "internal_user"}:
-            raise RuntimeError("Unreviewed user privilege or owner override")
+            msg = "Unreviewed user privilege or owner override"
+            raise RuntimeError(msg)
         subject = one("core/users/", "username", username)
         if (
             not subject
@@ -149,10 +159,12 @@ asyncio.run(main())
             or not subject["is_active"]
             or subject.get("is_superuser")
         ):
-            raise RuntimeError("Reviewed LiteLLM subject missing, inactive, privileged or rebound")
+            msg = "Reviewed LiteLLM subject missing, inactive, privileged or rebound"
+            raise RuntimeError(msg)
         granted_users.append(subject)
     if len({u["uuid"] for u in granted_users}) != len(granted_users):
-        raise RuntimeError("Duplicate LiteLLM subject")
+        msg = "Duplicate LiteLLM subject"
+        raise RuntimeError(msg)
     access_group = one("core/groups/", "name", "app-litellm-user")
     if (
         not access_group
@@ -162,7 +174,8 @@ asyncio.run(main())
         or access_group.get("roles") != []
         or access_group.get("attributes") != {"homelab_app_iam": 1}
     ):
-        raise RuntimeError("Reviewed non-privileged LiteLLM app group missing or drifted")
+        msg = "Reviewed non-privileged LiteLLM app group missing or drifted"
+        raise RuntimeError(msg)
     if not args.apply:
         print(
             "Preflight passed: native OIDC available, reviewed owner and owner-only local password boundary; no changes"
@@ -179,14 +192,16 @@ asyncio.run(main())
             private(args.root / "litellm-owner-hashed-uid-original.json", binding)
             private(binding_path, expected_binding, overwrite=True)
         elif binding != expected_binding:
-            raise RuntimeError("Owner subject drift; refusing automatic rebind")
+            msg = "Owner subject drift; refusing automatic rebind"
+            raise RuntimeError(msg)
     else:
         private(binding_path, expected_binding)
     client_path = args.root / "oidc-clients.json"
     clients = json.loads(client_path.read_text())
     if "litellm" not in clients:
         if one("providers/oauth2/", "name", "homelab-litellm"):
-            raise RuntimeError("Existing provider without retained client secret")
+            msg = "Existing provider without retained client secret"
+            raise RuntimeError(msg)
         clients["litellm"] = {
             "client_id": "socrat-litellm",
             "client_secret": secrets.token_urlsafe(48),
@@ -219,8 +234,9 @@ asyncio.run(main())
             and r.get("name") == "authentik default OAuth Mapping: OpenID '" + scope + "'"
         ]
         if len(matches) != 1:
+            msg = "Missing/ambiguous exact default scope; never mix app profile mappings"
             raise RuntimeError(
-                "Missing/ambiguous exact default scope; never mix app profile mappings"
+                msg
             )
         mappings.append(matches[0]["pk"])
     mappings.append(mapping["pk"])
@@ -283,9 +299,11 @@ asyncio.run(main())
         )
 
     if any(not accepted_binding(b) for b in bindings):
-        raise RuntimeError("Unexpected application admission binding; review before rollout")
+        msg = "Unexpected application admission binding; review before rollout"
+        raise RuntimeError(msg)
     if len({(b.get("group"), b.get("user")) for b in bindings}) != len(bindings):
-        raise RuntimeError("Duplicate application admission binding")
+        msg = "Duplicate application admission binding"
+        raise RuntimeError(msg)
     if not any(b.get("group") == group["pk"] for b in bindings):
         api(
             "POST",

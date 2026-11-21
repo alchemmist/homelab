@@ -31,7 +31,8 @@ def urls(config, ip):
     base = config["rancher_url"].rstrip("/")
     parsed = urlsplit(base)
     if parsed.scheme != "https" or not parsed.netloc or any(ord(c) < 32 for c in base):
-        raise ValueError("Rancher must have an HTTPS URL")
+        msg = "Rancher must have an HTTPS URL"
+        raise ValueError(msg)
     cluster = quote(config["cluster"], safe="")
     node = quote(config["node"], safe="")
     address = f"[{ip}]" if ":" in ip else ip
