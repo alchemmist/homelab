@@ -1,5 +1,5 @@
 """Trusted systemd consumer. Only enrolled repo adapters; never execute issue text here."""
-import fcntl, json, os, re, subprocess, sys, time
+import fcntl, json, os, re, sqlite3, subprocess, sys, time
 import campaign as c
 import restore_worker
 import lifecycle_worker
@@ -69,5 +69,6 @@ def main():
    except (RuntimeError,subprocess.TimeoutExpired) as ex:
     cache=0;c.K('judge',['rm','-f','/scratch/campaign-base'],ok=False);c.mark(t,'transport_wait',str(ex)[:360],sha)
    sync()
-  except Exception as ex:print('adapter backoff:',type(ex).__name__,str(ex)[:360],flush=True);time.sleep(45)
+  except (OSError,ValueError,RuntimeError,sqlite3.Error,subprocess.SubprocessError) as ex:
+   print('adapter backoff:',type(ex).__name__,str(ex)[:360],flush=True);time.sleep(45)
 if __name__=='__main__':main()

@@ -555,7 +555,14 @@ def main():
     except MigrationError as error:
         print(json.dumps({"ok": False, "error": str(error)}), file=sys.stderr)
         return 1
-    except Exception as error:
+    except (
+        OSError,
+        ValueError,
+        RuntimeError,
+        ImportError,
+        sqlite3.Error,
+        subprocess.SubprocessError,
+    ) as error:
         # Unanticipated errors can include SQL rows, secrets, command arguments.
         print(
             json.dumps(

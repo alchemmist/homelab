@@ -128,7 +128,7 @@ if __name__ == "__main__":
     a = p.parse_args()
     try:
         promote(a.candidate, a.old_image, a.new_image)
-    except Exception:
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
         raise SystemExit(
             "Native image promotion stopped; inspect private intent/receipts, never replay."
         ) from None

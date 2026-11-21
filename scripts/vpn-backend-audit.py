@@ -283,7 +283,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (OSError, ValueError, RuntimeError, ImportError, subprocess.SubprocessError):
         raise SystemExit(
             "Counter audit stopped; no automatic retry/rollback. Inspect private receipts."
         ) from None

@@ -146,7 +146,7 @@ def others_waiting():
     try:
         with urllib.request.urlopen(url, timeout=5) as response:
             payload = json.load(response)
-    except Exception:
+    except (OSError, ValueError):
         return False
     waiting = 0
     for row in payload.get("data", {}).get("result", []):
@@ -203,7 +203,7 @@ def run_loop(task_id, statement):
         )
     except ModelBusy as exc:
         log("paused", task=task_id, status=str(exc))
-    except Exception as exc:
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
         log("error", task=task_id, kind=type(exc).__name__)
     finally:
         LOCK.unlink(missing_ok=True)
@@ -241,7 +241,7 @@ class Handler(BaseHTTPRequestHandler):
             self.rfile.read(min(length, 1024))
         try:
             self._send(step())
-        except Exception as exc:
+        except (OSError, ValueError, RuntimeError) as exc:
             log("error", kind=type(exc).__name__)
             self._send({"action": "error", "kind": type(exc).__name__}, 500)
 

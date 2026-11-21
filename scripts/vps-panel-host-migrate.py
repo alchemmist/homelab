@@ -210,7 +210,7 @@ if __name__ == "__main__":
                     }
                 )
             )
-    except Exception:
+    except (OSError, ValueError, RuntimeError, ImportError, sqlite3.Error):
         raise SystemExit(
             "Host migration stopped; inspect private receipts and readback, never replay writes blindly."
         ) from None

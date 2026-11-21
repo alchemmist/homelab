@@ -263,7 +263,14 @@ if __name__ == "__main__":
         else:
             s = native.NativeSession(a.state)
             print(h.canonical({"session_sha256": h.digest(s.preview()), "writes": 0}))
-    except Exception:
+    except (
+        OSError,
+        ValueError,
+        RuntimeError,
+        ImportError,
+        sqlite3.Error,
+        subprocess.SubprocessError,
+    ):
         raise SystemExit(
             "Home native session stopped; inspect private receipts, no blind replay."
         ) from None

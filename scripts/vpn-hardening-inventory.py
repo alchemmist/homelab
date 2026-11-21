@@ -162,7 +162,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (OSError, ValueError, RuntimeError, sqlite3.Error):
         raise SystemExit(
             "Inventory/backup stopped; inspect private state before retrying"
         ) from None

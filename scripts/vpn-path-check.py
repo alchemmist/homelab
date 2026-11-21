@@ -110,7 +110,7 @@ def check(url, vantage, family=4, control_address=None):
             if result.get("complete") and result.get("http_status") == 200
             else "https_transfer"
         )
-    except Exception as error:
+    except (OSError, ValueError, http.client.HTTPException) as error:
         result["error_type"] = type(error).__name__  # No raw response, URL or credentials.
     result["first_failed_stage"] = stage
     result["elapsed_seconds"] = round(time.monotonic() - start, 3)

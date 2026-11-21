@@ -324,7 +324,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (OSError, ValueError, RuntimeError, ImportError, sqlite3.Error):
         raise SystemExit(
             "Subscription migration stopped; inspect private receipts, never blindly replay."
         ) from None

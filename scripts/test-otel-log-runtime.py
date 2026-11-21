@@ -224,7 +224,7 @@ def main():
                 try:
                     send(url, str(i), "INFO recovery-id-" + str(i))
                     return i
-                except Exception:
+                except (OSError, ValueError):
                     time.sleep(0.2)
             raise AssertionError("request retry deadline")
 

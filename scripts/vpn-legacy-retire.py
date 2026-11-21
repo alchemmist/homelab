@@ -301,7 +301,7 @@ if __name__ == "__main__":
         else:
             value = plan(a.state)
             print(h.canonical({"plan": value, "plan_sha256": h.digest(value), "writes": 0}))
-    except Exception:
+    except (OSError, ValueError, RuntimeError, ImportError, subprocess.SubprocessError):
         import traceback
 
         try:

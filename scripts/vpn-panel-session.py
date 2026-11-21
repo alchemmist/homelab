@@ -96,7 +96,7 @@ def request(base, token, method, path, body=None):
         if obj.get("success") is not True:
             raise ValueError("Native API rejected operation")
         return obj.get("obj")
-    except Exception:
+    except (OSError, ValueError, RuntimeError):
         raise RuntimeError(
             "Native API operation failed; inspect private receipts, never retry writes blindly"
         ) from None
@@ -305,7 +305,7 @@ class NativeSession:
                     continue
                 try:
                     self._delete(kind, actor)
-                except Exception:
+                except (OSError, ValueError, RuntimeError):
                     errors.append(kind)
         rows = token_rows(self.database)
         if any(r["name"] in self.names.values() for r in rows):
