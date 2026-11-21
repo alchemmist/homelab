@@ -1,6 +1,9 @@
 """Closed set of GitHub actions. Never execute candidate code or accept URLs/refs."""
 import hmac
-import base64, json, re, uuid
+import base64
+import json
+import re
+import uuid
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.request import Request, build_opener, HTTPRedirectHandler
@@ -30,7 +33,8 @@ def clean_text(t,lo,hi):
     check(not re.search(r'@|https?://|[<>]|github_pat_|gh[pousr]_|Bearer\s|sk-[A-Za-z0-9]{16}|-----BEGIN',t,re.I));return t
 
 def qa_issue(x):
-    import io,hashlib
+    import io
+    import hashlib
     from PIL import Image
     check(set(x)-{'frames'}=={'action','key','title','kind','head','steps','expected','actual','pngs','reviewed_synthetic'} and x['reviewed_synthetic'] is True)
     key=x['key'];check(isinstance(key,str) and re.fullmatch('[a-z0-9][a-z0-9-]{4,64}',key));marker=f'<!-- socrat-qa:{key} -->';title=clean_text(x['title'],8,110);check('\n' not in title and x['kind'] in ('bug','improvement'));sha=x['head'];check(isinstance(sha,str) and re.fullmatch('[a-f0-9]{40}',sha));fields=[clean_text(x[k],6,3500) for k in ('steps','expected','actual')];check(isinstance(x['pngs'],list) and 1<=len(x['pngs'])<=4)

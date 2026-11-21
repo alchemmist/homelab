@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
 """One-shot additive repair, no WG/interface/service restart or key mutation."""
 
-import argparse, fcntl, hashlib, ipaddress, json, os, pathlib, subprocess, time
+import argparse
+import fcntl
+import hashlib
+import ipaddress
+import json
+import os
+import pathlib
+import subprocess
+import time
 
 CONFIG = pathlib.Path("/etc/wireguard/wg-socrat.conf")
 ROOT = pathlib.Path("/var/lib/homelab-recovery/20261113-moscow-api-routes")

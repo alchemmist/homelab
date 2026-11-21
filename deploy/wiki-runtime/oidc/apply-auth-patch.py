@@ -1,4 +1,5 @@
-import hashlib, json
+import hashlib
+import json
 from pathlib import Path
 
 path = Path("/app/runtime/auth.py")

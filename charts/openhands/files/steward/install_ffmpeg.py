@@ -1,6 +1,10 @@
 """Extract one binary from a pinned wheel, no pip / postinstall or GitHub credential."""
 from pathlib import Path
-import hashlib,io,sys,urllib.request,zipfile
+import hashlib
+import io
+import sys
+import urllib.request
+import zipfile
 url='https://files.pythonhosted.org/packages/a0/2d/43c8522a2038e9d0e7dbdf3a61195ecc31ca576fb1527a528c877e87d973/imageio_ffmpeg-0.6.0-py3-none-manylinux2014_x86_64.whl'
 p=Path(sys.argv[1]);p.parent.mkdir(parents=True,exist_ok=True)
 # Restart-safe: the installed binary is read-only; replace it atomically.

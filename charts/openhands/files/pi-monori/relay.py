@@ -1,5 +1,7 @@
 """Loopback-only model relay. No arbitrary URL, model, auth header or redirect."""
-import http.client,json,threading
+import http.client
+import json
+import threading
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 slot=threading.BoundedSemaphore(1)
