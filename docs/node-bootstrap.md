@@ -2,7 +2,7 @@
 
 ## Public endpoint convention
 
-Every primary alias uses `socrat.alchemmist.xyz`, with external port `2222 + node index`: `socrat-0` uses `2222`, `socrat-1` uses `2223`, and `socrat-2` uses `2224`. `ansible_port` is computed from this convention in `inventory/group_vars/Socrat.yml`.
+Every primary alias uses `socrat.alchemmist.xyz`, with external port `2222 + node index`: `socrat-0` uses `2222`, `socrat-1` uses `2223`, and `socrat-2` uses `2224`. `ansible_port` is computed from this convention in `inventory/group_vars/Socrat/cluster.yml`.
 
 The server listening port is a separate setting, `homelab_ssh_port`, which defaults to `2222`. The deployed gateway accepts legacy server port `22` during migration. Currently `socrat-0` and `socrat-2` still use server port `22`; `socrat-1` supports `2222`.
 

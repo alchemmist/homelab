@@ -23,7 +23,7 @@ from pathlib import Path
 HOSTS = ("socrat-0", "socrat-1", "socrat-2", "socrat-3")
 SOURCE_FILES = (
     "ansible/inventory/direct.yml",
-    "ansible/inventory/group_vars/Socrat.yml",
+    "ansible/inventory/group_vars/Socrat/cluster.yml",
     "ansible/inventory/host_vars/socrat-2.yml",
     "ansible/roles/public_authoritative_dns/defaults/main.yml",
     "ansible/roles/wireguard_admin_client/defaults/main.yml",
