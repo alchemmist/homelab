@@ -9,6 +9,7 @@ import runpy
 import tempfile
 import unittest
 from unittest.mock import patch
+from typing import cast
 from urllib.parse import parse_qs
 
 import pytest
@@ -21,7 +22,7 @@ spec.loader.exec_module(a)
 
 
 class Fake:
-    def __init__(self):
+    def __init__(self) -> None:
         self.users = [
             {
                 "pk": 5,
@@ -31,11 +32,11 @@ class Fake:
                 "is_active": True,
             }
         ]
-        self.groups = []
-        self.tokens = []
-        self.writes = []
+        self.groups: list[dict[str, object]] = []
+        self.tokens: list[dict[str, object]] = []
+        self.writes: list[tuple[str, str, object]] = []
 
-    def __call__(self, token, method, path, data=None):
+    def __call__(self, token, method, path, data=None) -> object:
         endpoint, _, query = path.partition("?")
         parts = endpoint.strip("/").split("/")
         if method != "GET":
@@ -58,7 +59,8 @@ class Fake:
                 r = dict(pk="group-machine", users=[], **data)
             elif parts[1] == "users":
                 r = dict(pk=7, uuid="machine-uuid", is_superuser=True, **data)
-                self.groups[0]["users"].append(r["pk"])
+                # The fake group rows always carry their member-list under "users".
+                cast("list[object]", self.groups[0]["users"]).append(r["pk"])
             else:
                 r = dict(data)
             rows.append(r)
@@ -197,7 +199,7 @@ class AutomationTests(unittest.TestCase):
         a.save(p / "automation-api.json", j)
         (p / "bootstrap.py").write_text((FILES / "bootstrap.py").read_text())
 
-    def kube_read(self, args, **kwargs):
+    def kube_read(self, args, **_kwargs):
         if "secret" in args:
             return json.dumps({"data": {}, "metadata": {"annotations": {}}}).encode()
         return json.dumps({"spec": {"template": {"spec": {"containers": [{"env": []}]}}}}).encode()

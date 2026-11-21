@@ -3,11 +3,12 @@
 import importlib.util
 import unittest
 from pathlib import Path
+from types import ModuleType
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(path, name):
+def load(path, name) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -15,7 +16,7 @@ def load(path, name):
 
 
 class SPIOnlyDNSTests(unittest.TestCase):
-    def test_only_spi_changes_for_all_four_health_states(self):
+    def test_only_spi_changes_for_all_four_health_states(self) -> None:
         new = load(ROOT / "scripts/public_dns_zone.py", "spi_zone")
         old = load(ROOT / "scripts/public_dns_zone.py", "previous_zone")
         old.FAILOVER.remove("spi.socrat")
@@ -37,7 +38,7 @@ class SPIOnlyDNSTests(unittest.TestCase):
 
 
 class DNSPreflightSafetyTests(unittest.TestCase):
-    def test_loader_rejects_directories_and_symlinks(self):
+    def test_loader_rejects_directories_and_symlinks(self) -> None:
         import tempfile
 
         guard = load(ROOT / "scripts/spi-public-dns.py", "safe_loader")
@@ -54,7 +55,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
                 ):
                     guard.load(path, "invalid")
 
-    def test_malformed_renderer_has_controlled_error(self):
+    def test_malformed_renderer_has_controlled_error(self) -> None:
         import tempfile
 
         guard = load(ROOT / "scripts/spi-public-dns.py", "syntax_guard")
@@ -68,7 +69,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
                 ):
                     guard.load(path, "malformed")
 
-    def test_uncertain_marker_is_checked_after_lock_acquisition(self):
+    def test_uncertain_marker_is_checked_after_lock_acquisition(self) -> None:
         import tempfile
         from unittest.mock import Mock, patch
 
@@ -88,7 +89,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
             current.write_text("VALUE = 1\n")
             (base / "proposed.py").write_text("VALUE = 2\n")
 
-            def acquired(fd, operation):
+            def acquired(_fd, operation):
                 self.assertEqual(operation, guard.fcntl.LOCK_EX)
                 # Simulate a prior writer leaving an uncertain marker before releasing its lock.
                 (base / "uncertain.json").write_text("{}")
@@ -108,7 +109,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
             self.assertFalse((base / "before.py").exists())
             self.assertEqual(current.read_text(), "VALUE = 1\n")
 
-    def test_missing_state_directory_has_controlled_stop(self):
+    def test_missing_state_directory_has_controlled_stop(self) -> None:
         import tempfile
         from unittest.mock import patch
 
@@ -127,7 +128,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
 
 
 class ExclusiveRendererTests(unittest.TestCase):
-    def test_existing_regular_file_is_not_overwritten(self):
+    def test_existing_regular_file_is_not_overwritten(self) -> None:
         import tempfile
 
         guard = load(ROOT / "scripts/spi-public-dns.py", "exclusive_file_guard")
@@ -138,7 +139,7 @@ class ExclusiveRendererTests(unittest.TestCase):
                 guard.stage_renderer(path, b"replacement")
             self.assertEqual(path.read_bytes(), b"original")
 
-    def test_existing_and_dangling_symlinks_are_not_followed(self):
+    def test_existing_and_dangling_symlinks_are_not_followed(self) -> None:
         import tempfile
 
         guard = load(ROOT / "scripts/spi-public-dns.py", "exclusive_link_guard")
@@ -161,7 +162,7 @@ class ExclusiveRendererTests(unittest.TestCase):
                 else:
                     self.assertFalse(target.exists())
 
-    def test_new_inode_has_expected_public_renderer_mode_and_contents(self):
+    def test_new_inode_has_expected_public_renderer_mode_and_contents(self) -> None:
         import stat
         import tempfile
 

@@ -54,7 +54,7 @@ def save_json(path, value):
     tmp.replace(path)
 
 
-def _limits():
+def _limits() -> None:
     resource.setrlimit(resource.RLIMIT_CPU, (2, 2))
     resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))
     resource.setrlimit(resource.RLIMIT_NOFILE, (32, 32))
@@ -89,7 +89,7 @@ class ModelBusy(Exception):
     pass
 
 
-def _wait_budget(detail):
+def _wait_budget(detail) -> None:
     match = re.search(r"resets at: ([0-9-]{10} [0-9:]{8}) UTC", detail)
     delay = 20
     if match:
@@ -167,7 +167,7 @@ def run_loop(task_id, statement):
     try:
         state = load_json(ROOT / "state.json", {"tasks": {}})
 
-        def hook(record):
+        def hook(record) -> None:
             current = load_json(ROOT / "state.json", {"tasks": {}})
             current["tasks"][task_id] = record
             save_json(ROOT / "state.json", current)
@@ -245,7 +245,7 @@ class Handler(BaseHTTPRequestHandler):
             log("error", kind=type(exc).__name__)
             self._send({"action": "error", "kind": type(exc).__name__}, 500)
 
-    def _send(self, payload, status=200):
+    def _send(self, payload, status=200) -> None:
         raw = json.dumps(payload).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -253,7 +253,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
-    def log_message(self, fmt, *args):
+    def log_message(self, _fmt, *_args):
         return
 
 

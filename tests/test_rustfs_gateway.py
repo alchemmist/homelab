@@ -7,6 +7,7 @@ import threading
 import unittest
 from email.message import Message
 from pathlib import Path
+from typing import Self
 
 spec = importlib.util.spec_from_file_location(
     "gateway", Path(__file__).resolve().parents[1] / "services/rustfs_gateway/gateway.py"
@@ -17,7 +18,7 @@ BASE = "/spi/v1/" + "a" * 64 + "/" + "b" * 64 + "/"
 
 
 class Tests(unittest.TestCase):
-    def test_paths(self):
+    def test_paths(self) -> None:
         self.assertEqual(g.valid_key(BASE + "manifest.json"), (BASE + "manifest.json")[1:])
         self.assertTrue(g.valid_key(BASE + "E001-test.json"))
         for tail in [
@@ -34,7 +35,7 @@ class Tests(unittest.TestCase):
             with self.subTest(tail=tail), self.assertRaises(ValueError):
                 g.valid_key(BASE + tail)
 
-    def test_sign_vector(self):
+    def test_sign_vector(self) -> None:
         # Determinism and request binding; independent OpenSSL canonical vector below.
         headers = g.sign(
             "GET",
@@ -62,7 +63,7 @@ class Tests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 g.sign("GET", url, "a", "b")
 
-    def test_bounded(self):
+    def test_bounded(self) -> None:
         class Response(io.BytesIO):
             status = 200
             headers = Message()
@@ -83,7 +84,7 @@ class Tests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 g.bounded(r)
 
-    def test_http_auth_and_exact_bytes(self):
+    def test_http_auth_and_exact_bytes(self) -> None:
         class Reader:
             calls = []
 
@@ -101,9 +102,9 @@ class Tests(unittest.TestCase):
         worker.start()
         try:
 
-            def request(path, headers={}, method="GET"):
+            def request(path, headers=None, method="GET"):
                 conn = http.client.HTTPConnection(*server.server_address, timeout=2)
-                conn.request(method, path, headers={"Host": g.HOST, **headers})
+                conn.request(method, path, headers={"Host": g.HOST, **(headers or {})})
                 response = conn.getresponse()
                 data = response.read()
                 result = (response.status, dict(response.getheaders()), data)
@@ -177,7 +178,7 @@ class Tests(unittest.TestCase):
 
 
 class Integrity(unittest.TestCase):
-    def test_reader_checks_manifest_and_file(self):
+    def test_reader_checks_manifest_and_file(self) -> None:
         import json
 
         file = b'{"safe":true}'
@@ -210,11 +211,11 @@ class Integrity(unittest.TestCase):
         with self.assertRaises(ValueError):
             reader.read(prefix + "/manifest.json")
 
-    def test_redirect_denied(self):
+    def test_redirect_denied(self) -> None:
         with self.assertRaises(ValueError):
             g.NoRedirect().redirect_request(None, None, 302, "", {}, "http://evil/")
 
-    def test_trusted_auth_response(self):
+    def test_trusted_auth_response(self) -> None:
         import os
         from unittest.mock import patch
 
@@ -222,15 +223,16 @@ class Integrity(unittest.TestCase):
             status = 204
             headers = {"X-authentik-groups": "homelab-owner|other"}
 
-            def __enter__(self):
+            def __enter__(self) -> Self:
                 return self
 
-            def __exit__(self, *args):
+            def __exit__(self, *args) -> None:
                 pass
 
         class HTTP:
             def open(self, req, timeout):
                 self.request = req
+                self.timeout = timeout
                 return response
 
         response = Response()
@@ -252,7 +254,7 @@ class Integrity(unittest.TestCase):
         self.assertFalse(reader.authorized(""))
         self.assertFalse(reader.authorized("a\r\nX-authentik-groups: homelab-owner"))
 
-    def test_signing_against_openssl_canonical_vector(self):
+    def test_signing_against_openssl_canonical_vector(self) -> None:
         import subprocess
 
         def sha(data):
@@ -301,7 +303,7 @@ class Integrity(unittest.TestCase):
 
 
 class PreservedPreviewTests(unittest.TestCase):
-    def test_preview_type_allowlist(self):
+    def test_preview_type_allowlist(self) -> None:
         for name, mime in [
             ("E001-file.pdf", "application/pdf"),
             ("E001-file.png", "image/png"),
@@ -323,7 +325,7 @@ class PreservedPreviewTests(unittest.TestCase):
         self.assertEqual(g.byte_range("bytes=-2", 8), (6, 7))
         self.assertEqual(g.byte_range("bytes=2-", 8), (2, 7))
 
-    def test_v3_binary_artifact_integrity(self):
+    def test_v3_binary_artifact_integrity(self) -> None:
         import json
 
         body = b"\x89PNG\r\n\x1a\n\xff\x00"

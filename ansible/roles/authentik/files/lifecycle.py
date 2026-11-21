@@ -26,7 +26,7 @@ def api_for(root):
         raise RuntimeError("Deployment directory/credentials must be private")
     token = json.loads(path.read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
 
-    def api(method, endpoint, payload=None):
+    def api(method, endpoint, payload=None) -> dict[str, object] | None:
         req = urllib.request.Request(
             BASE + endpoint,
             method=method,
@@ -35,7 +35,8 @@ def api_for(root):
         )
         with urllib.request.urlopen(req, timeout=45) as response:
             body = response.read()
-            return json.loads(body) if body else None
+            document: dict[str, object] | None = json.loads(body) if body else None
+            return document
 
     return api
 

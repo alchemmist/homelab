@@ -16,6 +16,7 @@ import os
 import runpy
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 ROOT = Path.home() / ".local/state/netbird-internal-stage/journal"
 BASE = "https://netbird.socrat.alchemmist.xyz/api/"
@@ -37,12 +38,12 @@ def main():
         raise ValueError("enrollment keys and Secrets must be retired first")
 
     class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, *a, **kw):
+        def redirect_request(self, *_a, **_kw) -> None:
             return None
 
     opener = urllib.request.build_opener(NoRedirect)
 
-    def api(method, endpoint, body=None):
+    def api(method, endpoint, body=None) -> dict[str, object] | list[object]:
         req = urllib.request.Request(
             BASE + endpoint,
             method=method,
@@ -50,20 +51,24 @@ def main():
             data=None if body is None else json.dumps(body).encode(),
         )
         with opener.open(req, timeout=15) as response:
-            return json.load(response)
+            payload: dict[str, object] | list[object] = json.load(response)
+            return payload
 
-    users = api("GET", "users")
+    users = cast("list[dict[str, object]]", api("GET", "users"))
     identity["target_user"](users, identity["subject"]())
     if [u["id"] for u in users if u["role"] == "owner"] != [identity["subject"]()]:
         raise ValueError("native owner identity mismatch")
-    policies = api("GET", "policies")
+    policies = cast("list[dict[str, object]]", api("GET", "policies"))
     if {p["id"] for p in policies} != {state["ssh_policy"]}:
         raise ValueError("unexpected policy drift")
-    groups = api("GET", "groups")
+    groups = cast("list[dict[str, object]]", api("GET", "groups"))
     admin_id = compiler["genuine_admin_group"](groups)
-    group = api("GET", "groups/" + admin_id)
-    members = {p["id"] if isinstance(p, dict) else p for p in group.get("peers", [])}
-    peers = api("GET", "peers")
+    group = cast("dict[str, object]", api("GET", "groups/" + admin_id))
+    members = {
+        cast("dict[str, object]", p)["id"] if isinstance(p, dict) else p
+        for p in cast("list[object]", group.get("peers", []))
+    }
+    peers = cast("list[dict[str, object]]", api("GET", "peers"))
     owner_peers = {
         p["id"]
         for p in peers
@@ -73,15 +78,21 @@ def main():
     }
     if not members or not members.issubset(owner_peers):
         raise ValueError("admin JWT members must be genuinely admitted exact-owner devices only")
-    if {n["id"] for n in api("GET", "networks")} != {n["id"] for n in state["networks"].values()}:
+    if {n["id"] for n in cast("list[dict[str, object]]", api("GET", "networks"))} != {
+        n["id"] for n in state["networks"].values()
+    }:
         raise ValueError("network drift")
     plan = []
     for host, (name, addresses) in compiler["NETWORKS"].items():
         network = state["networks"][host]
-        resources = api("GET", "networks/" + network["id"] + "/resources")
+        resources = cast(
+            "list[dict[str, object]]", api("GET", "networks/" + network["id"] + "/resources")
+        )
         if {r["address"] for r in resources} != set(addresses):
             raise ValueError("resource scope drift")
-        routers = api("GET", "networks/" + network["id"] + "/routers")
+        routers = cast(
+            "list[dict[str, object]]", api("GET", "networks/" + network["id"] + "/routers")
+        )
         if (
             len(routers) != 1
             or routers[0]["peer"] != state["peers"][host]["id"]
@@ -129,14 +140,17 @@ def main():
         )
     created = []
     for item in plan:
-        response = api("POST", "policies", item["body"])
+        response = cast("dict[str, object]", api("POST", "policies", item["body"]))
         created.append(response["id"])
         # Record each successful create before any subsequent mutation.
         p = ROOT / "internal-network-activation-progress.json"
         p.write_text(json.dumps({"created_policy_ids": created}))
         p.chmod(0o600)
-        rule = response["rules"][0]
-        source_ids = {g["id"] if isinstance(g, dict) else g for g in rule["sources"]}
+        rule = cast("dict[str, object]", cast("list[object]", response["rules"])[0])
+        source_ids = {
+            cast("dict[str, object]", g)["id"] if isinstance(g, dict) else g
+            for g in cast("list[object]", rule["sources"])
+        }
         if (
             source_ids != {admin_id}
             or rule["protocol"] != "all"
@@ -144,10 +158,12 @@ def main():
             or rule["destinationResource"] != item["body"]["rules"][0]["destinationResource"]
         ):
             raise ValueError("native policy readback mismatch; inspect journal, no retry")
-    after = api("GET", "policies")
+    after = cast("list[dict[str, object]]", api("GET", "policies"))
     if {p["id"] for p in after} != {state["ssh_policy"], *created}:
         raise ValueError("unexpected policies after activation")
-    if {u["id"]: u["role"] for u in api("GET", "users")} != {u["id"]: u["role"] for u in users}:
+    if {u["id"]: u["role"] for u in cast("list[dict[str, object]]", api("GET", "users"))} != {
+        u["id"]: u["role"] for u in users
+    }:
         raise ValueError("unexpected role changes")
     fd = os.open(
         ROOT / "internal-network-activation-complete.json",

@@ -212,7 +212,7 @@ def backend_validation_problem(result):
 
 def guarded_execute(function):
     @functools.wraps(function)
-    async def wrapped(form_data, metadata, event_caller, tool_call):
+    async def wrapped(form_data, metadata, event_caller, tool_call) -> object:
         resolver = function.__globals__.get("resolve_tool_call")
         if resolver is not None:
             error = resolver(tool_call, metadata.get("tools", {}))
@@ -223,7 +223,7 @@ def guarded_execute(function):
         tool = metadata.get("tools", {}).get(name, {})
         if name == "fetch_url" and tool.get("type") == "builtin" and not tool.get("direct"):
 
-            async def fetch(url):
+            async def fetch(url) -> object:
                 return await bounded_fetch({"url": url})
 
             tools = {**metadata["tools"], name: {**tool, "callable": fetch}}
