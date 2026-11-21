@@ -8,14 +8,6 @@ import tempfile
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import TypedDict
-
-
-class _Image(TypedDict):
-    repository: str
-    linuxAMD64Digest: str
-    image: str
-
 
 BINARIES = {
     "collector": "otelcol-contrib",
@@ -33,7 +25,7 @@ MAX_LAYER_BYTES = 512 * 1024**2
 MAX_BINARY_BYTES = 1024**3
 
 
-def token_for(repository: str):
+def token_for(repository):
     query = urllib.parse.urlencode(
         {"service": "registry.docker.io", "scope": "repository:" + repository + ":pull"}
     )
@@ -41,7 +33,7 @@ def token_for(repository: str):
         return json.load(response)["token"]
 
 
-def request(repository: str, reference: str, token: str, kind: str):
+def request(repository, reference, token, kind):
     return urllib.request.Request(
         "https://registry-1.docker.io/v2/" + repository + "/" + kind + "/" + reference,
         headers={
@@ -51,7 +43,7 @@ def request(repository: str, reference: str, token: str, kind: str):
     )
 
 
-def extract(image: _Image, name: str, output: Path):
+def extract(image, name, output):
     repository = image["repository"].removeprefix("docker.io/")
     token = token_for(repository)
     with urllib.request.urlopen(

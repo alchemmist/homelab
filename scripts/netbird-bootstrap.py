@@ -11,31 +11,28 @@ import os
 import sys
 import urllib.error
 import urllib.request
-from collections.abc import Mapping
 from pathlib import Path
-from typing import Protocol
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def require(ok: object, message: str):
+def require(ok, message):
     if not ok:
         raise ValueError(message)
 
 
-def setup_body(email: str, password: str, name: str):
+def setup_body(email, password, name):
     require(
-        3 <= len(email) <= 254 and email.count("@") == 1,
-        "email invalid",
+        isinstance(email, str) and 3 <= len(email) <= 254 and email.count("@") == 1, "email invalid"
     )
-    require(len(password) >= 8, "password too short")
-    require(bool(name.strip()) and len(name) <= 128, "name required")
+    require(isinstance(password, str) and len(password) >= 8, "password too short")
+    require(isinstance(name, str) and name.strip() and len(name) <= 128, "name required")
     # SetupRequest required fields only. create_pat is omitted, so no setup PAT is requested.
     return {"email": email, "password": password, "name": name.strip()}
 
 
-def assert_loopback(origin: str):
-    require("://" in origin, "origin required")
+def assert_loopback(origin):
+    require(isinstance(origin, str) and "://" in origin, "origin required")
     scheme, rest = origin.split("://", 1)
     require(scheme == "http", "bootstrap requires a local http port-forward")
     require("@" not in rest, "credentials in the URL are forbidden")
@@ -55,12 +52,9 @@ def assert_loopback(origin: str):
     )
 
 
-def redact(payload: object):
-    if not isinstance(payload, dict):
-        message = "unexpected setup response"
-        raise TypeError(message)
+def redact(payload):
     require(
-        "user_id" in payload and "email" in payload,
+        isinstance(payload, dict) and "user_id" in payload and "email" in payload,
         "unexpected setup response",
     )
     redacted = {"user_id": payload["user_id"], "email": payload["email"]}
@@ -69,14 +63,7 @@ def redact(payload: object):
     return redacted
 
 
-class _Opener(Protocol):
-    """JSON over HTTP helper used by claim."""
-
-    def __call__(self, url: str, body: Mapping[str, object] | None) -> object:
-        """POST the body (or GET when None) and return the decoded response."""
-
-
-def claim(origin: str, email: str, password: str, name: str, opener: "_Opener"):
+def claim(origin, email, password, name, opener):
     assert_loopback(origin)
     base = origin.rstrip("/")
     status = opener(base + "/api/instance", None)
@@ -98,7 +85,7 @@ def env_credentials():
     )
 
 
-def urllib_opener(url: str, body: Mapping[str, object] | None):
+def urllib_opener(url, body):
     data = None if body is None else json.dumps(body).encode()
     method = "GET" if body is None else "POST"
     request = urllib.request.Request(

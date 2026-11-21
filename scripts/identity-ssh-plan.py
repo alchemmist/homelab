@@ -18,10 +18,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from collections.abc import Callable
-from email.message import Message as HTTPMessage
 from pathlib import Path
-from typing import IO, TypedDict, cast, override
 
 ROOT = Path(__file__).resolve().parents[1]
 BINDINGS = ROOT / "deploy/identity/ssh-bindings.json"
@@ -40,30 +37,30 @@ class Refused(ValueError):
     """Safe error, deliberately excludes raw API responses/attributes/credentials."""
 
 
-def require(ok: object, message: str) -> None:
+def require(ok, message):
     if not ok:
         raise Refused(message)
 
 
-def fields(obj: object, expected: list[str]) -> None:
+def fields(obj, expected):
     require(isinstance(obj, dict) and set(obj) == set(expected), "Unexpected document fields")
 
 
-def canonical_uuid(value: object) -> str:
-    require(isinstance(value, str), "Canonical UUID required")
-    text = value
+def canonical_uuid(value):
     try:
-        require(str(uuid.UUID(text)) == text, "Canonical UUID required")
-        require(uuid.UUID(text).int != 0, "Nonzero UUID required")
+        require(
+            isinstance(value, str) and str(uuid.UUID(value)) == value, "Canonical UUID required"
+        )
+        require(uuid.UUID(value).int != 0, "Nonzero UUID required")
     except (ValueError, AttributeError):
         raise Refused("Canonical UUID required") from None
-    return text
+    return value
 
 
-def read_json(path: Path) -> object:
+def read_json(path):
     # Do not include decoder errors: they can contain supplied private material.
-    def unique_pairs(pairs: list[tuple[str, str]]) -> dict[str, str]:
-        result: dict[str, str] = {}
+    def unique_pairs(pairs):
+        result = {}
         for key, value in pairs:
             require(key not in result, "Duplicate JSON field")
             result[key] = value
@@ -75,25 +72,22 @@ def read_json(path: Path) -> object:
         raise Refused("Cannot read valid JSON input") from None
 
 
-def bindings_map(document: object) -> dict[str, str]:
+def bindings_map(document):
     fields(document, ["version", "bindings"])
-    ledger = cast("dict[str, object]", document)
     require(
-        ledger["version"] == 1 and isinstance(ledger["bindings"], list),
+        document["version"] == 1 and isinstance(document["bindings"], list),
         "Invalid binding ledger",
     )
-    result: dict[str, str] = {}
-    for entry in cast("list[dict[str, object]]", ledger["bindings"]):
+    result = {}
+    for entry in document["bindings"]:
         fields(entry, ["uuid", "name"])
-        ident = canonical_uuid(entry["uuid"])
-        raw_name = entry["name"]
+        ident, name = canonical_uuid(entry["uuid"]), entry["name"]
         require(
-            isinstance(raw_name, str)
-            and re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", raw_name)
-            and raw_name not in EXCLUDED,
+            isinstance(name, str)
+            and re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", name)
+            and name not in EXCLUDED,
             "Restricted Linux username required",
         )
-        name = cast("str", raw_name)
         require(
             ident not in result and name not in result.values(), "Duplicate UUID or Linux username"
         )
@@ -101,7 +95,7 @@ def bindings_map(document: object) -> dict[str, str]:
     return result
 
 
-def validate_history(current: dict[str, str], histories: list[object]) -> None:
+def validate_history(current, histories):
     for old in histories:
         for ident, name in bindings_map(old).items():
             require(
@@ -110,10 +104,10 @@ def validate_history(current: dict[str, str], histories: list[object]) -> None:
             )
 
 
-def binding_history() -> list[object]:
+def binding_history():
     """Fail closed without full Git history. A binding is never reused, even after revoke."""
 
-    def git(*args: str) -> str:
+    def git(*args):
         try:
             return subprocess.run(
                 ["git", "-C", str(ROOT), *args], check=True, capture_output=True, text=True
@@ -126,7 +120,7 @@ def binding_history() -> list[object]:
     )
     path = str(BINDINGS.relative_to(ROOT))
     revisions = git("log", "--full-history", "--format=%H", "HEAD", "--", path).splitlines()
-    result: list[object] = []
+    result = []
     for revision in revisions:
         try:
             result.append(json.loads(git("show", revision + ":" + path)))
@@ -135,39 +129,27 @@ def binding_history() -> list[object]:
     return result
 
 
-def host_list(value: object) -> list[str]:
-    require(isinstance(value, list), "Explicit inventory hosts required")
-    entries = cast("list[str]", value)
+def host_list(value):
     require(
-        all(
-            isinstance(h, str) and re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,62}", h)
-            for h in entries
-        ),
+        isinstance(value, list)
+        and all(isinstance(h, str) and re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,62}", h) for h in value),
         "Explicit inventory hosts required",
     )
-    require(len(set(entries)) == len(entries), "Duplicate host assignment")
-    return entries
+    require(len(set(value)) == len(value), "Duplicate host assignment")
+    return value
 
 
-class _Policy(TypedDict):
-    version: int
-    public_key_attribute: str
-    assignments: list[dict[str, object]]
-
-
-def validate_policy(policy: object, bindings: dict[str, str]) -> _Policy:
+def validate_policy(policy, bindings):
     fields(policy, ["version", "public_key_attribute", "assignments"])
-    ledger = cast("dict[str, object]", policy)
-    require(ledger["version"] == 1, "Unsupported policy version")
+    require(policy["version"] == 1, "Unsupported policy version")
     require(
-        "public_key_attribute" in ledger
-        and isinstance(ledger["public_key_attribute"], str)
-        and re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_]{0,63}", ledger["public_key_attribute"]),
+        isinstance(policy["public_key_attribute"], str)
+        and re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_]{0,63}", policy["public_key_attribute"]),
         "Invalid attribute name",
     )
-    require(isinstance(ledger["assignments"], list), "Assignment list required")
+    require(isinstance(policy["assignments"], list), "Assignment list required")
     seen = set()
-    for row in cast("list[dict[str, object]]", ledger["assignments"]):
+    for row in policy["assignments"]:
         fields(row, ["uuid", "state", "hosts", "revoked_hosts"])
         ident = canonical_uuid(row["uuid"])
         require(ident in bindings and ident not in seen, "Unbound or duplicate assignment UUID")
@@ -177,29 +159,25 @@ def validate_policy(policy: object, bindings: dict[str, str]) -> _Policy:
         require(bool(hosts or revoked), "Empty host scope refused")
         require(not set(hosts) & set(revoked), "Active and revoked hosts overlap")
         require(row["state"] != "present" or bool(hosts), "Present assignment needs explicit hosts")
-    return cast("_Policy", policy)
+    return policy
 
 
-def validate_transition(policy: _Policy, histories: list[object]) -> None:
+def validate_transition(policy, histories):
     """Previously managed hosts must remain explicit, including disabled tombstones."""
-    current = {
-        cast("str", r["uuid"]): set(
-            cast("list[str]", r["hosts"]) + cast("list[str]", r["revoked_hosts"])
-        )
-        for r in policy["assignments"]
-    }
+    current = {r["uuid"]: set(r["hosts"] + r["revoked_hosts"]) for r in policy["assignments"]}
     for old in histories:
-        require(isinstance(old, dict), "Invalid policy history")
-        previous = cast("dict[str, object]", old)
-        for row in cast("list[dict[str, object]]", previous.get("assignments") or []):
+        require(
+            isinstance(old, dict) and isinstance(old.get("assignments"), list),
+            "Invalid policy history",
+        )
+        for row in old["assignments"]:
             require(
-                set(cast("list[str]", row["hosts"]) + cast("list[str]", row["revoked_hosts"]))
-                <= current.get(cast("str", row["uuid"]), set()),
+                set(row["hosts"] + row["revoked_hosts"]) <= current.get(row["uuid"], set()),
                 "Removed host/assignment needs an explicit retained revocation tombstone",
             )
 
 
-def policy_history() -> list[object]:
+def policy_history():
     # Same full-checkout trust boundary as bindings. Only this fixed path is read.
     path = str(POLICY.relative_to(ROOT))
     try:
@@ -224,15 +202,13 @@ def policy_history() -> list[object]:
         raise Refused("Cannot verify assignment history") from None
 
 
-def public_keys(value: object) -> tuple[list[str], list[str]]:
+def public_keys(value):
     require(
         isinstance(value, list) and 0 < len(value) <= 32,
         "Active assignment needs a public key list",
     )
-    entries = cast("list[str]", value)
-    result: list[str] = []
-    fingerprints: list[str] = []
-    for line in entries:
+    result, fingerprints = [], []
+    for line in value:
         require(
             isinstance(line, str)
             and len(line) <= 16384
@@ -270,21 +246,12 @@ def public_keys(value: object) -> tuple[list[str], list[str]]:
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    @override
-    def redirect_request(
-        self,
-        req: urllib.request.Request,
-        fp: IO[bytes],
-        code: int,
-        msg: str,
-        headers: HTTPMessage,
-        newurl: str,
-    ) -> urllib.request.Request | None:
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
         raise Refused("Authentik redirect refused")
 
 
 class Authentik:
-    def __init__(self, url: str, token: str, ca_file: Path | None = None) -> None:
+    def __init__(self, url, token, ca_file=None):
         parsed = urllib.parse.urlsplit(url)
         require(
             parsed.scheme == "https"
@@ -297,7 +264,9 @@ class Authentik:
             "HTTPS Authentik origin required",
         )
         require(
-            token and not any(ord(c) < 33 or ord(c) > 126 for c in token),
+            isinstance(token, str)
+            and token
+            and not any(ord(c) < 33 or ord(c) > 126 for c in token),
             "AUTHENTIK_SSH_TOKEN required",
         )
         self.url, self.token = url.rstrip("/"), token
@@ -306,7 +275,7 @@ class Authentik:
             urllib.request.HTTPSHandler(context=ssl.create_default_context(cafile=ca_file)),
         )
 
-    def user(self, ident: str) -> dict[str, object]:
+    def user(self, ident):
         canonical_uuid(ident)
         query = urllib.parse.urlencode({"uuid": ident, "page_size": 100})
         request = urllib.request.Request(
@@ -333,31 +302,29 @@ class Authentik:
             isinstance(pagination, dict) and "next" in pagination and pagination["next"] is None,
             "Incomplete UUID lookup refused",
         )
-        rows = cast("list[dict[str, object]]", document["results"])
+        rows = document["results"]
         require(
-            len(rows) == 1 and rows[0].get("uuid") == ident,
+            len(rows) == 1 and isinstance(rows[0], dict) and rows[0].get("uuid") == ident,
             "UUID lookup missing, ambiguous or unsupported",
         )
         return rows[0]
 
 
-def digest(value: object) -> str:
+def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=True).encode()).hexdigest()
 
 
-def build_plan(
-    bindings: dict[str, str], policy: _Policy, get_user: Callable[[str], dict[str, object]]
-) -> tuple[dict[str, object], list[dict[str, object]]]:
+def build_plan(bindings, policy, get_user):
     validate_policy(policy, bindings)
-    by_host: dict[str, list[dict[str, object]]] = {}
-    summary: list[dict[str, object]] = []
+    by_host, summary = {}, []
     for row in policy["assignments"]:
-        ident, state = cast("str", row["uuid"]), cast("str", row["state"])
-        keys: list[str] = []
-        fingerprints: list[str] = []
+        ident, state = row["uuid"], row["state"]
+        keys, fingerprints = [], []
         if state == "present":
             user = get_user(ident)
-            require(user.get("uuid") == ident, "Missing immutable user UUID")
+            require(
+                isinstance(user, dict) and user.get("uuid") == ident, "Missing immutable user UUID"
+            )
             require(
                 user.get("is_active") is True,
                 "IdP user inactive; review explicit disabled assignment",
@@ -365,12 +332,9 @@ def build_plan(
             require(user.get("type") == "internal", "Only internal human users may be assigned")
             attributes = user.get("attributes")
             require(isinstance(attributes, dict), "Missing user attributes")
-            keys, fingerprints = public_keys(
-                cast("dict[str, object]", attributes).get(policy["public_key_attribute"])
-            )
-        for host in cast("list[str]", row["hosts"]) + cast("list[str]", row["revoked_hosts"]):
-            revoked_list = cast("list[str]", row["revoked_hosts"])
-            effective = "disabled" if host in revoked_list else state
+            keys, fingerprints = public_keys(attributes.get(policy["public_key_attribute"]))
+        for host in row["hosts"] + row["revoked_hosts"]:
+            effective = "disabled" if host in row["revoked_hosts"] else state
             by_host.setdefault(host, []).append(
                 {
                     "name": bindings[ident],
@@ -389,8 +353,8 @@ def build_plan(
                 "uuid": ident,
                 "name": bindings[ident],
                 "state": state,
-                "hosts": cast("list[str]", row["hosts"]),
-                "revoked_hosts": cast("list[str]", row["revoked_hosts"]),
+                "hosts": row["hosts"],
+                "revoked_hosts": row["revoked_hosts"],
                 "fingerprints": fingerprints,
             }
         )
@@ -404,7 +368,7 @@ def build_plan(
     return payload, summary
 
 
-def export(path: Path, payload: dict[str, object], approval: str | None) -> None:
+def export(path, payload, approval):
     require(bool(payload["required_hosts"]), "Empty integration cannot be exported")
     review = digest(payload)
     require(approval == review, "Export requires --approve-plan with the current review SHA256")
@@ -423,12 +387,7 @@ def export(path: Path, payload: dict[str, object], approval: str | None) -> None
         raise Refused("Export refused; use a new private output file") from None
 
 
-def _unreachable_user(_ident: str) -> dict[str, object]:
-    """Disabled assignments never query the IdP; static-typing aid only."""
-    raise RuntimeError("unreachable")
-
-
-def main(argv: list[str] | None = None) -> int:
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--authentik-url", help="HTTPS origin, no API path; token from AUTHENTIK_SSH_TOKEN"
@@ -453,26 +412,20 @@ def main(argv: list[str] | None = None) -> int:
         if args.snapshot:
             users = read_json(args.snapshot)
             require(isinstance(users, list), "Snapshot must be a public-only API user list")
-            users = cast("list[object]", users)
 
-            def snapshot_user(ident: str) -> dict[str, object]:
-                rows = cast(
-                    "list[dict[str, object]]",
-                    [u for u in users if isinstance(u, dict) and u.get("uuid") == ident],
-                )
+            def get_user(ident):
+                rows = [u for u in users if isinstance(u, dict) and u.get("uuid") == ident]
                 require(len(rows) == 1, "Snapshot UUID missing or duplicated")
                 return rows[0]
-
-            get_user: Callable[[str], dict[str, object]] = snapshot_user
         elif any(r["state"] == "present" for r in policy["assignments"]):
             api = Authentik(
-                args.authentik_url or "",
-                cast("str", os.environ.get("AUTHENTIK_SSH_TOKEN")),
-                args.ca_file,
+                args.authentik_url or "", os.environ.get("AUTHENTIK_SSH_TOKEN"), args.ca_file
             )
             get_user = api.user
         else:
-            get_user = _unreachable_user  # Disabled assignments deliberately need no IdP.
+            get_user = lambda ident: (
+                None
+            )  # Disabled assignments deliberately need no IdP availability.
         payload, summary = build_plan(bindings, policy, get_user)
         print(
             json.dumps(

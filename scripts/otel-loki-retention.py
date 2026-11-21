@@ -9,26 +9,18 @@ import json
 import re
 from pathlib import Path
 
-
-def _as_kind[T](value: object, kind: type[T]) -> T:
-    if not isinstance(value, kind):
-        raise TypeError
-    return value
-
-
 ROOT = Path(__file__).resolve().parents[1]
 POLICY = ROOT / "deploy/monitoring/otel/retention-policy.json"
 COPIES = [ROOT / p for p in ("deploy/monitoring/otel/loki.yaml", "charts/loki/files/loki.yaml")]
 LEVELS = {"trace", "debug", "info", "warn", "error", "fatal", "unknown"}
 
 
-def rules(policy: object):
-    policy = _as_kind(policy, dict)
+def rules(policy):
     if policy.get("schemaVersion") != 1:
         raise ValueError("Unsupported policy schema")
     fallback = policy["fallbackHours"]
 
-    def hours(value: object, level: str) -> int:
+    def hours(value, level):
         if type(value) is not int or not 24 <= value <= 8760:
             raise ValueError("Retention must be integer hours between 24h and 365d")
         if level == "unknown" and value != 336:
@@ -113,7 +105,7 @@ def rules(policy: object):
     return fallback, result
 
 
-def render(text: str, policy: object) -> str:
+def render(text, policy):
     fallback, streams = rules(policy)
     block = "  retention_period: " + str(fallback) + "h\n  retention_stream:\n"
     for priority, selector, period in streams:

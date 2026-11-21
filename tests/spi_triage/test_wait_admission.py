@@ -30,7 +30,7 @@ class OwnerAdmissionTests(unittest.TestCase):
         self.tmp.cleanup()
 
     @staticmethod
-    def identity(execution: str):
+    def identity(execution):
         return {"execution_id": execution, "workflow_revision": "durable-v1"}
 
     def waiting(self):

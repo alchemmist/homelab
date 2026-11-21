@@ -16,11 +16,11 @@ import urllib.parse
 import urllib.request
 
 
-def command(arguments: list[str]) -> str:
+def command(arguments):
     return subprocess.run(arguments, check=True, capture_output=True, text=True, timeout=30).stdout
 
 
-def verify(path: Path, expected: str) -> None:
+def verify(path, expected):
     stat = path.lstat()
     if path.is_symlink() or not path.is_file() or stat.st_uid != 0 or stat.st_mode & 0o022:
         raise ValueError("Native canary executable must be root owned and not writable by others")
@@ -29,12 +29,8 @@ def verify(path: Path, expected: str) -> None:
             raise ValueError("Native executable differs from pinned controller digest")
 
 
-def configs(root: Path, request: object):
-    if not isinstance(request, dict):
-        raise TypeError
+def configs(root, request):
     agent = json.loads((root / "agent-source.json").read_text())
-    if not isinstance(agent, dict):
-        raise TypeError
     agent["receivers"] = {"prometheus": agent["receivers"]["prometheus"]}
     agent["extensions"] = {"file_storage": agent["extensions"]["file_storage"]}
     agent["processors"] = {
@@ -52,8 +48,6 @@ def configs(root: Path, request: object):
         "pipelines": {"metrics": agent["service"]["pipelines"]["metrics"]},
     }
     gateway = json.loads((root / "cluster-source.json").read_text())
-    if not isinstance(gateway, dict):
-        raise TypeError
     grpc = copy.deepcopy(gateway["receivers"]["otlp"]["protocols"]["grpc"])
     grpc["endpoint"] = request["backendIP"] + ":43170"
     gateway["receivers"] = {"otlp": {"protocols": {"grpc": grpc}}}
@@ -82,13 +76,13 @@ def configs(root: Path, request: object):
     return agent, gateway
 
 
-def context(root: Path) -> ssl.SSLContext:
+def context(root):
     result = ssl.create_default_context(cafile=str(root / "tls/ca.crt"))
     result.load_cert_chain(str(root / "tls/client.crt"), str(root / "tls/client.key"))
     return result
 
 
-def query(root: Path, expression: str, range_parameters: dict[str, str] | None = None):
+def query(root, expression, range_parameters=None):
     endpoint = "query_range" if range_parameters else "query"
     parameters = {"query": expression, **(range_parameters or {})}
     url = "https://127.0.0.1:19099/api/v1/" + endpoint + "?" + urllib.parse.urlencode(parameters)
@@ -99,17 +93,17 @@ def query(root: Path, expression: str, range_parameters: dict[str, str] | None =
     return payload["data"]["result"]
 
 
-def identity(labels: object) -> str:
+def identity(labels):
     return hashlib.sha256(
         json.dumps(labels, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
 
 
-def unit(root: Path, label: str) -> str:
+def unit(root, label):
     return root.name + "-" + label + ".service"
 
 
-def stop(root: Path, labels: list[str]) -> None:
+def stop(root, labels):
     for label in labels:
         if (
             command(["systemctl", "show", unit(root, label), "-p", "MainPID", "--value"]).strip()
@@ -118,15 +112,7 @@ def stop(root: Path, labels: list[str]) -> None:
             command(["systemctl", "stop", unit(root, label)])
 
 
-def start(
-    root: Path,
-    label: str,
-    executable: Path,
-    arguments: list[str],
-    memory: int,
-    environment: dict[str, str] | None = None,
-    extra: list[str] | None = None,
-) -> None:
+def start(root, label, executable, arguments, memory, environment=None, extra=None):
     properties = [
         f"MemoryMax={memory}",
         "MemorySwapMax=0",
@@ -140,7 +126,7 @@ def start(
     command(argv + [str(executable)] + arguments)
 
 
-def wait_port(ip: str, port: int) -> None:
+def wait_port(ip, port):
     deadline = time.monotonic() + 20
     while time.monotonic() < deadline:
         try:
@@ -151,9 +137,7 @@ def wait_port(ip: str, port: int) -> None:
     raise RuntimeError("Owned native listener did not become ready")
 
 
-def environment(root: Path, request: object) -> dict[str, str]:
-    if not isinstance(request, dict):
-        raise TypeError
+def environment(root, request):
     return {
         "GOMAXPROCS": "2",
         "GOMEMLIMIT": "192MiB",
@@ -167,7 +151,7 @@ def environment(root: Path, request: object) -> dict[str, str]:
     }
 
 
-def telemetry(root: Path) -> dict[str, float]:
+def telemetry(root):
     with urllib.request.urlopen("http://127.0.0.1:18888/metrics", timeout=5) as response:
         lines = response.read(4 * 1024 * 1024 + 1).decode().splitlines()
     selected = {}
@@ -190,7 +174,7 @@ def telemetry(root: Path) -> dict[str, float]:
     return selected
 
 
-def classify_shutdown_replay(text: str):
+def classify_shutdown_replay(text):
     # Pinned upstream 0.164 logs every Send error as "Dropping data", but
     # persistent_queue.onDone retains IsShutdownErr items for startup replay.
     # Never exempt generic send failures or merely trust the log wording.
@@ -241,9 +225,7 @@ def classify_shutdown_replay(text: str):
     }
 
 
-def validate_contract(root: Path, request: object, now: datetime | None = None) -> None:
-    if not isinstance(request, dict):
-        raise TypeError
+def validate_contract(root, request, now=None):
     collected = datetime.fromisoformat(request["scrapeContractCollectedAt"])
     age = ((now or datetime.now(timezone.utc)) - collected).total_seconds()
     if not 0 <= age <= 900:
@@ -255,7 +237,7 @@ def validate_contract(root: Path, request: object, now: datetime | None = None) 
         raise ValueError("Frozen native host source config changed after compilation")
 
 
-def run(root: Path, phase: str):
+def run(root, phase):
     if (
         os.geteuid() != 0
         or root.is_symlink()
@@ -454,14 +436,10 @@ def run(root: Path, phase: str):
         result["allFourPersistentQueuesSurvivedAgentRestart"] = True
     elif phase == "telemetry":
         result["exporterTelemetry"] = telemetry(root)
-        result["agentCgroup"] = agent_cgroup = command(
+        result["agentCgroup"] = command(
             ["systemctl", "show", unit(root, "agent"), "-p", "ControlGroup", "--value"]
         ).strip()
-        peak = (
-            Path("/sys/fs/cgroup") / agent_cgroup.lstrip("/") / "memory.peak"
-            if agent_cgroup
-            else Path("/nonexistent")
-        )
+        peak = Path("/sys/fs/cgroup") / result["agentCgroup"].lstrip("/") / "memory.peak"
         result["agentMemoryPeakBytes"] = int(peak.read_text()) if peak.is_file() else None
     elif phase == "gateway-stop":
         stop(root, ["gateway"])
@@ -511,14 +489,12 @@ def run(root: Path, phase: str):
             "memoryRefusals": "Refusing data.",
             "failedScrapeCommits": "Scrape commit failed",
         }
-        result["rejections"] = rejections = {
-            key: text.count(marker) for key, marker in markers.items()
-        }
+        result["rejections"] = {key: text.count(marker) for key, marker in markers.items()}
         files = [p for p in (root / "queues").rglob("*") if p.is_file() and not p.is_symlink()]
         result["queueLogicalBytesAfterDrain"] = sum(p.stat().st_size for p in files)
         result["queueAllocatedBytesAfterDrain"] = sum(p.stat().st_blocks * 512 for p in files)
         result["queueSaturationOrFullHighWaterVerified"] = False
-        result["strictUnclassifiedLogGatePassed"] = not any(rejections.values())
+        result["strictUnclassifiedLogGatePassed"] = not any(result["rejections"].values())
         result["shutdownReplay"] = classify_shutdown_replay(text)
     elif phase == "cleanup":
         labels = ["agent", "exporter"] + (

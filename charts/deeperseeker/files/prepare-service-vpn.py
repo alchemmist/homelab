@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 ENDPOINT = os.environ["VPN_ENDPOINT"]
 PORT = int(os.environ["VPN_PORT"])
 
-def prepare(value: object) -> dict[str, object]:
+def prepare(value):
     profiles = value if isinstance(value, list) else [value]
     outbounds = []
     for profile in profiles:
@@ -18,7 +18,7 @@ def prepare(value: object) -> dict[str, object]:
     stream = outbound.get("streamSettings") or {}
     if endpoint.get("address") != ENDPOINT or endpoint.get("port") != PORT or stream.get("security") != "reality":
         raise SystemExit("PROFILE_POLICY")
-    def check(node: object) -> None:
+    def check(node):
         if isinstance(node, dict):
             for key, item in node.items():
                 if key == "allowInsecure" and item is not False:

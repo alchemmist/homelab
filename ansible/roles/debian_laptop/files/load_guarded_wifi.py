@@ -16,11 +16,11 @@ LOADED_NOTE = Path("/sys/module/alx/notes/.note.gnu.build-id")
 WIFI_PARAMETERS = Path("/sys/module/rtl8723ae/parameters")
 
 
-def run(arguments) -> bytes:
+def run(arguments):
     return subprocess.run(arguments, check=True, capture_output=True, timeout=30).stdout
 
 
-def module_note(path) -> bytes:
+def module_note(path):
     data = path.read_bytes()
     if path.suffix == ".xz":
         data = lzma.decompress(data)
@@ -48,15 +48,13 @@ def module_note(path) -> bytes:
         return value
 
 
-def validate() -> None:
+def validate():
     if os.geteuid() != 0:
         raise RuntimeError("This guard must run as root")
     if BOARD_PATH.read_text().strip() != "MS-16GP":
         raise RuntimeError("Unexpected motherboard")
     kernel = platform.release()
-    status = run(
-        ["dkms", "status", "-m", DKMS_NAME, "-v", DKMS_VERSION, "-k", kernel]
-    ).decode()
+    status = run(["dkms", "status", "-m", DKMS_NAME, "-v", DKMS_VERSION, "-k", kernel]).decode()
     expected = f"{DKMS_NAME}/{DKMS_VERSION}, {kernel}, {platform.machine()}: installed"
     accepted = {expected, expected + " (Original modules exist)"}
     if not accepted.intersection(line.strip() for line in status.splitlines()):
@@ -78,7 +76,7 @@ def validate() -> None:
         )
 
 
-def main() -> int:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     arguments = parser.parse_args()
@@ -86,12 +84,7 @@ def main() -> int:
         validate()
         if not arguments.check:
             run(["modprobe", "rtl8723ae", "msi=1", "ips=0", "fwlps=0", "swlps=0"])
-            for name, expected in {
-                "msi": "Y",
-                "ips": "N",
-                "fwlps": "N",
-                "swlps": "N",
-            }.items():
+            for name, expected in {"msi": "Y", "ips": "N", "fwlps": "N", "swlps": "N"}.items():
                 if (WIFI_PARAMETERS / name).read_text().strip() != expected:
                     raise RuntimeError(
                         f"Loaded Wi-Fi parameter {name} differs from guarded configuration; no automatic reload attempted"
@@ -106,11 +99,7 @@ def main() -> int:
     ) as error:
         print(f"Wi-Fi guard refused activation: {error}", file=sys.stderr)
         return 1
-    print(
-        "Guarded ALX identity verified"
-        if arguments.check
-        else "Guarded Wi-Fi module loaded"
-    )
+    print("Guarded ALX identity verified" if arguments.check else "Guarded Wi-Fi module loaded")
     return 0
 
 

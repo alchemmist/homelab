@@ -23,7 +23,7 @@ QUERIES = {
 }
 
 
-def sample(base: str):
+def sample(base):
     result = {"observedAtUnix": time.time(), "metadataOnly": True, "metrics": {}}
     for name, query in QUERIES.items():
         with urlopen(

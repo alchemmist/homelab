@@ -161,56 +161,56 @@ metadata:
 ---
 apiVersion: v1
 data:
-  config.json: "{\n  \"nodePathMap\": [],\n  \"storageClassConfigs\": {\n    \"lms-db-retain\": {\n\
-    \      \"nodePathMap\": [\n        {\n          \"node\":\
-    \ \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n          \"paths\": [\n           \
-    \ \"/var/lib/rancher/k3s/storage\"\n          ]\n        }\n      ]\n    },\n   \
-    \ \"local-path\": {\n      \"nodePathMap\": [\n        {\n          \"node\":\
-    \ \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n          \"paths\": [\n           \
-    \ \"/var/lib/rancher/k3s/storage\"\n          ]\n        },\n        {\n          \"node\":\
-    \ \"socrat-5\",\n          \"paths\": [\n            \"/mnt/files/homelab/volumes\"\n         \
-    \ ]\n        }\n      ]\n    },\n    \"pg-local-retain\": {\n      \"nodePathMap\": [\n       \
-    \ {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n          \"paths\": [\n      \
-    \      \"/var/lib/rancher/k3s/storage\"\n          ]\n        }\n      ]\n    },\n   \
-    \ \"rustfs-retain\": {\n      \"nodePathMap\": [\n        {\n          \"node\":\
-    \ \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n          \"paths\": [\n           \
-    \ \"/var/lib/rancher/k3s/storage\"\n          ]\n        }\n      ]\n    },\n   \
-    \ \"socrat-bot-retain\": {\n      \"nodePathMap\": [\n        {\n          \"node\":\
-    \ \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n          \"paths\": [\n           \
-    \ \"/var/lib/rancher/k3s/storage\"\n          ]\n        }\n      ]\n    },\n   \
-    \ \"venice-browser-retain\": {\n      \"nodePathMap\": [\n        {\n          \"node\":\
-    \ \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n          \"paths\": [\n           \
-    \ \"/var/lib/rancher/k3s/storage\"\n          ]\n        }\n      ]\n    },\n    \"local-hdd\":\
-    \ {\n      \"nodePathMap\": [\n        {\n          \"node\":\
-    \ \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n          \"paths\": []\n        },\n        {\n     \
-    \     \"node\": \"socrat-5\",\n          \"paths\": [\n           \
-    \ \"/mnt/files/homelab/volumes\"\n          ]\n        }\n      ]\n    },\n    \"local-ssd\":\
-    \ {\n      \"nodePathMap\": [\n        {\n          \"node\":\
-    \ \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n          \"paths\": []\n        },\n        {\n     \
-    \     \"node\": \"socrat-5\",\n          \"paths\": [\n           \
-    \ \"/var/lib/rancher/k3s/fast-storage\"\n          ]\n        }\n      ]\n    }\n  }\n}"
+  config.json: "{\n  \"nodePathMap\": [],\n  \"storageClassConfigs\": {\n    \"lms-db-retain\"\
+    : {\n      \"nodePathMap\": [\n        {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\"\
+    ,\n          \"paths\": [\n            \"/var/lib/rancher/k3s/storage\"\n    \
+    \      ]\n        }\n      ]\n    },\n    \"local-path\": {\n      \"nodePathMap\"\
+    : [\n        {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n \
+    \         \"paths\": [\n            \"/var/lib/rancher/k3s/storage\"\n       \
+    \   ]\n        },\n        {\n          \"node\": \"socrat-5\",\n          \"\
+    paths\": [\n            \"/mnt/files/homelab/volumes\"\n          ]\n        }\n\
+    \      ]\n    },\n    \"pg-local-retain\": {\n      \"nodePathMap\": [\n     \
+    \   {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n          \"\
+    paths\": [\n            \"/var/lib/rancher/k3s/storage\"\n          ]\n      \
+    \  }\n      ]\n    },\n    \"rustfs-retain\": {\n      \"nodePathMap\": [\n  \
+    \      {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n       \
+    \   \"paths\": [\n            \"/var/lib/rancher/k3s/storage\"\n          ]\n\
+    \        }\n      ]\n    },\n    \"socrat-bot-retain\": {\n      \"nodePathMap\"\
+    : [\n        {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n \
+    \         \"paths\": [\n            \"/var/lib/rancher/k3s/storage\"\n       \
+    \   ]\n        }\n      ]\n    },\n    \"venice-browser-retain\": {\n      \"\
+    nodePathMap\": [\n        {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\"\
+    ,\n          \"paths\": [\n            \"/var/lib/rancher/k3s/storage\"\n    \
+    \      ]\n        }\n      ]\n    },\n    \"local-hdd\": {\n      \"nodePathMap\"\
+    : [\n        {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n \
+    \         \"paths\": []\n        },\n        {\n          \"node\": \"socrat-5\"\
+    ,\n          \"paths\": [\n            \"/mnt/files/homelab/volumes\"\n      \
+    \    ]\n        }\n      ]\n    },\n    \"local-ssd\": {\n      \"nodePathMap\"\
+    : [\n        {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n \
+    \         \"paths\": []\n        },\n        {\n          \"node\": \"socrat-5\"\
+    ,\n          \"paths\": [\n            \"/var/lib/rancher/k3s/fast-storage\"\n\
+    \          ]\n        }\n      ]\n    }\n  }\n}"
   helperPod.yaml: "apiVersion: v1\nkind: Pod\nmetadata:\n  name: helper-pod\nspec:\n\
     \  containers:\n  - name: helper-pod\n    image: \"rancher/mirrored-library-busybox:1.37.0\"\
     \n    imagePullPolicy: IfNotPresent"
-  setup: "#!/bin/sh\nset -eu\nPARENT=${VOL_DIR%/*}\ncase \"${VOL_DIR}\" in\n \
-    \ /mnt/files/homelab/volumes/*)\n    [ \"$(stat -c %d \"${PARENT}\")\" = 2065 ] || { echo\
-    \ HDD_DEVICE_MISMATCH >&2; exit 1; }\n    [ \"$(cat \"${PARENT}/.homelab-filesystem-id\")\" =\
-    \ 3ec3263e-32e3-4b38-84e6-17cd168244b9 ] || exit 1\n    ;;\n \
-    \ /var/lib/rancher/k3s/fast-storage/*)\n    [ \"$(stat -c %d \"${PARENT}\")\" = 2049 ] || {\
-    \ echo SSD_DEVICE_MISMATCH >&2; exit 1; }\n    [ \"$(cat\
-    \ \"${PARENT}/.homelab-filesystem-id\")\" = 60fd0998-0598-4672-88b5-3bec59f697c9 ] || exit 1\n \
-    \   ;;\n  /var/lib/rancher/k3s/storage/*) ;; # Preserve legacy lifecycle on every node.\n  *)\
-    \ echo UNOWNED_VOLUME_PATH >&2; exit 1 ;;\nesac\nmkdir -m 0777 -p \"${VOL_DIR}\"\nchmod 700\
-    \ \"${PARENT}\"\n"
-  teardown: "#!/bin/sh\nset -eu\nPARENT=${VOL_DIR%/*}\ncase \"${VOL_DIR}\" in\n \
-    \ /mnt/files/homelab/volumes/*)\n    [ \"$(stat -c %d \"${PARENT}\")\" = 2065 ] || { echo\
-    \ HDD_DEVICE_MISMATCH >&2; exit 1; }\n    [ \"$(cat \"${PARENT}/.homelab-filesystem-id\")\" =\
-    \ 3ec3263e-32e3-4b38-84e6-17cd168244b9 ] || exit 1\n    ;;\n \
-    \ /var/lib/rancher/k3s/fast-storage/*)\n    [ \"$(stat -c %d \"${PARENT}\")\" = 2049 ] || {\
-    \ echo SSD_DEVICE_MISMATCH >&2; exit 1; }\n    [ \"$(cat\
-    \ \"${PARENT}/.homelab-filesystem-id\")\" = 60fd0998-0598-4672-88b5-3bec59f697c9 ] || exit 1\n \
-    \   ;;\n  /var/lib/rancher/k3s/storage/*) ;; # Preserve legacy lifecycle on every node.\n  *)\
-    \ echo UNOWNED_VOLUME_PATH >&2; exit 1 ;;\nesac\nrm -rf \"${VOL_DIR}\"\n"
+  setup: "#!/bin/sh\nset -eu\nPARENT=${VOL_DIR%/*}\ncase \"${VOL_DIR}\" in\n  /mnt/files/homelab/volumes/*)\n\
+    \    [ \"$(stat -c %d \"${PARENT}\")\" = 2065 ] || { echo HDD_DEVICE_MISMATCH\
+    \ >&2; exit 1; }\n    [ \"$(cat \"${PARENT}/.homelab-filesystem-id\")\" = 3ec3263e-32e3-4b38-84e6-17cd168244b9\
+    \ ] || exit 1\n    ;;\n  /var/lib/rancher/k3s/fast-storage/*)\n    [ \"$(stat\
+    \ -c %d \"${PARENT}\")\" = 2049 ] || { echo SSD_DEVICE_MISMATCH >&2; exit 1; }\n\
+    \    [ \"$(cat \"${PARENT}/.homelab-filesystem-id\")\" = 60fd0998-0598-4672-88b5-3bec59f697c9\
+    \ ] || exit 1\n    ;;\n  /var/lib/rancher/k3s/storage/*) ;; # Preserve legacy\
+    \ lifecycle on every node.\n  *) echo UNOWNED_VOLUME_PATH >&2; exit 1 ;;\nesac\n\
+    mkdir -m 0777 -p \"${VOL_DIR}\"\nchmod 700 \"${PARENT}\"\n"
+  teardown: "#!/bin/sh\nset -eu\nPARENT=${VOL_DIR%/*}\ncase \"${VOL_DIR}\" in\n  /mnt/files/homelab/volumes/*)\n\
+    \    [ \"$(stat -c %d \"${PARENT}\")\" = 2065 ] || { echo HDD_DEVICE_MISMATCH\
+    \ >&2; exit 1; }\n    [ \"$(cat \"${PARENT}/.homelab-filesystem-id\")\" = 3ec3263e-32e3-4b38-84e6-17cd168244b9\
+    \ ] || exit 1\n    ;;\n  /var/lib/rancher/k3s/fast-storage/*)\n    [ \"$(stat\
+    \ -c %d \"${PARENT}\")\" = 2049 ] || { echo SSD_DEVICE_MISMATCH >&2; exit 1; }\n\
+    \    [ \"$(cat \"${PARENT}/.homelab-filesystem-id\")\" = 60fd0998-0598-4672-88b5-3bec59f697c9\
+    \ ] || exit 1\n    ;;\n  /var/lib/rancher/k3s/storage/*) ;; # Preserve legacy\
+    \ lifecycle on every node.\n  *) echo UNOWNED_VOLUME_PATH >&2; exit 1 ;;\nesac\n\
+    rm -rf \"${VOL_DIR}\"\n"
 kind: ConfigMap
 metadata:
   name: local-path-config

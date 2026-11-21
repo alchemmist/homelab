@@ -6,7 +6,7 @@ import urllib.error
 import urllib.request
 
 
-def kubectl(*args: str) -> str:
+def kubectl(*args):
     return subprocess.check_output(["kubectl", "-n", "llm", *args], text=True)
 
 
@@ -19,7 +19,7 @@ base = "http://" + ip + ":4000"
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def request(path: str, key: str | None = None, data: object = None):
+def request(path, key=None, data=None):
     headers = {"Content-Type": "application/json"}
     if key:
         headers["Authorization"] = "Bearer " + key
@@ -56,7 +56,7 @@ try:
             "chat_template_kwargs": {"enable_thinking": False},
         },
     )
-    content = result["choices"][0]["message"].get("content") or ""
+    content = result["choices"][0]["message"]["content"]
     assert content.strip() == "4", "Unexpected arithmetic response"
     print("virtual key inference:", content)
 finally:

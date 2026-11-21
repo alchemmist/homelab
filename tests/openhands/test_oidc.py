@@ -2,7 +2,6 @@
 import copy
 import base64
 import importlib.util
-from typing import cast
 from pathlib import Path
 import subprocess
 from typing import cast
@@ -25,8 +24,7 @@ class NativeOIDC(unittest.TestCase):
 
     def validate(self) -> None:
         class API:
-            def rows(_: object, path: str) -> list[dict[str, object]]:
-                return cast("list[dict[str, object]]", self.bindings)
+            def rows(_, path): return self.bindings
         m.validate(API(),self.owner,self.settings,self.provider,self.app,self.journal)
 
     def test_cookie_secret_uses_go_raw_url_alphabet(self) -> None:
@@ -63,7 +61,7 @@ class NativeOIDC(unittest.TestCase):
 
 
 class OIDCRender(unittest.TestCase):
-    def helm(self, *args: str) -> subprocess.CompletedProcess[str]:
+    def helm(self,*args):
         return subprocess.run(['helm','template','openhands',str(ROOT/'charts/openhands'),'-n','openhands','-f',str(ROOT/'deploy/openhands/values.yaml'),*args],text=True,capture_output=True)
 
     def objects(self) -> list[dict[str, object]]:

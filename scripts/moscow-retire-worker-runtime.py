@@ -12,63 +12,10 @@ import re
 import signal
 import socket
 import time
-from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import NotRequired, TypedDict
 
 
-class PodMetadata(TypedDict):
-    """Metadata fields read from the reviewed pod plan."""
-
-    namespace: str
-    name: str
-    uid: str
-
-
-class PodSpec(TypedDict):
-    """Spec fields that identify where a reviewed pod runs."""
-
-    nodeName: str
-    volumes: NotRequired[list[Mapping[str, object]]]
-
-
-class ContainerStatus(TypedDict, total=False):
-    """Container status fields used to collect containerd ids."""
-
-    containerID: str
-
-
-class PodStatus(TypedDict, total=False):
-    """Pod status fields present on a running reviewed pod."""
-
-    containerStatuses: list[ContainerStatus]
-
-
-class PlannedPod(TypedDict):
-    """One pod in the reviewed retirement plan."""
-
-    metadata: PodMetadata
-    spec: PodSpec
-    status: NotRequired[PodStatus]
-
-
-class PodPlan(TypedDict):
-    """Kubernetes pod list accepted as the retirement plan."""
-
-    items: list[PlannedPod]
-
-
-class ProcInfo(TypedDict):
-    """Process identity captured before a signal is sent."""
-
-    pid: int
-    start: str
-    name: str
-    cgroup: str
-    argv: list[bytes]
-
-
-def allowed(plan: PodPlan):
+def allowed(plan):
     pods = plan["items"]
     assert len(pods) == 2
     result = {}
@@ -93,7 +40,7 @@ def allowed(plan: PodPlan):
     return result, ids
 
 
-def identity(pid: int | str):
+def identity(pid):
     p = Path("/proc") / str(pid)
     try:
         st = (p / "stat").read_text()
@@ -111,7 +58,7 @@ def identity(pid: int | str):
         return None
 
 
-def inventory(uids: Iterable[str], ids: set[str]):
+def inventory(uids, ids):
     owned = []
     shims = []
     for p in Path("/proc").glob("[0-9]*"):
@@ -140,7 +87,7 @@ def inventory(uids: Iterable[str], ids: set[str]):
     return owned, shims
 
 
-def terminate(i: ProcInfo):
+def terminate(i):
     now = identity(i["pid"])
     if now is None:
         return

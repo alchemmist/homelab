@@ -10,13 +10,6 @@ import urllib.parse
 from datetime import UTC, datetime
 from pathlib import Path
 
-
-def _as_kind[T](value: object, kind: type[T]) -> T:
-    if not isinstance(value, kind):
-        raise TypeError
-    return value
-
-
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POLICY = ROOT / "deploy/monitoring/otel-migration-policy.json"
 NODE_PROBE = """import json, os, socket, time
@@ -30,7 +23,7 @@ print(json.dumps({'hostname': socket.gethostname(), 'observedAt': time.time(),
 """
 
 
-def remote(host: str, arguments: list[str]):
+def remote(host, arguments):
     result = subprocess.run(
         ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", host, shlex.join(arguments)],
         capture_output=True,
@@ -43,11 +36,11 @@ def remote(host: str, arguments: list[str]):
     return json.loads(result.stdout)
 
 
-def kube(host: str, namespace: str, *arguments: str):
+def kube(host, namespace, *arguments):
     return remote(host, ["kubectl", "-n", namespace, *arguments])
 
 
-def prometheus(host: str, namespace: str, endpoint: str):
+def prometheus(host, namespace, endpoint):
     path = f"/api/v1/namespaces/{namespace}/services/http:kube-prometheus-stack-prometheus:9090/proxy/api/v1/{endpoint}"
     payload = kube(host, namespace, "get", "--raw", path)
     if payload.get("status") != "success":
@@ -55,9 +48,7 @@ def prometheus(host: str, namespace: str, endpoint: str):
     return payload["data"]
 
 
-def monitor_summary(document: object):
-    if not isinstance(document, dict):
-        raise TypeError
+def monitor_summary(document):
     summaries = []
     for item in document.get("items", []):
         spec = item.get("spec", {})
@@ -88,7 +79,7 @@ def monitor_summary(document: object):
     return summaries
 
 
-def native_query(host: str, namespace: str, expression: str):
+def native_query(host, namespace, expression):
     return remote(
         host,
         [
@@ -110,9 +101,7 @@ def native_query(host: str, namespace: str, expression: str):
     )
 
 
-def collect(policy: object, host: str):
-    if not isinstance(policy, dict):
-        raise TypeError
+def collect(policy, host):
     namespace = policy["namespace"]
     nodes = {}
     for node in policy["nodes"]:
@@ -195,7 +184,7 @@ def collect(policy: object, host: str):
     }
 
 
-def nonnegative(value: object) -> bool:
+def nonnegative(value):
     return (
         isinstance(value, (int, float))
         and not isinstance(value, bool)
@@ -204,9 +193,7 @@ def nonnegative(value: object) -> bool:
     )
 
 
-def evaluate(policy: object, inventory: object, now: float | None = None):
-    policy = _as_kind(policy, dict)
-    inventory = _as_kind(inventory, dict)
+def evaluate(policy, inventory, now=None):
     now = time.time() if now is None else now
     errors = []
     capacity = {}
@@ -285,7 +272,7 @@ def evaluate(policy: object, inventory: object, now: float | None = None):
     }
 
 
-def save(path: str | Path, document: object) -> None:
+def save(path, document):
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descriptor, "w") as stream:
         json.dump(document, stream, indent=2, allow_nan=False)

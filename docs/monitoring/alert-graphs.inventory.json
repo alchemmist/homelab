@@ -3473,10 +3473,10 @@
   },
   {
     "owner": "node-exporter",
-    "resource": "kube-prometheus-stack-node-saturation",
+    "resource": "kube-prometheus-stack-node-exporter",
     "group": "node-exporter",
     "alert": "NodeSystemSaturation",
-    "expr": "(node_load1{job=\"node-exporter\",node=\"socrat-4\"}\n / count without (cpu, mode) (node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}) > 4)\nor\n(node_load1{job=\"node-exporter\",node!=\"socrat-4\"}\n / count without (cpu, mode) (node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}) > 2)",
+    "expr": "node_load1{job=\"node-exporter\"}\n/ count without (cpu, mode) (node_cpu_seconds_total{job=\"node-exporter\", mode=\"idle\"}) > 2",
     "uid": null,
     "graphs": {
       "version": 1,

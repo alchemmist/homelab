@@ -11,7 +11,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module(name: str):
+def module(name):
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -43,9 +43,7 @@ def test_all_current_applications_are_audited_with_reason() -> None:
     assert set(audit["hostRunningUnits"]) == {"socrat-0", "socrat-1", "socrat-2", "socrat-3"}
 
 
-def test_official_launchers_pin_read_only_and_do_not_override_tool_allowlist(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_official_launchers_pin_read_only_and_do_not_override_tool_allowlist(monkeypatch) -> None:
     """Pin read-only launcher args and reject an unknown server name."""
     m = module("run-official-mcp")
     monkeypatch.setattr(m.creds, "read_private", lambda p: "unit-test-token")
@@ -62,7 +60,7 @@ def test_official_launchers_pin_read_only_and_do_not_override_tool_allowlist(
         m.command("unknown")
 
 
-def test_secret_reader_rejects_symlink_and_unsafe_mode(tmp_path: Path) -> None:
+def test_secret_reader_rejects_symlink_and_unsafe_mode(tmp_path) -> None:
     """Accept only a mode 0600 regular file and reject links or multiline text."""
     m = module("mcp-credential")
     p = tmp_path / "key"

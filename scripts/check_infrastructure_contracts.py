@@ -9,33 +9,24 @@ import configparser
 import ipaddress
 import json
 from pathlib import Path
-from typing import Protocol, cast
 
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-class _YamlScalar(Protocol):
-    value: object
-
-
-class _YamlNode(Protocol):
-    value: list[tuple[_YamlScalar, object]]
-
-
-def load(path: Path):
+def load(path):
     return yaml.safe_load(path.read_text())
 
 
-def scalar_node(node: _YamlNode, key: str):
+def scalar_node(node, key):
     for k, value in node.value:
         if k.value == key:
             return value
     raise ValueError("Missing registered YAML field: " + key)
 
 
-def check(root: Path = ROOT, *, write: bool = False):
+def check(root=ROOT, write=False):
     c = json.loads((root / "deploy/contracts/infrastructure.json").read_text())
     if c["schemaVersion"] != 1:
         raise ValueError("Unsupported contract schema")
@@ -56,7 +47,7 @@ def check(root: Path = ROOT, *, write: bool = False):
             raise ValueError("Inventory endpoint drift: " + name)
     relay = c["relayContract"]
 
-    def literals(path: str):
+    def literals(path):
         result = {}
         for statement in ast.parse((root / path).read_text()).body:
             if (
@@ -128,11 +119,9 @@ def check(root: Path = ROOT, *, write: bool = False):
         if not target.resolve().is_relative_to(root.resolve()):
             raise ValueError("Consumer escapes repository")
         text = target.read_text()
-        value = yaml.safe_load(text)
-        tree = cast("_YamlNode", yaml.compose(text))
+        value, tree = yaml.safe_load(text), yaml.compose(text)
         for key in consumer["path"]:
-            value = value[key]
-            tree = cast("_YamlNode", scalar_node(tree, key))
+            value, tree = value[key], scalar_node(tree, key)
         matches = [
             (entry, node)
             for entry, node in zip(value, tree.value)

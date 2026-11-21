@@ -71,7 +71,7 @@ TXT = [
 ]
 
 
-def healthy_addresses(*, home_up: bool, vps_up: bool):
+def healthy_addresses(home_up, vps_up):
     chosen = []
     if home_up:
         chosen.append(HOME)
@@ -82,8 +82,8 @@ def healthy_addresses(*, home_up: bool, vps_up: bool):
     return chosen
 
 
-def render(serial: int, *, home_up: bool, vps_up: bool):
-    addresses = healthy_addresses(home_up=home_up, vps_up=vps_up)
+def render(serial, home_up, vps_up):
+    addresses = healthy_addresses(home_up, vps_up)
     lines = [
         "$ORIGIN alchemmist.xyz.",
         "$TTL %d" % TTL,
@@ -108,7 +108,7 @@ def render(serial: int, *, home_up: bool, vps_up: bool):
     return "\n".join(lines)
 
 
-def probe(address: str, port: int, timeout: float):
+def probe(address, port, timeout):
     sock = socket.socket()
     sock.settimeout(timeout)
     try:
@@ -145,7 +145,7 @@ def main():
         if args.assume_vps == "down"
         else probe(args.vps_target, args.port, args.timeout)
     )
-    text = render(args.serial, home_up=home_up, vps_up=vps_up)
+    text = render(args.serial, home_up, vps_up)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     previous = args.output.read_text() if args.output.exists() else ""
     if previous != text:

@@ -172,7 +172,7 @@ class FakeAuthentik(threading.Thread):
         server = self
 
         class Handler(BaseHTTPRequestHandler):
-            def log_message(self, fmt: str, *args: object) -> None:
+            def log_message(self, fmt, *args):
                 return
 
             def do_GET(self):
@@ -354,7 +354,7 @@ class NetBirdOIDCTests(unittest.TestCase):
         self.fake.close()
         self.tmp.cleanup()
 
-    def run_tool(self, *args: str):
+    def run_tool(self, *args):
         from io import StringIO
         import contextlib
 

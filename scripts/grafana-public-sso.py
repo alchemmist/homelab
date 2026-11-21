@@ -8,7 +8,6 @@ import json
 import os
 import subprocess
 from pathlib import Path
-from typing import cast
 
 NS = "cattle-monitoring-system"
 DEPLOY = "kube-prometheus-stack-grafana"
@@ -20,22 +19,19 @@ DESIRED = {
 }
 
 
-def require(ok: object, message: str) -> None:
+def require(ok, message):
     if not ok:
         raise RuntimeError(message)
 
 
-def kube(*args: str) -> str:
+def kube(*args):
     return subprocess.check_output(["kubectl", "-n", NS, *args], text=True)
 
 
-def env_plan(d: dict[str, object]) -> tuple[int, list[str], list[dict[str, object]]]:
-    spec = cast("dict[str, object]", d["spec"])
-    template = cast("dict[str, object]", spec["template"])
-    template_spec = cast("dict[str, object]", template["spec"])
-    containers = cast("list[dict[str, object]]", template_spec["containers"])
+def env_plan(d):
+    containers = d["spec"]["template"]["spec"]["containers"]
     index = next(i for i, c in enumerate(containers) if c["name"] == "grafana")
-    env = cast("list[dict[str, object]]", containers[index].get("env", []))
+    env = containers[index].get("env", [])
     require(len({e["name"] for e in env}) == len(env), "Duplicate env entries")
     lookup = {e["name"]: e for e in env}
     require(
@@ -46,10 +42,9 @@ def env_plan(d: dict[str, object]) -> tuple[int, list[str], list[dict[str, objec
         lookup["GF_AUTH_GENERIC_OAUTH_CLIENT_ID"]["value"] == "socrat-grafana",
         "Precondition failed; stop and inspect privately",
     )
-    client_secret = lookup["GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET"]
-    value_from = cast("dict[str, object]", client_secret["valueFrom"])
     require(
-        value_from["secretKeyRef"] == {"name": "socrat-authentik-grafana", "key": "client-secret"},
+        lookup["GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET"]["valueFrom"]["secretKeyRef"]
+        == {"name": "socrat-authentik-grafana", "key": "client-secret"},
         "Precondition failed; stop and inspect privately",
     )
     require(
@@ -86,7 +81,7 @@ def env_plan(d: dict[str, object]) -> tuple[int, list[str], list[dict[str, objec
     return index, updates, result
 
 
-def main() -> None:
+def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

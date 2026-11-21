@@ -12,7 +12,7 @@ import subprocess
 from pathlib import Path
 
 
-def require(message: str, *, ok: bool):
+def require(ok, message):
     if not ok:
         raise RuntimeError(message)
 
@@ -31,14 +31,12 @@ def main():
     loader.exec_module(m)
     api = m.API("/home/alchemmist/.cache/homelab-authentik/credentials.json")
     root = Path("/var/lib/homelab-retire-grafana-proxy")
-    require("Unsafe state path", ok=not root.is_symlink())
+    require(not root.is_symlink(), "Unsafe state path")
     root.mkdir(mode=0o700, exist_ok=True)
-    require(
-        "Unsafe state ownership", ok=root.stat().st_uid == 0 and not root.stat().st_mode & 0o077
-    )
+    require(root.stat().st_uid == 0 and not root.stat().st_mode & 0o077, "Unsafe state ownership")
     with (root / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        require("Uncertain previous write; stop", ok=not (root / "uncertain.json").exists())
+        require(not (root / "uncertain.json").exists(), "Uncertain previous write; stop")
         d = json.loads(
             subprocess.check_output(
                 [
@@ -60,9 +58,9 @@ def main():
             )["env"]
         }
         require(
-            "Native policy not active",
-            ok=env["GF_AUTH_ANONYMOUS_ENABLED"] == "false"
+            env["GF_AUTH_ANONYMOUS_ENABLED"] == "false"
             and env["GF_AUTH_GENERIC_OAUTH_AUTO_LOGIN"] == "true",
+            "Native policy not active",
         )
         ingress = json.loads(
             subprocess.check_output(
@@ -70,9 +68,9 @@ def main():
             )
         )
         require(
-            "Old gate still routed",
-            ok=ingress["spec"]["rules"][0]["http"]["paths"][0]["backend"]["service"]["name"]
+            ingress["spec"]["rules"][0]["http"]["paths"][0]["backend"]["service"]["name"]
             == "public-web-grafana-proxy",
+            "Old gate still routed",
         )
         s = m.snapshot(api)
         apps = [x for x in s["apps"] if x["slug"] == "public-web-grafana"]
@@ -80,7 +78,7 @@ def main():
         if not apps and not providers:
             print(json.dumps({"operations": 0, "applied": False}))
             return
-        require("Ambiguous owned gate", ok=len(apps) == len(providers) == 1)
+        require(len(apps) == len(providers) == 1, "Ambiguous owned gate")
         catalog = {
             "grafana": {
                 "host": "grafana.socrat.alchemmist.xyz",
@@ -89,12 +87,12 @@ def main():
             }
         }
         ops, outpost = m.plan(s, catalog)
-        require("Owned gate drift; do not delete", ok=not ops)
+        require(not ops, "Owned gate drift; do not delete")
         app = apps[0]
         provider = providers[0]
         require(
+            not any(x["provider"] == provider["pk"] and x["pk"] != app["pk"] for x in s["apps"]),
             "Shared provider",
-            ok=not any(x["provider"] == provider["pk"] and x["pk"] != app["pk"] for x in s["apps"]),
         )
         plan = {
             "app": app,
@@ -107,7 +105,7 @@ def main():
             json.dumps(plan, sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
         if a.apply:
-            require("Fresh hash approval required", ok=a.approve_plan_hash == digest)
+            require(a.approve_plan_hash == digest, "Fresh hash approval required")
             (root / "before.json").write_text(json.dumps(s))
             (root / "uncertain.json").write_text(json.dumps(plan))
             api.call(
@@ -119,23 +117,23 @@ def main():
             api.call("DELETE", "providers/proxy/" + str(provider["pk"]) + "/")
             after = m.snapshot(api)
             require(
+                not any(x["slug"] == "public-web-grafana" for x in after["apps"]),
                 "Gate deletion not confirmed",
-                ok=not any(x["slug"] == "public-web-grafana" for x in after["apps"]),
             )
             require(
+                not any(x["pk"] == provider["pk"] for x in after["providers"]),
                 "Provider deletion not confirmed",
-                ok=not any(x["pk"] == provider["pk"] for x in after["providers"]),
             )
             require(
-                "Native app changed",
-                ok=[x for x in s["apps"] if x["slug"] == "grafana"]
+                [x for x in s["apps"] if x["slug"] == "grafana"]
                 == [x for x in after["apps"] if x["slug"] == "grafana"],
+                "Native app changed",
             )
-            require("Group memberships changed", ok=s["groups"] == after["groups"])
+            require(s["groups"] == after["groups"], "Group memberships changed")
             require(
-                "Other outpost assignment changed",
-                ok=next(x for x in after["outposts"] if x["pk"] == outpost["pk"])["providers"]
+                next(x for x in after["outposts"] if x["pk"] == outpost["pk"])["providers"]
                 == [p for p in outpost["providers"] if p != provider["pk"]],
+                "Other outpost assignment changed",
             )
             (root / "after.json").write_text(json.dumps(after))
             (root / "uncertain.json").unlink()

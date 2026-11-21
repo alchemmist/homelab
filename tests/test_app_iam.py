@@ -22,14 +22,14 @@ from tests import test_identity as identity
 
 
 class LifecycleAPI:
-    def __init__(self, fake: identity.FakeAuthentik):
+    def __init__(self, fake):
         self.fake = fake
-        self.writes: list[tuple[str, str, dict[str, object] | None]] = []
+        self.writes = []
 
-    def __call__(self, method: str, path: str, data: dict[str, object] | None = None):
+    def __call__(self, method, path, data=None):
         if method != "GET":
             self.writes.append((method, path, data))
-        if path.endswith(("/add_user/", "/remove_user/")) and data is not None:
+        if path.endswith(("/add_user/", "/remove_user/")):
             group_pk = path.split("/")[2]
             user = next(u for u in self.fake.data["core/users/"] if u["pk"] == data["pk"])
             group = next(g for g in self.fake.data["core/groups/"] if g["pk"] == group_pk)
@@ -247,7 +247,7 @@ class AppIAMTests(unittest.TestCase):
     def test_pagination_and_binding_duplicates(self):
         calls = []
 
-        def api(method: str, path: str):
+        def api(method, path):
             calls.append(path)
             page = len(calls)
             return {"results": [page], "pagination": {"next": page == 1}}
@@ -260,9 +260,9 @@ class AppIAMTests(unittest.TestCase):
     def test_wiki_integration_keeps_exact_links_and_overrides(self):
         writes = []
 
-        def run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        def run(args, **kwargs):
             if "apply" in args:
-                writes.append(json.loads(str(kwargs["input"])))
+                writes.append(json.loads(kwargs["input"]))
             return subprocess.CompletedProcess(args, 0, "", "")
 
         with (

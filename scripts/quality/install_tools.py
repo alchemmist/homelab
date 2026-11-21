@@ -5,18 +5,16 @@ import hashlib
 import io
 import json
 import os
-import platform
-import subprocess
-import tarfile
 from pathlib import Path
-from typing import cast
+import platform
+import tarfile
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def install(record: dict[str, object], destination: Path):
-    record_name = cast("str", record["name"])
-    if record_name not in {
+def install(record, destination):
+    if record["name"] not in {
         "promtool",
         "kubectl",
         "kind",
@@ -28,7 +26,6 @@ def install(record: dict[str, object], destination: Path):
         "kube-linter",
     }:
         raise ValueError("Unknown or escaping tool name")
-    url = cast("str", record["url"])
     process = subprocess.run(
         [
             "/usr/bin/curl",
@@ -46,7 +43,7 @@ def install(record: dict[str, object], destination: Path):
             "10",
             "--max-time",
             "45",
-            url,
+            record["url"],
         ],
         capture_output=True,
         timeout=50,
@@ -55,15 +52,15 @@ def install(record: dict[str, object], destination: Path):
     data = process.stdout
     if len(data) > 256 * 1024 * 1024:
         raise ValueError("Tool archive exceeds limit")
-    if hashlib.sha256(data).hexdigest() != cast("str", record["sha256"]):
+    if hashlib.sha256(data).hexdigest() != record["sha256"]:
         raise ValueError("Tool checksum mismatch")
     if record["member"]:
         with tarfile.open(fileobj=io.BytesIO(data)) as archive:
-            member = archive.getmember(cast("str", record["member"]))
+            member = archive.getmember(record["member"])
             if not member.isfile() or member.size > 256 * 1024 * 1024:
                 raise ValueError("Unsafe tool archive member")
             data = archive.extractfile(member).read()
-    target = destination / cast("str", record["name"])
+    target = destination / record["name"]
     target.write_bytes(data)
     target.chmod(0o755)
 

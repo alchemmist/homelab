@@ -15,9 +15,7 @@ TARGETS = [
 NODES = ["socrat-0", "socrat-1"]
 
 
-def placement(document: object):
-    if not isinstance(document, dict):
-        raise TypeError
+def placement(document):
     metadata, spec = document["metadata"], document["spec"]
     if (metadata["namespace"], metadata["name"]) not in TARGETS:
         raise ValueError("Deployment outside the explicit stateless-controller allowlist")
@@ -80,11 +78,11 @@ def placement(document: object):
     return patch, rollback
 
 
-def run(kubeconfig: str, state_directory: Path):
+def run(kubeconfig, state_directory):
     state_directory.mkdir(mode=0o700, parents=True, exist_ok=False)
     base = ["k3s", "kubectl", "--kubeconfig", kubeconfig]
 
-    def command(arguments: list[str]) -> str:
+    def command(arguments):
         return subprocess.check_output(base + arguments, text=True, timeout=200)
 
     nodes = json.loads(command(["get", "nodes", "-o", "json"]))

@@ -30,7 +30,7 @@ def main():
     subprocess.run(['kubectl','create','-f','-'],input=json.dumps(obj),text=True,check=True)
 
 
-def redis_config(password: str):
+def redis_config(password):
     return ('bind 0.0.0.0\nport 6379\nprotected-mode yes\nrequirepass '+password+
             '\nsave ""\nappendonly no\nmaxmemory 64mb\nmaxmemory-policy noeviction\ndir /data\nloglevel warning\n')
 

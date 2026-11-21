@@ -48,13 +48,13 @@ def peers():
     return docs
 
 
-def router_body(peer_id: str):
-    if not peer_id:
+def router_body(peer_id):
+    if not isinstance(peer_id, str) or not peer_id:
         raise ValueError("exact enrolled router peer ID required")
     return {"peer": peer_id, "enabled": True, "masquerade": True, "metric": 100}
 
 
-def resource_body(host: str, address: str, *, local_input_authorized: bool = False):
+def resource_body(host, address, *, local_input_authorized=False):
     if host not in NETWORKS or address not in NETWORKS[host][1]:
         raise ValueError("only reviewed WG node /32 destinations allowed")
     if address == "10.250.0.1/32" and not local_input_authorized:
@@ -70,7 +70,7 @@ def resource_body(host: str, address: str, *, local_input_authorized: bool = Fal
     }
 
 
-def policy_body(source_group: str, resource_id: str):
+def policy_body(source_group, resource_id):
     if not source_group or not resource_id or source_group == resource_id:
         raise ValueError("distinct genuine admin JWT group and resource required")
     return {
@@ -91,7 +91,7 @@ def policy_body(source_group: str, resource_id: str):
     }
 
 
-def gateway_input_policy(source_group: str, gateway_destination_group: str):
+def gateway_input_policy(source_group, gateway_destination_group):
     if (
         not source_group
         or not gateway_destination_group
@@ -116,7 +116,7 @@ def gateway_input_policy(source_group: str, gateway_destination_group: str):
     }
 
 
-def genuine_admin_group(groups: list[dict[str, object]]):
+def genuine_admin_group(groups):
     candidates = [g for g in groups if g.get("name") == ADMIN_GROUP]
     if len(candidates) != 1 or candidates[0].get("issued") != "jwt":
         raise ValueError(

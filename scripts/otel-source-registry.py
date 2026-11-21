@@ -7,160 +7,8 @@ import subprocess
 import sys
 import urllib.parse
 from collections import Counter
-from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import NotRequired, TypedDict, cast
-
-type _Json = None | bool | int | float | str | list[_Json] | dict[str, _Json]
-
-
-class _Expr(TypedDict):
-    key: str
-    operator: str
-    values: NotRequired[list[str]]
-
-
-class _Selector(TypedDict, total=False):
-    matchLabels: dict[str, str]
-    matchExpressions: list[_Expr]
-
-
-class _Metadata(TypedDict):
-    namespace: str
-    name: str
-    labels: NotRequired[dict[str, str]]
-    resourceVersion: str
-
-
-class _Object(TypedDict):
-    kind: str
-    metadata: _Metadata
-    spec: dict[str, _Json]
-
-
-class _ObjectList(TypedDict):
-    items: list[_Object]
-
-
-class _PromMeta(TypedDict):
-    namespace: str
-
-
-class _Prom(TypedDict):
-    metadata: _PromMeta
-    spec: dict[str, _Json]
-
-
-class _Target(TypedDict, total=False):
-    labels: dict[str, str]
-    scrapeUrl: str
-    scrapePool: str
-    health: str
-    scrapeInterval: str
-    scrapeTimeout: str
-
-
-class _TargetList(TypedDict, total=False):
-    activeTargets: list[_Target]
-    droppedTargets: list[object]
-
-
-class _PanelTarget(TypedDict, total=False):
-    expr: str
-    refId: str
-
-
-class _Panel(TypedDict, total=False):
-    id: str | int
-    targets: list[_PanelTarget]
-    panels: list["_Panel"]
-
-
-class _Dashboard(TypedDict, total=False):
-    panels: list[_Panel]
-    uid: str
-    refresh: str
-
-
-class _Rule(TypedDict, total=False):
-    query: str
-    name: str
-    type: str
-    health: str
-
-
-class _Group(TypedDict):
-    name: str
-    rules: NotRequired[list[_Rule]]
-
-
-class _RuleDocument(TypedDict, total=False):
-    groups: list[_Group]
-
-
-class _ConfigMap(TypedDict):
-    metadata: _Metadata
-    data: NotRequired[dict[str, str]]
-
-
-class _ConfigMapList(TypedDict, total=False):
-    items: list[_ConfigMap]
-
-
-class _ProducerFile(TypedDict):
-    file: str
-    producer: str | None
-
-
-class _Timer(TypedDict, total=False):
-    active: bool
-
-
-class _Observed(TypedDict, total=False):
-    files: list[_ProducerFile]
-    timers: dict[str, _Timer]
-
-
-class _Registry(TypedDict, total=False):
-    errors: list[str]
-    hostProducers: Mapping[str, _Observed]
-    diskProducerRefreshSeconds: str | None
-    liveInventoryVerified: bool
-    metricsSourceRegistryVerified: bool
-    sourceRegistryVerified: bool
-    logTraceSourcesVerified: bool
-
-
-class _Env(TypedDict):
-    name: str
-    value: NotRequired[str]
-
-
-class _DaemonContainer(TypedDict, total=False):
-    env: list[_Env]
-
-
-class _DaemonPodSpec(TypedDict):
-    containers: list[_DaemonContainer]
-
-
-class _DaemonTemplate(TypedDict):
-    spec: _DaemonPodSpec
-
-
-class _DaemonSpec(TypedDict):
-    template: _DaemonTemplate
-
-
-class _Daemon(TypedDict):
-    metadata: _Metadata
-    spec: _DaemonSpec
-
-
-class _DaemonList(TypedDict):
-    items: list[_Daemon]
-
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
@@ -194,13 +42,13 @@ SENSITIVE = re.compile(
 )
 
 
-def digest(value: object):
+def digest(value):
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
 
 
-def scrub(value: _Json, key: str = ""):
+def scrub(value, key=""):
     if SENSITIVE.search(key):
         return "<redacted>"
     if isinstance(value, dict):
@@ -221,7 +69,7 @@ def scrub(value: _Json, key: str = ""):
     return value
 
 
-def monitor_key(kind: str, namespace: str, name: str):
+def monitor_key(kind, namespace, name):
     kinds = {
         "ServiceMonitor": "serviceMonitor",
         "PodMonitor": "podMonitor",
@@ -231,7 +79,7 @@ def monitor_key(kind: str, namespace: str, name: str):
     return f"{kinds[kind]}/{namespace}/{name}"
 
 
-def selected(selector: _Selector, attributes: Mapping[str, str]):
+def selected(selector, attributes):
     if any(attributes.get(key) != value for key, value in selector.get("matchLabels", {}).items()):
         return False
     for expression in selector.get("matchExpressions", []):
@@ -250,7 +98,7 @@ def selected(selector: _Selector, attributes: Mapping[str, str]):
     return True
 
 
-def monitor_selected(item: _Object, prometheus: _Prom, namespaces: Mapping[str, Mapping[str, str]]):
+def monitor_selected(item, prometheus, namespaces):
     kind = item["kind"]
     prefix = {
         "ServiceMonitor": "serviceMonitor",
@@ -262,17 +110,15 @@ def monitor_selected(item: _Object, prometheus: _Prom, namespaces: Mapping[str, 
     if selector is None:
         return False
     metadata = item["metadata"]
-    if not selected(cast("_Selector", selector), metadata.get("labels", {})):
+    if not selected(selector, metadata.get("labels", {})):
         return False
     namespace_selector = prometheus["spec"].get(prefix + "NamespaceSelector")
     if namespace_selector is None:
         return metadata["namespace"] == prometheus["metadata"]["namespace"]
-    return selected(
-        cast("_Selector", namespace_selector), namespaces.get(metadata["namespace"], {})
-    )
+    return selected(namespace_selector, namespaces.get(metadata["namespace"], {}))
 
 
-def identity(value: str):
+def identity(value):
     if "://" not in value:
         return value
     url = urllib.parse.urlsplit(value)
@@ -288,7 +134,7 @@ def identity(value: str):
     )
 
 
-def target_summary(target: _Target):
+def target_summary(target):
     labels = target.get("labels", {})
     url = urllib.parse.urlsplit(target["scrapeUrl"])
     path = (
@@ -324,7 +170,7 @@ def target_summary(target: _Target):
     }
 
 
-def expressions(document: _Dashboard):
+def expressions(document):
     for panel in document.get("panels", []):
         for index, target in enumerate(panel.get("targets", [])):
             expression = target.get("expr")
@@ -334,7 +180,7 @@ def expressions(document: _Dashboard):
             yield from expressions({"panels": panel["panels"]})
 
 
-def consumers(rule_document: _RuleDocument, configmaps: _ConfigMapList):
+def consumers(rule_document, configmaps):
     rules = []
     for group in rule_document.get("groups", []):
         for rule in group.get("rules", []):
@@ -385,14 +231,7 @@ def consumers(rule_document: _RuleDocument, configmaps: _ConfigMapList):
     return {"rules": rules, "dashboards": sorted(dashboards, key=lambda item: item["uid"])}
 
 
-def build(
-    monitors: _ObjectList,
-    targets: _TargetList,
-    prometheus: _Prom,
-    namespaces: _ObjectList,
-    rules: _RuleDocument,
-    configmaps: _ConfigMapList,
-):
+def build(monitors, targets, prometheus, namespaces, rules, configmaps):
     namespace_labels = {
         item["metadata"]["name"]: item["metadata"].get("labels", {}) for item in namespaces["items"]
     }
@@ -400,10 +239,7 @@ def build(
     for item in monitors["items"]:
         metadata = item["metadata"]
         key = monitor_key(item["kind"], metadata["namespace"], metadata["name"])
-        endpoints = cast(
-            "list[object]",
-            item["spec"].get("endpoints", item["spec"].get("podMetricsEndpoints", [])),
-        )
+        endpoints = item["spec"].get("endpoints", item["spec"].get("podMetricsEndpoints", []))
         catalog[key] = {
             "kind": item["kind"],
             "namespace": metadata["namespace"],
@@ -497,7 +333,7 @@ print(json.dumps({'files':files,'timers':result.stdout}))
 """
 
 
-def host_producers(hosts: Sequence[str]):
+def host_producers(hosts):
     result = {}
     for node in hosts:
         observed = PREFLIGHT.remote(node, ["python3", "-c", HOST_PRODUCER_PROBE])
@@ -531,9 +367,7 @@ def host_producers(hosts: Sequence[str]):
     return result
 
 
-def attach_producers(
-    registry: _Registry, producers: Mapping[str, _Observed], daemonsets: _DaemonList
-):
+def attach_producers(registry, producers, daemonsets):
     errors = registry["errors"]
     for node, observed in producers.items():
         for item in observed["files"]:

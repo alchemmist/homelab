@@ -12,39 +12,11 @@ import copy
 import hashlib
 import json
 from pathlib import Path
-from typing import TypedDict, cast
-
-
-class _Streak(TypedDict):
-    up: int
-    down: int
-
-
-class _State(TypedDict):
-    published: list[str]
-    last_round: int
-    last_fingerprint: str | None
-    streaks: dict[str, _Streak]
-    watermarks: dict[str, int]
-
-
-class _Observation(TypedDict):
-    entry: str
-    vantage: str
-    checked_at: int
-    backend_ok: bool
-    local_only: bool
-
-
-class _Batch(TypedDict):
-    round: int
-    observations: list[_Observation]
-
 
 ENTRIES = ("home", "vps")
 
 
-def initial(published: list[str]):
+def initial(published):
     if not published or not set(published) <= set(ENTRIES):
         raise ValueError("Nonempty known publication required")
     return {
@@ -56,25 +28,18 @@ def initial(published: list[str]):
     }
 
 
-def plan(
-    state: _State,
-    batch: _Batch,
-    required: dict[str, list[str]],
-    now: int,
-    max_age: int = 90,
-    threshold: int = 3,
-):
+def plan(state, batch, required, now, max_age=90, threshold=3):
     # The exact same accepted result must be distributed to ALL authorities;
     # neither local loopback nor independent per-authority rendering is consensus.
-    if type(cast("object", now)) is not int or threshold < 2 or max_age < 1:
+    if type(now) is not int or threshold < 2 or max_age < 1:
         raise ValueError("Invalid policy")
     if set(required) != set(ENTRIES):
         raise ValueError("Complete entry policy required")
     if not state.get("published") or not set(state["published"]) <= set(ENTRIES):
         raise ValueError("Invalid previous publication")
     for entry in ENTRIES:
-        if not isinstance(cast("object", required[entry]), list) or not all(
-            isinstance(v, str) and 0 < len(v) <= 64 for v in cast("list[object]", required[entry])
+        if not isinstance(required[entry], list) or not all(
+            isinstance(v, str) and 0 < len(v) <= 64 for v in required[entry]
         ):
             raise ValueError("Invalid vantage registry")
         if len(set(required[entry])) < 2:
@@ -109,9 +74,9 @@ def plan(
         if key in rows:
             raise ValueError("Duplicate vantage for entry")
         if (
-            type(cast("object", o.get("checked_at"))) is not int
-            or type(cast("object", o.get("backend_ok"))) is not bool
-            or type(cast("object", o.get("local_only"))) is not bool
+            type(o.get("checked_at")) is not int
+            or type(o.get("backend_ok")) is not bool
+            or type(o.get("local_only")) is not bool
         ):
             raise ValueError("Malformed evidence")
         rows[key] = o
@@ -120,8 +85,7 @@ def plan(
     for entry in ENTRIES:
         candidates = [rows.get((entry, v)) for v in required[entry]]
         fresh = all(
-            o is not None and not o["local_only"] and 0 <= now - o["checked_at"] <= max_age
-            for o in candidates
+            o and not o["local_only"] and 0 <= now - o["checked_at"] <= max_age for o in candidates
         )
         if not fresh:
             status[entry] = "missing_stale_or_local"
@@ -131,15 +95,15 @@ def plan(
         # Every required vantage must contribute a NEW timestamp, not reused samples.
         if any(
             o["checked_at"] <= state["watermarks"].get(entry + "|" + o["vantage"], -1)
-            for o in cast("list[_Observation]", candidates)
+            for o in candidates
         ):
             status[entry] = "reused_evidence"
             hold = True
             nxt["streaks"][entry] = {"up": 0, "down": 0}
             continue
-        for o in cast("list[_Observation]", candidates):
+        for o in candidates:
             nxt["watermarks"][entry + "|" + o["vantage"]] = o["checked_at"]
-        passed = [o["backend_ok"] for o in cast("list[_Observation]", candidates)]
+        passed = [o["backend_ok"] for o in candidates]
         if any(passed) and not all(passed):
             status[entry] = "partitioned"
             hold = True
@@ -147,9 +111,8 @@ def plan(
             continue
         kind = "up" if all(passed) else "down"
         status[entry] = kind
-        cast("dict[str, int]", nxt["streaks"][entry])[kind] += 1
+        nxt["streaks"][entry][kind] += 1
         nxt["streaks"][entry]["down" if kind == "up" else "up"] = 0
-
     proposed = set(state["published"])
     if not hold:
         for entry in ENTRIES:

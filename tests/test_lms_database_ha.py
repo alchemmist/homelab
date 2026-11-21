@@ -1,14 +1,12 @@
 import json
 from pathlib import Path
 import subprocess
-
-import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def rendered(chart: str, *args: str):
+def rendered(chart, *args):
     return [
         d
         for d in yaml.safe_load_all(
@@ -185,7 +183,7 @@ def test_operator_canary_avoids_stale_ready_pod_on_unreachable_node():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
-    def pod(name: str, node: str, *, deleting: bool = False):
+    def pod(name, node, deleting=False):
         return {
             "metadata": {"name": name, **({"deletionTimestamp": "now"} if deleting else {})},
             "spec": {"nodeName": node},
@@ -203,7 +201,7 @@ def test_operator_canary_avoids_stale_ready_pod_on_unreachable_node():
     }
     assert (
         module.ready_canary_pod(
-            {"items": [pod("old", "socrat-3", deleting=True), pod("new", "socrat-1")]}, nodes
+            {"items": [pod("old", "socrat-3", True), pod("new", "socrat-1")]}, nodes
         )
         == "new"
     )
@@ -234,9 +232,7 @@ def test_remote_canary_programs_are_valid_python_including_finally_cleanup():
             ast.parse(program)
 
 
-def test_copy_refuses_live_ha_or_unknown_endpoint_before_creating_job(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_copy_refuses_live_ha_or_unknown_endpoint_before_creating_job(monkeypatch):
     import base64
     import importlib.util
     import json
@@ -258,7 +254,7 @@ def test_copy_refuses_live_ha_or_unknown_endpoint_before_creating_job(
     ]:
         calls = []
 
-        def kube(*args, **kwargs: object):
+        def kube(*args, **kwargs):
             calls.append(args)
             assert args == ("-n", "lms", "get", "secret", "lms-db", "-o", "json")
             return json.dumps({"data": data})

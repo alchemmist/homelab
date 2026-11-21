@@ -5,14 +5,13 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
-from typing import cast
 
 
 class ConfigurationError(Exception):
     pass
 
 
-def request_json(opener, base_url, path, token=None, payload=None) -> object:
+def request_json(opener, base_url, path, token=None, payload=None):
     headers = {"Accept": "application/json"}
     if token is not None:
         headers["Authorization"] = f"Bearer {token}"
@@ -23,8 +22,7 @@ def request_json(opener, base_url, path, token=None, payload=None) -> object:
     request = urllib.request.Request(base_url + path, data=data, headers=headers)
     try:
         with opener.open(request, timeout=120) as response:
-            document: object = json.load(response)
-            return document
+            return json.load(response)
     except urllib.error.HTTPError as error:
         raise ConfigurationError(f"Open WebUI request failed: HTTP {error.code}") from None
     except (urllib.error.URLError, TimeoutError, OSError):
@@ -33,7 +31,7 @@ def request_json(opener, base_url, path, token=None, payload=None) -> object:
         raise ConfigurationError("Open WebUI returned invalid JSON") from None
 
 
-def configure(args) -> dict[str, object]:
+def configure(args):
     result = {
         "changed": False,
         "skipped": False,
@@ -105,9 +103,7 @@ def configure(args) -> dict[str, object]:
             "Requested model is absent from the refreshed Open WebUI model list"
         )
     if args.share_with_users:
-        records = cast(
-            "list[dict[str, object]]", request_json(opener, base_url, "/api/v1/models/all", token)
-        )
+        records = request_json(opener, base_url, "/api/v1/models/all", token)
         if not any(model.get("id") == args.model for model in records):
             request_json(
                 opener,
@@ -171,7 +167,7 @@ def configure(args) -> dict[str, object]:
     return result
 
 
-def main() -> int:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True)
     parser.add_argument("--max-output-tokens", type=int, default=16384)

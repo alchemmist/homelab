@@ -4,13 +4,12 @@ import json
 import re
 import sys
 from decimal import Decimal
-from typing import cast
 
 RESOURCES = ("cpu", "memory", "ephemeral-storage")
 QUANTITY = re.compile(r"^([+-]?(?:\d+(?:\.\d*)?|\.\d+))([eE][+-]?\d+|[numkKMGTPE]|[KMGTPE]i)?$")
 
 
-def quantity(value: object):
+def quantity(value):
     match = QUANTITY.fullmatch(str(value))
     if not match:
         raise ValueError("Invalid resource quantity: " + str(value))
@@ -43,81 +42,66 @@ def quantity(value: object):
     return result
 
 
-def vector(values: dict[str, object] | None = None):
+def vector(values=None):
     return {name: quantity((values or {}).get(name, 0)) for name in RESOURCES}
 
 
-def add(left: dict[str, Decimal], right: dict[str, Decimal]):
+def add(left, right):
     return {name: left[name] + right[name] for name in RESOURCES}
 
 
-def maximum(left: dict[str, Decimal], right: dict[str, Decimal]):
+def maximum(left, right):
     return {name: max(left[name], right[name]) for name in RESOURCES}
 
 
-def effective_requests(pod: dict[str, object]):
-    spec = cast("dict[str, object]", pod.get("spec", {}))
+def effective_requests(pod):
+    spec = pod.get("spec", {})
     total, sidecars, init_peak = vector(), vector(), vector()
-    for raw in cast("list[object]", spec.get("containers", [])):
-        container = cast("dict[str, object]", raw)
-        resources = cast("dict[str, object]", container.get("resources", {}))
-        total = add(total, vector(cast("dict[str, object] | None", resources.get("requests"))))
-    for raw in cast("list[object]", spec.get("initContainers", [])):
-        container = cast("dict[str, object]", raw)
-        resources = cast("dict[str, object]", container.get("resources", {}))
-        requested = vector(cast("dict[str, object] | None", resources.get("requests")))
+    for container in spec.get("containers", []):
+        total = add(total, vector(container.get("resources", {}).get("requests")))
+    for container in spec.get("initContainers", []):
+        requested = vector(container.get("resources", {}).get("requests"))
         if container.get("restartPolicy") == "Always":
             sidecars = add(sidecars, requested)
             init_peak = maximum(init_peak, sidecars)
         else:
             init_peak = maximum(init_peak, add(sidecars, requested))
     total = maximum(add(total, sidecars), init_peak)
-    pod_resources = cast("dict[str, object]", spec.get("resources", {}))
-    for name, value in cast("dict[str, object]", pod_resources.get("requests", {})).items():
+    for name, value in spec.get("resources", {}).get("requests", {}).items():
         if name in RESOURCES:
             total[name] = quantity(value)
-    return add(total, vector(cast("dict[str, object] | None", spec.get("overhead"))))
+    return add(total, vector(spec.get("overhead")))
 
 
-def proposed_pod(pod: dict[str, object], profiles: list[dict[str, object]]):
-    metadata = cast("dict[str, object]", pod["metadata"])
-    label = cast("str", metadata.get("namespace", "default")) + "/" + cast("str", metadata["name"])
+def proposed_pod(pod, profiles):
+    label = pod["metadata"].get("namespace", "default") + "/" + pod["metadata"]["name"]
     owner = next(
-        (
-            value
-            for value in cast("list[dict[str, object]]", metadata.get("ownerReferences", []))
-            if value.get("controller")
-        ),
-        cast("dict[str, object]", {}),
+        (value for value in pod["metadata"].get("ownerReferences", []) if value.get("controller")),
+        {},
     )
-    pod_namespace = cast("str", metadata.get("namespace", "default"))
     matches = [
         profile
         for profile in profiles
-        if profile["namespace"] == pod_namespace
+        if profile["namespace"] == pod["metadata"].get("namespace", "default")
         and profile["ownerKind"] == owner.get("kind")
-        and re.fullmatch(cast("str", profile["ownerPattern"]), cast("str", owner.get("name", "")))
+        and re.fullmatch(profile["ownerPattern"], owner.get("name", ""))
     ]
     if len(matches) != 1:
         raise ValueError(label + ": " + ("ambiguous profiles" if matches else "unmatched profile"))
-    expected = cast("dict[str, dict[str, object]]", matches[0]["containers"])
+    expected = matches[0]["containers"]
     result = copy.deepcopy(pod)
     present = set()
-    spec = cast("dict[str, object]", result.get("spec", {}))
     for field in ("containers", "initContainers"):
-        for raw in cast("list[object]", spec.get(field, [])):
-            container = cast("dict[str, object]", raw)
-            name = cast("str", container["name"])
+        for container in result.get("spec", {}).get(field, []):
+            name = container["name"]
             present.add(name)
             if name not in expected:
                 raise ValueError(label + "/" + name + ": unmatched container")
-            resources = cast("dict[str, object]", container.setdefault("resources", {}))
+            resources = container.setdefault("resources", {})
             for mode in ("requests", "limits"):
-                cast("dict[str, object]", resources.setdefault(mode, {})).update(
-                    cast("dict[str, object]", expected[name].get(mode, {}))
-                )
+                resources.setdefault(mode, {}).update(expected[name].get(mode, {}))
             if expected[name].get("removeCpuLimit"):
-                cast("dict[str, object]", resources["limits"]).pop("cpu", None)
+                resources["limits"].pop("cpu", None)
     if set(expected) - present:
         raise ValueError(
             label
@@ -127,106 +111,82 @@ def proposed_pod(pod: dict[str, object], profiles: list[dict[str, object]]):
     return result
 
 
-def items(value: object):
+def items(value):
     return value["items"] if isinstance(value, dict) else value
 
 
-def validate_profiles(profiles: list[object]):
+def validate_profiles(profiles):
     if not isinstance(profiles, list):
         raise ValueError("Profiles must be a JSON list")
-    for raw in profiles:
-        profile = cast("dict[str, object]", raw)
+    for profile in profiles:
         for name in ("namespace", "ownerKind", "ownerPattern"):
             if not isinstance(profile.get(name), str) or not profile[name]:
                 raise ValueError("Profile requires " + name)
-        re.compile(cast("str", profile["ownerPattern"]))
-        containers_raw = profile.get("containers")
-        if not isinstance(containers_raw, dict) or not containers_raw:
+        re.compile(profile["ownerPattern"])
+        if not isinstance(profile.get("containers"), dict) or not profile["containers"]:
             raise ValueError("Profile requires containers")
-        containers = cast("dict[str, object]", containers_raw)
-        for entry in containers.values():
-            resources = cast("dict[str, object]", entry)
-            requests = cast("dict[str, object]", resources.get("requests", {}))
+        for resources in profile["containers"].values():
+            requests = resources.get("requests", {})
             for name in RESOURCES:
                 if name not in requests or quantity(requests[name]) <= 0:
                     raise ValueError("Profile requires positive requests/" + name)
-            limits = cast("dict[str, object]", resources.get("limits", {}))
-            for name, limit in limits.items():
+            for name, limit in resources.get("limits", {}).items():
                 if name in RESOURCES and quantity(limit) < quantity(requests[name]):
                     raise ValueError("Profile limit below request: " + name)
             if not isinstance(resources.get("removeCpuLimit", False), bool):
                 raise ValueError("removeCpuLimit must be boolean")
-            if resources.get("removeCpuLimit") and "cpu" in cast(
-                "dict[str, object]", resources.get("limits", {})
-            ):
+            if resources.get("removeCpuLimit") and "cpu" in resources.get("limits", {}):
                 raise ValueError("Profile cannot set and remove CPU limit")
 
 
-def budget(pods: object, nodes: object, profiles: list[object]):
+def budget(pods, nodes, profiles):
     validate_profiles(profiles)
-    nodes_report: dict[str, dict[str, object]] = {}
-    unassigned: list[dict[str, object]] = []
-    errors: list[str] = []
-    report: dict[str, object] = {
+    report = {
         "scope": "Current placement only; not a scheduler simulation or an N-1, rollout, peak-use or memory-safety guarantee. Requests are not actual usage. Unassigned pods are not charged to any node.",
-        "nodes": nodes_report,
-        "unassigned": unassigned,
-        "errors": errors,
+        "nodes": {},
+        "unassigned": [],
+        "errors": [],
     }
-    for node_raw in items(nodes):
-        node = cast("dict[str, object]", node_raw)
-        metadata = cast("dict[str, object]", node["metadata"])
-        node_status = cast("dict[str, object]", node["status"])
-        nodes_report[cast("str", metadata["name"])] = {
-            "allocatable": vector(cast("dict[str, object]", node_status.get("allocatable", {}))),
+    for node in items(nodes):
+        report["nodes"][node["metadata"]["name"]] = {
+            "allocatable": vector(node["status"]["allocatable"]),
             "current_requests": vector(),
             "proposed_requests": vector(),
             "pods": 0,
         }
-    for pod_raw in items(pods):
-        pod = cast("dict[str, object]", pod_raw)
-        status = cast("dict[str, object]", pod.get("status", {}))
-        if status.get("phase") in ("Succeeded", "Failed"):
+    for pod in items(pods):
+        if pod.get("status", {}).get("phase") in ("Succeeded", "Failed"):
             continue
-        metadata = cast("dict[str, object]", pod["metadata"])
-        label = cast("str", metadata.get("namespace", "default")) + "/" + cast(
-            "str", metadata["name"]
-        )
+        label = pod["metadata"].get("namespace", "default") + "/" + pod["metadata"]["name"]
         try:
-            proposed = proposed_pod(pod, cast("list[dict[str, object]]", profiles))
+            proposed = proposed_pod(pod, profiles)
         except ValueError as error:
-            errors.append(str(error))
+            report["errors"].append(str(error))
             proposed = pod
         current, future = effective_requests(pod), effective_requests(proposed)
-        pod_spec = cast("dict[str, object]", pod.get("spec", {}))
-        node_name = cast("str | None", pod_spec.get("nodeName"))
+        node_name = pod.get("spec", {}).get("nodeName")
         if not node_name:
-            unassigned.append(
+            report["unassigned"].append(
                 {"pod": label, "current_requests": current, "proposed_requests": future}
             )
             continue
-        if node_name not in nodes_report:
-            errors.append(label + ": unknown node " + node_name)
+        if node_name not in report["nodes"]:
+            report["errors"].append(label + ": unknown node " + node_name)
             continue
-        entry = nodes_report[node_name]
-        entry["pods"] = cast("int", entry["pods"]) + 1
-        entry["current_requests"] = add(
-            cast("dict[str, Decimal]", entry["current_requests"]), current
-        )
-        entry["proposed_requests"] = add(
-            cast("dict[str, Decimal]", entry["proposed_requests"]), future
-        )
-    for name, node in nodes_report.items():
+        entry = report["nodes"][node_name]
+        entry["pods"] += 1
+        entry["current_requests"] = add(entry["current_requests"], current)
+        entry["proposed_requests"] = add(entry["proposed_requests"], future)
+    for name, node in report["nodes"].items():
         for mode in ("current", "proposed"):
             node[mode + "_remaining"] = {
-                resource: cast("dict[str, Decimal]", node["allocatable"])[resource]
-                - cast("dict[str, Decimal]", node[mode + "_requests"])[resource]
+                resource: node["allocatable"][resource] - node[mode + "_requests"][resource]
                 for resource in RESOURCES
             }
-        for resource, remaining in cast("dict[str, Decimal]", node["proposed_remaining"]).items():
+        for resource, remaining in node["proposed_remaining"].items():
             if remaining < 0:
-                errors.append(name + ": proposed requests exceed allocatable " + resource)
-    report["ok"] = not errors
+                report["errors"].append(name + ": proposed requests exceed allocatable " + resource)
+    report["ok"] = not report["errors"]
     report["units"] = {"cpu": "cores", "memory": "bytes", "ephemeral-storage": "bytes"}
     return report
 

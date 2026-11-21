@@ -1,5 +1,4 @@
 import base64, hashlib, hmac, importlib.util, json, sqlite3, tempfile, unittest
-from typing import cast
 from pathlib import Path
 from contextlib import closing
 ROOT=Path(__file__).resolve().parents[2]; src=ROOT/'charts/openhands/files/report-intake';sp=importlib.util.spec_from_file_location('report_intake',src/'intake.py');intake=importlib.util.module_from_spec(sp);sp.loader.exec_module(intake)
@@ -22,13 +21,8 @@ class Reports(unittest.TestCase):
  def test_review_wake_is_signed_and_only_for_published_outputs(self) -> None:
   with tempfile.TemporaryDirectory() as td,closing(sqlite3.connect(Path(td)/'db')) as c:
    db=Path(td)/'db';c.execute('create table outputs(pr integer,state text)');c.executemany('insert into outputs values(?,?)',[(515,'published'),(513,'unverified')]);c.commit();reg={'1':{'name':'owner/repo'}}
-   def wake(n: int,key: bytes)->dict[str, object]:
-    msg=json.dumps({'repository':{'id':1,'full_name':'owner/repo'},
-     'pull_request':{'number':n},'action':'submitted'})
-    raw=msg.encode()
-    return cast("dict[str, object]",intake.lifecycle('/review',
-     {'raw':base64.b64encode(raw),'signature':'sha256='
-      +hmac.new(key,raw,hashlib.sha256).hexdigest()},db,b'review-only',reg))
+   def wake(n,key):
+    raw=json.dumps({'repository':{'id':1,'full_name':'owner/repo'},'pull_request':{'number':n},'action':'submitted'}).encode();return intake.lifecycle('/review',{'raw':base64.b64encode(raw),'signature':'sha256='+hmac.new(key,raw,hashlib.sha256).hexdigest()},db,b'review-only',reg)
    with self.assertRaises(PermissionError):wake(515,b'other')
    self.assertEqual(wake(513,b'review-only')['enrolled'],[]);self.assertEqual(wake(515,b'review-only')['enrolled'],[515]);wake(515,b'review-only');self.assertEqual(c.execute('select count(*) from review_queue').fetchone(),(1,))
  def test_distributed_handoff_gate_matches_canonical_gate(self) -> None:

@@ -10,14 +10,14 @@ assert not receipt.exists() and not encrypted.exists(), 'Never overwrite a previ
 source=sqlite3.connect('file:/source/openhands/automation/automations.db?mode=ro',uri=True)
 snapshot=sqlite3.connect('/tmp/snapshot.db');deadline=time.monotonic()+90
 
-def progress(status: int, left: int, total: int) -> None:
+def progress(status,left,total):
     if time.monotonic()>deadline:raise RuntimeError('SQLite snapshot deadline')
 
 source.backup(snapshot,pages=64,progress=progress)
 assert snapshot.execute('pragma integrity_check').fetchone()[0]=='ok'
 snapshot.close();source.close()
 
-def filt(info: tarfile.TarInfo) -> tarfile.TarInfo | None:
+def filt(info):
     if info.name.startswith('.openhands/automation/automations.db'):return None
     if info.name.startswith('.openhands/workspaces/automation-runs/') and '.venv' in pathlib.Path(info.name).parts:return None
     return info

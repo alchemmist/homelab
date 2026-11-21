@@ -28,7 +28,6 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import TypedDict
 
 import yaml
 
@@ -61,7 +60,7 @@ EMAIL_MANAGED = "goauthentik.io/providers/oauth2/scope-email"
 PROFILE_MANAGED = "goauthentik.io/providers/oauth2/scope-profile"
 OUTPOST_MANAGED = "goauthentik.io/outposts/embedded"
 CERT_NAME = "authentik Self-signed Certificate"
-PILOT: tuple[PilotUser, ...] = (
+PILOT = (
     {
         "username": "alchemmist",
         "uuid": "9e33877a-3eaa-4541-98eb-8cdc10088ef6",
@@ -79,99 +78,22 @@ PILOT: tuple[PilotUser, ...] = (
 )
 
 
-class PilotUser(TypedDict):
-    """Immutable pilot cluster identity mirrored into Authentik/Netbird."""
-
-    username: str
-    uuid: str
-    email: str
-    required_groups: tuple[str, ...]
-    is_superuser: bool
-
-
-class ProviderBody(TypedDict):
-    """Netbird-managed OAuth provider request body."""
-
-    name: str
-    client_type: str
-    client_id: str
-    client_secret: str
-    sub_mode: str
-    include_claims_in_id_token: bool
-    issuer_mode: str
-    grant_types: list[str]
-    property_mappings: list[str]
-    redirect_uris: list[dict[str, str]]
-    authentication_flow: str
-    authorization_flow: str
-    invalidation_flow: str
-    signing_key: str
-    access_token_validity: str
-    refresh_token_validity: str
-
-
-class Inventory(TypedDict):
-    """Authentik objects exported for Netbird reconciliation."""
-
-    version: dict[str, object]
-    users: list[dict[str, object]]
-    groups: list[dict[str, object]]
-    scopes: list[dict[str, object]]
-    providers: list[dict[str, object]]
-    applications: list[dict[str, object]]
-    outposts: list[dict[str, object]]
-    flows: list[dict[str, object]]
-    certificates: list[dict[str, object]]
-    bindings: list[dict[str, object]]
-
-
-class Plan(TypedDict):
-    """Sealed migration plan and Netbird rollout instructions."""
-
-    sha256: str
-    authentik_version: str
-    netbird_release: str
-    connector_sha256: str
-    upstream_scopes: list[str]
-    groups_claim: str
-    user_id_claim: str
-    display_claim: str
-    email_claim: str
-    get_userinfo: bool
-    dashboard_groups_scope_sufficient: bool
-    authentik_issuer: str
-    netbird_issuer: str | None
-    callback: str | None
-    sub_mode: str
-    admission_group: str
-    claim_groups: list[str]
-    pilot_users: list[dict[str, object]]
-    outpost_pk: object
-    outpost_providers: list[object]
-    blockers: list[str]
-    operations: list[dict[str, object]]
-
-
-def callback_from_issuer(issuer) -> str:
+def callback_from_issuer(issuer):
     """Match idp/dex Provider.GetRedirectURI from NetBird v0.82.0.
 
     Trim one trailing slash, append /oauth2 when the issuer does not already end
     in that suffix, then append /callback. This does not invent a path of its own.
     """
-    if (
-        not isinstance(issuer, str)
-        or issuer == ""
-        or any(c in issuer for c in " \t\r\n")
-    ):
+    if not isinstance(issuer, str) or issuer == "" or any(c in issuer for c in " \t\r\n"):
         raise RuntimeError("NetBird issuer is missing or contains whitespace")
     if issuer.endswith("/"):
         issuer = issuer[:-1]
     if not issuer.endswith("/oauth2"):
         issuer += "/oauth2"
-    return str(issuer + "/callback")
+    return issuer + "/callback"
 
 
-def validate_management_issuer(issuer) -> str:
+def validate_management_issuer(issuer):
     parsed = urllib.parse.urlsplit(issuer)
     host = parsed.hostname
     if (
@@ -183,15 +105,13 @@ def validate_management_issuer(issuer) -> str:
         or parsed.fragment
         or parsed.port not in (None, 443)
     ):
-        raise RuntimeError(
-            "NetBird issuer must be https on the approved management FQDN"
-        )
+        raise RuntimeError("NetBird issuer must be https on the approved management FQDN")
     if host == AUTHENTIK_HOST:
         raise RuntimeError("NetBird issuer must be the embedded IdP, not Authentik")
-    return str(issuer)
+    return issuer
 
 
-def issuer_from_netbird_config(path) -> str:
+def issuer_from_netbird_config(path):
     loaded = yaml.safe_load(Path(path).read_text())
     server = loaded.get("server") if isinstance(loaded, dict) else None
     auth = server.get("auth") if isinstance(server, dict) else None
@@ -201,7 +121,7 @@ def issuer_from_netbird_config(path) -> str:
     return validate_management_issuer(issuer.strip())
 
 
-def profile_expression() -> str:
+def profile_expression():
     approved = ", ".join(repr(name) for name in PROFILE_GROUP_NAMES)
     return (
         "approved = (" + approved + ",)\n"
@@ -212,17 +132,16 @@ def profile_expression() -> str:
     )
 
 
-def authentik_issuer() -> str:
+def authentik_issuer():
     return "https://" + AUTHENTIK_HOST + "/application/o/" + APP_SLUG + "/"
 
 
-def _seal(body) -> Plan:
+def _seal(body):
     encoded = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     if "client_secret" in encoded or "AUTHENTIK_BOOTSTRAP" in encoded:
         raise RuntimeError("Refusing to seal a plan that contains a secret")
     body["sha256"] = hashlib.sha256(encoded.encode()).hexdigest()
-    sealed: Plan = body
-    return sealed
+    return body
 
 
 def _private_write(path, value):
@@ -257,11 +176,7 @@ class Authentik:
     def __call__(self, method, path, payload=None):
         if self.get_only and method != "GET":
             raise RuntimeError("GET-only action refused an Authentik write")
-        target = (
-            path
-            if path.startswith("http")
-            else self.base + "/api/v3/" + path.lstrip("/")
-        )
+        target = path if path.startswith("http") else self.base + "/api/v3/" + path.lstrip("/")
         data = None if payload is None else json.dumps(payload).encode()
         request = urllib.request.Request(
             target,
@@ -282,10 +197,10 @@ class Authentik:
                 "Authentik " + method + " failed with status " + str(error.code)
             ) from None
 
-    def pages(self, path) -> list[dict[str, object]]:
+    def pages(self, path):
         joiner = "&" if "?" in path else "?"
         url = path + joiner + "page_size=200"
-        rows: list[dict[str, object]] = []
+        rows = []
         while url:
             page = self("GET", url)
             if not isinstance(page, dict) or not isinstance(page.get("results"), list):
@@ -315,14 +230,11 @@ def _managed(rows, managed):
     return found[0]
 
 
-def load_inventory(api) -> Inventory:
+def load_inventory(api):
     version = api("GET", "admin/version/")
-    if (
-        not isinstance(version, dict)
-        or version.get("version_current") != AUTHENTIK_VERSION
-    ):
+    if not isinstance(version, dict) or version.get("version_current") != AUTHENTIK_VERSION:
         raise RuntimeError("Unreviewed Authentik version")
-    inventory: Inventory = {
+    return {
         "version": version["version_current"],
         "users": api.pages("core/users/"),
         "groups": api.pages("core/groups/"),
@@ -334,20 +246,13 @@ def load_inventory(api) -> Inventory:
         "certificates": api.pages("crypto/certificatekeypairs/"),
         "bindings": api.pages("policies/bindings/"),
     }
-    return inventory
 
 
-def _pilot_snapshot(inventory) -> list[dict[str, object]]:
-    superuser_groups = {
-        row["pk"] for row in inventory["groups"] if row.get("is_superuser") is True
-    }
-    users: list[dict[str, object]] = []
+def _pilot_snapshot(inventory):
+    superuser_groups = {row["pk"] for row in inventory["groups"] if row.get("is_superuser") is True}
+    users = []
     for wanted in PILOT:
-        matches = [
-            row
-            for row in inventory["users"]
-            if row.get("username") == wanted["username"]
-        ]
+        matches = [row for row in inventory["users"] if row.get("username") == wanted["username"]]
         if len(matches) != 1:
             raise RuntimeError("Reviewed pilot user is missing or ambiguous")
         user = matches[0]
@@ -365,18 +270,14 @@ def _pilot_snapshot(inventory) -> list[dict[str, object]]:
             raise RuntimeError("Pilot group membership is incomplete")
         names = []
         for pk in membership:
-            group = next(
-                (row for row in inventory["groups"] if row.get("pk") == pk), None
-            )
+            group = next((row for row in inventory["groups"] if row.get("pk") == pk), None)
             if group is None or not isinstance(group.get("name"), str):
                 raise RuntimeError("Pilot membership points at an unknown group")
             names.append(group["name"])
         for required in wanted["required_groups"]:
             if required not in names:
                 raise RuntimeError("Reviewed legacy group membership is missing")
-        if wanted["username"] != "alchemmist" and any(
-            pk in superuser_groups for pk in membership
-        ):
+        if wanted["username"] != "alchemmist" and any(pk in superuser_groups for pk in membership):
             raise RuntimeError("Pilot user has an unexpected superuser group")
         legacy = sorted(
             pk
@@ -408,17 +309,11 @@ def _group_owned(group, journal):
 
 
 def _redirect(url):
-    return [
-        {"matching_mode": "strict", "url": url, "redirect_uri_type": "authorization"}
-    ]
+    return [{"matching_mode": "strict", "url": url, "redirect_uri_type": "authorization"}]
 
 
 def _same_redirect(actual, expected):
-    if (
-        not isinstance(actual, list)
-        or len(actual) != 1
-        or not isinstance(actual[0], dict)
-    ):
+    if not isinstance(actual, list) or len(actual) != 1 or not isinstance(actual[0], dict):
         return False
     row = actual[0]
     return (
@@ -428,22 +323,15 @@ def _same_redirect(actual, expected):
     )
 
 
-def build_plan(inventory, issuer, journal) -> Plan:
+def build_plan(inventory, issuer, journal):
     users = _pilot_snapshot(inventory)
     openid = _managed(inventory["scopes"], OPENID_MANAGED)
     email = _managed(inventory["scopes"], EMAIL_MANAGED)
     profile = _managed(inventory["scopes"], PROFILE_MANAGED)
-    if (
-        "groups" not in (profile.get("expression") or "")
-        or profile.get("scope_name") != "profile"
-    ):
+    if "groups" not in (profile.get("expression") or "") or profile.get("scope_name") != "profile":
         raise RuntimeError("Reviewed default profile mapping changed")
     expression = profile_expression()
-    if (
-        "ak_groups" not in expression
-        or "request.user.email" in expression
-        or '"sub"' in expression
-    ):
+    if "ak_groups" not in expression or "request.user.email" in expression or '"sub"' in expression:
         raise RuntimeError("Dedicated profile expression lost its identity boundary")
     flows = {row.get("slug"): row.get("pk") for row in inventory["flows"]}
     for slug in (
@@ -453,14 +341,10 @@ def build_plan(inventory, issuer, journal) -> Plan:
     ):
         if not isinstance(flows.get(slug), str):
             raise RuntimeError("Reviewed authentication flow is missing")
-    certificates = [
-        row for row in inventory["certificates"] if row.get("name") == CERT_NAME
-    ]
+    certificates = [row for row in inventory["certificates"] if row.get("name") == CERT_NAME]
     if len(certificates) != 1 or not isinstance(certificates[0].get("pk"), str):
         raise RuntimeError("Reviewed signing key is missing or ambiguous")
-    outposts = [
-        row for row in inventory["outposts"] if row.get("managed") == OUTPOST_MANAGED
-    ]
+    outposts = [row for row in inventory["outposts"] if row.get("managed") == OUTPOST_MANAGED]
     if len(outposts) != 1 or not isinstance(outposts[0].get("providers"), list):
         raise RuntimeError("Expected one embedded outpost")
     outpost = outposts[0]
@@ -483,20 +367,14 @@ def build_plan(inventory, issuer, journal) -> Plan:
         or mapping.get("scope_name") not in ("profile", None)
     ):
         if journal.get("mapping_pk") != mapping.get("pk"):
-            blockers.append(
-                "refusing to adopt an existing property mapping without its journal PK"
-            )
+            blockers.append("refusing to adopt an existing property mapping without its journal PK")
     if provider and journal.get("provider_pk") != provider.get("pk"):
         blockers.append("refusing to adopt an existing provider without its journal PK")
     if application and journal.get("application_pk") != application.get("pk"):
-        blockers.append(
-            "refusing to adopt an existing application without its journal PK"
-        )
+        blockers.append("refusing to adopt an existing application without its journal PK")
     for group in groups:
         if group and not _group_owned(group, journal):
-            blockers.append(
-                "refusing to adopt an existing NetBird group without its marker and PK"
-            )
+            blockers.append("refusing to adopt an existing NetBird group without its marker and PK")
         if group and (
             group.get("is_superuser") is not False
             or group.get("parents")
@@ -506,22 +384,15 @@ def build_plan(inventory, issuer, journal) -> Plan:
             blockers.append("NetBird admission group is privileged or inherited")
     if provider and provider.get("pk") in outpost["providers"]:
         blockers.append("NetBird OIDC provider must stay off the embedded outpost")
-    operations: list[dict[str, object]] = []
+    operations = []
     if not blockers:
         for name, group in zip(GROUP_NAMES, groups):
             if group is None:
                 operations.append({"action": "create", "kind": "group", "name": name})
         if mapping is None:
-            operations.append(
-                {"action": "create", "kind": "scope", "name": MAPPING_NAME}
-            )
-        elif (
-            mapping.get("scope_name") != "profile"
-            or mapping.get("expression") != expression
-        ):
-            operations.append(
-                {"action": "update", "kind": "scope", "pk": mapping["pk"]}
-            )
+            operations.append({"action": "create", "kind": "scope", "name": MAPPING_NAME})
+        elif mapping.get("scope_name") != "profile" or mapping.get("expression") != expression:
+            operations.append({"action": "update", "kind": "scope", "pk": mapping["pk"]})
         desired_mappings = [openid["pk"], email["pk"]]
         if mapping is not None:
             desired_mappings.append(mapping["pk"])
@@ -529,12 +400,7 @@ def build_plan(inventory, issuer, journal) -> Plan:
             provider is not None
             and callback is not None
             and _provider_matches(
-                provider,
-                desired_mappings,
-                callback,
-                flows,
-                certificates[0]["pk"],
-                profile["pk"],
+                provider, desired_mappings, callback, flows, certificates[0]["pk"], profile["pk"]
             )
         )
         if provider is None and callback is not None:
@@ -545,17 +411,13 @@ def build_plan(inventory, issuer, journal) -> Plan:
             and not provider_ready
             and mapping is not None
         ):
-            operations.append(
-                {"action": "update", "kind": "provider", "pk": provider["pk"]}
-            )
+            operations.append({"action": "update", "kind": "provider", "pk": provider["pk"]})
         app_fields = _application_fields()
         provider_pk = provider.get("pk") if provider is not None else None
         if application is None and any(op["kind"] == "provider" for op in operations):
             operations.append({"action": "create", "kind": "application"})
         elif application is not None:
-            mismatched = any(
-                application.get(key) != value for key, value in app_fields.items()
-            )
+            mismatched = any(application.get(key) != value for key, value in app_fields.items())
             if provider_pk is not None and application.get("provider") != provider_pk:
                 mismatched = True
             if mismatched:
@@ -568,9 +430,7 @@ def build_plan(inventory, issuer, journal) -> Plan:
         app_bindings = []
         if application is not None:
             app_bindings = [
-                row
-                for row in inventory["bindings"]
-                if row.get("target") == application.get("pk")
+                row for row in inventory["bindings"] if row.get("target") == application.get("pk")
             ]
             admission_pk = None if admission is None else admission.get("pk")
             foreign = [
@@ -586,12 +446,10 @@ def build_plan(inventory, issuer, journal) -> Plan:
             if foreign or len(app_bindings) > 1:
                 blockers.append("unexpected application binding; not removing it")
         creating_admission = any(
-            op["kind"] == "group" and op.get("name") == ADMISSION_GROUP
-            for op in operations
+            op["kind"] == "group" and op.get("name") == ADMISSION_GROUP for op in operations
         )
         creating_app = any(
-            op["kind"] == "application" and op["action"] == "create"
-            for op in operations
+            op["kind"] == "application" and op["action"] == "create" for op in operations
         )
         if blockers:
             operations = []
@@ -622,9 +480,7 @@ def build_plan(inventory, issuer, journal) -> Plan:
                     break
                 unexpected = [pk for pk in members if pk not in users_by_pk]
                 if unexpected:
-                    blockers.append(
-                        "NetBird group has a member outside the owner and Tim pilot"
-                    )
+                    blockers.append("NetBird group has a member outside the owner and Tim pilot")
                     operations = []
                     break
                 for user in users:
@@ -645,7 +501,7 @@ def build_plan(inventory, issuer, journal) -> Plan:
             for op in operations
             if not (op.get("kind") == "provider" and op.get("action") == "update")
         ]
-    body: dict[str, object] = {
+    body = {
         "authentik_version": AUTHENTIK_VERSION,
         "netbird_release": NETBIRD_RELEASE,
         "connector_sha256": CONNECTOR_SHA256,
@@ -671,7 +527,7 @@ def build_plan(inventory, issuer, journal) -> Plan:
     return _seal(body)
 
 
-def _application_fields() -> dict[str, object]:
+def _application_fields():
     return {
         "name": APP_NAME,
         "slug": APP_SLUG,
@@ -682,9 +538,7 @@ def _application_fields() -> dict[str, object]:
     }
 
 
-def _provider_matches(
-    provider, mappings, callback, flows, certificate, stock_profile
-) -> bool:
+def _provider_matches(provider, mappings, callback, flows, certificate, stock_profile):
     current = provider.get("property_mappings") or []
     return (
         provider.get("client_type") == "confidential"
@@ -692,16 +546,14 @@ def _provider_matches(
         and provider.get("sub_mode") == "user_uuid"
         and provider.get("include_claims_in_id_token") is True
         and provider.get("issuer_mode") == "per_provider"
-        and sorted(provider.get("grant_types") or [])
-        == ["authorization_code", "refresh_token"]
+        and sorted(provider.get("grant_types") or []) == ["authorization_code", "refresh_token"]
         and stock_profile not in current
         and sorted(current) == sorted(mappings)
         and _same_redirect(provider.get("redirect_uris"), callback)
         and provider.get("authentication_flow") == flows["default-authentication-flow"]
         and provider.get("authorization_flow")
         == flows["default-provider-authorization-explicit-consent"]
-        and provider.get("invalidation_flow")
-        == flows["default-provider-invalidation-flow"]
+        and provider.get("invalidation_flow") == flows["default-provider-invalidation-flow"]
         and provider.get("signing_key") == certificate
         and provider.get("access_token_validity") == "minutes=5"
         and provider.get("refresh_token_validity") == "hours=8"
@@ -710,7 +562,7 @@ def _provider_matches(
     )
 
 
-def _group_body(name, marker) -> dict[str, object]:
+def _group_body(name, marker):
     return {
         "name": name,
         "is_superuser": False,
@@ -722,7 +574,7 @@ def _group_body(name, marker) -> dict[str, object]:
     }
 
 
-def _provider_body(mappings, callback, flows, certificate, secret) -> ProviderBody:
+def _provider_body(mappings, callback, flows, certificate, secret):
     return {
         "name": PROVIDER_NAME,
         "client_type": "confidential",
@@ -743,22 +595,16 @@ def _provider_body(mappings, callback, flows, certificate, secret) -> ProviderBo
     }
 
 
-def _load_secret(path, journal, create) -> str | None:
+def _load_secret(path, journal, create):
     current = _private_read(path)
     if current is not None:
         secret = current.get("client_secret") if isinstance(current, dict) else None
-        if (
-            not isinstance(secret, str)
-            or current.get("client_id") != CLIENT_ID
-            or len(secret) < 32
-        ):
+        if not isinstance(secret, str) or current.get("client_id") != CLIENT_ID or len(secret) < 32:
             raise RuntimeError("Runtime client file is incomplete")
         digest = hashlib.sha256(secret.encode()).hexdigest()
         recorded = (journal or {}).get("client_secret_sha256")
         if recorded and recorded != digest:
-            raise RuntimeError(
-                "Runtime client secret does not match the journal fingerprint"
-            )
+            raise RuntimeError("Runtime client secret does not match the journal fingerprint")
         return secret
     if not create:
         return None
@@ -771,14 +617,14 @@ def _load_secret(path, journal, create) -> str | None:
     return secret
 
 
-def _legacy_preserved(before, after) -> None:
+def _legacy_preserved(before, after):
     previous = {row["username"]: set(row["legacy_groups"]) for row in before}
     for row in after:
         if previous[row["username"]] - set(row["legacy_groups"]):
             raise RuntimeError("Legacy group membership changed; stopping")
 
 
-def execute_apply(api, root, issuer, approved) -> str:
+def execute_apply(api, root, issuer, approved):
     journal_path = root / JOURNAL_NAME
     runtime_path = root / RUNTIME_NAME
     journal = _private_read(journal_path) or {}
@@ -810,11 +656,8 @@ def execute_apply(api, root, issuer, approved) -> str:
         recorded = (journal.get("pilot_users") or {}).get(row["username"])
         if recorded != {"pk": row["pk"], "uuid": row["uuid"]}:
             raise RuntimeError("Journal pilot UUID/PK does not match the live user")
-    loaded_secret = _load_secret(runtime_path, journal, create=True)
-    if loaded_secret is None:
-        message = "Runtime client secret is missing"
-        raise RuntimeError(message)
-    journal["client_secret_sha256"] = hashlib.sha256(loaded_secret.encode()).hexdigest()
+    secret = _load_secret(runtime_path, journal, create=True)
+    journal["client_secret_sha256"] = hashlib.sha256(secret.encode()).hexdigest()
     journal["issuer"] = issuer
     journal["callback"] = plan["callback"]
     _private_write(journal_path, journal)
@@ -826,11 +669,7 @@ def execute_apply(api, root, issuer, approved) -> str:
     # Apply the approved operation list once. Mid-apply plans change as objects appear.
     for operation in plan["operations"]:
         if operation["action"] == "create" and operation.get("kind") == "group":
-            created = api(
-                "POST",
-                "core/groups/",
-                _group_body(operation["name"], journal["marker"]),
-            )
+            created = api("POST", "core/groups/", _group_body(operation["name"], journal["marker"]))
             journal.setdefault("groups", {})[operation["name"]] = {
                 "pk": created["pk"],
                 "num_pk": created.get("num_pk"),
@@ -839,11 +678,7 @@ def execute_apply(api, root, issuer, approved) -> str:
             created = api(
                 "POST",
                 "propertymappings/provider/scope/",
-                {
-                    "name": MAPPING_NAME,
-                    "scope_name": "profile",
-                    "expression": profile_expression(),
-                },
+                {"name": MAPPING_NAME, "scope_name": "profile", "expression": profile_expression()},
             )
             journal["mapping_pk"] = created["pk"]
         elif operation.get("kind") == "scope" and operation["action"] == "update":
@@ -851,7 +686,7 @@ def execute_apply(api, root, issuer, approved) -> str:
                 raise RuntimeError("Mapping PK does not match the journal")
             api(
                 "PATCH",
-                "propertymappings/provider/scope/" + str(operation["pk"]) + "/",
+                "propertymappings/provider/scope/" + operation["pk"] + "/",
                 {"scope_name": "profile", "expression": profile_expression()},
             )
         elif operation.get("kind") == "provider":
@@ -861,17 +696,11 @@ def execute_apply(api, root, issuer, approved) -> str:
             if not isinstance(mapping_pk, str):
                 raise RuntimeError("Provider requires the journaled profile mapping PK")
             body = _provider_body(
-                [openid, email, mapping_pk],
-                plan["callback"],
-                flows,
-                certificate,
-                loaded_secret,
+                [openid, email, mapping_pk], plan["callback"], flows, certificate, secret
             )
             stock_profile = _managed(inventory["scopes"], PROFILE_MANAGED)["pk"]
             group_scopes = {
-                row["pk"]
-                for row in inventory["scopes"]
-                if row.get("scope_name") == "groups"
+                row["pk"] for row in inventory["scopes"] if row.get("scope_name") == "groups"
             }
             group_scopes.discard(mapping_pk)
             if stock_profile in body["property_mappings"] or group_scopes.intersection(
@@ -901,12 +730,8 @@ def execute_apply(api, root, issuer, approved) -> str:
                 api("PATCH", "core/applications/" + APP_SLUG + "/", fields)
         elif operation.get("kind") == "binding" and operation["action"] == "create":
             group_pk = (journal.get("groups") or {}).get(ADMISSION_GROUP, {}).get("pk")
-            if not isinstance(journal.get("application_pk"), str) or not isinstance(
-                group_pk, str
-            ):
-                raise RuntimeError(
-                    "Binding requires journaled application and admission group PKs"
-                )
+            if not isinstance(journal.get("application_pk"), str) or not isinstance(group_pk, str):
+                raise RuntimeError("Binding requires journaled application and admission group PKs")
             created = api(
                 "POST",
                 "policies/bindings/",
@@ -921,34 +746,21 @@ def execute_apply(api, root, issuer, approved) -> str:
             )
             journal["binding_pk"] = created["pk"]
         elif operation["action"] == "add_user":
-            group_pk = (
-                (journal.get("groups") or {}).get(operation["group"], {}).get("pk")
-            )
+            group_pk = (journal.get("groups") or {}).get(operation["group"], {}).get("pk")
             if not isinstance(group_pk, str) or operation["user_pk"] != next(
-                row["pk"]
-                for row in plan["pilot_users"]
-                if row["username"] == operation["username"]
+                row["pk"] for row in plan["pilot_users"] if row["username"] == operation["username"]
             ):
-                raise RuntimeError(
-                    "Refusing to change membership outside the journaled pilot"
-                )
-            api(
-                "POST",
-                "core/groups/" + group_pk + "/add_user/",
-                {"pk": operation["user_pk"]},
-            )
+                raise RuntimeError("Refusing to change membership outside the journaled pilot")
+            api("POST", "core/groups/" + group_pk + "/add_user/", {"pk": operation["user_pk"]})
         else:
             raise RuntimeError("Refusing an unknown apply operation")
         _private_write(journal_path, journal)
     after = load_inventory(api)
     _legacy_preserved(plan["pilot_users"], _pilot_snapshot(after))
-    outpost = next(
-        row for row in after["outposts"] if row.get("pk") == plan["outpost_pk"]
-    )
+    outpost = next(row for row in after["outposts"] if row.get("pk") == plan["outpost_pk"])
     if outpost.get("providers") != outpost_providers:
         raise RuntimeError("Embedded outpost changed; stopping")
-    attached: object = outpost.get("providers")
-    if isinstance(attached, list) and journal.get("provider_pk") in attached:
+    if journal.get("provider_pk") in (outpost.get("providers") or []):
         raise RuntimeError("NetBird provider was attached to the embedded outpost")
     confirmed = build_plan(after, issuer, journal)
     if confirmed["operations"] or confirmed["blockers"]:
@@ -960,7 +772,7 @@ def execute_apply(api, root, issuer, approved) -> str:
     return confirmed["sha256"]
 
 
-def _mappings_agree(path) -> None:
+def _mappings_agree(path):
     loaded = json.loads(Path(path).read_text())
     for wanted in PILOT:
         row = loaded.get(wanted["username"]) if isinstance(loaded, dict) else None
@@ -974,12 +786,10 @@ def _mappings_agree(path) -> None:
             raise RuntimeError("Account mapping legacy groups drifted")
 
 
-def execute(argv) -> int:
+def execute(argv):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
-    parser.add_argument(
-        "action", nargs="?", choices=("check", "plan", "apply"), default="check"
-    )
+    parser.add_argument("action", nargs="?", choices=("check", "plan", "apply"), default="check")
     parser.add_argument("--approve-sha256")
     parser.add_argument("--netbird-config", type=Path)
     parser.add_argument("--mappings", type=Path)
@@ -997,25 +807,17 @@ def execute(argv) -> int:
     )
     _mappings_agree(mappings)
     credentials = _private_read(args.root / "credentials.json")
-    token = (
-        credentials.get("AUTHENTIK_BOOTSTRAP_TOKEN")
-        if isinstance(credentials, dict)
-        else None
-    )
+    token = credentials.get("AUTHENTIK_BOOTSTRAP_TOKEN") if isinstance(credentials, dict) else None
     if not isinstance(token, str) or not token:
         raise RuntimeError("Authentik credential is unavailable")
-    issuer = (
-        issuer_from_netbird_config(args.netbird_config) if args.netbird_config else None
-    )
+    issuer = issuer_from_netbird_config(args.netbird_config) if args.netbird_config else None
     api = Authentik(args.base_url, token, get_only=args.action != "apply")
     journal = _private_read(args.root / JOURNAL_NAME)
     if args.action == "apply":
         import fcntl
 
         lock_path = args.root / ".netbird-oidc.lock"
-        with os.fdopen(
-            os.open(lock_path, os.O_CREAT | os.O_WRONLY, 0o600), "w"
-        ) as lock:
+        with os.fdopen(os.open(lock_path, os.O_CREAT | os.O_WRONLY, 0o600), "w") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             digest = execute_apply(api, args.root, issuer, args.approve_sha256)
         print("reconciled=true plan_sha256=" + digest)
@@ -1037,7 +839,7 @@ def execute(argv) -> int:
     return 0
 
 
-def main(argv=None) -> int:
+def main(argv=None):
     try:
         return execute(argv)
     except RuntimeError as error:

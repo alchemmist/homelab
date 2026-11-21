@@ -10,7 +10,7 @@ import urllib.request
 from pathlib import Path
 
 
-def run(output: Path) -> None:
+def run(output):
     os.umask(0o077)
     if os.geteuid() != 0:
         raise ValueError("Protected native TLS files require root")
@@ -20,7 +20,7 @@ def run(output: Path) -> None:
     positive.load_cert_chain(str(root / "client.crt"), str(root / "client.key"))
     negative = ssl.create_default_context(cafile=str(root / "ca.crt"))
 
-    def send(path: str, context: ssl.SSLContext):
+    def send(path, context):
         request = urllib.request.Request(
             "https://10.250.0.3:44318" + path,
             data=b"",

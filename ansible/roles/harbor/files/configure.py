@@ -14,9 +14,7 @@ base = "https://harbor.socrat.alchemmist.xyz/api/v2.0"
 auth = "Basic " + base64.b64encode(("admin:" + password).encode()).decode()
 
 
-def api(
-    method, path, payload=None
-) -> list[dict[str, object]] | dict[str, object] | None:
+def api(method, path, payload=None):
     req = urllib.request.Request(
         base + path,
         method=method,
@@ -25,33 +23,19 @@ def api(
     )
     with urllib.request.urlopen(req, timeout=60) as response:
         body = response.read()
-        result: list[dict[str, object]] | dict[str, object] | None = (
-            json.loads(body) if body else None
-        )
-        return result
+        return json.loads(body) if body else None
 
 
 projects = api("GET", "/projects?name=homelab")
-if not isinstance(projects, list):
-    message = "Unexpected Harbor projects response"
-    raise RuntimeError(message)
 if not any(p["name"] == "homelab" for p in projects):
     api(
         "POST",
         "/projects",
-        {
-            "project_name": "homelab",
-            "metadata": {"public": "false"},
-            "storage_limit": 80 * 1024**3,
-        },
+        {"project_name": "homelab", "metadata": {"public": "false"}, "storage_limit": 80 * 1024**3},
     )
 api("PUT", "/projects/homelab", {"metadata": {"public": "false"}})
 # Harbor seeds a public library project; do not leave a public default behind.
-library_projects = api("GET", "/projects?name=library")
-if not isinstance(library_projects, list):
-    message = "Unexpected Harbor projects response"
-    raise RuntimeError(message)
-if any(p["name"] == "library" for p in library_projects):
+if any(p["name"] == "library" for p in api("GET", "/projects?name=library")):
     api("PUT", "/projects/library", {"metadata": {"public": "false"}})
 
 for name, actions in [("ci-push", ["pull", "push"]), ("cluster-pull", ["pull"])]:
@@ -59,13 +43,8 @@ for name, actions in [("ci-push", ["pull", "push"]), ("cluster-pull", ["pull"])]
     if path.exists():
         continue
     existing = api("GET", "/robots?page_size=100")
-    if not isinstance(existing, list):
-        message = "Unexpected Harbor robots response"
-        raise RuntimeError(message)
     if any(r["name"] == "robot$homelab+" + name for r in existing):
-        raise RuntimeError(
-            "Robot exists but local credential is missing; rotate explicitly"
-        )
+        raise RuntimeError("Robot exists but local credential is missing; rotate explicitly")
     result = api(
         "POST",
         "/robots",
@@ -79,9 +58,7 @@ for name, actions in [("ci-push", ["pull", "push"]), ("cluster-pull", ["pull"])]
                 {
                     "kind": "project",
                     "namespace": "homelab",
-                    "access": [
-                        {"resource": "repository", "action": a} for a in actions
-                    ],
+                    "access": [{"resource": "repository", "action": a} for a in actions],
                 }
             ],
         },

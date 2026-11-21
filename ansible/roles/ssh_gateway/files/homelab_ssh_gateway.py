@@ -8,29 +8,13 @@ import re
 import socket
 import subprocess
 import sys
-from typing import NotRequired, TypedDict
 
 
 CONFIG = Path.home() / ".config/homelab/ssh-gateway.json"
 STATE = Path.home() / ".local/state/homelab/ssh-mappings.json"
 
 
-class _GatewayNode(TypedDict):
-    name: str
-    address: str
-    external_port: int
-    ports: list[int]
-    relay: NotRequired[bool]
-
-
-class _GatewayConfig(TypedDict):
-    nodes: list[_GatewayNode]
-    gateway_address: str
-    external_address: str
-    router_description: str
-
-
-def load_config(path: Path):
+def load_config(path):
     config = json.loads(path.read_text())
     ports = set()
     for node in config["nodes"]:
@@ -46,7 +30,7 @@ def load_config(path: Path):
     return config
 
 
-def ssh_port(node: _GatewayNode):
+def ssh_port(node):
     for port in node["ports"]:
         try:
             with socket.create_connection((node["address"], port), timeout=3) as peer:
@@ -58,7 +42,7 @@ def ssh_port(node: _GatewayNode):
     raise RuntimeError(f"No SSH listener on {node['name']} ({node['address']})")
 
 
-def reconcile(config: _GatewayConfig):
+def reconcile(config):
     prefix = ["upnpc", "-u", config["router_description"]]
     listing = subprocess.run(prefix + ["-l"], capture_output=True, text=True, timeout=15)
     if (
@@ -154,7 +138,7 @@ def reconcile(config: _GatewayConfig):
         raise RuntimeError("\n".join(errors))
 
 
-def relay(config: _GatewayConfig, name: str):
+def relay(config, name):
     node = next(node for node in config["nodes"] if node["name"] == name and node.get("relay"))
     port = ssh_port(node)
     os.execv(

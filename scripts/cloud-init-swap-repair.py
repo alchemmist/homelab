@@ -25,18 +25,12 @@ DEST = Path("/etc/cloud/cloud.cfg.d/99-homelab-preserve-swap.cfg")
 RECEIPT = Path("/var/lib/homelab-recovery/20261114-cloud-init-swap")
 
 
-def require(condition: object, message: str):
+def require(condition, message):
     if not condition:
         raise RuntimeError(message)
 
 
-def validate(
-    base: dict[str, object],
-    others: list[dict[str, object]],
-    swaps: str,
-    fstab: str,
-    size: int,
-):
+def validate(base, others, swaps, fstab, size):
     require(base.get("bootcmd") == EXPECTED, "Provider bootcmd differs; refuse")
     require(not any("bootcmd" in d for d in others), "Another bootcmd owner exists")
     rows = [line.split() for line in swaps.splitlines()[1:] if line.strip()]
@@ -55,11 +49,11 @@ def validate(
     require(size == 512 * 1024 * 1024, "Unexpected swap file size")
 
 
-def command(argv: list[str]):
+def command(argv):
     return subprocess.run(argv, check=True, capture_output=True, text=True).stdout
 
 
-def atomic(path: Path, text: str, mode: int):
+def atomic(path, text, mode):
     fd, tmp = tempfile.mkstemp(dir=path.parent)
     try:
         os.fchmod(fd, mode)

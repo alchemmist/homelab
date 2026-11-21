@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 
-def main() -> None:
+def main():
     interface, address, port = sys.argv[1:]
     if not re.fullmatch(r"[a-zA-Z0-9_.:-]{1,15}", interface):
         raise ValueError("Invalid interface")

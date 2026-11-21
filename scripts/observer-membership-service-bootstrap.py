@@ -49,14 +49,14 @@ os.umask(0o077)
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *a: object, **kw: object) -> None:
+    def redirect_request(self, *a, **kw):
         return None
 
 
 http = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
 
-def api(method: str, path: str, body: dict[str, object] | None = None):
+def api(method, path, body=None):
     req = urllib.request.Request(
         "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
         method=method,
@@ -80,7 +80,7 @@ def api(method: str, path: str, body: dict[str, object] | None = None):
         ) from None
 
 
-def rows(path: str):
+def rows(path):
     out = []
     for page in range(1, 101):
         d = api("GET", path + ("&" if "?" in path else "?") + "page_size=100&page=" + str(page))

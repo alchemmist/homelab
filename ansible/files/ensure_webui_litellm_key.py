@@ -11,7 +11,7 @@ args = parser.parse_args()
 desired_models = args.model or ["qwen3.8-27b"]
 
 
-def kubectl(*argv: str, data: str | None = None) -> str:
+def kubectl(*argv, data=None):
     return subprocess.run(
         ["kubectl", "-n", "llm", *argv], input=data, capture_output=True, text=True, check=True
     ).stdout

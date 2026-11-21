@@ -19,7 +19,6 @@ if not args.run:
 import hashlib
 import json
 from pathlib import Path
-from typing import cast
 
 from playwright.sync_api import sync_playwright
 
@@ -102,15 +101,12 @@ with sync_playwright() as p:
                 + "/if/flow/default-authentication-flow/?next=%2Fapplication%2Fo%2Fauthorize%2F%3Fclient_id%3Dlayout-only%26state%3Dread-only-journey"
             )
 
-            def current_scene() -> str:
+            def current_scene():
                 page.wait_for_function(
                     "getComputedStyle(document.body,'::before').getPropertyValue('--qm-scene').trim().length===12"
                 )
-                return cast(
-                    "str",
-                    page.evaluate(
-                        "getComputedStyle(document.body,'::before').getPropertyValue('--qm-scene').trim()"
-                    ),
+                return page.evaluate(
+                    "getComputedStyle(document.body,'::before').getPropertyValue('--qm-scene').trim()"
                 )
 
             page.goto(journey)
@@ -146,15 +142,15 @@ with sync_playwright() as p:
             context.close()
         context = browser.new_context()
         page = context.new_page()
-        scene_ids = set()
+        scenes = set()
         for i in range(12):
             r = page.goto(BASE + "/-/quiet-mono/v1/nature/scene.css")
             assert r.status == 200 and hashlib.sha256(r.body()).hexdigest() in css_hashes
-            scene_ids.add(r.headers["x-quiet-mono-scene"])
-        assert len(scene_ids) == 1, (
+            scenes.add(r.headers["x-quiet-mono-scene"])
+        assert len(scenes) == 1, (
             "Repeated CSS requests must not rotate a working-session background"
         )
-        chosen = next(iter(scene_ids))
+        chosen = next(iter(scenes))
         cookie = next(
             c
             for c in context.cookies(BASE + "/-/quiet-mono/v1/nature/scene.css")
@@ -178,7 +174,7 @@ with sync_playwright() as p:
                 BASE + "/-/quiet-mono/v1/nature/scene.css", headers={"Referer": ref}
             )
             scene = r.headers["x-quiet-mono-scene"]
-            scene_ids.add(scene)
+            scenes.add(scene)
             for slug in [
                 "default-authentication-flow",
                 "default-provider-authorization-implicit-consent",
@@ -190,7 +186,7 @@ with sync_playwright() as p:
                 assert repeated.headers["x-quiet-mono-scene"] == scene
             fallback = context.request.get(BASE + "/-/quiet-mono/v1/nature/scene.css")
             assert fallback.headers["x-quiet-mono-scene"] == scene
-        assert len(scene_ids) >= 4, "New OIDC journeys resample the full collection"
+        assert len(scenes) >= 4, "New OIDC journeys resample the full collection"
         for path in ["scene.css", "desktop", "mobile"]:
             assert context.request.post(BASE + "/-/quiet-mono/v1/nature/" + path).status == 403
         # Backward-compatible non-AVIF native clients receive the original pinned WebP.
@@ -209,7 +205,7 @@ with sync_playwright() as p:
             "PASS",
             edge,
             "stable journeys; new-journey choices:",
-            len(scene_ids),
+            len(scenes),
             "/12; scoped cookie; POST denied; pinned WebP fallback",
             flush=True,
         )
@@ -222,7 +218,7 @@ if args.delay_hq:
 
     from playwright.async_api import async_playwright
 
-    async def preview_only() -> None:
+    async def preview_only():
         async with async_playwright() as p:
             for edge in (
                 [args.public_edge] if args.public_edge else ["109.173.40.247", "109.120.141.60"]
@@ -235,12 +231,7 @@ if args.delay_hq:
                     release = asyncio.Event()
                     pending = []
 
-                    class _HeldRoute:
-                        async def continue_(self) -> None:
-                            """Structural stand-in for a Playwright intercepted route."""
-                            raise NotImplementedError
-
-                    async def hold(route: _HeldRoute) -> None:
+                    async def hold(route):
                         pending.append(True)
                         await release.wait()
                         await route.continue_()

@@ -2,28 +2,13 @@
 
 import importlib.util
 import json
-from collections.abc import Iterator, Sequence
 from pathlib import Path
 import subprocess
-from typing import Protocol
 from urllib.parse import urlparse
 from uuid import uuid4
 
 import pytest
 import yaml
-
-class Kube(Protocol):
-    def __call__(
-        self,
-        *args: str,
-        data: str | None = None,
-        check: bool = True,
-        timeout: float = 180,
-    ) -> subprocess.CompletedProcess[str]: ...
-
-
-Cluster = tuple[str, Path, str, Kube]
-
 
 ROOT = Path(__file__).resolve().parents[2]
 NODE_IMAGE = (
@@ -32,9 +17,7 @@ NODE_IMAGE = (
 NGINX_DIGEST = "sha256:b3c656d55d7ad751196f21b7fd2e8d4da9cb430e32f646adcf92441b72f82b14"
 
 
-def run(
-    argv: Sequence[str], *, data: str | None = None, check: bool = True, timeout: float = 180
-) -> subprocess.CompletedProcess[str]:
+def run(argv, *, data=None, check=True, timeout=180):
     result = subprocess.run(
         argv, input=data, text=True, capture_output=True, check=False, timeout=timeout
     )
@@ -57,7 +40,7 @@ class Kube(Protocol):
 
 
 @pytest.fixture(scope="module")
-def cluster(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Cluster]:
+def cluster(tmp_path_factory):
     directory = tmp_path_factory.mktemp("kind-private")
     directory.chmod(0o700)
     config = directory / "kubeconfig"
@@ -83,7 +66,7 @@ def cluster(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Cluster]:
         )
         config.chmod(0o600)
 
-        def kube(*args: str, **kwargs: "Incomplete") -> "Incomplete":
+        def kube(*args, **kwargs):
             return run(
                 [
                     "kubectl",
@@ -113,7 +96,7 @@ def cluster(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Cluster]:
         run(["kind", "delete", "cluster", "--name", name, "--kubeconfig", str(config)], timeout=120)
 
 
-def test_release_reconciles_and_serves_http(cluster: Cluster) -> None:
+def test_release_reconciles_and_serves_http(cluster):
     _, config, context, kube = cluster
     ns = "chart-contract"
     kube("create", "namespace", ns)
@@ -154,7 +137,7 @@ def test_release_reconciles_and_serves_http(cluster: Cluster) -> None:
     assert dep["status"]["availableReplicas"] == 3
 
 
-def test_apiserver_rejects_invalid_rendered_replica_count(cluster: Cluster) -> None:
+def test_apiserver_rejects_invalid_rendered_replica_count(cluster):
     *_, kube = cluster
     rendered = run(
         ["helm", "template", "cats", str(ROOT / "charts/cats"), "--set", "replicaCount=-1"]
@@ -165,7 +148,7 @@ def test_apiserver_rejects_invalid_rendered_replica_count(cluster: Cluster) -> N
     assert "replicas" in result.stderr and "Invalid" in result.stderr
 
 
-def test_application_reader_is_enforced_by_real_rbac(cluster: Cluster) -> None:
+def test_application_reader_is_enforced_by_real_rbac(cluster):
     *_, kube = cluster
     spec = importlib.util.spec_from_file_location(
         "fixture_pki", ROOT / "scripts/otel-application-pki.py"
@@ -190,7 +173,7 @@ def test_application_reader_is_enforced_by_real_rbac(cluster: Cluster) -> None:
         assert result.returncode == (0 if allowed else 1)
 
 
-def test_local_pv_retains_identity_after_claim_deletion(cluster: Cluster) -> None:
+def test_local_pv_retains_identity_after_claim_deletion(cluster):
     name, _, _, kube = cluster
     ns = "storage-contract"
     kube("create", "namespace", ns)

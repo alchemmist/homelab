@@ -3,8 +3,7 @@ db:
   database: litellm
   deployStandalone: false
   endpoint: pg-common-rw.postgres.svc.cluster.local
-  url: >-
-    postgresql://$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@$(DATABASE_HOST)/$(DATABASE_NAME)?sslmode=require&sslaccept=strict&sslcert=/etc/pg-common/ca.crt
+  url: "postgresql://$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@$(DATABASE_HOST)/$(DATABASE_NAME)?sslmode=require&sslaccept=strict&sslcert=/etc/pg-common/ca.crt"
   secret:
     name: litellm-pg-common
     passwordKey: password
@@ -98,8 +97,7 @@ fullnameOverride: litellm
 image:
   pullPolicy: IfNotPresent
   repository: harbor.socrat.alchemmist.xyz/homelab/litellm
-  tag: >-
-    a691e23abfac6dd0f2b69f9f5b4f714241f39ac4@sha256:21245d86b352d55f42404dfc7be5bcdb53028aa0be10077e9bb606c5e534e5f3
+  tag: a691e23abfac6dd0f2b69f9f5b4f714241f39ac4@sha256:21245d86b352d55f42404dfc7be5bcdb53028aa0be10077e9bb606c5e534e5f3
 imagePullSecrets:
 - name: litellm-harbor-pull
 ingress:
@@ -122,8 +120,7 @@ masterkeySecretName: litellm-env
 migrationJob:
   # Last migration succeeded and its Job was deleted; do not recreate it for placement.
   # Chart fails closed on image changes until normal upgrade migrations are reviewed.
-  placementOnlyImage: >-
-    harbor.socrat.alchemmist.xyz/homelab/litellm:a691e23abfac6dd0f2b69f9f5b4f714241f39ac4@sha256:21245d86b352d55f42404dfc7be5bcdb53028aa0be10077e9bb606c5e534e5f3
+  placementOnlyImage: harbor.socrat.alchemmist.xyz/homelab/litellm:a691e23abfac6dd0f2b69f9f5b4f714241f39ac4@sha256:21245d86b352d55f42404dfc7be5bcdb53028aa0be10077e9bb606c5e534e5f3
   enabled: false
   hooks:
     argocd:

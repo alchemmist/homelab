@@ -68,4 +68,4 @@ class LokiMarkerScratchTests(unittest.TestCase):
                 terms = affinity['requiredDuringSchedulingIgnoredDuringExecution']['nodeSelectorTerms']
                 self.assertEqual(len(terms), 1)
                 self.assertIn({'key': 'kubernetes.io/hostname', 'operator': 'In', 'values': ['socrat-0', 'socrat-1']}, terms[0]['matchExpressions'])
-                self.assertIn({'weight': 100, 'preference': {'matchExpressions': [{'key': 'kubernetes.io/hostname', 'operator': 'In', 'values': ['socrat-1']}]}}, affinity['preferredDuringSchedulingIgnoredDuringExecution'])
+                self.assertIn({'weight': 100, 'preference': {'matchExpressions': [{'key': 'kubernetes.io/hostname', 'operator': 'In', 'values': ['socrat-0']}]}}, affinity['preferredDuringSchedulingIgnoredDuringExecution'])

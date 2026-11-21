@@ -9,32 +9,29 @@ import json
 import os
 import subprocess
 from pathlib import Path
-from types import ModuleType
 
 CURRENT = Path("/usr/local/libexec/public_dns_zone.py")
 ROOT = Path("/var/lib/homelab-ns3-public-dns")
 
 
-def require(ok: object, message: str) -> None:
+def require(ok, message):
     if not ok:
         raise RuntimeError(message)
 
 
-def load(path: Path, name: str) -> ModuleType:
+def load(path, name):
     require(path.is_file() and not path.is_symlink(), "Unsafe renderer")
     try:
         spec = importlib.util.spec_from_file_location(name, path)
-        if spec is None or spec.loader is None:
-            raise RuntimeError("Invalid renderer module")
-        loader = spec.loader
+        require(spec is not None and spec.loader is not None, "Invalid renderer module")
         module = importlib.util.module_from_spec(spec)
-        loader.exec_module(module)
+        spec.loader.exec_module(module)
         return module
     except Exception:
         raise RuntimeError("Invalid DNS renderer: " + path.name) from None
 
 
-def stage_renderer(path: Path, content: bytes) -> None:
+def stage_renderer(path, content):
     """Create a new inode exclusively; never follow/overwrite an existing path."""
     try:
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -50,10 +47,10 @@ def stage_renderer(path: Path, content: bytes) -> None:
 ADDED = ["@ IN NS ns3.alchemmist.xyz.", "ns3 IN A 91.189.82.238"]
 
 
-def delta(old: ModuleType, new: ModuleType) -> None:
+def delta(old, new):
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
-        before = old.render(123, home_up=home, vps_up=vps).splitlines()
-        after = new.render(123, home_up=home, vps_up=vps).splitlines()
+        before = old.render(123, home, vps).splitlines()
+        after = new.render(123, home, vps).splitlines()
         require(
             [x for x in after if x not in ADDED] == [x for x in before if x not in ADDED],
             "Unrelated DNS record change; stop",

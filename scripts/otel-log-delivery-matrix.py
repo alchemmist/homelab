@@ -21,9 +21,7 @@ QUERIES = {
 }
 
 
-def select_counts(document: object):
-    if not isinstance(document, dict):
-        raise TypeError
+def select_counts(document):
     if (
         document.get("status") != "success"
         or document.get("warnings")
@@ -49,7 +47,7 @@ def select_counts(document: object):
     return results
 
 
-def run(output: Path) -> None:
+def run(output):
     os.umask(0o077)
     if os.geteuid() != 0:
         raise ValueError("Root-only native client credential access required")

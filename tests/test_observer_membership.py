@@ -15,7 +15,7 @@ m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
 
-def fixture(subject: str = "fixture-uuid"):
+def fixture(subject="fixture-uuid"):
     principal = m.PREFIX + subject
     user = {"metadata": {"name": "u-fixture"}, "principalIds": [principal]}
     attr = {
@@ -102,7 +102,7 @@ class MembershipTests(unittest.TestCase):
         """Propagate an identity failure before any cache mutation is planned."""
         users, attrs, auth = fixture()
 
-        def failed(*args: object) -> None:
+        def failed(*args):
             raise RuntimeError("IdP unavailable")
 
         with self.assertRaises(RuntimeError):
@@ -136,7 +136,7 @@ class MembershipTests(unittest.TestCase):
             def connect(self):
                 return db
 
-            def session(self, token: str):
+            def session(self, token):
                 return {
                     "user": {
                         "id": token,
@@ -258,19 +258,13 @@ class MembershipTests(unittest.TestCase):
         class Client:
             """Fake Authentik client that mutates only the in-memory user."""
 
-            def __init__(self, credentials: object):
+            def __init__(self, credentials):
                 pass
 
-            def rows(self, path: str):
+            def rows(self, path):
                 return [copy.deepcopy(group)]
 
-            def call(
-                self,
-                system: str,
-                method: str,
-                path: str,
-                body: dict[str, object] | None = None,
-            ):
+            def call(self, system, method, path, body=None):
                 if method == "GET":
                     return copy.deepcopy(user)
                 posts.append((path, body))
@@ -286,7 +280,7 @@ class MembershipTests(unittest.TestCase):
             exact=lambda rows, key, value: next(x for x in rows if x[key] == value)
         )
 
-        def exclusive_save(path: Path, value: object):
+        def exclusive_save(path, value):
             with path.open("x") as file:
                 json.dump(value, file)
 
@@ -295,10 +289,10 @@ class MembershipTests(unittest.TestCase):
         class Loader:
             """Supply the prepared bootstrap module instead of its source file."""
 
-            def create_module(self, spec: importlib.machinery.ModuleSpec):
+            def create_module(self, spec):
                 return fake
 
-            def exec_module(self, module: types.ModuleType):
+            def exec_module(self, module):
                 pass
 
         boot_spec = importlib.machinery.ModuleSpec("observer_bootstrap", Loader())

@@ -82,13 +82,7 @@ def resources():
     return objects
 
 
-def assess(
-    resource: str,
-    verb: str,
-    name: str | None = None,
-    group: str = "",
-    namespace: str = NS,
-) -> bool:
+def assess(resource, verb, name=None, group="", namespace=NS):
     attributes = {"namespace": namespace, "verb": verb, "group": group, "resource": resource}
     if name is not None:
         attributes["name"] = name
@@ -111,7 +105,7 @@ def assess(
     return result.get("allowed") is True
 
 
-def run(output: Path) -> None:
+def run(output):
     os.umask(0o077)
     if output.exists():
         raise ValueError("Preserve existing application PKI observations")

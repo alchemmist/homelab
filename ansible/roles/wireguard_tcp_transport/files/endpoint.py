@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 
 
-def update_config(original: str, public_key: str, endpoint: str) -> str:
+def update_config(original, public_key, endpoint):
     if re.search(r"^\s*SaveConfig\s*=\s*true\s*$", original, re.M | re.I):
         raise ValueError("SaveConfig must be disabled")
     blocks = re.split(r"(?=^\s*\[Peer\]\s*$)", original, flags=re.M)

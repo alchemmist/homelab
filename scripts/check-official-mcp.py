@@ -23,7 +23,7 @@ FORBIDDEN = {
 }
 
 
-async def main() -> None:
+async def main():
     for name in ("argocd", "metrics"):
         params = StdioServerParameters(
             command=sys.executable,

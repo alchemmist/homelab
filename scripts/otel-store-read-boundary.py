@@ -22,14 +22,14 @@ SPEC.loader.exec_module(BOOTSTRAP)
 NS = "cattle-monitoring-system"
 
 
-def unclamped(arguments: list[str]):
+def unclamped(arguments):
     limits = [value for value in arguments if value.startswith("--max-time")]
     if limits not in [[], ["--max-time=-12h"]]:
         raise ValueError("Unexpected raw Store limit; manual review required")
     return [value for value in arguments if value != "--max-time=-12h"]
 
 
-def query(stamp: str, *, dedup: bool):
+def query(stamp, dedup):
     params = urllib.parse.urlencode(
         {
             "query": "count(up)",
@@ -52,7 +52,7 @@ def query(stamp: str, *, dedup: bool):
     return result["data"]["result"]
 
 
-def run(output: Path):
+def run(output):
     os.umask(0o077)
     output.mkdir(mode=0o700)
     status = {
@@ -72,7 +72,7 @@ def run(output: Path):
         )
         arguments = unclamped(container["args"])
         stamps = ["2026-10-31T19:00:00Z", "2026-10-31T19:50:00Z", "2026-10-31T20:15:00Z"]
-        prior = {stamp: query(stamp, dedup=True) for stamp in stamps}
+        prior = {stamp: query(stamp, True) for stamp in stamps}
         (output / "queries-before.json").write_text(json.dumps(prior, indent=2) + "\n")
         if arguments != container["args"]:
             BOOTSTRAP.kube(
@@ -111,14 +111,14 @@ def run(output: Path):
                 raise TimeoutError("Native raw Store rollout deadline exceeded")
             time.sleep(3)
         while True:
-            restored = query(stamps[1], dedup=True)
+            restored = query(stamps[1], True)
             if restored and float(restored[0]["value"][1]) == 78:
                 break
             if time.monotonic() >= deadline:
                 raise TimeoutError("Native raw query did not recover captured historical interval")
             time.sleep(3)
         after = {
-            stamp: {"dedupTrue": query(stamp, dedup=True), "dedupFalse": query(stamp, dedup=False)}
+            stamp: {"dedupTrue": query(stamp, True), "dedupFalse": query(stamp, False)}
             for stamp in stamps
         }
         for stamp, result in after.items():

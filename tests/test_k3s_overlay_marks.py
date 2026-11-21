@@ -31,7 +31,7 @@ def test_scope_and_atomic_replacement():
         ("flannel.1", "10.0.0.0/8"),
     ],
 )
-def test_reject_broad_or_injected_scope(interface: str, cidr: str) -> None:
+def test_reject_broad_or_injected_scope(interface, cidr):
     with pytest.raises(ValueError):
         m.rules(interface, cidr, False)
 
@@ -83,15 +83,13 @@ def test_proven_collision_and_clean_boundary():
     assert not (0 & (0x10000 | 0x2000))
 
 
-def test_default_cli_is_read_only(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_default_cli_is_read_only(monkeypatch, capsys):
     import json
     from types import SimpleNamespace
 
     calls = []
 
-    def fake(*args: str, **kwargs: object) -> SimpleNamespace:
+    def fake(*args, **kwargs):
         calls.append(args)
         if args == ("nft", "-j", "list", "tables"):
             return SimpleNamespace(stdout=json.dumps({"nftables": []}))
@@ -106,11 +104,11 @@ def test_default_cli_is_read_only(
     assert len(calls) == 2
 
 
-def test_cli_rejects_foreign_table_before_kernel_write(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cli_rejects_foreign_table_before_kernel_write(monkeypatch):
     import json, sys
     from types import SimpleNamespace
 
-    def fake(*args: str, **kwargs: object) -> SimpleNamespace:
+    def fake(*args, **kwargs):
         if args == ("nft", "-j", "list", "tables"):
             return SimpleNamespace(
                 stdout=json.dumps({"nftables": [{"table": {"family": "inet", "name": m.TABLE}}]})

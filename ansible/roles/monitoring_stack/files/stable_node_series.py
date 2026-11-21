@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-from collections.abc import Sequence
 import json
 import sys
-from typing import TypedDict
 
 import yaml
 
@@ -19,16 +17,7 @@ DASHBOARD_UIDS = {
 AGGREGATION = "avg without (pod, namespace, container, endpoint, service)"
 
 
-class _PromTarget(TypedDict, total=False):
-    expr: str
-
-
-class _PromPanel(TypedDict, total=False):
-    targets: list[_PromTarget]
-    panels: list["_PromPanel"]
-
-
-def rewrite_panels(panels: list[_PromPanel]):
+def rewrite_panels(panels):
     for panel in panels:
         for target in panel.get("targets", []):
             expression = target.get("expr", "")
@@ -37,7 +26,7 @@ def rewrite_panels(panels: list[_PromPanel]):
         rewrite_panels(panel.get("panels", []))
 
 
-def render(resources: Sequence[object]):
+def render(resources):
     for resource in resources:
         apply_alert_descriptions(resource)
         if isinstance(resource, dict) and resource.get("kind") == "PrometheusRule":

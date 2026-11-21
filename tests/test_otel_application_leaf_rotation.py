@@ -67,7 +67,7 @@ class LeafRotationTests(unittest.TestCase):
         module = load()
         calls = []
 
-        def kube(*args: str) -> dict[str, str]:
+        def kube(*args):
             calls.append(args)
             return {
                 "certificatePemBase64": base64.b64encode(

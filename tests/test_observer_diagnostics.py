@@ -30,7 +30,7 @@ spec.loader.exec_module(m)
         (urllib.error.URLError(TimeoutError("SECRET")), "timeout"),
     ],
 )
-def test_classify_without_exception_strings(error: Exception, kind: str):
+def test_classify_without_exception_strings(error, kind):
     result = m.classify(error)
     assert result["kind"] == kind
     assert "SECRET" not in json.dumps(result)

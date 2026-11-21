@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 
 
-def policy(actions: list[str]):
+def policy(actions):
     return {
         "Version": "2012-10-17",
         "Statement": [
@@ -37,7 +37,7 @@ POLICIES = {
 }
 
 
-def canonical_policy(document: object):
+def canonical_policy(document):
     if not isinstance(document, dict) or set(document) - {"Version", "Statement", "Id"}:
         raise ValueError("unexpected policy fields")
     statements = document.get("Statement")
@@ -69,19 +69,19 @@ def canonical_policy(document: object):
     }
 
 
-def private_directory(path: Path):
+def private_directory(path):
     s = path.lstat()
     if not stat.S_ISDIR(s.st_mode) or s.st_uid != os.getuid() or s.st_mode & 0o077:
         raise ValueError("private owned directory required")
 
 
-def private(path: Path):
+def private(path):
     s = path.lstat()
     if not stat.S_ISREG(s.st_mode) or s.st_uid != os.getuid() or s.st_mode & 0o077:
         raise ValueError("private owned regular credentials file required")
 
 
-def run(mc: str, config: str, args: list[str], stdin: bytes | None = None):
+def run(mc, config, args, stdin=None):
     result = subprocess.run(
         [mc, "--config-dir", config, "--json", *args],
         input=stdin,
@@ -97,8 +97,6 @@ def run(mc: str, config: str, args: list[str], stdin: bytes | None = None):
     text = result.stdout.decode().strip()
     while text:
         row, n = decoder.raw_decode(text)
-        if not isinstance(row, dict):
-            raise ValueError("bootstrap request returned a non-object row")
         rows.append(row)
         text = text[n:].lstrip()
     if any(row.get("status") == "error" for row in rows):
@@ -165,7 +163,7 @@ def main():
             )
         )
 
-        def mc(*a: str, stdin: bytes | None = None):
+        def mc(*a, stdin=None):
             return run(args.mc, tmp, list(a), stdin)
 
         # Inventories must succeed before any mutation. No failure means 'absent'.

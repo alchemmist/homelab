@@ -32,12 +32,12 @@ OWNED = [
 ]
 
 
-def need(msg: str, *, ok: bool):
+def need(ok, msg):
     if not ok:
         raise RuntimeError(msg)
 
 
-def get(kind: str, name: str):
+def get(kind, name):
     r = subprocess.run(
         ["kubectl", "-n", "identity", "get", kind, name, "--ignore-not-found", "-o", "json"],
         capture_output=True,
@@ -51,21 +51,21 @@ def inspect():
     for kind, name, uid, path in OWNED:
         o = get(kind, name)
         if o:
-            need("Unowned replacement; stop", ok=o["metadata"]["uid"] == uid)
+            need(o["metadata"]["uid"] == uid, "Unowned replacement; stop")
             if kind == "ingress":
                 need(
-                    "Ingress ownership drift",
-                    ok=o["spec"]["rules"][0]["host"] == "tv.alchemmist.xyz"
+                    o["spec"]["rules"][0]["host"] == "tv.alchemmist.xyz"
                     and o["metadata"]["annotations"].get("argocd.argoproj.io/tracking-id")
                     == "public-web-entry:networking.k8s.io/Ingress:identity/public-web-grafana-tv",
+                    "Ingress ownership drift",
                 )
             if kind == "certificate":
-                need("Certificate scope drift", ok=o["spec"]["dnsNames"] == ["tv.alchemmist.xyz"])
+                need(o["spec"]["dnsNames"] == ["tv.alchemmist.xyz"], "Certificate scope drift")
             if kind == "secret":
                 need(
-                    "Secret scope drift",
-                    ok=o["metadata"]["annotations"].get("cert-manager.io/alt-names")
+                    o["metadata"]["annotations"].get("cert-manager.io/alt-names")
                     == "tv.alchemmist.xyz",
+                    "Secret scope drift",
                 )
             out.append(o)
     return out
@@ -77,24 +77,24 @@ def main():
     p.add_argument("--approve-plan-hash")
     a = p.parse_args()
     os.umask(0o077)
-    need("Unsafe state", ok=not ROOT.is_symlink())
+    need(not ROOT.is_symlink(), "Unsafe state")
     ROOT.mkdir(mode=0o700, exist_ok=True)
-    need("Unsafe state", ok=ROOT.stat().st_uid == 0 and not ROOT.stat().st_mode & 0o077)
+    need(ROOT.stat().st_uid == 0 and not ROOT.stat().st_mode & 0o077, "Unsafe state")
     with (ROOT / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        need("Uncertain deletion; inspect privately", ok=not (ROOT / "uncertain.json").exists())
+        need(not (ROOT / "uncertain.json").exists(), "Uncertain deletion; inspect privately")
         objects = inspect()
         h = hashlib.sha256(json.dumps(objects, sort_keys=True).encode()).hexdigest()
         if a.apply and objects:
-            need("Fresh exact approval required", ok=a.approve_plan_hash == h)
-            need("Existing cleanup backup; inspect", ok=not (ROOT / "before.json").exists())
+            need(a.approve_plan_hash == h, "Fresh exact approval required")
+            need(not (ROOT / "before.json").exists(), "Existing cleanup backup; inspect")
             (ROOT / "before.json").write_text(json.dumps(objects))
             (ROOT / "uncertain.json").write_text(json.dumps({"plan_hash": h}))
             for kind, name, uid, path in OWNED:
                 o = get(kind, name)
                 if not o:
                     continue
-                need("Concurrent replacement; stop", ok=o["metadata"]["uid"] == uid)
+                need(o["metadata"]["uid"] == uid, "Concurrent replacement; stop")
                 options = {
                     "apiVersion": "v1",
                     "kind": "DeleteOptions",
@@ -110,14 +110,11 @@ def main():
                     capture_output=True,
                 )
                 need(
+                    r.returncode == 0 or b"NotFound" in r.stderr,
                     "Scoped delete failed; inspect privately",
-                    ok=r.returncode == 0 or b"NotFound" in r.stderr,
                 )
             remaining = inspect()
-            need(
-                "Secret deletion not confirmed",
-                ok=not any(o["kind"] == "Secret" for o in remaining),
-            )
+            need(not any(o["kind"] == "Secret" for o in remaining), "Secret deletion not confirmed")
             (ROOT / "after.json").write_text(
                 json.dumps({"plan_hash": h, "delete_requests_completed": True})
             )

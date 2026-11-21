@@ -12,7 +12,6 @@ import json
 import os
 from pathlib import Path
 import re
-from typing import Protocol
 from urllib.parse import urlsplit
 
 NAME = "spi-rustfs-browser-private"
@@ -26,34 +25,7 @@ FLOWS = {
 GROUPS = ("homelab-owner", "homelab-platform-operator")
 
 
-class _ValuesList(Protocol):
-    """Structural stand-in for a Django queryset used by state()."""
-
-    def values_list(self, *fields: str, flat: bool = False) -> list[object]: ...
-
-
-class _Provider(Protocol):
-    """Structural stand-in for authentik ProxyProvider (unimportable offline)."""
-
-    pk: object
-    redirect_uris: object
-    certificate_id: object
-    client_id: object
-    client_secret: str
-    signing_key_id: object
-    encryption_key_id: object
-    property_mappings: _ValuesList
-
-
-class _App(Protocol):
-    """Structural stand-in for authentik Application (unimportable offline)."""
-
-    pk: object
-    slug: object
-    policy_engine_mode: object
-
-
-def authority(url: str):
+def authority(url):
     parsed = urlsplit(url)
     if (
         parsed.scheme not in ("https", "http")
@@ -68,11 +40,11 @@ def authority(url: str):
     )
 
 
-def digest(value: object):
+def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest()
 
 
-def run(action: str = "plan", nonce: str | None = None):
+def run(action="plan", nonce=None):
     from django.db import transaction
     from authentik.core.models import Application, Group, User
     from authentik.flows.models import Flow
@@ -83,7 +55,7 @@ def run(action: str = "plan", nonce: str | None = None):
 
     if action not in ("plan", "apply", "rollback") or not re.fullmatch("[a-f0-9]{32}", nonce or ""):
         raise ValueError("explicit action and random 128-bit operator nonce required")
-    root = Path("/tmp/rustfs-private-migration-" + (nonce or ""))
+    root = Path("/tmp/rustfs-private-migration-" + nonce)
     journal = root / "metadata.json"
     if action != "plan":
         if root.exists():
@@ -166,8 +138,8 @@ def run(action: str = "plan", nonce: str | None = None):
             **FLOWS,
         )
 
-        def state(provider: _Provider, app: _App):
-            actual: dict[str, object] = {key: str(getattr(provider, key)) for key in settings}
+        def state(provider, app):
+            actual = {key: str(getattr(provider, key)) for key in settings}
             actual["property_mappings"] = sorted(
                 str(x) for x in provider.property_mappings.values_list("pk", flat=True)
             )

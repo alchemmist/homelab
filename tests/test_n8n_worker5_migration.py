@@ -25,7 +25,7 @@ class Worker5MigrationTest(unittest.TestCase):
             )
         )
 
-    def resource(self, kind: str, name: str):
+    def resource(self, kind, name):
         return next(
             d for d in self.docs if d and d["kind"] == kind and d["metadata"]["name"] == name
         )

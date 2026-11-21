@@ -30,16 +30,14 @@ class FakeEtcd:
     def members(self):
         return dict(self.membership)
 
-    def health(self, name: str) -> None:
+    def health(self, name):
         if name not in self.healthy:
             raise RuntimeError("unhealthy")
 
-    def status(self, name: str):
+    def status(self, name):
         return {"header": {"member_id": self.membership[name]["id"]}, "leader": self.leader}
 
-    def call(
-        self, args: list[str], endpoint: str | None = None, *, structured: bool = True
-    ) -> None:
+    def call(self, args, endpoint=None, structured=True):
         self.calls.append((args, endpoint))
         if args[0] == "move-leader":
             self.leader = int(args[1], 16)

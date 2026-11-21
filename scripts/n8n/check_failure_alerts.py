@@ -11,8 +11,8 @@ from pathlib import Path
 POLICY = "n8n-workflow-policy.json"
 
 
-def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
-    result: dict[str, object] = {}
+def unique_object(pairs):
+    result = {}
     for key, value in pairs:
         if key in result:
             raise ValueError("duplicate JSON key")
@@ -20,11 +20,11 @@ def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
     return result
 
 
-def load(path: Path):
+def load(path):
     return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique_object)
 
 
-def inside(root: Path, name: str):
+def inside(root, name):
     relative = Path(name)
     if relative.is_absolute() or ".." in relative.parts:
         raise ValueError("policy paths must be repository-relative")
@@ -34,7 +34,7 @@ def inside(root: Path, name: str):
     return path
 
 
-def run(root: Path, *, fix: bool = False):
+def run(root, fix=False):
     root = root.resolve()
     policy = load(inside(root, POLICY))
     if (
@@ -144,7 +144,7 @@ def main():
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[2])
     args = parser.parse_args()
     try:
-        return run(args.root, fix=args.fix)
+        return run(args.root, args.fix)
     except (ValueError, OSError):
         print(
             "Workflow policy/configuration error; no automatic repair. Check paths and JSON.",

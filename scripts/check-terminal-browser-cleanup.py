@@ -9,25 +9,9 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Protocol
 
 
-class _WatchdogProcess(Protocol):
-    pid: int
-    ppid: int
-
-    @property
-    def identity(self) -> tuple[int, int]: ...
-
-
-class _WatchdogModule(Protocol):
-    def snapshot(self) -> dict[int, _WatchdogProcess]: ...
-
-    def is_test_browser(self, process: _WatchdogProcess) -> bool: ...
-
-
-
-def load(path: str):
+def load(path):
     spec = importlib.util.spec_from_file_location("browser_watchdog_probe", path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
@@ -35,7 +19,7 @@ def load(path: str):
     return module
 
 
-def tree(module: _WatchdogModule, root: int):
+def tree(module, root):
     snapshot = module.snapshot()
     selected = {root}
     while True:
@@ -45,7 +29,7 @@ def tree(module: _WatchdogModule, root: int):
         selected.update(children)
 
 
-def alive(module: _WatchdogModule, identities: set[tuple[int, int]]):
+def alive(module, identities):
     snapshot = module.snapshot()
     return [
         identity

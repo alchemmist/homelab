@@ -19,19 +19,19 @@ STATES = [
 ]
 
 
-def queries(*, include_root: bool = False):
+def queries(include_root=False):
     selector = 'job="socrat-argocd"' + ("" if include_root else ',name!="root"')
     raw = f"argocd_app_info{{{selector}}}"
     newest = f"max by(name) (timestamp({raw}))"
 
-    def latest(extra: str = ""):
+    def latest(extra=""):
         metric = f"argocd_app_info{{{selector}{',' + extra if extra else ''}}}"
         # Discard old label sets lingering after a state change in OTLP storage.
         return f"({metric} and (time() - timestamp({metric}) < 90) and (timestamp({metric}) == on(name) group_left {newest}))"
 
     apps = f"max by(name) ({latest()})"
 
-    def state(code: int, extra: str):
+    def state(code, extra):
         return f"({code} * max by(name) ({latest(extra)}))"
 
     # Union is left-biased after aggregation by name: exactly one code per app.

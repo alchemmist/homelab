@@ -12,7 +12,7 @@ BUDGET = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BUDGET)
 
 
-def container(name: str = "app", cpu: str = "100m", memory: str = "128Mi", **kwargs: str):
+def container(name="app", cpu="100m", memory="128Mi", **kwargs):
     return dict(name=name, resources={"requests": {"cpu": cpu, "memory": memory}}, **kwargs)
 
 

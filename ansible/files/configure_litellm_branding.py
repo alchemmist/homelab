@@ -4,7 +4,7 @@ import subprocess
 import urllib.request
 
 
-def kubectl(*args: str) -> str:
+def kubectl(*args):
     return subprocess.check_output(["kubectl", "-n", "llm", *args], text=True)
 
 

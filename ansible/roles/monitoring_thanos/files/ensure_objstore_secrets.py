@@ -5,13 +5,7 @@ import subprocess
 import sys
 
 
-def kubectl(
-    binary: str,
-    kubeconfig: str,
-    namespace: str,
-    args: list[str],
-    payload: str | None = None,
-):
+def kubectl(binary, kubeconfig, namespace, args, payload=None):
     command = [binary, "kubectl", "--kubeconfig", kubeconfig, "-n", namespace, *args]
     result = subprocess.run(command, input=payload, text=True, capture_output=True)
     if result.returncode != 0:
@@ -20,7 +14,7 @@ def kubectl(
     return result.stdout
 
 
-def exists(binary: str, kubeconfig: str, namespace: str, name: str):
+def exists(binary, kubeconfig, namespace, name):
     result = subprocess.run(
         [binary, "kubectl", "--kubeconfig", kubeconfig, "-n", namespace, "get", "secret", name],
         text=True,
@@ -29,13 +23,13 @@ def exists(binary: str, kubeconfig: str, namespace: str, name: str):
     return result.returncode == 0
 
 
-def read_secret(binary: str, kubeconfig: str, namespace: str, name: str):
+def read_secret(binary, kubeconfig, namespace, name):
     raw = kubectl(binary, kubeconfig, namespace, ["get", "secret", name, "-o", "json"])
     data = json.loads(raw)["data"]
     return {key: base64.b64decode(value).decode() for key, value in data.items()}
 
 
-def apply_secret(binary: str, kubeconfig: str, namespace: str, name: str, data: dict[str, str]):
+def apply_secret(binary, kubeconfig, namespace, name, data):
     body = {
         "apiVersion": "v1",
         "kind": "Secret",
@@ -46,11 +40,11 @@ def apply_secret(binary: str, kubeconfig: str, namespace: str, name: str, data: 
     kubectl(binary, kubeconfig, namespace, ["apply", "-f", "-"], json.dumps(body))
 
 
-def filesystem_config(directory: str):
+def filesystem_config(directory):
     return "type: FILESYSTEM\nconfig:\n  directory: " + directory + "\n"
 
 
-def ensure(binary: str, kubeconfig: str, namespace: str):
+def ensure(binary, kubeconfig, namespace):
     created = []
     if not exists(binary, kubeconfig, namespace, "thanos-objstore-raw"):
         apply_secret(

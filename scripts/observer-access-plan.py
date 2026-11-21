@@ -9,7 +9,6 @@ The profile's ongoing authorization is performed by native OIDC/Rancher RBAC.
 import argparse
 import hashlib
 import json
-from collections.abc import Mapping
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,58 +16,19 @@ READ = {"get", "list", "watch"}
 OWNER = "observer-v1"
 
 
-def require(value: object, message: str) -> None:
+def require(value, message):
     if not value:
         raise ValueError(message)
 
 
-def as_list(value: object) -> list[object]:
-    """Return a JSON array, stopping on unexpected structure."""
-    if not isinstance(value, list):
-        error = "Expected a JSON list"
-        raise TypeError(error)
-    return value
-
-
-def as_strings(value: object) -> list[str]:
-    """Return a JSON array of strings, stopping on unexpected structure."""
-    items = as_list(value)
-    out: list[str] = []
-    for item in items:
-        if not isinstance(item, str):
-            error = "Expected a list of JSON strings"
-            raise TypeError(error)
-        out.append(item)
-    return out
-
-
-def as_dict(value: object) -> dict[str, object]:
-    """Return a JSON object, stopping on unexpected structure."""
-    if not isinstance(value, dict):
-        error = "Expected a JSON object"
-        raise TypeError(error)
-    return value
-
-
-def as_str(value: object) -> str:
-    """Return a JSON string, stopping on unexpected structure."""
-    if not isinstance(value, str):
-        error = "Expected a JSON string"
-        raise TypeError(error)
-    return value
-
-
-def exact(rows: object, key: str, value: object) -> dict[str, object]:
-    records = [as_dict(x) for x in as_list(rows)]
-    result = [row for row in records if row.get(key) == value]
-    require(len(result) == 1, "Missing/ambiguous reviewed object: " + as_str(value))
+def exact(rows, key, value):
+    result = [row for row in rows if row.get(key) == value]
+    require(len(result) == 1, "Missing/ambiguous reviewed object: " + value)
     return result[0]
 
 
-def kpatch(
-    obj: Mapping[str, object], path: str, changes: Mapping[str, object]
-) -> dict[str, object]:
-    meta = as_dict(obj["metadata"])
+def kpatch(obj, path, changes):
+    meta = obj["metadata"]
     patch = [
         {"op": "test", "path": "/metadata/uid", "value": meta["uid"]},
         {"op": "test", "path": "/metadata/resourceVersion", "value": meta["resourceVersion"]},
@@ -78,36 +38,32 @@ def kpatch(
     return {"system": "kubernetes", "method": "PATCH", "path": path, "body": patch}
 
 
-def build(state: object, policy: object) -> object:
+def build(state, policy):
     require(
         isinstance(state, dict) and isinstance(policy, dict),
         "Observer state and policy must be objects",
     )
-    state_record = state if isinstance(state, dict) else {}
-    policy_record = policy if isinstance(policy, dict) else {}
     try:
-        return _build(state_record, policy_record)
+        return _build(state, policy)
     except (KeyError, TypeError, AttributeError, IndexError):
         raise ValueError(
             "Malformed observer state/policy: missing field or incorrect nested structure"
         ) from None
 
 
-def _build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[dict[str, object]]:
+def _build(state, policy):
     require(policy["version"] == 1 and policy["group"] == "homelab-observer", "Unreviewed profile")
-    native_admission = as_list(policy["nativeAdmission"])
-    harbor_policy = as_dict(policy["harbor"])
     require(
-        set(native_admission) == {"grafana", "wiki", "rancher", "argocd"}
-        and len(native_admission) == 4
-        and harbor_policy["enabled"] is False,
+        set(policy["nativeAdmission"]) == {"grafana", "wiki", "rancher", "argocd"}
+        and len(policy["nativeAdmission"]) == 4
+        and policy["harbor"]["enabled"] is False,
         "Unreviewed app scope",
     )
     require(
-        harbor_policy["projects"] == ["homelab", "library", "spi-triage"],
+        policy["harbor"]["projects"] == ["homelab", "library", "spi-triage"],
         "Unreviewed project scope",
     )
-    rancher = as_dict(policy["rancher"])
+    rancher = policy["rancher"]
     require(
         rancher["groupPrincipal"] == "genericoidc_group://homelab-observer"
         and rancher["cluster"] == "local"
@@ -121,7 +77,6 @@ def _build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[di
         and rancher["legacySelfCredentialsReadOnly"] is True,
         "Unreviewed session/token policy",
     )
-    bindings = [as_dict(b) for b in as_list(state["bindings"])]
     group = exact(state["groups"], "name", policy["group"])
     require(
         group.get("is_superuser") is False
@@ -130,17 +85,15 @@ def _build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[di
         "Observer must not carry IdP administration or inherited grants",
     )
     supported_targets = {
-        as_dict(app)["pk"]
-        for app in as_list(state["apps"])
-        if as_dict(app)["slug"] in set(native_admission)
+        app["pk"] for app in state["apps"] if app["slug"] in policy["nativeAdmission"]
     }
     harbor_app = exact(state["apps"], "slug", "harbor")
     gated_targets = {harbor_app["pk"]}
     unexpected = [
         b
-        for b in bindings
+        for b in state["bindings"]
         if b.get("group") == group["pk"]
-        and bool(b.get("enabled"))
+        and b.get("enabled")
         and b.get("target") not in supported_targets | gated_targets
     ]
     require(
@@ -148,26 +101,23 @@ def _build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[di
         "Observer still admits unsupported apps; migrate legacy admission before rollout",
     )
     # Source RBAC must be activated/reviewed before enabling group admission.
-    login = as_dict(state["rancherLoginRole"])
-    login_meta = as_dict(login["metadata"])
+    login = state["rancherLoginRole"]
     require(
-        login_meta["name"] == rancher["globalRole"]
-        and as_dict(login_meta.get("labels", {})).get("homelab.alchemmist.xyz/identity-profile")
+        login["metadata"]["name"] == rancher["globalRole"]
+        and login["metadata"].get("labels", {}).get("homelab.alchemmist.xyz/identity-profile")
         == OWNER,
         "Native login role has not been deployed under reviewed ownership",
     )
     require(login.get("newUserDefault") is True, "Safe new-user default role is not active")
-    for rule in [as_dict(r) for r in as_list(login.get("rules", []))]:
+    for rule in login.get("rules", []):
         require(
-            not set(as_strings(rule.get("resources", [])))
-            & {"tokens", "kubeconfigs", "clusters", "*"},
+            not set(rule.get("resources", [])) & {"tokens", "kubeconfigs", "clusters", "*"},
             "Login role can mint credentials or create infrastructure",
         )
-    role = as_dict(state["rancherClusterRole"])
-    role_meta = as_dict(role["metadata"])
+    role = state["rancherClusterRole"]
     require(
-        role_meta["name"] == rancher["clusterRole"]
-        and as_dict(role_meta.get("labels", {})).get("homelab.alchemmist.xyz/identity-profile")
+        role["metadata"]["name"] == rancher["clusterRole"]
+        and role["metadata"].get("labels", {}).get("homelab.alchemmist.xyz/identity-profile")
         == OWNER,
         "Native cluster role ownership mismatch",
     )
@@ -178,15 +128,15 @@ def _build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[di
         and not role.get("external"),
         "Unexpected role inheritance",
     )
-    for rule in [as_dict(r) for r in as_list(role["rules"])]:
+    for rule in role["rules"]:
         require(
-            set(as_strings(rule.get("verbs", []))) <= READ
-            and "*" not in as_list(rule.get("resources", []))
-            and "*" not in as_list(rule.get("apiGroups", [])),
+            set(rule.get("verbs", [])) <= READ
+            and "*" not in rule.get("resources", [])
+            and "*" not in rule.get("apiGroups", []),
             "Cluster role is not a bounded reader",
         )
         require(
-            not set(as_strings(rule.get("resources", [])))
+            not set(rule.get("resources", []))
             & {
                 "secrets",
                 "configmaps",
@@ -206,13 +156,12 @@ def _build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[di
             },
             "Sensitive reader grant",
         )
-    binding = as_dict(state["rancherGroupBinding"])
-    binding_meta = as_dict(binding["metadata"])
+    binding = state["rancherGroupBinding"]
     require(
         binding.get("groupPrincipalName") == rancher["groupPrincipal"]
         and binding.get("roleTemplateName") == rancher["clusterRole"]
         and binding.get("clusterName") == "local"
-        and binding_meta.get("namespace") == "local"
+        and binding["metadata"].get("namespace") == "local"
         and not any(binding.get(x) for x in ["userName", "userPrincipalName", "groupName"]),
         "Group binding must not be per-user or point at another cluster",
     )
@@ -220,18 +169,17 @@ def _build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[di
         (ROOT / "deploy/platform/rancher/public-entry/files/observer-rbac.json").read_text()
     )
     for actual, desired in zip([login, role, binding], definitions):
-        actual_meta = as_dict(actual["metadata"])
         for key, value in desired.items():
             if key == "metadata":
                 require(
                     all(
                         (
                             all(
-                                as_dict(actual_meta.get("labels", {})).get(a) == b
+                                actual["metadata"].get("labels", {}).get(a) == b
                                 for a, b in v.items()
                             )
                             if k == "labels"
-                            else actual_meta.get(k) == v
+                            else actual["metadata"].get(k) == v
                         )
                         for k, v in value.items()
                     ),
@@ -252,28 +200,24 @@ def _build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[di
         "Hidden login inheritance",
     )
     require(not role.get("externalRules"), "Unexpected external role rules")
-    ops: list[dict[str, object]] = []
+    ops = []
     # Default User grants cluster creation; User Base grants long-lived token
     # minting. Neither is a safe fallback for a new strict UI observer.
-    for default in [as_dict(g) for g in as_list(state["globalRoles"])]:
-        default_meta = as_dict(default["metadata"])
-        if bool(default.get("newUserDefault")) and default_meta["name"] != rancher["globalRole"]:
+    for default in state["globalRoles"]:
+        if default.get("newUserDefault") and default["metadata"]["name"] != rancher["globalRole"]:
             require(
-                default_meta["name"] in {"user", "user-base"},
+                default["metadata"]["name"] in {"user", "user-base"},
                 "Unknown default grant; review",
             )
             ops.append(
                 kpatch(
                     default,
-                    "/apis/management.cattle.io/v3/globalroles/" + as_str(default_meta["name"]),
+                    "/apis/management.cattle.io/v3/globalroles/" + default["metadata"]["name"],
                     {"newUserDefault": False},
                 )
             )
-    setting = as_dict(state["rancherSessionSetting"])
-    require(
-        as_dict(setting["metadata"])["name"] == "auth-user-session-ttl-minutes",
-        "Unexpected setting",
-    )
+    setting = state["rancherSessionSetting"]
+    require(setting["metadata"]["name"] == "auth-user-session-ttl-minutes", "Unexpected setting")
     if (setting.get("value") or setting.get("default")) != "60":
         ops.append(
             kpatch(
@@ -285,20 +229,19 @@ def _build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[di
     # Harbor's default can allow every logged-in user to create projects.
     # Restrict creation before enabling observer admission. Existing project
     # push/pull robot memberships and owner OIDC admin group are untouched.
-    harbor = harbor_policy
+    harbor = policy["harbor"]
     require(
         harbor["groupType"] == 3
         and harbor["roleId"] == 3
         and harbor["projectCreationRestriction"] == "adminonly",
         "Not a reviewed Harbor Guest policy",
     )
-    state_harbor = as_dict(state["harbor"])
     require(
-        state_harbor["oidcGroupsClaim"] == "groups"
-        and state_harbor["oidcAdminGroup"] == "homelab-owner",
+        state["harbor"]["oidcGroupsClaim"] == "groups"
+        and state["harbor"]["oidcAdminGroup"] == "homelab-owner",
         "Harbor OIDC mapping drift",
     )
-    if state_harbor["projectCreationRestriction"] != "adminonly":
+    if state["harbor"]["projectCreationRestriction"] != "adminonly":
         ops.append(
             {
                 "system": "harbor",
@@ -307,7 +250,7 @@ def _build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[di
                 "body": {"project_creation_restriction": "adminonly"},
             }
         )
-    native_groups = [as_dict(g) for g in as_list(state_harbor["groups"])]
+    native_groups = state["harbor"]["groups"]
     require(
         len(native_groups) <= 1
         and all(
@@ -316,11 +259,9 @@ def _build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[di
         ),
         "Ambiguous/non-OIDC Harbor group",
     )
-    harbor_projects = as_dict(state_harbor["projects"])
-    for project_value in as_list(harbor["projects"]):
-        project = as_str(project_value)
-        require(project in harbor_projects, "Missing reviewed Harbor project")
-        members = [as_dict(m) for m in as_list(harbor_projects[project])]
+    for project in harbor["projects"]:
+        require(project in state["harbor"]["projects"], "Missing reviewed Harbor project")
+        members = state["harbor"]["projects"][project]
         existing = [
             m
             for m in members
@@ -336,31 +277,27 @@ def _build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[di
                 len(native_groups) == 1 and existing[0].get("entity_id") == native_groups[0]["id"],
                 "Harbor membership does not reference the reviewed OIDC group",
             )
-            member_id = existing[0].get("id")
             require(
-                isinstance(member_id, int)
-                and member_id > 0
-                and type(member_id) is int
-                and not isinstance(member_id, bool),
+                type(existing[0].get("id")) is int and existing[0]["id"] > 0,
                 "Missing owned Harbor member identity",
             )
             ops.append(
                 {
                     "system": "harbor",
                     "method": "DELETE",
-                    "path": "/api/v2.0/projects/" + project + "/members/" + str(member_id),
+                    "path": "/api/v2.0/projects/" + project + "/members/" + str(existing[0]["id"]),
                     "body": None,
                 }
             )
-    auth = as_dict(state["rancherAuth"])
+    auth = state["rancherAuth"]
     require(
         auth.get("enabled") is True
         and auth.get("accessMode") == "restricted"
         and auth.get("groupsClaim") == "groups",
         "Rancher authentication is not the reviewed restricted provider",
     )
-    allowed = as_list(auth["allowedPrincipalIds"])
-    require(len(set(allowed)) == len(allowed), "Ambiguous admission")
+    allowed = auth["allowedPrincipalIds"]
+    require(isinstance(allowed, list) and len(set(allowed)) == len(allowed), "Ambiguous admission")
     if rancher["groupPrincipal"] not in allowed:
         ops.append(
             kpatch(
@@ -371,7 +308,9 @@ def _build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[di
         )
     # Close only this group's Harbor admission; Guest CLI cache is not revocable.
     for gated in [
-        b for b in bindings if b.get("target") == harbor_app["pk"] and b.get("group") == group["pk"]
+        b
+        for b in state["bindings"]
+        if b.get("target") == harbor_app["pk"] and b.get("group") == group["pk"]
     ]:
         require(
             gated.get("enabled") is True
@@ -381,26 +320,23 @@ def _build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[di
             and not gated.get("failure_result"),
             "Complex gated Harbor admission; stop for review",
         )
-        require(
-            isinstance(gated.get("pk"), str) and bool(gated["pk"]),
-            "Missing Harbor binding identity",
-        )
+        require(isinstance(gated.get("pk"), str) and gated["pk"], "Missing Harbor binding identity")
         ops.append(
             {
                 "system": "authentik",
                 "method": "DELETE",
-                "path": "policies/bindings/" + as_str(gated["pk"]) + "/",
+                "path": "policies/bindings/" + gated["pk"] + "/",
                 "body": None,
             }
         )
     # Admission is last. All existing groups/clients/native identities stay put.
-    for slug in native_admission:
+    for slug in policy["nativeAdmission"]:
         app = exact(state["apps"], "slug", slug)
         require(
             app.get("provider") is not None and app["policy_engine_mode"] == "any",
             "Unexpected native app",
         )
-        app_bindings = [b for b in bindings if b.get("target") == app["pk"]]
+        bindings = [b for b in state["bindings"] if b.get("target") == app["pk"]]
         require(
             all(
                 {"enabled", "negate", "policy", "user", "failure_result", "group"} <= set(b)
@@ -409,12 +345,12 @@ def _build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[di
                 and not b.get("policy")
                 and not b.get("user")
                 and not b.get("failure_result")
-                and bool(b.get("group"))
-                for b in app_bindings
+                and b.get("group")
+                for b in bindings
             ),
             "Complex app admission; do not broaden it implicitly",
         )
-        own = [b for b in app_bindings if b.get("group") == group["pk"]]
+        own = [b for b in bindings if b.get("group") == group["pk"]]
         require(len(own) <= 1, "Duplicate observer admission")
         if not own:
             ops.append(

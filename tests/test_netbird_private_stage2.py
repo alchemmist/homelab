@@ -44,7 +44,7 @@ def test_only_exact_native_default_can_be_deleted() -> None:
         stage2.default_policy([policy])
 
 
-def test_private_files_never_overwrite(tmp_path: Path) -> None:
+def test_private_files_never_overwrite(tmp_path) -> None:
     """Create a mode-0600 file and refuse to replace it."""
     path = tmp_path / "secret.json"
     stage2.private(path, {"secret": "fixture"})

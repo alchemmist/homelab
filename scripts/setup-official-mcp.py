@@ -44,7 +44,7 @@ ARTIFACTS = {
 }
 
 
-def private_write(path: Path, data: bytes):
+def private_write(path, data):
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     if path.parent.is_symlink() or path.parent.stat().st_uid != os.getuid():
         raise ValueError("Unsafe credentials directory")

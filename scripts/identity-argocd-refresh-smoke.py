@@ -27,29 +27,21 @@ import urllib.request
 BASE = "https://auth.socrat.alchemmist.xyz"
 # Process-local public-edge resolution; keep verified TLS/SNI, no system DNS changes.
 import socket
-from typing import TypedDict, cast
-
-
-class _PageResponse:
-    """Structural stand-in for module-mocked Playwright response events."""
-
-    url: str
-    status: int
-    headers: dict[str, str]
-
-    def json(self) -> dict[str, object]:
-        """Return the decoded response payload."""
-        return {}
-
 
 _original_getaddrinfo = socket.getaddrinfo
-socket.getaddrinfo = lambda host, *pos, **kw: _original_getaddrinfo(
-    args.public_edge
-    if host in ["auth.socrat.alchemmist.xyz", "argocd.socrat.alchemmist.xyz"]
-    else host,
-    *pos,
-    **kw,
-)
+
+
+def public_auth(host, *params, **kwargs):
+    return _original_getaddrinfo(
+        args.public_edge
+        if host in ["auth.socrat.alchemmist.xyz", "argocd.socrat.alchemmist.xyz"]
+        else host,
+        *params,
+        **kwargs,
+    )
+
+
+socket.getaddrinfo = public_auth
 SSH = [
     "ssh",
     "-o",
@@ -65,7 +57,7 @@ credential = json.loads(
 )
 
 
-def api(method: str, path: str, data: dict[str, object] | None = None) -> dict[str, object]:
+def api(method, path, data=None):
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -77,7 +69,7 @@ def api(method: str, path: str, data: dict[str, object] | None = None) -> dict[s
     )
     with urllib.request.urlopen(req, timeout=45) as r:
         b = r.read()
-        return cast("dict[str, object]", json.loads(b) if b else None)
+        return json.loads(b) if b else None
 
 
 import base64
@@ -91,26 +83,23 @@ import uuid
 
 from playwright.sync_api import sync_playwright
 
-providers_page = api("GET", "providers/oauth2/?page_size=100")
 provider = next(
     x
-    for x in cast("list[dict[str, object]]", providers_page["results"])
+    for x in api("GET", "providers/oauth2/?page_size=100")["results"]
     if x["name"] == "homelab-argocd"
 )
-mappings_page = api("GET", "propertymappings/provider/scope/?page_size=100")
 offline = [
     x
-    for x in cast("list[dict[str, object]]", mappings_page["results"])
+    for x in api("GET", "propertymappings/provider/scope/?page_size=100")["results"]
     if x["scope_name"] == "offline_access"
 ]
-if len(offline) != 1 or offline[0]["pk"] not in cast("list[str]", provider["property_mappings"]):
+if len(offline) != 1 or offline[0]["pk"] not in provider["property_mappings"]:
     raise SystemExit("Refresh deployment not activated; no fixtures created")
 username = "argocd-refresh-smoke-" + uuid.uuid4().hex[:10]
 password = secrets.token_urlsafe(32)
-groups_page = api("GET", "core/groups/?name=homelab-observer")
 group = next(
     x
-    for x in cast("list[dict[str, object]]", groups_page["results"])
+    for x in api("GET", "core/groups/?name=homelab-observer")["results"]
     if x["name"] == "homelab-observer"
 )
 user = api(
@@ -127,9 +116,10 @@ user = api(
 binding = None
 fixture_id = user["uuid"]
 try:
-    apps_page = api("GET", "core/applications/?superuser_full_list=true&page_size=100")
     app = next(
-        a for a in cast("list[dict[str, object]]", apps_page["results"]) if a["slug"] == "argocd"
+        a
+        for a in api("GET", "core/applications/?superuser_full_list=true&page_size=100")["results"]
+        if a["slug"] == "argocd"
     )
     binding = api(
         "POST",
@@ -158,7 +148,7 @@ try:
         components = []
         errors = []
 
-        def observe(response: _PageResponse) -> None:
+        def observe(response):
             if (
                 urllib.parse.urlparse(response.url).hostname == "argocd.socrat.alchemmist.xyz"
                 and urllib.parse.urlparse(response.url).path == "/auth/login"
@@ -283,14 +273,7 @@ try:
             ):
                 context = page.context
 
-                class Claims(TypedDict, total=False):
-                    """JWT claims used by the read-only session checks."""
-
-                    exp: float
-                    sub: str
-                    groups: list[str]
-
-                def claims() -> Claims:
+                def claims():
                     c = next(
                         c
                         for c in context.cookies("https://argocd.socrat.alchemmist.xyz")
@@ -298,10 +281,7 @@ try:
                     )
                     assert c["secure"]
                     raw = c["value"].split(".")[1]
-                    return cast(
-                        "Claims",
-                        json.loads(base64.urlsafe_b64decode(raw + "=" * ((-len(raw)) % 4))),
-                    )
+                    return json.loads(base64.urlsafe_b64decode(raw + "=" * ((-len(raw)) % 4)))
 
                 old = claims()
                 assert "homelab-observer" in old["groups"] and not set(old["groups"]) & {
@@ -309,10 +289,10 @@ try:
                     "homelab-platform-operator",
                 }
 
-                def api_page(path: str) -> dict[str, object]:
+                def api_page(path):
                     response = page.goto("https://argocd.socrat.alchemmist.xyz" + path)
                     assert response.status == 200
-                    return cast("dict[str, object]", response.json())
+                    return response.json()
 
                 info = api_page("/api/v1/session/userinfo")
                 assert info.get("loggedIn") is True, "Initial native session must be authenticated"
@@ -389,7 +369,7 @@ try:
 finally:
     try:
         if binding:
-            api("DELETE", "policies/bindings/" + cast("str", binding["pk"]) + "/")
+            api("DELETE", "policies/bindings/" + binding["pk"] + "/")
     finally:
         api("DELETE", "core/users/" + str(user["pk"]) + "/")
     print("Temporary Argo CD admission binding and Authentik identity removed", flush=True)

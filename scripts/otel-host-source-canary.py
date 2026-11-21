@@ -9,12 +9,12 @@ import urllib.request
 from pathlib import Path
 
 
-def digest(path: Path) -> str:
+def digest(path):
     with path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def run(directory: Path):
+def run(directory):
     if (
         os.geteuid() != 0
         or directory.is_symlink()

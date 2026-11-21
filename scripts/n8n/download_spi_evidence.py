@@ -8,22 +8,10 @@ import os
 import re
 import subprocess
 from pathlib import Path
-from typing import NotRequired, TypedDict
 
 
-class _Actor(TypedDict):
-    type: NotRequired[str]
-    id: NotRequired[int]
-
-
-class _Comment(TypedDict, total=False):
-    user: _Actor
-    performed_via_github_app: _Actor
-    body: str
-
-
-def reconstruct(comments: list[_Comment], event_key: str):
-    grouped: dict[tuple[str, str, str, int], dict[int, str]] = {}
+def reconstruct(comments, event_key):
+    grouped = {}
     for comment in comments:
         actor = comment.get("user", {})
         app = comment.get("performed_via_github_app") or {}

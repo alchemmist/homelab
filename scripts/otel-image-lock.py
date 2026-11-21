@@ -21,7 +21,7 @@ ACCEPT = ", ".join(
 )
 
 
-def resolve(repository: str, version: str):
+def resolve(repository, version):
     query = urllib.parse.urlencode(
         {"service": "registry.docker.io", "scope": "repository:" + repository + ":pull"}
     )

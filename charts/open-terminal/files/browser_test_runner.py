@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 
-def processes() -> dict[int, tuple[int, int]]:
+def processes():
     result = {}
     for directory in Path("/proc").iterdir():
         if not directory.name.isdigit():
@@ -24,7 +24,7 @@ def processes() -> dict[int, tuple[int, int]]:
     return result
 
 
-def descendants() -> set[tuple[int, int]]:
+def descendants():
     current = processes()
     parents = {os.getpid()}
     owned = set()
@@ -37,7 +37,7 @@ def descendants() -> set[tuple[int, int]]:
         parents.update(pid for pid, start in additions)
 
 
-def send(identity: tuple[int, int], sig: int) -> None:
+def send(identity, sig):
     pid, start = identity
     try:
         descriptor = os.pidfd_open(pid)
@@ -54,7 +54,7 @@ def send(identity: tuple[int, int], sig: int) -> None:
         os.close(descriptor)
 
 
-def reap() -> None:
+def reap():
     while True:
         try:
             pid, status = os.waitpid(-1, os.WNOHANG)
@@ -64,7 +64,7 @@ def reap() -> None:
             return
 
 
-def cleanup(owned: set[tuple[int, int]], grace: float) -> None:
+def cleanup(owned, grace):
     deadline = time.monotonic() + grace
     while True:
         owned.update(descendants())
@@ -85,7 +85,7 @@ def cleanup(owned: set[tuple[int, int]], grace: float) -> None:
         time.sleep(0.05)
 
 
-def run(command: list[str], timeout: float = 180, grace: float = 2) -> int:
+def run(command, timeout=180, grace=2):
     if sys.platform != "linux":
         raise RuntimeError("homelab-browser-test requires Linux")
     libc = ctypes.CDLL(None, use_errno=True)
@@ -125,7 +125,7 @@ def run(command: list[str], timeout: float = 180, grace: float = 2) -> int:
                 signal.signal(sig, handler)
 
 
-def positive(value: str) -> float:
+def positive(value):
     number = float(value)
     if not math.isfinite(number) or number <= 0:
         raise argparse.ArgumentTypeError("timeout must be finite and positive")

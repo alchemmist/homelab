@@ -126,9 +126,7 @@ class ConfigureTests(unittest.TestCase):
         runner.start()
         self.addCleanup(runner.stop)
 
-    def configure(
-        self, *, cleanup: bool = False, disable_shutdown: bool = False, check: bool = False
-    ):
+    def configure(self, cleanup=False, disable_shutdown=False, check=False):
         return MODULE.configure(
             self.home, "testuser", ".zshrc", cleanup, disable_shutdown, check=check
         )

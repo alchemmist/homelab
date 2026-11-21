@@ -9,28 +9,24 @@ import json
 import os
 import subprocess
 from pathlib import Path
-from types import ModuleType
 
 CURRENT = Path("/usr/local/libexec/public_dns_zone.py")
 ROOT = Path("/var/lib/homelab-grafana-tv-dns-retirement")
 
 
-def require(ok: object, message: str) -> None:
+def require(ok, message):
     if not ok:
         raise RuntimeError(message)
 
 
-def load(path: Path, name: str) -> ModuleType:
-    spec = importlib.util.spec_from_file_location(name, path)
-    if spec is None or spec.loader is None:
-        reason = "Cannot load renderer module from " + str(path)
-        raise RuntimeError(reason)
-    m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m)
+def load(path, name):
+    s = importlib.util.spec_from_file_location(name, path)
+    m = importlib.util.module_from_spec(s)
+    s.loader.exec_module(m)
     return m
 
 
-def delta(old: ModuleType, new: ModuleType) -> None:
+def delta(old, new):
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         before = old.render(123, home, vps).splitlines()
         after = new.render(123, home, vps).splitlines()
@@ -45,7 +41,7 @@ def delta(old: ModuleType, new: ModuleType) -> None:
         )
 
 
-def main() -> None:
+def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

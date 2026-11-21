@@ -1,5 +1,4 @@
 import argparse
-from collections.abc import Mapping, Sequence
 import importlib.util
 from pathlib import Path
 import stat
@@ -32,7 +31,7 @@ class RoleConfigTests(unittest.TestCase):
             check=False,
         )
 
-    def write(self, value: Mapping[str, object] | Sequence[object]) -> None:
+    def write(self, value):
         self.path.write_text(yaml.safe_dump(value))
         self.path.chmod(0o600)
 

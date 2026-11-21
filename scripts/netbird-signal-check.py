@@ -13,29 +13,24 @@ import json
 import os
 import threading
 import time
-from collections.abc import Iterator
-from types import ModuleType
 
 HOST = "netbird.socrat.alchemmist.xyz"
 ENTRANCES = ("109.173.40.247", "109.120.141.60")
 
 
-def probe(
-    address: str, timeout: float = 6, grpc_module: ModuleType | None = None
-) -> dict[str, object]:
+def probe(address, timeout=6, grpc_module=None):
     if address not in ENTRANCES or not 1 <= timeout <= 10:
         raise ValueError("approved entrance and bounded timeout required")
     if grpc_module is None:
-        import grpc as default_grpc
-
-        grpc_module = default_grpc
+        import grpc as grpc_module
     grpc = grpc_module
     stop = threading.Event()
 
-    def requests() -> Iterator[bytes]:
+    def requests():
         # Keep the request side open WITHOUT yielding a message; do not half-close.
         stop.wait(timeout + 1)
-        yield from ()
+        return
+        yield b""
 
     channel = grpc.secure_channel(
         address + ":443",
@@ -72,14 +67,14 @@ def probe(
         channel.close()
 
 
-def main() -> int:
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--entrance", action="append", choices=ENTRANCES)
     parser.add_argument("--timeout", type=int, choices=range(1, 11), default=6)
     args = parser.parse_args()
     results = [probe(address, args.timeout) for address in (args.entrance or ENTRANCES)]
     print(json.dumps({"signal_streams": results}))
-    return 0 if all(bool(r["registered_header"]) for r in results) else 1
+    return 0 if all(r["registered_header"] for r in results) else 1
 
 
 if __name__ == "__main__":

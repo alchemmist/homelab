@@ -25,12 +25,12 @@ class FakeEtcd:
     def members(self):
         return self.data.copy()
 
-    def health(self, name: str) -> None:
+    def health(self, name):
         self.checked.append(name)
         if name == self.unhealthy:
             raise RuntimeError("Unhealthy endpoint")
 
-    def status(self, name: str):
+    def status(self, name):
         return {"header": {"member_id": 999 if self.mismatch else self.data[name]["id"]}}
 
 

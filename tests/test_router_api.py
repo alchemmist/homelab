@@ -17,13 +17,7 @@ ROUTER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(ROUTER)
 
 
-def forward(
-    address: str,
-    local_port: int | str,
-    external_port: int | str,
-    protocol: str,
-    comment: str,
-):
+def forward(address, local_port, external_port, protocol, comment):
     return dict(
         zip(
             ROUTER.FIELDS,
@@ -56,17 +50,13 @@ def existing_forwards():
 
 
 class SimulatedRouter(ROUTER.Router):
-    def __init__(
-        self,
-        rows: list[dict[str, str]] | None = None,
-        fail_add_port: str | None = None,
-    ):
+    def __init__(self, rows=None, fail_add_port=None):
         self.rows = copy.deepcopy(existing_forwards() if rows is None else rows)
-        self.mutations: list[dict[str, str]] = []
+        self.mutations = []
         self.fail_add_port = fail_add_port
         self.failed = False
 
-    def request(self, path: str, data: dict[str, str] | None = None):
+    def request(self, path, data=None):
         if data is None:
             if path != "/portfw.htm":
                 raise AssertionError(path)
@@ -114,7 +104,7 @@ class SimulatedRouter(ROUTER.Router):
 
 
 class RouterApiTests(unittest.TestCase):
-    def run_main(self, router: SimulatedRouter, *arguments: str):
+    def run_main(self, router, *arguments):
         output = io.StringIO()
         with (
             patch.object(ROUTER, "Router", return_value=router),
@@ -126,7 +116,7 @@ class RouterApiTests(unittest.TestCase):
             ROUTER.main()
         return json.loads(output.getvalue())
 
-    def apply(self, router: SimulatedRouter):
+    def apply(self, router):
         return self.run_main(
             router, "--apply", "--expected-old", "192.168.0.23", "--destination", "192.168.0.250"
         )
@@ -205,7 +195,7 @@ class RouterApiTests(unittest.TestCase):
         request = router.request
         lost = False
 
-        def lose_delete_response(path: str, data: dict[str, str] | None = None):
+        def lose_delete_response(path, data=None):
             nonlocal lost
             response = request(path, data)
             if data and "deleteSelPortFw" in data and not lost:
@@ -225,7 +215,7 @@ class RouterApiTests(unittest.TestCase):
         request = router.request
         lost = False
 
-        def lose_add_response(path: str, data: dict[str, str] | None = None):
+        def lose_add_response(path, data=None):
             nonlocal lost
             response = request(path, data)
             if data and data.get("addPortFwFlag") == "1" and not lost:
@@ -245,7 +235,7 @@ class RouterApiTests(unittest.TestCase):
         router = SimulatedRouter()
         request = router.request
 
-        def concurrent_change_after_delete(path: str, data: dict[str, str] | None = None):
+        def concurrent_change_after_delete(path, data=None):
             response = request(path, data)
             if data and "deleteSelPortFw" in data:
                 router.rows.append(forward("192.168.0.50", 9000, 9000, "TCP", "concurrent"))

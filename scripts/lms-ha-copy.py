@@ -8,13 +8,12 @@ import json
 from pathlib import Path
 import subprocess
 import shlex
-from collections.abc import Mapping
 from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def kube(*args, document: Mapping[str, object] | None = None) -> str:
+def kube(*args, document=None):
     r = subprocess.run(
         ["ssh", "-o", "BatchMode=yes", "socrat-0", shlex.join(["kubectl", *args])],
         input=json.dumps(document) if document else None,
@@ -27,7 +26,7 @@ def kube(*args, document: Mapping[str, object] | None = None) -> str:
     return r.stdout
 
 
-def run(args: argparse.Namespace):
+def run(args):
     secret = json.loads(kube("-n", "lms", "get", "secret", "lms-db", "-o", "json"))
     try:
         host = urlsplit(

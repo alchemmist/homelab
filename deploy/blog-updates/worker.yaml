@@ -26,8 +26,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: worker
-          image: >-
-            python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
+          image: python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
           command: [python, -B, /app/scripts/blog_updates/server.py]
           envFrom:
             - secretRef:

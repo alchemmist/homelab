@@ -15,7 +15,7 @@ FILES = {
 }
 
 
-def read_private(path: Path):
+def read_private(path):
     # O_NOFOLLOW + fstat avoids a symlink/permission race for the secret file.
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     with os.fdopen(fd) as stream:

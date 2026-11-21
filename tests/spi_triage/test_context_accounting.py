@@ -1,7 +1,6 @@
 """Validated byte-bound contract; fixtures contain no production evidence."""
 
 import copy, json, time, unittest
-from typing import cast
 from unittest.mock import Mock
 import test_triage as f
 from core import Failure, MATCH_SCHEMA, REPORT_SCHEMA
@@ -9,7 +8,7 @@ from integrations import Model
 
 
 class ContextAccountingTests(unittest.TestCase):
-    def test_contract_and_schema_completion(self):
+    def test_contract_and_schema_completion(self) -> None:
         m = Model(Mock(), "unused")
         b = m.payload("x", {"text": 'é😀"\\\n' * 100}, MATCH_SCHEMA)
         n = m.reservation(b)
@@ -28,7 +27,7 @@ class ContextAccountingTests(unittest.TestCase):
             self.assertEqual(e.exception.code, "LLM_ACCOUNTING_CONTRACT_MISMATCH")
         m.http.request.assert_not_called()
 
-    def test_excerpts_identity_reference_metadata_and_no_mutation(self):
+    def test_excerpts_identity_reference_metadata_and_no_mutation(self) -> None:
         x = {
             "candidates": [{"number": n, "body": "😀" * 8000} for n in range(120)],
             "index": [{"id": "E001", "path": "original/reference", "excerpt": "x" * 40000}],
@@ -47,28 +46,23 @@ class ContextAccountingTests(unittest.TestCase):
             self.assertTrue(c["body"]["truncated"])
             self.assertGreater(c["body"]["unreviewed_bytes"], 0)
 
-    def test_matching_event_bounded_and_all_identities(self):
+    def test_matching_event_bounded_and_all_identities(self) -> None:
         m = Model(Mock(), "unused")
         event = f.event()
         event["description"] = "x" * 1000000
         seen = []
 
-        def call(
-            task: str, data: dict[str, object], schema: object, deadline: float
-        ) -> dict[str, object]:
+        def call(task, data, schema, deadline):
             self.assertLessEqual(m.reservation(m.payload(task, data, schema)), 30000)
-            alert = cast("dict[str, object]", data["alert"])
-            description = cast("dict[str, object]", alert["description"])
-            self.assertTrue(description["truncated"])
-            issues = cast("list[dict[str, object]]", data["open_issues"])
-            seen.extend(cast("int", x["number"]) for x in issues)
+            self.assertTrue(data["alert"]["description"]["truncated"])
+            seen.extend(x["number"] for x in data["open_issues"])
             return {"issue_number": 0, "reason": "No same problem.", "confidence": "low"}
 
         m.call = call
         m.match(event, [{"number": i, "body": "x" * 6000} for i in range(120)])
         self.assertEqual(seen, list(range(120)))
 
-    def test_large_analysis_preserves_candidates_and_artifact_index(self):
+    def test_large_analysis_preserves_candidates_and_artifact_index(self) -> None:
         m = Model(Mock(), "unused")
         event = f.event()
         event["description"] = "x" * 80000
@@ -91,7 +85,7 @@ class ContextAccountingTests(unittest.TestCase):
         class Stop(Exception):
             pass
 
-        def call(task: str, data: dict[str, object], schema: object, deadline: float) -> None:
+        def call(task, data, schema, deadline):
             captured.update(data)
             self.assertLessEqual(m.budget_reservation(m.payload(task, data, schema)), 30000)
             raise Stop()
@@ -100,25 +94,14 @@ class ContextAccountingTests(unittest.TestCase):
         with self.assertRaises(Stop):
             m.analyze(event, match, evidence)
         self.assertEqual((event, match, evidence), original)
-        preliminary = cast("dict[str, object]", captured["preliminary_match"])
         self.assertEqual(
-            [x["number"] for x in cast("list[dict[str, object]]", preliminary["candidates"])],
-            [0, 1, 2],
+            [x["number"] for x in captured["preliminary_match"]["candidates"]], [0, 1, 2]
         )
-        self.assertEqual(preliminary["reviewed_numbers"], list(range(120)))
-        evidence_captured = cast("dict[str, object]", captured["evidence"])
-        context = cast("dict[str, object]", evidence_captured["artifact_context"])
-        index = cast("list[dict[str, object]]", context["index"])
-        self.assertEqual(index[0]["id"], "E001")
-        alert_captured = cast("dict[str, object]", captured["alert"])
-        self.assertTrue(
-            cast(
-                "dict[str, object]",
-                cast("dict[str, object]", alert_captured["description"])["truncated"],
-            )
-        )
+        self.assertEqual(captured["preliminary_match"]["reviewed_numbers"], list(range(120)))
+        self.assertEqual(captured["evidence"]["artifact_context"]["index"][0]["id"], "E001")
+        self.assertTrue(captured["alert"]["description"]["truncated"])
 
-    def test_irreducible_metadata_visible_without_transport(self):
+    def test_irreducible_metadata_visible_without_transport(self) -> None:
         m = Model(Mock(), "unused")
         event = f.event()
         event["path"] = ["x" * 120000] * 5
@@ -127,7 +110,7 @@ class ContextAccountingTests(unittest.TestCase):
         self.assertEqual(e.exception.code, "LLM_CONTEXT_METADATA_TOO_LARGE")
         m.http.request.assert_not_called()
 
-    def test_local_120_long_report_analysis(self):
+    def test_local_120_long_report_analysis(self) -> None:
         if __import__("os").environ.get("SPI_TOKEN_ACCOUNTING_MODE") != "local-qwen-v1":
             return
         m = Model(Mock(), "unused")
@@ -149,7 +132,7 @@ class ContextAccountingTests(unittest.TestCase):
         class Stop(Exception):
             pass
 
-        def call(task: str, data: dict[str, object], schema: object, deadline: float) -> None:
+        def call(task, data, schema, deadline):
             captured.update(data)
             self.assertLessEqual(m.counter.reservation(m.payload(task, data, schema)), 30000)
             raise Stop()
@@ -158,11 +141,7 @@ class ContextAccountingTests(unittest.TestCase):
         with self.assertRaises(Stop):
             m.analyze(f.event(), match, evidence)
         self.assertEqual((match, evidence), original)
-        preliminary = cast("dict[str, object]", captured["preliminary_match"])
         self.assertEqual(
-            [c["number"] for c in cast("list[dict[str, object]]", preliminary["candidates"])],
-            list(range(120)),
+            [c["number"] for c in captured["preliminary_match"]["candidates"]], list(range(120))
         )
-        evidence_captured = cast("dict[str, object]", captured["evidence"])
-        context = cast("dict[str, object]", evidence_captured["artifact_context"])
-        self.assertEqual(cast("list[dict[str, object]]", context["index"])[0]["id"], "E001")
+        self.assertEqual(captured["evidence"]["artifact_context"]["index"][0]["id"], "E001")

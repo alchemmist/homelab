@@ -41,7 +41,7 @@ spec:
                 matchExpressions:
                   - key: kubernetes.io/hostname
                     operator: In
-                    values: [socrat-1]
+                    values: [socrat-0]
 {{- else }}
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.node | quote }}

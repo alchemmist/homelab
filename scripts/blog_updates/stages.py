@@ -3,45 +3,13 @@
 import json
 import os
 import urllib.request
-from collections.abc import Callable
 from pathlib import Path
-from typing import Protocol, TypedDict, cast
 
 from engine import UnsafeInput, prepare, render, validate_decision, validate_event
 from github import GitHub
 
 
-class _PushEvent(TypedDict, total=False):
-    before: str
-    after: str
-
-
-class _DecisionContext(TypedDict):
-    files: list[dict[str, str]]
-
-
-class _CommitDetails(TypedDict, total=False):
-    committer: dict[str, str]
-
-
-class _Commit(TypedDict):
-    sha: str
-    commit: _CommitDetails
-
-
-class _Compare(TypedDict):
-    commits: list[_Commit]
-
-
-class _GitHub(Protocol):
-    def compare(self, before: str, after: str) -> _Compare: ...
-
-    def read_updates(self, ref: str) -> tuple[str, str]: ...
-
-    def propose(self, after: str, content: str, reason: str) -> object: ...
-
-
-def context_for(event: _PushEvent, github: _GitHub):
+def context_for(event, github):
     if not validate_event(event):
         return None
     comparison = github.compare(event["before"], event["after"])
@@ -50,7 +18,7 @@ def context_for(event: _PushEvent, github: _GitHub):
     return (context, comparison, updates) if context else None
 
 
-def model(system: str, data: object):
+def model(system, data):
     req = urllib.request.Request(
         "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
         data=json.dumps(
@@ -107,12 +75,7 @@ def model(system: str, data: object):
         return json.loads(json.load(r)["choices"][0]["message"]["content"])
 
 
-def checked_model(
-    call_model: Callable[[str, object], object],
-    prompt: str,
-    data: object,
-    context: _DecisionContext,
-):
+def checked_model(call_model, prompt, data, context):
     for attempt in range(2):
         try:
             return validate_decision(call_model(prompt, data), context)
@@ -122,17 +85,10 @@ def checked_model(
             prompt += "\nPrevious response failed validation. Return only the exact JSON schema, plain text without URLs or Markdown, and supplied changed file paths."
 
 
-def stage(
-    name: str,
-    payload: dict[str, object],
-    github: _GitHub | None = None,
-    call_model: Callable[[str, object], object] | None = None,
-    *,
-    write: bool = False,
-):
+def stage(name, payload, github=None, call_model=None, write=False):
     github = github or GitHub(os.environ["GITHUB_TOKEN"])
     call_model = call_model or model
-    event = cast("_PushEvent", payload if name == "validate" else payload["event"])
+    event = payload if name == "validate" else payload["event"]
     snapshot = context_for(event, github)
     if snapshot is None:
         return []

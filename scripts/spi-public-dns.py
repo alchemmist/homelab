@@ -10,18 +10,22 @@ import os
 import subprocess
 import types
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import types
 
 CURRENT = Path("/usr/local/libexec/public_dns_zone.py")
 ROOT = Path("/var/lib/homelab-spi-public-dns")
 
 
-def require(message: str, *, ok: bool):
+def require(ok, message) -> None:
     if not ok:
         raise RuntimeError(message)
 
 
-def load(path: Path, name: str):
-    require("Unsafe renderer", ok=path.is_file() and not path.is_symlink())
+def load(path, name) -> "types.ModuleType":
+    require(path.is_file() and not path.is_symlink(), "Unsafe renderer")
     try:
         spec = importlib.util.spec_from_file_location(name, path)
         require("Invalid renderer module", ok=spec is not None and spec.loader is not None)
@@ -32,7 +36,7 @@ def load(path: Path, name: str):
         raise RuntimeError("Invalid DNS renderer: " + path.name) from None
 
 
-def stage_renderer(path: Path, content: bytes):
+def stage_renderer(path, content) -> None:
     """Create a new inode exclusively; never follow/overwrite an existing path."""
     try:
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -45,7 +49,7 @@ def stage_renderer(path: Path, content: bytes):
         os.fsync(stream.fileno())
 
 
-def delta(old: types.ModuleType, new: types.ModuleType):
+def delta(old, new) -> None:
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         before = old.render(123, home_up=home, vps_up=vps).splitlines()
         after = new.render(123, home_up=home, vps_up=vps).splitlines()
@@ -61,7 +65,7 @@ def delta(old: types.ModuleType, new: types.ModuleType):
         )
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

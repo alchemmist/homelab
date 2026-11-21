@@ -3,31 +3,12 @@
 import argparse
 import json
 import subprocess
-from typing import TypedDict
 
 POLICY = 'socrat-container-resource-defaults'
 PATTERNS = (r'^local\-path\-provisioner-[a-z0-9]+$', r'^metrics\-server-[a-z0-9]+$')
 
 
-class _Variable(TypedDict):
-    name: str
-    expression: str
-
-
-class _Spec(TypedDict):
-    variables: list[_Variable]
-
-
-class _Metadata(TypedDict):
-    resourceVersion: str
-
-
-class _Admission(TypedDict):
-    spec: _Spec
-    metadata: _Metadata
-
-
-def patch_for(obj: _Admission) -> list[dict[str, str]]:
+def patch_for(obj):
     variables = obj['spec']['variables']
     idx, = [i for i, v in enumerate(variables) if v['name'] == 'profiles']
     old = variables[idx]['expression']

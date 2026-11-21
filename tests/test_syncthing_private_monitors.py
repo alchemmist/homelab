@@ -47,7 +47,7 @@ class SyncthingMonitorMigrationTests(unittest.TestCase):
         connection.close()
         self.plan = [{"name": "Syncthing sync-0", "url": "http://10.250.0.1:18444/healthz"}]
 
-    def read_rows(self, database: Path | None = None):
+    def read_rows(self, database=None):
         connection = sqlite3.connect(database or self.database)
         rows = connection.execute("SELECT * FROM monitor ORDER BY id").fetchall()
         connection.close()

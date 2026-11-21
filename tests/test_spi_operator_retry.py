@@ -137,7 +137,7 @@ class RetryTests(unittest.TestCase):
         with sqlite3.connect(self.path) as c:
             return list(c.iterdump())
 
-    def mutate(self, sql: str, args: tuple[object, ...] = ()):
+    def mutate(self, sql, args=()):
         with sqlite3.connect(self.path) as c:
             c.execute(sql, args)
 

@@ -9,31 +9,29 @@ import json
 import os
 import subprocess
 from pathlib import Path
-from types import ModuleType
 
 CURRENT = Path("/usr/local/libexec/public_dns_zone.py")
 ROOT = Path("/var/lib/homelab-openhands-public-dns")
 
 
-def require(ok: object, message: str) -> None:
+def require(ok, message):
     if not ok:
         raise RuntimeError(message)
 
 
-def load(path: Path, name: str) -> ModuleType:
+def load(path, name):
     require(path.is_file() and not path.is_symlink(), "Unsafe renderer")
     try:
         spec = importlib.util.spec_from_file_location(name, path)
-        if spec is None or spec.loader is None:
-            raise RuntimeError("Invalid renderer module")
-        loader = spec.loader
+        require(spec is not None and spec.loader is not None, "Invalid renderer module")
         module = importlib.util.module_from_spec(spec)
-        loader.exec_module(module)
+        spec.loader.exec_module(module)
         return module
     except Exception:  # Contain renderer import errors before any DNS write.
         raise RuntimeError("Invalid DNS renderer: " + path.name) from None
 
-def stage_renderer(path: Path, content: bytes) -> None:
+
+def stage_renderer(path, content):
     """Create a new inode exclusively; never follow/overwrite an existing path."""
     try:
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -46,10 +44,10 @@ def stage_renderer(path: Path, content: bytes) -> None:
         os.fsync(stream.fileno())
 
 
-def delta(old: ModuleType, new: ModuleType) -> None:
+def delta(old, new):
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
-        before = old.render(123, home_up=home, vps_up=vps).splitlines()
-        after = new.render(123, home_up=home, vps_up=vps).splitlines()
+        before = old.render(123, home, vps).splitlines()
+        after = new.render(123, home, vps).splitlines()
         require(
             [x for x in after if not x.startswith("openhands.socrat IN A ")]
             == [x for x in before if not x.startswith("openhands.socrat IN A ")],
@@ -57,10 +55,7 @@ def delta(old: ModuleType, new: ModuleType) -> None:
         )
         require(
             [x for x in after if x.startswith("openhands.socrat IN A ")]
-            == [
-                "openhands.socrat IN A " + a
-                for a in old.healthy_addresses(home_up=home, vps_up=vps)
-            ],
+            == ["openhands.socrat IN A " + a for a in old.healthy_addresses(home, vps)],
             "Wrong new record",
         )
 
@@ -130,7 +125,7 @@ def main():
             )
             require(
                 "A" in result.split()
-                and any(ip in result.split() for ip in newmod.healthy_addresses(home_up=True, vps_up=True)),
+                and any(ip in result.split() for ip in newmod.healthy_addresses(True, True)),
                 "New authoritative record not confirmed",
             )
             (ROOT / "after.json").write_text(

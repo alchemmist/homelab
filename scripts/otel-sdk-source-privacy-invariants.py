@@ -1,50 +1,9 @@
 """Pinned-runtime SDK guard invariants; synthetic in-memory data only."""
 
 import math
-from collections.abc import Mapping, Sequence
-from typing import Protocol, cast
 
 
-class _StatusView(Protocol):
-    status_code: object
-    description: object
-
-
-class _ResourceView(Protocol):
-    attributes: Mapping[str, object]
-    schema_url: object
-
-
-class _LinkView(Protocol):
-    context: object
-
-
-class _EventView(Protocol):
-    timestamp: int
-
-
-class _SpanView(Protocol):
-    context: object
-    parent: object
-    start_time: object
-    end_time: object
-    name: object
-    kind: object
-    status: _StatusView
-    attributes: Mapping[str, object]
-    instrumentation_scope: object
-    resource: _ResourceView
-    links: Sequence[_LinkView]
-    events: Sequence[_EventView]
-
-    def to_json(self) -> str: ...
-
-
-class _Guard(Protocol):
-    def redact_span(self, span: object) -> _SpanView: ...
-
-
-def check(guard: _Guard):
+def check(guard):
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import Event, ReadableSpan
     from opentelemetry.sdk.util.instrumentation import InstrumentationScope
@@ -102,11 +61,8 @@ def check(guard: _Guard):
         "ordinaryAttributesPreserved": redacted.attributes["normal"] == "kept"
         and redacted.attributes["zero"] == 0
         and redacted.attributes["false"] is False,
-        "specialFloatValuesPreserved": math.copysign(
-            1, cast("float", redacted.attributes["negative_zero"])
-        )
-        == -1
-        and math.isnan(cast("float", redacted.attributes["nan"])),
+        "specialFloatValuesPreserved": math.copysign(1, redacted.attributes["negative_zero"]) == -1
+        and math.isnan(redacted.attributes["nan"]),
         "scopeAndResourceIdentityPreserved": redacted.instrumentation_scope is scope
         and redacted.resource.attributes["service.name"]
         == original.resource.attributes["service.name"]

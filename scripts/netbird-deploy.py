@@ -10,9 +10,7 @@ import importlib.util
 import json
 import subprocess
 import sys
-from collections.abc import Mapping
 from pathlib import Path
-from typing import TypedDict
 
 import yaml
 
@@ -31,59 +29,11 @@ FORBIDDEN_KINDS = {
 }
 
 
-class _Candidate(TypedDict, total=False):
-    value: str
-    approved: bool
-    dns_tls_verified: bool
-    verified: bool
-    configured: bool
-    groups_claim_verified: bool
-    reason: str
-    deployable: bool
-
-
-class _Routers(TypedDict, total=False):
-    required: int
-    ha: bool
-    ssh_routing_peer: str
-    socrat_2_is_router: bool
-    grafana_route_ha: bool
-    placement_resolved: bool
-    mode: str
-    existing_node_router_mode_reviewed: bool
-    new_machines_approved: bool
-
-
-class _Candidates(TypedDict):
-    management_fqdn: _Candidate
-    authentik_oidc: _Candidate
-    ingress_class: _Candidate
-    storage_class: _Candidate
-    resources: dict[str, _Candidate]
-    pilot_users: list[str]
-    routers: _Routers
-
-
-class _ChartCrd(TypedDict):
-    namespaces: list[str]
-    labelSelector: str
-
-
-class _Chart(TypedDict):
-    watchNamespaces: list[str]
-    kubernetesCRD: _ChartCrd
-
-
-class _Manifest(TypedDict, total=False):
-    kind: str
-    metadata: dict[str, object]
-
-
-def load_json(path: Path | str):
+def load_json(path):
     return json.loads(Path(path).read_text())
 
 
-def assert_candidates(candidates: _Candidates):
+def assert_candidates(candidates):
     """Repo candidate marks are not approval. verified must stay false."""
     nb.require(
         candidates["management_fqdn"]["value"] == "netbird.socrat.alchemmist.xyz",
@@ -138,7 +88,7 @@ def assert_candidates(candidates: _Candidates):
     nb.require(routers["new_machines_approved"] is False, "new machines were not approved")
 
 
-def scope_matches_chart(chart: _Chart, delta: Mapping[str, object]):
+def scope_matches_chart(chart, delta):
     watched = list(chart["watchNamespaces"])
     crd = chart["kubernetesCRD"]["namespaces"]
     return {
@@ -153,13 +103,7 @@ def scope_matches_chart(chart: _Chart, delta: Mapping[str, object]):
     }
 
 
-def report(
-    inputs: object,
-    candidates: _Candidates,
-    audit: Mapping[str, object],
-    chart: _Chart,
-    delta: Mapping[str, object],
-):
+def report(inputs, candidates, audit, chart, delta):
     """Internal bootstrap and edge publication are separate gates.
 
     UDP 3478 not listening is the preexisting state. Requiring it before apply is
@@ -238,14 +182,12 @@ def report(
     }
 
 
-def assert_safe_manifests(
-    docs: list[_Manifest], publication: str = "internal"
-):
+def assert_safe_manifests(docs, publication="internal"):
     """Internal publication has no Service, Ingress, or NodePort. Edge may add them."""
     nb.require(publication in ("internal", "edge"), "publication invalid")
-    namespaces: set[object] = set()
-    runtime_refs: list[object] = []
-    kinds: set[object] = set()
+    namespaces = set()
+    runtime_refs = []
+    kinds = set()
     for doc in docs:
         kind = doc.get("kind")
         kinds.add(kind)
@@ -286,7 +228,7 @@ def assert_safe_manifests(
     nb.require(runtime_refs == [nb.NS], "runtime secret reference must stay in netbird-pilot")
 
 
-def plan_document(manifest: Path):
+def plan_document(manifest):
     return {
         "manifest": manifest.name,
         "argo_sync": False,
@@ -311,9 +253,7 @@ def plan_document(manifest: Path):
     }
 
 
-def render_publication(
-    inputs: object, out: Path, stage: str, audit: Mapping[str, object]
-):
+def render_publication(inputs, out, stage, audit):
     if stage == "internal":
         nb.render_control_plane(
             inputs, out, nb.port_forward_sources(audit.get("port_forward_cidrs"))
@@ -325,7 +265,7 @@ def render_publication(
         yaml.safe_dump_all(nb.manifests(inputs, "edge"), handle, sort_keys=False)
 
 
-def apply_argv(manifest: Path, context: str, publication: str = "internal") -> list[str]:
+def apply_argv(manifest, context, publication="internal"):
     nb.require(
         nb.text(context) and context not in {"", "current", "default"},
         "explicit kubectl context required",

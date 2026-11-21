@@ -5,7 +5,6 @@ from __future__ import annotations
 import datetime as dt
 import json
 import re
-from typing import NotRequired, TypedDict
 
 REPO = "alchemmist/blog"
 UPDATES = "site/content/updates.md"
@@ -18,65 +17,20 @@ class UnsafeInput(ValueError):
     pass
 
 
-class _PushRepository(TypedDict, total=False):
-    full_name: str
-
-
-class _PushEvent(TypedDict, total=False):
-    repository: _PushRepository
-    ref: str
-    deleted: bool
-    before: str
-    after: str
-
-
-class _CompareFile(TypedDict):
-    filename: str
-    status: NotRequired[str]
-    changes: NotRequired[int]
-    patch: NotRequired[str]
-    previous_filename: NotRequired[str]
-    additions: NotRequired[int]
-    deletions: NotRequired[int]
-
-
-class _CommitDetails(TypedDict, total=False):
-    message: str
-    committer: dict[str, str]
-
-
-class _CompareCommit(TypedDict):
-    sha: str
-    commit: NotRequired[_CommitDetails]
-
-
-class _ComparePayload(TypedDict, total=False):
-    files: list[_CompareFile]
-    commits: list[_CompareCommit]
-
-
-class _DecisionFile(TypedDict):
-    filename: str
-
-
-class _DecisionContext(TypedDict):
-    files: list[_DecisionFile]
-
-
-def validate_event(event: _PushEvent) -> bool:
+def validate_event(event):
     if event.get("repository", {}).get("full_name") != REPO:
         raise UnsafeInput("Unexpected repository")
     if event.get("ref") != "refs/heads/main" or event.get("deleted"):
         return False
-    for sha in (event.get("before", ""), event.get("after", "")):
-        if not re.fullmatch(r"[0-9a-f]{40}", sha):
+    for key in ("before", "after"):
+        if not re.fullmatch(r"[0-9a-f]{40}", event.get(key, "")):
             raise UnsafeInput("Invalid commit SHA")
-        if sha == "0" * 40:
+        if event[key] == "0" * 40:
             raise UnsafeInput("Branch creation/deletion needs manual review")
     return True
 
 
-def prepare(compare: _ComparePayload, updates: str):
+def prepare(compare, updates):
     files = compare.get("files", [])
     if not files or len(files) > MAX_FILES:
         raise UnsafeInput("Missing or oversized file list; do not silently truncate")
@@ -88,7 +42,7 @@ def prepare(compare: _ComparePayload, updates: str):
     ]
     if not relevant:
         return None
-    candidates: list[dict[str, object]] = []
+    candidates = []
     for f in relevant:
         name = f["filename"]
         if f.get("status") in ("removed", "renamed"):
@@ -102,18 +56,20 @@ def prepare(compare: _ComparePayload, updates: str):
         if binary_asset:
             candidates.append({"filename": name, "status": f.get("status"), "binary_asset": True})
             continue
-        selected: dict[str, object] = {}
-        for field in (
-            "filename",
-            "previous_filename",
-            "status",
-            "additions",
-            "deletions",
-            "patch",
-        ):
-            if field in f:
-                selected[field] = f[field]
-        candidates.append(selected)
+        candidates.append(
+            {
+                k: f[k]
+                for k in (
+                    "filename",
+                    "previous_filename",
+                    "status",
+                    "additions",
+                    "deletions",
+                    "patch",
+                )
+                if k in f
+            }
+        )
     context = {
         "files": candidates,
         "recent_updates": updates,
@@ -127,7 +83,7 @@ def prepare(compare: _ComparePayload, updates: str):
     return context
 
 
-def validate_decision(raw: object, context: _DecisionContext):
+def validate_decision(raw, context):
     """Model chooses a description, never a path to write or arbitrary Markdown."""
     if not isinstance(raw, dict) or set(raw) != {"should_update", "reason", "entries"}:
         raise UnsafeInput("Unexpected model schema")
@@ -158,7 +114,7 @@ def validate_decision(raw: object, context: _DecisionContext):
     return raw
 
 
-def render(updates: str, entries: list[dict[str, str]], timestamp: str):
+def render(updates, entries, timestamp):
     if not updates.startswith("---\n"):
         raise UnsafeInput("Missing front matter")
     end = updates.find("\n---\n", 4)

@@ -2,37 +2,84 @@ import json
 import sys
 import unittest
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TypedDict
 from unittest.mock import Mock, patch
-
-if TYPE_CHECKING:
-    from _typeshed import Incomplete
-from urllib.parse import urlsplit, parse_qs
+from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "charts/spi-triage/files"))
+from core import Failure, digest
 from evidence_bundle import (
-    redact,
-    prepare_bundle,
-    publish_parts,
+    PART_SIZE,
     index_markdown,
     index_marker,
-    PART_SIZE,
+    prepare_bundle,
+    publish_parts,
+    redact,
 )
 from provenance import DeploymentCollector
 from telemetry import TelemetryCollector, absolute_window, grafana_explore_url
-from core import digest, Failure
 from test_triage import event
 
 
+class BundleArtifact(TypedDict):
+    """Manifest entry describing one bundled artifact."""
+
+    sha256: str
+    truncated: bool
+
+
+class BundleManifest(TypedDict):
+    """Manifest listing the artifacts and links of a bundle."""
+
+    artifacts: list[BundleArtifact]
+    links: list[dict[str, str]]
+
+
+class BundlePart(TypedDict):
+    """Source excerpt staged into the diagnostic bundle."""
+
+    id: str
+    text: str
+    marker: str
+
+
+class Bundle(TypedDict):
+    """Diagnostic bundle: manifest plus excerpt parts."""
+
+    manifest: BundleManifest
+    parts: list[BundlePart]
+
+
+class TelemetryArtifact(TypedDict):
+    """Telemetry record for one collected artifact."""
+
+    name: str
+
+
+class TelemetryGap(TypedDict):
+    """Reason a telemetry artifact could not be collected."""
+
+    reason: str
+
+
+class TelemetryResult(TypedDict):
+    """Telemetry collection result with artifacts, links and gaps."""
+
+    artifacts: list[TelemetryArtifact]
+    links: list[dict[str, object]]
+    missing: list[TelemetryGap]
+
+
 class ArtifactTests(unittest.TestCase):
-    def bundle(self, text="diagnostic"):
-        return prepare_bundle(
+    def bundle(self, text: str = "diagnostic") -> Bundle:
+        result: Bundle = prepare_bundle(
             event(),
             {"window": {"start": 1, "end": 2}},
             [{"name": "logs.json", "content": text, "source": {"query": "test"}}],
         )
+        return result
 
-    def test_recursive_redaction_keeps_topology(self):
+    def test_recursive_redaction_keeps_topology(self) -> None:
         raw = {
             "password": "very confidential",
             "token": "abcdef",
@@ -49,26 +96,26 @@ class ArtifactTests(unittest.TestCase):
         self.assertIn("socrat-1", value)
         self.assertNotIn("BEGIN RSA", value)
 
-    def test_known_exact_secret(self):
+    def test_known_exact_secret(self) -> None:
         self.assertEqual(redact("a super-secret-value b", ["super-secret-value"]), "a [REDACTED] b")
 
-    def test_deterministic_and_manifest(self):
+    def test_deterministic_and_manifest(self) -> None:
         a = self.bundle()
         self.assertEqual(a, self.bundle())
         self.assertIn("sha256", a["manifest"]["artifacts"][0])
         self.assertEqual(a["parts"][0]["id"], "MANIFEST")
 
-    def test_explicit_truncation_and_parts(self):
+    def test_explicit_truncation_and_parts(self) -> None:
         b = self.bundle("x" * 100000)
         self.assertTrue(b["manifest"]["artifacts"][0]["truncated"])
         self.assertTrue(all(len(x["text"]) <= PART_SIZE for x in b["parts"]))
 
-    def test_no_arbitrary_links(self):
+    def test_no_arbitrary_links(self) -> None:
         b = self.bundle()
         b["manifest"]["links"] = [{"title": "evil", "url": "https://evil.example"}]
         self.assertNotIn("evil", index_markdown(b))
 
-    def test_idempotent_parts(self):
+    def test_idempotent_parts(self) -> None:
         g = Mock()
         g.comments.return_value = []
         g.request.return_value = {"html_url": "https://github.com/a/b/issues/1#issuecomment-1"}
@@ -80,7 +127,7 @@ class ArtifactTests(unittest.TestCase):
         publish_parts(g, 9, b, state, save)
         self.assertEqual(g.request.call_count, n)
 
-    def test_lost_response_reconciles(self):
+    def test_lost_response_reconciles(self) -> None:
         g = Mock()
         g.comments.return_value = []
         g.request.side_effect = Failure("UPSTREAM_TIMEOUT")
@@ -104,7 +151,7 @@ class ArtifactTests(unittest.TestCase):
         self.assertTrue(state["index_done"])
         self.assertEqual(g.request.call_count, len(b["parts"]) + 1)
 
-    def test_ambiguous_not_blindly_retried(self):
+    def test_ambiguous_not_blindly_retried(self) -> None:
         g = Mock()
         g.comments.return_value = []
         g.request.side_effect = Failure("HTTP_500")
@@ -117,7 +164,7 @@ class ArtifactTests(unittest.TestCase):
             publish_parts(g, 9, b, state, save)
         self.assertEqual(g.request.call_count, 1)
 
-    def test_index_ambiguous_reconciles(self):
+    def test_index_ambiguous_reconciles(self) -> None:
         b = self.bundle()
         state = {"done": {p["marker"]: "url" for p in b["parts"]}, "index_pending": True}
         g = Mock()
@@ -131,7 +178,7 @@ class ArtifactTests(unittest.TestCase):
         publish_parts(g, 9, b, state, Mock())
         g.request.assert_not_called()
 
-    def test_rate_limit_is_retryable_without_ambiguous_intent(self):
+    def test_rate_limit_is_retryable_without_ambiguous_intent(self) -> None:
         g = Mock()
         g.comments.return_value = []
         g.request.side_effect = Failure("HTTP_429")
@@ -140,7 +187,7 @@ class ArtifactTests(unittest.TestCase):
             publish_parts(g, 9, self.bundle(), progress, Mock())
         self.assertNotIn("pending", progress)
 
-    def test_untrusted_marker_cannot_hide_missing_artifact(self):
+    def test_untrusted_marker_cannot_hide_missing_artifact(self) -> None:
         b = self.bundle()
         g = Mock()
         g.comments.return_value = [{"body": b["parts"][0]["marker"], "user": {"login": "unknown"}}]
@@ -148,7 +195,7 @@ class ArtifactTests(unittest.TestCase):
         publish_parts(g, 9, b, {}, Mock())
         self.assertEqual(g.request.call_count, len(b["parts"]) + 1)
 
-    def test_fence_injection_remains_data(self):
+    def test_fence_injection_remains_data(self) -> None:
         b = self.bundle("```\nmalicious\n````")
         g = Mock()
         g.comments.return_value = []
@@ -159,7 +206,7 @@ class ArtifactTests(unittest.TestCase):
 
 
 class TelemetryTests(unittest.TestCase):
-    def response(self, method: str, url: str, *args: object, **kw: object) -> "Incomplete":
+    def response(self, method: str, url: str, *args: object, **kw: object) -> dict[str, object]:
         if "/api/search?" in url:
             return {"traces": [{"traceID": "a" * 32}]}
         if "/api/traces/" in url:
@@ -196,7 +243,7 @@ class TelemetryTests(unittest.TestCase):
             }
         return {"data": {"result": []}}
 
-    def collect(self, labels=None):
+    def collect(self, labels: dict[str, str] | None = None) -> tuple[Mock, TelemetryResult]:
         h = Mock()
         h.request.side_effect = self.response
         e = event()
@@ -205,18 +252,18 @@ class TelemetryTests(unittest.TestCase):
             r = TelemetryCollector(h, "http://grafana", "fake").collect(e, {})
         return h, r
 
-    def test_log_trace_discovery_and_bounds(self):
+    def test_log_trace_discovery_and_bounds(self) -> None:
         h, r = self.collect({"pod": "test-pod", "service": "test"})
         self.assertTrue(any("tempo-trace" in a["name"] for a in r["artifacts"]))
         self.assertLessEqual(h.request.call_count, 10)
         self.assertTrue(r["links"])
 
-    def test_unsafe_pod_does_not_widen(self):
+    def test_unsafe_pod_does_not_widen(self) -> None:
         h, r = self.collect({"pod": 'bad"} |= "secret'})
         self.assertFalse(any("/query_range?" in x.args[1] for x in h.request.call_args_list))
         self.assertTrue(any(x["reason"] == "UNSAFE_LABEL" for x in r["missing"]))
 
-    def test_links_absolute_decodable(self):
+    def test_links_absolute_decodable(self) -> None:
         url = grafana_explore_url(
             "https://grafana.socrat.alchemmist.xyz", "prometheus", 'up{job="x"}', 10, 20, "expr"
         )
@@ -225,19 +272,19 @@ class TelemetryTests(unittest.TestCase):
         self.assertEqual(pane["range"], {"from": "10000", "to": "20000"})
         self.assertEqual(pane["queries"][0]["expr"], 'up{job="x"}')
 
-    def test_window_capping(self):
+    def test_window_capping(self) -> None:
         w = absolute_window("2026-11-03T00:00:00Z", None, 1793711400)
         self.assertLessEqual(w["end"] - w["start"], 3600)
         self.assertTrue(w["span_capped"])
 
-    def test_failed_source_not_empty_success(self):
+    def test_failed_source_not_empty_success(self) -> None:
         h = Mock()
         h.request.side_effect = Failure("HTTP_403")
         with patch("telemetry.time.time", return_value=1793711400):
             r = TelemetryCollector(h, "http://grafana", "fake").collect(event(), {})
         self.assertTrue(any(x["reason"] == "HTTP_403" for x in r["missing"]))
 
-    def test_trace_exception_events_and_resource_version(self):
+    def test_trace_exception_events_and_resource_version(self) -> None:
         from telemetry import _project_trace
 
         raw = {
@@ -280,7 +327,7 @@ class TelemetryTests(unittest.TestCase):
         self.assertIn("Traceback: real error", json.dumps(value))
         self.assertNotIn("hidden", json.dumps(value))
 
-    def test_no_data_explicit(self):
+    def test_no_data_explicit(self) -> None:
         h = Mock()
         h.request.return_value = {
             "status": "success",
@@ -292,7 +339,7 @@ class TelemetryTests(unittest.TestCase):
 
 
 class ProvenanceTests(unittest.TestCase):
-    def test_project_does_not_export_env_or_secret(self):
+    def test_project_does_not_export_env_or_secret(self) -> None:
         obj = {
             "kind": "Pod",
             "metadata": {"name": "test", "annotations": {"secret": "hidden"}},
@@ -319,7 +366,7 @@ class ProvenanceTests(unittest.TestCase):
         self.assertNotIn("hidden", json.dumps(data))
         self.assertIn("imageID", json.dumps(data))
 
-    def test_owner_chain_and_digest(self):
+    def test_owner_chain_and_digest(self) -> None:
         reader = Mock()
         reader.side_effect = [
             {
@@ -352,7 +399,7 @@ class ProvenanceTests(unittest.TestCase):
         self.assertEqual(reader.call_count, 3)
         self.assertEqual(len(r["artifacts"][0]["content"]["workloads"][0]["owner_chain"]), 2)
 
-    def test_invalid_scope_no_read(self):
+    def test_invalid_scope_no_read(self) -> None:
         reader = Mock()
         e = event()
         e["labels"]["namespace"] = "../secrets"
@@ -360,14 +407,14 @@ class ProvenanceTests(unittest.TestCase):
         reader.assert_not_called()
         self.assertEqual(r["missing"][0]["reason"], "INVALID_WORKLOAD_SCOPE")
 
-    def test_systemd_not_exporter_pod(self):
+    def test_systemd_not_exporter_pod(self) -> None:
         reader = Mock()
         e = event()
         e["labels"]["name"] = "otel.service"
         DeploymentCollector(reader=reader).collect(e)
         reader.assert_not_called()
 
-    def test_immutable_gitops_digest_mapping(self):
+    def test_immutable_gitops_digest_mapping(self) -> None:
         import base64
 
         digest = "sha256:" + "b" * 64
@@ -402,7 +449,7 @@ class ProvenanceTests(unittest.TestCase):
         self.assertFalse(r["content"]["source_equivalence_proven"])
         self.assertIn(ref, r["content"]["release_manifest_url"])
 
-    def test_different_digest_cannot_claim_main_is_deployed(self):
+    def test_different_digest_cannot_claim_main_is_deployed(self) -> None:
         import base64
 
         text = (
@@ -429,7 +476,7 @@ class ProvenanceTests(unittest.TestCase):
         self.assertIsNone(r)
         h.request.assert_not_called()
 
-    def test_source_excerpt_is_pinned_and_traversal_rejected(self):
+    def test_source_excerpt_is_pinned_and_traversal_rejected(self) -> None:
         import base64
 
         ref = "c" * 40
@@ -463,7 +510,7 @@ class ProvenanceTests(unittest.TestCase):
         self.assertIn("?ref=" + ref, h.request.call_args.args[1])
         self.assertIn("line two", r["artifacts"][0]["content"]["excerpt"])
 
-    def test_absent_identity_explicit(self):
+    def test_absent_identity_explicit(self) -> None:
         e = event()
         e["labels"]["pod"] = "app"
         with patch("provenance.ROOT", Path("/nonexistent")):
@@ -472,8 +519,9 @@ class ProvenanceTests(unittest.TestCase):
 
 
 class EngineArtifactTests(unittest.TestCase):
-    def test_primary_is_not_repeated_after_artifact_timeout(self):
+    def test_primary_is_not_repeated_after_artifact_timeout(self) -> None:
         import tempfile
+
         from core import Store
         from service import Engine
         from test_triage import report
@@ -524,7 +572,7 @@ class EngineArtifactTests(unittest.TestCase):
 
 
 class DownloadTests(unittest.TestCase):
-    def test_roundtrip_and_checksum(self):
+    def test_roundtrip_and_checksum(self) -> None:
         import importlib.util
 
         path = Path(__file__).resolve().parents[2] / "scripts/n8n/download_spi_evidence.py"
@@ -553,7 +601,7 @@ class DownloadTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "CHECKSUM"):
             module.reconstruct(comments, e["event_key"])
 
-    def test_primary_and_all_parts_have_bounded_bodies(self):
+    def test_primary_and_all_parts_have_bounded_bodies(self) -> None:
         bundle = prepare_bundle(event(), {}, [{"name": "test.json", "content": "`" * 100000}])
         g = Mock()
         g.comments.return_value = []
@@ -563,11 +611,12 @@ class DownloadTests(unittest.TestCase):
 
 
 class ModelEvidenceTests(unittest.TestCase):
-    def test_facts_require_valid_existing_evidence_ids(self):
-        from integrations import Model
-        from core import REPORT_SCHEMA
-        from test_triage import report
+    def test_facts_require_valid_existing_evidence_ids(self) -> None:
         import time
+
+        from core import REPORT_SCHEMA
+        from integrations import Model
+        from test_triage import report
 
         bad = report()
         bad["facts"] = ["A guessed fact [E999]"]
@@ -589,7 +638,7 @@ class ModelEvidenceTests(unittest.TestCase):
 
 
 class PrimaryReconciliationTests(unittest.TestCase):
-    def test_issue_without_app_metadata_uses_immutable_bot_id(self):
+    def test_issue_without_app_metadata_uses_immutable_bot_id(self) -> None:
         from evidence_bundle import trusted_comment
 
         self.assertTrue(
@@ -599,7 +648,7 @@ class PrimaryReconciliationTests(unittest.TestCase):
             trusted_comment({"user": {"id": 123, "type": "Bot", "login": "socrat-bot[bot]"}})
         )
 
-    def test_primary_marker_requires_actual_app_author(self):
+    def test_primary_marker_requires_actual_app_author(self) -> None:
         from integrations import GitHub
 
         g = GitHub(Mock(), "/unused")
@@ -612,8 +661,9 @@ class PrimaryReconciliationTests(unittest.TestCase):
 
 
 class SQLiteTempStoreTests(unittest.TestCase):
-    def test_all_connections_use_memory_temp_store(self):
+    def test_all_connections_use_memory_temp_store(self) -> None:
         import tempfile
+
         from core import Store
 
         with tempfile.TemporaryDirectory() as d:
@@ -631,7 +681,7 @@ if __name__ == "__main__":
 
 
 class GrafanaLoginLinkTests(unittest.TestCase):
-    def test_generator_requests_native_login_and_keeps_absolute_state(self):
+    def test_generator_requests_native_login_and_keeps_absolute_state(self) -> None:
         for uid, field, query in [
             ("prometheus", "expr", 'up{job="x"}'),
             ("loki", "expr", '{unit="a.service"} |= "error"'),
@@ -647,7 +697,7 @@ class GrafanaLoginLinkTests(unittest.TestCase):
             self.assertEqual(pane["queries"][0][field], query)
             self.assertEqual(pane["range"], {"from": "10000", "to": "20000"})
 
-    def test_cached_manifest_is_not_mutated(self):
+    def test_cached_manifest_is_not_mutated(self) -> None:
         b = ArtifactTests().bundle()
         old = grafana_explore_url(
             "https://grafana.socrat.alchemmist.xyz", "tempo", "a" * 32, 10, 20, "query"
@@ -659,7 +709,7 @@ class GrafanaLoginLinkTests(unittest.TestCase):
         self.assertIn("forceLogin=true", index_markdown(b))
         self.assertEqual(b, snapshot)
 
-    def test_repair_is_idempotent_and_does_not_touch_artifact_json(self):
+    def test_repair_is_idempotent_and_does_not_touch_artifact_json(self) -> None:
         from grafana_links import repair_markdown_links
 
         url = grafana_explore_url(
@@ -671,7 +721,7 @@ class GrafanaLoginLinkTests(unittest.TestCase):
         self.assertIn(json.dumps({"original_url": url}), repaired)
         self.assertIn("[Logs](" + url + "&forceLogin=true)", repaired)
 
-    def test_external_origin_unchanged_and_duplicate_flags_removed(self):
+    def test_external_origin_unchanged_and_duplicate_flags_removed(self) -> None:
         from grafana_links import require_explore_login
 
         evil = "https://grafana.socrat.alchemmist.xyz.evil.example/explore?forceLogin=false"

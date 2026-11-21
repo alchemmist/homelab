@@ -9,7 +9,6 @@ Certificate before publishing the two Ingresses; never bypass certificate checks
 import importlib.util
 import sys
 from pathlib import Path
-from typing import cast
 
 import yaml
 
@@ -22,7 +21,7 @@ HOST = "netbird.socrat.alchemmist.xyz"
 TLS = "netbird-pilot-tls"
 
 
-def manifests() -> list[dict[str, object]]:
+def manifests():
     c = {"management_fqdn": HOST, "ingress_class": "traefik", "tls_secret_name": TLS}
     docs = nb.edge_manifests(c)
     for d in docs:
@@ -100,7 +99,7 @@ def manifests() -> list[dict[str, object]]:
             },
         }
     )
-    return cast("list[dict[str, object]]", docs)
+    return docs
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ LEGACY_GROUPS = [
 ]
 
 
-def app_groups(services) -> dict[str, object]:
+def app_groups(services):
     return {
         f"app-{slug}-{role}": {
             **settings,
@@ -26,18 +26,17 @@ def app_groups(services) -> dict[str, object]:
     }
 
 
-def admission_groups(slug, service) -> list[str]:
+def admission_groups(slug, service):
     # Legacy membership remains valid; this is admission, NOT native RBAC.
-    groups: list[str] = service.get("groups", ["homelab-owner"]) + [
+    return service.get("groups", ["homelab-owner"]) + [
         f"app-{slug}-{role}"
         for role, settings in service.get("appRoles", {}).items()
         if settings.get("assignable") is True
         and service.get("accessManagement", {}).get("state", "ready") == "ready"
     ]
-    return groups
 
 
-def rows(api, path) -> list[object]:
+def rows(api, path):
     """Follow Authentik page numbers, never arbitrary next URLs with credentials."""
     result = []
     page = 1
@@ -57,7 +56,7 @@ def rows(api, path) -> list[object]:
 GROUP_MARKER = {"homelab_app_iam": 1}
 
 
-def validate_group(group) -> None:
+def validate_group(group):
     # Authentik 2026.8.5 uses plural parents (M2M), not legacy parent.
     # Missing/null/reduced responses are not evidence of absence of privilege.
     if (
@@ -75,7 +74,7 @@ def validate_group(group) -> None:
         raise RuntimeError("Refusing adoption of unmarked app group: " + group["name"])
 
 
-def validate_bindings(bindings, allowed) -> set[str]:
+def validate_bindings(bindings, allowed):
     """Do not silently reset UI policy, or accept bypasses in ANY mode."""
     seen = set()
     for binding in bindings:
@@ -94,7 +93,7 @@ def validate_bindings(bindings, allowed) -> set[str]:
     return seen
 
 
-def standard_scope_ids(scopes, required=("openid", "profile", "email")) -> list[object]:
+def standard_scope_ids(scopes, required=("openid", "profile", "email")):
     """Select exact upstream defaults, never arbitrary same-scope app mappings."""
     result = []
     for scope in required:

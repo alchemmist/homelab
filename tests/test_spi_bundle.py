@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class FullServiceBundleTests(unittest.TestCase):
-    def render(self, *, bundled: bool = False):
+    def render(self, bundled=False):
         args = [
             "helm",
             "template",
@@ -43,7 +43,7 @@ class FullServiceBundleTests(unittest.TestCase):
         }
 
     def test_same_release_image_for_backend_frontend_and_scoped_broker(self):
-        docs = self.render(bundled=True)
+        docs = self.render(True)
         image = "harbor.socrat.alchemmist.xyz/homelab/spi-triage@sha256:" + "a" * 64
         for name in ("spi-triage", "spi-queue-ui"):
             pod = docs["Deployment", "automation", name]["spec"]["template"]["spec"]
@@ -59,7 +59,7 @@ class FullServiceBundleTests(unittest.TestCase):
         self.assertNotIn(("ConfigMap", "automation", "spi-queue-ui"), docs)
 
     def test_queue_identity_is_not_replaced_or_exposed_to_web(self):
-        docs = self.render(bundled=True)
+        docs = self.render(True)
         dep = docs["Deployment", "automation", "spi-triage"]
         self.assertEqual(dep["spec"]["replicas"], 1)
         self.assertEqual(dep["spec"]["strategy"], {"type": "Recreate"})
@@ -89,7 +89,7 @@ class FullServiceBundleTests(unittest.TestCase):
 
     def test_bundle_does_not_change_resources_credentials_fences_or_quotas(self):
         legacy = self.render()
-        bundled = self.render(bundled=True)
+        bundled = self.render(True)
         a = legacy["Deployment", "automation", "spi-triage"]["spec"]["template"]["spec"][
             "containers"
         ][0]

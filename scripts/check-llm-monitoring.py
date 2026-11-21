@@ -14,7 +14,7 @@ HOST = "socrat-0"
 JOBS = {"vllm", "litellm"}
 
 
-def main() -> None:
+def main():
     deadline = time.monotonic() + 120
     while True:
         targets = [

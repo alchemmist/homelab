@@ -12,12 +12,12 @@ spec.loader.exec_module(check)
 
 
 class ProbeTests(unittest.TestCase):
-    def fake(self, *, registered: bool = True, fail: bool = False):
+    def fake(self, registered=True, fail=False):
         class RPCError(Exception):
             def code(self):
                 return SimpleNamespace(name="DEADLINE_EXCEEDED")
 
-        state: dict[str, object] = {"closed": False, "cancelled": False}
+        state = {"closed": False, "cancelled": False}
 
         def metadata():
             if fail:
@@ -30,17 +30,17 @@ class ProbeTests(unittest.TestCase):
             cancel=lambda: state.update(cancelled=True),
         )
 
-        def invoke(requests: object, **kwargs: object):
+        def invoke(requests, **kwargs):
             state.update(requests=requests, **kwargs)
             return call
 
-        def stream(path: str):
+        def stream(path):
             state["path"] = path
             return invoke
 
         channel = SimpleNamespace(stream_stream=stream, close=lambda: state.update(closed=True))
 
-        def secure(address: str, credentials: object, options: object):
+        def secure(address, credentials, options):
             state.update(address=address, credentials=credentials, options=options)
             return channel
 
@@ -66,7 +66,7 @@ class ProbeTests(unittest.TestCase):
 
     def test_missing_header_and_rpc_error_fail_closed_and_release_stream(self):
         for registered, fail in [(False, False), (False, True)]:
-            grpc, state = self.fake(registered=registered, fail=fail)
+            grpc, state = self.fake(registered, fail)
             result = check.probe(check.ENTRANCES[0], grpc_module=grpc)
             self.assertFalse(result["registered_header"])
             self.assertEqual(result["rpc_code"], "DEADLINE_EXCEEDED")

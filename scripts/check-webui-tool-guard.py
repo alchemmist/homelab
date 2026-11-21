@@ -1,7 +1,6 @@
 import asyncio
 import json
 import uuid
-from typing import cast
 
 from open_webui.utils.homelab_tool_guard import REPEAT_STOP_MESSAGE, guard_stopped
 from open_webui.utils.middleware import build_terminal_file_tool_result, execute_tool_call
@@ -14,13 +13,13 @@ from open_webui.utils.tools import (
 )
 
 
-def serialize(result) -> str:
+def serialize(result):
     if isinstance(result, tuple):
         result = result[0]
     return result if isinstance(result, str) else json.dumps(result)
 
 
-async def main() -> None:
+async def main():
     connections = await Config.get("terminal_server.connections", [])
     connection = next(
         c for c in connections if c.get("id") == "socrat-terminal" and c.get("enabled", True)
@@ -57,10 +56,10 @@ async def main() -> None:
             server_data=server,
         )
 
-    async def replace(**params: object) -> object:
+    async def replace(**params):
         nonlocal dispatches
         dispatches += 1
-        return cast("object", await raw("replace_file_content", params))
+        return await raw("replace_file_content", params)
 
     metadata = {
         "message_id": str(uuid.uuid4()),
@@ -125,8 +124,8 @@ async def main() -> None:
         metadata["tools"]["read_file"] = {"type": "terminal", "spec": specs["read_file"]}
 
         async def read(params):
-            async def dispatch(**kwargs: object) -> object:
-                return cast("object", await raw("read_file", params))
+            async def dispatch(**kwargs):
+                return await raw("read_file", params)
 
             metadata["tools"]["read_file"]["callable"] = dispatch
             return await execute_tool_call(

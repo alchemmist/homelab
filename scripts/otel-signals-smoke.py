@@ -15,7 +15,7 @@ SERVICE = "otel-isolated-signal-smoke"
 SECRET = "synthetic-sensitive-value"
 
 
-def request(context: ssl.SSLContext, port: int, path: str, document: object | None = None):
+def request(context, port, path, document=None):
     data = json.dumps(document).encode() if document is not None else None
     req = urllib.request.Request(
         "https://127.0.0.1:" + str(port) + path,
@@ -27,11 +27,11 @@ def request(context: ssl.SSLContext, port: int, path: str, document: object | No
     return json.loads(body) if body else {}
 
 
-def attribute(key: str, value: str):
+def attribute(key, value):
     return {"key": key, "value": {"stringValue": value}}
 
 
-def trace_fixtures(now: int):
+def trace_fixtures(now):
     spans = []
     groups = {}
     for category, count in [
@@ -87,7 +87,7 @@ def trace_fixtures(now: int):
     return body, groups
 
 
-def logs_fixture(now: int):
+def logs_fixture(now):
     return {
         "resourceLogs": [
             {
@@ -119,7 +119,7 @@ def logs_fixture(now: int):
     }
 
 
-def run(args: argparse.Namespace):
+def run(args):
     if os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
         raise ValueError("Signal smoke requires an isolated loopback-only network namespace")
     args.workspace.mkdir(mode=0o700, exist_ok=False)

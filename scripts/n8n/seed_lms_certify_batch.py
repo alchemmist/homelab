@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 from lms_reviewed_batch import SPECS
 root=Path(__file__).resolve().parents[2].parent/'lms/content/courses/programming/blocks/basics/lessons'
-def sql(s: str):return "'"+s.replace("'","''")+"'"
+def sql(s):return "'"+s.replace("'","''")+"'"
 print('BEGIN;')
 for key,(contract,stdin,stdout,faults) in SPECS.items():
  lesson,task=key.split('/');path=root/lesson/'tasks'/task

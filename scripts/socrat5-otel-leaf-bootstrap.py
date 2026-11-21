@@ -12,7 +12,7 @@ SA = "otel-host-" + NODE
 LEAF = "otel-tls-" + NODE
 
 
-def k(*args: str, document: dict[str, object] | None = None):
+def k(*args, document=None) -> str:
     p = subprocess.run(
         ["k3s", "kubectl", *args],
         input=json.dumps(document) if document else None,
@@ -25,7 +25,7 @@ def k(*args: str, document: dict[str, object] | None = None):
     return p.stdout
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     root = pathlib.Path("/var/lib/homelab-recovery/20261110-socrat5-otel-leaf")
     root.mkdir(mode=0o700, exist_ok=False)

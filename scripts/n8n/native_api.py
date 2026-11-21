@@ -14,7 +14,7 @@ if(!r.ok)throw Error('HTTP_'+r.status);const t=await r.text();if(t.length>419430
 console.log(t||'{}');}catch(e){console.error(/^HTTP_[0-9]+$|^SIZE_BOUND$/.test(e.message)?e.message:'NATIVE_API_FAILED');process.exitCode=1;}});"""
 
 
-def api(method: str, path: str, body: object | None = None):
+def api(method, path, body=None):
     if method not in {"GET", "POST", "PUT"} or not re.fullmatch(
         r"workflows(?:/[A-Za-z0-9_-]+(?:/activate)?)?(?:\?limit=250)?", path
     ):

@@ -1,67 +1,12 @@
 import json
 import sys
-from typing import Protocol, TypedDict
 
 
 CLAIM_PREFIX = "prometheus-kube-prometheus-stack-prometheus-db"
 POD_PREFIX = "prometheus-kube-prometheus-stack-prometheus-"
 
 
-class _Condition(Protocol):
-    def __bool__(self) -> bool: ...
-
-
-class _ObjectMeta(TypedDict, total=False):
-    name: str
-
-
-class _PodSpec(TypedDict, total=False):
-    nodeName: str
-
-
-class _Pod(TypedDict, total=False):
-    metadata: _ObjectMeta
-    spec: _PodSpec
-
-
-class _ClaimRef(TypedDict, total=False):
-    name: str
-
-
-class _MatchExpression(TypedDict, total=False):
-    key: str
-    values: list[str]
-
-
-class _SelectorTerm(TypedDict, total=False):
-    matchExpressions: list[_MatchExpression]
-
-
-class _RequiredAffinity(TypedDict, total=False):
-    nodeSelectorTerms: list[_SelectorTerm]
-
-
-class _NodeAffinity(TypedDict, total=False):
-    required: _RequiredAffinity
-
-
-class _VolumeSpec(TypedDict, total=False):
-    claimRef: _ClaimRef
-    nodeAffinity: _NodeAffinity
-
-
-class _Volume(TypedDict, total=False):
-    spec: _VolumeSpec
-
-
-class _RelocatePayload(TypedDict, total=False):
-    pods: list[_Pod]
-    volumes: list[_Volume]
-    desired: str
-    relocate: object
-
-
-def live_node(pods: list[_Pod], volumes: list[_Volume]):
+def live_node(pods, volumes):
     for pod in pods:
         name = pod.get("metadata", {}).get("name", "")
         if not name.startswith(POD_PREFIX):
@@ -86,7 +31,7 @@ def live_node(pods: list[_Pod], volumes: list[_Volume]):
     return None
 
 
-def claim_name(volumes: list[_Volume]):
+def claim_name(volumes):
     for volume in volumes:
         claim = volume.get("spec", {}).get("claimRef") or {}
         name = str(claim.get("name", ""))
@@ -95,15 +40,13 @@ def claim_name(volumes: list[_Volume]):
     return None
 
 
-def decide(desired_node: str | None, current_node: str | None, relocate: _Condition):
+def decide(desired_node, current_node, relocate):
     if current_node in (None, "", desired_node):
-        return "proceed"
-    if relocate:
         return "proceed"
     return "refuse"
 
 
-def evaluate(payload: _RelocatePayload):
+def evaluate(payload):
     pods = payload.get("pods") or []
     volumes = payload.get("volumes") or []
     current = live_node(pods, volumes)

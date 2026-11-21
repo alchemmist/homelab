@@ -1,12 +1,11 @@
 import importlib.util
-from collections.abc import Sequence
 from pathlib import Path
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name: str, path: str):
+def load(name, path):
     spec = importlib.util.spec_from_file_location(name, ROOT / path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -93,7 +92,7 @@ class InternalNetworkTests(unittest.TestCase):
             "login_expired": False,
         }
 
-        def api(peers: list[dict[str, object]], policies: Sequence[object] | None = None):
+        def api(peers, policies=None):
             return lambda endpoint: (
                 peers if endpoint == "peers" else (policies or []) if endpoint == "policies" else []
             )
