@@ -217,16 +217,16 @@ def test_dashboard_starts_with_waterfall_without_instruction_text_panel() -> Non
 
 def test_hibernated_database_alerts_do_not_page_for_production_lms() -> None:
     def rules(*override):
-        docs = render('-f', str(ROOT / 'deploy/lms/values.yaml'), *override)
+        docs = render("-f", str(ROOT / "deploy/lms/values.yaml"), *override)
         rule = next(
             d
             for d in docs
-            if d and d['kind'] == 'PrometheusRule' and _name(d) == 'lms-availability'
+            if d and d["kind"] == "PrometheusRule" and _name(d) == "lms-availability"
         )
-        groups = _documents(_mapping(rule['spec'])['groups'])
-        return {r['alert'] for r in _documents(groups[0]['rules'])}
+        groups = _documents(_mapping(rule["spec"])["groups"])
+        return {r["alert"] for r in _documents(groups[0]["rules"])}
 
-    assert rules() == {'LMSWebUnavailable'}
-    assert rules('--set', 'lms-database-ha.hibernate=false') == {
-        'LMSWebUnavailable', 'LMSDatabaseQuorumAtRisk', 'LMSDatabaseRedundancyDegraded', 'LMSDatabaseBackupOverdue'
+    assert rules() == {"LMSWebUnavailable"}
+    assert rules("--set", "lms-database-ha.hibernate=false") == {
+        "LMSWebUnavailable", "LMSDatabaseQuorumAtRisk", "LMSDatabaseRedundancyDegraded", "LMSDatabaseBackupOverdue"
     }
