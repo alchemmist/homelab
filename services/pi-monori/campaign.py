@@ -2,34 +2,62 @@
 import ast,collections,contextlib,difflib,fcntl,gzip,hashlib,json,os,re,sqlite3,subprocess,sys,time
 from collections.abc import Sequence
 from pathlib import Path
+from typing import TypedDict
 import dispatcher as pilot
 from artifact import artifact_response
-R=pilot.ROOT; BASE0=pilot.BASE; D=R/'campaign.sqlite'; A=R/'campaign-artifacts';A.mkdir(exist_ok=True); C=json.load(gzip.open(R/'catalog-full.json.gz')); BACK=json.loads((R/'backlog.json').read_text()); J='/scratch/monori/'; K=pilot.k
 
-def guard_map(value: object) -> dict[str, object]:
- """Validate that an untrusted JSON value is a mapping."""
- if not isinstance(value, dict):raise TypeError(value)
- return value
-def guard_seq(value: object) -> list[object]:
- """Validate that an untrusted JSON value is a list."""
- if not isinstance(value, list):raise TypeError(value)
- return value
-def guard_str(value: object) -> str:
- """Coerce an untrusted JSON scalar to its string form."""
- return value if isinstance(value, str) else str(value)
+class Task(TypedDict):
+ """Queued mutation task loaded from SQLite."""
+
+ id: str
+ fam: str
+ num: int
+ category: str
+ base: str
+ pr: int | None
+
+class Repair(TypedDict):
+ """In-place pull request repair handed to the author."""
+
+ dest: str
+ previous: str
+ head: str
+ fails: list[str]
+
+class GitUser(TypedDict):
+ """GitHub user fields read during reconciliation."""
+
+ login: str
+
+class GitHead(TypedDict):
+ """GitHub ref fields read during reconciliation."""
+
+ ref: str
+ sha: str
+
+class Pull(TypedDict, total=False):
+ """Open pull request fields read from the public GitHub API."""
+
+ number: int
+ title: str
+ state: str
+ merged: bool
+ draft: bool
+ head: GitHead
+ user: GitUser
+R=pilot.ROOT; BASE0=pilot.BASE; D=R/'campaign.sqlite'; A=R/'campaign-artifacts';A.mkdir(exist_ok=True); C=json.load(gzip.open(R/'catalog-full.json.gz')); BACK=json.loads((R/'backlog.json').read_text()); J='/scratch/monori/'; K=pilot.k
 
 ISSUE=509
 
-def query(q: str,a: Sequence[object]=()) -> list[dict[str, object]]:
+def query(q: str,a: Sequence[object]=()):
  with contextlib.closing(sqlite3.connect(D,timeout=15)) as db,db:
   db.row_factory=sqlite3.Row;return [dict(x) for x in db.execute(q,a)]
-def init() -> None:
+def init():
  global C,A
  query('create table if not exists tasks(id text primary key,fam text,num integer,category text,ord integer,state text,base text,note text,pr integer,updated real)');query('create table if not exists audit(t real,id text,state text,note text)');query('create table if not exists meta(k text primary key,v text)')
  wave=query("select v from meta where k='active_census'")
  if wave:
-  root=R/'waves'/str(wave[0]['v']);C=json.load(gzip.open(root/'catalog.json.gz'))
-  A=root/'artifacts';A.mkdir(exist_ok=True);return
+  root=R/'waves'/wave[0]['v'];C=json.load(gzip.open(root/'catalog.json.gz'));A=root/'artifacts';A.mkdir(exist_ok=True);return
  with contextlib.closing(sqlite3.connect(D)) as db,db:
   for r in BACK:
    fam,_,single=r['family'].partition('__mutmut_');f=C.get(fam);nums=[single] if single else list(f['diffs']) if f else ['0'];
@@ -45,59 +73,36 @@ def init() -> None:
   if proof.exists():
    published=pilot.sql("select note from events where card=? and state='published' order by rowid desc limit 1",(name,));
    if published:
-    v: dict[str, object] = json.loads(proof.read_text())
-    uid=next((k for k in C if k.endswith('.x_'+name)),None)
-    if uid:
-     query("update tasks set state='published',pr=?,base=?,note=? where id=? and state='queued'",
-      (json.loads(str(published[0]['note']))['pr'], v['base'], 'pilot proof',
-       uid.rsplit('.',1)[0]+'.'+str(v['mutmut'])))
+    v=json.loads(proof.read_text());uid=next((k for k in C if k.endswith('.x_'+name)),None)
+    if uid:query("update tasks set state='published',pr=?,base=?,note=? where id=? and state='queued'",(json.loads(published[0][0])['pr'],v['base'],'pilot proof',uid.rsplit('.',1)[0]+'.'+v['mutmut']))
 
-def mark(t: dict[str, object],state: str,note: str='',base: str | None=None,
- pr: int | None=None) -> None:
+def mark(t: Task,state: str,note: str='',base: str | None=None,pr: int | None=None):
  q=(state,note[:1500],base or t['base'],pr or t['pr'],time.time(),t['id']);query('update tasks set state=?,note=?,base=?,pr=?,updated=? where id=?',q);query('insert into audit values(?,?,?,?)',(time.time(),t['id'],state,note[:1500]));print(time.strftime('%FT%T%z'),state,t['id'],note[:120].replace('\n',' '),flush=True)
-def key(t: dict[str, object]) -> str:
-    return hashlib.sha256(str(t['id']).encode()).hexdigest()[:12]
-def remote_json(path: str) -> object:
+def key(t: Task):return hashlib.sha256(t['id'].encode()).hexdigest()[:12]
+def remote_json(path: str):
  # Public GET only; no publisher/host credentials in workers.
  import urllib.request
  with urllib.request.urlopen(urllib.request.Request('https://api.github.com/repos/alchemmist/monori/'+path,headers={'User-Agent':'socrat-campaign'}),timeout=15) as r:return json.load(r)
-def git(*a: str) -> str:
-    return pilot.cmd(['git','--git-dir=base.git',*a]).stdout
-def source(sha: str,file: str) -> str:
-    return git('show',sha+':'+file)
+def git(*a):return pilot.cmd(['git','--git-dir=base.git',*a]).stdout
+def source(sha: str,file: str):return git('show',sha+':'+file)
 
-def patch(t: dict[str, object],sha: str) -> tuple[str, str, str, str]:
+def patch(t: Task,sha: str):
  f=C[t['fam']];file=f['file'];s=source(sha,file);old=''.join(f['old']);start,end,repl=f['diffs'][str(t['num'])];mut=''.join(f['old'][:start]+repl+f['old'][end:]);
  if s.count(old)!=1:raise ValueError('Generated function body not unique/exact on current base; refresh required')
  return file,s,s.replace(old,mut,1),''.join(difflib.unified_diff(old.splitlines(True),mut.splitlines(True),n=3))
 
-def select_suite(t: dict[str, object],sha: str) -> tuple[list[str], str]:
- mod=C[t['fam']]['file'];leaf=Path(mod).stem;func=str(t['fam']).split('.')[-1].split('ǁ')[-1]
- func=func.removeprefix('x_');area='ci/tests' if mod.startswith('ci/') else 'server/tests/unit'
- files=git('ls-tree','-r','--name-only',sha,'--',area).splitlines()
- tests=[p for p in files if Path(p).name.startswith('test_') and p.endswith('.py')]
- module=mod[:-3].replace('/','.')
- p=pilot.cmd(['git','--git-dir=base.git','grep','-l','-F',module,sha,'--',area],ok=False)
- imports={line.split(':',1)[-1] for line in p.stdout.splitlines()}
- p=pilot.cmd(['git','--git-dir=base.git','grep','-l','-Fw',func,sha,'--',area],ok=False)
- refs={line.split(':',1)[-1] for line in p.stdout.splitlines()}
- top=sorted(tests,key=lambda p:(-(10*(p in imports)+6*(p in refs)+4*(leaf in Path(p).stem)),p))
- direct=[p for p in top if p in imports|refs or leaf in Path(p).stem]
- return (direct[:6] or [area]),area
+def select_suite(t: Task,sha: str):
+ mod=C[t['fam']]['file'];leaf=Path(mod).stem;func=t['fam'].split('.')[-1].split('ǁ')[-1];func=func.removeprefix('x_');area='ci/tests' if mod.startswith('ci/') else 'server/tests/unit';files=git('ls-tree','-r','--name-only',sha,'--',area).splitlines();tests=[p for p in files if Path(p).name.startswith('test_') and p.endswith('.py')];module=mod[:-3].replace('/','.');p=pilot.cmd(['git','--git-dir=base.git','grep','-l','-F',module,sha,'--',area],ok=False);imports={line.split(':',1)[-1] for line in p.stdout.splitlines()};p=pilot.cmd(['git','--git-dir=base.git','grep','-l','-Fw',func,sha,'--',area],ok=False);refs={line.split(':',1)[-1] for line in p.stdout.splitlines()};top=sorted(tests,key=lambda p:(-(10*(p in imports)+6*(p in refs)+4*(leaf in Path(p).stem)),p));direct=[p for p in top if p in imports|refs or leaf in Path(p).stem];return (direct[:6] or [area]),area
 
-def sandbox_write(path: str,text: str) -> None:
-    pilot.write('judge',J+path,text)
-def reset_source(src: str,original: str) -> None:
-    sandbox_write(src,original);K('judge',['rm','-rf',J+str(Path(src).parent/'__pycache__')])
-def tests(paths: list[str],limit: int=250) -> tuple[int, str]:
+def sandbox_write(path: str,text: str):pilot.write('judge',J+path,text)
+def reset_source(src: str,original: str):sandbox_write(src,original);K('judge',['rm','-rf',J+str(Path(src).parent/'__pycache__')])
+def tests(paths: Sequence[str],limit: int=250):
  # Timeout INSIDE the pod, including children, not just the kubectl client.
  r=K('judge',['sh','-ec','cd /scratch/monori; export PYTHONPATH=/scratch PYTHONDONTWRITEBYTECODE=1;exec timeout -k 5 "$1" .venv/bin/python -m pytest -q --tb=short --disable-warnings -m "not integration" "${@:2}"'.replace('"${@:2}"','"$@"').replace('exec timeout -k 5 "$1"','budget=$1;shift;exec timeout -k 5 "$budget"'),'sh',str(limit),*paths],timeout=limit+25,ok=False);return r.returncode,r.stdout[-5000:]
-def green(p: tuple[int, str]) -> bool:
-    return p[0]==0 and bool(re.search(r'\b[1-9]\d* passed',p[1]))
-def killed(p: tuple[int, str]) -> bool:
-    return p[0]==1 and bool(re.search(r'\b[1-9]\d* failed',p[1]))
+def green(p: tuple[int, str]):return p[0]==0 and bool(re.search(r'\b[1-9]\d* passed',p[1]))
+def killed(p: tuple[int, str]):return p[0]==1 and bool(re.search(r'\b[1-9]\d* failed',p[1]))
 
-def install_base(sha: str) -> None:
+def install_base(sha: str):
  """Stream tracked files only. No untrusted tar input on the SSH host."""
  for file in ('pyproject.toml','server/pyproject.toml','common/pyproject.toml','ci/pyproject.toml'):
   if source(sha,file)!=source(BASE0,file):raise RuntimeError('dependency drift: rebuild locked offline verifier before admitting this base')
@@ -108,14 +113,12 @@ def install_base(sha: str) -> None:
  # Author fetches public main; no host key or git credential is passed in.
  K('author',['sh','-ec','git --git-dir=/scratch/base.git cat-file -e "$1^{commit}" 2>/dev/null || git --git-dir=/scratch/base.git fetch --depth=1 https://github.com/alchemmist/monori.git main','sh',sha])
 
-def candidate_guard(text: str,src: str) -> None:
+def candidate_guard(text: str,src: str):
  if not 40<len(text)<20000:raise ValueError('missing/oversized candidate')
  if re.search(r'#\s*(?:type:\s*ignore|noqa|nosec)',text):raise ValueError('repo forbids lint/type suppressions')
  tree=ast.parse(text)
  if any(isinstance(n,ast.arg) and n.annotation and any(isinstance(a,ast.Name) and a.id in {'object','Any'} for a in ast.walk(n.annotation)) for n in ast.walk(tree)):raise ValueError('use a concrete project type, not object/Any')
- allowed=('monori.'+src.split('/',1)[0]+'.','monori.common.')
- safe={'pytest','datetime','decimal','collections','dataclasses','typing','pathlib','io',
- 'json','re','math','unittest.mock','openpyxl','sqlite3','uuid'}
+ allowed=('monori.'+src.partition('/')[0]+'.','monori.common.');safe={'pytest','datetime','decimal','collections','dataclasses','typing','pathlib','io','json','re','math','unittest.mock','openpyxl','sqlite3','uuid'}
  if not any(isinstance(n,ast.FunctionDef) and n.name.startswith('test_') for n in tree.body):raise ValueError('missing test')
  for n in ast.walk(tree):
   if isinstance(n,(ast.Import,ast.ImportFrom)):
@@ -128,14 +131,18 @@ def candidate_guard(text: str,src: str) -> None:
    if x.startswith('__') or x in {'eval','exec','compile','globals','locals','exit','quit','getattr','setattr','delattr','skip','skipif','xfail','importorskip','open','read_bytes','read_text','write_bytes','write_text','unlink','system','popen','connect_ex','socket','subprocess','os','sys','builtins','importlib','pytest_plugins'}:raise ValueError('test uses unsupported introspection, I/O or bypass')
   if isinstance(n,ast.Constant) and isinstance(n.value,str) and ('/scratch/' in n.value or '/proc/' in n.value or 'PYTEST_CURRENT_TEST' in n.value):raise ValueError('environment-dependent test')
 
-def try_pi(t: dict[str, object],sha: str,mid: str,detail: str,oldtests: list[str],folder: Path,
- repair: dict[str, object] | None=None) -> None:
+def try_pi(
+ t: Task,
+ sha: str,
+ mid: str,
+ detail: str,
+ oldtests: list[str],
+ folder: Path,
+ repair: Repair | None=None,
+):
  src=C[t['fam']]['file'];slug=key(t);dest=('ci/tests/' if src.startswith('ci/') else 'server/tests/unit/')+'test_mutation_'+slug+'.py';wt='/scratch/campaign/'+slug+'/monori';folder.mkdir(exist_ok=True);K('author',['sh','-ec','if test -d "$1";then git --git-dir=/scratch/base.git worktree remove --force "$1";fi;git --git-dir=/scratch/base.git worktree prune;git --git-dir=/scratch/base.git worktree add --detach "$1" "$2"','sh',wt,sha]);feedback=''
  if repair:
-  dest=str(repair['dest']);pilot.write('author',wt+'/'+dest,str(repair['previous']))
-  feedback=("Repair this existing PR test in place, retain the behavioral assertion "
-   "and remove all lint suppressions. Red current-head checks: "
-   +", ".join(str(x) for x in guard_seq(repair['fails'])))
+  dest=repair['dest'];pilot.write('author',wt+'/'+dest,repair['previous']);feedback='Repair this existing PR test in place, retain the behavioral assertion and remove all lint suppressions. Red current-head checks: '+', '.join(repair['fails'])
  try:
   for attempt in range(1,4):
    prompt=f'''Take one atomic item from alchemmist/monori#{ISSUE}: {t['category']}, {mid}, base {sha}. Work directly in this worktree. Keep this atomic: prefer one direct assertion or a small parametrized test of the assigned symbol, not separate caller/integration tests. Import from monori.{src[:-3].replace(chr(47),chr(46))} or pytest. Write an actual English annotated regression test to {dest} and no other tracked file. Original/mutant diff:\n{detail[:7800]}\nExisting tests {oldtests} passed on both. Read source/dependencies and existing tests, use actual /scratch/monori/.venv/bin/python with PYTHONPATH set to worktree parent, check actual output before proposing. Follow existing formatting and annotation gates: no type: ignore/noqa, no object/Any parameter annotations, prefer the project type alias. No external systems, networking, credentials, exploits, PoCs, bypasses, live banking, gh, merge or dummy PR. Only ordinary offline behavior on fixtures. The independent judge runs your file on original and mutant. If not distinguishable write OUTCOME.md with concrete evidence; not a fictional test. Plans do not count: write your file with tools. Feedback: {feedback[:750]}''';(folder/'prompt.md').write_text(prompt);mark(t,'authoring',f'attempt {attempt}',sha)
@@ -144,14 +151,7 @@ def try_pi(t: dict[str, object],sha: str,mid: str,detail: str,oldtests: list[str
    artifact=bool(repair) or attempt>=2 or (not repair and len(C[t['fam']]['old'])<=16)
    if artifact:
     context=''.join(C[t['fam']]['old'])[:7000]
-    prompt=(f"Return exactly one Markdown ```python block containing the complete new "
-     f"English pytest file. No plan or tool calls. Actual source module: "
-     f"monori.{src[:-3].replace('/', '.')}. Test only this function directly "
-     f"using literal ordinary fixture values. One shortest meaningful test, "
-     f"annotated -> None, no suppressions, skips, arbitrary I/O, or unrelated caller imports. "
-     f"Must pass on original and fail on exact mutant. Source:\n{context}\n"
-     f"Original-to-mutant diff:\n{detail[:6000]}\nFeedback: {feedback[:700]}"
-     +(('\nExisting test to repair:\n'+str(repair['previous'])[:5000]) if repair else ''))
+    prompt=f"Return exactly one Markdown ```python block containing the complete new English pytest file. No plan or tool calls. Actual source module: monori.{src[:-3].replace('/', '.')}. Test only this function directly using literal ordinary fixture values. One shortest meaningful test, annotated -> None, no suppressions, skips, arbitrary I/O, or unrelated caller imports. Must pass on original and fail on exact mutant. Source:\n{context}\nOriginal-to-mutant diff:\n{detail[:6000]}\nFeedback: {feedback[:700]}"+(('\nExisting test to repair:\n'+repair['previous'][:5000]) if repair else '')
     (folder/f'artifact-prompt-{attempt}.md').write_text(prompt)
    with (folder/f'pi-{attempt}.log').open('wb') as log:
     res=subprocess.run(['kubectl','-n','openhands','exec','-i','deploy/pi-monori-author','-c','sandbox','--','sh','-ec','cd "$1";export PYTHONPATH="$(dirname "$1")";exec timeout -k 5 900 /opt/pi/node_modules/.bin/pi --provider litellm --model v-deepseek-uc --no-approve --no-extensions --no-mcp --no-skills --no-prompt-templates --no-context-files --no-session $2 -p "$(cat)"','sh',wt,'--no-tools' if artifact else '--tools read,bash,edit,write'],input=prompt.encode(),stdout=log,stderr=log,timeout=950)
@@ -187,27 +187,22 @@ def try_pi(t: dict[str, object],sha: str,mid: str,detail: str,oldtests: list[str
  finally:
   if repair:
    event=query('select state from tasks where id=?',(t['id'],))[0]['state']
-   if event not in ('published','update_uncertain'):
-    mark(t,'published','CI repair attempt did not meet proof; PR remains open',sha,
-     int(str(t["pr"])) if t["pr"] else None)
+   if event not in ('published','update_uncertain'):mark(t,'published','CI repair attempt did not meet proof; PR remains open',sha,t['pr'])
   K('author',['git','--git-dir=/scratch/base.git','worktree','remove','--force',wt],ok=False)
 
-def prove(t: dict[str, object],sha: str,dest: str,text: str,
- oldtests: list[str]) -> dict[str, object]:
+def prove(t: Task,sha: str,dest: str,text: str,oldtests: list[str]):
  src,orig,mut,_=patch(t,sha);reset_source(src,orig)
  try:
   sandbox_write(dest,text);a=tests([dest]);assert green(a),'original did not pass: '+a[1][-450:];reset_source(src,mut);b=tests(['--ignore='+dest,*oldtests]);assert green(b),'old suite did not survive independently: '+b[1][-260:];red=tests([dest]);assert killed(red) and 'FAILED '+dest+'::test_' in red[1] and re.search(r'AssertionError|^E\s+assert |DID NOT RAISE|Regex pattern did not match',red[1],re.M),'no assertion kill: '+red[1][-450:];reset_source(src,orig);g=tests(oldtests if any(dest.startswith(p.rstrip('/')+'/') for p in oldtests) else oldtests+[dest]);assert green(g),'combined original failed: '+g[1][-450:];return {'base':sha,'mutant':t['id'],'dest':dest,'sha256':hashlib.sha256(text.encode()).hexdigest(),'old_suite':oldtests,'old_on_mutant':b[1].splitlines()[-1],'new_on_mutant':red[1][-2400:],'original':g[1].splitlines()[-1]}
  finally:reset_source(src,orig);K('judge',['rm','-f',J+dest])
 
-def screen(t: dict[str, object],sha: str) -> None:
+def screen(t: Task,sha: str):
  try:src,orig,mut,detail=patch(t,sha)
- except (ValueError,KeyError):
-  mark(t,'catalog_drift','Cannot apply exact mutation to current main',sha);return
+ except (ValueError,KeyError):mark(t,'catalog_drift','Cannot apply exact mutation to current main',sha);return
  oldtests,area=select_suite(t,sha);reset_source(src,orig);cache='baseline:'+sha+':'+hashlib.sha256(json.dumps(oldtests).encode()).hexdigest()
  if not query('select v from meta where k=?',(cache,)):
   g=tests(oldtests)
-  if not green(g):
-   mark(t,'baseline_blocked','Original focused suite not green: '+g[1][-240:],sha);return
+  if not green(g):mark(t,'baseline_blocked','Original focused suite not green: '+g[1][-240:],sha);return
   query('insert or replace into meta values(?,?)',(cache,g[1].splitlines()[-1]))
  try:reset_source(src,mut);p=tests(oldtests,50 if t['category']=='Timeouts' else 220)
  finally:reset_source(src,orig)
@@ -221,76 +216,53 @@ def screen(t: dict[str, object],sha: str) -> None:
   if receipt['base']!=sha:continue
   try:prove(t,sha,receipt['dest'],tf.read_text(),oldtests)
   except (AssertionError,ValueError):continue
-  mark(t,'covered_pending_merge','Covered by '+str(prior['id']),sha,
-   int(str(prior["pr"])) if prior["pr"] else None);return
- mark(t,'survived',p[1].splitlines()[-1],sha);try_pi(t,sha,str(t['id']),detail,oldtests,A/key(t))
+  mark(t,'covered_pending_merge','Covered by '+prior['id'],sha,prior['pr']);return
+ mark(t,'survived',p[1].splitlines()[-1],sha);try_pi(t,sha,t['id'],detail,oldtests,A/key(t))
 
-def publish(t: dict[str, object],sha: str) -> None:
+def publish(t: Task,sha: str):
  folder=A/key(t);receipt=json.loads((folder/'proof.json').read_text());text=(folder/'test.py.txt').read_text();assert hashlib.sha256(text.encode()).hexdigest()==receipt['sha256'];dest=receipt['dest']
  if receipt['base']!=sha:
   oldtests,_=select_suite(t,sha)
   try:receipt=prove(t,sha,dest,text,oldtests)
-  except (AssertionError,ValueError):
-   mark(t,'rebase_triage','Proof no longer holds on new main',sha);return
+  except (AssertionError,ValueError):mark(t,'rebase_triage','Proof no longer holds on new main',sha);return
   (folder/'proof.json').write_text(json.dumps(receipt,indent=2))
- title='test: cover '+str(t['fam']).split('.')[-1].replace('ǁ','.')[:60]+f' [{ISSUE}:'+key(t)+']'
- payload={'action':'create','issue':ISSUE,'head':sha,'title':title,'files':{dest:text}}
- mark(t,'publishing','Reconcile this unique title on any ambiguous acknowledgement: '+title,sha)
+ title='test: cover '+t['fam'].split('.')[-1].replace('ǁ','.')[:60]+f' [{ISSUE}:'+key(t)+']';payload={'action':'create','issue':ISSUE,'head':sha,'title':title,'files':{dest:text}};mark(t,'publishing','Reconcile this unique title on any ambiguous acknowledgement: '+title,sha)
  try:r=pilot.cmd(['kubectl','-n','openhands','exec','-i','openhands-0','-c','mutation-pilot','--','python','-c',pilot.PUBLISH],json.dumps(payload),timeout=95);obj=json.loads(r.stdout);assert obj['pr'] and obj['head']
  except Exception:mark(t,'publication_uncertain',title,sha);return
  (folder/'publication.json').write_text(json.dumps(obj));mark(t,'published',obj['head'],sha,obj['pr'])
 
-def reconcile(prs: list[dict[str, object]],sha: str) -> None:
+def reconcile(prs: Sequence[Pull],sha: str):
  open_by={p['number']:p for p in prs}
  # Repair lost acknowledgements by unique title, never replay a blind create.
  for t in query("select * from tasks where state='publication_uncertain'"):
-  matches=[p for p in prs if guard_str(p['title']).endswith(f'[{ISSUE}:'+key(t)+']')
-   and guard_str(guard_map(p['head'])['ref']).startswith(f'openhands/issue-{ISSUE}/')
-   and guard_str(guard_map(p['user'])['login'])=='alchemmist']
-  if len(matches)==1:
-   m=matches[0];mark(t,'published',guard_str(guard_map(m['head'])['sha']),
-    str(t['base']) if t['base'] else None,int(str(m['number'])) if m['number'] else None)
+  matches=[p for p in prs if p['title'].endswith(f'[{ISSUE}:'+key(t)+']') and p['head']['ref'].startswith(f'openhands/issue-{ISSUE}/') and p['user']['login']=='alchemmist']
+  if len(matches)==1:mark(t,'published',matches[0]['head']['sha'],t['base'],matches[0]['number'])
  if len(prs)>=100:return
  for t in query("select * from tasks where state='published' and pr is not null"):
   if t['pr'] in open_by:continue
-  p=guard_map(remote_json('pulls/'+str(t['pr'])))
-  if p['state']=='closed':mark(t,'merged' if p['merged'] else 'closed_unmerged',
-   'GitHub reconciliation; full rerun still required',sha,
-   int(str(t['pr'])) if t['pr'] else None)
+  p=remote_json('pulls/'+str(t['pr']))
+  if p['state']=='closed':mark(t,'merged' if p['merged'] else 'closed_unmerged','GitHub reconciliation; full rerun still required',sha,t['pr'])
 
-def repair_one(prs: list[dict[str, object]],sha: str) -> None:
+def repair_one(prs: Sequence[Pull],sha: str):
  bynum={p['number']:p for p in prs};now=time.time()
  for t in query("select * from tasks where state='published' and pr is not null order by updated"):
   p=bynum.get(t['pr'])
-  if not isinstance(p,dict) or p.get('draft') or \
-   not guard_str(guard_map(p['head'])['ref']).startswith(f'openhands/issue-{ISSUE}/'):continue
-  head=guard_str(guard_map(p['head'])['sha']);cache='checks:'+head
-  cached=query('select v from meta where k=?',(cache,))
-  if cached and now-float(str(cached[0]['v']))<900:continue
-  query('insert or replace into meta values(?,?)',(cache,str(now)))
-  checks=guard_map(remote_json('commits/'+head+'/check-runs?per_page=100'))
-  fails=[guard_map(r)['name'] for r in guard_seq(checks['check_runs'])
-   if guard_map(r)['conclusion']=='failure']
+  if not p or p.get('draft') or not p['head']['ref'].startswith(f'openhands/issue-{ISSUE}/'):continue
+  head=p['head']['sha'];cache='checks:'+head;cached=query('select v from meta where k=?',(cache,))
+  if cached and now-float(cached[0]['v'])<900:continue
+  query('insert or replace into meta values(?,?)',(cache,str(now)));checks=remote_json('commits/'+head+'/check-runs?per_page=100');fails=[r['name'] for r in checks['check_runs'] if r['conclusion']=='failure']
   if not fails:continue
   keyfix='fix:'+str(p['number']);attempts=query('select v from meta where k=?',(keyfix,))
-  if attempts and int(str(attempts[0]['v']))>=3:continue
-  files=guard_seq(remote_json('pulls/'+str(p['number'])+'/files?per_page=30'))
-  added=r'(?:ci/tests|server/tests/unit)/test_(?:mutation_[0-9a-f]{12}|pi509_[a-z_]+)\.py'
-  if len(files)!=1 or guard_map(files[0])['status']!='added':continue
-  if not re.fullmatch(added,guard_str(guard_map(files[0])['filename'])):continue
-  dest=guard_str(guard_map(files[0])['filename'])
-  git('fetch','--depth=1','origin','refs/pull/'+str(p['number'])+'/head')
-  previous=source(head,dest);src,_,_,diff=patch(t,sha);olds,_=select_suite(t,sha)
-  n=1+(int(str(attempts[0]['v'])) if attempts else 0)
-  query('insert or replace into meta values(?,?)',(keyfix,str(n)))
-  folder=A/key(t)/('repair-'+head[:10]);folder.mkdir(parents=True,exist_ok=True)
-  try_pi(t,sha,str(t['id']),diff,olds,folder,
-   {'dest':dest,'previous':previous,'head':head,'fails':fails});return
+  if attempts and int(attempts[0]['v'])>=3:continue
+  files=remote_json('pulls/'+str(p['number'])+'/files?per_page=30')
+  if len(files)!=1 or files[0]['status']!='added' or not re.fullmatch(r'(?:ci/tests|server/tests/unit)/test_(?:mutation_[0-9a-f]{12}|pi509_[a-z_]+)\.py',files[0]['filename']):continue
+  dest=files[0]['filename'];git('fetch','--depth=1','origin','refs/pull/'+str(p['number'])+'/head');previous=source(head,dest);src,_,_,diff=patch(t,sha);olds,_=select_suite(t,sha)
+  query('insert or replace into meta values(?,?)',(keyfix,str(1+(int(attempts[0]['v']) if attempts else 0))));folder=A/key(t)/('repair-'+head[:10]);folder.mkdir(parents=True,exist_ok=True)
+  try_pi(t,sha,t['id'],diff,olds,folder,{'dest':dest,'previous':previous,'head':head,'fails':fails});return
 
-def census(sha: str,prs: list[dict[str, object]]) -> bool:
+def census(sha: str,prs: Sequence[Pull]):
  # No blanket merge; only after queued work drained and GitHub writes reconciled.
- if sha==BASE0 or any(guard_str(guard_map(p['head'])['ref']).startswith(f'openhands/issue-{ISSUE}/')
-  for p in prs):return False
+ if sha==BASE0 or any(p['head']['ref'].startswith(f'openhands/issue-{ISSUE}/') for p in prs):return False
  if query("select id from tasks where state in ('published','verified','publishing','publication_uncertain','update_uncertain') limit 1"):return False
  token='census:'+sha
  if query('select v from meta where k=?',(token,)):return False
@@ -314,25 +286,15 @@ def census(sha: str,prs: list[dict[str, object]]) -> bool:
    db.execute('delete from tasks');db.executemany('insert into tasks values(?,?,?,?,?,?,?,?,?,?)',rows);db.execute('insert or replace into meta values(?,?)',('active_census',sha));db.execute('update meta set v=? where k=?',('complete',token))
  init();print('census complete; residual tasks',len(rows),flush=True);return True
 
-def loop() -> None:
+def loop():
  lock=(R/'run.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX);init();
  if not query("select v from meta where k='old_dir_exclusion'"):
   query("update tasks set state='queued',note='Replay: old suite previously included new file' where state='needs_triage' and note like '%old suite no longer survives%'");query("insert into meta values('old_dir_exclusion','1')")
- query("update tasks set state='published' where pr is not null "
-  "and state in ('authoring','survived','rejected')")
- query("update tasks set state='queued' where pr is null and state in "
-  "('authoring','survived','rejected','screening')")
- query("update tasks set state='publication_uncertain' where state='publishing'")
- lastfetch=0.0;sha=None;slots=0;prs=None
+ query("update tasks set state='published' where pr is not null and state in ('authoring','survived','rejected')");query("update tasks set state='queued' where pr is null and state in ('authoring','survived','rejected','screening')");query("update tasks set state='publication_uncertain' where state='publishing'");lastfetch=0;sha=None;slots=0
  while not (R/'PAUSE-CAMPAIGN').exists():
   try:
    if time.time()-lastfetch>180 or not sha:
-    git('fetch','--depth=1','origin','main')
-    head=git('rev-parse','FETCH_HEAD').strip();install_base(head);sha=head
-    prs=[guard_map(q) for q in guard_seq(remote_json('pulls?state=open&per_page=100'))]
-    slots=0 if len(prs)>=100 else max(0,5-sum(guard_str(guard_map(guard_map(p)['head'])['ref'])
-     .startswith(f'openhands/issue-{ISSUE}/') for p in prs))
-    reconcile(prs,sha);lastfetch=time.time()
+    git('fetch','--depth=1','origin','main');head=git('rev-parse','FETCH_HEAD').strip();install_base(head);sha=head;prs=remote_json('pulls?state=open&per_page=100');slots=0 if len(prs)>=100 else max(0,5-sum(p['head']['ref'].startswith(f'openhands/issue-{ISSUE}/') for p in prs));reconcile(prs,sha);lastfetch=time.time()
     try:repair_one(prs,sha)
     except Exception as ex:print('CI repair deferred',type(ex).__name__,str(ex)[:180],flush=True)
    if query("select id from tasks where state='transport_wait' and updated<? limit 1",(time.time()-180,)):
@@ -342,7 +304,7 @@ def loop() -> None:
    if slots and ready:publish(ready[0],sha);slots-=1;continue
    ts=query("select * from tasks where state='queued' order by case when ord<0 then ord else 0 end, num, ord, id limit 1")
    if not ts:
-    if not census(sha,prs or []):time.sleep(90)
+    if not census(sha,prs):time.sleep(90)
     continue
    c=ts[0]
    try:mark(c,'screening','Independent old-suite check on current main',sha);screen(c,sha)
