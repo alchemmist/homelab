@@ -1,5 +1,12 @@
 """Read the generated mutmut 3.8.1 sources, not self-reported historic exit codes."""
-import ast, collections, gzip, hashlib, json, pathlib, re, sys
+import ast
+import collections
+import gzip
+import hashlib
+import json
+import pathlib
+import re
+import sys
 
 def extract(root: pathlib.Path):
     families={}
