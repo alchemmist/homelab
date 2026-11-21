@@ -14,6 +14,7 @@ class ReconciliationTests(unittest.TestCase):
     """Snapshot reconciliation stays local to fixture files and fails closed."""
 
     def run_case(self, names, counts, aligned=True):
+        """Run the snapshot reconciliation case."""
         with tempfile.TemporaryDirectory() as d:
             p = Path(d)
             pods = {

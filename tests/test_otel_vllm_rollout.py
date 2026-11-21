@@ -21,6 +21,7 @@ def module():
 
 class VllmRolloutTests(unittest.TestCase):
     def test_only_native_trace_flag_added_model_args_unmodified(self):
+        """Only native trace flag added model args unmodified."""
         helper = module()
         original = ["model", "--max-model-len", "114688", "--gpu-memory-utilization", ".95"]
         updated = helper.trace_arguments(original)
@@ -35,6 +36,7 @@ class VllmRolloutTests(unittest.TestCase):
                 helper.trace_arguments(args)
 
     def test_exact_mtls_protocol_always_on_no_duplicate_signals(self):
+        """Exact mtls protocol always on no duplicate signals."""
         env = module().sdk_environment()
         self.assertEqual(env["OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"], "http/protobuf")
         self.assertEqual(env["OTEL_EXPORTER_OTLP_INSECURE"], "false")
@@ -44,6 +46,7 @@ class VllmRolloutTests(unittest.TestCase):
         self.assertEqual(env["OTEL_EXPORTER_OTLP_HEADERS"], "Connection=close")
 
     def test_maintained_overlay_matches_exact_guard_sources_and_environment(self):
+        """Maintained overlay matches exact guard sources and environment."""
         helper = module()
         overlay = yaml.safe_load(
             (ROOT / "deploy/monitoring/otel-vllm-sdk-values.yaml").read_text()
@@ -52,6 +55,7 @@ class VllmRolloutTests(unittest.TestCase):
         self.assertEqual(overlay["environment"], helper.sdk_environment())
 
     def test_sitecustomize_refuses_startup_without_dumping_failure_payload(self):
+        """Sitecustomize refuses startup without dumping failure payload."""
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)
             (path / "sitecustomize.py").write_text(

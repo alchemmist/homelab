@@ -18,6 +18,7 @@ def load(name):
 
 class ReadBoundaryTests(unittest.TestCase):
     def test_only_known_read_limit_can_be_removed(self):
+        """Only known read limit can be removed."""
         repair = load("otel-store-read-boundary")
         arguments = ["store", "--max-time=-12h", "--consistency-delay=30m"]
         self.assertEqual(repair.unclamped(arguments), ["store", "--consistency-delay=30m"])
@@ -25,6 +26,7 @@ class ReadBoundaryTests(unittest.TestCase):
             repair.unclamped(["store", "--max-time=-1d"])
 
     def test_application_reader_has_no_ca_host_or_write_permissions(self):
+        """Application reader has no ca host or write permissions."""
         pki = load("otel-application-pki")
         resources = pki.resources()
         certificates = [item for item in resources if item["kind"] == "Certificate"]
@@ -48,6 +50,7 @@ class ReadBoundaryTests(unittest.TestCase):
         )
 
     def test_rbac_evaluation_error_is_not_certified_as_denial(self):
+        """Rbac evaluation error is not certified as denial."""
         pki = load("otel-application-pki")
         with patch.object(
             pki.BOOTSTRAP,

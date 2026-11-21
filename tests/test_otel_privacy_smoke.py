@@ -16,6 +16,7 @@ SPEC.loader.exec_module(SMOKE)
 
 class PrivacySmokeTests(unittest.TestCase):
     def test_smoke_configuration_cannot_read_production_sources(self):
+        """Smoke configuration cannot read production sources."""
         source = {
             "receivers": {
                 "prometheus": {"config": "production"},
@@ -59,11 +60,13 @@ class PrivacySmokeTests(unittest.TestCase):
         self.assertEqual(json.dumps(source, sort_keys=True), before)
 
     def test_host_network_namespace_is_rejected_before_startup(self):
+        """Host network namespace is rejected before startup."""
         with patch.object(SMOKE.os, "readlink", return_value="net:[same]"):
             with self.assertRaisesRegex(ValueError, "separate network namespace"):
                 SMOKE.run(Path("/unused"), Path("/unused"), Path("/unused"), Path("/unused"))
 
     def test_otlp_partial_rejection_is_a_failure(self):
+        """Otlp partial rejection is a failure."""
         with patch.object(
             SMOKE.urllib.request,
             "urlopen",

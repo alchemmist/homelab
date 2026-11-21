@@ -48,13 +48,16 @@ def fixtures():
 
 class MigrationPreflightTests(unittest.TestCase):
     def test_retired_operational_policy_is_not_resurrected(self):
+        """Retired operational policy is not resurrected."""
         self.assertFalse(PREFLIGHT.DEFAULT_POLICY.exists())
 
     def test_ready_with_verified_prerequisites_and_capacity(self):
+        """Ready with verified prerequisites and capacity."""
         policy, inventory = fixtures()
         self.assertTrue(PREFLIGHT.evaluate(policy, inventory, now=1000)["readyForCutover"])
 
     def test_historical_default_policy_never_authorizes_cutover(self):
+        """Historical default policy never authorizes cutover."""
         _, inventory = fixtures()
         policy = json.loads(POLICY_FIXTURE.read_text())
         result = PREFLIGHT.evaluate(policy, inventory, now=1000)
@@ -62,6 +65,7 @@ class MigrationPreflightTests(unittest.TestCase):
         self.assertEqual(len([error for error in result["errors"] if "prerequisite" in error]), 4)
 
     def test_source_corruption_cannot_be_hidden_by_old_roundtrip_success(self):
+        """Source corruption cannot be hidden by old roundtrip success."""
         for mode in ("missing", "false"):
             policy, inventory = fixtures()
             if mode == "missing":
@@ -75,6 +79,7 @@ class MigrationPreflightTests(unittest.TestCase):
             )
 
     def test_integrity_gate_links_to_the_unrepaired_source_incident(self):
+        """Integrity gate links to the unrepaired source incident."""
         policy = json.loads(POLICY_FIXTURE.read_text())
         self.assertFalse(policy["historySourceIntegrityVerified"])
         evidence = json.loads((ROOT / policy["historySourceIntegrityEvidence"]).read_text())
@@ -84,6 +89,7 @@ class MigrationPreflightTests(unittest.TestCase):
         self.assertFalse(evidence["checksumChecksBypassed"])
 
     def test_historical_backup_receipt_format_is_consistent(self):
+        """Historical backup receipt format is consistent."""
         policy = json.loads(POLICY_FIXTURE.read_text())
         self.assertTrue(policy["backupVerified"])
         receipt = json.loads((ROOT / policy["backupEvidence"]).read_text())
@@ -96,24 +102,28 @@ class MigrationPreflightTests(unittest.TestCase):
         self.assertGreater(receipt["reports"]["prometheus-snapshot.tar.gz"]["blockCount"], 0)
 
     def test_missing_node_and_unhealthy_target_fail(self):
+        """Missing node and unhealthy target fail."""
         policy, inventory = fixtures()
         del inventory["nodes"]["socrat-2"]
         inventory["targets"][0]["health"] = "down"
         self.assertEqual(len(PREFLIGHT.evaluate(policy, inventory, now=1000)["errors"]), 2)
 
     def test_disk_peak_uses_stricter_reserve(self):
+        """Disk peak uses stricter reserve."""
         policy, inventory = fixtures()
         policy["nodes"]["socrat-0"]["projectedAdditionalDiskBytes"] = 301 * GIB
         result = PREFLIGHT.evaluate(policy, inventory, now=1000)
         self.assertTrue(any("disk space" in error for error in result["errors"]))
 
     def test_known_memory_pressure_blocks_new_stack(self):
+        """Known memory pressure blocks new stack."""
         policy, inventory = fixtures()
         inventory["nodes"]["socrat-1"]["memoryAvailableBytes"] = 4 * GIB
         result = PREFLIGHT.evaluate(policy, inventory, now=1000)
         self.assertTrue(any("socrat-1: insufficient" in error for error in result["errors"]))
 
     def test_cluster_collectors_move_without_reducing_budgets(self):
+        """Cluster collectors move without reducing budgets."""
         policy, inventory = fixtures()
         zero = policy["nodes"]["socrat-0"]["components"]
         one = policy["nodes"]["socrat-1"]["components"]
@@ -142,30 +152,35 @@ class MigrationPreflightTests(unittest.TestCase):
         self.assertEqual(result["capacity"]["socrat-1"]["memoryRequiredBytes"], 4928 * 1024**2)
 
     def test_relocated_collectors_still_require_memory_on_socrat_0(self):
+        """Relocated collectors still require memory on socrat 0."""
         policy, inventory = fixtures()
         inventory["nodes"]["socrat-0"]["memoryAvailableBytes"] = 2 * GIB
         result = PREFLIGHT.evaluate(policy, inventory, now=1000)
         self.assertTrue(any("socrat-0: insufficient" in error for error in result["errors"]))
 
     def test_stale_future_and_hostname_mismatch_fail(self):
+        """Stale future and hostname mismatch fail."""
         for updates in ({"observedAt": 1}, {"observedAt": 2000}, {"hostname": "unexpected"}):
             policy, inventory = fixtures()
             inventory["nodes"]["socrat-0"].update(updates)
             self.assertFalse(PREFLIGHT.evaluate(policy, inventory, now=1000)["readyForCutover"])
 
     def test_invalid_capacity_fails_closed(self):
+        """Invalid capacity fails closed."""
         for invalid in (-1, float("nan"), float("inf"), True, "1000", None):
             policy, inventory = fixtures()
             inventory["nodes"]["socrat-0"]["memoryAvailableBytes"] = invalid
             self.assertFalse(PREFLIGHT.evaluate(policy, inventory, now=1000)["readyForCutover"])
 
     def test_negative_budget_is_rejected(self):
+        """Negative budget is rejected."""
         policy, inventory = fixtures()
         policy["nodes"]["socrat-1"]["components"]["tempo"] = -1
         with self.assertRaises(ValueError):
             PREFLIGHT.evaluate(policy, inventory, now=1000)
 
     def test_empty_and_old_inventory_fail(self):
+        """Empty and old inventory fail."""
         policy, inventory = fixtures()
         inventory["targets"] = []
         inventory["prometheus"] = []
@@ -175,12 +190,14 @@ class MigrationPreflightTests(unittest.TestCase):
             PREFLIGHT.evaluate(policy, inventory, now=1000)
 
     def test_evaluate_does_not_change_inputs(self):
+        """Evaluate does not change inputs."""
         policy, inventory = fixtures()
         before = copy.deepcopy((policy, inventory))
         PREFLIGHT.evaluate(policy, inventory, now=1000)
         self.assertEqual((policy, inventory), before)
 
     def test_inventory_files_are_private_and_not_overwritten(self):
+        """Inventory files are private and not overwritten."""
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "inventory.json"
             PREFLIGHT.save(path, {"test": 1})
@@ -190,6 +207,7 @@ class MigrationPreflightTests(unittest.TestCase):
             self.assertEqual(json.loads(path.read_text()), {"test": 1})
 
     def test_monitor_inventory_does_not_export_credentials(self):
+        """Monitor inventory does not export credentials."""
         monitor = {
             "kind": "ServiceMonitor",
             "metadata": {"namespace": "monitoring", "name": "test"},
@@ -204,6 +222,7 @@ class MigrationPreflightTests(unittest.TestCase):
         self.assertNotIn("private-token", json.dumps(result))
 
     def test_contract_preserves_archive_and_tv_defaults(self):
+        """Contract preserves archive and tv defaults."""
         contract = json.loads(POLICY_FIXTURE.read_text())["contract"]
         self.assertFalse(contract["replaceProductionHistory"])
         self.assertFalse(contract["modifyCascadePolicy"])

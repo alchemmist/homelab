@@ -69,6 +69,7 @@ class FakeAPI:
                 self.data[p] = [{"pk": "protected-" + p, "setting": "unchanged"}]
 
     def __call__(self, method, endpoint, payload=None):
+        """Record the call and return fixture API responses."""
         self.requests.append((method, endpoint, copy.deepcopy(payload)))
         parsed = urlsplit(endpoint)
         path = parsed.path
@@ -97,6 +98,7 @@ class PreparationTests(unittest.TestCase):
     def setUp(self):
         # Frozen historical migration tool, NOT the current dynamic reconciler.
         # Its hard allowlist must continue rejecting the expanded live catalog.
+        """Freeze the historical catalog and reviewed app state."""
         current = json.loads((ROOT / "deploy/identity/services.json").read_text())
         self.services = {
             slug: {
@@ -123,9 +125,11 @@ class PreparationTests(unittest.TestCase):
         }
 
     def plan(self, stage="groups-only", evidence=None):
+        """Build the migration plan via the frozen tool."""
         return prep.build_plan(self.api, self.services, self.reviewed, stage, evidence)[0]
 
     def apply(self, stage="groups-only", approval=None):
+        """Apply the plan with the given approval."""
         if approval is None:
             approval = self.plan(stage, self.evidence)["sha256"]
         with prep.locked(self.root):
@@ -134,12 +138,14 @@ class PreparationTests(unittest.TestCase):
             )
 
     def test_current_dynamic_catalog_is_not_a_legacy_migration_apply(self):
+        """Current dynamic catalog is not a legacy migration apply."""
         current = json.loads((ROOT / "deploy/identity/services.json").read_text())
         with self.assertRaisesRegex(RuntimeError, "Catalog allowlist changed"):
             prep.build_plan(self.api, current, self.reviewed)
         self.assertEqual(self.api.writes, 0)
 
     def test_full_plan_is_get_only_paginated_and_sanitized(self):
+        """Full plan is get only paginated and sanitized."""
         before = copy.deepcopy(self.api.data)
         plan = self.plan()
         self.assertEqual(len(plan["operations"]), 9)
@@ -152,6 +158,7 @@ class PreparationTests(unittest.TestCase):
             self.assertEqual(op["payload"], prep.group_payload(op["payload"]["name"]))
 
     def test_both_stages_bounded_preserve_everything_else(self):
+        """Both stages bounded preserve everything else."""
         before = copy.deepcopy(self.api.data)
         self.assertEqual(self.apply(), 9)
         self.assertEqual(self.plan()["operations"], [])
@@ -183,11 +190,13 @@ class PreparationTests(unittest.TestCase):
         self.assertNotIn("SECRET", "".join(p.read_text() for p in self.root.rglob("*.json")))
 
     def test_stage_b_requires_real_fresh_group_pks(self):
+        """Stage b requires real fresh group pks."""
         with self.assertRaisesRegex(RuntimeError, "groups-only first"):
             self.plan("groups+empty-bindings")
         self.assertEqual(self.api.writes, 0)
 
     def test_group_schema_all_relations_required_and_no_adoption(self):
+        """Group schema all relations required and no adoption."""
         self.apply()
         group = next(g for g in self.api.data["core/groups/"] if g["name"].startswith("app-"))
         good = copy.deepcopy(group)
@@ -209,6 +218,7 @@ class PreparationTests(unittest.TestCase):
             self.plan()
 
     def test_unexpected_objects_catalog_uuids_and_links_fail_closed(self):
+        """Unexpected objects catalog uuids and links fail closed."""
         baseline = copy.deepcopy(self.api.data)
         changes = [
             lambda: self.api.data["core/groups/"].append(
@@ -236,6 +246,7 @@ class PreparationTests(unittest.TestCase):
         self.assertEqual(self.api.writes, 0)
 
     def test_binding_faults_in_both_stages(self):
+        """Binding faults in both stages."""
         self.apply()
         binding = self.api.data["policies/bindings/"][0]
         good = copy.deepcopy(binding)
@@ -265,6 +276,7 @@ class PreparationTests(unittest.TestCase):
             self.plan()
 
     def test_protected_drift_invalidates_approval_without_any_write(self):
+        """Protected drift invalidates approval without any write."""
         baseline = copy.deepcopy(self.api.data)
         for path in prep.COLLECTIONS:
             self.api.data = copy.deepcopy(baseline)
@@ -278,6 +290,7 @@ class PreparationTests(unittest.TestCase):
         self.assertEqual(self.api.writes, 0)
 
     def test_drift_during_second_snapshot_prevents_first_write(self):
+        """Drift during second snapshot prevents first write."""
         approval = self.plan(evidence=self.evidence)["sha256"]
 
         def drift(path):
@@ -294,6 +307,7 @@ class PreparationTests(unittest.TestCase):
         self.assertEqual(self.api.writes, 0)
 
     def test_partial_failure_durable_pending_and_no_retry_rollback_or_adoption(self):
+        """Partial failure durable pending and no retry rollback or adoption."""
         self.api.fail_write = 2
         with self.assertRaisesRegex(RuntimeError, "simulated"):
             self.apply()
@@ -310,6 +324,7 @@ class PreparationTests(unittest.TestCase):
         self.assertEqual(self.api.writes, 2)
 
     def test_uncertain_accepted_post_is_not_retried_or_adopted(self):
+        """Uncertain accepted post is not retried or adopted."""
         original = self.api.__call__
 
         def uncertain(method, path, payload=None):
@@ -338,6 +353,7 @@ class PreparationTests(unittest.TestCase):
         self.assertEqual(json.loads(entry.read_text())["status"], "pending")
 
     def test_journal_intent_failure_prevents_post(self):
+        """Journal intent failure prevents post."""
         original = prep.atomic_json
 
         def fail_intent(path, value):
@@ -350,6 +366,7 @@ class PreparationTests(unittest.TestCase):
         self.assertEqual(self.api.writes, 0)
 
     def test_post_create_drift_stops_after_one_post(self):
+        """Post create drift stops after one post."""
         original = self.api.__call__
 
         def api(method, path, payload=None):
@@ -366,6 +383,7 @@ class PreparationTests(unittest.TestCase):
         self.assertEqual(self.api.writes, 1)
 
     def test_pagination_missing_cursor_arbitrary_url_and_duplicate_rows_refused(self):
+        """Pagination missing cursor arbitrary url and duplicate rows refused."""
         for response in (
             {"results": []},
             {"results": [], "pagination": {}},
@@ -386,6 +404,7 @@ class PreparationTests(unittest.TestCase):
             prep.snapshot(api)
 
     def test_private_credentials_alias_tls_redirect_and_request_boundary(self):
+        """Private credentials alias tls redirect and request boundary."""
         path = self.root / "credentials.json"
         for key in ("AUTHENTIK_API_TOKEN", "AUTHENTIK_BOOTSTRAP_TOKEN"):
             path.write_text(json.dumps({key: "PRIVATE-TOKEN"}))
@@ -431,6 +450,7 @@ class PreparationTests(unittest.TestCase):
             prep.api_for(self.root)
 
     def test_apply_evidence_approval_and_exclusive_lock(self):
+        """Apply evidence approval and exclusive lock."""
         with self.assertRaisesRegex(RuntimeError, "evidence"):
             prep.apply_plan(
                 self.api, self.root, self.services, self.reviewed, "groups-only", None, ""
@@ -460,6 +480,7 @@ class PreparationTests(unittest.TestCase):
         self.assertEqual(self.api.writes, 0)
 
     def test_cli_default_plan_and_check_are_get_only_no_journal(self):
+        """Cli default plan and check are get only no journal."""
         (self.root / "services.json").write_text(json.dumps(self.services))
         (self.root / "account-mappings.json").write_text(json.dumps(self.reviewed))
         for action, status in [([], 0), (["check"], 1)]:

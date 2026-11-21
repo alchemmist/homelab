@@ -73,6 +73,7 @@ def migration_payload(resource):
 
 class OwnershipTests(unittest.TestCase):
     def test_every_transferred_payload_is_identical_to_reviewed_pre_migration_render(self):
+        """Every transferred payload is identical to reviewed pre migration render."""
         fixture = json.loads((ROOT / "tests/fixtures/public-entry-handoff.json").read_text())
         actual = {}
         for owner in CHARTS:
@@ -94,6 +95,7 @@ class OwnershipTests(unittest.TestCase):
         self.assertEqual(actual, fixture)
 
     def test_platform_extensions_belong_to_the_existing_application(self):
+        """Platform extensions belong to the existing application."""
         for owner, chart in CHARTS.items():
             app = yaml.safe_load((ROOT / f"deploy/argocd/apps/{owner}.yaml").read_text())
             self.assertEqual(app["spec"]["project"], "default")
@@ -103,6 +105,7 @@ class OwnershipTests(unittest.TestCase):
             self.assertTrue(app["spec"]["syncPolicy"]["automated"]["selfHeal"])
 
     def test_aggregate_chart_and_application_are_gone(self):
+        """Aggregate chart and application are gone."""
         self.assertFalse((ROOT / "charts/public-web-entry").exists())
         self.assertFalse((ROOT / "deploy/argocd/apps/public-web-entry.yaml").exists())
         for path in (ROOT / "deploy/argocd/apps").glob("*.yaml"):

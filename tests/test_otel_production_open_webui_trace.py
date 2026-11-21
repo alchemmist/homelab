@@ -52,6 +52,7 @@ def document():
 
 class OpenWebuiProductionTraceTests(unittest.TestCase):
     def test_real_application_server_resource_and_parent_are_required(self):
+        """Real application server resource and parent are required."""
         result = module().summarize_production_open_webui(document(), TRACE, PARENT)
         self.assertTrue(result["success"])
         self.assertFalse(result["productionOpenWebuiInferencePathVerified"])

@@ -14,6 +14,7 @@ SPEC.loader.exec_module(SIGNALS)
 
 class SignalInventoryTests(unittest.TestCase):
     def test_observations_are_not_a_capacity_approval(self):
+        """Observations are not a capacity approval."""
         pods = {
             "windowSeconds": 600,
             "sources": [
@@ -34,6 +35,7 @@ class SignalInventoryTests(unittest.TestCase):
         self.assertTrue(result["countsAreLowerBounds"])
 
     def test_truncation_unavailable_logs_and_journal_gaps_are_explicit(self):
+        """Truncation unavailable logs and journal gaps are explicit."""
         pods = {
             "windowSeconds": 600,
             "sources": [
@@ -47,14 +49,17 @@ class SignalInventoryTests(unittest.TestCase):
         self.assertFalse(result["observedSourcesReadable"])
 
     def test_empty_sources_and_missing_nodes_cannot_pass(self):
+        """Empty sources and missing nodes cannot pass."""
         result = SIGNALS.summarize({"windowSeconds": 600, "sources": []}, {})
         self.assertFalse(result["observedSourcesReadable"])
 
     def test_zero_measurement_window_is_rejected(self):
+        """Zero measurement window is rejected."""
         with self.assertRaises(ValueError):
             SIGNALS.summarize({"windowSeconds": 0, "sources": []}, {})
 
     def test_probe_returns_counts_not_log_contents_or_env_values(self):
+        """Probe returns counts not log contents or env values."""
         self.assertNotIn("'body':", SIGNALS.POD_PROBE)
         self.assertIn("'bytes':size", SIGNALS.POD_PROBE)
         self.assertIn("entry['name']", SIGNALS.POD_PROBE)
@@ -70,6 +75,7 @@ if __name__ == "__main__":
 
 class PrivilegedJournalTests(unittest.TestCase):
     def evidence(self, directory, **updates):
+        """Return a fixture evidence document with updates applied."""
         from datetime import datetime, timezone
 
         document = {
@@ -93,6 +99,7 @@ class PrivilegedJournalTests(unittest.TestCase):
             path.chmod(0o600)
 
     def test_merges_only_whitelisted_counts(self):
+        """Merges only whitelisted counts."""
         import tempfile
 
         with tempfile.TemporaryDirectory() as name:
@@ -104,6 +111,7 @@ class PrivilegedJournalTests(unittest.TestCase):
             self.assertNotIn("not-persisted-in-report", str(result))
 
     def test_stale_or_incomplete_evidence_is_rejected(self):
+        """Stale or incomplete evidence is rejected."""
         import tempfile
 
         for update in [
@@ -120,6 +128,7 @@ class PrivilegedJournalTests(unittest.TestCase):
                     SIGNALS.privileged_journals(directory)
 
     def test_public_evidence_file_is_rejected(self):
+        """Public evidence file is rejected."""
         import tempfile
 
         with tempfile.TemporaryDirectory() as name:
@@ -132,6 +141,7 @@ class PrivilegedJournalTests(unittest.TestCase):
 
 class ActiveLogSourceTests(unittest.TestCase):
     def test_historical_unavailable_sources_are_not_hidden_by_active_counts(self):
+        """Historical unavailable sources are not hidden by active counts."""
         data = {
             "windowSeconds": 600,
             "sources": [
@@ -152,6 +162,7 @@ class ActiveLogSourceTests(unittest.TestCase):
         self.assertFalse(report["logRatesComplete"])
 
     def test_missing_active_or_unknown_state_does_not_pass(self):
+        """Missing active or unknown state does not pass."""
         for sources in [
             [{"containerState": "running", "measurementAvailable": False}],
             [

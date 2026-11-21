@@ -51,6 +51,7 @@ def document():
 
 class VllmProductionTraceTests(unittest.TestCase):
     def test_real_application_resource_and_parent_are_required(self):
+        """Real application resource and parent are required."""
         self.assertTrue(module().summarize_production_vllm(document(), TRACE, PARENT)["success"])
         for kind in ["service", "parent", "name", "duplicate"]:
             data = document()
@@ -68,6 +69,7 @@ class VllmProductionTraceTests(unittest.TestCase):
             self.assertFalse(module().summarize_production_vllm(data, TRACE, PARENT)["success"])
 
     def test_synthetic_prompt_in_backend_fails_privacy(self):
+        """Synthetic prompt in backend fails privacy."""
         data = document()
         data["private"] = "OTEL_CANARY_PRIVATE_CONTENT_MUST_NOT_BE_CAPTURED"
         result = module().summarize_production_vllm(data, TRACE, PARENT)
