@@ -6,6 +6,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/blog_updat
 from stages import checked_model
 from engine import UnsafeInput
 
+# checked_model retries a rejected model answer once, so a bad answer is seen twice.
+MODEL_CALL_CEILING = 2
+
 
 class ModelBoundaryTests(unittest.TestCase):
     def test_retry_schema_failure(self):
@@ -20,8 +23,8 @@ class ModelBoundaryTests(unittest.TestCase):
             calls.append(prompt)
             return {"extra": True} if len(calls) == 1 else valid
 
-        self.assertEqual(checked_model(model, "prompt", {}, {"files": [{"filename": "a"}]}), valid)
-        self.assertEqual(len(calls), 2)
+        assert checked_model(model, "prompt", {}, {"files": [{"filename": "a"}]}) == valid
+        assert len(calls) == MODEL_CALL_CEILING
 
     def test_bad_output_stays_rejected(self):
         calls = []
@@ -32,4 +35,4 @@ class ModelBoundaryTests(unittest.TestCase):
 
         with self.assertRaises(UnsafeInput):
             checked_model(model, "prompt", {}, {"files": []})
-        self.assertEqual(len(calls), 2)
+        assert len(calls) == MODEL_CALL_CEILING
