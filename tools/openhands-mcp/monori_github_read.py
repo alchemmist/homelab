@@ -42,7 +42,7 @@ def pr(number:int, section:str='summary', page:int=1)->dict:
     items=cast("list[dict[str, object]]", data['check_runs'] if section=='checks' else data)
     for item in items:
         fields=('id','filename','path','status','state','conclusion','name','context','commit_id','line','in_reply_to_id','additions','deletions')
-        row={k:item[k] for k in fields if k in item};row['author']=cast("dict[str, object]", item.get('user') or {}).get('login');text=str(item.get('patch') or item.get('body') or '');row.update(excerpt=text[:800],truncated=len(text)>800);rows.append(row)
+        row={k:item[k] for k in fields if k in item};row['author']=cast("dict[str, object]", item.get('user') or {}).get('login');text=str((item.get('patch') if section=='files' else item.get('body')) or '');row.update(excerpt=text[:800],truncated=len(text)>800);rows.append(row)
     return dict(head=sha,page=pg,more=more,items=rows)
 
 if __name__=='__main__':mcp.run()
