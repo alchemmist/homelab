@@ -5,7 +5,6 @@ request tracing method with synthetic CPU state. Not production vLLM coverage;
 loading/decorator error-path privacy and renewable credentials remain gates.
 """
 
-import _ssl
 import contextlib
 import hashlib
 import io
@@ -43,7 +42,7 @@ def run():
     original_loader = ssl.SSLContext.load_cert_chain
 
     def observe_loader(
-        self: _ssl._SSLContext,
+        self: ssl.SSLContext,
         certfile: str | bytes | os.PathLike[str] | os.PathLike[bytes],
         keyfile: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None = None,
         password: Callable[[], str | bytes | bytearray] | str | bytes | bytearray | None = None,
