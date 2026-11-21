@@ -10,6 +10,7 @@ import tarfile
 import uuid
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
+from typing import cast
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -18,77 +19,73 @@ b = module_from_spec(spec)
 spec.loader.exec_module(b)
 
 
-def main():
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--backup", type=Path, required=True)
-    p.add_argument("--service", choices=["authentik", "harbor", "open-webui"], default="authentik")
-    p.add_argument("--key", type=Path, default=Path.home() / ".config/homelab/identity-backup.key")
-    args = p.parse_args()
-    encrypted = args.backup.read_bytes()
-    if not encrypted.startswith(b.HEADER):
-        raise SystemExit("Invalid backup format")
-    offset = len(b.HEADER)
-    archive = AESGCM(args.key.read_bytes()).decrypt(
-        encrypted[offset : offset + 12], encrypted[offset + 12 :], b.HEADER
-    )
-    with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
-        if args.service == "open-webui":
-            import sqlite3
-            import tempfile
+def _sqlite_member(tar: tarfile.TarFile, name: str) -> bytes:
+    """Read one archive member; restore checks only touch verified snapshots."""
+    return cast("io.BufferedReader", tar.extractfile(name)).read()
 
-            # SQLite backups may retain a WAL-mode header; read an immutable private
-            # temp file rather than trying to open WAL sidecars for an in-memory DB.
-            temporary = tempfile.TemporaryDirectory(prefix="identity-sqlite-restore-")
-            __import__("atexit").register(temporary.cleanup)
-            database = Path(temporary.name) / "webui.db"
-            b.save(database, tar.extractfile("webui.db").read())
-            connection = sqlite3.connect(database.as_uri() + "?mode=ro&immutable=1", uri=True)
-            if connection.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
-                raise RuntimeError("SQLite integrity failed")
-            ids = {r[0] for r in connection.execute("SELECT id FROM user")}
-            expected = {
-                u["openWebuiUserId"]
-                for u in json.loads(
-                    (
-                        Path(__file__).resolve().parents[1]
-                        / "deploy/identity/account-mappings.json"
-                    ).read_text()
-                ).values()
+
+def _restore_webui_database(tar: tarfile.TarFile) -> None:
+    """Restore the SQLite WebUI snapshot into a private immutable copy."""
+    import sqlite3
+    import tempfile
+
+    # SQLite backups may retain a WAL-mode header; read an immutable private
+    # temp file rather than trying to open WAL sidecars for an in-memory DB.
+    temporary = tempfile.TemporaryDirectory(prefix="identity-sqlite-restore-")
+    __import__("atexit").register(temporary.cleanup)
+    database = Path(temporary.name) / "webui.db"
+    b.save(database, _sqlite_member(tar, "webui.db"))
+    connection = sqlite3.connect(database.as_uri() + "?mode=ro&immutable=1", uri=True)
+    if connection.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
+        raise RuntimeError("SQLite integrity failed")
+    ids = {r[0] for r in connection.execute("SELECT id FROM user")}
+    expected = {
+        u["openWebuiUserId"]
+        for u in json.loads(
+            (
+                Path(__file__).resolve().parents[1] / "deploy/identity/account-mappings.json"
+            ).read_text()
+        ).values()
+    }
+    if not expected <= ids:
+        raise RuntimeError("Reviewed original WebUI identities missing")
+    connection.close()
+    temporary.cleanup()
+    print(
+        json.dumps(
+            {
+                "sqliteRestore": "passed",
+                "reviewedUserIdsPreserved": len(expected),
+                "fullApplicationRecoveryTested": False,
             }
-            if not expected <= ids:
-                raise RuntimeError("Reviewed original WebUI identities missing")
-            connection.close()
-            temporary.cleanup()
-            print(
-                json.dumps(
-                    {
-                        "sqliteRestore": "passed",
-                        "reviewedUserIdsPreserved": len(expected),
-                        "fullApplicationRecoveryTested": False,
-                    }
-                )
-            )
-            return
-        dump = tar.extractfile("database.dump").read()
-        if args.service == "authentik":
-            json.load(tar.extractfile("credentials.json"))
-            with tarfile.open(fileobj=io.BytesIO(tar.extractfile("data.tar").read())) as data:
-                data.getmembers()  # Never extract host paths.
-        else:
-            import hashlib
+        )
+    )
 
-            blobs = 0
-            with tarfile.open(
-                fileobj=io.BytesIO(tar.extractfile("registry.tar").read())
-            ) as registry:
-                for member in registry.getmembers():
-                    if member.isfile() and member.name.endswith("/data"):
-                        digest = hashlib.sha256(registry.extractfile(member).read()).hexdigest()
-                        if member.name.split("/")[-2] != digest:
-                            raise RuntimeError("Harbor blob checksum mismatch")
-                        blobs += 1
-            if not blobs:
-                raise RuntimeError("No registry blobs in snapshot")
+
+def _verify_database_dump(tar: tarfile.TarFile, service: str) -> tuple[bytes, int]:
+    """Peek the SQL dump and registry blobs without extracting host paths."""
+    if service == "authentik":
+        json.load(tar.extractfile("credentials.json"))
+        with tarfile.open(fileobj=io.BytesIO(_sqlite_member(tar, "data.tar"))) as data:
+            data.getmembers()  # Never extract host paths.
+        return _sqlite_member(tar, "database.dump"), 0
+    import hashlib
+
+    blobs = 0
+    with tarfile.open(fileobj=io.BytesIO(_sqlite_member(tar, "registry.tar"))) as registry:
+        for member in registry.getmembers():
+            if member.isfile() and member.name.endswith("/data"):
+                digest = hashlib.sha256(registry.extractfile(member).read()).hexdigest()
+                if member.name.split("/")[-2] != digest:
+                    raise RuntimeError("Harbor blob checksum mismatch")
+                blobs += 1
+    if not blobs:
+        raise RuntimeError("No registry blobs in snapshot")
+    return _sqlite_member(tar, "database.dump"), blobs
+
+
+def _run_restore_pod(service: str, dump: bytes, blobs: int) -> None:
+    """Spawn a disposable socket-only PostgreSQL pod and restore the dump."""
     name = "identity-restore-" + uuid.uuid4().hex[:10]
     k = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml", "-n", "identity"]
 
@@ -111,7 +108,7 @@ def main():
                 {
                     "name": "postgres",
                     "image": "postgres:17.11-trixie"
-                    if args.service == "authentik"
+                    if service == "authentik"
                     else "postgres:18.6-trixie",
                     "args": ["-c", "listen_addresses="],
                     "env": [
@@ -153,7 +150,7 @@ def main():
         )
         query = (
             "SELECT count(*) FROM authentik_core_group WHERE name LIKE 'homelab-%'"
-            if args.service == "authentik"
+            if service == "authentik"
             else "SELECT count(*) FROM harbor_user WHERE username='admin' AND deleted=false"
         )
         count = int(
@@ -161,22 +158,43 @@ def main():
             .decode()
             .strip()
         )
-        expected_count = 5 if args.service == "authentik" else 1
+        expected_count = 5 if service == "authentik" else 1
         if count != expected_count:
             raise RuntimeError("Expected restored identities missing")
         print(
             json.dumps(
                 {
                     "databaseRestore": "passed",
-                    "service": args.service,
+                    "service": service,
                     "verifiedIdentityRows": count,
-                    "verifiedBlobs": blobs if args.service == "harbor" else None,
+                    "verifiedBlobs": blobs if service == "harbor" else None,
                     "fullApplicationRecoveryTested": False,
                 }
             )
         )
     finally:
         run(["delete", "pod", name, "--ignore-not-found", "--wait=true", "--timeout=60s"])
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--backup", type=Path, required=True)
+    p.add_argument("--service", choices=["authentik", "harbor", "open-webui"], default="authentik")
+    p.add_argument("--key", type=Path, default=Path.home() / ".config/homelab/identity-backup.key")
+    args = p.parse_args()
+    encrypted = args.backup.read_bytes()
+    if not encrypted.startswith(b.HEADER):
+        raise SystemExit("Invalid backup format")
+    offset = len(b.HEADER)
+    archive = AESGCM(args.key.read_bytes()).decrypt(
+        encrypted[offset : offset + 12], encrypted[offset + 12 :], b.HEADER
+    )
+    with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
+        if args.service == "open-webui":
+            _restore_webui_database(tar)
+            return
+        dump, blobs = _verify_database_dump(tar, args.service)
+    _run_restore_pod(args.service, dump, blobs)
 
 
 if __name__ == "__main__":
