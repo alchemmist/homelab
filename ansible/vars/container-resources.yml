@@ -857,139 +857,139 @@ container_resource_policy_profiles:
         ephemeral-storage: 256Mi
       removeCpuLimit: true
 
-  - namespace: cattle-monitoring-system
-    ownerKind: ReplicaSet
-    ownerPattern: ^thanos-query-[a-z0-9]+$
-    containers:
-      thanos:
-        requests:
-          cpu: 100m
-          memory: 512Mi
-          ephemeral-storage: 64Mi
-        limits:
-          memory: 2Gi
-          ephemeral-storage: 1Gi
-        removeCpuLimit: true
-    nodeSelector:
-      kubernetes.io/hostname: socrat-1
-  - namespace: cattle-monitoring-system
-    ownerKind: ReplicaSet
-    ownerPattern: ^thanos-store-[a-z0-9]+$
-    containers:
-      thanos:
-        requests:
-          cpu: 100m
-          memory: 512Mi
-          ephemeral-storage: 64Mi
-        limits:
-          memory: 2Gi
-          ephemeral-storage: 1Gi
-        removeCpuLimit: true
-    nodeSelector:
-      kubernetes.io/hostname: socrat-0
-  - namespace: cattle-monitoring-system
-    ownerKind: ReplicaSet
-    ownerPattern: ^thanos-store-5m-[a-z0-9]+$
-    containers:
-      thanos:
-        requests:
-          cpu: 50m
-          memory: 256Mi
-          ephemeral-storage: 64Mi
-        limits:
-          memory: 1Gi
-          ephemeral-storage: 1Gi
-        removeCpuLimit: true
-    nodeSelector:
-      kubernetes.io/hostname: socrat-1
-  - namespace: cattle-monitoring-system
-    ownerKind: ReplicaSet
-    ownerPattern: ^thanos-store-1h-[a-z0-9]+$
-    containers:
-      thanos:
-        requests:
-          cpu: 25m
-          memory: 128Mi
-          ephemeral-storage: 64Mi
-        limits:
-          memory: 384Mi
-          ephemeral-storage: 1Gi
-        removeCpuLimit: true
-    nodeSelector:
-      kubernetes.io/hostname: socrat-3
-  - namespace: cattle-monitoring-system
-    ownerKind: ReplicaSet
-    ownerPattern: ^thanos-compactor-[a-z0-9]+$
-    containers:
-      thanos:
-        requests:
-          cpu: 100m
-          memory: 1Gi
-          ephemeral-storage: 64Mi
-        limits:
-          memory: 3Gi
-          ephemeral-storage: 1Gi
-        removeCpuLimit: true
-    nodeSelector:
-      kubernetes.io/hostname: socrat-0
-  - namespace: cattle-monitoring-system
-    ownerKind: ReplicaSet
-    ownerPattern: ^thanos-compactor-5m-[a-z0-9]+$
-    containers:
-      thanos:
-        requests:
-          cpu: 25m
-          memory: 128Mi
-          ephemeral-storage: 64Mi
-        limits:
-          memory: 512Mi
-          ephemeral-storage: 1Gi
-        removeCpuLimit: true
-    nodeSelector:
-      kubernetes.io/hostname: socrat-1
-  - namespace: cattle-monitoring-system
-    ownerKind: ReplicaSet
-    ownerPattern: ^thanos-compactor-1h-[a-z0-9]+$
-    containers:
-      thanos:
-        requests:
-          cpu: 25m
-          memory: 128Mi
-          ephemeral-storage: 64Mi
-        limits:
-          memory: 384Mi
-          ephemeral-storage: 1Gi
-        removeCpuLimit: true
-    nodeSelector:
-      kubernetes.io/hostname: socrat-3
-  - namespace: cattle-monitoring-system
-    ownerKind: ReplicaSet
-    ownerPattern: ^thanos-shelf-5m-[a-z0-9]+$
-    containers:
-      shelf:
-        requests:
-          cpu: 25m
-          memory: 64Mi
-          ephemeral-storage: 64Mi
-        limits:
-          memory: 256Mi
-          ephemeral-storage: 1Gi
-        removeCpuLimit: true
-    nodeSelector:
-      kubernetes.io/hostname: socrat-1
-  - namespace: cattle-monitoring-system
-    ownerKind: ReplicaSet
-    ownerPattern: ^thanos-shelf-1h-[a-z0-9]+$
-    containers:
-      shelf:
-        requests:
-          cpu: 25m
-          memory: 64Mi
-          ephemeral-storage: 64Mi
-        limits:
-          memory: 256Mi
-          ephemeral-storage: 1Gi
-        removeCpuLimit: true
-    nodeSelector:
-      kubernetes.io/hostname: socrat-3
+- namespace: cattle-monitoring-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^thanos-query-[a-z0-9]+$
+  containers:
+    thanos:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 2Gi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+  nodeSelector:
+    kubernetes.io/hostname: socrat-1
+- namespace: cattle-monitoring-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^thanos-store-[a-z0-9]+$
+  containers:
+    thanos:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 2Gi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+  nodeSelector:
+    kubernetes.io/hostname: socrat-0
+- namespace: cattle-monitoring-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^thanos-store-5m-[a-z0-9]+$
+  containers:
+    thanos:
+      requests:
+        cpu: 50m
+        memory: 256Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 1Gi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+  nodeSelector:
+    kubernetes.io/hostname: socrat-1
+- namespace: cattle-monitoring-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^thanos-store-1h-[a-z0-9]+$
+  containers:
+    thanos:
+      requests:
+        cpu: 25m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 384Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+  nodeSelector:
+    kubernetes.io/hostname: socrat-3
+- namespace: cattle-monitoring-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^thanos-compactor-[a-z0-9]+$
+  containers:
+    thanos:
+      requests:
+        cpu: 100m
+        memory: 1Gi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 3Gi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+  nodeSelector:
+    kubernetes.io/hostname: socrat-0
+- namespace: cattle-monitoring-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^thanos-compactor-5m-[a-z0-9]+$
+  containers:
+    thanos:
+      requests:
+        cpu: 25m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+  nodeSelector:
+    kubernetes.io/hostname: socrat-1
+- namespace: cattle-monitoring-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^thanos-compactor-1h-[a-z0-9]+$
+  containers:
+    thanos:
+      requests:
+        cpu: 25m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 384Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+  nodeSelector:
+    kubernetes.io/hostname: socrat-3
+- namespace: cattle-monitoring-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^thanos-shelf-5m-[a-z0-9]+$
+  containers:
+    shelf:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 256Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+  nodeSelector:
+    kubernetes.io/hostname: socrat-1
+- namespace: cattle-monitoring-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^thanos-shelf-1h-[a-z0-9]+$
+  containers:
+    shelf:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 256Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+  nodeSelector:
+    kubernetes.io/hostname: socrat-3
 ...

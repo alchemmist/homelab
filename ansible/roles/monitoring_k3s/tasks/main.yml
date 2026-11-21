@@ -146,21 +146,21 @@
 - name: Publish native alert detail links on the Nodes and Overview dashboards
   ansible.builtin.command:
     argv:
-      - helm
-      - upgrade
-      - "{{ monitoring_k3s_release }}"
-      - "{{ monitoring_k3s_remote_dir }}/chart"
-      - --namespace
-      - "{{ monitoring_k3s_namespace }}"
-      - --kubeconfig
-      - "{{ monitoring_k3s_kubeconfig }}"
-      - --reuse-values
-      - --values
-      - "{{ monitoring_k3s_remote_dir }}/node-alert-links.json"
-      - --values
-      - "{{ monitoring_k3s_remote_dir }}/overview-alert-links.json"
-      - "{{ '--wait' if monitoring_k3s_wait | bool else '--wait=false' }}"
-      - --timeout
-      - 5m
+    - helm
+    - upgrade
+    - "{{ monitoring_k3s_release }}"
+    - "{{ monitoring_k3s_remote_dir }}/chart"
+    - --namespace
+    - "{{ monitoring_k3s_namespace }}"
+    - --kubeconfig
+    - "{{ monitoring_k3s_kubeconfig }}"
+    - --reuse-values
+    - --values
+    - "{{ monitoring_k3s_remote_dir }}/node-alert-links.json"
+    - --values
+    - "{{ monitoring_k3s_remote_dir }}/overview-alert-links.json"
+    - "{{ '--wait' if monitoring_k3s_wait | bool else '--wait=false' }}"
+    - --timeout
+    - 5m
   changed_when: true
 ...
