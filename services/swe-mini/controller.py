@@ -311,7 +311,7 @@ def tick():
         log = CORE.read_namespaced_pod_log(pods[0].metadata.name, NS, limit_bytes=2_000_000)
         try:
             result = decode_result(log, signing_key(run["id"], run["state"]))
-        except (ValueError, OSError):
+        except (KeyError, TypeError, ValueError, OSError):
             if run["state"] == "review":
                 try:
                     CORE.delete_namespaced_config_map(run["job"] + "-proposal", NS)
