@@ -6452,7 +6452,7 @@
     "resource": "thanos-cascade",
     "group": "socrat.thanos",
     "alert": "ThanosFiveDiskLow",
-    "expr": "max(\n  node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype=~\"ext4|xfs\"}\n  * on(instance) group_left(nodename)\n  node_uname_info{job=\"node-exporter\",nodename=\"socrat-1\"}\n) < 50 * 1024 * 1024 * 1024\n",
+    "expr": "(socrat_five_bucket_available_bytes{backing_node=\"socrat-0\"} < 50 * 1024 * 1024 * 1024)\nor absent(socrat_five_bucket_available_bytes{backing_node=\"socrat-0\"})\n",
     "uid": null,
     "graphs": {
       "version": 1,

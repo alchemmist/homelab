@@ -3,10 +3,10 @@
 import base64
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 import urllib.request
+from pathlib import Path
 
 root = Path(sys.argv[1])
 service = sys.argv[2]
@@ -15,6 +15,7 @@ clients = json.loads((root / "oidc-clients.json").read_text())
 
 
 def private_save(path, data):
+    """Document the private save operation."""
     if path.exists():
         return
     fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
@@ -23,6 +24,7 @@ def private_save(path, data):
 
 
 def kubectl(args, body=None):
+    """Document the kubectl operation."""
     result = subprocess.run(
         kube + args,
         input=json.dumps(body) if body is not None else None,
@@ -30,12 +32,15 @@ def kubectl(args, body=None):
         capture_output=True,
     )
     if result.returncode:
-        message = "Kubernetes operation failed; details suppressed to protect configuration"
-        raise RuntimeError(message)
+        msg_0 = "Kubernetes operation failed; details suppressed to protect configuration"
+        raise RuntimeError(
+            msg_0
+        )
     return result.stdout
 
 
 def idp(method, path, payload=None):
+    """Document the idp operation."""
     runtime = json.loads((root / "credentials.json").read_text())
     request = urllib.request.Request(
         "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
@@ -52,13 +57,14 @@ def idp(method, path, payload=None):
 
 
 def reviewed_user(username, account):
+    """Document the reviewed user operation."""
     from urllib.parse import urlencode
 
     users = idp("GET", "core/users/?" + urlencode({"username": username}))["results"]
     exact = [u for u in users if u["username"] == username]
     if len(exact) != 1 or exact[0]["uuid"] != account.get("idpUserUuid"):
-        message = "Reviewed Authentik subject mismatch; no relinking allowed"
-        raise RuntimeError(message)
+        msg = "Reviewed Authentik subject mismatch; no relinking allowed"
+        raise RuntimeError(msg)
     return exact[0]
 
 
@@ -85,8 +91,8 @@ if service == "harbor":
         ]
     )
     if users.strip():
-        message = "Active non-admin Harbor identities require explicit migration review"
-        raise RuntimeError(message)
+        msg = "Active non-admin Harbor identities require explicit migration review"
+        raise RuntimeError(msg)
     previous = json.loads(
         kubectl(["-n", "harbor", "get", "deployment", "harbor-core", "-o", "json"])
     )
@@ -153,8 +159,8 @@ if service == "harbor":
     ) as r:
         after = json.load(r)
     if after["auth_mode"] != "oidc_auth":
-        message = "Harbor OIDC config did not activate"
-        raise RuntimeError(message)
+        msg = "Harbor OIDC config did not activate"
+        raise RuntimeError(msg)
     print("Harbor OIDC configured via supported override; local admin password unchanged")
 elif service == "grafana":
     # Public key/value settings were generated from the committed YAML by Ansible,
@@ -227,13 +233,9 @@ from open_webui.models.users import Users
 async def main():
  for link in json.load(sys.stdin):
   user=await Users.get_user_by_id(link['id'])
-  if not user or user.email!=link['email']:
-   message='Reviewed WebUI identity mismatch'
-   raise RuntimeError(message)
+  if not user or user.email!=link['email']:raise RuntimeError('Reviewed WebUI identity mismatch')
   old=(user.oauth or {}).get('oidc',{})
-  if old.get('sub') not in [None,link['sub']]:
-   message='Existing OAuth subject differs'
-   raise RuntimeError(message)
+  if old.get('sub') not in [None,link['sub']]:raise RuntimeError('Existing OAuth subject differs')
   await Users.update_user_oauth_by_id(user.id,'oidc',link['sub'])
 asyncio.run(main())"""
     kubectl(
@@ -290,7 +292,7 @@ asyncio.run(main())"""
         "Open WebUI native OIDC configured; exact UUID links preserve users/chats; no email-based merging"
     )
 elif service == "rancher":
-    from observer_admission import retain_observer, authconfig_patch
+    from observer_admission import authconfig_patch, retain_observer
 
     accounts = json.loads((root / "account-mappings.json").read_text())
     original = json.loads(
@@ -311,8 +313,8 @@ elif service == "rancher":
         external_id = account.get("rancherOidcUserId", "u-authentik-" + username)
         collision = [u for u in all_users if principal in u.get("principalIds", [])]
         if any(u["metadata"]["name"] not in [user_id, external_id] for u in collision):
-            message = "OIDC principal belongs to an unexpected Rancher user"
-            raise RuntimeError(message)
+            msg = "OIDC principal belongs to an unexpected Rancher user"
+            raise RuntimeError(msg)
         existing = next(u for u in all_users if u["metadata"]["name"] == user_id)
         private_save(root / ("rancher-user-" + user_id + "-before-oidc.json"), existing)
         if collision:
@@ -332,8 +334,8 @@ elif service == "rancher":
             }
             kubectl(["create", "-f", "-"], external)
         else:
-            message = "External Rancher username exists with another principal"
-            raise RuntimeError(message)
+            msg = "External Rancher username exists with another principal"
+            raise RuntimeError(msg)
         for kind in [
             "globalrolebindings",
             "clusterroletemplatebindings",
@@ -526,5 +528,5 @@ elif service == "lms":
     )
     print("LMS OIDC secret reconciled; Authentik remains the only identity provider")
 else:
-    message = "Unsupported integration"
-    raise SystemExit(message)
+    msg = "Unsupported integration"
+    raise SystemExit(msg)

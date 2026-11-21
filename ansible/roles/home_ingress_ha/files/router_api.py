@@ -10,11 +10,11 @@ import time
 import urllib.parse
 import urllib.request
 
-
 FIELDS = ("ip", "local_port", "protocol", "remote_ip", "external_port", "wan", "status", "comment")
 
 
 def parse_forwards(page):
+    """Document the parse forwards operation."""
     rows = []
     for row in re.findall(r"<tr\b[^>]*>(.*?)</tr>", page, re.S | re.I):
         selected = re.search(r'name="(select\d+)"', row)
@@ -23,18 +23,19 @@ def parse_forwards(page):
         cells = re.findall(r"<td\b[^>]*>(.*?)</td>", row, re.S | re.I)
         values = [html.unescape(re.sub(r"<[^>]*>", "", cell)).strip() for cell in cells]
         if len(values) != 9:
-            message = "Unexpected router forwarding table format"
-            raise ValueError(message)
+            msg = "Unexpected router forwarding table format"
+            raise ValueError(msg)
         entry = dict(zip(FIELDS, values[:8], strict=True))
         entry["selector"] = selected.group(1)
         rows.append(entry)
     if not rows:
-        message = "Missing router forwarding table"
-        raise ValueError(message)
+        msg = "Missing router forwarding table"
+        raise ValueError(msg)
     return rows
 
 
 def canonical(rows):
+    """Document the canonical operation."""
     return sorted(tuple(row[field] for field in FIELDS) for row in rows)
 
 
@@ -42,19 +43,20 @@ class Router:
     """Router HTTP API client using authenticated requests."""
 
     def __init__(self, credentials, address) -> None:
+        """Initialize the router client."""
 
         self.base = "http://" + str(ipaddress.IPv4Address(address))
         self.cookie = None
         page = self.request("/login.htm")
         match = re.search(r"var map2 = '(.*?)';", page)
         if not match:
-            message = "Unsupported router authentication page"
-            raise ValueError(message)
+            msg = "Unsupported router authentication page"
+            raise ValueError(msg)
         alphabet = match.group(1).replace("\\\\", "\\").replace("\\'", "'")
         plain = credentials["username"] + credentials["password"]
         if any(ord(char) < 32 or ord(char) - 32 >= len(alphabet) for char in plain):
-            message = "Unsupported credential character"
-            raise ValueError(message)
+            msg = "Unsupported credential character"
+            raise ValueError(msg)
         credit = "".join(alphabet[ord(char) - 32] for char in plain)
         page = self.request(
             "/boafrm/formLoginCookie",
@@ -68,8 +70,8 @@ class Router:
         )
         match = re.search(r'document.cookie = "(cookie_auth=[^;"\r\n]+)', page)
         if not match:
-            message = "Router authentication failed"
-            raise ValueError(message)
+            msg = "Router authentication failed"
+            raise ValueError(msg)
         self.cookie = match.group(1)
 
     def request(self, path, data=None):
@@ -92,16 +94,16 @@ class Router:
                 return rows
             if attempt < 4:
                 time.sleep(1)
-        message = "Router forwarding readback does not match expected state"
-        raise RuntimeError(message)
+        msg = "Router forwarding readback does not match expected state"
+        raise RuntimeError(msg)
 
     def replace(self, expected_rows, old, new):
         """Replace exactly one existing forward with a new entry after verification."""
         rows = self.verify(expected_rows)
         matching = [row for row in rows if canonical([row]) == canonical([old])]
         if len(matching) != 1:
-            message = "Expected old forward is not unique"
-            raise RuntimeError(message)
+            msg = "Expected old forward is not unique"
+            raise RuntimeError(msg)
         remaining = [row for row in rows if row is not matching[0]]
         try:
             self.request(
@@ -127,8 +129,8 @@ class Router:
     def add(self, row):
         """Add one enabled WAN2 TCP forward through the router form endpoint."""
         if row["protocol"] != "TCP" or row["wan"] != "Wan2" or row["status"] != "Enabled":
-            message = "Only enabled WAN2 TCP forwarding is supported"
-            raise ValueError(message)
+            msg = "Only enabled WAN2 TCP forwarding is supported"
+            raise ValueError(msg)
         self.request(
             "/boafrm/formPortFw",
             {
@@ -150,6 +152,7 @@ class Router:
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--router", default="192.168.0.1")
     parser.add_argument("--expected-old")
@@ -166,8 +169,8 @@ def main():
     old_ip = str(ipaddress.IPv4Address(args.expected_old))
     destination = str(ipaddress.IPv4Address(args.destination))
     if old_ip == destination:
-        message = "Old and destination addresses must differ"
-        raise ValueError(message)
+        msg = "Old and destination addresses must differ"
+        raise ValueError(msg)
     targets = []
     for port, comment in [("80", "socrat-http"), ("443", "socrat-https")]:
         matches = [row for row in rows if row["external_port"] == port]
@@ -179,8 +182,7 @@ def main():
             )
         )
         if len(matches) != 1 or canonical(matches) != canonical([expected]):
-            message = "Forward does not match explicit expected old state: " + port
-            raise RuntimeError(message)
+            raise RuntimeError("Forward does not match explicit expected old state: " + port)
         targets.append(matches[0])
     completed = []
     try:

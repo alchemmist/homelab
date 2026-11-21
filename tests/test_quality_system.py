@@ -3,11 +3,11 @@
 import hashlib
 import importlib.util
 import json
-from pathlib import Path
 import shutil
 import stat
 import subprocess
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
@@ -19,15 +19,16 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts/quality"))
-from common import finding, report, unique, failure, command
-import charts
 import contracts
+from common import command, failure, finding, report, unique
 from strict_report import (
     audit_exit_code,
     create_evidence_directory,
     snapshot_is_stable,
     write_private,
 )
+
+import charts
 
 
 @pytest.mark.parametrize(
@@ -172,6 +173,9 @@ def test_chart_registry_covers_all_local_roots_and_consumed_values() -> None:
     assert len({v["id"] for v in values}) == len(values)
     wishlist = next(v for v in values if v["id"] == "wishlist-0")
     assert wishlist["values"] == [ROOT / "deploy/wishlist/values.yaml"]
+    postgres = next(v for v in values if v["id"] == "postgres-platform-0")
+    assert postgres["inline_values"] == {"enabled": True}
+    assert charts.arguments(postgres)[-2:] == ["--values", "-"]
     for value in values:
         assert value["chart"].is_relative_to(ROOT)
         assert "kubectl" not in charts.arguments(value)
@@ -268,7 +272,8 @@ def test_helm_parameters_cannot_inject_a_post_renderer() -> None:
         charts.arguments(target)
 
 
-def test_network_namespace_preserves_locked_tool_path(tmp_path, monkeypatch) -> None:
+@pytest.mark.parametrize("system", ["Linux", "Darwin"])
+def test_network_namespace_preserves_locked_tool_path(tmp_path, monkeypatch, system) -> None:
     import importlib.util
     from types import SimpleNamespace
 
@@ -282,7 +287,7 @@ def test_network_namespace_preserves_locked_tool_path(tmp_path, monkeypatch) -> 
     (tmp_path / "quality/test-suites.json").write_text(
         json.dumps({"suites": {"fixture": ["tests/test_fixture.py"]}})
     )
-    monkeypatch.setattr(runner.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(runner.platform, "system", lambda: system)
     monkeypatch.setattr(runner.getpass, "getuser", lambda: "runner")
     monkeypatch.setattr(sys, "argv", ["tests.py", "fixture", "--isolate-network"])
     monkeypatch.setenv("PATH", "/locked-venv/bin:/usr/bin")
@@ -295,9 +300,13 @@ def test_network_namespace_preserves_locked_tool_path(tmp_path, monkeypatch) -> 
     )
     assert runner.main() == 0
     argv, kw = calls[0]
-    assert "PATH=/locked-venv/bin:/usr/bin" in argv
     assert "SSH_AUTH_SOCK" not in kw["env"]
-    assert argv[:4] == ["sudo", "-n", "unshare", "--net"]
+    if system == "Linux":
+        assert argv[:4] == ["sudo", "-n", "unshare", "--net"]
+        assert "PATH=/locked-venv/bin:/usr/bin" in argv
+    else:
+        assert argv[:2] == ["/usr/bin/sandbox-exec", "-p"]
+        assert "(deny network*)" in argv[2]
 
 
 @pytest.mark.parametrize(
@@ -312,6 +321,7 @@ def test_image_digest_must_be_real_sha256_shape(image) -> None:
 
 def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatch) -> None:
     from types import SimpleNamespace
+
     import lint
 
     calls = []

@@ -1,7 +1,10 @@
 """Loopback-only model relay. No arbitrary URL, model, auth header or redirect."""
-import http.client,json,threading
-from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
+import http.client
+import json
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
 slot=threading.BoundedSemaphore(1)
 class Handler(BaseHTTPRequestHandler):
  """HTTP handler relaying chat completions to the in-cluster model."""

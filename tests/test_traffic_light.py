@@ -4,7 +4,6 @@ import json
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DASHBOARD = ROOT / "charts/monitoring-k3s/dashboards/traffic-light.json"
 VALUES = ROOT / "charts/monitoring-k3s/values.yaml"
@@ -44,6 +43,7 @@ def cells(grid):
 
 
 class TrafficLightLayoutTest(unittest.TestCase):
+    """Tests for TrafficLightLayoutTest."""
     def setUp(self):
         self.dashboard = load()
 
@@ -146,6 +146,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
 
 
 class TrafficLightQueriesTest(unittest.TestCase):
+    """Tests for TrafficLightQueriesTest."""
     def setUp(self):
         self.dashboard = load()
 

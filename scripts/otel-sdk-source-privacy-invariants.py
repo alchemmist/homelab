@@ -76,5 +76,6 @@ def check(guard):
         and original.attributes["exception.message"] == marker,
     }
     if not all(checks.values()):
-        raise ValueError("Pinned-runtime source privacy invariants failed")
+        msg = "Pinned-runtime source privacy invariants failed"
+        raise ValueError(msg)
     return checks

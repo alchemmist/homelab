@@ -97,11 +97,13 @@ def evaluate(targets, fetch, timeout, images=None):
         }
         try:
             if current is None:
-                raise ValueError("current version is not a dotted triple")
+                msg = "current version is not a dotted triple"
+                raise ValueError(msg)
             releases = fetch(target["github"], timeout)
             latest, _tag = latest_stable(releases)
             if latest is None:
-                raise ValueError("no stable release")
+                msg = "no stable release"
+                raise ValueError(msg)
             sample["latest"] = format_version(latest)
             sample["available"] = 1 if latest > current else 0
             sample["success"] = 1
@@ -137,6 +139,7 @@ class State:
     """Mutable state collected by the update watcher."""
 
     def __init__(self) -> None:
+        """Initialize empty metric state."""
 
         self.lock = threading.Lock()
         self.body = render_metrics([]).encode()
@@ -172,7 +175,8 @@ def serve(state, port):
 
 def workload_ref(target):
     if target.get("deployment") and target.get("statefulset"):
-        raise ValueError("ambiguous workload target")
+        msg = "ambiguous workload target"
+        raise ValueError(msg)
     if target.get("statefulset"):
         return "statefulsets", target["statefulset"]
     return "deployments", target.get("deployment")

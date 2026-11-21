@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/wiki_openapi"))
-from engine import spec_changed, select_closable, page_ok, UnsafeInput
+from engine import UnsafeInput, page_ok, select_closable, spec_changed
 from stages import stage
 
 SHA = "a" * 40
@@ -17,6 +17,7 @@ BEFORE = "b" * 40
 
 
 class Bot:
+    """Test helper."""
     def __init__(self, files):
         self._files = files
         self.calls = 0
@@ -32,6 +33,7 @@ class Bot:
 
 
 class Lab:
+    """Test helper."""
     def __init__(self):
         self.closed = []
         self.page = "old"
@@ -62,6 +64,7 @@ class Lab:
 
 
 class Flow(unittest.TestCase):
+    """Tests or helper for Flow."""
     def test_ignores_other_branches_without_github(self):
         bot = Bot([{"filename": "openapi.yaml"}])
         assert (

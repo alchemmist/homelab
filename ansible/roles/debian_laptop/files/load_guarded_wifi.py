@@ -5,11 +5,11 @@ import argparse
 import gzip
 import lzma
 import os
-from pathlib import Path
 import platform
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 DKMS_NAME = "homelab-alx"
 DKMS_VERSION = "6.12.111-1"
@@ -19,10 +19,12 @@ WIFI_PARAMETERS = Path("/sys/module/rtl8723ae/parameters")
 
 
 def run(arguments):
+    """Document the run operation."""
     return subprocess.run(arguments, check=True, capture_output=True, timeout=30).stdout
 
 
 def module_note(path):
+    """Document the module note operation."""
     data = path.read_bytes()
     if path.suffix == ".xz":
         data = lzma.decompress(data)
@@ -46,25 +48,25 @@ def module_note(path):
         )
         value = note.read_bytes()
         if not value:
-            message = "ALX module has no GNU build-id note"
-            raise RuntimeError(message)
+            msg = "ALX module has no GNU build-id note"
+            raise RuntimeError(msg)
         return value
 
 
 def validate():
+    """Document the validate operation."""
     if os.geteuid() != 0:
-        message = "This guard must run as root"
-        raise RuntimeError(message)
+        msg = "This guard must run as root"
+        raise RuntimeError(msg)
     if BOARD_PATH.read_text().strip() != "MS-16GP":
-        message = "Unexpected motherboard"
-        raise RuntimeError(message)
+        msg = "Unexpected motherboard"
+        raise RuntimeError(msg)
     kernel = platform.release()
     status = run(["dkms", "status", "-m", DKMS_NAME, "-v", DKMS_VERSION, "-k", kernel]).decode()
     expected = f"{DKMS_NAME}/{DKMS_VERSION}, {kernel}, {platform.machine()}: installed"
     accepted = {expected, expected + " (Original modules exist)"}
     if not accepted.intersection(line.strip() for line in status.splitlines()):
-        message = f"Required ALX DKMS module is not installed for {kernel}"
-        raise RuntimeError(message)
+        raise RuntimeError(f"Required ALX DKMS module is not installed for {kernel}")
     path = Path(run(["modinfo", "-n", "alx"]).decode().strip()).resolve(strict=True)
     directory = (Path("/lib/modules") / kernel / "updates/dkms").resolve()
     if path.parent != directory or path.name not in (
@@ -73,16 +75,19 @@ def validate():
         "alx.ko.zst",
         "alx.ko.gz",
     ):
-        message = "ALX resolves outside the current kernel DKMS directory"
-        raise RuntimeError(message)
+        msg = "ALX resolves outside the current kernel DKMS directory"
+        raise RuntimeError(msg)
     expected_note = module_note(path)
     run(["modprobe", "alx"])
     if LOADED_NOTE.read_bytes() != expected_note:
-        message = "Loaded ALX build-id differs from the guarded DKMS module; reboot required"
-        raise RuntimeError(message)
+        msg_0 = "Loaded ALX build-id differs from the guarded DKMS module; reboot required"
+        raise RuntimeError(
+            msg_0
+        )
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     arguments = parser.parse_args()
@@ -92,8 +97,9 @@ def main():
             run(["modprobe", "rtl8723ae", "msi=1", "ips=0", "fwlps=0", "swlps=0"])
             for name, expected in {"msi": "Y", "ips": "N", "fwlps": "N", "swlps": "N"}.items():
                 if (WIFI_PARAMETERS / name).read_text().strip() != expected:
-                    message = f"Loaded Wi-Fi parameter {name} differs from guarded configuration; no automatic reload attempted"
-                    raise RuntimeError(message)
+                    raise RuntimeError(
+                        f"Loaded Wi-Fi parameter {name} differs from guarded configuration; no automatic reload attempted"
+                    )
     except (
         OSError,
         RuntimeError,

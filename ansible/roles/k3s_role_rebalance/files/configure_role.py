@@ -3,25 +3,26 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import stat
 import sys
 import tempfile
+from pathlib import Path
 
 import yaml
 
 
 def configure(args):
+    """Document the configure operation."""
     path = Path(args.config)
     if path.is_symlink():
-        message = "config must not be a symlink"
-        raise ValueError(message)
+        msg = "config must not be a symlink"
+        raise ValueError(msg)
     exists = path.exists()
     original = path.read_bytes() if exists else b""
     current = yaml.safe_load(original) or {}
     if not isinstance(current, dict):
-        message = "config must be a YAML mapping"
-        raise ValueError(message)
+        msg = "config must be a YAML mapping"
+        raise ValueError(msg)
     desired = dict(current)
     for key in (
         "cluster-init",
@@ -49,8 +50,8 @@ def configure(args):
     if isinstance(sans, str):
         sans = [sans]
     if not isinstance(sans, list) or any(not isinstance(value, str) for value in sans):
-        message = "tls-san must contain strings"
-        raise ValueError(message)
+        msg = "tls-san must contain strings"
+        raise ValueError(msg)
     desired["tls-san"] = list(dict.fromkeys(sans + [args.advertise_ip, "127.0.0.1"]))
     changed = desired != current or not exists or stat.S_IMODE(path.stat().st_mode) != 0o600
     result = {"changed": changed, "backup": None}
@@ -89,6 +90,7 @@ def _write_desired(path, original, encoded, exists):
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     parser.add_argument("--role", choices=("server", "control-plane"), required=True)

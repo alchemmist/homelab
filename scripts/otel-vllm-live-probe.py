@@ -23,7 +23,8 @@ def run() -> None:
         from opentelemetry.trace import Status, StatusCode
 
         if not getattr(TracerProvider, "_homelab_source_privacy", False):
-            raise ValueError("Early source privacy bootstrap absent")
+            msg = "Early source privacy bootstrap absent"
+            raise ValueError(msg)
         authorization = "Bearer " + os.environ["VLLM_API_KEY"]
         with urllib.request.urlopen(
             urllib.request.Request(
@@ -34,7 +35,8 @@ def run() -> None:
             document = json.loads(response.read(65537))
         models = document.get("data", [])
         if len(models) != 1:
-            raise ValueError("Expected one already loaded model; never switch models")
+            msg = "Expected one already loaded model; never switch models"
+            raise ValueError(msg)
         provider = TracerProvider(
             resource=Resource.create({"service.name": "homelab-live-vllm-probe"})
         )
@@ -75,7 +77,8 @@ def run() -> None:
                 status = response.status
                 raw = response.read(65537)
             if len(raw) > 65536:
-                raise ValueError("Response inspection budget exceeded")
+                msg = "Response inspection budget exceeded"
+                raise ValueError(msg)
             result = json.loads(raw)
             completion_tokens = result.get("usage", {}).get("completion_tokens", 0)
             valid_response = bool(result.get("choices")) and completion_tokens == 1

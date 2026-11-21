@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Narrow owned nft input guard: public eth0 TCP12096/32087 only.
+
 No forwarding/NAT/443/overlay changes. Existing connections survive; new public
 connections are reset. ensure is idempotent ONLY for the exact owned rules.
 """

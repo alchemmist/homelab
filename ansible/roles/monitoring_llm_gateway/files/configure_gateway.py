@@ -1,4 +1,5 @@
 """Read-only verification of an EXISTING Git-owned gateway and metrics key.
+
 No Helm fallback, inference, key creation, Secret apply or rollout on any path.
 """
 
@@ -31,8 +32,8 @@ def _get(runner, kubectl, namespace, kind, name):
         env=dict(os.environ, K3S_CONFIG_FILE="/dev/null"),
     )
     if result.returncode:
-        message = "Required cluster read failed; no fallback is permitted"
-        raise RuntimeError(message)
+        msg = "Required cluster read failed; no fallback is permitted"
+        raise RuntimeError(msg)
     return json.loads(result.stdout)
 
 
@@ -51,11 +52,11 @@ def _require_argocd_source(app, release, namespace):
         or spec["destination"]["namespace"] != namespace
         or spec["destination"].get("server") != "https://kubernetes.default.svc"
     ):
-        message = "Expected Git-owned LiteLLM source/destination missing"
-        raise RuntimeError(message)
+        msg = "Expected Git-owned LiteLLM source/destination missing"
+        raise RuntimeError(msg)
     if matching[0].get("helm", {}).get("releaseName", release) != release:
-        message = "Unexpected Git-owned release name"
-        raise RuntimeError(message)
+        msg = "Unexpected Git-owned release name"
+        raise RuntimeError(msg)
 
 
 def _master_key_ref(deployment):
@@ -64,12 +65,11 @@ def _master_key_ref(deployment):
         e["valueFrom"]["secretKeyRef"]
         for c in deployment["spec"]["template"]["spec"]["containers"]
         for e in c.get("env", [])
-        if e.get("name") == "PROXY_MASTER_KEY"
-        and "secretKeyRef" in e.get("valueFrom", {})
+        if e.get("name") == "PROXY_MASTER_KEY" and "secretKeyRef" in e.get("valueFrom", {})
     ]
     if len(refs) != 1:
-        message = "Expected one explicit deployed master-key reference"
-        raise RuntimeError(message)
+        msg = "Expected one explicit deployed master-key reference"
+        raise RuntimeError(msg)
     return refs[0]
 
 
@@ -82,8 +82,8 @@ def _require_base_url(service):
         or address.is_unspecified
         or address.is_multicast
     ):
-        message = "Expected private cluster Service address"
-        raise RuntimeError(message)
+        msg = "Expected private cluster Service address"
+        raise RuntimeError(msg)
     host = "[" + str(address) + "]" if address.version == 6 else str(address)
     return "http://" + host + ":4000"
 
@@ -100,8 +100,8 @@ def _request(opener, base, path, credential=None, read_json=False):
                 return 200, None
             body = response.read(65537)
             if len(body) > 65536:
-                message = "Oversized key metadata"
-                raise RuntimeError(message)
+                msg = "Oversized key metadata"
+                raise RuntimeError(msg)
             return 200, json.loads(body)
     except urllib.error.HTTPError as error:
         return error.code, None
@@ -109,35 +109,29 @@ def _request(opener, base, path, credential=None, read_json=False):
 
 def _require_key_state(request, token, master):
     """Require the existing key restricted to metrics and still enforced."""
-    status, info = request(
-        "/key/info?" + urllib.parse.urlencode({"key": token}), master, True
-    )
+    status, info = request("/key/info?" + urllib.parse.urlencode({"key": token}), master, True)
     if status != 200 or info.get("info", {}).get("allowed_routes") != ["/metrics"]:
-        message = "Existing key must be restricted to metrics"
-        raise RuntimeError(message)
+        msg = "Existing key must be restricted to metrics"
+        raise RuntimeError(msg)
     if request("/metrics")[0] not in (401, 403):
-        message = "Anonymous metrics must remain denied"
-        raise RuntimeError(message)
+        msg = "Anonymous metrics must remain denied"
+        raise RuntimeError(msg)
     if request("/metrics", token)[0] != 200:
-        message = "Existing metrics key does not work; no repair attempted"
-        raise RuntimeError(message)
+        msg = "Existing metrics key does not work; no repair attempted"
+        raise RuntimeError(msg)
     if request("/v1/models", token)[0] not in (401, 403):
-        message = "Model API must remain denied to metrics key"
-        raise RuntimeError(message)
+        msg = "Model API must remain denied to metrics key"
+        raise RuntimeError(msg)
 
 
 def verify(args, runner=None, opener=None):
+    """Execute the verify operation."""
     runner = runner or subprocess.run
     opener = opener or urllib.request.build_opener(NoRedirect()).open
-    kubectl = [
-        "k3s",
-        "kubectl",
-        "--kubeconfig",
-        args.kubeconfig,
-        "--request-timeout=15s",
-    ]
+    kubectl = ["k3s", "kubectl", "--kubeconfig", args.kubeconfig, "--request-timeout=15s"]
 
     def get(namespace, kind, name):
+        """Execute the get operation."""
         return _get(runner, kubectl, namespace, kind, name)
 
     app = get("argocd", "application", args.release)
@@ -148,8 +142,8 @@ def verify(args, runner=None, opener=None):
         deployment["metadata"]["labels"].get("helm.sh/chart")
         != "litellm-helm-" + args.chart_version
     ):
-        message = "Deployed chart label differs; review the maintenance contract"
-        raise RuntimeError(message)
+        msg = "Deployed chart label differs; review the maintenance contract"
+        raise RuntimeError(msg)
     ref = _master_key_ref(deployment)
     service = get(args.namespace, "service", args.release)
     base = _require_base_url(service)
@@ -160,10 +154,11 @@ def verify(args, runner=None, opener=None):
     master_secret = get(args.namespace, "secret", ref["name"])
     master = base64.b64decode(master_secret["data"][ref["key"]], validate=True).decode()
     if not token or not master:
-        message = "Empty existing key; refusing repair"
-        raise RuntimeError(message)
+        msg = "Empty existing key; refusing repair"
+        raise RuntimeError(msg)
 
     def request(path, credential=None, read_json=False):
+        """Execute the request operation."""
         return _request(opener, base, path, credential, read_json)
 
     _require_key_state(request, token, master)
@@ -171,6 +166,7 @@ def verify(args, runner=None, opener=None):
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--namespace", required=True)
     parser.add_argument("--release", required=True)
@@ -187,8 +183,10 @@ def main():
         verify(args)
     except Exception:
         # HTTP/key-info errors may contain a token in their URL. Never echo them.
-        message = "Read-only gateway verification failed; review Git ownership and existing metrics prerequisites privately. No repair or fallback attempted."
-        raise SystemExit(message) from None
+        msg = "Read-only gateway verification failed; review Git ownership and existing metrics prerequisites privately. No repair or fallback attempted."
+        raise SystemExit(
+            msg
+        ) from None
     print("changed=false")
 
 

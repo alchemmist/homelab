@@ -13,14 +13,17 @@ from pathlib import Path
 
 
 def run(*args):
+    """Document the run operation."""
     return subprocess.check_output(args, text=True).strip()
 
 
 def merge(values, additions):
+    """Document the merge operation."""
     return list(dict.fromkeys(values + additions))
 
 
 def update_config(original, routes):
+    """Document the update config operation."""
     blocks = re.split(r"(?=^\s*\[Peer\]\s*$)", original, flags=re.MULTILINE)
     found = set()
     for index, block in enumerate(blocks):
@@ -29,20 +32,20 @@ def update_config(original, routes):
             continue
         key = public_key[1]
         if key in found:
-            message = "Duplicate configured peer"
-            raise ValueError(message)
+            msg = "Duplicate configured peer"
+            raise ValueError(msg)
         found.add(key)
         allowed = re.search(r"^(\s*AllowedIPs\s*=\s*)([^\n]*)", block, re.MULTILINE)
         if not allowed:
-            message = "Missing configured AllowedIPs"
-            raise ValueError(message)
+            msg = "Missing configured AllowedIPs"
+            raise ValueError(msg)
         values = [value.strip() for value in allowed[2].split(",") if value.strip()]
         updated = merge(values, routes[key])
         if updated != values:
             blocks[index] = block[: allowed.start(2)] + ", ".join(updated) + block[allowed.end(2) :]
     if found != set(routes):
-        message = "Requested peer absent from persistent configuration"
-        raise ValueError(message)
+        msg = "Requested peer absent from persistent configuration"
+        raise ValueError(msg)
     return "".join(blocks)
 
 
@@ -52,8 +55,8 @@ def _parsed_routes(payload):
     for item in json.loads(payload):
         network = ipaddress.IPv4Network(item["network"], strict=True)
         if network.prefixlen != 32:
-            message = "Only host routes are supported"
-            raise ValueError(message)
+            msg = "Only host routes are supported"
+            raise ValueError(msg)
         routes.setdefault(item["public_key"], []).append(str(network))
     return routes
 
@@ -70,8 +73,8 @@ def _live_allowed_ips(interface):
 def _require_live_state(routes, live):
     """Reject missing peers or routes that already belong to another peer."""
     if not set(routes).issubset(live):
-        message = "Requested peer absent from live interface"
-        raise ValueError(message)
+        msg = "Requested peer absent from live interface"
+        raise ValueError(msg)
     for key, networks in live.items():
         if any(
             network in networks
@@ -79,8 +82,8 @@ def _require_live_state(routes, live):
             if target != key
             for network in values
         ):
-            message = "Host route already belongs to another peer"
-            raise ValueError(message)
+            msg = "Host route already belongs to another peer"
+            raise ValueError(msg)
 
 
 def _write_config(config, updated):
@@ -124,15 +127,15 @@ def main():
     """Apply reviewed host routes for the HA cluster to a WireGuard interface."""
     interface, source, payload = sys.argv[1:]
     if not re.fullmatch(r"[a-zA-Z0-9_=+.-]{1,15}", interface):
-        message = "Invalid interface"
-        raise ValueError(message)
+        msg = "Invalid interface"
+        raise ValueError(msg)
     ipaddress.IPv4Address(source)
     routes = _parsed_routes(payload)
     config = Path("/etc/wireguard") / (interface + ".conf")
     original = config.read_text()
     if re.search(r"^\s*SaveConfig\s*=\s*true\s*$", original, re.MULTILINE | re.IGNORECASE):
-        message = "SaveConfig must be disabled"
-        raise ValueError(message)
+        msg = "SaveConfig must be disabled"
+        raise ValueError(msg)
     updated = update_config(original, routes)
     live = _live_allowed_ips(interface)
     _require_live_state(routes, live)

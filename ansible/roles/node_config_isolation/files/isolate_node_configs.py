@@ -3,15 +3,14 @@
 """Audit that per-node home config files stay isolated per node."""
 
 import argparse
-from datetime import datetime, timezone
 import json
 import os
-from pathlib import Path
 import pwd
 import shutil
 import stat
 import tempfile
-
+from datetime import datetime, timezone
+from pathlib import Path
 
 CONFIG_DIRECTORIES = (".config/hypr", ".config/waybar", ".config/alacritty")
 SCRIPT_NAMES = (
@@ -34,24 +33,23 @@ CONFIG_FILES = (
 
 
 def inside(path, home):
+    """Execute the inside operation."""
     resolved = path.resolve(strict=True)
     if resolved != home and home not in resolved.parents:
-        message = f"Configuration target is outside account home: {path}"
-        raise ValueError(message)
+        raise ValueError(f"Configuration target is outside account home: {path}")
     return resolved
 
 
 def inspect_tree(path, home, ancestors=()):
+    """Execute the inspect_tree operation."""
     resolved = inside(path, home)
     mode = resolved.stat().st_mode
     if stat.S_ISREG(mode):
         return path.is_symlink()
     if not stat.S_ISDIR(mode):
-        message = f"Unsupported configuration file type: {path}"
-        raise ValueError(message)
+        raise ValueError(f"Unsupported configuration file type: {path}")
     if resolved in ancestors:
-        message = f"Configuration symlink cycle: {path}"
-        raise ValueError(message)
+        raise ValueError(f"Configuration symlink cycle: {path}")
     linked = path.is_symlink()
     for child in sorted(path.iterdir()):
         linked = inspect_tree(child, home, (*ancestors, resolved)) or linked
@@ -59,17 +57,17 @@ def inspect_tree(path, home, ancestors=()):
 
 
 def check_parents(path, home):
+    """Execute the check_parents operation."""
     for parent in path.parents:
         if parent == home:
             return
         if parent.is_symlink():
-            message = f"Configuration parent is a symlink: {parent}"
-            raise ValueError(message)
-    message = f"Configuration path is outside account home: {path}"
-    raise ValueError(message)
+            raise ValueError(f"Configuration parent is a symlink: {parent}")
+    raise ValueError(f"Configuration path is outside account home: {path}")
 
 
 def isolate(home, check=False):
+    """Execute the isolate operation."""
     home = Path(home).resolve(strict=True)
     paths = list(CONFIG_DIRECTORIES) + list(CONFIG_FILES)
     if (home / "scripts").is_symlink():
@@ -120,6 +118,7 @@ def isolate(home, check=False):
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--home", required=True)
     parser.add_argument("--user", required=True)
@@ -130,8 +129,8 @@ def main():
         account.pw_uid != os.geteuid()
         or Path(account.pw_dir).resolve() != Path(args.home).resolve()
     ):
-        message = "Run as the configured account with its actual home directory"
-        raise ValueError(message)
+        msg = "Run as the configured account with its actual home directory"
+        raise ValueError(msg)
     print(json.dumps(isolate(args.home, args.check)))
 
 

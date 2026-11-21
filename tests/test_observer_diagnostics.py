@@ -4,13 +4,14 @@ import contextlib
 import importlib.util
 import io
 import json
-from pathlib import Path
 import socket
 import ssl
 import types
 import urllib.error
 import urllib.request
+from pathlib import Path
 from unittest.mock import Mock
+
 import pytest
 
 ROOT = Path(__file__).parents[1]

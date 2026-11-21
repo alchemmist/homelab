@@ -27,14 +27,17 @@ def select_counts(document):
         or document.get("warnings")
         or document["data"].get("resultType") != "vector"
     ):
-        raise ValueError("Native count query failed/partial/wrong type")
+        msg = "Native count query failed/partial/wrong type"
+        raise ValueError(msg)
     results = document["data"]["result"]
     if len(results) > 3000:
-        raise ValueError("Metadata-only delivery matrix exceeds source budget")
+        msg = "Metadata-only delivery matrix exceeds source budget"
+        raise ValueError(msg)
     for point in results:
         count = float(point["value"][1])
         if not math.isfinite(count) or count < 0:
-            raise ValueError("Invalid log count")
+            msg = "Invalid log count"
+            raise ValueError(msg)
         for key, value in point.get("metric", {}).items():
             if key not in {
                 "k8s_namespace_name",
@@ -43,14 +46,16 @@ def select_counts(document):
                 "host_name",
                 "service_name",
             } or not re.fullmatch(r"[A-Za-z0-9_.@:-]{0,253}", value):
-                raise ValueError("Unexpected metadata label or value")
+                msg = "Unexpected metadata label or value"
+                raise ValueError(msg)
     return results
 
 
 def run(output):
     os.umask(0o077)
     if os.geteuid() != 0:
-        raise ValueError("Root-only native client credential access required")
+        msg = "Root-only native client credential access required"
+        raise ValueError(msg)
     root = Path("/var/lib/homelab-otel/tls")
     context = ssl.create_default_context(cafile=str(root / "ca.crt"))
     context.load_cert_chain(str(root / "client.crt"), str(root / "client.key"))
@@ -68,7 +73,8 @@ def run(output):
         with urllib.request.urlopen(url, context=context, timeout=4) as response:
             data = response.read(4 * 1024**2 + 1)
         if len(data) > 4 * 1024**2:
-            raise ValueError("Metadata response exceeded budget")
+            msg = "Metadata response exceeded budget"
+            raise ValueError(msg)
         result[name] = select_counts(json.loads(data))
     with output.open("x") as target:
         target.write(json.dumps(result, indent=2) + "\n")

@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 def sample():
+    """Document the sample operation."""
     tool = shutil.which("nvidia-smi")
     if tool:
         try:
@@ -27,8 +28,8 @@ def sample():
             name, usage, temperature, used, total = (value.strip() for value in row)
             percentage = float(usage)
             if not 0 <= percentage <= 100:
-                message = "invalid GPU utilization"
-                raise ValueError(message)
+                msg = "invalid GPU utilization"
+                raise ValueError(msg)
             return {
                 "text": f"GPU {percentage:.0f}%",
                 "percentage": round(percentage),

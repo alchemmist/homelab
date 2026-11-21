@@ -2,12 +2,13 @@
 
 import copy
 import importlib.util
-from pathlib import Path
-from typing import TypedDict
-from types import ModuleType
-from unittest.mock import Mock, patch
 import json
 import ssl
+from pathlib import Path
+from types import ModuleType
+from typing import TypedDict
+from unittest.mock import Mock, patch
+
 import pytest
 
 ROOT = Path(__file__).parents[1]

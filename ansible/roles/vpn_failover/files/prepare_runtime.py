@@ -3,21 +3,21 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 
 
 def prepare(image, destination):
+    """Execute the prepare operation."""
     destination = Path(destination)
     marker = destination / ".homelab-image"
     if marker.exists() and marker.read_text().strip() == image:
         return False
     if destination.exists():
-        raise RuntimeError(
-            "Existing recovery image differs; replace it only during explicit maintenance"
-        )
+        msg = "Existing recovery image differs; replace it only during explicit maintenance"
+        raise RuntimeError(msg)
     with tempfile.TemporaryDirectory(prefix="vpn-image-", dir="/run") as mount:
         subprocess.run(
             ["k3s", "ctr", "--namespace", "k8s.io", "images", "mount", image, mount],
@@ -31,7 +31,8 @@ def prepare(image, destination):
                     ["cp", "-a", mount + "/.", str(staging)], check=True, stdout=subprocess.DEVNULL
                 )
                 if not (staging / "app/x-ui").is_file():
-                    raise RuntimeError("Recovery image has no /app/x-ui")
+                    msg = "Recovery image has no /app/x-ui"
+                    raise RuntimeError(msg)
                 (staging / ".homelab-image").write_text(image + "\n")
                 os.rename(staging, destination)
             finally:

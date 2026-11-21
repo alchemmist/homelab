@@ -1,15 +1,15 @@
 """Hermetic native authorization-policy and bounded-bootstrap regression tests."""
 
 import ast
+import contextlib
 import copy
 import importlib.util
+import io
 import json
+import tempfile
+import unittest
 from collections.abc import Iterable
 from pathlib import Path
-import unittest
-import contextlib
-import io
-import tempfile
 from typing import TypedDict
 from unittest.mock import patch
 

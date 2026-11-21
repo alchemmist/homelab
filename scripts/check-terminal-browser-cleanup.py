@@ -13,6 +13,7 @@ from pathlib import Path
 
 
 def load(path):
+    """Load a Python module from the supplied path."""
     spec = importlib.util.spec_from_file_location("browser_watchdog_probe", path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
@@ -21,6 +22,7 @@ def load(path):
 
 
 def tree(module, root):
+    """Perform the tree operation."""
     snapshot = module.snapshot()
     selected = {root}
     while True:
@@ -31,6 +33,7 @@ def tree(module, root):
 
 
 def alive(module, identities):
+    """Perform the alive operation."""
     snapshot = module.snapshot()
     return [
         identity
@@ -51,6 +54,7 @@ def _reap_children() -> None:
 
 
 def main():
+    """Run the command-line entry point."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--watchdog", required=True)
     parser.add_argument(

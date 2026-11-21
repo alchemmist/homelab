@@ -1,6 +1,13 @@
 """Tests for the OpenHands report-intake consumer."""
 
-import base64, hashlib, hmac, importlib.util, json, sqlite3, tempfile, unittest
+import base64
+import hashlib
+import hmac
+import importlib.util
+import json
+import sqlite3
+import tempfile
+import unittest
 from typing import cast
 from pathlib import Path
 from contextlib import closing

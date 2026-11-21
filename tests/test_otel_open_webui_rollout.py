@@ -1,9 +1,10 @@
 """Tests for the OpenTelemetry Open WebUI rollout."""
 
 import importlib.util
+import unittest
 from pathlib import Path
 from types import ModuleType
-import unittest
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]

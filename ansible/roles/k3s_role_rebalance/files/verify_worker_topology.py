@@ -9,17 +9,17 @@ VOTERS = {"socrat-0", "socrat-1", "socrat-2"}
 
 
 def verify(client):
+    """Document the verify operation."""
     members = client.members()
     require_members(members, VOTERS)
     for name in sorted(VOTERS):
         client.health(name)
         status = client.status(name)
         if int(status["header"]["member_id"]) != members[name]["id"]:
-            message = "Endpoint member identity mismatch for " + name
-            raise RuntimeError(message)
+            raise RuntimeError("Endpoint member identity mismatch for " + name)
     if client.members() != members:
-        message = "Membership changed during verification"
-        raise RuntimeError(message)
+        msg = "Membership changed during verification"
+        raise RuntimeError(msg)
     return {"changed": False, "members": members, "worker": "socrat-3"}
 
 

@@ -73,6 +73,7 @@ class RepositoryEnvironment:
     """Sandboxed environment prepared from a repository snapshot."""
 
     def __init__(self, snapshot, directory, image, protocol):
+        """Initialize the repository environment."""
         self.directory = directory
         self.directory.mkdir()
         self.events = []

@@ -6,9 +6,7 @@ import json
 import sys
 
 import yaml
-
 from dashboard_descriptions import apply_alert_descriptions, apply_descriptions
-
 
 DASHBOARD_UIDS = {
     "7e0a61e486f727d763fb1d86fdd629c2",
@@ -21,6 +19,7 @@ AGGREGATION = "avg without (pod, namespace, container, endpoint, service)"
 
 
 def rewrite_panels(panels):
+    """Execute the rewrite_panels operation."""
     for panel in panels:
         for target in panel.get("targets", []):
             expression = target.get("expr", "")
@@ -30,6 +29,7 @@ def rewrite_panels(panels):
 
 
 def render(resources):
+    """Execute the render operation."""
     for resource in resources:
         apply_alert_descriptions(resource)
         if isinstance(resource, dict) and resource.get("kind") == "PrometheusRule":
@@ -53,6 +53,7 @@ def render(resources):
 
 
 def main():
+    """Execute the main operation."""
     resources = list(yaml.safe_load_all(sys.stdin))
     yaml.safe_dump_all(render(resources), sys.stdout, sort_keys=False)
 
