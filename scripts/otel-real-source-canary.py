@@ -496,7 +496,7 @@ def main():
         if any(getattr(args, name) is None for name in names):
             raise ValueError("Explicit canary artifacts are required")
         print(json.dumps(run(args), indent=2))
-    except Exception:
+    except (OSError, RuntimeError, subprocess.SubprocessError, ValueError):
         raise SystemExit(
             "Real-source canary failed; sensitive responses are not printed. Inspect the private root-owned run artifacts."
         )

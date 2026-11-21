@@ -101,6 +101,6 @@ if __name__ == '__main__':
     os.umask(0o077)
     try:
         run()
-    except Exception as error:
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
         print(json.dumps({'success': False, 'errorType': type(error).__name__, 'secretValuesLogged': False, **OBSERVED_PHASE}))
         raise SystemExit(1)
