@@ -328,11 +328,12 @@ def test_bootstrap_source_guard_accepts_formatting_not_decoy_text() -> None:
 
 @pytest.mark.parametrize(
     "mutation",
-    ["password-key", "removal", "guard", "refusal", "journal", "manifest", "order"],
+    ["password-key", "removal", "guard", "refusal", "refusal-extra", "journal", "manifest", "order"],
 )
 def test_bootstrap_source_guard_rejects_real_boundary_mutations(mutation: str) -> None:
     """Reject changes that would reintroduce administrative runtime credentials."""
     source = (FILES / "bootstrap.py").read_text()
+    assert a.bootstrap_is_migration_aware(source)
     tree = ast.parse(source)
     conditional = next(
         node
@@ -348,6 +349,8 @@ def test_bootstrap_source_guard_rejects_real_boundary_mutations(mutation: str) -
         guard.test = ast.Constant(False)
     elif mutation == "refusal":
         guard.body = [ast.Pass()]
+    elif mutation == "refusal-extra":
+        guard.body.insert(0, ast.parse("unexpected_call()").body[0])
     elif mutation == "journal":
         load.value = ast.Constant(None)
     elif mutation == "manifest":
