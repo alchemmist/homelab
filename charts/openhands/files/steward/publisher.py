@@ -90,7 +90,9 @@ def clean_text(t, lo, hi):
 
 
 def qa_issue(x):
-    import io, hashlib
+    import hashlib
+    import io
+
     from PIL import Image
 
     check(

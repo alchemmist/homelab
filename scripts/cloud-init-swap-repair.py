@@ -9,10 +9,10 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import socket
 import subprocess
 import tempfile
+from pathlib import Path
 
 EXPECTED = [
     "dd if=/dev/zero of=/swap.img bs=1MiB count=512",

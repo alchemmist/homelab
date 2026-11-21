@@ -2,8 +2,9 @@
 import http.client
 import json
 import threading
-from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
 slot=threading.BoundedSemaphore(1)
 class Handler(BaseHTTPRequestHandler):
  """HTTP handler relaying chat completions to the in-cluster model."""
