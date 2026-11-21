@@ -70,3 +70,42 @@ hourly cascade, then plan a distinct storage reclamation window.
   hour shelf. No production compaction, writes to the hour shelf, or change to
   the live shipper. Implement production copy/confirmation/retention coordination
   before cutover; do not assume a passing transport drill is a cascade rollout.
+
+## Production switch, 2026-11-21 18:18 UTC
+
+The sole Prometheus on 0 now ships over verified TLS with a workshop-only
+Put/Get/List identity (no Delete); it no longer mounts the old raw directory.
+Same retained TSDB PVC UID `97a31a0a-b498-42a6-be10-1cab44673c41`, WAL replay
+and all 17 previously journaled block IDs retained across the operator restart.
+Never reset the journal to force a test upload. During restart the fresh Query
+briefly had no data; do not infer uninterrupted scraping from historical parity.
+Raw Store moved to 1, read-only workshop identity. Production strict Store-only
+controls after cutover: raw `up[5m]` at 1795132800: 98 series/hash
+`e9c8e124251d9191`; 5m-permitted per-job count at 1793577600: 8 series/hash
+`fc52a22761d5b465`; nonexistent Store negative controls empty. Single workshop
+Compactor on 0 uses its existing local work directory, S3 bucket-scoped identity
+and a 48h physical deletion delay, with time-based retention disabled for now.
+Existing marks can age out on the normal compacted-block cleanup path. This is
+not a promise to retain *redundant* compaction inputs forever. A transient S3
+refusal on pod startup cleared; initial metadata sync then succeeded. Check
+`thanos_compact_halted`, compaction passes and object pressure continuously.
+
+The regular `thanos-cascade` now runs on 3 at :30 (no service-account token,
+no legacy scaling call, read-only S3 identity). It stages only eligible complete
+unmarked 1h blocks, checks every downloaded SHA-256 by rereading disk, fsyncs
+then atomically publishes with no replacement. Existing conflicting blocks fail
+closed. It does not expire raw/5m data or delete S3 objects. In the isolated
+real two-pass `s3-hour-copy-check-dqdz7`, index, chunk and metadata matched the
+source fixture SHA-256s. A zero-candidate scheduled run does not prove a real
+hourly block arrived. Keep the legacy 5m reader on NFS; old raw directory is
+now a retained recovery copy (not blank space or a live destination).
+
+`warm-natural-shipper-ngvx2` watches the production journal for up to 3h from
+cutover and verifies the first new local TSDB block vs the S3 object metadata,
+index and chunk bytes. Its deadline/Ready state is not evidence; inspect the
+verification container log and Job completion. Never count the seed as a new
+shipper upload. If this gate fails, diagnose before the 12h local TSDB buffer
+expires. After any new writes, rolling back just a Secret or values file is
+not a lossless rollback: preserve both stores, account for journaled ULIDs and
+reconcile the delta first. Do not delete the old archive, shrink retention, or
+turn on age-based pruning merely because these rollouts are Healthy.

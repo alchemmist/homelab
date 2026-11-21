@@ -32,7 +32,7 @@ spec:
             spi_graphs: {{ . | quote }}
             {{- end }}
             summary: Metric block shipping has not succeeded for three hours.
-            description: The thanos-cascade CronJob in cattle-monitoring-system has had no successful run for 3h. Finished 5-minute and hourly blocks stay on socrat-0 until the next successful run. The alert becomes Firing after 10m.
+            description: The thanos-cascade CronJob in cattle-monitoring-system has had no successful run for 3h. Hourly blocks stay in the warm workshop on socrat-1 until verified on socrat-3. The alert becomes Firing after 10m.
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/cronjob/cattle-monitoring-system/thanos-cascade'
         - alert: ThanosCompactorHalted
           expr: thanos_compact_halted == 1
@@ -56,7 +56,7 @@ spec:
             spi_graphs: {{ . | quote }}
             {{- end }}
             summary: The raw-data compactor has stayed scaled to zero.
-            description: thanos-compactor has had zero replicas for 30m. The shipping job scales it down only while it runs. A crashed job can leave downsampling stopped. The alert becomes Firing after 30m.
+            description: thanos-compactor has had zero replicas for 30m. The S3 hourly copy does not scale this deployment. Check the workshop compactor before resuming downsampling. The alert becomes Firing after 30m.
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/deployment/cattle-monitoring-system/thanos-compactor'
         - alert: ThanosSidecarDown
           expr: absent(up{container="thanos-sidecar"} == 1)
@@ -87,6 +87,15 @@ spec:
             summary: socrat-0 has less than 80 GiB free.
             description: The filesystem on socrat-0 has been under 80 GiB free for 15m. This is a warning. Raw blocks are not deleted because the disk is low.
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/socrat-0'
+        - alert: ThanosWarmWorkshopDiskLow
+          expr: |
+            max(node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype=~"ext4|xfs"}
+              * on(instance) group_left(nodename) node_uname_info{job="node-exporter",nodename="socrat-1"}) < 50 * 1024^3
+          for: 15m
+          labels: {severity: warning}
+          annotations:
+            summary: The warm workshop host has less than 50 GiB available.
+            description: Check capacity on socrat-1. This warning never authorizes deleting a source block.
         - alert: ThanosFiveDiskLow
           expr: |
             (socrat_five_bucket_available_bytes{backing_node="socrat-0"} < 50 * 1024 * 1024 * 1024)
@@ -99,7 +108,7 @@ spec:
             spi_graphs: {{ . | quote }}
             {{- end }}
             summary: The shared Thanos 5m shelf has low or unknown free space.
-            description: The active bucket has reported less than 50 GiB free or no pressure metric for 15m. Extra pressure-driven deletion starts below 40 GiB and requires a confirmed coarser copy; missing capacity does not authorize extra deletion.
+            description: The active bucket has reported less than 50 GiB free or no pressure metric for 15m. This is the legacy 5m NFS shelf, not the warm S3 store. The copy-only cascade never prunes it.
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/socrat-0'
         - alert: ThanosScrapeNodeMemoryLow
           expr: |

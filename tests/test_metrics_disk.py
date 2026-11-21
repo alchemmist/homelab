@@ -116,3 +116,21 @@ def test_allocation_overhead_invalidates_foreign_logical_size_threshold() -> Non
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_warm_workshop_distinguishes_retained_tree_from_active_and_excludes_seeds(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("WARM_WORKSHOP", "1")
+    pvc = (
+        tmp_path
+        / "rancher/k3s/storage/pvc-fixture_cattle-monitoring-system_thanos-warm-s1-candidate"
+    )
+    warm = pvc / "workshop-s3"
+    warm.mkdir(parents=True)
+    (warm / "blob").write_bytes(b"warm")
+    (pvc / "seed-ignored").write_bytes(b"seed")
+    (tmp_path / "socrat-thanos").mkdir()
+    entries = {role: size for role, _, size in DISK.rows(str(tmp_path))}
+    assert set(entries) == {"warm", "retained"}
+    assert entries["warm"] == _fixture_tree_allocated_bytes(warm)
