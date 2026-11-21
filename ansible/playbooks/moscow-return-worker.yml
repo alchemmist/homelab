@@ -13,12 +13,14 @@
     recovery_root: /var/lib/homelab-recovery/20261113-moscow-return-worker
     tool: /usr/local/libexec/vpn-transit-failover.py
   tasks:
-  - ansible.builtin.assert:
+  - name: Require the intended return phase and apply confirmation
+    ansible.builtin.assert:
       that:
       - inventory_hostname == 'socrat-4'
       - phase in ['preflight','apply']
       - phase != 'apply' or (moscow_return_confirmed | default(false) | bool)
-  - ansible.builtin.stat:
+  - name: Read checksums of the preserved controller and transit files
+    ansible.builtin.stat:
       path: '{{ item.path }}'
       checksum_algorithm: sha256
     loop:
@@ -29,15 +31,18 @@
     - {path: /etc/homelab-vpn-transit/user.json,
        sha: c1e7d7cf08f43dc3bfd71ca87b08e339029c95d02115e533034a9ed2a8048e11}
     register: immutable
-  - ansible.builtin.assert:
+  - name: Require the approved preserved file checksums
+    ansible.builtin.assert:
       that: item.stat.checksum == item.item.sha
     loop: '{{ immutable.results }}'
     loop_control:
       label: '{{ item.item.path }}'
-  - ansible.builtin.command: python3 {{ tool }} status
+  - name: Read the initial native controller status
+    ansible.builtin.command: python3 {{ tool }} status
     changed_when: false
     register: before
-  - ansible.builtin.assert:
+  - name: Verify the healthy fenced native-primary state
+    ansible.builtin.assert:
       that:
       - (before.stdout | from_json).mode == 'native-primary'
       - (before.stdout | from_json).data_path_healthy
@@ -53,7 +58,8 @@
       ansible_port: 2222
     changed_when: false
     register: relay
-  - ansible.builtin.assert:
+  - name: Require the relay to target the preserved worker
+    ansible.builtin.assert:
       that:
       - (relay.stdout | from_json).spec.replicas == 1
       - (relay.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] == 'socrat-4'
@@ -68,13 +74,16 @@
     changed_when: false
     args:
       executable: /bin/bash
-  - when: phase == 'apply'
+  - name: Apply the approved worker return
+    when: phase == 'apply'
     block:
-    - ansible.builtin.file:
+    - name: Create the worker return recovery directory
+      ansible.builtin.file:
         path: '{{ recovery_root }}'
         state: directory
         mode: '0700'
-    - ansible.builtin.copy:
+    - name: Preserve the initial native status receipt
+      ansible.builtin.copy:
         content: '{{ before.stdout }}'
         dest: '{{ recovery_root }}/before.json'
         mode: '0600'
@@ -91,14 +100,17 @@
       async: 300
       poll: 3
       changed_when: true
-    - ansible.builtin.command: python3 {{ tool }} status
+    - name: Read the post-failback controller state
+      ansible.builtin.command: python3 {{ tool }} status
       changed_when: false
       register: after
-    - ansible.builtin.copy:
+    - name: Record the post-failback receipt
+      ansible.builtin.copy:
         content: '{{ after.stdout }}'
         dest: '{{ recovery_root }}/after.json'
         mode: '0600'
-    - ansible.builtin.assert:
+    - name: Verify the worker and VPN handoff completed
+      ansible.builtin.assert:
         that:
         - (after.stdout | from_json).mode == 'kubernetes'
         - (after.stdout | from_json).data_path_healthy
