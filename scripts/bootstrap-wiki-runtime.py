@@ -4,6 +4,8 @@ import json
 import secrets
 import shlex
 import subprocess
+from collections.abc import Mapping
+from typing import TypedDict
 
 
 class BootstrapError(Exception):
@@ -11,10 +13,10 @@ class BootstrapError(Exception):
 
 
 class Kubernetes:
-    def __init__(self, command):
+    def __init__(self, command: list[str]):
         self.command = command
 
-    def run(self, *args, payload=None):
+    def run(self, *args: str, payload: object = None):
         result = subprocess.run(
             self.command + list(args),
             input=json.dumps(payload) if payload else None,
@@ -27,26 +29,30 @@ class Kubernetes:
             )
         return result.stdout
 
-    def get(self, kind, name, namespace):
+    def get(self, kind: str, name: str, namespace: str):
         value = self.run("-n", namespace, "get", kind, name, "--ignore-not-found", "-o", "json")
         return json.loads(value) if value.strip() else None
 
-    def create(self, resource):
+    def create(self, resource: Mapping[str, object]):
         self.run("create", "-f", "-", payload=resource)
 
 
-def encoded(value):
+class _SecretDocument(TypedDict, total=False):
+    data: dict[str, str]
+
+
+def encoded(value: str):
     return base64.b64encode(value.encode()).decode()
 
 
-def decoded(value):
+def decoded(value: str):
     try:
         return base64.b64decode(value, validate=True).decode()
     except (ValueError, UnicodeError, TypeError):
         raise BootstrapError("Invalid encoded credential in source Secret") from None
 
 
-def resource(kind, name, namespace, **fields):
+def resource(kind: str, name: str, namespace: str, **fields: object):
     return {
         "apiVersion": "v1",
         "kind": kind,
@@ -55,18 +61,18 @@ def resource(kind, name, namespace, **fields):
     }
 
 
-def required_data(item, key):
+def required_data(item: _SecretDocument | None, key: str):
     value = (item or {}).get("data", {}).get(key)
     if not isinstance(value, str) or not value:
         raise BootstrapError("Required credential/configuration field is missing")
     return value
 
 
-def prerequisites(_kube):
+def prerequisites(_kube: Kubernetes):
     return [{"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": "wiki"}}]
 
 
-def bootstrap(kube, skip_legacy_git=False):
+def bootstrap(kube: Kubernetes, *, skip_legacy_git: bool = False):
     infrastructure = prerequisites(kube)
     targets = [
         ("persistentvolumeclaim", "wiki-runtime-data", "wiki"),
@@ -159,7 +165,7 @@ def main():
         command = shlex.split(args.kubectl)
         if not command:
             raise BootstrapError("kubectl command must not be empty")
-        for line in bootstrap(Kubernetes(command), args.skip_legacy_git):
+        for line in bootstrap(Kubernetes(command), skip_legacy_git=args.skip_legacy_git):
             print(line)
     except (BootstrapError, OSError, json.JSONDecodeError):
         parser.exit(
