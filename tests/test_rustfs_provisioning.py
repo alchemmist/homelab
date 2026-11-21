@@ -232,10 +232,10 @@ class Provisioning(unittest.TestCase):
             def __enter__(self):
                 return self
 
-            def __exit__(self, *a):
+            def __exit__(self, *a: object) -> None:
                 pass
 
-            def read(self, *a):
+            def read(self, *a: object) -> bytes:
                 return json.dumps(self.data).encode()
 
         class HTTP:

@@ -94,14 +94,18 @@ class ObservedHTTP:
         request: urllib.request.Request,
         *args: object,
         **kwargs: object,
+<<<<<<< HEAD
     ) -> Iterator[_Closeable]:
+=======
+    ) -> Iterator[object]:
+>>>>>>> refs/remotes/origin/main
         started = time.monotonic()
         phase = "https_open"
         response = None
         try:
             response = self.inner.open(request, *args, **kwargs)
             phase = "response_read"
-            yield response
+            yield cast("object", response)
         except Exception as error:
             event = {
                 "event": "observer_reconciliation_failed",
@@ -142,7 +146,11 @@ def run(controller: _Controller) -> int:
     original = controller.opener
 
     def observed(*args: object, **kwargs: object) -> ObservedHTTP:
+<<<<<<< HEAD
         return ObservedHTTP(cast("_Opener", original(*args, **kwargs)))
+=======
+        return ObservedHTTP(original(*args, **kwargs))
+>>>>>>> refs/remotes/origin/main
 
     controller.opener = observed
     started = time.monotonic()

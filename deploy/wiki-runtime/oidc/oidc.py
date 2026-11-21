@@ -4,16 +4,48 @@ Local account adoption is explicit issuer+subject -> user ID, never email/name.
 When enabled, legacy passwords and pre-migration sessions are owner-only.
 """
 
+import contextlib
 import json
 import os
 import secrets
+import sqlite3
+import threading
 import time
+from typing import Protocol
 
 from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
 
 
-def configure_store(store):
+class _WalledStore(Protocol):
+    """Structural surface of the pinned wiki runtime store used by OIDC."""
+
+    oidc_enabled: bool
+    session_seconds: int
+    session: object
+    token_session: object
+    local_owners: set[str]
+    lock: threading.Lock
+
+    def connect(self) -> contextlib.AbstractContextManager[sqlite3.Connection]: ...
+    def digest(self, token: str) -> str: ...
+    def validate(self, username: str, password: str, role: str) -> object: ...
+
+
+class _RouteDecorator(Protocol):
+    """FastAPI route decorator as returned by ``app.get``."""
+
+    def __call__(self, handler: object) -> object: ...
+
+
+class _PatchedApp(Protocol):
+    """Structural surface of the FastAPI app mounting the OIDC routes."""
+
+    def add_middleware(self, middleware: type[object], **options: object) -> None: ...
+    def get(self, path: str) -> _RouteDecorator: ...
+
+
+def configure_store(store: _WalledStore) -> None:
     store.oidc_enabled = bool(os.getenv("WIKI_OIDC_ISSUER"))
     store.local_owners = set(json.loads(os.getenv("WIKI_OIDC_LOCAL_OWNER_IDS", "[]")))
     if not store.oidc_enabled:
@@ -37,7 +69,14 @@ def configure_store(store):
         """)
 
 
-def external_login(store, issuer, subject, username, role, links):
+def external_login(
+    store: _WalledStore,
+    issuer: str,
+    subject: object,
+    username: str,
+    role: str,
+    links: dict[str, str],
+) -> str:
     from auth import PASSWORD_HASHER
 
     if not subject or not isinstance(subject, str) or len(subject) > 512:
@@ -88,7 +127,14 @@ def external_login(store, issuer, subject, username, role, links):
         return token
 
 
-def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
+def install_oidc(
+    app: _PatchedApp,
+    store: _WalledStore,
+    origin: str,
+    prefix: str,
+    cookie_path: str,
+    session_seconds: int,
+) -> None:
     from authlib.integrations.starlette_client import OAuth
     from starlette.middleware.sessions import SessionMiddleware
 

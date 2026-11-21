@@ -30,7 +30,7 @@ def init():
 def state():
     with contextlib.closing(sqlite3.connect(DB)) as d, d:
         d.row_factory=sqlite3.Row;return [dict(r) for r in d.execute('select * from cards order by rowid')]
-def save(c,phase,note='',**kw):
+def save(c: dict[str, object], phase: str, note: str = "", **kw: str | float) -> None:
     fields={'state':phase,'detail':note[:1000],**kw}; assert fields.keys()<={'state','detail','pr','due','cid','attempt'}
     with contextlib.closing(sqlite3.connect(DB)) as d, d:
         d.execute('update cards set '+','.join(k+'=?' for k in fields)+' where name=?',(*fields.values(),c['name']));d.execute('insert into transitions values(?,?,?,?)',(time.time(),c['name'],phase,note[:1000]))

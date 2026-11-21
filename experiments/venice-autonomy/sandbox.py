@@ -9,8 +9,7 @@ import tarfile
 import tempfile
 import time
 import uuid
-from collections.abc import Mapping, Sequence
-from typing import cast
+from typing import TypedDict
 
 IMAGE = (
     "docker.io/library/node@sha256:1f70dfa8d7be2321da1247e671217c11a555cd005edf4ccb014af28c9e8f78ca"
@@ -122,6 +121,12 @@ def inspect_archive(data: bytes):
     if set(result) != {"lib.cjs", "test.cjs"}:
         raise ValueError("workspace is missing expected files")
     return result
+
+
+class _CommandResult(TypedDict, total=False):
+    returncode: int
+    output: str
+    exception_info: None
 
 
 class Sandbox:
@@ -309,11 +314,13 @@ class Sandbox:
 
     def execute(
         self,
-        action: Mapping[str, str],
+        action: dict[str, object],
         input_bytes: bytes | None = None,
         **kwargs: object,
-    ):
+    ) -> _CommandResult:
         command = action["command"]
+        if not isinstance(command, str):
+            raise TypeError(command)
         wrapped = (
             "timeout -k 2 40 bash -lc "
             + shlex.quote(command)
