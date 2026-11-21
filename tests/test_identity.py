@@ -293,6 +293,8 @@ class IdentityTests(unittest.TestCase):
             (root / "monori-services.json").write_bytes(
                 (ROOT / "deploy/identity/services.json").read_bytes()
             )
+            (root / "monori-account-mappings.json").write_text(json.dumps({"antropophag": {"idpUserUuid": "reviewed"}}))
+            fake.data["core/users/"].append({"pk": 7, "username": "antropophag", "uuid": "reviewed", "is_active": True})
             def malformed(method, path, payload=None):
                 if path.startswith("providers/oauth2/?"):
                     return {"results": ["invalid row"]}
@@ -331,6 +333,7 @@ class IdentityTests(unittest.TestCase):
                 writes,
                 [
                     ("POST", "core/applications/"),
+                    ("POST", "policies/bindings/"),
                     ("POST", "policies/bindings/"),
                     ("POST", "providers/oauth2/"),
                     ("PATCH", "core/applications/monori/"),

@@ -8,7 +8,7 @@ stays enabled. No ingress auth proxy, PVC modification or sync-service change.
    the IdP client **before** the backend rollout:
    `cd ansible && ansible-playbook playbooks/identity-monori.yml`.
    Do not replay the identity foundation. This scoped playbook creates the
-   `homelab-monori` provider, binds `homelab-owner` before attaching it to
+   `homelab-monori` provider, binds `homelab-owner` and the UUID-checked `antropophag` user (Monori only) before attaching it to
    the app, and writes `monori/monori-oidc` without displaying credentials.
    Keep the private `monori-client-secret` in the identity backup; never rotate
    automatically to repair a missing file. A replay must be able to read and

@@ -26,6 +26,10 @@ def configure_monori(root, api):
             raise RuntimeError("Missing or ambiguous identity configuration: " + value)
         return found[0] if found else None
 
+    mapping = json.loads((root / "monori-account-mappings.json").read_text())["antropophag"]
+    member = match("core/users/", "username", "antropophag")
+    if member.get("uuid") != mapping["idpUserUuid"] or member.get("is_active") is not True:
+        raise RuntimeError("Review Monori member identity")
     owner = match("core/groups/", "name", "homelab-owner")["pk"]
     app = match("core/applications/", "slug", "monori", False)
     provider = match("providers/oauth2/", "name", "homelab-monori", False)
@@ -106,7 +110,12 @@ def configure_monori(root, api):
             },
         )
     bindings = rows(api, "policies/bindings/?" + urlencode({"target": app["pk"]}))
-    if not validate_bindings(bindings, {owner}):
+    users = [b for b in bindings if b.get("user") is not None]
+    if users and (len(users) != 1 or users[0]["user"] != member["pk"] or users[0].get("group")
+                  or users[0].get("policy") or not users[0].get("enabled")
+                  or users[0].get("negate") or users[0].get("failure_result")):
+        raise RuntimeError("Monori user binding drift")
+    if not validate_bindings([b for b in bindings if b.get("user") is None], {owner}):
         api(
             "POST",
             "policies/bindings/",
@@ -118,6 +127,9 @@ def configure_monori(root, api):
                 "failure_result": False,
             },
         )
+    if not users:
+        api("POST", "policies/bindings/", {"target": app["pk"], "user": member["pk"],
+            "order": 1, "enabled": True, "failure_result": False})
     if not provider:
         provider = api("POST", "providers/oauth2/", {**config, "client_secret": secret})
     if app.get("provider") is None:
