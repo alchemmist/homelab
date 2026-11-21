@@ -15,7 +15,7 @@ identity = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(identity)
 
 
-def render(native=True):
+def render(*, native: bool = True):
     raw = subprocess.check_output(
         [
             "helm",
@@ -80,7 +80,7 @@ class NativeQueueChartTests(unittest.TestCase):
         self.assertFalse(any(k[0] == "Secret" for k in docs))
 
     def test_native_entry_does_not_change_backend_pvc_rbac_jobs_or_limits(self):
-        old, new = render(False), render(True)
+        old, new = render(native=False), render(native=True)
         for k in set(old) & set(new):
             if k in [
                 ("Deployment", "automation", "spi-queue-ui"),

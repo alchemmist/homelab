@@ -5,6 +5,7 @@ from functools import lru_cache
 import json
 from pathlib import Path
 import subprocess
+from typing import Literal, Protocol, overload
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,8 +38,22 @@ OWNERS = {
 OWNERS.update({name: ("charts/" + name, "kube-prometheus-stack") for name in COMPONENTS})
 
 
+class _Metadata(Protocol):
+    def get(self, key: str, default: str = "", /) -> str: ...
+    def __getitem__(self, key: str, /) -> str: ...
+
+
+class _Resource(Protocol):
+    @overload
+    def __getitem__(self, key: Literal["kind"], /) -> str: ...
+    @overload
+    def __getitem__(self, key: Literal["metadata"], /) -> _Metadata: ...
+    @overload
+    def __getitem__(self, key: str, /) -> object: ...
+
+
 @lru_cache(maxsize=None)
-def render(path, release):
+def render(path: str, release: str):
     text = subprocess.check_output(
         ["helm", "template", release, str(ROOT / path), "-n", NS, "--include-crds"], text=True
     )
@@ -49,7 +64,7 @@ def render(path, release):
     ]
 
 
-def key(d):
+def key(d: _Resource) -> str:
     return "/".join(
         [
             d["kind"],
@@ -59,26 +74,30 @@ def key(d):
     )
 
 
-def digest(d):
+def digest(d: object) -> str:
     return hashlib.sha256(json.dumps(d, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
-def normalized(d):
-    d = json.loads(json.dumps(d))
-    name = d["metadata"]["name"]
-    if d["kind"] == "Deployment" and name == "kube-prometheus-stack-grafana":
-        d["spec"]["template"]["metadata"]["annotations"].pop("checksum/config", None)
-        for c in d["spec"]["template"]["spec"]["containers"]:
-            c["env"] = [e for e in c.get("env", []) if not e["name"].startswith("GF_AUTH_")]
-    if d["kind"] == "ConfigMap" and name == "kube-prometheus-stack-grafana":
-        d["data"]["grafana.ini"] = d["data"]["grafana.ini"].replace(
+def normalized(d: object):
+    parsed = json.loads(json.dumps(d))
+    name = parsed["metadata"]["name"]
+    if parsed["kind"] == "Deployment" and name == "kube-prometheus-stack-grafana":
+        parsed["spec"]["template"]["metadata"]["annotations"].pop("checksum/config", None)
+        for container in parsed["spec"]["template"]["spec"]["containers"]:
+            container["env"] = [
+                env
+                for env in container.get("env", [])
+                if not env["name"].startswith("GF_AUTH_")
+            ]
+    if parsed["kind"] == "ConfigMap" and name == "kube-prometheus-stack-grafana":
+        parsed["data"]["grafana.ini"] = parsed["data"]["grafana.ini"].replace(
             "[auth.anonymous]\nenabled = false", "[auth.anonymous]\nenabled = true"
         )
-    if d["kind"] == "Deployment" and name in ("otel-loki", "otel-tempo"):
-        for v in d["spec"]["template"]["spec"]["volumes"]:
-            if v["name"] == "config":
-                v["configMap"]["name"] = "otel-backends"
-    return d
+    if parsed["kind"] == "Deployment" and name in ("otel-loki", "otel-tempo"):
+        for volume in parsed["spec"]["template"]["spec"]["volumes"]:
+            if volume["name"] == "config":
+                volume["configMap"]["name"] = "otel-backends"
+    return parsed
 
 
 def test_existing_resources_have_one_service_owner_and_preserved_payload():

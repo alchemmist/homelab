@@ -29,7 +29,7 @@ def config():
     }
 
 
-def state(vip=False):
+def state(*, vip: bool = False):
     addresses = ["192.168.0.24"] + (["192.168.0.250"] if vip else [])
     return {
         "ifname": "wlan0",

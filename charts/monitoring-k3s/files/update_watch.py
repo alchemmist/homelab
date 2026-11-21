@@ -8,32 +8,30 @@ import threading
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import cast
 
 VERSION_RE = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 UNSTABLE_RE = re.compile(r"(rc|alpha|beta|preview|dev|snapshot)", re.IGNORECASE)
 
 
-def parse_version(text: str):
+def parse_version(text):
     match = VERSION_RE.search(text or "")
     if not match:
         return None
     return tuple(int(part) for part in match.groups())
 
 
-def format_version(version: tuple[int, ...]):
+def format_version(version):
     return ".".join(str(part) for part in version)
 
 
-def latest_stable(releases: list[dict[str, object]]):
+def latest_stable(releases):
     best = None
     best_tag = None
     for release in releases:
         if release.get("draft") or release.get("prerelease"):
             continue
-        tag = cast("str", release.get("tag_name") or "")
+        tag = release.get("tag_name") or ""
         if UNSTABLE_RE.search(tag):
             continue
         version = parse_version(tag)
@@ -45,11 +43,11 @@ def latest_stable(releases: list[dict[str, object]]):
     return best, best_tag
 
 
-def escape_label(value: object):
+def escape_label(value):
     return str(value).replace("\\", r"\\").replace("\n", r"\n").replace('"', r"\"")
 
 
-def fetch_releases(repo: str, timeout: int):
+def fetch_releases(repo, timeout):
     request = urllib.request.Request(
         f"https://api.github.com/repos/{repo}/releases?per_page=30",
         headers={
@@ -64,7 +62,7 @@ def fetch_releases(repo: str, timeout: int):
     return payload
 
 
-def version_from_image(image: str | None):
+def version_from_image(image):
     """Version embedded in a tag. Digest-only references have no tag."""
     if not image:
         return None
@@ -76,20 +74,15 @@ def version_from_image(image: str | None):
     return parse_version(ref[colon + 1 :])
 
 
-def installed_version(target: dict[str, object], images: dict[str, str | None] | None):
-    image = None if images is None else images.get(cast("str", target["id"]))
+def installed_version(target, images):
+    image = None if images is None else images.get(target["id"])
     live = version_from_image(image)
     if live is not None:
         return live
     return parse_version(str(target.get("current", "")))
 
 
-def evaluate(
-    targets: list[dict[str, object]],
-    fetch: Callable[[str, int], list[dict[str, object]]],
-    timeout: int,
-    images: dict[str, str | None] | None = None,
-):
+def evaluate(targets, fetch, timeout, images=None):
     samples = []
     for target in targets:
         app = target["id"]
@@ -105,7 +98,7 @@ def evaluate(
         try:
             if current is None:
                 raise ValueError("current version is not a dotted triple")
-            releases = fetch(cast("str", target["github"]), timeout)
+            releases = fetch(target["github"], timeout)
             latest, _tag = latest_stable(releases)
             if latest is None:
                 raise ValueError("no stable release")
@@ -118,7 +111,7 @@ def evaluate(
     return samples
 
 
-def render_metrics(samples: list[dict[str, object]]):
+def render_metrics(samples):
     lines = [
         "# HELP socrat_software_update_available Pinned version is older than the newest stable GitHub release.",
         "# TYPE socrat_software_update_available gauge",
@@ -145,13 +138,13 @@ class State:
         self.lock = threading.Lock()
         self.body = render_metrics([]).encode()
 
-    def update(self, samples: list[dict[str, object]]):
+    def update(self, samples):
         body = render_metrics(samples).encode()
         with self.lock:
             self.body = body
 
 
-def serve(state: State, port: int):
+def serve(state, port):
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
             if self.path != "/metrics":
@@ -166,14 +159,14 @@ def serve(state: State, port: int):
             self.end_headers()
             self.wfile.write(body)
 
-        def log_message(self, _fmt: str, *_args: object):
+        def log_message(self, _fmt: str, *_args: object) -> None:
             return
 
     server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
     server.serve_forever()
 
 
-def workload_ref(target: dict[str, object]):
+def workload_ref(target):
     if target.get("deployment") and target.get("statefulset"):
         raise ValueError("ambiguous workload target")
     if target.get("statefulset"):
@@ -181,7 +174,7 @@ def workload_ref(target: dict[str, object]):
     return "deployments", target.get("deployment")
 
 
-def deployment_image(target: dict[str, object], timeout: int):
+def deployment_image(target, timeout):
     namespace = target.get("namespace")
     resource, name = workload_ref(target)
     container = target.get("container")
@@ -212,7 +205,7 @@ def deployment_image(target: dict[str, object], timeout: int):
     raise ValueError(f"container {container} not found on {namespace}/{name}")
 
 
-def load_images(targets: list[dict[str, object]], timeout: int):
+def load_images(targets, timeout):
     images = {}
     for target in targets:
         if not (target.get("deployment") or target.get("statefulset")):
