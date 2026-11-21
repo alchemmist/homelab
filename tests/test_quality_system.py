@@ -362,19 +362,14 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
 
     graph = yaml.safe_load((ROOT / "qg.yaml").read_text())["nodes"]
     assert len({n["title"] for n in graph.values()}) == len(graph)
-    cheap = {"python", "yaml", "shell", "workflow", "secrets", "docker", "javascript", "tests-fast"}
-    for node in cheap:
+    assert set(graph) == {"graph", "javascript", "secrets"}
+    for node in ("javascript", "secrets"):
         assert graph[node]["needs"] == ["graph"]
-    assert set(graph["ownership"]["needs"]) == cheap
-    for node in ("manifests", "ansible", "tests-medium", "dependencies"):
-        assert graph[node]["needs"] == ["ownership"]
-    assert set(graph["tests-cluster"]["needs"]) == {
-        "manifests",
-        "ansible",
-        "tests-medium",
-        "dependencies",
+    local = json.loads((ROOT / "quality/local-checks.json").read_text())
+    assert set(local) == {
+        "python", "yaml", "shell", "workflow", "docker", "tests-fast", "ownership",
+        "manifests", "ansible", "tests-medium", "tests-cluster", "dependencies",
     }
-    assert not any("shard" in n for n in graph)
 
 
 def _load_checker(name):

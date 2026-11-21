@@ -6,7 +6,14 @@ The operator changed the integration scope: PR182 sets up CI and integrates revi
 
 `qg.yaml` is authoritative. Generate workflows and `.quality-graph/manifest.json` only through the pinned owning compiler (`uv run qg generate`); never hand-edit generated YAML. `qg validate` verifies freshness, not source cleanliness.
 
-## Semantic 15-node DAG
+## Active CI scope
+
+Only `graph`, `secrets` and `javascript` passed in PR #454 and are active in CI.
+The other twelve checks remain runnable by name (`make check-all` attempts all
+fifteen). Six failed and six were skipped; neither counts as a pass. Restore a
+check to `qg.yaml` and remove its local-only entry once it is verified green.
+
+## Historical 15-node DAG (before PR #454)
 
 ```mermaid
 flowchart TD

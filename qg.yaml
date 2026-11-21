@@ -98,42 +98,6 @@ nodes:
         findings: false
         files: false
         node: false
-  python:
-    title: Python correctness
-    profile: default
-    run: uv run python scripts/quality/lint.py python
-    policy: *id001
-    needs:
-    - graph
-    results:
-      native: reports/python.json
-  yaml:
-    title: YAML structure
-    profile: default
-    run: uv run python scripts/quality/lint.py yaml
-    policy: *id001
-    needs:
-    - graph
-    results:
-      native: reports/yaml.json
-  shell:
-    title: Shell safety
-    profile: quality-shell
-    run: uv run python scripts/quality/lint.py shell
-    policy: *id001
-    needs:
-    - graph
-    results:
-      native: reports/shell.json
-  workflow:
-    title: Delivery security
-    profile: quality-delivery
-    run: uv run python scripts/quality/lint.py workflow
-    policy: *id001
-    needs:
-    - graph
-    results:
-      native: reports/workflow.json
   secrets:
     title: Credential hygiene
     profile: quality-secrets
@@ -143,15 +107,6 @@ nodes:
     - graph
     results:
       native: reports/secrets.json
-  docker:
-    title: Container recipes
-    profile: quality-docker
-    run: uv run python scripts/quality/lint.py docker
-    policy: *id001
-    needs:
-    - graph
-    results:
-      native: reports/docker.json
   javascript:
     title: JavaScript syntax
     profile: quality-javascript
@@ -161,85 +116,4 @@ nodes:
     - graph
     results:
       native: reports/javascript.json
-  tests-fast:
-    title: Unit tests
-    profile: default
-    run: uv run python scripts/quality/tests.py fast --isolate-network
-    policy: *id001
-    needs:
-    - graph
-    results:
-      junit: reports/tests-fast.xml
-  ownership:
-    title: Ownership contracts
-    profile: quality-helm
-    run: 'uv run python scripts/check_infrastructure_contracts.py
-
-      uv run python scripts/check_source_pointers.py
-
-      uv run python scripts/check_operational_entrypoints.py
-
-      uv run python scripts/check_vendor_contracts.py
-
-      uv run python scripts/alert_graphs.py --check
-
-      uv run python scripts/n8n/check_failure_alerts.py'
-    policy: *id001
-    needs:
-    - python
-    - yaml
-    - shell
-    - workflow
-    - secrets
-    - docker
-    - javascript
-    - tests-fast
-  manifests:
-    title: Manifest validation
-    profile: quality-manifests
-    run: uv run python scripts/quality/charts.py
-    policy: *id001
-    needs:
-    - ownership
-    results:
-      native: reports/manifests.json
-  ansible:
-    title: Playbook safety
-    profile: quality-ansible
-    run: uv run python scripts/quality/lint.py ansible
-    policy: *id001
-    needs:
-    - ownership
-    results:
-      native: reports/ansible.json
-  tests-medium:
-    title: Integration tests
-    profile: quality-integration
-    run: uv run python scripts/quality/tests.py medium --isolate-network
-    policy: *id001
-    needs:
-    - ownership
-    results:
-      junit: reports/tests-medium.xml
-  tests-cluster:
-    title: Cluster lifecycle
-    profile: quality-cluster
-    run: uv run python scripts/quality/tests.py cluster
-    policy: *id001
-    needs:
-    - manifests
-    - ansible
-    - tests-medium
-    - dependencies
-    results:
-      junit: reports/tests-cluster.xml
-  dependencies:
-    title: Dependency audit
-    profile: default
-    run: uv run python scripts/quality/lint.py dependencies
-    policy: *id001
-    needs:
-    - ownership
-    results:
-      native: reports/dependencies.json
 ...

@@ -163,8 +163,11 @@ def check():
     import yaml
 
     graph = yaml.safe_load((ROOT / "qg.yaml").read_text())
+    local = json.loads((ROOT / "quality/local-checks.json").read_text())
+    require(not (local.keys() & graph["nodes"].keys()), "Check declared twice")
+    checks = {**local, **graph["nodes"]}
     for suite in inventory["suites"]:
-        node = graph["nodes"]["tests-" + suite]
+        node = checks["tests-" + suite]
         isolation = "" if suite == "cluster" else " --isolate-network"
         require(
             node["run"] == f"uv run python scripts/quality/tests.py {suite}{isolation}",
@@ -214,7 +217,7 @@ def check():
         require(callable(checker), "Missing architecture checker")
         checker()
     print(
-        f"Quality contracts OK: {len(paths)} offline schemas, {len(scheduled)}/{len(actual)} scheduled test modules"
+        f"Quality contracts OK: {len(paths)} offline schemas, {len(scheduled)}/{len(actual)} test modules assigned to suites"
     )
 
 

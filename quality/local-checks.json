@@ -1,0 +1,83 @@
+{
+  "python": {
+    "title": "Python correctness",
+    "run": "uv run python scripts/quality/lint.py python",
+    "results": {
+      "native": "reports/python.json"
+    }
+  },
+  "yaml": {
+    "title": "YAML structure",
+    "run": "uv run python scripts/quality/lint.py yaml",
+    "results": {
+      "native": "reports/yaml.json"
+    }
+  },
+  "shell": {
+    "title": "Shell safety",
+    "run": "uv run python scripts/quality/lint.py shell",
+    "results": {
+      "native": "reports/shell.json"
+    }
+  },
+  "workflow": {
+    "title": "Delivery security",
+    "run": "uv run python scripts/quality/lint.py workflow",
+    "results": {
+      "native": "reports/workflow.json"
+    }
+  },
+  "docker": {
+    "title": "Container recipes",
+    "run": "uv run python scripts/quality/lint.py docker",
+    "results": {
+      "native": "reports/docker.json"
+    }
+  },
+  "tests-fast": {
+    "title": "Unit tests",
+    "run": "uv run python scripts/quality/tests.py fast --isolate-network",
+    "results": {
+      "junit": "reports/tests-fast.xml"
+    }
+  },
+  "ownership": {
+    "title": "Ownership contracts",
+    "run": "uv run python scripts/check_infrastructure_contracts.py\nuv run python scripts/check_source_pointers.py\nuv run python scripts/check_operational_entrypoints.py\nuv run python scripts/check_vendor_contracts.py\nuv run python scripts/alert_graphs.py --check\nuv run python scripts/n8n/check_failure_alerts.py"
+  },
+  "manifests": {
+    "title": "Manifest validation",
+    "run": "uv run python scripts/quality/charts.py",
+    "results": {
+      "native": "reports/manifests.json"
+    }
+  },
+  "ansible": {
+    "title": "Playbook safety",
+    "run": "uv run python scripts/quality/lint.py ansible",
+    "results": {
+      "native": "reports/ansible.json"
+    }
+  },
+  "tests-medium": {
+    "title": "Integration tests",
+    "run": "uv run python scripts/quality/tests.py medium --isolate-network",
+    "results": {
+      "junit": "reports/tests-medium.xml"
+    }
+  },
+  "tests-cluster": {
+    "title": "Cluster lifecycle",
+    "run": "uv run python scripts/quality/tests.py cluster",
+    "results": {
+      "junit": "reports/tests-cluster.xml"
+    }
+  },
+  "dependencies": {
+    "title": "Dependency audit",
+    "run": "uv run python scripts/quality/lint.py dependencies",
+    "results": {
+      "native": "reports/dependencies.json"
+    }
+  }
+}
