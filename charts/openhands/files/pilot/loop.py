@@ -21,8 +21,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict, cast
 
-if TYPE_CHECKING:
-    import types
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
