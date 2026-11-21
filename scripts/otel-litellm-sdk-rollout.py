@@ -24,7 +24,7 @@ BOOTSTRAP = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BOOTSTRAP)
 
 
-def sdk_environment() -> dict[str, str]:
+def sdk_environment():
     return {
         "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
         "OTEL_EXPORTER_OTLP_ENDPOINT": "https://10.250.0.3:44318",
@@ -43,8 +43,10 @@ def sdk_environment() -> dict[str, str]:
     }
 
 
-def configuration(original) -> dict[str, object]:
-    result = dict(copy.deepcopy(original))
+def configuration(original: object):
+    if not isinstance(original, dict):
+        raise TypeError
+    result = copy.deepcopy(original)
     settings = result.setdefault("litellm_settings", {})
     callbacks = settings.get("callbacks", [])
     if not isinstance(callbacks, list) or "prometheus" not in callbacks:
@@ -55,7 +57,7 @@ def configuration(original) -> dict[str, object]:
     return result
 
 
-def run(output, apply) -> None:
+def run(output: Path, *, apply: bool) -> None:
     os.umask(0o077)
     parent = Path.home() / "Library/Application Support/homelab/otel-controller"
     if not output.resolve().is_relative_to(parent.resolve()):
@@ -281,4 +283,4 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
-    run(args.output, args.apply)
+    run(args.output, apply=args.apply)

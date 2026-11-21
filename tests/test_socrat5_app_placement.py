@@ -7,7 +7,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def document(path):
+def document(path: str):
     return yaml.safe_load((ROOT / path).read_text())
 
 

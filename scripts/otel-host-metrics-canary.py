@@ -16,11 +16,11 @@ import urllib.parse
 import urllib.request
 
 
-def command(arguments) -> str:
+def command(arguments: list[str]) -> str:
     return subprocess.run(arguments, check=True, capture_output=True, text=True, timeout=30).stdout
 
 
-def verify(path, expected) -> None:
+def verify(path: Path, expected: str) -> None:
     stat = path.lstat()
     if path.is_symlink() or not path.is_file() or stat.st_uid != 0 or stat.st_mode & 0o022:
         raise ValueError("Native canary executable must be root owned and not writable by others")
@@ -29,8 +29,12 @@ def verify(path, expected) -> None:
             raise ValueError("Native executable differs from pinned controller digest")
 
 
-def configs(root, request) -> tuple[dict[str, object], dict[str, object]]:
+def configs(root: Path, request: object):
+    if not isinstance(request, dict):
+        raise TypeError
     agent = json.loads((root / "agent-source.json").read_text())
+    if not isinstance(agent, dict):
+        raise TypeError
     agent["receivers"] = {"prometheus": agent["receivers"]["prometheus"]}
     agent["extensions"] = {"file_storage": agent["extensions"]["file_storage"]}
     agent["processors"] = {
@@ -48,6 +52,8 @@ def configs(root, request) -> tuple[dict[str, object], dict[str, object]]:
         "pipelines": {"metrics": agent["service"]["pipelines"]["metrics"]},
     }
     gateway = json.loads((root / "cluster-source.json").read_text())
+    if not isinstance(gateway, dict):
+        raise TypeError
     grpc = copy.deepcopy(gateway["receivers"]["otlp"]["protocols"]["grpc"])
     grpc["endpoint"] = request["backendIP"] + ":43170"
     gateway["receivers"] = {"otlp": {"protocols": {"grpc": grpc}}}
@@ -76,13 +82,13 @@ def configs(root, request) -> tuple[dict[str, object], dict[str, object]]:
     return agent, gateway
 
 
-def context(root) -> ssl.SSLContext:
+def context(root: Path) -> ssl.SSLContext:
     result = ssl.create_default_context(cafile=str(root / "tls/ca.crt"))
     result.load_cert_chain(str(root / "tls/client.crt"), str(root / "tls/client.key"))
     return result
 
 
-def query(root, expression, range_parameters=None) -> list[dict[str, object]]:
+def query(root: Path, expression: str, range_parameters: dict[str, str] | None = None):
     endpoint = "query_range" if range_parameters else "query"
     parameters = {"query": expression, **(range_parameters or {})}
     url = "https://127.0.0.1:19099/api/v1/" + endpoint + "?" + urllib.parse.urlencode(parameters)
@@ -90,53 +96,20 @@ def query(root, expression, range_parameters=None) -> list[dict[str, object]]:
         payload = json.load(response)
     if payload.get("status") != "success":
         raise ValueError("Native shadow Prometheus query failed")
-    result = payload["data"]["result"]
-    if not isinstance(result, list) or not all(isinstance(point, dict) for point in result):
-        message = "Native shadow Prometheus query returned malformed samples"
-        raise ValueError(message)
-    return result
+    return payload["data"]["result"]
 
 
-def _sample_value(point: dict[str, object]) -> str:
-    """Return the string sample value of one instant-vector point."""
-    value = point.get("value")
-    if not isinstance(value, (list, tuple)) or len(value) < 2:
-        message = "Native instant sample has no value pair"
-        raise TypeError(message)
-    reading = value[1]
-    if not isinstance(reading, str):
-        message = "Native instant sample value is not a string"
-        raise TypeError(message)
-    return reading
-
-
-def _range_values(point: dict[str, object]) -> list[tuple[float, str]]:
-    """Return the timestamp-value pairs of one range-vector point."""
-    values = point.get("values")
-    if not isinstance(values, list):
-        message = "Native range sample has no values list"
-        raise TypeError(message)
-    pairs = []
-    for item in values:
-        if not isinstance(item, (list, tuple)) or len(item) < 2:
-            message = "Native range sample entries must be timestamp/value pairs"
-            raise TypeError(message)
-        timestamp, reading = item[0], item[1]
-        pairs.append((float(timestamp), str(reading)))
-    return pairs
-
-
-def identity(labels) -> str:
+def identity(labels: object) -> str:
     return hashlib.sha256(
         json.dumps(labels, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
 
 
-def unit(root, label) -> str:
-    return f"{root.name}-{label}.service"
+def unit(root: Path, label: str) -> str:
+    return root.name + "-" + label + ".service"
 
 
-def stop(root, labels) -> None:
+def stop(root: Path, labels: list[str]) -> None:
     for label in labels:
         if (
             command(["systemctl", "show", unit(root, label), "-p", "MainPID", "--value"]).strip()
@@ -145,7 +118,15 @@ def stop(root, labels) -> None:
             command(["systemctl", "stop", unit(root, label)])
 
 
-def start(root, label, executable, arguments, memory, environment=None, extra=None) -> None:
+def start(
+    root: Path,
+    label: str,
+    executable: Path,
+    arguments: list[str],
+    memory: int,
+    environment: dict[str, str] | None = None,
+    extra: list[str] | None = None,
+) -> None:
     properties = [
         f"MemoryMax={memory}",
         "MemorySwapMax=0",
@@ -159,7 +140,7 @@ def start(root, label, executable, arguments, memory, environment=None, extra=No
     command(argv + [str(executable)] + arguments)
 
 
-def wait_port(ip, port) -> None:
+def wait_port(ip: str, port: int) -> None:
     deadline = time.monotonic() + 20
     while time.monotonic() < deadline:
         try:
@@ -170,7 +151,9 @@ def wait_port(ip, port) -> None:
     raise RuntimeError("Owned native listener did not become ready")
 
 
-def environment(root, request) -> dict[str, str]:
+def environment(root: Path, request: object) -> dict[str, str]:
+    if not isinstance(request, dict):
+        raise TypeError
     return {
         "GOMAXPROCS": "2",
         "GOMEMLIMIT": "192MiB",
@@ -184,7 +167,7 @@ def environment(root, request) -> dict[str, str]:
     }
 
 
-def telemetry(root) -> dict[str, float]:
+def telemetry(root: Path) -> dict[str, float]:
     with urllib.request.urlopen("http://127.0.0.1:18888/metrics", timeout=5) as response:
         lines = response.read(4 * 1024 * 1024 + 1).decode().splitlines()
     selected = {}
@@ -207,7 +190,7 @@ def telemetry(root) -> dict[str, float]:
     return selected
 
 
-def classify_shutdown_replay(text) -> dict[str, object]:
+def classify_shutdown_replay(text: str):
     # Pinned upstream 0.164 logs every Send error as "Dropping data", but
     # persistent_queue.onDone retains IsShutdownErr items for startup replay.
     # Never exempt generic send failures or merely trust the log wording.
@@ -258,7 +241,9 @@ def classify_shutdown_replay(text) -> dict[str, object]:
     }
 
 
-def validate_contract(root, request, now=None) -> None:
+def validate_contract(root: Path, request: object, now: datetime | None = None) -> None:
+    if not isinstance(request, dict):
+        raise TypeError
     collected = datetime.fromisoformat(request["scrapeContractCollectedAt"])
     age = ((now or datetime.now(timezone.utc)) - collected).total_seconds()
     if not 0 <= age <= 900:
@@ -270,7 +255,7 @@ def validate_contract(root, request, now=None) -> None:
         raise ValueError("Frozen native host source config changed after compilation")
 
 
-def run(root, phase) -> dict[str, object]:
+def run(root: Path, phase: str):
     if (
         os.geteuid() != 0
         or root.is_symlink()
@@ -282,7 +267,7 @@ def run(root, phase) -> dict[str, object]:
     if stat.st_uid != 0 or stat.st_mode & 0o077:
         raise ValueError("Canary workspace must be root-only")
     request = json.loads((root / "request.json").read_text())
-    if ipaddress.ip_address(request["backendIP"]) not in ipaddress.ip_network("10.250.0.0/24"):
+    if not ipaddress.ip_address(request["backendIP"]) in ipaddress.ip_network("10.250.0.0/24"):
         raise ValueError("Backend must bind only the existing private WireGuard range")
     result = {"phase": phase, "hostname": socket.gethostname(), "productionIngestionChanged": False}
     if phase == "prepare":
@@ -388,7 +373,7 @@ def run(root, phase) -> dict[str, object]:
             64 * 2**20,
             {"TZ": "UTC", "DBUS_SYSTEM_BUS_ADDRESS": "unix:path=/run/dbus/system_bus_socket"},
             [
-                'User=65534',
+                "User=65534",
                 "Group=65534",
                 "NoNewPrivileges=yes",
                 "BindReadOnlyPaths=/var/lib/node_exporter/textfile_collector:/host/root/var/lib/node_exporter/textfile_collector",
@@ -415,9 +400,9 @@ def run(root, phase) -> dict[str, object]:
             ages = query(root, "time() - timestamp(up)")
             if (
                 {identity(point["metric"]) for point in actual} == expected
-                and all(_sample_value(point) == "1" for point in actual)
+                and all(point["value"][1] == "1" for point in actual)
                 and len(ages) == 4
-                and all(0 <= float(_sample_value(point)) < 15 for point in ages)
+                and all(0 <= float(point["value"][1]) < 15 for point in ages)
             ):
                 consecutive += 1
                 if consecutive >= 3:
@@ -433,7 +418,7 @@ def run(root, phase) -> dict[str, object]:
             {
                 "healthyTargetCount": 4,
                 "allTargetLabelsEquivalent": True,
-                "maximumUpAgeSeconds": max(float(_sample_value(p)) for p in ages),
+                "maximumUpAgeSeconds": max(float(p["value"][1]) for p in ages),
             }
         )
     elif phase in ("await-queued", "await-drained"):
@@ -452,16 +437,15 @@ def run(root, phase) -> dict[str, object]:
     elif phase == "outage-proof":
         stops = json.loads((root / "gateway-stop-result.json").read_text())["timeUnixSeconds"]
         restarts = json.loads((root / "restarts.json").read_text())
-        points = query(root, 'up[10m]')
+        points = query(root, "up[10m]")
         by_identity = {identity(point["metric"]): point for point in points}
-        stops = float(stops)
         counts = {}
         for node, labels in request["expectedLabels"].items():
             series = by_identity[identity({**labels, "__name__": "up"})]
-            restart = float(restarts[node]["restartStartedAt"])
+            restart = restarts[node]["restartStartedAt"]
             count = sum(
                 stops < float(timestamp) < restart and value == "1"
-                for timestamp, value in _range_values(series)
+                for timestamp, value in series["values"]
             )
             if count < 1:
                 raise ValueError("No pre-restart outage samples survived durable queue on one host")
@@ -470,10 +454,14 @@ def run(root, phase) -> dict[str, object]:
         result["allFourPersistentQueuesSurvivedAgentRestart"] = True
     elif phase == "telemetry":
         result["exporterTelemetry"] = telemetry(root)
-        result["agentCgroup"] = command(
+        result["agentCgroup"] = agent_cgroup = command(
             ["systemctl", "show", unit(root, "agent"), "-p", "ControlGroup", "--value"]
         ).strip()
-        peak = Path("/sys/fs/cgroup") / result["agentCgroup"].lstrip("/") / "memory.peak"
+        peak = (
+            Path("/sys/fs/cgroup") / agent_cgroup.lstrip("/") / "memory.peak"
+            if agent_cgroup
+            else Path("/nonexistent")
+        )
         result["agentMemoryPeakBytes"] = int(peak.read_text()) if peak.is_file() else None
     elif phase == "gateway-stop":
         stop(root, ["gateway"])
@@ -523,12 +511,14 @@ def run(root, phase) -> dict[str, object]:
             "memoryRefusals": "Refusing data.",
             "failedScrapeCommits": "Scrape commit failed",
         }
-        result["rejections"] = {key: text.count(marker) for key, marker in markers.items()}
+        result["rejections"] = rejections = {
+            key: text.count(marker) for key, marker in markers.items()
+        }
         files = [p for p in (root / "queues").rglob("*") if p.is_file() and not p.is_symlink()]
         result["queueLogicalBytesAfterDrain"] = sum(p.stat().st_size for p in files)
         result["queueAllocatedBytesAfterDrain"] = sum(p.stat().st_blocks * 512 for p in files)
         result["queueSaturationOrFullHighWaterVerified"] = False
-        result["strictUnclassifiedLogGatePassed"] = not any(result["rejections"].values())
+        result["strictUnclassifiedLogGatePassed"] = not any(rejections.values())
         result["shutdownReplay"] = classify_shutdown_replay(text)
     elif phase == "cleanup":
         labels = ["agent", "exporter"] + (

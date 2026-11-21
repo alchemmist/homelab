@@ -9,18 +9,26 @@ import json
 import re
 from pathlib import Path
 
+
+def _as_kind[T](value: object, kind: type[T]) -> T:
+    if not isinstance(value, kind):
+        raise TypeError
+    return value
+
+
 ROOT = Path(__file__).resolve().parents[1]
 POLICY = ROOT / "deploy/monitoring/otel/retention-policy.json"
 COPIES = [ROOT / p for p in ("deploy/monitoring/otel/loki.yaml", "charts/loki/files/loki.yaml")]
 LEVELS = {"trace", "debug", "info", "warn", "error", "fatal", "unknown"}
 
 
-def rules(policy) -> tuple[int, list[tuple[int, str, int]]]:
+def rules(policy: object):
+    policy = _as_kind(policy, dict)
     if policy.get("schemaVersion") != 1:
         raise ValueError("Unsupported policy schema")
     fallback = policy["fallbackHours"]
 
-    def hours(value, level):
+    def hours(value: object, level: str) -> int:
         if type(value) is not int or not 24 <= value <= 8760:
             raise ValueError("Retention must be integer hours between 24h and 365d")
         if level == "unknown" and value != 336:
@@ -105,7 +113,7 @@ def rules(policy) -> tuple[int, list[tuple[int, str, int]]]:
     return fallback, result
 
 
-def render(text, policy) -> str:
+def render(text: str, policy: object) -> str:
     fallback, streams = rules(policy)
     block = "  retention_period: " + str(fallback) + "h\n  retention_stream:\n"
     for priority, selector, period in streams:
@@ -113,15 +121,15 @@ def render(text, policy) -> str:
             f"    - selector: '{selector}'\n      priority: {priority}\n      period: {period}h\n"
         )
     # Replace only the limits retention stanza, preserving all unrelated Loki settings.
-    updated, count = re.subn(
+    text, count = re.subn(
         r"  retention_period:.*?\n(?=  allow_structured_metadata:)", block, text, flags=re.DOTALL
     )
     if count != 1:
         raise ValueError("Expected one bounded limits retention stanza")
-    return updated
+    return text
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--policy", type=Path, default=POLICY)

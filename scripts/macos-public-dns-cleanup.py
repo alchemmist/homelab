@@ -2,7 +2,9 @@
 """Retire exact owned per-domain resolvers/wiki restorer; never modify global DNS/VPN."""
 
 import argparse, datetime, hashlib, json, os, plistlib, shutil, subprocess
+from collections.abc import Sequence
 from pathlib import Path
+from typing import TypedDict, Unpack
 
 LABEL = "xyz.alchemmist.wiki-resolver"
 STATE = Path("/var/db/homelab-public-dns-cleanup")
@@ -32,8 +34,12 @@ def need(ok, message):
         raise RuntimeError(message)
 
 
-def run(argv, **kwargs):
-    return subprocess.run(argv, capture_output=True, check=False, **kwargs)
+class _BytesRun(TypedDict, total=False):
+    input: bytes
+
+
+def run(argv: Sequence[str], **kwargs: Unpack[_BytesRun]) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(argv, capture_output=True, check=False, text=False, **kwargs)
 
 
 def loaded():

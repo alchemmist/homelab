@@ -9,12 +9,12 @@ import urllib.request
 from pathlib import Path
 
 
-def digest(path) -> str:
+def digest(path: Path) -> str:
     with path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def run(directory) -> dict[str, object]:
+def run(directory: Path):
     if (
         os.geteuid() != 0
         or directory.is_symlink()
@@ -130,8 +130,8 @@ def run(directory) -> dict[str, object]:
         (directory / "result.json").write_text(json.dumps(result, indent=2) + "\n")
     if (
         result.get("probeReturnCode") != 0
-        or result.get("sourceCompatibilityPassed") is not True
-        or result.get("candidateStopped") is not True
+        or not result.get("sourceCompatibilityPassed")
+        or not result.get("candidateStopped")
     ):
         raise RuntimeError(
             "Native host source canary did not pass; retain private hash-only result"
@@ -139,7 +139,7 @@ def run(directory) -> dict[str, object]:
     return result
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--directory", required=True, type=Path)
     args = parser.parse_args()

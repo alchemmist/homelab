@@ -10,6 +10,13 @@ import urllib.parse
 from datetime import UTC, datetime
 from pathlib import Path
 
+
+def _as_kind[T](value: object, kind: type[T]) -> T:
+    if not isinstance(value, kind):
+        raise TypeError
+    return value
+
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POLICY = ROOT / "deploy/monitoring/otel-migration-policy.json"
 NODE_PROBE = """import json, os, socket, time
@@ -23,40 +30,7 @@ print(json.dumps({'hostname': socket.gethostname(), 'observedAt': time.time(),
 """
 
 
-def _mapping(payload: object) -> dict[str, object]:
-    if isinstance(payload, dict):
-        return payload
-    message = "Remote JSON response was not an object"
-    raise RuntimeError(message)
-
-
-def _sequence(payload: object) -> list[object]:
-    if isinstance(payload, list):
-        return payload
-    message = "Remote JSON response was not an array"
-    raise RuntimeError(message)
-
-
-def _section(container: object, key: str) -> dict[str, object]:
-    return _mapping(_mapping(container)[key])
-
-
-def _sample_value(point: object) -> str:
-    value = _mapping(point).get("value")
-    if isinstance(value, (list, tuple)) and len(value) > 1:
-        sample = value[1]
-        if isinstance(sample, str):
-            return sample
-    message = "Prometheus instant-vector sample value missing"
-    raise RuntimeError(message)
-
-
-def _label(target: object, key: str) -> object | None:
-    labels = _mapping(target).get("labels", {})
-    return _mapping(labels).get(key)
-
-
-def remote(host, arguments) -> object:
+def remote(host: str, arguments: list[str]):
     result = subprocess.run(
         ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", host, shlex.join(arguments)],
         capture_output=True,
@@ -69,19 +43,21 @@ def remote(host, arguments) -> object:
     return json.loads(result.stdout)
 
 
-def kube(host, namespace, *arguments) -> object:
+def kube(host: str, namespace: str, *arguments: str):
     return remote(host, ["kubectl", "-n", namespace, *arguments])
 
 
-def prometheus(host, namespace, endpoint) -> object:
+def prometheus(host: str, namespace: str, endpoint: str):
     path = f"/api/v1/namespaces/{namespace}/services/http:kube-prometheus-stack-prometheus:9090/proxy/api/v1/{endpoint}"
-    payload = _mapping(kube(host, namespace, "get", "--raw", path))
+    payload = kube(host, namespace, "get", "--raw", path)
     if payload.get("status") != "success":
         raise RuntimeError("Prometheus read-only API failed")
-    return _mapping(payload["data"])
+    return payload["data"]
 
 
-def monitor_summary(document) -> list[dict[str, object]]:
+def monitor_summary(document: object):
+    if not isinstance(document, dict):
+        raise TypeError
     summaries = []
     for item in document.get("items", []):
         spec = item.get("spec", {})
@@ -112,7 +88,7 @@ def monitor_summary(document) -> list[dict[str, object]]:
     return summaries
 
 
-def native_query(host, namespace, expression) -> object:
+def native_query(host: str, namespace: str, expression: str):
     return remote(
         host,
         [
@@ -134,26 +110,24 @@ def native_query(host, namespace, expression) -> object:
     )
 
 
-def collect(policy, host) -> dict[str, object]:
+def collect(policy: object, host: str):
+    if not isinstance(policy, dict):
+        raise TypeError
     namespace = policy["namespace"]
     nodes = {}
     for node in policy["nodes"]:
         nodes[node] = remote(node, ["python3", "-c", NODE_PROBE])
-    resources = _sequence(
-        _mapping(kube(host, namespace, "get", "prometheus", "-o", "json"))["items"]
-    )
+    resources = kube(host, namespace, "get", "prometheus", "-o", "json")["items"]
     native = any(
-        _section(item, "spec").get("enableOTLPReceiver")
-        and _section(item, "spec").get("listenLocal")
+        item["spec"].get("enableOTLPReceiver") and item["spec"].get("listenLocal")
         for item in resources
     )
-    targets: list[object]
     if native:
-        points = _sequence(native_query(host, namespace, "up and (time()-timestamp(up)<20)"))
+        points = native_query(host, namespace, "up and (time()-timestamp(up)<20)")
         targets = [
             {
-                "labels": _section(point, "metric"),
-                "health": "up" if _sample_value(point) == "1" else "down",
+                "labels": point["metric"],
+                "health": "up" if point["value"][1] == "1" else "down",
                 "scrapeInterval": "5s",
                 "scrapeTimeout": "4s",
             }
@@ -164,26 +138,26 @@ def collect(policy, host) -> dict[str, object]:
                 "Native production has fewer than the contracted 78 fresh source targets"
             )
     else:
-        targets = _sequence(_section(prometheus(host, namespace, "targets"), "activeTargets"))
+        targets = prometheus(host, namespace, "targets")["activeTargets"]
     target_summaries = [
         {
-            "job": _label(target, "job"),
-            "instance": _label(target, "instance"),
-            "health": _mapping(target).get("health"),
-            "scrapeInterval": _mapping(target).get("scrapeInterval"),
-            "scrapeTimeout": _mapping(target).get("scrapeTimeout"),
+            "job": target.get("labels", {}).get("job"),
+            "instance": target.get("labels", {}).get("instance"),
+            "health": target.get("health"),
+            "scrapeInterval": target.get("scrapeInterval"),
+            "scrapeTimeout": target.get("scrapeTimeout"),
         }
         for target in targets
     ]
     prometheus_summaries = [
         {
-            "name": _section(item, "metadata")["name"],
-            "version": _section(item, "spec").get("version"),
-            "scrapeInterval": _section(item, "spec").get("scrapeInterval"),
-            "evaluationInterval": _section(item, "spec").get("evaluationInterval"),
-            "retention": _section(item, "spec").get("retention"),
-            "enableAdminAPI": _section(item, "spec").get("enableAdminAPI", False),
-            "enableOTLPReceiver": _section(item, "spec").get("enableOTLPReceiver", False),
+            "name": item["metadata"]["name"],
+            "version": item["spec"].get("version"),
+            "scrapeInterval": item["spec"].get("scrapeInterval"),
+            "evaluationInterval": item["spec"].get("evaluationInterval"),
+            "retention": item["spec"].get("retention"),
+            "enableAdminAPI": item["spec"].get("enableAdminAPI", False),
+            "enableOTLPReceiver": item["spec"].get("enableOTLPReceiver", False),
         }
         for item in resources
     ]
@@ -198,15 +172,15 @@ def collect(policy, host) -> dict[str, object]:
     )
     disk_query = urllib.parse.urlencode({"query": "socrat_metrics_directory_bytes"})
     disk_result = (
-        _sequence(native_query(host, namespace, "socrat_metrics_directory_bytes"))
+        native_query(host, namespace, "socrat_metrics_directory_bytes")
         if native
-        else _sequence(_section(prometheus(host, namespace, "query?" + disk_query), "result"))
+        else prometheus(host, namespace, "query?" + disk_query)["result"]
     )
     directories = [
         {
-            "node": _section(item, "metric").get("node"),
-            "role": _section(item, "metric").get("role"),
-            "bytes": int(float(_sample_value(item))),
+            "node": item["metric"].get("node"),
+            "role": item["metric"].get("role"),
+            "bytes": int(float(item["value"][1])),
         }
         for item in disk_result
     ]
@@ -221,7 +195,7 @@ def collect(policy, host) -> dict[str, object]:
     }
 
 
-def nonnegative(value) -> bool:
+def nonnegative(value: object) -> bool:
     return (
         isinstance(value, (int, float))
         and not isinstance(value, bool)
@@ -230,7 +204,9 @@ def nonnegative(value) -> bool:
     )
 
 
-def evaluate(policy, inventory, now=None) -> dict[str, object]:
+def evaluate(policy: object, inventory: object, now: float | None = None):
+    policy = _as_kind(policy, dict)
+    inventory = _as_kind(inventory, dict)
     now = time.time() if now is None else now
     errors = []
     capacity = {}
@@ -309,14 +285,14 @@ def evaluate(policy, inventory, now=None) -> dict[str, object]:
     }
 
 
-def save(path, document) -> None:
+def save(path: str | Path, document: object) -> None:
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descriptor, "w") as stream:
         json.dump(document, stream, indent=2, allow_nan=False)
         stream.write("\n")
 
 
-def main() -> int:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=["collect", "check"])
     parser.add_argument("--policy", type=Path, default=DEFAULT_POLICY)

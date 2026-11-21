@@ -1,5 +1,6 @@
 """Offline only: real OpenSSH key parser, fake HTTPS, local Ansible intent checks."""
 
+from collections.abc import Mapping
 import contextlib
 import copy
 import importlib.util
@@ -14,6 +15,7 @@ import unittest
 from unittest.mock import patch
 import urllib.error
 import urllib.parse
+import urllib.request
 
 import yaml
 
@@ -32,11 +34,13 @@ TIM = yaml.safe_load((ROOT / "ansible/inventory/group_vars/Socrat.yml").read_tex
 KEY = TIM["authorized_keys"][0]
 
 
-def ledger(name="guest"):
+def ledger(name: str = "guest"):
     return {"version": 1, "bindings": [{"uuid": UUID, "name": name}]}
 
 
-def policy(state="present", hosts=None, revoked=None):
+def policy(
+    state: str = "present", hosts: list[str] | None = None, revoked: list[str] | None = None
+):
     return {
         "version": 1,
         "public_key_attribute": "ssh_public_keys",
@@ -68,7 +72,7 @@ def user():
     }
 
 
-def plan(p=None, u=None):
+def plan(p: dict[str, object] | None = None, u: dict[str, object] | None = None):
     return ssh.build_plan(ssh.bindings_map(ledger()), p or policy(), lambda ident: u or user())
 
 
@@ -150,7 +154,7 @@ class BindingTests(unittest.TestCase):
     def test_disabled_and_removed_hosts_need_no_live_identity(self):
         p = policy("disabled", hosts=["socrat-1"], revoked=["socrat-2"])
 
-        def unavailable(ident):
+        def unavailable(ident: str) -> None:
             raise AssertionError("Must not call IdP for revocation")
 
         payload, _ = ssh.build_plan(ssh.bindings_map(ledger()), p, unavailable)
@@ -247,7 +251,7 @@ class KeyTests(unittest.TestCase):
 
 
 class ApiTests(unittest.TestCase):
-    def api(self, doc=None):
+    def api(self, doc: Mapping[str, object] | None = None):
         api = ssh.Authentik("https://auth.example.invalid", "fake-test-token")
         api.opener.open = lambda req, timeout: io.BytesIO(
             json.dumps(
@@ -260,7 +264,7 @@ class ApiTests(unittest.TestCase):
         api = self.api()
         seen = []
 
-        def opened(req, timeout):
+        def opened(req: urllib.request.Request, timeout: float) -> io.BytesIO:
             seen.append(req)
             return io.BytesIO(
                 json.dumps({"pagination": {"next": None}, "results": [user()]}).encode()
@@ -386,7 +390,7 @@ class HostBindingTests(unittest.TestCase):
 
         original_stat = Path.lstat
 
-        def root_stat(path):
+        def root_stat(path: Path) -> SimpleNamespace:
             info = original_stat(path)
             return SimpleNamespace(st_uid=0, st_mode=info.st_mode, st_size=info.st_size)
 
@@ -423,7 +427,7 @@ class HostBindingTests(unittest.TestCase):
             # Metadata is mocked only to allow a non-root offline test process.
             original = Path.lstat
 
-            def root_stat(path):
+            def root_stat(path: Path) -> SimpleNamespace:
                 info = original(path)
                 return SimpleNamespace(st_uid=0, st_mode=info.st_mode, st_size=info.st_size)
 
@@ -456,7 +460,7 @@ class HostBindingTests(unittest.TestCase):
             "kerberosauthentication": "no",
         }
 
-        def response(values):
+        def response(values: dict[str, str]) -> subprocess.CompletedProcess[str]:
             return subprocess.CompletedProcess(
                 [], 0, "\n".join(k + " " + v for k, v in values.items()), ""
             )
@@ -616,7 +620,13 @@ class HostBindingTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "ansible-playbook unavailable")
 class AnsibleIntentTests(unittest.TestCase):
-    def run_play(self, payload, *flags, manual=False, review=None):
+    def run_play(
+        self,
+        payload: Mapping[str, object],
+        *flags: str,
+        manual: bool = False,
+        review: str | None = None,
+    ):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d)
             (path / "inventory.yml").write_text(

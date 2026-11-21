@@ -21,7 +21,7 @@ ACCEPT = ", ".join(
 )
 
 
-def resolve(repository, version) -> dict[str, object]:
+def resolve(repository: str, version: str):
     query = urllib.parse.urlencode(
         {"service": "registry.docker.io", "scope": "repository:" + repository + ":pull"}
     )
@@ -54,7 +54,7 @@ def resolve(repository, version) -> dict[str, object]:
     }
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

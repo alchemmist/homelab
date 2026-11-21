@@ -15,7 +15,9 @@ TARGETS = [
 NODES = ["socrat-0", "socrat-1"]
 
 
-def placement(document) -> tuple[dict[str, object] | None, dict[str, object] | None]:
+def placement(document: object):
+    if not isinstance(document, dict):
+        raise TypeError
     metadata, spec = document["metadata"], document["spec"]
     if (metadata["namespace"], metadata["name"]) not in TARGETS:
         raise ValueError("Deployment outside the explicit stateless-controller allowlist")
@@ -59,7 +61,7 @@ def placement(document) -> tuple[dict[str, object] | None, dict[str, object] | N
     affinity["nodeAffinity"] = required
     if original == affinity:
         return None, None
-    patch: dict[str, object] = {
+    patch = {
         "metadata": {"resourceVersion": metadata["resourceVersion"]},
         "spec": {
             "strategy": {
@@ -69,7 +71,7 @@ def placement(document) -> tuple[dict[str, object] | None, dict[str, object] | N
             "template": {"spec": {"affinity": affinity}},
         },
     }
-    rollback: dict[str, object] = {
+    rollback = {
         "uid": metadata["uid"],
         "originalAffinity": original,
         "originalStrategy": copy.deepcopy(spec.get("strategy")),
@@ -78,11 +80,11 @@ def placement(document) -> tuple[dict[str, object] | None, dict[str, object] | N
     return patch, rollback
 
 
-def run(kubeconfig, state_directory) -> dict[str, object]:
+def run(kubeconfig: str, state_directory: Path):
     state_directory.mkdir(mode=0o700, parents=True, exist_ok=False)
     base = ["k3s", "kubectl", "--kubeconfig", kubeconfig]
 
-    def command(arguments):
+    def command(arguments: list[str]) -> str:
         return subprocess.check_output(base + arguments, text=True, timeout=200)
 
     nodes = json.loads(command(["get", "nodes", "-o", "json"]))
@@ -99,7 +101,7 @@ def run(kubeconfig, state_directory) -> dict[str, object]:
         get = ["-n", namespace, "get", "deployment", name, "-o", "json"]
         document = json.loads(command(get))
         patch, rollback = placement(document)
-        if patch is None or rollback is None:
+        if patch is None:
             result.append({"namespace": namespace, "name": name, "changed": False})
             continue
         with (state_directory / (namespace + "-" + name + ".json")).open("x") as stream:
@@ -183,7 +185,7 @@ def run(kubeconfig, state_directory) -> dict[str, object]:
     }
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--kubeconfig", default="/etc/rancher/k3s/k3s.yaml")
     parser.add_argument("--state-directory", type=Path, required=True)

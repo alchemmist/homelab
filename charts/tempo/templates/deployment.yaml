@@ -36,7 +36,7 @@ spec:
                 matchExpressions:
                   - key: kubernetes.io/hostname
                     operator: In
-                    values: [socrat-0]
+                    values: [socrat-1]
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001

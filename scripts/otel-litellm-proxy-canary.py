@@ -6,6 +6,11 @@ import io
 import json
 import logging
 from pathlib import Path
+from typing import Protocol
+
+
+class _Span(Protocol):
+    def to_json(self) -> str: ...
 
 
 async def run() -> None:
@@ -43,10 +48,10 @@ async def run() -> None:
         audit = {"endedSpans": 0, "sensitiveSyntheticContentFoundAtSource": False}
 
         class PrivacyAudit(SpanProcessor):
-            def on_start(self, span, parent_context=None):
+            def on_start(self, span: _Span, parent_context: object | None = None) -> None:
                 pass
 
-            def on_end(self, span):
+            def on_end(self, span: _Span) -> None:
                 audit["endedSpans"] += 1
                 data = span.to_json()
                 if any(
@@ -59,10 +64,10 @@ async def run() -> None:
                 ):
                     audit["sensitiveSyntheticContentFoundAtSource"] = True
 
-            def shutdown(self):
+            def shutdown(self) -> None:
                 pass
 
-            def force_flush(self, timeout_millis=30000):
+            def force_flush(self, timeout_millis: int = 30000) -> bool:
                 return True
 
         handler._tracer_provider.add_span_processor(PrivacyAudit())

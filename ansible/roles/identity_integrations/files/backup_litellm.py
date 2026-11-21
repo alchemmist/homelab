@@ -11,7 +11,7 @@ import tarfile
 KUBE = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml", "-n", "llm"]
 
 
-def get(*args):
+def get(*args: str) -> bytes:
     return subprocess.check_output(KUBE + list(args), timeout=180)
 
 
@@ -28,7 +28,9 @@ files = {
     "config.json": get("get", "configmap", "litellm-config", "-o", "json"),
     "secrets.json": get("get", "secret", "litellm-env", "litellm-db", "-o", "json"),
 }
-oidc = get("get", "secret", "socrat-authentik-litellm", "--ignore-not-found", "-o", "json")
+oidc = get(
+    "get", "secret", "socrat-authentik-litellm", "--ignore-not-found", "-o", "json"
+)
 if oidc.strip():
     files["oidc-secret.json"] = oidc
 archive = io.BytesIO()

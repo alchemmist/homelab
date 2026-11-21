@@ -15,13 +15,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def save(path, document) -> None:
+def save(path: Path, document: object) -> None:
     temporary = path.with_suffix(".tmp")
     temporary.write_text(json.dumps(document, indent=2) + "\n")
     temporary.replace(path)
 
 
-def audit(args) -> None:
+def audit(args: argparse.Namespace) -> None:
     os.umask(0o077)
     args.output.mkdir(mode=0o700, exist_ok=False)
     environment = {**os.environ, "PATH": "/tmp/otel-migration-ssh/bin:" + os.environ["PATH"]}

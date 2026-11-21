@@ -15,7 +15,7 @@ spec.loader.exec_module(creds)
 BASE = Path.home() / ".local/share/homelab/mcp"
 
 
-def command(name):
+def command(name: str):
     env = dict(os.environ)
     if name == "argocd":
         env.update(

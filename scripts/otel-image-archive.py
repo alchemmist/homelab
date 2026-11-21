@@ -16,7 +16,7 @@ images = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(images)
 
 
-def run(lock, component, output) -> None:
+def run(lock: Path, component: str, output: Path) -> None:
     os.umask(0o077)
     output.mkdir(mode=0o700, exist_ok=False)
     image = json.loads(lock.read_text())["images"][component]

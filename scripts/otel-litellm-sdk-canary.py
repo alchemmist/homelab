@@ -10,6 +10,11 @@ import io
 import json
 import logging
 import time
+from typing import Protocol
+
+
+class _Span(Protocol):
+    def to_json(self) -> str: ...
 
 
 def run() -> None:
@@ -29,10 +34,10 @@ def run() -> None:
         source_audit = {"endedSpans": 0, "sensitiveSyntheticContentFoundAtSource": False}
 
         class SourcePrivacyAudit(SpanProcessor):
-            def on_start(self, span, parent_context=None):
+            def on_start(self, span: _Span, parent_context: object | None = None) -> None:
                 pass
 
-            def on_end(self, span):
+            def on_end(self, span: _Span) -> None:
                 source_audit["endedSpans"] += 1
                 serialized = span.to_json()
                 if any(
@@ -45,10 +50,10 @@ def run() -> None:
                 ):
                     source_audit["sensitiveSyntheticContentFoundAtSource"] = True
 
-            def shutdown(self):
+            def shutdown(self) -> None:
                 pass
 
-            def force_flush(self, timeout_millis=30000):
+            def force_flush(self, timeout_millis: int = 30000) -> bool:
                 return True
 
         handler._tracer_provider.add_span_processor(SourcePrivacyAudit())

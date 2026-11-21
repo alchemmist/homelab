@@ -23,8 +23,38 @@ log() { printf '%s\n' "$*"; }
 die() { printf 'nightnode: %s\n' "$*" >&2; exit 1; }
 
 load_config() {
+  local line key value raw_value
   if [[ -f "${CONFIG_FILE}" ]]; then
-    source "${CONFIG_FILE}"
+    # KEY=VALUE lines only; blank and commented lines are skipped.
+    while IFS= read -r line || [[ -n "${line}" ]]; do
+      line="${line%$'\r'}"
+      line="${line#"${line%%[![:space:]]*}"}"
+      [[ -z "${line}" || "${line}" == \#* ]] && continue
+      [[ "${line}" == export[[:space:]]* ]] && line="${line#export }"
+      key="${line%%=*}"
+      raw_value="${line#*=}"
+      value="${raw_value}"
+      [[ "${key}" == "${line}" ]] && die "config line is not KEY=VALUE: ${line}"
+      key="${key#"${key%%[![:space:]]*}"}"
+      key="${key%"${key##*[![:space:]]}"}"
+      value="${value#"${value%%[![:space:]]*}"}"
+      value="${value%"${value##*[![:space:]]}"}"
+      raw_value="${raw_value#"${raw_value%%[![:space:]]*}"}"
+      raw_value="${raw_value%"${raw_value##*[![:space:]]}"}"
+      if [[ ( "${value}" == \"*\" && "${value}" == *\" ) || ( "${value}" == \'*\' && "${value}" == *\' ) ]]; then
+        value="${value:1:${#value}-2}"
+      fi
+      [[ "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || die "config key is invalid: ${key}"
+      [[ "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || die "config key is invalid: ${key}"
+      if [[ "${value}" == \"* || "${value}" == \'* ]]; then
+        local quote="${value:0:1}"
+        [[ ${#value} -ge 2 && "${value: -1}" == "${quote}" ]] || die "config value has an unmatched quote: ${key}"
+        value="${value:1:${#value}-2}"
+      fi
+      # Preserve assignment expansion from the historical source-based loader.
+      # shellcheck disable=SC2086
+      eval "export ${key}=${raw_value}"
+    done < "${CONFIG_FILE}"
   fi
 }
 
