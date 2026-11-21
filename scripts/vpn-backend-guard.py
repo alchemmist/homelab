@@ -21,8 +21,8 @@ TABLE = "homelab_xui_backend_guard"
 OWNER = "homelab issue83 public backend guard v1"
 
 
-def run(args, **kwargs):
-    r = subprocess.run(args, capture_output=True, text=True, timeout=20, **kwargs)
+def run(args: list[str], stdin_text: str | None = None):
+    r = subprocess.run(args, capture_output=True, text=True, timeout=20, input=stdin_text)
     if r.returncode:
         raise RuntimeError("Backend guard operation failed; inspect private receipts")
     return r.stdout
@@ -40,7 +40,7 @@ def rules():
 """
 
 
-def stable(value):
+def stable(value: object):
     if isinstance(value, dict):
         return {
             k: stable(v)
@@ -108,7 +108,7 @@ def expected():
     ]
 
 
-def validate(objects):
+def validate(objects: object):
     data = stable(objects)
     for obj in data:
         if "table" in obj:
@@ -177,17 +177,17 @@ def plan():
     }
 
 
-def apply(state, approval):
+def apply(state: Path, approval: str):
     require_host()
     wanted = plan()
     if h.digest(wanted) != approval or read_table() is not None:
         raise ValueError("Fresh empty-table approval required")
-    run(["nft", "--check", "-f", "-"], input=rules())
+    run(["nft", "--check", "-f", "-"], stdin_text=rules())
     h.save(state / "backend-guard-before.json", None)
     h.save(state / "backend-guard-uncertain.json", {"approval": approval, "plan": wanted})
     if plan() != wanted:
         raise ValueError("Preimage drift")
-    run(["nft", "-f", "-"], input=rules())
+    run(["nft", "-f", "-"], stdin_text=rules())
     after = read_table()
     if after is None:
         raise RuntimeError("Guard not present")
@@ -197,7 +197,7 @@ def apply(state, approval):
     return wanted
 
 
-def finalize_readback(state, approval):
+def finalize_readback(state: Path, approval: str):
     require_host()
     marker = json.loads((state / "backend-guard-uncertain.json").read_text())
     if marker["approval"] != approval or h.digest(marker["plan"]) != approval:
@@ -223,8 +223,8 @@ def finalize_readback(state, approval):
 def ensure():
     require_host()
     if read_table() is None:
-        run(["nft", "--check", "-f", "-"], input=rules())
-        run(["nft", "-f", "-"], input=rules())
+        run(["nft", "--check", "-f", "-"], stdin_text=rules())
+        run(["nft", "-f", "-"], stdin_text=rules())
         if read_table() is None:
             raise RuntimeError("Boot guard missing")
     return {"owned_guard_present": True}
@@ -246,7 +246,7 @@ WantedBy=multi-user.target
 """
 
 
-def persist(state):
+def persist(state: Path):
     require_host()
     if read_table() is None:
         raise ValueError("Verified live guard required before persistence")

@@ -20,9 +20,24 @@ import time
 import uuid
 from contextlib import closing
 from pathlib import Path
+from typing import Protocol
 
 
-def load(name, filename):
+class _Flag(Protocol):
+    def __bool__(self) -> bool: ...
+
+
+class _Session(Protocol):
+    state: Path
+    database: Path
+    credentials: dict[str, dict[str, str]]
+
+    def call(self, method: str, path: str, body: object = None) -> object: ...
+
+    def cleanup(self) -> None: ...
+
+
+def load(name: str, filename: str):
     spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -35,7 +50,7 @@ backend = load("backend", "vpn-backend-enforce.py")
 h = native.h
 
 
-def restore(state):
+def restore(state: Path):
     if os.geteuid() != 0 or socket.gethostname() != "socrat-2":
         raise ValueError("Requires VPS root")
     s = native.NativeSession(state)
@@ -53,7 +68,7 @@ def restore(state):
     return s
 
 
-def finish(s):
+def finish(s: _Session):
     marker = s.state / "home-fixture-private.json"
     try:
         if marker.exists():
@@ -92,7 +107,13 @@ def finish(s):
     return proof
 
 
-def prepare(state, approval, endpoint="91.189.82.238", include_udp=False, include_all_vless=False):
+def prepare(
+    state: Path,
+    approval: str,
+    endpoint: str = "91.189.82.238",
+    include_udp: _Flag = False,
+    include_all_vless: _Flag = False,
+):
     import ipaddress
 
     if not ipaddress.ip_address(endpoint).is_global:
