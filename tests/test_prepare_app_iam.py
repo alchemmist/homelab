@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 import tempfile
 from collections.abc import Callable
-from typing import TypedDict, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 import unittest
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
