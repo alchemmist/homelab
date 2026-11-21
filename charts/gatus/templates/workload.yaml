@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: gatus}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: gatus}}
+  template:
+    metadata: {labels: {app: gatus}}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: gatus
+          image: ghcr.io/twin/gatus:v5.38.0
+          ports: [{name: http, containerPort: 8080}]
+          readinessProbe: {httpGet: {port: http, path: /health}}
+          env:
+            - name: GATUS_CONFIG_PATH
+              value: /config/config.yaml
+            - name: GATUS_DATABASE_URL
+              valueFrom: {secretKeyRef: {name: gatus-postgres, key: url}}
+          volumeMounts:
+            - {name: config, mountPath: /config, readOnly: true}
+            - {name: ca, mountPath: /pg-ca, readOnly: true}
+          resources:
+            requests: {cpu: 25m, memory: 64Mi}
+            limits: {memory: 256Mi}
+      volumes:
+        - {name: config, secret: {secretName: gatus-config}}
+        - {name: ca, configMap: {name: pg-common-ca}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: gatus}
+spec:
+  selector: {app: gatus}
+  ports: [{name: http, port: 80, targetPort: http}]
