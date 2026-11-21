@@ -52,8 +52,8 @@ class InfrastructureContracts(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     contract.check(root)
 
-    def fixture(self, directory):
-        """Copy the contract-relevant files into a disposable tree."""
+    def fixture(self, directory: str) -> Path:
+        """Copy every registered contract fixture into a temporary root."""
         root = Path(directory)
         c = json.loads((ROOT / "deploy/contracts/infrastructure.json").read_text())
         names = ["deploy/contracts/infrastructure.json", c["meshRegistry"], c["ansibleInventory"]]

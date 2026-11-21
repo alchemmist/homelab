@@ -1,3 +1,5 @@
+"""Tests for the desktop startup configuration script."""
+
 import importlib.util
 import os
 from pathlib import Path
@@ -26,6 +28,8 @@ fi
 
 
 class LoginRewriteTests(unittest.TestCase):
+    """Verify desktop login rewrites preserve surrounding shell config."""
+
     def test_replaces_selector_preserving_surrounding_shell_configuration(self):
         """Selector replacement preserves surrounding shell configuration."""
         before = 'export PATH="$HOME/.elan/bin:$PATH"\n'
@@ -75,9 +79,9 @@ class LoginRewriteTests(unittest.TestCase):
             ({"DISPLAY": ":0"}, False),
         ]
         for values, expected in cases:
-            assignments = dict(
-                TTY="/dev/tty1", SSH_CONNECTION="", SSH_TTY="", WAYLAND_DISPLAY="", DISPLAY=""
-            )
+            assignments = {
+                "TTY": "/dev/tty1", "SSH_CONNECTION": "", "SSH_TTY": "", "WAYLAND_DISPLAY": "", "DISPLAY": ""
+            }
             assignments.update(values)
             script = (
                 "\n".join(f"{key}={value!r}" for key, value in assignments.items()) + "\n" + block
@@ -91,6 +95,8 @@ class LoginRewriteTests(unittest.TestCase):
 
 
 class IdleConfigurationTests(unittest.TestCase):
+    """Check the hypridle configuration survives the desktop setup guard."""
+
     def test_retains_lock_dim_and_general_handlers(self):
         """Removing idle shutdown keeps lock/dim handlers and general blocks."""
         retained = "general {\n    before_sleep_cmd = loginctl lock-session\n}\nlistener {\n    timeout = 120\n    on-timeout = brightnessctl set 10%\n}\nlistener {\n    timeout = 180\n    on-timeout = loginctl lock-session\n}\n"
@@ -113,6 +119,8 @@ class IdleConfigurationTests(unittest.TestCase):
 
 @unittest.skipUnless(ZSH, "zsh is required")
 class ConfigureTests(unittest.TestCase):
+    """Exercise the desktop configure script against temporary home dirs."""
+
     def setUp(self):
         """Patch a fake home, user and zsh-runner into the configure module."""
         directory = tempfile.TemporaryDirectory()

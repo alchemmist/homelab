@@ -1,8 +1,11 @@
+"""Tests for the k3s role rebalance configuration script."""
+
 import argparse
 import importlib.util
 from pathlib import Path
 import stat
 import tempfile
+from typing import cast, override
 import unittest
 
 import yaml
@@ -16,8 +19,11 @@ SPEC.loader.exec_module(MODULE)
 
 
 class RoleConfigTests(unittest.TestCase):
-    def setUp(self):
-        """Create a config path and server-role arguments."""
+    """Contracts for the k3s role rebalance configurator."""
+
+    @override
+    def setUp(self) -> None:
+        """Build the standard server-role argument namespace per test."""
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.path = Path(self.directory.name) / "config.yaml"
@@ -32,17 +38,17 @@ class RoleConfigTests(unittest.TestCase):
             check=False,
         )
 
-    def write(self, value):
-        """Write the config file with private permissions."""
+    def write(self, value: object) -> None:
+        """Dump one YAML document to the config path with private permissions."""
         self.path.write_text(yaml.safe_dump(value))
         self.path.chmod(0o600)
 
-    def read(self):
-        """Read back the parsed config file."""
-        return yaml.safe_load(self.path.read_text())
+    def read(self) -> dict[str, object]:
+        """Load the config path as a plain mapping."""
+        return cast("dict[str, object]", yaml.safe_load(self.path.read_text()))
 
-    def test_promote_preserves_worker_settings(self):
-        """Promotion preserves worker labels while removing server flags."""
+    def test_promote_preserves_worker_settings(self) -> None:
+        """Promote to server while preserving worker tuning and existing SANs."""
         preserved = {
             "prefer-bundled-bin": True,
             "node-label": ["workload=llm"],
@@ -67,8 +73,8 @@ class RoleConfigTests(unittest.TestCase):
         self.assertEqual(actual["token-file"], self.args.token_file)
         self.assertEqual(actual["flannel-iface"], "wg-socrat")
 
-    def test_explicit_token_file_replaces_inline_token_only(self):
-        """The token file replaces any inline token, keeping other keys."""
+    def test_explicit_token_file_replaces_inline_token_only(self) -> None:
+        """Replace an inline token with the explicit token file only."""
         self.write(
             {
                 "token": "old-agent-token",
@@ -84,8 +90,8 @@ class RoleConfigTests(unittest.TestCase):
         self.assertFalse(actual["disable-agent"])
         self.assertEqual(actual["node-label"], ["a=b"])
 
-    def test_control_plane_removes_conflicting_flags(self):
-        """Control-plane role strips flags conflicting with embedded etcd."""
+    def test_control_plane_removes_conflicting_flags(self) -> None:
+        """Strip server-role flags that conflict with control-plane membership."""
         self.write(
             {
                 key: True
@@ -109,8 +115,8 @@ class RoleConfigTests(unittest.TestCase):
         ):
             self.assertNotIn(key, actual)
 
-    def test_idempotence_private_backup_and_atomic_permissions(self):
-        """Re-runs are idempotent with private atomic backups."""
+    def test_idempotence_private_backup_and_atomic_permissions(self) -> None:
+        """Apply once atomically with a private backup, then no-op."""
         self.write({"node-label": ["a=b"]})
         self.path.chmod(0o644)
         original = self.path.read_bytes()
@@ -128,8 +134,8 @@ class RoleConfigTests(unittest.TestCase):
         self.assertNotEqual(first["backup"], second["backup"])
         self.assertEqual(backup.read_bytes(), original)
 
-    def test_check_does_not_write(self):
-        """Check mode reports changes without writing."""
+    def test_check_does_not_write(self) -> None:
+        """Keep check mode free of any config or directory side effects."""
         self.write({"token-file": "/existing/token"})
         self.args.token_file = None
         self.args.check = True
@@ -141,8 +147,8 @@ class RoleConfigTests(unittest.TestCase):
         MODULE.configure(self.args)
         self.assertEqual(self.read()["token-file"], "/existing/token")
 
-    def test_rejects_symlink_and_non_mapping(self):
-        """Symlinked or non-mapping configs are rejected."""
+    def test_rejects_symlink_and_non_mapping(self) -> None:
+        """Refuse non-mapping documents and symlinked config paths."""
         self.write(["invalid"])
         with self.assertRaises(ValueError):
             MODULE.configure(self.args)

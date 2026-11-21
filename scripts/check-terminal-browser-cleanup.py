@@ -1,3 +1,4 @@
+"""Check that the terminal browser watchdog cleans up browser artifacts."""
 import argparse
 import ctypes
 import importlib.util
@@ -36,6 +37,17 @@ def alive(module, identities):
         for identity in identities
         if identity[0] in snapshot and snapshot[identity[0]].identity == identity
     ]
+
+
+def _reap_children() -> None:
+    """Collect any remaining adopted children without blocking the exit path."""
+    while True:
+        try:
+            pid, _status = os.waitpid(-1, os.WNOHANG)
+            if not pid:
+                break
+        except ChildProcessError:
+            break
 
 
 def main():
@@ -134,13 +146,7 @@ def main():
                 module.signal_process(identity, signal.SIGKILL)
             for process in fixtures + [marker]:
                 process.wait(timeout=5)
-            while True:
-                try:
-                    pid, status = os.waitpid(-1, os.WNOHANG)
-                    if not pid:
-                        break
-                except ChildProcessError:
-                    break
+        _reap_children()
 
 
 if __name__ == "__main__":

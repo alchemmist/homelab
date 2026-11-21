@@ -1,13 +1,16 @@
+"""Tests for OpenTelemetry operational replay handling."""
+
 import base64
 import copy
 import importlib.util
 from pathlib import Path
+from types import ModuleType
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module():
+def module() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "ops_replay", ROOT / "scripts/otel-operational-replay.py"
     )
@@ -17,31 +20,28 @@ def module():
 
 
 class OperationalReplayTests(unittest.TestCase):
-    def test_exact_fixture_counts_cadence_and_unique_native_ids(self):
-        """Exact fixture counts cadence and unique native ids."""
+    """Replay operational telemetry fixtures and check exact counts."""
+    def test_exact_fixture_counts_cadence_and_unique_native_ids(self) -> None:
         helper = module()
         metrics, logs, traces, expected, ids = helper.fixtures(1793536000 * 10**9)
-        self.assertEqual(len(expected), 9)
-        self.assertTrue(all(b[0] - a[0] == 5 for a, b in zip(expected, expected[1:])))
-        self.assertEqual(len(logs["resourceLogs"][0]["scopeLogs"][0]["logRecords"]), 24)
-        self.assertEqual(len(helper.trace_records(traces)), 9)
-        self.assertEqual(len(ids), 9)
+        assert len(expected) == 9
+        assert all(b[0] - a[0] == 5 for a, b in zip(expected, expected[1:], strict=False))
+        assert len(logs["resourceLogs"][0]["scopeLogs"][0]["logRecords"]) == 24
+        assert len(helper.trace_records(traces)) == 9
+        assert len(ids) == 9
         points = metrics["resourceMetrics"][0]["scopeMetrics"][0]["metrics"][0]["gauge"][
             "dataPoints"
         ]
-        self.assertEqual(
-            [int(p["timeUnixNano"]) // 10**6 for p in points], [int(p[0] * 1000) for p in expected]
-        )
+        assert [int(p["timeUnixNano"]) // 10 ** 6 for p in points] == [int(p[0] * 1000) for p in expected]
 
-    def test_matrix_requires_exact_values_timestamps_multiplicity_and_no_partial(self):
-        """Matrix requires exact values timestamps multiplicity and no partial."""
+    def test_matrix_requires_exact_values_timestamps_multiplicity_and_no_partial(self) -> None:
         helper = module()
         expected = [[1, "0"], [6, "1"]]
         data = {
             "status": "success",
             "data": {"resultType": "matrix", "result": [{"values": expected}]},
         }
-        self.assertTrue(helper.check_metrics(data, expected))
+        assert helper.check_metrics(data, expected)
         for kind in ["extra-point", "extra-series", "timestamp", "warnings"]:
             changed = copy.deepcopy(data)
             if kind == "extra-point":
@@ -52,10 +52,9 @@ class OperationalReplayTests(unittest.TestCase):
                 changed["data"]["result"][0]["values"][1][0] = 7
             if kind == "warnings":
                 changed["warnings"] = ["partial"]
-            self.assertFalse(helper.check_metrics(changed, expected))
+            assert not helper.check_metrics(changed, expected)
 
-    def test_rollback_candidate_changes_only_batch_timeout_preserving_queues_and_tls(self):
-        """Rollback candidate changes only batch timeout preserving queues and tls."""
+    def test_rollback_candidate_changes_only_batch_timeout_preserving_queues_and_tls(self) -> None:
         import json
 
         original = {
@@ -69,17 +68,13 @@ class OperationalReplayTests(unittest.TestCase):
         }
         encoded = json.dumps(original).encode()
         changed = json.loads(module().rollback_candidate(encoded))
-        self.assertEqual(original["processors"]["batch/metrics"]["timeout"], "1s")
-        self.assertEqual(changed["processors"]["batch/metrics"]["timeout"], "2s")
+        assert original["processors"]["batch/metrics"]["timeout"] == "1s"
+        assert changed["processors"]["batch/metrics"]["timeout"] == "2s"
         changed["processors"]["batch/metrics"]["timeout"] = "1s"
-        self.assertEqual(changed, original)
+        assert changed == original
 
-    def test_native_trace_json_hex_and_base64(self):
-        """Native trace json hex and base64."""
+    def test_native_trace_json_hex_and_base64(self) -> None:
         helper = module()
         trace = "12" * 16
         for identity in [trace, base64.b64encode(bytes.fromhex(trace)).decode()]:
-            self.assertEqual(
-                helper.trace_records({"traceId": identity, "spanId": "34" * 8, "name": "fixture"}),
-                [(trace, "fixture")],
-            )
+            assert helper.trace_records({"traceId": identity, "spanId": "34" * 8, "name": "fixture"}) == [(trace, "fixture")]

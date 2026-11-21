@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry Loki retention script."""
+
 import importlib.util
 import json
 from pathlib import Path
@@ -10,6 +12,8 @@ spec.loader.exec_module(m)
 
 
 class RetentionTests(unittest.TestCase):
+    """Check Loki retention policy against the deployed configuration."""
+
     def setUp(self):
         """Load the reviewed retention policy."""
         self.policy = json.loads(m.POLICY.read_text())
@@ -17,21 +21,22 @@ class RetentionTests(unittest.TestCase):
     def test_copies_and_defaults(self):
         """Config copies match and default severity rules render."""
         text = m.COPIES[0].read_text()
-        self.assertEqual(text, m.COPIES[1].read_text())
-        self.assertEqual(text, m.render(text, self.policy))
+        assert text == m.COPIES[1].read_text()
+        assert text == m.render(text, self.policy)
         fallback, rules = m.rules(self.policy)
-        self.assertEqual(fallback, 336)
-        self.assertIn((10, '{severity="unknown"}', 336), rules)
-        self.assertIn((10, '{severity="debug"}', 72), rules)
-        self.assertIn((10, '{severity="warn"}', 336), rules)
-        self.assertIn("k8s.namespace.name, severity]", text)
+        expected_fallback_burst = 336
+        assert fallback == expected_fallback_burst
+        assert (10, '{severity="unknown"}', 336) in rules
+        assert (10, '{severity="debug"}', 72) in rules
+        assert (10, '{severity="warn"}', 336) in rules
+        assert "k8s.namespace.name, severity]" in text
 
     def test_service_beats_severity(self):
         """Service-level retention beats severity defaults."""
         self.policy["services"] = {"example": {"debug": 48, "error": 336}}
         _, rules = m.rules(self.policy)
-        self.assertIn((100, '{service_name="example",severity="debug"}', 48), rules)
-        self.assertEqual(len({(p, s) for p, s, _ in rules}), len(rules))
+        assert (100, '{service_name="example",severity="debug"}', 48) in rules
+        assert len({(p, s) for p, s, _ in rules}) == len(rules)
 
     def test_reject_invalid_and_unmeasured_long_retention(self):
         """Invalid or unmeasured long retentions are rejected."""
@@ -42,21 +47,20 @@ class RetentionTests(unittest.TestCase):
                     m.rules(self.policy)
 
     def approval(self):
-        """Build a complete capacity approval record."""
-        return dict(
-            measuredAt="2026-11-04",
-            evidence="reviewed 7d report",
-            approvedBy="operator",
-            budgetBytes=100000,
-            projectedBytes=10000,
-            measuredAllocatedBytes=1000,
-            filesystemCapacityBytes=1000000,
-            filesystemAvailableBytes=800000,
-            otherWorkloadsReserveBytes=10000,
-            transientReserveBytes=1000,
-            dailyGrowthUpperBytes=100,
-            sampleSeconds=604800,
-        )
+        return {
+            "measuredAt": "2026-11-04",
+            "evidence": "reviewed 7d report",
+            "approvedBy": "operator",
+            "budgetBytes": 100000,
+            "projectedBytes": 10000,
+            "measuredAllocatedBytes": 1000,
+            "filesystemCapacityBytes": 1000000,
+            "filesystemAvailableBytes": 800000,
+            "otherWorkloadsReserveBytes": 10000,
+            "transientReserveBytes": 1000,
+            "dailyGrowthUpperBytes": 100,
+            "sampleSeconds": 604800,
+        }
 
     def test_any_extension_needs_approval(self):
         """Any retention extension needs an approval."""

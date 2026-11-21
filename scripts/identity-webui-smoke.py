@@ -50,7 +50,10 @@ def admin(method, path, data=None):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
+    def redirect_request(self, *_args):
+
         return None
 
 
@@ -83,7 +86,7 @@ def browser(url, data=None):
             + str(e.code)
             + " at "
             + urllib.parse.urlsplit(url).path
-        )
+        ) from e
 
 
 username = "identity-smoke-" + uuid.uuid4().hex[:10]

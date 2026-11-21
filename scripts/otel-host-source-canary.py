@@ -1,3 +1,4 @@
+"""Validate the OpenTelemetry host source canary configuration."""
 import argparse
 import hashlib
 import json
@@ -9,41 +10,48 @@ import urllib.request
 from pathlib import Path
 
 
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
 def digest(path):
     with path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
 def run(directory):
-    if (
-        os.geteuid() != 0
-        or directory.is_symlink()
-        or not str(directory).startswith("/var/tmp/otel-host-source-canary-")
-    ):
-        raise ValueError("Private root-owned native canary workspace required")
+    require(
+        os.geteuid() == 0
+        and not directory.is_symlink()
+        and str(directory).startswith("/var/tmp/otel-host-source-canary-"),
+        "Private root-owned native canary workspace required",
+    )
     stat = directory.lstat()
-    if stat.st_uid != 0 or stat.st_mode & 0o022:
-        raise ValueError("Canary workspace is not owned exclusively by root")
+    require(
+        stat.st_uid == 0 and not stat.st_mode & 0o022,
+        "Canary workspace is not owned exclusively by root",
+    )
     request = json.loads((directory / "request.json").read_text())
     hostname = socket.gethostname()
     legacy_ip = request["legacyIPs"][hostname]
     exporter, probe = directory / "node_exporter", directory / "host-source-probe"
     for path, expected in ((exporter, request["exporterSHA256"]), (probe, request["probeSHA256"])):
         stat = path.lstat()
-        if (
-            path.is_symlink()
-            or stat.st_uid != 0
-            or stat.st_mode & 0o022
-            or digest(path) != expected
-        ):
-            raise ValueError("Untrusted native canary executable")
+        require(
+            not path.is_symlink()
+            and stat.st_uid == 0
+            and not stat.st_mode & 0o022
+            and digest(path) == expected,
+            "Untrusted native canary executable",
+        )
     with socket.socket() as sock:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(("127.0.0.1", 19100))
     unit = directory.name + ".service"
     result_path = directory / "source-comparison.json"
-    if result_path.exists():
-        raise ValueError("Existing comparison output must not be reused")
+    require(not result_path.exists(), "Existing comparison output must not be reused")
     properties = [
         "MemoryMax=67108864",
         "CPUQuota=50%",
@@ -90,10 +98,11 @@ def run(directory):
             timeout=15,
         )
         values = dict(line.split("=", 1) for line in fields.splitlines() if "=" in line)
-        if int(values.get("MainPID", "0")) <= 0 or not values.get("ControlGroup", "").startswith(
-            "/system.slice/otel-host-source-canary-"
-        ):
-            raise ValueError("Source process is not independent of Kubernetes/containerd")
+        require(
+            int(values.get("MainPID", "0")) > 0
+            and values.get("ControlGroup", "").startswith("/system.slice/otel-host-source-canary-"),
+            "Source process is not independent of Kubernetes/containerd",
+        )
         completed = subprocess.run(
             [
                 str(probe),

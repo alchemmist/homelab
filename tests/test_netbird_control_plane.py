@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import types
 import unittest
 from unittest.mock import patch
 
@@ -14,7 +15,14 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name, filename):
+def _text(value: str | None) -> str:
+    """Return the assert-verified non-null captured output stream."""
+    assert isinstance(value, str)
+    return value
+
+
+def load(name, filename) -> types.ModuleType:
+    """Load an offline netbird runtime module from the scripts directory."""
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -27,11 +35,12 @@ bootstrap = load("netbird_bootstrap", "netbird-bootstrap.py")
 backup = load("netbird_backup", "netbird-backup.py")
 
 
-def control_inputs():
+def control_inputs() -> dict[str, object]:
+    """Build the reviewed control-plane input document."""
     review = {key: False for key in nb.REVIEWS}
     for key in nb.CONTROL_REVIEWS:
         review[key] = True
-    return {
+    result: dict[str, object] = {
         "schema_version": 1,
         "management_fqdn": "netbird.socrat.alchemmist.xyz",
         "management_node": "test-node",
@@ -41,10 +50,14 @@ def control_inputs():
         "storage_class": "local-path",
         "review": review,
     }
+    return result
 
 
-def cleared_audit():
-    audit = json.loads((ROOT / "deploy/netbird/runtime-audit.json").read_text())
+def cleared_audit() -> dict[str, object]:
+    """Build the cleared runtime-audit document used by status tests."""
+    audit: dict[str, object] = json.loads(
+        (ROOT / "deploy/netbird/runtime-audit.json").read_text()
+    )
     audit.update(
         kubectl_api_read=True,
         udp_3478_listening=False,
@@ -56,62 +69,60 @@ def cleared_audit():
 
 
 class ControlPlaneTests(unittest.TestCase):
-    def test_repo_check_reports_concrete_blockers_without_applying(self):
-        """The repo check reports concrete blockers without applying."""
+    """Check the NetBird control-plane deploy tooling in check mode."""
+    def test_repo_check_reports_concrete_blockers_without_applying(self) -> None:
         result = subprocess.run(
             [os.sys.executable, str(ROOT / "scripts/netbird-deploy.py"), "check"],
             capture_output=True,
             text=True,
         )
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("BLOCKED", result.stderr)
+        assert result.returncode == 2
+        assert "BLOCKED" in _text(result.stderr)
         report = json.loads(result.stdout)
-        self.assertFalse(report["apply_allowed"])
-        self.assertFalse(report["network_grant_allowed"])
-        self.assertFalse(report["management_ha"])
-        self.assertEqual(report["approved_fqdn"], "netbird.socrat.alchemmist.xyz")
-        self.assertEqual(report["pilot_users"], ["owner", "tim"])
-        self.assertFalse(report["scope"]["netbird_edge_watched"])
-        self.assertFalse(report["scope"]["netbird_pilot_watched"])
-        self.assertEqual(report["scope"]["crd_namespaces"], ["argocd"])
+        assert not report["apply_allowed"]
+        assert not report["network_grant_allowed"]
+        assert not report["management_ha"]
+        assert report["approved_fqdn"] == "netbird.socrat.alchemmist.xyz"
+        assert report["pilot_users"] == ["owner", "tim"]
+        assert not report["scope"]["netbird_edge_watched"]
+        assert not report["scope"]["netbird_pilot_watched"]
+        assert report["scope"]["crd_namespaces"] == ["argocd"]
         blockers = "\n".join(report["apply_blockers"] + report["network_blockers"])
-        self.assertNotIn("is not listening", blockers)
-        self.assertFalse(report["udp_3478_preexisting"])
-        self.assertFalse(report["udp_3478_required_before_internal_apply"])
-        self.assertFalse(report["internal_apply_allowed"])
-        self.assertFalse(report["edge_apply_allowed"])
-        self.assertIn("netbird-edge", blockers)
-        self.assertIn("password", blockers)
-        self.assertIn("shared private web frontend", blockers)
-        self.assertIn("10.250.0.2", blockers)
-        self.assertIn("unresolved", blockers)
-        self.assertIn("existing-node", blockers.lower())
-        self.assertIn("groups claim", blockers)
-        self.assertIn("/api/setup", blockers)
+        assert "is not listening" not in blockers
+        assert not report["udp_3478_preexisting"]
+        assert not report["udp_3478_required_before_internal_apply"]
+        assert not report["internal_apply_allowed"]
+        assert not report["edge_apply_allowed"]
+        assert "netbird-edge" in blockers
+        assert "password" in blockers
+        assert "shared private web frontend" in blockers
+        assert "10.250.0.2" in blockers
+        assert "unresolved" in blockers
+        assert "existing-node" in blockers.lower()
+        assert "groups claim" in blockers
+        assert "/api/setup" in blockers
 
-    def test_chart_candidate_is_not_marked_verified(self):
-        """The chart candidate stays unverified in the repository."""
+    def test_chart_candidate_is_not_marked_verified(self) -> None:
         chart = yaml.safe_load((ROOT / "charts/traefik-edge/values.yaml").read_text())
         candidates = json.loads((ROOT / "deploy/netbird/candidates.json").read_text())
-        self.assertNotIn("netbird-edge", chart["watchNamespaces"])
-        self.assertNotIn("netbird-pilot", chart["watchNamespaces"])
-        self.assertEqual(chart["kubernetesCRD"]["namespaces"], ["argocd"])
-        self.assertFalse(chart["kubernetesCRD"].get("allowCrossNamespace", False))
-        self.assertFalse(candidates["ingress_class"]["verified"])
-        self.assertFalse(candidates["storage_class"]["verified"])
-        self.assertFalse(candidates["management_fqdn"]["dns_tls_verified"])
-        self.assertFalse(candidates["authentik_oidc"]["groups_claim_verified"])
-        self.assertEqual(candidates["routers"]["mode"], "existing-node")
-        self.assertFalse(candidates["routers"]["existing_node_router_mode_reviewed"])
-        self.assertFalse(candidates["routers"]["placement_resolved"])
-        self.assertFalse(candidates["routers"]["new_machines_approved"])
-        self.assertEqual(candidates["ingress_class"]["value"], "traefik")
-        self.assertEqual(candidates["storage_class"]["value"], "local-path")
-        self.assertEqual(nb.image("edge_forwarder"), chart["image"])
-        self.assertTrue((ROOT / "deploy/argocd/apps").joinpath("netbird.yaml").exists())
+        assert "netbird-edge" not in chart["watchNamespaces"]
+        assert "netbird-pilot" not in chart["watchNamespaces"]
+        assert chart["kubernetesCRD"]["namespaces"] == ["argocd"]
+        assert not chart["kubernetesCRD"].get("allowCrossNamespace", False)
+        assert not candidates["ingress_class"]["verified"]
+        assert not candidates["storage_class"]["verified"]
+        assert not candidates["management_fqdn"]["dns_tls_verified"]
+        assert not candidates["authentik_oidc"]["groups_claim_verified"]
+        assert candidates["routers"]["mode"] == "existing-node"
+        assert not candidates["routers"]["existing_node_router_mode_reviewed"]
+        assert not candidates["routers"]["placement_resolved"]
+        assert not candidates["routers"]["new_machines_approved"]
+        assert candidates["ingress_class"]["value"] == "traefik"
+        assert candidates["storage_class"]["value"] == "local-path"
+        assert nb.image("edge_forwarder") == chart["image"]
+        assert (ROOT / "deploy/argocd/apps").joinpath("netbird.yaml").exists()
 
-    def test_control_plane_does_not_require_routers_or_grant_resources(self):
-        """The control plane does not require routers or grant resources."""
+    def test_control_plane_does_not_require_routers_or_grant_resources(self) -> None:
         inputs = control_inputs()
         nb.validate_control_plane(inputs)
         with self.assertRaises(ValueError):
@@ -119,19 +130,18 @@ class ControlPlaneTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory) / "rendered"
             nb.render_control_plane(inputs, out, ["203.0.113.10/32"])
-            self.assertEqual(sorted(path.name for path in out.iterdir()), ["management.yaml"])
+            assert sorted(path.name for path in out.iterdir()) == ["management.yaml"]
             docs = list(yaml.safe_load_all((out / "management.yaml").read_text()))
             deploy.assert_safe_manifests(docs)
             text = (out / "management.yaml").read_text()
-            self.assertNotIn("routing-peer", text)
-            self.assertNotIn("192.168.88.10", text)
-            self.assertNotIn("kind: Secret", text)
-            self.assertNotIn("kind: Service", text)
-            self.assertNotIn("kind: Ingress", text)
-            self.assertIn("/oauth2/.well-known/openid-configuration", text)
+            assert "routing-peer" not in text
+            assert "192.168.88.10" not in text
+            assert "kind: Secret" not in text
+            assert "kind: Service" not in text
+            assert "kind: Ingress" not in text
+            assert "/oauth2/.well-known/openid-configuration" in text
 
-    def test_cleared_audit_cannot_hide_the_unpatched_chart(self):
-        """A cleared audit cannot hide the unpatched chart."""
+    def test_cleared_audit_cannot_hide_the_unpatched_chart(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             inputs = root / "inputs.json"
@@ -154,12 +164,11 @@ class ControlPlaneTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(result.returncode, 2)
-            self.assertIn("BLOCKED", result.stderr)
-            self.assertFalse(out.exists())
+            assert result.returncode == 2
+            assert "BLOCKED" in _text(result.stderr)
+            assert not out.exists()
 
-    def test_internal_stage_does_not_wait_for_edge_or_a_listening_udp_port(self):
-        """The internal stage does not wait for edge or a listening UDP port."""
+    def test_internal_stage_does_not_wait_for_edge_or_a_listening_udp_port(self) -> None:
         audit = cleared_audit()
         audit.update(
             traefik_watches_netbird_edge=False,
@@ -170,45 +179,40 @@ class ControlPlaneTests(unittest.TestCase):
         candidates = json.loads((ROOT / "deploy/netbird/candidates.json").read_text())
         delta = json.loads((ROOT / "deploy/netbird/traefik-scope-delta.json").read_text())
         status = deploy.report(control_inputs(), candidates, audit, chart, delta)
-        self.assertTrue(status["internal_apply_allowed"])
-        self.assertFalse(status["edge_apply_allowed"])
-        self.assertFalse(status["udp_3478_preexisting"])
-        self.assertFalse(any("is not listening" in item for item in status["apply_blockers"]))
+        assert status["internal_apply_allowed"]
+        assert not status["edge_apply_allowed"]
+        assert not status["udp_3478_preexisting"]
+        assert not any("is not listening" in item for item in status["apply_blockers"])
         audit["udp_3478_listening"] = True
         blocked = deploy.report(control_inputs(), candidates, audit, chart, delta)
-        self.assertTrue(blocked["internal_apply_allowed"])
-        self.assertFalse(blocked["edge_apply_allowed"])
-        self.assertTrue(any("preexisting listener" in item for item in blocked["edge_blockers"]))
+        assert blocked["internal_apply_allowed"]
+        assert not blocked["edge_apply_allowed"]
+        assert any("preexisting listener" in item for item in blocked["edge_blockers"])
 
-    def test_in_memory_scope_can_clear_only_after_the_watch_exists(self):
-        """An in-memory scope clears only after the watch exists."""
+    def test_in_memory_scope_can_clear_only_after_the_watch_exists(self) -> None:
         chart = yaml.safe_load((ROOT / "charts/traefik-edge/values.yaml").read_text())
         candidates = json.loads((ROOT / "deploy/netbird/candidates.json").read_text())
         delta = json.loads((ROOT / "deploy/netbird/traefik-scope-delta.json").read_text())
         blocked = deploy.report(control_inputs(), candidates, cleared_audit(), chart, delta)
-        self.assertFalse(blocked["apply_allowed"])
+        assert not blocked["apply_allowed"]
         chart["watchNamespaces"] = list(chart["watchNamespaces"]) + ["netbird-edge"]
         ready = deploy.report(control_inputs(), candidates, cleared_audit(), chart, delta)
-        self.assertTrue(ready["apply_allowed"])
-        self.assertFalse(ready["network_grant_allowed"])
-        self.assertFalse(
-            (ROOT / "charts/traefik-edge/values.yaml").read_text().count("netbird-edge")
-        )
+        assert ready["apply_allowed"]
+        assert not ready["network_grant_allowed"]
+        assert not (ROOT / "charts/traefik-edge/values.yaml").read_text().count("netbird-edge")
 
-    def test_apply_argv_is_explicit_and_rejects_default_context(self):
-        """The apply argv is explicit and rejects the default context."""
+    def test_apply_argv_is_explicit_and_rejects_default_context(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory) / "rendered"
             nb.render_control_plane(control_inputs(), out, ["203.0.113.10/32"])
             manifest = out / "management.yaml"
             argv = deploy.apply_argv(manifest, "lab")
-            self.assertEqual(argv[:4], ["kubectl", "--context", "lab", "apply"])
-            self.assertNotIn("argocd", argv)
+            assert argv[:4] == ["kubectl", "--context", "lab", "apply"]
+            assert "argocd" not in argv
             with self.assertRaises(ValueError):
                 deploy.apply_argv(manifest, "default")
 
-    def test_auth_modes_match_upstream_startup_rules(self):
-        """Auth modes match the upstream startup rules."""
+    def test_auth_modes_match_upstream_startup_rules(self) -> None:
         secrets = {
             "NB_RELAY_SECRET": "relay-secret-" * 3,
             "NB_COOKIE_KEY": "cookie",
@@ -216,11 +220,11 @@ class ControlPlaneTests(unittest.TestCase):
         }
         bootstrap_config = nb.server_config(control_inputs(), secrets, "bootstrap")
         auth = bootstrap_config["server"]["auth"]
-        self.assertFalse(auth["localAuthDisabled"])
-        self.assertNotIn("owner", auth)
-        self.assertEqual(bootstrap_config["server"]["stunPorts"], [3478])
-        self.assertEqual(bootstrap_config["server"]["authStore"]["file"], "idp.db")
-        self.assertEqual(bootstrap_config["server"]["listenAddress"], ":80")
+        assert not auth["localAuthDisabled"]
+        assert "owner" not in auth
+        assert bootstrap_config["server"]["stunPorts"] == [3478]
+        assert bootstrap_config["server"]["authStore"]["file"] == "idp.db"
+        assert bootstrap_config["server"]["listenAddress"] == ":80"
         with tempfile.TemporaryDirectory() as directory:
             witness = Path(directory) / "witness.json"
             witness.write_text(json.dumps({"external_connectors": 0}))
@@ -232,11 +236,10 @@ class ControlPlaneTests(unittest.TestCase):
             witness.write_text(json.dumps({"external_connectors": 1}))
             nb.witness_ready(witness)
             disabled = nb.server_config(control_inputs(), secrets, "idp-only")
-            self.assertTrue(disabled["server"]["auth"]["localAuthDisabled"])
-            self.assertNotIn("owner", disabled["server"]["auth"])
+            assert disabled["server"]["auth"]["localAuthDisabled"]
+            assert "owner" not in disabled["server"]["auth"]
 
-    def test_idp_only_cli_refuses_missing_witness_without_writing(self):
-        """The idp-only CLI refuses a missing witness without writing."""
+    def test_idp_only_cli_refuses_missing_witness_without_writing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "inputs.json"
             target = Path(directory) / "config.yaml"
@@ -285,14 +288,14 @@ class ControlPlaneTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(result.returncode, 2)
-            self.assertFalse(target.exists())
-            self.assertNotIn(env["NB_STORE_KEY"], result.stdout + result.stderr)
+            assert result.returncode == 2
+            assert not target.exists()
+            assert env["NB_STORE_KEY"] not in _text(result.stdout) + _text(result.stderr)
 
 
 class BootstrapTests(unittest.TestCase):
-    def test_public_origin_and_pat_are_refused(self):
-        """Public origins and PAT creation are refused."""
+    """Verify NetBird bootstrap refuses public origins and PAT auth."""
+    def test_public_origin_and_pat_are_refused(self) -> None:
         for origin in [
             "https://netbird.socrat.alchemmist.xyz",
             "http://netbird.socrat.alchemmist.xyz",
@@ -302,14 +305,13 @@ class BootstrapTests(unittest.TestCase):
             with self.subTest(origin=origin), self.assertRaises(ValueError):
                 bootstrap.assert_loopback(origin)
         body = bootstrap.setup_body("owner@example.com", "long-enough", "Owner")
-        self.assertEqual(set(body), {"email", "password", "name"})
-        self.assertNotIn("create_pat", body)
+        assert set(body) == {"email", "password", "name"}
+        assert "create_pat" not in body
 
-    def test_claim_redacts_token_and_requires_setup(self):
-        """Claim redacts the token and requires setup."""
+    def test_claim_redacts_token_and_requires_setup(self) -> None:
         calls = []
 
-        def opener(url, body):
+        def opener(url, body) -> dict[str, object]:
             calls.append((url, body))
             if url.endswith("/api/instance"):
                 return {"setup_required": True}
@@ -322,16 +324,15 @@ class BootstrapTests(unittest.TestCase):
         result = bootstrap.claim(
             "http://127.0.0.1:18080", "owner@example.com", "long-enough", "Owner", opener
         )
-        self.assertEqual(result["user_id"], "user123")
-        self.assertTrue(result["personal_access_token_redacted"])
-        self.assertNotIn("nbp_secret_token", json.dumps(result))
-        self.assertNotIn("long-enough", json.dumps(result))
-        self.assertIsNone(
-            calls[1][1].get("create_pat") if False else calls[1][1].get("create_pat", None)
-        )
-        self.assertNotIn("create_pat", calls[1][1])
+        assert result["user_id"] == "user123"
+        assert result["personal_access_token_redacted"]
+        assert "nbp_secret_token" not in json.dumps(result)
+        assert "long-enough" not in json.dumps(result)
+        assert (calls[1][1].get("create_pat") if False else calls[1][1].get("create_pat", None)) is None
+        assert "create_pat" not in calls[1][1]
 
-        def claimed(url, body):
+
+        def claimed(_url, _body) -> dict[str, object]:
             return {"setup_required": False}
 
         with self.assertRaises(ValueError):
@@ -343,77 +344,60 @@ class BootstrapTests(unittest.TestCase):
         (Path("/tmp/netbird-v082-repo/shared/management/http/api/openapi.yml")).is_file(),
         "pinned schema not present",
     )
-    def test_setup_body_matches_pinned_openapi(self):
-        """The setup body matches the pinned OpenAPI schema."""
+    def test_setup_body_matches_pinned_openapi(self) -> None:
         import hashlib
 
         path = Path("/tmp/netbird-v082-repo/shared/management/http/api/openapi.yml")
         lock = json.loads((ROOT / "deploy/netbird/upstream.lock.json").read_text())
-        self.assertEqual(
-            hashlib.sha256(path.read_bytes()).hexdigest(), lock["sources"]["openapi"]["sha256"]
-        )
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == lock["sources"]["openapi"]["sha256"]
         schema = yaml.safe_load(path.read_text())
         required = schema["components"]["schemas"]["SetupRequest"]["required"]
         body = bootstrap.setup_body("owner@example.com", "long-enough", "Owner")
-        self.assertEqual(required, ["email", "password", "name"])
-        self.assertEqual(set(body), set(required))
+        assert required == ["email", "password", "name"]
+        assert set(body) == set(required)
 
     @unittest.skipUnless(
         Path("/tmp/netbird-0.82.0/shared/management/http/api/openapi.yml").is_file()
         and Path("/tmp/netbird-v082-repo/management/server/user.go").is_file(),
         "pinned source not present",
     )
-    def test_native_owner_transfer_updates_an_existing_subject(self):
+    def test_native_owner_transfer_updates_an_existing_subject(self) -> None:
         """PUT /api/users/{userId} can move owner to an existing subject. It does not rewrite user IDs."""
         import hashlib
 
         source = Path("/tmp/netbird-v082-repo/management/server/user.go").read_text().splitlines()
-        self.assertIn(
-            "initiatorUser.Role == types.UserRoleOwner && initiatorUser.Id != update.Id && update.Role == types.UserRoleOwner",
-            source[914],
-        )
-        self.assertIn(
-            "initiatorUser.Role != types.UserRoleOwner && oldUser.Role == types.UserRoleOwner && update.Role != oldUser.Role",
-            source[969],
-        )
+        assert "initiatorUser.Role == types.UserRoleOwner && initiatorUser.Id != update.Id && update.Role == types.UserRoleOwner" in source[914]
+        assert "initiatorUser.Role != types.UserRoleOwner && oldUser.Role == types.UserRoleOwner && update.Role != oldUser.Role" in source[969]
         joined = "\n".join(source)
-        self.assertIn(
-            "return am.SaveOrAddUser(ctx, accountID, initiatorUserID, update, false)", joined
-        )
-        self.assertIn("updatedUser := oldUser.Copy()", joined)
-        self.assertIn("updatedUser.Role = update.Role", joined)
-        self.assertNotIn("updatedUser.Id = update.Id", joined)
-        self.assertIn("func (am *DefaultAccountManager) GetOrCreateAccountByUser", joined)
+        assert "return am.SaveOrAddUser(ctx, accountID, initiatorUserID, update, false)" in joined
+        assert "updatedUser := oldUser.Copy()" in joined
+        assert "updatedUser.Role = update.Role" in joined
+        assert "updatedUser.Id = update.Id" not in joined
+        assert "func (am *DefaultAccountManager) GetOrCreateAccountByUser" in joined
         schema_path = Path("/tmp/netbird-0.82.0/shared/management/http/api/openapi.yml")
         lock = json.loads((ROOT / "deploy/netbird/upstream.lock.json").read_text())
-        self.assertEqual(
-            hashlib.sha256(schema_path.read_bytes()).hexdigest(),
-            lock["sources"]["openapi"]["sha256"],
-        )
+        assert hashlib.sha256(schema_path.read_bytes()).hexdigest() == lock["sources"]["openapi"]["sha256"]
         schema = yaml.safe_load(schema_path.read_text())
         operation = schema["paths"]["/api/users/{userId}"]["put"]
-        self.assertEqual(
-            operation["requestBody"]["content"]["application/json"]["schema"]["$ref"],
-            "#/components/schemas/UserRequest",
-        )
+        assert operation["requestBody"]["content"]["application/json"]["schema"]["$ref"] == "#/components/schemas/UserRequest"
         user_request = schema["components"]["schemas"]["UserRequest"]
-        self.assertEqual(user_request["required"], ["role", "auto_groups", "is_blocked"])
-        self.assertNotIn("id", user_request["properties"])
+        assert user_request["required"] == ["role", "auto_groups", "is_blocked"]
+        assert "id" not in user_request["properties"]
         # Personal owner first login creates the account. The Authentik subject must already
         # exist because SaveUser refuses addIfNotExists. This test does not perform that login.
-        self.assertIn("false means do not create user", joined)
+        assert "false means do not create user" in joined
 
 
 class BackupTests(unittest.TestCase):
-    def test_plan_is_quiesced_readonly_and_does_not_call_kubectl(self):
-        """The backup plan is quiesced, read-only and never calls kubectl."""
+    """Ensure the NetBird backup plan is quiesced and read-only."""
+    def test_plan_is_quiesced_readonly_and_does_not_call_kubectl(self) -> None:
         image = nb.image("server")
         body = backup.plan("test-node", image)
-        self.assertTrue(body["quiesce_required"])
-        self.assertFalse(body["management_ha"])
-        self.assertTrue(body["pod"]["spec"]["containers"][0]["volumeMounts"][0]["readOnly"])
-        self.assertNotIn("secret", json.dumps(body["pod"]))
-        self.assertNotIn("hostNetwork", json.dumps(body["pod"]))
+        assert body["quiesce_required"]
+        assert not body["management_ha"]
+        assert body["pod"]["spec"]["containers"][0]["volumeMounts"][0]["readOnly"]
+        assert "secret" not in json.dumps(body["pod"])
+        assert "hostNetwork" not in json.dumps(body["pod"])
         real_run = subprocess.run
         with tempfile.TemporaryDirectory() as directory:
             # Direct module calls must not run kubectl; capture the launcher first
@@ -421,7 +405,7 @@ class BackupTests(unittest.TestCase):
             with patch.object(
                 backup.subprocess, "run", side_effect=AssertionError("kubectl called")
             ):
-                self.assertTrue(backup.plan("test-node", image)["quiesce_required"])
+                assert backup.plan("test-node", image)["quiesce_required"]
             out = Path(directory) / "backup"
             result = real_run(
                 [
@@ -438,9 +422,9 @@ class BackupTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(result.returncode, 0, result.stderr)
+            assert result.returncode == 0, result.stderr
             pod = yaml.safe_load((out / "sqlite-copy-pod.yaml").read_text())
-            self.assertTrue(pod["spec"]["containers"][0]["volumeMounts"][0]["readOnly"])
+            assert pod["spec"]["containers"][0]["volumeMounts"][0]["readOnly"]
             refused = real_run(
                 [
                     os.sys.executable,
@@ -458,12 +442,12 @@ class BackupTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(refused.returncode, 2)
+            assert refused.returncode == 2
 
 
 class AnsibleGuardTests(unittest.TestCase):
-    def test_role_defaults_to_local_check_without_transport_changes(self):
-        """The role defaults to a local check without transport changes."""
+    """Guard the NetBird Ansible role's local check defaults."""
+    def test_role_defaults_to_local_check_without_transport_changes(self) -> None:
         text = "\n".join(
             path.read_text()
             for path in [
@@ -472,13 +456,13 @@ class AnsibleGuardTests(unittest.TestCase):
                 ROOT / "ansible/roles/netbird_control_plane/tasks/main.yml",
             ]
         )
-        self.assertIn("become: false", text)
-        self.assertIn("netbird_action: check", text)
-        self.assertNotIn("become: true", text)
-        self.assertNotIn("wg-quick", text)
-        self.assertIn("root-managed Argo CD", text)
-        self.assertNotIn("when: netbird_action == 'apply'", text)
-        self.assertNotIn("site.yml", (ROOT / "ansible/playbooks/site.yml").read_text())
+        assert "become: false" in text
+        assert "netbird_action: check" in text
+        assert "become: true" not in text
+        assert "wg-quick" not in text
+        assert "root-managed Argo CD" in text
+        assert "when: netbird_action == 'apply'" not in text
+        assert "site.yml" not in (ROOT / "ansible/playbooks/site.yml").read_text()
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
+from typing import TypedDict, cast
 import unittest
 
 import yaml
@@ -14,9 +15,29 @@ ANSIBLE = ROOT / "ansible"
 NODES = {f"socrat-{i}" for i in range(6)}
 
 
+class SocratGroup(TypedDict):
+    """Resolved socrat group with its host map."""
+
+    hosts: dict[str, object]
+
+
+class InventoryMeta(TypedDict):
+    """Per-host resolved variables."""
+
+    hostvars: dict[str, dict[str, object]]
+
+
+class ResolvedInventory(TypedDict):
+    """Shape produced by ansible-inventory --list."""
+
+    Socrat: SocratGroup
+    _meta: InventoryMeta
+
+
 class InventoryStructureTests(unittest.TestCase):
-    def test_main_inventory_contains_every_node_and_only_connection_settings(self):
-        """The main inventory holds every node with connection settings only."""
+    """Check the main inventory's structure and connection settings."""
+    def test_main_inventory_contains_every_node_and_only_connection_settings(self) -> None:
+        """Map every node with connection-only settings once."""
         inventory = yaml.safe_load((ANSIBLE / "inventory/hosts.yml").read_text())
         hosts = inventory["all"]["children"]["Socrat"]["hosts"]
         self.assertEqual(set(hosts), NODES)
@@ -24,8 +45,8 @@ class InventoryStructureTests(unittest.TestCase):
             self.assertTrue(all(key.startswith("ansible_") for key in settings), host)
             self.assertTrue((ANSIBLE / "inventory/host_vars" / f"{host}.yml").is_file())
 
-    def test_default_connections_are_internal_without_bastions(self):
-        """Connections use internal addresses with no bastion hops."""
+    def test_default_connections_are_internal_without_bastions(self) -> None:
+        """Pin the internal addresses and ports with no bastion jumps."""
         hosts = yaml.safe_load((ANSIBLE / "inventory/hosts.yml").read_text())["all"]["children"][
             "Socrat"
         ]["hosts"]
@@ -41,8 +62,8 @@ class InventoryStructureTests(unittest.TestCase):
             self.assertIn("ProxyJump=none", hosts[name]["ansible_ssh_common_args"])
             self.assertIn("HostKeyAlias=", hosts[name]["ansible_ssh_common_args"])
 
-    def test_default_sources_are_explicit_not_the_whole_inventory_directory(self):
-        """Inventory sources are explicit files, not the whole directory."""
+    def test_default_sources_are_explicit_not_the_whole_inventory_directory(self) -> None:
+        """List both inventory sources explicitly in ansible.cfg."""
         config = configparser.ConfigParser()
         config.read(ANSIBLE / "ansible.cfg")
         self.assertEqual(
@@ -54,8 +75,8 @@ class InventoryStructureTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which("ansible-inventory"), "ansible-inventory is required")
 class ResolvedInventoryTests(unittest.TestCase):
-    def inventory(self, *sources):
-        """Resolve the given inventory sources via ansible-inventory."""
+    def inventory(self, *sources: str) -> ResolvedInventory:
+        """Run ansible-inventory --list over the explicit sources passed in."""
         command = ["ansible-inventory"]
         for source in sources:
             command += ["-i", f"inventory/{source}.yml"]
@@ -67,10 +88,10 @@ class ResolvedInventoryTests(unittest.TestCase):
             text=True,
             timeout=30,
         )
-        return json.loads(result.stdout)
+        return cast("ResolvedInventory", json.loads(result.stdout))
 
-    def test_default_and_explicit_main_inventory_include_all_nodes(self):
-        """Default and explicit resolves include all the nodes."""
+    def test_default_and_explicit_main_inventory_include_all_nodes(self) -> None:
+        """Resolve every node from either source combination unchanged."""
         for sources in [(), ("hosts",)]:
             with self.subTest(sources=sources):
                 data = self.inventory(*sources)
@@ -83,8 +104,8 @@ class ResolvedInventoryTests(unittest.TestCase):
         self.assertNotIn("netbird-controller", data["Socrat"]["hosts"])
         self.assertIn("netbird-controller", self.inventory()["_meta"]["hostvars"])
 
-    def test_connection_overlays_still_override_main_inventory(self):
-        """Connection overlays override the main inventory as intended."""
+    def test_connection_overlays_still_override_main_inventory(self) -> None:
+        """Apply the committed overlay connections on top of the main map."""
         for overlay, expected in {
             "direct": {
                 "socrat-0": ("192.168.0.23", 22),

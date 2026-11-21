@@ -7,16 +7,41 @@ import os
 import subprocess
 import tempfile
 import unittest
+from typing import override
 
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _mapping(value: object) -> dict[str, object]:
+    """Return the assert-verified mapping view of a parsed YAML value."""
+    assert isinstance(value, dict)
+    result: dict[str, object] = value
+    return result
+
+
+def _documents(value: object) -> list[dict[str, object]]:
+    """Return the assert-verified list-of-documents view of a parsed YAML value."""
+    assert isinstance(value, list)
+    documents: list[dict[str, object]] = value
+    return documents
+
+
+def _mapping_path(document: dict[str, object], *keys: str) -> dict[str, object]:
+    """Walk nested mappings of a parsed document and return the final mapping."""
+    value: object = document
+    for key in keys:
+        value = _mapping(value)[key]
+    return _mapping(value)
+
+
 class Worker5MigrationTest(unittest.TestCase):
+    """Check the n8n migration to worker node 5 renders safely."""
+
     @classmethod
-    def setUpClass(cls):
-        """Load the chart values and rendered documents once."""
+    @override
+    def setUpClass(cls) -> None:
         cls.values = yaml.safe_load((ROOT / "charts/n8n/values.yaml").read_text())
         cls.docs = list(
             yaml.safe_load_all(
@@ -26,64 +51,58 @@ class Worker5MigrationTest(unittest.TestCase):
             )
         )
 
-    def resource(self, kind, name):
-        """Find a rendered document by kind and name."""
-        return next(
+    def resource(self, kind, name) -> dict[str, object]:
+        """Return the rendered document of the given kind and name."""
+        document: dict[str, object] = next(
             d for d in self.docs if d and d["kind"] == kind and d["metadata"]["name"] == name
         )
+        return document
 
-    def test_single_writer_local_retained_and_legacy_preserved(self):
-        """A single writer on retained local storage preserves the legacy claim."""
-        deployment = self.resource("Deployment", "n8n")["spec"]
-        self.assertIn(deployment["replicas"], (0, 1))
-        self.assertEqual(deployment["strategy"]["type"], "Recreate")
-        spec = deployment["template"]["spec"]
-        self.assertEqual(spec["nodeSelector"]["kubernetes.io/hostname"], self.values["nodeName"])
-        self.assertEqual(
-            spec["volumes"][-1]["persistentVolumeClaim"]["claimName"],
-            self.values["persistence"]["claimName"],
-        )
-        pv = self.resource("PersistentVolume", "n8n-socrat5")["spec"]
-        self.assertEqual(pv["persistentVolumeReclaimPolicy"], "Retain")
-        self.assertEqual(pv["local"]["path"], "/var/lib/rancher/k3s/storage/n8n-socrat5")
+    def test_single_writer_local_retained_and_legacy_preserved(self) -> None:
+        deployment = _mapping(self.resource("Deployment", "n8n")["spec"])
+        assert deployment["replicas"] in (0, 1)
+        assert _mapping(deployment["strategy"])["type"] == "Recreate"
+        spec = _mapping(_mapping(deployment["template"])["spec"])
+        assert _mapping(spec["nodeSelector"])["kubernetes.io/hostname"] == self.values["nodeName"]
+        volumes = _documents(spec["volumes"])
+        assert _mapping(volumes[-1]["persistentVolumeClaim"])["claimName"] == _mapping(self.values["persistence"])["claimName"]
+        pv = _mapping(self.resource("PersistentVolume", "n8n-socrat5")["spec"])
+        assert pv["persistentVolumeReclaimPolicy"] == "Retain"
+        assert _mapping(pv["local"])["path"] == "/var/lib/rancher/k3s/storage/n8n-socrat5"
         self.resource("PersistentVolumeClaim", "n8n")  # rollback PVC stays in desired state
 
-    def test_backup_daily_readonly_no_api_access(self):
-        """The daily backup is read-only with no API access."""
-        cron = self.resource("CronJob", "n8n-backup")["spec"]
-        self.assertEqual(cron["schedule"], "15 3 * * *")
-        self.assertEqual(cron["timeZone"], "Europe/Moscow")
-        self.assertEqual(cron["concurrencyPolicy"], "Forbid")
-        spec = cron["jobTemplate"]["spec"]["template"]["spec"]
-        self.assertFalse(spec["automountServiceAccountToken"])
-        self.assertTrue(spec["containers"][0]["volumeMounts"][0]["readOnly"])
-        self.assertEqual(spec["nodeSelector"]["kubernetes.io/hostname"], self.values["nodeName"])
-        self.assertEqual(
-            spec["volumes"][0]["persistentVolumeClaim"]["claimName"],
-            self.values["persistence"]["claimName"],
-        )
-        env = spec["containers"][0]["env"]
-        self.assertEqual(env[0]["valueFrom"]["fieldRef"]["fieldPath"], "spec.nodeName")
+    def test_backup_daily_readonly_no_api_access(self) -> None:
+        cron = _mapping(self.resource("CronJob", "n8n-backup")["spec"])
+        assert cron["schedule"] == "15 3 * * *"
+        assert cron["timeZone"] == "Europe/Moscow"
+        assert cron["concurrencyPolicy"] == "Forbid"
+        spec = _mapping_path(cron, "jobTemplate", "spec", "template", "spec")
+        assert not spec["automountServiceAccountToken"]
+        containers = _documents(spec["containers"])
+        volume_mounts = _documents(containers[0]["volumeMounts"])
+        assert volume_mounts[0]["readOnly"]
+        assert _mapping(spec["nodeSelector"])["kubernetes.io/hostname"] == self.values["nodeName"]
+        volumes = _documents(spec["volumes"])
+        assert _mapping(volumes[0]["persistentVolumeClaim"])["claimName"] == _mapping(self.values["persistence"])["claimName"]
+        env = _documents(containers[0]["env"])
+        assert _mapping(_mapping(env[0]["valueFrom"])["fieldRef"])["fieldPath"] == "spec.nodeName"
 
-    def test_recovery_is_separate_retained_and_node_affine(self):
-        """Recovery storage is separate, retained and node-affine."""
+    def test_recovery_is_separate_retained_and_node_affine(self) -> None:
         config = self.values["recoveryStorage"]
-        self.assertNotEqual(config["name"], "n8n-socrat5")
-        pv = self.resource("PersistentVolume", config["name"])["spec"]
-        self.assertEqual(pv["persistentVolumeReclaimPolicy"], "Retain")
-        self.assertEqual(pv["local"]["path"], config["path"])
-        self.assertEqual(pv["claimRef"]["name"], config["name"])
-        affinity = pv["nodeAffinity"]["required"]["nodeSelectorTerms"][0]["matchExpressions"][0]
-        self.assertEqual(affinity["values"], [config["nodeName"]])
+        assert config["name"] != "n8n-socrat5"
+        pv = _mapping(self.resource("PersistentVolume", config["name"])["spec"])
+        assert pv["persistentVolumeReclaimPolicy"] == "Retain"
+        assert _mapping(pv["local"])["path"] == config["path"]
+        assert _mapping(pv["claimRef"])["name"] == config["name"]
+        required = _mapping(_mapping(pv["nodeAffinity"])["required"])
+        terms = _documents(required["nodeSelectorTerms"])
+        affinity = _documents(_mapping(terms[0])["matchExpressions"])[0]
+        assert affinity["values"] == [config["nodeName"]]
         pvc = self.resource("PersistentVolumeClaim", config["name"])
-        self.assertEqual(pvc["spec"]["volumeName"], config["name"])
-        self.assertEqual(
-            pvc["metadata"]["annotations"]["argocd.argoproj.io/sync-options"],
-            "Prune=false,Delete=false",
-        )
+        assert _mapping(pvc["spec"])["volumeName"] == config["name"]
+        assert _mapping(_mapping(pvc["metadata"])["annotations"])["argocd.argoproj.io/sync-options"] == "Prune=false,Delete=false"
 
-    def test_legacy_volume_does_not_move_when_deployment_moves(self):
-        """The legacy volume stays put when the deployment moves."""
+    def test_legacy_volume_does_not_move_when_deployment_moves(self) -> None:
         docs = list(
             yaml.safe_load_all(
                 subprocess.check_output(
@@ -105,7 +124,7 @@ class Worker5MigrationTest(unittest.TestCase):
             if x and x["kind"] == "PersistentVolume" and x["metadata"]["name"] == "n8n-socrat5"
         )
         expr = pv["spec"]["nodeAffinity"]["required"]["nodeSelectorTerms"][0]["matchExpressions"][0]
-        self.assertEqual(expr["values"], ["socrat-5"])
+        assert expr["values"] == ["socrat-5"]
         recovery = next(
             x
             for x in docs
@@ -116,17 +135,16 @@ class Worker5MigrationTest(unittest.TestCase):
         expr = recovery["spec"]["nodeAffinity"]["required"]["nodeSelectorTerms"][0][
             "matchExpressions"
         ][0]
-        self.assertEqual(expr["values"], [self.values["recoveryStorage"]["nodeName"]])
+        assert expr["values"] == [self.values["recoveryStorage"]["nodeName"]]
 
-    def test_receiver_rejects_commands_and_uses_private_append_versions(self):
-        """The receiver rejects commands and appends private versions."""
+    def test_receiver_rejects_commands_and_uses_private_append_versions(self) -> None:
         receiver = ROOT / "scripts/n8n/backup_receiver.py"
         with tempfile.TemporaryDirectory() as home:
             env = dict(os.environ, HOME=home, SSH_ORIGINAL_COMMAND="rm -rf /")
             p = subprocess.run(
                 ["python3", str(receiver)], env=env, input=b"not an archive", capture_output=True
             )
-            self.assertNotEqual(p.returncode, 0)
+            assert p.returncode != 0
             env["SSH_ORIGINAL_COMMAND"] = "receive-n8n-backup"
             content = io.BytesIO()
             with tarfile.open(fileobj=content, mode="w:gz") as archive:
@@ -141,22 +159,21 @@ class Worker5MigrationTest(unittest.TestCase):
                     input=content.getvalue(),
                     capture_output=True,
                 )
-                self.assertEqual(p.returncode, 0, p.stderr)
+                assert p.returncode == 0, p.stderr
             archives = list((Path(home) / "backups/n8n").glob("*.tar.gz"))
-            self.assertEqual(len(archives), 2)
-            self.assertTrue(all(p.stat().st_mode & 0o077 == 0 for p in archives))
-            self.assertEqual(len(list(archives[0].parent.glob("*.sha256"))), 2)
+            assert len(archives) == 2
+            assert all(p.stat().st_mode & 63 == 0 for p in archives)
+            assert len(list(archives[0].parent.glob("*.sha256"))) == 2
 
-    def test_only_named_local_claim_is_admitted(self):
-        """Only the named local claim is admitted by the policy."""
+    def test_only_named_local_claim_is_admitted(self) -> None:
         policy = next(
             yaml.safe_load_all((ROOT / "deploy/admission/socrat5-local-storage.yaml").read_text())
         )
         expression = policy["spec"]["validations"][0]["expression"]
-        self.assertIn("request.namespace == 'automation'", expression)
-        self.assertIn("claimName == 'n8n-socrat5'", expression)
-        self.assertNotIn("has(v.nfs)", expression)
-        self.assertNotIn("has(v.csi)", expression)
+        assert "request.namespace == 'automation'" in expression
+        assert "claimName == 'n8n-socrat5'" in expression
+        assert "has(v.nfs)" not in expression
+        assert "has(v.csi)" not in expression
 
 
 if __name__ == "__main__":

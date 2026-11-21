@@ -22,8 +22,7 @@ SPEC.loader.exec_module(MODULE)
 class PauseFolderTests(unittest.TestCase):
     """Check that only the backup folder is paused in a local config."""
 
-    def setUp(self):
-        """Create a local Syncthing config fixture."""
+    def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.config = Path(self.directory.name) / "config.xml"
@@ -37,12 +36,13 @@ class PauseFolderTests(unittest.TestCase):
         with patch.object(
             MODULE.subprocess, "run", return_value=subprocess.CompletedProcess([], 1)
         ):
-            self.assertTrue(MODULE.pause_folder(self.config, "pg-mdb-backups"))
+            assert MODULE.pause_folder(self.config, "pg-mdb-backups")
         root = ET.fromstring(self.config.read_bytes())
-        self.assertEqual(root.findtext("folder[@id='pg-mdb-backups']/paused"), "true")
-        self.assertEqual(root.findtext("folder[@id='notes']/paused"), "false")
-        self.assertEqual(root.findtext("gui/apikey"), "test-key")
-        self.assertEqual(stat.S_IMODE(self.config.stat().st_mode), 0o600)
+        assert root.findtext("folder[@id='pg-mdb-backups']/paused") == "true"
+        assert root.findtext("folder[@id='notes']/paused") == "false"
+        assert root.findtext("gui/apikey") == "test-key"
+        owner_only_mode = 0o600
+        assert stat.S_IMODE(self.config.stat().st_mode) == owner_only_mode
 
     def test_repeated_pause_does_not_rewrite_configuration(self) -> None:
         """Leave an already paused folder's bytes and mtime unchanged."""
@@ -51,15 +51,15 @@ class PauseFolderTests(unittest.TestCase):
         ):
             MODULE.pause_folder(self.config, "pg-mdb-backups")
         before = self.config.stat().st_mtime_ns
-        self.assertFalse(MODULE.pause_folder(self.config, "pg-mdb-backups"))
-        self.assertEqual(self.config.stat().st_mtime_ns, before)
+        assert not MODULE.pause_folder(self.config, "pg-mdb-backups")
+        assert self.config.stat().st_mtime_ns == before
 
     def test_missing_folder_leaves_configuration_unchanged(self) -> None:
         """Refuse a missing folder before rewriting the configuration."""
         original = self.config.read_bytes()
         with self.assertRaisesRegex(RuntimeError, "Missing Syncthing folder"):
             MODULE.pause_folder(self.config, "missing")
-        self.assertEqual(self.config.read_bytes(), original)
+        assert self.config.read_bytes() == original
 
 
 class ServiceSelectionTests(unittest.TestCase):
@@ -112,19 +112,21 @@ class ServiceSelectionTests(unittest.TestCase):
                         if fail_restart:
                             with self.assertRaises(subprocess.CalledProcessError):
                                 MODULE.apply(policy)
-                            self.assertEqual(kubelet.read_bytes(), b"previous")
-                            self.assertEqual(
-                                run.call_args_list[1].args[0], ["systemctl", "restart", expected]
-                            )
+                            assert kubelet.read_bytes() == b"previous"
+                            assert run.call_args_list[1].args[0] == [
+                                "systemctl",
+                                "restart",
+                                expected,
+                            ]
                         else:
                             MODULE.apply(policy)
-                            self.assertEqual(
-                                run.call_args_list[1].args[0],
-                                ["systemctl", "is-active", "--quiet", expected],
-                            )
-                        self.assertEqual(
-                            run.call_args_list[0].args[0], ["systemctl", "restart", expected]
-                        )
+                            assert run.call_args_list[1].args[0] == [
+                                "systemctl",
+                                "is-active",
+                                "--quiet",
+                                expected,
+                            ]
+                        assert run.call_args_list[0].args[0] == ["systemctl", "restart", expected]
 
 
 if __name__ == "__main__":

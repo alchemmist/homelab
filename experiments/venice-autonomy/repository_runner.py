@@ -1,3 +1,4 @@
+"""Run benchmark tasks inside a checked-out repository with continuation policy."""
 import argparse
 import collections
 import hashlib
@@ -14,8 +15,12 @@ import tarfile
 import time
 import tokenize
 import uuid
+from typing import TYPE_CHECKING, cast
 
 from sandbox import bounded_process
+
+if TYPE_CHECKING:
+    import types
 
 
 def require_path(name):
@@ -61,10 +66,12 @@ def invoke_openhands(attempt_module, environment, directory, prompt, base_url, k
 
 
 class CandidateRejected(ValueError):
-    pass
+    """Value error raised when a repository candidate is rejected."""
 
 
 class RepositoryEnvironment:
+    """Sandboxed environment prepared from a repository snapshot."""
+
     def __init__(self, snapshot, directory, image, protocol):
         self.directory = directory
         self.directory.mkdir()
@@ -239,7 +246,7 @@ class RepositoryEnvironment:
         files = {}
         with tarfile.open(fileobj=io.BytesIO(data)) as archive:
             for member in archive:
-                name = member.name[2:] if member.name.startswith("./") else member.name
+                name = member.name.removeprefix("./")
                 if name in (".", "") and member.isdir():
                     continue
                 if (
@@ -456,37 +463,9 @@ def task_prompt():
     return prompt
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--check-wiring", action="store_true")
-    args = parser.parse_args(argv)
-    if args.check_wiring:
-        import inspect
-
-        attempt = load_local("attempt")
-        source = inspect.getsource(invoke_openhands)
-        if "exec(" in source or "acceptance=acceptance" not in source:
-            raise SystemExit("openhands adapter is not wired to continue_openhands")
-        if "continue_openhands" not in inspect.getsource(attempt.run_openhands):
-            raise SystemExit("run_openhands does not call continue_openhands")
-        print("wiring-ok")
-        return 0
-    if os.getenv("AUTONOMY_EXTERNAL_WATCHDOG") != "1":
-        raise RuntimeError("external process watchdog is required")
-    protocol = load_protocol()
-    output_root = require_path("AUTONOMY_OUTPUT_ROOT")
-    snapshot = require_path("AUTONOMY_SNAPSHOT")
-    image = os.environ.get("AUTONOMY_WORKER_IMAGE", "").strip()
-    if not image:
-        raise RuntimeError("AUTONOMY_WORKER_IMAGE is required")
-    protocol.PILOT_LABEL = "venice-e2e-run=" + os.environ["AUTONOMY_RUN_NONCE"]
-    protocol.verify_snapshot(snapshot)
-    attempt = load_local("attempt")
-    started = time.time()
-    directory = output_root / ("live-" + time.strftime("%Y%m%d-%H%M%S"))
-    directory.mkdir()
-    base_url, key = attempt.provider_settings()
-    summary = {
+def _initial_summary(image: str, protocol: object) -> dict[str, object]:
+    resumed = bool(os.getenv("AUTONOMY_SOURCE_CANDIDATE"))
+    summary: dict[str, object] = {
         "task": "historical venice-api repository regression",
         "engine": "openhands",
         "adapter": "repository_runner.invoke_openhands",
@@ -494,39 +473,115 @@ def main(argv=None):
         "accepted": False,
         "clean_finish": False,
         "image": image,
-        "resumed_candidate": bool(os.getenv("AUTONOMY_SOURCE_CANDIDATE")),
+        "resumed_candidate": resumed,
     }
-    if summary["resumed_candidate"]:
+    if resumed:
         source = pathlib.Path(os.environ["AUTONOMY_SOURCE_CANDIDATE"])
+        whitelist = cast("types.ModuleType", protocol).WHITELIST
         summary["input_candidate_hashes"] = {
-            name: hashlib.sha256((source / name).read_bytes()).hexdigest()
-            for name in protocol.WHITELIST
+            name: hashlib.sha256((source / name).read_bytes()).hexdigest() for name in whitelist
         }
+    return summary
+
+
+def _check_wiring() -> int:
+    import inspect
+
+    attempt = load_local("attempt")
+    source = inspect.getsource(invoke_openhands)
+    if "exec(" in source or "acceptance=acceptance" not in source:
+        raise SystemExit("openhands adapter is not wired to continue_openhands")
+    if "continue_openhands" not in inspect.getsource(attempt.run_openhands):
+        raise SystemExit("run_openhands does not call continue_openhands")
+    print("wiring-ok")
+    return 0
+
+
+def _finalize(
+    summary: dict[str, object],
+    directory: pathlib.Path,
+    environment: object,
+    started: float,
+) -> None:
+    signal.alarm(0)
+    if environment is not None and cast("RepositoryEnvironment", environment).container_id:
+        try:
+            cast("RepositoryEnvironment", environment).close()
+        except Exception as error:
+            summary["cleanup_error_type"] = type(error).__name__
+    summary["elapsed_seconds"] = round(time.time() - started, 3)
+    (directory / "summary.json").write_text(json.dumps(summary, indent=2))
+    public = {
+        name: summary.get(name)
+        for name in (
+            "accepted",
+            "clean_finish",
+            "exit_status",
+            "elapsed_seconds",
+            "adapter",
+            "run_error_type",
+            "infrastructure_error_type",
+            "cleanup_error_type",
+        )
+    }
+    public["directory"] = directory.name
+    print(json.dumps(public), flush=True)
+
+
+def _visible_repro_check(
+    environment: object,
+    summary: dict[str, object],
+) -> None:
+    if os.getenv("AUTONOMY_VISIBLE_REPRO"):
+        expected = hashlib.sha256(
+            pathlib.Path(os.environ["AUTONOMY_VISIBLE_REPRO"]).read_bytes()
+        ).hexdigest()
+        check = cast("RepositoryEnvironment", environment).execute(
+            {
+                "command": (
+                    "test -r /opt/repro.py && test ! -w /opt/repro.py && sha256sum /opt/repro.py"
+                )
+            }
+        )
+        if check["returncode"] != 0 or not check["output"].startswith(expected):
+            raise RuntimeError("visible reproduction check failed")
+        summary["visible_reproducer_sha256"] = expected
+
+
+def main(argv=None):
+    (parser := argparse.ArgumentParser()).add_argument("--check-wiring", action="store_true")
+    args = parser.parse_args(argv)
+    if args.check_wiring:
+        return _check_wiring()
+    if os.getenv("AUTONOMY_EXTERNAL_WATCHDOG") != "1":
+        raise RuntimeError("external process watchdog is required")
+    protocol = load_protocol()
+    output_root, snapshot = (
+        require_path("AUTONOMY_OUTPUT_ROOT"),
+        require_path("AUTONOMY_SNAPSHOT"),
+    )
+    if not (image := os.environ.get("AUTONOMY_WORKER_IMAGE", "").strip()):
+        raise RuntimeError("AUTONOMY_WORKER_IMAGE is required")
+    protocol.PILOT_LABEL = "venice-e2e-run=" + os.environ["AUTONOMY_RUN_NONCE"]
+    protocol.verify_snapshot(snapshot)
+    attempt = load_local("attempt")
+    started, directory = time.time(), output_root / ("live-" + time.strftime("%Y%m%d-%H%M%S"))
+    directory.mkdir()
+    base_url, key = attempt.provider_settings()
+    summary = _initial_summary(image, protocol)
     environment = None
 
     def deadline(*_):
         raise TimeoutError("external end-to-end deadline exceeded")
 
     signal.signal(signal.SIGALRM, deadline)
-    remaining = float(os.environ["AUTONOMY_DEADLINE"]) - time.time()
-    if remaining <= 0:
+    if (remaining := float(os.environ["AUTONOMY_DEADLINE"]) - time.time()) <= 0:
         raise TimeoutError("deadline already passed")
     signal.alarm(int(remaining))
     try:
         environment = RepositoryEnvironment(snapshot, directory / "agent", image, protocol)
         prompt = task_prompt()
-        if os.getenv("AUTONOMY_VISIBLE_REPRO"):
-            expected = hashlib.sha256(
-                pathlib.Path(os.environ["AUTONOMY_VISIBLE_REPRO"]).read_bytes()
-            ).hexdigest()
-            check = environment.execute(
-                {
-                    "command": "test -r /opt/repro.py && test ! -w /opt/repro.py && sha256sum /opt/repro.py"
-                }
-            )
-            if check["returncode"] != 0 or not check["output"].startswith(expected):
-                raise RuntimeError("visible reproduction check failed")
-            summary["visible_reproducer_sha256"] = expected
+        _visible_repro_check(environment, summary)
         try:
             result = invoke_openhands(
                 attempt, environment, directory, prompt, base_url, key, sdk_acceptance
@@ -544,45 +599,24 @@ def main(argv=None):
         subprocess.run(
             ["docker", "unpause", environment.container_id], capture_output=True, timeout=15
         )
-        summary["agent_commands"] = len(environment.events)
-        summary["verdict"] = protocol.grade_candidate_container(
-            "docker", image, snapshot, candidate
+        summary.update(
+            {
+                "agent_commands": len(environment.events),
+                "verdict": protocol.grade_candidate_container("docker", image, snapshot, candidate),
+                "accepted": artifact_accepted(summary["verdict"], snapshot, candidate),
+            }
         )
-        summary["accepted"] = artifact_accepted(summary["verdict"], snapshot, candidate)
         try:
             environment.close()
         except Exception as error:
-            summary["cleanup_error_type"] = type(error).__name__
-            environment.container_id = None
+            summary["cleanup_error_type"], environment.container_id = type(error).__name__, None
     except BaseException as error:
         if isinstance(error, (KeyboardInterrupt, SystemExit)):
             raise
         load_local("attempt").record_exception(summary, error, key, "infrastructure_error")
         summary["clean_finish"] = False
     finally:
-        signal.alarm(0)
-        if environment is not None and environment.container_id:
-            try:
-                environment.close()
-            except Exception as error:
-                summary["cleanup_error_type"] = type(error).__name__
-        summary["elapsed_seconds"] = round(time.time() - started, 3)
-        (directory / "summary.json").write_text(json.dumps(summary, indent=2))
-        public = {
-            name: summary.get(name)
-            for name in (
-                "accepted",
-                "clean_finish",
-                "exit_status",
-                "elapsed_seconds",
-                "adapter",
-                "run_error_type",
-                "infrastructure_error_type",
-                "cleanup_error_type",
-            )
-        }
-        public["directory"] = directory.name
-        print(json.dumps(public), flush=True)
+        _finalize(summary, directory, environment, started)
     return 0 if overall_success(summary) else 1
 
 

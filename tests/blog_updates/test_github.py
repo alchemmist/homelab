@@ -1,5 +1,8 @@
+"""Tests for the blog updates GitHub client module."""
+
 import sys
 from pathlib import Path
+from typing import cast
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/blog_updates"))
@@ -8,8 +11,11 @@ from engine import UnsafeInput
 
 
 class Fake(GitHub):
-    def __init__(self, existing=None, main=None):
-        self.calls = []
+    """In-memory GitHub stub recording API calls."""
+
+    def __init__(self, existing=None, main=None) -> None:
+        self.calls: list[tuple[str, str, object]] = []
+
         self.existing = existing or []
         self.main = main or "a" * 40
 
@@ -23,32 +29,35 @@ class Fake(GitHub):
             return {"html_url": "https://github.com/alchemmist/blog/pull/1"}
         return {}
 
-    def read_updates(self, ref):
+    def read_updates(self, _ref):
         return "original", "file-sha"
 
 
 class WriterTests(unittest.TestCase):
-    def test_closed_pr_not_reopened(self):
-        g = Fake(existing=[{"html_url": "closed-pr", "state": "closed"}])
-        self.assertEqual(g.propose("a" * 40, "new", "why")["status"], "existing")
-        self.assertTrue(all(c[0] == "GET" for c in g.calls))
+    """Tests for the blog update PR writer."""
 
-    def test_advanced_main_refused(self):
+    def test_closed_pr_not_reopened(self) -> None:
+
+        g = Fake(existing=[{"html_url": "closed-pr", "state": "closed"}])
+        assert g.propose("a" * 40, "new", "why")["status"] == "existing"
+        assert all(c[0] == "GET" for c in g.calls)
+
+    def test_advanced_main_refused(self) -> None:
         g = Fake(main="b" * 40)
         with self.assertRaises(UnsafeInput):
             g.propose("a" * 40, "new", "why")
-        self.assertTrue(all(c[0] == "GET" for c in g.calls))
+        assert all(c[0] == "GET" for c in g.calls)
 
-    def test_only_updates_written(self):
+    def test_only_updates_written(self) -> None:
         g = Fake()
         r = g.propose("a" * 40, "new", "why")
-        self.assertEqual(r["status"], "created")
+        assert r["status"] == "created"
         writes = [c for c in g.calls if c[0] == "PUT"]
-        self.assertEqual([c[1] for c in writes], ["contents/site/content/updates.md"])
-        self.assertEqual(writes[0][2]["branch"], "automation/blog-updates-" + "a" * 40)
-        self.assertFalse(any("merge" in c[1] for c in g.calls))
+        assert [c[1] for c in writes] == ["contents/site/content/updates.md"]
+        assert cast("dict[str, object]", writes[0][2])["branch"] == "automation/blog-updates-" + "a" * 40
+        assert not any("merge" in c[1] for c in g.calls)
 
-    def test_no_change_no_branch(self):
+    def test_no_change_no_branch(self) -> None:
         g = Fake()
-        self.assertEqual(g.propose("a" * 40, "original", "why")["status"], "no_change")
-        self.assertTrue(all(c[0] == "GET" for c in g.calls))
+        assert g.propose("a" * 40, "original", "why")["status"] == "no_change"
+        assert all(c[0] == "GET" for c in g.calls)

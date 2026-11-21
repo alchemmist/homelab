@@ -12,6 +12,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIRM = "quiesce-netbird-sqlite"
@@ -31,12 +32,12 @@ FILES = [
 ]
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     if not ok:
         raise ValueError(message)
 
 
-def copy_pod(node, image, read_only):
+def copy_pod(node, image, read_only) -> dict[str, object]:
     require(
         isinstance(node, str) and node and "/" not in node and ".." not in node,
         "explicit data node required",
@@ -66,7 +67,7 @@ def copy_pod(node, image, read_only):
     }
 
 
-def plan(node, image):
+def plan(node, image) -> dict[str, object]:
     pod = copy_pod(node, image, True)
     blob = json.dumps(pod)
     require("secret" not in blob and "NB_" not in blob, "backup pod must not carry credentials")
@@ -103,12 +104,12 @@ def plan(node, image):
     }
 
 
-def outside(path):
+def outside(path) -> None:
     require(path is not None, "--out required")
     require(not path.resolve().is_relative_to(ROOT), "--out must be outside the Git worktree")
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("command", choices=["plan", "execute"])
     p.add_argument("--node", required=True)
@@ -132,7 +133,7 @@ def main():
         print("Backup plan written; server was not scaled and kubectl was not run")
         return
     require(a.confirm == CONFIRM, "backup confirmation phrase mismatch")
-    commands = body["commands"]
+    commands = cast("list[list[str]]", body["commands"])
     commands[1] = ["kubectl", "-n", "netbird-pilot", "apply", "-f", str(manifest)]
     commands[2] = [
         "kubectl",

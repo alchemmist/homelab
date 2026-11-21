@@ -1,3 +1,5 @@
+"""Tests for the swe-mini policy module."""
+
 import base64
 import importlib.util
 import json
@@ -12,16 +14,16 @@ spec.loader.exec_module(p)
 
 
 class PublicationPolicy(unittest.TestCase):
-    def item(self, path="server/app/test.py", mode="100644", content=b"hello\n"):
-        """Return a change item with sensible defaults for assertions."""
+    """Tests for the swe-mini publication policy."""
+
+    def item(self, path="server/app/test.py", mode="100644", content=b"hello\n") -> dict[str, str]:
+
         return {"path": path, "mode": mode, "content": base64.b64encode(content).decode()}
 
-    def test_safe_patch(self):
-        """Accept a single conventional source file change."""
-        self.assertEqual(len(p.validate_changes([self.item()])), 1)
+    def test_safe_patch(self) -> None:
+        assert len(p.validate_changes([self.item()])) == 1
 
-    def test_protected_paths(self):
-        """Reject paths outside the allowed server/app source tree."""
+    def test_protected_paths(self) -> None:
         for path in [
             ".github/workflows/run.yml",
             "deploy/x",
@@ -39,13 +41,12 @@ class PublicationPolicy(unittest.TestCase):
             with self.subTest(path=path), self.assertRaises(ValueError):
                 p.validate_changes([self.item(path)])
 
-    def test_dependency_repair_boundary(self):
-        """Permit version bumps but reject script or package-list changes."""
+    def test_dependency_repair_boundary(self) -> None:
         original = {"scripts": {"build": "vite build"}, "dependencies": {"@mantine/core": "^9.5.2"}}
         updated = json.loads(json.dumps(original))
         updated["dependencies"]["@mantine/core"] = "^9.6.0"
 
-        def changes():
+        def changes() -> list[dict[str, str]]:
             return [
                 self.item("web/package.json", content=json.dumps(updated).encode()),
                 self.item("web/package-lock.json", content=b'{"lockfileVersion":3,"packages":{}}'),
@@ -62,20 +63,17 @@ class PublicationPolicy(unittest.TestCase):
         with self.assertRaises(ValueError):
             p.validate_changes(changes() + [self.item()])
 
-    def test_modes(self):
-        """Reject symlink, submodule, and executable file modes."""
+    def test_modes(self) -> None:
         for mode in ["120000", "160000", "100755"]:
             with self.assertRaises(ValueError):
                 p.validate_changes([self.item(mode=mode)])
 
-    def test_binary_and_size(self):
-        """Reject binary content and payloads above the size limit."""
+    def test_binary_and_size(self) -> None:
         for content in [b"\x00", b"x" * (p.MAX_BYTES + 1)]:
             with self.assertRaises(ValueError):
                 p.validate_changes([self.item(content=content)])
 
-    def test_empty_duplicates_many(self):
-        """Reject empty, duplicate, or oversized change sets."""
+    def test_empty_duplicates_many(self) -> None:
         for items in [
             [],
             [self.item(), self.item()],
@@ -84,29 +82,25 @@ class PublicationPolicy(unittest.TestCase):
             with self.assertRaises(ValueError):
                 p.validate_changes(items)
 
-    def test_result_roundtrip(self):
-        """Encode and decode a result marker without loss."""
+    def test_result_roundtrip(self) -> None:
         result = {"phase": "work", "checks": {"backend": 0}}
-        self.assertEqual(p.decode_result(p.encode_result(result)), result)
+        assert p.decode_result(p.encode_result(result)) == result
 
-    def test_result_authentication(self):
-        """Enforce the phase key when decoding result markers."""
+    def test_result_authentication(self) -> None:
         marker = p.encode_result({"checks": {"backend": 0}}, "parent-only-key")
-        self.assertEqual(p.decode_result(marker, "parent-only-key")["checks"]["backend"], 0)
+        assert p.decode_result(marker, "parent-only-key")["checks"]["backend"] == 0
         with self.assertRaises(ValueError):
             p.decode_result(marker, "wrong-key")
         with self.assertRaises(ValueError):
             p.decode_result(p.encode_result({}), "parent-only-key")
 
-    def test_missing_ambiguous_result(self):
-        """Reject missing markers and duplicated marker text."""
+    def test_missing_ambiguous_result(self) -> None:
         marker = p.encode_result({})
         for text in ["", marker + "\n" + marker]:
             with self.assertRaises(ValueError):
                 p.decode_result(text)
 
-    def test_result_decompression_limit(self):
-        """Reject markers whose decompressed payload exceeds the cap."""
+    def test_result_decompression_limit(self) -> None:
         import gzip
 
         marker = "SWE_RESULT:" + base64.b64encode(gzip.compress(b"x" * 900_001)).decode()
