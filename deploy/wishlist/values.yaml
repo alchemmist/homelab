@@ -6,7 +6,8 @@ image:
   pullPolicy: IfNotPresent
 
 # Accepted cold restore; old NFS claim remains retained and is no rollback after new writes.
-replicaCount: 0
+replicaCount: 1
+postgresEnabled: true
 nodeName: socrat-5
 persistence:
   existingClaim: wishlist-socrat5
