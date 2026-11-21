@@ -1,6 +1,6 @@
 """Independent durable-link retry loop; only the native internal bot API is called."""
 import json,threading,time,urllib.request,urllib.error
-from telegram_links import Links
+from telegram_links import Links, LINK_POST_TIMEOUT
 
 BASE='http://socrat-bot.socrat-bot.svc:8080'
 class Delivery:
@@ -21,7 +21,7 @@ class Delivery:
             def redirect_request(self,*a,**kw):return None
         req=urllib.request.Request(BASE+path,data=body,method=method,headers={'X-Internal-Token':self.token,'Content-Type':'application/json'})
         try:
-            with urllib.request.build_opener(NoRedirect()).open(req,timeout=30)as r:
+            with urllib.request.build_opener(NoRedirect()).open(req,timeout=LINK_POST_TIMEOUT if method=='POST' and path=='/v1/cards/links' else 30)as r:
                 raw=r.read(2_000_001)
                 if len(raw)>2_000_000:raise ValueError('BOT_RESPONSE_LIMIT')
                 return r.status,codec.loads(raw)
