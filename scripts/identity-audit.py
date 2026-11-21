@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 from datetime import UTC, datetime
+from typing import cast
 
 HOSTS = {
     "socrat-0": [
@@ -44,7 +45,7 @@ print(json.dumps({'users':users,'passwordlessPrivilege':sudo,
 """
 
 
-def remote(host: str, command: str):
+def remote(host: str, command: str) -> str:
     return subprocess.check_output(
         ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", *HOSTS[host], command],
         text=True,
@@ -52,18 +53,22 @@ def remote(host: str, command: str):
     )
 
 
-def collect():
+def collect() -> dict[str, object]:
     import shlex
 
-    result = {"observedAt": datetime.now(UTC).isoformat(), "nodes": {}}
+    nodes: dict[str, dict[str, object]] = {}
+    result: dict[str, object] = {
+        "observedAt": datetime.now(UTC).isoformat(),
+        "nodes": nodes,
+    }
     for host in HOSTS:
         try:
-            result["nodes"][host] = json.loads(remote(host, "python3 -c " + shlex.quote(PROBE)))
+            nodes[host] = json.loads(remote(host, "python3 -c " + shlex.quote(PROBE)))
         except (subprocess.SubprocessError, ValueError, OSError):
-            result["nodes"][host] = {"inspectionFailed": True}
+            nodes[host] = {"inspectionFailed": True}
     prefix = "env K3S_CONFIG_FILE=/dev/null kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml "
     # Never inspect Secret objects or emit raw Pod environment variables.
-    bindings = {}
+    bindings: dict[str, list[dict[str, object]]] = {}
     for kind in ["clusterrolebindings", "rolebindings"]:
         data = json.loads(remote("socrat-0", prefix + "get " + kind + " -A -o json"))
         bindings[kind] = [
@@ -85,14 +90,14 @@ def collect():
         }
         for d in data["items"]
     ]
-    nodes = json.loads(remote("socrat-0", prefix + "get nodes -o json"))
+    k8s_nodes = json.loads(remote("socrat-0", prefix + "get nodes -o json"))
     result["nodeConditions"] = {
-        n["metadata"]["name"]: n["status"]["conditions"] for n in nodes["items"]
+        n["metadata"]["name"]: n["status"]["conditions"] for n in k8s_nodes["items"]
     }
     return result
 
 
-def main():
+def main() -> bool:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--output", required=True)
     args = p.parse_args()
@@ -101,7 +106,8 @@ def main():
     with os.fdopen(fd, "w") as f:
         json.dump(result, f, indent=2)
         f.write("\n")
-    failed = [n for n, v in result["nodes"].items() if v.get("inspectionFailed")]
+    nodes = cast("dict[str, dict[str, object]]", result["nodes"])
+    failed = [n for n, v in nodes.items() if v.get("inspectionFailed")]
     print("Identity audit saved privately; failed hosts: " + (", ".join(failed) or "none"))
     return bool(failed)
 

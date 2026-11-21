@@ -94,11 +94,7 @@ class ObservedHTTP:
         request: urllib.request.Request,
         *args: object,
         **kwargs: object,
-<<<<<<< HEAD
     ) -> Iterator[_Closeable]:
-=======
-    ) -> Iterator[object]:
->>>>>>> refs/remotes/origin/main
         started = time.monotonic()
         phase = "https_open"
         response = None
@@ -146,11 +142,7 @@ def run(controller: _Controller) -> int:
     original = controller.opener
 
     def observed(*args: object, **kwargs: object) -> ObservedHTTP:
-<<<<<<< HEAD
         return ObservedHTTP(cast("_Opener", original(*args, **kwargs)))
-=======
-        return ObservedHTTP(original(*args, **kwargs))
->>>>>>> refs/remotes/origin/main
 
     controller.opener = observed
     started = time.monotonic()

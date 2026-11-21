@@ -9,33 +9,31 @@ import json
 import os
 import subprocess
 from pathlib import Path
-from typing import Protocol
+from types import ModuleType
 
 CURRENT = Path("/usr/local/libexec/public_dns_zone.py")
 ROOT = Path("/var/lib/homelab-grafana-tv-dns-retirement")
 
 
-class _ZoneRenderer(Protocol):
-    def render(self, serial: int, home_up: object, vps_up: object) -> str: ...
-
-
-
-def require(ok: object, message: str):
+def require(ok: object, message: str) -> None:
     if not ok:
         raise RuntimeError(message)
 
 
-def load(path: Path, name: str):
-    s = importlib.util.spec_from_file_location(name, path)
-    m = importlib.util.module_from_spec(s)
-    s.loader.exec_module(m)
+def load(path: Path, name: str) -> ModuleType:
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        reason = "Cannot load renderer module from " + str(path)
+        raise RuntimeError(reason)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
     return m
 
 
-def delta(old: _ZoneRenderer, new: _ZoneRenderer):
+def delta(old: ModuleType, new: ModuleType) -> None:
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
-        before = old.render(123, home_up=home, vps_up=vps).splitlines()
-        after = new.render(123, home_up=home, vps_up=vps).splitlines()
+        before = old.render(123, home, vps).splitlines()
+        after = new.render(123, home, vps).splitlines()
         require(
             [x for x in after if not x.startswith("tv IN A ")]
             == [x for x in before if not x.startswith("tv IN A ")],
@@ -47,7 +45,7 @@ def delta(old: _ZoneRenderer, new: _ZoneRenderer):
         )
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

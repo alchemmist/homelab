@@ -9,11 +9,35 @@ import sys
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import cast
+from typing import TypedDict, cast
 
 ROOT = Path(__file__).resolve().parents[1]
 MIB = 1024**2
 GIB = 1024**3
+
+
+class _NodePlan(TypedDict):
+    ssh: list[str]
+
+
+class _CapacityPlan(TypedDict):
+    componentsMiB: dict[str, int]
+    additionalDiskGiB: int
+    minimumFreeDiskGiB: int
+
+
+class _ObservedNode(TypedDict):
+    ready: bool
+    pressures: list[str]
+    unschedulable: bool
+    taints: list[dict[str, object]]
+    allocatableMemoryBytes: int
+    requestedMemoryBytes: int
+    availableMemoryBytes: int
+    diskAvailableBytes: int
+    diskTotalBytes: int
+
+
 PROBE = """import json,os
 m=dict(line.split(':',1) for line in open('/proc/meminfo'))
 p='/var/lib/rancher/k3s/storage'
@@ -22,7 +46,7 @@ print(json.dumps({'availableMemoryBytes':int(m['MemAvailable'].split()[0])*1024,
 """
 
 
-def quantity(value: object):
+def quantity(value: object) -> int:
     value = str(value)
     for suffix, factor in [
         ("Ki", 1024),
@@ -40,25 +64,29 @@ def quantity(value: object):
     return int(Decimal(value))
 
 
-def _requests(holder: dict[str, object]) -> dict[str, object]:
-    resources = cast("dict[str, object]", holder.get("resources", {}))
-    return cast("dict[str, object]", resources.get("requests", {}))
-
-
-def requested_memory(pod: dict[str, object]):
+def requested_memory(pod: dict[str, object]) -> int:
     # Intentionally conservative: sum all init containers, including restartable
     # sidecars, instead of underestimating their maximum concurrent startup usage.
     spec = cast("dict[str, object]", pod["spec"])
-    containers = cast("list[dict[str, object]]", spec.get("containers", [])) + cast(
-        "list[dict[str, object]]", spec.get("initContainers", [])
+
+    def reserved(container: dict[str, object]) -> dict[str, object]:
+        return cast("dict[str, object]", container.get("resources", {}))
+
+    containers = cast("list[dict[str, object]]", spec.get("containers", []))
+    init_containers = cast("list[dict[str, object]]", spec.get("initContainers", []))
+    total = sum(
+        quantity(cast("dict[str, object]", reserved(c).get("requests", {})).get("memory", 0))
+        for c in containers + init_containers
     )
-    total = sum(quantity(_requests(c).get("memory", 0)) for c in containers)
-    total += quantity(cast("dict[str, object]", spec.get("overhead", {})).get("memory", 0))
-    return max(total, quantity(_requests(spec).get("memory", 0)))
+    pod_res = cast("dict[str, object]", spec.get("resources", {}))
+    total += quantity(cast("dict[str, object]", pod_res.get("overhead", {})).get("memory", 0))
+    pod_requests = cast("dict[str, object]", pod_res.get("requests", {}))
+    return max(total, quantity(pod_requests.get("memory", 0)))
 
 
-def ssh(policy: dict[str, object], node: str, command: str):
-    nodes = cast("dict[str, dict[str, object]]", policy["nodes"])
+def ssh(policy: dict[str, object], node: str, command: str) -> str:
+    nodes = cast("dict[str, dict[str, _NodePlan]]", policy["nodes"])
+    options = nodes[node]["ssh"]
     return subprocess.check_output(
         [
             "ssh",
@@ -66,7 +94,7 @@ def ssh(policy: dict[str, object], node: str, command: str):
             "BatchMode=yes",
             "-o",
             "ConnectTimeout=10",
-            *cast("list[str]", nodes[node]["ssh"]),
+            *options,
             command,
         ],
         text=True,
@@ -74,12 +102,12 @@ def ssh(policy: dict[str, object], node: str, command: str):
     )
 
 
-def collect(policy: dict[str, object]):
+def collect(policy: dict[str, object]) -> dict[str, object]:
     import shlex
 
-    hosts = {
-        node: json.loads(ssh(policy, node, "python3 -c " + shlex.quote(PROBE)))
-        for node in cast("dict[str, dict[str, object]]", policy["nodes"])
+    nodes = cast("dict[str, dict[str, _NodePlan]]", policy["nodes"])
+    hosts: dict[str, dict[str, object]] = {
+        node: json.loads(ssh(policy, node, "python3 -c " + shlex.quote(PROBE))) for node in nodes
     }
     kube = "env K3S_CONFIG_FILE=/dev/null kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml "
     nodes = json.loads(ssh(policy, "socrat-0", kube + "get nodes -o json"))
@@ -121,46 +149,41 @@ def check(
     observation: dict[str, object],
     otel: dict[str, object],
     now: datetime | None = None,
-):
+) -> dict[str, object]:
     now = now or datetime.now(UTC)
-    age = (now - datetime.fromisoformat(cast("str", observation["collectedAt"]))).total_seconds()
-    if age < 0 or age > cast("int", policy["maximumObservationAgeSeconds"]):
+    collected_at = datetime.fromisoformat(cast("str", observation["collectedAt"]))
+    age = (now - collected_at).total_seconds()
+    if age < 0 or age > cast("float", policy["maximumObservationAgeSeconds"]):
         raise ValueError("Observation is stale or future-dated")
     results: dict[str, dict[str, object]] = {}
-    for name, plan in cast("dict[str, dict[str, object]]", policy["nodes"]).items():
-        node = cast("dict[str, dict[str, object]]", observation["nodes"])[name]
-        otel_nodes = cast("dict[str, dict[str, object]]", otel.get("nodes", {}))
-        otel_node = otel_nodes.get(name, {})
+    plans = cast("dict[str, _CapacityPlan]", policy["nodes"])
+    reserved = cast("dict[str, int]", policy["reservedExternalMemoryMiB"])
+    host_reserve = cast("int", policy["hostReserveMiB"])
+    min_disk_fraction = cast("float", policy["minimumFreeDiskFraction"])
+    observed = cast("dict[str, _ObservedNode]", observation["nodes"])
+    otel_nodes = cast("dict[str, dict[str, dict[str, int]]]", otel.get("nodes", {}))
+    for name, plan in plans.items():
+        node = observed[name]
         future = max(
-            cast("dict[str, int]", policy["reservedExternalMemoryMiB"])[name] * MIB,
-            sum(cast("dict[str, int]", otel_node.get("components", {})).values()),
+            reserved[name] * MIB,
+            sum(otel_nodes.get(name, {}).get("components", {}).values()),
         )
-        additions = sum(cast("dict[str, int]", plan["componentsMiB"]).values()) * MIB
-        reserve = cast("int", policy["hostReserveMiB"]) * MIB
+        additions = sum(plan["componentsMiB"].values()) * MIB
+        reserve = host_reserve * MIB
         required = additions + future + reserve
-        reasons = []
+        reasons: list[str] = []
         if not node["ready"] or node["unschedulable"] or node["pressures"]:
             reasons.append("node-unhealthy-or-unschedulable")
-        if any(
-            cast("dict[str, object]", t)["effect"] in ["NoSchedule", "NoExecute"]
-            for t in cast("list[object]", node["taints"])
-        ):
+        if any(t["effect"] in ["NoSchedule", "NoExecute"] for t in node["taints"]):
             reasons.append("untolerated-taint")
-        if cast("int", node["availableMemoryBytes"]) < required:
+        if node["availableMemoryBytes"] < required:
             reasons.append("physical-memory")
-        if (
-            cast("int", node["allocatableMemoryBytes"])
-            - cast("int", node["requestedMemoryBytes"])
-            < additions + future
-        ):
+        if node["allocatableMemoryBytes"] - node["requestedMemoryBytes"] < additions + future:
             reasons.append("scheduler-memory")
-        free_after = (
-            cast("int", node["diskAvailableBytes"]) - cast("int", plan["additionalDiskGiB"]) * GIB
-        )
+        free_after = node["diskAvailableBytes"] - plan["additionalDiskGiB"] * GIB
         disk_reserve = max(
-            cast("int", plan["minimumFreeDiskGiB"]) * GIB,
-            cast("int", node["diskTotalBytes"])
-            * cast("float", policy["minimumFreeDiskFraction"]),
+            plan["minimumFreeDiskGiB"] * GIB,
+            node["diskTotalBytes"] * min_disk_fraction,
         )
         if free_after < disk_reserve:
             reasons.append("disk-reserve")
@@ -170,11 +193,8 @@ def check(
             "harborAdditionalMiB": additions // MIB,
             "otelReservedMiB": future // MIB,
             "requiredAvailableMiB": required // MIB,
-            "observedAvailableMiB": cast("int", node["availableMemoryBytes"]) // MIB,
-            "schedulerFreeMiB": (
-                cast("int", node["allocatableMemoryBytes"])
-                - cast("int", node["requestedMemoryBytes"])
-            )
+            "observedAvailableMiB": node["availableMemoryBytes"] // MIB,
+            "schedulerFreeMiB": (node["allocatableMemoryBytes"] - node["requestedMemoryBytes"])
             // MIB,
             "diskFreeAfterStagingGiB": round(free_after / GIB, 1),
         }
@@ -186,14 +206,14 @@ def check(
     }
 
 
-def save_exclusive(path: Path, obj: object):
+def save_exclusive(path: Path, obj: object) -> None:
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(obj, f, indent=2)
         f.write("\n")
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["collect", "check"])
     parser.add_argument("--policy", type=Path, default=ROOT / "deploy/harbor/ha-policy.json")
