@@ -50,6 +50,7 @@ os.umask(0o077)
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *a, **kw):
+        """Refuse redirects so credentials are never forwarded."""
         return None
 
 

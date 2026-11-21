@@ -34,6 +34,7 @@ KUBE = ["/usr/local/bin/kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
+        """Refuse API redirects instead of following them."""
         raise ValueError("API redirect refused")
 
 
@@ -147,6 +148,7 @@ class NativeSession:
         self.lock = None
 
     def preview(self):
+        """Check planned panel tokens against existing names before writing."""
         original = token_rows(self.database)
         if any(r["name"] in self.names.values() for r in original):
             raise ValueError("Temporary token name collision; never rotate")
@@ -216,6 +218,7 @@ class NativeSession:
             raise RuntimeError("Missing created credential")
 
     def open(self, approval):
+        """Create the session tokens once, after explicit root approval."""
         if socket.gethostname() != "socrat-2" or os.geteuid() != 0:
             raise ValueError("Explicit session creation requires root on socrat-2")
         self.state = h.private_directory(self.state)
@@ -290,6 +293,7 @@ class NativeSession:
             raise
 
     def call(self, method, path, body=None):
+        """Call the unprivileged dashboard token endpoints by exact path."""
         if path.startswith("/setting/"):
             raise ValueError("Worker cannot use administrative token endpoints")
         if self._owned("worker") is None:
@@ -297,6 +301,7 @@ class NativeSession:
         return request(self.base, self.credentials["worker"]["token"], method, path, body)
 
     def cleanup(self):
+        """Drop generated tokens and log out created sessions."""
         errors = []
         actor = "cleanup" if "cleanup" in self.credentials else "bootstrap"
         if actor in self.credentials:

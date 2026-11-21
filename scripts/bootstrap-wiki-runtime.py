@@ -15,6 +15,7 @@ class Kubernetes:
         self.command = command
 
     def run(self, *args, payload=None):
+        """Run a kubectl subcommand and return trimmed stdout."""
         result = subprocess.run(
             self.command + list(args),
             input=json.dumps(payload) if payload else None,
@@ -28,10 +29,12 @@ class Kubernetes:
         return result.stdout
 
     def get(self, kind, name, namespace):
+        """Fetch one object if present, or None when not found."""
         value = self.run("-n", namespace, "get", kind, name, "--ignore-not-found", "-o", "json")
         return json.loads(value) if value.strip() else None
 
     def create(self, resource):
+        """Create a resource from the given manifest on stdin."""
         self.run("create", "-f", "-", payload=resource)
 
 

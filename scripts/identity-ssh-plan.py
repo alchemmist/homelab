@@ -247,6 +247,7 @@ def public_keys(value):
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
+        """Refuse Authentik redirects instead of following them."""
         raise Refused("Authentik redirect refused")
 
 
@@ -276,6 +277,7 @@ class Authentik:
         )
 
     def user(self, ident):
+        """Fetch the unique user record for a canonical UUID."""
         canonical_uuid(ident)
         query = urllib.parse.urlencode({"uuid": ident, "page_size": 100})
         request = urllib.request.Request(

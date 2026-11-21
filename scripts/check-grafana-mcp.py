@@ -39,6 +39,7 @@ class Client:
         self.sequence = 0
 
     def request(self, method, params, notify=False):
+        """Send one JSON-RPC request to the MCP server."""
         self.sequence += 1
         body = {"jsonrpc": "2.0", "method": method, "params": params}
         if not notify:
@@ -66,6 +67,7 @@ class Client:
         return result["result"]
 
     def tool(self, name, arguments):
+        """Call one MCP tool and fail loudly on tool errors."""
         result = self.request("tools/call", {"name": name, "arguments": arguments})
         if result.get("isError"):
             raise RuntimeError("MCP tool failed: " + name)

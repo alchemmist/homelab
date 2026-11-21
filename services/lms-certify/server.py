@@ -227,12 +227,14 @@ def step():
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        """Answer liveness probes on /healthz only."""
         if self.path != "/healthz":
             self.send_error(404)
             return
         self._send({"ok": True, "running": LOCK.exists()})
 
     def do_POST(self):
+        """Process one /step certificate request if the worker token matches."""
         if self.path != "/step" or self.headers.get("X-Worker-Token") != TOKEN:
             self.send_error(404)
             return
@@ -254,6 +256,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(raw)
 
     def log_message(self, fmt, *args):
+        """Suppress default request logging entirely."""
         return
 
 

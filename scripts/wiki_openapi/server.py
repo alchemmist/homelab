@@ -15,13 +15,16 @@ PATHS = {"/check", "/render", "/create-pr", "/close-older"}
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
+        """Silence default request-line logging."""
         pass
 
     def do_GET(self):
+        """Answer liveness probes on /healthz and 404 otherwise."""
         self.send_response(200 if self.path == "/healthz" else 404)
         self.end_headers()
 
     def do_POST(self):
+        """Dispatch an authenticated worker action on the allowed paths."""
         if self.path not in PATHS or not hmac.compare_digest(
             self.headers.get("X-Worker-Token", ""), os.environ["WORKER_TOKEN"]
         ):

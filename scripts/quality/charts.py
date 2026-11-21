@@ -15,6 +15,7 @@ from common import ROOT, command, digest, failure, finding, report, tracked
 
 class ManifestLoader(yaml.SafeLoader):
     def construct_mapping(self, node, deep=False):
+        """Reject duplicate mapping keys while loading YAML manifests."""
         seen = set()
         for key, _value in node.value:
             if key.tag == "tag:yaml.org,2002:merge":
