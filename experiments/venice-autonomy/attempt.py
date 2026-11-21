@@ -226,7 +226,7 @@ def run_openhands(
         name = "bash"
 
         @classmethod
-        def create(cls, conv_state=None, **kwargs):
+        def create(cls, **_kwargs):
             return [
                 cls(
                     description="Execute bash inside the isolated offline coding workspace. "
