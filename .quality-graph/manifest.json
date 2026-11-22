@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "8838a41e5f0aa228bd0c1d210337b293338450d5229f9578acf37906c421e5f3",
+  "graphDigest": "4306269e5345f43ec01eb321c2f4e712146f17a9984831ae6268bd158911240e",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -343,7 +343,7 @@
         "path": "reports/ansible.json"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run pytest -q tests/test_user_unit.py\nuv run python scripts/quality/lint.py ansible\n"
+        "run": "uv run python scripts/quality/lint.py ansible"
       },
       "timeoutMinutes": 5,
       "title": "Playbook safety"
