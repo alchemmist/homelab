@@ -16,7 +16,7 @@ from integrations import Model
 class ReferenceContractTests(unittest.TestCase):
     """Evidence-reference contracts for the mocked analysis model."""
 
-    def model(self):
+    def model(self) -> Model:
         """Build a mocked analysis model with a mock store."""
         return Model(Mock(), "test-only", store=Mock())
 

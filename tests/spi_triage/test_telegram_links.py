@@ -4,11 +4,13 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from types import ModuleType
+from typing import Never
 
 FILES = Path(__file__).resolve().parents[2] / "charts/spi-triage/files"
 
 
-def load(name):
+def load(name) -> ModuleType:
     """Run load."""
     spec = importlib.util.spec_from_file_location(name, FILES / (name + ".py"))
     module = importlib.util.module_from_spec(spec)
@@ -22,7 +24,7 @@ core, links = load("core"), load("telegram_links")
 class OutboxTest(unittest.TestCase):
     """Tests for Telegram outbox link generation."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Create the telegram link fixture."""
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -48,14 +50,14 @@ class OutboxTest(unittest.TestCase):
             self.store, self.http, clock=lambda: self.now, guarded_protocol=True
         )
 
-    def http(self, method, path, **kwargs):
+    def http(self, method, path, **kwargs) -> tuple[int, dict[str, object]]:
         """Record calls and answer with a canned response."""
         self.calls.append((method, path, kwargs))
         return self.status, self.item if method == "GET" else {
             "key": "Alert/pod/ns/name", "updated": [{"chat_id": 1, "message_id": 2}], "pending": []
         }
 
-    def publication(self, **changes):
+    def publication(self, **changes) -> dict[str, object]:
         """Build a publication dict with optional overrides."""
         return dict(
             {
@@ -68,11 +70,11 @@ class OutboxTest(unittest.TestCase):
             **changes,
         )
 
-    def enqueue(self):
-        """Enqueue the fixture event and return its job id."""
+    def enqueue(self) -> None:
+        """Record the fixture publication in the outbox."""
         self.outbox.record_primary_publication("event", "e", 1, self.publication())
 
-    def receipt(self):
+    def receipt(self) -> None:
         """Record a card receipt for the fixture publication."""
         self.outbox.record_card_receipt(
             "e",
@@ -84,12 +86,12 @@ class OutboxTest(unittest.TestCase):
             },
         )
 
-    def retry(self):
+    def retry(self) -> None:
         """Advance the clock past the retry interval."""
         self.now += 4000
         self.outbox.once()
 
-    def test_duplicate_and_all_copy_ack(self):
+    def test_duplicate_and_all_copy_ack(self) -> None:
         """Verify duplicate receipts are ignored and all copies acknowledged."""
         self.enqueue()
         self.enqueue()
@@ -99,7 +101,7 @@ class OutboxTest(unittest.TestCase):
         assert not self.outbox.once()
         assert len(self.calls) == 1
 
-    def test_publication_before_card(self):
+    def test_publication_before_card(self) -> None:
         """Verify the publication precedes the card delivery."""
         self.enqueue()
         self.outbox.once()
@@ -108,7 +110,7 @@ class OutboxTest(unittest.TestCase):
         self.outbox.once()
         assert self.outbox.snapshot("e")["state"] == "applied"
 
-    def test_races_and_restart(self):
+    def test_races_and_restart(self) -> None:
         """Verify delivery races and restart behavior."""
         self.enqueue()
         self.receipt()
@@ -123,7 +125,7 @@ class OutboxTest(unittest.TestCase):
         self.retry()
         assert self.outbox.snapshot("e")["state"] == "applied"
 
-    def test_partial_readback_not_desired_state(self):
+    def test_partial_readback_not_desired_state(self) -> None:
         """Verify partial readbacks are not accepted as desired state."""
         self.enqueue()
         self.receipt()
@@ -142,12 +144,12 @@ class OutboxTest(unittest.TestCase):
         self.retry()
         assert self.outbox.snapshot("e")["state"] == "applied"
 
-    def test_timeout_secret_safe(self):
+    def test_timeout_secret_safe(self) -> None:
         """Verify timeouts expose no secrets."""
         self.enqueue()
         self.receipt()
 
-        def fail(*a, **kw):
+        def fail(*a, **kw) -> Never:
             raise TimeoutError("X-Internal-Token: secret-value")
 
         self.outbox.request = fail
@@ -155,7 +157,7 @@ class OutboxTest(unittest.TestCase):
         assert self.outbox.snapshot("e")["error"] == "DELIVERY_UNKNOWN"
         assert "secret-value" not in str(self.outbox.snapshot("e"))
 
-    def test_lease_recovery(self):
+    def test_lease_recovery(self) -> None:
         """Verify expired delivery leases are recovered."""
         self.enqueue()
         self.receipt()
@@ -165,7 +167,7 @@ class OutboxTest(unittest.TestCase):
         self.retry()
         assert self.outbox.snapshot("e")["state"] == "applied"
 
-    def test_episode_and_stale_revision(self):
+    def test_episode_and_stale_revision(self) -> None:
         # Episode "e" lands on its second revision after re-publication.
         """Verify episode handling and stale revision rejection."""
         revision_two = 2
@@ -187,7 +189,7 @@ class OutboxTest(unittest.TestCase):
         self.enqueue()
         assert self.outbox.snapshot("e")["revision"] == revision_two
 
-    def test_out_of_order_completion_cannot_ack_new_revision(self):
+    def test_out_of_order_completion_cannot_ack_new_revision(self) -> None:
         """Verify out-of-order completions cannot ack newer revisions."""
         self.enqueue()
         self.receipt()
@@ -195,7 +197,7 @@ class OutboxTest(unittest.TestCase):
         # Episode "e" sits on its second revision even after the racing POST.
         revision_two = 2
 
-        def racing(method, path, **kwargs):
+        def racing(method, path, **kwargs) -> tuple[int, dict[str, object]]:
             if method == "POST":
                 self.outbox.record_primary_publication(
                     "resolved",
@@ -213,7 +215,7 @@ class OutboxTest(unittest.TestCase):
         assert self.outbox.snapshot("e")["state"] == "pending"
         assert self.outbox.snapshot("e")["revision"] == revision_two
 
-    def test_legacy_bot_blocked(self):
+    def test_legacy_bot_blocked(self) -> None:
         """Verify legacy bots are blocked."""
         self.enqueue()
         self.receipt()
@@ -222,7 +224,7 @@ class OutboxTest(unittest.TestCase):
         assert self.calls == []
         assert self.outbox.snapshot("e")["error"] == "BOT_GUARD_REQUIRED"
 
-    def test_urls(self):
+    def test_urls(self) -> None:
         """Verify generated telegram URLs."""
         assert (
             links.primary_url(
@@ -242,7 +244,7 @@ class OutboxTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 links.primary_url(self.publication(**changes))
 
-    def test_atomic_rollback(self):
+    def test_atomic_rollback(self) -> None:
         """Verify atomic delivery rollback."""
         with self.assertRaises(RuntimeError), self.store.db() as c:
             self.outbox.record_primary_publication(

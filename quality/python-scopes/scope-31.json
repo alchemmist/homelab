@@ -1,0 +1,4 @@
+{
+  "include": ["tests/spi_triage/*.py"],
+  "rules": ["ANN201", "ANN202"]
+}

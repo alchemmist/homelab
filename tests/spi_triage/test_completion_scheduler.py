@@ -22,7 +22,7 @@ class CompletionSchedulerTests(unittest.TestCase):
         self.clock.start()
         self.addCleanup(self.clock.stop)
 
-    def add(self, key, stage=0, state="queued", available=None, error=None):
+    def add(self, key, stage=0, state="queued", available=None, error=None) -> None:
         """Enqueue one event with the given scheduling state."""
         self.s.enqueue({"event_key": key, "episode": key})
         with self.s.db() as c:
@@ -37,7 +37,7 @@ class CompletionSchedulerTests(unittest.TestCase):
             with self.subTest(jitter=jitter):
                 self.set_competition(jitter)
 
-    def set_competition(self, jitter):
+    def set_competition(self, jitter) -> None:
         """Seed the competition outcome for the next scheduler run."""
         with self.s.db() as c:
             c.execute("DELETE FROM jobs")
