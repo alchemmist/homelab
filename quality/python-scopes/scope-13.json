@@ -1,0 +1,1 @@
+{"include":["scripts/wiki_openapi/*.py"],"rules":["ANN001","ANN201"]}

@@ -1,10 +1,13 @@
 """Approved single retirement. Refuse if live writer, coverage or cold restore is unverified."""
 
+from __future__ import annotations
+
 import json
 import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import TypedDict
 
 D = Path(__file__).resolve().parent
 NS = "cattle-monitoring-system"
@@ -28,11 +31,22 @@ SSH = [
 K = ["kubectl", "--context=Socrat", "-n", NS]
 
 
-def output(args, stdin=None):
+class Compaction(TypedDict):
+    sources: list[str]
+
+
+class BlockMeta(TypedDict):
+    thanos: dict[str, object]
+    minTime: int
+    maxTime: int
+    compaction: Compaction
+
+
+def output(args: list[str], stdin: str | None = None) -> str:
     return subprocess.check_output(args, input=stdin, text=True)
 
 
-def main():
+def main() -> None:
     if sys.flags.optimize:
         raise RuntimeError("safety checks need standard Python")
     apply = sys.argv[1:] == ["--release-verified-files"]
@@ -114,14 +128,14 @@ def main():
             "--log.level=error",
         ]
     ).strip()
-    remote = []
+    remote: list[BlockMeta] = []
     dec = json.JSONDecoder()
     while data:
         m, i = dec.raw_decode(data)
         remote.append(m)
         data = data[i:].lstrip()
     assert remote
-    old = json.loads(
+    old: list[BlockMeta] = json.loads(
         output(
             SSH + ["python3 -"],
             """import json
@@ -130,7 +144,7 @@ p=Path('/var/lib/socrat-thanos');print(json.dumps([json.loads(f.read_bytes()) fo
         )
     )
 
-    def covers(a, b):
+    def covers(a: BlockMeta, b: BlockMeta) -> bool:
         return (
             a["thanos"].get("labels") == b["thanos"].get("labels")
             and a["thanos"].get("downsample") == b["thanos"].get("downsample")

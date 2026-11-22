@@ -7,7 +7,7 @@ provider:
     runtime:
       action: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
       publication: scheduled
-      publisher-action: alchemmist/quality-graph@a08603fcb44e9e22813b497ed391addf68797ce3
+      publisher-action: alchemmist/quality-graph@f5cef503eaf0734b9c9a0c6f88ee8206b2a6235d
       upload-artifact-action: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
 profiles:
   default:
@@ -127,6 +127,13 @@ nodes:
       - graph
     results:
       native: reports/yaml.json
+  python-scopes:
+    title: Scoped Python rules
+    profile: default
+    needs:
+      - graph
+    policy: *id001
+    run: uv run --locked python -m scripts.quality.python_scopes
   scripts-q000:
     title: Python script and test quotes (Q000, D300)
     profile: default

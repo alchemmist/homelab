@@ -21,7 +21,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, Self, TypedDict, cast
 
 if TYPE_CHECKING:
+    from http.client import HTTPMessage
     from types import ModuleType
+    from typing import IO, Never
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
 GROUPS = ("homelab-owner", "homelab-platform-operator")
@@ -89,7 +91,15 @@ class Page(TypedDict):
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
-    def redirect_request(self, request, response, code, message, headers, newurl):
+    def redirect_request(
+        self,
+        request: urllib.request.Request,
+        response: IO[bytes] | None,
+        code: int,
+        message: str,
+        headers: HTTPMessage,
+        newurl: str,
+    ) -> Never:
         """Close the body and refuse redirects instead of following them."""
         if response is not None:
             response.close()
@@ -129,7 +139,7 @@ def reconcile_app_bindings(
             )
 
 
-def builtin_scope(rows, name):
+def builtin_scope(rows: list[dict[str, object]], name: str) -> object:
     """Execute builtin_scope."""
     matches = [
         r for r in rows if r.get("managed") == "goauthentik.io/providers/oauth2/scope-" + name
@@ -279,7 +289,7 @@ def load_or_init_client(
     return client
 
 
-def main():
+def main() -> None:
     """Execute main."""
     p = argparse.ArgumentParser()
     p.add_argument("--private-dir", type=Path, required=True)
@@ -288,6 +298,8 @@ def main():
     spec = importlib.util.spec_from_file_location(
         "bootstrap", Path(__file__).with_name("bootstrap.py")
     )
+    if spec is None or spec.loader is None:
+        raise ImportError("Cannot load RustFS bootstrap")
     b = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(b)
     d = args.private_dir
@@ -298,30 +310,26 @@ def main():
     session: Session = {"opener": cast("Opener", http), "token": token, "writable": args.apply}
     catalogue: Catalogue = {"session": session, "inventory": {}}
 
-    def api(method, path, body=None, allow_missing=False):
-        return call_api(session, method, path, body, allow_missing=allow_missing)
-
-    def rows(path):
-        return read_generator(session, path)
-
-    catalogue["inventory"] = {path: rows(path) for path in COLLECTIONS}
+    catalogue["inventory"] = {path: read_generator(session, path) for path in COLLECTIONS}
     inventory = catalogue["inventory"]
     # Application list is admission-filtered, including for automation principals.
     # Exact dedicated detail GET respects RBAC without requiring superuser listing.
     inventory["core/applications/"] = []
     for slug in ("spi-rustfs-native",):
-        app = api("GET", "core/applications/" + slug + "/", allow_missing=True)
+        app = call_api(session, "GET", "core/applications/" + slug + "/", allow_missing=True)
         if app is not None:
             if app.get("slug") != slug:
                 raise ValueError("application detail identity mismatch")
             inventory["core/applications/"].append(app)
 
-    def one(path, key, value, required=False):
-        return lookup(inventory[path], key, value, required=required)
+    def required_pk(path: str, key: str, value: str) -> object:
+        row = lookup(inventory[path], key, value, required=True)
+        # A required lookup either returns its unique row or raises.
+        return cast("dict[str, object]", row)["pk"]
 
-    groups = [one("core/groups/", "name", name, True)["pk"] for name in GROUPS]
+    groups = [required_pk("core/groups/", "name", name) for name in GROUPS]
     flow = {
-        slug: one("flows/instances/", "slug", slug, True)["pk"]
+        slug: required_pk("flows/instances/", "slug", slug)
         for slug in (
             "default-authentication-flow",
             "default-provider-authorization-explicit-consent",
@@ -329,9 +337,7 @@ def main():
             "default-provider-invalidation-flow",
         )
     }
-    cert = one("crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate", True)[
-        "pk"
-    ]
+    cert = required_pk("crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate")
     mappings = [
         builtin_scope(inventory["propertymappings/provider/scope/"], name)
         for name in ("openid", "profile", "email")
@@ -340,7 +346,8 @@ def main():
     client = load_or_init_client(
         b,
         d,
-        native_taken=one("providers/oauth2/", "name", "spi-rustfs-native") is not None,
+        native_taken=lookup(inventory["providers/oauth2/"], "name", "spi-rustfs-native")
+        is not None,
         session=session,
     )
     # Inventory-only plan has no mutation, even local client secret persistence.
@@ -350,16 +357,15 @@ def main():
         )
         return
 
-    def reconcile(path, key, value, settings):
-        return reconcile_object(catalogue, path, key, value, settings)
-
-    scope = reconcile(
+    scope = reconcile_object(
+        catalogue,
         "propertymappings/provider/scope/",
         "name",
         "spi-rustfs-policy",
         {"name": "spi-rustfs-policy", "scope_name": "rustfs_policy", "expression": EXPRESSION},
     )
-    native = reconcile(
+    native = reconcile_object(
+        catalogue,
         "providers/oauth2/",
         "name",
         "spi-rustfs-native",
@@ -387,12 +393,12 @@ def main():
             "refresh_token_validity": "hours=1",
         },
     )
-    providers = []
     apps = [
         ("spi-rustfs-native", "RustFS native OIDC", native, "https://rustfs.socrat.alchemmist.xyz/")
     ]
     for slug, name, provider, url in apps:
-        app = reconcile(
+        app = reconcile_object(
+            catalogue,
             "core/applications/",
             "slug",
             slug,

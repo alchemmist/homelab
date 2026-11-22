@@ -1,5 +1,7 @@
 """Disposable Docker-only K3s failover acceptance; never consumes host kubeconfig."""
 
+from __future__ import annotations
+
 import json
 import os
 import secrets
@@ -7,15 +9,19 @@ import socket
 import subprocess
 import sys
 import time
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable, Sequence
 
 VERSION = "rancher/k3s:v1.36.5-k3s1"
 WORKLOAD = "nginx:1.27-alpine"
 PREFIX = "lab404-" + secrets.token_hex(5)
 TOKEN = secrets.token_hex(24)
-created = []
+created: list[str] = []
 
 
-def docker(*args, data=None, timeout=30):
+def docker(*args: str, data: bytes | None = None, timeout: float = 30) -> bytes:
     result = subprocess.run(
         ["docker", *args], input=data, capture_output=True, timeout=timeout
     )
@@ -25,15 +31,15 @@ def docker(*args, data=None, timeout=30):
     return result.stdout
 
 
-def shell(node, *cmd, data=None, timeout=15):
+def shell(node: str, *cmd: str, data: bytes | None = None, timeout: float = 15) -> bytes:
     return docker("exec", "-i", PREFIX + "-" + node, *cmd, data=data, timeout=timeout)
 
 
-def kube(node, *cmd, data=None):
+def kube(node: str, *cmd: str, data: bytes | None = None) -> bytes:
     return shell(node, "k3s", "kubectl", "--request-timeout=4s", *cmd, data=data)
 
 
-def wait(check, seconds):
+def wait(check: Callable[[], bool], seconds: float) -> bool:
     end = time.monotonic() + seconds
     while time.monotonic() < end:
         try:
@@ -46,7 +52,7 @@ def wait(check, seconds):
     raise TimeoutError("condition did not converge")
 
 
-def start(name, flags):
+def start(name: str, flags: Sequence[str]) -> None:
     ident = PREFIX + "-" + name
     args = [
         "run",
@@ -79,11 +85,11 @@ def start(name, flags):
     created.append(ident)
 
 
-def apply(obj):
+def apply(obj: dict[str, object]) -> None:
     kube("v0", "apply", "-f", "-", data=json.dumps(obj).encode())
 
 
-def body():
+def body() -> str:
     return (
         kube(
             "v0",
@@ -101,7 +107,7 @@ def body():
     )
 
 
-def targets():
+def targets() -> set[str]:
     data = json.loads(
         kube(
             "api",
@@ -121,7 +127,7 @@ def targets():
     }
 
 
-def choose_peer():
+def choose_peer() -> str:
     # Test the actually connected datastore member, not merely a configured one.
     peers = {
         docker(
@@ -151,7 +157,7 @@ def choose_peer():
     )
 
 
-def trial(mode):
+def trial(mode: str) -> None:
     kube(
         "v0",
         "patch",
@@ -163,13 +169,13 @@ def trial(mode):
     )
     wait(lambda: targets() == {"a"} and body() == "a", 90)
 
-    def uid():
+    def uid() -> bytes:
         return kube("v0", "get", "pod", "client", "-o", "jsonpath={.metadata.uid}")
 
     original_uid = uid()
     peer = choose_peer()
 
-    def sync_sample():
+    def sync_sample() -> str:
         try:
             lines = (
                 shell(
@@ -221,8 +227,9 @@ def trial(mode):
     try:
         from concurrent.futures import ThreadPoolExecutor
 
-        def see_watch():
-            for line in watch.stdout:
+        def see_watch() -> float:
+            # Popen uses stdout=PIPE in binary mode above.
+            for line in cast("Iterable[bytes]", watch.stdout):
                 obj = json.loads(line).get("object", {})
                 if obj.get("spec", {}).get("selector", {}).get("backend") == "b":
                     return time.monotonic()
@@ -242,7 +249,7 @@ def trial(mode):
                     '{"spec":{"selector":{"backend":"b"}}}',
                 )
 
-                def converged():
+                def converged() -> bool:
                     fresh = (
                         kube(
                             "api",
@@ -289,7 +296,7 @@ def trial(mode):
         print(f"{mode} after: {sync_sample()}", flush=True)
 
 
-def main():
+def main() -> None:
     if sys.argv[1:] != ["--local-disposable"]:
         raise SystemExit(
             "Requires --local-disposable; launches privileged containers in a dedicated local Docker VM."

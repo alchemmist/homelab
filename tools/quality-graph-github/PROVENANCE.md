@@ -1,10 +1,13 @@
-This is `packages/github` from alchemmist/quality-graph, with its MIT license.
-The last published source revision used here was `95762edd93bb3bfeb459f787c8fc71ef7154916c`.
-Local source revision `151aab3128b4cfa5219263797cee6abf546b9c81` changes the
-compiler's YAML emitter and publisher templates to meet strict lint while
-preserving loaded workflow values. Compare this directory directly against
-`git archive 95762edd93bb3bfeb459f787c8fc71ef7154916c:packages/github` in an
-upstream clone. The only packaging adaptation is removing the upstream uv
-workspace source declaration; the root project pins core instead. `uv sync
---locked` builds this provider from source. This is not the privileged publisher
-Action; its SHA remains separately pinned in `qg.yaml`.
+This is `packages/github` from [Quality Graph v0.2.4](https://github.com/alchemmist/quality-graph/tree/f5cef503eaf0734b9c9a0c6f88ee8206b2a6235d/packages/github), under its MIT license.
+Compare this directory with `git archive f5cef503eaf0734b9c9a0c6f88ee8206b2a6235d:packages/github`
+in an upstream clone.
+
+The local changes are for strict YAML serialization: the compiler uses double-quoted or
+literal scalars when needed, 80-column wrapping, and explicit document ends. The publisher
+templates use the matching scalar and document style. The local package also drops the
+upstream uv workspace source declaration. `uv run --locked qg generate` and `qg validate`
+use this provider; the CLI and core use the pinned PyPI distributions.
+
+This directory does not provide the Action executed by CI. In `qg.yaml`,
+`runtime.publisher-action` pins both privileged jobs to the upstream release commit.
+The read-only collector pin stays unchanged to preserve the base-governed graph digest.

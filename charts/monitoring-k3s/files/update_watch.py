@@ -8,24 +8,50 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable, Iterable, Mapping
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import TypedDict, override
+
+type Version = tuple[int, int, int]
+type Target = Mapping[str, str]
+type Images = Mapping[str, str | None]
+
+
+class Release(TypedDict, total=False):
+    """Fields used to rank GitHub releases and versioned image tags."""
+
+    draft: bool
+    prerelease: bool
+    tag_name: str
+
+
+class Sample(TypedDict):
+    """Labels and gauges for one update-watch target."""
+
+    app: str
+    title: str
+    current: str
+    latest: str
+    available: int
+    success: int
+
 
 VERSION_RE = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 UNSTABLE_RE = re.compile(r"(rc|alpha|beta|preview|dev|snapshot)", re.IGNORECASE)
 
 
-def parse_version(text):
+def parse_version(text: str | None) -> Version | None:
     match = VERSION_RE.search(text or "")
     if not match:
         return None
-    return tuple(int(part) for part in match.groups())
+    return int(match[1]), int(match[2]), int(match[3])
 
 
-def format_version(version):
+def format_version(version: Version) -> str:
     return ".".join(str(part) for part in version)
 
 
-def latest_stable(releases):
+def latest_stable(releases: Iterable[Release]) -> tuple[Version | None, str | None]:
     best = None
     best_tag = None
     for release in releases:
@@ -43,11 +69,11 @@ def latest_stable(releases):
     return best, best_tag
 
 
-def escape_label(value):
+def escape_label(value: object) -> str:
     return str(value).replace("\\", r"\\").replace("\n", r"\n").replace('"', r"\"")
 
 
-def fetch_releases(repo, timeout):
+def fetch_releases(repo: str, timeout: int) -> list[Release]:
     request = urllib.request.Request(
         f"https://api.github.com/repos/{repo}/releases?per_page=30",
         headers={
@@ -63,7 +89,7 @@ def fetch_releases(repo, timeout):
     return payload
 
 
-def searxng_image_tags(timeout):
+def searxng_image_tags(timeout: int) -> list[Release]:
     # Upstream publishes rolling date-SHA images, not GitHub Releases.
     url = "https://hub.docker.com/v2/repositories/searxng/searxng/tags?page_size=100&ordering=last_updated"
     with urllib.request.urlopen(url, timeout=timeout) as response:
@@ -79,7 +105,7 @@ def searxng_image_tags(timeout):
     ]
 
 
-def version_from_image(image):
+def version_from_image(image: str | None) -> Version | None:
     """Version embedded in a tag. Digest-only references have no tag."""
     if not image:
         return None
@@ -91,7 +117,7 @@ def version_from_image(image):
     return parse_version(ref[colon + 1 :])
 
 
-def installed_version(target, images):
+def installed_version(target: Target, images: Images | None) -> Version | None:
     image = None if images is None else images.get(target["id"])
     live = version_from_image(image)
     if live is not None:
@@ -99,12 +125,17 @@ def installed_version(target, images):
     return parse_version(str(target.get("current", "")))
 
 
-def evaluate(targets, fetch, timeout, images=None):
+def evaluate(
+    targets: Iterable[Target],
+    fetch: Callable[[str, int], Iterable[Release]],
+    timeout: int,
+    images: Images | None = None,
+) -> list[Sample]:
     samples = []
     for target in targets:
         app = target["id"]
         current = installed_version(target, images)
-        sample = {
+        sample: Sample = {
             "app": app,
             "title": target.get("title") or app,
             "current": format_version(current) if current else "",
@@ -134,7 +165,7 @@ def evaluate(targets, fetch, timeout, images=None):
     return samples
 
 
-def render_metrics(samples):
+def render_metrics(samples: Iterable[Sample]) -> str:
     lines = [
         "# HELP socrat_software_update_available Pinned version is older than the newest stable GitHub release.",
         "# TYPE socrat_software_update_available gauge",
@@ -166,14 +197,14 @@ class State:
         self.lock = threading.Lock()
         self.body = render_metrics([]).encode()
 
-    def update(self, samples):
+    def update(self, samples: Iterable[Sample]) -> None:
         """Regenerate the metrics body from fresh samples under the lock."""
         body = render_metrics(samples).encode()
         with self.lock:
             self.body = body
 
 
-def serve(state, port):
+def serve(state: State, port: int) -> None:
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
             if self.path != "/metrics":
@@ -188,14 +219,15 @@ def serve(state, port):
             self.end_headers()
             self.wfile.write(body)
 
-        def log_message(self, _fmt, *_args) -> None:
+        @override
+        def log_message(self, _fmt: str, *_args: object) -> None:
             return
 
     server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
     server.serve_forever()
 
 
-def workload_ref(target):
+def workload_ref(target: Target) -> tuple[str, str | None]:
     if target.get("deployment") and target.get("statefulset"):
         message = "ambiguous workload target"
         raise ValueError(message)
@@ -204,7 +236,7 @@ def workload_ref(target):
     return "deployments", target.get("deployment")
 
 
-def deployment_image(target, timeout):
+def deployment_image(target: Target, timeout: int) -> str | None:
     namespace = target.get("namespace")
     resource, name = workload_ref(target)
     container = target.get("container")
@@ -233,12 +265,13 @@ def deployment_image(target, timeout):
         payload = json.load(response)
     for item in payload["spec"]["template"]["spec"]["containers"]:
         if item.get("name") == container:
-            return item.get("image")
+            image: str | None = item.get("image")
+            return image
     message = f"container {container} not found on {namespace}/{name}"
     raise ValueError(message)
 
 
-def load_images(targets, timeout):
+def load_images(targets: Iterable[Target], timeout: int) -> dict[str, str | None]:
     images = {}
     for target in targets:
         if not (target.get("deployment") or target.get("statefulset")):
@@ -256,13 +289,13 @@ def load_images(targets, timeout):
     return images
 
 
-def main():
+def main() -> None:
     catalog = os.environ.get("UPDATE_WATCH_CATALOG", "/etc/update-watch/targets.json")
     interval = int(os.environ.get("UPDATE_WATCH_INTERVAL_SECONDS", "21600"))
     timeout = int(os.environ.get("UPDATE_WATCH_TIMEOUT_SECONDS", "20"))
     port = int(os.environ.get("UPDATE_WATCH_PORT", "8080"))
     with open(catalog, encoding="utf-8") as handle:
-        targets = json.load(handle)
+        targets: list[Target] = json.load(handle)
     state = State()
 
     def refresh() -> None:

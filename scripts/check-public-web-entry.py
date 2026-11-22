@@ -8,6 +8,7 @@ import ipaddress
 import json
 import subprocess
 import urllib.parse
+from http import HTTPStatus
 from pathlib import Path
 
 
@@ -25,12 +26,13 @@ def addresses(explicit=None):
             if isinstance(n, ast.Assign)
             and any(isinstance(t, ast.Name) and t.id == "ADDRESSES" for t in n.targets)
         )
+    entrance_count = 2
     if (
-        len(values) != 2
-        or len(set(values)) != 2
+        len(values) != entrance_count
+        or len(set(values)) != entrance_count
         or any(
-            ipaddress.ip_address(v).version != 4 or not ipaddress.ip_address(v).is_global
-            for v in values
+            not isinstance(address, ipaddress.IPv4Address) or not address.is_global
+            for address in map(ipaddress.ip_address, values)
         )
     ):
         raise ValueError("Exactly two distinct public IPv4 entrances required")
@@ -39,9 +41,9 @@ def addresses(explicit=None):
 
 def probe(case):
     """Perform the probe operation."""
-    host, ip, path, expected = case[:4]
-    method = case[4] if len(case) > 4 else "GET"
-    auth = case[5] if len(case) > 5 else "Bearer intentionally-invalid"
+    host, ip, path, expected, *options = case
+    method = options[0] if options else "GET"
+    auth = options[1] if len(options) > 1 else "Bearer intentionally-invalid"
     args = [
         "curl",
         "-sS",
@@ -77,7 +79,7 @@ def probe(case):
             "--data",
             "{}",
         ]
-    p = subprocess.run(args, text=True, capture_output=True, timeout=15)
+    p = subprocess.run(args, text=True, capture_output=True, timeout=15, check=False)
     statuses = [line.split()[1] for line in p.stdout.splitlines() if line.startswith("HTTP/")]
     status = int(statuses[-1]) if statuses else 0
     location = next(
@@ -92,7 +94,7 @@ def probe(case):
     good = p.returncode == 0 and (
         status in expected if isinstance(expected, (tuple, list)) else status == expected
     )
-    if expected == 302:
+    if expected == HTTPStatus.FOUND:
         if host == "grafana.socrat.alchemmist.xyz":
             good &= (
                 u.scheme in ("", "https")
