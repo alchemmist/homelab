@@ -112,6 +112,11 @@ def test_user_unit_converges_before_continuation_and_leaves_handlers_queued(desk
     assert dest.stat().st_mode & 0o777 == 0o644
     assert run(changed=False) == ["continue", "terminal"]
     assert run(check=True, changed=False) == []
+    dest.chmod(0o600)
+    assert run(check=True) == []
+    assert dest.stat().st_mode & 0o777 == 0o600
+    assert run() == ["reload", "continue", "terminal"]
+    assert dest.stat().st_mode & 0o777 == 0o644
 
 
 def test_failed_reload_blocks_later_tasks_and_retries_with_unchanged_bytes(desktop, tmp_path):
