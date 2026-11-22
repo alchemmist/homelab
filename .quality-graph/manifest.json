@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "9874649e6d1bfa42ae3c19e5b7f02434c5a5a2f49ebb5b977aff022b2594537b",
+  "graphDigest": "a6e0e90920ae34a50d1d67e8867c54d952302cae9c15dfdd9c2bef51ace5c9ca",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -88,10 +88,37 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run python -m scripts.quality.quote_inputs |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \\\n    --ignore-noqa --output-format concise --"
+        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \\\n    --ignore-noqa --output-format concise --"
       },
       "timeoutMinutes": 5,
       "title": "Python script and test quotes (Q000)"
+    },
+    {
+      "env": {},
+      "id": "deploy-i001",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs deploy/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n    --ignore-noqa --output-format concise --"
+      },
+      "timeoutMinutes": 5,
+      "title": "Owned deploy Python import order (I001)"
     },
     {
       "env": {},

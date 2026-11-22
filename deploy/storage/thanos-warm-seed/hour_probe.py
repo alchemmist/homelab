@@ -1,11 +1,14 @@
 """Exercise resolution-filtered S3 -> socrat-3 replication in disposable storage."""
 
-import json, re, sys
+import json
+import re
+import sys
 from pathlib import Path
+
 from start import BASE, create, kube
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "thanos-warm-drill"))
-from job import container, THANOS, PYTHON
+from job import PYTHON, THANOS, container
 
 VERIFY = """
 import hashlib,json,sys
