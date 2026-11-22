@@ -116,9 +116,11 @@ class DeadlineConnection:
         self.deadline_timer.start()
         try:
             cast("http.client.HTTPConnection", super()).connect()
-            connected_socket.append(self.sock)
+            sock = self.sock
+            connected_socket.append(sock)
             if self.deadline_expired or time.monotonic() - start >= UPSTREAM_SECONDS:
-                expire(cast("socket.socket", self.sock))
+                if sock is not None:
+                    expire(sock)
                 raise TimeoutError("upstream deadline")
         except BaseException:
             self.close()
@@ -606,6 +608,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 # ThreadingMixIn types its hooks for both stream and datagram servers.
 type ServerRequest = socket.socket | tuple[bytes, socket.socket]
 type ClientAddress = tuple[str, int] | tuple[str, int, int, int]
+type BindHost = str | bytes | bytearray
+type BindAddress = tuple[BindHost, int] | tuple[BindHost, int, int, int]
 
 
 class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
@@ -617,7 +621,7 @@ class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
 
     def __init__(
         self,
-        server_address: ClientAddress,
+        server_address: BindAddress,
         RequestHandlerClass: type[socketserver.BaseRequestHandler],
         bind_and_activate: bool = True,
     ) -> None:
