@@ -31,3 +31,13 @@ def test_staged_application_and_tls_quorum():
     assert v["networkPolicy"]["enabled"] and v["haproxy"]["networkPolicy"] == {"enabled": True}
     assert "default_backend" not in v["haproxy"]["customConfig"]
     assert v["redis"]["config"]["maxmemory-policy"] == "noeviction"
+
+
+def test_production_proxy_uses_only_external_coordination():
+    v = yaml.safe_load((ROOT / "deploy/platform/litellm/values.yaml").read_text())
+    assert v["proxy_config"]["general_settings"]["coordination_redis"] == {
+        "namespace": "litellm", "url": "os.environ/COORDINATION_REDIS_URL"}
+    assert not v["redis"]["enabled"] and not v["proxy_config"]["litellm_settings"].get("cache")
+    assert v["replicaCount"] == v["numWorkers"] == 1
+    assert not v["migrationJob"]["enabled"]
+    assert v["migrationJob"]["placementOnlyImage"] == v["image"]["repository"] + ":" + v["image"]["tag"]

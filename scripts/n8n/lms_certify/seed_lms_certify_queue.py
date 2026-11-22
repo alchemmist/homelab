@@ -7,7 +7,7 @@ from pathlib import Path
 import yaml
 
 root = (
-    Path(__file__).resolve().parents[2].parent
+    Path(__file__).resolve().parents[3].parent
     / "lms/content/courses/programming/blocks/basics/lessons/builtin-functions/tasks"
 )
 contracts = {

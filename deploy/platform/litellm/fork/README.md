@@ -21,4 +21,4 @@ are static `model_info.access_groups`, without wildcard routes. No virtual keys 
 updated on release. Current local/subscription model prices are zero: a dollar cap
 cannot limit token usage on zero-priced routes. Do not invent token prices.
 
-`revoke-coordination.patch` is a **candidate**, not part of the released image. It applies to `key_management_endpoints.py` at fork revision `a691e23abfac6dd0f2b69f9f5b4f714241f39ac4` (file SHA-256 `75fa3822dfc16ec8003760b63500e8086994e232adfed88fdd4d59872b3e9c6f`). It changes only post-delete cache eviction. The [isolated Redis canary](../../../../experiments/redis-common/README.md) passed with this module; publish and verify a digest before changing production values or the migration guard.
+`revoke-coordination.patch` records the released post-delete cache eviction fix. `build-revocation.sh` layers the checksum-verified module from fork `eb6e7f61` over the previous immutable image. Supply `FORK_CHECKOUT` (absolute checkout path) and the existing scoped push robot Docker config. The [platform receipt](../../../../docs/redis-platform.md) records the image-only acceptance and deployment; no overlay is used in production.

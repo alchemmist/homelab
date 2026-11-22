@@ -36,7 +36,10 @@ class AlertGraphInventoryTests(unittest.TestCase):
         """Every source variant links to a real panel containing its exact condition."""
         rows = json.loads((ROOT / "docs/monitoring/alert-graphs.inventory.json").read_text())
         # Includes Service-path divergence and distinct absent/down API scrapes.
-        expected_source_rule_count = 216
+        expected_source_rule_count = 218
+        assert {r["alert"] for r in rows if r["group"] == "redis-common"} == {
+            "SocratRedisCommonWriterUnavailable", "SocratRedisCommonRedundancyReduced",
+        }
         assert [r["owner"] for r in rows if r["alert"] == "LMSWebUnavailable"] == ["lms"]
         assert any(r["alert"] == "ThanosWarmWorkshopDiskLow" for r in rows)
         assert len(rows) == expected_source_rule_count

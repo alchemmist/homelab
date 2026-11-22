@@ -238,6 +238,10 @@
       "KubeStateMetricsShardsMissing": 5,
       "KubeStateMetricsWatchErrors": 7
     },
+    "alerts-e1ea8bfeb00b8e93": {
+      "SocratRedisCommonRedundancyReduced": 1,
+      "SocratRedisCommonWriterUnavailable": 3
+    },
     "alerts-e717d88c8dfac5eb": {
       "AlertmanagerClusterCrashlooping": 1,
       "AlertmanagerClusterDown": 3,

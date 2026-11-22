@@ -4,9 +4,9 @@ import json
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
-from lms_reviewed_batch import ORACLE_JS, SPECS
+from scripts.n8n.lms_certify.lms_reviewed_batch import ORACLE_JS, SPECS
 
-ROOT = Path(__file__).resolve().parents[2] / "docs/n8n/lms-certify"
+ROOT = Path(__file__).resolve().parents[3] / "docs/n8n/lms-certify"
 PROM = "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query"
 MODEL = "qwen3.8-27b"
 RUNNER = "http://REPLACE_RUNNER:9000/certification/check-suite"

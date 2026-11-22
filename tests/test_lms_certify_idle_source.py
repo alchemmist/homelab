@@ -153,3 +153,8 @@ def test_queue_predicate_refuses_incomplete_or_invalid_telemetry(prefix: str) ->
     passed = report["passed"]
     assert isinstance(passed, list)
     assert len(passed) == PREDICATE_CASE_COUNT
+
+
+def test_reviewed_graph_reducers_and_oracles() -> None:
+    """Exercise the committed workflow offline without contacting n8n or the model."""
+    command(["node", "tests/n8n/check_lms_certify_graph.cjs"])

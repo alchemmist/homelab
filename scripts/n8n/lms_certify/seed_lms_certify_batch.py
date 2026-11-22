@@ -4,10 +4,11 @@ import json
 from pathlib import Path
 
 import yaml
-from lms_reviewed_batch import SPECS
+
+from scripts.n8n.lms_certify.lms_reviewed_batch import SPECS
 
 root = (
-    Path(__file__).resolve().parents[2].parent
+    Path(__file__).resolve().parents[3].parent
     / "lms/content/courses/programming/blocks/basics/lessons"
 )
 

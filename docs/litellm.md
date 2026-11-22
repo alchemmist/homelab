@@ -58,7 +58,7 @@ The official `oci://ghcr.io/berriai/litellm-helm` chart is pinned to 1.105.1. A 
 
 The sole regular account is `anton.ingrish@gmail.com`, with role `proxy_admin` (full administrative access). Passwords are stored in the database and can be changed through the UI. `disable_env_credential_login: true` disables the shared environment/master-key UI login; `UI_USERNAME` and `UI_PASSWORD` are absent. The master key remains an administrative API credential. Create client keys in Virtual Keys, choose their allowed models, and set RPM/TPM limits as needed. Do not distribute the master key. Model costs are zero for local inference, so monetary budgets do not limit GPU usage.
 
-PostgreSQL 18.6 uses a retained 10Gi local-path PVC on socrat-0. This is a single-node database, not HA; local-path capacity is nominal. No backup schedule is configured yet. Redis is disabled for this single-replica deployment; revisit coordination before scaling replicas. Database credentials, master key and salt are generated once and retained in Kubernetes Secrets. Preserve the salt with the database when backing up or restoring.
+LiteLLM uses `pg-common/litellm` for persistent state and the [shared Redis platform](redis-platform.md) for cross-worker coordination. The external TLS writer uses a named ACL scoped to `litellm:*`; neither bundled Redis nor response caching is enabled. Production still uses one pod and one worker. Preserve the salt with the database when backing up or restoring. Redis is not a hard spend ceiling during a coordination outage.
 
 ## Current deployment ownership —16 November 2026
 
