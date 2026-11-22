@@ -92,7 +92,7 @@ resources:
     namespace: netbird-pilot
   spec:
     progressDeadlineSeconds: 600
-    replicas: 0
+    replicas: 1
     revisionHistoryLimit: 10
     selector:
       matchLabels:
@@ -112,6 +112,8 @@ resources:
           - --config
           - /etc/netbird/config.yaml
           env:
+          - {name: NB_SQL_MAX_OPEN_CONNS, value: "3"}
+          - {name: SSL_CERT_DIR, value: "/pg-ca:/etc/ssl/certs"}
           - name: NB_SETUP_PAT_ENABLED
             value: 'false'
           image: netbirdio/netbird-server:0.83.2@sha256:47e43b1b9e6343eb99d99a612513579111439dd016805912b0fae95ce802b908
@@ -158,6 +160,7 @@ resources:
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
           volumeMounts:
+          - {name: pg-ca, mountPath: /pg-ca, readOnly: true}
           - mountPath: /etc/netbird
             name: config
             readOnly: true
@@ -172,13 +175,14 @@ resources:
         securityContext: {}
         terminationGracePeriodSeconds: 60
         volumes:
+        - {name: pg-ca, configMap: {name: pg-critical-ca}}
         - name: config
           secret:
             defaultMode: 256
             items:
             - key: config.yaml
               path: config.yaml
-            secretName: netbird-runtime
+            secretName: netbird-runtime-pg
         - name: data
           persistentVolumeClaim:
             claimName: server-data
