@@ -21,6 +21,8 @@ spec:
       nodeSelector:
 {{ toYaml . | indent 8 }}
       {{- end }}
+      serviceAccountName: {{ .Release.Name }}
+      automountServiceAccountToken: false
       {{- if .Values.hostNetwork }}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
