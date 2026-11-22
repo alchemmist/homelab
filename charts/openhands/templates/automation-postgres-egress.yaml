@@ -1,0 +1,15 @@
+{{- if .Values.automationPostgresAccess }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: automation-postgres-egress}
+spec:
+  podSelector:
+    matchExpressions:
+      - {key: statefulset.kubernetes.io/pod-name, operator: In, values: [openhands-0]}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: postgres}}
+          podSelector: {matchLabels: {cnpg.io/cluster: pg-common}}
+      ports: [{port: 5432, protocol: TCP}]
+{{- end }}

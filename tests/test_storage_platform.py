@@ -115,6 +115,36 @@ class StoragePlatformTest(unittest.TestCase):
         assert "/dev/sdb1[/homelab/openhands-archives/cold-backups]" in guard
         assert "/dev/sdb1[/homelab/openhands-archives/upgrade-backups]" in guard
 
+    def test_containerd_guard_requires_both_stat_probes_to_succeed(self):
+        """Identical output is not proof of identity if stat failed."""
+        guard = ROOT / "ansible/files/socrat5-containerd-hdd-check"
+        with tempfile.TemporaryDirectory() as temp:
+            tools = Path(temp)
+            findmnt = tools / "findmnt"
+            findmnt.write_text(
+                "#!/bin/sh\ncase $4 in\n"
+                " /mnt/files) echo /dev/sdb1;;\n"
+                " */containerd) echo '/dev/sdb1[/homelab/runtime/containerd]';;\n"
+                " *-cold-backups) echo '/dev/sdb1[/homelab/openhands-archives/cold-backups]';;\n"
+                " *-upgrade-backups) echo '/dev/sdb1[/homelab/openhands-archives/upgrade-backups]';;\n"
+                " *) exit 1;;\nesac\n"
+            )
+            stat = tools / "stat"
+            stat.write_text('#!/bin/sh\necho 1:2\nif [ "$3" = "$FAIL_PATH" ]; then exit 42; fi\n')
+            for executable in (findmnt, stat):
+                executable.chmod(0o755)
+            for fail_path, status in (
+                ("", 0),
+                ("/var/lib/rancher/k3s/agent/containerd", 42),
+                ("/mnt/files/homelab/runtime/containerd", 42),
+            ):
+                result = subprocess.run(
+                    ["/bin/sh", str(guard)],
+                    env={"PATH": temp, "FAIL_PATH": fail_path},
+                    check=False,
+                )
+                assert result.returncode == status
+
     def test_inventory_matches_claim_namespace_not_only_name(self):
         spec = importlib.util.spec_from_file_location(
             "audit_storage", ROOT / "scripts/audit_storage.py"
