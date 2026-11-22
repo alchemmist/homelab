@@ -4,6 +4,13 @@ Start at `docs/README.md`. For a named service or alert, follow its direct route
 read `docs/platform/system-overview.md` only for a system overview. Before operational work,
 check `docs/platform/operational-boundaries.md` and the relevant runbook.
 
+## Language
+
+Use English for all project content you commit to this repository or publish on GitHub, regardless of the language of the original request.
+
+- **Git and tracked files:** Write commit subjects and bodies, branch and tag names, documentation, code comments, and all other project-authored text in English.
+- **GitHub:** Write pull request and issue titles and descriptions, comments, reviews, review replies, discussions, status updates, labels, and release notes in English.
+
 ## Pull requests
 
 Use the [ready-to-merge skill](.agents/skills/ready-to-merge/SKILL.md) when opening a PR or addressing review feedback.
