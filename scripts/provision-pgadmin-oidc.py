@@ -75,7 +75,7 @@ def inspect(api):
     return owner, settings, provider, app
 
 
-def validate(api, owner, settings, provider, app, journal):
+def validate(api, owner, settings, provider, app, journal, extra_groups=()):
     check(provider and app and journal and journal.get("status") == "active", "Partial identity or missing private journal; no adoption/reset")
     for key,value in settings.items():
         actual = provider.get(key)
@@ -86,12 +86,13 @@ def validate(api, owner, settings, provider, app, journal):
     check(secrets.compare_digest(provider.get("client_secret",""),journal["client_secret"]), "Client-secret drift; no rotation")
     check(app.get("provider") == provider["pk"] and all(app.get(k) == v for k,v in APP.items()), "Application drift")
     bindings = api.rows("policies/bindings/?target=" + str(app["pk"]))
-    check(len(bindings) == 1, "Unexpected application bindings")
-    b = bindings[0]
-    check(b.get("group") == owner["pk"] and not b.get("user") and not b.get("policy") and b.get("enabled") is True and not b.get("negate") and not b.get("failure_result"), "Owner-only admission binding drift")
+    expected = {owner["pk"], *extra_groups}
+    check(len(bindings) == len(expected) and {b.get("group") for b in bindings} == expected, "Unexpected application bindings")
+    for b in bindings:
+        check(not b.get("user") and not b.get("policy") and b.get("enabled") is True and not b.get("negate") and not b.get("failure_result"), "Admission binding drift")
 
 
-def main(namespace="postgres"):
+def main(namespace="postgres", extra_bindings=lambda api, app: {}):
     slug = APP["slug"]
     secret_name = slug + "-oidc"
     p = argparse.ArgumentParser(description=__doc__)
@@ -116,13 +117,14 @@ def main(namespace="postgres"):
         journal = json.loads(file.read_text())
     api = iam.API(a.credentials)
     owner, settings, provider, app = inspect(api)
-    if provider or app: validate(api,owner,settings,provider,app,journal)
+    extra = extra_bindings(api, app) if app else {}
+    if provider or app: validate(api,owner,settings,provider,app,journal,extra.values())
     else: check(journal is None, "Private journal without live identity; stop")
     context = {"application":APP,"provider":settings,"owner_group":owner["pk"],"existing":bool(provider),
                "tool_sha256":hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
     digest = hashlib.sha256(json.dumps(context,sort_keys=True).encode()).hexdigest()
     if not a.apply:
-        print(json.dumps({"plan_hash":digest,"creates":0 if provider else 3,"allowed_group":"homelab-owner","existing_identities_modified":False}))
+        print(json.dumps({"plan_hash":digest,"creates":0 if provider else 3,"allowed_groups":["homelab-owner", *extra],"existing_identities_modified":False}))
         return
     check(a.approve_plan_hash == digest, "Exact fresh plan approval required")
     if not provider:
@@ -161,7 +163,7 @@ def main(namespace="postgres"):
             check(secrets.compare_digest(base64.b64decode(old.get("data",{}).get(name,"")),value.encode()), "Runtime Secret drift; no silent rotation")
     else:
         subprocess.run(["kubectl","--context","Socrat","create","-f","-"],input=json.dumps(payload).encode(),stdout=subprocess.DEVNULL,check=True)
-    print(slug + " OIDC ready: existing owner group only; OIDC Secret delivered; values withheld")
+    print(slug + " OIDC ready: validated group admission; OIDC Secret delivered; values withheld")
 
 
 if __name__ == "__main__":

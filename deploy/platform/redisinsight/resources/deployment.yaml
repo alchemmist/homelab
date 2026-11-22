@@ -68,6 +68,7 @@ spec:
             - --oidc-email-claim=sub
             - --oidc-groups-claim=groups
             - --allowed-group=homelab-owner
+            - --allowed-group=redisinsight-readers
             - --email-domain=*
             - --code-challenge-method=S256
             - --reverse-proxy=true
