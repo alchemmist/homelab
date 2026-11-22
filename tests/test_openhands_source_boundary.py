@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import hashlib
 import importlib.util
 import json
 import subprocess
@@ -148,18 +147,11 @@ def _assert_owner_inventory(documents: list[dict[str, object]]) -> None:
     """Check the explicit owner inventory without executing its source."""
     expected = {
         ("Namespace", "", "openhands"),
-        ("ConfigMap", "openhands", "mutation-pilot-code"),
         ("ConfigMap", "openhands", "pi-monori-code"),
-        ("ConfigMap", "openhands", "mutation-report-intake"),
-        ("PersistentVolumeClaim", "openhands", "mutation-report-intake"),
-        ("Service", "openhands", "mutation-pilot"),
-        ("Service", "openhands", "mutation-report-intake"),
         ("Deployment", "openhands", "pi-monori-author"),
         ("Deployment", "openhands", "pi-monori-judge"),
-        ("Deployment", "openhands", "mutation-report-intake"),
         ("NetworkPolicy", "openhands", "pi-monori-judge-offline"),
-        ("NetworkPolicy", "openhands", "mutation-pilot-ticks"),
-        ("NetworkPolicy", "openhands", "mutation-report-intake"),
+        ("NetworkPolicy", "openhands", "automation-postgres-egress"),
         ("ResourceQuota", "openhands", "openhands-budget"),
         ("ServiceAccount", "openhands", "openhands"),
         ("StatefulSet", "openhands", "openhands"),
@@ -230,11 +222,10 @@ def _assert_owner_pods(documents: list[dict[str, object]], *, continuation: bool
         role = _get(document, "metadata", "name")
         assert isinstance(role, str)
         names = {
-            "openhands": ["agent-canvas", "mutation-pilot"]
+            "openhands": ["agent-canvas"]
             + (["iteration-continuation"] if continuation else []),
             "pi-monori-author": ["sandbox", "relay"],
             "pi-monori-judge": ["sandbox"],
-            "mutation-report-intake": ["intake"],
             "monori-publisher": ["publisher"],
             "openhands-oidc": ["oauth2-proxy"],
             "openhands-oidc-sessions": ["redis"],
@@ -306,18 +297,23 @@ def _assert_owner_canvas_extensions(
         },
     ]
     mounts = _list(containers[0]["volumeMounts"])
-    assert mounts[:2] == overlay, "SDK overlay mount boundary changed"
-    pilot = containers[1]
-    assert pilot["volumeMounts"] == fixture["canvasPilotMounts"], "Pilot authority changed"
-    assert pilot["command"] == ["python", "-IBu", "/code/loop.py"]
-    revision = hashlib.sha256(
-        (ROOT / "charts/openhands/files/pilot/loop.py").read_bytes()
-    ).hexdigest()
-    assert pilot["env"] == [{"name": "PILOT_CODE_REVISION", "value": revision + "/v2"}]
-    assert "envFrom" not in pilot
+    assert mounts[:3] == [{"name": "pg-ca", "mountPath": "/pg-ca", "readOnly": True}, *overlay], (
+        "Database CA or SDK overlay mount boundary changed"
+    )
+    # Check sources and uniqueness: a second literal URL must not override the Secret.
+    required = {
+        "AUTOMATION_DB_URL": {"valueFrom": {"secretKeyRef": {"name": "automations-postgres", "key": "url"}}},
+        "PGSSLROOTCERT": {"value": "/pg-ca/ca.crt"},
+        "AUTOMATION_DB_POOL_SIZE": {"value": "3"},
+        "AUTOMATION_DB_MAX_OVERFLOW": {"value": "1"},
+        "AUTOMATION_RUN_MIGRATIONS_ON_STARTUP": {"value": "false"},
+    }
+    env = [_mapping(entry) for entry in _list(containers[0]["env"])]
+    for name, source in required.items():
+        assert [v for v in env if v["name"] == name] == [{"name": name, **source}], name
     if not continuation:
         return
-    sidecar = containers[2]
+    sidecar = containers[1]
     assert sidecar["command"] == ["python", "-IBu", "-c"]
     assert sidecar["args"] == [_embedded("files/continue_iterations.py")]
     assert sidecar["env"] == [
@@ -535,7 +531,7 @@ def _assert_owner_core_projection(documents: list[dict[str, object]]) -> None:
     plain_pod.pop("volumes")
     plain_pod.pop("initContainers")
     canvas = _mapping(containers[0])
-    canvas["volumeMounts"] = mounts[2:]
+    canvas["volumeMounts"] = mounts[3:]
     plain_pod["containers"] = [canvas]
     template["spec"] = plain_pod
     spec["template"] = template
@@ -567,24 +563,14 @@ def _assert_pilot_boundaries(documents: list[dict[str, object]]) -> None:
                 if container_name == "sandbox"
                 else []
             )
-    for section, kind in [("policies", "NetworkPolicy"), ("services", "Service")]:
-        for name, expected in _mapping(fixture[section]).items():
-            assert _named(documents, kind, name)["spec"] == expected
+    for name, expected in _mapping(fixture["policies"]).items():
+        assert _named(documents, "NetworkPolicy", name)["spec"] == expected
     boundary = _named(documents, "NetworkPolicy", "openhands-boundary")
     assert _get(boundary, "spec", "podSelector") == {
         "matchExpressions": [
             {"key": "app", "operator": "NotIn", "values": ["openhands-backup-pre142"]},
             {"key": "app", "operator": "NotIn", "values": ["pi-monori-judge"]},
         ]
-    }
-    claim = _named(documents, "PersistentVolumeClaim", "mutation-report-intake")
-    assert _get(claim, "metadata", "annotations") == {
-        "argocd.argoproj.io/sync-options": "Prune=false"
-    }
-    assert claim["spec"] == {
-        "accessModes": ["ReadWriteOnce"],
-        "storageClassName": "local-path",
-        "resources": {"requests": {"storage": "128Mi"}},
     }
 
 
@@ -636,6 +622,36 @@ def test_owner_overrides_render_without_cluster_or_public_ingress_authority(
     assert _mapping(namespace["labels"])["pod-security.kubernetes.io/enforce"] == "restricted"
     policy = _mapping(_named(rendered, "NetworkPolicy", "openhands-boundary")["spec"])
     assert policy["policyTypes"] == ["Ingress", "Egress"]
+
+
+@pytest.mark.parametrize(
+    ("name", "replacement"),
+    [
+        ("AUTOMATION_DB_URL", {"value": "sqlite:///fallback"}),
+        ("PGSSLROOTCERT", {"value": "/tmp/untrusted"}),
+        ("AUTOMATION_RUN_MIGRATIONS_ON_STARTUP", {"value": "true"}),
+    ],
+)
+def test_database_connection_rejects_changed_source(
+    rendered: list[dict[str, object]], name: str, replacement: dict[str, str]
+) -> None:
+    """A literal URL, altered CA or startup DDL must not pass the owner contract."""
+    _assert_boundary(rendered)
+    documents = copy.deepcopy(rendered)
+    owner = _one(documents, "StatefulSet")
+    canvas = _mapping(_list(_pod(documents)["containers"])[0])
+    index, = [i for i, entry in enumerate(_list(canvas["env"])) if _get(entry, "name") == name]
+    documents[documents.index(owner)] = _mapping(_replace_path(
+        owner, ("spec", "template", "spec", "containers", 0, "env", index),
+        {"name": name, **replacement},
+    ))
+    with pytest.raises(AssertionError, match=name):
+        _assert_boundary(documents)
+
+
+def test_retired_pilot_switch_cannot_restore_any_authority() -> None:
+    """A stale owner override must not reintroduce the pilot, its ticket, or intake."""
+    _assert_boundary(_render("--set", "monoriPilot=true"))
 
 
 def test_openhands_mcp_inventory_is_explicitly_no_client() -> None:
@@ -753,13 +769,13 @@ def _violation_target(
         "overlay-write": (
             "openhands",
             "StatefulSet",
-            ("spec", "template", "spec", "containers", 0, "volumeMounts", 0, "readOnly"),
+            ("spec", "template", "spec", "containers", 0, "volumeMounts", 1, "readOnly"),
             False,
         ),
-        "session-write": (
+        "database-ca-write": (
             "openhands",
             "StatefulSet",
-            ("spec", "template", "spec", "containers", 1, "volumeMounts", 5, "readOnly"),
+            ("spec", "template", "spec", "containers", 0, "volumeMounts", 0, "readOnly"),
             False,
         ),
         "publisher-write": (
@@ -775,12 +791,7 @@ def _violation_target(
             "model",
         ),
         "judge-egress": ("pi-monori-judge-offline", "NetworkPolicy", ("spec", "egress"), [{}]),
-        "intake-selector": (
-            "mutation-report-intake",
-            "Service",
-            ("spec", "selector", "app"),
-            "pi-monori-author",
-        ),
+        "database-egress": ("automation-postgres-egress", "NetworkPolicy", ("spec", "egress"), [{}]),
         "publisher-token": (
             "monori-publisher",
             "Deployment",
@@ -813,13 +824,13 @@ def _violation_target(
         "oidc-bypass",
         "public-backend",
         "overlay-write",
-        "session-write",
+        "database-ca-write",
         "publisher-write",
         "backup-volume-write",
         "backup-mount-write",
         "relay-secret-in-author",
         "judge-egress",
-        "intake-selector",
+        "database-egress",
         "publisher-token",
         "redis-egress",
         "duplicate-identity",
@@ -862,7 +873,7 @@ def test_opt_in_continuation_rejects_writable_credentials_and_registries(mount: 
     documents[documents.index(stateful)] = _mapping(
         _replace_path(
             stateful,
-            ("spec", "template", "spec", "containers", 2, "volumeMounts", index, "readOnly"),
+            ("spec", "template", "spec", "containers", 1, "volumeMounts", index, "readOnly"),
             replacement=False,
         )
     )
