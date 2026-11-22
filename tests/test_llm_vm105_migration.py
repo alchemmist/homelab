@@ -190,7 +190,7 @@ def obj(docs: Iterable[dict[str, object]], kind: str, name: str) -> dict[str, ob
 class FourAppMigrationTests(unittest.TestCase):
     """Offline contracts for the four-app vm105 placement handoff."""
 
-    def test_stateless_placement_does_not_move_umami_database(self) -> None:
+    def test_stateless_placement_without_local_umami_database(self) -> None:
         """Place the apps on VM105 without reviving the retired local DB or mounting its data."""
         for name in ["umami", "searxng"]:
             d = render(name)
