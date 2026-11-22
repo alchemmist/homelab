@@ -8,7 +8,9 @@ The operator changed the integration scope: PR182 sets up CI and integrates revi
 
 ## Active CI scope
 
-CI runs `graph`, followed by `yaml`, `secrets`, `javascript`, `ownership`, `docker`, `workflow`, `tests-fast`, `scripts-q000`, `shell` and `rustfs-return-types`. The latter blocks missing public return annotations (Ruff
+CI runs `graph` (including the blocking strict configuration and suppression guard),
+followed by `yaml`, `scripts-q000`, `secrets`, `javascript`, `ownership`, `docker`, `workflow`,
+`tests-fast`, `shell` and `rustfs-return-types`. The latter blocks missing public return annotations (Ruff
 `ANN201`) in `services/rustfs_gateway/`; the full Python check remains available locally.
 `yaml` runs the full YAML check, including generated workflows, and collects `reports/yaml.json`.
 Ownership runs six offline checks plus their regression suites; the Ansible
@@ -60,7 +62,7 @@ Independent fast nodes collect failures together. Ownership is a real source-con
 
 ## Exceptions: small, explicit, not a debt waiver
 
-- Ruff ignores only four documented conflicting rule choices: D203/D213/ISC001/COM812. Test directories (`test/` and `tests/`) do not require method docstrings (D102); `tests/` also allows S101 because pytest rewrites assertions. Other test/style/security findings are not ignored.
+- Ruff globally ignores only D203/D213/ISC001/COM812. Behavior-named pytest functions and unittest methods do not need redundant docstrings in [reviewed test module scopes](strict-policy.md#python). This does not exempt module/class documentation or production code. The existing `tests/` assertion exception (S101) is unchanged.
 - YAML key-ordering conflicts with semantic Ansible task ordering. Compatible implicit-null and quoted-string checks are enabled. Cross-schema truthy key handling preserves GitHub `on`.
 - Installed Ansible/Kubernetes optional rules are either enabled or have precise applicability/architecture reasons in `strict-policy.md` and `strict-policy.json`; replica/scheduler/single-writer identities are not rewritten to satisfy arbitrary optional rules.
 - Hadolint's single DL3064 false-positive exception binds one exact public ENV line. Reviewed non-secret contexts are immutable and exact, not secret waivers. Drift fails.
