@@ -11,7 +11,9 @@
       - matchFields: [{key: metadata.name, operator: In, values: [socrat-1]}]
   tasks:
     - name: Require all four nodes to be Ready before admission
-      ansible.builtin.command: kubectl wait --for=condition=Ready node/socrat-0 node/socrat-1 node/socrat-2 node/socrat-3 --timeout=60s
+      ansible.builtin.command: >-
+        kubectl wait --for=condition=Ready node/socrat-0 node/socrat-1 node/socrat-2 node/socrat-3
+        --timeout=60s
       changed_when: false
 
     - name: Inspect Syncthing placement
@@ -23,7 +25,8 @@
       ansible.builtin.assert:
         that:
           - >-
-            (worker_syncthing.stdout | from_json).spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms
+            (worker_syncthing.stdout |
+            from_json).spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms
             == worker_syncthing_terms
           - (worker_syncthing.stdout | from_json).status.numberReady == 2
 
@@ -35,9 +38,12 @@
     - name: Remove the bootstrap scheduling restriction
       ansible.builtin.command: kubectl taint node socrat-3 homelab.io/bootstrap:NoSchedule-
       when: >-
-        'homelab.io/bootstrap' in ((worker_admission_node.stdout | from_json).spec.taints | default([]) | map(attribute='key') | list)
+        'homelab.io/bootstrap' in ((worker_admission_node.stdout | from_json).spec.taints |
+        default([]) | map(attribute='key') | list)
 
     - name: Confirm all four nodes are Ready
-      ansible.builtin.command: kubectl wait --for=condition=Ready node/socrat-0 node/socrat-1 node/socrat-2 node/socrat-3 --timeout=60s
+      ansible.builtin.command: >-
+        kubectl wait --for=condition=Ready node/socrat-0 node/socrat-1 node/socrat-2 node/socrat-3
+        --timeout=60s
       changed_when: false
 ...

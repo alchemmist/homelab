@@ -1,43 +1,19 @@
 ---
-applicationDatabaseUsername: homelab_kuma_app
-image: louislam/uptime-kuma:2.5.7
-replicaCount: 0
-database:
-  replicaCount: 0
-  # Provision once outside GitOps; never regenerate live DB credentials on sync.
-  bootstrapSecret: false
-  enabled: true
-  image: mariadb:11.4
-  nodeName: socrat-0
-  serviceName: uptime-kuma-db
-  database: uptime_kuma
-  username: uptime_kuma
-  existingSecret: uptime-kuma-db
-  passwordKey: password
-  rootPasswordKey: root-password
-  hostPath: /srv/uptime-kuma-mariadb
-hostPath: /srv/uptime-kuma
 host: status.alchemmist.xyz
 tlsSecret: uptime-kuma-tls
 clusterIssuer: letsencrypt-http01
-resources:
-  requests:
-    cpu: 50m
-    memory: 128Mi
-  limits:
-    memory: 512Mi
-
 # Public access is owned by this application, not an aggregate Application.
 publicEntry:
   issuer: letsencrypt-http01
   routes:
-  - name: kuma-admin
-    host: kuma.socrat.alchemmist.xyz
-    namespace: uptime-kuma
-    service: uptime-kuma
-    port: 80
-    authorization: native-login
+    - name: kuma-admin
+      host: kuma.socrat.alchemmist.xyz
+      namespace: uptime-kuma
+      service: uptime-kuma
+      port: 80
+      authorization: native-login
   kumaPolicyProxy:
     enabled: true
-    image: docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311
+    image:
+      docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311
 ...

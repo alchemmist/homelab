@@ -14,99 +14,130 @@ profiles:
     runner: ubuntu-24.04
     timeout-minutes: 5
     setup:
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        persist-credentials: 'false'
-    - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-    - run: uv sync --locked
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: "false"
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - run: uv sync --locked
   infrastructure:
     runner: ubuntu-24.04
     timeout-minutes: 5
     setup:
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        persist-credentials: 'false'
-    - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-    - run: uv sync --locked
-    - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
-      with:
-        version: v3.19.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: "false"
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - run: uv sync --locked
+      - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
+        with:
+          version: v3.19.0
   quality-helm:
     runner: ubuntu-24.04
     timeout-minutes: 10
     setup:
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        persist-credentials: 'false'
-        fetch-depth: '0'
-    - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-    - run: uv sync --locked
-    - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
-      with:
-        version: v3.19.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: "false"
+          fetch-depth: "0"
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - run: uv sync --locked
+      - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
+        with:
+          version: v3.19.0
   quality-docker:
     extends: default
     timeout-minutes: 5
     setup:
-    - run: uv run python scripts/quality/install_tools.py --tools hadolint
+      - run: uv run python scripts/quality/install_tools.py --tools hadolint
   quality-javascript:
     extends: default
     setup:
-    - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
-      with:
-        node-version: 24.11.1
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
+        with:
+          node-version: 24.11.1
   quality-cluster:
     extends: quality-helm
     timeout-minutes: 15
     setup:
-    - run: uv run python scripts/quality/install_tools.py --tools kind kubectl
+      - run: uv run python scripts/quality/install_tools.py --tools kind kubectl
   quality-shell:
     extends: default
     setup:
-    - run: uv run python scripts/quality/install_tools.py --tools shellcheck
+      - run: uv run python scripts/quality/install_tools.py --tools shellcheck
+      - run: .quality-tools/bin/shellcheck --version
   quality-delivery:
     extends: default
     setup:
-    - run: uv run python scripts/quality/install_tools.py --tools actionlint shellcheck
+      - run: uv run python scripts/quality/install_tools.py --tools actionlint shellcheck
   quality-secrets:
     extends: default
     setup:
-    - run: uv run python scripts/quality/install_tools.py --tools gitleaks
+      - run: uv run python scripts/quality/install_tools.py --tools gitleaks
   quality-manifests:
     extends: quality-helm
     setup:
-    - run: uv run python scripts/quality/install_tools.py --tools kubeconform kube-linter
+      - run: uv run python scripts/quality/install_tools.py --tools kubeconform kube-linter
   quality-ansible:
     extends: default
     setup:
-    - run: uv run python scripts/quality/install_collections.py
+      - run: uv run python scripts/quality/install_collections.py
+  quality-fast:
+    extends: quality-helm
+    setup:
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
+        with:
+          node-version: 24.11.1
+      - run: uv run python scripts/quality/install_tools.py --tools hadolint
   quality-integration:
     extends: quality-helm
     setup:
-    - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
-      with:
-        node-version: 24.11.1
-    - run: uv run python scripts/quality/install_tools.py --tools promtool
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
+        with:
+          node-version: 24.11.1
+      - run: uv run python scripts/quality/install_tools.py --tools promtool
 nodes:
   graph:
     title: Graph integrity
     profile: default
-    run: 'uv run qg validate
-
-      uv run python scripts/quality/contracts.py'
+    run: |-
+      set -euo pipefail
+      uv run qg validate
+      uv run python scripts/quality/contracts.py
+      uv run python scripts/quality/strict_guard.py
+      uv run pytest -q tests/test_quality_python_policy.py
     policy: &id001
       blocking: true
       approvals:
         findings: false
         files: false
         node: false
+  yaml:
+    title: YAML structure
+    profile: default
+    run: uv run python scripts/quality/lint.py yaml
+    policy: *id001
+    needs:
+      - graph
+    results:
+      native: reports/yaml.json
+  scripts-q000:
+    title: Python script and test quotes (Q000)
+    profile: default
+    needs:
+      - graph
+    policy: *id001
+    run: |-
+      set -euo pipefail
+      uv run python -m scripts.quality.quote_inputs |
+        xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \
+          --ignore-noqa --output-format concise --
   secrets:
     title: Credential hygiene
     profile: quality-secrets
     run: uv run python scripts/quality/lint.py secrets
     policy: *id001
     needs:
-    - graph
+      - graph
     results:
       native: reports/secrets.json
   javascript:
@@ -115,14 +146,14 @@ nodes:
     run: uv run python scripts/quality/lint.py javascript
     policy: *id001
     needs:
-    - graph
+      - graph
     results:
       native: reports/javascript.json
   ownership:
     title: Ownership contracts
     profile: quality-helm
     needs:
-    - graph
+      - graph
     policy: *id001
     run: |-
       set -euo pipefail
@@ -146,7 +177,7 @@ nodes:
     title: Container recipes
     profile: quality-docker
     needs:
-    - graph
+      - graph
     policy: *id001
     run: |
       set -euo pipefail
@@ -154,24 +185,44 @@ nodes:
       uv run python scripts/quality/lint.py docker
     results:
       native: reports/docker.json
+  tests-fast:
+    title: Unit tests
+    profile: quality-fast
+    needs:
+      - graph
+    policy: *id001
+    run: uv run python scripts/quality/tests.py fast --isolate-network
+    results:
+      junit: reports/tests-fast.xml
   workflow:
     title: Delivery security
     profile: quality-delivery
     needs:
-    - graph
+      - graph
     policy: *id001
     run: uv run python scripts/quality/lint.py workflow
     env:
       GH_TOKEN: ${{ github.token }}
     results:
       native: reports/workflow.json
+  shell:
+    title: Shell safety
+    profile: quality-shell
+    needs:
+      - graph
+    policy: *id001
+    run: uv run python scripts/quality/lint.py shell
+    results:
+      native: reports/shell.json
   rustfs-return-types:
     title: RustFS gateway public return types
     profile: default
     needs:
-    - graph
+      - graph
     policy: *id001
-    run: uv run ruff check --config quality/ruff.toml --select ANN201 --ignore-noqa services/rustfs_gateway
+    run: >-
+      uv run ruff check --config quality/ruff.toml --select ANN201 --ignore-noqa
+      services/rustfs_gateway
   dependencies:
     title: Dependency audit
     profile: default

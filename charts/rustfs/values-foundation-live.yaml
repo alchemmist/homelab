@@ -10,7 +10,8 @@ gateway:
   enabled: true
   namespace: identity
   imagePullSecrets: [{name: rustfs-harbor-pull}]
-  image: harbor.socrat.alchemmist.xyz/homelab/rustfs-gateway@sha256:9d884a7bd593fd6852db2da0af3f5117862f4a3c1e70e1928fd6b77ab10988ac
+  image:
+    harbor.socrat.alchemmist.xyz/homelab/rustfs-gateway@sha256:9d884a7bd593fd6852db2da0af3f5117862f4a3c1e70e1928fd6b77ab10988ac
 browserRoutes:
   enabled: true
   unifiedOrigin: true
@@ -20,7 +21,7 @@ authViaTraefik: true
 # socrat-0 allocatable 32545144Ki; existing requests 29392Mi.
 resources:
   requests: {cpu: 500m, memory: 2Gi}
-  limits: {cpu: '2', memory: 4Gi}
+  limits: {cpu: "2", memory: 4Gi}
 
 catsMedia:
   enabled: true

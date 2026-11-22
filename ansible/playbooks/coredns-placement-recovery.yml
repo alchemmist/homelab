@@ -7,9 +7,10 @@
   any_errors_fatal: true
   become: true
   vars: &connection
-    ansible_host: '{{ inventory_hostname }}'
-    ansible_port: '{{ 2223 if inventory_hostname == "socrat-1" else 2222 }}'
-    ansible_ssh_common_args: '-o ProxyJump=none -o StrictHostKeyChecking=yes'
+    ansible_host: "{{ inventory_hostname }}"
+    ansible_port: >-
+      {{ 2223 if inventory_hostname == "socrat-1" else 2222 }}
+    ansible_ssh_common_args: -o ProxyJump=none -o StrictHostKeyChecking=yes
     recovery_root: /var/lib/homelab-recovery/20261112-coredns-placement
     manifest_path: /var/lib/rancher/k3s/server/manifests/homelab-coredns-ha.yaml
     expected_preimage: 5da0bff4778dcad486884a25e4afd8f3515d53a26d0ad172f50691a212e75130
@@ -20,51 +21,69 @@
           - candidate.kind == 'Deployment'
           - candidate.metadata == {'name':'coredns', 'namespace':'kube-system'}
           - candidate.spec.replicas == before.spec.replicas == 2
-          - candidate.spec.strategy == {'type':'RollingUpdate', 'rollingUpdate':{'maxSurge':1, 'maxUnavailable':0}}
+          - >-
+            candidate.spec.strategy == {'type':'RollingUpdate', 'rollingUpdate':{'maxSurge':1,
+            'maxUnavailable':0}}
           - candidate.spec.template.metadata == before.spec.template.metadata
-          - (candidate.spec | dict2items | rejectattr('key', 'in', ['strategy','template']) | list) == (before.spec | dict2items | rejectattr('key', 'in', ['strategy','template']) | list)
-          - (candidate.spec.template.spec | dict2items | rejectattr('key', 'equalto', 'affinity') | list) == (before.spec.template.spec | dict2items | rejectattr('key', 'equalto', 'affinity') | list)
-          - candidate.spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms == [{'matchExpressions':[{'key':'kubernetes.io/hostname','operator':'In','values':['socrat-0','socrat-3']}]}]
-          - candidate.spec.template.spec.affinity.keys() | list == before.spec.template.spec.affinity.keys() | list
+          - >-
+            (candidate.spec | dict2items | rejectattr('key', 'in', ['strategy','template']) | list)
+            == (before.spec | dict2items | rejectattr('key', 'in', ['strategy','template']) | list)
+          - >-
+            (candidate.spec.template.spec | dict2items | rejectattr('key', 'equalto', 'affinity') |
+            list) == (before.spec.template.spec | dict2items | rejectattr('key', 'equalto',
+            'affinity') | list)
+          - >-
+            candidate.spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms
+            ==
+            [{'matchExpressions':[{'key':'kubernetes.io/hostname','operator':'In','values':['socrat-0','socrat-3']}]}]
+          - >-
+            candidate.spec.template.spec.affinity.keys() | list ==
+            before.spec.template.spec.affinity.keys() | list
           - patch | length == 4
           - patch[0] == {'op':'test','path':'/metadata/uid','value':before.metadata.uid}
           - patch[1] == {'op':'test','path':'/spec','value':before.spec}
-          - patch[2] == {'op':'replace','path':'/spec/template/spec/affinity','value':candidate.spec.template.spec.affinity}
+          - >-
+            patch[2] ==
+            {'op':'replace','path':'/spec/template/spec/affinity','value':candidate.spec.template.spec.affinity}
           - patch[3] == {'op':'replace','path':'/spec/strategy','value':candidate.spec.strategy}
       vars:
-        before: '{{ lookup("file", coredns_recovery_private_dir + "/coredns-live-before.json") | from_json }}'
-        candidate: '{{ lookup("file", coredns_recovery_private_dir + "/candidate.json") | from_json }}'
-        patch: '{{ lookup("file", coredns_recovery_private_dir + "/patch.json") | from_json }}'
+        before: >-
+          {{ lookup("file", coredns_recovery_private_dir + "/coredns-live-before.json") | from_json
+          }}
+        candidate: >-
+          {{ lookup("file", coredns_recovery_private_dir + "/candidate.json") | from_json }}
+        patch: >-
+          {{ lookup("file", coredns_recovery_private_dir + "/patch.json") | from_json }}
       no_log: true
     - ansible.builtin.stat:
-        path: '{{ manifest_path }}'
+        path: "{{ manifest_path }}"
         checksum_algorithm: sha256
       register: preimage
     - ansible.builtin.stat:
-        path: '{{ recovery_root }}'
+        path: "{{ recovery_root }}"
       register: receipt
     - ansible.builtin.assert:
         that:
           - preimage.stat.checksum == expected_preimage
           - not receipt.stat.exists
-        fail_msg: 'STOP: preimage drift or previous attempt; inspect before retry.'
+        fail_msg: "STOP: preimage drift or previous attempt; inspect before retry."
     - ansible.builtin.file:
-        path: '{{ recovery_root }}'
+        path: "{{ recovery_root }}"
         state: directory
         owner: root
         group: root
-        mode: '0700'
+        mode: "0700"
     - ansible.builtin.copy:
-        src: '{{ manifest_path }}'
-        dest: '{{ recovery_root }}/before.yaml'
+        src: "{{ manifest_path }}"
+        dest: "{{ recovery_root }}/before.yaml"
         remote_src: true
-        mode: '0600'
+        mode: "0600"
     - ansible.builtin.copy:
-        src: '{{ coredns_recovery_private_dir }}/candidate.json'
-        dest: '{{ recovery_root }}/candidate.json'
+        src: "{{ coredns_recovery_private_dir }}/candidate.json"
+        dest: "{{ recovery_root }}/candidate.json"
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
 
 - name: Apply only the UID and full-spec compare-and-swap placement patch
   hosts: socrat-0
@@ -84,7 +103,8 @@
           - coredns
           - --type=json
           - -p
-          - '{{ lookup("file", coredns_recovery_private_dir + "/patch.json") }}'
+          - >-
+            {{ lookup("file", coredns_recovery_private_dir + "/patch.json") }}
       no_log: true
       changed_when: true
 
@@ -100,13 +120,22 @@
         argv:
           - python3
           - -c
-          - |
+          - >
             import pathlib,hashlib,os
+
             old=pathlib.Path('{{ manifest_path }}')
+
             new=pathlib.Path('{{ recovery_root }}/candidate.json')
-            assert hashlib.sha256(old.read_bytes()).hexdigest()=='{{ expected_preimage }}', 'STOP: manifest drift'
-            assert hashlib.sha256(new.read_bytes()).hexdigest()=='{{ lookup("file", coredns_recovery_private_dir + "/candidate.json", rstrip=false) | hash("sha256") }}', 'STOP: staged drift'
+
+            assert hashlib.sha256(old.read_bytes()).hexdigest()=='{{ expected_preimage }}', 'STOP:
+            manifest drift'
+
+            assert hashlib.sha256(new.read_bytes()).hexdigest()=='{{ lookup("file",
+            coredns_recovery_private_dir + "/candidate.json", rstrip=false) | hash("sha256") }}',
+            'STOP: staged drift'
+
             os.chmod(new,0o644)
+
             os.replace(new,old)
       changed_when: true
 ...

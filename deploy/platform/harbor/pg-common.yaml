@@ -11,3 +11,4 @@ database:
     caConfigMap: pg-common-ca
   maxOpenConns: 12
   maxIdleConns: 3
+...
