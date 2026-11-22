@@ -320,8 +320,11 @@ updateWatch:
       github: grafana/grafana
     - id: pyroscope
       title: Pyroscope
-      current: 2.4.3
+      current: 2.4.4
       github: grafana/pyroscope
+      namespace: cattle-monitoring-system
+      deployment: pyroscope
+      container: pyroscope
     - id: thanos
       title: Thanos
       current: 0.42.4
