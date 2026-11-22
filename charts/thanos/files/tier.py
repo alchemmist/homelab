@@ -64,8 +64,8 @@ def loaded(store):
 
 
 def serves(store, block, source):
-    # A positive Store-only read supplements the exact loaded-block, range and lineage checks.
     """Probe for samples through the named Store at the source midpoint and successor resolution."""
+    # A positive Store-only read supplements the exact loaded-block, range and lineage checks.
     t = (source["minTime"] + source["maxTime"]) // 2000
     q = urlencode(
         {

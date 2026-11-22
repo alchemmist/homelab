@@ -232,7 +232,7 @@ def _serve_put(handler: BaseHTTPRequestHandler, directory: str, token: str) -> N
 
 
 def handler(directory, token):
-    """Bind a shelf directory and token to a request handler class for one server."""
+    """Bind inventory reads, staged uploads and marker requests to one shelf directory and token."""
     class ShelfHandler(BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
             return
