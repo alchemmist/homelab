@@ -9,9 +9,22 @@ import re
 import ssl
 import sys
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import TypedDict
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    # Keep the standalone archive reader usable on stdlib-only Python 3.11.
+    from typing import TypeVar
+
+    _F = TypeVar("_F")
+
+    def override(method: _F) -> _F:
+        return method
 
 HOST = "raw-cold-copy-20261121"
 SIZE = 16 * 2**20
@@ -19,7 +32,13 @@ ROOT = Path("/data")
 ARCHIVE = "raw.tar.zst"
 
 
-def info():
+class ArchiveInfo(TypedDict):
+    sha256: str
+    size: int
+    manifest: str
+
+
+def info() -> ArchiveInfo:
     h = (ROOT / "archive.sha256").read_text().split()
     m = (ROOT / "verified.sha256").read_text().strip()
     assert (
@@ -31,7 +50,7 @@ def info():
 
 
 class Handler(BaseHTTPRequestHandler):
-    def do_GET(self):
+    def do_GET(self) -> None:
         if not hmac.compare_digest(
             self.headers.get("Authorization", ""), "Bearer " + os.environ["TOKEN"]
         ):
@@ -69,16 +88,17 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(b)
                 n -= len(b)
 
-    def log_message(self, *args):
+    @override
+    def log_message(self, *args: object) -> None:
         pass
 
 
-def receive():
+def receive() -> None:
     os.umask(0o077)
     ctx = ssl.create_default_context(cafile="/ca/tls.crt")
     hdr = {"Authorization": "Bearer " + os.environ["TOKEN"]}
 
-    def get(path):
+    def get(path: str) -> bytes:
         c = http.client.HTTPSConnection(HOST, 9443, context=ctx, timeout=180)
         try:
             c.request("GET", path, headers=hdr)
@@ -90,7 +110,7 @@ def receive():
 
     for _ in range(2880):
         try:
-            meta = json.loads(get("/state"))
+            meta: ArchiveInfo = json.loads(get("/state"))
             break
         except (OSError, AssertionError):
             time.sleep(5)
@@ -101,20 +121,21 @@ def receive():
     assert not (ROOT / ARCHIVE).exists()
     with partial.open("xb+") as f:
 
-        def part(i):
+        def part(i: int) -> None:
             for attempt in range(5):
                 try:
                     b = get("/part/" + str(i))
                     assert len(b) == min(SIZE, meta["size"] - i * SIZE)
-                    break
                 except (OSError, http.client.HTTPException, AssertionError):
                     if attempt == 4:
                         raise
                     time.sleep(3 * (attempt + 1))
-            assert os.pwrite(f.fileno(), b, i * SIZE) == len(b)
+                else:
+                    assert os.pwrite(f.fileno(), b, i * SIZE) == len(b)
+                    return
 
         with ThreadPoolExecutor(3) as pool:
-            for i, _ in enumerate(
+            for i, _result in enumerate(
                 pool.map(part, range((meta["size"] + SIZE - 1) // SIZE)), 1
             ):
                 if i % 32 == 0:
@@ -132,8 +153,9 @@ def receive():
     print("verified off-host archive", json.dumps(meta), flush=True)
 
 
-def info_remote_stable(meta, get):
-    return json.loads(get("/state")) == meta
+def info_remote_stable(meta: ArchiveInfo, get: Callable[[str], bytes]) -> bool:
+    current: ArchiveInfo = json.loads(get("/state"))
+    return current == meta
 
 
 if __name__ == "__main__":

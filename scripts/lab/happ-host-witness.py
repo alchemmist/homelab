@@ -1,29 +1,47 @@
 """Read-only witness on socrat-1 while an operator cycles VPN inside a guest."""
 
+from __future__ import annotations
+
 import hashlib
 import json
 import socket
 import subprocess
 import sys
 import time
+from typing import TypedDict
 
 
-def cmd(*args):
+class HostState(TypedDict):
+    """Host properties that must remain unchanged between samples."""
+
+    relay_route: dict[str, str | int]
+    mesh_route: dict[str, str | int]
+    rule_hash: str
+    table_hash: str
+
+
+class Sample(HostState, total=False):
+    """Flow hashes are removed before comparing the remaining host state."""
+
+    flows: set[str]
+
+
+def cmd(*args: str) -> str:
     return subprocess.check_output(args, text=True, timeout=3).strip()
 
 
-def route(ip):
+def route(ip: str) -> dict[str, str | int]:
     row = json.loads(cmd("ip", "-j", "-4", "route", "get", ip))[0]
     return {
         key: row[key] for key in ("gateway", "dev", "prefsrc", "table") if key in row
     }
 
 
-def digest(value):
+def digest(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 
-def sample():
+def sample() -> Sample:
     rules = [cmd("ip", family, "rule", "show") for family in ("-4", "-6")]
     # Fingerprint full policy and main table locally; never publish their contents.
     tables = [
@@ -48,13 +66,14 @@ def sample():
     }
 
 
-def main():
+def main() -> None:
     if socket.gethostname().split(".")[0] != "socrat-1" or len(sys.argv) != 2:
         raise SystemExit("usage on socrat-1: happ-host-witness.py SECONDS (5..600)")
     seconds = int(sys.argv[1])
     if not 5 <= seconds <= 600:
         raise SystemExit("bounded sample window required")
-    def check_mesh_tcp():
+
+    def check_mesh_tcp() -> None:
         with socket.create_connection(("10.250.0.2", 2380), timeout=2):
             pass
 
