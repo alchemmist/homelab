@@ -18,16 +18,17 @@ spec:
         app.kubernetes.io/name: {{ .Chart.Name }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: {type: RuntimeDefault}
       serviceAccountName: {{ .Release.Name | quote }}
       automountServiceAccountToken: false
-      {{- if .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- range .Values.imagePullSecrets }}
-        - name: {{ . }}
-        {{- end }}
-      {{- end }}
-      {{- if .Values.nodeAffinity.excludeHostnames }}
+      {{- if or .Values.podAntiAffinity.enabled .Values.nodeAffinity.excludeHostnames }}
       affinity:
+        {{- if .Values.nodeAffinity.excludeHostnames }}
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
@@ -38,6 +39,24 @@ spec:
                       {{- range .Values.nodeAffinity.excludeHostnames }}
                       - {{ . | quote }}
                       {{- end }}
+        {{- end }}
+        {{- if .Values.podAntiAffinity.enabled }}
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: {{ .Chart.Name }}
+                    app.kubernetes.io/instance: {{ .Release.Name }}
+                topologyKey: kubernetes.io/hostname
+        {{- end }}
+      {{- end }}
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+        {{- end }}
       {{- end }}
       {{- if .Values.topologySpreadConstraints.enabled }}
       topologySpreadConstraints:
@@ -49,11 +68,40 @@ spec:
               app.kubernetes.io/name: {{ .Chart.Name }}
               app.kubernetes.io/instance: {{ .Release.Name }}
       {{- end }}
+      {{- if .Values.writableMounts }}
+      volumes:
+        {{- range .Values.writableMounts }}
+        - {name: {{ regexReplaceAll "[^a-z0-9]+" .mountPath "-" | trimPrefix "-" | trimSuffix "-" | quote }}, emptyDir: {}}
+        {{- end }}
+      {{- end }}
       containers:
         - name: cats
           image: {{ if .Values.image.digest }}{{ .Values.image.repository }}@{{ .Values.image.digest }}{{ else }}{{ .Values.image.fallback }}{{ end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          {{- if .Values.writableMounts }}
+          volumeMounts:
+            {{- range .Values.writableMounts }}
+            - {name: {{ regexReplaceAll "[^a-z0-9]+" .mountPath "-" | trimPrefix "-" | trimSuffix "-" | quote }}, mountPath: {{ .mountPath | quote }}}
+            {{- end }}
+          {{- end }}
           ports:
             - containerPort: {{ .Values.service.targetPort }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.path }}
+              port: {{ .Values.probes.port }}
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.path }}
+              port: {{ .Values.probes.port }}
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}

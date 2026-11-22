@@ -1,0 +1,25 @@
+version: 1
+entries:
+  # rustfs-native consumes the out-of-band OIDC provider credentials with its
+  # native RUSTFS_IDENTITY_OPENID_* environment-variable configuration
+  # (services/rustfs_gateway native config; no file-based binding exists for
+  # these fields). The Secret itself is provisioned out-of-band, kubectl-apply
+  # is forbidden in this repository, by the reviewed script below, which names
+  # both the Secret ("rustfs-oidc") and this Deployment ("rustfs").
+  - consumer: rustfs-0
+    kind: Deployment
+    namespace: rustfs
+    name: rustfs
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: scripts/rustfs/secrets.py
+  # The gateway proxies the S3 API with the read-only service account bound
+  # through its native S3_ACCESS_KEY/S3_SECRET_KEY environment variables
+  # (services/rustfs_gateway source contract). The referenced Secret
+  # "rustfs-reader" is provisioned by the same reviewed out-of-band script;
+  # this values file names both the Deployment and the Secret.
+  - consumer: rustfs-0
+    kind: Deployment
+    namespace: identity
+    name: rustfs-gateway
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: charts/rustfs/values-foundation-live.yaml
