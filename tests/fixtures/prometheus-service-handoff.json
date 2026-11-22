@@ -5,7 +5,7 @@
   },
   "ClusterRole//kube-prometheus-stack-kube-state-metrics": {
     "owner": "kube-state-metrics",
-    "sha256": "e4f6b166e1cdbf94054a0642bd4749a2a86e7817297092a94fb9ecaf2e0ca993"
+    "sha256": "c360ce1b2e0c80a3ec158ab407470205c8321c568d87724ee2cf3d15667a7cfc"
   },
   "ClusterRole//kube-prometheus-stack-operator": {
     "owner": "prometheus-operator",
@@ -73,7 +73,7 @@
   },
   "Deployment/cattle-monitoring-system/kube-prometheus-stack-kube-state-metrics": {
     "owner": "kube-state-metrics",
-    "sha256": "4539d7ae65771d8a73e1a55a502a82773fa12819b37837be1917488cbd0d86fb"
+    "sha256": "9ec72e64867b1edb2df6fc5def8499ae7b25c35c4e6850586006b50fc56a5b7f"
   },
   "Deployment/cattle-monitoring-system/kube-prometheus-stack-operator": {
     "owner": "prometheus-operator",

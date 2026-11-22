@@ -308,6 +308,17 @@ def test_disjoint_complete_payload_identical_handoff() -> None:
     assert actual == fixture
 
 
+def test_kube_state_metrics_does_not_collect_or_watch_secrets() -> None:
+    """Secret objects are outside KSM's metrics contract and RBAC authority."""
+    documents = render("kube-state-metrics")
+    role, = [d for d in documents if d["kind"] == "ClusterRole"]
+    assert all("secrets" not in rule.get("resources", []) for rule in role["rules"])
+    deployment, = [d for d in documents if d["kind"] == "Deployment"]
+    container, = deployment["spec"]["template"]["spec"]["containers"]
+    resources, = [arg.removeprefix("--resources=") for arg in container["args"] if arg.startswith("--resources=")]
+    assert "secrets" not in resources.split(",")
+
+
 def test_each_application_has_only_its_own_runtime() -> None:
     """Test behavior for test_each_application_has_only_its_own_runtime."""
     runtime = {
