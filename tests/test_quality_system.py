@@ -1204,3 +1204,21 @@ def test_schema_ref_property_name_does_not_allow_remote_references() -> None:
     local_refs({"properties": {"$ref": {"type": "string"}}})
     with pytest.raises(ValueError, match="Remote schema reference"):
         local_refs({"properties": {"$ref": {"$ref": "https://example.invalid/schema"}}})
+
+
+@pytest.mark.parametrize("name", ["postgresql", "redis"])
+def test_locked_library_uses_real_consumer_and_broken_helper_fails(tmp_path: Path, name: str) -> None:
+    """Do not accept an empty render or downgrade an installability failure to success."""
+    selected = charts.targets()
+    child = next(t for t in selected if t["id"] == f"defaults-charts-litellm-charts-{name}-charts-common")
+    owner = charts.library_consumer(child, selected)
+    assert owner is not None and owner["chart"].name == name
+    with pytest.raises(ValueError, match="locked consumer"):
+        charts.library_consumer(child, [child])
+    parent = tmp_path / name
+    shutil.copytree(owner["chart"], parent)
+    target = {**owner, "chart": parent}
+    assert any(d["kind"] == "StatefulSet" for d in charts.render(target))
+    names = parent / "charts/common/templates/_names.tpl"
+    names.write_text(names.read_text().replace("common.names.fullname", "missing.fullname"))
+    assert charts.render(target) is None

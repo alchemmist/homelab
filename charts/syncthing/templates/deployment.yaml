@@ -52,7 +52,7 @@ spec:
       {{- end }}
       containers:
         - name: syncthing
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}@{{ required "image.digest is required" .Values.image.digest }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["/bin/syncthing"]
           args:

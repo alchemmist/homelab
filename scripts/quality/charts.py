@@ -390,6 +390,27 @@ def policy_findings(*, target: RenderTarget, resource: RenderedObject, key: str)
     ]
 
 
+def library_consumer(target: RenderTarget, selected: list[RenderTarget]) -> RenderTarget | None:
+    """Require a declared, exact-version locked dependency of an inventoried application."""
+    chart = target["chart"]
+    meta = yaml.safe_load((chart / "Chart.yaml").read_bytes())
+    if meta.get("type", "application") != "library":
+        return None
+    # A Helm library is not installable. Lint it directly and verify a real,
+    # inventoried default install of its parent (not a generated dummy Pod).
+    parent = chart.parent.parent
+    consumers = [t for t in selected if t["chart"] == parent and t["id"].startswith("defaults-")]
+    if chart.parent.name == "charts" and len(consumers) == 1:
+        declared = yaml.safe_load((parent / "Chart.yaml").read_bytes()).get("dependencies", [])
+        locked = yaml.safe_load((parent / "Chart.lock").read_bytes())["dependencies"]
+        if any(dep["name"] == meta["name"] for dep in declared) and any(
+            dep["name"] == meta["name"] and dep["version"] == meta["version"] for dep in locked
+        ):
+            return consumers[0]
+    message = "Library chart lacks an inventoried, exact-version locked consumer"
+    raise ValueError(message)
+
+
 def check(*, validate=True):
     """Execute check."""
     selected = targets()
@@ -397,6 +418,7 @@ def check(*, validate=True):
         raise ValueError("No local chart targets")
     findings = []
     inventory = []
+    renders = {}
     for target in selected:
         source = target["source"]
         lint = command(
@@ -405,8 +427,12 @@ def check(*, validate=True):
             allowed=(0, 1),
             timeout=180,
         )
-        resources = render(target)
-        if lint.returncode or resources is None:
+        consumer = library_consumer(target, selected)
+        effective = consumer or target
+        if effective["id"] not in renders:
+            renders[effective["id"]] = render(effective)
+        resources = renders[effective["id"]]
+        if lint.returncode or resources is None or (consumer and not resources):
             findings.append(
                 finding(
                     "helm-lint-render",
@@ -417,7 +443,9 @@ def check(*, validate=True):
                     target["id"] + contract_hash(target),
                 )
             )
-        if resources is None:
+        if resources is None or consumer:
+            # Each real parent's complete cached render goes through the normal
+            # schema, identity, policy and kube-linter checks under its own ID.
             continue
         findings.extend(kube_lint(target, resources))
         seen = set()
