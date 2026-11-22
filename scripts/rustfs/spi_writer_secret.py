@@ -10,14 +10,6 @@ import json
 import os
 import stat
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
-    from typing import Literal
-
-    Role = Literal["root", "reader", "writer"]
-    Field = Literal["access", "secret"]
 
 
 def private_json(path: Path) -> object:
@@ -45,20 +37,27 @@ def render(directory: str | Path) -> None:
         st = d.lstat()
         if not stat.S_ISDIR(st.st_mode) or st.st_uid != os.getuid() or st.st_mode & 0o077:
             raise ValueError
-        raw = cast("Mapping[Role, Mapping[Field, object]]", private_json(d / "storage.json"))
-        for field in ("access", "secret"):
-            values = [raw[r][field] for r in ("root", "reader", "writer")]
-            if (
-                any(
-                    not isinstance(v, str)
-                    or not 1 <= len(v) <= 2048
-                    or any(ord(c) < 33 or ord(c) > 126 for c in v)
-                    for v in values
-                )
-                or len(set(values)) != 3
-            ):
+        raw = private_json(d / "storage.json")
+        if not isinstance(raw, dict):
+            raise ValueError
+        storage: dict[str, dict[str, str]] = {}
+        for role in ("root", "reader", "writer"):
+            row = raw.get(role)
+            if not isinstance(row, dict):
                 raise ValueError
-        storage = cast("Mapping[Role, Mapping[Field, str]]", raw)
+            storage[role] = {}
+            for field in ("access", "secret"):
+                value = row.get(field)
+                if (
+                    not isinstance(value, str)
+                    or not 1 <= len(value) <= 2048
+                    or any(ord(c) < 33 or ord(c) > 126 for c in value)
+                ):
+                    raise ValueError
+                storage[role][field] = value
+        for field in ("access", "secret"):
+            if len({row[field] for row in storage.values()}) != 3:
+                raise ValueError
         intended = {
             storage[r]["access"]: hashlib.sha256(storage[r]["secret"].encode()).hexdigest()
             for r in ("reader", "writer")
