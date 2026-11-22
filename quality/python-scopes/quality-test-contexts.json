@@ -1,0 +1,4 @@
+{
+  "include": ["tests/test_quality*.py"],
+  "rules": ["SIM117"]
+}
