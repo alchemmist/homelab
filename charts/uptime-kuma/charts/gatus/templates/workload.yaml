@@ -17,6 +17,8 @@ spec:
           image: docker.io/twinproduction/gatus@sha256:085ed63da963728965d00a3c78aa6167e3bf135218485b893201758e079e8415
           ports: [{name: http, containerPort: 8080}]
           readinessProbe: {httpGet: {port: http, path: /}}
+          # TCP liveness only verifies the listener; database/config readiness stays separate.
+          livenessProbe: {tcpSocket: {port: http}, periodSeconds: 15}
           env:
             - name: GATUS_CONFIG_PATH
               value: /config/config.yaml
