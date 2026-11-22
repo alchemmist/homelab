@@ -190,100 +190,113 @@ npm cache; the archive checksum is still enforced. The release archive is never
 extracted wholesale. Private original-profile rollback metadata is under
 `~/.config/homelab/mcp/project-backups/`, never in Git.
 
-## MCP для агентов Homelab — 2026-11-07
+## MCP for Homelab agents — 2026-11-07
 
-Точка входа агента — `AGENTS.md`, Pi необязателен; пример — `deploy/mcp/examples/pi-mcp.json`, локальные настройки не в Git.
-Протокол первоначального подключения: [runbook](official-mcp.md),
-[реестр всех сервисов на момент аудита](../../../deploy/mcp/service-audit.json).
-Последующее локальное включение n8n описано ниже; прежний blocker в реестре
-не означает текущий отказ endpoint.
-Аудит охватил 49 Argo Applications, все Deployment/StatefulSet/DaemonSet и running
-systemd units четырёх нод, не только приложения из каталога Helm.
+The agent entry point is `AGENTS.md`; Pi is optional; see the example
+`deploy/mcp/examples/pi-mcp.json` — local settings are not in Git.
+Initial connection protocol: [runbook](official-mcp.md),
+[audit-time registry of all services](../../../deploy/mcp/service-audit.json).
+The later local n8n enablement is described below; the earlier blocker in the
+registry does not mean the endpoint currently refuses.
+The audit covered 49 Argo Applications, all Deployment/StatefulSet/DaemonSet
+and running systemd units of the four nodes, not only the Helm catalog apps.
 
-## Подключения
+## Connections
 
-- `socrat-grafana`: уже развёрнутый официальный Grafana MCP2.0.2; Viewer,
-  disable-write, добавлены Loki/Tempo/Pyroscope. Через него доступны dashboards,
-  Prometheus/Thanos, Alertmanager, logs/traces/profiles. Пароли/сертификаты не ротируются.
-- `argocd`: официальный **Argo CD Labs** MCP0.9.0, pinned npm lock, stdio/read-only.
-  Для desired state по-прежнему GitOps, не live mutation из MCP.
-- `socrat-metrics`: официальный Prometheus MCP stable0.18.0, stdio, общие
-  read-only PromQL/docs/metadata APIs через Grafana Viewer и **Thanos datasource**.
-  Это не прямой TSDB/admin/WAL API. Не ставить `--prometheus.backend`: в этой версии
-  он переопределяет allowlist и возвращает лишние, в том числе destructive, tools.
-- `n8n`: native MCP **работает**. После локального обновления access token прошли
-  реальные `initialize` и `tools/list`; сервер возвращает `search_workflows`,
-  `execute_workflow`, `get_workflow_details`. В локальном project config Mac клиент
-  включён, агентам открыты только search/details; execution остаётся hidden.
-  Token хранится только в `~/.config/n8n/mcp-token` (0600), не в Git.
-  Exact route `/mcp-server/http` принадлежит n8n; UI gate/TLS сохранены.
-  Первоначальный backend403 больше не является текущим blocker.
-- `umami`: официальный stdio0.2.0 установлен, но **нет разрешённого API key**.
-  Client отключён; нужен scoped user/team analytics key0600, не пароль БД.
-- Глобальный wiki MCP сохранён; GitHub в проекте остаётся отключённым.
+- `socrat-grafana`: the already-deployed official Grafana MCP 2.0.2; Viewer,
+  disable-write, Loki/Tempo/Pyroscope added. Dashboards, Prometheus/Thanos,
+  Alertmanager, logs/traces/profiles are available through it. Passwords/
+  certificates are not rotated.
+- `argocd`: official **Argo CD Labs** MCP 0.9.0, pinned npm lock, stdio/read-only.
+  GitOps remains the desired-state path, not live mutation via MCP.
+- `socrat-metrics`: official Prometheus MCP stable 0.18.0, stdio, common
+  read-only PromQL/docs/metadata APIs via the Grafana Viewer and the **Thanos
+  datasource**. This is not a direct TSDB/admin/WAL API. Do not set
+  `--prometheus.backend`: in this version it overrides the allowlist and
+  returns extra tools, including destructive ones.
+- `n8n`: native MCP **works**. After the local access-token update, real
+  `initialize` and `tools/list` passed; the server returns
+  `search_workflows`, `execute_workflow`, `get_workflow_details`. In the Mac's
+  local project config the client is enabled; agents get only search/details;
+  execution stays hidden. The token is stored only in
+  `~/.config/n8n/mcp-token` (0600), not in Git. The exact route
+  `/mcp-server/http` belongs to n8n; the UI gate/TLS are preserved. The
+  original backend 403 is no longer a current blocker.
+- `umami`: official stdio 0.2.0 is installed, but there is **no authorized
+  API key**. The client is disabled; a scoped user/team analytics key (0600)
+  is needed, not the DB password.
+- The global wiki MCP is preserved; GitHub remains disabled in the project.
 
-`python3 scripts/setup-official-mcp.py` ставит проверенные upstream binaries и
-реиспользует существующие Grafana credentials без ротации; приватные копии вне Git.
-Новый агент/переподключение MCP загрузит project config после доверия репозиторию.
-Не запускать credential helper вручную ради вывода токена. Другие машины/клиенты
-требуют собственного setup; не обещать, что этот commit настроил их автоматически.
+`python3 scripts/setup-official-mcp.py` installs verified upstream binaries
+and reuses the existing Grafana credentials without rotation; private copies
+stay out of Git. A new agent/MCP reconnection will load the project config
+after the repository is trusted. Do not run the credential helper manually to
+print the token. Other machines/clients need their own setup; do not promise
+that this commit configured them automatically.
 
-Нет MCP ради количества: NetBird/Rancher/RustFS — first-party исходники с оговорками
-по стабильному пакету/авторизации; LiteLLM admin требует proxy_admin даже для reads;
-Kuma MCP отсутствует в установленной stable2.5.7. Internal DB/cache, backup buckets,
-контроллеры и наши сервисы не получают самописных/сторонних обёрток и широких прав.
-Open Terminal имеет native MCP, но он открывает полный shell/file API под общим
-ключом; это намеренно не включено как обычная диагностика.
-Решение по **каждой** Application и upstream evidence — в реестре.
+No MCP for the sake of numbers: NetBird/Rancher/RustFS are first-party sources
+with caveats about a stable package/authorization; LiteLLM admin requires
+proxy_admin even for reads; Kuma MCP is absent in the installed stable 2.5.7.
+Internal DB/cache, backup buckets, controllers and our own services get no
+hand-written/third-party wrappers or broad rights. Open Terminal has native
+MCP, but it exposes the full shell/file API under the shared key; it is
+deliberately not enabled as an ordinary diagnostics connector. The decision
+for **every** Application with upstream evidence is in the registry.
 
-Read-only tools не разрешают агенту публиковать логи/приватные данные, исполнять
-workflow, гасить alert или считать Healthy доказательством целостности WAL.
-HTTP200 с HTML/IdP login — не успешный MCP initialize.
+Read-only tools do not permit an agent to publish logs/private data, execute
+workflows, silence alerts, or treat Healthy as proof of WAL integrity.
+HTTP200 with an HTML/IdP login page is not a successful MCP initialize.
 
-## Проверенный итог
+## Verified outcome
 
-Feature commit `e77eed4`; полный audit содержит также 271 Pod records (включая
-completed jobs и operator-owned DB Pods) и 114 workload controllers — это **не**
-число отдельных сервисов/MCP. В tracked config 3 включённых official connectors;
-локальный ранее работавший wiki access сохранён отдельно.
+Feature commit `e77eed4`; the full audit also contains 271 Pod records
+(including completed jobs and operator-owned DB Pods) and 114 workload
+controllers — this is **not** a count of separate services/MCP. The tracked
+config has 3 enabled official connectors; the previously working local wiki
+access is preserved separately.
 
-Проверены actual Pi loader, Argo11/tools+реальный read, metrics10/tools+`query=1`,
-Grafana37/read-only+auth rejection/dashboard/query. Loki/Tempo/Pyroscope metadata
-действительно прочитаны через MCP, без вывода содержимого. Два n8n Ingress сохранили
-UID и приняты n8n; Grafana/n8n Pods не перезапускались; MCP Secret UID/содержимое
-не менялись. Намеренно rollout только Grafana MCP с новыми tool families.
+Verified: the actual Pi loader, Argo 11 tools + a real read, metrics 10 tools +
+`query=1`, Grafana 37 read-only tools + auth rejection/dashboard/query.
+Loki/Tempo/Pyroscope metadata was really read via MCP, without printing
+contents. Both n8n Ingresses kept their UIDs and are owned by n8n; the
+Grafana/n8n Pods were not restarted; the MCP Secret UID/contents did not
+change. Deliberately only the Grafana MCP rollout with the new tool families.
 
-131 test +24 subtests; public regression134/134. Старый WAL incident не исправлялся,
-alert не скрывался. Это результаты первоначальной приёмки, не новый полный прогон.
-n8n403 был первоначальным blocker и закрыт последующей проверкой протокола;
-**Umami missing-key остаётся**.
+131 tests + 24 subtests; public regression 134/134. The old WAL incident was
+not “fixed”, no alert hidden. These are original acceptance results, not a new
+full run. n8n's 403 was the original blocker and was closed by a later protocol
+check; **the Umami missing key remains**.
 
-В исходном грязном checkout сохранены dashboard/Traefik изменения; branch/source
-не reset/merge. Его ignored project MCP config переведён на установленные cached
-launchers после приватного backup старого symlink; shared target и Wiki override
-сохранены. Не коммитить private local config с унаследованными credentials: новая
-tracked версия в main содержит только безопасные ссылки. Новая доверенная сессия
-увидит подключения; уже запущенную сессию MCP нужно переподключить.
+The original dirty checkout retains dashboard/Traefik changes; branch/source
+were not reset/merged. Its ignored project MCP config was switched to the
+installed cached launchers after a private backup of the old symlink; the
+shared target and the Wiki override are preserved. Do not commit private local
+config with inherited credentials: the new tracked version in main contains
+only safe references. A new trusted session will see the connections; an
+already-running MCP session needs a reconnect.
 
 
-## Итог после локального подключения n8n
+## Outcome after the local n8n enablement
 
-Обязательных дополнительных MCP-развёртываний на кластере нет. Argo и metrics
-серверы штатно запускаются у агента по stdio; переносить их в постоянные Pods
-ради количества не нужно. Umami — опциональное продолжение, если агентам нужна
-аналитика посещаемости: сначала отдельный разрешённый analytics API key.
+No additional MCP deployments on the cluster are required. The Argo and
+metrics servers are started by the agent over stdio as designed; there is no
+need to move them into permanent Pods for the count. Umami is an optional
+follow-up if agents need traffic analytics: first a separate authorized
+analytics API key.
 
-Важно различать локальный и общий config: n8n включён в приватном
-`/Users/antonmoss/code/homelab/.pi/mcp.json`; пример `deploy/mcp/examples/pi-mcp.json` пока содержит
-консервативное `enabled: false`. Этот wiki-only update не меняет общий config,
-runbook, audit или настройки других машин. При новом checkout проверить состояние
-записи, наличие собственного разрешённого токена и protocol handshake, затем
-включить клиент без расширения toolExposure. Не копировать весь локальный private
-config в Git — там могут быть унаследованные credentials других MCP.
+It is important to distinguish local vs shared config: n8n is enabled in the
+private `/Users/antonmoss/code/homelab/.pi/mcp.json`; the example
+`deploy/mcp/examples/pi-mcp.json` still contains the conservative
+`enabled: false`. This wiki-only update does not change the shared config,
+runbook, audit or settings on other machines. On a new checkout, verify the
+entry's state, your own authorized token and the protocol handshake, then
+enable the client without widening toolExposure. Do not copy the entire local
+private config into Git — it may contain inherited credentials of other MCPs.
 
-Новая сессия на настроенном Mac подхватит n8n; в существующей требуется reconnect.
-Обновление токена не разрешает выполнение production workflows и не означает,
-что они исполнялись при проверке: проверены только handshake и discovery.
-Переданный через чат токен следует перевыпустить при ближайшей возможности;
-это рекомендация безопасности, не текущий технический blocker. Значение токена
-не повторять в документации, коммитах или логах.
+A new session on the configured Mac will pick up n8n; an existing one needs a
+reconnect. The token update does not permit executing production workflows and
+does not mean they were executed during verification: only handshake and
+discovery were checked. A token passed through chat should be reissued at the
+earliest opportunity; this is a security recommendation, not a current
+technical blocker. Do not repeat the token value in documentation, commits
+or logs.

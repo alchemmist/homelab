@@ -1,4 +1,4 @@
-# Socrat — прототипы страницы входа
+# Socrat — sign-in page prototypes
 
 > **Production update — 2026-11-01:** approved Quiet Mono v5 is frozen in
 > [`deploy/authentik/quiet-mono/reference/`](../../deploy/authentik/quiet-mono/reference/).
@@ -8,121 +8,247 @@
 > The “no cluster changes” statements below describe earlier prototype iterations only.
 
 
-Откройте `index.html` в браузере. Сборка, сервер и интернет для просмотра не нужны.
+Open `index.html` in a browser. No build, server or internet is needed to view them.
 
 ```sh
 open /Users/antonmoss/code/homelab/prototypes/authentik/index.html
 ```
 
-Это отдельные визуальные HTML-макеты, не изменения работающего Authentik.
+These are standalone visual HTML mockups, not changes to the running Authentik.
 
-## Варианты
+## Variants
 
-| Файл | Название | Идея |
+| File | Title | Idea |
 | --- | --- | --- |
-| `01-frost.html` | Иней | Центрированная форма, умеренное скругление, типографика Wiki. |
-| `02-editorial.html` | На полях | Окно слева, крупный книжный заголовок, поля с нижней линией. |
-| `03-liquid.html` | Стекло | Окно справа, мягкие углы, сильное рассеивание и светлая кромка. |
-| `04-gallery.html` | Ателье | Одно широкое окно с двумя колонками: крупная маска и форма. На телефоне — одна колонка. |
-| `05-typewriter.html` | Тихий моно | Узкое почти бумажное окно, CourierCyr, прямые углы и контурная кнопка. |
+| `01-frost.html` | Frost | Centered form, moderate rounding, Wiki typography. |
+| `02-editorial.html` | In the margins | Window on the left, large book-style heading, fields with an underline. |
+| `03-liquid.html` | Glass | Window on the right, soft corners, strong blur and a light edge. |
+| `04-gallery.html` | Atelier | One wide window with two columns: a large mask and the form. One column on a phone. |
+| `05-typewriter.html` | Quiet Mono | Narrow almost-paper window, CourierCyr, square corners and an outlined button. |
 
-Общие принципы: фотография на весь экран, светлая тема, одна матовая панель, никаких рекламных блоков, наружных надписей или дополнительных карточек. Матовый эффект — CSS backdrop-filter, не полноценная оптическая рефракция macOS Liquid Glass. Без поддержки blur используется почти непрозрачная светлая подложка. Учтены prefers-reduced-motion и prefers-reduced-transparency.
+Common principles: full-screen photo, light theme, a single matte panel, no ad
+blocks, external captions or extra cards. The matte effect is a CSS
+backdrop-filter, not a full optical refraction of macOS Liquid Glass. Without
+blur support, a nearly opaque light backing is used. prefers-reduced-motion and
+prefers-reduced-transparency are respected.
 
-## Что взято из существующего дизайна
+## What is taken from the existing design
 
-Изучены локальные исходники:
+Local sources studied:
 
-- `../blog/site/assets/style.css`: CourierCyr и сдержанная типографика.
-- `../hugo-docs/assets/admin.css`, `layouts/partials/docs/system-page.html`: минималистичная прежняя форма Wiki, книжный заголовок и небольшие подписи полей.
-- `../lms/site/static/site.css`, `../lms/site/hugo.toml`: тот же книжный/моноширинный подход; `../lms/frontend/src/index.css`: чернильно-синяя палитра `#15223c`.
+- `../blog/site/assets/style.css`: CourierCyr and restrained typography.
+- `../hugo-docs/assets/admin.css`, `layouts/partials/docs/system-page.html`: the
+  minimalist former Wiki form, book-style heading and small field labels.
+- `../lms/site/static/site.css`, `../lms/site/hugo.toml`: the same book/monospace
+  approach; `../lms/frontend/src/index.css`: the ink-blue palette `#15223c`.
 
-Шрифты скопированы из локального `../blog/site/public/assets/fonts/`: CourierCyr regular, Computer Modern Roman regular/bold. Существующие права на шрифты не изменяются; этот каталог не объявляет их свободными и не добавляет новую лицензию.
+Fonts were copied from the local `../blog/site/public/assets/fonts/`: CourierCyr
+regular, Computer Modern Roman regular/bold. The existing font rights are not
+changed; this directory does not declare them free and does not add a new license.
 
-Маска извлечена из `deploy/litellm/branding/socrat-logo-light-v1.svg`. В исходном SVG изображение встроено как PNG 1200×1800; это **не векторные контуры**. Прозрачные поля обрезаны, подготовлен WebP высотой 320px (~17 KiB). На крупных экранах максимальная отображаемая высота — 157px. Настоящий вектор для этих макетов не требуется.
+The mask was extracted from `deploy/litellm/branding/socrat-logo-light-v1.svg`.
+In the source SVG, the image is embedded as a 1200×1800 PNG; it is **not vector
+outlines**. Transparent margins were cropped and a 320px-high WebP (~17 KiB)
+prepared. On large screens the maximum displayed height is 157px. A real vector
+is not needed for these mockups.
 
-## Фоны и случайный выбор
+## Backgrounds and random selection
 
-Две локальные фотографии: горное озеро и лес. Источники и ссылки на лицензию — `assets/sources.json`. Для каждой фотографии есть WebP шириной 1920px и 960px. Мобильная версия выбирается CSS при ширине до 700px.
+Two local photographs: a mountain lake and a forest. Sources and license links
+are in `assets/sources.json`. For each photo there are 1920px and 960px wide
+WebPs. The mobile version is selected by CSS at widths up to 700px.
 
-К любому файлу варианта можно добавить:
+Any variant file accepts:
 
-- `?scene=lake` — озеро, фон по умолчанию;
-- `?scene=forest` — лес;
-- `?scene=random` — случайный выбор одного из двух при открытии/перезагрузке.
+- `?scene=lake` — the lake, the default background;
+- `?scene=forest` — the forest;
+- `?scene=random` — a random choice of one of the two on open/reload.
 
-Режим random — только демонстрация **клиентского** выбора в прототипах, не серверная реализация для Authentik. Случайный выбор может повторить предыдущую фотографию. Фон не меняется при вводе данных или переходе к MFA. Галерея переключает фон сразу для всех вариантов; одинаковая фотография по умолчанию помогает сравнивать именно дизайн.
+The random mode is only a demonstration of **client-side** selection in the
+prototypes, not a server-side implementation for Authentik. A random pick can
+repeat the previous photo. The background does not change while entering data
+or moving on to MFA. The gallery switches the background immediately for all
+variants; the same default photo helps compare the designs themselves.
 
-В дальнейшем фотографии заменяются пользовательской коллекцией. Для реального внедрения отдельно определить механизм выбора, поведение при обновлении, фокусные точки/кадрирование, кеширование, размеры/AVIF/WebP и резервный фон. Авторизация и MFA должны продолжать работать штатными компонентами Authentik; статические HTML сами по себе не являются готовой темой Brands. После выбора дизайна потребуется проверить возможности установленной версии и поддержку экранов ошибок, MFA и восстановления.
+Later the photos will be replaced with the user's collection. For a real
+implementation, separately define the selection mechanism, refresh behavior,
+focal points/cropping, caching, sizes/AVIF/WebP and a fallback background.
+Authorization and MFA must keep working with Authentik's standard components;
+static HTML by itself is not a ready-made Brands theme. After a design is
+chosen, the capabilities of the installed version and support for error
+screens, MFA and recovery must be verified.
 
-## Безопасность макетов
+## Mockup safety
 
-Не вводить настоящие учётные данные. В макетах нет backend, fetch, аналитики, cookies или localStorage. HTML форм дополнительно запрещает сетевые соединения и отправку формы через CSP. В Quiet Mono после тестового MFA выполняется только локальная навигация в `05-consent.html`. JS переключает только демонстрационные состояния. Введите любые тестовые логин/пароль, затем любые 6 цифр для примера MFA. Пароль очищается при переходе к MFA; ничего не сохраняется.
+Do not enter real credentials. The mockups have no backend, fetch, analytics,
+cookies or localStorage. Form HTML additionally forbids network connections
+and form submission via CSP. In Quiet Mono, after the test MFA, only local
+navigation to `05-consent.html` occurs. JS only switches demo states. Enter any
+test login/password, then any 6 digits for the MFA example. The password
+is cleared when moving to MFA; nothing is stored.
 
-Переключатель видимости пароля, ошибки пустой формы, возврат и перезапуск работают. Ссылки помощи не ведут в реальные процедуры восстановления. Галерея и её пояснения не являются частью предлагаемых страниц авторизации.
+The password visibility toggle, empty-form errors, going back and restarting
+work. Help links do not lead to real recovery procedures. The gallery and its
+captions are not part of the proposed authorization pages.
 
-## Проверка
+## Verification
 
-Проверено в Chromium через Playwright: все 5 вариантов на 1440×960, 390×844 и 320×568; нет горизонтального переполнения; локальные шрифты загружаются; переключение видимости/очистка пароля и демонстрационный MFA работают; переключение фона в галерее работает; ошибок JavaScript и внешних HTTP(S)-запросов нет. Десктопный контактный лист и мобильный вариант просмотрены визуально.
+Verified in Chromium via Playwright: all 5 variants at 1440×960, 390×844 and
+320×568; no horizontal overflow; local fonts load; visibility toggle/password
+clearing and the demo MFA work; background switching in the gallery works; no
+JavaScript errors or external HTTP(S) requests. The desktop contact sheet and
+the mobile variant were reviewed visually.
 
-Никаких кластерных изменений, развёртывания или Git push не выполнялось.
+No cluster changes, deployments or Git pushes were performed.
 
-## Уточнения выбранного варианта Quiet Mono
+## Refinements of the chosen Quiet Mono variant
 
-- Весь интерфейс макетов и галереи переведён на английский; исходный заголовок всех форм — `Sign in`, без приветствий.
-- В Quiet Mono заголовок — Computer Modern Bold, 31px, вес 700; остальные элементы остаются CourierCyr.
-- У Quiet Mono убраны визуальные hover/click-эффекты: инверсия кнопки, изменение фона/рамки полей, подсветка глаза, подчёркивание помощи, смещение кнопки и transitions. При наведении кнопки сохраняют pointer, поля — текстовый курсор. Этот первоначальный вариант поведения уточнён ниже; ошибки ввода остаются различимыми.
-- Все HTML используют точную копию favicon действующей Wiki (`/images/socrat.svg`), без масштабирования или перерисовки. Это отдельный ресурс от маски внутри формы.
-- Проверены неизменность computed styles при hover/click, клавиатурный фокус, MFA и ширины 1440/390/320px; мобильный вариант просмотрен визуально.
+- The entire mockup and gallery interface is translated into English; the
+  original heading of every form is `Sign in`, with no greetings.
+- In Quiet Mono the heading uses Computer Modern Bold, 31px, weight 700; the
+  remaining elements are CourierCyr.
+- Quiet Mono dropped the visual hover/click effects: button inversion,
+  field background/border changes, eye highlight, help underline, button shift
+  and transitions. On hover, buttons still show a pointer; fields a text cursor.
+  This initial behavior is refined below; input errors remain distinguishable.
+- All HTML use an exact copy of the live Wiki favicon (`/images/socrat.svg`),
+  without scaling or redrawing. This is a resource separate from the mask
+  inside the form.
+- Verified: computed styles unchanged on hover/click, keyboard focus, MFA and
+  widths 1440/390/320px; the mobile variant was reviewed visually.
 
-## Quiet Mono: полный набор экранов и последние правки
+## Quiet Mono: full set of screens and latest edits
 
-Открывать `05-typewriter.html` (вход) или `05-consent.html` (согласие перед переходом в Argo CD). В общей галерее добавлена отдельная ссылка на consent-экран.
+Open `05-typewriter.html` (sign-in) or `05-consent.html` (consent before
+redirecting to Argo CD). The shared gallery has a separate link to the consent
+screen.
 
-### Изменения взаимодействия
+### Interaction changes
 
-- У полей **нет дополнительного outline ни при клике, ни при Tab**. Исходная тонкая граница остаётся неизменной. Ошибка валидации по-прежнему отмечается отдельно.
-- У основной нижней кнопки (`Sign in`, `Verify code`, `Continue`) — лёгкая заливка чернильным цветом с прозрачностью 4.5% и сдвиг стрелки на 3px за 160ms. Цвет текста не инвертируется. На touch-устройствах hover не включается; при prefers-reduced-motion стрелка не движется.
-- Переключатель пароля использует два отдельных SVG: перечёркнутый глаз, когда пароль скрыт, и открытый, когда показан. aria-label и aria-pressed также обновляются. Это не прежнее изменение прозрачности одного значка.
+- Fields have **no extra outline on click or Tab**. The original thin border
+  stays unchanged. Validation errors are still marked separately.
+- The main bottom button (`Sign in`, `Verify code`, `Continue`) gets a light
+  ink-colored fill with 4.5% opacity and the arrow shifting by 3px over 160ms.
+  The text color is not inverted. Hover is not enabled on touch devices; with
+  prefers-reduced-motion the arrow does not move.
+- The password toggle uses two separate SVGs: a crossed-out eye when the
+  password is hidden and an open one when shown. aria-label and aria-pressed
+  are updated too. This is not the previous opacity change of a single icon.
 
-### Согласие / Argo CD
+### Consent / Argo CD
 
-Из сохранённой владельцем страницы Authentik изучена структура: заголовок Redirecting to Argo CD, текущая учётная запись и Not you?, список разрешений, Continue, выбор языка, Flow inspector. Исходный HTML не исполнялся, не копировался в репозиторий; настоящие пользователи, session ID и прочие идентификаторы не переносились.
+The structure was studied from an owner-saved Authentik page: the heading
+Redirecting to Argo CD, the current account and Not you?, the permission list,
+Continue, language selection, Flow inspector. The source HTML was not executed
+and not copied into the repository; real users, session IDs and other
+identifiers were not carried over.
 
-В прототипе показаны `demo-user`, разрешения `email`/`profile`. Continue **не выдаёт разрешений и не открывает реальный Argo CD**: переключает локальное пояснение с возможностью вернуться к макету согласия. `Not you?` и `Back to sign in` открывают локальную форму.
+The prototype shows `demo-user` and the `email`/`profile` permissions.
+Continue **does not grant permissions and does not open the real Argo CD**: it
+switches to a local explanation with the ability to return to the consent
+mockup. `Not you?` and `Back to sign in` open the local form.
 
-### Общие инструменты
+### Shared tools
 
-- Верхний правый угол обоих экранов: язык и лупа инспектора, оформленные в Quiet Mono.
-- Действительно переключаются English/Русский, включая форму, MFA, ошибки, consent, панель и доступные подписи. По умолчанию английский; русский можно открыть через `?lang=ru`. Смена языка не стирает поля. Язык и выбранная фотография передаются между локальными экранами через query-параметры.
-- Инспектор — боковой модальный dialog: Next stage (имя/тип/объект), Plan history с раскрытием этапов, Current plan context и заведомо фиктивный `prototype-session`. Состояние зависит от текущего шага макета. Есть закрытие крестиком/Escape, удержание Tab внутри панели и возврат фокуса к лупе.
-- Это **не настоящий inspector API Authentik**. Все данные синтетические и явно помечены как prototype. При будущем внедрении сохранять штатную авторизацию/ограничения доступа Authentik к диагностике, не раскрывать обычным пользователям сессии или планы отдельным публичным API.
+- Top-right corner of both screens: language and the inspector magnifier,
+  styled in Quiet Mono.
+- English and Russian genuinely switch, including the form, MFA, errors, consent,
+  panel and available captions. English is default; Russian can be opened via
+  `?lang=ru`. Switching languages does not clear fields. Language and the
+  selected photo are passed between local screens via query parameters.
+- The inspector is a side modal dialog: Next stage (name/type/object), Plan
+  history with expandable stages, Current plan context and a deliberately
+  fictional `prototype-session`. The state depends on the mockup's current
+  step. It closes via cross/Escape, traps Tab inside the panel and returns
+  focus to the magnifier.
+- This is **not the real Authentik inspector API**. All data is synthetic and
+  explicitly labeled as prototype. On a future rollout, keep Authentik's
+  standard authorization/access restrictions to diagnostics; do not expose
+  sessions or plans of ordinary users via a separate public API.
 
-### Проверки этой итерации
+### Checks of this iteration
 
-Chromium/Playwright: стили полей при mouse/keyboard focus, смена двух SVG глаза и aria-состояний, мягкий hover без инверсии, обе локали без потери ввода, фокус и раскрытие инспектора, полный маршрут sign-in → MFA → consent, отсутствие настоящего редиректа/выдачи разрешений, локальные возвраты с сохранением языка и фона, 1440×960 / 390×844 / 320×568, отсутствие горизонтального переполнения, reduced motion, ссылка из галереи. Нет JavaScript errors и внешних HTTP(S)-запросов. Десктопный consent/inspector и мобильный вход с меню языка просмотрены визуально. Кластер не менялся.
+Chromium/Playwright: field styles under mouse/keyboard focus, the two eye
+SVGs and aria states switching, soft hover without inversion, both locales
+without input loss, focus and inspector expansion, the full sign-in → MFA →
+consent route, the absence of a real redirect/permission grant, local returns
+preserving language and background, 1440×960 / 390×844 / 320×568, no
+horizontal overflow, reduced motion, the link from the gallery. No JavaScript
+errors or external HTTP(S) requests. Desktop consent/inspector and mobile
+sign-in with the language menu were reviewed visually. The cluster was not
+changed.
 
 ## Inspector redesign: native-style pipeline and Wiki JSON
 
-Панель переработана после визуального ревью: ширина 600px на десктопе, светлая непрозрачная рабочая поверхность, секции в читаемых карточках, основной CourierCyr увеличен. Форма входа не переделывалась. На широком экране форма смещается в оставшееся пространство, а не оказывается под панелью.
+The panel was reworked after visual review: 600px width on desktop, a light
+opaque work surface, sections in readable cards, the main CourierCyr enlarged.
+The sign-in form was not redone. On a wide screen the form shifts into the
+remaining space rather than ending up under the panel.
 
-Plan history снова наглядный: связанный вертикальный pipeline, зелёные галочки завершённых этапов, синий Current и нейтральный Pending. Состояния подписаны текстом, а не только цветом; текущий узел отмечен aria-current=step. Любой этап раскрывается в JSON. Снимки планов сохранены отдельным раскрываемым блоком. Настоящий Authentik может иметь повторения/перепланирования; демонстрационные пять шагов не являются моделью реального API.
+Plan history is vivid again: a connected vertical pipeline, green checkmarks
+for completed stages, blue for Current and neutral for Pending. States are
+labeled with text, not color alone; the current node carries aria-current=step.
+Any stage expands into JSON. Plan snapshots are kept in a separate expandable
+block. Real Authentik may have repetitions/re-plannings; the demo's five steps
+are not a model of the real API.
 
-Для JSON переиспользованы точные файлы Wiki: Chroma syntax.css и CM Typewriter WOFF2. Оформление светлого блока адаптировано из Wiki hugo-content; добавлены подсветка токенов, локальная горизонтальная прокрутка длинных строк и Copy с обработкой недоступного clipboard. JSON размечается безопасными DOM text/span, не через innerHTML.
+The JSON reuses the exact Wiki files: Chroma syntax.css and CM Typewriter WOFF2.
+The light-block styling is adapted from the Wiki hugo-content; token
+highlighting, local horizontal scrolling of long lines and Copy with
+unavailable-clipboard handling were added. JSON is rendered via safe DOM
+text/span, not innerHTML.
 
-Повторно прошли базовые проверки обеих форм/языков/размеров. Дополнительно проверены completed/current/pending, раскрытие этапов/снимков, классы подсветки, JSON round-trip, Copy, шрифт Wiki и раскрытые данные на мобильном. Просмотрены desktop pipeline, desktop раскрытый JSON и mobile раскрытый JSON. Из-за закрытых details исправлена фильтрация доступных фокусу элементов в модальном окне.
+The basic checks of both forms/languages/sizes passed again. Additionally
+verified: completed/current/pending, stage/snapshot expansion, highlight
+classes, JSON round-trip, Copy, the Wiki font and expanded data on mobile.
+Desktop pipeline, desktop expanded JSON and mobile expanded JSON were
+reviewed. Focusable-element filtering inside the modal was fixed for closed
+details elements.
 
-**Важно:** механизм реального внедрения и границы CSS описаны в [AUTHENTIK-THEMING.md](AUTHENTIK-THEMING.md). Изучены исходники именно version/2026.8.5. План — сохранять родные Flow executor/inspector и их права доступа. CSS не добавляет синтаксическую разметку JSON или работающую Copy-кнопку: эти детали макета нельзя молча обещать как CSS-only. Кластер не менялся.
+**Important:** the real rollout mechanism and CSS boundaries are described in
+[AUTHENTIK-THEMING.md](AUTHENTIK-THEMING.md). The sources studied are exactly
+version/2026.8.5. The plan is to keep the native Flow executor/inspector and
+their access rights. The CSS does not add JSON syntax highlighting or a working
+Copy button: those mockup details must not be silently promised as CSS-only.
+The cluster was not changed.
 
 ## Inspector motion (prototype only)
 
-Открытие и закрытие панели теперь синхронизированы с перемещением формы: 180ms, cubic-bezier(.2,.65,.3,1), без spring/overshoot, opacity-эффектов или анимации blur. Панель двигается через transform; форма — через FLIP от текущего видимого положения к новой раскладке. На широких экранах форма смещается на 300px; на узких остаётся на месте, панель выезжает поверх. При reduced motion обе операции мгновенные; переключение настройки во время движения завершает анимации. Escape и крестик используют одно и то же анимированное закрытие. Сохранены модальность, фокус и история этапов.
+Opening and closing the panel is now synchronized with the form's movement:
+180ms, cubic-bezier(.2,.65,.3,1), no spring/overshoot, opacity effects or
+blur animation. The panel moves via transform; the form via a FLIP from its
+current visible position to the new layout. On wide screens the form shifts by
+300px; on narrow ones it stays in place and the panel slides over it. With
+reduced motion both operations are instant; toggling the setting mid-motion
+finishes the animations. Escape and the cross use the same animated close.
+Modality, focus and stage history are preserved.
 
-Playwright проверил обе страницы: начальные/конечные позиции без скачка, несколько промежуточных кадров с одинаковым нормированным прогрессом панели/формы, отмену открытия через Escape, повторный Escape, возврат к исходным координатам, отсутствие оставшихся анимаций, мобильное поведение и reduced motion. Повторно прошла проверка форм, локалей, инспектора, MFA и локальной навигации. Настоящий Authentik не менялся.
+Playwright verified both pages: initial/final positions without a jump,
+several intermediate frames with equal normalized panel/form progress,
+canceling the open via Escape, a repeated Escape, return to the original
+coordinates, no leftover animations, mobile behavior and reduced motion. The
+form, locales, inspector, MFA and local navigation checks passed again. The
+real Authentik was not changed.
 
 ## Non-modal inspector: form remains interactive
 
-Убраны showModal(), затемняющий backdrop, блокировка прокрутки и удержание Tab в панели. Теперь используется обычный non-modal dialog.show() с aria-modal=false: форма, переключатель пароля и языка, MFA и Continue доступны при открытом инспекторе. Панель не накладывает inert на остальную страницу. При закрытии из поля ввода фокус остаётся в поле; Escape и крестик сохраняют 180ms анимацию. Верхние инструменты на широком экране перемещаются вместе с раскладкой, чтобы язык не оказался под панелью.
+Removed showModal(), the dimming backdrop, the scroll lock and trapping Tab in
+the panel. It now uses a plain non-modal dialog.show() with aria-modal=false:
+the form, password and language toggles, MFA and Continue are available with
+the inspector open. The panel does not impose inert on the rest of the page.
+When closing from an input field, focus stays in the field; Escape and the
+cross keep the 180ms animation. The top tools shift with the layout on wide
+screens so the language control does not end up under the panel.
 
-Ниже ширины 1100px панель располагается ниже формы, а не закрывает её собой; страница свободно прокручивается. Это заменяет прежнее мобильное полноэкранное перекрытие. Параметр inspector=1 сохраняет открытый инспектор при локальном переходе MFA → consent.
+Below 1100px width, the panel is placed below the form instead of covering it;
+the page scrolls freely. This replaces the earlier mobile full-screen
+overlay. The inspector=1 parameter keeps the inspector open on the local
+MFA → consent transition.
 
-Проверен реальный ввод мышью/клавиатурой в форму при открытой панели, смена языка без потери ввода, глаз, MFA, consent, отсутствие :modal/inert/scroll lock, свободный Tab, Escape из поля без потери фокуса, отсутствие пересечений формы и панели на ширинах 1000/390/320. Повторно проверены синхронность и отсутствие скачков анимации на обоих экранах, быстрый Escape и reduced motion. Десктопный non-modal экран просмотрен визуально. Кластер не менялся.
+Verified: real mouse/keyboard input into the form with the panel open,
+language switching without input loss, the eye, MFA, consent, absence of
+:modal/inert/scroll lock, free Tab, Escape from a field without losing focus,
+no form/panel overlap at widths 1000/390/320. Synchronization and absence of
+animation jumps on both screens, quick Escape and reduced motion were checked
+again. The desktop non-modal screen was reviewed visually. The cluster was
+not changed.
