@@ -13,7 +13,7 @@ from types import ModuleType
 import pytest
 import yaml
 
-from scripts.quality.common import command
+from ci.quality.common import command
 
 ROOT = Path(__file__).resolve().parents[1]
 VOLUME_FIELD_COUNT = 2

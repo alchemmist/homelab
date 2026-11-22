@@ -9,18 +9,18 @@ The operator changed the integration scope: PR182 sets up CI and integrates revi
 ## Active CI scope
 
 CI runs `graph` (including the blocking strict configuration and suppression guard
-and a SIM300 check for constant-first comparisons in tracked, owned Python under `scripts/quality/`),
+and a SIM300 check for constant-first comparisons in tracked, owned Python under `ci/quality/`),
 followed by `python-scopes`, `yaml`, `scripts-q000`, `deploy-i001`, `secrets`, `javascript`, `ownership`, `docker`, `workflow`,
 `tests-fast`, `shell` and `rustfs-return-types`. The latter blocks missing public return annotations (Ruff
 `ANN201`) in `services/rustfs_gateway/`; the full Python check remains available locally.
 `yaml` runs the full YAML check, including generated workflows, and collects `reports/yaml.json`.
 `scripts-q000` checks inline quotes (Q000) and triple double quotes on existing docstrings
-(D300) in every tracked, owned `.py` file under `scripts/` and `tests/`, not just changed
+(D300) in every tracked, owned `.py` file under `ci/`, `scripts/` and `tests/`, not just changed
 files. It does not require new docstrings. Q002 checks the configured quote character,
 not triple quoting; it remains part of the full local Ruff policy, not this gate.
 `deploy-i001` checks import order (I001) in tracked, owned Python under
-`ansible/`, `deploy/`, `scripts/` and `tests/`. The same job checks unused imports
-(F401) under `scripts/` and `tests/`, using a separate tracked, owned inventory
+`ansible/`, `deploy/`, `ci/`, `scripts/` and `tests/`. The same job checks unused imports
+(F401) under `ci/`, `scripts/` and `tests/`, using a separate tracked, owned inventory
 that fails if either root is empty. Neither gate covers all owned Python.
 Ownership runs six offline checks plus their regression suites; the Ansible
 entrypoint scan covers both `.yml` and `.yaml`.
@@ -69,18 +69,18 @@ Independent fast nodes collect failures together. Ownership is a real source-con
 
 | Surface | Actual enforced checks | Owner |
 | --- | --- | --- |
-| Python | Ruff ALL, mandatory formatter, strict mypy plus additional error codes, owned-file/syntax coverage | `quality/ruff.toml`, `quality/mypy.ini`, `scripts/quality/lint.py` |
+| Python | Ruff ALL, mandatory formatter, strict mypy plus additional error codes, owned-file/syntax coverage | `quality/ruff.toml`, `quality/mypy.ini`, `ci/quality/check_python.py` |
 | YAML | strict yamllint, duplicate keys, tags/typing/quotes, framing, comments, length and whitespace | `quality/yamllint.yaml` |
-| Shell | ShellCheck `--enable=all`; supported workflow shell bodies also checked | `scripts/quality/lint.py` |
-| Delivery | actionlint; zizmor auditor, including generated workflows | `scripts/quality/lint.py` |
+| Shell | ShellCheck `--enable=all`; supported workflow shell bodies also checked | `ci/quality/check_shell.py` |
+| Delivery | actionlint; zizmor auditor, including generated workflows | `ci/quality/check_workflow.py` |
 | Credentials | Gitleaks; immutable exact reviewed false positives; context drift remains blocking | `quality/secret-false-positives.json`, `quality/strict-policy.json` |
-| Containers | Hadolint at style threshold; inline/global ignore pragmas disabled; owned Dockerfile and Containerfile names (plain, prefix or suffix, case-insensitive) | `quality/hadolint.yaml`, `scripts/quality/lint.py` |
-| JavaScript | Node syntax checks; actual Node/PromQL/parser regression fixtures in reviewed suites | `scripts/quality/lint.py`, `quality/test-suites.json` |
+| Containers | Hadolint at style threshold; inline/global ignore pragmas disabled; owned Dockerfile and Containerfile names (plain, prefix or suffix, case-insensitive) | `quality/hadolint.yaml`, `ci/quality/check_docker.py` |
+| JavaScript | Node syntax checks; actual Node/PromQL/parser regression fixtures in reviewed suites | `ci/quality/check_javascript.py`, `quality/test-suites.json` |
 | Ansible | offline strict ansible-lint, parser floor plus enumerated non-conflicting rules | `quality/ansible-lint.yaml` |
-| Kubernetes | Helm rendering, local checksum-locked schema validation, default plus additional kube-linter checks and source contracts | `scripts/quality/charts.py`, `quality/kube-linter.yaml`, `quality/schemas.lock.json` |
-| Dependencies | Python requirement/hash validation and pip-audit; exact npm lock/manifest integrity and TLS OSV auditing; unsupported locks block | `scripts/quality/lint.py` |
-| Architecture | mesh/inventory, native issuer transport, deployment/source/vendor ownership and operational entrypoint contracts | `deploy/contracts/`, `scripts/check_*`, `scripts/quality/boundaries.py` |
-| Test coverage | explicit disjoint test inventory, offline fast/medium suites, real disposable Kind suite | `quality/test-suites.json`, `scripts/quality/tests.py`, `tests/kubernetes/` |
+| Kubernetes | Helm rendering, local checksum-locked schema validation, default plus additional kube-linter checks and source contracts | `ci/quality/charts.py`, `quality/kube-linter.yaml`, `quality/schemas.lock.json` |
+| Dependencies | Python requirement/hash validation and pip-audit; exact npm lock/manifest integrity and TLS OSV auditing; unsupported locks block | `ci/quality/check_dependencies.py` |
+| Architecture | mesh/inventory, native issuer transport, deployment/source/vendor ownership and operational entrypoint contracts | `deploy/contracts/`, `ci/check_*`, `ci/quality/boundaries.py` |
+| Test coverage | explicit disjoint test inventory, offline fast/medium suites, real disposable Kind suite | `quality/test-suites.json`, `ci/quality/tests.py`, `tests/kubernetes/` |
 
 `quality/rules.json` and `quality/debt/` are historical catalogs/receipts, not current enforcement or acceptance. Tool/collection/schema locks live under `quality/`. Root project defaults are not interchangeable with the owning quality formatter config.
 
@@ -96,7 +96,7 @@ This is strict configuration for the adopted tools, **not a claim that every con
 
 ## Test inventory and safety
 
-pytest is the single runner, including unittest classes. All test modules under `tests/` and `experiments/` must be explicitly scheduled or named with a reason in `notScheduled`; unknown/stale/overlapping entries fail Graph integrity. No global pytest discovery of operational or autonomous experiments is authorized. The remaining `notScheduled` entries are explicit coverage gaps, not passed tests. Run `uv run python scripts/quality/contracts.py` for current counts.
+pytest is the single runner, including unittest classes. All test modules under `tests/` and `experiments/` must be explicitly scheduled or named with a reason in `notScheduled`; unknown/stale/overlapping entries fail Graph integrity. No global pytest discovery of operational or autonomous experiments is authorized. The remaining `notScheduled` entries are explicit coverage gaps, not passed tests. Run `uv run python -m ci.quality.contracts` for current counts.
 
 Newly reviewed pure helper/publisher-negative/dashboard tests join fast; source-only Helm upgrade assertions join medium and do not execute Jobs or backups. Two newly synchronized owner tests import provisioning/validation entrypoints and remain explicitly unexecuted pending bounded isolation review. Five experimental autonomy test modules remain deferred. No previously scheduled module was removed.
 
@@ -113,16 +113,16 @@ Private complete audit evidence is outside Git at `~/Library/Application Support
 ```sh
 uv sync --locked
 uv run qg validate
-uv run python scripts/quality/contracts.py
-uv run python scripts/quality/strict_guard.py
-uv run python scripts/quality/lint.py python
-uv run python scripts/quality/lint.py yaml
-uv run python scripts/quality/tests.py fast
-uv run python scripts/quality/tests.py medium
+uv run python -m ci.quality.contracts
+uv run python -m ci.quality.strict_guard
+uv run python -m ci.quality.check_python
+uv run python -m ci.quality.check_yaml
+uv run python -m ci.quality.tests fast
+uv run python -m ci.quality.tests medium
 ```
 
 The medium suite needs full Git history for the pinned before/handoff and later owner-cutover renders (CI uses `fetch-depth: 0`). A shallow clone is not sufficient. Preload the [pinned nginx parser](../nginx-access-logging.md) before isolating the suite.
 
-Actual Linux jobs add `--isolate-network` to fast/medium. Install only required pinned binaries via `scripts/quality/install_tools.py` and parsing collections via `scripts/quality/install_collections.py`; do not substitute system versions silently. Use `.venv/bin:.quality-tools/bin` in scoped PATH and `KUBECONFIG=/dev/null` for offline checks. Cluster testing requires an explicitly reviewed disposable Docker/Kind environment; it is not implicitly run by these offline commands.
+Actual Linux jobs add `--isolate-network` to fast/medium. Install only required pinned binaries via `ci/quality/install_tools.py` and parsing collections via `ci/quality/install_collections.py`; do not substitute system versions silently. Use `.venv/bin:.quality-tools/bin` in scoped PATH and `KUBECONFIG=/dev/null` for offline checks. Cluster testing requires an explicitly reviewed disposable Docker/Kind environment; it is not implicitly run by these offline commands.
 
 Publication uses the private fail-closed draft publisher: fresh main/remote ancestry, stable clean head, complete audit metadata, verified open draft and one non-force push. Any refusal means no separate push. PR metadata must identify actual published head and real results. No main merge, admin bypass, production execution, backup/identity/model/worker/provider operation is performed by CI/refactoring preparation.

@@ -1,9 +1,7 @@
-"""Portable static linters; subprocesses only parse source, never run operational code."""
+"""Check dependencies."""
 
 from __future__ import annotations
 
-import argparse
-import ast
 import base64
 import binascii
 import gzip
@@ -11,69 +9,99 @@ import http.client
 import io
 import json
 import math
-import os
 import re
-import shutil
 import ssl
-import sys
-import tempfile
-import tokenize
 import zlib
 from pathlib import Path
 from typing import TYPE_CHECKING
-from urllib.parse import unquote, urlparse
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from scripts.quality.common import Finding
+    from ci.quality.common import Finding
 
-from common import ROOT, command, failure, finding, owned, report, tracked, use_project_tools
-
-MYPY_ERROR = re.compile(
-    r"^(?P<path>.+?):(?P<line>\d+):(?:\d+:)? (?P<level>error|warning): "
-    r"(?P<message>.*?)(?:\s+\[(?P<code>[A-Za-z0-9_-]+)\])?$"
-)
-GITHUB_EXPR = re.compile(r"\$\{\{.*?\}\}", re.DOTALL)
-
-
-class LintToolError(RuntimeError):
-    """Raised when a lint subprocess emits output that cannot be parsed."""
-
+from ci.quality.common import ROOT, command, finding
+from ci.quality.runner import run
 
 _DEPENDENCY_PROTOCOL_FAILURE = "Dependency audit returned malformed, empty, or skipped data"
+
+
 _DEPENDENCY_PATH_FAILURE = "Dependency metadata must be a tracked regular repository file"
+
+
 _DEPENDENCY_REQUIREMENT_FAILURE = (
     "Requirement lock contains unsupported or unsafe source directives"
 )
+
+
 _MAX_REQUIREMENT_LOCK_BYTES = 4 * 1024 * 1024
+
+
 _PINNED_REQUIREMENT = re.compile(
     r"[A-Za-z0-9][A-Za-z0-9_.-]*(?:\[[A-Za-z0-9_.,-]+\])?"
     r"==[A-Za-z0-9][A-Za-z0-9_.+!-]*(?:\s*;[^\n]*)?"
 )
+
+
 _REQUIREMENT_HASH = re.compile(r"--hash=sha256:[0-9a-fA-F]{64}")
+
+
 _NPM_LOCKFILE_VERSION = 3
+
+
 _MAX_NPM_DISTRIBUTIONS = 1000
+
+
 _MAX_ADVISORY_RESPONSE_BYTES = _MAX_REQUIREMENT_LOCK_BYTES
+
+
 _OSV_HOST = "api.osv.dev"
+
+
 _OSV_AUDIT_PATH = "/v1/querybatch"
+
+
 _OSV_TIMEOUT_SECONDS = 30
+
+
 _OSV_SUCCESS_STATUS = 200
+
+
 _SHA512_DIGEST_BYTES = 64
+
+
 _MAX_PACKAGE_PATH_SEGMENTS = 32
+
+
 _BARE_NAME_SEGMENTS = 1
+
+
 _SCOPED_NAME_SEGMENTS = 2
+
+
 _NPM_NAME_PART = r"[a-z0-9~_][a-z0-9._~_-]*"
+
+
 _NPM_NAME = re.compile(rf"^(?:@{_NPM_NAME_PART}/)?{_NPM_NAME_PART}$")
+
+
 _NPM_VERSION = re.compile(
     r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
     r"(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
 )
+
+
 _NPM_RANGE = re.compile(r"^[0-9A-Za-z^~<>=.* |_xX-]+$")
+
+
 _NPM_LOCK_KEYS = frozenset({"name", "version", "lockfileVersion", "requires", "packages"})
+
+
 _NPM_ROOT_KEYS = frozenset(
     {"name", "version", "dependencies", "devDependencies", "optionalDependencies"}
 )
+
+
 _NPM_PACKAGE_KEYS = frozenset(
     {
         "bin",
@@ -100,10 +128,17 @@ _NPM_PACKAGE_KEYS = frozenset(
         "version",
     }
 )
+
+
 _NPM_LOCK_NAMES = ("package-lock.json", "npm-shrinkwrap.json")
-# Only this chart materializes a compressed lock before invoking npm ci.
+
+
 _NPM_ROOT_DEP_FIELDS = ("dependencies", "devDependencies", "optionalDependencies")
+
+
 _NPM_NESTED_DEP_FIELDS = ("dependencies", "devDependencies", "optionalDependencies")
+
+
 _DEPENDENCY_NPM_LOCK_FAILURE = "npm lock contains unsupported or unsafe package sources"
 
 
@@ -152,7 +187,11 @@ def _distribution_fields(value: object) -> tuple[str, str, list[object]]:
         raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
     if "skip_reason" in value:
         raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
-    name, version, vulnerabilities = value.get("name"), value.get("version"), value.get("vulns")
+    name, version, vulnerabilities = (
+        value.get("name"),
+        value.get("version"),
+        value.get("vulns"),
+    )
     if not isinstance(name, str) or not isinstance(version, str):
         raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
     if not name or not version:
@@ -291,7 +330,9 @@ def _parse_json_value(text: str) -> object | None:
     """Parse JSON without treating a decode error as an empty audit."""
     try:
         value: object = json.loads(
-            text, object_pairs_hook=_unique_json_object, parse_constant=_reject_nonfinite_json
+            text,
+            object_pairs_hook=_unique_json_object,
+            parse_constant=_reject_nonfinite_json,
         )
     except ValueError:
         return None
@@ -416,8 +457,6 @@ def _npm_lock_document(path: Path) -> dict[str, object] | None:
     return document
 
 
-# Only these exact, reproducibly rebuilt release archives may use a local source.
-# Scope each pin to one consumer and its top-level package; keep upstream OSV identity.
 _PATCHED_LOCKS = {
     "tools/official-mcp/package-lock.json": {
         "argocd-mcp": (
@@ -426,7 +465,6 @@ _PATCHED_LOCKS = {
             "sha512-jyWGa1UQ1OpN/dagz0eUIHwTqmQs8LaIcnewvKH63iNbF1bZMVXOKIFW24UVQ8ein45WJtTbiT69jCe8qWsb8A==",
         )
     },
-
 }
 
 
@@ -730,7 +768,9 @@ def post_node_advisory_batch(packages: Sequence[tuple[str, str]]) -> object:
         raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
     try:
         decoded: object = json.loads(
-            raw, object_pairs_hook=_unique_json_object, parse_constant=_reject_nonfinite_json
+            raw,
+            object_pairs_hook=_unique_json_object,
+            parse_constant=_reject_nonfinite_json,
         )
     except ValueError:
         raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE) from None
@@ -866,712 +906,5 @@ def check_dependencies(names: Sequence[str]) -> tuple[list[Finding], int]:
     return findings, count
 
 
-def sarif(data, prefix=""):
-    """Execute sarif."""
-    result = []
-    for run in data["runs"]:
-        for item in run.get("results", []):
-            location = item.get("locations", [])[0]["physicalLocation"]
-            path = unquote(location["artifactLocation"]["uri"])
-            if path.startswith("file:"):
-                path = urlparse(path).path
-            if not Path(path).is_absolute() and not (ROOT / path).is_file():
-                path = str(Path(prefix) / path)
-            rule = item["ruleId"]
-            line = location.get("region", {}).get("startLine", 1)
-            result.append(finding(rule, path, line, f"{rule}: inspect this source location."))
-    return result
-
-
-def nonsecret_tokenizer_option(path, item):
-    """Execute nonsecret_tokenizer_option."""
-    # DL3064 matches TOKENIZERS as though it were a credential. This exact
-    # public runtime option line contains no secret; any edit loses the exception.
-    if path != "services/spi-tokenizer/Dockerfile" or item["code"] != "DL3064":
-        return False
-    line = (ROOT / path).read_text().splitlines()[item["line"] - 1]
-    return line == "ENV TOKENIZERS_PARALLELISM=false RAYON_NUM_THREADS=1 PYTHONPATH=/app"
-
-
-def yaml_targets(names):
-    # Helm and Ansible templates are Go/Jinja text, not YAML documents.
-    """Execute yaml_targets."""
-    return [
-        p
-        for p in names
-        if p.endswith((".yml", ".yaml")) and "/templates/" not in p and not p.endswith(".j2")
-    ]
-
-
-def shell_targets(names):
-    """Execute shell_targets."""
-    result = []
-    for name in names:
-        if "/templates/" in name or name.endswith(".j2"):
-            continue
-        if name.endswith(".sh"):
-            result.append(name)
-            continue
-        if Path(name).suffix:
-            continue
-        try:
-            first = (ROOT / name).read_text(errors="ignore").splitlines()[:1]
-        except OSError:
-            continue
-        if first and first[0].startswith("#!") and re.search(r"(?:bash|dash|ksh|\bsh)\b", first[0]):
-            result.append(name)
-    return result
-
-
-def shell_dialect(spec):
-    """Execute shell_dialect."""
-    token = spec.split()[0]
-    if token in {"bash", "sh", "dash", "ksh"}:
-        return token
-    if token in {"python", "python3"}:
-        return "python"
-    return None
-
-
-def walk_runs(node, shell="bash"):
-    """Execute walk_runs."""
-    if isinstance(node, dict):
-        current = node["shell"] if isinstance(node.get("shell"), str) else shell
-        script = node.get("run")
-        if isinstance(script, str) and script.strip():
-            yield current, script
-        for key, value in node.items():
-            if key != "run":
-                yield from walk_runs(value, current)
-    elif isinstance(node, list):
-        for item in node:
-            yield from walk_runs(item, shell)
-
-
-def workflow_runs(names):
-    """Execute workflow_runs."""
-    import yaml
-
-    result = []
-    for name in names:
-        if not name.startswith(".github/") or not name.endswith((".yml", ".yaml")):
-            continue
-        if "/templates/" in name:
-            continue
-        try:
-            document = yaml.safe_load((ROOT / name).read_text())
-        except yaml.YAMLError:
-            continue
-        for spec, script in walk_runs(document):
-            result.append((name, spec, script))
-    return result
-
-
-def workflow_files(names):
-    """Execute workflow_files."""
-    return [
-        p for p in names if p.startswith(".github/workflows/") and p.endswith((".yml", ".yaml"))
-    ]
-
-
-def parse_mypy(text):
-    """Execute parse_mypy."""
-    result = []
-    for line in text.splitlines():
-        match = MYPY_ERROR.match(line)
-        if not match:
-            continue
-        result.append(
-            finding(
-                match.group("code") or "mypy",
-                match.group("path"),
-                int(match.group("line")),
-                match.group("message"),
-            )
-        )
-    return result
-
-
-def mypy_argv(files):
-    """Execute mypy_argv."""
-    return [
-        "mypy",
-        "--config-file",
-        "quality/mypy.ini",
-        "--no-error-summary",
-        "--no-pretty",
-        "--no-color-output",
-        "--hide-error-context",
-        "--show-error-codes",
-        "--follow-imports=silent",
-        "--no-incremental",
-        *files,
-    ]
-
-
-def mypy_status(parsed, code, text):
-    """Separate a finished type-check from a fatal run that did not cover its files."""
-    if any(
-        marker in text
-        for marker in (
-            "Duplicate module",
-            "Traceback (most recent call last)",
-            "INTERNAL ERROR",
-        )
-    ):
-        return "incomplete"
-    if code in (0, 1):
-        return "complete"
-    if code == 2 and parsed and all(item["ruleId"] == "syntax" for item in parsed):
-        return "syntax"
-    return "incomplete"
-
-
-def mypy_invoke(files, timeout):
-    """Execute mypy_invoke."""
-    process = command(mypy_argv(files), allowed=(0, 1, 2), timeout=timeout)
-    parsed = parse_mypy(process.stdout) + parse_mypy(process.stderr)
-    text = process.stdout + "\n" + process.stderr
-    return parsed, mypy_status(parsed, process.returncode, text)
-
-
-def python_syntax_findings(files):
-    """Real parser failures. They must not abort type-checking of every other file."""
-    findings = []
-    clean = []
-    for name in files:
-        source = (ROOT / name).read_text()
-        try:
-            ast.parse(source, filename=name)
-        except (SyntaxError, ValueError) as error:
-            line = error.lineno if isinstance(error, SyntaxError) and error.lineno else 1
-            findings.append(
-                finding(
-                    "python-syntax",
-                    name,
-                    line,
-                    "Python parser rejected this file before type checking.",
-                )
-            )
-        else:
-            clean.append(name)
-    return findings, clean
-
-
-def mypy_on(files, timeout):
-    """Execute mypy_on."""
-    if not files:
-        return []
-    parsed, status = mypy_invoke(files, timeout)
-    if status == "complete":
-        return parsed
-    if len(files) == 1:
-        if status == "syntax":
-            return parsed
-        raise RuntimeError("mypy coverage incomplete")
-    groups = {}
-    for name in files:
-        groups.setdefault(str(Path(name).parent), []).append(name)
-    if len(groups) == 1 or len(groups) == len(files):
-        result = []
-        for name in files:
-            result.extend(mypy_on([name], min(timeout, 180)))
-        return result
-    result = []
-    for group in groups.values():
-        result.extend(mypy_on(group, min(timeout, 600)))
-    return result
-
-
-def mypy_findings(files):
-    """Execute mypy_findings."""
-    syntax, remaining = python_syntax_findings(files)
-    syntax_names = {item["location"]["path"] for item in syntax}
-    if syntax_names | set(remaining) != set(files) or syntax_names & set(remaining):
-        raise RuntimeError("mypy coverage incomplete")
-    # Exit 2 is a fatal mypy stop. Retry smaller sets instead of keeping a partial report.
-    return syntax + mypy_on(remaining, 2400)
-
-
-def format_findings(files):
-    """Execute format_findings."""
-    process = command(
-        ["ruff", "format", "--check", "--config", "quality/ruff.toml", *files],
-        allowed=(0, 1, 2),
-        timeout=300,
-    )
-    result = []
-    for line in process.stderr.splitlines():
-        marker = "Failed to parse "
-        if marker not in line:
-            continue
-        detail = line.split(marker, 1)[1]
-        path, separator, rest = detail.partition(":")
-        line_no, _, message = rest.partition(":")
-        if not separator or not line_no.isdigit():
-            continue
-        result.append(
-            finding(
-                "ruff-syntax",
-                path.strip(),
-                int(line_no),
-                message.strip() or "Ruff could not parse this file",
-            )
-        )
-    if process.returncode:
-        for line in process.stdout.splitlines():
-            prefix = "Would reformat: "
-            if line.startswith(prefix):
-                result.append(
-                    finding(
-                        "ruff-format",
-                        line.removeprefix(prefix).strip(),
-                        1,
-                        "Ruff format check failed",
-                    )
-                )
-    if process.returncode not in (0, 1) and not result:
-        raise RuntimeError("ruff format failed without a file list")
-    return result
-
-
-def shellcheck_files(files):
-    """Execute shellcheck_files."""
-    if not files:
-        return []
-    process = command(
-        ["shellcheck", "--norc", "--enable=all", "--format=json", *files],
-        allowed=(0, 1),
-        timeout=180,
-    )
-    data = json.loads(process.stdout.strip() or "[]")
-    return [
-        finding("SC" + str(item["code"]), item["file"], item["line"], item["message"])
-        for item in data
-    ]
-
-
-def workflow_script_findings(names, kind):
-    """Execute workflow_script_findings."""
-    result = []
-    grouped = {"bash": [], "sh": [], "dash": [], "ksh": []}
-    with tempfile.TemporaryDirectory(prefix="homelab-shellcheck-") as temp:
-        labels = {}
-        for name, spec, script in workflow_runs(names):
-            dialect = shell_dialect(spec)
-            if dialect == "python":
-                if kind != "python":
-                    continue
-                try:
-                    ast.parse(script)
-                except SyntaxError as error:
-                    result.append(
-                        finding(
-                            "python-syntax",
-                            name,
-                            error.lineno or 1,
-                            "Inline workflow Python was rejected by the parser.",
-                            script,
-                        )
-                    )
-                continue
-            if kind != "shell":
-                continue
-            if dialect is None:
-                result.append(
-                    finding(
-                        "workflow-shell-unreviewed",
-                        name,
-                        1,
-                        "Inline workflow script has no pinned parser: " + spec.split()[0],
-                        spec + "\n" + script,
-                    )
-                )
-                continue
-            sanitized = GITHUB_EXPR.sub("GH_EXPR", script)
-            path = Path(temp) / f"script-{len(labels)}.sh"
-            path.write_text(sanitized)
-            labels[str(path)] = name
-            grouped[dialect].append(str(path))
-        for dialect, paths in grouped.items():
-            if not paths:
-                continue
-            process = command(
-                [
-                    "shellcheck",
-                    "--norc",
-                    "--enable=all",
-                    "--shell",
-                    dialect,
-                    "--format=json",
-                    *paths,
-                ],
-                allowed=(0, 1),
-                timeout=180,
-            )
-            for item in json.loads(process.stdout.strip() or "[]"):
-                source = labels.get(
-                    str(Path(item["file"]).resolve()), labels.get(item["file"], item["file"])
-                )
-                result.append(
-                    finding(
-                        "SC" + str(item["code"]),
-                        source,
-                        1,
-                        f"Inline workflow script line {item['line']}: {item['message']}",
-                        source + "\n" + item["message"],
-                    )
-                )
-    return result
-
-
-def docker_targets(names: list[str]) -> list[str]:
-    """Include conventional Dockerfile variants without executing build instructions."""
-    result: list[str] = []
-    for name in names:
-        basename = Path(name).name.casefold()
-        if (
-            basename in ("dockerfile", "containerfile")
-            or basename.startswith(("dockerfile.", "containerfile."))
-            or basename.endswith((".dockerfile", ".containerfile"))
-        ):
-            result.append(name)
-    return result
-
-
-def check_python(names: list[str]) -> tuple[list[Finding], int]:
-    """Run the python linter and return findings and target count."""
-    files = [p for p in names if p.endswith(".py")]
-    process = command(
-        ["ruff", "check", "--config", "quality/ruff.toml", "--output-format", "json", *files],
-        allowed=(0, 1, 2),
-        timeout=300,
-    )
-    try:
-        data = json.loads(process.stdout or "[]")
-    except json.JSONDecodeError:
-        data = None
-    if not isinstance(data, list):
-        raise LintToolError("ruff failed")
-    result = [
-        finding(
-            item.get("code") or "ruff-syntax",
-            item["filename"],
-            item["location"]["row"],
-            item["message"],
-        )
-        for item in data
-    ]
-    result.extend(format_findings(files))
-    result.extend(mypy_findings(files))
-    result.extend(workflow_script_findings(names, "python"))
-    return result, len(files)
-
-
-def check_yaml(names: list[str]) -> tuple[list[Finding], int]:
-    """Run the yaml linter and return findings and target count."""
-    from yamllint import linter
-    from yamllint.config import YamlLintConfig
-
-    config = YamlLintConfig(file=str(ROOT / "quality/yamllint.yaml"))
-    files = yaml_targets(names)
-    result = [
-        finding(
-            "yaml-" + (item.rule or "syntax"),
-            path,
-            item.line,
-            "YAML " + (item.rule or "syntax") + ": " + item.desc,
-        )
-        for path in files
-        for item in linter.run((ROOT / path).read_text(), config, filepath=path)
-    ]
-    return result, len(files)
-
-
-def check_shell(names: list[str]) -> tuple[list[Finding], int]:
-    """Run the shell linter and return findings and target count."""
-    files = shell_targets(names)
-    result = shellcheck_files(files)
-    result.extend(workflow_script_findings(names, "shell"))
-    return result, len(files)
-
-
-def check_actions(names: list[str]) -> tuple[list[Finding], int]:
-    """Run the actions linter and return findings and target count."""
-    files = workflow_files(names)
-    return sarif(
-        json.loads(
-            command(
-                [
-                    "zizmor",
-                    "--no-config",
-                    "--strict-collection",
-                    "--persona",
-                    "auditor",
-                    "--format",
-                    "sarif",
-                    *files,
-                ],
-                allowed=(0, 1),
-                timeout=180,
-            ).stdout
-        ),
-        ".github/workflows",
-    ), len(files)
-
-
-def python_directive_lines(source: str) -> set[int]:
-    """Find noqa comment tokens in Python run steps, not YAML prose or shell data."""
-    import yaml
-
-    def fields(node: yaml.Node | None) -> dict[str, yaml.Node]:
-        if not isinstance(node, yaml.MappingNode):
-            return {}
-        return {key.value: value for key, value in node.value if isinstance(key, yaml.ScalarNode)}
-
-    def shell(node: yaml.Node | None, fallback: str) -> str:
-        return node.value if isinstance(node, yaml.ScalarNode) else fallback
-
-    def default_shell(mapping: dict[str, yaml.Node], fallback: str) -> str:
-        run = fields(fields(mapping.get("defaults")).get("run"))
-        return shell(run.get("shell"), fallback)
-
-    document = fields(yaml.compose(source, Loader=yaml.SafeLoader))
-    lines = set()
-    for job in fields(document.get("jobs")).values():
-        config = fields(job)
-        steps = config.get("steps")
-        if not isinstance(steps, yaml.SequenceNode):
-            continue
-        inherited = default_shell(config, default_shell(document, "bash"))
-        for step in steps.value:
-            values = fields(step)
-            script = values.get("run")
-            if (
-                not isinstance(script, yaml.ScalarNode)
-                or shell_dialect(shell(values.get("shell"), inherited)) != "python"
-            ):
-                continue
-            for token in tokenize.generate_tokens(io.StringIO(script.value).readline):
-                if token.type == tokenize.COMMENT and re.match(
-                    r"#\s*noqa(?:\s*:|\s*$)", token.string, re.I
-                ):
-                    if script.style == "|":
-                        offset = token.start[0]
-                    else:
-                        # Folding/quoting can remove physical newlines. If the
-                        # comment has a unique verbatim spelling inside this scalar,
-                        # report its source line. Escaped/ambiguous spellings can
-                        # only be attributed reliably to the scalar as a whole.
-                        raw = source[script.start_mark.index : script.end_mark.index]
-                        comment = token.string.rstrip()
-                        offset = (
-                            raw[: raw.index(comment)].count("\n") if raw.count(comment) == 1 else 0
-                        )
-                    lines.add(script.start_mark.line + 1 + offset)
-    return lines
-
-
-def workflow_directives(name: str) -> list[Finding]:
-    """Reject inline audit waivers without treating shell/YAML data as Python."""
-    source = (ROOT / name).read_text()
-    lines = python_directive_lines(source)
-    for number, line in enumerate(source.splitlines(), 1):
-        if re.search(r"#\s*(?:zizmor:\s*ignore|shellcheck\s+disable=)", line, re.I):
-            lines.add(number)
-    return [
-        finding("workflow-suppression", name, number, "Workflow lint suppression is not allowed.")
-        for number in sorted(lines)
-    ]
-
-
-def check_actionlint(names: list[str]) -> tuple[list[Finding], int]:
-    """Run the actionlint linter and return findings and target count."""
-    files = workflow_files(names)
-    for helper in ("shellcheck", "pyflakes"):
-        if shutil.which(helper) is None:
-            raise LintToolError(f"Missing required actionlint helper: {helper}")
-    process = command(
-        ["actionlint", "-config-file", os.devnull, "-format", "{{json .}}", *files],
-        allowed=(0, 1),
-        timeout=180,
-    )
-    data = json.loads(process.stdout or "[]")
-    result: list[Finding] = [
-        finding(item["kind"], item["filepath"], item["line"], item["message"]) for item in data
-    ]
-    return result, len(files)
-
-
-def check_ansible(names: list[str]) -> tuple[list[Finding], int]:
-    """Run the ansible linter and return findings and target count."""
-    os.environ["ANSIBLE_CONFIG"] = str(ROOT / "ansible/ansible.cfg")
-    os.environ["ANSIBLE_COLLECTIONS_PATH"] = str(ROOT / ".quality-tools/collections")
-    files = [p for p in names if p.startswith("ansible/") and p.endswith((".yml", ".yaml"))]
-    data = json.loads(
-        command(
-            [
-                "ansible-lint",
-                "--offline",
-                "--project-dir",
-                str(ROOT),
-                "--config-file",
-                str(ROOT / "quality/ansible-lint.yaml"),
-                "--format",
-                "sarif",
-                *[str(ROOT / p) for p in files],
-            ],
-            allowed=(0, 2),
-            timeout=1800,
-        ).stdout
-    )
-    return sarif(data), len(files)
-
-
-def check_docker(names: list[str]) -> tuple[list[Finding], int]:
-    """Run the docker linter and return findings and target count."""
-    files = docker_targets(names)
-    result: list[Finding] = []
-    for path in files:
-        data = json.loads(
-            command(
-                ["hadolint", "--config", "quality/hadolint.yaml", "--format", "json", path],
-                allowed=(0, 1),
-            ).stdout
-        )
-        result.extend(
-            finding(item["code"], path, item["line"], item["message"])
-            for item in data
-            if not nonsecret_tokenizer_option(path, item)
-        )
-    return result, len(files)
-
-
-def check_javascript(names: list[str]) -> tuple[list[Finding], int]:
-    """Run the javascript linter and return findings and target count."""
-    files = [p for p in names if p.endswith(".js")]
-    result = []
-    for path in files:
-        process = command(["node", "--check", path], allowed=(0, 1))
-        if process.returncode:
-            from common import digest
-
-            result.append(
-                finding(
-                    "javascript-syntax",
-                    path,
-                    1,
-                    "JavaScript parser rejected this source; code was not executed.",
-                    digest((ROOT / path).read_text()),
-                )
-            )
-    return result, len(files)
-
-
-def check_secrets(_names: list[str]) -> tuple[list[Finding], int]:
-    """Run the secrets linter and return findings and target count."""
-    with tempfile.TemporaryDirectory(prefix="homelab-secret-scan-") as temp:
-        stage = Path(temp) / "source"
-        tracked_names = tracked()
-        for name in tracked_names:
-            target = stage / name
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / name, target)
-        out = Path(temp) / "redacted.json"
-        command(
-            [
-                "gitleaks",
-                "dir",
-                str(stage),
-                "--redact=100",
-                "--no-banner",
-                "--report-format",
-                "json",
-                "--report-path",
-                str(out),
-            ],
-            allowed=(0, 1),
-            timeout=240,
-        )
-        data = json.loads(out.read_text())
-        result = []
-        for item in data:
-            path = (
-                Path(item["File"]).relative_to(stage)
-                if Path(item["File"]).is_absolute()
-                else Path(item["File"])
-            )
-            result.append(
-                finding(
-                    item["RuleID"],
-                    path,
-                    item["StartLine"],
-                    "Potential secret: inspect privately; do not paste its value into reports.",
-                )
-            )
-        return result, len(tracked_names)
-
-
-def check(tool: str) -> tuple[list[Finding], int]:
-    """Execute check."""
-    use_project_tools()
-    names = owned(tracked())
-    if tool == "workflow":
-        security, count = check("actions")
-        expressions, _ = check("actionlint")
-        directives = [item for name in workflow_files(names) for item in workflow_directives(name)]
-        return security + expressions + directives, count
-    if tool == "dependencies":
-        return check_dependencies(names)
-    tools = {
-        "python": check_python,
-        "yaml": check_yaml,
-        "shell": check_shell,
-        "actions": check_actions,
-        "actionlint": check_actionlint,
-        "ansible": check_ansible,
-        "docker": check_docker,
-        "javascript": check_javascript,
-        "secrets": check_secrets,
-    }
-    checker = tools.get(tool)
-    if checker is None:
-        raise ValueError("Unknown linter")
-    return checker(names)
-
-
-def main():
-    """Execute main."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "tool",
-        choices=[
-            "workflow",
-            "python",
-            "yaml",
-            "shell",
-            "actions",
-            "actionlint",
-            "ansible",
-            "docker",
-            "secrets",
-            "javascript",
-            "dependencies",
-        ],
-    )
-    args = parser.parse_args()
-    output = ROOT / f"reports/{args.tool}.json"
-    try:
-        findings, count = check(args.tool)
-        return report(args.tool, findings, count, output)
-    except (OSError, RuntimeError, TypeError, ValueError) as error:
-        failure(output, error)
-        print(
-            f"{args.tool}: {type(error).__name__}; tool failure, NOT an accepted lint result",
-            file=sys.stderr,
-        )
-        return 2
-
-
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run("dependencies", check_dependencies))

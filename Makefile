@@ -8,25 +8,23 @@ check: graph ownership yaml python-scopes scripts-q000 deploy-i001 rustfs-return
 
 setup:
 	uv sync --locked
-	uv run python scripts/quality/install_tools.py
-	uv run python scripts/quality/install_collections.py
+	uv run python -m ci.quality.install_tools
+	uv run python -m ci.quality.install_collections
 
 graph:
 	uv run qg validate
-	uv run python scripts/quality/contracts.py
-	uv run python scripts/quality/strict_guard.py
-	bash -o pipefail -c 'uv run python -m scripts.quality.python_inputs scripts/quality/ | \
-	  xargs -0 -r uv run ruff check --config quality/ruff.toml --select SIM300 \
-	    --ignore-noqa --output-format concise --'
+	uv run python -m ci.quality.contracts
+	uv run python -m ci.quality.strict_guard
+	uv run python -m ci.quality.check_sim300
 	uv run pytest -q tests/test_quality_python_policy.py
 
 ownership:
-	uv run python scripts/check_infrastructure_contracts.py
-	uv run python scripts/check_source_pointers.py
-	uv run python scripts/check_operational_entrypoints.py
-	uv run python scripts/check_vendor_contracts.py
-	uv run python scripts/alert_graphs.py --check
-	uv run python scripts/n8n/check_failure_alerts.py
+	uv run python -m ci.check_infrastructure_contracts
+	uv run python -m ci.check_source_pointers
+	uv run python -m ci.check_operational_entrypoints
+	uv run python -m ci.check_vendor_contracts
+	uv run python -m ci.check_alert_graphs
+	uv run python -m ci.check_failure_alerts
 	uv run python -m pytest -q \
 	  tests/test_alert_graph_inventory.py \
 	  tests/test_alert_graph_panel_ids.py \
@@ -39,66 +37,60 @@ ownership:
 	  tests/test_vendor_contracts.py
 
 yaml:
-	uv run python scripts/quality/lint.py yaml
+	uv run python -m ci.quality.check_yaml
 
 python-scopes:
-	uv run --locked python -m scripts.quality.python_scopes
+	uv run --locked python -m ci.quality.python_scopes
 
 scripts-q000:
-	bash -o pipefail -c 'uv run python -m scripts.quality.python_inputs scripts/ tests/ | \
-	  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \
-	    --ignore-noqa --output-format concise --'
+	uv run python -m ci.quality.check_q000_d300
 
 deploy-i001:
-	bash -o pipefail -c 'uv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ | \
-	  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \
-	    --ignore-noqa --output-format concise --'
-	bash -o pipefail -c 'uv run python -m scripts.quality.python_inputs scripts/ tests/ | \
-	  xargs -0 -r uv run ruff check --config quality/ruff.toml --select F401 \
-	    --ignore-noqa --output-format concise --'
+	uv run python -m ci.quality.check_i001
+	uv run python -m ci.quality.check_f401
 
 rustfs-return-types:
-	uv run ruff check --config quality/ruff.toml --select ANN201 --ignore-noqa services/rustfs_gateway
+	uv run python -m ci.quality.check_ann201
 
 javascript:
-	uv run python scripts/quality/lint.py javascript
+	uv run python -m ci.quality.check_javascript
 
 workflow:
-	uv run python scripts/quality/lint.py workflow
+	uv run python -m ci.quality.check_workflow
 
 shell:
-	uv run python scripts/quality/lint.py shell
+	uv run python -m ci.quality.check_shell
 
 docker:
 	uv run pytest -q tests/test_quality_experiment_admission.py -k docker
-	uv run python scripts/quality/lint.py docker
+	uv run python -m ci.quality.check_docker
 
 ansible:
-	uv run python scripts/quality/lint.py ansible
+	uv run python -m ci.quality.check_ansible
 
 secrets:
-	uv run python scripts/quality/lint.py secrets
+	uv run python -m ci.quality.check_secrets
 
 dependencies:
 	uv run pytest -q tests/test_quality_dependency_coverage.py \
 	  tests/test_quality_p56_56_node_lock.py
-	uv run python scripts/quality/lint.py dependencies
-	uv run python scripts/quality/npm_smoke.py
+	uv run python -m ci.quality.check_dependencies
+	uv run python -m ci.quality.npm_smoke
 
 tests-fast:
-	uv run python scripts/quality/tests.py fast --isolate-network
+	uv run python -m ci.quality.tests fast --isolate-network
 
 tests-medium:
-	uv run python scripts/quality/tests.py medium --isolate-network
+	uv run python -m ci.quality.tests medium --isolate-network
 
 python:
-	uv run python scripts/quality/lint.py python
+	uv run python -m ci.quality.check_python
 
 manifests:
-	uv run python scripts/quality/charts.py
+	uv run python -m ci.quality.charts
 
 tests-cluster:
-	uv run python scripts/quality/tests.py cluster
+	uv run python -m ci.quality.tests cluster
 
 .PHONY: check setup graph ownership yaml python-scopes scripts-q000 deploy-i001 \
         rustfs-return-types javascript workflow shell docker ansible secrets dependencies \

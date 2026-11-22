@@ -24,4 +24,4 @@ For upgrades, inspect registry manifests **and** packed runtime files, remove
 a patch if the upstream release is compatible, otherwise review and reproduce
 both hashes. Generate npm v3 locks with the patched tar inputs (no scripts,
 no `--force`), and run the dependency audit and
-`scripts/quality/npm_smoke.py` before rollout. No deployment is part of the gate.
+`ci/quality/npm_smoke.py` before rollout. No deployment is part of the gate.

@@ -13,17 +13,13 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import patch
 
 import pytest
-
-from scripts.quality import common
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-with patch.dict(sys.modules, {"common": common}):
-    from scripts.quality import lint
+from ci.quality import check_dependencies as lint
 
 _REPO = Path(__file__).resolve().parents[1]
 _LOCAL_AUDIT = ["pip-audit", "--local", "--strict", "--format", "json"]
@@ -55,12 +51,12 @@ _UNCHANGED_FUNCTION_DIGESTS = {
     "shellcheck_files": "5212046c9fd29985",
     "workflow_script_findings": "a9c8e6afff47f8fd",
     # 7a45c9cd split check into a dispatcher and nine typed implementations.
-    # Pin the entire extracted implementations as well as the dispatch mapping.
+    # Pin the extracted implementations and the shared fail-closed report runner.
     # #459 deliberately changed the workflow dispatch and both workflow scanners.
     # Sources of the revised pins (leading docstrings excluded as below):
     # d525d349 for the scanner commands, a7cfd08e for check/workflow_directives,
     # 82e99f75 for physical-line attribution. All other original pins remain.
-    "check": "f05cf59d286c0457",
+    "check_workflow": "f31d15922b633629",
     "workflow_directives": "42d74e4c8b199427",
     "python_directive_lines": "69a68cc0a476fc79",
     "check_python": "732041b20fcacae1",
@@ -70,9 +66,9 @@ _UNCHANGED_FUNCTION_DIGESTS = {
     "check_actionlint": "caa982e539c3e36c",
     "check_ansible": "bac2463835490282",
     "check_docker": "6f0eec5c22cd10e4",
-    "check_javascript": "75a30298a56e4d97",
+    "check_javascript": "669d09e95bf085cf",
     "check_secrets": "d58cf370ba0c9e77",
-    "main": "f8b9f9d5940733a7",
+    "run": "451657b3c955b7a4",
 }
 _PREVIOUS_CHECK_DEPENDENCIES = "256df8f69c0d5d07"
 
@@ -138,8 +134,30 @@ class _Connection:
         self.closed = True
 
 
+def _owner(name: str) -> Path:
+    if name in {"check_actions", "check_actionlint", "workflow_directives", "python_directive_lines"}:
+        module = "check_workflow"
+    elif name.startswith("mypy_") or name in {"parse_mypy", "format_findings", "python_syntax_findings"}:
+        module = "check_python"
+    elif name in {"shell_targets", "shellcheck_files"}:
+        module = "check_shell"
+    elif name in {"nonsecret_tokenizer_option", "docker_targets"}:
+        module = "check_docker"
+    elif name == "yaml_targets":
+        module = "check_yaml"
+    elif name == "run":
+        module = "runner"
+    elif name.startswith("check_"):
+        module = name
+    elif name in {"validate_requirement_lock", "_distribution_fields", "_vulnerability_id", "dependency_report", "_audit_python_source", "node_lock_packages", "node_advisory_report", "post_node_advisory_batch"}:
+        module = "check_dependencies"
+    else:
+        module = "lint_support"
+    return Path("ci/quality") / f"{module}.py"
+
+
 def _digest(name: str) -> str:
-    source = (_REPO / "scripts/quality/lint.py").read_text()
+    source = (_REPO / _owner(name)).read_text()
     module = ast.parse(source)
     for node in module.body:
         if isinstance(node, ast.FunctionDef) and node.name == name:
@@ -176,7 +194,7 @@ def _digest(name: str) -> str:
             }
             if name not in historically_documented and ast.get_docstring(node) is not None:
                 node.body.pop(0)
-            if name == "main":
+            if name == "run":
                 # 0cfe2545 narrowed only the caught error types; verify the exact
                 # tuple before comparing the rest against the original fingerprint.
                 handlers = [item for item in ast.walk(node) if isinstance(item, ast.ExceptHandler)]
@@ -205,7 +223,7 @@ def _digest(name: str) -> str:
 
 
 def _python_audit_literals() -> list[list[object]]:
-    source = (_REPO / "scripts/quality/lint.py").read_text()
+    source = (_REPO / "ci/quality/check_dependencies.py").read_text()
     module = ast.parse(source)
     function = next(
         node
@@ -784,7 +802,7 @@ def test_advisory_transport_failures_hide_response_bodies(
 
 def test_advisory_function_does_not_name_credential_files() -> None:
     """The batch function's source does not point at npm or netrc credentials."""
-    source = (_REPO / "scripts/quality/lint.py").read_text()
+    source = (_REPO / "ci/quality/check_dependencies.py").read_text()
     module = ast.parse(source)
     function = next(
         node
@@ -884,10 +902,10 @@ def test_docker_selector_proof_refuses_argument_mutation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A truncated selector input cannot masquerade as the reviewed expansion."""
-    source = (_REPO / "scripts/quality/lint.py").read_text()
+    source = (_REPO / _owner("check_docker")).read_text()
     original = "files = docker_targets(names)"
     assert source.count(original) == 1
-    destination = tmp_path / "scripts/quality/lint.py"
+    destination = tmp_path / _owner("check_docker")
     destination.parent.mkdir(parents=True)
     destination.write_text(source.replace(original, "files = docker_targets(names[:1])"))
     monkeypatch.setattr(sys.modules[__name__], "_REPO", tmp_path)
@@ -898,10 +916,9 @@ def test_docker_selector_proof_refuses_argument_mutation(
 @pytest.mark.parametrize(
     ("name", "original", "replacement"),
     [
-        ("check", '"javascript": check_javascript', '"javascript": check_docker'),
-        ("check_docker", '"hadolint", "--config"', '"hadolint", "--wrong-config"'),
+        ("check_docker", '"--config"', '"--wrong-config"'),
         ("check_javascript", '["node", "--check", path]', '["node", "--version", path]'),
-        ("check", "security + expressions + directives", "security + expressions + []"),
+        ("check_workflow", "security + expressions + directives", "security + expressions + []"),
         ("check_actions", '"--strict-collection"', '"--invalid-collection"'),
         ("check_actionlint", '"-config-file", os.devnull', '"-unreviewed-config", os.devnull'),
     ],
@@ -911,9 +928,9 @@ def test_docker_selector_proof_preserves_surrounding_body(
 ) -> None:
     """A changed dispatch or extracted producer still invalidates its fingerprint."""
     assert _digest(name) == _UNCHANGED_FUNCTION_DIGESTS[name]
-    source = (_REPO / "scripts/quality/lint.py").read_text()
+    source = (_REPO / _owner(name)).read_text()
     assert source.count(original) == 1
-    destination = tmp_path / "scripts/quality/lint.py"
+    destination = tmp_path / _owner(name)
     destination.parent.mkdir(parents=True)
     assert replacement not in source
     destination.write_text(source.replace(original, replacement, 1))
@@ -928,10 +945,10 @@ def test_python_decoder_proof_refuses_wrong_stream(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The reviewed strict decoder cannot silently switch from stdout to stderr."""
-    source = (_REPO / "scripts/quality/lint.py").read_text()
+    source = (_REPO / "ci/quality/check_dependencies.py").read_text()
     original = "_python_audit_payload(process.stdout)"
     assert source.count(original) == 1
-    destination = tmp_path / "scripts/quality/lint.py"
+    destination = tmp_path / "ci/quality/check_dependencies.py"
     destination.parent.mkdir(parents=True)
     destination.write_text(source.replace(original, "_python_audit_payload(process.stderr)"))
     monkeypatch.setattr(sys.modules[__name__], "_REPO", tmp_path)
@@ -943,10 +960,10 @@ def test_skip_presence_proof_refuses_empty_container(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A syntactically similar guard that never observes the row must be rejected."""
-    source = (_REPO / "scripts/quality/lint.py").read_text()
+    source = (_REPO / "ci/quality/check_dependencies.py").read_text()
     original = 'if "skip_reason" in value:'
     assert source.count(original) == 1
-    destination = tmp_path / "scripts/quality/lint.py"
+    destination = tmp_path / "ci/quality/check_dependencies.py"
     destination.parent.mkdir(parents=True)
     destination.write_text(source.replace(original, 'if "skip_reason" in {}:'))
     monkeypatch.setattr(sys.modules[__name__], "_REPO", tmp_path)

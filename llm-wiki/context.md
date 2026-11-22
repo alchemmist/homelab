@@ -15,7 +15,7 @@ production-операции. Датированные результаты не 
   `ansible/inventory/group_vars/Socrat/cluster.yml` → `wg_socrat_nodes`.
 - Общий issuer transport и его потребители:
   `deploy/contracts/infrastructure.json`; offline check/generation:
-  `scripts/check_infrastructure_contracts.py` (default check, `--write` только Git).
+  `ci/check_infrastructure_contracts.py` (default check, `--write` только Git).
 - Argo CD: canonical `deploy/platform/argo-cd/values.yaml`. Старый путь
   `deploy/argocd/values.yaml` — compatibility symlink, не отдельная конфигурация.
   `ansible/playbooks/argocd.yml` — только явно разрешённая установка в пустое

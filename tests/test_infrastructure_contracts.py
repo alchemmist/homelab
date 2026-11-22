@@ -12,7 +12,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "infra_contract", ROOT / "scripts/check_infrastructure_contracts.py"
+    "infra_contract", ROOT / "ci/check_infrastructure_contracts.py"
 )
 contract = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(contract)

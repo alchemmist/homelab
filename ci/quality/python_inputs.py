@@ -6,7 +6,7 @@ import argparse
 import os
 import sys
 
-from scripts.quality.common import owned, tracked
+from ci.quality.common import owned, tracked
 
 
 def python_inputs(roots: list[str]) -> list[str]:
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "roots",
         nargs="+",
-        choices=("ansible/", "deploy/", "scripts/", "scripts/quality/", "tests/"),
+        choices=("ansible/", "deploy/", "ci/", "scripts/", "ci/quality/", "tests/"),
     )
     for path in python_inputs(parser.parse_args().roots):
         sys.stdout.buffer.write(os.fsencode(path) + b"\0")

@@ -22,7 +22,7 @@ the opt-in is not authorization to reinstall a running release or reset OIDC.
 
 ```
 uv sync --locked
-uv run python scripts/check_infrastructure_contracts.py
+uv run python ci/check_infrastructure_contracts.py
 uv run python -m unittest discover -s tests -p test_infrastructure_contracts.py
 ```
 
@@ -30,7 +30,7 @@ The contract validates mesh/inventory membership/addresses, fixed relay/updater
 constants against node host_vars/mesh/public-peer identity, and nine registered
 issuer consumers. It does not prove live Service IP/UID or network reachability.
 On a reviewed endpoint change: confirm the actual Service and network path first,
-edit the canonical JSON, then run `scripts/check_infrastructure_contracts.py
+edit the canonical JSON, then run `ci/check_infrastructure_contracts.py
 --write`. All consumers are validated before any write; a late scope/shape error leaves
 earlier drifted files untouched. Multiple registered scalars in one file are
 merged by source offsets. This is not an OS-level multi-file transaction: an I/O
@@ -81,7 +81,7 @@ Owner deferred backup implementation on this continuation. No archives, backup s
 
 `deploy/contracts/vendors.json` pins complete file inventories for Rancher,
 LiteLLM (including vendored subcharts) and the Wiki runtime chart. Run
-`uv run python scripts/check_vendor_contracts.py`: offline, read-only, no download
+`uv run python ci/check_vendor_contracts.py`: offline, read-only, no download
 or `--write` mode. Added hook/template files, removals, content changes and symlinks
 fail validation. No Helm dependency update/install is performed by the checker.
 
@@ -133,7 +133,7 @@ bounded audit; in particular identity/model/host maintenance remains separately 
 
 `deploy/contracts/source-pointers.json` registers the root Application, local
 repository URL and selected current documents/value bindings. Run
-`uv run python scripts/check_source_pointers.py`: filesystem/YAML only, no rendering,
+`uv run python ci/check_source_pointers.py`: filesystem/YAML only, no rendering,
 network, credential helpers or runtime mutation. It checks:
 
 - root still points to the inspected Application directory;
@@ -168,7 +168,7 @@ The preflight playbook was syntax-checked only, never applied in this package.
 ## Operational entrypoint classification and monitoring dependency continuation
 
 `deploy/contracts/operational-entrypoints.json` records23scoped entrypoints;
-`scripts/check_operational_entrypoints.py` checks classification completeness for
+`ci/check_operational_entrypoints.py` checks classification completeness for
 literal `helm upgrade/install` and `kubernetes.core.helm` in Ansible `*.yml`.
 Unclassified additions or stale records fail CI. This is lexical discovery, not
 proof about dynamically generated commands, all Python/shell helpers or indirect

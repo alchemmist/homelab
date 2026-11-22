@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.quality.common import command
+from ci.quality.common import command
 
 ROOT = Path(__file__).resolve().parents[1]
 PREDICATE_CASE_COUNT = 40

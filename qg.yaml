@@ -48,7 +48,7 @@ profiles:
     extends: default
     timeout-minutes: 5
     setup:
-      - run: uv run python scripts/quality/install_tools.py --tools hadolint
+      - run: uv run python -m ci.quality.install_tools --tools hadolint
   quality-javascript:
     extends: default
     setup:
@@ -59,42 +59,42 @@ profiles:
     extends: quality-helm
     timeout-minutes: 15
     setup:
-      - run: uv run python scripts/quality/install_tools.py --tools kind kubectl
+      - run: uv run python -m ci.quality.install_tools --tools kind kubectl
   quality-shell:
     extends: default
     setup:
-      - run: uv run python scripts/quality/install_tools.py --tools shellcheck
+      - run: uv run python -m ci.quality.install_tools --tools shellcheck
       - run: .quality-tools/bin/shellcheck --version
   quality-delivery:
     extends: default
     setup:
-      - run: uv run python scripts/quality/install_tools.py --tools actionlint shellcheck
+      - run: uv run python -m ci.quality.install_tools --tools actionlint shellcheck
   quality-secrets:
     extends: default
     setup:
-      - run: uv run python scripts/quality/install_tools.py --tools gitleaks
+      - run: uv run python -m ci.quality.install_tools --tools gitleaks
   quality-manifests:
     extends: quality-helm
     setup:
-      - run: uv run python scripts/quality/install_tools.py --tools kubeconform kube-linter
+      - run: uv run python -m ci.quality.install_tools --tools kubeconform kube-linter
   quality-ansible:
     extends: default
     setup:
-      - run: uv run python scripts/quality/install_collections.py
+      - run: uv run python -m ci.quality.install_collections
   quality-fast:
     extends: quality-helm
     setup:
       - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
         with:
           node-version: 24.11.1
-      - run: uv run python scripts/quality/install_tools.py --tools hadolint
+      - run: uv run python -m ci.quality.install_tools --tools hadolint
   quality-integration:
     extends: quality-helm
     setup:
       - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
         with:
           node-version: 24.11.1
-      - run: uv run python scripts/quality/install_tools.py --tools promtool
+      - run: uv run python -m ci.quality.install_tools --tools promtool
       - run: |
           set -euo pipefail
           read -r image < quality/nginx-syntax-image.txt
@@ -127,14 +127,14 @@ nodes:
     policy: *id001
     run: make python-scopes
   scripts-q000:
-    title: Python script and test quotes (Q000, D300)
+    title: Python CI, script and test quotes (Q000, D300)
     profile: default
     needs:
       - graph
     policy: *id001
     run: make scripts-q000
   deploy-i001:
-    title: Python import order (I001) and unused script/test imports (F401)
+    title: Python import order (I001) and unused CI/script/test imports (F401)
     profile: default
     needs:
       - graph
