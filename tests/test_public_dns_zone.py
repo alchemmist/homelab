@@ -147,3 +147,19 @@ def test_monori_https_selection_is_scoped(home, vps, ips):
     lines = zone.render(123, True, True, monori_health=(home, vps)).splitlines()
     assert [x for x in lines if x.startswith("monori IN A ")] == ["monori IN A " + ip for ip in ips]
     assert [x for x in lines if x.startswith("lms IN A ")] == ["lms IN A " + ip for ip in (zone.HOME, zone.VPS)]
+
+
+@pytest.mark.parametrize("rc,status,healthy", [(0, "200", True), (0, "503", False), (60, "000", False)])
+def test_monori_https_requires_verified_exchange(monkeypatch, rc, status, healthy):
+    import subprocess
+
+    def run(argv, **kwargs):
+        assert argv[argv.index("--resolve") + 1] == "monori.alchemmist.xyz:8443:127.0.0.1"
+        assert argv[-1] == "https://monori.alchemmist.xyz:8443/"
+        assert argv[argv.index("--max-time") + 1] == "3"
+        assert "--insecure" not in argv and "-k" not in argv
+        assert kwargs["timeout"] == 3.5
+        return subprocess.CompletedProcess(argv, rc, stdout=status)
+
+    monkeypatch.setattr(zone.subprocess, "run", run)
+    assert zone.monori_https("127.0.0.1", 8443, 3) is healthy

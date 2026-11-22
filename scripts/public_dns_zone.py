@@ -2,9 +2,8 @@
 """Render the alchemmist.xyz zone from static records and ingress health."""
 
 import argparse
-import http.client
 import socket
-import ssl
+import subprocess
 from pathlib import Path
 
 HOME = "109.173.40.247"
@@ -90,18 +89,19 @@ def monori_addresses(home_ok, vps_ok):
     return [HOME] if home_ok else [VPS] if vps_ok else [HOME, VPS]
 
 
-def monori_https(address, timeout):
-    """Check the exact entrance without resolving the name through our own zone."""
+def monori_https(address, port, timeout):
+    """Bound the entire verified HTTPS exchange, including slow response headers."""
     host = "monori.alchemmist.xyz"
     try:
-        with socket.create_connection((address, 443), timeout=timeout) as raw:
-            with ssl.create_default_context().wrap_socket(raw, server_hostname=host) as tls:
-                tls.sendall(f"GET / HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n".encode())
-                with http.client.HTTPResponse(tls) as response:
-                    response.begin()
-                    return response.status == 200
-    except (OSError, http.client.HTTPException):
+        result = subprocess.run(
+            ["curl", "--disable", "--noproxy", "*", "--silent", "--max-time", str(timeout),
+             "--resolve", f"{host}:{port}:{address}", "--output", "/dev/null",
+             "--write-out", "%{http_code}", f"https://{host}:{port}/"],
+            capture_output=True, text=True, timeout=timeout + 0.5, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
         return False
+    return result.returncode == 0 and result.stdout == "200"
 
 
 def render(serial, home_up, vps_up, *, monori_health=None):
@@ -175,7 +175,7 @@ def main():
     )
     # Explicit assume flags keep offline acceptance deterministic.
     def checked(mode, up, target):
-        return up and (mode != "probe" or monori_https(target, args.timeout))
+        return up and (mode != "probe" or monori_https(target, args.port, args.timeout))
 
     monori_health = (
         checked(args.assume_home, home_up, args.home_target),
