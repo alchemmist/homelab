@@ -95,7 +95,10 @@ profiles:
       with:
         node-version: 24.11.1
     - run: uv run python scripts/quality/install_tools.py --tools promtool
-    - run: docker pull "$(cat quality/nginx-syntax-image.txt)"
+    - run: |
+        set -euo pipefail
+        read -r image < quality/nginx-syntax-image.txt
+        docker pull "${image}"
 nodes:
   graph:
     title: Graph integrity
