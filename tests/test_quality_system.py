@@ -460,9 +460,12 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         assert graph[node]["policy"]["blocking"] is True
     quotes = graph["scripts-q000"]
     assert quotes["policy"] == policy
-    assert "scripts.quality.python_inputs scripts/ tests/ |" in quotes["run"]
-    assert "--select Q000,D300 " in quotes["run"]
-    assert "--ignore-noqa" in quotes["run"]
+    assert quotes["run"] == (
+        "set -euo pipefail\n"
+        "uv run python -m scripts.quality.python_inputs scripts/ tests/ |\n"
+        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \\\n"
+        "    --ignore-noqa --output-format concise --"
+    )
     i001 = graph["deploy-i001"]
     assert i001["policy"] == policy
     assert "scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |" in i001["run"]
