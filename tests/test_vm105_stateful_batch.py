@@ -251,10 +251,11 @@ class StatefulBoundaries(unittest.TestCase):
                     # without injecting historical values into the current chart.
                     expected = historical(CUTOVERS[chart])
                     if chart == "charts/litellm-infra":
-                        # fe3903c2 retired exactly the dormant DB controller and
-                        # Service; compare the retained PVC and every other byte.
+                        # fe3903c2 retired the dormant DB controller and Service;
+                        # 731505f8 later retired only their dedicated PVC here.
                         expected.pop(("Deployment", "litellm-postgres"))
                         expected.pop(("Service", "litellm-postgres"))
+                        expected.pop(("PersistentVolumeClaim", "litellm-postgres"))
                     self.assertEqual(current, expected)
                     after = historical(HANDOFF)
                 self.assertEqual(before.keys(), after.keys())
