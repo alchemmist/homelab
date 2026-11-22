@@ -168,7 +168,7 @@ def test_deployment_single_host_no_api_token_and_native_boot_fence() -> None:
 
 def test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse() -> None:
     """Test behavior for test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse."""
-    m = module("vpn-transit-failover")
+    module("vpn-transit-failover")
     import socket
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as owner:

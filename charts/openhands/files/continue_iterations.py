@@ -182,8 +182,6 @@ def monitor(cid,qa=False):
     probed=False
     attempted=None
     after=0
-    parallel_failures=0
-    last_parallel=None
     while True:
         try:
             conv=api()
@@ -212,7 +210,6 @@ def monitor(cid,qa=False):
                     attempted=eid
                     ok=(api("/events","POST",{"role":"user","content":[{"type":"text","text":QA_READ_PROBE if action=="ledger_probe" else QA_NUDGE if qa else NUDGE}],"run":True}) if action in ("unfinished","ledger_probe") else api("/run","POST"))
                     print("continue",action,eid,"acknowledged",bool(ok.get("success")),flush=True)
-            elif status=="running" and last_parallel and now>after+600:parallel_failures=0
         except Exception as exc:print("continuation check:",type(exc).__name__,flush=True)
         time.sleep(30)
 if __name__=="__main__":

@@ -225,7 +225,6 @@ class AdmissionTests(unittest.TestCase):
         with self.assertRaises(Failure):
             m.match(f.event(), issues, on_progress=saved.append)
         assert "selection" in saved[-1]
-        completed = len(calls)
         m.call = Mock(
             side_effect=lambda t, d, s, dl: {**GOOD, "issue_number": d["open_issues"][0]["number"]}
         )

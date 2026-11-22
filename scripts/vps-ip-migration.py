@@ -286,22 +286,6 @@ def repository(
     return report
 
 
-def quote_identifier(name: str):
-    return '"' + name.replace('"', '""') + '"'
-
-
-def db_state(connection: sqlite3.Connection):
-    names = connection.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-    ).fetchall()
-    return {
-        name: sorted(
-            connection.execute("SELECT * FROM " + quote_identifier(name)).fetchall(), key=repr
-        )
-        for (name,) in names
-    }
-
-
 def db_plan(path: Path, old: str):
     if path.is_symlink():
         raise MigrationError("Refusing a symlink database")

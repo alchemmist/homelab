@@ -379,7 +379,7 @@ class EngineTests(unittest.TestCase):
         self.engine.write = True
         self.model.match.return_value = {"candidates": [{"number": 7}]}
         self.model.analyze.return_value = report(7)
-        key = self.process()
+        self.process()
         assert self.github.request.call_args.args[1] == "/issues/7/comments"
 
     def test_ambiguous_write_is_reconciled_not_repeated(self) -> None:
@@ -426,7 +426,7 @@ class EngineTests(unittest.TestCase):
     def test_resolved_does_not_create_issue(self) -> None:
         """Verify resolutions never create new issues."""
         self.engine.write = True
-        key = self.process(event("resolved"))
+        self.process(event("resolved"))
         self.github.request.assert_not_called()
         self.model.match.assert_not_called()
 
@@ -434,7 +434,7 @@ class EngineTests(unittest.TestCase):
         """Verify resolutions comment but never close issues."""
         self.engine.write = True
         self.github.request.return_value = {"number": 7}
-        first = self.process()
+        self.process()
         self.github.reset_mock()
         self.github.request.return_value = {"state": "open"}
         self.process(event("resolved"))

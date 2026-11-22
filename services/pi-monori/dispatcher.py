@@ -127,7 +127,6 @@ def process(name: str):
         task=packet(name,mid,feedback)
         (ROOT/(name+".prompt.md")).write_text(task)
         phase(name,"pi-"+str(attempt),"litellm/v-deepseek-uc "+mid)
-        start=time.time()
         logfile=ROOT/(name+f"-{attempt}.log")
         argv=["kubectl","-n","openhands","exec","-i","deploy/pi-monori-author","-c","sandbox","--","sh","-ec",'cd "$1";export PYTHONPATH="$(dirname "$1")"; exec timeout 950 /opt/pi/node_modules/.bin/pi --provider litellm --model v-deepseek-uc --no-extensions --no-mcp --no-skills --no-prompt-templates --no-context-files --no-session --tools read,bash,edit,write -p "$(cat)"',"sh",casepath]
         with logfile.open("wb") as f:
