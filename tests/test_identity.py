@@ -98,7 +98,7 @@ class FakeAuthentik:
                 **cast("dict[str, object]", payload),
             }
             if path == "core/groups/":
-                # Current 2026.8.5 GroupSerializer defaults, including M2M parents.
+                # Current 2026.8.6 GroupSerializer defaults, including M2M parents.
                 row = {
                     "attributes": {},
                     "is_superuser": False,

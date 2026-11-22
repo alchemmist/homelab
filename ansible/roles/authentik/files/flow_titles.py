@@ -76,7 +76,7 @@ def main():
             document: dict[str, object] = json.load(response)
             return document
 
-    if not args.rollback and api("GET", "admin/version/")["version_current"] != "2026.8.5":
+    if not args.rollback and api("GET", "admin/version/")["version_current"] != "2026.8.6":
         message = "Unreviewed Authentik version"
         raise RuntimeError(message)
     changed = reconcile(api, args.root, args.rollback)

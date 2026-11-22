@@ -151,7 +151,7 @@ of the first source, not what is inside the chart. For `cats`,
 `harbor` the first source is an external Helm chart (`chart:`), with the git
 values connected second (`ref: values`), hence Helm.
 
-`authentik` no longer downloads `charts.goauthentik.io`. The `2026.8.5` chart
+`authentik` no longer downloads `charts.goauthentik.io`. The `2026.8.6` chart
 lives in `charts/authentik`; the Application reads
 `deploy/platform/authentik/values.yaml`. The conditional PostgreSQL and
 `authentik-remote-cluster` subcharts are not part of the vendored copy: both
