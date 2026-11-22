@@ -4530,7 +4530,7 @@
     "resource": "kube-prometheus-stack-homelab-job-failures",
     "group": "homelab-job-failures",
     "alert": "KubeJobFailed",
-    "expr": "(kube_job_failed{job=\"kube-state-metrics\"} > 0)\nunless on(namespace, job_name)\nkube_job_owner{job=\"kube-state-metrics\",namespace=\"pr-agent\",owner_kind=\"CronJob\",owner_name=\"pr-agent-webhook-redelivery\"}\n",
+    "expr": "(kube_job_failed{job=\"kube-state-metrics\"} > 0)\nunless on(namespace, job_name)\nkube_job_owner{job=\"kube-state-metrics\",namespace=\"pr-agent\",owner_kind=\"CronJob\",owner_name=\"pr-agent-webhook-redelivery\"}\nunless on(namespace, job_name)\n(\n  kube_job_owner{job=\"kube-state-metrics\",namespace=\"pr-agent\",owner_kind=\"CronJob\",owner_name=\"spi-github-broker\"}\n  and on(namespace, job_name) (kube_job_status_succeeded{job=\"kube-state-metrics\",namespace=\"pr-agent\"} == 1)\n  and on(namespace, job_name) (\n    kube_job_status_start_time{job=\"kube-state-metrics\",namespace=\"pr-agent\"}\n    < on(namespace) group_left() max by(namespace) (\n      kube_cronjob_status_last_successful_time{job=\"kube-state-metrics\",namespace=\"pr-agent\",cronjob=\"spi-github-broker\"}\n    )\n  )\n)\n",
     "uid": null,
     "graphs": {
       "version": 1,

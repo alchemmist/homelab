@@ -316,7 +316,7 @@ def test_disjoint_complete_payload_identical_handoff() -> None:
                 ]
                 # Pin the reviewed additive rule without refreshing the historical fixture.
                 payload = json.dumps(d, sort_keys=True, separators=(",", ":")).encode()
-                assert hashlib.sha256(payload).hexdigest() == "16942316eebb144ae6d63b1afe04d1ade1981e7d7a2cf45f449a1f4172ed633b"
+                assert hashlib.sha256(payload).hexdigest() == "71e5746199c421a83062d81345ec0c79982c53afb68f68b56e1b22d94db1e1c5"
                 continue
             actual[k] = {
                 "owner": name,
