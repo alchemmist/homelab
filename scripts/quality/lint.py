@@ -1279,9 +1279,18 @@ def python_directive_lines(source: str) -> set[int]:
                 if token.type == tokenize.COMMENT and re.match(
                     r"#\s*noqa(?:\s*:|\s*$)", token.string, re.I
                 ):
-                    # Only literal blocks preserve physical line offsets. Otherwise
-                    # anchor the finding to the scalar, not a guessed source line.
-                    offset = token.start[0] if script.style == "|" else 0
+                    if script.style == "|":
+                        offset = token.start[0]
+                    else:
+                        # Folding/quoting can remove physical newlines. If the
+                        # comment has a unique verbatim spelling inside this scalar,
+                        # report its source line. Escaped/ambiguous spellings can
+                        # only be attributed reliably to the scalar as a whole.
+                        raw = source[script.start_mark.index : script.end_mark.index]
+                        comment = token.string.rstrip()
+                        offset = (
+                            raw[: raw.index(comment)].count("\n") if raw.count(comment) == 1 else 0
+                        )
                     lines.add(script.start_mark.line + 1 + offset)
     return lines
 

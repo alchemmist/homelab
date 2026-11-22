@@ -102,8 +102,16 @@ jobs:
           END
       - shell: python3
         run: "import another  {marker.upper()}"
+      - shell: python
+        run: >-
+          import folded
+          {marker}
+      - shell: python
+        run: "import quoted
+          {marker}"
+        name: multiline quoted scalar
 '''
-    assert python_directive_lines(source) == {9, 18}
+    assert python_directive_lines(source) == {9, 18, 22, 25}
 
 
 def test_failed_tools_are_not_quality_approvals(tmp_path) -> None:
