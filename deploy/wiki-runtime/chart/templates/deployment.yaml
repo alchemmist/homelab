@@ -50,10 +50,25 @@ spec:
           args:
             - >-
               from pathlib import Path;
+              {{ if .Values.postgresEnabled }}
+              import psycopg,os;
+              db=psycopg.connect(os.environ['WIKI_DATABASE_URL'],connect_timeout=5);
+              assert db.execute("SELECT value FROM metadata WHERE key='schema_version'").fetchone()==('1',);
+              assert db.execute("SELECT count(*) FROM users WHERE disabled=0 AND role='admin'").fetchone()[0]>0;
+              db.close();
+              {{ else }}
               p=Path('/data/accounts.sqlite3');
               assert p.is_file() and p.open('rb').read(16)==b'SQLite format 3\x00', 'Existing wiki accounts required';
+              {{ end }}
               assert Path('/data/repository/.git').is_dir() and Path('/data/live/current').is_dir(), 'Existing repository/publication required'
-          volumeMounts: [{name: data, mountPath: /data, readOnly: true}]
+          {{- if .Values.postgresEnabled }}
+          envFrom: [{secretRef: {name: wiki-postgres}}]
+          {{- end }}
+          volumeMounts:
+            - {name: data, mountPath: /data, readOnly: true}
+            {{- if .Values.postgresEnabled }}
+            - {name: pg-ca, mountPath: /pg-ca, readOnly: true}
+            {{- end }}
         {{- end }}
       {{- end }}
       {{- with .Values.hostAliases }}
@@ -75,6 +90,9 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ .Values.oidcSecret | quote }}
+          {{- end }}
+          {{- if .Values.postgresEnabled }}
+            - secretRef: {name: wiki-postgres}
           {{- end }}
           env:
             {{- if .Values.observerMembership.enabled }}
@@ -102,6 +120,9 @@ spec:
               value: /run/secrets/git/known_hosts
             {{- end }}
           volumeMounts:
+            {{- if .Values.postgresEnabled }}
+            - {name: pg-ca, mountPath: /pg-ca, readOnly: true}
+            {{- end }}
             {{- if .Values.observerMembership.enabled }}
             - {name: observer-native, mountPath: /observer-native, readOnly: true}
             - {name: observer-code, mountPath: /app/runtime/oidc.py, subPath: oidc.py, readOnly: true}
@@ -154,6 +175,9 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
+        {{- if .Values.postgresEnabled }}
+        - {name: pg-ca, configMap: {name: pg-common-ca}}
+        {{- end }}
         {{- if .Values.observerMembership.enabled }}
         - name: observer-native
           emptyDir: {}
