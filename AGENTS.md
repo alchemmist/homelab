@@ -4,6 +4,10 @@ Start at `docs/README.md`. For a named service or alert, follow its direct route
 read `docs/context/context.md` only for a system overview. Before operational work,
 check `docs/context/safety.md` and the relevant runbook.
 
+## Pull requests
+
+Use the [ready-to-merge skill](.agents/skills/ready-to-merge/SKILL.md) when opening a PR or addressing review feedback.
+
 ## MCP
 
 No particular agent or MCP client is required. For optional connections, read `docs/platform/official-mcp.md` and
