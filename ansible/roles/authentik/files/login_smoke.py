@@ -1,3 +1,5 @@
+"""Probe the owner login flow up to an MFA challenge or redirect, without enrolling a device."""
+
 import http.cookiejar
 import json
 import urllib.request
@@ -12,7 +14,7 @@ endpoint = base + "/api/v3/flows/executor/default-authentication-flow/"
 
 
 def call(data=None):
-    """Document the call operation."""
+    """Fetch the next login challenge using the current session cookies."""
     headers = {
         "Content-Type": "application/json",
         "Referer": base + "/if/flow/default-authentication-flow/",
