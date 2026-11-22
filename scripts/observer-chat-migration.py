@@ -25,6 +25,7 @@ CHAT = "homelab-chat-user"
 
 
 def snapshot(client, policy):
+    """Read the reviewed legacy subjects, IdP groups, and Open WebUI admission bindings."""
     users = []
     for identity in policy["legacyChatPreservation"]:
         found = client.rows(
@@ -45,6 +46,7 @@ def snapshot(client, policy):
 
 
 def build(state, policy):
+    """Plan legacy chat preservation before removing the observer admission binding."""
     require(
         policy["legacyChatPreservation"]
         == [{"username": "antropophag", "uuid": "6015c85b-82e9-49ce-a4e3-0270c676e26d"}],
@@ -132,6 +134,7 @@ def build(state, policy):
 
 
 def apply(client, operation, state):
+    """Apply one migration step, rechecking preservation before removing legacy admission."""
     action = operation["action"]
     if action == "create-chat-group":
         client.call(
@@ -210,7 +213,8 @@ def apply(client, operation, state):
         raise ValueError("Unreviewed migration operation")
 
 
-def main():
+def main() -> None:
+    """Preview the migration or apply the approved sequence and verify its readback."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--credentials", required=True, type=Path)
     parser.add_argument(

@@ -70,8 +70,8 @@ def stable(value) -> object:
     return value
 
 
-def run(args, **kwargs) -> str:
-    result = subprocess.run(args, capture_output=True, text=True, timeout=20, **kwargs)
+def run(args, *, check: bool = False, **kwargs) -> str:
+    result = subprocess.run(args, check=check, capture_output=True, text=True, timeout=20, **kwargs)
     if result.returncode:
         raise RuntimeError("nft operation failed; inspect private state")
     output: str = result.stdout

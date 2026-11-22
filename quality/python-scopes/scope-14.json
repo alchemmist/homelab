@@ -1,0 +1,4 @@
+{
+  "include": ["scripts/lab/*.py"],
+  "rules": ["ANN001", "ANN002", "ANN201", "ANN202"]
+}

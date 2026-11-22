@@ -3,8 +3,10 @@
 import hmac
 import json
 import os
+from collections.abc import Mapping
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Lock
+from typing import override
 
 from engine import UnsafeInput
 from stages import stage
@@ -16,15 +18,16 @@ PATHS = {"/check", "/render", "/create-pr", "/close-older"}
 class Handler(BaseHTTPRequestHandler):
     """HTTP handler serving the wiki OpenAPI frontend."""
 
-    def log_message(self, *args: object):
+    @override
+    def log_message(self, *args: object) -> None:
         """Silence default request-line logging."""
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         """Answer liveness probes on /healthz and 404 otherwise."""
         self.send_response(200 if self.path == "/healthz" else 404)
         self.end_headers()
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         """Dispatch an authenticated worker action on the allowed paths."""
         if self.path not in PATHS or not hmac.compare_digest(
             self.headers.get("X-Worker-Token", ""), os.environ["WORKER_TOKEN"]
@@ -37,6 +40,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(413)
             self.end_headers()
             return
+        result: list[Mapping[str, object]] | dict[str, str]
         try:
             payload = json.loads(self.rfile.read(length))
             with LOCK:

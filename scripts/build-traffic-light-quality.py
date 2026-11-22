@@ -83,14 +83,22 @@ def traffic(pid, name, namespace, pod, color):
     up = 'up{job="kubelet",metrics_path="/metrics/cadvisor"}'
     info = f'kube_pod_info{{namespace="{namespace}",pod=~"{pod}"}}'
     current = f"({info} and (time()-timestamp({info})<90))"
-    live = f"({metric} and (time()-timestamp({metric})<90) and on(instance) ({up}==1) and on(namespace,pod) {current})"
+    live = (
+        f"({metric} and (time()-timestamp({metric})<90) "
+        f"and on(instance) ({up}==1) and on(namespace,pod) {current})"
+    )
     coverage = f"count({live}) == on() (2*count({current}))"
     rates = []
     for direction, alias in [("receive", "RX"), ("transmit", "TX")]:
         rates.append(
-            f'label_replace(rate(container_network_{direction}_bytes_total{{{labels}}}[5m]), "direction", "{alias}", "pod", ".+")'
+            f"label_replace(rate(container_network_{direction}_bytes_total{{{labels}}}[5m]), "
+            f'"direction", "{alias}", "pod", ".+")'
         )
-    expr = f"(sum by(direction)(({rates[0]} or {rates[1]}) and ignoring(direction,d) {live}) and on() ({coverage})) and on() ({fresh_job('kube-state-metrics')})"
+    expr = (
+        f"(sum by(direction)(({rates[0]} or {rates[1]}) and ignoring(direction,d) "
+        f"{live}) and on() ({coverage})) "
+        f"and on() ({fresh_job('kube-state-metrics')})"
+    )
     missing = " or ".join(
         f'label_replace(vector(-2), "direction", "{d}", "__name__", ".*")' for d in ["RX", "TX"]
     )
@@ -114,7 +122,11 @@ def traffic(pid, name, namespace, pod, color):
         "datasource": DS,
         "description": f"{name} "
         + ("storage pod" if pid == 931 else "registry pod only")
-        + " RX/TX bytes/s5m, last1h; includes internal traffic/overhead, NOT object or OCI counts/availability. Fresh cAdvisor/current Pod coverage90s. Latest missing=-2/No telemetry, never zero. Independent sparkline scales: compare numbers, not heights.",
+        + (
+            " RX/TX bytes/s5m, last1h; includes internal traffic/overhead, NOT object or OCI "
+            "counts/availability. Fresh cAdvisor/current Pod coverage90s. Latest missing=-2/No "
+            "telemetry, never zero. Independent sparkline scales: compare numbers, not heights."
+        ),
         "gridPos": {"x": 12 if pid == 931 else 18, "y": 14, "w": 6, "h": 4},
         "timeFrom": "1h",
         "hideTimeOverride": True,
@@ -167,7 +179,12 @@ def ai_quality():
         "type": "stat",
         "title": "",
         "datasource": DS,
-        "description": "Local vLLM: current waiting requests + estimated first-token p95 over15m, NOT full streamed-response duration or remote LiteLLM models. Require20 histogram observations; otherwise Low sample, not0. Up/sample freshness90s; absent/invalid=No telemetry. Pink informational, no invented SLO.",
+        "description": (
+            "Local vLLM: current waiting requests + estimated first-token p95 over15m, NOT full "
+            "streamed-response duration or remote LiteLLM models. Require20 histogram "
+            "observations; otherwise Low sample, not0. Up/sample freshness90s; absent/invalid=No "
+            "telemetry. Pink informational, no invented SLO."
+        ),
         "gridPos": {"x": 12, "y": 10, "w": 4, "h": 4},
         "fieldConfig": {
             "defaults": {
@@ -222,25 +239,50 @@ def cascade_summary():
     """Perform the cascade summary operation."""
     selector = 'namespace="cattle-monitoring-system",cronjob="thanos-cascade"'
     success = f"kube_cronjob_status_last_successful_time{{{selector}}}"
-    age = f"((time()-max({success}>0)) and on() {fresh_metric(success)} and on() ({fresh_job('kube-state-metrics')})) or vector(-2)"
+    age = (
+        f"((time()-max({success}>0)) and on() {fresh_metric(success)} "
+        f"and on() ({fresh_job('kube-state-metrics')})) or vector(-2)"
+    )
     pod_re = "thanos-compactor(-5m|-1h)?-[0-9a-f]+-.+"
 
     def live(metric) -> str:
-        return f'({metric} and (time()-timestamp({metric})<90) and on(instance) (up{{job="cattle-monitoring-system/thanos"}}==1))'
+        return (
+            f"({metric} and (time()-timestamp({metric})<90) "
+            f'and on(instance) (up{{job="cattle-monitoring-system/thanos"}}==1))'
+        )
 
-    todo = 'thanos_compact_todo_downsample_blocks{job="cattle-monitoring-system/thanos",pod=~"thanos-compactor-[0-9a-f]+-.+"}'
+    todo = (
+        'thanos_compact_todo_downsample_blocks{job="cattle-monitoring-system/thanos",'
+        'pod=~"thanos-compactor-[0-9a-f]+-.+"}'
+    )
     backlog = f"max({live(todo)}) or vector(-2)"
     halted = 'thanos_compact_halted{job="cattle-monitoring-system/thanos",pod=~"' + pod_re + '"}'
-    stages = f'max by(stage)(label_replace({live(halted)},"stage","$1","pod","(thanos-compactor(-5m|-1h)?)-[0-9a-f]+-.+"))'
+    stages = (
+        f'max by(stage)(label_replace({live(halted)},"stage","$1",'
+        '"pod","(thanos-compactor(-5m|-1h)?)-[0-9a-f]+-.+"))'
+    )
     halted = f"(sum({stages}) and on() (count({stages})==3)) or vector(-2)"
-    samples = 'prometheus_tsdb_head_samples_appended_total{pod="prometheus-kube-prometheus-stack-prometheus-0",container="prometheus"}'
-    ingest = f"(max(rate({samples}[5m])) and on() {fresh_metric(samples)} and on() ({fresh_job('kube-prometheus-stack-prometheus')})) or vector(-2)"
+    samples = (
+        "prometheus_tsdb_head_samples_appended_total{"
+        'pod="prometheus-kube-prometheus-stack-prometheus-0",container="prometheus"}'
+    )
+    ingest = (
+        f"(max(rate({samples}[5m])) and on() {fresh_metric(samples)} "
+        f"and on() ({fresh_job('kube-prometheus-stack-prometheus')})) or vector(-2)"
+    )
     return {
         "id": 936,
         "type": "stat",
         "title": "",
         "datasource": DS,
-        "description": "Thanos cascade: last successful hourly copy age (not sidecar upload); raw downsampling todo blocks (not bytes or ETA); halted compactors, all3 stages fresh required; Prometheus appended samples/s5m (not end-to-end delivery). Missing/stale90s = No telemetry, not0. Raw compactor is intentionally paused during the copy: temporary missing is not a fabricated failure. Age3h/6h bands match Metrics dashboard. No archive/DR integrity guarantee.",
+        "description": (
+            "Thanos cascade: last successful hourly copy age (not sidecar upload); raw "
+            "downsampling todo blocks (not bytes or ETA); halted compactors, all3 stages fresh "
+            "required; Prometheus appended samples/s5m (not end-to-end delivery). "
+            "Missing/stale90s = No telemetry, not0. Raw compactor is intentionally paused during "
+            "the copy: temporary missing is not a fabricated failure. Age3h/6h bands match "
+            "Metrics dashboard. No archive/DR integrity guarantee."
+        ),
         "gridPos": {"x": 16, "y": 18, "w": 8, "h": 2},
         "fieldConfig": {
             "defaults": {
@@ -343,7 +385,11 @@ def panels():
         age = f"(time() - max({success} > 0)) and on() {fresh_metric(success)}"
         # Existing job without a success is distinct from missing job and dead KSM.
         value = f"(({age}) or (vector(-1) unless on() count({success} > 0))) and on() ({exists})"
-        expr = f"((({value}) and on() ({guard})) or (vector(-3) unless on() ({exists}))) and on() ({fresh_job('kube-state-metrics')})"
+        expr = (
+            f"((({value}) and on() ({guard})) or (vector(-3) "
+            f"unless on() ({exists}))) "
+            f"and on() ({fresh_job('kube-state-metrics')})"
+        )
         result.append(
             stat(
                 pid,
@@ -351,7 +397,10 @@ def panels():
                 {"x": 12 if pid == 934 else 14, "y": 18, "w": 2, "h": 2},
                 f"({expr}) or vector(-2)",
                 "s",
-                f"Last successful {namespace}/{job} age; NOT proof of archive integrity/offhost copy/restore. Bands{warning // 3600}/{limit // 3600}h. Missing/never succeeded/no telemetry distinct; up/sample fresh90s.",
+                f"Last successful {namespace}/{job} age; "
+                "NOT proof of archive integrity/offhost copy/restore. "
+                f"Bands{warning // 3600}/{limit // 3600}h. "
+                "Missing/never succeeded/no telemetry distinct; up/sample fresh90s.",
                 bands=[
                     {"color": "#26783D", "value": None},
                     {"color": "#FFB357", "value": warning},
@@ -369,7 +418,8 @@ def panels():
             {"x": 4, "y": 12, "w": 2, "h": 2},
             f"max({streaming} and (time() - timestamp({streaming}) < 90)) or vector(-2)",
             "short",
-            "Streaming standby count reported by the pg-common primary. Expected 1. No fresh primary telemetry is unknown, not zero. Replication is not a backup.",
+            "Streaming standby count reported by the pg-common primary. Expected 1. No fresh "
+            "primary telemetry is unknown, not zero. Replication is not a backup.",
             bands=[{"color": "#F2495C", "value": None}, {"color": "#26783D", "value": 1}],
         )
     )

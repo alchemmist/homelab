@@ -1,0 +1,4 @@
+{
+  "include": ["scripts/observer-*.py"],
+  "rules": ["ANN002", "ANN003", "D103"]
+}
