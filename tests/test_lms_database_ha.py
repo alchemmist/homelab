@@ -129,9 +129,9 @@ def test_single_worker_recreate_and_bounded_node_eviction_are_preserved() -> Non
 def test_copy_tool_refuses_live_ha_overwrite_and_final_restore_without_freeze() -> None:
     s = (ROOT / "scripts/lms-ha-copy.py").read_text()
     assert "application no longer uses legacy DB" in s
-    assert "if dep['spec']['replicas']!=0 or pods['items']" in s
-    assert "'backoffLimit':0" in s
-    assert "shlex.join(['kubectl',*args])" in s
+    assert 'if dep["spec"]["replicas"] != 0 or pods["items"]:' in s
+    assert '"backoffLimit": 0' in s
+    assert 'shlex.join(["kubectl", *args])' in s
     copy = (ROOT / "scripts/lms-ha/copy-database.sh").read_text()
     assert "cmp /tmp/source.dump /tmp/recovered.dump" in copy
     assert "cmp /tmp/source.fingerprint /tmp/target.fingerprint" in copy
@@ -155,17 +155,14 @@ def test_database_is_a_source_of_the_lms_application() -> None:
     ]
     assert ignored == []
     values = yaml.safe_load((ROOT / "deploy/lms/values.yaml").read_text())
-    assert (
-        values["image"]["digest"]
-        == "sha256:9890519389652cdd8c8436a76f81be6bc81131174a728144ab268c4150a80167"
-    )
-    assert values["database"]["ha"]["enabled"] is False
+    assert values["image"]["digest"] == "sha256:4f8dea9962f6e036be8503946770066fe38a6ce5c7f9d2e514bc428124ed56e2"
+    assert values["database"]["ha"]["enabled"] is True
     assert values["database"]["ha"]["resources"] is True
     docs = rendered("lms", "-n", "lms", "-f", str(ROOT / "deploy/lms/values.yaml"))
     owned = {(d["kind"], _name(d), _mapping(d["metadata"]).get("namespace")) for d in docs}
     assert ("Cluster", "lms-ha", None) in owned
-    assert ("CronJob", "lms-database-backup", None) in owned
-    assert ("PersistentVolumeClaim", "lms-database-backups", None) in owned
+    assert ("CronJob", "lms-database-backup", "lms") in owned
+    assert ("PersistentVolumeClaim", "lms-database-backups", "lms") in owned
     assert ("PrometheusRule", "lms-availability", "cattle-monitoring-system") in owned
     assert ("StorageClass", "lms-db-retain", None) in owned
     cluster = next(d for d in docs if d["kind"] == "Cluster")
@@ -198,7 +195,7 @@ def test_database_is_a_source_of_the_lms_application() -> None:
     web_pod = _mapping_path(web, "spec", "template", "spec")
     assert (
         _mapping(_documents(web_pod["containers"])[0])["image"]
-        == "ghcr.io/alchemmist/lms@sha256:9890519389652cdd8c8436a76f81be6bc81131174a728144ab268c4150a80167"
+        == "ghcr.io/alchemmist/lms@sha256:4f8dea9962f6e036be8503946770066fe38a6ce5c7f9d2e514bc428124ed56e2"
     )
     plain = rendered("lms", "-n", "lms")
     assert not any(d["kind"] == "Cluster" for d in plain)
@@ -228,10 +225,11 @@ def test_production_web_does_not_depend_on_legacy_nfs_and_legacy_db_is_stopped()
     assert any(
         d["kind"] == "PersistentVolumeClaim" and _name(d) == "lms-data" for d in docs
     )
-    old = next(
-        d for d in docs if d["kind"] == "Deployment" and _name(d) == "lms-postgres"
+    assert not any(
+        d["kind"] == "Deployment" and _name(d) == "lms-postgres" for d in docs
     )
-    assert _mapping(old["spec"])["replicas"] == 1
+    values = yaml.safe_load((ROOT / "deploy/lms/values.yaml").read_text())
+    assert values["database"]["legacyReplicas"] == 0
 
 
 def test_operator_canary_avoids_stale_ready_pod_on_unreachable_node() -> None:

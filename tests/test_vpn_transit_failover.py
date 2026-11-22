@@ -162,7 +162,8 @@ def test_deployment_single_host_no_api_token_and_native_boot_fence() -> None:
     assert "ExecCondition=/usr/bin/test ! -e" in play and "ExecCondition=+/usr/bin/test -e" in play
     assert "state: started" not in play  # prepare never steals live ports
     controller = (ROOT / "scripts/vpn-transit-failover.py").read_text()
-    assert "AGENT='k3s-agent.service'" in controller and "'k3s.service'" not in controller
+    assert 'AGENT = "k3s-agent.service"' in controller
+    assert '"k3s.service"' not in controller
     assert "flock" in controller and "fsync" in controller and "free_ports()" in controller
 
 
@@ -188,8 +189,29 @@ def test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse() -> None:
             with pytest.raises(OSError):
                 challenger.bind(("0.0.0.0", port))
                 challenger.listen(1)
-    source = (ROOT / "scripts/vpn-transit-failover.py").read_text()
-    assert "if typ==socket.SOCK_STREAM:s.setsockopt" in source
+    import ast
+
+    tree = ast.parse((ROOT / "scripts/vpn-transit-failover.py").read_text())
+    free_ports = next(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef) and node.name == "free_ports"
+    )
+    stream_guards = [
+        node
+        for node in ast.walk(free_ports)
+        if isinstance(node, ast.If)
+        and isinstance(node.test, ast.Compare)
+        and ast.unparse(node.test) == "typ == socket.SOCK_STREAM"
+    ]
+    assert len(stream_guards) == 2
+    assert any(
+        isinstance(call, ast.Call)
+        and ast.unparse(call.func) == "s.setsockopt"
+        and ast.unparse(call.args[1]) == "socket.SO_REUSEADDR"
+        for guard in stream_guards
+        for call in ast.walk(guard)
+    )
 
 
 def test_machine_https_exception_is_exact_not_a_human_acl_relaxation() -> None:
