@@ -57,9 +57,9 @@ def cv(v, typ):
     return v
 
 
-async def transfer(url):
+async def transfer(url, source_path):
     conn=await asyncpg.connect(make_url(url).difference_update_query(['ssl']).set(drivername='postgresql').render_as_string(hide_password=False),ssl='verify-full',timeout=8)
-    dst=conn;src=sqlite3.connect('file:/src/automations.db?mode=ro',uri=True);src.execute('BEGIN')
+    dst=conn;src=sqlite3.connect(source_path.as_uri()+'?mode=ro',uri=True);src.execute('BEGIN')
     try:
         if src.execute('pragma integrity_check').fetchall()!=[('ok',)] or src.execute('pragma foreign_key_check').fetchone():raise ValueError('Source integrity check failed')
         tables={n for n, in src.execute("select name from sqlite_master where type='table' and name not like 'sqlite_%'")}
@@ -89,4 +89,17 @@ async def transfer(url):
 
 if __name__=='__main__':
     url=os.environ['AUTOMATION_DB_URL'];trial=sys.argv[1]=='trial';assert sys.argv[1] in ('trial','final');url=url.replace('/openhands_automations?', '/oh_automation_trial?') if trial else url
-    assert make_url(url).database==('oh_automation_trial' if trial else 'openhands_automations');schema(url);asyncio.run(transfer(url))
+    assert make_url(url).database==('oh_automation_trial' if trial else 'openhands_automations');schema(url)
+    source=Path('/src/automations.db')
+    if trial:
+        asyncio.run(transfer(url,source))
+    else:
+        # The writer must already be stopped. A read-only WAL volume may not
+        # permit SQLite to create its shared memory file. Recover privately.
+        import shutil,tempfile
+        with tempfile.TemporaryDirectory() as work:
+            cold=Path(work)/source.name
+            for suffix in ('','-wal','-journal'):
+                f=Path(str(source)+suffix)
+                if f.exists():shutil.copyfile(f,str(cold)+suffix)
+            asyncio.run(transfer(url,cold))
