@@ -1,23 +1,25 @@
 {
   "checked_at": "2026-11-02",
-  "release": "v0.82.0",
-  "release_url": "https://github.com/netbirdio/netbird/releases/tag/v0.82.0",
+  "release": "v0.83.2",
+  "release_url": "https://github.com/netbirdio/netbird/releases/tag/v0.83.2",
   "registry": "https://registry-1.docker.io",
   "verification": "Docker-Content-Digest header equals locally computed SHA256 of manifest/index bytes; this is integrity pinning, not publisher signature verification",
   "images": {
     "server": {
       "repository": "netbirdio/netbird-server",
-      "tag": "0.82.0",
-      "digest": "sha256:7b5b53b2dc8bc25639f791cf72d47cf86911894ff3f8a97cb79bab9be958109c",
-      "linux_amd64": "sha256:a3f620738a83bc98a1cd4508178f82d51f18bb6ad85311767546bac0b6a9c808",
-      "linux_arm64": "sha256:bfe87ac71c7a4d60afa05056c5c9849f353a6cc6d5fd63a6482ce3dce586000b"
+      "tag": "0.83.2",
+      "digest": "sha256:47e43b1b9e6343eb99d99a612513579111439dd016805912b0fae95ce802b908",
+      "linux_amd64": "sha256:fc2422b68009a9e529306ec20adde488505c9eaabba10a2ab35eff381fabe8e8",
+      "linux_arm64": "sha256:00c87b530b127d3b6e218fc16b8c94dec3d8f04890ba2fbd8ecd886d5bcf2ae5",
+      "verification": "Docker Hub release index and per-platform digests"
     },
     "dashboard": {
       "repository": "netbirdio/dashboard",
-      "tag": "v2.96.0",
-      "digest": "sha256:340b13c00b84349572a2acc5605e907cb09250a9e6461c757097eabdb8e02f2c",
-      "linux_amd64": "sha256:6f3efefd2e123440a9663f989e121461cc7047e74449763b07332c5e2f99fc27",
-      "linux_arm64": "sha256:5ac67aa899e8a05bb7e57b9fb140da1c98ac5fb35b841ab37bdc1762826073cf"
+      "tag": "v2.98.0",
+      "digest": "sha256:3e8a714e2966f96201b817657cf5b6e4304b947b88341fe99639214fb440ea9c",
+      "linux_amd64": "sha256:05b19af89c8797105b9036fb53a737724aa1f4cceb97c1d90e4376cdb3a54228",
+      "linux_arm64": "sha256:7ad04774d225a87d791be008260942b30ca89ccebaa56d1dd49749e10bcdb205",
+      "verification": "Docker Hub release index and per-platform digests"
     },
     "client": {
       "repository": "netbirdio/netbird",
