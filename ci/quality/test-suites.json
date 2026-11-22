@@ -297,7 +297,6 @@
     "tests/test_vps_workload_offload.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
     "tests/test_wiki_editor_resolver.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
     "tests/test_wiki_runtime_bootstrap.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
-    "tests/test_wiki_runtime_migration.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
     "tests/test_wireguard_admin_client.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
     "tests/test_wireguard_admin_firewall.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
     "tests/test_wireguard_admin_peers.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",

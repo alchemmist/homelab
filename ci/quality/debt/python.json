@@ -3709,36 +3709,6 @@
       "rule": "S603"
     },
     {
-      "id": "5619d681c8cc90cea2b4c744b31ba85db78a038e9dade9dc1647e1416a992998.1",
-      "path": "scripts/migrate-wiki-runtime.py",
-      "rule": "S603"
-    },
-    {
-      "id": "8f14ce1a38fcc90b38c8cf451f1c7938464a49a9ee23eb7dd205d6b8a9a02e0f.1",
-      "path": "scripts/migrate-wiki-runtime.py",
-      "rule": "S607"
-    },
-    {
-      "id": "8a730c50556f5197c014de38987eaca333d6fd4bdbba3faec95393c566016e4a.1",
-      "path": "scripts/migrate-wiki-runtime.py",
-      "rule": "S603"
-    },
-    {
-      "id": "17680d106a56c12c6d1ae57b528da228c9dfde7fd98236457525f778dcc38fd7.1",
-      "path": "scripts/migrate-wiki-runtime.py",
-      "rule": "S607"
-    },
-    {
-      "id": "9308ce27145105fd6601829fff26667820fff28c12be206707e1de589e5b1c9d.1",
-      "path": "scripts/migrate-wiki-runtime.py",
-      "rule": "S603"
-    },
-    {
-      "id": "39d6cabc6ba167623aa46de3432bc52d7d723d2168f6a8ed934f0b8547211f68.1",
-      "path": "scripts/migrate-wiki-runtime.py",
-      "rule": "S607"
-    },
-    {
       "id": "e7e5bf8ee94750fd681185ec9b2b133ecc8283a764949bb3f57fe7a8b6b2e03e.1",
       "path": "scripts/moscow-api-routes-repair.py",
       "rule": "F401"
@@ -9312,16 +9282,6 @@
       "id": "771b4aa2352226db2bc253813886100faf6df9088993187e18b01d2d8c45b8dc.1",
       "path": "tests/test_wiki_runtime_bootstrap.py",
       "rule": "F401"
-    },
-    {
-      "id": "38af205ebe193f9b7c2ce0826556686a39595cda7b4906d6e357a4a28f67f73e.1",
-      "path": "tests/test_wiki_runtime_migration.py",
-      "rule": "S603"
-    },
-    {
-      "id": "09e61786f553b7f015eb23410142c6526d5a95b6d2bf7af48f72714b718a36d4.1",
-      "path": "tests/test_wiki_runtime_migration.py",
-      "rule": "S607"
     },
     {
       "id": "7817275a174daa14b353777c7dbf2401cbd3d8bb5a89c331486c7c01f3e1e12e.1",
