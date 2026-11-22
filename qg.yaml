@@ -165,4 +165,13 @@ nodes:
       GH_TOKEN: ${{ github.token }}
     results:
       native: reports/workflow.json
+  tests-medium:
+    title: Integration tests
+    profile: quality-integration
+    run: uv run python scripts/quality/tests.py medium --isolate-network
+    policy: *id001
+    needs:
+    - ownership
+    results:
+      junit: reports/tests-medium.xml
 ...
