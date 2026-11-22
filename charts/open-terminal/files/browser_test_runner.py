@@ -15,6 +15,7 @@ ProcessIdentity = tuple[int, int]
 
 
 def processes() -> dict[int, tuple[int, int]]:
+    """Map each PID to its parent PID and its own start ticks."""
     result = {}
     for directory in Path("/proc").iterdir():
         if not directory.name.isdigit():
