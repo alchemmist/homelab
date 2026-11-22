@@ -82,5 +82,5 @@
             kubectl delete namespace homelab-worker-check --ignore-not-found --wait=true
             --timeout=90s
           register: namespace_removal
-          changed_when: namespace_removal.stdout | length > 0
+          changed_when: namespace_removal.stdout | default('') | length > 0
 ...

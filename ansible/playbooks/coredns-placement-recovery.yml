@@ -67,7 +67,8 @@
     - name: Require the expected preimage and no prior attempt
       ansible.builtin.assert:
         that:
-          - preimage.stat.checksum == expected_preimage
+          - preimage.stat.isreg | default(false)
+          - preimage.stat.checksum | default('') == expected_preimage
           - not receipt.stat.exists
         fail_msg: "STOP: preimage drift or previous attempt; inspect before retry."
     - name: Create a private recovery directory

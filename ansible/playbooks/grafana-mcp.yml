@@ -35,7 +35,9 @@
       ansible.builtin.systemd_service:
         name: homelab-private-dns.service
         state: restarted
-      when: >-
-        grafana_mcp_dns_validation is defined and grafana_mcp_dns_validation is succeeded and
-        grafana_mcp_dns_validation is reachable
+      when:
+        - grafana_mcp_dns_validation is defined
+        - grafana_mcp_dns_validation is not skipped
+        - grafana_mcp_dns_validation is succeeded
+        - grafana_mcp_dns_validation is reachable
 ...

@@ -22,9 +22,7 @@
     XDG_RUNTIME_DIR: /run/user/{{ homelab_user_uid }}
     DBUS_SESSION_BUS_ADDRESS: unix:path=/run/user/{{ homelab_user_uid }}/bus
   when: not ansible_check_mode
-  register: syncthing_user_stop
   failed_when: false
-  changed_when: syncthing_user_stop is succeeded
 
 - name: Disable legacy user Syncthing service if user manager is available
   ansible.builtin.systemd_service:
@@ -37,9 +35,7 @@
     XDG_RUNTIME_DIR: /run/user/{{ homelab_user_uid }}
     DBUS_SESSION_BUS_ADDRESS: unix:path=/run/user/{{ homelab_user_uid }}/bus
   when: not ansible_check_mode
-  register: syncthing_user_disable
   failed_when: false
-  changed_when: syncthing_user_disable is succeeded
 
 - name: Remove legacy user Syncthing autostart symlink
   ansible.builtin.file:

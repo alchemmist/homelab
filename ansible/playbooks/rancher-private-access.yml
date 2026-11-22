@@ -65,9 +65,11 @@
       ansible.builtin.systemd_service:
         name: homelab-private-dns.service
         state: restarted
-      when: >-
-        rancher_private_dns_validation is defined and rancher_private_dns_validation is succeeded
-        and rancher_private_dns_validation is reachable
+      when:
+        - rancher_private_dns_validation is defined
+        - rancher_private_dns_validation is not skipped
+        - rancher_private_dns_validation is succeeded
+        - rancher_private_dns_validation is reachable
 
 - name: Decouple public ingress failover from the private Rancher endpoint
   hosts: socrat-0:socrat-1

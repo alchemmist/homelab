@@ -22,8 +22,13 @@ def desktop(tmp_path):
     user = pwd.getpwuid(os.geteuid()).pw_name
     assert task["become"] and task["become_user"] == "{{ homelab_user }}"
     assert task["homelab_user_unit"]["group"] == "{{ homelab_user }}"
-    # macOS and some CI users don't have the Linux desktop's same-name group.
-    task["homelab_user_unit"]["group"] = grp.getgrgid(os.getegid()).gr_name
+    try:
+        expected_gid = grp.getgrnam(user).gr_gid
+    except KeyError:
+        # The macOS development account has no same-name group. Keep the real
+        # role expression on Linux CI and only adapt this absent fixture group.
+        expected_gid = os.getegid()
+        task["homelab_user_unit"]["group"] = grp.getgrgid(expected_gid).gr_name
     (tmp_path / "files").symlink_to(ROLE / "files")
     dest = tmp_path / ".config/systemd/user" / UNIT
     dest.parent.mkdir(parents=True)
@@ -99,6 +104,8 @@ def desktop(tmp_path):
             },
         )
         assert result.returncode == (2 if fails else 0), result.stdout + result.stderr
+        if dest.is_file() and not check and not fails:
+            assert (dest.stat().st_uid, dest.stat().st_gid) == (os.geteuid(), expected_gid)
         return events.read_text().splitlines() if events.exists() else []
 
     return dest, run
@@ -131,7 +138,10 @@ def test_failed_reload_blocks_later_tasks_and_retries_with_unchanged_bytes(deskt
     (backup,) = tmp_path.glob("overridden-unit.*~")
     assert backup.read_text() == "old contents"
     fail.unlink()
-    assert run(check=True) == []
+    pending = dest.with_name(f".{dest.name}.reload-pending")
+    assert pending.is_dir()
+    assert run(check=True, changed=True) == []
+    assert pending.is_dir()
     assert run() == ["reload", "continue", "terminal"]
     assert run(changed=False) == ["continue", "terminal"]
 

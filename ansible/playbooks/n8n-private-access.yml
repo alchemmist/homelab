@@ -166,7 +166,9 @@
       ansible.builtin.systemd_service:
         name: homelab-private-dns.service
         state: restarted
-      when: >-
-        n8n_dns_record_validation is defined and n8n_dns_record_validation is succeeded and
-        n8n_dns_record_validation is reachable
+      when:
+        - n8n_dns_record_validation is defined
+        - n8n_dns_record_validation is not skipped
+        - n8n_dns_record_validation is succeeded
+        - n8n_dns_record_validation is reachable
 ...

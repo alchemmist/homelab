@@ -167,7 +167,9 @@
       ansible.builtin.systemd_service:
         name: homelab-private-dns.service
         state: restarted
-      when: >-
-        searxng_dns_record_validation is defined and searxng_dns_record_validation is succeeded and
-        searxng_dns_record_validation is reachable
+      when:
+        - searxng_dns_record_validation is defined
+        - searxng_dns_record_validation is not skipped
+        - searxng_dns_record_validation is succeeded
+        - searxng_dns_record_validation is reachable
 ...

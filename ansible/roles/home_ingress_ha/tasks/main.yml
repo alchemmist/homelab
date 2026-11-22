@@ -162,7 +162,6 @@
     group: root
     mode: "0644"
   notify:
-
     - Reload keepalived systemd startup policy
     - Restart home ingress keepalived
 

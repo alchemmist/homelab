@@ -36,7 +36,9 @@
       ansible.builtin.systemd_service:
         name: homelab-private-dns.service
         state: restarted
-      when: >-
-        monitoring_dns_record_validation is defined and monitoring_dns_record_validation is
-        succeeded and monitoring_dns_record_validation is reachable
+      when:
+        - monitoring_dns_record_validation is defined
+        - monitoring_dns_record_validation is not skipped
+        - monitoring_dns_record_validation is succeeded
+        - monitoring_dns_record_validation is reachable
 ...

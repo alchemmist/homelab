@@ -231,8 +231,8 @@
       when:
         - vpn_consolidation_cutover | default(false)
         - vpn_consolidation_releases | length == 0
-      register: release_removal
-      changed_when: "'uninstalled' in release_removal.stdout"
+      register: canonical_release_removal
+      changed_when: "'uninstalled' in canonical_release_removal.stdout"
 
     - name: Ensure unified writers are gone before restoring old deployments
       ansible.builtin.command: >-
@@ -307,5 +307,5 @@
   delegate_to: socrat-0
   become: false
   register: namespace_removal
-  changed_when: namespace_removal.stdout | length > 0
+  changed_when: namespace_removal.stdout | default('') | length > 0
 ...
