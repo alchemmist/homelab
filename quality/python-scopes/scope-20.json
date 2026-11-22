@@ -1,0 +1,4 @@
+{
+  "include": ["charts/thanos/files/*.py"],
+  "rules": ["D101", "D102", "D103", "D107", "D401", "I001", "UP017", "UP024"]
+}

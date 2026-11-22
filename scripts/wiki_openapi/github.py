@@ -4,7 +4,7 @@ import base64
 import json
 import urllib.error
 import urllib.request
-from typing import cast
+from typing import TypedDict, cast
 
 from engine import MARKER, PAGE, branch_for, require_sha
 
@@ -16,7 +16,31 @@ class GitHubError(Exception):
     """Exception raised when the GitHub API request fails."""
 
 
-def _request(url, token=None, method="GET", body=None) -> "dict[str, object] | None":
+class _Content(TypedDict):
+    encoding: str
+    content: str
+    sha: str
+
+
+class _PullRequest(TypedDict):
+    number: int
+    html_url: str
+    title: str
+    body: str | None
+    user: dict[str, object]
+
+
+class _Ref(TypedDict):
+    object: dict[str, str]
+
+
+class _Comparison(TypedDict, total=False):
+    files: list[object]
+
+
+def _request(
+    url: str, token: str | None = None, method: str = "GET", body: object = None
+) -> object:
     headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "socrat-wiki-openapi",
@@ -35,7 +59,7 @@ def _request(url, token=None, method="GET", body=None) -> "dict[str, object] | N
     try:
         with urllib.request.urlopen(request, timeout=45) as response:
             raw = response.read()
-            return cast("dict[str, object]", json.loads(raw)) if raw else {}
+            return json.loads(raw) if raw else {}
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
             return None
@@ -45,57 +69,68 @@ def _request(url, token=None, method="GET", body=None) -> "dict[str, object] | N
 class BotRepo:
     """GitHub repository client for bot-managed files."""
 
-    def files(self, before, after):
+    def files(self, before: object, after: object) -> list[object]:
         """Fingerprint the changed file set between two commits."""
         require_sha(after)
         if before == "0" * 40:
-            commit = _request(f"https://api.github.com/repos/{BOT}/commits/{after}")
+            commit = cast(
+                "_Comparison | None",
+                _request(f"https://api.github.com/repos/{BOT}/commits/{after}"),
+            )
             if not commit:
                 raise GitHubError("Commit not found")
             return commit.get("files") or []
         require_sha(before)
-        compared = _request(f"https://api.github.com/repos/{BOT}/compare/{before}...{after}")
+        compared = cast(
+            "_Comparison | None",
+            _request(f"https://api.github.com/repos/{BOT}/compare/{before}...{after}"),
+        )
         if not compared:
             raise GitHubError("Compare not found")
-        if len(cast("list[object]", compared.get("files") or [])) >= 300:
+        if len(compared.get("files") or []) >= 300:
             raise GitHubError("Compare file list truncated")
         return compared.get("files") or []
 
-    def text(self, sha, path):
+    def text(self, sha: object, path: str) -> str:
         """Fetch one of the two allowed files at a commit SHA."""
         require_sha(sha)
         if path not in ("openapi.yaml", "scripts/render_wiki.py"):
             raise GitHubError("Unexpected bot path")
-        item = _request(f"https://api.github.com/repos/{BOT}/contents/{path}?ref={sha}")
+        item = cast(
+            "_Content | None",
+            _request(f"https://api.github.com/repos/{BOT}/contents/{path}?ref={sha}"),
+        )
         if not item or item.get("encoding") != "base64":
             raise GitHubError("Bot file missing")
-        return base64.b64decode(cast("str", item["content"])).decode()
+        return base64.b64decode(item["content"]).decode()
 
 
 class Homelab:
     """GitHub client for the homelab wiki repository."""
 
-    def __init__(self, token) -> None:
-
+    def __init__(self, token: str) -> None:
         self.token = token
 
-    def api(self, method, path, body=None):
+    def api(self, method: str, path: str, body: object = None) -> object:
         """Call the GitHub API on the pinned repository."""
         return _request(f"https://api.github.com/repos/{HOME}/{path}", self.token, method, body)
 
-    def read_page(self, ref="main"):
+    def read_page(self, ref: str = "main") -> tuple[str, str] | tuple[None, None]:
         """Read the generated wiki page content at the given ref."""
-        item = self.api("GET", f"contents/{PAGE}?ref={ref}")
+        item = cast("_Content | None", self.api("GET", f"contents/{PAGE}?ref={ref}"))
         if item is None:
             return None, None
         if item.get("encoding") != "base64":
             raise GitHubError("Unexpected page encoding")
         return base64.b64decode(item["content"]).decode(), item["sha"]
 
-    def propose(self, after, markdown):
+    def propose(self, after: object, markdown: str) -> dict[str, object]:
         """Open (or reuse) a pull request with the regenerated page."""
         branch = branch_for(after)
-        existing = self.api("GET", f"pulls?state=open&head=alchemmist:{branch}&per_page=20") or []
+        existing = cast(
+            "list[_PullRequest]",
+            self.api("GET", f"pulls?state=open&head=alchemmist:{branch}&per_page=20") or [],
+        )
         if existing:
             return {
                 "status": "existing",
@@ -105,7 +140,8 @@ class Homelab:
         current, _ = self.read_page("main")
         if current == markdown:
             return {"status": "no_change"}
-        main = self.api("GET", "git/ref/heads/main")["object"]["sha"]
+        ref = cast("_Ref", self.api("GET", "git/ref/heads/main"))
+        main = ref["object"]["sha"]
         self.api("POST", "git/refs", {"ref": "refs/heads/" + branch, "sha": main})
         _, blob = self.read_page(branch)
         body = {
@@ -116,25 +152,31 @@ class Homelab:
         if blob:
             body["sha"] = blob
         self.api("PUT", "contents/" + PAGE, body)
-        pr = self.api(
-            "POST",
-            "pulls",
-            {
-                "title": "docs: refresh Socrat Bot wiki page",
-                "head": branch,
-                "base": "main",
-                "body": "Regenerated `wiki/content/platform/socrat-bot.md` from the current socrat-bot OpenAPI spec.\n\n"
-                f"Source commit: https://github.com/{BOT}/commit/{after}\n\n"
-                "Human review required. No auto-merge.\n\n" + MARKER,
-            },
+        pr = cast(
+            "_PullRequest",
+            self.api(
+                "POST",
+                "pulls",
+                {
+                    "title": "docs: refresh Socrat Bot wiki page",
+                    "head": branch,
+                    "base": "main",
+                    "body": "Regenerated `wiki/content/platform/socrat-bot.md` from the current socrat-bot OpenAPI spec.\n\n"
+                    f"Source commit: https://github.com/{BOT}/commit/{after}\n\n"
+                    "Human review required. No auto-merge.\n\n" + MARKER,
+                },
+            ),
         )
         return {"status": "created", "number": pr["number"], "url": pr["html_url"]}
 
-    def automation_prs(self, keep):
+    def automation_prs(self, keep: object) -> list[dict[str, object]]:
         """List automation PRs other than the one to keep."""
         found, page = [], 1
         while page <= 5:
-            batch = self.api("GET", f"pulls?state=open&per_page=50&page={page}") or []
+            batch = cast(
+                "list[_PullRequest]",
+                self.api("GET", f"pulls?state=open&per_page=50&page={page}") or [],
+            )
             if not batch:
                 break
             for pr in batch:
@@ -157,7 +199,7 @@ class Homelab:
             page += 1
         return found
 
-    def close(self, number, survivor):
+    def close(self, number: int, survivor: object) -> None:
         """Comment on and close an superseded automation PR."""
         self.api(
             "POST",

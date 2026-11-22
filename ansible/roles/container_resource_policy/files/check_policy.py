@@ -11,17 +11,19 @@ RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
 
 
 def _require_case_defaults(
-    case: str, container_type: str, actual: object, resources: dict[str, object]
+    case: str,
+    container_type: str,
+    actual: dict[str, dict[str, object]],
+    resources: dict[str, dict[str, str]],
 ) -> None:
     """Assert one returned container matches the reviewed mutating defaulting policy."""
-    defaults = cast("dict[str, dict[str, object]]", actual)
     for mode, keys in (
         ("requests", RESOURCE_NAMES),
         ("limits", ("memory", "ephemeral-storage")),
     ):
-        if not all(key in defaults.get(mode, {}) for key in keys):
+        if not all(key in actual.get(mode, {}) for key in keys):
             raise AssertionError((case, container_type, actual))
-    limits = defaults["limits"]
+    limits = actual["limits"]
     if any(limits[key] == "0" for key in ("memory", "ephemeral-storage")):
         raise AssertionError((case, container_type, actual))
     if case == "zero-limits" and "cpu" in limits:
@@ -29,23 +31,22 @@ def _require_case_defaults(
     if case == "gpu" and limits.get("nvidia.com/gpu") != "1":
         raise AssertionError((case, container_type, actual))
     if case == "high-request" and any(
-        limits.get(key) != cast("dict[str, object]", resources["requests"])[key]
-        for key in ("memory", "ephemeral-storage")
+        limits.get(key) != resources["requests"][key] for key in ("memory", "ephemeral-storage")
     ):
         raise AssertionError((case, container_type, actual))
-    requested = cast("dict[str, object]", resources.get("limits", {}))
+    requested = resources.get("limits", {})
     if "cpu" not in requested and "cpu" in limits:
         raise AssertionError(("Unexpected CPU cap", case, container_type, actual))
-    if case == "small-limit" and defaults["requests"] != resources["limits"]:
+    if case == "small-limit" and actual["requests"] != resources["limits"]:
         raise AssertionError((case, container_type, actual))
     if case == "explicit" and actual != resources:
         raise AssertionError((case, container_type, actual))
 
 
-def check(namespace, kubectl, kubeconfig):
+def check(namespace: str, kubectl: str, kubeconfig: str) -> None:
     """Document the check operation."""
     command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
-    cases = [
+    cases: list[tuple[str, dict[str, dict[str, str]]]] = [
         ("empty", {}),
         ("memory-only", {"limits": {"memory": "256Mi"}}),
         ("high-request", {"requests": {"cpu": "4", "memory": "2Gi", "ephemeral-storage": "8Gi"}}),
@@ -88,10 +89,10 @@ def check(namespace, kubectl, kubeconfig):
             _require_case_defaults(
                 case,
                 container_type,
-                cast("dict[str, dict[str, object]]", returned["spec"][container_type][0])[
-                    "resources"
-                ],
-                cast("dict[str, object]", resources),
+                cast(
+                    "dict[str, dict[str, object]]", returned["spec"][container_type][0]["resources"]
+                ),
+                resources,
             )
         print(case + ": passed")
     print(
@@ -99,7 +100,7 @@ def check(namespace, kubectl, kubeconfig):
     )
 
 
-def main():
+def main() -> None:
     """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--namespace", required=True)

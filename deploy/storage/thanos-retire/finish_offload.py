@@ -12,7 +12,7 @@ original = "raw-cold-copy-20261121"
 other = ["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes", "socrat-3"]
 
 
-def main():
+def main() -> None:
     if sys.flags.optimize:
         raise RuntimeError("safety checks need standard Python")
     assert sys.argv[1:] == ["--after-release"]
