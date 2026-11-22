@@ -107,8 +107,8 @@
 актуальность VPS endpoint и покрытие worker `10.250.0.5/32`. Проверить обратный
 peer route и узкий forwarding ACL. Исправлять VPN под source ownership, не
 создавать ещё один SSH bastion. Подробности и критерии:
-`docs/netbird-tunnelblick-coexistence.md` (основной NetBird) и
-`docs/mac-private-ssh.md` (резервный standalone WireGuard). Проверить фактический
+`docs/network/netbird-tunnelblick-coexistence.md` (основной NetBird) и
+`docs/identity/mac-private-ssh.md` (резервный standalone WireGuard). Проверить фактический
 интерфейс выбранного транспорта, не засчитывать работу через другой VPN.
 Для NetBird ожидаема существующая masquerade routing-peer; source `.4` относится
 только к standalone WireGuard и не является критерием NetBird. Tunnelblick не

@@ -1,10 +1,12 @@
 # Homelab agent entrypoint
 
-Read `docs/context/context.md` first; use `docs/README.md` for topic runbooks.
+Start at `docs/README.md`. For a named service or alert, follow its direct route;
+read `docs/context/context.md` only for a system overview. Before operational work,
+check `docs/context/safety.md` and the relevant runbook.
 
 ## MCP
 
-No particular agent or MCP client is required. For optional connections, read `docs/official-mcp.md` and
+No particular agent or MCP client is required. For optional connections, read `docs/platform/official-mcp.md` and
 `deploy/mcp/service-audit.json` for scope, installation, coverage and blocked items.
 Only a trusted project loads its commands. Never execute a credential helper to
 show its output: it writes a token into the MCP client's private pipe.

@@ -3,7 +3,7 @@
 Runtime cutover completed on 10 November 2026 UTC; see the final receipt below.
 Earlier prepared/held checkpoints are historical, not the current runtime state.
 
-Read `docs/identity-integrations.md`, `identity-architecture.md`,
+Read `docs/identity/identity-integrations.md`, `identity-architecture.md`,
 `identity-current-state.md`, `cluster-deploy.md`, published wiki `/platform/deploy/`
 and `/start/access/` first. Historical proxy receipts are not a native OIDC recipe.
 
@@ -96,8 +96,8 @@ Do not assume two quick commits are atomic or manually sync either half.
    blocker here (the separate fresh IdP backup in step 2 of Controlled activation
    still applies to identity provisioning). Preserve every job, deadline and
    credential. No reset/replay/forced stop. Keep claims paused through release
-   verification. See the [authoritative SPI activation gate](../spi-incident-triage.md#remaining-activation-gate)
-   and [shared-image release contract](../cluster-deploy.md#spi-full-service-extraction--9-november-2026).
+   verification. See the [authoritative SPI activation gate](../applications/spi-incident-triage.md#remaining-activation-gate)
+   and [shared-image release contract](../platform/cluster-deploy.md#spi-full-service-extraction--9-november-2026).
 3. With the hold confirmed and runtime Secret/provider already provisioned,
    merge the native source and approve its protected standard publication gate.
    Let `deploy-to-socrat@v1` make its normal robot image-digest commit to homelab.

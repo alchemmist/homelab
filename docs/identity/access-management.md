@@ -1,6 +1,6 @@
 # Identity and access management
 
-Comprehensive Russian operator manual and session consolidation: [identity manual](../identity.md).
+Comprehensive Russian operator manual and session consolidation: [identity manual](identity.md).
 
 Additive granular app IAM, controller ownership and guarded onboarding/offboarding
 (implementation prepared, **not deployed**): [русский runbook](application-iam.md).
@@ -32,7 +32,7 @@ that local bypasses or pre-existing human sessions have been closed.
 | Open WebUI | Native OIDC; owner → admin, Tim → user | Existing users/chats retained through exact UUID linking; no generic email merging; local login retained |
 | n8n | Authentik MFA/group gate in front of browser UI | **Not native account SSO**: Community lacks the appropriate licensed integration; n8n may still ask for its own login |
 | Wiki | Native OIDC + PKCE, owner admin / existing Tim editor / other observers reader | Public reading and machine MCP remain separate; legacy passwords and old local sessions are owner-only |
-| LiteLLM | Native Generic OIDC + PKCE, owner-only application; reviewed UUID → existing `socrat-admin` | Existing owner database password fallback and machine keys retained; free SSO ≤5 users; owner recovery-password acceptance pending. See [LiteLLM](../litellm.md) |
+| LiteLLM | Native Generic OIDC + PKCE, owner-only application; reviewed UUID → existing `socrat-admin` | Existing owner database password fallback and machine keys retained; free SSO ≤5 users; owner recovery-password acceptance pending. See [LiteLLM](../applications/ai/litellm.md) |
 | Uptime Kuma | Existing native admin authentication + public status pages | **Not migrated to SSO**: installed auth implementation has no native OIDC; public and administrative socket traffic must be separated safely first |
 
 Other app/API credentials (LiteLLM, CI, MCP, Syncthing, VPN and webhooks) are not

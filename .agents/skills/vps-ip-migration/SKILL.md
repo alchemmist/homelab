@@ -13,7 +13,7 @@ description: "Смена публичного IPv4 VPS socrat-2 в homelab: об
 
 Автоматизация: [`scripts/vps-ip-migration.py`](../../../scripts/vps-ip-migration.py)
 (пути ниже всегда от корня репозитория). Инвентарь, владельцы и реальные грабли
-предыдущего переезда: `docs/vps-ip-migration-20261105.md`.
+предыдущего переезда: `docs/records/handoffs/vps-ip-migration-20261105.md`.
 
 - **Playbook:** явные old/new IPv4, все четыре preflight, allowlist исходников,
   приватные preimages, точечные host-файлы, endpoints WireGuard без перезапуска

@@ -5,7 +5,7 @@ description: "Заведение/отзыв администраторов вн�
 
 # Human administrator admission
 
-1. Прочитать `docs/netbird-administrator-onboarding.md` целиком. Это канонический
+1. Прочитать `docs/network/netbird-administrator-onboarding.md` целиком. Это канонический
    workflow, а не набор старых pilot activation scripts.
 2. Не менять Tunnelblick, default route, corporate DNS, межсерверный WireGuard,
    Kubernetes RBAC, SSH users/keys или реальные identity UUID ради сетевого доступа.
@@ -44,7 +44,7 @@ description: "Заведение/отзыв администраторов вн�
 Native host NetBird transport marks can be inherited across the VXLAN boundary
 and collide with kube-router allow bits. Before claiming Kubernetes isolation,
 audit `ansible/playbooks/k3s-overlay-marks.yml` on all nodes and require zero
-operations. Follow `docs/k3s-networkpolicy-overlay-marks.md` after host NetBird,
+operations. Follow `docs/platform/k3s-networkpolicy-overlay-marks.md` after host NetBird,
 overlay or node changes. A 403 from S3 is not a network-denial test; test fresh
 unprivileged cross-node connections to Pod IP and ClusterIP, plus the allowed
 reader. This is infrastructure maintenance, not a per-human client configuration.

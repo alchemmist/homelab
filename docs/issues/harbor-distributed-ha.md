@@ -73,7 +73,7 @@ OTel reservations are preserved. Passing this gate alone does not authorize cuto
 - [ ] Document rollback before and after resuming writes; Helm rollback is not data rollback.
 - [ ] Configure scheduled independent backups, restore drills and alerts for storage,
       replication, quorum health and expiring robot credentials.
-- [ ] Update `docs/harbor.md` and `docs/harbor-ha.md` to actual state.
+- [ ] Update `docs/platform/harbor.md` and `docs/platform/harbor-ha.md` to actual state.
 
 ## Acceptance criteria
 
@@ -92,5 +92,5 @@ explicit approval. No automatic GC/retention deletion during migration.
 
 ## References
 
-- `docs/harbor-ha.md` — design, gate and migration/rollback stages.
-- `docs/harbor.md` — active single-node deployment and operator notes.
+- `docs/platform/harbor-ha.md` — design, gate and migration/rollback stages.
+- `docs/platform/harbor.md` — active single-node deployment and operator notes.

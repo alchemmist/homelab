@@ -151,6 +151,6 @@ source unpack tasks can report changed). No IdP/shared-ingress restart.
 
 Read-only acceptance, both edges by default:
 `python3 scripts/identity-nature-smoke.py --run` (Playwright/Chromium required).
-See [Russian operator details](../../../docs/identity-frontend.md#14-случайные-фоны-из-dotfiles-nature).
+See [Russian operator details](../../../docs/identity/identity-frontend.md#14-случайные-фоны-из-dotfiles-nature).
 For lake-only rollback use the guarded **immediately pre-Nature** backup from the
 private Brand journal, not the original baseline that undoes the entire theme.

@@ -1,6 +1,6 @@
 # Unified logging operator guide
 
-Start with the [final active coverage report and complete source registry](coverage-final-2026-11-04.md), not configured receiver lists. [Recovery acceptance](rollout-recovery-2026-11-04.md) records exact deployed owners, runtime failures and queue gates. The broader [operations guide](../unified-logging-operations.ru.md) remains applicable.
+Start with the [final active coverage report and complete source registry](coverage-final-2026-11-04.md), not configured receiver lists. [Recovery acceptance](rollout-recovery-2026-11-04.md) records exact deployed owners, runtime failures and queue gates. The broader [operations guide](unified-logging-operations.ru.md) remains applicable.
 
 ## Diagnose before changing collection
 

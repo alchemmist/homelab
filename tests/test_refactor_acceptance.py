@@ -133,7 +133,7 @@ class CurrentDocumentation(unittest.TestCase):
         claim = yaml.safe_load((ROOT / "deploy/wiki-runtime/values.yaml").read_text())[
             "persistence"
         ]["existingClaim"]
-        for name in ["wiki/README.md", "docs/wiki.md"]:
+        for name in ["wiki/README.md", "docs/applications/wiki.md"]:
             assert "`" + claim + "`" in (ROOT / name).read_text()
 
     def test_current_context_is_bounded_and_history_separate(self) -> None:

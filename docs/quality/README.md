@@ -121,7 +121,7 @@ uv run python -m ci.quality.tests fast
 uv run python -m ci.quality.tests medium
 ```
 
-The medium suite needs full Git history for the pinned before/handoff and later owner-cutover renders (CI uses `fetch-depth: 0`). A shallow clone is not sufficient. Preload the [pinned nginx parser](../nginx-access-logging.md) before isolating the suite.
+The medium suite needs full Git history for the pinned before/handoff and later owner-cutover renders (CI uses `fetch-depth: 0`). A shallow clone is not sufficient. Preload the [pinned nginx parser](../logging/nginx-access-logging.md) before isolating the suite.
 
 Actual Linux jobs add `--isolate-network` to fast/medium. Install only required pinned binaries via `ci/quality/install_tools.py` and parsing collections via `ci/quality/install_collections.py`; do not substitute system versions silently. Use `.venv/bin:.quality-tools/bin` in scoped PATH and `KUBECONFIG=/dev/null` for offline checks. Cluster testing requires an explicitly reviewed disposable Docker/Kind environment; it is not implicitly run by these offline commands.
 
