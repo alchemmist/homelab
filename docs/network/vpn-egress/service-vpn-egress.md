@@ -1,381 +1,436 @@
-# VPN-as-service для приложений на российских нодах
+# VPN-as-a-service for applications on the Russian nodes
 
-Согласованная владельцем архитектура, 17 ноября 2026. Не путать с предыдущим
-SSH-egress для n8n: тот был ошибочным архитектурным решением и заменён.
+An owner-agreed architecture, November 17, 2026. Do not confuse it with the
+previous SSH-egress for n8n: that was an erroneous architectural decision and
+has been replaced.
 
-## Три разные задачи
+## Three different tasks
 
-| Задача | Механизм | Граница |
+| Task | Mechanism | Boundary |
 |---|---|---|
-| Связь нод и инфраструктурный транзит | `wg-socrat` | VPN-as-infrastructure; не выдаёт приложению зарубежный выход |
-| Администрирование | NetBird + обычный SSH с личной identity | Не прикладной proxy и не общий exit node |
-| Зарубежный доступ приложения | Отдельный клиент и подписка **3x-ui**, штатный VPN-клиент в Pod | VPN-as-service; собственный учёт, лимиты и отзыв |
+| Node connectivity and infrastructure transit | `wg-socrat` | VPN-as-infrastructure; does not give an application a foreign exit |
+| Administration | NetBird + ordinary SSH with a personal identity | Not an application proxy and not a common exit node |
+| An application's foreign access | A separate client and a **3x-ui** subscription, an ordinary VPN client in a Pod | VPN-as-a-service; its own accounting, limits and revocation |
 
-Нельзя решать последнюю задачу добавлением SSH-туннеля до NL, использованием
-административного ключа, прямым выходом через mesh или изменением default route
-всей ноды. Наличие рабочего обхода не означает соответствия архитектуре.
+The last task must not be solved by adding an SSH tunnel to NL, using an
+administrative key, exiting directly through the mesh, or changing the whole
+node's default route. The existence of a working bypass does not mean
+compliance with the architecture.
 
-## Штатный путь
+## The ordinary path
 
 ```text
-Приложение в Pod на российской ноде
-  → локальные входы штатного VPN-клиента
-  → профиль из подписки собственного service-клиента 3x-ui
-  → существующий московский вход VPN-as-service
-  → существующий инфраструктурный транзит Москва → NL
-  → VPN backend в NL → назначение
+An application in a Pod on a Russian node
+  → the local entrances of the ordinary VPN client
+  → a profile from the subscription of its own 3x-ui service client
+  → the existing Moscow VPN-as-a-service entrance
+  → the existing infrastructure transit Moscow → NL
+  → the VPN backend in NL → the destination
 ```
 
-`wg-socrat` может защищать существующий межсерверный участок инфраструктуры.
-Он не заменяет service-identity: приложение подключается как обычный клиент
-VPN-as-service. Личных клиентов, подписки и маршрутизацию пользователей не меняем.
+`wg-socrat` can protect the existing inter-server infrastructure leg. It does
+not replace the service identity: the application connects as an ordinary
+VPN-as-a-service client. Personal clients, subscriptions and user routing are
+not changed.
 
-## Порядок выдачи доступа
+## The order of granting access
 
-1. Зафиксировать сервис, namespace, требуемые назначения, протоколы, владельца,
-   квоту и срок действия. Для постоянных service-клиентов: группа `services`,
-   без квоты и автоматического истечения, если владелец явно не задал иное.
-   Identity — на сервис, не одна общая для всех Pod.
-   Несколько реплик одного сервиса требуют согласованного `limitIp`.
-2. Через **native API/UI 3x-ui** создать именованного клиента, например
-   `svc-n8n-google`. Привязать только к нужному действующему inbound. Не создавать
-   новый listener/server ради каждого приложения. Не писать в SQLite.
-3. Сохранить собственную подписку в Secret/закрытом credential custody.
-   URL подписки — bearer credential: не печатать, не коммитить, не вставлять в
-   диагностику публичных URL, issue или логи. Не копировать подписку человека.
-4. Выбрать штатный серверный клиент под реальный формат подписки. Не предполагать,
-   что GUI Happ запускается headless. В n8n используется официальный Xray-core и
-   **native JSON endpoint той же identity 3x-ui**, для которой панель также выдаёт
-   обычную URI/Happ-подписку. Это другой формат одной подписки, не ручная сборка
-   серверных credentials и не отдельная система учётных записей.
-5. Подключить приложение к локальному proxy/входам клиента только для согласованных
-   назначений. Нет hostNetwork, NET_ADMIN, TUN или изменения маршрутов ноды.
-   Глобальный HTTP_PROXY допустим не по умолчанию, а только если весь трафик
-   приложения действительно должен идти через сервисный VPN.
-6. Развернуть через Git → Argo. Нативные identity/Secrets выдаются отдельно;
-   ссылка на Secret, клиент, локальная политика и версия образа управляются Git.
-   Для stateful n8n обязательны свежий **глобальный** natural drain и SPI
-   owners/processing/paid=0. Не отменять Wait/исполнения ради rollout.
-7. Проверить реальный путь, TLS, ограничения и естественную работу сервиса.
-   Только после приёмки удалить временный/ошибочный старый механизм.
+1. Record the service, namespace, required destinations, protocols, owner,
+   quota and validity period. For permanent service clients: the `services`
+   group, without a quota or automatic expiry unless the owner explicitly set
+   otherwise. Identity is per service, not one shared by all Pods. Several
+   replicas of one service require an agreed `limitIp`.
+2. Through the **native 3x-ui API/UI** create a named client, for example
+   `svc-n8n-google`. Bind it only to the needed working inbound. Do not create
+   a new listener/server per application. Do not write to SQLite.
+3. Store the own subscription in a Secret/private credential custody. The
+   subscription URL is a bearer credential: do not print it, commit it, or
+   insert it into public-URL diagnostics, issues or logs. Do not copy a
+   person's subscription.
+4. Choose an ordinary server client for the real subscription format. Do not
+   assume that the Happ GUI runs headless. n8n uses the official Xray-core and
+   the **native JSON endpoint of the same 3x-ui identity** for which the
+   panel also issues an ordinary URI/Happ subscription. That is another format
+   of one subscription, not a hand-assembly of server credentials and not a
+   separate account system.
+5. Connect the application to the client's local proxy/entrances only for the
+   agreed destinations. No hostNetwork, NET_ADMIN, TUN or node route changes.
+   A global HTTP_PROXY is allowed not by default, but only if all the
+   application's traffic really must go through the service VPN.
+6. Deploy via Git → Argo. Native identities/Secrets are issued separately; the
+   Secret reference, the client, the local policy and the image version are
+   managed by Git. For stateful n8n a fresh **global** natural drain and
+   SPI owners/processing/paid=0 are mandatory. Do not cancel
+   Wait/executions for the sake of a rollout.
+7. Verify the real path, TLS, the restrictions and the natural operation of
+   the service. Only after acceptance delete the temporary/erroneous old
+   mechanism.
 
-Создание через API: intent перед записью, уникальное имя, native readback и
-сравнение старых клиентов/привязок. При неизвестном результате POST сначала
-проверять существование своей identity, не повторять создание вслепую.
-Временные административные API-токены должны быть удалены; приложению они не нужны.
+Creation via API: intent before writing, a unique name, native readback and a
+comparison of old clients/bindings. On an unknown POST result first check the
+existence of your identity; do not blindly repeat the creation. Temporary
+administrative API tokens must be deleted; the application does not need them.
 
-## Реализация n8n — текущий пример
+## The n8n implementation — the current example
 
-- Клиент панели: **`svc-n8n-google`**, ID **40**, только действующий VLESS/REALITY
-  inbound **32053**. Публичный endpoint берётся из подписки: существующая Москва,
-  не прямой NL. По явному решению владельца клиент находится в группе
-  **`services`**, **без квоты трафика и без автоматического истечения**
-  (`totalGB=0`, `expiryTime=0`), `limitIp=1` сохранён. Начальные 5GiB/90дней
-  сняты; накопленный трафик не обнулялся. Квота и срок для постоянного сервиса
-  задаются только по согласованию, а не как скрытая точка отключения.
-- `automation/n8n-service-vpn` содержит `subscription-url` native JSON-подписки.
-- Init `prepare-service-vpn` получает подписку по HTTPS с обычной проверкой TLS,
-  без redirects, с timeout/лимитом размера. Выбирает единственный VLESS/REALITY
-  профиль с ожидаемым московским endpoint. Credentials и Reality settings
-  сохраняются из native renderer без переизобретения VPN-протокола.
-- Небольшой adapter **только готовит конфигурацию**: убирает чужие listeners,
-  routing/direct fallback и добавляет два локальных входа `dokodemo-door`.
-  VPN-транспорт и криптографию выполняет официальный **Xray-core 26.10.21**,
-  из того же закреплённого образа, что используется штатной 3x-ui.
-- Sidecar `service-vpn`: UID/GID1000, read-only rootfs, drop ALL capabilities,
-  без serviceaccount token; 32 MiB request / 128 MiB limit, CPU limit200m.
-- Конфигурация с credentials находится только в memory-backed emptyDir,
-  mode0600. Исходная ссылка доступна init, не контейнеру приложения.
-- Входы слушают **только loopback Pod**:
+- Panel client: **`svc-n8n-google`**, ID **40**, only the working
+  VLESS/REALITY inbound **32053**. The public endpoint is taken from the
+  subscription: the existing Moscow one, not direct NL. By the owner's
+  explicit decision the client is in the **`services`** group, **without a
+  traffic quota and without automatic expiry** (`totalGB=0`, `expiryTime=0`),
+  `limitIp=1` preserved. The initial 5GiB/90 days were removed; accumulated
+  traffic was not zeroed. A quota and an expiry for a permanent service are
+  set only by agreement, not as a hidden cut-off point.
+- `automation/n8n-service-vpn` contains the `subscription-url` of the native
+  JSON subscription.
+- The init `prepare-service-vpn` fetches the subscription over HTTPS with
+  ordinary TLS verification, no redirects, with a timeout/size limit. It
+  selects the single VLESS/REALITY profile with the expected Moscow endpoint.
+  Credentials and Reality settings are taken from the native renderer without
+  reinventing the VPN protocol.
+- A small adapter **only prepares the configuration**: removes foreign
+  listeners and the routing/direct fallback, and adds two local
+  `dokodemo-door` entrances. The VPN transport and cryptography are performed
+  by the official **Xray-core 26.10.21** from the same pinned image used by
+  the ordinary 3x-ui.
+- The `service-vpn` sidecar: UID/GID1000, read-only rootfs, drop ALL
+  capabilities, no serviceaccount token; 32 MiB request / 128 MiB limit, CPU
+  limit200m.
+- The configuration with credentials lives only in a memory-backed emptyDir,
+  mode0600. The source link is available to the init, not to the application
+  container.
+- The entrances listen **only on the Pod loopback**:
   `127.0.0.1:18443 → www.googleapis.com:443`,
   `127.0.0.1:18444 → oauth2.googleapis.com:443`.
-  Это не открытый SOCKS/proxy, нет Kubernetes Service/Ingress для этих портов.
-- Транспорт n8n выбирает их только для двух точных Google-хостов:443. TLS остаётся
-  **сквозным n8n → Google**, с исходными SNI/CA/hostname checks. HTTP получает
-  только проверенный TLS socket. Никакого OAuth POST replay или direct fallback.
-  GitHub, Яндекс и прочие назначения идут прежним путём.
+  This is not an open SOCKS/proxy; there is no Kubernetes Service/Ingress for
+  these ports.
+- The n8n transport uses them only for the two exact Google hosts:443. TLS
+  stays **end-to-end n8n → Google**, with the original SNI/CA/hostname
+  checks. HTTP gets only a verified TLS socket. No OAuth POST replay or direct
+  fallback. GitHub, Yandex and the other destinations use the previous path.
 
-### Обновление подписки
+### Subscription updates
 
-Текущая реализация получает профиль **при старте Pod**. Это не hot-refresh и не
-бесконечный живой GUI Happ. Смена endpoint/протокола требует контролируемого
-обновления Pod через Git и drain; неизвестный/неоднозначный профиль — fail closed.
-Отзыв identity и исчерпание лимита обеспечиваются backend 3x-ui, даже если старый
-профиль ещё находится в памяти клиента. Не перезапускать Xray посреди запросов
-ради таймера обновления: можно оборвать OAuth POST или другое приложение.
-Не менять подписки существующих пользователей ради обновления одного сервиса.
+The current implementation fetches the profile **at Pod startup**. That is not
+a hot refresh and not an infinite live Happ GUI. Changing the
+endpoint/protocol requires a controlled Pod update via Git and a drain; an
+unknown/ambiguous profile fails closed. Identity revocation and limit
+exhaustion are enforced by the 3x-ui backend even if the old profile is still
+in the client's memory. Do not restart Xray in the middle of requests for a
+refresh timer's sake: this could cut off an OAuth POST or another application.
+Do not change existing users' subscriptions to update one service.
 
-## Приёмка и отзыв
+## Acceptance and revocation
 
-- TLS к реальному требуемому ресурсу проходит через VPN; TLS verification не
-  отключена ни для подписки, ни для ресурса. Один `Connected` недостаточен.
-- Проверены отсутствие общего exit route и прямой путь постороннего назначения.
-- Service-клиент виден в панели; предыдущие клиенты, bindings и credentials
-  сохранены. Не использовать чужой трафик как доказательство своей identity.
-- Config/hash/Argo/HEAD отделены от естественного scheduled workflow, paid model,
-  voice/Telegram или refresh POST. Не создавать такие события ради теста.
-- Отзыв — disable/delete **своего** service-клиента через native 3x-ui и удаление
-  только его неиспользуемого Secret после Git-перехода. Не удалять общие inbounds,
-  не менять ключи других клиентов, не перезапускать VPN для всех.
-- Квота, expiry, потеря подписки, сбой Москвы/NL и sidecar — отдельные причины
-  отказа. Никакой гарантии HA/вечной доступности/ночного мониторинга.
+- TLS to the real required resource passes through the VPN; TLS verification
+  stays enabled for both the subscription and the resource. A single
+  `Connected` is insufficient.
+- The absence of a common exit route and of a direct path for foreign
+  destinations has been verified.
+- The service client is visible in the panel; the previous clients, bindings
+  and credentials are preserved. Do not use someone else's traffic as proof
+  of your identity.
+- Config/hash/Argo/HEAD are separated from the natural scheduled workflow,
+  paid model, voice/Telegram or a refresh POST. Do not create such events for
+  a test.
+- Revocation is disabling/deleting **your own** service client through native
+  3x-ui and removing only its unused Secret after the Git transition. Do not
+  delete shared inbounds, change other clients' keys, or restart the VPN for
+  everyone.
+- Quota, expiry, subscription loss, a Moscow/NL failure and the sidecar are
+  separate causes of denial. No guarantee of HA/eternal availability/night
+  monitoring.
 
-## История и границы
+## History and boundaries
 
-Исправление n8n: `5b722c5c`, fresh global pending[]/SPI0, 48 Node-тестов.
-Два unauthenticated Google HEAD через настоящий service-клиент с socrat-5:
-TLS verified, примерно373/272ms. После Git rollout PodReady2/2, ArgoHealthy;
-runtime HEAD Google идёт через loopback/VPN, GitHub — напрямую.
-Все7 native workflow graphs/settings/credentialrefs/static/pin/activity,
-PVC и encryption Secret сохранены. Старый n8n SSH-sidecar удалён, его отдельная
-строка authorized_keys отозвана, два его неиспользуемых Secret удалены.
-Общий registry robot не отозван. Архивные private receipts сохранены отдельно.
+The n8n fix: `5b722c5c`, fresh global pending[]/SPI0, 48 Node tests. Two
+unauthenticated Google HEADs through the real service client from socrat-5:
+TLS verified, roughly373/272ms. After the Git rollout the Pod is Ready2/2, Argo
+Healthy; the runtime Google HEAD goes through loopback/VPN, GitHub directly.
+All7 native workflow graphs/settings/credentialrefs/static/pin/activity, the
+PVC and the encryption Secret are preserved. The old n8n SSH sidecar was
+removed, its separate authorized_keys line revoked, its two unused Secrets
+deleted. The common registry robot was not revoked. Archive private receipts
+are preserved separately.
 
-**Venice пока не мигрирован:** его прежний SSH-egress — известное отклонение,
-а не рекомендуемый шаблон. Не менять живую браузерную сессию/identity вместе с
-n8n без отдельной подготовки и приёмки.
+**Venice is not migrated yet:** its former SSH-egress is a known deviation,
+not a recommended template. Do not change the live browser session/identity
+together with n8n without separate preparation and acceptance.
 
-См. также [VPN](vpn-hardening.md), [сетевые границы](../README.md),
+See also [VPN](vpn-hardening.md), [network boundaries](../README.md),
 [Venice](../../applications/ai/venice-api.md), [n8n](../../n8n/n8n-workflows.md).
 
 
-### Native изменение клиента: учитывать установленную версию панели
+### Native client changes: account for the installed panel version
 
-Для принятой **3x-ui3.11.0** группа создаётся через
-`POST /panel/api/clients/groups/create` с `name=services` (не `/api/groups`).
-Изменение клиента — `POST /panel/api/clients/update/:email`. В этой версии
-нужно передавать полные сохранённые поля клиента: partial-update поведение
-текущей upstream main не является контрактом установленного release.
-Получать исходные поля через native GET, сохранить UUID/password/subId и все
-остальные настройки, изменить только group/totalGB/expiryTime. Числовой ID
-ClientRecord и UUID протокола — разные поля; не отправлять record ID как UUID.
-После неопределённой ошибки сначала readback, не повторять запись вслепую.
-Никаких SQL UPDATE, resetTraffic, ротаций подписки или рестартов Pod ради квоты.
+For the accepted **3x-ui3.11.0** the group is created via
+`POST /panel/api/clients/groups/create` with `name=services` (not
+`/api/groups`). Updating a client is `POST /panel/api/clients/update/:email`.
+In this version you must send the client's full saved fields: the
+partial-update behavior of the current upstream main is not a contract of the
+installed release. Get the source fields via a native GET, preserve
+UUID/password/subId and all the other settings, and change only
+group/totalGB/expiryTime. The numeric ClientRecord ID and the protocol UUID
+are different fields; do not send the record ID as the UUID. After an
+indefinite error, first a readback — do not blindly repeat the write. No SQL
+UPDATE, resetTraffic, subscription rotations or Pod restarts for a quota's
+sake.
 
-17Nov: группа services(ID3), клиент svc-n8n-google(ID40), quota0/expiry0/enabled.
-Полная проверка: остальные клиенты и bindings неизменны, собственные credentials/
-subscription неизменны, счётчики не сброшены, временные API-токены удалены.
+17Nov: the services group (ID3), the client svc-n8n-google (ID40),
+quota0/expiry0/enabled. Full verification: the other clients and bindings
+unchanged, own credentials/subscription unchanged, counters not reset,
+temporary API tokens deleted.
 
-## Подробный runbook: новый сервис от заявки до эксплуатации
+## A detailed runbook: a new service from request to operation
 
-### 1. Сначала описать доступ, затем создавать identity
+### 1. First describe the access, then create the identity
 
-До изменения панели заполнить карточку в операционной документации сервиса:
+Before changing the panel, fill in a card in the service's operational
+documentation:
 
-| Поле | Что записать без секретов |
+| Field | What to record, without secrets |
 |---|---|
-| Сервис и владелец | Кто отвечает за доступ и принимает результат |
-| Identity | Уникальное `svc-<service>-<purpose>`, группа `services` |
-| Размещение | Namespace, workload, число реплик; без привязки к случайному имени Pod |
-| Назначения | Точные host:port, TCP/UDP, API и отдельные OAuth/token endpoints |
-| Прямой трафик | Что обязано остаться вне VPN: внутренние API, DNS, storage и прочее |
-| Inbound | Один существующий совместимый inbound; причина выбора протокола |
-| Клиент | Официальная реализация, версия и immutable image digest |
-| Secret | Только namespace/name/key и владелец custody, никогда содержимое |
-| Обновление | Когда читается подписка, как меняется профиль и что требует rollout |
-| Приёмка | Безопасные проверки пути и ожидаемый естественный бизнес-результат |
-| Отзыв | Конкретная identity и её зависимости; без общих ключей/inbound |
+| Service and owner | Who is responsible for the access and accepts the result |
+| Identity | A unique `svc-<service>-<purpose>`, the `services` group |
+| Placement | Namespace, workload, replica count; not tied to a random Pod name |
+| Destinations | Exact host:port, TCP/UDP, APIs and separate OAuth/token endpoints |
+| Direct traffic | What must stay outside the VPN: internal APIs, DNS, storage etc. |
+| Inbound | One existing compatible inbound; the reason for this protocol choice |
+| Client | The official implementation, version and immutable image digest |
+| Secret | Only namespace/name/key and the custody owner, never the content |
+| Updates | When the subscription is read, how the profile changes and what needs a rollout |
+| Acceptance | Safe path checks and the expected natural business result |
+| Revocation | The specific identity and its dependencies; no shared keys/inbounds |
 
-Не выдавать один `svc-shared` всем приложениям. Разные сервисы должны независимо
-отзываться, иметь понятный расход и не делить subscription URL. Реплики одного
-сервиса могут использовать одну identity только при осознанной модели доступа.
-`limitIp` согласовать с реальным транзитом: backend может видеть адрес relay,
-а не исходный Pod. Это не надёжная граница количества Pod или защита от кражи
-подписки. Сохранённый `limitIp=1` n8n не объявляет универсальный стандарт.
+Do not issue one `svc-shared` to all applications. Different services must be
+independently revocable, have an understandable spend and not share a
+subscription URL. Replicas of one service may use one identity only with a
+deliberate access model. Agree `limitIp` with the real transit: the backend
+may see the relay address, not the original Pod. It is not a reliable Pod-count
+boundary or theft protection. The preserved `limitIp=1` of n8n is not a
+universal standard.
 
-**Согласованные defaults:** группа `services`, трафик без квоты, без истечения.
-Иное ограничение — только явное решение владельца с понятной процедурой продления
-и предупреждением до отказа. Не добавлять «на всякий случай» 5GiB или 90дней.
+**Agreed defaults:** the `services` group, traffic without a quota, without
+expiry. A different limit is only the owner's explicit decision, with a clear
+renewal procedure and a warning before the cut-off. Do not add 5GiB or 90 days
+“just in case”.
 
-### 2. Выдать клиента в существующей 3x-ui
+### 2. Issue a client in the existing 3x-ui
 
-1. Войти через штатный административный UI/API. Не использовать человеческую
-   подписку, пароли по умолчанию, обход MFA, чтение browser session или SQL-записи.
-2. Найти группу `services`; создать только если её нет. Проверить имя клиента:
-   если уже существует, сначала разобраться с владельцем и состоянием, а не
-   генерировать вторую identity после timeout предыдущего запроса.
-3. Снять закрытый preimage: существующие клиенты, bindings, свои счётчики и
-   релевантные настройки. Не выносить полный export панели в Git/чат.
-4. Создать своего клиента и привязать к выбранному действующему inbound.
-   Не создавать новую панель, сервер, общий listener или SSH-ключ приложения.
-5. Для постоянного клиента установить `totalGB=0`, `expiryTime=0`, enable=true.
-   В этой модели ноль означает отсутствие ограничения, а не нулевой разрешённый
-   трафик. Поле `totalGB` API хранит **байты**, несмотря на название.
-6. Проверить native readback: одна новая identity, правильная группа и inbound,
-   остальные клиенты/credentials/bindings не менялись. Удалить временные API-токены.
+1. Log in through the ordinary administrative UI/API. Do not use a human
+   subscription, default passwords, an MFA bypass, browser-session reading or
+   SQL writes.
+2. Find the `services` group; create it only if absent. Check the client name:
+   if it already exists, first sort out the owner and the state instead of
+   generating a second identity after the previous request's timeout.
+3. Take a private preimage: existing clients, bindings, own counters and
+   relevant settings. Do not carry a full panel export into Git/chat.
+4. Create your client and bind it to the chosen working inbound. Do not create
+   a new panel, server, shared listener or an application SSH key.
+5. For a permanent client set `totalGB=0`, `expiryTime=0`, enable=true. In
+   this model zero means the absence of a limit, not zero allowed traffic.
+   The API's `totalGB` field stores **bytes**, despite the name.
+6. Verify the native readback: one new identity, the right group and inbound,
+   the other clients/credentials/bindings unchanged. Delete temporary API
+   tokens.
 
-Для принятого release3.11.0 полезны следующие **относительные** native endpoints
-(реальный web base path определяется установленной панелью, не угадывается):
+For the accepted release3.11.0 the following **relative** native endpoints
+are useful (the real web base path is determined by the installed panel, not
+guessed):
 
-| Действие | Endpoint под `/panel/api` |
+| Action | Endpoint under `/panel/api` |
 |---|---|
-| Список групп | `GET /clients/groups` |
-| Создать группу | `POST /clients/groups/create`, JSON `name` |
-| Прочитать клиента | `GET /clients/get/:email` |
-| Создать клиента | `POST /clients/add`, JSON `client` и `inboundIds` |
-| Изменить клиента | `POST /clients/update/:email`, полные поля Client |
+| List groups | `GET /clients/groups` |
+| Create group | `POST /clients/groups/create`, JSON `name` |
+| Read a client | `GET /clients/get/:email` |
+| Create a client | `POST /clients/add`, JSON `client` and `inboundIds` |
+| Update a client | `POST /clients/update/:email`, full Client fields |
 
-Это reference для конкретной версии, не разрешение автоматически выполнить все
-запросы. Ответ HTTP200 не равен успеху: проверить native `success` и readback.
-GET возвращает ClientRecord: числовой `id` не является протокольным UUID.
-При подготовке Client для update сохранять `uuid` как протокольный `id`, собственные
-`subId`, password, auth, flow, enable и остальные поля. Не отправлять весь ответ GET
-в POST: он содержит обёртку, статистику и поля другого типа. Для другого протокола
-нужен его полный корректный payload, а не механическая копия VLESS-примера.
-Сверяться с **установленным release**, а не с меняющейся upstream main.
+This is a reference for a specific version, not permission to automatically
+run all the requests. An HTTP200 response is not success: check the native
+`success` and the readback. The GET returns a ClientRecord: the numeric `id`
+is not the protocol UUID. When preparing a Client for update, keep `uuid` as
+the protocol `id`, plus its own `subId`, password, auth, flow, enable and the
+other fields. Do not send the whole GET response in the POST: it contains a
+wrapper, statistics and fields of another type. Another protocol needs its
+own full correct payload, not a mechanical copy of the VLESS example. Check
+the **installed release**, not the shifting upstream main.
 
-### 3. Подписка, Happ и headless-совместимость
+### 3. Subscription, Happ and headless compatibility
 
-Подписка — обновляемая выдача профиля для identity, а не название VPN-протокола.
-Happ может быть пользовательским потребителем такой подписки, но это не означает,
-что Happ GUI пригоден как Kubernetes sidecar. Требуется проверить три вещи:
+A subscription is a renewable profile delivery for an identity, not the name
+of a VPN protocol. Happ may be a user-side consumer of such a subscription,
+but that does not mean the Happ GUI is suitable as a Kubernetes sidecar.
+Three things must be verified:
 
-- Что реально выдаёт endpoint: URI/base64-список, native Xray JSON или иной формат.
-- Поддерживает ли выбранный официальный core именно этот transport/security и
-  синтаксис настроек. Совместимость по слову VLESS недостаточна: важны REALITY,
-  XHTTP, параметры peer identity и версия клиента.
-- Как применить только нужные локальные listeners и routing без импортирования
-  чужого general-purpose proxy, direct fallback, DNS или global route.
+- What the endpoint actually delivers: a URI/base64 list, native Xray JSON,
+  or another format.
+- Whether the chosen official core supports exactly that transport/security
+  and settings syntax. Matching on the word VLESS is insufficient: REALITY,
+  XHTTP, peer identity parameters and the client version matter.
+- How to apply only the needed local listeners and routing without importing
+  a foreign general-purpose proxy, direct fallback, DNS or a global route.
 
-Для n8n выбран native JSON endpoint **той же service-identity**, а не конвертация
-Happ-профиля по догадкам. Adapter сохраняет native outbound и добавляет только
-локальные входы; он не реализует туннель, шифрование или ручную подмену peer key.
-Не добавлять случайный внешний онлайн-конвертер: туда утечёт подписка.
+For n8n the native JSON endpoint of **the same service identity** was chosen,
+not a conversion of a Happ profile by guesswork. The adapter keeps the native
+outbound and adds only local entrances; it does not implement the tunnel, the
+encryption or a manual peer-key substitution. Do not add a random external
+online converter: the subscription would leak there.
 
-URL хранить в отдельном Kubernetes Secret и закрытом custody. Не передавать его
-в командной строке, Helm values, Git, тикетах, скриншотах или access logs.
-Secret создавать/обновлять через разрешённый механизм управления секретами,
-private stdin или защищённый файл; не вставлять значение в shell history.
-Git содержит ссылку на Secret, не сам credential. Kubernetes Secret base64 не
-является шифрованием; права чтения Secret и `exec` в Pod должны быть ограничены.
+Keep the URL in a separate Kubernetes Secret and private custody. Do not pass
+it in a command line, Helm values, Git, tickets, screenshots or access logs.
+Create/update the Secret through the permitted secret-management mechanism,
+private stdin or a protected file; do not insert the value into shell history.
+Git contains the Secret reference, not the credential itself. A Kubernetes
+Secret's base64 is not encryption; Secret read rights and `exec` into the Pod
+must be restricted.
 
-### 4. Подключить клиент только к приложению
+### 4. Connect the client to the application only
 
-Предпочтение — штатной proxy-настройке приложения с точной allowlist назначений.
-Если её нет, документировать узкий адаптер транспорта, как у n8n, и его границы:
-новый HTTP SDK, HTTP/2, WebSocket или другой способ соединения может потребовать
-отдельной поддержки и повторной приёмки. `HTTP_PROXY`/`HTTPS_PROXY` не универсальны:
-разные библиотеки читают их по-разному, а переменная может отправить лишнее в VPN.
+The preference is the application's ordinary proxy setting with an exact
+destination allowlist. If there is none, document the narrow transport
+adapter, as in n8n, and its boundaries: a new HTTP SDK, HTTP/2, WebSocket or
+another connection method may need separate support and re-acceptance.
+`HTTP_PROXY`/`HTTPS_PROXY` are not universal: different libraries read them
+differently, and the variable may send the unnecessary parts into the VPN.
 
-Минимальная модель Pod:
+The minimal Pod model:
 
-- init получает подписку с проверкой HTTPS, ограничениями времени/размера,
-  без перенаправлений и без вывода полного ответа в лог;
-- конфигурация создаётся атомарно в memory-backed volume, mode0600;
-- только официальный core с закреплённой версией/digest выполняет VPN transport;
-- локальные входы слушают `127.0.0.1`, без Service/Ingress/NodePort;
-- непривилегированный UID, read-only rootfs, drop capabilities, bounded resources;
-- без TUN/NET_ADMIN/hostNetwork и изменения default route/DNS ноды;
-- TLS приложения до конечного API остаётся исходным: SNI/hostname/CA verification;
-- ошибка VPN не переключает выбранное назначение на прямой путь автоматически.
+- the init fetches the subscription with HTTPS verification, time/size
+  limits, no redirects and no full response output into logs;
+- the configuration is created atomically in a memory-backed volume, mode0600;
+- only the official core with the pinned version/digest performs the VPN
+  transport;
+- local entrances listen on `127.0.0.1`, without Service/Ingress/NodePort;
+- unprivileged UID, read-only rootfs, dropped capabilities, bounded resources;
+- no TUN/NET_ADMIN/hostNetwork and no node default-route/DNS changes;
+- the application's TLS to the final API stays original: SNI/hostname/CA
+  verification;
+- a VPN error does not switch the chosen destination to a direct path
+  automatically.
 
-**Граница безопасности:** loopback и allowlist в конфигурации — ограничение
-обычного пути приложения, не серверная ACL по доменам и не защита от полностью
-скомпрометированного Pod. Контейнеры Pod делят network namespace; процесс с доступом
-к клиентской конфигурации может украсть credentials. Не обещать, что identity в
-3x-ui технически разрешена только к Google, если server-side ACL не настраивалась.
-Для более строгой изоляции нужен отдельно согласованный дизайн, а не такое заявление.
+**Security boundary:** the loopback and allowlist in the configuration are a
+restriction of the application's ordinary path, not a server-side ACL by
+domains and not protection from a fully compromised Pod. The Pod's containers
+share the network namespace; a process with access to the client
+configuration can steal the credentials. Do not claim that the 3x-ui identity
+is technically limited to Google if no server-side ACL was configured. A
+stricter isolation needs a separately agreed design, not such a declaration.
 
-### 5. Проверить до и после Git → Argo
+### 5. Verify before and after Git → Argo
 
-До rollout: offline-тесты разбора профиля и scope, рендер Helm, resource/security
-review; затем конечная безопасная проверка реального профиля с нужной ноды.
-Не запускать оплачиваемый inference, ручной workflow или уведомление ради проверки
-сети. Не перезапускать рабочий сервис, пока не готовы образ, Secret и совместимость.
+Before the rollout: offline tests of profile parsing and scope, the Helm
+render, a resource/security review; then the final safe check of the real
+profile from the needed node. Do not run paid inference, a manual workflow or
+a notification for the sake of a network check. Do not restart the working
+service until the image, the Secret and compatibility are ready.
 
-Для n8n действуют существующие правила natural global drain: все native pending
-executions пусты, включая Wait, SPI owners/processing/paid=0; пауза только разрешённых
-admissions, исходные activities записаны и затем восстановлены. Свежая проверка
-непосредственно перед заменой. Нельзя отменять исполнения для красивого нуля.
-Сохранить workflow IDs/графы/settings/credential refs/static/pin data, PVC и
-шифровальный Secret. Для другого приложения сначала определить его drain/state
-контракт, а не слепо копировать процедуру n8n.
+For n8n the existing natural global drain rules apply: all native pending
+executions empty, including Wait, SPI owners/processing/paid=0; pause only
+permitted admissions; the original activities recorded and then restored. A
+fresh check immediately before the replacement. Executions must not be
+canceled for a pretty zero. Save workflow IDs/graphs/settings/credential
+refs/static/pin data, the PVC and the encryption Secret. For another
+application first define its drain/state contract, do not blindly copy the
+n8n procedure.
 
-После reconciliation собрать раздельные доказательства:
+After reconciliation collect separate proofs:
 
-| Уровень | Что действительно доказывает |
+| Level | What it actually proves |
 |---|---|
-| Git/render/Argo | Применён нужный spec; не успешный внешний запрос |
-| Pod/core/config | Клиент запущен с нужным профилем; не доступность API |
-| TLS к нужному API | Путь и peer verification работают; не OAuth authorization |
-| Посторонний host | Не затронут прямой путь этого назначения |
-| Negative scope | Нет публичного proxy, ненужных listeners, broad routing/fallback |
-| Native panel readback | Правильная service-identity, группа, ограничения и сохранность других |
-| Естественное событие | Реальный бизнес-процесс завершился в наблюдённом конечном окне |
+| Git/render/Argo | The needed spec is applied; not a successful external request |
+| Pod/core/config | The client runs with the needed profile; not API availability |
+| TLS to the needed API | The path and peer verification work; not OAuth authorization |
+| A foreign host | The direct path of that destination is untouched |
+| Negative scope | No public proxy, unneeded listeners, broad routing/fallback |
+| Native panel readback | The right service identity, group, limits and the safety of the others |
+| A natural event | A real business process completed in the observed final window |
 
-Случайный REALITY shortId может меняться между native renders. В таком случае
-проверять, что он входит в допустимый набор inbound, а остальные identity и
-transport совпадают. Не менять ключи или отключать TLS ради одинакового hash.
-Не смешивать HEAD/TLS с OAuth refresh POST, voice/Telegram доставкой, HA или
-проверкой «за всю ночь». Ожидать только реальные разрешённые события.
+A random REALITY shortId may change between native renders. In that case
+check that it belongs to the inbound's allowed set, with the other identities
+and transport unchanged. Do not change keys or disable TLS for an identical
+hash. Do not mix HEAD/TLS with an OAuth refresh POST, voice/Telegram
+delivery, HA or an “all night” check. Expect only real permitted events.
 
-### 6. Эксплуатация и изменения
+### 6. Operation and changes
 
-| Событие | Что делать |
+| Event | What to do |
 |---|---|
-| Изменить группу/квоту/срок | Native client update с сохранением credentials и счётчиков; не resetTraffic |
-| Обновить native профиль | Проверить формат/core; контролируемый rollout по drain-контракту |
-| Поменять версию core | Git pin, совместимость и тесты до rollout; не live image override |
-| Сбой startup-загрузки подписки | Проверить HTTPS/DNS/native endpoint без вывода URL и ответа с credentials |
-| TLS до Google не устанавливается | Разделить localhost client, VPN handshake, транзит и TLS конечного API |
-| TLS работает, API отвечает401/403 | Проверять прикладную авторизацию/квоту API, не считать это поломкой VPN |
-| Был timeout управляющего POST | Native readback и проверка своего intent, не повтор записи автоматически |
-| Сервис удалён | Удалить consumer через Git, отозвать свою identity, затем убрать неиспользуемый Secret |
-| Подписка скомпрометирована | Согласованный отзыв/ротация только этой identity с безопасной заменой consumer |
+| Change group/quota/expiry | Native client update preserving credentials and counters; no resetTraffic |
+| Update the native profile | Verify format/core; a controlled rollout per the drain contract |
+| Change the core version | Git pin, compatibility and tests before rollout; no live image override |
+| Startup subscription fetch fails | Check HTTPS/DNS/the native endpoint without printing the URL or the response with credentials |
+| TLS to Google does not establish | Separate the localhost client, the VPN handshake, the transit and the final API TLS |
+| TLS works, the API answers401/403 | Check the application authorization/API quota; do not call it a VPN break |
+| A control POST timed out | Native readback and checking your intent, not an automatic repeat write |
+| The service is removed | Remove the consumer via Git, revoke your identity, then remove the unused Secret |
+| The subscription is compromised | An agreed revocation/rotation of only that identity with a safe consumer replacement |
 
-Ограниченная квота, если её явно согласовали, — суммарный лимит, пока отдельно не
-настроен и проверен periodic reset. Не называть её месячной автоматически.
-При достижении квоты или expiry backend прекращает пропускать трафик клиента;
-приложение получает ошибки своего VPN-пути. Удаление лимита не должно обнулять
-историю расхода. Unlimited не даёт HA: отказ Москвы/NL/подписки/sidecar остаётся
-отдельной эксплуатационной зависимостью. Мониторинг и уведомления требуют
-отдельного внедрения; эта статья не означает, что они уже настроены.
+A limited quota, if explicitly agreed, is a total limit until a periodic reset
+is separately configured and verified. Do not automatically call it monthly.
+On reaching the quota or the expiry the backend stops passing the client's
+traffic; the application sees its own VPN-path errors. Removing the limit
+must not zero the spend history. Unlimited gives no HA: a Moscow/NL/
+subscription/sidecar failure stays a separate operational dependency.
+Monitoring and notifications need a separate implementation; this section
+does not mean they are already configured.
 
-Отзыв на production не проверять отключением единственного работающего клиента
-без разрешения. При плановом выводе сначала убрать все consumers, затем отозвать
-свой доступ; при утечке приоритетом может быть немедленный отзыв с осознанным
-перерывом. Не удалять общий inbound, группу с чужими клиентами, общий registry
-robot, NetBird/SSH ключи администраторов или доступ Venice вместе с n8n.
+Do not test production revocation by disabling the only working client
+without permission. On a planned removal first remove all consumers, then
+revoke your own access; on a leak the priority may be immediate revocation
+with a deliberate interruption. Do not delete the shared inbound, a group
+with foreign clients, the common registry robot, administrators'
+NetBird/SSH keys, or Venice's access together with n8n's.
 
-### Чеклист завершения
+### Completion checklist
 
-- [ ] Собственная identity в `services`; inbound и владелец записаны.
-- [ ] Нет несогласованной квоты/expiry; limitIp соответствует модели транзита.
-- [ ] Подписка только в Secret/custody, не в публичных материалах.
-- [ ] Официальный клиент совместим с фактическим native профилем.
-- [ ] Только нужные назначения идут в VPN; прочие пути и TLS сохранены.
-- [ ] Нет нового SSH-egress, общей нодовой маршрутизации или публичного proxy.
-- [ ] Deployment через Git/Argo, state и drain соблюдены.
-- [ ] Runtime/path и естественная приёмка записаны отдельно с границами.
-- [ ] Временные admin-токены удалены; прежний механизм снят только после приёмки.
-- [ ] Документированы refresh, отзыв, отказ и незакрытые проверки.
+- [ ] Own identity in `services`; inbound and owner recorded.
+- [ ] No unagreed quota/expiry; limitIp matches the transit model.
+- [ ] The subscription only in Secret/custody, not in public materials.
+- [ ] The official client is compatible with the actual native profile.
+- [ ] Only the needed destinations go into the VPN; other paths and TLS preserved.
+- [ ] No new SSH-egress, common node routing or public proxy.
+- [ ] Deployment via Git/Argo; state and drain observed.
+- [ ] Runtime/path and natural acceptance recorded separately with boundaries.
+- [ ] Temporary admin tokens deleted; the former mechanism removed only after acceptance.
+- [ ] Refresh, revocation, failure and open checks documented.
 
-## Прикладные кандидаты после инцидента #404
+## Application candidates after incident #404
 
-Не выдавайте клиент за сам факт обращения к зарубежному домену. При проверке
-21 ноября `img-proxy`, `remark42` и `socrat-bot` уже находились на **socrat-2 (NL)**.
-Путь через Москву обратно в NL не является независимым резервом по умолчанию.
+Do not issue a client merely for contacting a foreign domain. On the November
+21 check, `img-proxy`, `remark42` and `socrat-bot` were already on **socrat-2
+(NL)**. A path through Moscow back into NL is not an independent reserve by
+default.
 
-| Сервис | Назначение и условие перехода |
+| Service | Destination and condition for switching |
 |---|---|
-| `img-proxy` | Nginx обращается к `images.weserv.nl:443`; обычная сеть Pod. При переносе на российскую ноду и подтверждённой потребности — отдельная service identity, фиксированный локальный вход только для этого upstream и проверка исходного имени TLS. |
-| `remark42` | Telegram — отдельное назначение, не весь трафик приложения. Сейчас `hostNetwork: true`: сначала проверить обычную pod-сеть, ingress, авторизацию, уведомления и привязку к данным. |
-| `socrat-bot` | Для таймаута ответа Telegram сначала измерять прямой путь. Сейчас `hostNetwork: true`: loopback sidecar будет loopback ноды. До выдачи подписки проверить миграцию на pod-сеть, webhook, Service и всех потребителей прямого `10.250.0.2:8082`, включая SPI. |
+| `img-proxy` | Nginx contacts `images.weserv.nl:443`; the ordinary Pod network. If moved to a Russian node with a confirmed need — a separate service identity, a fixed local entrance only for this upstream, and verification of the original TLS name. |
+| `remark42` | Telegram is a separate destination, not the application's whole traffic. Currently `hostNetwork: true`: first verify the ordinary pod network, ingress, authorization, notifications and the data binding. |
+| `socrat-bot` | For a Telegram response timeout first measure the direct path. Currently `hostNetwork: true`: a loopback sidecar would be the node's loopback. Before issuing a subscription verify the migration to the pod network, the webhook, the Service and all consumers of the direct `10.250.0.2:8082`, including SPI. |
 
-Одноразовый прямой замер из текущего контейнера бота (без токена, HTTP-запросов и сообщений):
+A one-time direct measurement from the current bot container (without a token, HTTP requests or messages):
 
 ```bash
 kubectl -n socrat-bot exec -i deploy/socrat-bot -- python - < scripts/telegram-egress-probe.py
 ```
 
-Для сравнения запускать тот же файл в то же время из доверенной среды на другой ноде с Python 3.11+ и CA. Это проверка прямых сокетов, не трассировка реального запроса приложения: сравнивать Telegram и контрольный `example.com` **по семейству адресов и стадии**, не считать отсутствие IPv6 отказом IPv4. Результаты разового теста не объясняют прошлый timeout. Если прикладной VPN действительно нужен, использовать порядок выдачи выше, а не Happ на хосте; пользовательские подписки, маршруты etcd и management relay не менять.
+For comparison run the same file at the same time from a trusted environment
+on another node with Python 3.11+ and CA. This checks direct sockets, not a
+trace of the application's real request: compare Telegram and the control
+`example.com` **by address family and stage**, and do not count the absence
+of IPv6 as an IPv4 failure. A one-time test's results do not explain the
+past timeout. If an application VPN is really needed, use the issuing order
+above, not Happ on the host; do not change user subscriptions, etcd routes or
+the management relay.
 
-После выпуска периодической диагностики: контейнер `telegram-path` в pod бота
-и отдельный `socrat-telegram-path-control` на `socrat-3` раз в 30 с собирают те же
-прямые измерения. Последние 120 циклов (примерно час при нормальной задержке; пропущенные интервалы не наверстываются) хранятся только в ограниченном
-memory-backed volume; рестарт Pod удаляет их. Сохранить окно при повторе, не ждать
-сутки. Прочитать `kubectl -n socrat-bot exec deploy/socrat-bot -c telegram-path -- cat /samples/recent.json`
-и аналогично для `deploy/socrat-telegram-path-control`. Это не доступ к секретам бота.
-Контрольный маршрут не является failover. Включение/отключение `telegramPathProbes.enabled`
-меняет шаблон pod и вызывает **Recreate**: сначала запустить обе Service-пробы и
-проверить текущий SPI-путь; во время выпуска наблюдать из тех же pod без рестарта.
+After shipping the periodic diagnostics: the `telegram-path` container in the
+bot pod and a separate `socrat-telegram-path-control` on `socrat-3` every 30 s
+collect the same direct measurements. The last 120 cycles (about an hour at
+normal latency; missed intervals are not caught up) are kept only in a
+bounded memory-backed volume; a Pod restart deletes them. Save the window on
+a repeat, do not wait a day. Read `kubectl -n socrat-bot exec deploy/socrat-bot -c telegram-path -- cat /samples/recent.json`
+and the same for `deploy/socrat-telegram-path-control`. This is not access to
+the bot's secrets. The control route is not a failover. Toggling
+`telegramPathProbes.enabled` changes the pod template and causes a
+**Recreate**: first run both Service probes and check the current SPI path;
+during the rollout observe from the same pods without a restart.
