@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pgadmin-config
+  name: pgadmin-config-browser-v2
 data:
   config_local.py: |
     import os
@@ -90,7 +90,7 @@ spec:
             - {name: cas, mountPath: /cnpg, readOnly: true}
       volumes:
         - {name: state, persistentVolumeClaim: {claimName: pgadmin-state}}
-        - {name: config, configMap: {name: pgadmin-config}}
+        - {name: config, configMap: {name: pgadmin-config-browser-v2}}
         - name: browser-auth
           projected:
             defaultMode: 0440
