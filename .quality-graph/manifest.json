@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "34730dc734b533b09aadcb5db1fdf32307b9d13f15515e9b7865ab2116ffe17d",
+  "graphDigest": "24c63920e5e08e417c036cab2a67034fb6e19db216fcf4ea9ea519351ab49637",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -33,10 +33,92 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "uv run qg validate\nuv run python scripts/quality/contracts.py"
+        "run": "set -euo pipefail\nuv run qg validate\nuv run python scripts/quality/contracts.py\nuv run python scripts/quality/strict_guard.py\nuv run python -m scripts.quality.python_inputs scripts/quality/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select SIM300 \\\n    --ignore-noqa --output-format concise --\nuv run pytest -q tests/test_quality_python_policy.py"
       },
       "timeoutMinutes": 5,
       "title": "Graph integrity"
+    },
+    {
+      "env": {},
+      "id": "yaml",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "native",
+        "path": "reports/yaml.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py yaml"
+      },
+      "timeoutMinutes": 5,
+      "title": "YAML structure"
+    },
+    {
+      "env": {},
+      "id": "scripts-q000",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \\\n    --ignore-noqa --output-format concise --"
+      },
+      "timeoutMinutes": 5,
+      "title": "Python script and test quotes (Q000, D300)"
+    },
+    {
+      "env": {},
+      "id": "deploy-i001",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n    --ignore-noqa --output-format concise --\nuv run python -m scripts.quality.python_inputs scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select F401 \\\n    --ignore-noqa --output-format concise --"
+      },
+      "timeoutMinutes": 5,
+      "title": "Python import order (I001) and unused script/test imports (F401)"
     },
     {
       "env": {},
@@ -148,6 +230,206 @@
       },
       "timeoutMinutes": 5,
       "title": "Container recipes"
+    },
+    {
+      "env": {},
+      "id": "tests-fast",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-fast",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-fast.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py fast --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Unit tests"
+    },
+    {
+      "env": {
+        "GH_TOKEN": "${{ github.token }}"
+      },
+      "id": "workflow",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-delivery",
+      "result": {
+        "adapter": "native",
+        "path": "reports/workflow.json"
+      },
+      "step": {
+        "env": {
+          "GH_TOKEN": "${{ github.token }}"
+        },
+        "run": "uv run python scripts/quality/lint.py workflow"
+      },
+      "timeoutMinutes": 5,
+      "title": "Delivery security"
+    },
+    {
+      "env": {},
+      "id": "shell",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-shell",
+      "result": {
+        "adapter": "native",
+        "path": "reports/shell.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py shell"
+      },
+      "timeoutMinutes": 5,
+      "title": "Shell safety"
+    },
+    {
+      "env": {},
+      "id": "rustfs-return-types",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "uv run ruff check --config quality/ruff.toml --select ANN201 --ignore-noqa services/rustfs_gateway"
+      },
+      "timeoutMinutes": 5,
+      "title": "RustFS gateway public return types"
+    },
+    {
+      "env": {},
+      "id": "dependencies",
+      "needs": [
+        "ownership"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-javascript",
+      "result": {
+        "adapter": "native",
+        "path": "reports/dependencies.json"
+      },
+      "step": {
+        "run": "set -euo pipefail\nuv run pytest -q tests/test_quality_dependency_coverage.py \\\n  tests/test_quality_p56_56_node_lock.py\nuv run python scripts/quality/lint.py dependencies\nuv run python scripts/quality/npm_smoke.py\n"
+      },
+      "timeoutMinutes": 5,
+      "title": "Dependency audit"
+    },
+    {
+      "env": {},
+      "id": "tests-medium",
+      "needs": [
+        "ownership"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-integration",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-medium.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py medium --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Integration tests"
+    },
+    {
+      "env": {},
+      "id": "ansible",
+      "needs": [
+        "ownership"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-ansible",
+      "result": {
+        "adapter": "native",
+        "path": "reports/ansible.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py ansible"
+      },
+      "timeoutMinutes": 5,
+      "title": "Playbook safety"
     }
   ],
   "profiles": {
@@ -283,7 +565,7 @@
           "run": "uv sync --locked"
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools actionlint"
+          "run": "uv run python scripts/quality/install_tools.py --tools actionlint shellcheck"
         }
       ],
       "timeoutMinutes": 5
@@ -313,6 +595,45 @@
         }
       ],
       "timeoutMinutes": 5
+    },
+    "quality-fast": {
+      "env": {},
+      "permissions": {
+        "contents": "read"
+      },
+      "runner": "ubuntu-24.04",
+      "services": {},
+      "setup": [
+        {
+          "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "with": {
+            "fetch-depth": "0",
+            "persist-credentials": "false"
+          }
+        },
+        {
+          "uses": "astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78"
+        },
+        {
+          "run": "uv sync --locked"
+        },
+        {
+          "uses": "azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e",
+          "with": {
+            "version": "v3.19.0"
+          }
+        },
+        {
+          "uses": "actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f",
+          "with": {
+            "node-version": "24.11.1"
+          }
+        },
+        {
+          "run": "uv run python scripts/quality/install_tools.py --tools hadolint"
+        }
+      ],
+      "timeoutMinutes": 10
     },
     "quality-helm": {
       "env": {},
@@ -379,6 +700,9 @@
         },
         {
           "run": "uv run python scripts/quality/install_tools.py --tools promtool"
+        },
+        {
+          "run": "set -euo pipefail\nread -r image < quality/nginx-syntax-image.txt\ndocker pull \"${image}\"\n"
         }
       ],
       "timeoutMinutes": 10
@@ -493,6 +817,9 @@
         },
         {
           "run": "uv run python scripts/quality/install_tools.py --tools shellcheck"
+        },
+        {
+          "run": ".quality-tools/bin/shellcheck --version"
         }
       ],
       "timeoutMinutes": 5

@@ -8,7 +8,8 @@
 
 - name: Check the existing graphical tools
   become: false
-  ansible.builtin.shell: for tool in Hyprland awww awww-daemon waybar hypridle; do command -v "$tool" || exit 1; done
+  ansible.builtin.shell: >-
+    for tool in Hyprland awww awww-daemon waybar hypridle; do command -v "$tool" || exit 1; done
   environment:
     PATH: "{{ homelab_user_home }}/.local/bin:/usr/local/bin:/usr/bin:/bin"
   changed_when: false
@@ -30,7 +31,7 @@
 
 - name: Preserve a separate place for local Hyprland overrides
   ansible.builtin.copy:
-    content: ''
+    content: ""
     dest: "{{ homelab_user_home }}/.config/hypr/local.conf"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
@@ -52,23 +53,8 @@
     - layout-listener.sh
     - caffeine-manager.sh
 
-- name: Deliver the caffeine lid inhibitor
-  ansible.builtin.copy:
-    src: caffeine-lid-inhibit.service
-    dest: "{{ homelab_user_home }}/.config/systemd/user/caffeine-lid-inhibit.service"
-    owner: "{{ homelab_user }}"
-    group: "{{ homelab_user }}"
-    mode: "0644"
-    follow: true
-    backup: true
-  register: homelab_caffeine_unit
-
-- name: Reload user service definitions
-  become: false
-  ansible.builtin.systemd_service:
-    scope: user
-    daemon_reload: true
-  when: homelab_caffeine_unit.changed
+- name: Configure the caffeine lid inhibitor
+  ansible.builtin.import_tasks: caffeine.yml
 
 - name: Deliver the wallpaper launcher
   ansible.builtin.template:
@@ -109,7 +95,9 @@
     mode: "0644"
     follow: true
     backup: true
-    validate: "{{ omit if inventory_hostname == 'socrat-1' else '/usr/bin/Hyprland --verify-config --config %s' }}"
+    validate: >-
+      {{ omit if inventory_hostname == 'socrat-1' else '/usr/bin/Hyprland --verify-config
+      --config %s' }}
   register: homelab_hyprland_config
 
 - name: Install Lua entry point for the updated socrat-1 compositor

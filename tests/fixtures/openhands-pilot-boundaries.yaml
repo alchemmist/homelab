@@ -1,0 +1,66 @@
+---
+# Independent expectations for the pilot workloads in the owner Helm render.
+# Compare actual volume sources and every mount, not just allowed volume types.
+canvasVolumes:
+  - {name: pg-ca, configMap: {name: pg-common-ca}}
+  - {name: sdk-iteration-policy, emptyDir: {sizeLimit: 2Mi}}
+deployments:
+  pi-monori-judge:
+    volumes:
+      - &work {name: work, emptyDir: {sizeLimit: 3Gi}}
+      - &temp {name: temp, emptyDir: {sizeLimit: 384Mi}}
+    mounts:
+      sandbox: [&scratch {name: work, mountPath: /scratch}, &tmp {name: temp, mountPath: /tmp}]
+  pi-monori-author:
+    volumes:
+      - *work
+      - *temp
+      - {name: pi, emptyDir: {sizeLimit: 512Mi}}
+      - {name: code, configMap: {name: pi-monori-code}}
+      - {name: model, secret: {secretName: openhands-model, defaultMode: 288}}
+    mounts:
+      install-pi:
+        - {name: pi, mountPath: /opt/pi}
+        - &code {name: code, mountPath: /code, readOnly: true}
+        - *tmp
+      sandbox: [*scratch, *tmp, {name: pi, mountPath: /opt/pi, readOnly: true}, *code]
+      relay: [*code, {name: model, mountPath: /model, readOnly: true}]
+policies:
+  pi-monori-judge-offline:
+    podSelector: {matchLabels: {app: pi-monori-judge}}
+    policyTypes: [Ingress, Egress]
+    ingress: []
+    egress: []
+  automation-postgres-egress:
+    podSelector:
+      matchExpressions:
+        - key: statefulset.kubernetes.io/pod-name
+          operator: In
+          values: [openhands-0]
+    policyTypes: [Egress]
+    egress:
+      - to:
+          - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: postgres}}
+            podSelector: {matchLabels: {cnpg.io/cluster: pg-common}}
+        ports: [{port: 5432, protocol: TCP}]
+services:
+  openhands:
+    type: ClusterIP
+    selector: &canvas {app.kubernetes.io/instance: openhands, app.kubernetes.io/name: agent-canvas}
+    ports: &http [{name: http, port: 8000, protocol: TCP, targetPort: http}]
+  openhands-headless:
+    type: ClusterIP
+    clusterIP: None
+    publishNotReadyAddresses: true
+    selector: *canvas
+    ports: *http
+  monori-publisher:
+    selector: {app: monori-publisher}
+    ports: [{port: 8081, targetPort: 8081}]
+  openhands-oidc:
+    selector: {app: openhands-oidc}
+    ports: [{name: http, port: 4180, targetPort: http}]
+  openhands-oidc-sessions:
+    selector: {app: openhands-oidc-sessions}
+    ports: [{name: redis, port: 6379, targetPort: redis}]
+...

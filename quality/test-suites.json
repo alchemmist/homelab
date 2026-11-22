@@ -3,6 +3,7 @@
   "suites": {
     "fast": [
       "tests/test_storage_platform.py",
+      "tests/test_swe_mini_retirement.py",
       "tests/openhands/test_dns.py",
       "tests/openhands/test_ready.py",
       "tests/swe_mini/test_policy.py",
@@ -21,6 +22,7 @@
       "tests/test_grafana_mcp_credentials.py",
       "tests/test_harbor.py",
       "tests/test_helm_manifest_changed.py",
+      "tests/test_user_unit.py",
       "tests/test_home_nl_udp_probe.py",
       "tests/test_incident_transport_recovery.py",
       "tests/test_infrastructure_contracts.py",
@@ -78,8 +80,8 @@
       "tests/test_quality_p56_53_otel_task_names.py",
       "tests/test_quality_p56_53_remaining_task_names.py",
       "tests/test_quality_p56_53_vpn_task_names.py",
-      "tests/test_quality_p56_55_swe_mini_release.py",
       "tests/test_quality_p56_56_node_lock.py",
+      "tests/test_quality_python_policy.py",
       "tests/test_quality_system.py",
       "tests/test_recovery_20261109_contracts.py",
       "tests/test_refactor_acceptance.py",
@@ -102,6 +104,7 @@
       "tests/test_thanos_cascade.py",
       "tests/test_thanos_retired_tree.py",
       "tests/test_thanos_shelf.py",
+      "tests/test_thanos_tiers.py",
       "tests/test_thanos_warm_hour_copy.py",
       "tests/test_traffic_light.py",
       "tests/test_traffic_light_quality.py",

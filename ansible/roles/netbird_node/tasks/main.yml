@@ -8,12 +8,17 @@
       delegate_to: localhost
       become: false
       vars:
-        netbird_gitops_values: "{{ lookup('file', playbook_dir + '/../../deploy/netbird/values.yaml') | from_yaml }}"
+        netbird_gitops_values: >-
+          {{ lookup('file', playbook_dir + '/../../deploy/netbird/values.yaml') | from_yaml }}
       ansible.builtin.assert:
         that:
           - inventory_hostname in netbird_gitops_values.nodes
-          - netbird_gitops_values.nodes[inventory_hostname] == wg_socrat_nodes[inventory_hostname].address
-        fail_msg: Run scripts/netbird-gitops-nodes.py, commit inventory and values, and let root/Argo CD deploy the agent first.
+          - >-
+            netbird_gitops_values.nodes[inventory_hostname] ==
+            wg_socrat_nodes[inventory_hostname].address
+        fail_msg: >-
+          Run scripts/netbird-gitops-nodes.py, commit inventory and values,
+          and let root/Argo CD deploy the agent first.
 
     - name: Validate explicit inventory admission and WG address
       ansible.builtin.assert:
@@ -48,28 +53,27 @@
         owner: root
         group: root
         mode: "0600"
-        content: >-
-          {% set ns = namespace(nodes={}, kernel_only_nodes=[]) %}
-          {% for h in groups['Socrat'] | sort %}
-          {% if hostvars[h].netbird_node_enabled | default(true) | bool %}
-          {% set _ = ns.nodes.update({h: wg_socrat_nodes[h].address}) %}
-          {% if hostvars[h].netbird_kernel_wireguard_only | default(false) | bool %}
-          {% set _ = ns.kernel_only_nodes.append(h) %}
-          {% endif %}
-          {% endif %}
-          {% endfor %}
-          {% set image = (lookup('file', playbook_dir + '/../../deploy/netbird/images.lock.json') | from_json).images.client %}
-          {{ {'nodes': ns.nodes, 'kernel_only_nodes': ns.kernel_only_nodes,
-              'reserved_addresses': wg_socrat_admin_clients.values() | map(attribute='address') | list,
-              'image': image.repository + ':' + image.tag + '@' + image.digest} | to_nice_json }}
+        content:
+          "{% set ns = namespace(nodes={}, kernel_only_nodes=[]) %} {% for h in groups['Socrat']
+          | sort %} {% if hostvars[h].netbird_node_enabled | default(true) | bool %} {% set _ =
+          ns.nodes.update({h: wg_socrat_nodes[h].address}) %} {% if
+          hostvars[h].netbird_kernel_wireguard_only | default(false) | bool %} {% set _ =
+          ns.kernel_only_nodes.append(h) %} {% endif %} {% endif %} {% endfor %} {% set image =
+          (lookup('file', playbook_dir + '/../../deploy/netbird/images.lock.json') |
+          from_json).images.client %} {{ {'nodes': ns.nodes, 'kernel_only_nodes':
+          ns.kernel_only_nodes,\n\
+          \    'reserved_addresses': wg_socrat_admin_clients.values() | map(attribute='address')
+          | list,\n\
+          \    'image': image.repository + ':' + image.tag + '@' + image.digest} | to_nice_json
+          }}"
 
     - name: Establish or maintain dedicated service credential without exposing output
       ansible.builtin.command:
-        argv: >-
-          {{ ['python3', netbird_node_state_dir + '/netbird-node-credential.py',
-              '--state-dir', netbird_node_state_dir, '--config', netbird_node_state_dir + '/inventory.json']
-             + (['--bootstrap-token-file', netbird_node_bootstrap_token_file]
-                if netbird_node_bootstrap_token_file | length > 0 else []) }}
+        argv: "{{ ['python3', netbird_node_state_dir + '/netbird-node-credential.py',\n\
+          \    '--state-dir', netbird_node_state_dir, '--config', netbird_node_state_dir +
+          '/inventory.json']\n\
+          \   + (['--bootstrap-token-file', netbird_node_bootstrap_token_file]\n\
+          \      if netbird_node_bootstrap_token_file | length > 0 else []) }}"
       register: netbird_node_credential
       no_log: true
       changed_when: (netbird_node_credential.stdout | from_json).changed
@@ -81,19 +85,33 @@
         owner: root
         group: root
         mode: "0644"
-        content: |
+        content: >
           [Unit]
+
           Description=Renew bound NetBird onboarding service credential
+
           After=network-online.target
+
           Wants=network-online.target
+
           [Service]
+
           Type=oneshot
+
           UMask=0077
-          ExecStart=/usr/bin/python3 {{ netbird_node_state_dir }}/netbird-node-credential.py --state-dir {{ netbird_node_state_dir }} --config {{ netbird_node_state_dir }}/inventory.json
+
+          ExecStart=/usr/bin/python3 {{ netbird_node_state_dir }}/netbird-node-credential.py
+          --state-dir {{ netbird_node_state_dir }} --config {{ netbird_node_state_dir
+          }}/inventory.json
+
           NoNewPrivileges=yes
+
           ProtectSystem=strict
+
           ProtectHome=yes
+
           PrivateTmp=yes
+
           ReadWritePaths={{ netbird_node_state_dir }}
       register: netbird_node_renew_service
       when: netbird_node_apply | bool
@@ -121,17 +139,19 @@
         name: homelab-netbird-credential.timer
         enabled: true
         state: started
-        daemon_reload: "{{ netbird_node_renew_service.changed or netbird_node_renew_timer.changed }}"
+        daemon_reload: >-
+          {{ netbird_node_renew_service.changed or netbird_node_renew_timer.changed }}
       when: netbird_node_apply | bool
 
     - name: Reconcile selected node under an exclusive controller lock
       ansible.builtin.command:
-        argv: >-
-          {{ ['python3', netbird_node_state_dir + '/netbird-node-reconcile.py',
-              '--state-dir', netbird_node_state_dir, '--config', netbird_node_state_dir + '/inventory.json',
-              '--node', inventory_hostname]
-             + (['--apply'] if netbird_node_apply | bool else [])
-             + (['--adopt-state', netbird_node_adopt_state] if netbird_node_adopt_state | length > 0 else []) }}
+        argv: "{{ ['python3', netbird_node_state_dir + '/netbird-node-reconcile.py',\n\
+          \    '--state-dir', netbird_node_state_dir, '--config', netbird_node_state_dir +
+          '/inventory.json',\n\
+          \    '--node', inventory_hostname]\n\
+          \   + (['--apply'] if netbird_node_apply | bool else [])\n\
+          \   + (['--adopt-state', netbird_node_adopt_state] if netbird_node_adopt_state |
+          length > 0 else []) }}"
       register: netbird_node_reconcile
       changed_when: (netbird_node_reconcile.stdout | from_json).changed | default(false)
       when: not ansible_check_mode

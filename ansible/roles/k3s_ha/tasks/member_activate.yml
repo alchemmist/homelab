@@ -2,7 +2,9 @@
 - name: Record persistent server mode
   ansible.builtin.copy:
     dest: /etc/rancher/k3s/server-mode
-    content: "{{ 'etcd-and-agent' if k3s_ha_nodes[inventory_hostname].etcd_only else 'control-plane-etcd-and-agent' }}\n"
+    content: >
+      {{ 'etcd-and-agent' if k3s_ha_nodes[inventory_hostname].etcd_only
+      else 'control-plane-etcd-and-agent' }}
     owner: root
     group: root
     mode: "0600"
@@ -16,12 +18,15 @@
 - name: Start the joining server
   ansible.builtin.systemd_service:
     name: k3s
-    state: "{{ 'restarted' if k3s_ha_member_configuration.changed or k3s_ha_member_service.changed else 'started' }}"
+    state: >-
+      {{ 'restarted' if k3s_ha_member_configuration.changed or k3s_ha_member_service.changed
+      else 'started' }}
     enabled: true
     no_block: true
 
 - name: Wait for the new service to report readiness
-  ansible.builtin.command: systemctl is-active k3s
+  homelab_systemd_probe:
+    units: [k3s]
   register: k3s_ha_service_ready
   changed_when: false
   retries: 60

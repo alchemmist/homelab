@@ -75,7 +75,7 @@ RETAINED_PUSH_TESTS = frozenset(
 def require_retained_push_tests(scheduled: set[str]) -> None:
     """Reject replacement DAGs that silently drop existing main push regressions."""
     require(
-        RETAINED_PUSH_TESTS <= scheduled,
+        scheduled >= RETAINED_PUSH_TESTS,
         "Existing main push regression lost from scheduled suites",
     )
 

@@ -8,11 +8,28 @@ The operator changed the integration scope: PR182 sets up CI and integrates revi
 
 ## Active CI scope
 
-CI runs `graph`, followed by `secrets`, `javascript`, `ownership` and `docker`.
+CI runs `graph` (including the blocking strict configuration and suppression guard
+and a SIM300 check for constant-first comparisons in tracked, owned Python under `scripts/quality/`),
+followed by `yaml`, `scripts-q000`, `deploy-i001`, `secrets`, `javascript`, `ownership`, `docker`, `workflow`,
+`tests-fast`, `shell` and `rustfs-return-types`. The latter blocks missing public return annotations (Ruff
+`ANN201`) in `services/rustfs_gateway/`; the full Python check remains available locally.
+`yaml` runs the full YAML check, including generated workflows, and collects `reports/yaml.json`.
+`scripts-q000` checks inline quotes (Q000) and triple double quotes on existing docstrings
+(D300) in every tracked, owned `.py` file under `scripts/` and `tests/`, not just changed
+files. It does not require new docstrings. Q002 checks the configured quote character,
+not triple quoting; it remains part of the full local Ruff policy, not this gate.
+`deploy-i001` checks import order (I001) in tracked, owned Python under
+`ansible/`, `deploy/`, `scripts/` and `tests/`. The same job checks unused imports
+(F401) under `scripts/` and `tests/`, using a separate tracked, owned inventory
+that fails if either root is empty. Neither gate covers all owned Python.
 Ownership runs six offline checks plus their regression suites; the Ansible
 entrypoint scan covers both `.yml` and `.yaml`.
-The other ten checks remain runnable by name; `make check` and its alias
-`make check-all` still attempt all fifteen. Restore a
+`tests-medium` runs the complete loopback-isolated integration suite after `ownership`.
+Blocking `ansible` (Playbook safety) also runs after `ownership`, using locked parser collections.
+The blocking `dependencies` audit runs in CI after `ownership`.
+
+Local-only checks are listed in [`quality/local-checks.json`](../../quality/local-checks.json)
+with their Make target names. `make check` and its alias `make check-all` run both the CI and local-only checks. Restore a
 check to `qg.yaml` and remove its local-only entry once it is verified green.
 
 ## Historical 15-node DAG (before PR #454)
@@ -58,7 +75,7 @@ Independent fast nodes collect failures together. Ownership is a real source-con
 
 ## Exceptions: small, explicit, not a debt waiver
 
-- Ruff ignores only four documented conflicting rule choices: D203/D213/ISC001/COM812. Test directories (`test/` and `tests/`) do not require method docstrings (D102); `tests/` also allows S101 because pytest rewrites assertions. Other test/style/security findings are not ignored.
+- Ruff globally ignores only D203/D213/ISC001/COM812. Behavior-named pytest functions and unittest methods do not need redundant docstrings in [reviewed test module scopes](strict-policy.md#python). This does not exempt module/class documentation or production code. The existing `tests/` assertion exception (S101) is unchanged.
 - YAML key-ordering conflicts with semantic Ansible task ordering. Compatible implicit-null and quoted-string checks are enabled. Cross-schema truthy key handling preserves GitHub `on`.
 - Installed Ansible/Kubernetes optional rules are either enabled or have precise applicability/architecture reasons in `strict-policy.md` and `strict-policy.json`; replica/scheduler/single-writer identities are not rewritten to satisfy arbitrary optional rules.
 - Hadolint's single DL3064 false-positive exception binds one exact public ENV line. Reviewed non-secret contexts are immutable and exact, not secret waivers. Drift fails.
@@ -68,7 +85,7 @@ This is strict configuration for the adopted tools, **not a claim that every con
 
 ## Test inventory and safety
 
-pytest is the single runner, including unittest classes. All test modules under `tests/` and `experiments/` must be explicitly scheduled or named with a reason in `notScheduled`; unknown/stale/overlapping entries fail Graph integrity. No global pytest discovery of operational or autonomous experiments is authorized. The synchronization inventory is 162 scheduled of 312 modules; the remaining150 are explicit coverage gaps, not passed tests. Re-run contracts for current counts.
+pytest is the single runner, including unittest classes. All test modules under `tests/` and `experiments/` must be explicitly scheduled or named with a reason in `notScheduled`; unknown/stale/overlapping entries fail Graph integrity. No global pytest discovery of operational or autonomous experiments is authorized. The remaining `notScheduled` entries are explicit coverage gaps, not passed tests. Run `uv run python scripts/quality/contracts.py` for current counts.
 
 Newly reviewed pure helper/publisher-negative/dashboard tests join fast; source-only Helm upgrade assertions join medium and do not execute Jobs or backups. Two newly synchronized owner tests import provisioning/validation entrypoints and remain explicitly unexecuted pending bounded isolation review. Five experimental autonomy test modules remain deferred. No previously scheduled module was removed.
 
@@ -76,7 +93,7 @@ Linux fast/medium use loopback-only network namespaces and stripped cloud/SSH/op
 
 ## Failure and report semantics
 
-Findings, incomplete audit coverage, adapter failures and absent/oversized native artifacts all remain failures. In particular, a failed envelope with an empty finding list is **not clean**. Native Python report admission previously exceeded10MiB; unchanged admission limits and the generated publisher security findings remain open CI-infrastructure limitations, separate from source cleanup. Do not truncate/shard reports or refresh approvals to hide them.
+Findings, incomplete audit coverage, adapter failures and absent/oversized native artifacts all remain failures. In particular, a failed envelope with an empty finding list is **not clean**. Native Python reports previously exceeded the unchanged 10 MiB admission limit. The generated publisher is audited like every other workflow; a clean Delivery security result does not establish that the scheduled publisher reconciled the PR. Do not truncate/shard reports or refresh approvals to hide them.
 
 Private complete audit evidence is outside Git at `~/Library/Application Support/homelab/quality-strict/` (directories0700/files0600). `strict_report.py` returns1 when findings remain; configurationReady/snapshotStable must also be checked. Old receipts describing exit0-with-findings are historical behavior, not the current contract. A current audit binds an exact clean source head; dirty/in-progress merge evidence is not exact-head acceptance.
 
@@ -92,6 +109,8 @@ uv run python scripts/quality/lint.py yaml
 uv run python scripts/quality/tests.py fast
 uv run python scripts/quality/tests.py medium
 ```
+
+The medium suite needs full Git history for the pinned before/handoff and later owner-cutover renders (CI uses `fetch-depth: 0`). A shallow clone is not sufficient. Preload the [pinned nginx parser](../nginx-access-logging.md) before isolating the suite.
 
 Actual Linux jobs add `--isolate-network` to fast/medium. Install only required pinned binaries via `scripts/quality/install_tools.py` and parsing collections via `scripts/quality/install_collections.py`; do not substitute system versions silently. Use `.venv/bin:.quality-tools/bin` in scoped PATH and `KUBECONFIG=/dev/null` for offline checks. Cluster testing requires an explicitly reviewed disposable Docker/Kind environment; it is not implicitly run by these offline commands.
 

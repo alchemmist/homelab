@@ -16,20 +16,28 @@
   tasks:
     - name: Add the private Grafana MCP record
       ansible.builtin.copy:
-        content: "host-record=grafana-mcp.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-1'].address }}\nlocal=/grafana-mcp.socrat.alchemmist.xyz/\n"
+        content: >
+          host-record=grafana-mcp.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-1'].address }}
+
+          local=/grafana-mcp.socrat.alchemmist.xyz/
         dest: /etc/homelab-private-dns.d/grafana-mcp.conf
         owner: root
         group: root
-        mode: '0644'
-      register: grafana_mcp_dns
-
+        mode: "0644"
+      notify: Activate private Grafana MCP DNS
     - name: Validate private DNS configuration
       ansible.builtin.command: dnsmasq --test --conf-file=/etc/homelab-private-dns.conf
+      register: grafana_mcp_dns_validation
       changed_when: false
 
+  handlers:
     - name: Activate private Grafana MCP DNS
       ansible.builtin.systemd_service:
         name: homelab-private-dns.service
         state: restarted
-      when: grafana_mcp_dns.changed
+      when:
+        - grafana_mcp_dns_validation is defined
+        - grafana_mcp_dns_validation is not skipped
+        - grafana_mcp_dns_validation is succeeded
+        - grafana_mcp_dns_validation is reachable
 ...

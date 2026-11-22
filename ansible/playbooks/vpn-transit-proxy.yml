@@ -7,21 +7,27 @@
   vars_files:
     - ../vars/vpn-transit.yml
   tasks:
-    - ansible.builtin.fail:
-        msg: Legacy combined relay deployment retired; use vpn-transit-mesh-runtime.yml and controlled handoff.
+    - name: Reject the retired combined relay deployment
+      ansible.builtin.fail:
+        msg: >-
+          Legacy combined relay deployment retired; use vpn-transit-mesh-runtime.yml and controlled
+          handoff.
     - name: Create public fixed-destination config directory
       ansible.builtin.file:
         path: /etc/homelab-vpn-transit
         state: directory
-        mode: '0755'
+        mode: "0755"
     - name: Inspect the installed proxy binary
       ansible.builtin.stat:
         path: /usr/local/libexec/xray-transit
         checksum_algorithm: sha256
       register: transit_binary
     - name: Install the streamed exact upstream binary only when absent or different
-      ansible.builtin.command: install -m 0755 -o root -g root /var/tmp/homelab-edge-native/xray /usr/local/libexec/xray-transit
+      ansible.builtin.command: >-
+        install -m 0755 -o root -g root /var/tmp/homelab-edge-native/xray
+        /usr/local/libexec/xray-transit
       when: transit_binary.stat.checksum | default('') != vpn_transit_xray_sha256
+      changed_when: true
     - name: Verify executable identity before running any proxy
       ansible.builtin.command: sha256sum /usr/local/libexec/xray-transit
       register: transit_binary_hash
@@ -29,19 +35,20 @@
       failed_when: vpn_transit_xray_sha256 not in transit_binary_hash.stdout
     - name: Install the fixed-port forwarding configuration
       ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../../deploy/vpn-hardening/moscow-transit.json'
+        src: "{{ playbook_dir }}/../../deploy/vpn-hardening/moscow-transit.json"
         dest: /etc/homelab-vpn-transit/xray.json
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
         backup: true
     - name: Validate the exact native proxy configuration
-      ansible.builtin.command: /usr/local/libexec/xray-transit run -test -config /etc/homelab-vpn-transit/xray.json
+      ansible.builtin.command: >-
+        /usr/local/libexec/xray-transit run -test -config /etc/homelab-vpn-transit/xray.json
       changed_when: false
     - name: Install the independent bounded proxy service
       ansible.builtin.copy:
         dest: /etc/systemd/system/homelab-vpn-transit.service
-        mode: '0644'
+        mode: "0644"
         content: |
           [Unit]
           Description=Fixed-destination Moscow to Netherlands VPN transit

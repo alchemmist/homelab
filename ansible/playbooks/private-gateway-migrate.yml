@@ -23,9 +23,9 @@
       ansible.builtin.file:
         path: "{{ private_gateway_directory }}"
         state: directory
-        mode: '0700'
+        mode: "0700"
 
-    - name: 'Sanity pre-check syncthing deployment is Ready'
+    - name: Sanity pre-check syncthing deployment is Ready
       ansible.builtin.command:
         argv: [kubectl,
                --kubeconfig,
@@ -36,12 +36,12 @@
                deploy,
                syncthing,
                -o,
-               'jsonpath={.status.readyReplicas}']
+               "jsonpath={.status.readyReplicas}"]
       register: private_gateway_syncthing_ready
       changed_when: false
       failed_when: private_gateway_syncthing_ready.stdout != '1'
 
-    - name: 'Sanity pre-check old syncthing-gateway DaemonSet exists'
+    - name: Sanity pre-check old syncthing-gateway DaemonSet exists
       ansible.builtin.command:
         argv: [kubectl,
                --kubeconfig,
@@ -52,7 +52,7 @@
                daemonset,
                syncthing-gateway,
                -o,
-               'jsonpath={.metadata.name}']
+               "jsonpath={.metadata.name}"]
       register: private_gateway_old_gateway
       changed_when: false
       failed_when: private_gateway_old_gateway.stdout != 'syncthing-gateway'
@@ -65,15 +65,16 @@
 
     - name: Install manifest comparison helper
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../files/helm_manifest_changed.py"
+        src: "{{ playbook_dir | dirname }}/files/helm_manifest_changed.py"
         dest: "{{ private_gateway_directory }}/helm_manifest_changed.py"
-        mode: '0600'
+        mode: "0600"
 
     # Values (including the live host list) are baked into the chart's values.yaml.
     - name: Compare private gateway manifests
       ansible.builtin.command:
         argv: [python3,
                "{{ private_gateway_directory }}/helm_manifest_changed.py",
+               --plan,
                --release,
                private-gateway,
                --chart,
@@ -137,7 +138,7 @@
                --wait,
                --timeout,
                5m]
-      when: (private_gateway_diff.stdout | from_json).changed
+      when: "{'install': true, 'upgrade': true, 'current': false}[private_gateway_diff.stdout]"
       changed_when: true
 
     - name: Wait for the private-gateway DaemonSet to be Ready
@@ -157,10 +158,14 @@
     # from inside the pod.
     - name: Verify the gateway health endpoint returns OK
       ansible.builtin.shell:
-        cmd: |
+        cmd: >
           set -o pipefail
-          pod=$(kubectl --kubeconfig {{ private_gateway_kubeconfig }} -n syncthing get pod -l app.kubernetes.io/name=private-gateway -o jsonpath='{.items[0].metadata.name}')
-          kubectl --kubeconfig {{ private_gateway_kubeconfig }} -n syncthing exec "$pod" -- wget -qO- http://127.0.0.1:{{ private_gateway_health_port }}/healthz
+
+          pod=$(kubectl --kubeconfig {{ private_gateway_kubeconfig }} -n syncthing get pod -l
+          app.kubernetes.io/name=private-gateway -o jsonpath='{.items[0].metadata.name}')
+
+          kubectl --kubeconfig {{ private_gateway_kubeconfig }} -n syncthing exec "$pod" -- wget
+          -qO- http://127.0.0.1:{{ private_gateway_health_port }}/healthz
       register: private_gateway_healthz
       changed_when: false
       failed_when: private_gateway_healthz.stdout != 'OK'
@@ -184,14 +189,16 @@
 
     - name: Merge privateGui.enabled=false into live syncthing values
       ansible.builtin.set_fact:
-        private_gateway_syncthing_merged: "{{ (private_gateway_syncthing_values.stdout | from_json) | combine({'privateGui': {'enabled': false}}, recursive=true) }}"
+        private_gateway_syncthing_merged: >-
+          {{ (private_gateway_syncthing_values.stdout | from_json) | combine({'privateGui':
+          {'enabled': false}}, recursive=true) }}
       no_log: true
 
     - name: Stage merged syncthing values
       ansible.builtin.copy:
         content: "{{ private_gateway_syncthing_merged | to_nice_yaml }}"
         dest: "{{ private_gateway_directory }}/syncthing-values.yaml"
-        mode: '0600'
+        mode: "0600"
       no_log: true
 
     - name: Stage syncthing chart
@@ -219,7 +226,7 @@
                5m]
       changed_when: true
 
-    - name: 'Post-check old syncthing-gateway DaemonSet is gone'
+    - name: Post-check old syncthing-gateway DaemonSet is gone
       ansible.builtin.command:
         argv: [kubectl,
                --kubeconfig,
@@ -233,7 +240,7 @@
       changed_when: false
       failed_when: private_gateway_old_gone.rc == 0
 
-    - name: 'Post-check syncthing deployment is Ready 1/1'
+    - name: Post-check syncthing deployment is Ready 1/1
       ansible.builtin.command:
         argv: [kubectl,
                --kubeconfig,
@@ -244,7 +251,7 @@
                deploy,
                syncthing,
                -o,
-               'jsonpath={.status.readyReplicas}']
+               "jsonpath={.status.readyReplicas}"]
       register: private_gateway_post_syncthing_ready
       changed_when: false
       failed_when: private_gateway_post_syncthing_ready.stdout != '1'

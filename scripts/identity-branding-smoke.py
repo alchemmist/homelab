@@ -78,7 +78,8 @@ import time
 import urllib.parse
 import uuid
 
-from playwright.sync_api import Error as PlaywrightError, sync_playwright
+from playwright.sync_api import Error as PlaywrightError
+from playwright.sync_api import sync_playwright
 
 username = "theme-smoke-" + uuid.uuid4().hex[:10]
 password = secrets.token_urlsafe(32)

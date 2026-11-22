@@ -1,8 +1,13 @@
 """Run a bounded isolated 0 -> 1 shipper outage drill (no live bucket mounted)."""
 
-import json, secrets, subprocess, sys, time
+import json
+import secrets
+import subprocess
+import sys
+import time
 from copy import deepcopy
-from job import PYTHON, PROM, THANOS, container
+
+from job import PROM, PYTHON, THANOS, container
 
 NS = "cattle-monitoring-system"
 RUN = "warm-net-" + secrets.token_hex(4)

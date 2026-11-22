@@ -17,18 +17,22 @@
         content: "options rtl8723ae ips=0 fwlps=0 swlps=0 msi=1\n"
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
 
     - name: Enable wireless reconnection after the guarded driver starts
       ansible.builtin.command: nmcli connection modify homelab-wifi connection.autoconnect yes
+      changed_when: true
 
     - name: Retain the enabled wireless radio across reboot
       ansible.builtin.command: nmcli radio wifi on
+      changed_when: true
 
     - name: Protect every installed bootable kernel
       ansible.builtin.import_tasks: ../roles/debian_laptop/tasks/network_recovery_kernels.yml
       vars:
-        homelab_alx_force_rebuild: "{{ homelab_alx_dkms_source.changed | default(false) or homelab_alx_dkms_config.changed | default(false) }}"
+        homelab_alx_force_rebuild: >-
+          {{ homelab_alx_dkms_source.changed | default(false) or homelab_alx_dkms_config.changed |
+          default(false) }}
 
 - name: Reboot into the ordinary Debian entry and verify protected networking
   hosts: socrat-3
@@ -46,9 +50,11 @@
       ansible.builtin.command: kubectl drain socrat-3 --ignore-daemonsets --timeout=120s
       delegate_to: socrat-0
       become: false
+      changed_when: true
 
     - name: Wait for the replicated homepage to recover elsewhere
-      ansible.builtin.command: kubectl -n socrat-home rollout status deployment/socrat-home --timeout=120s
+      ansible.builtin.command: >-
+        kubectl -n socrat-home rollout status deployment/socrat-home --timeout=120s
       delegate_to: socrat-0
       become: false
       changed_when: false
@@ -57,7 +63,8 @@
       ansible.builtin.command: grub-editenv list
       register: network_install_boot
       changed_when: false
-      failed_when: network_install_boot.stdout_lines | select('match', '^next_entry=.+$') | list | length > 0
+      failed_when: >-
+        network_install_boot.stdout_lines | select('match', '^next_entry=.+$') | list | length > 0
 
     - name: Reboot into the normal managed configuration
       ansible.builtin.reboot:
@@ -82,7 +89,8 @@
       delay: 5
       changed_when: false
 
-- ansible.builtin.import_playbook: k3s-worker-verify.yml
+- name: Import k3s worker verify playbook
+  ansible.builtin.import_playbook: k3s-worker-verify.yml
 
 - name: Return the verified worker to ordinary scheduling
   hosts: socrat-0
@@ -94,4 +102,6 @@
 
     - name: Restore scheduling on the verified worker
       ansible.builtin.command: kubectl uncordon socrat-3
+      register: worker_uncordon
+      changed_when: "'already uncordoned' not in worker_uncordon.stdout"
 ...

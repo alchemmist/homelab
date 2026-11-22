@@ -31,10 +31,19 @@ def test_offline_render_references_but_never_replaces_credentials() -> None:
     assert not any(x["kind"] == "Secret" for x in resources)
     deployments = {x["metadata"]["name"]: x for x in resources if x["kind"] == "Deployment"}
     app = deployments["umami"]["spec"]["template"]["spec"]["containers"][0]
-    db = deployments["umami-db"]["spec"]["template"]["spec"]["containers"][0]
     assert app["envFrom"] == [{"secretRef": {"name": "umami-env"}}]
-    password = next(e for e in db["env"] if e["name"] == "POSTGRES_PASSWORD")
-    assert password["valueFrom"]["secretKeyRef"] == {
-        "name": "umami-env",
-        "key": "POSTGRES_PASSWORD",
-    }
+    assert [e for e in app["env"] if e["name"] == "DATABASE_URL"] == [
+        {
+            "name": "DATABASE_URL",
+            "valueFrom": {
+                "secretKeyRef": {
+                    "name": "umami-pg-common",
+                    "key": "DATABASE_URL",
+                }
+            },
+        },
+    ]
+    assert {"name": "NODE_EXTRA_CA_CERTS", "value": "/etc/pg-common/ca.crt"} in app["env"]
+    assert app["volumeMounts"] == [
+        {"name": "pg-ca", "mountPath": "/etc/pg-common", "readOnly": True}
+    ]

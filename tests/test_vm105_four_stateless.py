@@ -8,6 +8,8 @@ from pathlib import Path
 
 import yaml
 
+from tests.portable_placement import home_affinity
+
 R = Path(__file__).resolve().parents[1]
 
 
@@ -78,9 +80,9 @@ class PlacementTests(unittest.TestCase):
             assert env["WRITE_ENABLED"] == expected
             if folder == "wiki-openapi":
                 cron = next(x for x in docs if x and x["kind"] == "CronJob")
-                assert cron["spec"]["jobTemplate"]["spec"]["template"]["spec"]["nodeSelector"] == {
-                    "kubernetes.io/hostname": "socrat-1"
-                }
+                broker = cron["spec"]["jobTemplate"]["spec"]["template"]["spec"]
+                assert "nodeSelector" not in broker
+                assert broker["affinity"] == home_affinity()
 
     def test_endpoint_slice_null_is_a_valid_empty_drain(self):
         import importlib.util

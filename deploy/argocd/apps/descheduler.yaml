@@ -5,7 +5,7 @@ metadata:
   name: descheduler
   namespace: argocd
   finalizers:
-  - resources-finalizer.argocd.argoproj.io
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
@@ -23,6 +23,6 @@ spec:
       prune: false
       selfHeal: true
     syncOptions:
-    - CreateNamespace=true
-    - ServerSideApply=true
+      - CreateNamespace=true
+      - ServerSideApply=true
 ...

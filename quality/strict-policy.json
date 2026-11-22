@@ -10,11 +10,14 @@
       "COM812"
     ],
     "perFileIgnores": {
-      "**/test/**": [
+      "tests/**/test_*.py": [
+        "D102",
+        "D103"
+      ],
+      "experiments/venice-autonomy/test_*.py": [
         "D102"
       ],
       "**/tests/**": [
-        "D102",
         "S101"
       ]
     },
@@ -23,7 +26,8 @@
       "D213": "Unsatisfiable with D212. PEP 257 keeps the summary on the first docstring line, so D212 stays.",
       "ISC001": "Unsatisfiable with the Ruff formatter, which can introduce single-line implicit concatenations. ruff format --check stays mandatory.",
       "COM812": "Redundant with the Ruff formatter, which owns trailing commas. ruff format --check reports the same defect.",
-      "D102": "Test methods need no mandatory docstring in test/ or tests/ trees.",
+      "D102": "Behavior-named unittest methods in test_*.py modules do not need a redundant docstring.",
+      "D103": "Behavior-named pytest functions in tests/**/test_*.py do not need a redundant docstring.",
       "S101": "Pytest rewrites assert in tests/ trees."
     }
   },
@@ -207,17 +211,13 @@
     "trusted": false,
     "waiver": false,
     "publisher": ".github/workflows/quality-graph-publish.yml",
-    "compiler": "quality-graph-github==0.2.0 _publication_workflow",
+    "compiler": "quality-graph-github 95762edd93bb3bfeb459f787c8fc71ef7154916c scheduled-publisher.yaml.in",
     "triggers": {
-      "workflow_run": {
-        "workflows": [
-          "Quality Graph"
-        ],
-        "types": [
-          "requested",
-          "completed"
-        ]
-      },
+      "schedule": [
+        {
+          "cron": "3-58/5 * * * *"
+        }
+      ],
       "issue_comment": {
         "types": [
           "created",
@@ -245,7 +245,7 @@
       "zizmor/dangerous-triggers",
       "zizmor/undocumented-permissions"
     ],
-    "blocker": "The pinned compiler hardcodes workflow_run and issue_comment plus job permissions with no comment field. qg.yaml cannot narrow those triggers or document the token. Hand-editing the generated file is overwritten by qg generate. Findings stay blocking; generated workflows are not trusted code."
+    "blocker": "No generated workflow exemption: audit the scheduled publisher, preserve trusted base governance and never grant write permissions to PR execution."
   },
   "vendorPaths": [
     "charts/_vendor",

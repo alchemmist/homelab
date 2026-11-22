@@ -8,134 +8,152 @@
   vars:
     ansible_host: socrat-4
     ansible_port: 2222
-    ansible_ssh_common_args: '-o ProxyJump=none -o StrictHostKeyChecking=yes'
-    phase: '{{ moscow_watchdog_repair_phase | default("preflight") }}'
+    ansible_ssh_common_args: -o ProxyJump=none -o StrictHostKeyChecking=yes
+    phase: >-
+      {{ moscow_watchdog_repair_phase | default("preflight") }}
     stage: /var/lib/homelab-recovery/20261113-moscow-watchdog-staging
-    source: '{{ playbook_dir }}/../../scripts/vpn-transit-failover.py'
-    new_sha: '{{ lookup("file", source, rstrip=False) | hash("sha256") }}'
+    source: "{{ playbook_dir }}/../../scripts/vpn-transit-failover.py"
+    new_sha: >-
+      {{ lookup("file", source, rstrip=False) | hash("sha256") }}
   tasks:
-  - name: Require a known phase and explicit confirmation
-    ansible.builtin.assert:
-      that:
-      - phase in ['preflight','apply','return']
-      - phase == 'preflight' or (moscow_watchdog_repair_confirmed | default(false) | bool)
-  - name: Require all three voter nodes Ready before changes
-    ansible.builtin.command: kubectl get nodes socrat-0 socrat-1 socrat-2 -o json
-    delegate_to: socrat-0
-    become: false
-    vars:
-      ansible_host: socrat-0
-      ansible_port: 2222
-      ansible_ssh_common_args: '-o StrictHostKeyChecking=yes'
-    register: voters
-    changed_when: false
-  - name: Require each voter node to be Ready
-    ansible.builtin.assert:
-      that: >-
-        item.status.conditions | selectattr('type','equalto','Ready') |
-        selectattr('status','equalto','True') | list | length == 1
-    loop: '{{ (voters.stdout | from_json)["items"] }}'
-    loop_control:
-      label: '{{ item.metadata.name }}'
-  - name: Read native transit status before changes
-    ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-failover.py status
-    register: before
-    changed_when: false
-  - name: Require native mode before any handoff
-    ansible.builtin.assert:
-      that:
-      - (before.stdout | from_json).mode == 'native'
-      - (before.stdout | from_json).data_path_healthy
-      - (before.stdout | from_json).native_active
-      - not (before.stdout | from_json).agent_active
-      - (before.stdout | from_json).fallback_marker
-  - name: Verify preserved worker identity and inverse boot fences
-    ansible.builtin.shell: |
-      set -o pipefail
-      set -eu
-      systemctl is-enabled --quiet k3s-agent
-      systemctl cat k3s-agent | grep -F 'ExecCondition=/usr/bin/test ! -e /var/lib/homelab-vpn-transit/relay-failover/fallback.active'
-      systemctl cat homelab-vpn-transit-native | grep -F 'ExecCondition=+/usr/bin/test -e /var/lib/homelab-vpn-transit/relay-failover/fallback.active'
-      test -s /var/lib/rancher/k3s/agent/client-kubelet.crt
-      test -s /var/lib/rancher/k3s/agent/containerd/io.containerd.metadata.v1.bolt/meta.db
-    changed_when: false
-    args:
-      executable: /bin/bash
-  - name: Check desired singleton worker relay before any handoff
-    ansible.builtin.command: kubectl -n vpn-transit get deployment vpn-transit -o json
-    delegate_to: socrat-0
-    become: false
-    vars:
-      ansible_host: socrat-0
-      ansible_port: 2222
-      ansible_ssh_common_args: '-o StrictHostKeyChecking=yes'
-    register: relay
-    changed_when: false
-  - name: Require the singleton relay to stay on the Moscow worker
-    ansible.builtin.assert:
-      that:
-      - (relay.stdout | from_json).spec.replicas == 1
-      - (relay.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] == 'socrat-4'
-  - name: Stage repair helpers for preflight and apply
-    when: phase in ['preflight','apply']
-    block:
-    - name: Create the private staging directory
-      ansible.builtin.file:
-        path: '{{ stage }}'
-        state: directory
-        mode: '0700'
-    - name: Copy the reviewed repair helpers into staging
-      ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../../scripts/{{ item }}.py'
-        dest: '{{ stage }}/{{ item }}.py'
-        mode: '0700'
-      loop: [moscow-api-routes-repair, moscow-watchdog-upgrade, vpn-transit-failover]
-    - name: Additive route preflight; no network mutation
-      ansible.builtin.command: python3 {{ stage }}/moscow-api-routes-repair.py
-      changed_when: false
-    - name: Apply only after the preflight phase
-      when: phase == 'apply'
-      block:
-      - name: Apply the additive API route repair
-        ansible.builtin.command: python3 {{ stage }}/moscow-api-routes-repair.py --apply
-      - name: Install the reviewed watchdog candidate by digest
-        ansible.builtin.command: python3 {{ stage }}/moscow-watchdog-upgrade.py --candidate {{ stage }}/vpn-transit-failover.py --sha256 {{ new_sha }}
-  - name: Return only in the explicit return phase
-    when: phase == 'return'
-    block:
-    - name: Hash the installed transit controller
-      ansible.builtin.stat:
-        path: /usr/local/libexec/vpn-transit-failover.py
-        checksum_algorithm: sha256
-      register: controller
-    - name: Require the installed controller digest to match the candidate
-      ansible.builtin.assert:
-        that: controller.stat.checksum == new_sha
-    - name: Require both advertised API endpoints through correct WG source
-      ansible.builtin.shell: |
-        set -eu
-        python3 - <<'PY'
-        import json,socket,subprocess
-        for host in ['192.168.0.23','192.168.0.24']:
-            route=json.loads(subprocess.check_output(['ip','-j','route','get',host]))[0]
-            assert route.get('dev')=='wg-socrat' and route.get('prefsrc')=='10.250.0.40'
-            with socket.create_connection((host,6443),timeout=3):pass
-        PY
-      changed_when: false
-    - name: Locked port handoff to preserved worker; existing native rollback on failure
-      ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-failover.py failback
-      async: 300
-      poll: 3
-    - name: Read transit status after failback
-      ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-failover.py status
-      register: after
-      changed_when: false
-    - name: Require Kubernetes mode after failback
+    - name: Require a known phase and explicit confirmation
       ansible.builtin.assert:
         that:
-        - (after.stdout | from_json).mode == 'kubernetes'
-        - (after.stdout | from_json).data_path_healthy
-        - (after.stdout | from_json).agent_active
-        - not (after.stdout | from_json).native_active
-        - not (after.stdout | from_json).fallback_marker
+          - phase in ['preflight','apply','return']
+          - phase == 'preflight' or (moscow_watchdog_repair_confirmed | default(false) | bool)
+    - name: Require all three voter nodes Ready before changes
+      ansible.builtin.command: kubectl get nodes socrat-0 socrat-1 socrat-2 -o json
+      delegate_to: socrat-0
+      become: false
+      vars:
+        ansible_host: socrat-0
+        ansible_port: 2222
+        ansible_ssh_common_args: -o StrictHostKeyChecking=yes
+      register: voters
+      changed_when: false
+    - name: Require each voter node to be Ready
+      ansible.builtin.assert:
+        that: >-
+          item.status.conditions | selectattr('type','equalto','Ready') |
+          selectattr('status','equalto','True') | list | length == 1
+      loop: >-
+        {{ (voters.stdout | from_json)["items"] }}
+      loop_control:
+        label: "{{ item.metadata.name }}"
+    - name: Read native transit status before changes
+      ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-failover.py status
+      register: before
+      changed_when: false
+    - name: Require native mode before any handoff
+      ansible.builtin.assert:
+        that:
+          - (before.stdout | from_json).mode == 'native'
+          - (before.stdout | from_json).data_path_healthy
+          - (before.stdout | from_json).native_active
+          - not (before.stdout | from_json).agent_active
+          - (before.stdout | from_json).fallback_marker
+    - name: Verify preserved worker identity and inverse boot fences
+      ansible.builtin.shell: >
+        set -o pipefail
+
+        set -eu
+
+        systemctl is-enabled --quiet k3s-agent
+
+        systemctl cat k3s-agent | grep -F 'ExecCondition=/usr/bin/test ! -e
+        /var/lib/homelab-vpn-transit/relay-failover/fallback.active'
+
+        systemctl cat homelab-vpn-transit-native | grep -F 'ExecCondition=+/usr/bin/test -e
+        /var/lib/homelab-vpn-transit/relay-failover/fallback.active'
+
+        test -s /var/lib/rancher/k3s/agent/client-kubelet.crt
+
+        test -s /var/lib/rancher/k3s/agent/containerd/io.containerd.metadata.v1.bolt/meta.db
+      changed_when: false
+      args:
+        executable: /bin/bash
+    - name: Check desired singleton worker relay before any handoff
+      ansible.builtin.command: kubectl -n vpn-transit get deployment vpn-transit -o json
+      delegate_to: socrat-0
+      become: false
+      vars:
+        ansible_host: socrat-0
+        ansible_port: 2222
+        ansible_ssh_common_args: -o StrictHostKeyChecking=yes
+      register: relay
+      changed_when: false
+    - name: Require the singleton relay to stay on the Moscow worker
+      ansible.builtin.assert:
+        that:
+          - (relay.stdout | from_json).spec.replicas == 1
+          - >-
+            (relay.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] ==
+            'socrat-4'
+    - name: Stage repair helpers for preflight and apply
+      when: phase in ['preflight', 'apply']
+      block:
+        - name: Create the private staging directory
+          ansible.builtin.file:
+            path: "{{ stage }}"
+            state: directory
+            mode: "0700"
+        - name: Copy the reviewed repair helpers into staging
+          ansible.builtin.copy:
+            src: "{{ playbook_dir }}/../../scripts/{{ item }}.py"
+            dest: "{{ stage }}/{{ item }}.py"
+            mode: "0700"
+          loop: [moscow-api-routes-repair, moscow-watchdog-upgrade, vpn-transit-failover]
+        - name: Additive route preflight; no network mutation
+          ansible.builtin.command: python3 {{ stage }}/moscow-api-routes-repair.py
+          changed_when: false
+        - name: Apply only after the preflight phase
+          when: phase == 'apply'
+          block:
+            - name: Apply the additive API route repair
+              ansible.builtin.command: python3 {{ stage }}/moscow-api-routes-repair.py --apply
+              changed_when: true
+            - name: Install the reviewed watchdog candidate by digest
+              ansible.builtin.command: >-
+                python3 {{ stage }}/moscow-watchdog-upgrade.py --candidate {{ stage
+                }}/vpn-transit-failover.py --sha256 {{ new_sha }}
+              changed_when: true
+    - name: Return only in the explicit return phase
+      when: phase == 'return'
+      block:
+        - name: Hash the installed transit controller
+          ansible.builtin.stat:
+            path: /usr/local/libexec/vpn-transit-failover.py
+            checksum_algorithm: sha256
+          register: controller
+        - name: Require the installed controller digest to match the candidate
+          ansible.builtin.assert:
+            that: controller.stat.checksum == new_sha
+        - name: Require both advertised API endpoints through correct WG source
+          ansible.builtin.shell: |
+            set -eu
+            python3 - <<'PY'
+            import json,socket,subprocess
+            for host in ['192.168.0.23','192.168.0.24']:
+                route=json.loads(subprocess.check_output(['ip','-j','route','get',host]))[0]
+                assert route.get('dev')=='wg-socrat' and route.get('prefsrc')=='10.250.0.40'
+                with socket.create_connection((host,6443),timeout=3):pass
+            PY
+          changed_when: false
+        - name: Locked port handoff to preserved worker; existing native rollback on failure
+          ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-failover.py failback
+          async: 300
+          poll: 3
+          changed_when: true
+        - name: Read transit status after failback
+          ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-failover.py status
+          register: after
+          changed_when: false
+        - name: Require Kubernetes mode after failback
+          ansible.builtin.assert:
+            that:
+              - (after.stdout | from_json).mode == 'kubernetes'
+              - (after.stdout | from_json).data_path_healthy
+              - (after.stdout | from_json).agent_active
+              - not (after.stdout | from_json).native_active
+              - not (after.stdout | from_json).fallback_marker
 ...

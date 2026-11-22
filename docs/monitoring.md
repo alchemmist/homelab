@@ -24,12 +24,12 @@ Grafana and Alertmanager stay on socrat-1 and explicitly select `local-path`, be
 | --- | --- | --- |
 | Prometheus | socrat-0, 10 GiB local-path PVC | 12 hours of 5-second samples, no size quota, compaction disabled |
 | Thanos workshop | socrat-1, TLS S3 on retained local storage | Raw, 5m and resulting 1h blocks. Compactor computes on socrat-0. Pre-cutover raw directory on socrat-0 released after verified cold restore. |
-| Thanos 5-minute shelf | workload on socrat-1, shared NFS storage on socrat-0 | 5-minute blocks for 30 days |
+| Thanos 5-minute shelf | workload on socrat-1, shared NFS storage on socrat-0 | Separate pre-cutover history, outside warm-tier pruning |
 | Thanos hourly shelf | socrat-3, `/var/lib/socrat-thanos-1h` | hourly blocks for 730 days |
 | Grafana | socrat-1, 1 GiB | Persistent database and settings |
 | Alertmanager | socrat-1, 1 GiB | Persistent silences and notification state |
 
-Local-path PVC sizes do not enforce filesystem quotas. The hourly Job on socrat-3 reads from S3, verifies bytes and publishes without overwriting an existing block. During cutover it does not prune the workshop by age or disk pressure. Hourly shelf retention is 730 days. The legacy raw directory was emptied after a verified cold restore; rollback seeds are not new writes. See [release evidence](../deploy/storage/thanos-retire/README.md). See [warm cutover gates and recovery cautions](../deploy/storage/thanos-warm-seed/README.md#production-switch-2026-11-21-1818-utc).
+Local-path PVC sizes do not enforce filesystem quotas. The hourly Job on socrat-3 reads from S3, verifies bytes and publishes without overwriting an existing block. The cascade marks raw after 5 days with verified 5m coverage, 5m after 90 days with verified hourly coverage on 3, and hourly sources after verified transfer. Physical S3 removal waits for the 48h compactor delay. Hourly shelf retention is 730 days. The legacy raw directory was emptied after a verified cold restore; rollback seeds are not new writes. See [release evidence](../deploy/storage/thanos-retire/README.md). See [warm cutover gates and recovery cautions](../deploy/storage/thanos-warm-seed/README.md#production-switch-2026-11-21-1818-utc).
 
 The Grafana datasource uid `prometheus` points at Thanos Query on socrat-1. Dashboard JSON is not rewritten. Alerts are evaluated by Prometheus on socrat-0 and sent to Alertmanager on socrat-1. If socrat-0 is down, fresh samples and alert evaluation stop with it; Grafana stays up. If socrat-3 is offline, graphs lose only hourly blocks that have already moved there. Alertmanager's receiver discards notifications intentionally; delivery is not configured yet.
 
@@ -124,7 +124,7 @@ After the external-quorum rebalance, etcd metrics are collected from socrat-0/2/
 
 Keep Helm values and provisioned dashboards in the repository. Apply changes through the Ansible monitoring playbook. Before a chart upgrade, inspect release notes and CRD requirements, capture current Helm values and Kubernetes workload/PVC metadata, and preserve the Grafana database and credentials. Never uninstall or delete persistent claims as a troubleshooting shortcut: the current storage class uses the Delete reclaim policy. The relocate flag is the exception, and it deletes only the Prometheus TSDB claim while that claim is still bound to socrat-1.
 
-When disk usage grows, first inspect series cardinality and which Thanos resolution is using the space. A warning for low disk does not delete blocks. The shipping job removes 5-minute blocks on socrat-1 only after their hourly copy is on socrat-3, and only when they are older than 30 days or free space there falls below about 40 GiB.
+When disk usage grows, first inspect series cardinality and which Thanos resolution is using the space. A warning for low disk does not delete blocks. Disk pressure never shortens tier windows.
 
 ## Verified deployment on 2026-10-16
 

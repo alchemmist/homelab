@@ -11,7 +11,25 @@ import yaml
 
 R = pathlib.Path(__file__).resolve().parents[1]
 LOCAL_STORAGE_CLAIM_PAIR_COUNT = 9
-BASE = "ba7a1f34"
+BASE = "ba7a1f34d36b12ede791269b084e5957657758ae"
+HANDOFF = "c4a7c68938e36872841a1cce0f5441a5c6b78d7d"
+# Independent post-handoff owners: Wiki and Monori pg-common cutovers,
+# SPI egress/portable broker, and the retired LiteLLM legacy DB writer.
+CUTOVERS = {
+    "deploy/wiki-runtime/chart": "3c0c68dbd206138c4f4d96f5b3cafc34a8ad7141",
+    "charts/monori": "093df2214564fd7db76e28da6975d267a0652431",
+    "charts/spi-triage": "f8e2efa00f12b8166376ac3639d760ca24297f0b",
+    "charts/litellm-infra": "7b4786fb4cc2e722a010c4b483b87dc209ae8d12",
+}
+
+
+def checkout(root: pathlib.Path, revision: str, *paths: str) -> pathlib.Path:
+    """Extract only the Git inputs for an offline baseline render."""
+    target = root / revision
+    target.mkdir(exist_ok=True)
+    archive = subprocess.check_output(["git", "-C", str(R), "archive", revision, *paths])
+    subprocess.run(["tar", "-xf", "-", "-C", str(target)], input=archive, check=True)
+    return target
 
 
 def _mapping(value: object) -> dict[str, object]:
@@ -41,10 +59,13 @@ def render(
     *,
     release_image: dict[str, str] | None = None,
     monori_images: dict[str, dict[str, str]] | None = None,
+    sqlite_with_retired_handoff: bool = False,
 ) -> dict[tuple[str, str], dict[str, object]]:
     cmd = ["helm", "template", release, str(root / chart), "-n", ns]
     if values:
         cmd += ["-f", str(root / values)]
+    if sqlite_with_retired_handoff:
+        cmd += ["--set", "postgresEnabled=false,pgHandoff=true"]
     if release_image is not None:
         # Release version is an input independent of historical placement. Only
         # the before-render receives it; a wrong current template still differs.
@@ -59,6 +80,68 @@ def render(
         for d in yaml.safe_load_all(subprocess.check_output(cmd, text=True))
         if d
     }
+
+
+def expect_spi_cutover(
+    expected: dict[tuple[str, str], dict[str, object]], *, postgres: bool
+) -> None:
+    """Extend the pinned SPI render by the committed storage cutover, not the live chart."""
+    # ca3a866c prepares one destination, not independent namespace-wide and pod peers.
+    policy = _mapping(expected["NetworkPolicy", "spi-triage"]["spec"])
+    policy["egress"] = [
+        {
+            "to": [
+                {
+                    "namespaceSelector": {
+                        "matchLabels": {"kubernetes.io/metadata.name": "postgres"}
+                    },
+                    "podSelector": {"matchLabels": {"cnpg.io/cluster": "pg-common"}},
+                }
+            ],
+            "ports": [{"port": 5432, "protocol": "TCP"}],
+        },
+        *_sequence(policy["egress"]),
+    ]
+    deployment = _mapping(expected["Deployment", "spi-triage"]["spec"])
+    pod = _mapping(_mapping(deployment["template"])["spec"])
+    (guard,) = [
+        g
+        for g in map(_mapping, _sequence(pod["initContainers"]))
+        if g["name"] == "require-existing-spi"
+    ]
+    if not postgres:
+        # Only the conditional's leading newline differs from the original SQLite guard.
+        args = _sequence(guard["args"])
+        guard["args"] = ["\n" + _text(args[0]), *args[1:]]
+        return
+
+    # ca3a866c wires PG credentials and CA; f927f5a4 checks both required relations.
+    # Compare the rendered command as text; never execute the guard.
+    pg_secret = {"secretRef": {"name": "spi-triage-postgres"}}
+    ca_mount = {"name": "pg-ca", "mountPath": "/pg-ca", "readOnly": True}
+    guard["envFrom"] = [pg_secret]
+    guard["volumeMounts"] = [ca_mount]
+    guard["args"] = [
+        "\nimport os,psycopg; c=psycopg.connect(os.environ['SPI_POSTGRES_URL'],connect_timeout=5); "
+        "assert c.execute(\"SELECT current_database(),to_regclass('public.jobs') IS NOT NULL,"
+        "to_regclass('workflow_wait_owner') IS NOT NULL\").fetchone()==('spi_triage',True,True); "
+        "c.close()"
+    ]
+    pod["volumes"] = [
+        {"name": "pg-ca", "configMap": {"name": "pg-common-ca"}},
+        *_sequence(pod["volumes"]),
+    ]
+    (worker,) = [w for w in map(_mapping, _sequence(pod["containers"])) if w["name"] == "worker"]
+    worker["envFrom"] = [*_sequence(worker["envFrom"]), pg_secret]
+    mounts = _sequence(worker["volumeMounts"])
+    # e4b09e31 keeps graph files accessible, not the SQLite DB at the PVC root.
+    mounts[mounts.index({"name": "data", "mountPath": "/data"})] = {
+        "name": "data",
+        "mountPath": "/data/graphs",
+        "subPath": "graphs",
+    }
+    worker["volumeMounts"] = [ca_mount, *mounts]
+    # The static Service selector in the pinned render is already the final one.
 
 
 def assert_monori_release_images(
@@ -85,27 +168,10 @@ class StatefulBoundaries(unittest.TestCase):
     """Tests for StatefulBoundaries."""
 
     tmp: tempfile.TemporaryDirectory[str]
-    old: pathlib.Path
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.tmp = tempfile.TemporaryDirectory()
-        cls.old = pathlib.Path(cls.tmp.name)
-        archive = subprocess.check_output(
-            [
-                "git",
-                "-C",
-                str(R),
-                "archive",
-                BASE,
-                "charts",
-                "deploy/wiki-runtime",
-                "deploy/monori",
-                "deploy/spi-triage",
-                "deploy/format-quorum",
-            ]
-        )
-        subprocess.run(["tar", "-xf", "-", "-C", str(cls.old)], input=archive, check=True)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -172,7 +238,10 @@ class StatefulBoundaries(unittest.TestCase):
             x = copy.deepcopy(current)
             metadata = x["metadata"]
             assert isinstance(metadata, dict)
-            metadata.pop("annotations", None)
+            self.assertEqual(
+                metadata.pop("annotations"),
+                {"argocd.argoproj.io/sync-options": "Prune=false,Delete=false"},
+            )
             self.assertEqual(x, old)
             return
         self.assertEqual(key[0], "Deployment")
@@ -221,73 +290,71 @@ class StatefulBoundaries(unittest.TestCase):
         ]
         for chart, values, ns, release, allowed in cases:
             with self.subTest(chart=chart):
-                release_image = None
-                monori_images = None
-                if chart == "charts/spi-triage":
-                    # Do not freeze the SPI application version at the migration
-                    # date or revert a subsequent canonical release from main.
-                    release_image = yaml.safe_load((R / values).read_text())["image"]
-                    assert set(release_image) == {"repository", "tag", "digest"}
-                    assert all(isinstance(value, str) for value in release_image.values())
-                if chart == "charts/monori":
-                    # The owner release is independent of the placement handoff.
-                    # Inject only before-render inputs; retain all current-render
-                    # image/strategy/PVC/identity and full payload comparisons.
-                    monori_images = yaml.safe_load((R / values).read_text())["images"]
-                    assert set(monori_images) == {"front", "back", "sync"}
-                    for fields in monori_images.values():
-                        assert set(fields) == {"repository", "tag", "digest", "fallback"}
-                        assert all(isinstance(v, str) for v in fields.values())
-                a, b = (
-                    render(
-                        self.old,
+                release_image, monori_images = self._historical_inputs(chart, values)
+                paths = [chart] + ([values] if values is not None else [])
+
+                def historical(revision: str):
+                    root = checkout(pathlib.Path(self.tmp.name), revision, *paths)
+                    return render(
+                        root,
                         chart,
                         values,
                         ns,
                         release,
                         release_image=release_image,
                         monori_images=monori_images,
-                    ),
-                    render(R, chart, values, ns, release),
-                )
+                    )
+
+                before = historical(BASE)
+                current = render(R, chart, values, ns, release)
                 if monori_images is not None:
-                    assert_monori_release_images(b, monori_images)
-                assert set(a) == set(b)
-                for k in a:
-                    if a[k] == b[k]:
-                        continue
-                    if k == ("PersistentVolumeClaim", "litellm-branding"):
-                        x = copy.deepcopy(b[k])
-                        x["metadata"].pop("annotations", None)
-                        assert x == a[k]
-                        continue
-                    assert k[0] == "Deployment"
-                    assert k[1] in allowed
-                    x, y = copy.deepcopy(a[k]), copy.deepcopy(b[k])
-                    assert y["spec"]["replicas"] == 1
-                    assert y["spec"]["strategy"] == {"type": "Recreate"}
-                    for o in [x, y]:
-                        o["spec"].pop("strategy", None)
-                        p = o["spec"]["template"]["spec"]
-                        p.pop("nodeSelector", None)
-                        p.pop("hostAliases", None)
-                        p["initContainers"] = [
-                            c
-                            for c in p.get("initContainers", [])
-                            if not c["name"].startswith("require-existing")
-                        ]
-                        if not p["initContainers"]:
-                            p.pop("initContainers")
-                        for v in p.get("volumes", []):
-                            if v["name"] in [
-                                "data",
-                                "assets",
-                                "clang-versions",
-                                "tests",
-                                "config-history",
-                            ]:
-                                v.clear()
-                    assert x == y
+                    assert_monori_release_images(current, monori_images)
+                after = current
+                if chart in CUTOVERS:
+                    # The placement migration and subsequent approved changes are
+                    # separate contracts. Compare *all* current documents first,
+                    # without injecting historical values into the current chart.
+                    expected = historical(CUTOVERS[chart])
+                    if chart == "charts/monori":
+                        # Schema delivery adds exactly one pre-rollout Job and
+                        # advances only the backend init check, not placement.
+                        job = current.pop(("Job", "monori-schema-0022"))
+                        annotations = _mapping(_mapping(job["metadata"])["annotations"])
+                        self.assertEqual(annotations["argocd.argoproj.io/hook"], "PreSync")
+                        backend = expected[("Deployment", "monori-back")]
+                        template = _mapping(_mapping(backend["spec"])["template"])
+                        pod = _mapping(template["spec"])
+                        init = _mapping(_sequence(pod["initContainers"])[0])
+                        args = _sequence(init["args"])
+                        args[0] = _text(args[0]).replace("[('0021',)]", "[('0022',)]")
+                        init["args"] = args
+                    if chart == "charts/spi-triage":
+                        expect_spi_cutover(expected, postgres=True)
+                    if chart == "charts/litellm-infra":
+                        # fe3903c2 retired the dormant DB controller and Service;
+                        # 731505f8 later retired only their dedicated PVC here.
+                        expected.pop(("Deployment", "litellm-postgres"))
+                        expected.pop(("Service", "litellm-postgres"))
+                        expected.pop(("PersistentVolumeClaim", "litellm-postgres"))
+                    self.assertEqual(current, expected)
+                    after = historical(HANDOFF)
+                self.assertEqual(before.keys(), after.keys())
+                for key, old in before.items():
+                    if old != after[key]:
+                        self._assert_changed_document(key, old, after[key], allowed)
+
+    def test_spi_sqlite_guard_and_retired_handoff_route(self) -> None:
+        chart, values = "charts/spi-triage", "deploy/spi-triage/values.yaml"
+        revision = CUTOVERS[chart]
+        pinned = checkout(pathlib.Path(self.tmp.name), revision, chart, values)
+        image, _ = self._historical_inputs(chart, values)
+        expected = render(pinned, chart, values, "automation", "spi-triage", release_image=image)
+        expect_spi_cutover(expected, postgres=False)
+        # f927f5a4 retires the handoff Service target, even with the old flag set.
+        current = render(
+            R, chart, values, "automation", "spi-triage", sqlite_with_retired_handoff=True
+        )
+        self.assertEqual(current, expected)
 
     def test_all_new_claims_are_prebound_local_retained_and_node5_only(self) -> None:
         count = 0

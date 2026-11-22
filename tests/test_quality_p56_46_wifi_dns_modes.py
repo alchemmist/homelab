@@ -29,10 +29,11 @@ _MODE_FILES: dict[str, tuple[str, ...]] = {
         "0755",
         "0644",
         "0755",
-        "0644",
+        # Caffeine unit mode is now enforced by homelab_user_unit (test_user_unit.py).
         "0755",
         "0644",
         "0644",
+        "0644",  # Hyprland Lua entry point for socrat-1 (d5bf9de7)
     ),
     "ansible/roles/desktop_panel/tasks/main.yml": (
         "0755",
@@ -41,7 +42,7 @@ _MODE_FILES: dict[str, tuple[str, ...]] = {
         "0644",
         "0644",
     ),
-    "ansible/roles/desktop_terminal/tasks/bottom.yml": ("0755", "0644"),
+    "ansible/roles/desktop_terminal/tasks/bottom.yml": ("0755", "0644", "0644"),
     "ansible/roles/identity_app_access/tasks/main.yml": ("0600",),
     "ansible/roles/identity_integrations/tasks/main.yml": (
         "0600",

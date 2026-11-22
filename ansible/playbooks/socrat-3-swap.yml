@@ -32,7 +32,9 @@
         that:
           - host_swap_type.stdout | trim == 'swap'
           - (host_swap_kubelet.stdout | from_json).kubeletconfig.failSwapOn == false
-          - ((host_swap_kubelet.stdout | from_json).kubeletconfig.memorySwap | default({})).get('swapBehavior', 'NoSwap') == 'NoSwap'
+          - >-
+            ((host_swap_kubelet.stdout | from_json).kubeletconfig.memorySwap |
+            default({})).get('swapBehavior', 'NoSwap') == 'NoSwap'
 
     - name: Persist conservative host swappiness
       ansible.builtin.copy:
@@ -58,12 +60,10 @@
         regexp: ^\s*#?\s*UUID={{ host_swap_uuid }}\s+
         line: UUID={{ host_swap_uuid }} none swap sw,nofail 0 0
         backup: true
-      register: host_swap_fstab
+      notify: Reload generated systemd units without restarting services
 
-    - name: Reload generated systemd units without restarting services
-      ansible.builtin.systemd_service:
-        daemon_reload: true
-      when: host_swap_fstab.changed
+    - name: Apply the pending swap unit reload before continuing
+      ansible.builtin.meta: flush_handlers
 
     - name: Read active swap UUIDs
       ansible.builtin.command: swapon --show=UUID --noheadings --raw
@@ -81,4 +81,8 @@
       register: host_swap_verified
       changed_when: false
       failed_when: host_swap_uuid not in host_swap_verified.stdout.split()
+  handlers:
+    - name: Reload generated systemd units without restarting services
+      ansible.builtin.systemd_service:
+        daemon_reload: true
 ...

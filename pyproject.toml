@@ -11,10 +11,12 @@ dev = [
   "jsonschema==4.26.0",
   "mypy==2.4.1",
   "pip-audit==2.10.0",
+  "pyflakes==3.4.0",
   "pytest==9.0.3",
   "pyyaml==6.0.3",
-  "quality-graph-cli==0.2.0",
-  "quality-graph-github==0.2.0",
+  "quality-graph-cli==0.2.2",
+  "quality-graph-core==0.2.2",
+  "quality-graph-github==0.2.2",
   "ruff==0.15.12",
   "types-pyyaml==6.0.12.20261113",
   "yamllint==1.38.0",
@@ -23,3 +25,8 @@ dev = [
 
 [tool.uv]
 package = false
+
+# Compiler-only fix; the privileged publisher remains pinned to the released Action.
+[tool.uv.sources]
+quality-graph-core = { git = "https://github.com/alchemmist/quality-graph.git", rev = "95762edd93bb3bfeb459f787c8fc71ef7154916c", subdirectory = "packages/core" }
+quality-graph-github = { path = "tools/quality-graph-github" }

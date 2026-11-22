@@ -11,11 +11,14 @@
 - name: Require Kubernetes mode before replacing recovery assets
   ansible.builtin.assert:
     that: not vpn_failover_latch.stat.exists
-    fail_msg: Native VPN recovery is active. Use its documented failback procedure before changing recovery assets.
+    fail_msg: >-
+      Native VPN recovery is active. Use its documented failback procedure before changing recovery
+      assets.
 
 - name: Load current pinned edge configuration
   ansible.builtin.set_fact:
-    vpn_failover_edge: "{{ lookup('file', playbook_dir + '/../../charts/traefik-edge/values.yaml') | from_yaml }}"
+    vpn_failover_edge: >-
+      {{ lookup('file', playbook_dir + '/../../charts/traefik-edge/values.yaml') | from_yaml }}
 
 - name: Create private recovery directories
   ansible.builtin.file:
@@ -23,7 +26,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
   loop:
     - "{{ vpn_failover_root }}"
     - "{{ vpn_failover_state }}"
@@ -31,7 +34,9 @@
     - /var/cache/homelab-vpn-failover
 
 - name: Inspect existing monitoring timer
-  ansible.builtin.command: systemctl show homelab-vpn-watchdog.timer --property=LoadState --value
+  homelab_systemd_probe:
+    units: [homelab-vpn-watchdog.timer]
+    property: LoadState
   register: vpn_failover_timer
   changed_when: false
 
@@ -42,7 +47,8 @@
   when: vpn_failover_timer.stdout == 'loaded'
 
 - name: Wait for an in-flight watchdog check to finish
-  ansible.builtin.command: /usr/bin/flock --exclusive --timeout 240 {{ vpn_failover_state }}/lock /usr/bin/true
+  ansible.builtin.command: >-
+    /usr/bin/flock --exclusive --timeout 240 {{ vpn_failover_state }}/lock /usr/bin/true
   changed_when: false
 
 - name: Recheck recovery latch after pausing monitoring
@@ -69,14 +75,16 @@
     dest: "{{ vpn_failover_root }}/prepare_runtime.py"
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
 
 - name: Preserve pinned VPN images for native execution
   ansible.builtin.command:
     argv:
       - /usr/bin/python3
       - "{{ vpn_failover_root }}/prepare_runtime.py"
-      - "{{ (lookup('file', playbook_dir + '/../../charts/x-ui/values.yaml') | from_yaml).instances[item.instance].image }}"
+      - >-
+        {{ (lookup('file', playbook_dir + '/../../charts/x-ui/values.yaml')
+        | from_yaml).instances[item.instance].image }}
       - "{{ vpn_failover_root }}/{{ item.name }}"
   loop: "{{ vpn_failover_workloads }}"
   loop_control:
@@ -94,6 +102,7 @@
     argv: [apt-get, download, caddy]
     chdir: /var/cache/homelab-vpn-failover
   when: not vpn_failover_caddy.stat.exists
+  changed_when: true
 
 - name: Find downloaded Caddy package
   ansible.builtin.find:
@@ -115,6 +124,7 @@
       - "{{ vpn_failover_packages.files[0].path }}"
       - /var/cache/homelab-vpn-failover/caddy
   when: not vpn_failover_caddy.stat.exists
+  changed_when: true
 
 - name: Preserve dormant Caddy binary
   ansible.builtin.copy:
@@ -123,7 +133,7 @@
     remote_src: true
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
   when: not vpn_failover_caddy.stat.exists
 
 - name: Install the watchdog
@@ -132,7 +142,7 @@
     dest: /usr/local/sbin/homelab-vpn-failover
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
 
 - name: Render private recovery configuration
   ansible.builtin.template:
@@ -140,7 +150,7 @@
     dest: "{{ item.dest }}"
     owner: root
     group: root
-    mode: '0600'
+    mode: "0600"
   loop:
     - {src: config.json.j2, dest: /etc/homelab-vpn-failover/config.json}
     - {src: Caddyfile.j2, dest: /etc/homelab-vpn-failover/Caddyfile}
@@ -177,7 +187,7 @@
       - "{{ item.path }}"
       - -noout
       - -checkend
-      - '604800'
+      - "604800"
       - -checkhost
       - "{{ vpn_failover_edge.host }}"
   loop: "{{ vpn_failover_certificates.files }}"
@@ -206,10 +216,10 @@
 - name: Render native VPN services without starting them
   ansible.builtin.template:
     src: vpn.service.j2
-    dest: "/etc/systemd/system/homelab-vpn-{{ item.name }}.service"
+    dest: /etc/systemd/system/homelab-vpn-{{ item.name }}.service
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   loop: "{{ vpn_failover_workloads }}"
   loop_control:
     label: "{{ item.name }}"
@@ -217,10 +227,10 @@
 - name: Render ingress and watchdog units
   ansible.builtin.template:
     src: "{{ item.src }}"
-    dest: "/etc/systemd/system/{{ item.name }}"
+    dest: /etc/systemd/system/{{ item.name }}
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   loop:
     - {src: caddy.service.j2, name: homelab-vpn-caddy.service}
     - {src: watchdog.service.j2, name: homelab-vpn-watchdog.service}
@@ -228,18 +238,18 @@
 
 - name: Create persistent Kubernetes fence directories
   ansible.builtin.file:
-    path: "/etc/systemd/system/{{ item }}.d"
+    path: /etc/systemd/system/{{ item }}.d
     state: directory
-    mode: '0755'
+    mode: "0755"
   loop: "{{ (vpn_failover_fenced_units + [vpn_failover_k3s_unit]) | unique }}"
 
 - name: Prevent Kubernetes startup while native recovery owns the databases
   ansible.builtin.template:
     src: k3s-fence.conf.j2
-    dest: "/etc/systemd/system/{{ item }}.d/vpn-failover.conf"
+    dest: /etc/systemd/system/{{ item }}.d/vpn-failover.conf
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   loop: "{{ (vpn_failover_fenced_units + [vpn_failover_k3s_unit]) | unique }}"
 
 - name: Reload unit definitions without restarting Kubernetes
@@ -268,7 +278,7 @@
     dest: "{{ vpn_failover_root }}/smoke_test.py"
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
 
 - name: Verify native VPN using isolated networking and database copies
   ansible.builtin.command: /usr/bin/python3 {{ vpn_failover_root }}/smoke_test.py

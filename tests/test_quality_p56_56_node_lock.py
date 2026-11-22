@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import base64
+import gzip
 import hashlib
 import http.client
 import json
@@ -28,7 +29,7 @@ _REPO = Path(__file__).resolve().parents[1]
 _LOCAL_AUDIT = ["pip-audit", "--local", "--strict", "--format", "json"]
 _INTEGRITY = "sha512-" + base64.b64encode(bytes((0x11,)) * 64).decode("ascii")
 _OWNED_LOCK = "tools/official-mcp/package-lock.json"
-_OWNED_DISTRIBUTIONS = 128
+_OWNED_DISTRIBUTIONS = 127
 _UNCHANGED_FUNCTION_DIGESTS = {
     "validate_requirement_lock": "b3a33235549137f1",
     "_distribution_fields": "92a59186d7631950",
@@ -53,7 +54,24 @@ _UNCHANGED_FUNCTION_DIGESTS = {
     "format_findings": "c5a859c7d55fc3c5",
     "shellcheck_files": "5212046c9fd29985",
     "workflow_script_findings": "a9c8e6afff47f8fd",
-    "check": "85a8e8d1e1728255",
+    # 7a45c9cd split check into a dispatcher and nine typed implementations.
+    # Pin the entire extracted implementations as well as the dispatch mapping.
+    # #459 deliberately changed the workflow dispatch and both workflow scanners.
+    # Sources of the revised pins (leading docstrings excluded as below):
+    # d525d349 for the scanner commands, a7cfd08e for check/workflow_directives,
+    # 82e99f75 for physical-line attribution. All other original pins remain.
+    "check": "f05cf59d286c0457",
+    "workflow_directives": "42d74e4c8b199427",
+    "python_directive_lines": "69a68cc0a476fc79",
+    "check_python": "732041b20fcacae1",
+    "check_yaml": "c25bae72f56b16aa",
+    "check_shell": "3cb39cc5d1303f55",
+    "check_actions": "640d695b3edece7c",
+    "check_actionlint": "caa982e539c3e36c",
+    "check_ansible": "bac2463835490282",
+    "check_docker": "6f0eec5c22cd10e4",
+    "check_javascript": "75a30298a56e4d97",
+    "check_secrets": "d58cf370ba0c9e77",
     "main": "f8b9f9d5940733a7",
 }
 _PREVIOUS_CHECK_DEPENDENCIES = "256df8f69c0d5d07"
@@ -145,20 +163,30 @@ def _digest(name: str) -> str:
                 decoders[0].func = ast.Attribute(
                     value=ast.Name(id="json", ctx=ast.Load()), attr="loads", ctx=ast.Load()
                 )
-            if name == "check":
-                # Prove the reviewed concrete API annotations and sole selector
-                # expansion; every surrounding AST node retains its fingerprint.
-                assert len(node.args.args) == 1
-                assert node.args.args[0].annotation is not None
-                assert ast.dump(node.args.args[0].annotation) == ast.dump(
-                    ast.parse("str", mode="eval").body
+            # D103 added leading docstrings to functions whose executable AST
+            # was already pinned. Keep the original seven documented pins intact.
+            historically_documented = {
+                "validate_requirement_lock",
+                "_distribution_fields",
+                "_vulnerability_id",
+                "dependency_report",
+                "_audit_python_source",
+                "mypy_status",
+                "python_syntax_findings",
+            }
+            if name not in historically_documented and ast.get_docstring(node) is not None:
+                node.body.pop(0)
+            if name == "main":
+                # 0cfe2545 narrowed only the caught error types; verify the exact
+                # tuple before comparing the rest against the original fingerprint.
+                handlers = [item for item in ast.walk(node) if isinstance(item, ast.ExceptHandler)]
+                assert len(handlers) == 1
+                assert handlers[0].type is not None
+                assert ast.dump(handlers[0].type) == ast.dump(
+                    ast.parse("(OSError, RuntimeError, TypeError, ValueError)", mode="eval").body
                 )
-                assert node.returns is not None
-                assert ast.dump(node.returns) == ast.dump(
-                    ast.parse("tuple[list[Finding], int]", mode="eval").body
-                )
-                node.args.args[0].annotation = None
-                node.returns = None
+                handlers[0].type = ast.Name(id="Exception", ctx=ast.Load())
+            if name == "check_docker":
                 expected = ast.parse("docker_targets(names)", mode="eval").body
                 selectors = [
                     item
@@ -170,9 +198,6 @@ def _digest(name: str) -> str:
                     and ast.dump(item.value) == ast.dump(expected)
                 ]
                 assert len(selectors) == 1, "Unexpected Docker selector shape"
-                selectors[0].value = ast.parse(
-                    '[p for p in names if Path(p).name == "Dockerfile"]', mode="eval"
-                ).body
             dumped = ast.dump(node, include_attributes=False)
             return hashlib.sha256(dumped.encode()).hexdigest()[:16]
     message = name
@@ -261,7 +286,7 @@ def _entry(document: dict[str, object], name: str) -> dict[str, object]:
 def test_non_npm_linter_functions_keep_their_executable_ast() -> None:
     """Dependency-audit edits do not rewrite the other linter implementations."""
     for name, digest in _UNCHANGED_FUNCTION_DIGESTS.items():
-        assert _digest(name) == digest
+        assert _digest(name) == digest, name
     assert _digest("check_dependencies") != _PREVIOUS_CHECK_DEPENDENCIES
     for name in ("node_lock_packages", "node_advisory_report", "post_node_advisory_batch"):
         assert _digest(name)
@@ -301,7 +326,7 @@ def test_owned_npm_lock_is_fully_described_without_a_network_call(
     assert packages == sorted(set(packages))
     assert ("@umami/mcp", "0.2.0") in packages
     assert ("argocd-mcp", "0.9.0") in packages
-    assert ("zod", "3.25.76") in packages
+    assert ("zod", "3.25.76") not in packages
     assert ("zod", "4.6.7") in packages
     assert ("content-type", "1.0.5") in packages
     assert ("content-type", "2.1.0") in packages
@@ -524,7 +549,82 @@ def test_unsafe_version_three_lock_refuses_before_the_advisory_request(
 
     monkeypatch.setattr(lint, "post_node_advisory_batch", post)
     with pytest.raises(ValueError, match="unsupported or unsafe package sources"):
-        lint.check_dependencies([relative])
+        lint.node_lock_packages(tmp_path / relative)
+    if mutate == "install":
+        findings, count = lint.check_dependencies([relative])
+        assert count == 1  # Only the local Python environment reached the auditor.
+        assert [item["ruleId"] for item in findings] == ["DEPENDENCY_INSTALL_SCRIPT"]
+        assert findings[0]["severity"] == "error"
+    else:
+        with pytest.raises(ValueError, match="unsupported or unsafe package sources"):
+            lint.check_dependencies([relative])
+
+
+def test_pi_installer_materializes_the_audited_lock() -> None:
+    """Keep the chart's compressed-lock exception bound to the actual install source."""
+    chart = (_REPO / "charts/openhands/templates/pi-monori.yaml").read_text()
+    assert 'package-lock.json.gz: {{ .Files.Get "files/pi-monori/package-lock.json.gz"' in chart
+    assert (
+        "cp /code/package.json .; gzip -dc /code/package-lock.json.gz > package-lock.json; "
+        "python -I /code/patch_npm.py pi; HOME=/tmp npm ci --strict-peer-deps --ignore-scripts"
+        in chart
+    )
+
+
+@pytest.mark.parametrize("owner", ["charts/openhands/files/pi-monori", "tools/fixture"])
+def test_compressed_lock_is_bound_to_manifest_and_audited(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, owner: str
+) -> None:
+    """Compression is a transport detail, not an exception to npm admission."""
+    directory = tmp_path / owner
+    directory.mkdir(parents=True)
+    lock = directory / "package-lock.json.gz"
+    document = _document({"fixture-package": "1.0.0"})
+    if owner.startswith("charts/"):
+        document = json.loads(gzip.decompress((_REPO / owner / lock.name).read_bytes()))
+    raw = json.dumps(document).encode()
+    lock.write_bytes(gzip.compress(raw))
+    packages = document["packages"]
+    assert isinstance(packages, dict)
+    manifest = directory / "package.json"
+    manifest.write_text(json.dumps(packages[""]))
+    monkeypatch.setattr(lint, "ROOT", tmp_path)
+    monkeypatch.setattr(lint, "command", _command)
+    posted: list[tuple[str, str]] = []
+
+    def post(rows: list[tuple[str, str]]) -> dict[str, object]:
+        posted.extend(rows)
+        return _clean_report(len(rows))
+
+    monkeypatch.setattr(lint, "post_node_advisory_batch", post)
+    inputs = [f"{owner}/{manifest.name}", f"{owner}/{lock.name}"]
+    findings, count = lint.check_dependencies(inputs)
+    expected = [] if owner.startswith("charts/") else ["DEPENDENCY_LOCK_MISSING"]
+    assert [item["ruleId"] for item in findings] == expected
+    assert count == 1 + len(posted)
+    rows = sorted(
+        {(k.rsplit("node_modules/", 1)[-1], v["version"]) for k, v in packages.items() if k}
+    )
+    assert posted == rows
+    manifest.write_text("{}")
+    with pytest.raises(ValueError, match="unsupported or unsafe"):
+        lint.check_dependencies(inputs)
+    assert posted == rows
+
+
+@pytest.mark.parametrize(
+    "data",
+    [gzip.compress(b"x" * 2048), b"not gzip", gzip.compress(b"{}")[:-1]],
+)
+def test_compressed_lock_refuses_bounded_expansion_and_corruption(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, data: bytes
+) -> None:
+    """Refuse unreadable or oversized compressed data before parsing any lock."""
+    monkeypatch.setattr(lint, "_MAX_REQUIREMENT_LOCK_BYTES", 1024)
+    lock = tmp_path / "package-lock.json.gz"
+    lock.write_bytes(data)
+    with pytest.raises(ValueError, match="unsupported or unsafe"):
+        lint.node_lock_packages(lock)
 
 
 def test_optional_peer_absence_is_still_audited(
@@ -805,21 +905,36 @@ def test_docker_selector_proof_refuses_argument_mutation(
     destination.write_text(source.replace(original, "files = docker_targets(names[:1])"))
     monkeypatch.setattr(sys.modules[__name__], "_REPO", tmp_path)
     with pytest.raises(AssertionError, match="Unexpected Docker selector shape"):
-        _digest("check")
+        _digest("check_docker")
 
 
+@pytest.mark.parametrize(
+    ("name", "original", "replacement"),
+    [
+        ("check", '"javascript": check_javascript', '"javascript": check_docker'),
+        ("check_docker", '"hadolint", "--config"', '"hadolint", "--wrong-config"'),
+        ("check_javascript", '["node", "--check", path]', '["node", "--version", path]'),
+        ("check", "security + expressions + directives", "security + expressions + []"),
+        ("check_actions", '"--strict-collection"', '"--invalid-collection"'),
+        ("check_actionlint", '"-config-file", os.devnull', '"-unreviewed-config", os.devnull'),
+    ],
+)
 def test_docker_selector_proof_preserves_surrounding_body(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str, original: str, replacement: str
 ) -> None:
-    """An unrelated tool-branch mutation still invalidates the original fingerprint."""
+    """A changed dispatch or extracted producer still invalidates its fingerprint."""
+    assert _digest(name) == _UNCHANGED_FUNCTION_DIGESTS[name]
     source = (_REPO / "scripts/quality/lint.py").read_text()
-    original = 'if tool == "javascript":'
     assert source.count(original) == 1
     destination = tmp_path / "scripts/quality/lint.py"
     destination.parent.mkdir(parents=True)
-    destination.write_text(source.replace(original, 'if tool == "javascript-disabled":'))
+    assert replacement not in source
+    destination.write_text(source.replace(original, replacement, 1))
+    rewritten = destination.read_text()
+    assert rewritten.count(replacement) == 1
+    assert original not in rewritten
     monkeypatch.setattr(sys.modules[__name__], "_REPO", tmp_path)
-    assert _digest("check") != _UNCHANGED_FUNCTION_DIGESTS["check"]
+    assert _digest(name) != _UNCHANGED_FUNCTION_DIGESTS[name]
 
 
 def test_python_decoder_proof_refuses_wrong_stream(
@@ -850,3 +965,42 @@ def test_skip_presence_proof_refuses_empty_container(
     monkeypatch.setattr(sys.modules[__name__], "_REPO", tmp_path)
     with pytest.raises(AssertionError, match="Unexpected skipped-distribution guard"):
         _digest("_distribution_fields")
+
+
+@pytest.mark.parametrize(
+    "mutation", ["digest", "path", "version", "owner", "hook", "manifest", "dropped", "nested"]
+)
+def test_reviewed_archive_admission_is_exact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mutation: str
+) -> None:
+    """A local source is not a generic file: exception or an advisory exemption."""
+    relative = "tools/elsewhere/package-lock.json" if mutation == "owner" else _OWNED_LOCK
+    lock = tmp_path / relative
+    lock.parent.mkdir(parents=True)
+    document = json.loads((_REPO / _OWNED_LOCK).read_bytes())
+    entry = document["packages"]["node_modules/argocd-mcp"]
+    manifest = document["packages"][""]
+    if mutation == "digest":
+        entry["integrity"] = _INTEGRITY
+    elif mutation == "path":
+        entry["resolved"] = "file:../other.tar"
+    elif mutation == "version":
+        entry["version"] = "0.9.1"
+    elif mutation == "hook":
+        entry["hasInstallScript"] = True
+    elif mutation == "dropped":
+        del manifest["dependencies"]["argocd-mcp"]
+    elif mutation == "nested":
+        document["packages"]["node_modules/@umami/mcp/node_modules/argocd-mcp"] = entry
+    lock.write_text(json.dumps(document))
+    if mutation == "manifest":
+        manifest["dependencies"]["argocd-mcp"] = "0.9.0"
+    lock.with_name("package.json").write_text(json.dumps(manifest))
+    monkeypatch.setattr(lint, "ROOT", tmp_path)
+    if mutation == "hook":
+        findings, count = lint._npm_lock_audit(lock, relative)
+        assert count == 0
+        assert [finding["ruleId"] for finding in findings] == ["DEPENDENCY_INSTALL_SCRIPT"]
+        return
+    with pytest.raises(ValueError, match="unsupported or unsafe"):
+        lint.node_lock_packages(lock)

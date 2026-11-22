@@ -6,22 +6,27 @@
   any_errors_fatal: true
   tasks:
     - name: Require operator-authorized switch and already running native sources
-      ansible.builtin.command: systemctl is-active homelab-otel-node-exporter.service
+      homelab_systemd_probe:
+        units: [homelab-otel-node-exporter.service]
       changed_when: false
     - name: Activate the full maintained native metrics and logs configuration
       ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../../deploy/monitoring/otel/agent.yaml'
+        src: "{{ playbook_dir }}/../../deploy/monitoring/otel/agent.yaml"
         dest: /etc/homelab-otel/agent.yaml
-        mode: '0644'
+        mode: "0644"
     - name: Switch only the independent agent to its native full pipeline
       ansible.builtin.systemd_service:
         name: homelab-otel-agent.service
         state: restarted
     - name: Require native host-agent process and health endpoint
-      ansible.builtin.command: curl --fail --silent http://127.0.0.1:13133/
+      ansible.builtin.uri:
+        url: http://127.0.0.1:13133/
+        follow_redirects: none
+        use_netrc: false
+        status_code: "{{ range(200, 400) | list }}"
       register: agent_health
       retries: 12
       delay: 2
-      until: agent_health.rc == 0
+      until: agent_health is succeeded
       changed_when: false
 ...

@@ -45,15 +45,14 @@
         dest: /etc/sysctl.d/99-inotify.conf
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
         content: |
           fs.inotify.max_user_instances = 1024
           fs.inotify.max_user_watches = 1048576
-      register: inotify_sysctl
+      notify: Apply inotify sysctl settings
 
-    - name: Apply inotify sysctl settings
-      ansible.builtin.command: sysctl -p /etc/sysctl.d/99-inotify.conf
-      when: inotify_sysctl.changed
+    - name: Apply the pending inotify settings before continuing
+      ansible.builtin.meta: flush_handlers
 
     - name: Ensure NFS export directory exists
       ansible.builtin.file:
@@ -61,7 +60,7 @@
         state: directory
         owner: nobody
         group: nogroup
-        mode: '0775'
+        mode: "0775"
 
     - name: Ensure exports.d exists
       ansible.builtin.file:
@@ -69,16 +68,17 @@
         state: directory
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
 
     - name: Configure Kubernetes NFS export
       ansible.builtin.copy:
         dest: /etc/exports.d/k8s-nfs.exports
         owner: root
         group: root
-        mode: '0644'
-        content: |
-          {{ nfs_export_path }} 192.168.0.0/24(rw,sync,no_subtree_check,no_root_squash,fsid=0) 10.250.0.0/24(rw,sync,no_subtree_check,no_root_squash,fsid=0)
+        mode: "0644"
+        content: >
+          {{ nfs_export_path }} 192.168.0.0/24(rw,sync,no_subtree_check,no_root_squash,fsid=0)
+          10.250.0.0/24(rw,sync,no_subtree_check,no_root_squash,fsid=0)
       notify: Reload NFS exports
 
     - name: Ensure /etc/exports exists
@@ -87,7 +87,7 @@
         state: touch
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
 
     - name: Enable and start NFS server
       ansible.builtin.systemd:
@@ -102,7 +102,9 @@
       changed_when: storage_ns.rc == 0
 
     - name: Add NFS provisioner Helm repo
-      ansible.builtin.command: helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
+      ansible.builtin.command: >-
+        helm repo add nfs-subdir-external-provisioner
+        https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
       register: nfs_repo
       failed_when: nfs_repo.rc not in [0, 1]
       changed_when: nfs_repo.rc == 0
@@ -125,7 +127,8 @@
         --wait
         --timeout 5m
       register: nfs_helm
-      changed_when: "'has been upgraded' in nfs_helm.stdout or 'has been installed' in nfs_helm.stdout"
+      changed_when: >-
+        'has been upgraded' in nfs_helm.stdout or 'has been installed' in nfs_helm.stdout
 
     - name: Verify Git-owned local-path is not a competing default
       ansible.builtin.command:
@@ -136,7 +139,7 @@
           - storageclass
           - local-path
           - -o
-          - 'jsonpath={.metadata.annotations.storageclass\.kubernetes\.io/is-default-class}'
+          - jsonpath={.metadata.annotations.storageclass\.kubernetes\.io/is-default-class}
       register: local_path_default
       changed_when: false
       failed_when: local_path_default.rc != 0 or local_path_default.stdout != 'false'
@@ -151,10 +154,16 @@
         var: storage_classes.stdout_lines
 
   handlers:
+    - name: Apply inotify sysctl settings
+      ansible.builtin.command: sysctl -p /etc/sysctl.d/99-inotify.conf
+      changed_when: true
+
     - name: Reload NFS exports
       ansible.builtin.shell: |
         exportfs -ra
         systemctl restart nfs-mountd nfs-server
+      changed_when: true
 
-- ansible.builtin.import_playbook: rancher-namespaces.yml
+- name: Import rancher namespaces playbook
+  ansible.builtin.import_playbook: rancher-namespaces.yml
 ...

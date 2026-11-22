@@ -16,10 +16,13 @@ if TYPE_CHECKING:
 from unittest.mock import patch
 
 import pytest
+from jsonschema import Draft4Validator
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts/quality"))
+import common
 import contracts
+import lint
 from common import command, failure, finding, report, unique
 from strict_report import (
     audit_exit_code,
@@ -45,6 +48,25 @@ def test_strict_report_cannot_exit_success_for_dirty_or_incomplete_audit(
     )
 
 
+@pytest.mark.parametrize(
+    ("api_version", "kind", "spec"),
+    [
+        ("v1", "LimitRange", {"limits": [{"type": "Container"}]}),
+        ("v1", "ResourceQuota", {"hard": {"pods": "10"}}),
+        ("policy/v1", "PodDisruptionBudget", {"minAvailable": 1}),
+    ],
+)
+def test_rendered_budget_and_limit_schemas_are_strict_offline(
+    api_version: str, kind: str, spec: dict[str, object]
+) -> None:
+    """Resolve the renderer's actual schema name and reject a misspelled spec field."""
+    resource = {"apiVersion": api_version, "kind": kind, "metadata": {"name": "sample"}}
+    schema = ROOT / "quality/schemas" / charts.schema_name(resource)
+    validator = Draft4Validator(json.loads(schema.read_bytes()))
+    assert validator.is_valid({**resource, "spec": spec})
+    assert not validator.is_valid({**resource, "spec": {**spec, "typo": 1}})
+
+
 def test_semantic_ids_survive_line_movement_and_do_not_store_source() -> None:
     a = finding("RULE", "tests/test_quality_system.py", 1, "message", "same semantic context")
     b = finding("RULE", "tests/test_quality_system.py", 2, "message", "same semantic context")
@@ -56,6 +78,42 @@ def test_semantic_ids_survive_line_movement_and_do_not_store_source() -> None:
 def test_escaping_finding_rejected() -> None:
     with pytest.raises(ValueError):
         finding("RULE", "../private", 1, "message", "context")
+
+
+def test_workflow_noqa_requires_a_python_comment() -> None:
+    """Keep heredocs, prose and quoted strings distinct from actual Python waivers."""
+    from lint import python_directive_lines
+
+    marker = "# " + "noqa"
+    source = f'''\
+name: "example {marker}"
+# A YAML comment mentioning {marker}
+defaults: {{run: {{shell: python}}}}
+jobs:
+  inherits:
+    steps:
+      - run: |
+          print("{marker}")
+          import unused  {marker}: F401
+  overrides:
+    defaults: {{run: {{shell: bash}}}}
+    steps:
+      - run: |
+          cat <<'END'
+          {marker}
+          END
+      - shell: python3
+        run: "import another  {marker.upper()}"
+      - shell: python
+        run: >-
+          import folded
+          {marker}
+      - shell: python
+        run: "import quoted
+          {marker}"
+        name: multiline quoted scalar
+'''
+    assert python_directive_lines(source) == {9, 18, 22, 25}
 
 
 def test_failed_tools_are_not_quality_approvals(tmp_path) -> None:
@@ -272,8 +330,11 @@ def test_helm_parameters_cannot_inject_a_post_renderer() -> None:
         charts.arguments(target)
 
 
+@pytest.mark.parametrize("suite", ["fast", "medium"])
 @pytest.mark.parametrize("system", ["Linux", "Darwin"])
-def test_network_namespace_preserves_locked_tool_path(tmp_path, monkeypatch, system) -> None:
+def test_network_namespace_preserves_locked_tool_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, system: str, suite: str
+) -> None:
     import importlib.util
     from types import SimpleNamespace
 
@@ -285,13 +346,15 @@ def test_network_namespace_preserves_locked_tool_path(tmp_path, monkeypatch, sys
     monkeypatch.setattr(runner, "ROOT", tmp_path)
     (tmp_path / "quality").mkdir()
     (tmp_path / "quality/test-suites.json").write_text(
-        json.dumps({"suites": {"fixture": ["tests/test_fixture.py"]}})
+        json.dumps({"suites": {suite: ["tests/test_fixture.py"]}})
     )
     monkeypatch.setattr(runner.platform, "system", lambda: system)
     monkeypatch.setattr(runner.getpass, "getuser", lambda: "runner")
-    monkeypatch.setattr(sys, "argv", ["tests.py", "fixture", "--isolate-network"])
+    monkeypatch.setattr(sys, "argv", ["tests.py", suite, "--isolate-network"])
     monkeypatch.setenv("PATH", "/locked-venv/bin:/usr/bin")
     monkeypatch.setenv("SSH_AUTH_SOCK", "/must-not-leak")
+    monkeypatch.setenv("SPI_SORT_FIXTURE", "/must-not-read-user-data")
+    monkeypatch.setenv("QUALITY_SYNTHETIC_SPI_SORT", "ambient")
     calls = []
     monkeypatch.setattr(
         runner.subprocess,
@@ -301,9 +364,16 @@ def test_network_namespace_preserves_locked_tool_path(tmp_path, monkeypatch, sys
     assert runner.main() == 0
     argv, kw = calls[0]
     assert "SSH_AUTH_SOCK" not in kw["env"]
+    assert kw["env"]["KUBECONFIG"] == "/dev/null"
+    assert kw["env"]["PYTHONDONTWRITEBYTECODE"] == "1"
+    assert "SPI_SORT_FIXTURE" not in kw["env"]
+    assert "QUALITY_SYNTHETIC_SPI_SORT" not in kw["env"]
+    assert ("QUALITY_SYNTHETIC_SPI_SORT=1" in argv) == (suite == "fast" and system == "Linux")
     if system == "Linux":
         assert argv[:4] == ["sudo", "-n", "unshare", "--net"]
         assert "PATH=/locked-venv/bin:/usr/bin" in argv
+        assert "KUBECONFIG=/dev/null" in argv
+        assert "PYTHONDONTWRITEBYTECODE=1" in argv
     else:
         assert argv[:2] == ["/usr/bin/sandbox-exec", "-p"]
         assert "(deny network*)" in argv[2]
@@ -362,14 +432,103 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
 
     graph = yaml.safe_load((ROOT / "qg.yaml").read_text())["nodes"]
     assert len({n["title"] for n in graph.values()}) == len(graph)
-    assert set(graph) == {"graph", "javascript", "secrets", "ownership", "docker"}
-    for node in ("javascript", "secrets", "ownership", "docker"):
+    first_layer = {
+        "yaml",
+        "scripts-q000",
+        "deploy-i001",
+        "javascript",
+        "secrets",
+        "ownership",
+        "docker",
+        "workflow",
+        "tests-fast",
+        "shell",
+        "rustfs-return-types",
+    }
+    assert set(graph) == {"graph", *first_layer, "tests-medium", "ansible", "dependencies"}
+    assert graph["dependencies"]["needs"] == ["ownership"]
+    assert graph["dependencies"]["policy"]["blocking"] is True
+    assert graph["tests-medium"]["needs"] == ["ownership"]
+    assert graph["tests-medium"]["policy"]["blocking"] is True
+    assert graph["tests-medium"]["run"] == "uv run python scripts/quality/tests.py medium --isolate-network"
+    policy = graph["graph"]["policy"]
+    assert policy["blocking"] is True
+    assert policy["approvals"] == {"files": False, "findings": False, "node": False}
+    assert "uv run python scripts/quality/strict_guard.py" in graph["graph"]["run"].splitlines()
+    assert (
+        "uv run python -m scripts.quality.python_inputs scripts/quality/ |\n"
+        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select SIM300 \\\n"
+        "    --ignore-noqa --output-format concise --"
+    ) in graph["graph"]["run"]
+    for node in first_layer:
         assert graph[node]["needs"] == ["graph"]
+        assert graph[node]["policy"]["blocking"] is True
+    quotes = graph["scripts-q000"]
+    assert quotes["policy"] == policy
+    assert quotes["run"] == (
+        "set -euo pipefail\n"
+        "uv run python -m scripts.quality.python_inputs scripts/ tests/ |\n"
+        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \\\n"
+        "    --ignore-noqa --output-format concise --"
+    )
+    imports = graph["deploy-i001"]
+    assert imports["title"] == "Python import order (I001) and unused script/test imports (F401)"
+    assert imports["policy"] == policy
+    assert imports["run"] == (
+        "set -euo pipefail\n"
+        "uv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |\n"
+        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n"
+        "    --ignore-noqa --output-format concise --\n"
+        "uv run python -m scripts.quality.python_inputs scripts/ tests/ |\n"
+        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select F401 \\\n"
+        "    --ignore-noqa --output-format concise --"
+    )
+    assert graph["ansible"]["needs"] == ["ownership"]
+    assert graph["ansible"]["policy"]["blocking"] is True
+    assert graph["yaml"]["profile"] == "default"
+    assert graph["yaml"]["run"] == "uv run python scripts/quality/lint.py yaml"
+    assert graph["yaml"]["results"] == {"native": "reports/yaml.json"}
+    assert graph["yaml"]["policy"] == {
+        "blocking": True,
+        "approvals": {"findings": False, "files": False, "node": False},
+    }
     local = json.loads((ROOT / "quality/local-checks.json").read_text())
     assert set(local) == {
-        "python", "yaml", "shell", "workflow", "tests-fast",
-        "manifests", "ansible", "tests-medium", "tests-cluster", "dependencies",
+        "python", "manifests", "tests-cluster",
     }
+
+
+def test_shell_policy_finds_extensionless_scripts_and_inline_steps(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Both ShellCheck transports retain diagnostics in the combined shell result."""
+    monkeypatch.setattr(common, "ROOT", tmp_path)
+    monkeypatch.setattr(lint, "ROOT", tmp_path)
+    shell_files = ["entrypoint", "build.sh"]
+    workflow = ".github/workflows/ci.yml"
+    (tmp_path / "entrypoint").write_text("#!/bin/sh\necho $HOME\n")
+    (tmp_path / "build.sh").write_text("#!/bin/bash\necho $HOME\n")
+    (tmp_path / workflow).parent.mkdir(parents=True)
+    (tmp_path / workflow).write_text("jobs: {ci: {steps: [{run: 'echo $HOME'}]}}\n")
+
+    def shellcheck(argv: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        assert argv[:3] == ["shellcheck", "--norc", "--enable=all"]
+        sources = argv[argv.index("--format=json") + 1 :]
+        if "--shell" in argv:
+            assert argv[argv.index("--shell") + 1] == "bash"
+            assert [Path(source).read_text() for source in sources] == ["echo $HOME"]
+        else:
+            assert sources == shell_files
+        rows = [
+            {"file": source, "code": 2086, "line": 1, "message": "quote"} for source in sources
+        ]
+        return subprocess.CompletedProcess(argv, 1, stdout=json.dumps(rows))
+
+    monkeypatch.setattr(lint, "command", shellcheck)
+    findings, checked = lint.check_shell([*shell_files, workflow])
+    assert checked == len(shell_files)
+    assert [row["location"]["path"] for row in findings] == [*shell_files, workflow]
+    assert all(row["ruleId"] == "SC2086" for row in findings)
 
 
 def _load_checker(name):
@@ -415,12 +574,15 @@ def test_new_issuer_alias_is_invisible_to_the_registered_list(tmp_path) -> None:
 
     infra = _load_checker("check_infrastructure_contracts.py")
     _copy_rels(tmp_path, _infra_files())
+    # The owner registered Monori's scoped OIDC transport in addition to the prior ten.
+    registered_issuer_count = 11
+    assert infra.check(tmp_path) == registered_issuer_count
     rogue = tmp_path / "deploy/new-issuer-consumer/values.yaml"
     rogue.parent.mkdir(parents=True)
     rogue.write_text(
         "hostAliases:\n  - ip: 10.43.218.222\n    hostnames: [auth.socrat.alchemmist.xyz]\n"
     )
-    assert infra.check(tmp_path) == 10
+    assert infra.check(tmp_path) == registered_issuer_count
     with pytest.raises(ValueError, match="Unregistered issuer transport consumer"):
         boundaries.check(tmp_path)
 
@@ -677,7 +839,7 @@ def test_mypy_syntax_error_does_not_hide_another_file(tmp_path, monkeypatch) -> 
     assert "python-syntax" in rules
 
 
-def test_generated_publisher_findings_are_not_waived() -> None:
+def test_generated_publisher_findings_are_not_waived(tmp_path) -> None:
     """Auditor findings on the generated publisher stay visible and untrusted."""
     from common import command, use_project_tools
 
@@ -685,6 +847,19 @@ def test_generated_publisher_findings_are_not_waived() -> None:
     policy = json.loads((ROOT / "quality/strict-policy.json").read_text())["generatedWorkflows"]
     assert policy["trusted"] is False
     assert policy["waiver"] is False
+    # Reintroduce the unsafe surface in a fixture, not as a requirement on the real publisher.
+    fixture = tmp_path / ".github/workflows/publisher.yml"
+    fixture.parent.mkdir(parents=True)
+    fixture.write_text("""name: Fixture
+on: workflow_run
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+    steps:
+      - run: echo fixture
+""")
     process = command(
         [
             "zizmor",
@@ -693,7 +868,7 @@ def test_generated_publisher_findings_are_not_waived() -> None:
             "auditor",
             "--format",
             "sarif",
-            policy["publisher"],
+            str(fixture),
         ],
         allowed=(0, 1),
         timeout=60,
@@ -1025,5 +1200,8 @@ def test_existing_main_push_regression_cannot_be_deferred(omitted: str) -> None:
     """A complete classification is insufficient when it drops an existing gate."""
     complete = set(contracts.RETAINED_PUSH_TESTS)
     contracts.require_retained_push_tests(complete)
-    with pytest.raises(ValueError, match="push regression lost"):
-        contracts.require_retained_push_tests(complete - {omitted})
+    expanded = complete | {"tests/test_new_feature.py"}
+    contracts.require_retained_push_tests(expanded)
+    for scheduled in (complete, expanded):
+        with pytest.raises(ValueError, match="push regression lost"):
+            contracts.require_retained_push_tests(scheduled - {omitted})

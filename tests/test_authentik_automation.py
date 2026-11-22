@@ -326,6 +326,16 @@ def test_bootstrap_source_guard_accepts_formatting_not_decoy_text() -> None:
     assert not a.bootstrap_is_migration_aware(" " * 1_048_577)
 
 
+def test_bootstrap_refusal_cannot_execute_an_extra_call() -> None:
+    """Keep the abort path free of effects before it exits."""
+    source = (FILES / "bootstrap.py").read_text()
+    assert a.bootstrap_is_migration_aware(source)
+    refusal = "        raise SystemExit(msg)\n    for key in"
+    assert source.count(refusal) == 1
+    changed = source.replace(refusal, "        unexpected_call()\n" + refusal)
+    assert not a.bootstrap_is_migration_aware(changed)
+
+
 @pytest.mark.parametrize(
     "mutation",
     ["password-key", "removal", "guard", "refusal", "journal", "manifest", "order"],
@@ -333,6 +343,7 @@ def test_bootstrap_source_guard_accepts_formatting_not_decoy_text() -> None:
 def test_bootstrap_source_guard_rejects_real_boundary_mutations(mutation: str) -> None:
     """Reject changes that would reintroduce administrative runtime credentials."""
     source = (FILES / "bootstrap.py").read_text()
+    assert a.bootstrap_is_migration_aware(source)
     tree = ast.parse(source)
     conditional = next(
         node

@@ -10,7 +10,7 @@
         that:
           - otel_inspection_directory is defined
           - otel_inspection_directory.startswith('/tmp/otel-')
-      run_once: true
+      when: inventory_hostname == ansible_play_batch[0]
 
     - name: Prepare private controller evidence directory
       ansible.builtin.file:
@@ -19,12 +19,14 @@
         mode: "0700"
       delegate_to: localhost
       become: false
-      run_once: true
+      when: inventory_hostname == ansible_play_batch[0]
 
     - name: Count journal bytes in memory
       ansible.builtin.command:
-        argv: [python3, '-']
-        stdin: "{{ lookup('ansible.builtin.file', playbook_dir + '/../../scripts/otel-journal-probe.py') }}"
+        argv: [python3, "-"]
+        stdin: >-
+          {{ lookup('ansible.builtin.file', playbook_dir + '/../../scripts/otel-journal-probe.py')
+          }}
       register: otel_journal_probe
       changed_when: false
       no_log: true
@@ -51,5 +53,6 @@
 
     - name: Report measurement availability
       ansible.builtin.debug:
-        msg: "{{ inventory_hostname }}: privileged journal counts saved; raw messages were not persisted"
+        msg: >-
+          {{ inventory_hostname }}: privileged journal counts saved; raw messages were not persisted
 ...

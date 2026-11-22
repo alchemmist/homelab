@@ -1,6 +1,6 @@
 ---
 - name: Check that starship is installed
-  ansible.builtin.shell: command -v starship
+  ansible.builtin.command: which starship
   changed_when: false
   register: starship_binary
 
@@ -13,8 +13,8 @@
     mode: "{{ item.mode }}"
   become: true
   loop:
-    - { path: /etc/starship, mode: "0755" }
-    - { path: /etc/starship/bin, mode: "0755" }
+    - {path: /etc/starship, mode: "0755"}
+    - {path: /etc/starship/bin, mode: "0755"}
 
 - name: Deploy machine-wide starship.toml
   ansible.builtin.template:
@@ -29,7 +29,7 @@
 - name: Deploy machine-wide starship helper scripts
   ansible.builtin.copy:
     src: "{{ item }}"
-    dest: "/etc/starship/bin/{{ item }}"
+    dest: /etc/starship/bin/{{ item }}
     owner: root
     group: root
     mode: "0755"

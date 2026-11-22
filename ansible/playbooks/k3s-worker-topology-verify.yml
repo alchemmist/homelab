@@ -27,9 +27,15 @@
     - name: Require a Ready worker without server role labels
       ansible.builtin.assert:
         that:
-          - "'node-role.kubernetes.io/control-plane' not in (worker_topology_node.stdout | from_json).metadata.labels"
-          - "'node-role.kubernetes.io/etcd' not in (worker_topology_node.stdout | from_json).metadata.labels"
-          - (worker_topology_node.stdout | from_json).status.conditions | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | list == ['True']
+          - >-
+            'node-role.kubernetes.io/control-plane' not in (worker_topology_node.stdout |
+            from_json).metadata.labels
+          - >-
+            'node-role.kubernetes.io/etcd' not in (worker_topology_node.stdout |
+            from_json).metadata.labels
+          - >-
+            (worker_topology_node.stdout | from_json).status.conditions | selectattr('type',
+            'equalto', 'Ready') | map(attribute='status') | list == ['True']
 
 - name: Verify agent mode without changing workloads
   hosts: socrat-3

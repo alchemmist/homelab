@@ -1,6 +1,12 @@
 """Root-only effective access checks; emit metadata, never hashes or credentials."""
 
-import json, os, pwd, re, shutil, subprocess, sys
+import json
+import os
+import pwd
+import re
+import shutil
+import subprocess
+import sys
 
 name = sys.argv[1]
 user = pwd.getpwnam(name)

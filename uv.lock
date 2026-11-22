@@ -556,9 +556,11 @@ dev = [
     { name = "jsonschema" },
     { name = "mypy" },
     { name = "pip-audit" },
+    { name = "pyflakes" },
     { name = "pytest" },
     { name = "pyyaml" },
     { name = "quality-graph-cli" },
+    { name = "quality-graph-core" },
     { name = "quality-graph-github" },
     { name = "ruff" },
     { name = "types-pyyaml" },
@@ -575,10 +577,12 @@ dev = [
     { name = "jsonschema", specifier = "==4.26.0" },
     { name = "mypy", specifier = "==2.4.1" },
     { name = "pip-audit", specifier = "==2.10.0" },
+    { name = "pyflakes", specifier = "==3.4.0" },
     { name = "pytest", specifier = "==9.0.3" },
     { name = "pyyaml", specifier = "==6.0.3" },
-    { name = "quality-graph-cli", specifier = "==0.2.0" },
-    { name = "quality-graph-github", specifier = "==0.2.0" },
+    { name = "quality-graph-cli", specifier = "==0.2.2" },
+    { name = "quality-graph-core", git = "https://github.com/alchemmist/quality-graph.git?subdirectory=packages%2Fcore&rev=95762edd93bb3bfeb459f787c8fc71ef7154916c" },
+    { name = "quality-graph-github", directory = "tools/quality-graph-github" },
     { name = "ruff", specifier = "==0.15.12" },
     { name = "types-pyyaml", specifier = "==6.0.12.20261113" },
     { name = "yamllint", specifier = "==1.38.0" },
@@ -1132,6 +1136,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pyflakes"
+version = "3.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/45/dc/fd034dc20b4b264b3d015808458391acbf9df40b1e54750ef175d39180b1/pyflakes-3.4.0.tar.gz", hash = "sha256:b24f96fafb7d2ab0ec5075b7350b3d2d2218eab42003821c06344973d3ea2f58", size = 64669, upload-time = "2025-06-20T18:45:27.834Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c2/2f/81d580a0fb83baeb066698975cb14a618bdbed7720678566f1b046a95fe8/pyflakes-3.4.0-py2.py3-none-any.whl", hash = "sha256:f742a7dbd0d9cb9ea41e9a24a918996e8170c799fa528688d40dd582c8265f4f", size = 63551, upload-time = "2025-06-20T18:45:26.937Z" },
+]
+
+[[package]]
 name = "pygments"
 version = "2.21.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1227,42 +1240,42 @@ wheels = [
 
 [[package]]
 name = "quality-graph-cli"
-version = "0.2.0"
+version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "quality-graph-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d4/7c/89034e27d79822a0957330ce0a65cd726a3e7191f81dc6dfa4ac445451c2/quality_graph_cli-0.2.0.tar.gz", hash = "sha256:fa848ee3ce2b2fbc5374fb0da3a8ef146c174de1f6b810f72c16de456b3cb52b", size = 6660, upload-time = "2026-09-21T09:48:43.53Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/99/01/8ae7830a992a633850b0b0da5b026df5ceec90d42e28c77a0080c70a94b8/quality_graph_cli-0.2.2.tar.gz", hash = "sha256:d34456ca60be9b6466134c839890bcc7a9715c5c99d904fb80685a971fd87b1e", size = 6616, upload-time = "2026-11-21T21:39:26.43Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/7a/d01185d5548e18ab9754c181784e8a3171e0c92107819dce273a58fa3dc3/quality_graph_cli-0.2.0-py3-none-any.whl", hash = "sha256:2a5d61c03b8c1d064ed6fdecddd9d1f9b5acaa666f2a281358e6367e8c1d6213", size = 8440, upload-time = "2026-09-21T09:48:42.486Z" },
+    { url = "https://files.pythonhosted.org/packages/1e/b6/44fe864913e10f05d99f4d139348dd9cc89d5df3b96d1a7b1f9ff406c01a/quality_graph_cli-0.2.2-py3-none-any.whl", hash = "sha256:a65b336b249e04a9d53b455e70e1d8100392d4773a4e13d6495917e8644b57d8", size = 8386, upload-time = "2026-11-21T21:39:25.299Z" },
 ]
 
 [[package]]
 name = "quality-graph-core"
-version = "0.2.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.2.2"
+source = { git = "https://github.com/alchemmist/quality-graph.git?subdirectory=packages%2Fcore&rev=95762edd93bb3bfeb459f787c8fc71ef7154916c#95762edd93bb3bfeb459f787c8fc71ef7154916c" }
 dependencies = [
     { name = "defusedxml" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/71/9b/895c7f4003abb4cb5810184615e95808ed4007ed5b09316f86d3ebce553e/quality_graph_core-0.2.0.tar.gz", hash = "sha256:3d16855e57ee42d2f58f1b851ef30ef0bd887138f86ba9f1e8f475febf2f610d", size = 24417, upload-time = "2026-09-21T09:48:17.824Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a9/18/23aa429aeee821983243d6f4624e755e5ca5e59c566beaf02a1e40fd33e2/quality_graph_core-0.2.0-py3-none-any.whl", hash = "sha256:2c33bccda13807e375ac851b4d7d0ee8341b345a4c137d63ff7cd2184137b5af", size = 28041, upload-time = "2026-09-21T09:48:16.613Z" },
-]
 
 [[package]]
 name = "quality-graph-github"
-version = "0.2.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.2.2"
+source = { directory = "tools/quality-graph-github" }
 dependencies = [
     { name = "httpx" },
     { name = "jinja2" },
     { name = "pyyaml" },
     { name = "quality-graph-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f1/61/35afa197d6dd50dd8ed496d6d485b8fd44513b49877be1cc65fe6aadaa4f/quality_graph_github-0.2.0.tar.gz", hash = "sha256:c40fc73012db4c52fa6ada914d7d82e9a07973b5dcf834976e73894626f48085", size = 35918, upload-time = "2026-09-21T09:48:43.382Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/12/bde9111bc94ef124fa91349271845c1faf2df601c1afbe4a2bc729f22465/quality_graph_github-0.2.0-py3-none-any.whl", hash = "sha256:ce83684aa1d7d243cb64fc16c2d292557a74caeabe479ca95166e84fcce88c78", size = 46514, upload-time = "2026-09-21T09:48:41.755Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "pyyaml", specifier = ">=6.0.2" },
+    { name = "quality-graph-core", specifier = "==0.2.2" },
 ]
 
 [[package]]

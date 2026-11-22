@@ -13,24 +13,32 @@
         state: directory
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
 
     - name: Add only the Grafana private DNS record
       ansible.builtin.copy:
-        content: "host-record=grafana.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-1'].address }}\nlocal=/grafana.socrat.alchemmist.xyz/\n"
+        content: >
+          host-record=grafana.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-1'].address }}
+
+          local=/grafana.socrat.alchemmist.xyz/
         dest: /etc/homelab-private-dns.d/monitoring.conf
         owner: root
         group: root
-        mode: '0644'
-      register: monitoring_dns_record
-
+        mode: "0644"
+      notify: Activate the private Grafana DNS record
     - name: Validate private DNS configuration before restart
       ansible.builtin.command: dnsmasq --test --conf-file=/etc/homelab-private-dns.conf
+      register: monitoring_dns_record_validation
       changed_when: false
 
+  handlers:
     - name: Activate the private Grafana DNS record
       ansible.builtin.systemd_service:
         name: homelab-private-dns.service
         state: restarted
-      when: monitoring_dns_record.changed
+      when:
+        - monitoring_dns_record_validation is defined
+        - monitoring_dns_record_validation is not skipped
+        - monitoring_dns_record_validation is succeeded
+        - monitoring_dns_record_validation is reachable
 ...

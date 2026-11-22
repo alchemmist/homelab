@@ -1,3 +1,4 @@
+---
 botServiceVIP: 10.43.167.29
 image: nginx:1.31.2-alpine
 secretName: monitoring-etcd-metrics-token
@@ -23,198 +24,202 @@ serviceProbes:
   enabled: true
   image: quay.io/prometheus/blackbox-exporter:v0.29.0
   targets:
-  - id: blog
-    title: Blog
-    url: http://blog.blog.svc.cluster.local:80/
-    module: http_2xx
-    alertName: SocratServiceBlogUnavailable
-  - id: cats
-    title: Cats
-    url: http://cats.cats.svc.cluster.local:80/
-    module: http_2xx
-    alertName: SocratServiceCatsUnavailable
-  - id: format-quorum
-    title: Format Quorum
-    url: http://format-quorum.format-quorum.svc.cluster.local:80/
-    module: http_2xx
-    alertName: SocratServiceFormatQuorumUnavailable
-  - id: image-proxy
-    title: Image Proxy
-    url: img-proxy.img-proxy.svc.cluster.local:80
-    module: tcp_connect
-    alertName: SocratServiceImageProxyUnavailable
-  - id: lms
-    title: LMS
-    url: https://lms.alchemmist.xyz/
-    module: http_3xx
-    alertName: SocratServiceLmsUnavailable
-  - id: monori
-    title: Monori
-    url: http://monori.monori.svc.cluster.local:80/
-    module: http_2xx
-    alertName: SocratServiceMonoriUnavailable
-  - id: monori-api
-    title: Monori API
-    url: http://back.monori.svc.cluster.local:8000/openapi.json
-    module: http_2xx
-    alertName: SocratServiceMonoriApiUnavailable
-  - id: monori-sync
-    title: Monori Sync
-    url: http://monori-sync.monori.svc.cluster.local:8010/health
-    module: http_2xx
-    alertName: SocratServiceMonoriSyncUnavailable
-  - id: remark42
-    title: Remark42
-    url: http://remark42.remark42.svc.cluster.local:80/ping
-    module: http_2xx
-    alertName: SocratServiceRemark42Unavailable
-  - id: socrat-home
-    title: Socrat Home
-    url: http://socrat-home.socrat-home.svc.cluster.local:8080/
-    module: http_2xx
-    alertName: SocratServiceSocratHomeUnavailable
-  - id: umami
-    title: Umami
-    url: http://umami.umami.svc.cluster.local:80/api/heartbeat
-    module: http_2xx
-    alertName: SocratServiceUmamiUnavailable
-  - id: status
-    title: Status
-    url: http://uptime-kuma.uptime-kuma.svc.cluster.local:80/api/status-page/socrat
-    module: http_2xx
-    alertName: SocratServiceStatusUnavailable
-  - id: wiki
-    title: Wiki
-    url: http://wiki-runtime-wiki.wiki.svc.cluster.local:8080/healthz
-    module: http_2xx
-    alertName: SocratServiceWikiUnavailable
-  - id: litellm
-    title: LiteLLM
-    url: http://litellm.llm.svc.cluster.local:4000/health/readiness
-    module: http_2xx
-    alertName: SocratServiceLitellmUnavailable
-  - id: open-terminal
-    title: Open Terminal
-    url: http://open-terminal.llm.svc.cluster.local:8000/health
-    module: http_2xx
-    alertName: SocratServiceOpenTerminalUnavailable
-  - id: open-webui
-    title: Open WebUI
-    url: http://open-webui.llm.svc.cluster.local:8080/health
-    module: http_2xx
-    alertName: SocratServiceOpenWebuiUnavailable
-  - id: searxng
-    title: SearXNG
-    url: http://searxng.llm.svc.cluster.local:8080/healthz
-    module: http_2xx
-    alertName: SocratServiceSearxngUnavailable
-  - id: vllm
-    title: vLLM
-    url: http://vllm.llm.svc.cluster.local:8000/health
-    module: http_2xx
-    alertName: SocratServiceVllmUnavailable
-  - id: rancher
-    title: Rancher
-    url: http://rancher.cattle-system.svc.cluster.local:80/healthz
-    module: http_2xx
-    alertName: SocratServiceRancherUnavailable
-  - id: grafana
-    title: Grafana
-    url: http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local:80/api/health
-    module: http_2xx
-    alertName: SocratServiceGrafanaUnavailable
-  - id: prometheus
-    title: Prometheus
-    url: http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/-/ready
-    module: http_2xx
-    alertName: SocratServicePrometheusUnavailable
-  - id: alertmanager
-    title: Alertmanager
-    url: http://kube-prometheus-stack-alertmanager.cattle-monitoring-system.svc.cluster.local:9093/-/ready
-    module: http_2xx
-    alertName: SocratServiceAlertmanagerUnavailable
-  - id: grafana-mcp
-    title: Grafana MCP
-    url: http://monitoring-grafana-mcp-health.cattle-monitoring-system.svc.cluster.local:8080/healthz
-    module: http_2xx
-    alertName: SocratServiceGrafanaMcpUnavailable
-  - id: edge-home
-    title: Home IP
-    url: 109.173.40.247:443
-    module: tcp_connect
-    alertName: SocratServiceEdgeHomeUnavailable
-  - id: edge-vps
-    title: VPS IP
-    url: 109.120.141.60:443
-    module: tcp_connect
-    alertName: SocratServiceEdgeVpsUnavailable
-  - id: vpn
-    title: VPN
-    url: traefik-edge-trojan.traefik-edge.svc.cluster.local:32087
-    module: tcp_connect
-    alertName: SocratServiceVpnUnavailable
-  - id: x-ui
-    title: 3xUI
-    url: x-ui.x-ui.svc.cluster.local:2053
-    module: tcp_connect
-    alertName: SocratServiceXUiUnavailable
-  - id: litellm-db
-    title: LiteLLM DB
-    url: pg-common-rw.postgres.svc.cluster.local:5432
-    module: tcp_connect
-    alertName: SocratServiceLitellmDbUnavailable
-  - id: umami-db
-    title: Umami DB
-    url: pg-common-rw.postgres.svc.cluster.local:5432
-    module: tcp_connect
-    alertName: SocratServiceUmamiDbUnavailable
-  - id: litellm-branding
-    title: LiteLLM Assets
-    url: http://litellm-branding.llm.svc.cluster.local:8080/health
-    module: http_2xx
-    alertName: SocratServiceLitellmBrandingUnavailable
-  - id: syncthing-0
-    title: Syncthing 0
-    url: http://10.250.0.1:18444/healthz
-    module: http_2xx
-    alertName: SocratServiceSyncthingUnavailable
-    group: syncthing
-    node: socrat-0
-  - id: nfs
-    title: NFS storage
-    url: 192.168.0.23:2049
-    module: tcp_connect
-    alertName: SocratServiceNfsUnavailable
-  - id: n8n
-    title: n8n
-    url: http://n8n.automation.svc.cluster.local:80/healthz
-    module: http_2xx
-    alertName: SocratServiceN8nUnavailable
-  - id: authentik
-    title: Authentik
-    url: http://authentik-server.identity.svc.cluster.local:80/-/health/live/
-    module: http_2xx
-    alertName: SocratServiceAuthentikUnavailable
-  - id: harbor
-    title: Harbor
-    url: http://harbor-core.harbor.svc.cluster.local:80/api/v2.0/ping
-    module: http_2xx
-    alertName: SocratServiceHarborUnavailable
-  - id: argocd
-    title: Argo CD
-    url: http://argo-cd-argocd-server.argocd.svc.cluster.local:80/healthz
-    module: http_3xx
-    alertName: SocratServiceArgocdUnavailable
-  - id: socrat-bot
-    title: Socrat Bot
-    url: http://socrat-bot.socrat-bot.svc.cluster.local:8080/healthz
-    module: http_2xx
-    alertName: SocratServiceSocratBotUnavailable
-  - id: edge-moscow
-    title: Moscow IP
-    url: 91.189.82.238:443
-    module: tcp_connect
-    alertName: SocratServiceEdgeMoscowUnavailable
+    - id: blog
+      title: Blog
+      url: http://blog.blog.svc.cluster.local:80/
+      module: http_2xx
+      alertName: SocratServiceBlogUnavailable
+    - id: cats
+      title: Cats
+      url: http://cats.cats.svc.cluster.local:80/
+      module: http_2xx
+      alertName: SocratServiceCatsUnavailable
+    - id: format-quorum
+      title: Format Quorum
+      url: http://format-quorum.format-quorum.svc.cluster.local:80/
+      module: http_2xx
+      alertName: SocratServiceFormatQuorumUnavailable
+    - id: image-proxy
+      title: Image Proxy
+      url: img-proxy.img-proxy.svc.cluster.local:80
+      module: tcp_connect
+      alertName: SocratServiceImageProxyUnavailable
+    - id: lms
+      title: LMS
+      url: https://lms.alchemmist.xyz/
+      module: http_3xx
+      alertName: SocratServiceLmsUnavailable
+    - id: monori
+      title: Monori
+      url: http://monori.monori.svc.cluster.local:80/
+      module: http_2xx
+      alertName: SocratServiceMonoriUnavailable
+    - id: monori-api
+      title: Monori API
+      url: http://back.monori.svc.cluster.local:8000/openapi.json
+      module: http_2xx
+      alertName: SocratServiceMonoriApiUnavailable
+    - id: monori-sync
+      title: Monori Sync
+      url: http://monori-sync.monori.svc.cluster.local:8010/health
+      module: http_2xx
+      alertName: SocratServiceMonoriSyncUnavailable
+    - id: remark42
+      title: Remark42
+      url: http://remark42.remark42.svc.cluster.local:80/ping
+      module: http_2xx
+      alertName: SocratServiceRemark42Unavailable
+    - id: socrat-home
+      title: Socrat Home
+      url: http://socrat-home.socrat-home.svc.cluster.local:8080/
+      module: http_2xx
+      alertName: SocratServiceSocratHomeUnavailable
+    - id: umami
+      title: Umami
+      url: http://umami.umami.svc.cluster.local:80/api/heartbeat
+      module: http_2xx
+      alertName: SocratServiceUmamiUnavailable
+    - id: status
+      title: Status
+      url: http://gatus.uptime-kuma.svc.cluster.local:80/api/v1/endpoints/statuses
+      module: http_2xx
+      alertName: SocratServiceStatusUnavailable
+    - id: wiki
+      title: Wiki
+      url: http://wiki-runtime-wiki.wiki.svc.cluster.local:8080/healthz
+      module: http_2xx
+      alertName: SocratServiceWikiUnavailable
+    - id: litellm
+      title: LiteLLM
+      url: http://litellm.llm.svc.cluster.local:4000/health/readiness
+      module: http_2xx
+      alertName: SocratServiceLitellmUnavailable
+    - id: open-terminal
+      title: Open Terminal
+      url: http://open-terminal.llm.svc.cluster.local:8000/health
+      module: http_2xx
+      alertName: SocratServiceOpenTerminalUnavailable
+    - id: open-webui
+      title: Open WebUI
+      url: http://open-webui.llm.svc.cluster.local:8080/health
+      module: http_2xx
+      alertName: SocratServiceOpenWebuiUnavailable
+    - id: searxng
+      title: SearXNG
+      url: http://searxng.llm.svc.cluster.local:8080/healthz
+      module: http_2xx
+      alertName: SocratServiceSearxngUnavailable
+    - id: vllm
+      title: vLLM
+      url: http://vllm.llm.svc.cluster.local:8000/health
+      module: http_2xx
+      alertName: SocratServiceVllmUnavailable
+    - id: rancher
+      title: Rancher
+      url: http://rancher.cattle-system.svc.cluster.local:80/healthz
+      module: http_2xx
+      alertName: SocratServiceRancherUnavailable
+    - id: grafana
+      title: Grafana
+      url:
+        http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local:80/api/health
+      module: http_2xx
+      alertName: SocratServiceGrafanaUnavailable
+    - id: prometheus
+      title: Prometheus
+      url:
+        http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/-/ready
+      module: http_2xx
+      alertName: SocratServicePrometheusUnavailable
+    - id: alertmanager
+      title: Alertmanager
+      url:
+        http://kube-prometheus-stack-alertmanager.cattle-monitoring-system.svc.cluster.local:9093/-/ready
+      module: http_2xx
+      alertName: SocratServiceAlertmanagerUnavailable
+    - id: grafana-mcp
+      title: Grafana MCP
+      url:
+        http://monitoring-grafana-mcp-health.cattle-monitoring-system.svc.cluster.local:8080/healthz
+      module: http_2xx
+      alertName: SocratServiceGrafanaMcpUnavailable
+    - id: edge-home
+      title: Home IP
+      url: 109.173.40.247:443
+      module: tcp_connect
+      alertName: SocratServiceEdgeHomeUnavailable
+    - id: edge-vps
+      title: VPS IP
+      url: 109.120.141.60:443
+      module: tcp_connect
+      alertName: SocratServiceEdgeVpsUnavailable
+    - id: vpn
+      title: VPN
+      url: traefik-edge-trojan.traefik-edge.svc.cluster.local:32087
+      module: tcp_connect
+      alertName: SocratServiceVpnUnavailable
+    - id: x-ui
+      title: 3xUI
+      url: x-ui.x-ui.svc.cluster.local:2053
+      module: tcp_connect
+      alertName: SocratServiceXUiUnavailable
+    - id: litellm-db
+      title: LiteLLM DB
+      url: pg-common-rw.postgres.svc.cluster.local:5432
+      module: tcp_connect
+      alertName: SocratServiceLitellmDbUnavailable
+    - id: umami-db
+      title: Umami DB
+      url: pg-common-rw.postgres.svc.cluster.local:5432
+      module: tcp_connect
+      alertName: SocratServiceUmamiDbUnavailable
+    - id: litellm-branding
+      title: LiteLLM Assets
+      url: http://litellm-branding.llm.svc.cluster.local:8080/health
+      module: http_2xx
+      alertName: SocratServiceLitellmBrandingUnavailable
+    - id: syncthing-0
+      title: Syncthing 0
+      url: http://10.250.0.1:18444/healthz
+      module: http_2xx
+      alertName: SocratServiceSyncthingUnavailable
+      group: syncthing
+      node: socrat-0
+    - id: nfs
+      title: NFS storage
+      url: 192.168.0.23:2049
+      module: tcp_connect
+      alertName: SocratServiceNfsUnavailable
+    - id: n8n
+      title: n8n
+      url: http://n8n.automation.svc.cluster.local:80/healthz
+      module: http_2xx
+      alertName: SocratServiceN8nUnavailable
+    - id: authentik
+      title: Authentik
+      url: http://authentik-server.identity.svc.cluster.local:80/-/health/live/
+      module: http_2xx
+      alertName: SocratServiceAuthentikUnavailable
+    - id: harbor
+      title: Harbor
+      url: http://harbor-core.harbor.svc.cluster.local:80/api/v2.0/ping
+      module: http_2xx
+      alertName: SocratServiceHarborUnavailable
+    - id: argocd
+      title: Argo CD
+      url: http://argo-cd-argocd-server.argocd.svc.cluster.local:80/healthz
+      module: http_3xx
+      alertName: SocratServiceArgocdUnavailable
+    - id: socrat-bot
+      title: Socrat Bot
+      url: http://socrat-bot.socrat-bot.svc.cluster.local:8080/healthz
+      module: http_2xx
+      alertName: SocratServiceSocratBotUnavailable
+    - id: edge-moscow
+      title: Moscow IP
+      url: 91.189.82.238:443
+      module: tcp_connect
+      alertName: SocratServiceEdgeMoscowUnavailable
 otelBackendExternalIP: 10.250.0.3
 
 # current must match the version pinned in that application's chart.
@@ -242,97 +247,98 @@ updateWatch:
   targets:
     - id: openhands
       title: OpenHands Agent Canvas
-      current: "1.41.0"
+      current: 1.41.0
       github: OpenHands/OpenHands
       namespace: openhands
       statefulset: openhands
       container: agent-canvas
     - id: open-webui
       title: Open WebUI
-      current: "0.12.3"
+      current: 0.12.3
       github: open-webui/open-webui
       namespace: llm
       deployment: open-webui
       container: open-webui
     - id: x-ui
       title: 3x-ui
-      current: "3.10.2"
+      current: 3.10.2
       github: MHSanaei/3x-ui
       namespace: x-ui
       deployment: x-ui
       container: primary
     - id: open-terminal
       title: Open Terminal
-      current: "0.14.1"
+      current: 0.14.1
       github: open-webui/open-terminal
     - id: n8n
       title: n8n
-      current: "1.123.87"
+      current: 1.123.87
       github: n8n-io/n8n
     - id: authentik
       title: Authentik
-      current: "2026.8.5"
+      current: 2026.8.5
       github: goauthentik/authentik
     - id: litellm
       title: LiteLLM
-      current: "1.105.1"
+      current: 1.105.1
       github: BerriAI/litellm
     - id: searxng
       title: SearXNG
-      current: "2026.10.19"
-      github: searxng/searxng
+      current: 2026.10.19
+      source: searxng-image-tags
     - id: remark42
       title: Remark42
-      current: "1.17.1"
+      current: 1.17.1
       github: umputun/remark42
     - id: uptime-kuma
       title: Uptime Kuma
-      current: "2.5.7"
+      current: 2.5.7
       github: louislam/uptime-kuma
     - id: syncthing
       title: Syncthing
-      current: "2.1.7"
+      current: 2.1.7
       github: syncthing/syncthing
     - id: traefik
       title: Traefik
-      current: "3.7.13"
+      current: 3.7.13
       github: traefik/traefik
     - id: cert-manager
       title: cert-manager
-      current: "1.16.2"
+      current: 1.16.2
       github: cert-manager/cert-manager
     - id: harbor
       title: Harbor
-      current: "2.15.4"
+      current: 2.15.4
       github: goharbor/harbor
     - id: rancher
       title: Rancher
-      current: "2.15.2"
+      current: 2.15.2
       github: rancher/rancher
     - id: grafana
       title: Grafana
-      current: "13.2.4"
+      current: 13.2.4
       github: grafana/grafana
     - id: pyroscope
       title: Pyroscope
-      current: "2.4.3"
+      current: 2.4.3
       github: grafana/pyroscope
     - id: thanos
       title: Thanos
-      current: "0.42.4"
+      current: 0.42.4
       github: thanos-io/thanos
     - id: netbird
       title: NetBird
-      current: "0.82.0"
+      current: 0.82.0
       github: netbirdio/netbird
     - id: nvidia-device-plugin
       title: NVIDIA device plugin
-      current: "0.20.1"
+      current: 0.20.1
       github: NVIDIA/k8s-device-plugin
     - id: pr-agent
       title: PR-Agent
-      current: "0.50.0"
+      current: 0.50.0
       github: The-PR-Agent/pr-agent
       namespace: pr-agent
       deployment: pr-agent
       container: pr-agent
+...

@@ -11,6 +11,8 @@ from pathlib import Path
 
 import yaml
 
+from tests.portable_placement import home_affinity
+
 R = Path(__file__).resolve().parents[1]
 LITELLM_GRACE_PERIOD_SECONDS = 7260
 
@@ -50,10 +52,11 @@ class MigrationTests(unittest.TestCase):
         assert v["grafana"]["imageRenderer"]["nodeSelector"] == {
             "kubernetes.io/hostname": "socrat-5"
         }
-        assert v["alertGraphs"]["nodeSelector"] == {"kubernetes.io/hostname": "socrat-1"}
+        assert v["alertGraphs"]["nodeSelector"] == {"kubernetes.io/os": "linux"}
+        assert v["alertGraphs"]["affinity"] == home_affinity()
         assert v["grafana"]["imageRenderer"]["existingSecret"] == "socrat-grafana-renderer"
 
-    def test_lms_single_worker_and_original_database_and_identity(self):
+    def test_lms_single_worker_and_migrated_database_and_identity(self):
         v = load("charts/lms/values.yaml")
         v.update(load("deploy/lms/values.yaml"))
         docs = render("charts/lms", v, "lms", "lms")
@@ -74,7 +77,9 @@ class MigrationTests(unittest.TestCase):
         ]
         assert not any("persistentVolumeClaim" in x for x in s["volumes"])
         env = {e["name"]: e for e in s["containers"][0]["env"]}
-        assert env["LMS_DATABASE_URL"]["valueFrom"]["secretKeyRef"]["name"] == "lms-db"
+        assert env["LMS_DATABASE_URL"]["valueFrom"]["secretKeyRef"] == {
+            "name": "lms-pg-common", "key": "LMS_DATABASE_URL",
+        }
         assert (
             env["LMS_OIDC_CLIENT_SECRET"]["valueFrom"]["secretKeyRef"]["name"]
             == "socrat-authentik-lms"

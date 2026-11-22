@@ -1,8 +1,10 @@
 """Remaining lane playbooks keep their actions after every task is named."""
 
+import json
 from pathlib import Path
 
 import yaml
+from jinja2 import Environment, StrictUndefined
 
 ROOT = Path(__file__).resolve().parents[1]
 MOSCOW = ROOT / "ansible/playbooks/moscow-watchdog-repair.yml"
@@ -79,7 +81,16 @@ def test_tv_url_names_keep_the_single_preference_contract() -> None:
     assert names[-1] == "Clear the uncertain import marker after success"
     assert len(names) == TV_TASKS
     assert len(names) == len(set(names))
-    assert "{'startURL':tv_start_url}" in source
+    candidate = next(
+        task["ansible.builtin.copy"]["content"]
+        for parent in play["tasks"]
+        for task in parent.get("block", [])
+        if task["name"] == "Write the single startURL candidate"
+    )
+    env = Environment(undefined=StrictUndefined)
+    env.filters["to_json"] = json.dumps
+    url = "https://fixture.invalid/dashboard"
+    assert json.loads(env.from_string(candidate).render(tv_start_url=url)) == {"startURL": url}
     assert "tv_public_hash == tv_plan_hash" in source
     assert "tv_network_after.stdout == tv_network_before.stdout" in source
     assert "am force-stop de.ozerov.fully; am start -n de.ozerov.fully/.FullyActivity" in source

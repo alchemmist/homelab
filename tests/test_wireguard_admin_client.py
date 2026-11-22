@@ -3,11 +3,12 @@
 import unittest
 from pathlib import Path
 
+import yaml
+
 ROLE = Path(__file__).resolve().parents[1] / "ansible/roles/wireguard_admin_client"
 TASKS = (ROLE / "tasks/main.yml").read_text()
 DEFAULTS = (ROLE / "defaults/main.yml").read_text()
 
-MIN_NO_LOG_TASKS = 5
 MIN_PRIVILEGED_TASKS = 4
 MIN_DNS_TAGGED_TASKS = 4
 TEMPLATE = (ROLE / "templates/wg-socrat-admin.conf.j2").read_text()
@@ -36,12 +37,28 @@ class WireGuardAdminClientTests(unittest.TestCase):
 
     def test_private_key_is_generated_and_managed_without_logging(self) -> None:
         """Require local key generation, mode 0600, and no_log on key tasks."""
-        assert "wg genkey" in TASKS
-        assert "ansible.builtin.command: wg pubkey" in TASKS
-        assert 'stdin: "{{ wireguard_admin_private_key }}\\n"' in TASKS
+        tasks = {task["name"]: task for task in yaml.safe_load(TASKS)}
+        assert tasks["Generate Mac private key"]["ansible.builtin.command"] == "wg genkey"
+        derive = tasks["Derive Mac public key"]
+        assert derive["ansible.builtin.command"] == "wg pubkey"
+        assert derive["args"]["stdin"] == "{{ wireguard_admin_private_key }}\n"
         assert "ansible.builtin.shell:" not in TASKS
-        assert "mode: '0600'" in TASKS
-        assert TASKS.count("no_log: true") >= MIN_NO_LOG_TASKS
+        for name, module in (
+            ("Save generated Mac private key", "ansible.builtin.copy"),
+            ("Enforce Mac private key permissions", "ansible.builtin.file"),
+            ("Render WireGuard Mac profile", "ansible.builtin.template"),
+        ):
+            assert tasks[name][module]["mode"] == "0600"
+        for name in (
+            "Generate Mac private key",
+            "Save generated Mac private key",
+            "Enforce Mac private key permissions",
+            "Read Mac private key",
+            "Normalize Mac private key fact",
+            "Derive Mac public key",
+            "Render WireGuard Mac profile",
+        ):
+            assert tasks[name]["no_log"] is True
         assert "wg_socrat_nodes" in DEFAULTS
 
     def test_peer_defaults_are_distinct_bare_addresses_and_keys_come_from_inventory(self) -> None:

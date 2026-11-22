@@ -13,7 +13,7 @@
         mode: preserve
 
     - name: Validate the chart
-      ansible.builtin.command: "helm lint {{ syncthing_placement_chart }}"
+      ansible.builtin.command: helm lint {{ syncthing_placement_chart }}
       changed_when: false
 
     - name: Upgrade placement while retaining the installed values
@@ -32,8 +32,10 @@
           - 5m
           - --kubeconfig
           - /etc/rancher/k3s/k3s.yaml
+      changed_when: true
 
     - name: Wait for all configured Syncthing instances
-      ansible.builtin.command: kubectl -n syncthing rollout status deployment/syncthing --timeout=300s
+      ansible.builtin.command: >-
+        kubectl -n syncthing rollout status deployment/syncthing --timeout=300s
       changed_when: false
 ...

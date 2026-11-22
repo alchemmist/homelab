@@ -3,7 +3,8 @@
 import json
 import xml.etree.ElementTree as ET
 from urllib.parse import urlencode
-from start import kube, INVENTORY
+
+from start import INVENTORY, kube
 
 
 def remote_objects():

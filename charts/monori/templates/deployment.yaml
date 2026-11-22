@@ -73,7 +73,24 @@ spec:
       {{- end }}
       {{- end }}
       nodeSelector: { kubernetes.io/hostname: {{ .Values.statefulNodeName | quote }} }
-      {{- if .Values.requireExistingData }}
+      {{- if .Values.postgresEnabled }}
+      initContainers:
+      - name: require-monori-ledger
+        image: {{ include "monori.image" .Values.images.back }}
+        command: [/app/.venv/bin/python, -c]
+        args:
+          - |
+            import os, pathlib, psycopg
+            p=pathlib.Path('/app/data')
+            assert all((p/k).stat().st_size for k in ('.auth_secret','.encryption_key'))
+            with psycopg.connect(os.environ['MONORI_DATABASE_URL'],connect_timeout=6) as c:
+                assert c.execute("SELECT version_num FROM alembic_version").fetchall()==[('0022',)]
+                assert c.execute('SELECT EXISTS(SELECT FROM users), EXISTS(SELECT FROM accounts)').fetchone()==(True,True)
+            with psycopg.connect(os.environ['MONORI_CONSOLE_DATABASE_URL'],connect_timeout=6) as c:
+                assert c.execute("SELECT current_user,has_schema_privilege('public','CREATE')").fetchone()==('monori_console',False)
+        envFrom: [{secretRef: {name: monori-postgres}}]
+        volumeMounts: [{name: data, mountPath: /app/data, readOnly: true}, {name: pg-ca, mountPath: /pg-ca, readOnly: true}]
+      {{- else if .Values.requireExistingData }}
       initContainers:
       - name: require-existing-back
         image: {{ include "monori.image" .Values.images.back }}
@@ -87,7 +104,11 @@ spec:
       - name: back
         image: {{ include "monori.image" .Values.images.back }}
         imagePullPolicy: IfNotPresent
-        envFrom: [{ secretRef: { name: {{ .Values.secretName }} } }]
+        envFrom:
+        - secretRef: {name: {{ .Values.secretName }}}
+        {{- if .Values.postgresEnabled }}
+        - secretRef: {name: monori-postgres}
+        {{- end }}
         env:
         - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
         - { name: MONORI_SYNC_URL, value: http://monori-sync:8010 }
@@ -110,8 +131,16 @@ spec:
               optional: true
         {{- end }}
         ports: [{ name: http, containerPort: 8000 }]
-        volumeMounts: [{ name: data, mountPath: /app/data }]
+        volumeMounts:
+        - {name: data, mountPath: /app/data}
+        {{- if .Values.postgresEnabled }}
+        - {name: pg-ca, mountPath: /pg-ca, readOnly: true}
+        readinessProbe: {tcpSocket: {port: 8000}, periodSeconds: 4}
+        {{- end }}
       volumes:
+      {{- if .Values.postgresEnabled }}
+      - {name: pg-ca, configMap: {name: pg-common-ca}}
+      {{- end }}
       - name: data
         {{- if .Values.backClaim }}
         persistentVolumeClaim: {claimName: {{ .Values.backClaim | quote }}}

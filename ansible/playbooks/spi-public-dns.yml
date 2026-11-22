@@ -5,24 +5,30 @@
   become: true
   any_errors_fatal: true
   tasks:
-    - ansible.builtin.file:
+    - name: Create the SPI public DNS staging directory
+      ansible.builtin.file:
         path: /var/lib/homelab-spi-public-dns
         state: directory
-        mode: '0700'
-    - ansible.builtin.copy:
+        mode: "0700"
+    - name: Install the SPI public DNS plan and apply tool
+      ansible.builtin.copy:
         src: ../../scripts/spi-public-dns.py
         dest: /usr/local/sbin/homelab-spi-public-dns
-        mode: '0700'
-    - ansible.builtin.copy:
+        mode: "0700"
+    - name: Stage the proposed zone renderer for SPI public DNS
+      ansible.builtin.copy:
         src: ../../scripts/public_dns_zone.py
         dest: /var/lib/homelab-spi-public-dns/proposed.py
-        mode: '0700'
-    - ansible.builtin.command: /usr/local/sbin/homelab-spi-public-dns
+        mode: "0700"
+    - name: Compute the SPI public DNS plan
+      ansible.builtin.command: /usr/local/sbin/homelab-spi-public-dns
       register: dns_plan
       changed_when: false
-    - ansible.builtin.debug:
+    - name: Display the SPI public DNS plan
+      ansible.builtin.debug:
         var: dns_plan.stdout
-    - ansible.builtin.assert:
+    - name: Require the approved SPI public DNS plan hash
+      ansible.builtin.assert:
         that: (dns_plan.stdout | from_json).plan_hash == spi_public_dns_hash
       when: spi_public_dns_apply | default(false) | bool
 - name: Serial approved owned-zone refresh
@@ -32,7 +38,8 @@
   become: true
   any_errors_fatal: true
   tasks:
-    - ansible.builtin.command:
+    - name: Apply the approved SPI public DNS plan
+      ansible.builtin.command:
         argv: [/usr/local/sbin/homelab-spi-public-dns,
                --apply,
                --approve-plan-hash,

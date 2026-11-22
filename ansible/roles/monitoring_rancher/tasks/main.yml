@@ -7,8 +7,11 @@
 
 - name: Download verified Rancher dashboards chart
   ansible.builtin.get_url:
-    url: https://raw.githubusercontent.com/rancher/charts/release-v2.15/assets/rancher-monitoring-dashboards/rancher-monitoring-dashboards-{{ monitoring_rancher_chart_version }}.tgz
-    dest: "{{ monitoring_rancher_workdir }}/rancher-monitoring-dashboards-{{ monitoring_rancher_chart_version }}.tgz"
+    url: "https://raw.githubusercontent.com/rancher/charts/release-v2.15/assets/rancher-monitoring-\
+      dashboards/rancher-monitoring-dashboards-{{ monitoring_rancher_chart_version }}.tgz"
+    dest: >-
+      {{ monitoring_rancher_workdir }}/rancher-monitoring-dashboards-{{
+      monitoring_rancher_chart_version }}.tgz
     checksum: sha256:{{ monitoring_rancher_chart_sha256 }}
     mode: "0600"
 
@@ -26,7 +29,7 @@
 
 - name: Install the dashboard description helper
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../files/dashboard_descriptions.py"
+    src: "{{ playbook_dir | dirname }}/files/dashboard_descriptions.py"
     dest: "{{ monitoring_rancher_workdir }}/dashboard_descriptions.py"
     mode: "0600"
 
@@ -48,7 +51,9 @@
       - upgrade
       - --install
       - rancher-monitoring-dashboards
-      - "{{ monitoring_rancher_workdir }}/rancher-monitoring-dashboards-{{ monitoring_rancher_chart_version }}.tgz"
+      - >-
+        {{ monitoring_rancher_workdir }}/rancher-monitoring-dashboards-{{
+        monitoring_rancher_chart_version }}.tgz
       - --namespace
       - "{{ monitoring_rancher_namespace }}"
       - --values
@@ -61,6 +66,7 @@
       - --atomic
   environment:
     KUBECONFIG: "{{ monitoring_rancher_kubeconfig }}"
+  changed_when: true
 
 - name: Inspect the obsolete public Grafana release
   ansible.builtin.command:

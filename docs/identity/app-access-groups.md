@@ -13,6 +13,7 @@ Authentik administration roles merely to make an application visible.
 | `app-open-webui-user` | Open WebUI ordinary user |
 | `app-grafana-viewer` | Grafana Viewer |
 | `app-grafana-editor` | Grafana Editor, not GrafanaAdmin |
+| `app-harbor-user` | Harbor OIDC login only; no project role or system administration |
 | `app-wiki-reader` | Wiki reader |
 | `app-wiki-editor` | Wiki editor |
 | `app-lms-student` | LMS student |
@@ -87,14 +88,15 @@ group; there is no guessed admin role or fake account provisioning.
 
 ## Reserved groups are not working B2C grants
 
-The current reserved groups include `app-n8n-user`, `app-harbor-user`,
+The current reserved groups include `app-n8n-user`,
 `app-rancher-user`, `app-argocd-viewer` and discovered NetBird/SPI/RustFS groups.
 They were created empty without new admission. Existing native staff permissions
 were not changed. Their contracts remain blocked:
 
 - n8n: no reviewed native OIDC/JIT integration. An IdP gate is not an n8n account.
-- Harbor: project grants plus CLI/session revocation need separate acceptance;
-  observer issue #134 remains gated.
+- Harbor observer access remains gated (#134). The separate `app-harbor-user`
+  group admits personal OIDC login only. On offboarding remove any native Harbor
+  project grants separately; IdP removal alone does not revoke cached CLI access.
 - Rancher / Argo CD: staff infrastructure, separate native RBAC/cache adapters;
   no B2C cluster privileges granted by this rollout.
 - NetBird / SPI / RustFS: dedicated controllers and independent policies remain

@@ -12,18 +12,18 @@ frontNodeName: socrat-5
 images:
   front:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
-    tag: b8c12de11f9ed553b94e31ae1bad257c4f4409e0
-    digest: sha256:c3e15b81967fd9c186244a46ef7b286a910d00a656e87d292a07771f4e633d23
+    tag: 6a7608e27bb4a71486c9f41779b8bdfe84a527e0
+    digest: sha256:fbc2e135fe888f32c104f87d6a9b0bb6983c3aa6e41392f4ca1839c6b3eaae4f
     fallback: ghcr.io/alchemmist/homelab-monori-front:latest
   back:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
-    tag: b8c12de11f9ed553b94e31ae1bad257c4f4409e0
-    digest: sha256:a465c105d1b07348e0085999236b291adccd972c35e935a0302f90fcbad5a1a8
+    tag: 6a7608e27bb4a71486c9f41779b8bdfe84a527e0
+    digest: sha256:68507f5b9826501d35444c24aaad1a8a4d49fe90de76096f50502cbe140d5163
     fallback: ghcr.io/alchemmist/homelab-monori-back:latest
   sync:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
-    tag: 71cac3911993a05ee7e532c99d5abfa50faaa173
-    digest: sha256:762c3b18504541e195b99ee2999fe723a466ff0bccb06211c87c75a038d33dbd
+    tag: 3cec37a6ee3e16fdfa82d80215374ccdc82b0964
+    digest: sha256:d03fa6f58ed5fcc362871f1292007b975c93b30f1efb655a0b2756118a1b49d0
     fallback: ghcr.io/alchemmist/homelab-monori-sync:latest
 
 
@@ -32,6 +32,7 @@ imagePullSecrets:
 
 # Verified cold restore; single writers, original financial keys preserved.
 backReplicaCount: 1
+postgresEnabled: true
 syncReplicaCount: 1
 statefulRecreate: true
 

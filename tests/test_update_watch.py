@@ -8,6 +8,7 @@ from typing import NoReturn, TypedDict
 from unittest.mock import patch
 
 import pytest
+import yaml
 
 MODULE = Path("charts/monitoring-k3s/files/update_watch.py")
 
@@ -82,9 +83,10 @@ def test_failed_lookup_does_not_claim_an_update() -> None:
 
 def test_catalog_lists_open_webui() -> None:
     """Require the Open WebUI catalog pin recorded in the chart values."""
-    text = Path("charts/monitoring-k3s/values.yaml").read_text()
-    assert "github: open-webui/open-webui" in text
-    assert 'current: "0.12.3"' in text
+    catalog = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())["updateWatch"]
+    [target] = [target for target in catalog["targets"] if target["id"] == "open-webui"]
+    assert target["github"] == "open-webui/open-webui"
+    assert target["current"] == "0.12.3"
 
 
 @pytest.mark.parametrize("spec", [None, ModuleSpec("update_watch", loader=None)])
@@ -102,10 +104,15 @@ def test_loader_refuses_missing_spec_or_loader(spec: ModuleSpec | None) -> None:
 def test_import_and_fixture_evaluation_do_not_start_external_work() -> None:
     """Trap network, poller and HTTP-server entrypoints throughout the original cases."""
     with (
-        patch("urllib.request.urlopen", side_effect=AssertionError("network forbidden")) as network,
-        patch("threading.Thread", side_effect=AssertionError("poller forbidden")) as poller,
         patch(
-            "http.server.ThreadingHTTPServer", side_effect=AssertionError("server forbidden")
+            "urllib.request.urlopen", side_effect=AssertionError("network forbidden")
+        ) as network,
+        patch(
+            "threading.Thread", side_effect=AssertionError("poller forbidden")
+        ) as poller,
+        patch(
+            "http.server.ThreadingHTTPServer",
+            side_effect=AssertionError("server forbidden"),
         ) as server,
     ):
         test_open_webui_style_gap_is_an_update()
@@ -121,19 +128,23 @@ def test_statefulset_target_and_ambiguous_workload() -> None:
     import pytest
 
     watch = load_module()
-    assert watch.workload_ref({"statefulset": "openhands"}) == ("statefulsets", "openhands")
-    assert watch.workload_ref({"deployment": "open-webui"}) == ("deployments", "open-webui")
+    assert watch.workload_ref({"statefulset": "openhands"}) == (
+        "statefulsets",
+        "openhands",
+    )
+    assert watch.workload_ref({"deployment": "open-webui"}) == (
+        "deployments",
+        "open-webui",
+    )
     with pytest.raises(ValueError):
         watch.workload_ref({"deployment": "a", "statefulset": "b"})
 
 
 def test_openhands_uses_running_canvas_tag_not_sdk_version() -> None:
-    import yaml
-
     watch = load_module()
-    catalog = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())["updateWatch"][
-        "targets"
-    ]
+    catalog = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())[
+        "updateWatch"
+    ]["targets"]
     target = next(x for x in catalog if x["id"] == "openhands")
     assert target["github"] == "OpenHands/OpenHands"
     assert target["statefulset"] == "openhands"
@@ -149,3 +160,19 @@ def test_openhands_uses_running_canvas_tag_not_sdk_version() -> None:
     assert samples[0]["latest"] == "1.42.0"
     assert samples[0]["available"] == 1
     assert samples[0]["success"] == 1
+
+
+def test_searxng_uses_only_versioned_image_tags():
+    import io
+    import json
+
+    watch = load_module()
+    target = {"id": "searxng", "current": "2026.10.19", "source": "searxng-image-tags"}
+    for tags, expected in [
+        (["latest", "2026.11.21-c6ee3e9fd", "2099.1.1-dev"], 1),
+        ([], 0),
+    ]:
+        body = json.dumps({"results": [{"name": name} for name in tags]}).encode()
+        with patch("urllib.request.urlopen", return_value=io.BytesIO(body)):
+            sample = watch.evaluate([target], None, 1)[0]
+        assert (sample["success"], sample["available"]) == (expected, expected)

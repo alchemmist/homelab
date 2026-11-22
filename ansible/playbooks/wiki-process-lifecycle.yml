@@ -22,21 +22,23 @@
           - --
           - python
           - -c
-          - |
-            import pathlib, subprocess
-            changed = False
-            for directory in ['/data/repository', '/data/live/remote']:
-                if not (pathlib.Path(directory) / '.git/config').is_file():
-                    raise RuntimeError('Expected initialized Wiki repository: ' + directory)
-                for key in ['maintenance.autoDetach', 'gc.autoDetach']:
-                    command = ['git', '-C', directory, 'config', '--local']
-                    current = subprocess.run([*command, '--get', key], capture_output=True, text=True)
-                    if current.returncode not in (0, 1):
-                        raise RuntimeError('Cannot inspect Wiki Git configuration')
-                    if current.stdout.strip() != 'false':
-                        subprocess.run([*command, key, 'false'], check=True, capture_output=True)
-                        changed = True
-            print('changed' if changed else 'unchanged')
+          -
+            "import pathlib, subprocess\n\
+            changed = False\n\
+            for directory in ['/data/repository', '/data/live/remote']:\n\
+            \    if not (pathlib.Path(directory) / '.git/config').is_file():\n\
+            \        raise RuntimeError('Expected initialized Wiki repository: ' + directory)\n\
+            \    for key in ['maintenance.autoDetach', 'gc.autoDetach']:\n\
+            \        command = ['git', '-C', directory, 'config', '--local']\n\
+            \        current = subprocess.run([*command, '--get', key], capture_output=True,
+            text=True)\n\
+            \        if current.returncode not in (0, 1):\n\
+            \            raise RuntimeError('Cannot inspect Wiki Git configuration')\n\
+            \        if current.stdout.strip() != 'false':\n\
+            \            subprocess.run([*command, key, 'false'], check=True,
+            capture_output=True)\n\
+            \            changed = True\n\
+            print('changed' if changed else 'unchanged')\n"
       register: wiki_process_config
       changed_when: wiki_process_config.stdout | trim == 'changed'
 

@@ -135,6 +135,8 @@ def _deadline_check(start: float, deadline_seconds: float) -> Callable[[], None]
 
 def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60) -> None:
     """Stream a consistent SQLite backup to stdout within size and time bounds."""
+    if os.environ.get("SPI_POSTGRES_URL"):
+        raise ValueError("SQLite is not the active SPI database")
     if deadline_seconds <= 0 or max_bytes <= 0:
         raise ValueError("invalid bounds")
     start = time.monotonic()
