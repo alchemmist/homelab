@@ -1,5 +1,7 @@
 # RustFS foundation — private foundation live, public acceptance pending
 
+**22 November 2026 — public object reads.** HOME keeps the direct `/public/` ingress (priority 160). The NL controller does not watch `rustfs`; the `identity` public reader (priority 155) forwards anonymous GET/HEAD and Range to port 9000, without opening Secret discovery. On NL, host-network connections to remote reader pods use the `flannel.1` source `10.42.0.0/32`; allowing only `10.250.0.2/32` caused alternating 206/502 despite Ready pods. After #563 the tested MP4 returned four matching 1 MiB ranges on NL and the private root still redirected to login. DNS unchanged: direct Moscow-to-NL TCP was still unavailable. [Acceptance and limits](https://github.com/alchemmist/homelab/issues/557#issuecomment-7081522160).
+
 Actual runtime continuation2026-11-05: read `docs/rustfs/live-foundation-20261105.md`
 FIRST. RustFS+gateway ArgoSynced/Healthy at cde102777245b1a20fb79d1c00ebf499af9427a5;
 explicit tracked values-foundation-live.yaml enable private storage/OIDC/reader,

@@ -1,5 +1,7 @@
 # Публичный DNS alchemmist.xyz
 
+**22 November 2026 — Monori exception.** The November 12 general HOME/NL policy below does not describe `monori.alchemmist.xyz`. All four writers now select verified HOME and Moscow HTTPS entrances for this hostname, regardless of resolver country. NL is never a Monori A record (it remains an authority). On double probe failure the renderer retains both last-resort addresses. All three authorities returned the pair over UDP/TCP, TTL 60. Both served identical bytes with verified TLS; Moscow still depends on the private NL edge path. [Production evidence](https://github.com/alchemmist/homelab/pull/556#issuecomment-7080767043).
+
 Актуализировано **12 ноября 2026** (ns3 и проверка родительской делегации; старые приёмки датированы ниже). Текущий сетевой итог: [network-access.md](network-access.md). Это схема и результаты выполненных приёмок, не непрерывный healthcheck и не инструкция повторить migration apply.
 
 ## Текущее состояние 12 ноября

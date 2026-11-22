@@ -1,5 +1,7 @@
 # Harbor: registry кластера Socrat
 
+**22 November 2026 — slow registry upload, unresolved.** The GitHub runner's active HOME blob PATCH grew at ~14–16 KiB/s; the release eventually completed. A separate cluster-side 4 MiB PATCH took 0.876 s; a workstation 1 MiB PATCH via HOME took 0.285 s. These are different sources, not before/after evidence of a fix. `scripts/harbor-patch-probe.py` measures acknowledged bytes without publishing a manifest or tag. Cancellation returned 401; one 1 MiB diagnostic fragment remained. Reconcile cleanup permissions before another run; do not replay or delete registry files manually. Outstanding: matched GitHub runner/external/cluster measurements and transport/storage correlation. [Issue and results](https://github.com/alchemmist/homelab/issues/558).
+
 > **PostgreSQL (2026-11-20):** Рабочая БД registry — внешняя `pg-common/registry`; исходный PVC удерживается, blob storage не переносился. [Эксплуатация и CA](../docs/postgres-platform.md).
 
 Срез на **30 октября 2026**. Harbor уже развёрнут; распределённая HA-схема пока

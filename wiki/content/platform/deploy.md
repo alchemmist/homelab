@@ -157,3 +157,7 @@ Action меняет image tag/digest в существующих values, ком�
 | `403` после SSO | Отдельная native роль/RBAC, не отключать авторизацию |
 
 Не синкайте/пруньте посторонние приложения ради своего релиза. Общая деградация — повод остановить rollout и перейти к incident procedure.
+
+## When a Harbor release upload appears stuck
+
+A slow blob upload can spend minutes inside a single registry `PATCH` even when Harbor pods are Ready. Check whether the original publish job is still progressing before starting another one. Report the job URL, UTC interval, observed bytes and client network; omit credentials and upload-session URLs. A fast push from the cluster does not establish that the GitHub runner path is healthy. [November measurements and open investigation](https://github.com/alchemmist/homelab/issues/558).
