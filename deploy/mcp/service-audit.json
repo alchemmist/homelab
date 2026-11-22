@@ -300,6 +300,11 @@
       "reason": "charts/postgres-platform declares CNPG clusters, volumes, NetworkPolicies and metrics Services. SQL and primary metrics are not MCP endpoints; no database credential or new client is authorized."
     },
     {
+      "application": "redis-common",
+      "decision": "no-client",
+      "reason": "Source-only review: the Application stages shared TLS Redis and writer routing, not a read-only diagnostics endpoint. Argo CD covers deployment state; no Redis data access, credentials or MCP client are authorized."
+    },
+    {
       "application": "storage-tiers",
       "decision": "no-client",
       "reason": "deploy/storage/tiers defines StorageClasses, the local provisioner and its configuration/RBAC. This is volume lifecycle infrastructure with no declared diagnostic MCP endpoint."
