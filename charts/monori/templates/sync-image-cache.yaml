@@ -2,6 +2,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
+  namespace: {{ .Release.Namespace | quote }}
   name: monori-sync-image-cache
   annotations:
     argocd.argoproj.io/hook: PreSync
