@@ -14,11 +14,11 @@ LOCAL_STORAGE_CLAIM_PAIR_COUNT = 9
 BASE = "ba7a1f34d36b12ede791269b084e5957657758ae"
 HANDOFF = "c4a7c68938e36872841a1cce0f5441a5c6b78d7d"
 # Independent post-handoff owners: Wiki and Monori pg-common cutovers,
-# SPI egress/portable broker, and the retired LiteLLM legacy DB writer.
+# SPI pg-common egress/handoff routing, and the retired LiteLLM legacy DB writer.
 CUTOVERS = {
     "deploy/wiki-runtime/chart": "3c0c68dbd206138c4f4d96f5b3cafc34a8ad7141",
     "charts/monori": "093df2214564fd7db76e28da6975d267a0652431",
-    "charts/spi-triage": "f8e2efa00f12b8166376ac3639d760ca24297f0b",
+    "charts/spi-triage": "e4b09e31e3606cd4c9388373c50a519898e32d76",
     "charts/litellm-infra": "7b4786fb4cc2e722a010c4b483b87dc209ae8d12",
 }
 
