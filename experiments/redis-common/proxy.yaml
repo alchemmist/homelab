@@ -1,3 +1,4 @@
+---
 model_list:
   - model_name: fixture
     litellm_params:
@@ -10,3 +11,4 @@ general_settings:
     url: os.environ/TEST_REDIS_URL
 litellm_settings:
   num_retries: 0
+...
