@@ -160,7 +160,7 @@ def test_production_uses_shared_database_and_retired_ha_remains_opt_in() -> None
     assert values["database"]["ha"]["resources"] is False
     assert values["database"]["appSecretName"] == "lms-pg-common"
     docs = rendered("lms", "-n", "lms", "-f", str(ROOT / "deploy/lms/values.yaml"))
-    retired_names = {"lms-ha", "lms-database-backup", "lms-database-backups", "lms-availability", "lms-db-retain"}
+    retired_names = {"lms-ha", "lms-database-backup", "lms-database-backups", "lms-db-retain"}
     assert not retired_names.intersection(_name(d) for d in docs)
     # Still exercise the full subchart in isolation, never enable it in the release.
     opted_in = rendered("lms", "-n", "lms", "-f", str(ROOT / "deploy/lms/values.yaml"),

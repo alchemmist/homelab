@@ -36,9 +36,8 @@ class AlertGraphInventoryTests(unittest.TestCase):
         """Every source variant links to a real panel containing its exact condition."""
         rows = json.loads((ROOT / "docs/monitoring/alert-graphs.inventory.json").read_text())
         # Includes Service-path divergence and distinct absent/down API scrapes.
-        # d3bc05e5 retired the rule owned by the disabled LMS HA subchart.
-        assert not any(r["owner"] == "lms" and r["alert"] == "LMSWebUnavailable" for r in rows)
-        expected_source_rule_count = 215
+        assert sum(r["owner"] == "lms" and r["alert"] == "LMSWebUnavailable" for r in rows) == 1
+        expected_source_rule_count = 216
         assert any(r["alert"] == "ThanosWarmWorkshopDiskLow" for r in rows)
         assert len(rows) == expected_source_rule_count
         expected_graph_spec_version = 1

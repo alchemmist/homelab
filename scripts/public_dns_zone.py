@@ -3,6 +3,7 @@
 
 import argparse
 import socket
+import subprocess
 from pathlib import Path
 
 HOME = "109.173.40.247"
@@ -83,7 +84,27 @@ def healthy_addresses(home_up, vps_up):
     return chosen
 
 
-def render(serial, home_up, vps_up):
+def monori_addresses(home_ok, vps_ok):
+    """Prefer HOME; keep both last-resort addresses when neither path is verified."""
+    return [HOME] if home_ok else [VPS] if vps_ok else [HOME, VPS]
+
+
+def monori_https(address, port, timeout):
+    """Bound the entire verified HTTPS exchange, including slow response headers."""
+    host = "monori.alchemmist.xyz"
+    try:
+        result = subprocess.run(
+            ["curl", "--disable", "--noproxy", "*", "--silent", "--max-time", str(timeout),
+             "--resolve", f"{host}:{port}:{address}", "--output", "/dev/null",
+             "--write-out", "%{http_code}", f"https://{host}:{port}/"],
+            capture_output=True, text=True, timeout=timeout + 0.5, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0 and result.stdout == "200"
+
+
+def render(serial, home_up, vps_up, *, monori_health=None):
     """Execute render."""
     addresses = healthy_addresses(home_up, vps_up)
     lines = [
@@ -101,7 +122,10 @@ def render(serial, home_up, vps_up):
     for value in TXT:
         lines.append('@ IN TXT "%s"' % value)
     for name in FAILOVER:
-        for address in addresses:
+        selected = addresses
+        if name == "monori":
+            selected = monori_addresses(*(monori_health or (home_up, vps_up)))
+        for address in selected:
             lines.append("%s IN A %s" % (name, address))
     for name in sorted(STATIC_A):
         for address in STATIC_A[name]:
@@ -149,7 +173,15 @@ def main():
         if args.assume_vps == "down"
         else probe(args.vps_target, args.port, args.timeout)
     )
-    text = render(args.serial, home_up, vps_up)
+    # Explicit assume flags keep offline acceptance deterministic.
+    def checked(mode, up, target):
+        return up and (mode != "probe" or monori_https(target, args.port, args.timeout))
+
+    monori_health = (
+        checked(args.assume_home, home_up, args.home_target),
+        checked(args.assume_vps, vps_up, args.vps_target),
+    )
+    text = render(args.serial, home_up, vps_up, monori_health=monori_health)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     previous = args.output.read_text() if args.output.exists() else ""
     if previous != text:
