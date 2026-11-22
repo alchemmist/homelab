@@ -162,7 +162,7 @@ Home сюда не входит. Это системная кнопка, лау�
 
 ### Исходники и установка помощников
 
-Исходники YouTube и Grafana — Smali-код с манифестами в `android/tv-mode/` и `android/tv-grafana/`. Их можно пересобрать на машине с Java командой `./android/build.sh`: Apktool и uber-apk-signer закреплены по версии и SHA-256; скрипт проверяет, что подпись совместима с установленными на ТВ APK. APK попадают в `android/releases/`. `tv-hdmi.apk` — сохранённый оригинальный подписанный APK: исходный ключ подписи HDMI-помощника в репозитории отсутствует.
+Исходники YouTube и Grafana — Smali-код с манифестами в `deploy/tv/android/tv-mode/` и `deploy/tv/android/tv-grafana/`. Их можно пересобрать на машине с Java командой `./android/build.sh`: Apktool и uber-apk-signer закреплены по версии и SHA-256; скрипт проверяет, что подпись совместима с установленными на ТВ APK. APK попадают в `deploy/tv/android/releases/`. `tv-hdmi.apk` — сохранённый оригинальный подписанный APK: исходный ключ подписи HDMI-помощника в репозитории отсутствует.
 
 Плейбук `ansible/playbooks/tv-admin.yml` устанавливает/обновляет все три homelab-помощника и выдаёт VPN/secure-settings разрешения, поддерживает нужные приложения в whitelist standby и удаляет Happ. Он не устанавливает Fully, tvQuickActions или WireGuard. WireGuard-профили импортируются на ТВ вручную; их приватные ключи не хранятся в репозитории. Плейбук также не переписывает приватную базу назначений кнопок tvQuickActions — их задают вручную по инструкции выше.
 

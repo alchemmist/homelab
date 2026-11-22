@@ -127,7 +127,7 @@
 
     - name: Copy homelab Android TV helper APKs
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../android/releases/{{ item.name }}"
+        src: "{{ playbook_dir }}/../../deploy/tv/android/releases/{{ item.name }}"
         dest: "{{ homelab_tv_helper_apk_dir }}/{{ item.name }}"
         mode: "0644"
       loop: "{{ homelab_tv_helper_apks }}"
