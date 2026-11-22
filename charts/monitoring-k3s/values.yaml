@@ -277,7 +277,7 @@ updateWatch:
       github: n8n-io/n8n
     - id: authentik
       title: Authentik
-      current: 2026.8.5
+      current: 2026.8.6
       github: goauthentik/authentik
     - id: litellm
       title: LiteLLM
