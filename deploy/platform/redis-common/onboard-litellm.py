@@ -12,7 +12,7 @@ COMMANDS = (
     "info ping get set setex psetex mget mset del exists ttl pttl expire pexpire incr incrby incrbyfloat "
     "decr decrby hget hset hgetall hincrby hdel hmget eval evalsha script|load multi exec discard "
     "publish subscribe unsubscribe zadd zcount zcard zrange zrem zremrangebyscore lpush rpush lrange "
-    "ltrim client|setinfo"
+    "ltrim client|setinfo time"
 ).split()
 
 
@@ -97,7 +97,8 @@ def main():
         existing = [s for s in lines if s.split()[:2] == ["user", u]]
         if existing == [line]:
             continue
-        if existing not in ([], ["user " + u + " off"]):
+        prior_release = u == "litellm" and existing == [line.removesuffix(" +time")]
+        if not prior_release and existing not in ([], ["user " + u + " off"]):
             sys.exit("Conflicting persistent ACL: " + u)
         lines = [s for s in lines if s not in existing] + [line]
     new = base64.b64encode(("\n".join(lines) + "\n").encode()).decode()
