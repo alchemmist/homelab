@@ -250,6 +250,19 @@ class StatefulBoundaries(unittest.TestCase):
                     # separate contracts. Compare *all* current documents first,
                     # without injecting historical values into the current chart.
                     expected = historical(CUTOVERS[chart])
+                    if chart == "charts/monori":
+                        # Schema delivery adds exactly one pre-rollout Job and
+                        # advances only the backend init check, not placement.
+                        job = current.pop(("Job", "monori-schema-0022"))
+                        annotations = _mapping(_mapping(job["metadata"])["annotations"])
+                        self.assertEqual(annotations["argocd.argoproj.io/hook"], "PreSync")
+                        backend = expected[("Deployment", "monori-back")]
+                        template = _mapping(_mapping(backend["spec"])["template"])
+                        pod = _mapping(template["spec"])
+                        init = _mapping(_sequence(pod["initContainers"])[0])
+                        args = _sequence(init["args"])
+                        args[0] = _text(args[0]).replace("[('0021',)]", "[('0022',)]")
+                        init["args"] = args
                     if chart == "charts/litellm-infra":
                         # fe3903c2 retired the dormant DB controller and Service;
                         # 731505f8 later retired only their dedicated PVC here.

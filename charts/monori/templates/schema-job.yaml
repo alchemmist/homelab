@@ -10,6 +10,8 @@ spec:
   activeDeadlineSeconds: 120
   backoffLimit: 0
   template:
+    metadata:
+      labels: {maintenance: monori-schema}
     spec:
       restartPolicy: Never
       automountServiceAccountToken: false
@@ -27,6 +29,7 @@ spec:
             - |
               import os, pathlib, psycopg
               with psycopg.connect(os.environ['MIGRATION_URL'], connect_timeout=6) as db:
+                  db.execute("SET LOCAL ROLE monori_owner")
                   db.execute("SET LOCAL lock_timeout = '8s'")
                   db.execute('LOCK TABLE public.alembic_version IN EXCLUSIVE MODE')
                   version = db.execute('SELECT version_num FROM public.alembic_version').fetchall()
