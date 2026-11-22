@@ -28,7 +28,7 @@ POLICY = {
 }
 
 
-def main():
+def main() -> None:
     fixture = sys.argv[1:] == ["--run", "--synthetic-hour"]
     role = (
         sys.argv[2]
@@ -98,19 +98,12 @@ echo 'workshop read-only policy attached'
         for prefix, n in [("ADMIN", ROOT), ("READER", name)]
         for s, k in [("A", "access"), ("S", "secret")]
     ]
-    c = {
-        "name": "provision",
-        **base,
-        "command": ["sh", "-ec", script],
-        "volumeMounts": [tmp, trust],
-        "env": env
-        + [
-            {
-                "name": "POLICY",
-                "value": json.dumps(POLICY).replace("thanos-workshop", bucket),
-            }
-        ],
+    policy_value = {
+        "name": "POLICY",
+        "value": json.dumps(POLICY).replace("thanos-workshop", bucket),
     }
+    mounts = [tmp, trust]
+    command = script
     if role:
         policy = json.loads(json.dumps(POLICY))
         policy["Statement"][0]["Action"].append("s3:ListBucketMultipartUploads")
@@ -126,8 +119,8 @@ echo 'workshop read-only policy attached'
             policy["Statement"].append({"Effect": "Allow", "Action": ["s3:PutObject"],
                 "Resource": ["arn:aws:s3:::thanos-workshop/*/" + f + "-mark.json"
                              for f in ("deletion", "no-downsample", "no-compact")]})
-        c["env"][-1]["value"] = json.dumps(policy)
-        c["command"][2] = script.replace(
+        policy_value["value"] = json.dumps(policy)
+        command = script.replace(
             "thanos-workshop-read", "thanos-workshop-" + role
         ).replace(
             "workshop read-only policy attached",
@@ -157,7 +150,7 @@ echo 'workshop read-only policy attached'
             }
         ]
         for res in ("300000", "3600000"):
-            c["volumeMounts"].append(
+            mounts.append(
                 {
                     "name": "fixture",
                     "mountPath": "/fixture/" + res,
@@ -165,7 +158,7 @@ echo 'workshop read-only policy attached'
                     "readOnly": True,
                 }
             )
-        cmd = script.replace(
+        command = script.replace(
             "thanos-workshop-read", "thanos-hour-fixture-read"
         ).replace(
             "printf '%s'",
@@ -178,7 +171,13 @@ cd /fixture/3600000
 find . -type f -exec sha256sum {} \\; | sort
 printf '%s'""",
         )
-        c["command"] = ["sh", "-ec", cmd]
+    c = {
+        "name": "provision",
+        **base,
+        "command": ["sh", "-ec", command],
+        "volumeMounts": mounts,
+        "env": [*env, policy_value],
+    }
     create(
         "Job",
         {

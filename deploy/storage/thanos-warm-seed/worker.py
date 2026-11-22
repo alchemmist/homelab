@@ -6,6 +6,7 @@ import json
 import ssl
 import time
 from pathlib import Path
+from typing import TypedDict
 
 ROOT = Path("/source")
 HOST = "thanos-warm-api:9000"
@@ -14,12 +15,21 @@ RATE = 24 * 2**20
 CTX = ssl.create_default_context(cafile="/trust/ca.crt")
 
 
-def digest_local(path):
+class Capability(TypedDict):
+    """Expected size and per-method signed paths for one object."""
+
+    bytes: int
+    HEAD: str
+    GET: str
+    PUT: str
+
+
+def digest_local(path: Path) -> str:
     with path.open("rb") as f:
         return hashlib.file_digest(f, "sha256").hexdigest()
 
 
-def transfer(key, spec):
+def transfer(key: str, spec: Capability) -> str:
     path = ROOT / key
     if (
         path.resolve() != path
@@ -71,8 +81,11 @@ def transfer(key, spec):
         conn.close()
 
 
-def main():
-    batch = json.loads(Path("/caps/keys.json").read_text())
+def main() -> None:
+    batch: dict[str, Capability] = json.loads(Path("/caps/keys.json").read_text())
+    for spec in batch.values():
+        if not Capability.__required_keys__.issubset(spec):
+            raise ValueError("incomplete transfer capability")
     block = None
     manifest = {}
     total = 0

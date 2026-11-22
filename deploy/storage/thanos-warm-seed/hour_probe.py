@@ -24,9 +24,9 @@ print('Only 1h replicated; files matched SHA-256:',len(got),flush=True)
 """
 
 
-def main():
+def main() -> None:
     logs = kube("logs", "job/thanos-hour-fixture-reader-bootstrap", "-c", "provision")
-    hashes = {k: h for h, k in re.findall(r"^([0-9a-f]{64})  \./([^\n]+)$", logs, re.M)}
+    hashes = {k: h for h, k in re.findall(r"^([0-9a-f]{64})  \./([^\n]+)$", logs, re.MULTILINE)}
     assert any(k.endswith("/meta.json") for k in hashes)
     cmd = [
         "tools",

@@ -1,0 +1,4 @@
+{
+  "include": ["deploy/storage/thanos-warm-seed/*.py"],
+  "rules": ["ANN001", "ANN002", "ANN201", "ANN202", "FURB167", "UP017"]
+}

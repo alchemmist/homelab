@@ -33,7 +33,7 @@ raise TimeoutError('no new journaled block verified during observation')
 """
 
 
-def main():
+def main() -> None:
     baseline = json.loads(Path(sys.argv[1]).read_bytes())["uploaded"]
     assert baseline and all(re.fullmatch("[0-9A-HJKMNP-TV-Z]{26}", u) for u in baseline)
     pod = json.loads(
