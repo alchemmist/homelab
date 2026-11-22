@@ -133,6 +133,7 @@ def test_python_inputs_use_owned_paths(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(python_inputs, "owned", owned)
     assert python_inputs.python_inputs(["scripts/", "tests/"]) == scripts + tests
+    assert python_inputs.python_inputs(["tests/", "scripts/", "tests/"]) == tests + scripts
 
 
 @pytest.mark.parametrize(

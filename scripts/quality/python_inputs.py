@@ -19,7 +19,7 @@ def python_inputs(roots: list[str]) -> list[str]:
             message = f"No tracked owned Python inputs in {root}"
             raise ValueError(message)
         result.extend(selected)
-    return result
+    return list(dict.fromkeys(result))
 
 
 if __name__ == "__main__":
