@@ -606,7 +606,10 @@ def test_compressed_lock_is_bound_to_manifest_and_audited(
     assert posted == [("fixture-package", "1.0.0")]
 
 
-@pytest.mark.parametrize("data", [gzip.compress(b"x" * 2048), b"truncated"])
+@pytest.mark.parametrize(
+    "data",
+    [gzip.compress(b"x" * 2048), b"not gzip", gzip.compress(b"{}")[:-1]],
+)
 def test_compressed_lock_refuses_bounded_expansion_and_corruption(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, data: bytes
 ) -> None:
