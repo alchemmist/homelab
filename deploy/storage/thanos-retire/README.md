@@ -86,3 +86,13 @@ archive or downloading the segment again is therefore not a repair for this
 record. Preserve the archive, original block and marks. Before replacing any
 block, validate a candidate offline, including strict historical queries and
 lineage/coverage; do not infer complete coverage from an overlapping interval.
+
+The v2 index entry for series ref `88792714` (series and symbol table CRC32C
+checked) maps the exact failing chunk to `node_systemd_unit_state` for
+`dbus.socket`, `state="activating"`, `instance="192.168.0.24:9100"` on socrat-1.
+Its indexed span is 2026-11-17 04:20:04.097–04:29:59.097 UTC inclusive.
+A strict raw-only 10-minute range vector, matching all stored labels and
+restricted to the workshop Store, returned HTTP 422 `EOF` for that window.
+The same query moved ten minutes earlier and later returned 120 samples each.
+The Prometheus sidecar and the separate 5m/1h Stores advertise time ranges
+excluding this date. Do not infer the missing values from adjacent samples.
