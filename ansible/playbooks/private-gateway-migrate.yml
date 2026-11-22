@@ -65,7 +65,7 @@
 
     - name: Install manifest comparison helper
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../files/helm_manifest_changed.py"
+        src: "{{ playbook_dir | dirname }}/files/helm_manifest_changed.py"
         dest: "{{ private_gateway_directory }}/helm_manifest_changed.py"
         mode: '0600'
 
@@ -74,6 +74,7 @@
       ansible.builtin.command:
         argv: [python3,
                "{{ private_gateway_directory }}/helm_manifest_changed.py",
+               --plan,
                --release,
                private-gateway,
                --chart,
@@ -137,7 +138,7 @@
                --wait,
                --timeout,
                5m]
-      when: (private_gateway_diff.stdout | from_json).changed
+      when: "{'install': true, 'upgrade': true, 'current': false}[private_gateway_diff.stdout]"
       changed_when: true
 
     - name: Wait for the private-gateway DaemonSet to be Ready

@@ -66,11 +66,13 @@
           ansible.builtin.command: python3 {{ recovery }}/prepare_runtime.py {{ image }} {{ candidate }}/primary
           async: 240
           poll: 3
+          changed_when: true
         - name: Validate candidate on copied DB/certs in isolated network namespace
           ansible.builtin.command: python3 {{ recovery }}/smoke_test.py --runtime-root {{ candidate }}
           async: 180
           poll: 3
           register: smoke
+          changed_when: true
         - name: Record the isolated smoke acceptance receipt
           ansible.builtin.copy:
             content: '{{ smoke.stdout }}'
@@ -86,4 +88,5 @@
             mode: '0700'
         - name: Atomic locked directory exchange; no unit or workload restart
           ansible.builtin.command: python3 {{ recovery }}/promote.py --candidate {{ candidate }} --old-image {{ old_image }} --new-image {{ image }}
+          changed_when: true
 ...

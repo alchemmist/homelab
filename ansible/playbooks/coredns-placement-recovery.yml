@@ -36,30 +36,36 @@
         candidate: '{{ lookup("file", coredns_recovery_private_dir + "/candidate.json") | from_json }}'
         patch: '{{ lookup("file", coredns_recovery_private_dir + "/patch.json") | from_json }}'
       no_log: true
-    - ansible.builtin.stat:
+    - name: Inspect the CoreDNS manifest preimage
+      ansible.builtin.stat:
         path: '{{ manifest_path }}'
         checksum_algorithm: sha256
       register: preimage
-    - ansible.builtin.stat:
+    - name: Inspect the recovery receipt directory
+      ansible.builtin.stat:
         path: '{{ recovery_root }}'
       register: receipt
-    - ansible.builtin.assert:
+    - name: Require the expected preimage and no prior attempt
+      ansible.builtin.assert:
         that:
           - preimage.stat.checksum == expected_preimage
           - not receipt.stat.exists
         fail_msg: 'STOP: preimage drift or previous attempt; inspect before retry.'
-    - ansible.builtin.file:
+    - name: Create a private recovery directory
+      ansible.builtin.file:
         path: '{{ recovery_root }}'
         state: directory
         owner: root
         group: root
         mode: '0700'
-    - ansible.builtin.copy:
+    - name: Preserve the original manifest
+      ansible.builtin.copy:
         src: '{{ manifest_path }}'
         dest: '{{ recovery_root }}/before.yaml'
         remote_src: true
         mode: '0600'
-    - ansible.builtin.copy:
+    - name: Stage the reviewed recovery candidate
+      ansible.builtin.copy:
         src: '{{ coredns_recovery_private_dir }}/candidate.json'
         dest: '{{ recovery_root }}/candidate.json'
         owner: root
@@ -73,7 +79,8 @@
   become: true
   vars: *connection
   tasks:
-    - ansible.builtin.command:
+    - name: Apply the reviewed CoreDNS placement patch
+      ansible.builtin.command:
         argv:
           - /usr/local/bin/k3s
           - kubectl

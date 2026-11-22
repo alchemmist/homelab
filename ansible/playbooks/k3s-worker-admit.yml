@@ -1,5 +1,6 @@
 ---
-- ansible.builtin.import_playbook: k3s-worker-verify.yml
+- name: Import k3s worker verify playbook
+  ansible.builtin.import_playbook: k3s-worker-verify.yml
 
 - name: Admit the verified worker for normal scheduling
   hosts: socrat-0
@@ -36,6 +37,7 @@
       ansible.builtin.command: kubectl taint node socrat-3 homelab.io/bootstrap:NoSchedule-
       when: >-
         'homelab.io/bootstrap' in ((worker_admission_node.stdout | from_json).spec.taints | default([]) | map(attribute='key') | list)
+      changed_when: true
 
     - name: Confirm all four nodes are Ready
       ansible.builtin.command: kubectl wait --for=condition=Ready node/socrat-0 node/socrat-1 node/socrat-2 node/socrat-3 --timeout=60s

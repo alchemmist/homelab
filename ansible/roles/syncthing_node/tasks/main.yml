@@ -12,26 +12,34 @@
     homelab_user_uid: "{{ ansible_facts.getent_passwd[homelab_user][1] }}"
 
 - name: Stop legacy user Syncthing service if user manager is available
-  ansible.builtin.command: systemctl --user stop syncthing.service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: syncthing.service
+    state: stopped
   become: true
   become_user: "{{ homelab_user }}"
   environment:
     XDG_RUNTIME_DIR: "/run/user/{{ homelab_user_uid }}"
     DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ homelab_user_uid }}/bus"
+  when: not ansible_check_mode
   register: syncthing_user_stop
   failed_when: false
-  changed_when: syncthing_user_stop.rc == 0
+  changed_when: syncthing_user_stop is succeeded
 
 - name: Disable legacy user Syncthing service if user manager is available
-  ansible.builtin.command: systemctl --user disable syncthing.service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: syncthing.service
+    enabled: false
   become: true
   become_user: "{{ homelab_user }}"
   environment:
     XDG_RUNTIME_DIR: "/run/user/{{ homelab_user_uid }}"
     DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ homelab_user_uid }}/bus"
+  when: not ansible_check_mode
   register: syncthing_user_disable
   failed_when: false
-  changed_when: syncthing_user_disable.rc == 0
+  changed_when: syncthing_user_disable is succeeded
 
 - name: Remove legacy user Syncthing autostart symlink
   ansible.builtin.file:

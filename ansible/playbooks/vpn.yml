@@ -19,7 +19,9 @@
     - vpn_legacy_network
   tasks:
     - name: Check that the native VPN service is stopped
-      ansible.builtin.command: systemctl show x-ui.service --property=ActiveState --value
+      homelab_systemd_probe:
+        units: [x-ui.service]
+        property: ActiveState
       register: vpn_native_state
       changed_when: false
 
@@ -125,7 +127,9 @@
       when: ansible_facts.services.get('docker.service', {}).get('state') == 'running'
 
     - name: Inspect host container units
-      ansible.builtin.command: "systemctl show {{ item }} --property=LoadState --value"
+      homelab_systemd_probe:
+        units: ["{{ item }}"]
+        property: LoadState
       loop:
         - docker.socket
         - docker.service
@@ -143,7 +147,8 @@
         label: "{{ item.item }}"
       when:
         - item.stdout in ['loaded', 'masked']
-        - vpn_docker_containers.stdout | default('') | trim == ''
+        - vpn_docker_containers.stdout | default('') | trim | length == 0
 
-- ansible.builtin.import_playbook: vpn-edge.yml
+- name: Import vpn edge playbook
+  ansible.builtin.import_playbook: vpn-edge.yml
 ...

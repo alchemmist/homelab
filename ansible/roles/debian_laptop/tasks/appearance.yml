@@ -21,12 +21,10 @@
       picture-uri='file://{{ homelab_wallpaper_path }}'
       picture-options='zoom'
     mode: '0644'
-  register: homelab_wallpaper_defaults
+  notify: Compile the wallpaper defaults
 
-- name: Compile the wallpaper defaults
-  ansible.builtin.command: dconf update
-  changed_when: true
-  when: homelab_wallpaper_defaults.changed
+- name: Apply the pending wallpaper defaults before continuing
+  ansible.builtin.meta: flush_handlers
 
 - name: Resolve the graphical account UID
   ansible.builtin.command: "id -u {{ homelab_user }}"

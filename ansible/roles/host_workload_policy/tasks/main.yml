@@ -78,26 +78,34 @@
     host_policy_user_uid: "{{ ansible_facts.getent_passwd[homelab_user][1] }}"
 
 - name: Stop legacy OpenClaw user service if present
-  ansible.builtin.command: systemctl --user stop openclaw-gateway.service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: openclaw-gateway.service
+    state: stopped
   become: true
   become_user: "{{ homelab_user }}"
   environment:
     XDG_RUNTIME_DIR: "/run/user/{{ host_policy_user_uid }}"
     DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ host_policy_user_uid }}/bus"
+  when: not ansible_check_mode
   register: openclaw_stop
   failed_when: false
-  changed_when: openclaw_stop.rc == 0
+  changed_when: openclaw_stop is succeeded
 
 - name: Disable legacy OpenClaw user service if present
-  ansible.builtin.command: systemctl --user disable openclaw-gateway.service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: openclaw-gateway.service
+    enabled: false
   become: true
   become_user: "{{ homelab_user }}"
   environment:
     XDG_RUNTIME_DIR: "/run/user/{{ host_policy_user_uid }}"
     DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ host_policy_user_uid }}/bus"
+  when: not ansible_check_mode
   register: openclaw_disable
   failed_when: false
-  changed_when: openclaw_disable.rc == 0
+  changed_when: openclaw_disable is succeeded
 
 - name: Remove legacy OpenClaw files
   ansible.builtin.command: >-
@@ -110,12 +118,15 @@
   changed_when: false
 
 - name: Reload homelab user systemd manager after OpenClaw cleanup
-  ansible.builtin.command: systemctl --user daemon-reload
+  ansible.builtin.systemd_service:
+    scope: user
+    daemon_reload: true
   become: true
   become_user: "{{ homelab_user }}"
   environment:
     XDG_RUNTIME_DIR: "/run/user/{{ host_policy_user_uid }}"
     DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ host_policy_user_uid }}/bus"
+  when: not ansible_check_mode
   register: openclaw_daemon_reload
   failed_when: false
   changed_when: false

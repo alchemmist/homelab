@@ -40,7 +40,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 6b495f02682a7907561662b6bef398daa19249deedb5709539958b52fc00c6aa
+          graph-digest: 8660a1a0c84c5158f73f860d91741fe1c48b4950264d91a9abd75f9529d61b3f
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -86,7 +86,7 @@ jobs:
           adapter: native
           report-path: reports/secrets.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 6b495f02682a7907561662b6bef398daa19249deedb5709539958b52fc00c6aa
+          graph-digest: 8660a1a0c84c5158f73f860d91741fe1c48b4950264d91a9abd75f9529d61b3f
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -136,7 +136,7 @@ jobs:
           adapter: native
           report-path: reports/javascript.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 6b495f02682a7907561662b6bef398daa19249deedb5709539958b52fc00c6aa
+          graph-digest: 8660a1a0c84c5158f73f860d91741fe1c48b4950264d91a9abd75f9529d61b3f
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -187,7 +187,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 6b495f02682a7907561662b6bef398daa19249deedb5709539958b52fc00c6aa
+          graph-digest: 8660a1a0c84c5158f73f860d91741fe1c48b4950264d91a9abd75f9529d61b3f
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -241,7 +241,7 @@ jobs:
           adapter: native
           report-path: reports/docker.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 6b495f02682a7907561662b6bef398daa19249deedb5709539958b52fc00c6aa
+          graph-digest: 8660a1a0c84c5158f73f860d91741fe1c48b4950264d91a9abd75f9529d61b3f
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -291,7 +291,7 @@ jobs:
           adapter: native
           report-path: reports/workflow.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 6b495f02682a7907561662b6bef398daa19249deedb5709539958b52fc00c6aa
+          graph-digest: 8660a1a0c84c5158f73f860d91741fe1c48b4950264d91a9abd75f9529d61b3f
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -313,4 +313,52 @@ jobs:
       - graph
     env:
       GH_TOKEN: ${{ github.token }}
+    timeout-minutes: 5
+  ansible:
+    name: Playbook safety
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: 'false'
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - run: uv sync --locked
+      - run: uv run python scripts/quality/install_collections.py
+      - run: uv run python scripts/quality/lint.py ansible
+        name: Run Playbook safety
+        id: quality-command
+        continue-on-error: true
+      - name: Collect Playbook safety result
+        id: quality-result
+        if: always()
+        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
+        with:
+          operation: collect
+          node-id: ansible
+          title: Playbook safety
+          adapter: native
+          report-path: reports/ansible.json
+          command-outcome: ${{ steps.quality-command.outcome }}
+          graph-digest: 8660a1a0c84c5158f73f860d91741fe1c48b4950264d91a9abd75f9529d61b3f
+          approval-findings: 'false'
+          approval-files: 'false'
+          approval-node: 'false'
+      - name: Upload Playbook safety result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: quality-result-ansible-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/ansible.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce Playbook safety result
+        if: always()
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
+        run: exit "${EXIT_CODE:-2}"
+    needs:
+      - ownership
     timeout-minutes: 5

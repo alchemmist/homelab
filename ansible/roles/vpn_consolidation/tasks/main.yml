@@ -99,7 +99,10 @@
     mode: "0700"
 
 - name: Allocate a private migration snapshot
-  ansible.builtin.command: mktemp -d /var/backups/homelab-vpn/consolidation-XXXXXXXX
+  ansible.builtin.tempfile:
+    path: /var/backups/homelab-vpn
+    prefix: consolidation-
+    state: directory
   register: vpn_consolidation_backup
   changed_when: true
 
@@ -130,7 +133,7 @@
     - name: Back up both databases and capture all subscriptions
       ansible.builtin.command: >-
         /usr/bin/python3 /usr/local/sbin/homelab-verify-vpn snapshot
-        --directory {{ vpn_consolidation_backup.stdout }}
+        --directory {{ vpn_consolidation_backup.path }}
       changed_when: true
 
     - name: Stage the unified release without database writers
@@ -182,7 +185,7 @@
     - name: Verify VPN configuration and subscriptions are unchanged
       ansible.builtin.command: >-
         /usr/bin/python3 /usr/local/sbin/homelab-verify-vpn verify
-        --directory {{ vpn_consolidation_backup.stdout }}
+        --directory {{ vpn_consolidation_backup.path }}
       changed_when: false
 
     - name: Verify the authenticated public VPN tunnel after migration
@@ -203,6 +206,7 @@
       when:
         - vpn_consolidation_cutover | default(false)
         - vpn_consolidation_previous | length > 0
+      changed_when: vpn_consolidation_stop_new.rc == 0
 
     - name: Restore the former canonical release
       ansible.builtin.command: >-
@@ -215,6 +219,7 @@
         - vpn_consolidation_cutover | default(false)
         - vpn_consolidation_releases | length > 0
         - vpn_consolidation_previous | length == 0
+      changed_when: true
 
     - name: Remove a newly created canonical release on failure
       ansible.builtin.command: >-
@@ -225,6 +230,8 @@
       when:
         - vpn_consolidation_cutover | default(false)
         - vpn_consolidation_releases | length == 0
+      register: release_removal
+      changed_when: "'uninstalled' in release_removal.stdout"
 
     - name: Ensure unified writers are gone before restoring old deployments
       ansible.builtin.command: >-
@@ -234,6 +241,7 @@
       when:
         - vpn_consolidation_cutover | default(false)
         - vpn_consolidation_previous | length > 0
+      changed_when: false
 
     - name: Restore former VPN replica counts
       ansible.builtin.command: >-
@@ -245,6 +253,7 @@
       delegate_to: socrat-0
       become: false
       when: vpn_consolidation_cutover | default(false)
+      changed_when: true
 
     - name: Wait for restored VPN workloads
       ansible.builtin.command: >-
@@ -258,6 +267,7 @@
       when:
         - vpn_consolidation_cutover | default(false)
         - item.spec.replicas | int > 0
+      changed_when: false
 
     - name: Report consolidation failure
       ansible.builtin.fail:
@@ -283,6 +293,8 @@
   loop: [x-ui-lab, x-ui-legacy]
   delegate_to: socrat-0
   become: false
+  register: release_removal
+  changed_when: "'uninstalled' in release_removal.stdout"
 
 - name: Remove obsolete namespaces without touching host data
   ansible.builtin.command: >-
@@ -290,4 +302,6 @@
   loop: [x-ui-lab, x-ui-legacy]
   delegate_to: socrat-0
   become: false
+  register: namespace_removal
+  changed_when: namespace_removal.stdout | length > 0
 ...

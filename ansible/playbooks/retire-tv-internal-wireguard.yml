@@ -5,16 +5,20 @@
   become: true
   any_errors_fatal: true
   tasks:
-    - ansible.builtin.copy:
+    - name: Install the scoped TV retirement helper
+      ansible.builtin.copy:
         src: ../../scripts/retire-tv-internal-wireguard.py
         dest: /usr/local/sbin/homelab-retire-tv-internal-wireguard
         mode: '0700'
-    - ansible.builtin.command: /usr/local/sbin/homelab-retire-tv-internal-wireguard
+    - name: Inspect the TV peer retirement plan
+      ansible.builtin.command: /usr/local/sbin/homelab-retire-tv-internal-wireguard
       changed_when: false
       register: tv_peer_plan
-    - ansible.builtin.debug:
+    - name: Report the host retirement plan
+      ansible.builtin.debug:
         msg: "{{ inventory_hostname }} {{ tv_peer_plan.stdout }}"
-    - ansible.builtin.assert:
+    - name: Require the approved per-host plan hash
+      ansible.builtin.assert:
         that: (tv_peer_plan.stdout | from_json).plan_hash == tv_peer_hashes[inventory_hostname]
       when: tv_peer_apply | default(false) | bool
 - name: Serial exact TV peer retirement, no interface/service restart
@@ -24,7 +28,8 @@
   serial: 1
   any_errors_fatal: true
   tasks:
-    - ansible.builtin.command:
+    - name: Apply the approved TV peer retirement plan
+      ansible.builtin.command:
         argv: [/usr/local/sbin/homelab-retire-tv-internal-wireguard,
                --apply,
                --approve-plan-hash,

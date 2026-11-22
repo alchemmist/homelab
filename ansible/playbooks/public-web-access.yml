@@ -20,7 +20,8 @@
       register: public_web_result
       changed_when: (public_web_result.stdout | from_json).applied
       when: not ansible_check_mode
-    - ansible.builtin.debug:
+    - name: Report the public web access result
+      ansible.builtin.debug:
         var: public_web_result.stdout
       when: not ansible_check_mode
 ...

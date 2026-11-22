@@ -9,7 +9,7 @@
   tasks:
     - name: Copy the search configuration helper
       ansible.builtin.copy:
-        src: ../files/configure_webui_search.py
+        src: "{{ playbook_dir | dirname }}/files/configure_webui_search.py"
         dest: "{{ homelab_user_home }}/tmp-charts/configure-webui-search.py"
         mode: "0600"
     - name: Locate the running Open WebUI pod

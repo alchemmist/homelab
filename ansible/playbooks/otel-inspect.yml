@@ -10,7 +10,7 @@
         that:
           - otel_inspection_directory is defined
           - otel_inspection_directory.startswith('/tmp/otel-')
-      run_once: true
+      when: inventory_hostname == ansible_play_batch[0]
 
     - name: Prepare private controller evidence directory
       ansible.builtin.file:
@@ -19,7 +19,7 @@
         mode: "0700"
       delegate_to: localhost
       become: false
-      run_once: true
+      when: inventory_hostname == ansible_play_batch[0]
 
     - name: Count journal bytes in memory
       ansible.builtin.command:

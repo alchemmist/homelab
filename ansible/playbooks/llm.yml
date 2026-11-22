@@ -91,7 +91,7 @@
 
   - name: Copy the model defaults synchronizer
     ansible.builtin.copy:
-      src: ../files/configure_webui_model.py
+      src: "{{ playbook_dir | dirname }}/files/configure_webui_model.py"
       dest: "{{ homelab_user_home }}/tmp-charts/configure-webui-model.py"
       mode: '0644'
 

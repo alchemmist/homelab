@@ -21,9 +21,11 @@
 
     - name: Enable wireless reconnection after the guarded driver starts
       ansible.builtin.command: nmcli connection modify homelab-wifi connection.autoconnect yes
+      changed_when: true
 
     - name: Retain the enabled wireless radio across reboot
       ansible.builtin.command: nmcli radio wifi on
+      changed_when: true
 
     - name: Protect every installed bootable kernel
       ansible.builtin.import_tasks: ../roles/debian_laptop/tasks/network_recovery_kernels.yml
@@ -46,6 +48,7 @@
       ansible.builtin.command: kubectl drain socrat-3 --ignore-daemonsets --timeout=120s
       delegate_to: socrat-0
       become: false
+      changed_when: true
 
     - name: Wait for the replicated homepage to recover elsewhere
       ansible.builtin.command: kubectl -n socrat-home rollout status deployment/socrat-home --timeout=120s
@@ -82,7 +85,8 @@
       delay: 5
       changed_when: false
 
-- ansible.builtin.import_playbook: k3s-worker-verify.yml
+- name: Import k3s worker verify playbook
+  ansible.builtin.import_playbook: k3s-worker-verify.yml
 
 - name: Return the verified worker to ordinary scheduling
   hosts: socrat-0
@@ -94,4 +98,6 @@
 
     - name: Restore scheduling on the verified worker
       ansible.builtin.command: kubectl uncordon socrat-3
+      register: worker_uncordon
+      changed_when: "'already uncordoned' not in worker_uncordon.stdout"
 ...

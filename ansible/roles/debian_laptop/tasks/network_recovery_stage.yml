@@ -222,12 +222,10 @@
     group: root
     mode: '0755'
     validate: /bin/sh -n %s
-  register: homelab_recovery_boot_entry
+  notify: Refresh the boot menu with the existing default retained
 
-- name: Refresh the boot menu with the existing default retained
-  ansible.builtin.command: update-grub
-  when: homelab_recovery_boot_entry.changed
-  changed_when: true
+- name: Apply the pending boot menu update before continuing
+  ansible.builtin.meta: flush_handlers
 
 - name: Validate the generated boot menu
   ansible.builtin.command: grub-script-check /boot/grub/grub.cfg

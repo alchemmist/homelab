@@ -80,6 +80,7 @@
           - persistent-keepalive
           - "{{ wg_socrat_keepalive | string }}"
       when: not (worker_peer_state.stdout | from_json).runtime_matches
+      changed_when: true
 
     - name: Verify the active worker address mapping
       ansible.builtin.command: wg show wg-socrat allowed-ips

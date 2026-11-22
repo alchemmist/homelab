@@ -7,7 +7,8 @@
   vars_files:
     - ../vars/vpn-transit.yml
   tasks:
-    - ansible.builtin.fail:
+    - name: Reject the retired combined relay deployment
+      ansible.builtin.fail:
         msg: Legacy combined relay deployment retired; use vpn-transit-mesh-runtime.yml and controlled handoff.
     - name: Create public fixed-destination config directory
       ansible.builtin.file:
@@ -22,6 +23,7 @@
     - name: Install the streamed exact upstream binary only when absent or different
       ansible.builtin.command: install -m 0755 -o root -g root /var/tmp/homelab-edge-native/xray /usr/local/libexec/xray-transit
       when: transit_binary.stat.checksum | default('') != vpn_transit_xray_sha256
+      changed_when: true
     - name: Verify executable identity before running any proxy
       ansible.builtin.command: sha256sum /usr/local/libexec/xray-transit
       register: transit_binary_hash

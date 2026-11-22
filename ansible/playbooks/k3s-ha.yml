@@ -5,13 +5,16 @@
   gather_facts: false
   become: true
   tasks:
-    - ansible.builtin.import_role:
+    - name: Run HA server preflight checks
+      ansible.builtin.import_role:
         name: k3s_ha
         tasks_from: preflight
 
-- ansible.builtin.import_playbook: k3s-ha-routes.yml
+- name: Import k3s ha routes playbook
+  ansible.builtin.import_playbook: k3s-ha-routes.yml
 
-- ansible.builtin.import_playbook: wireguard-tcp-transport.yml
+- name: Import wireguard tcp transport playbook
+  ansible.builtin.import_playbook: wireguard-tcp-transport.yml
 
 - name: Convert the primary datastore without recreating the cluster
   hosts: socrat-0
@@ -19,7 +22,8 @@
   gather_facts: false
   become: true
   tasks:
-    - ansible.builtin.import_role:
+    - name: Prepare the primary HA server
+      ansible.builtin.import_role:
         name: k3s_ha
         tasks_from: primary
 
@@ -29,10 +33,12 @@
   gather_facts: false
   become: true
   tasks:
-    - ansible.builtin.import_role:
+    - name: Prepare the joining HA member
+      ansible.builtin.import_role:
         name: k3s_ha
         tasks_from: member_prepare
-    - ansible.builtin.import_role:
+    - name: Activate the joining HA member
+      ansible.builtin.import_role:
         name: k3s_ha
         tasks_from: member_activate
 
@@ -80,7 +86,8 @@
           ansible.builtin.assert:
             that: not k3s_ha_vpn_active.stat.exists
 
-        - ansible.builtin.import_role:
+        - name: Prepare the replacement HA member
+          ansible.builtin.import_role:
             name: k3s_ha
             tasks_from: member_prepare
 
@@ -92,7 +99,8 @@
             vpn_failover_arm: false
             vpn_failover_verify_native: false
 
-        - ansible.builtin.import_role:
+        - name: Activate the replacement HA member
+          ansible.builtin.import_role:
             name: k3s_ha
             tasks_from: member_activate
 
@@ -119,11 +127,13 @@
   gather_facts: false
   become: true
   tasks:
-    - ansible.builtin.import_role:
+    - name: Verify HA cluster membership
+      ansible.builtin.import_role:
         name: k3s_ha
         tasks_from: verify
 
-- ansible.builtin.import_playbook: k3s-ha-dependencies.yml
+- name: Import k3s ha dependencies playbook
+  ansible.builtin.import_playbook: k3s-ha-dependencies.yml
 
 - name: Reconcile administrative ingress after Kubernetes membership is ready
   hosts: Socrat

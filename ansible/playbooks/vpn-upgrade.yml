@@ -73,7 +73,10 @@
       changed_when: false
 
     - name: Allocate a private upgrade backup
-      ansible.builtin.command: mktemp -d /var/backups/homelab-vpn/upgrade-XXXXXXXX
+      ansible.builtin.tempfile:
+        path: /var/backups/homelab-vpn
+        prefix: upgrade-
+        state: directory
       register: vpn_upgrade_backup
       changed_when: true
 
@@ -100,11 +103,11 @@
             that: not vpn_upgrade_active.stat.exists
 
         - name: Back up both databases and fingerprint configuration and subscriptions
-          ansible.builtin.command: /usr/bin/python3 /usr/local/sbin/homelab-verify-vpn snapshot --directory {{ vpn_upgrade_backup.stdout }}
+          ansible.builtin.command: /usr/bin/python3 /usr/local/sbin/homelab-verify-vpn snapshot --directory {{ vpn_upgrade_backup.path }}
           changed_when: true
 
         - name: Prepare a separate recovery runtime from the pinned image
-          ansible.builtin.command: /usr/bin/python3 /opt/homelab-vpn-failover/prepare_runtime.py {{ vpn_upgrade_image }} {{ vpn_upgrade_backup.stdout }}/new-primary-runtime
+          ansible.builtin.command: /usr/bin/python3 /opt/homelab-vpn-failover/prepare_runtime.py {{ vpn_upgrade_image }} {{ vpn_upgrade_backup.path }}/new-primary-runtime
           changed_when: true
 
         - name: Record the beginning of the Helm update
@@ -121,7 +124,7 @@
           changed_when: true
 
         - name: Verify configuration and all subscriptions after upgrade
-          ansible.builtin.command: /usr/bin/python3 /usr/local/sbin/homelab-verify-vpn verify --directory {{ vpn_upgrade_backup.stdout }}
+          ansible.builtin.command: /usr/bin/python3 /usr/local/sbin/homelab-verify-vpn verify --directory {{ vpn_upgrade_backup.path }}
           changed_when: false
 
         - name: Verify the authenticated public tunnel after upgrade
@@ -129,12 +132,12 @@
           changed_when: false
 
         - name: Retain the previous dormant runtime
-          ansible.builtin.command: mv /opt/homelab-vpn-failover/primary {{ vpn_upgrade_backup.stdout }}/previous-primary-runtime
+          ansible.builtin.command: mv /opt/homelab-vpn-failover/primary {{ vpn_upgrade_backup.path }}/previous-primary-runtime
           register: vpn_upgrade_runtime_saved
           changed_when: true
 
         - name: Activate the new dormant runtime
-          ansible.builtin.command: mv {{ vpn_upgrade_backup.stdout }}/new-primary-runtime /opt/homelab-vpn-failover/primary
+          ansible.builtin.command: mv {{ vpn_upgrade_backup.path }}/new-primary-runtime /opt/homelab-vpn-failover/primary
           register: vpn_upgrade_runtime_installed
           changed_when: true
 
@@ -148,12 +151,14 @@
 
       rescue:
         - name: Retain the failed replacement runtime
-          ansible.builtin.command: mv /opt/homelab-vpn-failover/primary {{ vpn_upgrade_backup.stdout }}/failed-primary-runtime
+          ansible.builtin.command: mv /opt/homelab-vpn-failover/primary {{ vpn_upgrade_backup.path }}/failed-primary-runtime
           when: vpn_upgrade_runtime_installed is defined and vpn_upgrade_runtime_installed is succeeded
+          changed_when: true
 
         - name: Restore the previous recovery runtime
-          ansible.builtin.command: mv {{ vpn_upgrade_backup.stdout }}/previous-primary-runtime /opt/homelab-vpn-failover/primary
+          ansible.builtin.command: mv {{ vpn_upgrade_backup.path }}/previous-primary-runtime /opt/homelab-vpn-failover/primary
           when: vpn_upgrade_runtime_saved is defined and vpn_upgrade_runtime_saved is succeeded
+          changed_when: true
 
         - name: Restore the previous Helm revision
           ansible.builtin.command: >-
@@ -162,10 +167,11 @@
           delegate_to: socrat-0
           become: false
           when: vpn_upgrade_started | default(false)
+          changed_when: true
 
         - name: Report the failed upgrade without overwriting live databases
           ansible.builtin.fail:
-            msg: Upgrade failed; previous runtime and Helm revision restored. Inspect {{ vpn_upgrade_backup.stdout }}. Database snapshots were not restored over live data.
+            msg: Upgrade failed; previous runtime and Helm revision restored. Inspect {{ vpn_upgrade_backup.path }}. Database snapshots were not restored over live data.
 
       always:
         - name: Remove this upgrade's maintenance marker
@@ -182,5 +188,5 @@
 
     - name: Report the private backup location
       ansible.builtin.debug:
-        msg: Verified VPN upgrade; backups and previous recovery runtime retained in {{ vpn_upgrade_backup.stdout }}
+        msg: Verified VPN upgrade; backups and previous recovery runtime retained in {{ vpn_upgrade_backup.path }}
 ...

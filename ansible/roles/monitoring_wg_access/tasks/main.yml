@@ -112,7 +112,7 @@
 
 - name: Install gateway manifest comparison utility
   ansible.builtin.copy:
-    src: "{{ role_path }}/../../files/helm_manifest_changed.py"
+    src: "{{ role_path | dirname | dirname }}/files/helm_manifest_changed.py"
     dest: "{{ monitoring_wg_directory }}/check-installed-manifest.py"
     mode: '0600'
 
@@ -120,6 +120,7 @@
   ansible.builtin.command:
     argv: [python3,
            "{{ monitoring_wg_directory }}/check-installed-manifest.py",
+           --plan,
            --release,
            "{{ monitoring_wg_release }}",
            --chart,
@@ -150,7 +151,7 @@
            --wait,
            --timeout,
            5m]
-  when: (monitoring_wg_manifest.stdout | from_json).changed
+  when: "{'install': true, 'upgrade': true, 'current': false}[monitoring_wg_manifest.stdout]"
   changed_when: true
 
 - name: Read Syncthing authentication after gateway update

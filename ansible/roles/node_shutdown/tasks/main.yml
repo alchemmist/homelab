@@ -24,7 +24,9 @@
     quiet: true
 
 - name: Check local NFS service availability
-  ansible.builtin.command: systemctl show nfs-server.service --property=LoadState --value
+  homelab_systemd_probe:
+    units: [nfs-server.service]
+    property: LoadState
   register: homelab_shutdown_nfs_state
   changed_when: false
   check_mode: false
@@ -79,7 +81,8 @@
   ansible.builtin.meta: flush_handlers
 
 - name: Verify k3s is active
-  ansible.builtin.command: "systemctl is-active {{ homelab_boot_k3s_service }}"
+  homelab_systemd_probe:
+    units: ["{{ homelab_boot_k3s_service }}"]
   changed_when: false
   when: not ansible_check_mode
 ...

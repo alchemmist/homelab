@@ -90,6 +90,7 @@
   when: not ansible_check_mode
 
 - name: Require target-user execution before any SSH path writes
+  become: true
   become_user: "{{ ssh_user_key.username }}"
   ansible.builtin.script:
     cmd: "{{ role_path }}/files/check.py as-user --username {{ ssh_user_key.username }}"
@@ -98,6 +99,7 @@
   when: not ansible_check_mode
 
 - name: Ensure the private SSH directory
+  become: true
   become_user: "{{ ssh_user_key.username }}"
   ansible.builtin.file:
     path: "/home/{{ ssh_user_key.username }}/.ssh"
@@ -109,6 +111,7 @@
   when: not ansible_check_mode
 
 - name: Add only the missing public key without replacing others or weakening existing key options
+  become: true
   become_user: "{{ ssh_user_key.username }}"
   ansible.posix.authorized_key:
     user: "{{ ssh_user_key.username }}"
@@ -123,6 +126,7 @@
   no_log: true
 
 - name: Ensure private authorized_keys permissions
+  become: true
   become_user: "{{ ssh_user_key.username }}"
   ansible.builtin.file:
     path: "/home/{{ ssh_user_key.username }}/.ssh/authorized_keys"

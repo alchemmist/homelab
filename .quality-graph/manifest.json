@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "6b495f02682a7907561662b6bef398daa19249deedb5709539958b52fc00c6aa",
+  "graphDigest": "8660a1a0c84c5158f73f860d91741fe1c48b4950264d91a9abd75f9529d61b3f",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -181,6 +181,34 @@
       },
       "timeoutMinutes": 5,
       "title": "Delivery security"
+    },
+    {
+      "env": {},
+      "id": "ansible",
+      "needs": [
+        "ownership"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-ansible",
+      "result": {
+        "adapter": "native",
+        "path": "reports/ansible.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py ansible"
+      },
+      "timeoutMinutes": 5,
+      "title": "Playbook safety"
     }
   ],
   "profiles": {

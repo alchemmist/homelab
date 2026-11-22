@@ -117,7 +117,9 @@
     daemon_reload: true
 
 - name: Read the effective tty1 login command
-  ansible.builtin.command: systemctl show getty@tty1.service --property=ExecStart --value
+  homelab_systemd_probe:
+    units: [getty@tty1.service]
+    property: ExecStart
   register: homelab_getty_command
   changed_when: false
   when: not ansible_check_mode

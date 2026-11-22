@@ -107,5 +107,6 @@
       ansible.builtin.debug:
         var: app_status.stdout_lines
 
-- ansible.builtin.import_playbook: rancher-namespaces.yml
+- name: Import rancher namespaces playbook
+  ansible.builtin.import_playbook: rancher-namespaces.yml
 ...

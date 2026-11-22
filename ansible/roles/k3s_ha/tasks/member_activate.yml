@@ -21,7 +21,8 @@
     no_block: true
 
 - name: Wait for the new service to report readiness
-  ansible.builtin.command: systemctl is-active k3s
+  homelab_systemd_probe:
+    units: [k3s]
   register: k3s_ha_service_ready
   changed_when: false
   retries: 60

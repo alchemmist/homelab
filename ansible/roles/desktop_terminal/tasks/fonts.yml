@@ -5,6 +5,7 @@
     state: present
 
 - name: Check the desktop account's terminal font
+  become: true
   become_user: "{{ homelab_user }}"
   ansible.builtin.command:
     argv: [fc-match, -f, '%{family}', "{{ homelab_alacritty_font_family }}"]
@@ -45,11 +46,13 @@
         mode: 'u=rwX,go=rX'
 
     - name: Refresh the desktop account font cache
+      become: true
       become_user: "{{ homelab_user }}"
       ansible.builtin.command: fc-cache -f /usr/local/share/fonts/homelab-firacode-nerd
       changed_when: true
 
 - name: Verify the terminal font does not resolve to a fallback
+  become: true
   become_user: "{{ homelab_user }}"
   ansible.builtin.command:
     argv: [fc-match, -f, '%{family}', "{{ homelab_alacritty_font_family }}"]

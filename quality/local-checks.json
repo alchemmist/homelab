@@ -34,13 +34,6 @@
       "native": "reports/manifests.json"
     }
   },
-  "ansible": {
-    "title": "Playbook safety",
-    "run": "uv run python scripts/quality/lint.py ansible",
-    "results": {
-      "native": "reports/ansible.json"
-    }
-  },
   "tests-medium": {
     "title": "Integration tests",
     "run": "uv run python scripts/quality/tests.py medium --isolate-network",

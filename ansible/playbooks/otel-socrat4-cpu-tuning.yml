@@ -47,7 +47,9 @@
         checksum_algorithm: sha256
       register: old_override
     - name: Read loaded systemd drop-in paths
-      ansible.builtin.command: systemctl show homelab-otel-agent.service -p DropInPaths --value
+      homelab_systemd_probe:
+        units: [homelab-otel-agent.service]
+        property: DropInPaths
       register: loaded_overrides
       changed_when: false
     - name: Stop when an override exists or is already loaded
@@ -69,7 +71,7 @@
         mode: '0755'
     - name: Install only the reviewed one-line environment override
       ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../files/otel/socrat4-cpu.conf'
+        src: "{{ playbook_dir | dirname }}/files/otel/socrat4-cpu.conf"
         dest: '{{ override_path }}'
         owner: root
         group: root

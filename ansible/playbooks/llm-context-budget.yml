@@ -1,3 +1,4 @@
 ---
-- import_playbook: open-webui-compaction.yml
+- name: Import open webui compaction playbook
+  ansible.builtin.import_playbook: open-webui-compaction.yml
 ...

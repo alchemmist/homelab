@@ -77,7 +77,7 @@
       - (relay.stdout | from_json).spec.replicas == 1
       - (relay.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] == 'socrat-4'
   - name: Stage repair helpers for preflight and apply
-    when: phase in ['preflight','apply']
+    when: phase in ['preflight', 'apply']
     block:
     - name: Create the private staging directory
       ansible.builtin.file:
@@ -98,8 +98,10 @@
       block:
       - name: Apply the additive API route repair
         ansible.builtin.command: python3 {{ stage }}/moscow-api-routes-repair.py --apply
+        changed_when: true
       - name: Install the reviewed watchdog candidate by digest
         ansible.builtin.command: python3 {{ stage }}/moscow-watchdog-upgrade.py --candidate {{ stage }}/vpn-transit-failover.py --sha256 {{ new_sha }}
+        changed_when: true
   - name: Return only in the explicit return phase
     when: phase == 'return'
     block:
@@ -126,6 +128,7 @@
       ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-failover.py failback
       async: 300
       poll: 3
+      changed_when: true
     - name: Read transit status after failback
       ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-failover.py status
       register: after

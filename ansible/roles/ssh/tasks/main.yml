@@ -108,7 +108,9 @@
   check_mode: false
 
 - name: Check whether SSH socket activation is available
-  ansible.builtin.command: systemctl show {{ homelab_ssh_socket_name }} --property=LoadState --value
+  homelab_systemd_probe:
+    units: ["{{ homelab_ssh_socket_name }}"]
+    property: LoadState
   register: homelab_ssh_socket_unit
   changed_when: false
   check_mode: false

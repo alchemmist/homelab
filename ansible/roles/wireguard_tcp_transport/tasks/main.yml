@@ -242,12 +242,10 @@
     owner: root
     group: root
     mode: '0644'
-  register: wg_tcp_k3s_dependency
+  notify: Reload service ordering without restarting Kubernetes
 
-- name: Reload service ordering without restarting Kubernetes
-  ansible.builtin.systemd:
-    daemon_reload: true
-  when: wg_tcp_k3s_dependency.changed
+- name: Apply the pending unit ordering before continuing
+  ansible.builtin.meta: flush_handlers
 
 - name: Verify the client peer endpoint remains on the authenticated local transport
   ansible.builtin.command:

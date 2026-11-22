@@ -49,5 +49,6 @@
       register: identity_owner_check
       failed_when: identity_owner_check.stdout | trim != 'yes'
 
-- ansible.builtin.import_playbook: users.yml
+- name: Import users playbook
+  ansible.builtin.import_playbook: users.yml
 ...

@@ -22,15 +22,17 @@
         owner: root
         group: root
         mode: '0644'
-      register: monitoring_dns_record
+      notify: Activate the private Grafana DNS record
 
     - name: Validate private DNS configuration before restart
       ansible.builtin.command: dnsmasq --test --conf-file=/etc/homelab-private-dns.conf
+      register: monitoring_dns_record_validation
       changed_when: false
 
+  handlers:
     - name: Activate the private Grafana DNS record
       ansible.builtin.systemd_service:
         name: homelab-private-dns.service
         state: restarted
-      when: monitoring_dns_record.changed
+      when: monitoring_dns_record_validation is defined and monitoring_dns_record_validation is succeeded and monitoring_dns_record_validation is reachable
 ...

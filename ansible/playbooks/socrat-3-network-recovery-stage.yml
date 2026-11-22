@@ -6,4 +6,8 @@
   tasks:
     - name: Stage the candidate without changing the running system or boot default
       ansible.builtin.import_tasks: ../roles/debian_laptop/tasks/network_recovery_stage.yml
+  handlers:
+    - name: Refresh the boot menu with the existing default retained
+      ansible.builtin.command: update-grub
+      changed_when: true
 ...

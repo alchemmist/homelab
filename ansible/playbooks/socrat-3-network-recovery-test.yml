@@ -40,6 +40,7 @@
     ansible.builtin.command: kubectl drain socrat-3 --ignore-daemonsets --timeout=120s
     delegate_to: socrat-0
     become: false
+    changed_when: true
 
   - name: Wait for the replicated homepage to recover elsewhere
     ansible.builtin.command: kubectl -n socrat-home rollout status deployment/socrat-home --timeout=120s
@@ -49,6 +50,7 @@
 
   - name: Select the candidate for one boot only
     ansible.builtin.command: grub-reboot homelab-network-test
+    changed_when: true
 
   - name: Verify the one-time boot selection
     ansible.builtin.command: grub-editenv list

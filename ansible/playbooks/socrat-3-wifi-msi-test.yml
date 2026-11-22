@@ -26,9 +26,11 @@
           - /bin/sh
           - -c
           - nmcli radio wifi off; modprobe -r rtl8723ae
+      changed_when: true
 
     - name: Load the wireless driver with MSI for this boot only
       ansible.builtin.command: modprobe rtl8723ae msi=1 ips=0 fwlps=0 swlps=0
+      changed_when: true
 
     - name: Verify the runtime MSI setting
       ansible.builtin.command: cat /sys/module/rtl8723ae/parameters/msi
@@ -38,9 +40,11 @@
 
     - name: Enable the wireless radio
       ansible.builtin.command: nmcli radio wifi on
+      changed_when: true
 
     - name: Connect the existing private wireless profile
       ansible.builtin.command: nmcli --wait 40 connection up homelab-wifi
+      changed_when: true
 
     - name: Read wireless connectivity without displaying credentials
       ansible.builtin.shell: |

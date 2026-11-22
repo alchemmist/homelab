@@ -160,10 +160,10 @@
           ansible.builtin.set_fact:
             native_restart_receipts: '{{ native_restart_receipts | default({}) | combine({item: (hostvars[item].native_restart.stdout | from_json)}) }}'
           loop: [socrat-0, socrat-1, socrat-2, socrat-3]
-          run_once: true
+          when: inventory_hostname == ansible_play_batch[0]
         - name: Supply native shadow verifier with restart boundaries
           ansible.builtin.copy:
-            content: '{{ hostvars["socrat-0"].native_restart_receipts | to_nice_json }}'
+            content: '{{ hostvars[ansible_play_batch[0]].native_restart_receipts | to_nice_json }}'
             dest: '{{ otel_host_metrics_directory }}/restarts.json'
             mode: '0600'
           when: inventory_hostname == "socrat-1"

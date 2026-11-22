@@ -84,4 +84,5 @@
 - name: Keep existing user infrastructure available without an interactive login
   ansible.builtin.command: "loginctl enable-linger {{ homelab_user }}"
   when: homelab_boot_linger.stdout != 'yes'
+  changed_when: true
 ...

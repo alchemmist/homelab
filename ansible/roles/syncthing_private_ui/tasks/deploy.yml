@@ -4,6 +4,7 @@
     argv:
     - python3
     - "{{ syncthing_private_ui_chart_dir }}/check-installed-manifest.py"
+    - --plan
     - --release
     - "{{ syncthing_private_ui_release }}"
     - --chart
@@ -40,7 +41,7 @@
     - 5m
   register: syncthing_private_ui_helm
   changed_when: "'has been upgraded' in syncthing_private_ui_helm.stdout or 'has been installed' in syncthing_private_ui_helm.stdout"
-  when: (syncthing_private_ui_manifest.stdout | from_json).changed
+  when: "{'install': true, 'upgrade': true, 'current': false}[syncthing_private_ui_manifest.stdout]"
 
 - name: Verify existing authentication was preserved
   ansible.builtin.shell: |

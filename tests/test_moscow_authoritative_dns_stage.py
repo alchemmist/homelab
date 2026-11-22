@@ -36,7 +36,9 @@ def test_listener_does_not_replace_relay_or_require_wireguard() -> None:
     assert "public_dns_extra_listen" not in play["vars"]
     assert "public_dns_transit_listener_enabled" not in play["vars"]
     text = PLAY.read_text()
-    assert "systemctl is-active knot homelab-vpn-dns-transit" in text
+    verify = play["tasks"][-1]["block"][-1]
+    assert verify["homelab_systemd_probe"] == {"units": ["knot", "homelab-vpn-dns-transit"]}
+    assert verify["changed_when"] is False
     assert "k3s-agent.service" not in text
     assert "iptables" not in text and "nft " not in text
 

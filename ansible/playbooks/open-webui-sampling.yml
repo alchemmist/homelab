@@ -9,7 +9,7 @@
   tasks:
     - name: Copy the sampling configuration helper
       ansible.builtin.copy:
-        src: ../files/configure_webui_sampling.py
+        src: "{{ playbook_dir | dirname }}/files/configure_webui_sampling.py"
         dest: '{{ homelab_user_home }}/tmp-charts/configure-webui-sampling.py'
         mode: '0600'
     - name: Locate the running Open WebUI pod

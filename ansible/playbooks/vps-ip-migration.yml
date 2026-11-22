@@ -44,7 +44,7 @@
         that:
           - (ansible_play_hosts_all | sort) == ['socrat-0', 'socrat-1', 'socrat-2', 'socrat-3']
         fail_msg: All four nodes must pass preflight; do not use --limit to bypass it.
-      run_once: true
+      when: inventory_hostname == ansible_play_batch[0]
     - name: Audit host files database schemas and assigned VPS address
       ansible.builtin.script:
         cmd: >-

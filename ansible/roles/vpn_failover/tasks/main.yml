@@ -31,7 +31,9 @@
     - /var/cache/homelab-vpn-failover
 
 - name: Inspect existing monitoring timer
-  ansible.builtin.command: systemctl show homelab-vpn-watchdog.timer --property=LoadState --value
+  homelab_systemd_probe:
+    units: [homelab-vpn-watchdog.timer]
+    property: LoadState
   register: vpn_failover_timer
   changed_when: false
 
@@ -94,6 +96,7 @@
     argv: [apt-get, download, caddy]
     chdir: /var/cache/homelab-vpn-failover
   when: not vpn_failover_caddy.stat.exists
+  changed_when: true
 
 - name: Find downloaded Caddy package
   ansible.builtin.find:
@@ -115,6 +118,7 @@
       - "{{ vpn_failover_packages.files[0].path }}"
       - /var/cache/homelab-vpn-failover/caddy
   when: not vpn_failover_caddy.stat.exists
+  changed_when: true
 
 - name: Preserve dormant Caddy binary
   ansible.builtin.copy:
