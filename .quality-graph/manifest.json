@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "34730dc734b533b09aadcb5db1fdf32307b9d13f15515e9b7865ab2116ffe17d",
+  "graphDigest": "6b495f02682a7907561662b6bef398daa19249deedb5709539958b52fc00c6aa",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -148,6 +148,39 @@
       },
       "timeoutMinutes": 5,
       "title": "Container recipes"
+    },
+    {
+      "env": {
+        "GH_TOKEN": "${{ github.token }}"
+      },
+      "id": "workflow",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-delivery",
+      "result": {
+        "adapter": "native",
+        "path": "reports/workflow.json"
+      },
+      "step": {
+        "env": {
+          "GH_TOKEN": "${{ github.token }}"
+        },
+        "run": "uv run python scripts/quality/lint.py workflow"
+      },
+      "timeoutMinutes": 5,
+      "title": "Delivery security"
     }
   ],
   "profiles": {
@@ -283,7 +316,7 @@
           "run": "uv sync --locked"
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools actionlint"
+          "run": "uv run python scripts/quality/install_tools.py --tools actionlint shellcheck"
         }
       ],
       "timeoutMinutes": 5

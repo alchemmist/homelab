@@ -51,7 +51,7 @@ Research is not a pending deployment task. Private recovery evidence remains off
 | Инциденты, уведомления, workflow integration | [Socrat bot](socrat-bot.md), [SPI: frontend/backend и эксплуатация; актуальное размещение — в context](spi-incident-triage.md), [n8n](n8n-workflows.md) |
 | TV/public dashboard, адресный Argo CSS и отдельный YouTube VPN | [Android TV](android-tv.md), [сопровождение TV-CSS](android-tv.md#сопровождение-кастомного-tv-css-для-argo) |
 | LMS и локальные генераторы | [LMS](lms.md), [локальная генерация](lms-generation.md) |
-| Автономный mini-swe-agent для Monori: очередь, sandbox, ревью, PR и bootstrap | [SWE Mini: эксплуатация и факты приёмки](swe-mini.md) |
+| Вывод SWE Mini из эксплуатации | [Границы удаления и проверки](swe-mini.md) |
 | Готовый OpenHands Canvas: установлен, но публичный вход и полный PR lifecycle пока не приняты | [OpenHands: факты и блокеры](openhands.md) |
 | Venice: браузерный мост, Google-сессия и модель в LiteLLM | [Текущее состояние и границы](venice-api.md) |
 | DeepSeek web-сессия отдельным мостом, `o-deepseek` в LiteLLM, лимиты от бана | [Срез и границы](deeperseeker.md) |

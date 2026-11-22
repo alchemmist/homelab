@@ -78,6 +78,42 @@ def test_escaping_finding_rejected() -> None:
         finding("RULE", "../private", 1, "message", "context")
 
 
+def test_workflow_noqa_requires_a_python_comment() -> None:
+    """Keep heredocs, prose and quoted strings distinct from actual Python waivers."""
+    from lint import python_directive_lines
+
+    marker = "# " + "noqa"
+    source = f'''\
+name: "example {marker}"
+# A YAML comment mentioning {marker}
+defaults: {{run: {{shell: python}}}}
+jobs:
+  inherits:
+    steps:
+      - run: |
+          print("{marker}")
+          import unused  {marker}: F401
+  overrides:
+    defaults: {{run: {{shell: bash}}}}
+    steps:
+      - run: |
+          cat <<'END'
+          {marker}
+          END
+      - shell: python3
+        run: "import another  {marker.upper()}"
+      - shell: python
+        run: >-
+          import folded
+          {marker}
+      - shell: python
+        run: "import quoted
+          {marker}"
+        name: multiline quoted scalar
+'''
+    assert python_directive_lines(source) == {9, 18, 22, 25}
+
+
 def test_failed_tools_are_not_quality_approvals(tmp_path) -> None:
     out = tmp_path / "result.json"
     failure(out, RuntimeError("DO NOT ECHO SECRET PAYLOAD"))
@@ -382,12 +418,12 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
 
     graph = yaml.safe_load((ROOT / "qg.yaml").read_text())["nodes"]
     assert len({n["title"] for n in graph.values()}) == len(graph)
-    assert set(graph) == {"graph", "javascript", "secrets", "ownership", "docker"}
-    for node in ("javascript", "secrets", "ownership", "docker"):
+    assert set(graph) == {"graph", "javascript", "secrets", "ownership", "docker", "workflow"}
+    for node in ("javascript", "secrets", "ownership", "docker", "workflow"):
         assert graph[node]["needs"] == ["graph"]
     local = json.loads((ROOT / "quality/local-checks.json").read_text())
     assert set(local) == {
-        "python", "yaml", "shell", "workflow", "tests-fast",
+        "python", "yaml", "shell", "tests-fast",
         "manifests", "ansible", "tests-medium", "tests-cluster", "dependencies",
     }
 

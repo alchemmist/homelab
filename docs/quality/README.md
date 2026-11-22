@@ -8,10 +8,10 @@ The operator changed the integration scope: PR182 sets up CI and integrates revi
 
 ## Active CI scope
 
-CI runs `graph`, followed by `secrets`, `javascript`, `ownership` and `docker`.
+CI runs `graph`, followed by `secrets`, `javascript`, `ownership`, `docker` and `workflow`.
 Ownership runs six offline checks plus their regression suites; the Ansible
 entrypoint scan covers both `.yml` and `.yaml`.
-The other ten checks remain runnable by name; `make check` and its alias
+The other nine checks remain runnable by name; `make check` and its alias
 `make check-all` still attempt all fifteen. Restore a
 check to `qg.yaml` and remove its local-only entry once it is verified green.
 
@@ -76,7 +76,7 @@ Linux fast/medium use loopback-only network namespaces and stripped cloud/SSH/op
 
 ## Failure and report semantics
 
-Findings, incomplete audit coverage, adapter failures and absent/oversized native artifacts all remain failures. In particular, a failed envelope with an empty finding list is **not clean**. Native Python report admission previously exceeded10MiB; unchanged admission limits and the generated publisher security findings remain open CI-infrastructure limitations, separate from source cleanup. Do not truncate/shard reports or refresh approvals to hide them.
+Findings, incomplete audit coverage, adapter failures and absent/oversized native artifacts all remain failures. In particular, a failed envelope with an empty finding list is **not clean**. Native Python reports previously exceeded the unchanged 10 MiB admission limit. The generated publisher is audited like every other workflow; a clean Delivery security result does not establish that the scheduled publisher reconciled the PR. Do not truncate/shard reports or refresh approvals to hide them.
 
 Private complete audit evidence is outside Git at `~/Library/Application Support/homelab/quality-strict/` (directories0700/files0600). `strict_report.py` returns1 when findings remain; configurationReady/snapshotStable must also be checked. Old receipts describing exit0-with-findings are historical behavior, not the current contract. A current audit binds an exact clean source head; dirty/in-progress merge evidence is not exact-head acceptance.
 
