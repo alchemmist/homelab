@@ -339,6 +339,8 @@ def _assert_owner_oidc_extensions(documents: list[dict[str, object]]) -> None:
     args = _list(oauth["args"])
     required = [
         "--provider=oidc",
+        "--client-secret-file=/run/oidc-client-secret",
+        "--cookie-secret-file=/run/oidc-cookie-secret",
         "--oidc-issuer-url=https://auth.socrat.alchemmist.xyz/application/o/openhands/",
         "--redirect-url=https://openhands.socrat.alchemmist.xyz/oauth2/callback",
         "--upstream=http://openhands.openhands.svc.cluster.local:8000/",
@@ -361,6 +363,19 @@ def _assert_owner_oidc_extensions(documents: list[dict[str, object]]) -> None:
         isinstance(a, str) and a.startswith(("--skip-auth", "--insecure-oidc", "--ssl-insecure"))
         for a in args
     ), "OIDC authorization weakened"
+    pod = _mapping(_get(gateway, "spec", "template", "spec"))
+    assert _get(pod, "securityContext", "fsGroup") == 65532
+    keys = ["client-secret", "cookie-secret"]
+    assert oauth["volumeMounts"] == [
+        {"name": "oauth-keys", "subPath": k, "mountPath": "/run/oidc-" + k, "readOnly": True} for k in keys
+    ]
+    assert pod["volumes"] == [{"name": "oauth-keys", "secret": {
+        "secretName": "openhands-oidc", "defaultMode": 288,
+        "items": [{"key": k, "path": k} for k in keys],
+    }}]
+    assert {_mapping(v)["name"] for v in _list(oauth["env"])} == {
+        "OAUTH2_PROXY_CLIENT_ID", "OAUTH2_PROXY_REDIS_PASSWORD"
+    }
     ingress = _named(documents, "Ingress", "openhands-oidc")
     assert ingress["spec"] == {
         "ingressClassName": "traefik",
