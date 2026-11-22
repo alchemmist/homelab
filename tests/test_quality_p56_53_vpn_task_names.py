@@ -64,44 +64,25 @@ def _sequence(value: object) -> list[object]:
     return list(value)
 
 
-def _task_names(tasks: object) -> list[str]:
-    """Collect task names, including tasks nested in blocks."""
-    names: list[str] = []
-    for item in _sequence(tasks):
+def _tasks(items: object) -> list[dict[str, object]]:
+    """Collect tasks in play order, including tasks nested in blocks."""
+    tasks = []
+    for item in _sequence(items):
         task = _mapping(item)
-        name = task.get("name")
-        if not isinstance(name, str):
-            message = "every task needs a string name"
-            raise TypeError(message)
-        names.append(name)
+        tasks.append(task)
         for section in ("block", "rescue", "always"):
             nested = task.get(section)
             if nested is not None:
-                names.extend(_task_names(nested))
-    return names
-
-
-def _commands(tasks: object) -> list[str]:
-    """Collect command module arguments without executing them."""
-    commands: list[str] = []
-    for item in _sequence(tasks):
-        task = _mapping(item)
-        command = task.get("ansible.builtin.command")
-        if isinstance(command, str):
-            commands.append(command)
-        for section in ("block", "rescue", "always"):
-            nested = task.get(section)
-            if nested is not None:
-                commands.extend(_commands(nested))
-    return commands
+                tasks.extend(_tasks(nested))
+    return tasks
 
 
 def test_vpn_refresh_tasks_are_named_without_changing_actions() -> None:
     """Require unique task names and the original stage and promote actions."""
-    source = PLAYBOOK.read_text()
-    loaded = yaml.safe_load(source)
+    loaded = yaml.safe_load(PLAYBOOK.read_text())
     play = _mapping(_sequence(loaded)[0])
-    names = _task_names(play.get("tasks"))
+    tasks = _tasks(play["tasks"])
+    names = [task["name"] for task in tasks]
     assert play.get("name") == PLAY_NAME
     assert play.get("hosts") == "socrat-2"
     assert play.get("become") is True
@@ -111,12 +92,28 @@ def test_vpn_refresh_tasks_are_named_without_changing_actions() -> None:
     assert variables.get("old_image") == OLD_IMAGE
     assert names == list(TASK_NAMES)
     assert len(names) == len(set(names))
-    assert _commands(play.get("tasks")) == list(COMMANDS)
-    assert source.count(f"mode: '{PRIVATE_MODE}'") == len(
-        ("recovery", "helpers", "candidate", "promote"),
-    )
-    assert source.count(f"mode: '{RECEIPT_MODE}'") == 1
-    assert 'default("stage")' in source
-    assert "vpn_native_refresh_confirmed | default(false)" in source
-    assert "state: restarted" not in source
-    assert "state: stopped" not in source
+    assert [
+        task["ansible.builtin.command"] for task in tasks if "ansible.builtin.command" in task
+    ] == list(COMMANDS)
+    modes = [
+        (module, args.get("path", args.get("dest")), args["mode"])
+        for task in tasks
+        for module, args in task.items()
+        if isinstance(args, dict) and "mode" in args
+    ]
+    assert modes == [
+        ("ansible.builtin.file", "{{ recovery }}", PRIVATE_MODE),
+        ("ansible.builtin.copy", "{{ recovery }}/{{ item }}", PRIVATE_MODE),
+        ("ansible.builtin.file", "{{ candidate }}", PRIVATE_MODE),
+        ("ansible.builtin.copy", "{{ recovery }}/stage-accepted.json", RECEIPT_MODE),
+        ("ansible.builtin.copy", "{{ recovery }}/promote.py", PRIVATE_MODE),
+    ]
+    assert variables["phase"] == '{{ vpn_native_refresh_phase | default("stage") }}'
+    assert _mapping(tasks[0]["ansible.builtin.assert"])["that"] == [
+        "phase in ['stage','promote']",
+        "phase != 'promote' or (vpn_native_refresh_confirmed | default(false) | bool)",
+    ]
+    for task in tasks:
+        for args in task.values():
+            if isinstance(args, dict):
+                assert args.get("state") not in ("restarted", "stopped")

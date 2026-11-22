@@ -11,9 +11,9 @@
       changed_when: false
     - name: Activate the full maintained native metrics and logs configuration
       ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../../deploy/monitoring/otel/agent.yaml'
+        src: "{{ playbook_dir }}/../../deploy/monitoring/otel/agent.yaml"
         dest: /etc/homelab-otel/agent.yaml
-        mode: '0644'
+        mode: "0644"
     - name: Switch only the independent agent to its native full pipeline
       ansible.builtin.systemd_service:
         name: homelab-otel-agent.service

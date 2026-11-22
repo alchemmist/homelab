@@ -5,8 +5,8 @@
   tasks:
     - name: Create namespace for shared ingress watch list
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, -f, '-']
-        stdin: '{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"identity"}}'
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, -f, "-"]
+        stdin: "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"name\":\"identity\"}}"
       environment:
         K3S_CONFIG_FILE: /dev/null
       register: identity_ns

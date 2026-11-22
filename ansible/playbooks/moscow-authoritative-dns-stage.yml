@@ -51,7 +51,8 @@
       ansible.builtin.assert:
         that:
           - "'knot' not in ansible_facts.packages"
-        fail_msg: Knot is already installed; this one-time staging play is not a reconciliation tool.
+        fail_msg: >-
+          Knot is already installed; this one-time staging play is not a reconciliation tool.
 
     - name: Compute the local renderer digest
       ansible.builtin.stat:

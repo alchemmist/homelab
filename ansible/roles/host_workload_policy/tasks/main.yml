@@ -8,7 +8,9 @@
 - name: Refuse host cleanup while native VPN recovery is active
   ansible.builtin.assert:
     that: not host_policy_vpn_latch.stat.exists
-    fail_msg: Native VPN recovery is active. Follow docs/vpn-failover.md before applying host workload policy.
+    fail_msg: >-
+      Native VPN recovery is active. Follow docs/vpn-failover.md before applying host workload
+      policy.
   when: inventory_hostname == 'socrat-2'
 
 # Socrat nodes should not run application workloads directly on the host.
@@ -85,8 +87,8 @@
   become: true
   become_user: "{{ homelab_user }}"
   environment:
-    XDG_RUNTIME_DIR: "/run/user/{{ host_policy_user_uid }}"
-    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ host_policy_user_uid }}/bus"
+    XDG_RUNTIME_DIR: /run/user/{{ host_policy_user_uid }}
+    DBUS_SESSION_BUS_ADDRESS: unix:path=/run/user/{{ host_policy_user_uid }}/bus
   when: not ansible_check_mode
   register: openclaw_stop
   failed_when: false
@@ -100,8 +102,8 @@
   become: true
   become_user: "{{ homelab_user }}"
   environment:
-    XDG_RUNTIME_DIR: "/run/user/{{ host_policy_user_uid }}"
-    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ host_policy_user_uid }}/bus"
+    XDG_RUNTIME_DIR: /run/user/{{ host_policy_user_uid }}
+    DBUS_SESSION_BUS_ADDRESS: unix:path=/run/user/{{ host_policy_user_uid }}/bus
   when: not ansible_check_mode
   register: openclaw_disable
   failed_when: false
@@ -124,8 +126,8 @@
   become: true
   become_user: "{{ homelab_user }}"
   environment:
-    XDG_RUNTIME_DIR: "/run/user/{{ host_policy_user_uid }}"
-    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ host_policy_user_uid }}/bus"
+    XDG_RUNTIME_DIR: /run/user/{{ host_policy_user_uid }}
+    DBUS_SESSION_BUS_ADDRESS: unix:path=/run/user/{{ host_policy_user_uid }}/bus
   when: not ansible_check_mode
   register: openclaw_daemon_reload
   failed_when: false

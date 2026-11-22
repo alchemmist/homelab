@@ -13,7 +13,9 @@
     - name: Require explicit failback before deploying Kubernetes VPN
       ansible.builtin.assert:
         that: not vpn_recovery_latch.stat.exists
-        fail_msg: Native VPN recovery is active. Follow docs/vpn-failover.md before deploying Kubernetes VPN.
+        fail_msg: >-
+          Native VPN recovery is active. Follow docs/vpn-failover.md before deploying Kubernetes
+          VPN.
 
   roles:
     - vpn_legacy_network
@@ -29,10 +31,12 @@
       ansible.builtin.assert:
         that:
           - vpn_native_state.stdout != 'active'
-        fail_msg: Stop the native VPN only after backing up its database and preparing the matching Kubernetes deployment. See docs/vpn-cutover.md.
+        fail_msg: >-
+          Stop the native VPN only after backing up its database and preparing the matching
+          Kubernetes deployment. See docs/vpn-cutover.md.
 
     - name: Inspect Docker service state
-      ansible.builtin.service_facts:
+      ansible.builtin.service_facts: null
 
     - name: Check the emergency VPN container
       ansible.builtin.command:
@@ -44,14 +48,17 @@
           - x-ui-lab-emergency
       register: vpn_emergency_state
       changed_when: false
-      failed_when: vpn_emergency_state.rc != 0 and 'no such object' not in vpn_emergency_state.stderr | lower
+      failed_when: >-
+        vpn_emergency_state.rc != 0 and 'no such object' not in vpn_emergency_state.stderr | lower
       when: ansible_facts.services.get('docker.service', {}).get('state') == 'running'
 
     - name: Require the emergency container to release the VPN ports
       ansible.builtin.assert:
         that:
           - vpn_emergency_state.stdout | default('') | trim != 'true'
-        fail_msg: Stop x-ui-lab-emergency after preparing rollback, then deploy the Kubernetes VPN. See docs/vpn-cutover.md.
+        fail_msg: >-
+          Stop x-ui-lab-emergency after preparing rollback, then deploy the Kubernetes VPN. See
+          docs/vpn-cutover.md.
 
     - name: Verify the existing VPN databases
       ansible.builtin.stat:
@@ -118,7 +125,7 @@
         enabled: false
 
     - name: Inspect host services
-      ansible.builtin.service_facts:
+      ansible.builtin.service_facts: null
 
     - name: Check whether Docker still runs any containers
       ansible.builtin.command: docker ps --quiet
@@ -148,7 +155,6 @@
       when:
         - item.stdout in ['loaded', 'masked']
         - vpn_docker_containers.stdout | default('') | trim | length == 0
-
 - name: Import vpn edge playbook
   ansible.builtin.import_playbook: vpn-edge.yml
 ...

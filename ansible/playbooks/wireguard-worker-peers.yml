@@ -11,39 +11,47 @@
         argv:
           - /usr/bin/python3
           - -c
-          - |
-            import ipaddress, json, pathlib, re, subprocess, sys
-            key, cidr, keepalive = sys.argv[1:]
-            target = ipaddress.ip_network(cidr)
-            config = pathlib.Path('/etc/wireguard/wg-socrat.conf').read_text()
-            peers = []
-            for block in re.split(r'(?m)^\s*\[Peer\]\s*$', config)[1:]:
-                fields = {}
-                for line in block.splitlines():
-                    line = line.split('#', 1)[0].strip()
-                    if '=' in line:
-                        name, value = line.split('=', 1)
-                        fields[name.strip()] = value.strip()
-                peers.append(fields)
-            matches = [peer for peer in peers if peer.get('PublicKey') == key]
-            if len(matches) > 1:
-                sys.exit('Duplicate persisted worker peers; repair before applying')
-            for peer in peers:
-                networks = [ipaddress.ip_network(value.strip()) for value in peer.get('AllowedIPs', '').split(',') if value.strip()]
-                if peer.get('PublicKey') == key:
-                    if networks != [target]:
-                        sys.exit('Existing worker AllowedIPs differ from inventory; refusing replacement')
-                elif any(network.version == target.version and network.overlaps(target) for network in networks):
-                    sys.exit('Worker address overlaps another persisted peer')
-            addresses = {}
-            for line in subprocess.check_output(['wg', 'show', 'wg-socrat', 'allowed-ips'], text=True).splitlines():
-                peer_key, values = line.split(None, 1)
-                networks = [ipaddress.ip_network(value) for value in values.replace(',', ' ').split() if value != '(none)']
-                addresses[peer_key] = networks
-                if peer_key != key and any(network.version == target.version and network.overlaps(target) for network in networks):
-                    sys.exit('Worker address overlaps another active peer')
-            intervals = dict(line.split() for line in subprocess.check_output(['wg', 'show', 'wg-socrat', 'persistent-keepalive'], text=True).splitlines())
-            print(json.dumps({'persisted': bool(matches), 'runtime_matches': addresses.get(key) == [target] and intervals.get(key) == keepalive}))
+          -
+            "import ipaddress, json, pathlib, re, subprocess, sys\n\
+            key, cidr, keepalive = sys.argv[1:]\n\
+            target = ipaddress.ip_network(cidr)\n\
+            config = pathlib.Path('/etc/wireguard/wg-socrat.conf').read_text()\n\
+            peers = []\n\
+            for block in re.split(r'(?m)^\\s*\\[Peer\\]\\s*$', config)[1:]:\n\
+            \    fields = {}\n\
+            \    for line in block.splitlines():\n\
+            \        line = line.split('#', 1)[0].strip()\n\
+            \        if '=' in line:\n\
+            \            name, value = line.split('=', 1)\n\
+            \            fields[name.strip()] = value.strip()\n\
+            \    peers.append(fields)\n\
+            matches = [peer for peer in peers if peer.get('PublicKey') == key]\n\
+            if len(matches) > 1:\n\
+            \    sys.exit('Duplicate persisted worker peers; repair before applying')\n\
+            for peer in peers:\n\
+            \    networks = [ipaddress.ip_network(value.strip()) for value in
+            peer.get('AllowedIPs', '').split(',') if value.strip()]\n\
+            \    if peer.get('PublicKey') == key:\n\
+            \        if networks != [target]:\n\
+            \            sys.exit('Existing worker AllowedIPs differ from inventory; refusing
+            replacement')\n\
+            \    elif any(network.version == target.version and network.overlaps(target) for
+            network in networks):\n\
+            \        sys.exit('Worker address overlaps another persisted peer')\n\
+            addresses = {}\n\
+            for line in subprocess.check_output(['wg', 'show', 'wg-socrat', 'allowed-ips'],
+            text=True).splitlines():\n\
+            \    peer_key, values = line.split(None, 1)\n\
+            \    networks = [ipaddress.ip_network(value) for value in values.replace(',', '
+            ').split() if value != '(none)']\n\
+            \    addresses[peer_key] = networks\n\
+            \    if peer_key != key and any(network.version == target.version and
+            network.overlaps(target) for network in networks):\n\
+            \        sys.exit('Worker address overlaps another active peer')\n\
+            intervals = dict(line.split() for line in subprocess.check_output(['wg', 'show',
+            'wg-socrat', 'persistent-keepalive'], text=True).splitlines())\n\
+            print(json.dumps({'persisted': bool(matches), 'runtime_matches': addresses.get(key) ==
+            [target] and intervals.get(key) == keepalive}))\n"
           - "{{ wg_socrat_nodes['socrat-3'].public_key }}"
           - "{{ wg_socrat_nodes['socrat-3'].address }}/32"
           - "{{ wg_socrat_keepalive | string }}"
@@ -86,6 +94,8 @@
       ansible.builtin.command: wg show wg-socrat allowed-ips
       register: worker_peer_addresses
       changed_when: false
-      failed_when: (wg_socrat_nodes['socrat-3'].public_key + '\t' + wg_socrat_nodes['socrat-3'].address + '/32') not in worker_peer_addresses.stdout_lines
+      failed_when: >-
+        (wg_socrat_nodes['socrat-3'].public_key + '\t' + wg_socrat_nodes['socrat-3'].address +
+        '/32') not in worker_peer_addresses.stdout_lines
       when: not ansible_check_mode
 ...

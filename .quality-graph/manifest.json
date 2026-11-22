@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "bfd51c9a9e9c8636504f51fad31c6f33992cfd8b55fdb2fc97cf5bb21a9cce1c",
+  "graphDigest": "8838a41e5f0aa228bd0c1d210337b293338450d5229f9578acf37906c421e5f3",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -33,10 +33,38 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "uv run qg validate\nuv run python scripts/quality/contracts.py"
+        "run": "set -euo pipefail\nuv run qg validate\nuv run python scripts/quality/contracts.py\nuv run python scripts/quality/strict_guard.py\nuv run pytest -q tests/test_quality_python_policy.py"
       },
       "timeoutMinutes": 5,
       "title": "Graph integrity"
+    },
+    {
+      "env": {},
+      "id": "yaml",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "native",
+        "path": "reports/yaml.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py yaml"
+      },
+      "timeoutMinutes": 5,
+      "title": "YAML structure"
     },
     {
       "env": {},
@@ -60,10 +88,10 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\ngit ls-files --error-unmatch -z -- ':(top,glob)scripts/**/*.py' |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 --ignore-noqa --output-format concise --"
+        "run": "set -euo pipefail\nuv run python -m scripts.quality.quote_inputs |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \\\n    --ignore-noqa --output-format concise --"
       },
       "timeoutMinutes": 5,
-      "title": "Python script quotes (Q000)"
+      "title": "Python script and test quotes (Q000)"
     },
     {
       "env": {},
@@ -177,6 +205,34 @@
       "title": "Container recipes"
     },
     {
+      "env": {},
+      "id": "tests-fast",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-fast",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-fast.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py fast --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Unit tests"
+    },
+    {
       "env": {
         "GH_TOKEN": "${{ github.token }}"
       },
@@ -208,6 +264,34 @@
       },
       "timeoutMinutes": 5,
       "title": "Delivery security"
+    },
+    {
+      "env": {},
+      "id": "shell",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-shell",
+      "result": {
+        "adapter": "native",
+        "path": "reports/shell.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py shell"
+      },
+      "timeoutMinutes": 5,
+      "title": "Shell safety"
     },
     {
       "env": {},
@@ -259,7 +343,7 @@
         "path": "reports/ansible.json"
       },
       "step": {
-        "run": "uv run python scripts/quality/lint.py ansible"
+        "run": "set -euo pipefail\nuv run pytest -q tests/test_user_unit.py\nuv run python scripts/quality/lint.py ansible\n"
       },
       "timeoutMinutes": 5,
       "title": "Playbook safety"
@@ -428,6 +512,45 @@
         }
       ],
       "timeoutMinutes": 5
+    },
+    "quality-fast": {
+      "env": {},
+      "permissions": {
+        "contents": "read"
+      },
+      "runner": "ubuntu-24.04",
+      "services": {},
+      "setup": [
+        {
+          "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "with": {
+            "fetch-depth": "0",
+            "persist-credentials": "false"
+          }
+        },
+        {
+          "uses": "astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78"
+        },
+        {
+          "run": "uv sync --locked"
+        },
+        {
+          "uses": "azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e",
+          "with": {
+            "version": "v3.19.0"
+          }
+        },
+        {
+          "uses": "actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f",
+          "with": {
+            "node-version": "24.11.1"
+          }
+        },
+        {
+          "run": "uv run python scripts/quality/install_tools.py --tools hadolint"
+        }
+      ],
+      "timeoutMinutes": 10
     },
     "quality-helm": {
       "env": {},
@@ -608,6 +731,9 @@
         },
         {
           "run": "uv run python scripts/quality/install_tools.py --tools shellcheck"
+        },
+        {
+          "run": ".quality-tools/bin/shellcheck --version"
         }
       ],
       "timeoutMinutes": 5

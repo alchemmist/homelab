@@ -19,10 +19,11 @@
           ansible.builtin.command: kubectl apply -f -
           args:
             stdin: "{{ lookup('template', playbook_dir + '/../templates/worker-probe.yaml.j2') }}"
-          changed_when: true
 
+          changed_when: true
         - name: Wait for probes including the read-only NFS mount
-          ansible.builtin.command: kubectl -n homelab-worker-check wait --for=condition=Ready pod --all --timeout=240s
+          ansible.builtin.command: >-
+            kubectl -n homelab-worker-check wait --for=condition=Ready pod --all --timeout=240s
           changed_when: false
 
         - name: Read probe addresses
@@ -41,7 +42,10 @@
               - --
               - sh
               - -ec
-              - nslookup kubernetes.default.svc.cluster.local; nc -z -w 10 kubernetes.default.svc.cluster.local 443; test -d /mnt/nfs; grep -q ' /mnt/nfs .* ro,' /proc/mounts
+              - >-
+                nslookup kubernetes.default.svc.cluster.local; nc -z -w 10
+                kubernetes.default.svc.cluster.local 443; test -d /mnt/nfs; grep -q ' /mnt/nfs .*
+                ro,' /proc/mounts
           changed_when: false
 
         - name: Verify traffic from every node to every probe
@@ -56,9 +60,11 @@
               - wget
               - -qO-
               - -T
-              - '10'
-              - "http://{{ item.1.status.podIP }}:8080"
-          loop: "{{ (worker_probe_pods.stdout | from_json)['items'] | product((worker_probe_pods.stdout | from_json)['items']) | list }}"
+              - "10"
+              - http://{{ item.1.status.podIP }}:8080
+          loop: >-
+            {{ (worker_probe_pods.stdout | from_json)['items'] | product((worker_probe_pods.stdout |
+            from_json)['items']) | list }}
           loop_control:
             label: "{{ item.0.spec.nodeName }} -> {{ item.1.spec.nodeName }}"
           register: worker_probe_http
@@ -72,7 +78,9 @@
           failed_when: worker_probe_logs.rc != 0 or 'probe-ready' not in worker_probe_logs.stdout
       always:
         - name: Remove disposable verification workloads
-          ansible.builtin.command: kubectl delete namespace homelab-worker-check --ignore-not-found --wait=true --timeout=90s
+          ansible.builtin.command: >-
+            kubectl delete namespace homelab-worker-check --ignore-not-found --wait=true
+            --timeout=90s
           register: namespace_removal
           changed_when: namespace_removal.stdout | length > 0
 ...

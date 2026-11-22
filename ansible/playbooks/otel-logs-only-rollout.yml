@@ -43,10 +43,13 @@
         mode: "0600"
       no_log: true
     - name: Validate candidate with pinned installed Collector and live environment
-      ansible.builtin.command: python3 /var/tmp/otel-logs-rollout-gate.py validate /etc/homelab-otel/agent-logs-candidate.yaml
+      ansible.builtin.command: >-
+        python3 /var/tmp/otel-logs-rollout-gate.py validate
+        /etc/homelab-otel/agent-logs-candidate.yaml
       changed_when: false
     - name: Prove metrics endpoint fresh before mutation
-      ansible.builtin.command: python3 /var/tmp/otel-logs-rollout-gate.py baseline /var/tmp/otel-logs-preimage-metrics.json
+      ansible.builtin.command: >-
+        python3 /var/tmp/otel-logs-rollout-gate.py baseline /var/tmp/otel-logs-preimage-metrics.json
       changed_when: false
     - name: Preserve exact live configuration for explicit recovery
       ansible.builtin.copy:

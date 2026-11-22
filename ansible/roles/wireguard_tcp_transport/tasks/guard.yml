@@ -12,7 +12,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
 
 - name: Install narrow direct transport guard
   ansible.builtin.copy:
@@ -20,7 +20,7 @@
     dest: /usr/local/libexec/wireguard-tcp-transport-guard.py
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
   register: wg_tcp_guard_helper
 
 - name: Install persistent direct transport guard unit
@@ -29,13 +29,14 @@
     dest: /etc/systemd/system/wireguard-tcp-transport-guard.service
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   register: wg_tcp_guard_unit
 
 - name: Activate the direct transport guard before switching the peer endpoint
   ansible.builtin.systemd:
     name: wireguard-tcp-transport-guard.service
-    state: "{{ 'restarted' if wg_tcp_guard_helper.changed or wg_tcp_guard_unit.changed else 'started' }}"
+    state: >-
+      {{ 'restarted' if wg_tcp_guard_helper.changed or wg_tcp_guard_unit.changed else 'started' }}
     enabled: true
     daemon_reload: true
 ...

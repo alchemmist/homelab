@@ -11,13 +11,13 @@
       ansible.builtin.file:
         path: "{{ homelab_local_ssh_dir }}/config.d"
         state: directory
-        mode: '0700'
+        mode: "0700"
 
     - name: Generate public aliases from inventory
       ansible.builtin.template:
         src: "{{ playbook_dir | dirname }}/templates/ssh-client.conf.j2"
         dest: "{{ homelab_local_ssh_dir }}/config.d/homelab.conf"
-        mode: '0600'
+        mode: "0600"
 
     - name: Load managed aliases before existing host definitions
       ansible.builtin.lineinfile:
@@ -25,6 +25,6 @@
         line: Include ~/.ssh/config.d/homelab.conf
         insertbefore: BOF
         create: true
-        mode: '0600'
+        mode: "0600"
         backup: true
 ...

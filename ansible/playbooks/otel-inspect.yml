@@ -23,8 +23,10 @@
 
     - name: Count journal bytes in memory
       ansible.builtin.command:
-        argv: [python3, '-']
-        stdin: "{{ lookup('ansible.builtin.file', playbook_dir + '/../../scripts/otel-journal-probe.py') }}"
+        argv: [python3, "-"]
+        stdin: >-
+          {{ lookup('ansible.builtin.file', playbook_dir + '/../../scripts/otel-journal-probe.py')
+          }}
       register: otel_journal_probe
       changed_when: false
       no_log: true
@@ -51,5 +53,6 @@
 
     - name: Report measurement availability
       ansible.builtin.debug:
-        msg: "{{ inventory_hostname }}: privileged journal counts saved; raw messages were not persisted"
+        msg: >-
+          {{ inventory_hostname }}: privileged journal counts saved; raw messages were not persisted
 ...

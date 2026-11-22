@@ -26,9 +26,9 @@
       - -I
       - "{{ home_ingress_ha_nodes[inventory_hostname].interface }}"
       - -c
-      - '2'
+      - "2"
       - -W
-      - '2'
+      - "2"
       - "{{ home_ingress_ha_nodes[inventory_hostname].peer }}"
   changed_when: false
 
@@ -46,10 +46,10 @@
 
 - name: Record whether the managed VIP is already assigned
   ansible.builtin.set_fact:
-    home_ingress_ha_vip_present: >-
-      {{ home_ingress_ha_vip in
-         ([home_ingress_ha_addresses_0.stdout | from_json, home_ingress_ha_addresses_1.stdout | from_json] |
-          flatten | map(attribute='addr_info') | flatten | map(attribute='local') | list) }}
+    home_ingress_ha_vip_present: "{{ home_ingress_ha_vip in\n\
+      \   ([home_ingress_ha_addresses_0.stdout | from_json, home_ingress_ha_addresses_1.stdout |
+      from_json] |\n\
+      \    flatten | map(attribute='addr_info') | flatten | map(attribute='local') | list) }}"
 
 - name: Check the new VIP for duplicate ARP ownership
   ansible.builtin.command:
@@ -59,9 +59,9 @@
       - -I
       - "{{ home_ingress_ha_nodes[inventory_hostname].interface }}"
       - -c
-      - '3'
+      - "3"
       - -w
-      - '5'
+      - "5"
       - "{{ home_ingress_ha_vip }}"
   changed_when: false
   when: not home_ingress_ha_vip_present
@@ -76,7 +76,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
 
 - name: Install home ingress readiness probe
   ansible.builtin.template:
@@ -84,7 +84,7 @@
     dest: /usr/local/libexec/check-home-ingress
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
   notify: Restart home ingress keepalived
 
 - name: Install directed neighbor announcement helper
@@ -93,7 +93,7 @@
     dest: /usr/local/libexec/announce-home-ingress-neighbors
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
 
 - name: Configure directed neighbor announcements
   ansible.builtin.copy:
@@ -107,7 +107,7 @@
     dest: /etc/home-ingress-neighbors.json
     owner: root
     group: root
-    mode: '0600'
+    mode: "0600"
 
 - name: Verify local API and local ingress readiness
   ansible.builtin.command: /usr/local/libexec/check-home-ingress
@@ -123,7 +123,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
 
 - name: Install validated keepalived configuration with previous configuration backup
   ansible.builtin.template:
@@ -131,7 +131,7 @@
     dest: /etc/keepalived/keepalived.conf
     owner: root
     group: root
-    mode: '0600'
+    mode: "0600"
     backup: true
     validate: /usr/sbin/keepalived --config-test --use-file=%s
   notify: Restart home ingress keepalived
@@ -142,7 +142,7 @@
     dest: /usr/local/libexec/wait-home-ingress-interface
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
     validate: /bin/sh -n %s
   notify: Restart home ingress keepalived
 
@@ -152,7 +152,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
 
 - name: Install keepalived startup ordering and retry policy
   ansible.builtin.template:
@@ -160,8 +160,9 @@
     dest: /etc/systemd/system/keepalived.service.d/10-home-ingress-startup.conf
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   notify:
+
     - Reload keepalived systemd startup policy
     - Restart home ingress keepalived
 
