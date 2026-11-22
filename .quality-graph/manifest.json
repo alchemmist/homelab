@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "52d6e1a25d32593fbe9e55a7a990bb8bebf4827146b309f39c27e50c8f3ef14c",
+  "graphDigest": "24c63920e5e08e417c036cab2a67034fb6e19db216fcf4ea9ea519351ab49637",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -33,7 +33,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run qg validate\nuv run python scripts/quality/contracts.py\nuv run python scripts/quality/strict_guard.py\nuv run pytest -q tests/test_quality_python_policy.py"
+        "run": "set -euo pipefail\nuv run qg validate\nuv run python scripts/quality/contracts.py\nuv run python scripts/quality/strict_guard.py\nuv run python -m scripts.quality.python_inputs scripts/quality/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select SIM300 \\\n    --ignore-noqa --output-format concise --\nuv run pytest -q tests/test_quality_python_policy.py"
       },
       "timeoutMinutes": 5,
       "title": "Graph integrity"

@@ -108,6 +108,9 @@ nodes:
       uv run qg validate
       uv run python scripts/quality/contracts.py
       uv run python scripts/quality/strict_guard.py
+      uv run python -m scripts.quality.python_inputs scripts/quality/ |
+        xargs -0 -r uv run ruff check --config quality/ruff.toml --select SIM300 \
+          --ignore-noqa --output-format concise --
       uv run pytest -q tests/test_quality_python_policy.py
     policy: &id001
       blocking: true
