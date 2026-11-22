@@ -39,7 +39,7 @@ root as Python modules. Validate the committed graph offline with
 The [runner-only deployment description](../../../deploy/lms-certify/runner/README.md)
 replaces the retired combined pilot installer. It renders offline and does not
 create a database or bind credentials. The workflow stores certification state
-in `pg-common`; see the [migration receipts](../../postgres-platform.md).
+in `pg-common`; see the [migration receipts](../../data/postgresql/postgres-platform.md).
 
 ## Reviewed queue rollout (2026-11-19)
 
