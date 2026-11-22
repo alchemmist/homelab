@@ -37,6 +37,7 @@ class AlertGraphInventoryTests(unittest.TestCase):
         rows = json.loads((ROOT / "docs/monitoring/alert-graphs.inventory.json").read_text())
         # Includes Service-path divergence and distinct absent/down API scrapes.
         expected_source_rule_count = 216
+        assert any(r["alert"] == "ThanosWarmWorkshopDiskLow" for r in rows)
         assert len(rows) == expected_source_rule_count
         expected_graph_spec_version = 1
         for row in rows:
