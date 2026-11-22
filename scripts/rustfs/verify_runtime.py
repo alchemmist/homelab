@@ -14,19 +14,22 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from collections.abc import Callable
 from pathlib import Path
+from types import ModuleType
 
 Request = Callable[[str, str, str, bytes], tuple[int, bytes]]
 
 
-def load(path, name):
+def load(path: Path, name: str) -> ModuleType:
     """Execute load."""
     spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load {name}")
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m
 
 
-def main():
+def main() -> None:
     """Execute main."""
     p = argparse.ArgumentParser()
     p.add_argument("--machine-credentials", type=Path, required=True)
@@ -46,7 +49,7 @@ def main():
         return
     origin = "http://127.0.0.1:19000"
 
-    def request(role, method, path, payload=b"") -> tuple[int, bytes]:
+    def request(role: str, method: str, path: str, payload: bytes = b"") -> tuple[int, bytes]:
         url = origin + path
         headers = g.sign(method, url, c[role]["access"], c[role]["secret"], payload=payload)
         req = urllib.request.Request(

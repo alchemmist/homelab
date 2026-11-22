@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """OFFLINE ONLY: render the dedicated SPI writer Secret; no API calls."""
 
+from __future__ import annotations
+
 import argparse
 import base64
 import hashlib
@@ -8,9 +10,17 @@ import json
 import os
 import stat
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from typing import Literal
+
+    Role = Literal["root", "reader", "writer"]
+    Field = Literal["access", "secret"]
 
 
-def private_json(path):
+def private_json(path: Path) -> object:
     """Execute private_json."""
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     with os.fdopen(fd, "rb") as stream:
@@ -28,16 +38,16 @@ def private_json(path):
     return json.loads(raw)
 
 
-def render(directory):
+def render(directory: str | Path) -> None:
     """Execute render."""
     try:
         d = Path(directory)
         st = d.lstat()
         if not stat.S_ISDIR(st.st_mode) or st.st_uid != os.getuid() or st.st_mode & 0o077:
             raise ValueError
-        storage = private_json(d / "storage.json")
+        raw = cast("Mapping[Role, Mapping[Field, object]]", private_json(d / "storage.json"))
         for field in ("access", "secret"):
-            values = [storage[r][field] for r in ("root", "reader", "writer")]
+            values = [raw[r][field] for r in ("root", "reader", "writer")]
             if (
                 any(
                     not isinstance(v, str)
@@ -48,6 +58,7 @@ def render(directory):
                 or len(set(values)) != 3
             ):
                 raise ValueError
+        storage = cast("Mapping[Role, Mapping[Field, str]]", raw)
         intended = {
             storage[r]["access"]: hashlib.sha256(storage[r]["secret"].encode()).hexdigest()
             for r in ("reader", "writer")
@@ -78,7 +89,7 @@ def render(directory):
         raise ValueError("SPI_WRITER_SECRET_PREPARATION_REFUSED") from None
 
 
-def main():
+def main() -> None:
     """Execute main."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--private-dir", type=Path, required=True)
