@@ -45,7 +45,7 @@ def mypy_argv(files):
     return [
         "mypy",
         "--config-file",
-        "quality/mypy.ini",
+        "ci/quality/mypy.ini",
         "--no-error-summary",
         "--no-pretty",
         "--no-color-output",
@@ -144,7 +144,7 @@ def mypy_findings(files):
 def format_findings(files):
     """Execute format_findings."""
     process = command(
-        ["ruff", "format", "--check", "--config", "quality/ruff.toml", *files],
+        ["ruff", "format", "--check", "--config", "ci/quality/ruff.toml", *files],
         allowed=(0, 1, 2),
         timeout=300,
     )
@@ -191,7 +191,7 @@ def check_python(names: list[str]) -> tuple[list[Finding], int]:
             "ruff",
             "check",
             "--config",
-            "quality/ruff.toml",
+            "ci/quality/ruff.toml",
             "--output-format",
             "json",
             *files,

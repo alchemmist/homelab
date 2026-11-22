@@ -75,7 +75,7 @@ def main():
     parser.add_argument("--tools", nargs="+")
     args = parser.parse_args()
     key = f"{platform.system().lower()}-{platform.machine()}"
-    lock = json.loads((ROOT / "quality/tools.lock.json").read_text())
+    lock = json.loads((ROOT / "ci/quality/tools.lock.json").read_text())
     if key not in lock["platforms"]:
         raise ValueError(f"Unsupported tool platform: {key}")
     destination = ROOT / ".quality-tools/bin"

@@ -2,7 +2,7 @@
   "version": 1,
   "python": {
     "tool": "ruff==0.15.12",
-    "configuration": "quality/ruff.toml",
+    "configuration": "ci/quality/ruff.toml",
     "rules": [
       {
         "id": "FAST001",
@@ -1399,7 +1399,7 @@
   },
   "kubernetes": {
     "tool": "kube-linter==0.8.3",
-    "configuration": "quality/kube-linter.yaml",
+    "configuration": "ci/quality/kube-linter.yaml",
     "rules": [
       {
         "id": "dangling-service",
@@ -1560,7 +1560,7 @@
   },
   "yaml": {
     "tool": "yamllint==1.38.0",
-    "configuration": "quality/yamllint.yaml",
+    "configuration": "ci/quality/yamllint.yaml",
     "rules": [
       "anchors",
       "braces",
@@ -1579,7 +1579,7 @@
   },
   "ansible": {
     "tool": "ansible-lint==26.11.0",
-    "configuration": "quality/ansible-lint.yaml",
+    "configuration": "ci/quality/ansible-lint.yaml",
     "profile": "min",
     "rules": [
       "internal-error",

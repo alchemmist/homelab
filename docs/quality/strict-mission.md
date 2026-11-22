@@ -15,7 +15,7 @@ This continuation supersedes the earlier accepted-debt quality ratchet as the fi
 
 The operator explicitly authorized parallel agents, including cursor/grok-4.7. Use managed isolated worktrees, one writer each, disjoint source ownership, committed changes and review/integration. Do not spawn unmanaged tmux/pi/CLI children or recursively delegate. On launch/runtime failure stop and report; no alternate CLI fallback. Keep a durable checkpoint of counts, commands, commits and blockers. No promise that finite wall time guarantees zero findings.
 
-Do not modify /Users/antonmoss/code/homelab or other agents' worktrees. Base is the isolated quality/strict-all branch at /tmp/homelab-quality-strict. No resetting, force-pushing, blanket pruning or automatic merge to main. Never push code/configuration to main to make a check green. Publish only an explicitly labelled draft branch/PR after validating what actually ran; report trusted-base governance blockers, never bypass them. Any eventual contract registration requires reviewed CI-only staging, not application-source promotion.
+Do not modify /Users/antonmoss/code/homelab or other agents' worktrees. Base is the isolated ci/quality/strict-all branch at /tmp/homelab-quality-strict. No resetting, force-pushing, blanket pruning or automatic merge to main. Never push code/configuration to main to make a check green. Publish only an explicitly labelled draft branch/PR after validating what actually ran; report trusted-base governance blockers, never bypass them. Any eventual contract registration requires reviewed CI-only staging, not application-source promotion.
 
 ## Production and data exclusions
 

@@ -111,7 +111,7 @@
       "role-name": "Role directory names are include and path contracts. They are not renamed to a Galaxy pattern without a consumer map.",
       "var-naming": "Would rename play and role variables that are external interfaces. Consumers are not remapped by a linter rule.",
       "warning": "Experimental catch-all. strict: true already fails warnings emitted by real rules.",
-      "yaml": "ansible-lint runs a second yamllint with its own config. quality/yamllint.yaml is the strict YAML authority for the whole tree."
+      "yaml": "ansible-lint runs a second yamllint with its own config. ci/quality/yamllint.yaml is the strict YAML authority for the whole tree."
     }
   },
   "kubeLinter": {

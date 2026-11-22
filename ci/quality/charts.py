@@ -276,7 +276,7 @@ def kube_lint(target, resources):
             "--format",
             "json",
             "--config",
-            "quality/kube-linter.yaml",
+            "ci/quality/kube-linter.yaml",
         ],
         stdin=yaml.safe_dump_all(resources),
         allowed=(0, 1),
@@ -344,7 +344,7 @@ def schema_findings(
     findings: list[object] = []
     if not validate:
         return findings
-    path = ROOT / "quality/schemas" / schema_name(resource)
+    path = ROOT / "ci/quality/schemas" / schema_name(resource)
     if not path.exists():
         return [
             finding(

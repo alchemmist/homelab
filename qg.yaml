@@ -102,7 +102,7 @@ profiles:
       - run: uv run python -m ci.quality.install_tools --tools promtool
       - run: |
           set -euo pipefail
-          read -r image < quality/nginx-syntax-image.txt
+          read -r image < ci/quality/nginx-syntax-image.txt
           docker pull "${image}"
 nodes:
   graph:

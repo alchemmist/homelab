@@ -20,7 +20,7 @@ def main():
     parser.add_argument("suite")
     parser.add_argument("--isolate-network", action="store_true")
     args = parser.parse_args()
-    catalog = json.loads((ROOT / "quality/test-suites.json").read_text())
+    catalog = json.loads((ROOT / "ci/quality/test-suites.json").read_text())
     paths = catalog["suites"][args.suite]
     if not paths or any(
         not p.startswith("tests/") or not Path(p).name.startswith("test_") or ".." in Path(p).parts

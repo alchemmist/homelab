@@ -45,7 +45,7 @@ def test_ruff_missing_docstrings_follow_module_scope(filename: str, expected: se
             common.ROOT / ".venv/bin/ruff",
             "check",
             "--config",
-            "quality/ruff.toml",
+            "ci/quality/ruff.toml",
             "--output-format=json",
             "--stdin-filename",
             filename,
@@ -63,7 +63,7 @@ def test_script_docstring_needs_triple_quotes_even_with_double_quote_character()
             common.ROOT / ".venv/bin/ruff",
             "check",
             "--config",
-            "quality/ruff.toml",
+            "ci/quality/ruff.toml",
             "--select",
             "D300,Q002",
             "--ignore-noqa",
@@ -90,10 +90,10 @@ def test_script_docstring_needs_triple_quotes_even_with_double_quote_character()
 def test_ruff_ignore_drift_fails_configuration(
     original: str, replacement: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    config = (common.ROOT / "quality/ruff.toml").read_text()
-    policy = json.loads((common.ROOT / "quality/strict-policy.json").read_bytes())
-    (tmp_path / "quality").mkdir()
-    (tmp_path / "quality/ruff.toml").write_text(config.replace(original, replacement))
+    config = (common.ROOT / "ci/quality/ruff.toml").read_text()
+    policy = json.loads((common.ROOT / "ci/quality/strict-policy.json").read_bytes())
+    (tmp_path / "ci/quality").mkdir(parents=True)
+    (tmp_path / "ci/quality/ruff.toml").write_text(config.replace(original, replacement))
     monkeypatch.setattr(strict_guard, "ROOT", tmp_path)
     with pytest.raises(ValueError, match=r"Ruff (ignore list|per-file ignores) drifted"):
         strict_guard.verify_ruff_policy(policy)

@@ -27,7 +27,7 @@ def check_ansible(names: list[str]) -> tuple[list[Finding], int]:
                 "--project-dir",
                 str(ROOT),
                 "--config-file",
-                str(ROOT / "quality/ansible-lint.yaml"),
+                str(ROOT / "ci/quality/ansible-lint.yaml"),
                 "--format",
                 "sarif",
                 *[str(ROOT / p) for p in files],

@@ -33,7 +33,7 @@ def test_experimental_test_names_require_explicit_classification() -> None:
 
 def test_new_lab_tests_are_visible_but_not_execution_authorized() -> None:
     """All actual lab tests stay explicit deferred entries, never auto-collected in CI."""
-    inventory = json.loads((ROOT / "quality/test-suites.json").read_text())
+    inventory = json.loads((ROOT / "ci/quality/test-suites.json").read_text())
     experimental = {
         path.relative_to(ROOT).as_posix()
         for path in (ROOT / "experiments/venice-autonomy").glob("test_*.py")
@@ -192,7 +192,7 @@ def test_docker_adapter_transports_each_source_and_keeps_findings() -> None:
     assert [row["location"]["path"] for row in findings] == sources
     assert [row["ruleId"] for row in findings] == ["DL3013"] * len(sources)
     assert [item.args[0] for item in command.call_args_list] == [
-        ["hadolint", "--config", "quality/hadolint.yaml", "--format", "json", source]
+        ["hadolint", "--config", "ci/quality/hadolint.yaml", "--format", "json", source]
         for source in sources
     ]
     assert all(item.kwargs == {"allowed": (0, 1)} for item in command.call_args_list)
@@ -203,7 +203,7 @@ def test_docker_adapter_transports_each_source_and_keeps_findings() -> None:
 def test_docker_ignore_cannot_mask_diagnostic(pragma: str) -> None:
     """Exercise the installed binary: neither local nor file-wide ignores can hide DL3007."""
     result = subprocess.run(
-        ["hadolint", "--config", str(ROOT / "quality/hadolint.yaml"), "--format", "json", "-"],
+        ["hadolint", "--config", str(ROOT / "ci/quality/hadolint.yaml"), "--format", "json", "-"],
         input=f"# hadolint {pragma}=DL3007\nFROM debian:latest\n",
         capture_output=True,
         text=True,

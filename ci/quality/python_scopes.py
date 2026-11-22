@@ -57,7 +57,7 @@ def read_scope(path: Path, inventory: list[PurePosixPath]) -> tuple[list[str], l
 
 def main() -> int:
     """Run each rule independently so overlapping scopes can only add coverage."""
-    directory = common.ROOT / "quality/python-scopes"
+    directory = common.ROOT / "ci/quality/python-scopes"
     scopes = sorted(directory.glob("*.json"))
     if directory.is_symlink() or not scopes:
         message = "Missing or unsafe Python scope registry"
@@ -86,7 +86,7 @@ def main() -> int:
                     RUFF,
                     "check",
                     "--config",
-                    "quality/ruff.toml",
+                    "ci/quality/ruff.toml",
                     "--config",
                     "lint.per-file-ignores = {}",
                     "--select",

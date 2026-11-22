@@ -41,7 +41,7 @@ def test_real_linter_rejects_unsafe_or_unresolved_tasks(tmp_path, task, rule) ->
             executable,
             "--offline",
             "--config-file",
-            str(ROOT / "quality/ansible-lint.yaml"),
+            str(ROOT / "ci/quality/ansible-lint.yaml"),
             "--project-dir",
             str(tmp_path),
             "--format",

@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "817b36579b7c12b9b487a7ba040609689fa1a7348b70dc29d63c70dddb545282",
+  "graphDigest": "38dcb8feeb8d4858cc74b4b954201f92cbcd719438ae6c4fe2b866dbb250e5ef",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -782,7 +782,7 @@
           "run": "uv run python -m ci.quality.install_tools --tools promtool"
         },
         {
-          "run": "set -euo pipefail\nread -r image < quality/nginx-syntax-image.txt\ndocker pull \"${image}\"\n"
+          "run": "set -euo pipefail\nread -r image < ci/quality/nginx-syntax-image.txt\ndocker pull \"${image}\"\n"
         }
       ],
       "timeoutMinutes": 10
