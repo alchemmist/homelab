@@ -36,4 +36,5 @@ class PiPilot(unittest.TestCase):
         valid="from "+ 'monori.common.json_values import integer_value\n\ndef test_case() -> None:\n    assert integer_value(3, "fixture") == 3\n'
         d.inspect_test(valid,"integer_value")
         for bad in [valid.replace('assert integer_value(3, "fixture") == 3',"assert True"),valid+"\nimport os\n",valid.replace("== 3",'== eval("3")')]:
-            with self.assertRaises(ValueError):d.inspect_test(bad,"integer_value")
+            with self.assertRaises(ValueError):
+                d.inspect_test(bad,"integer_value")

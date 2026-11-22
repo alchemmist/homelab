@@ -130,7 +130,7 @@ def save(path: Path, data: object) -> None:
 
 
 def api(token: str, method: str, path: str, data: object | None = None) -> dict[str, object]:
-    """Api."""
+    """Send a token-authenticated API request and return an empty object for an empty body."""
     req = urllib.request.Request(
         BASE + path,
         method=method,

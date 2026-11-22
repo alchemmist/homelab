@@ -1,6 +1,10 @@
 """Print an isolated, one-shot Kubernetes Job; no cluster credentials required to render."""
 
+from __future__ import annotations
+
 import json
+from collections.abc import Mapping
+from typing import TypedDict
 
 PYTHON = (
     "python@sha256:cb33f7f771ecec2ef1225cf39b159591a040391bd73e4c01f00fdfc4c47611d2"
@@ -12,8 +16,32 @@ ROOT = {"name": "candidate", "mountPath": "/candidate"}
 BUCKET = {**ROOT, "subPathExpr": "drill-$(POD_UID)"}
 
 
-def container(name, image, command, args, mount=None, sidecar=False):
-    result = dict(
+class _OptionalContainerFields(TypedDict, total=False):
+    command: list[str]
+    args: list[str]
+    restartPolicy: str
+
+
+class Container(_OptionalContainerFields):
+    """Container fields used by the drill and seed manifest builders."""
+
+    name: str
+    image: str
+    env: list[dict[str, object]]
+    resources: dict[str, dict[str, str]]
+    securityContext: dict[str, object]
+    volumeMounts: list[Mapping[str, object]]
+
+
+def container(
+    name: str,
+    image: str,
+    command: list[str],
+    args: list[str],
+    mount: Mapping[str, object] | None = None,
+    sidecar: bool = False,
+) -> Container:
+    result: Container = dict(
         name=name,
         image=image,
         command=command,
@@ -90,7 +118,7 @@ for res,port,maximum in ((300000,12002,'5m'),(3600000,13002,'1h')):
 """
 
 
-def obj(path):
+def obj(path: str) -> str:
     return "--objstore.config=" + json.dumps(
         {"type": "FILESYSTEM", "config": {"directory": "/candidate/" + path}}
     )

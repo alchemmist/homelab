@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import re
@@ -18,6 +19,7 @@ from quality_graph_core.graph import (
     FlowNode,
     Graph,
     LabelSpec,
+    LuaAdapter,
     Node,
     Profile,
     Step,
@@ -330,7 +332,14 @@ def _validate_release_contract(graph: Graph, flow: Flow) -> None:
         ):
             message = "release tag patterns must be literal nonnegative filters without whitespace"
             raise ValueError(message)
-    if not flow.is_release or _execution_mode(flow) != "github-actions":
+    if not flow.is_release:
+        return
+    if flow.branches and flow.branches != (
+        _default_branch(graph.provider.values.get("default-branch")),
+    ):
+        message = "branch releases require the configured default branch only"
+        raise ValueError(message)
+    if _execution_mode(flow) != "github-actions":
         return
     if any(node.checkpoint for node in flow.nodes):
         message = (
@@ -489,6 +498,8 @@ def _compile_flows(graph: Graph, configuration: _GitHubConfiguration) -> Generat
             workflow["on"] = (
                 {"push": {"tags": list(flow.tags)}}
                 if flow.tags
+                else {"push": {"branches": [b.replace("+", r"\+") for b in flow.branches]}}
+                if flow.branches
                 else {"workflow_dispatch": {"inputs": dict(flow.inputs)}}
             )
         elif flow.trigger == "push":
@@ -601,6 +612,9 @@ def _profile_value(profile: Profile) -> dict[str, JsonValue]:
 def _node_value(node: Node, profile: Profile) -> dict[str, JsonValue]:
     result_value: dict[str, JsonValue] = {"adapter": node.result.kind.value}
     _put_optional(result_value, "path", node.result.path)
+    if isinstance(node.result, LuaAdapter):
+        result_value["code"] = node.result.code
+        _put_optional(result_value, "file", node.result.file)
     value: dict[str, JsonValue] = {
         "id": node.id,
         "title": node.title,
@@ -785,7 +799,13 @@ def _execution_job(
     if node.deployment_environment:
         value["environment"] = dict(node.deployment_environment)
     if flow is not None and flow.is_release:
-        value["if"] = "startsWith(github.ref, 'refs/tags/')"
+        value["if"] = (
+            "github.event_name == 'push' && !github.event.deleted "
+            "&& github.ref_name == github.event.repository.default_branch "
+            "&& github.ref_type == 'branch'"
+            if flow.branches
+            else "startsWith(github.ref, 'refs/tags/')"
+        )
     environment = _json_string_mapping(profile.environment)
     environment.update(_json_string_mapping(node.environment))
     if flow is not None:
@@ -821,6 +841,9 @@ def _collection_inputs(node: Node, graph_digest: str, flow: Flow | None) -> dict
         "approval-files": str(node.policy.approvals.files).lower(),
         "approval-node": str(node.policy.approvals.node).lower(),
     }
+    if isinstance(node.result, LuaAdapter):
+        inputs["lua-source"] = base64.b64encode(node.result.code.encode()).decode()
+        inputs["lua-file"] = node.result.file or ""
     if node.steps:
         inputs["command-outcome"] = "${{ job.status }}"
     if flow is not None:

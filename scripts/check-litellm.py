@@ -5,6 +5,7 @@ import os
 import subprocess
 import urllib.error
 import urllib.request
+from http import HTTPStatus
 
 
 def kubectl(*args):
@@ -38,7 +39,7 @@ try:
     msg = "Unauthenticated API request succeeded"
     raise AssertionError(msg)
 except urllib.error.HTTPError as exc:
-    assert exc.code == 401, exc.code
+    assert exc.code == HTTPStatus.UNAUTHORIZED, exc.code
 print("unauthenticated API: 401")
 result = request(
     "/key/generate",

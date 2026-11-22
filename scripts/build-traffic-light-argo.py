@@ -27,7 +27,10 @@ def queries(include_root=False):
     def latest(extra="") -> str:
         metric = f"argocd_app_info{{{selector}{',' + extra if extra else ''}}}"
         # Discard old label sets lingering after a state change in OTLP storage.
-        return f"({metric} and (time() - timestamp({metric}) < 90) and (timestamp({metric}) == on(name) group_left {newest}))"
+        return (
+            f"({metric} and (time() - timestamp({metric}) < 90) "
+            f"and (timestamp({metric}) == on(name) group_left {newest}))"
+        )
 
     apps = f"max by(name) ({latest()})"
 
@@ -102,7 +105,21 @@ def build():
             "type": "bargauge",
             "datasource": DS,
             "gridPos": grid,
-            "description": "Current Argo Applications, not Pods/history. One equal full block per Application, alphabetically ordered by name; color encodes latest status. Numeric codes1..6 are categorical, not utilization or readiness percentage; max1 intentionally saturates every present block to the same size. Ready=Healthy+Synced, Progressing, Suspended, Git drift=OutOfSync, Unhealthy=Degraded/Missing, Unknown. Latest timestamp wins, priority Unhealthy > Unknown > Progressing > Suspended > drift > Ready. root included so every Argo Application has a block. Hover shows Application name through a native single data link; click opens that Application in Argo CD. Freshness90s and up/inventory completeness guards: unavailable/down/partially stale telemetry produces no data, never green fabricated blocks. Raw sampling15s; dashboard refresh5s. Native Bar gauge solid value-mapped colors, not LCD subdivisions: each whole block corresponds to one Application.",
+            "description": (
+                "Current Argo Applications, not Pods/history. One equal full block per "
+                "Application, alphabetically ordered by name; color encodes latest status. "
+                "Numeric codes1..6 are categorical, not utilization or readiness percentage; max1 "
+                "intentionally saturates every present block to the same size. "
+                "Ready=Healthy+Synced, Progressing, Suspended, Git drift=OutOfSync, "
+                "Unhealthy=Degraded/Missing, Unknown. Latest timestamp wins, priority Unhealthy > "
+                "Unknown > Progressing > Suspended > drift > Ready. root included so every Argo "
+                "Application has a block. Hover shows Application name through a native single "
+                "data link; click opens that Application in Argo CD. Freshness90s and "
+                "up/inventory completeness guards: unavailable/down/partially stale telemetry "
+                "produces no data, never green fabricated blocks. Raw sampling15s; dashboard "
+                "refresh5s. Native Bar gauge solid value-mapped colors, not LCD subdivisions: "
+                "each whole block corresponds to one Application."
+            ),
             "interval": "15s",
             "maxDataPoints": 1,
             "targets": [

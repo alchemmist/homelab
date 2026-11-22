@@ -243,6 +243,7 @@ def public_keys(value):
                     capture_output=True,
                     text=True,
                     timeout=10,
+                    check=False,
                 )
         except (OSError, subprocess.SubprocessError):
             raise Refused("OpenSSH public key parser unavailable") from None

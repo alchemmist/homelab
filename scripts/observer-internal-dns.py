@@ -18,7 +18,8 @@ KEY = "authentik-internal.server"
 INTERNAL_VIP = "192.168.0.250"
 
 
-def zone(address):
+def zone(address: str) -> str:
+    """Render the Authentik CoreDNS zone for a private IPv4 address."""
     import ipaddress
 
     if not ipaddress.ip_address(address).is_private or ":" in address:
@@ -38,6 +39,7 @@ def zone(address):
 
 
 def desired(before, address, owned_value=None):
+    """Copy the ConfigMap data and refuse to replace a conflicting unowned zone."""
     value = zone(address)
     old = before.get("data", {}).get(KEY)
     if old is not None and old != value and old != owned_value:
@@ -48,6 +50,7 @@ def desired(before, address, owned_value=None):
 
 
 def patch(before, data):
+    """Test the ConfigMap identity, version, and data before setting the owned key."""
     return [
         {"op": "test", "path": "/metadata/uid", "value": before["metadata"]["uid"]},
         {
@@ -60,7 +63,8 @@ def patch(before, data):
     ]
 
 
-def kubectl(*args, payload=None):
+def kubectl(*args: str, payload: str | None = None):
+    """Run k3s kubectl once and decode its JSON response, failing on a nonzero exit."""
     r = subprocess.run(
         ["k3s", "kubectl", *args], input=payload, capture_output=True, text=True, timeout=30
     )
@@ -69,7 +73,8 @@ def kubectl(*args, payload=None):
     return json.loads(r.stdout)
 
 
-def main():
+def main() -> None:
+    """Preview the DNS repair or apply the approved patch and check the exact readback."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--state", type=Path)

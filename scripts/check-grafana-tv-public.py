@@ -8,6 +8,8 @@ import subprocess
 from pathlib import Path
 from urllib.parse import urlsplit
 
+PUBLIC_TOKEN_LENGTH = 32
+
 
 def main():
     """Run the command-line entry point."""
@@ -24,7 +26,7 @@ def main():
         and u.path.startswith("/public-dashboards/")
     )
     token = u.path.split("/")[2]
-    assert len(token) == 32 and all(c in "0123456789abcdef" for c in token)
+    assert len(token) == PUBLIC_TOKEN_LENGTH and all(c in "0123456789abcdef" for c in token)
     expected_js = hashlib.sha256(
         (
             Path(__file__).resolve().parents[1]
@@ -103,7 +105,11 @@ def main():
         )
         check("metrics not published", "/metrics", 404)
         check("normal dashboard still gated", "/d/socrat-traffic-light", 302)
-        check("unknown public share denied", "/api/public/dashboards/" + "0" * 32, 404)
+        check(
+            "unknown public share denied",
+            "/api/public/dashboards/" + "0" * PUBLIC_TOKEN_LENGTH,
+            404,
+        )
     print(
         json.dumps(
             {

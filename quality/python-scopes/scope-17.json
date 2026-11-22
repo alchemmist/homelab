@@ -1,0 +1,4 @@
+{
+  "include": ["ansible/roles/authentik/files/*.py"],
+  "rules": ["D100", "D103", "D205", "D401", "PERF401", "UP017"]
+}
