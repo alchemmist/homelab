@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def module() -> ModuleType:
     """Test behavior for module."""
     spec = importlib.util.spec_from_file_location(
-        "ops_replay", ROOT / "scripts/otel-operational-replay.py"
+        "ops_replay", ROOT / "ansible/scripts/otel-operational-replay.py"
     )
     result = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(result)

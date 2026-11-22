@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def module() -> ModuleType:
     """Test behavior for module."""
     spec = importlib.util.spec_from_file_location(
-        "webui_rollout", ROOT / "scripts/otel-open-webui-sdk-rollout.py"
+        "webui_rollout", ROOT / "ansible/scripts/otel-open-webui-sdk-rollout.py"
     )
     result = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(result)

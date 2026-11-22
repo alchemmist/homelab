@@ -83,7 +83,7 @@ console.log(JSON.stringify({css:styles['socrat-tv-inset']?.textContent||'',calls
 
 def test_only_one_dashboard_and_no_anonymous_org_fallback() -> None:
     """Publish exactly the traffic-light dashboard without anonymous auth."""
-    s = (ROOT / "scripts/grafana-tv-public.py").read_text()
+    s = (ROOT / "ansible/scripts/grafana-tv-public.py").read_text()
     assert "UID='socrat-traffic-light'" in s
     assert "'annotationsEnabled':False" in s
     assert "'timeSelectionEnabled':False" in s

@@ -80,7 +80,7 @@ VM restore acceptance remains separate and outstanding.
 
 ## Owning source and narrow activation
 
-* `scripts/wg-peer15-relay.py`: fixed destinations, payload never logged/stored.
+* `ansible/scripts/wg-peer15-relay.py`: fixed destinations, payload never logged/stored.
 * `ansible/files/wg-peer15-relay.service`: DynamicUser, no capabilities,
   no-new-privileges, read-only system/home, source/destination cgroup IP filter,
  32MiB memory bound, supervised restart and stable LAN51836 source socket.

@@ -5,7 +5,7 @@ from ci.quality.ruff_scope import run
 
 def main() -> int:
     """Run this rule scope locally or in Quality Graph."""
-    return run("Q000,D300", ["ci/", "scripts/", "tests/"])
+    return run("Q000,D300", ["ansible/scripts/", "ci/", "scripts/", "tests/"])
 
 
 if __name__ == "__main__":

@@ -59,7 +59,7 @@
 
     - name: Copy the synthetic-only smoke driver
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../scripts/otel-privacy-smoke.py"
+        src: "{{ playbook_dir }}/../scripts/otel-privacy-smoke.py"
         dest: "{{ otel_smoke_stage }}/smoke.py"
         owner: root
         group: root

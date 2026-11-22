@@ -29,7 +29,7 @@
       ansible.builtin.command:
         argv:
           - python3
-          - "{{ playbook_dir }}/../../scripts/otel-vllm-sdk-rollout.py"
+          - "{{ playbook_dir }}/../scripts/otel-vllm-sdk-rollout.py"
           - --switcher-receipt
           - "{{ switcher_reconcile_directory }}/result.json"
           - --apply

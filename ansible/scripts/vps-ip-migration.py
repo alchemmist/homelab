@@ -36,7 +36,7 @@ SOURCE_FILES = (
     "charts/rustfs/values-foundation-live.yaml",
     "deploy/netbird/values.yaml",
     "deploy/socrat-bot/values.yaml",
-    "scripts/public_dns_zone.py",
+    "ansible/scripts/public_dns_zone.py",
     "scripts/check-public-ingress.py",
     "scripts/netbird-host-router.py",
     "scripts/netbird-independent-relay.py",
@@ -236,7 +236,7 @@ def repository(
 ):
     refuse_unfinished(backup_root, old + "-to-" + new)
     root = Path(root).resolve()
-    required = (root / "scripts/public_dns_zone.py", root / "charts/traefik-edge/values.yaml")
+    required = (root / "ansible/scripts/public_dns_zone.py", root / "charts/traefik-edge/values.yaml")
     if not all(p.is_file() for p in required):
         raise MigrationError("Not the reviewed homelab repository")
     validate_dns_anchor(required[0].read_text(), old, new)

@@ -1,5 +1,5 @@
 ---
-public_dns_zone_source: "{{ playbook_dir }}/../../scripts/public_dns_zone.py"
+public_dns_zone_source: "{{ playbook_dir }}/../scripts/public_dns_zone.py"
 public_dns_home_address: 109.173.40.247
 public_dns_vps_address: 109.120.141.60
 public_dns_home_vip: 192.168.0.250

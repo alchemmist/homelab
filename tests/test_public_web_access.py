@@ -12,7 +12,7 @@ from tests.public_entry_contract import CHARTS, chart_values, public_entry, rend
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "public_web_access", ROOT / "scripts/public-web-access.py"
+    "public_web_access", ROOT / "ansible/scripts/public-web-access.py"
 )
 assert spec is not None
 m = importlib.util.module_from_spec(spec)

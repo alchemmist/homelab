@@ -59,7 +59,7 @@ print(json.dumps({'windowSeconds':WINDOW,'limitBytesPerContainer':LIMIT,'sources
 """
 
 JOURNAL_PROBE = (
-    (ROOT / "scripts/otel-journal-probe.py").read_text().split("\nif __name__", 1)[0]
+    (ROOT / "ansible/scripts/otel-journal-probe.py").read_text().split("\nif __name__", 1)[0]
     + """
 paths=[]
 for root in ('/var/log/journal','/run/log/journal'):

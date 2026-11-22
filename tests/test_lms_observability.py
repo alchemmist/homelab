@@ -173,8 +173,8 @@ def test_correlations_preserve_credentials_and_survive_refresh() -> None:
     assert fields[-1]["url"] == "$${__value.raw}"
     mod.configure(document)
     assert len(result["datasources"][0]["jsonData"]["derivedFields"]) == 2
-    for script in ["otel-host-credentials.py", "otel-production-grafana.py"]:
-        source = (ROOT / "scripts" / script).read_text()
+    for script in ["ansible/scripts/otel-host-credentials.py", "scripts/otel-production-grafana.py"]:
+        source = (ROOT / script).read_text()
         assert "trace_id=([0-9a-f]{32})" in source
         assert "$${__value.raw}" in source
 

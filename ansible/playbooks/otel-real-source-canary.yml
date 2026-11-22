@@ -75,7 +75,7 @@
 
     - name: Copy the bounded real-source canary driver
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../scripts/otel-real-source-canary.py"
+        src: "{{ playbook_dir }}/../scripts/otel-real-source-canary.py"
         dest: "{{ otel_real_canary_stage }}/canary.py"
         owner: root
         group: root

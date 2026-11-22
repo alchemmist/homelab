@@ -14,9 +14,9 @@ from pathlib import Path
 
 import yaml
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-    "node_controller", ROOT / "scripts/netbird-node-reconcile.py"
+    "node_controller", ROOT / "ansible/scripts/netbird-node-reconcile.py"
 )
 if spec is None or spec.loader is None:
     raise RuntimeError("netbird-node-reconcile module missing or unloadable")

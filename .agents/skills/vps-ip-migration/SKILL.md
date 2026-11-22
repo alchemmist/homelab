@@ -11,7 +11,7 @@ description: "Смена публичного IPv4 VPS socrat-2 в homelab: об
 `sed`/SQL/SSH-команд. Playbook — воспроизводимая основа, **не автоматическое
 подтверждение завершения всего переезда**. Этот skill обязателен до и после него.
 
-Автоматизация: [`scripts/vps-ip-migration.py`](../../../scripts/vps-ip-migration.py)
+Автоматизация: [`ansible/scripts/vps-ip-migration.py`](../../../ansible/scripts/vps-ip-migration.py)
 (пути ниже всегда от корня репозитория). Инвентарь, владельцы и реальные грабли
 предыдущего переезда: `docs/vps-ip-migration-20261105.md`.
 

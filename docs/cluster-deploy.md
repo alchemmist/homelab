@@ -183,7 +183,7 @@ NetBird больше не исключение: Application создаёт `root
 ручной apply/UI. Подробнее: [netbird-argocd.md](netbird-argocd.md). Сохраняются
 существующие версии upstream-образов по digest; миграция не обновляет образы и
 не переиздаёт идентичности/секреты. Значения секретов и содержимое PVC не в Git.
-Для нового узла: inventory → `scripts/netbird-gitops-nodes.py` → commit inventory
+Для нового узла: inventory → `ansible/scripts/netbird-gitops-nodes.py` → commit inventory
 и values → Argo CD → обычный Ansible machine enrollment/API grants. Ansible не
 создаёт Kubernetes Deployment/PVC и не конкурирует с selfHeal.
 

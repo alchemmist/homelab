@@ -147,7 +147,7 @@ Read-only diagnosis confirmed a DNS/public-entry failure, not revoked credential
 - Live VPS /usr/local/libexec/public-dns-refresh probes VPS127.0.0.1, not end-user
   reachability. Last5min showed ten `updated home=False vps=True` results. Thus VPS
   authority still advertises its locally healthy but home/mobile-inaccessible
-  public entry; home authority selects HOME. Source scripts/public_dns_zone.py
+  public entry; home authority selects HOME. Source ansible/scripts/public_dns_zone.py
   and public_authoritative_dns role explain this split. DNS failover cannot
   infer client-specific reachability from local loopback health.
 

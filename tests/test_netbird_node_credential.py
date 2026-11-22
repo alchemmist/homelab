@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "credential", ROOT / "scripts/netbird-node-credential.py"
+    "credential", ROOT / "ansible/scripts/netbird-node-credential.py"
 )
 c = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(c)

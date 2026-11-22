@@ -8,7 +8,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("guard", ROOT / "scripts/socrat5-storage-guard.py")
+spec = importlib.util.spec_from_file_location("guard", ROOT / "ansible/scripts/socrat5-storage-guard.py")
 g = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(g)
 

@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("netbird_access", ROOT / "scripts/netbird-access.py")
+spec = importlib.util.spec_from_file_location("netbird_access", ROOT / "ansible/scripts/netbird-access.py")
 M = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(M)
 

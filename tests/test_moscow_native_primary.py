@@ -40,7 +40,7 @@ def runtime_module() -> types.ModuleType:
     import importlib.util
 
     s = importlib.util.spec_from_file_location(
-        "retire", ROOT / "scripts/moscow-retire-worker-runtime.py"
+        "retire", ROOT / "ansible/scripts/moscow-retire-worker-runtime.py"
     )
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)

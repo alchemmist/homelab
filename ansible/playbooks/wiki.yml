@@ -8,7 +8,7 @@
   tasks:
     - name: Copy runtime bootstrap helper
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../scripts/bootstrap-wiki-runtime.py"
+        src: "{{ playbook_dir }}/../scripts/bootstrap-wiki-runtime.py"
         dest: /tmp/bootstrap-wiki-runtime.py
         owner: root
         group: root

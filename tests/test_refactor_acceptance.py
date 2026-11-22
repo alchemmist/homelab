@@ -20,7 +20,7 @@ def module(name: str, path: str) -> ModuleType:
     return m
 
 
-placement = module("placement", "scripts/check_target_placement.py")
+placement = module("placement", "ansible/scripts/check_target_placement.py")
 
 
 class _PodSpec(TypedDict):

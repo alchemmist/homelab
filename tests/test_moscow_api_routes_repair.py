@@ -8,7 +8,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "repair", ROOT / "scripts/moscow-api-routes-repair.py"
+    "repair", ROOT / "ansible/scripts/moscow-api-routes-repair.py"
 )
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
@@ -63,7 +63,7 @@ def test_inventory_keeps_exact_api_host_routes_and_no_default() -> None:
     assert host["wg_socrat_extra_allowed_peer_ips"] == {
         "socrat-4": {"socrat-0": ["192.168.0.23/32"], "socrat-1": ["192.168.0.24/32"]}
     }
-    source = (ROOT / "scripts/moscow-api-routes-repair.py").read_text()
+    source = (ROOT / "ansible/scripts/moscow-api-routes-repair.py").read_text()
     assert "'route','add'" in source and "wg-quick" not in source
     assert "'systemctl'" not in source and "private-key" not in source
 

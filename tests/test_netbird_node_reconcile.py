@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("nodes", ROOT / "scripts/netbird-node-reconcile.py")
+spec = importlib.util.spec_from_file_location("nodes", ROOT / "ansible/scripts/netbird-node-reconcile.py")
 n = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(n)
 IMAGE = "netbirdio/netbird:0.82.0@sha256:" + "a" * 64

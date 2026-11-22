@@ -35,7 +35,7 @@ membership or machine API key was changed/generated.
 
 ## Historical manual Grafana preparation entrypoint
 
-`scripts/grafana-app-admission.py` is retired and refuses every invocation with
+`ansible/scripts/grafana-app-admission.py` is retired and refuses every invocation with
 exit2before reading arguments, credentials, locks, HTTP state or application data.
 It does not repair its historical malformed writer, import a reconciler, or forward
 `plan`/`apply`. Its previous implementation remains in Git history. The current

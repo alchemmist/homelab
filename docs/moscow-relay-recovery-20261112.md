@@ -41,7 +41,7 @@ without intervention by this session. Underlying transport failure not determine
 
 ## Repair
 
-Source scripts/vpn-transit-failover.py now reconciles ONLY a fenced
+Source ansible/scripts/vpn-transit-failover.py now reconciles ONLY a fenced
 transition-to-native after native is active, actual data-path probe passes,
 agent is inactive, and existing binary/management/route prerequisites pass.
 It writes a native-reconciled receipt and persists native/healthy/failures0.

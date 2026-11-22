@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import Mock
 
 SPEC = importlib.util.spec_from_file_location(
-    "bootstrap", Path(__file__).resolve().parents[1] / "scripts/bootstrap-wiki-runtime.py"
+    "bootstrap", Path(__file__).resolve().parents[1] / "ansible/scripts/bootstrap-wiki-runtime.py"
 )
 BOOTSTRAP = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BOOTSTRAP)

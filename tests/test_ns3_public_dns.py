@@ -20,8 +20,8 @@ def load(path: Path, name: str) -> types.ModuleType:
 
 def test_exact_addition_and_idempotent_delta() -> None:
     """Require one copy of each added record and no retired failover address."""
-    zone = load(ROOT / "scripts/public_dns_zone.py", "ns3_zone")
-    guard = load(ROOT / "scripts/ns3-public-dns.py", "ns3_guard")
+    zone = load(ROOT / "ansible/scripts/public_dns_zone.py", "ns3_zone")
+    guard = load(ROOT / "ansible/scripts/ns3-public-dns.py", "ns3_guard")
 
     class Old:
         """Drop the additive ns3 records from an otherwise identical zone."""
@@ -43,8 +43,8 @@ def test_exact_addition_and_idempotent_delta() -> None:
 
 def test_guard_rejects_unrelated_records_and_missing_ns3() -> None:
     """Reject an unrelated address and a zone that drops the ns3 glue."""
-    zone = load(ROOT / "scripts/public_dns_zone.py", "ns3_zone_negative")
-    guard = load(ROOT / "scripts/ns3-public-dns.py", "ns3_guard_negative")
+    zone = load(ROOT / "ansible/scripts/public_dns_zone.py", "ns3_zone_negative")
+    guard = load(ROOT / "ansible/scripts/ns3-public-dns.py", "ns3_guard_negative")
 
     class Bad:
         """Append one address that is outside the ns3 addition."""

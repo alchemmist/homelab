@@ -6,7 +6,7 @@
   tasks:
     - name: Install secret-free one-time leaf helper
       ansible.builtin.copy:
-        src: ../../scripts/socrat5-otel-leaf-bootstrap.py
+        src: ../scripts/socrat5-otel-leaf-bootstrap.py
         dest: /usr/local/libexec/socrat5-otel-leaf-bootstrap.py
         mode: "0700"
     - name: Create only5 leaf and scoped reader, refuses any existing enrollment

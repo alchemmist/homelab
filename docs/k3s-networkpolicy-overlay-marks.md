@@ -29,7 +29,7 @@ paper over RustFS with an additional ordinary NetworkPolicy or S3 permissions.
 
 ## Durable correction
 
-`scripts/k3s-overlay-marks.py`, role `k3s_overlay_marks` and playbook
+`ansible/scripts/k3s-overlay-marks.py`, role `k3s_overlay_marks` and playbook
 `ansible/playbooks/k3s-overlay-marks.yml` own **only** the nftables table
 `inet homelab_k3s_overlay_marks`.
 

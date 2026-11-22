@@ -12,12 +12,12 @@
         mode: "0700"
     - name: Install the Grafana TV alias retirement plan and apply tool
       ansible.builtin.copy:
-        src: ../../scripts/grafana-tv-dns.py
+        src: ../scripts/grafana-tv-dns.py
         dest: /usr/local/sbin/homelab-grafana-tv-dns
         mode: "0700"
     - name: Stage the proposed zone renderer for Grafana TV alias retirement
       ansible.builtin.copy:
-        src: ../../scripts/public_dns_zone.py
+        src: ../scripts/public_dns_zone.py
         dest: /var/lib/homelab-grafana-tv-dns-retirement/proposed.py
         mode: "0700"
     - name: Compute the Grafana TV alias retirement plan

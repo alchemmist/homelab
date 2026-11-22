@@ -20,12 +20,12 @@
         mode: "0700"
     - name: Install the NS3 public DNS plan and apply tool
       ansible.builtin.copy:
-        src: ../../scripts/ns3-public-dns.py
+        src: ../scripts/ns3-public-dns.py
         dest: /usr/local/sbin/homelab-ns3-public-dns
         mode: "0700"
     - name: Stage the proposed zone renderer for NS3 public DNS
       ansible.builtin.copy:
-        src: ../../scripts/public_dns_zone.py
+        src: ../scripts/public_dns_zone.py
         dest: /var/lib/homelab-ns3-public-dns/proposed.py
         mode: "0700"
     - name: Compute the NS3 public DNS plan

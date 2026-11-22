@@ -28,7 +28,7 @@
         mode: "0700"
     - name: Stage the runtime observer for audit
       ansible.builtin.copy:
-        src: ../../scripts/vpn-runtime-observer.py
+        src: ../scripts/vpn-runtime-observer.py
         dest: "{{ recovery }}/observer.py"
         mode: "0700"
     - name: Read local runtime, native files, boot fences, DB integrity and image identity
@@ -76,7 +76,7 @@
       block:
         - name: Install the observer executable
           ansible.builtin.copy:
-            src: ../../scripts/vpn-runtime-observer.py
+            src: ../scripts/vpn-runtime-observer.py
             dest: /usr/local/libexec/vpn-runtime-observer.py
             mode: "0755"
         - name: Prepare textfile collector output

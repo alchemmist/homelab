@@ -164,7 +164,7 @@ class InfrastructureContracts(unittest.TestCase):
         """Reject an all-interfaces relay mutation and leave the fixture bytes unchanged."""
         with tempfile.TemporaryDirectory() as d:
             root = self.fixture(d)
-            p = root / "scripts/wg-peer15-relay.py"
+            p = root / "ansible/scripts/wg-peer15-relay.py"
             self.assertEqual(contract.check(root), 12)
             original = p.read_text()
             tree = ast.parse(original)

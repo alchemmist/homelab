@@ -7,7 +7,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "overlay_marks", ROOT / "scripts/k3s-overlay-marks.py"
+    "overlay_marks", ROOT / "ansible/scripts/k3s-overlay-marks.py"
 )
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)

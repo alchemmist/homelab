@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "runtime_observer", ROOT / "scripts/vpn-runtime-observer.py"
+    "runtime_observer", ROOT / "ansible/scripts/vpn-runtime-observer.py"
 )
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
@@ -79,7 +79,7 @@ def test_export_is_atomic_numeric_no_accounts_or_paths(tmp_path: Path) -> None:
 
 def test_observer_has_no_recovery_or_mutating_command() -> None:
     """Test behavior for test_observer_has_no_recovery_or_mutating_command."""
-    s = (ROOT / "scripts/vpn-runtime-observer.py").read_text()
+    s = (ROOT / "ansible/scripts/vpn-runtime-observer.py").read_text()
     for forbidden in [
         "'tick'",
         "'activate'",

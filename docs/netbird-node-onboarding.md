@@ -25,7 +25,7 @@ network/OS by itself.
    SSH connection information. Add its unique server address/public key to
    `wg_socrat_nodes` using the existing WG provisioning procedure. Human/device
    addresses in `wg_socrat_admin_clients` are reserved and cannot be reused.
-2. From the repository root, run `python3 scripts/netbird-gitops-nodes.py`
+2. From the repository root, run `python3 ansible/scripts/netbird-gitops-nodes.py`
    (Python PyYAML and `ansible-inventory` required). Commit and publish the inventory
    and generated `deploy/netbird/values.yaml` together. `root` creates/maintains the
    Application; Argo CD alone creates the node Deployment/PVC. No manual Sync or

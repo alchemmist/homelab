@@ -6,7 +6,7 @@
   tasks:
     - name: Install the Grafana SSO maintenance helper
       ansible.builtin.copy:
-        src: ../../scripts/grafana-public-sso.py
+        src: ../scripts/grafana-public-sso.py
         dest: /usr/local/sbin/homelab-grafana-public-sso
         mode: "0700"
     - name: Run the approved Grafana SSO plan or audit

@@ -23,7 +23,7 @@ def test_refresh_is_stage_first_and_promotion_is_explicit() -> None:
 
 def test_promotion_preserves_old_image_and_never_manages_services() -> None:
     """Require a locked exchange that preserves the old image and service lifecycle."""
-    s = (ROOT / "scripts/vpn-native-image-promote.py").read_text()
+    s = (ROOT / "ansible/scripts/vpn-native-image-promote.py").read_text()
     assert "fcntl.LOCK_EX|fcntl.LOCK_NB" in s
     assert "proof['cleanup_verified']" in s
     assert "core==running_core()" in s

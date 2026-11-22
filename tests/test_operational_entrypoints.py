@@ -227,7 +227,7 @@ def test_retired_grafana_admission_never_forwards_or_reads_credentials(
     args: list[str], capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Import only the structurally bounded refusal; no identity helper is loaded."""
-    path = ROOT / "scripts/grafana-app-admission.py"
+    path = ROOT / "ansible/scripts/grafana-app-admission.py"
     _assert_retired_grafana_source(path.read_text())
     spec = importlib.util.spec_from_file_location("retired_grafana_admission", path)
     assert spec is not None
@@ -245,7 +245,7 @@ def test_retired_grafana_admission_never_forwards_or_reads_credentials(
 @pytest.mark.parametrize("mutation", ["import", "open", "forward", "success"])
 def test_retired_grafana_admission_effect_mutations_are_rejected(mutation: str) -> None:
     """The guard rejects capability imports, file access, forwarding and success."""
-    source = (ROOT / "scripts/grafana-app-admission.py").read_text()
+    source = (ROOT / "ansible/scripts/grafana-app-admission.py").read_text()
     _assert_retired_grafana_source(source)
     if mutation == "import":
         changed = source + "\nimport os\n"
