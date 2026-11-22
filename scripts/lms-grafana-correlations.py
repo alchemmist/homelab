@@ -8,7 +8,7 @@ The equivalent rule is maintained in otel-production-grafana.py for rebuilds.
 import base64
 import json
 import subprocess
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 NAMESPACE = "cattle-monitoring-system"
 SECRET = "otel-grafana-datasources"
@@ -24,9 +24,9 @@ class _LokiData(TypedDict, total=False):
     derivedFields: list[dict[str, object]]
 
 
-class _Datasource(TypedDict, total=False):
+class _Datasource(TypedDict):
     uid: str
-    jsonData: _LokiData
+    jsonData: NotRequired[_LokiData]
 
 
 class _Provisioning(TypedDict):
@@ -49,7 +49,7 @@ def run() -> None:
         check=True,
     )
     secret = json.loads(result.stdout)
-    content = json.loads(base64.b64decode(secret["data"]["otel-datasources.yaml"]))
+    content: _Provisioning = json.loads(base64.b64decode(secret["data"]["otel-datasources.yaml"]))
     encoded = base64.b64encode(json.dumps(configure(content)).encode()).decode()
     patch = json.dumps({"data": {"otel-datasources.yaml": encoded}})
     result = subprocess.run(
