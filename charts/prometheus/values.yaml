@@ -333,8 +333,10 @@ kube-prometheus-stack:
               labels: {severity: warning}
               annotations:
                 summary: Job failed to complete.
-                description: 'Job {{ $labels.namespace }}/{{ $labels.job_name }} failed to complete.'
-                runbook_url: https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubejobfailed
+                description: >-
+                  Job {{ $labels.namespace }}/{{ $labels.job_name }} failed to complete.
+                runbook_url: >-
+                  https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubejobfailed
             - alert: SocratPrAgentWebhookRedeliveryFailed
               expr: |
                 ((kube_job_failed{job="kube-state-metrics",namespace="pr-agent"} > 0)
@@ -343,11 +345,17 @@ kube-prometheus-stack:
                 unless on(namespace, job_name)
                 (kube_job_status_start_time{job="kube-state-metrics",namespace="pr-agent"}
                 < on(namespace) group_left()
-                max by(namespace) (kube_cronjob_status_last_successful_time{job="kube-state-metrics",namespace="pr-agent",cronjob="pr-agent-webhook-redelivery"}))
+                max by(namespace) (
+                  kube_cronjob_status_last_successful_time{job="kube-state-metrics",
+                    namespace="pr-agent",cronjob="pr-agent-webhook-redelivery"}
+                ))
               labels: {severity: warning}
               annotations:
                 summary: Webhook redelivery failed without a later successful run.
-                description: 'Inspect {{ $labels.namespace }}/{{ $labels.job_name }} and GitHub delivery history. A later successful scan clears this alert, but does not guarantee every delivery succeeded.'
+                description: >-
+                  Inspect {{ $labels.namespace }}/{{ $labels.job_name }} and GitHub delivery
+                  history. A later successful scan clears this alert, but does not guarantee
+                  every delivery succeeded.
     homelab-memory-overcommit:
       groups:
         - name: homelab-memory-overcommit

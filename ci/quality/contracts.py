@@ -153,7 +153,8 @@ def check():
     require(not set(scheduled) & deferred, "Quality integrity contract failed")
     require(
         actual == set(scheduled) | deferred,
-        "New/stale test classification; do not silently lose tests",
+        f"New/stale test classification: unclassified={sorted(actual - set(scheduled) - deferred)}, "
+        f"stale={sorted((set(scheduled) | deferred) - actual)}",
     )
     require(
         all(len(reason) >= 20 for reason in inventory["notScheduled"].values()),

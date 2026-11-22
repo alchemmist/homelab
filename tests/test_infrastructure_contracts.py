@@ -23,7 +23,7 @@ class InfrastructureContracts(unittest.TestCase):
 
     def test_registered_consumers_and_mesh(self) -> None:
         """Accept the canonical repository contract set unchanged."""
-        self.assertEqual(contract.check(ROOT), 11)
+        self.assertEqual(contract.check(ROOT), 12)
 
     def test_openhands_issuer_consumer_is_exact_and_refuses_drift(self) -> None:
         """Review the sole additive consumer and reject IP/scope drift in copied files."""
@@ -133,7 +133,7 @@ class InfrastructureContracts(unittest.TestCase):
                 {"file": first["file"], "path": ["contractTestAliases"]}
             )
             config.write_text(json.dumps(c))
-            self.assertEqual(contract.check(root, write=True), 12)
+            self.assertEqual(contract.check(root, write=True), len(c["issuerTransport"]["consumers"]))
             self.assertEqual(p.read_text(), expected)
 
     def test_scope_widening_not_regenerated(self) -> None:
@@ -165,7 +165,7 @@ class InfrastructureContracts(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root = self.fixture(d)
             p = root / "scripts/wg-peer15-relay.py"
-            self.assertEqual(contract.check(root), 11)
+            self.assertEqual(contract.check(root), 12)
             original = p.read_text()
             tree = ast.parse(original)
             front = [

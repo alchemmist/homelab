@@ -42,7 +42,10 @@ kube-prometheus-stack:
                 unless on(namespace, job_name)
                 (kube_job_status_start_time{job="kube-state-metrics",namespace="pr-agent"}
                 < on(namespace) group_left()
-                max by(namespace) (kube_cronjob_status_last_successful_time{job="kube-state-metrics",namespace="pr-agent",cronjob="pr-agent-webhook-redelivery"}))
+                max by(namespace) (
+                  kube_cronjob_status_last_successful_time{job="kube-state-metrics",
+                    namespace="pr-agent",cronjob="pr-agent-webhook-redelivery"}
+                ))
               labels:
                 severity: warning
     homelab-memory-overcommit:

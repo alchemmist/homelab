@@ -170,7 +170,7 @@
         },
         {
           "refId": "3",
-          "expr": "kube_job_status_start_time{job=\"kube-state-metrics\",namespace=\"pr-agent\"}\n< on(namespace) group_left()\nmax by(namespace) (kube_cronjob_status_last_successful_time{job=\"kube-state-metrics\",namespace=\"pr-agent\",cronjob=\"pr-agent-webhook-redelivery\"})",
+          "expr": "kube_job_status_start_time{job=\"kube-state-metrics\",namespace=\"pr-agent\"}\n< on(namespace) group_left()\nmax by(namespace) (\n  kube_cronjob_status_last_successful_time{job=\"kube-state-metrics\",\n    namespace=\"pr-agent\",cronjob=\"pr-agent-webhook-redelivery\"}\n)",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -228,7 +228,7 @@
       "targets": [
         {
           "refId": "1",
-          "expr": "((kube_job_failed{job=\"kube-state-metrics\",namespace=\"pr-agent\"} > 0)\nand on(namespace, job_name)\nkube_job_owner{job=\"kube-state-metrics\",namespace=\"pr-agent\",owner_kind=\"CronJob\",owner_name=\"pr-agent-webhook-redelivery\"})\nunless on(namespace, job_name)\n(kube_job_status_start_time{job=\"kube-state-metrics\",namespace=\"pr-agent\"}\n< on(namespace) group_left()\nmax by(namespace) (kube_cronjob_status_last_successful_time{job=\"kube-state-metrics\",namespace=\"pr-agent\",cronjob=\"pr-agent-webhook-redelivery\"}))\n",
+          "expr": "((kube_job_failed{job=\"kube-state-metrics\",namespace=\"pr-agent\"} > 0)\nand on(namespace, job_name)\nkube_job_owner{job=\"kube-state-metrics\",namespace=\"pr-agent\",owner_kind=\"CronJob\",owner_name=\"pr-agent-webhook-redelivery\"})\nunless on(namespace, job_name)\n(kube_job_status_start_time{job=\"kube-state-metrics\",namespace=\"pr-agent\"}\n< on(namespace) group_left()\nmax by(namespace) (\n  kube_cronjob_status_last_successful_time{job=\"kube-state-metrics\",\n    namespace=\"pr-agent\",cronjob=\"pr-agent-webhook-redelivery\"}\n))\n",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"

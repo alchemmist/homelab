@@ -3,96 +3,12 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: redisinsight-data
-  annotations: {argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'}
+  annotations: {argocd.argoproj.io/sync-options: "Prune=false,Delete=false"}
 spec:
   storageClassName: local-ssd
   accessModes: [ReadWriteOnce]
   resources: {requests: {storage: 2Gi}}
----
-apiVersion: apps/v1
-kind: Deployment
-metadata: {name: redisinsight}
-spec:
-  replicas: 1
-  strategy: {type: Recreate}
-  selector: {matchLabels: {app: redisinsight}}
-  template:
-    metadata: {labels: {app: redisinsight}}
-    spec:
-      nodeSelector: {kubernetes.io/hostname: socrat-5}
-      automountServiceAccountToken: false
-      hostAliases:
-        - ip: 10.43.218.222
-          hostnames: [auth.socrat.alchemmist.xyz]
-      securityContext: {fsGroup: 1000, runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
-      containers:
-        - name: ui
-          image: docker.io/redis/redisinsight:3.10.1@sha256:7aea9c96ee8e34518d7d692c02a081f6e46ff9230e7779212aa10a65c423c18a
-          securityContext: {runAsUser: 1000, allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
-          resources: {requests: {cpu: 50m, memory: 160Mi}, limits: {memory: 512Mi}}
-          env:
-            - {name: RI_APP_HOST, value: '127.0.0.1'}
-            - {name: RI_EXTERNAL_URL, value: 'https://redis.socrat.alchemmist.xyz'}
-            - {name: RI_REDIS_ALIAS, value: redis-common}
-            - {name: RI_REDIS_HOST, value: redis-common-haproxy.redis.svc.cluster.local}
-            - {name: RI_REDIS_USERNAME, value: insight-browser}
-            - {name: RI_REDIS_TLS, value: 'true'}
-            - {name: RI_REDIS_TLS_CA_PATH, value: /trust/ca.crt}
-            - name: RI_REDIS_PASSWORD
-              valueFrom: {secretKeyRef: {name: redisinsight-runtime, key: password}}
-            - name: RI_ENCRYPTION_KEY
-              valueFrom: {secretKeyRef: {name: redisinsight-runtime, key: encryption-key}}
-          volumeMounts:
-            - {name: data, mountPath: /data}
-            - {name: ca, mountPath: /trust, readOnly: true}
-          readinessProbe:
-            exec: {command: [node, -e, "fetch('http://127.0.0.1:5540/api/health/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]}
-            periodSeconds: 30
-            timeoutSeconds: 5
-        - name: oauth2-proxy
-          image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.6@sha256:01da265f8e371e6d3043b97829e171f3e4d53f9dc3817be15fb4fc29c92fe2a6
-          securityContext: {runAsUser: 65532, allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
-          resources: {requests: {cpu: 20m, memory: 32Mi}, limits: {memory: 128Mi}}
-          args:
-            - --http-address=0.0.0.0:4180
-            - --provider=oidc
-            - --oidc-issuer-url=https://auth.socrat.alchemmist.xyz/application/o/redisinsight/
-            - --redirect-url=https://redis.socrat.alchemmist.xyz/oauth2/callback
-            - --upstream=http://127.0.0.1:5540/
-            - --scope=openid profile groups
-            - --oidc-email-claim=sub
-            - --oidc-groups-claim=groups
-            - --allowed-group=homelab-owner
-            - --email-domain=*
-            - --code-challenge-method=S256
-            - --reverse-proxy=true
-            - --skip-provider-button=true
-            - --session-cookie-minimal=true
-            - --cookie-expire=30m
-            - --cookie-name=__Host-redisinsight_oidc
-            - --cookie-secure=true
-            - --cookie-httponly=true
-            - --cookie-samesite=lax
-            - --cookie-path=/
-            - --pass-access-token=false
-            - --pass-authorization-header=false
-            - --pass-basic-auth=false
-            - --pass-user-headers=false
-            - --api-route=^/api(/|$)
-            - --api-route=^/socket.io(/|$)
-            - --request-logging=false
-          env:
-            - name: OAUTH2_PROXY_CLIENT_ID
-              valueFrom: {secretKeyRef: {name: redisinsight-oidc, key: client-id}}
-            - name: OAUTH2_PROXY_CLIENT_SECRET
-              valueFrom: {secretKeyRef: {name: redisinsight-oidc, key: client-secret}}
-            - name: OAUTH2_PROXY_COOKIE_SECRET
-              valueFrom: {secretKeyRef: {name: redisinsight-oidc, key: cookie-secret}}
-          ports: [{name: proxy, containerPort: 4180}]
-          readinessProbe: {httpGet: {path: /ready, port: proxy}}
-      volumes:
-        - {name: data, persistentVolumeClaim: {claimName: redisinsight-data}}
-        - {name: ca, secret: {secretName: redis-common-public-ca}}
+...
 ---
 apiVersion: v1
 kind: Service
@@ -100,6 +16,7 @@ metadata: {name: redisinsight}
 spec:
   selector: {app: redisinsight}
   ports: [{name: http, port: 4180, targetPort: proxy}]
+...
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -108,6 +25,7 @@ spec:
   secretName: redisinsight-tls
   dnsNames: [redis.socrat.alchemmist.xyz]
   issuerRef: {name: letsencrypt-http01, kind: ClusterIssuer}
+...
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -115,9 +33,9 @@ metadata:
   name: redisinsight
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: 'true'
-    traefik.ingress.kubernetes.io/router.observability.accesslogs: 'false'
-    traefik.ingress.kubernetes.io/router.observability.tracing: 'false'
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.observability.accesslogs: "false"
+    traefik.ingress.kubernetes.io/router.observability.tracing: "false"
 spec:
   ingressClassName: traefik
   tls: [{hosts: [redis.socrat.alchemmist.xyz], secretName: redisinsight-tls}]
