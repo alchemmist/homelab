@@ -88,7 +88,8 @@ class GuardedWifiTests(unittest.TestCase):
         """Load Wi-Fi for a matching guarded identity."""
         self.assertEqual(self.invoke(), 0)
         self.assertEqual(
-            self.calls[-1], ["modprobe", "rtl8723ae", "msi=1", "ips=0", "fwlps=0", "swlps=0"]
+            self.calls[-1],
+            ["modprobe", "rtl8723ae", "msi=1", "ips=0", "fwlps=0", "swlps=0"],
         )
 
     def test_existing_wifi_with_wrong_parameters_fails_without_reload(self) -> None:
@@ -185,7 +186,10 @@ class ModuleNoteTests(unittest.TestCase):
             (".ko.gz", gzip.compress),
             (".ko.xz", lzma.compress),
         ):
-            with self.subTest(suffix=suffix), tempfile.TemporaryDirectory() as temporary:
+            with (
+                self.subTest(suffix=suffix),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
                 source = Path(temporary) / ("alx" + suffix)
                 encoded = encode(b"elf-module")
                 source.write_bytes(encoded)

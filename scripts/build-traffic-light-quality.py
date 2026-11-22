@@ -37,7 +37,10 @@ def stat(pid, name, grid, expr, unit, description, trend=False, bands=None, deci
         "noValue": "No telemetry",
         "color": {"mode": "thresholds"} if bands else {"mode": "fixed", "fixedColor": "#CCA470"},
         "mappings": [{"type": "value", "options": mappings}],
-        "thresholds": {"mode": "absolute", "steps": bands or [{"color": "#CCA470", "value": None}]},
+        "thresholds": {
+            "mode": "absolute",
+            "steps": bands or [{"color": "#CCA470", "value": None}],
+        },
     }
     return {
         "id": pid,
@@ -206,7 +209,10 @@ def ai_quality():
             "overrides": [
                 {
                     "matcher": {"id": "byName", "options": "AI · TTFT p95"},
-                    "properties": [{"id": "unit", "value": "s"}, {"id": "decimals", "value": 1}],
+                    "properties": [
+                        {"id": "unit", "value": "s"},
+                        {"id": "decimals", "value": 1},
+                    ],
                 }
             ],
         },
@@ -230,7 +236,10 @@ def ai_quality():
                 "format": "time_series",
                 "legendFormat": name,
             }
-            for ref, expr, name in [("A", queue, "AI · queue"), ("B", latency, "AI · TTFT p95")]
+            for ref, expr, name in [
+                ("A", queue, "AI · queue"),
+                ("B", latency, "AI · TTFT p95"),
+            ]
         ],
     }
 
@@ -292,7 +301,10 @@ def cascade_summary():
                 "noValue": "No telemetry",
                 "color": {"mode": "fixed", "fixedColor": "#E0B860"},
                 "mappings": [
-                    {"type": "value", "options": {"-2": {"text": "No data", "color": "#808080"}}}
+                    {
+                        "type": "value",
+                        "options": {"-2": {"text": "No data", "color": "#808080"}},
+                    }
                 ],
             },
             "overrides": [
@@ -420,7 +432,10 @@ def panels():
             "short",
             "Streaming standby count reported by the pg-common primary. Expected 1. No fresh "
             "primary telemetry is unknown, not zero. Replication is not a backup.",
-            bands=[{"color": "#F2495C", "value": None}, {"color": "#26783D", "value": 1}],
+            bands=[
+                {"color": "#F2495C", "value": None},
+                {"color": "#26783D", "value": 1},
+            ],
         )
     )
     for p in result:

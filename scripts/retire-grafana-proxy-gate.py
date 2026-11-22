@@ -35,7 +35,10 @@ def main():
     root = Path("/var/lib/homelab-retire-grafana-proxy")
     require(not root.is_symlink(), "Unsafe state path")
     root.mkdir(mode=0o700, exist_ok=True)
-    require(root.stat().st_uid == 0 and not root.stat().st_mode & 0o077, "Unsafe state ownership")
+    require(
+        root.stat().st_uid == 0 and not root.stat().st_mode & 0o077,
+        "Unsafe state ownership",
+    )
     with (root / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         require(not (root / "uncertain.json").exists(), "Uncertain previous write; stop")
@@ -66,7 +69,16 @@ def main():
         )
         ingress = json.loads(
             subprocess.check_output(
-                ["kubectl", "-n", "identity", "get", "ingress", "public-web-grafana", "-o", "json"]
+                [
+                    "kubectl",
+                    "-n",
+                    "identity",
+                    "get",
+                    "ingress",
+                    "public-web-grafana",
+                    "-o",
+                    "json",
+                ]
             )
         )
         require(

@@ -103,7 +103,15 @@ def main():
     with args.output.open("x") as stream:
         json.dump(result, stream, indent=2)
         stream.write("\n")
-    print(json.dumps({"requestCreated": True, "hostCount": 4, "productionIngestionChanged": False}))
+    print(
+        json.dumps(
+            {
+                "requestCreated": True,
+                "hostCount": 4,
+                "productionIngestionChanged": False,
+            }
+        )
+    )
 
 
 if __name__ == "__main__":

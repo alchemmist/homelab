@@ -51,6 +51,7 @@ def module() -> ModuleType:
 
 def document() -> _Document:
     """Test behavior for document."""
+
     def resource(service, span) -> _ResourceSpan:
         """Build a resource span for the requested service."""
         return {

@@ -214,7 +214,14 @@ def main() -> None:
         receipt["drainedIdle"] = True
         call(["apply", "-f", "-"], json.dumps(deployment))
         call(
-            ["rollout", "status", "deployment/" + name, "-n", "automation", "--timeout=180s"],
+            [
+                "rollout",
+                "status",
+                "deployment/" + name,
+                "-n",
+                "automation",
+                "--timeout=180s",
+            ],
             timeout=195,
         )
         new = worker_pods(name)

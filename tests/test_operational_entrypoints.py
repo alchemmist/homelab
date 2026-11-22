@@ -92,7 +92,9 @@ class OperationalEntrypoints(unittest.TestCase):
         for suffix in ("yml", "yaml"):
             with self.subTest(suffix=suffix), tempfile.TemporaryDirectory() as d:
                 root, _c = self.fixture(d)
-                (root / f"ansible/other.{suffix}").write_text("command: helm install other ./chart\n")
+                (root / f"ansible/other.{suffix}").write_text(
+                    "command: helm install other ./chart\n"
+                )
                 with pytest.raises(ValueError, match="Unclassified"):
                     entrypoints.check(root)
 

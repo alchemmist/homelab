@@ -37,7 +37,9 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument(
-        "--service", choices=["authentik", "harbor", "open-webui", "litellm"], default="authentik"
+        "--service",
+        choices=["authentik", "harbor", "open-webui", "litellm"],
+        default="authentik",
     )
     p.add_argument("--key", type=Path, default=Path.home() / ".config/homelab/identity-backup.key")
     args = p.parse_args()
@@ -64,7 +66,10 @@ def main():
     cipher = AESGCM(args.key.read_bytes()).encrypt(nonce, archive, HEADER)
     save(args.output, HEADER + nonce + cipher)
     digest = hashlib.sha256(args.output.read_bytes()).hexdigest()
-    save(Path(str(args.output) + ".sha256"), (digest + "  " + args.output.name + "\n").encode())
+    save(
+        Path(str(args.output) + ".sha256"),
+        (digest + "  " + args.output.name + "\n").encode(),
+    )
     print(
         json.dumps(
             {

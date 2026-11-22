@@ -34,9 +34,7 @@ TASK_NAMES = (
     "Hash the protected telemetry files after the override",
     "Require the protected telemetry files to be unchanged",
 )
-COMMANDS = (
-    "getconf _NPROCESSORS_ONLN",
-)
+COMMANDS = ("getconf _NPROCESSORS_ONLN",)
 
 
 def _mapping(value: object) -> dict[str, object]:
@@ -127,9 +125,14 @@ def test_otel_cpu_tasks_are_named_without_changing_actions() -> None:
     assert len(names) == len(set(names))
     assert _commands(play.get("tasks")) == list(COMMANDS)
     probe = next(
-        _mapping(item) for item in _sequence(play["tasks"]) if _mapping(item).get("name") == TASK_NAMES[6]
+        _mapping(item)
+        for item in _sequence(play["tasks"])
+        if _mapping(item).get("name") == TASK_NAMES[6]
     )
-    assert probe["homelab_systemd_probe"] == {"units": [SERVICE_NAME], "property": "DropInPaths"}
+    assert probe["homelab_systemd_probe"] == {
+        "units": [SERVICE_NAME],
+        "property": "DropInPaths",
+    }
     assert probe["register"] == "loaded_overrides"
     assert probe["changed_when"] is False
     assert _service_restarts(play.get("tasks")) == [SERVICE_NAME, SERVICE_NAME]

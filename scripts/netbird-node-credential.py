@@ -43,7 +43,8 @@ def renew(folder, config, bootstrap=None) -> bool:
     mod.require(not intent.exists(), "uncertain prior credential operation; inspect locally")
     if not path.exists():
         mod.require(
-            bootstrap is not None, "initial credential needs explicit trusted bootstrap-token-file"
+            bootstrap is not None,
+            "initial credential needs explicit trusted bootstrap-token-file",
         )
         # The temporary runtime object never persists the bootstrap token.
         runtime = object.__new__(mod.Runtime)
@@ -57,10 +58,16 @@ def renew(folder, config, bootstrap=None) -> bool:
         user = runtime.api(
             "POST",
             "users",
-            {"name": mod.SERVICE, "is_service_user": True, "role": "admin", "auto_groups": []},
+            {
+                "name": mod.SERVICE,
+                "is_service_user": True,
+                "role": "admin",
+                "auto_groups": [],
+            },
         )
         mod.require(
-            user["is_service_user"] and user["role"] == "admin", "service-user type mismatch"
+            user["is_service_user"] and user["role"] == "admin",
+            "service-user type mismatch",
         )
         mod.atomic(intent, {"phase": "issuing-token", "user_id": user["id"]})
         issued = runtime.api(
@@ -132,7 +139,14 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except (ValueError, KeyError, TypeError, RuntimeError, OSError, http.client.HTTPException) as e:
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        RuntimeError,
+        OSError,
+        http.client.HTTPException,
+    ) as e:
         print(
             json.dumps(
                 {

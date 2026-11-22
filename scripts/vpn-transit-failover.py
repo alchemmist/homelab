@@ -342,7 +342,10 @@ class Controller:
                 if active(AGENT):
                     raise RuntimeError("Agent active during fenced native transition")
                 self.prerequisites()
-                self.receipt("native-reconciled", reason="native healthy after activation deadline")
+                self.receipt(
+                    "native-reconciled",
+                    reason="native healthy after activation deadline",
+                )
                 self.save(mode="native", failures=0, healthy=True)
             else:
                 self.save(healthy=ok, last_probe=getattr(self, "last_probe", {}))
@@ -367,7 +370,9 @@ class Controller:
             diagnosis = self.recovery_scope()
             if self.state.get("failure_scope") != diagnosis["scope"]:
                 self.receipt(
-                    "failure-classified", **diagnosis, local_probe=getattr(self, "last_probe", {})
+                    "failure-classified",
+                    **diagnosis,
+                    local_probe=getattr(self, "last_probe", {}),
                 )
             self.save(failure_scope=diagnosis["scope"], failure_diagnosis=diagnosis)
             if diagnosis["recover_local"]:
@@ -389,7 +394,8 @@ def main() -> None:
     ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
     p = argparse.ArgumentParser()
     p.add_argument(
-        "action", choices=["tick", "status", "activate", "failback", "promote", "demote"]
+        "action",
+        choices=["tick", "status", "activate", "failback", "promote", "demote"],
     )
     a = p.parse_args()
     with (ROOT / "lock").open("a") as lock:

@@ -63,10 +63,20 @@ class HostPeerTest(unittest.TestCase):
             assert not spec["automountServiceAccountToken"]
             assert "hostPID" not in spec
             assert "privileged" not in container["securityContext"]
-            assert container["securityContext"]["capabilities"]["add"] == ["NET_ADMIN", "NET_RAW", "BPF"]
-            assert [v["hostPath"]["path"] for v in spec["volumes"] if "hostPath" in v] == ["/dev/net/tun"]
+            assert container["securityContext"]["capabilities"]["add"] == [
+                "NET_ADMIN",
+                "NET_RAW",
+                "BPF",
+            ]
+            assert [v["hostPath"]["path"] for v in spec["volumes"] if "hostPath" in v] == [
+                "/dev/net/tun"
+            ]
             env = {e["name"]: e for e in container["env"]}
-            for name in ["NB_DISABLE_CLIENT_ROUTES", "NB_DISABLE_SERVER_ROUTES", "NB_DISABLE_DNS"]:
+            for name in [
+                "NB_DISABLE_CLIENT_ROUTES",
+                "NB_DISABLE_SERVER_ROUTES",
+                "NB_DISABLE_DNS",
+            ]:
                 assert env[name]["value"] == "true"
             assert env["NB_DISABLE_FIREWALL"]["value"] == "false"
             assert "value" not in env["NB_SETUP_KEY"]
@@ -116,10 +126,15 @@ class HostPeerTest(unittest.TestCase):
         assert dynamic["tls"]["options"]["strict"]["sniStrict"]
         http = dynamic["http"]
         assert http["routers"]["grafana"]["rule"] == "Host(`grafana.socrat.alchemmist.xyz`)"
-        assert http["middlewares"]["fixed-upstream-host"]["headers"]["customRequestHeaders"]["Host"] == peer.GRAFANA
+        assert (
+            http["middlewares"]["fixed-upstream-host"]["headers"]["customRequestHeaders"]["Host"]
+            == peer.GRAFANA
+        )
         assert not http["serversTransports"]["verified"]["insecureSkipVerify"]
         assert http["serversTransports"]["verified"]["serverName"] == peer.GRAFANA
-        assert http["services"]["grafana"]["loadBalancer"]["servers"] == [{"url": "https://10.250.0.3:443"}]
+        assert http["services"]["grafana"]["loadBalancer"]["servers"] == [
+            {"url": "https://10.250.0.3:443"}
+        ]
         for address in ["0.0.0.0", "109.120.141.60", "10.250.0.2", "100.96.1.2;evil"]:
             with self.assertRaises(ValueError):
                 peer.frontend_config(address)
@@ -174,7 +189,10 @@ class StunTest(unittest.TestCase):
     def test_binding_exact_transaction_and_source(self) -> None:
         """Bindings parse only the exact transaction and source."""
         packet, response = self.binding()
-        assert probe.parse_binding(packet, response) == {"address": "109.173.40.247", "port": 12345}
+        assert probe.parse_binding(packet, response) == {
+            "address": "109.173.40.247",
+            "port": 12345,
+        }
         for bad in [
             response[:-1],
             response[:8] + b"x" * 12 + response[20:],

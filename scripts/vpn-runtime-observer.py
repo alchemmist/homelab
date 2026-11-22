@@ -105,7 +105,18 @@ def classify(
 
 def units_snapshot(units: list[str]) -> dict[str, bool]:
     result = command(
-        ["systemctl", "show", *units, "-p", "Id", "-p", "LoadState", "-p", "ActiveState"], 5
+        [
+            "systemctl",
+            "show",
+            *units,
+            "-p",
+            "Id",
+            "-p",
+            "LoadState",
+            "-p",
+            "ActiveState",
+        ],
+        5,
     )
     if result.returncode:
         raise ValueError("Unobservable unit set")
@@ -179,7 +190,10 @@ def write_metrics(path: Path, component: str, values: dict[str, object]) -> None
     for key, value in values.items():
         name = "socrat_vpn_component_" + key
         lines.extend(
-            ["# TYPE " + name + " gauge", name + '{component="' + component + '"} ' + str(value)]
+            [
+                "# TYPE " + name + " gauge",
+                name + '{component="' + component + '"} ' + str(value),
+            ]
         )
     fd, name = tempfile.mkstemp(prefix=".vpn-runtime-", dir=path.parent)
     try:

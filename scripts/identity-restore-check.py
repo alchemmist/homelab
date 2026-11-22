@@ -119,7 +119,11 @@ def _run_restore_pod(service: str, dump: bytes, blobs: int) -> None:
                         {"name": "PGDATA", "value": "/var/lib/postgresql/data/pgdata"},
                     ],
                     "resources": {
-                        "requests": {"cpu": "10m", "memory": "128Mi", "ephemeral-storage": "256Mi"},
+                        "requests": {
+                            "cpu": "10m",
+                            "memory": "128Mi",
+                            "ephemeral-storage": "256Mi",
+                        },
                         "limits": {"memory": "512Mi", "ephemeral-storage": "2Gi"},
                     },
                     "volumeMounts": [{"name": "data", "mountPath": "/var/lib/postgresql/data"}],
@@ -157,7 +161,20 @@ def _run_restore_pod(service: str, dump: bytes, blobs: int) -> None:
             else "SELECT count(*) FROM harbor_user WHERE username='admin' AND deleted=false"
         )
         count = int(
-            run(["exec", name, "--", "psql", "-U", "postgres", "-d", "postgres", "-Atc", query])
+            run(
+                [
+                    "exec",
+                    name,
+                    "--",
+                    "psql",
+                    "-U",
+                    "postgres",
+                    "-d",
+                    "postgres",
+                    "-Atc",
+                    query,
+                ]
+            )
             .decode()
             .strip()
         )
@@ -176,7 +193,16 @@ def _run_restore_pod(service: str, dump: bytes, blobs: int) -> None:
             )
         )
     finally:
-        run(["delete", "pod", name, "--ignore-not-found", "--wait=true", "--timeout=60s"])
+        run(
+            [
+                "delete",
+                "pod",
+                name,
+                "--ignore-not-found",
+                "--wait=true",
+                "--timeout=60s",
+            ]
+        )
 
 
 def main():

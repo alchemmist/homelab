@@ -183,9 +183,15 @@ def build(source, output):
                 "sourceSha256": source_hash,
                 "sourceDimensions": list(image.size),
             }
-            for label, width, cap in [("desktop", 1920, 600000), ("mobile", 960, 220000)]:
+            for label, width, cap in [
+                ("desktop", 1920, 600000),
+                ("mobile", 960, 220000),
+            ]:
                 _add_derivative(
-                    SceneContext(record, manifest, dest, image, path, ident), label, width, cap
+                    SceneContext(record, manifest, dest, image, path, ident),
+                    label,
+                    width,
+                    cap,
                 )
             preview = image.copy()
             preview.thumbnail((48, 48), Image.Resampling.LANCZOS)

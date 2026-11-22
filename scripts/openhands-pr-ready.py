@@ -41,7 +41,7 @@ def collect_protocol_evidence(comments, handlers):
     for reply in comments:
         if (reply.get("author") or {}).get("login") not in handlers:
             continue
-        for raw in re.findall(r"<!--\s*rtr:(\{.*?\})\s*-->", reply.get("body", ""), re.S):
+        for raw in re.findall(r"<!--\s*rtr:(\{.*?\})\s*-->", reply.get("body", ""), re.DOTALL):
             try:
                 item = json.loads(raw)
                 evidence.setdefault(item["comment"], []).append((item, reply))
@@ -221,7 +221,7 @@ def main():
             report = fresh_report
         if report is None:
             return _error_report("RuntimeError")
-        report["checked_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        report["checked_at"] = datetime.datetime.now(datetime.UTC).isoformat()
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0 if report["ready_to_review"] else 1
     except (

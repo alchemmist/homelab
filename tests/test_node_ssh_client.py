@@ -56,8 +56,17 @@ class NodeSshClientTests(unittest.TestCase):
         """Aliases keep the current user and default identity policy."""
         node = self.resolve("socrat-1")
         baseline = self.resolve("example.invalid")
-        assert (node["hostname"], node["port"], node["user"]) == ("10.250.0.3", "2222", getpass.getuser())
-        for key in ("identityfile", "identitiesonly", "forwardagent", "stricthostkeychecking"):
+        assert (node["hostname"], node["port"], node["user"]) == (
+            "10.250.0.3",
+            "2222",
+            getpass.getuser(),
+        )
+        for key in (
+            "identityfile",
+            "identitiesonly",
+            "forwardagent",
+            "stricthostkeychecking",
+        ):
             assert node[key] == baseline[key]
 
     def test_explicit_user_override_remains_supported(self) -> None:
@@ -72,7 +81,11 @@ class NodeSshClientTests(unittest.TestCase):
     def test_include_does_not_leak_host_scope(self) -> None:
         """The include does not leak the host scope."""
         node = self.resolve("example.invalid")
-        assert (node["hostname"], node["port"], node["serveralivecountmax"]) == ("example.invalid", "22", "7")
+        assert (node["hostname"], node["port"], node["serveralivecountmax"]) == (
+            "example.invalid",
+            "22",
+            "7",
+        )
 
     def test_personal_settings_have_priority(self) -> None:
         """Personal settings keep priority over the included defaults."""

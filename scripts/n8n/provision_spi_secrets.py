@@ -68,7 +68,12 @@ def main() -> None:
             "SPI worker internal",
             {"name": "X-Worker-Token", "value": secret["worker"]},
         ),
-        ("ingress", "socratAlertIngress", "Socrat alert ingress", {"token": secret["ingress"]}),
+        (
+            "ingress",
+            "socratAlertIngress",
+            "Socrat alert ingress",
+            {"token": secret["ingress"]},
+        ),
     ]:
         if alias in mapping:
             continue

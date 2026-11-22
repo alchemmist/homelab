@@ -1,4 +1,5 @@
 """Check that the Rancher UI stays reachable only from the private network."""
+
 import argparse
 import shlex
 import subprocess
@@ -137,7 +138,13 @@ def main():
                 command += ["--header", "X-Forwarded-For: 10.250.0.1"]
             command += [scheme + "://rancher.socrat.alchemmist.xyz/ping"]
             result = subprocess.run(
-                ["ssh", "-o", "BatchMode=yes", args.external_ssh_host, shlex.join(command)],
+                [
+                    "ssh",
+                    "-o",
+                    "BatchMode=yes",
+                    args.external_ssh_host,
+                    shlex.join(command),
+                ],
                 check=False,
                 capture_output=True,
                 text=True,

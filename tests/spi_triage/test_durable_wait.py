@@ -81,7 +81,10 @@ class WaitTests(unittest.TestCase):
             with self.assertRaises(Failure):
                 self.owners.defer(self.owner, "LLM_ADMISSION_DEFERRED", value, 100)
         with self.store.db() as c:
-            c.execute("UPDATE workflow_wait_owner SET deadline=200 WHERE job_id=?", (self.key,))
+            c.execute(
+                "UPDATE workflow_wait_owner SET deadline=200 WHERE job_id=?",
+                (self.key,),
+            )
         with self.assertRaises(Failure):
             self.owners.defer(self.owner, "LLM_ADMISSION_DEFERRED", 61, 100)
 

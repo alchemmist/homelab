@@ -22,7 +22,10 @@ K = ["kubectl", "--kubeconfig=/etc/rancher/k3s/k3s.yaml"]
 def call(args: list[str], timeout: int = 40) -> str:
     """Run one kubectl command over the operator SSH context and fail loudly."""
     r = subprocess.run(
-        ["ssh", "socrat-0", shlex.join(K + args)], capture_output=True, text=True, timeout=timeout
+        ["ssh", "socrat-0", shlex.join(K + args)],
+        capture_output=True,
+        text=True,
+        timeout=timeout,
     )
     if r.returncode:
         raise RuntimeError("Kubernetes operation failed; inspect private controller context")
@@ -45,7 +48,11 @@ def patch_service(*, paused: bool) -> None:
     metadata = cast("dict[str, object]", s["metadata"])
     patch = [{"op": "test", "path": "/metadata/uid", "value": metadata["uid"]}]
     patch.append(
-        {"op": "add", "path": "/spec/selector/homelab.io~1maintenance-serving", "value": "enabled"}
+        {
+            "op": "add",
+            "path": "/spec/selector/homelab.io~1maintenance-serving",
+            "value": "enabled",
+        }
         if paused
         else {"op": "remove", "path": "/spec/selector/homelab.io~1maintenance-serving"}
     )
@@ -79,7 +86,18 @@ with psycopg.connect(os.environ['SPI_POSTGRES_URL'],connect_timeout=5) as db:
     return cast(
         "dict[str, object]",
         json.loads(
-            call(["exec", "deployment/spi-triage", "-n", "automation", "--", "python", "-c", code])
+            call(
+                [
+                    "exec",
+                    "deployment/spi-triage",
+                    "-n",
+                    "automation",
+                    "--",
+                    "python",
+                    "-c",
+                    code,
+                ]
+            )
         ),
     )
 
@@ -126,9 +144,10 @@ def quiesce_endpoints() -> None:
         )
         if not any(
             cast("dict[str, object]", e).get("addresses")
-            and cast("dict[str, object]", cast("dict[str, object]", e).get("conditions") or {}).get(
-                "ready"
-            )
+            and cast(
+                "dict[str, object]",
+                cast("dict[str, object]", e).get("conditions") or {},
+            ).get("ready")
             is not False
             for s in cast("list[object]", slices["items"])
             for e in cast("list[object]", cast("dict[str, object]", s).get("endpoints") or [])

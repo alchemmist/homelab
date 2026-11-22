@@ -45,7 +45,9 @@ def test_new_lab_tests_are_visible_but_not_execution_authorized() -> None:
     assert all(path.startswith("tests/") for path in scheduled)
 
 
-def test_unhashed_alternate_requirements_block_without_source_transport(tmp_path: Path) -> None:
+def test_unhashed_alternate_requirements_block_without_source_transport(
+    tmp_path: Path,
+) -> None:
     """Worker dependency metadata cannot silently bypass lock admission."""
     name = "experiments/fixture/worker-requirements.txt"
     path = tmp_path / name
@@ -109,8 +111,7 @@ def test_worker_docker_install_consumes_a_hashed_lock_matching_its_inputs() -> N
     assert "COPY worker-requirements.txt /opt/worker/requirements.txt" in recipe
     assert (
         "RUN python -m pip install --no-cache-dir --require-hashes "
-        "-r /opt/worker/requirements.txt \\"
-        in recipe
+        "-r /opt/worker/requirements.txt \\" in recipe
     )
 
 
@@ -203,7 +204,14 @@ def test_docker_adapter_transports_each_source_and_keeps_findings() -> None:
 def test_docker_ignore_cannot_mask_diagnostic(pragma: str) -> None:
     """Exercise the installed binary: neither local nor file-wide ignores can hide DL3007."""
     result = subprocess.run(
-        ["hadolint", "--config", str(ROOT / "quality/hadolint.yaml"), "--format", "json", "-"],
+        [
+            "hadolint",
+            "--config",
+            str(ROOT / "quality/hadolint.yaml"),
+            "--format",
+            "json",
+            "-",
+        ],
         input=f"# hadolint {pragma}=DL3007\nFROM debian:latest\n",
         capture_output=True,
         text=True,

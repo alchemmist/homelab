@@ -67,7 +67,10 @@ def trace_fixtures(now):
                     ),
                     "endTimeUnixNano": str(now),
                     "attributes": attrs,
-                    "status": {"code": 2 if category == "error" else 1, "message": SECRET},
+                    "status": {
+                        "code": 2 if category == "error" else 1,
+                        "message": SECRET,
+                    },
                     "events": [
                         {
                             "timeUnixNano": str(now),
@@ -81,7 +84,10 @@ def trace_fixtures(now):
         "resourceSpans": [
             {
                 "resource": {
-                    "attributes": [attribute("service.name", SERVICE), attribute("token", SECRET)]
+                    "attributes": [
+                        attribute("service.name", SERVICE),
+                        attribute("token", SECRET),
+                    ]
                 },
                 "scopeSpans": [{"scope": {"name": "homelab.synthetic.acceptance"}, "spans": spans}],
             }
@@ -109,7 +115,10 @@ def logs_fixture(now):
                                 "body": {"stringValue": "fresh-fixture password=" + SECRET},
                                 "attributes": [attribute("token", SECRET)],
                             },
-                            {"timeUnixNano": "0", "body": {"stringValue": "forbidden-time-zero"}},
+                            {
+                                "timeUnixNano": "0",
+                                "body": {"stringValue": "forbidden-time-zero"},
+                            },
                             {
                                 "timeUnixNano": str(now - 3600 * 10**9),
                                 "body": {"stringValue": "forbidden-history"},
@@ -177,7 +186,9 @@ def await_backend_readiness(
         try:
             for port in [3100, 3200]:
                 with urllib.request.urlopen(
-                    "https://127.0.0.1:" + str(port) + "/ready", context=context, timeout=3
+                    "https://127.0.0.1:" + str(port) + "/ready",
+                    context=context,
+                    timeout=3,
                 ) as response:
                     require(response.status == 200, "Backend not ready")
         except (OSError, ValueError):
@@ -304,7 +315,8 @@ def run(args):
         )
         normal = len(groups["normal"] & ids)
         require(
-            5 <= normal <= 45, "Normal trace sampling is outside the synthetic acceptance range"
+            5 <= normal <= 45,
+            "Normal trace sampling is outside the synthetic acceptance range",
         )
         for identity in sorted(mandatory):
             body = request(context, 3200, "/api/traces/" + identity)

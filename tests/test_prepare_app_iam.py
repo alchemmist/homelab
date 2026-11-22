@@ -54,7 +54,10 @@ class FakeAPI:
                 }
             )
         for slug in prep.ALLOWLIST:
-            provider = {"pk": len(self.data["providers/all/"]) + 1, "name": "homelab-" + slug}
+            provider = {
+                "pk": len(self.data["providers/all/"]) + 1,
+                "name": "homelab-" + slug,
+            }
             self.data["providers/all/"].append(provider)
             self.data["providers/oauth2/"].append(dict(provider, client_secret="SECRET-NEVER-LOG"))
             app = {
@@ -159,7 +162,8 @@ class PreparationTests(unittest.TestCase):
     def plan(self, stage="groups-only", evidence=None) -> _Plan:
         """Build the migration plan via the frozen tool."""
         return cast(
-            "_Plan", prep.build_plan(self.api, self.services, self.reviewed, stage, evidence)[0]
+            "_Plan",
+            prep.build_plan(self.api, self.services, self.reviewed, stage, evidence)[0],
         )
 
     def apply(self, stage="groups-only", approval=None) -> int:
@@ -218,7 +222,10 @@ class PreparationTests(unittest.TestCase):
         for p in prep.COLLECTIONS:
             if p not in ("core/groups/", "policies/bindings/"):
                 assert self.api.data[p] == before[p]
-        assert self.api.data["policies/bindings/"][:len(before["policies/bindings/"])] == before["policies/bindings/"]
+        assert (
+            self.api.data["policies/bindings/"][: len(before["policies/bindings/"])]
+            == before["policies/bindings/"]
+        )
         for method, path, _payload in self.api.requests:
             if method != "GET":
                 assert method == "POST"
@@ -240,7 +247,14 @@ class PreparationTests(unittest.TestCase):
             g for g in self.api.data["core/groups/"] if cast("str", g["name"]).startswith("app-")
         )
         good = copy.deepcopy(group)
-        for field in ("parents", "children", "users", "roles", "is_superuser", "attributes"):
+        for field in (
+            "parents",
+            "children",
+            "users",
+            "roles",
+            "is_superuser",
+            "attributes",
+        ):
             for value in ("missing", None, ["unexpected"], True):
                 with self.subTest(field=field, value=value):
                     group.clear()
@@ -307,7 +321,10 @@ class PreparationTests(unittest.TestCase):
             else:
                 binding[field] = value
             for stage in ("groups-only", "groups+empty-bindings"):
-                with self.subTest(field=field, stage=stage), self.assertRaises(RuntimeError):
+                with (
+                    self.subTest(field=field, stage=stage),
+                    self.assertRaises(RuntimeError),
+                ):
                     self.plan(stage)
         binding.clear()
         binding.update(good)
@@ -347,7 +364,9 @@ class PreparationTests(unittest.TestCase):
             self.apply(approval=approval)
         assert self.api.writes == 0
 
-    def test_partial_failure_durable_pending_and_no_retry_rollback_or_adoption(self) -> None:
+    def test_partial_failure_durable_pending_and_no_retry_rollback_or_adoption(
+        self,
+    ) -> None:
         """Partial failure durable pending and no retry rollback or adoption."""
         self.api.fail_write = 2
         with self.assertRaisesRegex(RuntimeError, "simulated"):
@@ -400,7 +419,10 @@ class PreparationTests(unittest.TestCase):
                 raise OSError("disk full")
             return original(path, value)
 
-        with patch.object(prep, "atomic_json", side_effect=fail_intent), self.assertRaises(OSError):
+        with (
+            patch.object(prep, "atomic_json", side_effect=fail_intent),
+            self.assertRaises(OSError),
+        ):
             self.apply()
         assert self.api.writes == 0
 
@@ -415,13 +437,24 @@ class PreparationTests(unittest.TestCase):
             return result
 
         approval = self.plan(evidence=self.evidence)["sha256"]
-        with prep.locked(self.root), self.assertRaisesRegex(RuntimeError, "post-create drift"):
+        with (
+            prep.locked(self.root),
+            self.assertRaisesRegex(RuntimeError, "post-create drift"),
+        ):
             prep.apply_plan(
-                api, self.root, self.services, self.reviewed, "groups-only", self.evidence, approval
+                api,
+                self.root,
+                self.services,
+                self.reviewed,
+                "groups-only",
+                self.evidence,
+                approval,
             )
         assert self.api.writes == 1
 
-    def test_pagination_missing_cursor_arbitrary_url_and_duplicate_rows_refused(self) -> None:
+    def test_pagination_missing_cursor_arbitrary_url_and_duplicate_rows_refused(
+        self,
+    ) -> None:
         """Pagination missing cursor arbitrary url and duplicate rows refused."""
         responses: tuple[dict[str, object], ...] = (
             {"results": []},
@@ -494,7 +527,13 @@ class PreparationTests(unittest.TestCase):
         """Apply evidence approval and exclusive lock."""
         with self.assertRaisesRegex(RuntimeError, "evidence"):
             prep.apply_plan(
-                self.api, self.root, self.services, self.reviewed, "groups-only", None, ""
+                self.api,
+                self.root,
+                self.services,
+                self.reviewed,
+                "groups-only",
+                None,
+                "",
             )
         with self.assertRaisesRegex(RuntimeError, "Approval"):
             self.apply(approval="not-approved")
@@ -509,12 +548,16 @@ class PreparationTests(unittest.TestCase):
             "reviewed_tool_sha256",
         ):
             evidence = dict(
-                self.evidence, **{field: False if field == "writers_paused" else "invalid"}
+                self.evidence,
+                **{field: False if field == "writers_paused" else "invalid"},
             )
             path.write_text(json.dumps(evidence))
             with self.assertRaises(RuntimeError):
                 prep.evidence_input(path)
-        with prep.locked(self.root), self.assertRaisesRegex(RuntimeError, "holds the lock"):
+        with (
+            prep.locked(self.root),
+            self.assertRaisesRegex(RuntimeError, "holds the lock"),
+        ):
             with prep.locked(self.root):
                 self.fail("second lock acquired")
         assert self.api.writes == 0
@@ -532,7 +575,11 @@ class PreparationTests(unittest.TestCase):
                 assert prep.main() == status
         assert self.api.writes == 0
         assert not (self.root / "app-iam-prepare-journal").exists()
-        assert {p.name for p in self.root.iterdir()} == {"services.json", "account-mappings.json", ".app-iam-prepare.lock"}
+        assert {p.name for p in self.root.iterdir()} == {
+            "services.json",
+            "account-mappings.json",
+            ".app-iam-prepare.lock",
+        }
 
 
 if __name__ == "__main__":

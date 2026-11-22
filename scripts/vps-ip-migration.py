@@ -236,7 +236,10 @@ def repository(
 ):
     refuse_unfinished(backup_root, old + "-to-" + new)
     root = Path(root).resolve()
-    required = (root / "scripts/public_dns_zone.py", root / "charts/traefik-edge/values.yaml")
+    required = (
+        root / "scripts/public_dns_zone.py",
+        root / "charts/traefik-edge/values.yaml",
+    )
     if not all(p.is_file() for p in required):
         raise MigrationError("Not the reviewed homelab repository")
     validate_dns_anchor(required[0].read_text(), old, new)
@@ -300,7 +303,8 @@ def db_plan(path: Path, old: str):
             "SELECT count(*) FROM hosts WHERE address = ?", (old,)
         ).fetchone()[0]
         partial = connection.execute(
-            "SELECT count(*) FROM hosts WHERE instr(address, ?) > 0 AND address != ?", (old, old)
+            "SELECT count(*) FROM hosts WHERE instr(address, ?) > 0 AND address != ?",
+            (old, old),
         ).fetchone()[0]
         if partial:
             raise MigrationError(
@@ -376,7 +380,10 @@ def required_services(changes: Sequence[Change]):
                 "/etc/systemd/system/wireguard-tcp-transport-guard.service",
                 "wireguard-tcp-transport-guard.service",
             ),
-            ("/etc/wireguard-tcp-transport/config.yaml", "wireguard-tcp-transport.service"),
+            (
+                "/etc/wireguard-tcp-transport/config.yaml",
+                "wireguard-tcp-transport.service",
+            ),
             ("/etc/knot/knot.conf", "knot.service"),
         )
         if path in paths
@@ -461,7 +468,8 @@ def host(
         if str(path) == "/etc/wireguard/wg-socrat.conf":
             peers += wg_endpoint_changes(before, old, new)
         if str(path).endswith("wireguard-tcp-transport-guard.service") and not re.search(
-            r"wireguard-tcp-transport-guard.py\s+\S+\s+" + re.escape(old) + r"\s+\d+", before
+            r"wireguard-tcp-transport-guard.py\s+\S+\s+" + re.escape(old) + r"\s+\d+",
+            before,
         ):
             raise MigrationError("Unknown guard unit format")
     databases = {}

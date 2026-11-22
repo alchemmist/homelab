@@ -37,7 +37,13 @@ def main() -> None:
     stats = {"accepted": 0, "returned": 0, "rejected": 0, "errors": 0}
     print(
         json.dumps(
-            {"state": "ready", "front": FRONT, "client": CLIENT, "back": BACK, "target": TARGET}
+            {
+                "state": "ready",
+                "front": FRONT,
+                "client": CLIENT,
+                "back": BACK,
+                "target": TARGET,
+            }
         ),
         flush=True,
     )

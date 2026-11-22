@@ -4,7 +4,7 @@ import copy
 import hashlib
 import json
 import subprocess
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 from typing import TypedDict, cast
 from unittest.mock import patch
@@ -66,7 +66,7 @@ class _RenderedDoc(TypedDict, total=False):
     spec: _Spec
 
 
-@lru_cache(maxsize=None)
+@cache
 def render(name) -> list[_RenderedDoc]:
     """Test behavior for render."""
     text = subprocess.check_output(
@@ -106,7 +106,10 @@ def software_update_extension(document) -> None:
     assert document == {
         "apiVersion": "v1",
         "kind": "ConfigMap",
-        "metadata": {"name": "software-update-otel", "namespace": "cattle-monitoring-system"},
+        "metadata": {
+            "name": "software-update-otel",
+            "namespace": "cattle-monitoring-system",
+        },
         "data": {"collector.yaml": document["data"]["collector.yaml"]},
     }
     assert yaml.safe_load(document["data"]["collector.yaml"]) == {
@@ -146,7 +149,7 @@ def software_update_extension(document) -> None:
                                     },
                                 }
                             ],
-                        }
+                        },
                     ]
                 }
             }
@@ -166,20 +169,24 @@ def migration_payload(document) -> dict[str, object]:
     if (kind, name) == ("PrometheusRule", "kube-prometheus-stack-kubernetes-apps"):
         # Undo just the retired upstream rule for comparison to the frozen handoff.
         result = copy.deepcopy(document)
-        group, = result["spec"]["groups"]
+        (group,) = result["spec"]["groups"]
         assert group["name"] == "kubernetes-apps"
         assert not any(rule.get("alert") == "KubeJobFailed" for rule in group["rules"])
-        group["rules"].insert(13, {
-            "alert": "KubeJobFailed",
-            "expr": 'kube_job_failed{job="kube-state-metrics", namespace=~".*"}  > 0',
-            "for": "15m", "labels": {"severity": "warning"},
-            "annotations": {
-                "description": "Job {{ $labels.namespace }}/{{ $labels.job_name }} failed to complete. "
-                "Removing failed job after investigation should clear this alert on cluster {{ $labels.cluster }}.",
-                "runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubejobfailed",
-                "summary": "Job failed to complete.",
+        group["rules"].insert(
+            13,
+            {
+                "alert": "KubeJobFailed",
+                "expr": 'kube_job_failed{job="kube-state-metrics", namespace=~".*"}  > 0',
+                "for": "15m",
+                "labels": {"severity": "warning"},
+                "annotations": {
+                    "description": "Job {{ $labels.namespace }}/{{ $labels.job_name }} failed to complete. "
+                    "Removing failed job after investigation should clear this alert on cluster {{ $labels.cluster }}.",
+                    "runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubejobfailed",
+                    "summary": "Job failed to complete.",
+                },
             },
-        })
+        )
         return result
     if kind not in {"Prometheus", "Alertmanager", "Deployment"} and (kind, name) != (
         "ServiceMonitor",
@@ -205,7 +212,10 @@ def migration_payload(document) -> dict[str, object]:
         return result
     # Reverse only the verified warm-S3 shipper delta (2948f0e2).
     shipper = spec["thanos"]
-    assert shipper["objectStorageConfig"] == {"name": "thanos-warm-shipper", "key": "objstore.yml"}
+    assert shipper["objectStorageConfig"] == {
+        "name": "thanos-warm-shipper",
+        "key": "objstore.yml",
+    }
     shipper["objectStorageConfig"]["name"] = "thanos-objstore-raw"
     assert shipper["volumeMounts"] == [
         {"mountPath": "/trust", "name": "thanos-warm-ca", "readOnly": True}
@@ -255,8 +265,16 @@ def migration_payload(document) -> dict[str, object]:
     assert collector["volumeMounts"] == [
         {"mountPath": "/etc/otel/config", "name": "otel-config", "readOnly": True},
         {"mountPath": "/etc/otel/tls", "name": "otel-tls", "readOnly": True},
-        {"mountPath": "/etc/otel/source-auth", "name": "otel-source-auth", "readOnly": True},
-        {"mountPath": "/etc/prometheus/certs", "name": "otel-source-tls", "readOnly": True},
+        {
+            "mountPath": "/etc/otel/source-auth",
+            "name": "otel-source-auth",
+            "readOnly": True,
+        },
+        {
+            "mountPath": "/etc/prometheus/certs",
+            "name": "otel-source-tls",
+            "readOnly": True,
+        },
         {
             "mountPath": "/var/lib/otel-data",
             "name": "prometheus-kube-prometheus-stack-prometheus-db",
@@ -272,7 +290,14 @@ def migration_payload(document) -> dict[str, object]:
         "name": "prometheus",
         **{
             name: {
-                "exec": {"command": ["/bin/promtool", "check", kind, "--url=http://127.0.0.1:9090"]}
+                "exec": {
+                    "command": [
+                        "/bin/promtool",
+                        "check",
+                        kind,
+                        "--url=http://127.0.0.1:9090",
+                    ]
+                }
             }
             for name, kind in [
                 ("livenessProbe", "healthy"),
@@ -288,7 +313,10 @@ def migration_payload(document) -> dict[str, object]:
         }
     }
     spec.pop("containers")
-    extension = {"name": "software-update-otel", "configMap": {"name": "software-update-otel"}}
+    extension = {
+        "name": "software-update-otel",
+        "configMap": {"name": "software-update-otel"},
+    }
     assert spec["volumes"].count(extension) == 1
     spec["volumes"].remove(extension)
     return cast("dict[str, object]", result)
@@ -308,15 +336,22 @@ def test_disjoint_complete_payload_identical_handoff() -> None:
                 assert name == "prometheus"
                 software_update_extension(d)
                 continue
-            if k == "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-homelab-job-failures":
+            if (
+                k
+                == "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-homelab-job-failures"
+            ):
                 assert name == "prometheus"
-                group, = d["spec"]["groups"]
+                (group,) = d["spec"]["groups"]
                 assert [r["alert"] for r in group["rules"]] == [
-                    "KubeJobFailed", "SocratPrAgentWebhookRedeliveryFailed",
+                    "KubeJobFailed",
+                    "SocratPrAgentWebhookRedeliveryFailed",
                 ]
                 # Pin the reviewed additive rule without refreshing the historical fixture.
                 payload = json.dumps(d, sort_keys=True, separators=(",", ":")).encode()
-                assert hashlib.sha256(payload).hexdigest() == "16942316eebb144ae6d63b1afe04d1ade1981e7d7a2cf45f449a1f4172ed633b"
+                assert (
+                    hashlib.sha256(payload).hexdigest()
+                    == "16942316eebb144ae6d63b1afe04d1ade1981e7d7a2cf45f449a1f4172ed633b"
+                )
                 continue
             actual[k] = {
                 "owner": name,
@@ -348,7 +383,10 @@ def test_each_application_has_only_its_own_runtime() -> None:
         assert len(deps) == int(name in ("prometheus-operator", "kube-state-metrics"))
         assert ("CustomResourceDefinition" in kinds) == (name == "prometheus-operator")
         if name != "prometheus-operator":
-            assert not kinds & {"MutatingWebhookConfiguration", "ValidatingWebhookConfiguration"}
+            assert not kinds & {
+                "MutatingWebhookConfiguration",
+                "ValidatingWebhookConfiguration",
+            }
 
 
 def test_offline_source_is_immutable_shared_code_not_shared_ownership() -> None:
@@ -381,7 +419,10 @@ def test_offline_source_is_immutable_shared_code_not_shared_ownership() -> None:
                 else []
             ),
         }
-        assert app["spec"]["syncPolicy"]["automated"] == {"prune": False, "selfHeal": True}
+        assert app["spec"]["syncPolicy"]["automated"] == {
+            "prune": False,
+            "selfHeal": True,
+        }
 
 
 def test_aggregate_application_and_values_are_gone() -> None:
@@ -391,7 +432,8 @@ def test_aggregate_application_and_values_are_gone() -> None:
 
 
 @pytest.mark.parametrize(
-    "violation", ["scrape-target", "second-owner", "otel-image", "otel-mount", "probe", "service"]
+    "violation",
+    ["scrape-target", "second-owner", "otel-image", "otel-mount", "probe", "service"],
 )
 def test_current_extension_projection_rejects_mutations(violation: str) -> None:
     """The historical comparison stays strict after validating each new input."""
@@ -422,7 +464,8 @@ def test_current_extension_projection_rejects_mutations(violation: str) -> None:
     else:
         next(d for d in docs if d["kind"] == "Service")["spec"]["type"] = "NodePort"
     with patch(
-        "tests.test_prometheus_component_ownership.render", side_effect=lambda name: graphs[name]
+        "tests.test_prometheus_component_ownership.render",
+        side_effect=lambda name: graphs[name],
     ):
         with pytest.raises(AssertionError):
             test_disjoint_complete_payload_identical_handoff()

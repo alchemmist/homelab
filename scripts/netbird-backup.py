@@ -60,7 +60,11 @@ def copy_pod(node, image, read_only) -> dict[str, object]:
                     "imagePullPolicy": "IfNotPresent",
                     "command": ["sleep", "600"],
                     "volumeMounts": [
-                        {"name": "data", "mountPath": "/var/lib/netbird", "readOnly": read_only}
+                        {
+                            "name": "data",
+                            "mountPath": "/var/lib/netbird",
+                            "readOnly": read_only,
+                        }
                     ],
                 }
             ],
@@ -73,7 +77,10 @@ def plan(node, image) -> dict[str, object]:
     """Assemble the quiesced backup plan around the read-only copy pod."""
     pod = copy_pod(node, image, True)
     blob = json.dumps(pod)
-    require("secret" not in blob and "NB_" not in blob, "backup pod must not carry credentials")
+    require(
+        "secret" not in blob and "NB_" not in blob,
+        "backup pod must not carry credentials",
+    )
     return {
         "quiesce_required": True,
         "management_ha": False,
@@ -83,7 +90,14 @@ def plan(node, image) -> dict[str, object]:
         "files": FILES,
         "pod": pod,
         "commands": [
-            ["kubectl", "-n", "netbird-pilot", "scale", "deploy/server", "--replicas=0"],
+            [
+                "kubectl",
+                "-n",
+                "netbird-pilot",
+                "scale",
+                "deploy/server",
+                "--replicas=0",
+            ],
             ["kubectl", "-n", "netbird-pilot", "apply", "-f", "sqlite-copy-pod.yaml"],
             [
                 "kubectl",
@@ -102,7 +116,14 @@ def plan(node, image) -> dict[str, object]:
                 "netbird-sqlite-copy",
                 "--wait=true",
             ],
-            ["kubectl", "-n", "netbird-pilot", "scale", "deploy/server", "--replicas=1"],
+            [
+                "kubectl",
+                "-n",
+                "netbird-pilot",
+                "scale",
+                "deploy/server",
+                "--replicas=1",
+            ],
         ],
     }
 
@@ -110,7 +131,10 @@ def plan(node, image) -> dict[str, object]:
 def outside(path) -> None:
     """Require the backup destination to exist outside the Git worktree."""
     require(path is not None, "--out required")
-    require(not path.resolve().is_relative_to(ROOT), "--out must be outside the Git worktree")
+    require(
+        not path.resolve().is_relative_to(ROOT),
+        "--out must be outside the Git worktree",
+    )
 
 
 def main() -> None:
@@ -156,7 +180,13 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except (ValueError, KeyError, TypeError, OSError, subprocess.CalledProcessError) as exc:
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        OSError,
+        subprocess.CalledProcessError,
+    ) as exc:
         print(
             "BLOCKED: " + (str(exc) if isinstance(exc, ValueError) else type(exc).__name__),
             file=sys.stderr,

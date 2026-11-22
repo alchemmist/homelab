@@ -67,7 +67,10 @@ class WishlistImages(unittest.TestCase):
         pod = yaml.safe_load(output.stdout)["spec"]["template"]["spec"]
         [app] = [c for c in pod["containers"] if c["name"] == "wishlist"]
         assert [e for e in app["env"] if e["name"] == "IMAGE_OPTIMIZER_URL"] == [
-            {"name": "IMAGE_OPTIMIZER_URL", "value": "http://wishlist-image-optimizer:8081"}
+            {
+                "name": "IMAGE_OPTIMIZER_URL",
+                "value": "http://wishlist-image-optimizer:8081",
+            }
         ]
         assert [v for v in pod["volumes"] if v["name"] == "media-cache"] == [
             {"name": "media-cache", "emptyDir": {"sizeLimit": "2Gi"}}

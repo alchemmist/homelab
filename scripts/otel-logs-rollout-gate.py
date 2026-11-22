@@ -45,7 +45,11 @@ elif sys.argv[1] == "validate":
     environment.update(dict(v.split("=", 1) for v in shlex.split(values)))
     environment["OTEL_TLS_DIR"] = "/var/lib/homelab-otel/tls"
     outcome = subprocess.run(
-        ["/usr/local/lib/homelab-otel/otelcol-contrib", "validate", "--config=" + sys.argv[2]],
+        [
+            "/usr/local/lib/homelab-otel/otelcol-contrib",
+            "validate",
+            "--config=" + sys.argv[2],
+        ],
         env=environment,
         capture_output=True,
     )

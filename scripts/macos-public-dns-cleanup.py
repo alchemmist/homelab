@@ -214,9 +214,13 @@ def main() -> None:
         if active:
             r = run(["/bin/launchctl", "bootout", "system/" + LABEL])
             need(
-                r.returncode == 0 and not loaded(), "Owned job not stopped; do not delete its files"
+                r.returncode == 0 and not loaded(),
+                "Owned job not stopped; do not delete its files",
             )
-        need(baseline(a.expected_tunnelblick_pid) == before, "VPN/global DNS changed; stop")
+        need(
+            baseline(a.expected_tunnelblick_pid) == before,
+            "VPN/global DNS changed; stop",
+        )
         for item in owned:
             path = Path(item["path"])
             need(fingerprint(path) == item, "Owned file changed during approval; stop")

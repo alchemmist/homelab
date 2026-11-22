@@ -69,7 +69,11 @@ class BrowserWatchdogTests(unittest.TestCase):
             ),
             process(args=("chrome", "--headless", "--user-data-dir=/tmp/playwright_test")),
             process(
-                args=("chrome", "--remote-debugging-pipe", "--user-data-dir=/tmp/playwright_test")
+                args=(
+                    "chrome",
+                    "--remote-debugging-pipe",
+                    "--user-data-dir=/tmp/playwright_test",
+                )
             ),
             process(args=process().args + ("--type=renderer",)),
         ):
@@ -174,7 +178,10 @@ class BrowserWatchdogTests(unittest.TestCase):
             patch.object(MODULE.os, "close") as close,
             patch.object(MODULE, "read_process", return_value=process()),
             patch.object(
-                MODULE.signal, "pidfd_send_signal", side_effect=PermissionError, create=True
+                MODULE.signal,
+                "pidfd_send_signal",
+                side_effect=PermissionError,
+                create=True,
             ),
             self.assertLogs(level="WARNING"),
         ):

@@ -39,7 +39,10 @@ def network(endpoint="91.189.82.238"):
     if len(rows) != 1 or rows[0].get("dev") != "eno1" or rows[0].get("gateway") != "192.168.0.1":
         raise ValueError("Not approved home WAN route")
     main = subprocess.run(
-        ["ip", "-j", "route", "show", "table", "main"], check=False, capture_output=True, timeout=10
+        ["ip", "-j", "route", "show", "table", "main"],
+        check=False,
+        capture_output=True,
+        timeout=10,
     )
     if main.returncode:
         raise ValueError("Route snapshot failed")

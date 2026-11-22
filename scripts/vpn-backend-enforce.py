@@ -63,7 +63,11 @@ def client(stream: dict[str, object], password: str, port: int) -> dict[str, obj
                 "protocol": "trojan",
                 "settings": {
                     "servers": [
-                        {"address": "vpn.alchemmist.xyz", "port": 443, "password": password}
+                        {
+                            "address": "vpn.alchemmist.xyz",
+                            "port": 443,
+                            "password": password,
+                        }
                     ]
                 },
                 "streamSettings": {
@@ -74,13 +78,20 @@ def client(stream: dict[str, object], password: str, port: int) -> dict[str, obj
                         "allowInsecure": False,
                         "alpn": ["http/1.1"],
                     },
-                    "wsSettings": {"path": path, "headers": {"Host": "vpn.alchemmist.xyz"}},
+                    "wsSettings": {
+                        "path": path,
+                        "headers": {"Host": "vpn.alchemmist.xyz"},
+                    },
                 },
             },
         ],
         "routing": {
             "rules": [
-                {"type": "field", "domain": ["full:speed.cloudflare.com"], "outboundTag": "probe"},
+                {
+                    "type": "field",
+                    "domain": ["full:speed.cloudflare.com"],
+                    "outboundTag": "probe",
+                },
                 {"type": "field", "network": "tcp,udp", "outboundTag": "blocked"},
             ]
         },
@@ -173,12 +184,19 @@ def stage_own_probe(
     h.save(
         s.state / "trojan-client-private.json",
         client(
-            cast("dict[str, object]", json.loads(cast("str", identity["row"]["stream_settings"]))),
+            cast(
+                "dict[str, object]",
+                json.loads(cast("str", identity["row"]["stream_settings"])),
+            ),
             identity["password"],
             port,
         ),
     )
-    fd = os.open(s.state / "trojan-client-private.log", os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    fd = os.open(
+        s.state / "trojan-client-private.log",
+        os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+        0o600,
+    )
     log = os.fdopen(fd, "w")
     executable = s.state / "owned-xray-probe"
     process = subprocess.Popen(
@@ -279,7 +297,8 @@ def cleanup_fixture(
         if fixture:
             with closing(sqlite3.connect(s.database.as_uri() + "?mode=ro", uri=True)) as c:
                 rows = c.execute(
-                    "SELECT uuid,sub_id FROM clients WHERE email=?", (identity["email"],)
+                    "SELECT uuid,sub_id FROM clients WHERE email=?",
+                    (identity["email"],),
                 ).fetchall()
             if rows:
                 if rows != [(identity["uuid"], identity["sub_id"])]:

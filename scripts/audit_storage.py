@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Read-only PV/mount inventory. Never creates pods, reads datasets or uses sudo."""
+
 import argparse
 import datetime
 import json
@@ -25,18 +26,40 @@ def inventory(pvs, pods):
         for pod in pods:
             if pod["metadata"]["namespace"] != claim.get("namespace"):
                 continue
-            if any(v.get("persistentVolumeClaim", {}).get("claimName") == claim.get("name")
-                   for v in pod["spec"].get("volumes", [])):
-                consumers.append({"pod": pod["metadata"]["name"], "node": pod["spec"].get("nodeName")})
+            if any(
+                v.get("persistentVolumeClaim", {}).get("claimName") == claim.get("name")
+                for v in pod["spec"].get("volumes", [])
+            ):
+                consumers.append(
+                    {
+                        "pod": pod["metadata"]["name"],
+                        "node": pod["spec"].get("nodeName"),
+                    }
+                )
         terms = spec.get("nodeAffinity", {}).get("required", {}).get("nodeSelectorTerms", [])
-        nodes = sorted({n for term in terms for e in term.get("matchExpressions", [])
-                        if e["key"] == "kubernetes.io/hostname" and e["operator"] == "In"
-                        for n in e["values"]})
+        nodes = sorted(
+            {
+                n
+                for term in terms
+                for e in term.get("matchExpressions", [])
+                if e["key"] == "kubernetes.io/hostname" and e["operator"] == "In"
+                for n in e["values"]
+            }
+        )
         backend = spec.get("local") or spec.get("hostPath") or spec.get("nfs") or {}
-        rows.append({"pv": pv["metadata"]["name"], "claim": claim, "phase": pv.get("status", {}).get("phase"),
-                     "class": spec.get("storageClassName", ""), "requested_capacity": spec["capacity"],
-                     "reclaim": spec["persistentVolumeReclaimPolicy"], "nodes": nodes,
-                     "backend": backend, "consumers": consumers})
+        rows.append(
+            {
+                "pv": pv["metadata"]["name"],
+                "claim": claim,
+                "phase": pv.get("status", {}).get("phase"),
+                "class": spec.get("storageClassName", ""),
+                "requested_capacity": spec["capacity"],
+                "reclaim": spec["persistentVolumeReclaimPolicy"],
+                "nodes": nodes,
+                "backend": backend,
+                "consumers": consumers,
+            }
+        )
     return rows
 
 
@@ -45,7 +68,9 @@ def main():
     parser.add_argument("--node", default="socrat-5", choices=[f"socrat-{i}" for i in range(6)])
     args = parser.parse_args()
     rows = inventory(kub("pv"), kub("pods"))
-    paths = sorted({r["backend"]["path"] for r in rows if args.node in r["nodes"] and "path" in r["backend"]})
+    paths = sorted(
+        {r["backend"]["path"] for r in rows if args.node in r["nodes"] and "path" in r["backend"]}
+    )
     # Fixed remote program; paths travel as JSON on stdin, never interpolated into shell.
     remote = """import json,sys,subprocess,os
 paths=json.load(sys.stdin)
@@ -63,14 +88,48 @@ for path in paths:
  except OSError as e:item['stat_error']=str(e)
  out.append(item)
 print(json.dumps(out))"""
-    result = run(["ssh", "-o", "BatchMode=yes", args.node, "python3 -c " + __import__("shlex").quote(remote)],
-                 input=json.dumps(sorted(set(paths + ["/", "/mnt/files", "/var/lib/rancher/k3s", "/var/lib/containerd", "/var/log", "/home"]))))
+    result = run(
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            args.node,
+            "python3 -c " + __import__("shlex").quote(remote),
+        ],
+        input=json.dumps(
+            sorted(
+                set(
+                    paths
+                    + [
+                        "/",
+                        "/mnt/files",
+                        "/var/lib/rancher/k3s",
+                        "/var/lib/containerd",
+                        "/var/log",
+                        "/home",
+                    ]
+                )
+            )
+        ),
+    )
     result.check_returncode()
-    print(json.dumps({"observed_at": datetime.datetime.now(datetime.UTC).isoformat(), "node": args.node,
-                      "pvs": rows, "mount_inspection": json.loads(result.stdout),
-                      "storage_classes": kub("storageclasses"),
-                      "limitations": ["du failures are unknown, never zero", "PVC capacity is not a directory quota",
-                                      "No dataset contents read; root-only disk usage requires operator measurement"]}, indent=2))
+    print(
+        json.dumps(
+            {
+                "observed_at": datetime.datetime.now(datetime.UTC).isoformat(),
+                "node": args.node,
+                "pvs": rows,
+                "mount_inspection": json.loads(result.stdout),
+                "storage_classes": kub("storageclasses"),
+                "limitations": [
+                    "du failures are unknown, never zero",
+                    "PVC capacity is not a directory quota",
+                    "No dataset contents read; root-only disk usage requires operator measurement",
+                ],
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

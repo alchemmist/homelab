@@ -92,20 +92,42 @@ class AlertGraphsChartTests(unittest.TestCase):
         """Gateway and monitoring proxy share placement on portable home nodes."""
         import yaml
 
-        result = self.render(extra=[
-            "-f", "charts/grafana/alert-graphs.policy.values.yaml",
-            "-f", "charts/grafana/alert-graphs.runtime.values.yaml",
-            "-f", "deploy/grafana/values.yaml", "--show-only", "templates/alert-graphs.yaml",
-        ])
+        result = self.render(
+            extra=[
+                "-f",
+                "charts/grafana/alert-graphs.policy.values.yaml",
+                "-f",
+                "charts/grafana/alert-graphs.runtime.values.yaml",
+                "-f",
+                "deploy/grafana/values.yaml",
+                "--show-only",
+                "templates/alert-graphs.yaml",
+            ]
+        )
         assert result.returncode == 0, result.stderr
-        dep, = [d for d in yaml.safe_load_all(result.stdout) if d and d["kind"] == "Deployment"]
+        (dep,) = [d for d in yaml.safe_load_all(result.stdout) if d and d["kind"] == "Deployment"]
         assert dep["spec"].get("replicas", 1) == 1
-        proxy = yaml.safe_load((ROOT / "deploy/monitoring/rancher-values.yaml").read_text())["monitoringProxy"]
+        proxy = yaml.safe_load((ROOT / "deploy/monitoring/rancher-values.yaml").read_text())[
+            "monitoringProxy"
+        ]
+
         def term(nodes) -> dict[str, object]:
-            return {"matchExpressions": [{"key": "kubernetes.io/hostname", "operator": "In", "values": nodes}]}
+            return {
+                "matchExpressions": [
+                    {"key": "kubernetes.io/hostname", "operator": "In", "values": nodes}
+                ]
+            }
+
         for spec in [dep["spec"]["template"]["spec"], proxy]:
             assert spec["nodeSelector"] == {"kubernetes.io/os": "linux"}
-            assert spec["affinity"]["nodeAffinity"] == {"requiredDuringSchedulingIgnoredDuringExecution": {"nodeSelectorTerms": [term(["socrat-0", "socrat-1"])]}, "preferredDuringSchedulingIgnoredDuringExecution": [{"weight": 100, "preference": term(["socrat-0"])}]}
+            assert spec["affinity"]["nodeAffinity"] == {
+                "requiredDuringSchedulingIgnoredDuringExecution": {
+                    "nodeSelectorTerms": [term(["socrat-0", "socrat-1"])]
+                },
+                "preferredDuringSchedulingIgnoredDuringExecution": [
+                    {"weight": 100, "preference": term(["socrat-0"])}
+                ],
+            }
 
     def test_requires_immutable_image(self) -> None:
         """Non-digest gateway images are rejected as non-immutable."""

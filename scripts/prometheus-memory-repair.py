@@ -65,10 +65,16 @@ def expression_change(expr):
     require(end is not None, "Unbalanced container profile")
     block = expr[begin:end]
     require(block.count('"memory"') == 2, "Unexpected RAM fields")
-    for group, old, new in [("requests", "2048Mi", "3072Mi"), ("limits", "3072Mi", "8192Mi")]:
+    for group, old, new in [
+        ("requests", "2048Mi", "3072Mi"),
+        ("limits", "3072Mi", "8192Mi"),
+    ]:
         pattern = r'("' + group + r'": dyn\(\{[^}]*"memory": ")([^\"]+)(")'
         match = re.search(pattern, block)
-        require(match is not None and match.group(2) == old, "Unexpected current " + group + " RAM")
+        require(
+            match is not None and match.group(2) == old,
+            "Unexpected current " + group + " RAM",
+        )
         block = block[: match.start(2)] + new + block[match.end(2) :]
     return expr[:begin] + block + expr[end:]
 
@@ -94,7 +100,10 @@ def policy_patch(policy):
 
 
 def resize_patch(pod):
-    require(pod["metadata"]["name"] == NAME and pod["metadata"]["namespace"] == NS, "Wrong Pod")
+    require(
+        pod["metadata"]["name"] == NAME and pod["metadata"]["namespace"] == NS,
+        "Wrong Pod",
+    )
     require(pod["spec"]["nodeName"] == "socrat-0", "Wrong node")
     require(
         any(
@@ -185,7 +194,10 @@ def probe(sts):
                     "name": "prometheus",
                     "image": sts["spec"]["template"]["spec"]["containers"][0]["image"],
                     "command": ["/bin/true"],
-                    "resources": {"requests": {"memory": "3Gi"}, "limits": {"memory": "8Gi"}},
+                    "resources": {
+                        "requests": {"memory": "3Gi"},
+                        "limits": {"memory": "8Gi"},
+                    },
                 }
             ],
         },
@@ -249,7 +261,17 @@ def main():
     policy = kubectl(["get", "mutatingadmissionpolicy", POLICY, "-o", "json"])
     pod = kubectl(["-n", NS, "get", "pod", NAME, "-o", "json"])
     sts = kubectl(["-n", NS, "get", "statefulset", STS, "-o", "json"])
-    cr = kubectl(["-n", NS, "get", "prometheus", "kube-prometheus-stack-prometheus", "-o", "json"])
+    cr = kubectl(
+        [
+            "-n",
+            NS,
+            "get",
+            "prometheus",
+            "kube-prometheus-stack-prometheus",
+            "-o",
+            "json",
+        ]
+    )
     require(
         cr["spec"]["resources"]["requests"]["memory"] == "4Gi"
         and cr["spec"]["resources"]["limits"]["memory"] == "8Gi",
@@ -276,7 +298,10 @@ def main():
     pp = policy_patch(policy)
     rp = resize_patch(pod)
     statuses = {c["name"]: c["containerID"] for c in pod["status"]["containerStatuses"]}
-    require(all(c["ready"] for c in pod["status"]["containerStatuses"]), "Existing Pod not ready")
+    require(
+        all(c["ready"] for c in pod["status"]["containerStatuses"]),
+        "Existing Pod not ready",
+    )
     # Validate both API paths before any mutation. The same-Pod scheduler admits request growth.
     kubectl(
         [
@@ -363,7 +388,10 @@ def main():
     save("future-admission.private.json", future)
     # Fresh RV; refuse if Pod or current resources changed after preflight.
     fresh = kubectl(["-n", NS, "get", "pod", NAME, "-o", "json"])
-    require(fresh["metadata"]["uid"] == pod["metadata"]["uid"], "Pod replaced during preflight")
+    require(
+        fresh["metadata"]["uid"] == pod["metadata"]["uid"],
+        "Pod replaced during preflight",
+    )
     rp = resize_patch(fresh)
     resized = kubectl(
         [

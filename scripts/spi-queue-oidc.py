@@ -136,7 +136,8 @@ class API:
                 raise TypeError(reason)
             pagination = data.get("pagination")
             require(
-                "Malformed native pagination", ok=pagination is None or isinstance(pagination, dict)
+                "Malformed native pagination",
+                ok=pagination is None or isinstance(pagination, dict),
             )
             next_page = (pagination or {}).get("next")
             require(
@@ -201,7 +202,8 @@ def inspect(
         if row.get("name") == "homelab-groups" and row.get("scope_name") == "groups"
     ]
     require(
-        "Reviewed openid/groups mappings missing or ambiguous", ok=len(openid) == len(claims) == 1
+        "Reviewed openid/groups mappings missing or ambiguous",
+        ok=len(openid) == len(claims) == 1,
     )
     require(
         "Reviewed groups claim expression drift",
@@ -227,7 +229,10 @@ def validate_existing(api, catalog, state, provider, app, groups, settings) -> N
             "Existing SPI identity without private client journal; stop, no adoption/rotation",
             ok=state is not None,
         )
-        require("SPI admission group missing; manual review required", ok=all(groups.values()))
+        require(
+            "SPI admission group missing; manual review required",
+            ok=all(groups.values()),
+        )
         require(
             "Partial native identity; manual review required",
             ok=bool(provider and app and app.get("provider") == provider["pk"]),
@@ -305,7 +310,10 @@ def main() -> None:
         ),
     )
     uncertain = args.state_dir / "uncertain.json"
-    require("Uncertain previous write: stop for native GET review", ok=not uncertain.exists())
+    require(
+        "Uncertain previous write: stop for native GET review",
+        ok=not uncertain.exists(),
+    )
     journal = args.state_dir / "credentials.json"
     state = None
     if journal.exists():
@@ -335,7 +343,10 @@ def main() -> None:
         )
         return
     require("Fresh plan approval required", ok=args.approve_plan_hash == digest)
-    require("Fresh encrypted IdP backup receipt required", ok=args.backup_receipt is not None)
+    require(
+        "Fresh encrypted IdP backup receipt required",
+        ok=args.backup_receipt is not None,
+    )
     private(args.backup_receipt)
     backup = json.loads(args.backup_receipt.read_text())
     from datetime import datetime
@@ -378,13 +389,17 @@ def main() -> None:
     provider = cast(
         "dict[str, object]",
         api.call(
-            "POST", "providers/oauth2/", {**settings, "client_secret": state["client_secret"]}
+            "POST",
+            "providers/oauth2/",
+            {**settings, "client_secret": state["client_secret"]},
         ),
     )
     app = cast(
         "dict[str, object]",
         api.call(
-            "POST", "core/applications/", {**catalog["application"], "provider": provider["pk"]}
+            "POST",
+            "core/applications/",
+            {**catalog["application"], "provider": provider["pk"]},
         ),
     )
     for order, name in enumerate(catalog["groups"]):

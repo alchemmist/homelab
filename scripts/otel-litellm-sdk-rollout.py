@@ -73,9 +73,7 @@ def run(output, apply):
     require(
         not apply
         or "litellm"
-        in scope.get("dedicatedClientCertificates", {}).get(
-            "sdkReloadVerifiedForApplications", []
-        ),
+        in scope.get("dedicatedClientCertificates", {}).get("sdkReloadVerifiedForApplications", []),
         "Production apply blocked until least-privilege renewable SDK credential"
         " reload is independently verified",
     )

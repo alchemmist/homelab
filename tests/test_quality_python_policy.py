@@ -32,7 +32,10 @@ DOC_RULES = {"D100", "D101", "D102", "D103", "S101"}
     [
         ("tests/test_quality_system.py", {"D100", "D101"}),
         ("tests/kubernetes/test_cluster.py", {"D100", "D101"}),
-        ("experiments/venice-autonomy/test_continue.py", {"D100", "D101", "D103", "S101"}),
+        (
+            "experiments/venice-autonomy/test_continue.py",
+            {"D100", "D101", "D103", "S101"},
+        ),
         ("tests/public_entry_contract.py", DOC_RULES - {"S101"}),
         ("ci/quality/tests.py", DOC_RULES),
         ("ansible/roles/vpn_failover/files/smoke_test.py", DOC_RULES),
@@ -82,7 +85,10 @@ def test_script_docstring_needs_triple_quotes_even_with_double_quote_character()
     ("original", "replacement"),
     [
         ("[lint]\n", '[lint]\nextend-ignore = ["D103"]\n'),
-        ("[lint]\n", '[lint]\nextend-per-file-ignores = { "scripts/*.py" = ["D102"] }\n'),
+        (
+            "[lint]\n",
+            '[lint]\nextend-per-file-ignores = { "scripts/*.py" = ["D102"] }\n',
+        ),
         ("\nignore =", "\n# ignore ="),
         ("[lint.per-file-ignores]", "[unused]"),
     ],
@@ -137,7 +143,9 @@ def test_suppression_blocks_owned_source(
         ["ansible/", "deploy/", "scripts/", "tests/"],
     ],
 )
-def test_python_inputs_module_emits_exact_nul_delimited_inventory(roots: list[str]) -> None:
+def test_python_inputs_module_emits_exact_nul_delimited_inventory(
+    roots: list[str],
+) -> None:
     expected = [
         name
         for name in common.owned(common.tracked())
@@ -198,7 +206,9 @@ def test_python_inputs_reject_incomplete_inventory(
         python_inputs.python_inputs(roots)
 
 
-def test_scoped_ruff_preserves_paths_and_nonzero_status_across_batches(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_scoped_ruff_preserves_paths_and_nonzero_status_across_batches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from subprocess import CompletedProcess
 
     from ci.quality import ruff_scope
@@ -209,7 +219,7 @@ def test_scoped_ruff_preserves_paths_and_nonzero_status_across_batches(monkeypat
 
     def invoke(argv, *, check):
         assert check is False
-        calls.append(argv[argv.index("--") + 1:])
+        calls.append(argv[argv.index("--") + 1 :])
         return CompletedProcess(argv, int(len(calls) == 1))
 
     monkeypatch.setattr(ruff_scope.subprocess, "run", invoke)

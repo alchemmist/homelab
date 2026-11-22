@@ -27,7 +27,15 @@ print(json.dumps({'hostname': socket.gethostname(), 'observedAt': time.time(),
 
 def remote(host, arguments):
     result = subprocess.run(
-        ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", host, shlex.join(arguments)],
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=10",
+            host,
+            shlex.join(arguments),
+        ],
         capture_output=True,
         text=True,
         timeout=90,
@@ -209,7 +217,12 @@ def node_errors(node, reservation, inventory, capacity, now, maximum_age, fracti
     if observed is None:
         errors.append(f"{node}: missing capacity observation")
         return errors
-    keys = ("observedAt", "diskTotalBytes", "diskAvailableBytes", "memoryAvailableBytes")
+    keys = (
+        "observedAt",
+        "diskTotalBytes",
+        "diskAvailableBytes",
+        "memoryAvailableBytes",
+    )
     if any(not nonnegative(observed.get(key)) for key in keys):
         errors.append(f"{node}: invalid capacity observation")
         return errors
@@ -231,7 +244,8 @@ def node_errors(node, reservation, inventory, capacity, now, maximum_age, fracti
         message = f"{node}: invalid resource reservation"
         raise ValueError(message)
     disk_floor = max(
-        reservation["minimumFreeBytes"], math.ceil(observed["diskTotalBytes"] * fraction)
+        reservation["minimumFreeBytes"],
+        math.ceil(observed["diskTotalBytes"] * fraction),
     )
     disk_after = observed["diskAvailableBytes"] - reservation["projectedAdditionalDiskBytes"]
     required_memory = sum(components.values()) + reservation["minimumAvailableMemoryBytes"]
@@ -331,7 +345,13 @@ def main():
         save(args.output, result)
         print(json.dumps(result, indent=2))
         return 0 if result["readyForCutover"] else 1
-    except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError) as error:
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        RuntimeError,
+        subprocess.SubprocessError,
+    ) as error:
         print(str(error), file=sys.stderr)
         return 2
 

@@ -83,9 +83,7 @@ def test_failed_lookup_does_not_claim_an_update() -> None:
 
 def test_catalog_lists_open_webui() -> None:
     """Require the Open WebUI catalog pin recorded in the chart values."""
-    catalog = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())[
-        "updateWatch"
-    ]
+    catalog = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())["updateWatch"]
     [target] = [target for target in catalog["targets"] if target["id"] == "open-webui"]
     assert target["github"] == "open-webui/open-webui"
     assert target["current"] == "0.12.3"
@@ -106,12 +104,8 @@ def test_loader_refuses_missing_spec_or_loader(spec: ModuleSpec | None) -> None:
 def test_import_and_fixture_evaluation_do_not_start_external_work() -> None:
     """Trap network, poller and HTTP-server entrypoints throughout the original cases."""
     with (
-        patch(
-            "urllib.request.urlopen", side_effect=AssertionError("network forbidden")
-        ) as network,
-        patch(
-            "threading.Thread", side_effect=AssertionError("poller forbidden")
-        ) as poller,
+        patch("urllib.request.urlopen", side_effect=AssertionError("network forbidden")) as network,
+        patch("threading.Thread", side_effect=AssertionError("poller forbidden")) as poller,
         patch(
             "http.server.ThreadingHTTPServer",
             side_effect=AssertionError("server forbidden"),
@@ -144,9 +138,9 @@ def test_statefulset_target_and_ambiguous_workload() -> None:
 
 def test_openhands_uses_running_canvas_tag_not_sdk_version() -> None:
     watch = load_module()
-    catalog = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())[
-        "updateWatch"
-    ]["targets"]
+    catalog = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())["updateWatch"][
+        "targets"
+    ]
     target = next(x for x in catalog if x["id"] == "openhands")
     assert target["github"] == "OpenHands/OpenHands"
     assert target["statefulset"] == "openhands"

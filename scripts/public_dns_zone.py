@@ -89,7 +89,10 @@ def healthy_addresses(home_up, vps_up):
 
 def monori_addresses(home_ok, moscow_ok):
     """Never publish the regionally blocked NL entrance, including on probe failure."""
-    return [ip for ip, ok in ((HOME, home_ok), (MOSCOW, moscow_ok)) if ok] or [HOME, MOSCOW]
+    return [ip for ip, ok in ((HOME, home_ok), (MOSCOW, moscow_ok)) if ok] or [
+        HOME,
+        MOSCOW,
+    ]
 
 
 def monori_https(address, port, timeout):
@@ -97,10 +100,26 @@ def monori_https(address, port, timeout):
     host = "monori.alchemmist.xyz"
     try:
         result = subprocess.run(
-            ["curl", "--disable", "--noproxy", "*", "--silent", "--max-time", str(timeout),
-             "--resolve", f"{host}:{port}:{address}", "--output", "/dev/null",
-             "--write-out", "%{http_code}", f"https://{host}:{port}/"],
-            capture_output=True, text=True, timeout=timeout + 0.5, check=False,
+            [
+                "curl",
+                "--disable",
+                "--noproxy",
+                "*",
+                "--silent",
+                "--max-time",
+                str(timeout),
+                "--resolve",
+                f"{host}:{port}:{address}",
+                "--output",
+                "/dev/null",
+                "--write-out",
+                "%{http_code}",
+                f"https://{host}:{port}/",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=timeout + 0.5,
+            check=False,
         )
     except (OSError, subprocess.TimeoutExpired):
         return False
@@ -128,7 +147,9 @@ def render(serial, home_up, vps_up, *, monori_health=None):
         # Preserve the existing production LMS/OIDC primary/standby policy.
         selected = [HOME] if home_up and name in {"lms", "auth.socrat"} else addresses
         if name == "monori":
-            selected = monori_addresses(*(monori_health if monori_health is not None else (home_up, True)))
+            selected = monori_addresses(
+                *(monori_health if monori_health is not None else (home_up, True))
+            )
         for address in selected:
             lines.append("%s IN A %s" % (name, address))
     for name in sorted(STATIC_A):
@@ -178,6 +199,7 @@ def main():
         if args.assume_vps == "down"
         else probe(args.vps_target, args.port, args.timeout)
     )
+
     # Explicit assume flags keep offline acceptance deterministic.
     def checked(mode, up, target):
         return up and (mode != "probe" or monori_https(target, args.port, args.timeout))

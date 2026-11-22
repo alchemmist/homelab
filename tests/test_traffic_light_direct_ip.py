@@ -92,7 +92,9 @@ class DirectIpTest(unittest.TestCase):
         assert "or vector(-2)" in e
 
     @unittest.skipUnless(shutil.which("promtool"), "promtool required")
-    def test_actual_panel_expressions_down_pressure_stale_and_no_vpn_coupling(self) -> None:
+    def test_actual_panel_expressions_down_pressure_stale_and_no_vpn_coupling(
+        self,
+    ) -> None:
         cases = []
 
         def add(expr, data, value, when="3m") -> None:
@@ -140,7 +142,11 @@ class DirectIpTest(unittest.TestCase):
             add(e, [series("up", 1, lab), series("probe_success", 0, lab)], 2)
             add(e, [series("up", 0, lab), series("probe_success", 1, lab)], -2)
             add(e, [series("up", 1, lab)], -2)
-            add(e, [series("up", 1, lab), series("probe_success", 1, lab, samples=0)], -2)
+            add(
+                e,
+                [series("up", 1, lab), series("probe_success", 1, lab, samples=0)],
+                -2,
+            )
             add(e, [], -2)
             # Even firing old VPN/edge alerts cannot override a direct green.
             add(
@@ -157,7 +163,11 @@ class DirectIpTest(unittest.TestCase):
                 0,
             )
             # Legacy in-cluster probe alone cannot falsely supply direct telemetry.
-            add(e, [series("probe_success", 1, f'job="service-probes",service_id="{sid}"')], -2)
+            add(
+                e,
+                [series("probe_success", 1, f'job="service-probes",service_id="{sid}"')],
+                -2,
+            )
         with tempfile.TemporaryDirectory() as t:
             p = Path(t) / "cases.yml"
             p.write_text(
@@ -189,7 +199,17 @@ class DirectIpTest(unittest.TestCase):
             case([], -2),
             case([series("socrat_vpn_fallback_active", 0, 'job="node-exporter"')], -2),
             case([series("socrat_vpn_fallback_active", 1, 'job="node-exporter"')], -2),
-            case([series("socrat_vpn_fallback_active", 0, 'job="node-exporter"', samples=0)], -2),
+            case(
+                [
+                    series(
+                        "socrat_vpn_fallback_active",
+                        0,
+                        'job="node-exporter"',
+                        samples=0,
+                    )
+                ],
+                -2,
+            ),
         ]
         with tempfile.TemporaryDirectory() as t:
             p = Path(t) / "cases.yml"

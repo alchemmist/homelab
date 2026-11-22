@@ -10,7 +10,10 @@ from pathlib import Path
 
 async def run():
     logging.disable(logging.CRITICAL)
-    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+    with (
+        contextlib.redirect_stdout(io.StringIO()),
+        contextlib.redirect_stderr(io.StringIO()),
+    ):
         import httpx
         import litellm
         from litellm.integrations.opentelemetry import OpenTelemetry

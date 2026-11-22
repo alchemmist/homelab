@@ -31,12 +31,23 @@ cert = b.resource(
     },
 )
 b.kube("apply", "-f", "-", "-o", "json", document=cert)
-b.kube("-n", ns, "wait", "--for=condition=Ready", "certificate/otel-tls-traefik", "--timeout=90s")
+b.kube(
+    "-n",
+    ns,
+    "wait",
+    "--for=condition=Ready",
+    "certificate/otel-tls-traefik",
+    "--timeout=90s",
+)
 leaf = b.kube("-n", ns, "get", "secret", "otel-tls-traefik", "-o", "json")["data"]
 mirror = {
     "apiVersion": "v1",
     "kind": "Secret",
-    "metadata": {"name": "otel-traefik-tls", "namespace": "kube-system", "labels": b.LABELS},
+    "metadata": {
+        "name": "otel-traefik-tls",
+        "namespace": "kube-system",
+        "labels": b.LABELS,
+    },
     "type": "Opaque",
     "data": leaf,
 }

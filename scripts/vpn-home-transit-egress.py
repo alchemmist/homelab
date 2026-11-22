@@ -132,7 +132,13 @@ def upgrade_direct_probe() -> None:
                 "right": 443,
             }
         },
-        {"match": {"op": "==", "left": {"meta": {"key": "skuid"}}, "right": DIRECT_PROBE_UID}},
+        {
+            "match": {
+                "op": "==",
+                "left": {"meta": {"key": "skuid"}},
+                "right": DIRECT_PROBE_UID,
+            }
+        },
         {"counter": {}},
         {"return": None},
     ]
@@ -168,7 +174,11 @@ def upgrade_direct_probe() -> None:
 
 
 def run(boot=False) -> None:
-    assert os.geteuid() == 0 and socket.gethostname() in ("socrat-0", "socrat-1", "socrat-3")
+    assert os.geteuid() == 0 and socket.gethostname() in (
+        "socrat-0",
+        "socrat-1",
+        "socrat-3",
+    )
     os.umask(0o077)
     source = rules()
     digest = hashlib.sha256(source.encode()).hexdigest()
@@ -179,7 +189,9 @@ def run(boot=False) -> None:
         assert not ROOT.exists(), "Existing state; inspect instead of replaying"
         assert (
             subprocess.run(
-                ["nft", "list", "table", "inet", TABLE], check=False, capture_output=True
+                ["nft", "list", "table", "inet", TABLE],
+                check=False,
+                capture_output=True,
             ).returncode
             != 0
         )

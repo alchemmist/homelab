@@ -42,22 +42,16 @@ def test_apiserver_scrape_targets():
         return rule
 
     rule = address_filter(rules)
-    assert rule == address_filter(
-        reference["kubeApiServer"]["serviceMonitor"]["relabelings"]
-    )
+    assert rule == address_filter(reference["kubeApiServer"]["serviceMonitor"]["relabelings"])
     accepted = {"10.250.0.1:6443", "10.250.0.3:6443", "10.250.0.41:6443"}
     candidates = accepted | {"10.250.0.5:6443", "192.168.0.23:6443", "10.250.0.41:443"}
-    assert {
-        address for address in candidates if re.fullmatch(rule["regex"], address)
-    } == accepted
+    assert {address for address in candidates if re.fullmatch(rule["regex"], address)} == accepted
 
 
 def test_native_frozen_scrape_preserves_tls_auth_and_other_jobs():
     import runpy
 
-    refresh = runpy.run_path(str(ROOT / "scripts/otel-scrape-config.py"))[
-        "refresh_api_targets"
-    ]
+    refresh = runpy.run_path(str(ROOT / "scripts/otel-scrape-config.py"))["refresh_api_targets"]
     job = {
         "job_name": "serviceMonitor/cattle-monitoring-system/kube-prometheus-stack-apiserver/0",
         "relabel_configs": [
@@ -72,9 +66,7 @@ def test_native_frozen_scrape_preserves_tls_auth_and_other_jobs():
     }
     original = {"scrape_configs": [job, {"job_name": "other"}]}
     expected = copy.deepcopy(original)
-    expected["scrape_configs"][0]["relabel_configs"][0]["regex"] = (
-        r"10\.250\.0\.(1|3|41):6443"
-    )
+    expected["scrape_configs"][0]["relabel_configs"][0]["regex"] = r"10\.250\.0\.(1|3|41):6443"
     new = refresh(original)
     assert new == expected == refresh(new)
     assert original != expected

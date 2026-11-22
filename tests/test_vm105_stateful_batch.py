@@ -223,7 +223,13 @@ class StatefulBoundaries(unittest.TestCase):
         else:
             pod.pop("initContainers", None)
         for v in pod.get("volumes", []):
-            if v["name"] in ["data", "assets", "clang-versions", "tests", "config-history"]:
+            if v["name"] in [
+                "data",
+                "assets",
+                "clang-versions",
+                "tests",
+                "config-history",
+            ]:
                 v.clear()
 
     def _assert_changed_document(
@@ -286,7 +292,13 @@ class StatefulBoundaries(unittest.TestCase):
                 "format-quorum",
                 {"format-quorum"},
             ),
-            ("charts/litellm-infra", None, "llm", "litellm-infra", {"litellm-branding"}),
+            (
+                "charts/litellm-infra",
+                None,
+                "llm",
+                "litellm-infra",
+                {"litellm-branding"},
+            ),
         ]
         for chart, values, ns, release, allowed in cases:
             with self.subTest(chart=chart):
@@ -326,12 +338,16 @@ class StatefulBoundaries(unittest.TestCase):
                         pod = _mapping(template["spec"])
                         init = _mapping(_sequence(pod["initContainers"])[0])
                         args = _sequence(init["args"])
-                        args[0] = _text(args[0]).replace(
-                            '    assert c.execute("SELECT version_num',
-                            "    marker=pathlib.Path('/app/server/postgres/revision')\n"
-                            "    target=marker.read_text().strip() if marker.exists() else '0022'\n"
-                            '    assert c.execute("SELECT version_num',
-                        ).replace("[('0021',)]", "[(target,)]")
+                        args[0] = (
+                            _text(args[0])
+                            .replace(
+                                '    assert c.execute("SELECT version_num',
+                                "    marker=pathlib.Path('/app/server/postgres/revision')\n"
+                                "    target=marker.read_text().strip() if marker.exists() else '0022'\n"
+                                '    assert c.execute("SELECT version_num',
+                            )
+                            .replace("[('0021',)]", "[(target,)]")
+                        )
                         init["args"] = args
                     if chart == "charts/spi-triage":
                         expect_spi_cutover(expected, postgres=True)
@@ -357,7 +373,12 @@ class StatefulBoundaries(unittest.TestCase):
         expect_spi_cutover(expected, postgres=False)
         # f927f5a4 retires the handoff Service target, even with the old flag set.
         current = render(
-            R, chart, values, "automation", "spi-triage", sqlite_with_retired_handoff=True
+            R,
+            chart,
+            values,
+            "automation",
+            "spi-triage",
+            sqlite_with_retired_handoff=True,
         )
         self.assertEqual(current, expected)
 
@@ -393,7 +414,10 @@ class StatefulBoundaries(unittest.TestCase):
         assert mono["backReplicaCount"] == 1
         assert mono["syncReplicaCount"] == 1
         assert mono["statefulRecreate"]
-        for path in ["deploy/wiki-runtime/values.yaml", "deploy/format-quorum/values.yaml"]:
+        for path in [
+            "deploy/wiki-runtime/values.yaml",
+            "deploy/format-quorum/values.yaml",
+        ]:
             assert yaml.safe_load((R / path).read_text())["replicaCount"] == 1
         legacy = (R / "ansible/playbooks/format-quorum.yml").read_text()
         assert "helm upgrade" not in legacy

@@ -44,7 +44,9 @@ class CalendarTests(unittest.TestCase):
         return cast(
             "Workflow",
             sync.render_workflow(
-                self.template, self.creds, {"calendar_ids": ["primary", "work@example.test"]}
+                self.template,
+                self.creds,
+                {"calendar_ids": ["primary", "work@example.test"]},
             ),
         )
 
@@ -108,7 +110,10 @@ class CalendarTests(unittest.TestCase):
             "id": "event-test",
             "summary": "Meeting",
             "start": {"dateTime": "2026-11-03T14:00:00+03:00"},
-            "reminders": {"useDefault": False, "overrides": [{"method": "popup", "minutes": 10}]},
+            "reminders": {
+                "useDefault": False,
+                "overrides": [{"method": "popup", "minutes": 10}],
+            },
         }
         script = (
             'Date.now=()=>Date.parse("2026-11-03T13:50:00+03:00");const s={};const f=new Function("items","$getWorkflowStaticData",'

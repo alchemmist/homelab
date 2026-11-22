@@ -73,7 +73,10 @@ def test_unit_probe_preserves_systemctl_status(prop, rc, monkeypatch):
     module.fail_json.side_effect = SystemExit(1)
     monkeypatch.setattr(basic, "AnsibleModule", lambda **_: module)
     with pytest.raises(SystemExit) as outcome:
-        runpy.run_path(str(ROOT / "ansible/playbooks/library/homelab_systemd_probe.py"), run_name="__main__")
+        runpy.run_path(
+            str(ROOT / "ansible/playbooks/library/homelab_systemd_probe.py"),
+            run_name="__main__",
+        )
     assert outcome.value.code == int(rc != 0)
     operation = ["show", "--property", prop, "--value"] if prop else ["is-active"]
     module.run_command.assert_called_once_with(["systemctl", *operation, "--", "test.service"])

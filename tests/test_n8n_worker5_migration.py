@@ -67,7 +67,10 @@ class Worker5MigrationTest(unittest.TestCase):
         spec = _mapping(_mapping(deployment["template"])["spec"])
         assert _mapping(spec["nodeSelector"])["kubernetes.io/hostname"] == self.values["nodeName"]
         volumes = _documents(spec["volumes"])
-        assert _mapping(volumes[-1]["persistentVolumeClaim"])["claimName"] == _mapping(self.values["persistence"])["claimName"]
+        assert (
+            _mapping(volumes[-1]["persistentVolumeClaim"])["claimName"]
+            == _mapping(self.values["persistence"])["claimName"]
+        )
         pv = _mapping(self.resource("PersistentVolume", "n8n-socrat5")["spec"])
         assert pv["persistentVolumeReclaimPolicy"] == "Retain"
         assert _mapping(pv["local"])["path"] == "/var/lib/rancher/k3s/storage/n8n-socrat5"
@@ -86,7 +89,10 @@ class Worker5MigrationTest(unittest.TestCase):
         assert volume_mounts[0]["readOnly"]
         assert _mapping(spec["nodeSelector"])["kubernetes.io/hostname"] == self.values["nodeName"]
         volumes = _documents(spec["volumes"])
-        assert _mapping(volumes[0]["persistentVolumeClaim"])["claimName"] == _mapping(self.values["persistence"])["claimName"]
+        assert (
+            _mapping(volumes[0]["persistentVolumeClaim"])["claimName"]
+            == _mapping(self.values["persistence"])["claimName"]
+        )
         env = _documents(containers[0]["env"])
         assert _mapping(_mapping(env[0]["valueFrom"])["fieldRef"])["fieldPath"] == "spec.nodeName"
 
@@ -104,7 +110,10 @@ class Worker5MigrationTest(unittest.TestCase):
         assert affinity["values"] == [config["nodeName"]]
         pvc = self.resource("PersistentVolumeClaim", config["name"])
         assert _mapping(pvc["spec"])["volumeName"] == config["name"]
-        assert _mapping(_mapping(pvc["metadata"])["annotations"])["argocd.argoproj.io/sync-options"] == "Prune=false,Delete=false"
+        assert (
+            _mapping(_mapping(pvc["metadata"])["annotations"])["argocd.argoproj.io/sync-options"]
+            == "Prune=false,Delete=false"
+        )
 
     def test_legacy_volume_does_not_move_when_deployment_moves(self) -> None:
         """The legacy volume stays put when the deployment moves."""
@@ -148,7 +157,10 @@ class Worker5MigrationTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as home:
             env = dict(os.environ, HOME=home, SSH_ORIGINAL_COMMAND="rm -rf /")
             p = subprocess.run(
-                ["python3", str(receiver)], env=env, input=b"not an archive", capture_output=True
+                ["python3", str(receiver)],
+                env=env,
+                input=b"not an archive",
+                capture_output=True,
             )
             assert p.returncode != 0
             env["SSH_ORIGINAL_COMMAND"] = "receive-n8n-backup"

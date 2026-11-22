@@ -17,7 +17,11 @@ for name, directory, pattern in [
         "data": {p.name: p.read_text() for p in directory.glob(pattern)},
     }
     subprocess.run(
-        ["ssh", "socrat-0", "kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml apply -f -"],
+        [
+            "ssh",
+            "socrat-0",
+            "kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml apply -f -",
+        ],
         input=json.dumps(obj),
         text=True,
         check=True,

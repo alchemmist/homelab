@@ -45,7 +45,9 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length))
             with LOCK:
                 result = stage(
-                    self.path[1:], payload, write=os.environ.get("WRITE_ENABLED") == "true"
+                    self.path[1:],
+                    payload,
+                    write=os.environ.get("WRITE_ENABLED") == "true",
                 )
             code = 200
         except (OSError, ValueError, KeyError, TypeError, UnsafeInput) as exc:

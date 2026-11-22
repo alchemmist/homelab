@@ -364,7 +364,10 @@ def agents_start_phase(root, request, _result):
             "--collector.systemd.enable-restarts-metrics",
         ],
         64 * 2**20,
-        {"TZ": "UTC", "DBUS_SYSTEM_BUS_ADDRESS": "unix:path=/run/dbus/system_bus_socket"},
+        {
+            "TZ": "UTC",
+            "DBUS_SYSTEM_BUS_ADDRESS": "unix:path=/run/dbus/system_bus_socket",
+        },
         [
             "User=65534",
             "Group=65534",
@@ -614,7 +617,11 @@ def run(root, phase):
         ipaddress.ip_address(request["backendIP"]) in ipaddress.ip_network("10.250.0.0/24"),
         "Backend must bind only the existing private WireGuard range",
     )
-    result = {"phase": phase, "hostname": socket.gethostname(), "productionIngestionChanged": False}
+    result = {
+        "phase": phase,
+        "hostname": socket.gethostname(),
+        "productionIngestionChanged": False,
+    }
     dispatch = DISPATCH.get(phase)
     require(dispatch is not None, "Unknown explicit canary phase")
     handler = cast("Callable[[object, object, object], None]", dispatch)

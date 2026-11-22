@@ -31,7 +31,9 @@ class EnglishUITests(unittest.TestCase):
         js = (ROOT / "charts/spi-triage/ui/app.js").read_text()
         assert "toLocaleString('en-GB'" in js
 
-    def test_render_confirmation_and_errors_are_english_but_data_is_preserved(self) -> None:
+    def test_render_confirmation_and_errors_are_english_but_data_is_preserved(
+        self,
+    ) -> None:
         script = r"""
 const fs=require('node:fs'), vm=require('node:vm'), assert=require('node:assert/strict');
 class Element {

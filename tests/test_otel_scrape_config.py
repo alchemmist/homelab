@@ -171,7 +171,10 @@ class ScrapeConfigTests(unittest.TestCase):
     def test_secret_selector_becomes_a_file_not_a_masked_credential(self) -> None:
         """Secret selector becomes a file not a masked credential."""
         source, targets = fixtures()
-        source["scrape_configs"][0]["authorization"] = {"type": "Bearer", "credentials": "<secret>"}
+        source["scrape_configs"][0]["authorization"] = {
+            "type": "Bearer",
+            "credentials": "<secret>",
+        }
         monitors = {
             "serviceMonitor/llm/vllm": {
                 "metadata": {"namespace": "llm"},
@@ -179,7 +182,10 @@ class ScrapeConfigTests(unittest.TestCase):
                     "endpoints": [
                         {
                             "authorization": {
-                                "credentials": {"name": "metrics-auth", "key": "api-key"},
+                                "credentials": {
+                                    "name": "metrics-auth",
+                                    "key": "api-key",
+                                },
                                 "type": "Bearer",
                             }
                         }
@@ -216,7 +222,9 @@ class ScrapeConfigTests(unittest.TestCase):
             with self.subTest(mutate=mutate), self.assertRaises(ValueError):
                 SCRAPE.compile_config(source, targets)
 
-    def test_validation_assets_are_inert_and_do_not_mutate_the_real_config(self) -> None:
+    def test_validation_assets_are_inert_and_do_not_mutate_the_real_config(
+        self,
+    ) -> None:
         """Validation assets are inert and do not mutate the real config."""
         document = {
             "authorization": {"credentials_file": "/etc/otel/source-auth/ns/name/token"},

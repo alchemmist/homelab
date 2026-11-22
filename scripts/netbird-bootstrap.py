@@ -25,7 +25,8 @@ def require(ok, message) -> None:
 def setup_body(email, password, name) -> dict[str, str]:
     """Validate and assemble the SetupRequest body without any PAT creation fields."""
     require(
-        isinstance(email, str) and 3 <= len(email) <= 254 and email.count("@") == 1, "email invalid"
+        isinstance(email, str) and 3 <= len(email) <= 254 and email.count("@") == 1,
+        "email invalid",
     )
     require(isinstance(password, str) and len(password) >= 8, "password too short")
     require(isinstance(name, str) and name.strip() and len(name) <= 128, "name required")
@@ -47,7 +48,10 @@ def assert_loopback(origin) -> None:
     elif ":" in hostport:
         host = hostport.rsplit(":", 1)[0]
     require(host in {"127.0.0.1", "localhost", "::1"}, "bootstrap target must be loopback")
-    require(rest.endswith(hostport) or rest.endswith(hostport + "/"), "do not pass an API path")
+    require(
+        rest.endswith(hostport) or rest.endswith(hostport + "/"),
+        "do not pass an API path",
+    )
     lowered = origin.lower()
     require(
         "netbird." not in lowered and "alchemmist" not in lowered,
@@ -77,7 +81,10 @@ def claim(origin, email, password, name, opener) -> dict[str, object]:
         "instance is not waiting for setup",
     )
     body = setup_body(email, password, name)
-    require("create_pat" not in body and "password" in body, "setup body drifted from SetupRequest")
+    require(
+        "create_pat" not in body and "password" in body,
+        "setup body drifted from SetupRequest",
+    )
     result = opener(base + "/api/setup", body)
     return redact(result)
 
@@ -122,7 +129,8 @@ def main() -> None:
     print(json.dumps(result, indent=2))
     for secret in (password, os.environ.get("NB_BOOTSTRAP_PASSWORD", "")):
         require(
-            not secret or secret not in json.dumps(result), "bootstrap output included a credential"
+            not secret or secret not in json.dumps(result),
+            "bootstrap output included a credential",
         )
 
 

@@ -63,10 +63,19 @@ class FailureAlertsTests(unittest.TestCase):
         assert "secret" not in text
         assert "private" not in text
         assert "evil.invalid" not in text
-        assert _mapping(result["alert"])["generatorURL"] == "https://n8n.socrat.alchemmist.xyz/workflow/abc123/executions/123"
-        assert _mapping(result["alert"])["fingerprint"] == _mapping(self.notification(p, "9999")["alert"])["fingerprint"]
+        assert (
+            _mapping(result["alert"])["generatorURL"]
+            == "https://n8n.socrat.alchemmist.xyz/workflow/abc123/executions/123"
+        )
+        assert (
+            _mapping(result["alert"])["fingerprint"]
+            == _mapping(self.notification(p, "9999")["alert"])["fingerprint"]
+        )
         p["execution"]["id"] = "124"
-        assert _mapping(result["alert"])["fingerprint"] != _mapping(self.notification(p)["alert"])["fingerprint"]
+        assert (
+            _mapping(result["alert"])["fingerprint"]
+            != _mapping(self.notification(p)["alert"])["fingerprint"]
+        )
 
     def test_trigger_failure_without_execution_id(self) -> None:
         """Trigger failures alert without leaking the error message."""
@@ -75,9 +84,14 @@ class FailureAlertsTests(unittest.TestCase):
             "trigger": {"error": {"message": "password"}},
         }
         result = self.notification(p)
-        assert "Trigger failure" in _text(_mapping(_mapping(result["alert"])["annotations"])["description"])
+        assert "Trigger failure" in _text(
+            _mapping(_mapping(result["alert"])["annotations"])["description"]
+        )
         assert "password" not in json.dumps(result)
-        assert _mapping(result["alert"])["fingerprint"] != _mapping(self.notification(p, "9999")["alert"])["fingerprint"]
+        assert (
+            _mapping(result["alert"])["fingerprint"]
+            != _mapping(self.notification(p, "9999")["alert"])["fingerprint"]
+        )
 
     def test_no_message_storage_retries_recursion_or_spi_ingress(self) -> None:
         """The template stores no messages, retries or recursion."""
@@ -127,7 +141,9 @@ class FailureAlertsTests(unittest.TestCase):
             current = copy.deepcopy(original)
             calls = []
 
-            def api(method, path, body=None, original=original, current=current, calls=calls) -> dict[str, object]:
+            def api(
+                method, path, body=None, original=original, current=current, calls=calls
+            ) -> dict[str, object]:
                 calls.append((method, path, body))
                 if method == "PUT":
                     assert body["nodes"] == original["nodes"]
@@ -141,7 +157,10 @@ class FailureAlertsTests(unittest.TestCase):
 
             result = sync.bind(api, original, "handler")
             assert result["active"] == active
-            assert result["settings"] == {"executionTimeout": 1800, "errorWorkflow": "handler"}
+            assert result["settings"] == {
+                "executionTimeout": 1800,
+                "errorWorkflow": "handler",
+            }
             assert sum(m == "POST" for m, _, _ in calls) == int(active)
             assert not any("execute" in path or "deactivate" in path for _, path, _ in calls)
 
@@ -167,7 +186,11 @@ class FailureAlertsTests(unittest.TestCase):
         before = self.wf()
         before["nodes"] = [{"id": "n", "name": "Push", "type": "n8n-nodes-base.githubTrigger"}]
         before["staticData"] = {
-            "node:Push": {"webhookId": 1, "webhookSecret": "old", "webhookEvents": ["push"]},
+            "node:Push": {
+                "webhookId": 1,
+                "webhookSecret": "old",
+                "webhookEvents": ["push"],
+            },
             "global": {"checkpoint": "preserved"},
         }
         after = copy.deepcopy(before)
