@@ -5,7 +5,7 @@ https://auth.socrat.alchemmist.xyz/change-password; `/if/user/` для External 
 
 Это актуальная точка входа для выдачи доступа отдельным людям. Исторические
 owner-only/observer bootstrap описания не заменяют этот контракт. Технический
-runbook и private receipt references: [app access groups](../docs/identity/app-access-groups.md).
+runbook и private receipt references: [app access groups](identity/app-access-groups.md).
 
 ## Что делает владелец в UI
 

@@ -9,7 +9,7 @@ No account login, password guesses/resets, workflow execution, S3 download or
 state-changing application API was used. Existing concurrent monitoring/wishlist
 work was left alone.
 
-Evidence: [46 anonymous GET checks](../docs/identity/evidence/browser-auth-anonymous-20261115.json),
+Evidence: [46 anonymous GET checks](identity/evidence/browser-auth-anonymous-20261115.json),
 live Ingress routing/annotations and selected proxy ConfigMaps, Deployment ready
 counts and allowlisted non-secret OIDC/login environment settings. No browser
 cookies/tokens or credentials in probes. TLS verification remained on. HTTP

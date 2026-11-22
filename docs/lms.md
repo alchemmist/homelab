@@ -1,9 +1,9 @@
 # LMS: кабинет курса
 
-> **PostgreSQL (2026-11-20):** Рабочая БД — `pg-common/lms`; `lms-postgres` остановлен, `lms-ha` в гибернации. [Эксплуатация и CA](../docs/postgres-platform.md).
+> **PostgreSQL (2026-11-20):** Рабочая БД — `pg-common/lms`; `lms-postgres` остановлен, `lms-ha` в гибернации. [Эксплуатация и CA](postgres-platform.md).
 
 > **Текущие app-роли:** `app-lms-student` и `app-lms-teacher` включены через
-> общий [механизм app-групп](../docs/identity/app-access-groups.md). Per-client
+> общий [механизм app-групп](identity/app-access-groups.md). Per-client
 > OIDC mappings проецируют их в существующие native student/teacher claims,
 > без глобального наследования и без перезапуска LMS. Native функция выбора
 > роли проверена: обе группы → teacher, пустой набор → deny. Назначение роли

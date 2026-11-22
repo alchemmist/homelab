@@ -88,7 +88,7 @@ publication, inference, bank sync, account/MFA or workflow test. Human callback/
 editor/account acceptance remains owner-led, SDK config is not server-child
 trace proof. VM full backup/independent restore/cold boot still outstanding;
 relay0 non-HA dependence unchanged. [Full handoff, hashes, incidents and
-rollback](../docs/vm105-stateful-20261116.md).
+rollback](../vm105-stateful-20261116.md).
 
 ## Four additional stateless moves —16Nov, CURRENT
 
@@ -122,7 +122,7 @@ no personal account/data/import/sync touched.3unique-label preflight Pods gone.
 expects OIDC disabled even though baseline/live already enabled. Reproduced on
 clean d11079aa, not hidden by changing auth. Relay0 dependency and all previous
 DR/telemetry caveats remain. Exact receipts, pause/rollback details:
-[four-app handoff](../docs/vm105-four-stateless-20261116.md).
+[four-app handoff](../vm105-four-stateless-20261116.md).
 
 ## Application retry after transport repair —16Nov, CURRENT
 
@@ -147,7 +147,7 @@ probe400/export success; Tempo probe root seen but actual LiteLLM server child
 NOT independently verified. Do not equate preserved env with full SDK proof;
 no real/paid inference generated. No new test Pods/keys or network changes.
 Current authority, exact receipts, caveats and rollback:
-[application retry handoff](../docs/vm105-app-retry-20261116.md).
+[application retry handoff](../vm105-app-retry-20261116.md).
 
 ##1↔5 transport mitigation —16Nov, CURRENT
 
@@ -178,7 +178,7 @@ policy, native probes removed. Canonical inventory endpoint + relay unit/playboo
 for transport deployment; application retry was subsequently authorized and
 completed (see current application section above). Transport-only snapshot
 was LMS5/LiteLLM0/renderer1. Source/health/limitations/collateral event:
-[repair handoff](../docs/wireguard-1-5-router-repair-20261116.md).
+[repair handoff](../wireguard-1-5-router-repair-20261116.md).
 
 ##1↔5 NAT-only follow-up — historical, transport status superseded
 
@@ -202,7 +202,7 @@ NOT deployed, never copy operator private SSH key. Router-native repair needs
 router admin access/counters and WAN/LAN capture or Ethernet A/B; credentials not
 located, don't guess defaults or request password in chat. Existing1<->2relay
 unchanged. All exact /run probes/results cleaned on0/1, private receipts retained.
-[Full evidence and repair options](../docs/wireguard-1-5-nat-followup-20261116.md).
+[Full evidence and repair options](../wireguard-1-5-nat-followup-20261116.md).
 No retry of prior three-app moves; unrelated Venice API/monitoring work untouched.
 
 ##1↔5 direct-path diagnosis —16Nov01:34MSK, historical evidence
@@ -229,7 +229,7 @@ pretend this explains tiny-packet loss or restart mesh/K3s/resize live Pod veths
 without a reviewed maintenance/rollback procedure. Prior MSS trial fully removed.
 No production network or app placement changes this diagnosis; one bounded
 hostNetwork NET_RAW-only no-SA/no-mount header capture Pod deleted. NetBird policies
-not expanded. Detailed [evidence and next decisions](../docs/wireguard-1-5-packet-loss-20261116.md):
+not expanded. Detailed [evidence and next decisions](../wireguard-1-5-packet-loss-20261116.md):
 physical Ethernet/router capture A/B or separately approved scoped1<->5 TLS
 transport; preserve identities, no arbitrary relay or broad route/firewall opening.
 LMS stays5, LiteLLM0, renderer1, Rancher1; additional moves remain gated.
@@ -263,7 +263,7 @@ handling. Explicit original DISABLE_SCHEMA_UPDATE=true retained; zero newly appl
 or unfinished Prisma migrations during handoff; latest Argo operation had no Job.
 Main Ansible now uses canonical platform values/local chart; legacy monitoring
 OCI upgrade refuses to undo Git-owned configuration. Full browser/API/SQL receipts,
-rollback chronology and limits: [handoff](../docs/vm105-lms-litellm-renderer-20261116.md).
+rollback chronology and limits: [handoff](../vm105-lms-litellm-renderer-20261116.md).
 All five probes removed, no forced production delete/blanket sync or unrelated
 monitoring edits. Earlier four-app5 data authority and Rancher1 recovery unchanged.
 
@@ -286,7 +286,7 @@ Other four moved apps, n8n, PR Agent, blog/home remain on5. Do NOT move Rancher
 back to5 until actual IdP transport AND complete native login have been proven;
 private internal test works only with the existing OS CA bundle, but upstream
 Rancher chart2.15.2 has no hostAliases value (unlike our WebUI chart).
-[Recovery, receipts and limits](../docs/rancher-login-recovery-20261115.md).
+[Recovery, receipts and limits](../rancher-login-recovery-20261115.md).
 
 ## Four app handoff to VM105 —15Nov, CURRENT
 
@@ -314,7 +314,7 @@ backup. One-off artifact-only transfer key/receiver/private file removed. Own he
 cleaned. Main WebUI/Terminal downtime~20:34–21:34MSK due transport; OIDC rollout21:51.
 VM regular backup/cold-boot/full restore still unproven; legacy node0 WebUI upgrade
 playbook fails closed and needs VM-aware backup adaptation before use.
-[Acceptance/backups/rollback](../docs/llm-apps-vm105-20261115.md).
+[Acceptance/backups/rollback](../llm-apps-vm105-20261115.md).
 
 ## Browser authentication audit —15Nov2026, CURRENT
 
@@ -330,7 +330,7 @@ snapshot was DURING the owner-approved VM105 handoff, not a continuing outage:
 WebUI is now Ready on5 and native OIDC HTTPS/PKCE redirect passes (handoff above).
 The audit itself did not change/restart apps or write workflows/APIs; no blanket
 gate, provider/user/Secret changes were made. Decisions for human/machine
-path separation and desired gates remain PENDING. [Audit and evidence](browser-auth-audit.md).
+path separation and desired gates remain PENDING. [Audit and evidence](../browser-auth-audit.md).
 
 ## blog + socrat-home moved off2 —15Nov, accepted
 
@@ -342,7 +342,7 @@ rolled out, Argo Synced/Healthy, four Ready/restart0 Pods, no blog/home Pods on2
 Individual Pod HTML + two Ready endpoints each verified. Repeated public HTTPS
 roots200 (blog/www/home), home favicon/wallpaper/font200. Images/Secrets/routes/
 content unchanged; no DB/PVC transfer, VPN/etcd/other apps untouched. Source
-019276cd +9a931d46. [Acceptance/rollback](../docs/static-apps-vm105-20261115.md).
+019276cd +9a931d46. [Acceptance/rollback](../static-apps-vm105-20261115.md).
 
 ## External password self-service — CURRENT
 
@@ -360,7 +360,7 @@ heading Update password. Authentik Dashboard now has providerless English
 **Change password** card in **Account**, no new groups/provider/admission bindings.
 Declarative metadata + bounded controller + standalone Ansible playbook committed;
 External /if/user/ restriction unchanged; direct link remains usable.
-[Runbook](password-self-service.md). Supersedes earlier
+[Runbook](../password-self-service.md). Supersedes earlier
 incorrect External /if/user/ guidance; no real human password/MFA changes.
 
 ## n8n Google reconnect COMPLETED15Nov; intermittent latency NOT closed
@@ -377,7 +377,7 @@ IPv6-only fault/DNS-preload remedy not established. No network changes. One Pod 
 hosts succeeded libc43–47ms/c-ares13–22ms; does not rule out intermittent stalls.
 No manual speech/workflow run, restarts, alert mute or timeout increase.
 googleDnsEnabled stays false. Earlier Google-consent blocker is historical.
-[Acceptance/remaining caveat and backup](../docs/n8n/google-calendar-auth-20261115.md).
+[Acceptance/remaining caveat and backup](../n8n/google-calendar-auth-20261115.md).
 
 ## socrat-5 native VM worker ACTIVE —15Nov2026, CURRENT
 
@@ -404,13 +404,13 @@ integrity/key checked to ORIGINAL n8n-socrat5 PV/PVC on VM, actual data on2TiB
 10credentials/1user/6active preserved, key/Secret/PV/PVC identities unchanged.
 VM105 n8n DB NOW AUTHORITATIVE with new writes; retained node1 dataset is stale,
 never blindly restart it. New online backup from5 to3 independently verified.
-[Application handoff/current rollback boundary](../docs/socrat5-app-handoff-20261115.md).
+[Application handoff/current rollback boundary](../socrat5-app-handoff-20261115.md).
 CT104 was already ABSENT on re-entry (not deleted by this assistant); cold backup
 retained/verified. Proxmox onboot1/agent1 set; full VM stop/start to instantiate
 agent channel and reboot acceptance still PENDING approval. Regular VM backup
 coverage not verified; NFS Pod/PVC acceptance PASSED. Temporary restricted root migration
 keys expire16/17Nov; remove after acceptance. Do not restore104 alongside105.
-[Runtime evidence, boundaries and remaining gates](../docs/socrat5-vm-worker-20261115.md).
+[Runtime evidence, boundaries and remaining gates](../socrat5-vm-worker-20261115.md).
 Earlier paused/CT-active/node5-offline notes are historical, not current state.
 
 ## Per-app B2C groups — CURRENT
@@ -428,7 +428,7 @@ isolated plan (`changed=0`), final live plan empty. Only Wiki
 restarted to read its native role map; no cluster/VPN/host changes. Full browser
 JIT/login and universal session/key revocation are NOT proven. Reserved Harbor,
 Rancher/Argo/n8n/NetBird/SPI groups are NOT usable B2C grants. Details/triggers/
-private receipts: [app access groups](../docs/identity/app-access-groups.md).
+private receipts: [app access groups](../identity/app-access-groups.md).
 Old hard-allowlisted `prepare_app_iam.py` is historical, not current onboarding.
 Functional source: `e38b9053`. Owner subsequently authorized wiki refresh and
 publication of all completed work. Local/shared histories integrated by normal
@@ -436,7 +436,7 @@ merge, preserving newer remote n8n recovery authority and deployed Grafana statu
 plus local DNS/network receipts. No force/reset, runtime migration or blanket
 sync/prune. Source publication is tracked by the closeout commit and origin/main;
 initial publication-blocker notes are historical. Current B2C entrypoint:
-[application access](application-access.md).
+[application access](../application-access.md).
 
 ## LiteLLM: reviewed vladislav onboarding — HISTORICAL, superseded by group migration
 
@@ -448,7 +448,7 @@ password/MFA change, SQL writes, Secrets change or restart. New dedicated
 `deploy/identity/litellm-users.json` allowlist and reconciler preserve this grant;
 not a grant to every newly created Authentik user. 8 tests + read-only live
 preflight passed. Real Vladislav browser login remains untested. Details/private
-receipt location and offboarding caveats: [LiteLLM](../docs/litellm.md). Earlier
+receipt location and offboarding caveats: [LiteLLM](../litellm.md). Earlier
 owner-only descriptions are superseded only for this reviewed UUID.
 
 ## n8n RESTORED on socrat-1 —14Nov2026, CURRENT
@@ -464,7 +464,7 @@ independent archive/DB integrity and sourceNode1 verified on3.6tests+Helm lint
 passed. No manual workflow execution, SQL reset, browser login or every-credential
 operation claimed. CT104 stopped/onboot0, node5 cordoned, VM activation not done;
 final cold-payload transfer completion still UNKNOWN due RuDesktop daily limit.
-[Recovery proof and resume gates](../docs/socrat5-vm-migration-20261114.md).
+[Recovery proof and resume gates](../socrat5-vm-migration-20261114.md).
 
 ## socrat-5 CT104 → VM105 cutover PAUSED — 14Nov2026; n8n paragraph superseded above
 
@@ -477,7 +477,7 @@ PR Agent restored via GitOps to socrat-1, Running/Ready1, public HTTP200. n8n st
 at replicas0: latest accessible off-host backup is 14Nov00:15UTC, approximately
 12h before shutdown; owner acceptance REQUIRED before stale-data restoration.
 No PV/PVC/Node deletion, n8n Secret change, mesh reenrollment or global pruning.
-[Cutover checkpoint and recovery gates](../docs/socrat5-vm-migration-20261114.md).
+[Cutover checkpoint and recovery gates](../socrat5-vm-migration-20261114.md).
 
 ## Moscow repair APPLIED and K3S restored —13Nov2026, CURRENT
 
@@ -496,7 +496,7 @@ local fixture configs/binary removed.149tests+2subtests; short stability sample,
 NOT long-term/no-more-failures or full-cluster/reboot/AWG/mobile acceptance.
 Prior pending-sudo/4NotReady sections below are superseded. Underlying transient
 NL transport cause still unproven; do not claim routing alone explains every TLS
-failure. [Applied evidence](../docs/moscow-unplanned-fallback-20261113.md).
+failure. [Applied evidence](../moscow-unplanned-fallback-20261113.md).
 
 
 ## Unplanned fallback repair investigation —13Nov2026, NEWEST / PENDING SUDO
@@ -516,7 +516,7 @@ NL stop.148tests+2subtests, syntax passed. NOT APPLIED: sudo -n unavailable;
 previous password file deleted/value absent in current context. Await private
 Ansible vars-file PATH, not chat password. Current4OS/check1/NotReady,2K3S/check1;
 other5Ready. Do not report resolved or bypass current fences/credentials.
-[Evidence and gate](../docs/moscow-unplanned-fallback-20261113.md).
+[Evidence and gate](../moscow-unplanned-fallback-20261113.md).
 
 
 ## Fixed Moscow chain + native readiness —13November2026, CURRENT
@@ -539,7 +539,7 @@ NL briefly NotReady then recovered without restart. Final:4present/NotReady whil
 fenced,5others Ready;4native/check1 and2K3S/check1; actual Mode9=1/OS. DO NOT blindly
 failback to paint green; explicit return and authenticated tests need short window.
 Source through8c9ee2ae;77tests+2subtests before final doc. Escalation/private fetched
-config removed. [English evidence/limits](../docs/vpn-runtime-readiness-20261113.md).
+config removed. [English evidence/limits](../vpn-runtime-readiness-20261113.md).
 Older6Ready/K3S claims below precede this automatic transition. HOME investigation
 below is historical/abandoned, not authorization to add5 to user traffic.
 
@@ -560,7 +560,7 @@ VPN public ports not yet established; router mappings require verification.
 Mode9 missing/stale now NO DATA not OFF (db1263e6), positive native latch OS.
 Still NL-only mode signal: composite two-axis mode/automatic HOME switching and
 return NOT implemented. Need topology decision before adding5 to user path.
-Temporary escalation file removed. [English evidence and gates](../docs/vpn-home-fallback-20261113.md).
+Temporary escalation file removed. [English evidence and gates](../vpn-home-fallback-20261113.md).
 
 
 ## Moscow WORKER RESTORED —13November2026, owner requirement
@@ -574,7 +574,7 @@ tokens cleaned, original config preserved, escalation file deleted. Retain
 bootstrap admission taint/GOMAXPROCS1/native fallback. CPU pressure NOT solved;
 no alert weakening. More CPU/RAM acceptable; do NOT retire this worker again.
 Separate ingress failover via HOME0 still NOT implemented. Physical TV visual
-acceptance not claimed. [English acceptance](../docs/moscow-worker-return-20261113.md).
+acceptance not claimed. [English acceptance](../moscow-worker-return-20261113.md).
 Older native-primary and native cube4 entries below are historical/superseded.
 
 
@@ -590,7 +590,7 @@ Grafana API model matches, all63panel geometries retained;56tests+promtool/lint.
 Public NL TCP443 works directly from HOME0/1; ICMP and public2222 do not answer,
 not proof of whole-IP or all-Russia blocking. TV ADB has no connected device;
 physical page needs refresh, no visual acceptance claimed. See
-[contract/evidence](../docs/traffic-light-direct-ip-20261113.md).
+[contract/evidence](../traffic-light-direct-ip-20261113.md).
 
 
 ## Historical, superseded13Nov: Moscow native-primary —12November2026
@@ -604,7 +604,7 @@ passed. Native DNS/management/telemetry continue; no WG/control-plane restart,
 network flush or uninstall. Rollback data retained. Available RAM~544MiB versus
 ~350MiB earlier; CPU PSI~42% and SocratNodeResourceContention STILL firing at
 WG RX4.56MB/s. No alert weakening. Public NL UDP53 timed out from Mac at closeout.
-Source published through db14a58e. [Acceptance, architecture and rollback](../docs/moscow-native-primary-20261112.md).
+Source published through db14a58e. [Acceptance, architecture and rollback](../moscow-native-primary-20261112.md).
 Earlier6Ready/Pod-primary notes below are historical, not the current target.
 
 
@@ -619,7 +619,7 @@ passed6–14ms; natural Alertmanager retries logged Notify success, including th
 critical delivery alert. At16:37UTC the rule still firing due its15minute window;
 no failure-counter growth over2minutes. Normal-state readback still pending.
 This avoids an unhealthy DNS path; underlying UDP loss is not root-cause closed.
-[Recovery, evidence and rollback limits](../docs/alertmanager-dns-recovery-20261112.md).
+[Recovery, evidence and rollback limits](../alertmanager-dns-recovery-20261112.md).
 
 ## Network/DNS recovery — 12 November 2026 current closeout
 
@@ -633,9 +633,9 @@ Local etcd scheduled snapshots exist on all3voters (~75MB, latest09:00UTC); no
 restore/off-host verification.137tests+15subtests; source/runtime matched for
 DNS, relay config and watchdog. Local source commits08c4534/c60b16d/40ddc42;
 no push or broad reconciliation. NL provider console remains unverified.
-[Dependency map and next gates](../docs/network-dependency-audit-20261112.md),
-[watchdog recovery](../docs/moscow-relay-recovery-20261112.md),
-[DNS rollout](../docs/moscow-authoritative-dns-stage-20261112.md).
+[Dependency map and next gates](../network-dependency-audit-20261112.md),
+[watchdog recovery](../moscow-relay-recovery-20261112.md),
+[DNS rollout](../moscow-authoritative-dns-stage-20261112.md).
 
 
 ## TV / Traffic Light — принято 11 ноября 2026
@@ -645,7 +645,7 @@ padding3CSSpx, gap2CSSpx, flex redistribution. Ручныеw12/h1 сохране
 подтверждены реальным screenshot и WebView-замерами. Обычный ноутбук/другие панели/
 Fully55%/font75% не менялись; не возвращать прежнее растягиваниеw24/h2. MoscowIP928
 добавлен справа и работает по свежему TCP443 probe91.189.82.238. Код, scoped Helm,
-приёмка и границы: [TV-CSS и сопровождение](android-tv.md#сопровождение-кастомного-tv-css-для-argo).
+приёмка и границы: [TV-CSS и сопровождение](../android-tv.md#сопровождение-кастомного-tv-css-для-argo).
 Это исключение из старого «без CSS» только для одной панели, не глобальное разрешение.
 
 ## SSH management policy — owner override 2026-11-10
@@ -654,7 +654,7 @@ Ordinary Mac aliases 0/1/2/4 now use public SSH directly (HOME WAN forwarded
 2222/2223, NL .60:2222, Moscow :2222). Private workers3/5 use direct NetBird, ProxyJump none.
 All six real SSH logins accepted; strict pins retained, no Mac route/DNS/VPN
 changes. Do not restore the older internal-only alias policy.
-[Current table](../docs/mac-private-ssh.md).
+[Current table](../mac-private-ssh.md).
 
 ## socrat-5 workload migration — 2026-11-11
 
@@ -671,7 +671,7 @@ n8n 7 workflows/10 credentials/1 user/5 active preserved; healthz ok. No product
 workflow manually run. **Rancher attempt failed:** native jailer needs device nodes,
 `mknod` denied inside unprivileged LXC. Startup budget extension did not fix it;
 rolled desired placement/probes back to0/1, no jail/security/privilege bypass.
-Socrat4 untouched. [Evidence, limits, restore](../docs/n8n/worker5-migration-20261111.md).
+Socrat4 untouched. [Evidence, limits, restore](../n8n/worker5-migration-20261111.md).
 
 ## socrat-5 full headless setup — IN PROGRESS
 
@@ -696,7 +696,7 @@ emptyDir/DNS/HTTP passed. Owned fixtures removed,6Ready, NetBird Argo Healthy,
 direct SSH accepted. Root UID map remains unprivileged; no VM needed for the
 accepted restricted profile.30Mbit Proxmox cap, physical reboot/HA/NAT rebinding
 remain unverified. Do not replay earlier failed enrollment or bootstrap admission.
-[Current setup and remaining gates](../docs/socrat-5-worker-20261110.md).
+[Current setup and remaining gates](../socrat-5-worker-20261110.md).
 
 ## Исторический bootstrap socrat-5 — superseded by worker setup above
 
@@ -708,7 +708,7 @@ mesh **10.250.0.41/32**, peer только Moscow.40. На Москве source-s
 pinned ED25519 принят, Ansible pipelining работает. Один negative TCP443 probe
 из.41 к Moscow.40 получил timeout. Полная mesh/failure/isolation matrix и
 K3s/LXC suitability НЕ приняты.**
-[Runbook, source, fingerprint и pending gates](../docs/socrat-5-bootstrap-20261110.md).
+[Runbook, source, fingerprint и pending gates](../socrat-5-bootstrap-20261110.md).
 Исторический bootstrap завершён и superseded:5 уже в Socrat/K3s. Не переигрывать one-time admission; для5 обычный scheduling требует no-NFS toleration и storage admission guard.
 
 ## Закрытие сессии: RF/NL split отложен владельцем
@@ -719,7 +719,7 @@ Read-only настройки панели: routing/onadd `Alchemmist VPN`, Globa
 49 DirectSites, DirectIp/ProxySites/ProxyIp пусты; активность на каждом телефоне не
 проверялась. Это не серверный GeoIP split. Исследование — reference, **не pending
 implementation и не разрешение переносить VPN termination на Москву**.
-[Исследование и альтернативы](../docs/vpn-split-routing-research-20261110.md).
+[Исследование и альтернативы](../vpn-split-routing-research-20261110.md).
 
 При закрытии сессии fresh read-only на Москве: именно `vpn-transit-655857b776-9mt9v`
 SANDBOX_READY; watchdog kubernetes/healthy, data_path_healthy=true, failures=0,
@@ -729,8 +729,8 @@ UDP443/32085/32086 →10.250.0.2, freedom sendThrough10.250.0.40.
 Это локальный статус/штатная TLS-проверка пути, **не новая полная проверка клиентов,
 etcd/WAL/всего кластера или DR**. Никаких activate/failback/перезапусков не выполняли.
 
-[Как устроен Pod, границы Xray/3x-ui и ownership](../docs/vpn-mesh-runtime-20261110.md#what-the-pod-actually-does).
-Public wiki: [VPN](../wiki/content/network/vpn.md). Секреты и recovery receipts
+[Как устроен Pod, границы Xray/3x-ui и ownership](../vpn-mesh-runtime-20261110.md#what-the-pod-actually-does).
+Public wiki: [VPN](../../wiki/content/network/vpn.md). Секреты и recovery receipts
 остаются вне Git; подготовительные/migration apply не повторять.
 
 
@@ -753,7 +753,7 @@ WG**;17 клиентов/91 bindings/подписки84URI/77JSON/ключи с�
 134 tests+14 subtests, новые private archives2/4 off-host SHA verified.
 Это не zero-downtime rollout: исправлены TIME_WAIT guard, management source IP и
 Pod bind-capability; не скрывать ошибки/короткую недоступность, не приписывать
-результаты native-fallback probe первому неудачному Pod. [Подробности и операции](../docs/vpn-mesh-runtime-20261110.md).
+результаты native-fallback probe первому неудачному Pod. [Подробности и операции](../vpn-mesh-runtime-20261110.md).
 API loss при работающем relay не вызывает переключения; native sticky до явного
 failback. Mobile/AWG/полный DR/reboot/HA не доказаны. Подписка/публичный вход прежние,
 Mac/Tunnelblick/default routes не менялись. Подготовительные apply не переигрывать.
@@ -761,7 +761,7 @@ Mac/Tunnelblick/default routes не менялись. Подготовитель
 
 Актуализировано **10 ноября 2026**: production VPN Pod/native и общий mesh приняты; остальные
 срезы сохраняют свои даты. Это не новая полная live-проверка кластера.
-Начинать с [карты справочника](README.md). Старые датированные журналы — evidence
+Начинать с [карты справочника](../README.md). Старые датированные журналы — evidence
 своего этапа, не задания повторить миграцию и не замена текущим manifests/live state.
 
 ## Сеть и вход
@@ -789,9 +789,9 @@ SSH transport, публичный ключ/Linux account, sudo, Kubernetes RBAC 
 Не удалять known_hosts, не добавлять public fallback/ProxyJump и не отключать TLS.
 Ключи/пароли/QR/подписки/activation URLs не публиковать.
 
-Процедуры: [сеть](network-access.md), [NetBird и onboarding](netbird.md),
-[SSH без sudo](ssh-user.md), [Linux/RBAC](identity-host-access.md),
-[публичный DNS](public-dns.md).
+Процедуры: [сеть](../network-access.md), [NetBird и onboarding](../netbird.md),
+[SSH без sudo](../ssh-user.md), [Linux/RBAC](../identity-host-access.md),
+[публичный DNS](../public-dns.md).
 
 ## Актуально: production VPN через Москву, 9 ноября 2026
 
@@ -826,8 +826,8 @@ watchdog не отключены. Штатный failback исходного mem
 история/старые recovery receipts сохранены.126 tests+14 subtests passed — срез приёмки,
 не непрерывный healthcheck. Mobile/Happ interactive, authenticated AWG, полный DR/
 chaos/reboot и сохранение end-user IP enforcement не доказаны. Не обещать HA/TSPU immunity.
-Подробности и custody: [production runbook](../docs/vpn-production-cutover-20261109.md).
-Исторический staging: [Moscow bootstrap](../docs/moscow-vpn-transit-20261109.md).
+Подробности и custody: [production runbook](../vpn-production-cutover-20261109.md).
+Исторический staging: [Moscow bootstrap](../moscow-vpn-transit-20261109.md).
 Не переисполнять migration/prepare/apply: fresh preimage/CAS, uncertain→разбор.
 
 ## Исторический VPN-срез 8 ноября (superseded)
@@ -842,12 +842,12 @@ backend-счётчики, не блокировки. REALITY32053 исправл
 backends ещё не закрыты; у всех7 plaintext-связей уже есть encrypted alternative,
 но device/subscription acceptance не доказана. `x-ui -getApiToken` ротирует токен,
 не извлекает его; не запускать ради чтения. Не выключать старые клиентские профили и не обещать обход IP/ASN-ban.
-[Актуальный scope, исследования, инструменты и gates](vpn-hardening.md).
+[Актуальный scope, исследования, инструменты и gates](../vpn-hardening.md).
 
 ## Личности и авторизация
 
-Начать с [текущего состояния identity](identity-current-state.md), затем
-[операций](identity-operations.md) и [карты интеграций](identity-integrations.md).
+Начать с [текущего состояния identity](../identity-current-state.md), затем
+[операций](../identity-operations.md) и [карты интеграций](../identity-integrations.md).
 
 - Owner — `alchemmist`, единственный человек в `homelab-owner`.
 - Tim: **логин `antropophag`**, новая native Authentik identity после согласованного
@@ -870,7 +870,7 @@ backends ещё не закрыты; у всех7 plaintext-связей уже 
   Worker не создаёт users/roles; его доступность контролируют Prometheus alerts.
   Не обещать мгновенный logout всех OAuth/JWT. **Harbor для observer закрыт**:
   нативный CLI-кеш не прошёл отзыв, follow-up #134. Не возвращать Guest grants
-  по старому readiness receipt. [Границы и evidence](native-observer.md).
+  по старому readiness receipt. [Границы и evidence](../native-observer.md).
 - Machine APIs, robots, MCP, agents, webhooks сохраняют отдельные credentials;
   их нельзя переводить на browser MFA redirects.
 - Grafana anonymous org access выключен. Исключение — только явно shared
@@ -892,7 +892,7 @@ queue counts или browser acceptance по CI/рендеру. Owner отмен�
 для этого выноса/релизов, но не разрешал удалять архивы, убивать paid work или
 сбрасывать budgets/leases. Нужен естественный drain и protected production review,
 не новый backup blocker. Полные границы/проверки/следующие шаги:
-[SPI](spi-incident-triage.md#current-source-extraction--9-november-2026).
+[SPI](../spi-incident-triage.md#current-source-extraction--9-november-2026).
 
 ## Деплой и источники
 
@@ -925,9 +925,9 @@ Prometheus-компонентов повторно проверены все 77 
 Остаётся отдельная проблема WAL Prometheus; сбой digest блога исправлен
 параллельным релизом `f485c74` (blog снова Synced/Healthy). Это **не** обещание
 целостности WAL или здоровья всего кластера. Карта/приёмка и границы:
-[деплой](cluster-deploy.md), [наблюдаемость](observability-current.md),
-[первый closeout](../docs/monitoring-service-split.md),
-[окончательное разделение Prometheus-компонентов](../docs/prometheus-service-split.md).
+[деплой](../cluster-deploy.md), [наблюдаемость](../observability-current.md),
+[первый closeout](../monitoring-service-split.md),
+[окончательное разделение Prometheus-компонентов](../prometheus-service-split.md).
 
 ## Топология и данные
 
@@ -956,14 +956,14 @@ Grafana MCP/API, браузер — для визуальной проверки
 
 SPI triage использует durable queue, read-only evidence и scoped GitHub App;
 не получает права автоматически чинить инфраструктуру или закрывать инциденты.
-[Бот](socrat-bot.md), [SPI](spi-incident-triage.md), [n8n](n8n-workflows.md).
+[Бот](../socrat-bot.md), [SPI](../spi-incident-triage.md), [n8n](../n8n-workflows.md).
 Ручная эскалация20→10 не равна смене severity и не обещает SLA.
 
 TV использует public traffic-light URL канонического Grafana, без внутреннего VPN.
 Профиль `xiaomi-tv`/peer отозван; `alchemmist-tv` для YouTube сохранён отдельно.
 Не стирать app data WireGuard. Fully55%/font75%, injectJsCode пуст; актуальный
 TV layout в Git, старые panel coordinates не повторять. Физический пульт/cold boot
-не считать повторно проверенными по одному screenshot: [TV](android-tv.md).
+не считать повторно проверенными по одному screenshot: [TV](../android-tv.md).
 
 ## Безопасный порядок работы
 
@@ -986,7 +986,7 @@ TV layout в Git, старые panel coordinates не повторять. Физ
 ## MCP в репозитории
 
 Agent entrypoint — `AGENTS.md`, settings — `.pi/mcp.json` (без секретов в Git).
-Официальные подключения и полный audit/ограничения: [official-mcp.md](official-mcp.md).
+Официальные подключения и полный audit/ограничения: [official-mcp.md](../official-mcp.md).
 n8n MCP после локального обновления токена проверен (`initialize`/`tools/list`)
 и включён на Mac: поиск/чтение workflows, без execution. Токен только в private
 файле0600, не в Git. В committed config n8n пока disabled; другие машины не
@@ -1000,7 +1000,7 @@ All16 URI+JSON subscriptions verified public/backend before/after: exactly7 plai
 links removed (78 URI entries remain), unrelated profiles/keys/URLs preserved.
 Server publication migration done, not device refresh/legacy retirement. No device
 remote-control prerequisite for this phase; wait for owner refresh confirmation
-before closing32063. Temporary tokens removed; see llm-wiki/vpn-hardening.md.
+before closing32063. Temporary tokens removed; see docs/vpn-hardening.md.
 
 
 VPN83 latest: raw public eth0 TCP12096/32087 rejected by a dedicated persistent
@@ -1169,7 +1169,7 @@ Trojan and WireGuard/UDP** each passed HTTP200/65536B/hash, separately proving e
 **No subscription/DNS or production HOME→NL route switch yet**; old VPN remains.
 No mobile/Happ, AmneziaWG, comprehensive MTU/failure or complete transit claim.
 Next authorized steps and private evidence/replay rules:
-[dated staging runbook](../docs/moscow-vpn-transit-20261109.md). No new approval needed.
+[dated staging runbook](../moscow-vpn-transit-20261109.md). No new approval needed.
 
 
 ### Production VPN cutover 2026-11-09 (supersedes staging-only boundary)
@@ -1196,7 +1196,7 @@ Same source gate also installed/validated in native Caddy; see incident details.
 Fresh native3-voter/common-leader/hashKV agreement and5Ready/noMemoryPressure;
 all5 canonical metrics fresh. Five private native archives off-host SHA verified.
 Details, replay/custody and honest mobile/AWG/source-IP/HA limits:
-[production cutover](../docs/vpn-production-cutover-20261109.md).
+[production cutover](../vpn-production-cutover-20261109.md).
 
 TV11November owner correction: latest service-diverse dashboard supersedes AI-heavy
 free-space fill. Only own930–935 revised: purpleRustFS RX/TX, tealHarborregistry RX/TX,
@@ -1205,7 +1205,7 @@ compactpinkAIqueue+TTFTp95/15m, LMS/n8nbackupages (HTTPworst3removed by owner).
 unchanged. ActualfinalTVfit checked afterdebugfalse cleanup/Fully-onlyrestart;
 49Argo fills physicallycounted. No nativeRustFS/Harbor business scrape: networkbytes
 are NOT object/pullpush counts; no exporter/backend/CSS changes. Fullsemantics,
-currentpositions and60focusedtest acceptance: llm-wiki/android-tv.md latestsection.
+currentpositions and60focusedtest acceptance: docs/android-tv.md latestsection.
 
 LatestTV cascadefooter11November supersedes the two-wide-backup arrangement:
 934/935 noww2,h2 atx12/14,y18;936x16,w8,h2 addsfour goldfigures (cascadeJobage,
@@ -1235,7 +1235,7 @@ private extracted copy removed. Existing n8n Pod not restarted,6Ready. Not full 
 Next scheduled backup remains unverified; manual success does not clear old failed
 Jobs or advance CronJob status. Moscow root-only bootcmd/log review still blocked
 by unavailable sudo; no password retained. Details and eight-series disposition:
-[active alert review](../docs/active-alert-review-20261113.md).
+[active alert review](../active-alert-review-20261113.md).
 
 ### Moscow cloud-init / HOME0 page-fault repair — 2026-11-14
 
@@ -1258,7 +1258,7 @@ or alert weakening. Host5m majorfault~940→4.14/s; alert cleared, short sample 
 Existing preflight now checks admitted Pod and runtime status, not just CR intent.
 82tests+12subtests passed,1skipped; independent HEAD reproduction of unrelated
 old Grafana ownership fixture failure documented. Sources493de518/80ce10ab;
-full receipts/boundaries: [dated acceptance](../docs/cloud-init-and-prometheus-memory-20261114.md).
+full receipts/boundaries: [dated acceptance](../cloud-init-and-prometheus-memory-20261114.md).
 Separate concurrent socrat5 migration8c919024 quiesces n8n/PR Agent; do not undo
 its desired0 or cordon. Final remaining alerts: owner-acknowledged battery + n8n
 unavailable during that separate source change. All6Ready,5SchedulingDisabled.

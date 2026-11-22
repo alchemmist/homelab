@@ -96,7 +96,7 @@ tracking всех ресурсов. UID объектов/PVC/namespaces, сек�
 сохранились; из-за нормализации ссылки на тот же digest пересоздался только UI
 pod, не management/agents/relays. Исторические direct-apply скрипты не являются
 путём деплоя. Не создавать Application руками и не лечить drift ручным Helm.
-Подробнее: [контракт](cluster-deploy.md), [adoption](../docs/netbird-argocd.md).
+Подробнее: [контракт](cluster-deploy.md), [adoption](netbird-argocd.md).
 
 ## Как добавляется новая нода
 
@@ -120,7 +120,7 @@ Missing workloads: `awaiting-argocd-workloads`; missing/non-Ready node:
 `/var/lib/homelab-netbird-nodes/`, machine PAT обслуживает отдельный daily timer.
 Эта API-учётная запись имеет **широкие admin-права, не least privilege**.
 Реальная пятая нода и expiry-boundary rotation PAT ещё не проверены физически.
-Полный порядок: [node onboarding](../docs/netbird-node-onboarding.md).
+Полный порядок: [node onboarding](netbird-node-onboarding.md).
 
 ## Исправленные проблемы, которые нельзя вернуть
 
@@ -141,7 +141,7 @@ Missing workloads: `awaiting-argocd-workloads`; missing/non-Ready node:
   Разрешено **только точное GET чтение** с native auth/role checks; локальные
   создание/принятие приглашений, setup и local login/signup по-прежнему закрыты.
   Проверено admin 200 / anonymous 401 на обоих входах.
-  [Диагностика](../docs/identity/netbird-users-invites-403.md).
+  [Диагностика](identity/netbird-users-invites-403.md).
 
 ## Что действительно испытано и где границы
 
@@ -156,7 +156,7 @@ Missing workloads: `awaiting-argocd-workloads`; missing/non-Ready node:
 четырёх нод, оба relay и Signal. Это **bounded service-outage tests**, не физическое
 отключение нод, питания площадки или WAN. Cached Signal-connected флаг сам по себе
 не доказательство доступности сервера. Полные доказательства/тайминги:
-[independent access](../docs/netbird-independent-access.md).
+[independent access](netbird-independent-access.md).
 
 Не закрыты: physical/site outage, full DR, отдельный nonadmin/Tim-device тест,
 сроки отзыва сессий/устройств, management/Authentik HA и cold-start resilience.
@@ -182,4 +182,4 @@ forwards требуют отдельного решения. Пока нет о�
 - `scripts/netbird-access.py` / `ansible/playbooks/netbird-access.yml`: audit-first scoped grant/revoke/offboard, owner/service protections, private snapshots и fresh exact hash. Временный lifecycle проверен; bootstrap admin ограничен, fixtures удалены. Membership не даёт автоматически app/Linux/Kubernetes/admin роли и не отзывает все старые sessions.
 - Approval mode выключен, но genuine JWT group admission и личная MFA сохранены. Первый реальный новый человек/device остаётся отдельной приёмкой.
 - Межнодовый WG не удалён. Отозваны только obsolete assistant `.6` и явно согласованный TV `.8`; owner recovery `.4` сохранён. Phone `.7`/скомпрометированный key — отдельное решение.
-- После исправления overlapping transport marks на flannel ingress NetworkPolicy проверена cross-node ordinary/forged probes. Не возвращать старый bypass и не менять NetBird marking глобально: [overlay guard](../docs/k3s-networkpolicy-overlay-marks.md).
+- После исправления overlapping transport marks на flannel ingress NetworkPolicy проверена cross-node ordinary/forged probes. Не возвращать старый bypass и не менять NetBird marking глобально: [overlay guard](k3s-networkpolicy-overlay-marks.md).

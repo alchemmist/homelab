@@ -21,7 +21,7 @@ databases, Kubernetes APIs and telemetry receivers retain their private boundari
 | n8n | Direct existing native ingress; machine endpoints remain separate | Native login; `/rest/workflows` anonymous401; setup closed |
 |3x-ui | Direct existing panel backend | Native3x-ui login; backend firewall and VPN/subscription paths retained |
 | RustFS console | Routing-only bridge to9001 | Native RustFS OIDC; private S3/root/writer credentials |
-| OpenHands Canvas | Dedicated official oauth2-proxy/Authentik OIDC; upstream has no native human OIDC | Owner-only shell service; no native direct ingress; Public DNS/trusted TLS/HOME+VPS anonymous denial accepted; positive owner MFA roundtrip pending. [Scope](../llm-wiki/openhands.md) |
+| OpenHands Canvas | Dedicated official oauth2-proxy/Authentik OIDC; upstream has no native human OIDC | Owner-only shell service; no native direct ingress; Public DNS/trusted TLS/HOME+VPS anonymous denial accepted; positive owner MFA roundtrip pending. [Scope](openhands.md) |
 | Published SPI evidence | Direct read-only reader | Anonymous stable GET/HEAD, validated paths/manifest/hash, safe inline MIME/ranges |
 
 There is no `public-web-entry` aggregate owner and no `xui-auth-gateway` Argo

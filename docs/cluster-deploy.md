@@ -7,7 +7,7 @@
 
 **Снятие GitOps Fleet.** В репозитории больше нет Fleet `GitRepo` и `deploy/**/fleet.yaml`. Выкладка приложений — только Argo CD (`deploy/argocd/apps`). Это не удаление контроллеров Fleet из кластера: Rancher v2.15.2 снова включает Feature Fleet, пока включён multi-cluster-management. Бюджеты `cattle-fleet-*`, размещение `gitjob`/`helmops` и описания исключённых Fleet-дашбордов поэтому оставлены. Не возвращать GitRepo и не считать multi-cluster-management выключенным. Образы на GHCR — отдельная миграция registry, не повод оставлять Fleet-бандл.
 
-Журнал первого пилота и registry: `docs/harbor.md`, `llm-wiki/harbor.md`.
+Журнал первого пилота и registry: `docs/harbor.md`.
 
 ## Что является правдой
 
@@ -107,7 +107,7 @@ Harbor: push-учётка в секретах CI (`HARBOR_USERNAME`, `HARBOR_PAS
 
 Текущий клиент — официальный Argo CD Labs MCP из project settings, с
 `MCP_READ_ONLY=true`: диагностика, не imperative deployment. Установка и приватное
-хранение credentials описаны в [official MCP runbook](../docs/official-mcp.md).
+хранение credentials описаны в [official MCP runbook](official-mcp.md).
 Не запускать credential helper для показа токена и не возвращать старый
 пользовательский wrapper из исторических инструкций.
 
@@ -123,11 +123,11 @@ credential и read-only режимом клиента, а не разрешен�
 не скачивался. Это не текущий способ сопровождения и не fallback при ошибке
 Application. Сопровождение аккаунта/RBAC — через canonical Git source; native
 OIDC и существующие credentials сохраняются. Принятая приёмка Argo после переноса
-описана в [management handoff](../docs/vm105-management-20261116.md).
+описана в [management handoff](vm105-management-20261116.md).
 
 ## Как устроен Argo CD
 
-Argo CD размещён раздельно: application-controller на `socrat-5`, остальные компоненты на `socrat-0`. UI: `https://argocd.socrat.alchemmist.xyz`, native Authentik OIDC. Canonical values: `deploy/platform/argo-cd/values.yaml`; старый путь — compatibility symlink. `ansible/playbooks/argocd.yml` допускает только явный empty-cluster bootstrap и отказывает при существующих workloads. Текущий контракт: [context](context.md), приёмка: [management handoff](../docs/vm105-management-20261116.md).
+Argo CD размещён раздельно: application-controller на `socrat-5`, остальные компоненты на `socrat-0`. UI: `https://argocd.socrat.alchemmist.xyz`, native Authentik OIDC. Canonical values: `deploy/platform/argo-cd/values.yaml`; старый путь — compatibility symlink. `ansible/playbooks/argocd.yml` допускает только явный empty-cluster bootstrap и отказывает при существующих workloads. Текущий контракт: [context](context/context.md), приёмка: [management handoff](vm105-management-20261116.md).
 
 Базовая схема и NetBird:
 
@@ -180,7 +180,7 @@ Action умеет один образ на приложение и только 
 границы: [актуальный NetBird runbook](netbird.md).
 
 NetBird больше не исключение: Application создаёт `root` из каталога apps, не
-ручной apply/UI. Подробнее: [netbird-argocd.md](../docs/netbird-argocd.md). Сохраняются
+ручной apply/UI. Подробнее: [netbird-argocd.md](netbird-argocd.md). Сохраняются
 существующие версии upstream-образов по digest; миграция не обновляет образы и
 не переиздаёт идентичности/секреты. Значения секретов и содержимое PVC не в Git.
 Для нового узла: inventory → `scripts/netbird-gitops-nodes.py` → commit inventory
@@ -257,7 +257,7 @@ DaemonSet при текущем Deployment); полный repository suite не 
 
 Коммиты: disarm `41e10a2`, перенос `7ae691a`, временная пауза LiteLLM `4e2c72e`,
 окончательное удаление/возврат auto-sync **`e7fe891`**. Подробности:
-[операционная миграция](../docs/public-web-migration.md),
+[операционная миграция](public-web-migration.md),
 [доступ и авторизация](network-access.md). Старый aggregate chart не возвращать
 при откате одного приложения; менять только источник его действующего владельца.
 
@@ -299,7 +299,7 @@ verified mTLS readiness, отказ без client certificate, свежие Loki
 browser-MFA/enrollment, backup/restore/HA или every-service telemetry acceptance.
 
 Точные владельцы, безопасный handoff и границы проверок:
-[monitoring-service-split.md](../docs/monitoring-service-split.md).
+[monitoring-service-split.md](monitoring-service-split.md).
 На том промежуточном этапе guard отказывал при наличии независимых owners;
 после окончательного split `monitoring.yml` / `monitoring_stack` retired
 **безусловно**, до любых мутаций, включая запуск на свежем кластере. Править действующие Git sources, не старый
@@ -342,7 +342,7 @@ Ansible installer окончательно retired: always-tag fail до люб�
 При handoff сначала disarm/no finalizers, затем adopt, live проверки, затем удаление
 старого Application/values. Ни глобальный prune, ни restart/WAL repair/DB migration,
 ни ротация TLS или alert credentials не выполнялись. Проверки/границы и диаграмма
-владения: [prometheus-service-split.md](../docs/prometheus-service-split.md).
+владения: [prometheus-service-split.md](prometheus-service-split.md).
 
 
 Закрывающие коммиты окончательного разделения: `652e286` (disarm), `78a9336`

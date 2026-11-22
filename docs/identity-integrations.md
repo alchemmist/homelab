@@ -140,7 +140,7 @@ Owner подтвердил рабочий вход. Нативный Generic OID
   or **`app-litellm-user`**. Members receive `internal_user`, identity remains
   `authentik:<UUID>`. Vladislav migrated to the group without replacing his account;
   former user binding removed, `litellm-users.json` empty. Not every Authentik user
-  receives access. See [current systemic app groups](../docs/identity/app-access-groups.md);
+  receives access. See [current systemic app groups](identity/app-access-groups.md);
 - custom scope mapping `homelab-litellm-reviewed-identity`, scope `litellm_identity`;
 - Secret `llm/socrat-authentik-litellm`, Generic SSO env; Helm optional Secret refs.
 
@@ -218,13 +218,13 @@ nginx forward-auth3x-ui на n8n proxy-mode без воспроизведени�
 
 **Uptime Kuma:** native OIDC не внедрён и не заявляется. Но разделение входов **завершено**: status `/status/socrat`, status/heartbeat APIs/assets/badges и token push публичны; public Socket.IO/неизвестные admin APIs закрыты, legacy admin paths ведут на `kuma.socrat.alchemmist.xyz`. На admin host personal MFA owner/`uptime-kuma-web-admins`, затем исходная native Kuma auth. MFA не делает человека native admin. Проверены scoped MFA, WebSocket 101/namespace и denial native `getSettings`; fixtures удалены.
 
-При application restart обнаружен Secret/SQL credential mismatch, был наблюдённый ~35min heartbeat gap. Recovery создал отдельный schema-only app account без изменения старых SQL passwords и без DB restart; Secret data изменились, native Kuma account/auth сохранились. Не регенерировать Secret/не менять DB username: [MariaDB runbook](../docs/uptime-kuma-mariadb.md), [итог и ограничения](network-access.md#6-kuma-восстановление-после-инцидента-не-zero-downtime).
+При application restart обнаружен Secret/SQL credential mismatch, был наблюдённый ~35min heartbeat gap. Recovery создал отдельный schema-only app account без изменения старых SQL passwords и без DB restart; Secret data изменились, native Kuma account/auth сохранились. Не регенерировать Secret/не менять DB username: [MariaDB runbook](uptime-kuma-mariadb.md), [итог и ограничения](network-access.md#6-kuma-восстановление-после-инцидента-не-zero-downtime).
 
 ### Публичные aliases и Syncthing
 
 `deploy/public-web/services.json` хранит admission allowlist; публичные Ingress/proxy принадлежат соответствующим Argo Applications (локальные чарты либо `deploy/platform/<app>/public-entry` в той же Application), отдельный `public-web-entry` удалён; не смешивать их с foundation registry. Search admission owner/`netbird-internal-admins`; app authorization за aliases остаётся native, machine APIs не переводятся на browser redirect. Rancher публичен с native OIDC/ролями и policy proxy против local-password mutations; agents/bearer/WebSockets/private recovery сохранены. Grafana MCP — public verified TLS + отдельный read-only bearer, не human MFA gate.
 
-На node0 `/sync/` — personal MFA owner/`syncthing-web-admins`, затем неизменённый исходный BasicAuth, prefix снимается. Node1 отвечает 410 gateway-only: новую device/identity ради GUI не создавали. Existing BasicAuth, sync process/config/data не менялись. Реальный owner Basic login остаётся отдельной опциональной приёмкой. [Подробности публичного closeout](../docs/public-web-migration.md).
+На node0 `/sync/` — personal MFA owner/`syncthing-web-admins`, затем неизменённый исходный BasicAuth, prefix снимается. Node1 отвечает 410 gateway-only: новую device/identity ради GUI не создавали. Existing BasicAuth, sync process/config/data не менялись. Реальный owner Basic login остаётся отдельной опциональной приёмкой. [Подробности публичного closeout](public-web-migration.md).
 
 ## 10. Как подключить новый сервис: безопасный порядок
 
@@ -329,7 +329,7 @@ VPS CRD provider ограничен namespace argocd и label выбранног
 Ingress управляется Argo selfHeal: временная пауза только traefik-edge, публикация
 исходников, hard refresh до новой revision, затем восстановление исходного autosync.
 Иначе ручной Helm upgrade откатывается. Статус приёмки/fixture cleanup и подробный
-runbook: [Argo CD refresh](../docs/identity/argocd-refresh.md). Старым сессиям нужен
+runbook: [Argo CD refresh](identity/argocd-refresh.md). Старым сессиям нужен
 один новый SSO authorization, чтобы получить refresh token. Остальные приложения
 этой настройкой не изменяются; 8h refresh validity само по себе не доказывает,
 что конкретный клиент получает/использует refresh token.
@@ -343,7 +343,7 @@ runbook: [Argo CD refresh](../docs/identity/argocd-refresh.md). Старым с�
 
 Bearer lifetime — 5 минут; offline-access/8h refresh настроены только новому proxy provider. Но expiry-тест выявил native browser roundtrip к IdP, а не бесшовный refresh; возможен reload панели при истёкшем proxy cookie. Не переносить на этот шлюз утверждение о silent refresh, доказанное для Argo CD. Личная owner recovery/native-login и valid API token acceptance остаются отдельными.
 
-Источники, инсталляция host rule, воспроизводимая приёмка, limits и rollback: [docs/identity/xui-gateway.md](../docs/identity/xui-gateway.md). Узкий controller `xui_gateway.py` не replay foundation и не изменяет пользователей/базу панели.
+Источники, инсталляция host rule, воспроизводимая приёмка, limits и rollback: [docs/identity/xui-gateway.md](identity/xui-gateway.md). Узкий controller `xui_gateway.py` не replay foundation и не изменяет пользователей/базу панели.
 
 
 ### 3x-ui: исправление Login Failed to fetch
@@ -367,7 +367,7 @@ Owner native-password acceptance остаётся личной. Бесшовны
 Legacy credential key AUTHENTIK_BOOTSTRAP_TOKEN сохранён как alias нового key,
 так что текущие consumers совместимы; runtime Secret исключает admin bootstrap
 env. Детали и широкие privilege boundaries:
-[admin-automation.md](../docs/identity/admin-automation.md).
+[admin-automation.md](identity/admin-automation.md).
 
 ## SPI queue native OIDC — prepared 9 November, not activated
 
@@ -379,7 +379,7 @@ replay foundation or change existing human memberships. Frontend-only Secret,
 canonical callback and app-owned Ingress/TLS/policy are prepared. Built native
 image: 341 tests/zero skips; GET-only live Authentik plan succeeded. No live writes
 or protected publication approval: operator kubeconfig is unreachable and SSH
-lacks its trusted saved host key. See [SPI OIDC runbook](../docs/identity/spi-triage-oidc.md)
+lacks its trusted saved host key. See [SPI OIDC runbook](identity/spi-triage-oidc.md)
 for activation, bounded five-minute local sessions and explicit acceptance gates.
 
 ## SPI queue runtime closeout — 10 November 2026 UTC
@@ -391,7 +391,7 @@ provider/client are active. Worker/frontend use canonical immutable digest
 original workflow resumed, same PVC/history preserved, Argo Synced/Healthy.
 Prepared/blocked checkpoints above are historical. Real personal MFA/callback
 acceptance remains unobserved (busy shared browser); no bypass or synthetic human
-identity was used. Full evidence/limits: [runtime receipt](../docs/identity/spi-triage-oidc.md#final-runtime-receipt--10-november-2026-utc).
+identity was used. Full evidence/limits: [runtime receipt](identity/spi-triage-oidc.md#final-runtime-receipt--10-november-2026-utc).
 
 ### SPI canonical root correction — 10 November 2026 08:46 UTC
 
@@ -403,7 +403,7 @@ upstream error diagnostics are enabled. Exact historical reported 502 cause not
 proven. Original workflow resumed; execution 16303 stopped under prior owner
 authorization, kept for review/no automatic replay; paid reservations not cleared.
 1037 job identities and 549 prior terminal hashes preserved. Full dated receipt
-in [SPI runbook](../docs/identity/spi-triage-oidc.md).
+in [SPI runbook](identity/spi-triage-oidc.md).
 
 ## OpenHands Canvas —18November2026, owner-only OIDC gateway
 

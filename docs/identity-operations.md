@@ -11,7 +11,7 @@ https://auth.socrat.alchemmist.xyz/change-password; `/if/user/` для External 
 
 ## Текущий B2C доступ: отдельные группы приложений
 
-Использовать [актуальную таблицу и правила app-групп](../docs/identity/app-access-groups.md).
+Использовать [актуальную таблицу и правила app-групп](identity/app-access-groups.md).
 Действуют `app-litellm-user`, `app-open-webui-user`, `app-grafana-viewer/editor`,
 `app-wiki-reader/editor`, `app-lms-student/teacher`. Группы создаются общим Ansible
 hook при штатной регистрации приложения; доступ человеку выдаётся членством в UI

@@ -47,7 +47,7 @@ runtime Authentik/app state; подробная карта файлов есть
 - Owner `alchemmist` — личная MFA identity, единственный в `homelab-owner`.
   `akadmin` выведен из эксплуатации после отдельной миграции API; recovery — node-admin.
   Машинные учётки Outpost и identity automation не являются людьми.
-  См. [admin automation](../docs/identity/admin-automation.md).
+  См. [admin automation](identity/admin-automation.md).
 - Tim — логин **`antropophag`**, новая штатная IdP identity с pinned UUID. На
   проверке7 ноября пароль не задан, MFA/первого входа нет. Старый отдельный
   activation flow удалён; SMTP invitation/recovery не настроены. Данные apps
@@ -234,7 +234,7 @@ peers: нужен gateway+ACL/failover. Root на чужой ноде = дове
   first rollout was automatically rolled back, then corrected, pre-pulled and accepted.
 - На этой старой приёмке Wiki была на socrat-3. **Сейчас Wiki на socrat-0**:
   runtime f52cf2a, digest `sha256:dc5b15b391cd94fad3db51dc7fa917e138d77ea345e27518371073538c5a78d9`,
-  retained PVC. Старый digest выше не production. [Upgrade](../docs/wiki-upgrade-20261107.md).
+  retained PVC. Старый digest выше не production. [Upgrade](wiki-upgrade-20261107.md).
   Discover actual PVC affinity before any backup pod.
   Frozen full-volume copy made with writer stopped; old app resumed during encrypted
   off-node transfer; snapshot DB integrity/IDs/hash preservation checked. Temporary

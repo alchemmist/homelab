@@ -1,6 +1,6 @@
 # Identity: текущий статус и первый вход
 
-> **PostgreSQL (2026-11-20):** Рабочая БД Authentik — `pg-critical/authentik`, endpoint `pg-critical-rw`; не путать с остановленным authentik-postgres. [Эксплуатация и CA](../docs/postgres-platform.md).
+> **PostgreSQL (2026-11-20):** Рабочая БД Authentik — `pg-critical/authentik`, endpoint `pg-critical-rw`; не путать с остановленным authentik-postgres. [Эксплуатация и CA](postgres-platform.md).
 
 > **Live auth audit15Nov:** [actual browser/API boundaries](browser-auth-audit.md).
 > Current public Kuma Admin/Syncthing/Search routes do not have the previously
@@ -29,13 +29,13 @@ Danila уже добавлен в эту группу; `authentik Read-only` у�
 права аддитивны. **Harbor observer не поддержан:** admission и три Guest grants
 закрыты после реального CLI revocation failure; отдельная задача #134. Не открывать
 его по наличию старого bootstrap receipt. Подробности: [native observer](native-observer.md),
-[приёмка](../docs/identity/observer-acceptance-20261108.md), [runbook](../docs/identity/observer-profile.md).
+[приёмка](identity/observer-acceptance-20261108.md), [runbook](identity/observer-profile.md).
 
 ## Исторический срез — 7 ноября, снятие общих внешних auth gates
 
 Ниже зафиксирована приёмка того этапа, не текущее обещание anonymous SPI evidence
 или нулевого числа Proxy Providers. Позднее RustFS получил отдельную private
-single-domain защиту: [live edge](../docs/rustfs/private-single-domain-live.md).
+single-domain защиту: [live edge](rustfs/private-single-domain-live.md).
 Её не отменять при работе с observer, которому RustFS не выдавался.
 
 Удалены11 obsolete Authentik Applications (включая старую Kuma bookmark-карточку)
@@ -43,7 +43,7 @@ single-domain защиту: [live edge](../docs/rustfs/private-single-domain-liv
 их UUID/client credentials/callbacks/policy bindings сохранены. n8n,3x-ui, Kuma
 и Syncthing используют собственный login; SearXNG и опубликованные SPI artifacts
 публичны без Authentik и NetBird. Reader допускает только GET/HEAD, проверяет
-manifest/hash и выдаёт безопасные типы inline. [Контракт и границы](../docs/identity/native-browser-auth.md).
+manifest/hash и выдаёт безопасные типы inline. [Контракт и границы](identity/native-browser-auth.md).
 
 Повторная приёмка после восстановления socrat-2: **82/82** публичных проверок
 на HOME и VPS, обычная проверка TLS без отключения верификации. Все4 ноды Ready;
@@ -52,7 +52,7 @@ socrat-2 Ready с17:55:34UTC7 ноября. Все8 затронутых Argo ap
 force-delete не потребовался.10 native OIDC регистраций/providers/bindings и
 сохранённые поля иконок не изменились; Proxy Providers0. Опубликованный artifact
 проверен через оба входа: anonymous GET/HEAD/206, manifest/SHA-256, inline,
-PUT/POST/PATCH/DELETE405. [Приёмка](../docs/identity/native-browser-auth.md#recovered-vps-final-acceptance).
+PUT/POST/PATCH/DELETE405. [Приёмка](identity/native-browser-auth.md#recovered-vps-final-acceptance).
 Это протокольная приёмка, не новая проверка входа от имени каждого человека.
 
 

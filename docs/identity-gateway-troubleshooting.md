@@ -27,7 +27,7 @@ SSO — единый вход; OIDC и SAML — протоколы его реа
 
 Текст `Access to request new tokens without interaction` — native consent на scope `offline_access`. Email/profile могут отображаться как уже выданные, offline-access — как новое разрешение. Это нужно для refresh коротких токенов и **не выдаёт admin-роль, не отключает MFA**.
 
-Подтверждать только самостоятельно начатый вход в ожидаемое приложение на доверенном Authentik hostname. Не скрывать/подделывать consent ради косметики. Подробности и реальные expiry-тесты: [Argo refresh](../docs/identity/argocd-refresh.md).
+Подтверждать только самостоятельно начатый вход в ожидаемое приложение на доверенном Authentik hostname. Не скрывать/подделывать consent ради косметики. Подробности и реальные expiry-тесты: [Argo refresh](identity/argocd-refresh.md).
 
 ## 3. 3x-ui: исправленный Failed to fetch на Login
 
@@ -43,7 +43,7 @@ Gateway теперь возвращает **same-origin401 без redirect** д�
 
 - `scripts/build-xui-auth-gateway.py`, `deploy/xui-auth-gateway/{nginx.conf,resources.yaml}`;
 - `scripts/identity-xui-gateway-smoke.py --run [--public-edge IP]` — временные identity/admission writes, не read-only;
-- [Полный runbook](../docs/identity/xui-gateway.md).
+- [Полный runbook](identity/xui-gateway.md).
 
 Остаётся ограничение: native outpost делает browser roundtrip при истечении proxy-сессии; бесшовный refresh, как у Argo CD, не доказан. После простоя возможны reload и повторный ввод native полей. Bearer TTL не увеличивали ради сокрытия проблемы. Не воспроизводить POST с паролем после OAuth автоматически.
 

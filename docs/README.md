@@ -1,17 +1,19 @@
-# LLM wiki: карта актуального контекста Socrat
+# Документация Socrat
 
-[Отчёт: внезапная потеря `socrat-1`, 21 ноября 2026](socrat-1-loss-20261121.md) — фактические времена, границы восстановления и незакрытые проверки.
+[Текущее состояние](context/context.md) · [Проверки изменений](quality/README.md) · [Инфраструктурные контракты](infrastructure-contracts.md) · [Публичная wiki](../wiki/README.md)
 
-[Второе отключение `socrat-1`, 21 ноября 2026](socrat-1-loss-20261121-run2.md) — повтор с отдельным Alertmanager на `0` и без смены primary PostgreSQL.
+[Отчёт: внезапная потеря `socrat-1`, 21 ноября 2026](context/socrat-1-loss-20261121.md) — фактические времена, границы восстановления и незакрытые проверки.
+
+[Второе отключение `socrat-1`, 21 ноября 2026](context/socrat-1-loss-20261121-run2.md) — повтор с отдельным Alertmanager на `0` и без смены primary PostgreSQL.
 
 Авторизация обновлена в текущем closeout: [B2C app-группы](application-access.md).
-Текущая карта размещения и source ownership: [context](context.md), обновление **16 ноября 2026**. Сетевой обзор ниже: срез **10 ноября 2026** (production Moscow VPN Pod/native, shared mesh и приёмка fallback; SPI service extraction; observer — 8 ноября, остальные срезы датированы в своих разделах). Это рабочая память для сопровождения homelab,
+Текущая карта размещения и source ownership: [context](context/context.md), обновление **16 ноября 2026**. Сетевой обзор ниже: срез **10 ноября 2026** (production Moscow VPN Pod/native, shared mesh и приёмка fallback; SPI service extraction; observer — 8 ноября, остальные срезы датированы в своих разделах). Это рабочая память для сопровождения homelab,
 не public wiki content и не набор команд для автоматического повторения миграций.
 Git/manifests задают intent; runtime определяется отдельной проверкой.
 
 **Session closeout:** RF/NL server split explicitly deferred by owner; current
 Moscow → NL egress and existing Happ bypass remain. See current context and
-[vpn-transit internals](../docs/vpn-mesh-runtime-20261110.md#what-the-pod-actually-does).
+[vpn-transit internals](vpn-mesh-runtime-20261110.md#what-the-pod-actually-does).
 Research is not a pending deployment task. Private recovery evidence remains off-Git.
 
 ## Начать здесь
@@ -24,7 +26,7 @@ Research is not a pending deployment task. Private recovery evidence remains off
 
 [Общий Redis: адрес записи, гарантии и подключение LiteLLM](redis-common.md).
 
-1. [Текущий контекст](context.md) — краткая схема, ограничения и порядок работы.
+1. [Текущий контекст](context/context.md) — краткая схема, ограничения и порядок работы.
 2. [Сеть и доступ](network-access.md) — **NetBird основной human ingress**, межнодовый
    WG сохранён, standalone WG только recovery, корпоративный Tunnelblick не трогать.
 3. [Identity сейчас](identity-current-state.md) — `antropophag`, пароль/первый вход,
@@ -40,20 +42,20 @@ Research is not a pending deployment task. Private recovery evidence remains off
 | --- | --- |
 | Сетевой onboarding, devices, JWT policies и node agents | [NetBird](netbird.md), [DNS](public-dns.md) |
 | Зарубежный egress приложений на российских нодах | [VPN-as-service: отдельный клиент 3x-ui и подписка](service-vpn-egress.md) |
-| VPN: Москва frontend → NL backend, сохранённые клиенты, реальные границы | [Текущий production и история](vpn-hardening.md), [приёмка/инцидент](../docs/vpn-production-cutover-20261109.md) |
+| VPN: Москва frontend → NL backend, сохранённые клиенты, реальные границы | [Текущий production и история](vpn-hardening.md), [приёмка/инцидент](vpn-production-cutover-20261109.md) |
 | Публичный SSH key, обычный Linux account и отзыв | [SSH user](ssh-user.md), [host/RBAC](identity-host-access.md) |
-| Observer: обычное групповое подключение, Danila, отзыв доступа | [Native observer](native-observer.md), [приёмка](../docs/identity/observer-acceptance-20261108.md) |
+| Observer: обычное групповое подключение, Danila, отзыв доступа | [Native observer](native-observer.md), [приёмка](identity/observer-acceptance-20261108.md) |
 | Реальная защита сервисов: Authentik / собственный login / публичные маршруты | [Live browser-auth audit](browser-auth-audit.md) |
 | Главный identity справочник и ежедневные операции | [Identity](identity.md), [операции](identity-operations.md) |
-| B2C: отдельные app-группы, автоматическое создание и native роли | [Текущий контракт](application-access.md), [технический runbook](../docs/identity/app-access-groups.md) |
+| B2C: отдельные app-группы, автоматическое создание и native роли | [Текущий контракт](application-access.md), [технический runbook](identity/app-access-groups.md) |
 | External: смена своего пароля без доступа к внутреннему кабинету | [Password self-service](password-self-service.md) |
 | OIDC, native app roles, gateway exceptions | [Архитектура](identity-architecture.md), [интеграции](identity-integrations.md), [диагностика](identity-gateway-troubleshooting.md) |
 | Optional disabled SSH-key integration | [UUID/key assignments](identity-ssh-keys.md) |
 | Theme, native UI и recovery | [Frontend](identity-frontend.md), [backup/recovery](identity-recovery.md) |
 | Registry, robots, scoped push/pull | [Harbor](harbor.md) |
-| Wiki runtime/content | [Процесс](../docs/wiki-process-lifecycle.md), [upgrade](../docs/wiki-upgrade-20261107.md), [public onboarding source](../wiki/README.md) |
+| Wiki runtime/content | [Процесс](wiki-process-lifecycle.md), [upgrade](wiki-upgrade-20261107.md), [public onboarding source](../wiki/README.md) |
 | Сбор и хранение метрик по нодам | [OTel → Prometheus → Thanos: raw, 5m, 1h и границы удаления](observability-current.md#метрики-сбор-прореживание-и-перенос-между-нодами--21-ноября-2026) |
-| Logs/metrics/traces/profiles | [Мониторинг](observability-current.md), [monitoring](../docs/monitoring.md) |
+| Logs/metrics/traces/profiles | [Мониторинг](observability-current.md), [monitoring](monitoring.md) |
 | Инциденты, уведомления, workflow integration | [Socrat bot](socrat-bot.md), [SPI: frontend/backend и эксплуатация; актуальное размещение — в context](spi-incident-triage.md), [n8n](n8n-workflows.md) |
 | TV/public dashboard, адресный Argo CSS и отдельный YouTube VPN | [Android TV](android-tv.md), [сопровождение TV-CSS](android-tv.md#сопровождение-кастомного-tv-css-для-argo) |
 | LMS и локальные генераторы | [LMS](lms.md), [локальная генерация](lms-generation.md) |

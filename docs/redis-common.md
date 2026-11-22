@@ -21,4 +21,4 @@
 Новому клиенту нужны свои ACL-пользователь, префиксы ключей и каналов, Secret в его namespace и точечная NetworkPolicy до шлюза. LiteLLM использует `litellm:*`; не переиспользовать его учётную запись. Клиенту передаются только его данные доступа и публичный CA — не `redis-common-control` и не приватный ключ CA.
 
 - [Argo Application](../deploy/argocd/apps/redis-common.yaml) и [values платформы](../deploy/platform/redis-common/values.yaml) — топология и настройки сервиса. [Активные values LiteLLM](../deploy/platform/litellm/values.yaml) — внешний `general_settings.coordination_redis`.
-- [Операционный runbook](../docs/redis-platform.md) — выдача прав, ротация CA, точечный откат и запись о production-приёмке. Откат подключения LiteLLM не требует удаления PVC или возврата PostgreSQL; без Redis считать лимиты локальными.
+- [Операционный runbook](redis-platform.md) — выдача прав, ротация CA, точечный откат и запись о production-приёмке. Откат подключения LiteLLM не требует удаления PVC или возврата PostgreSQL; без Redis считать лимиты локальными.

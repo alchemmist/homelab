@@ -8,7 +8,7 @@ NS3 NS/A опубликованы на0/1/2/4; REG.RU и родительска�
 проверены. Все6Ready после отдельного исправления московского watchdog.
 HOME/NL web A-selection не менялся: Москва пока не третий общий web A.
 NL→Moscow UDP53 ранее таймаутился при рабочем TCP; причина не установлена.
-[Карта зависимостей и границы HA](../docs/network-dependency-audit-20261112.md).
+[Карта зависимостей и границы HA](network-dependency-audit-20261112.md).
 
 ## Адреса и делегирование
 
@@ -35,7 +35,7 @@ NL authoritative Knot дополнительно слушает private10.250.0.
 private relay10.250.0.40:53 передаёт TCP/UDP по существующему wg-socrat (отдельный wg-vpn-transit retired). Scoped NL Knot
 restarts потребовались при смене listener; старый dnsmasq mesh:53 сохранён, public listener сохранён; startup dependency на WG.
 Никакого Mac resolver override. Это не HA/partition-consistency гарантия трёх writers.
-[Production evidence/incident](../docs/vpn-production-cutover-20261109.md).
+[Production evidence/incident](vpn-production-cutover-20261109.md).
 
 ## Что стоит на узлах
 
@@ -81,7 +81,7 @@ Owned Mac `/etc/resolver` overrides и wiki restorer lifecycle сняты, гл�
 
 Кэш не узнаёт об отказе до expiry и может держать запись дольше TTL. Уже открытые соединения не переезжают, клиент не обязан повторять DNS после TCP timeout. Public IP failover не копирует PVC/SQLite/MariaDB/GPU и не делает Authentik/management HA. Traefik Edge может использовать последние маршруты без кворума только пока живы процесс, сеть и backend pods. Потерянный backend/storage DNS не восстанавливает.
 
-Источники: [public ingress](../docs/public-ingress.md), [VPS migration](../docs/vps-ip-migration-20261105.md), [public-web closeout](../docs/public-web-migration.md), `docs/router-static-mappings.md`.
+Источники: [public ingress](public-ingress.md), [VPS migration](vps-ip-migration-20261105.md), [public-web closeout](public-web-migration.md), `docs/router-static-mappings.md`.
 
 
 ##2026-11-08: partial-network failure / phase1 observation

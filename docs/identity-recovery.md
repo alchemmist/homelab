@@ -244,7 +244,7 @@ credential rotation; distributed Authentik/Harbor HA. Не закрывать э
 recovery и full DR остаются отдельной приёмкой. Старые backup credentials после
 retirement не восстановят API к текущей DB; сначала проверить journal/backup
 consistency. Процедура, guards и доказанные ограничения:
-[admin-automation.md](../docs/identity/admin-automation.md).
+[admin-automation.md](identity/admin-automation.md).
 
 ## Сетевой closeout и новые private receipts
 

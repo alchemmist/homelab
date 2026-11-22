@@ -1,6 +1,6 @@
 # Наблюдаемость: источники и владельцы
 
-[Отчёт: внезапная потеря `socrat-1`, 21 ноября 2026](socrat-1-loss-20261121.md): миграция на NFS, что вернулось во время потери и после неё, доставка алерта и Descheduler.
+[Отчёт: внезапная потеря `socrat-1`, 21 ноября 2026](context/socrat-1-loss-20261121.md): миграция на NFS, что вернулось во время потери и после неё, доставка алерта и Descheduler.
 
 ## Метрики: сбор, прореживание и перенос между нодами — 21 ноября 2026
 
@@ -44,7 +44,7 @@
 Grafana и Grafana MCP приняты на `socrat-5`, новый Grafana claim
 `grafana-socrat5`, старый claim на `socrat-1` stale/Retain. Native SSO, существующие
 идентичности и настоящий read-only MCP→Grafana→Thanos запрос проверены.
-[Полная приёмка и downtime](../docs/vm105-grafana-20261116.md).
+[Полная приёмка и downtime](vm105-grafana-20261116.md).
 Prometheus/Thanos и другие backend не переносились этим изменением. Таблица
 владельцев ниже остаётся полезной, но runtime-утверждения среза7ноября не являются
 новой приёмкой всех компонентов. Источник Grafana также включает
@@ -80,7 +80,7 @@ Prometheus/Thanos и другие backend не переносились этим
 PVC/Secret/Certificate UID не менялись. Только неиспользуемый ConfigMap
 `otel-backends` удалён с UID/resourceVersion preconditions после проверки ссылок.
 Не повторять retirement и не включать старых owners. Карта и полный протокол:
-[monitoring-service-split.md](../docs/monitoring-service-split.md).
+[monitoring-service-split.md](monitoring-service-split.md).
 
 В Grafana сверены private согласованные SQLite snapshots: users/org/memberships,
 datasource identities, dashboard UIDs, OAuth links и public shares сохранены.
@@ -99,7 +99,7 @@ Pods сохранили UID/ноду/readiness/restarts; все 4 PVC сохра
 3 целевых Secret (включая webhook TLS) сохранили UID **и содержимое**. Prometheus
 по-прежнему находит прежний Alertmanager endpoint. Ни WAL repair, ни переустановка
 оператора, ни миграция данных не требовались. Детали и source-provenance:
-[prometheus-service-split.md](../docs/prometheus-service-split.md).
+[prometheus-service-split.md](prometheus-service-split.md).
 
 ## Зафиксированный closeout, не новая команда миграции
 
@@ -137,9 +137,9 @@ finalizers: это может каскадно удалить workload. Обыч
 - Grafana refresh и dashboard range — presentation, не гарантия полноты ingestion.
   Не превращать отсутствие телеметрии в zero/green и не скрывать gaps интерполяцией.
 
-Источники: [monitoring](../docs/monitoring.md),
-[logging operations](../docs/unified-logging-operations.ru.md),
-[retention](../docs/otel-loki-retention.md), `deploy/monitoring/otel/`,
+Источники: [monitoring](monitoring.md),
+[logging operations](unified-logging-operations.ru.md),
+[retention](otel-loki-retention.md), `deploy/monitoring/otel/`,
 `deploy/monitoring/migration-evidence/`, текущие chart values и resource budgets.
 Старые ссылки на отсутствующие в этом checkout otel-history runbooks не являются
 достаточным основанием запускать migration/delete scripts.
@@ -169,7 +169,7 @@ Public traffic-light — единственный явный share, не anonymo
 Headerless TV geometry обновлена в `832e341`; прежние hard-coded panel positions
 из октябрьских заметок не текущая layout specification. Источники — dashboard JSON,
 `deploy/platform/grafana/public-entry/files/traffic-light-inset.js` и
-[TV design](../docs/traffic-light-tv-design.md), а не инъекция JS в Fully.
+[TV design](traffic-light-tv-design.md), а не инъекция JS в Fully.
 Последующая documented приёмка (`29f41d9`): dashboard `832e341`, kiosk parity
 `757dc18`, четыре real-browser случая (public/authenticated kiosk ×1920×1080/1440×900),
 40 targeted tests и24 public access checks. Это evidence другой выполненной
@@ -220,7 +220,7 @@ ConfigMap policy и Deployment proxy; исходная handoff-версия ос
 
 ### socrat-2 watchdog incident and recovery — 2026-11-07
 
-[Forensic report](../docs/vpn-incident-2026-11-07.md): four failed TLS/WebSocket
+[Forensic report](vpn-incident-2026-11-07.md): four failed TLS/WebSocket
 checks from20:02:22 MSK caused the VPN watchdog to stop k3s at20:03:56 and fence
 VPS Pods. This was an explicit stop, not a proven k3s crash/OOM. Exact first
 handshake error was discarded by the old helper; timeout/certificate/false-positive
@@ -248,7 +248,7 @@ monotonic/boot-scoped warm-up (still unhealthy if checks fail), and native resta
 also require confirmation. Failback checks target identity before stopping VPN;
 failed server startup attempts immediate native rollback. No automatic failback,
 TLS weakening or alert muting. Safe last-failure receipt retained outside Git.
-See [current protocol/defaults](../docs/vpn-failover.md#hardened-detection-and-service-identity).
+See [current protocol/defaults](vpn-failover.md#hardened-detection-and-service-identity).
 
 Hardening applied live without restarting k3s, x-ui or Traefik; their current Pod
 names were retained, all4 nodes Ready, native primary/Caddy inactive, timer active.
@@ -305,4 +305,4 @@ trace, Loki correlation and Thanos up/inventory success1 accepted. Dashboard
 Exact Collector egress to Wishlist8001 is required. Existing extraneous
 ConfigMap/wishlist is NOT pruned; desired resources reconciled, not blanket Argo
 health. Real user slow upload/production login remain outside canary acceptance.
-[Runbook](../docs/wishlist-observability.md) and its JSON evidence are authoritative.
+[Runbook](wishlist-observability.md) and its JSON evidence are authoritative.

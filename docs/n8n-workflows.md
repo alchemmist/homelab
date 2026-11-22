@@ -20,7 +20,7 @@ Google-only scope и сквозной TLS остались, GitHub/прочие 
 ## CURRENT17Nov owner-approved follow-up: Google NL egress + SPI compaction LIVE
 
 Supersedes the earlier PARTIAL/no-egress status BELOW; keep it as incident history.
-[Authoritative follow-up](../docs/n8n/google-only-nl-egress-20261117.md).
+[Authoritative follow-up](n8n/google-only-nl-egress-20261117.md).
 
 Owner authorizedGoogle-onlyNLegress and askedreuseVenicepattern. N8Nnowusesown
 pinnedSSHidentityandTWOstaticloopbackforwards onlywww/oauth2Google443, NOTVenice
@@ -60,14 +60,14 @@ projection fixes100seriescontext(39595→16810reservation) WITHOUT extra modelca
 quota/deadlineresets or changingfullstoredoriginals/IDs.464nativeCItests0skips,
 freshglobaldrain, SPIactivityrestored. Twojobs retainoriginalfuturebackoff; new
 naturalreportacceptancePENDING. OneLLMnetworkerroralreadyrecovered naturally.
-[Full current evidence/status](../docs/n8n/google-calendar-transport-20261117.md).
+[Full current evidence/status](n8n/google-calendar-transport-20261117.md).
 
 ## CURRENT16Nov23:22MSK: Calendar TLS address failover LIVE
 
 Follow-up research isolated a CURRENT DNS-provided GoogleIPv4 whoseTCP connects
 butTLS stalls, while7other addresses work; reproduced outsidePod and acrossTLS
 versions too. Not proof of provider/MTU/CNI fault; forcingIPv4/DNS-only insufficient.
-Read publicwiki VPN and llm-wiki network intent before selecting no-network-change
+Read publicwiki VPN and the network intent in docs before selecting no-network-change
 correction. Scoped native HTTPS connection failover now enabled byGit9a014aa2:
 fresh existing-resolverDNS, originalSNI/CA, max4pre-HTTP TLS candidates under9.5s;
 HTTP receives socket only AFTER verifiedTLS. No HTTP/OAuthPOST replay, TLS bypass,
@@ -78,7 +78,7 @@ Fresh global natural drain+SPIowner/processing/paid0 beforepush; related activit
 restored. ArgoSyncedHealthy, exactruntimehashes. Firstnatural48686 succeeded with
 Google4827ms and TWO observedpre-HTTP failovers; not a voice-delivery test or
 long-term reliability promise. Historical15Nov/12Nov failures below retained.
-[Diagnosis, design, tests and acceptance](../docs/n8n/google-calendar-transport-20261116.md).
+[Diagnosis, design, tests and acceptance](n8n/google-calendar-transport-20261116.md).
 
 # n8n: правила разработки, эксплуатации и авторизации workflow
 
@@ -93,7 +93,7 @@ long-term reliability promise. Historical15Nov/12Nov failures below retained.
 Корневая причина/связь с110сек отменами не доказана; googleDnsEnabled:false,
 сеть и таймауты сохранены.
 Никаких ручных запусков речи, reset/SQL, отключения алертов или увеличения таймаута.
-[Доказательства и границы](../docs/n8n/google-calendar-auth-20261115.md).
+[Доказательства и границы](n8n/google-calendar-auth-20261115.md).
 
 Контракт для агентов и оператора. Актуализировано: **3 ноября 2026**.
 Связанный документ: [архитектура автоматизаций умного дома](smart-home-automation.md).
@@ -114,7 +114,7 @@ quickstart. CI только проверяет; исправление вызы�
 внедрения qg.yaml в обоих repos отсутствовал; это bootstrap по migration guide,
 старые проверки сохранены до PR parity, privileged release не переносился в graph.
 Не считать локальный generate/validate приёмкой trusted publisher или изменением
-required branch checks. [Процесс и команды](../docs/n8n/workflow-policy.md).
+required branch checks. [Процесс и команды](n8n/workflow-policy.md).
 
 ## Уведомление об упавшем execution — 9 ноября 2026
 
@@ -144,7 +144,7 @@ executions могут хранить старые settings; ручные тес�
 может сообщить о поломке собственного транспорта тем же транспортом; независимый
 health monitoring нужен отдельно. Первый естественный Telegram end-to-end этим
 срезом не заявляется; искусственных запусков/ошибок/сообщений не создавали.
-[Runbook и enrollment receipt](../docs/n8n/workflow-failure-alerts.md).
+[Runbook и enrollment receipt](n8n/workflow-failure-alerts.md).
 
 ## Текущий календарь: динамический TTS и автоматическая сессия
 

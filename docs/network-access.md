@@ -27,7 +27,7 @@ WG**;17 клиентов/91 bindings/подписки84URI/77JSON/ключи с�
 134 tests+14 subtests, новые private archives2/4 off-host SHA verified.
 Это не zero-downtime rollout: исправлены TIME_WAIT guard, management source IP и
 Pod bind-capability; не скрывать ошибки/короткую недоступность, не приписывать
-результаты native-fallback probe первому неудачному Pod. [Подробности и операции](../docs/vpn-mesh-runtime-20261110.md).
+результаты native-fallback probe первому неудачному Pod. [Подробности и операции](vpn-mesh-runtime-20261110.md).
 API loss при работающем relay не вызывает переключения; native sticky до явного
 failback. Mobile/AWG/полный DR/reboot/HA не доказаны. Подписка/публичный вход прежние,
 Mac/Tunnelblick/default routes не менялись. Подготовительные apply не переигрывать.
@@ -66,8 +66,8 @@ watchdog не отключены. Штатный failback исходного mem
 история/старые recovery receipts сохранены.126 tests+14 subtests passed — срез приёмки,
 не непрерывный healthcheck. Mobile/Happ interactive, authenticated AWG, полный DR/
 chaos/reboot и сохранение end-user IP enforcement не доказаны. Не обещать HA/TSPU immunity.
-Подробности и custody: [production runbook](../docs/vpn-production-cutover-20261109.md).
-Исторический staging: [Moscow bootstrap](../docs/moscow-vpn-transit-20261109.md).
+Подробности и custody: [production runbook](vpn-production-cutover-20261109.md).
+Исторический staging: [Moscow bootstrap](moscow-vpn-transit-20261109.md).
 Не переисполнять migration/prepare/apply: fresh preimage/CAS, uncertain→разбор.
 
 ## Историческая приёмка human ingress, 7 ноября
@@ -81,7 +81,7 @@ chaos/reboot и сохранение end-user IP enforcement не доказан
 их UUID/client credentials/callbacks/policy bindings сохранены. n8n,3x-ui, Kuma
 и Syncthing используют собственный login; SearXNG и опубликованные SPI artifacts
 публичны без Authentik и NetBird. Reader допускает только GET/HEAD, проверяет
-manifest/hash и выдаёт безопасные типы inline. [Контракт и границы](../docs/identity/native-browser-auth.md).
+manifest/hash и выдаёт безопасные типы inline. [Контракт и границы](identity/native-browser-auth.md).
 
 Повторная приёмка после восстановления socrat-2: **82/82** публичных проверок
 на HOME и VPS, обычная проверка TLS без отключения верификации. Все4 ноды Ready;
@@ -90,7 +90,7 @@ socrat-2 Ready с17:55:34UTC7 ноября. Все8 затронутых Argo ap
 force-delete не потребовался.10 native OIDC регистраций/providers/bindings и
 сохранённые поля иконок не изменились; Proxy Providers0. Опубликованный artifact
 проверен через оба входа: anonymous GET/HEAD/206, manifest/SHA-256, inline,
-PUT/POST/PATCH/DELETE405. [Приёмка](../docs/identity/native-browser-auth.md#recovered-vps-final-acceptance).
+PUT/POST/PATCH/DELETE405. [Приёмка](identity/native-browser-auth.md#recovered-vps-final-acceptance).
 Это протокольная приёмка, не новая проверка входа от имени каждого человека.
 
 
@@ -128,7 +128,7 @@ Tunnelblick в приёмках сохранял тот же процесс (т�
 
 STUN настроен на новый адрес, открытый TURN не включён. Webhook проверен на новом endpoint с пустой pending queue. Региональная недоступность старого VPS воспроизводилась отдельно; версия о TSPU не доказана.
 
-Источники: [миграция VPS](../docs/vps-ip-migration-20261105.md), `scripts/vps-ip-migration.py`. Сверить актуальный CLI/runbook, не запускать по памяти. Применение миграционных действий: audit first, fresh exact hash, lock, private backup/receipts, остановка при uncertain write. Не перезапускать ноды/K3s/БД и не делать blanket firewall flush.
+Источники: [миграция VPS](vps-ip-migration-20261105.md), `scripts/vps-ip-migration.py`. Сверить актуальный CLI/runbook, не запускать по памяти. Применение миграционных действий: audit first, fresh exact hash, lock, private backup/receipts, остановка при uncertain write. Не перезапускать ноды/K3s/БД и не делать blanket firewall flush.
 
 ## 3. NetBird: основной доступ и отдельные права
 
@@ -136,13 +136,13 @@ STUN настроен на новый адрес, открытый TURN не в�
 
 Builtin All не раздаёт DNS, в том числе будущим peers. **Автоматическое требование user/device approval выключено**; личные Authentik/MFA и group-restricted admission сохранены. Это не All-device policy и не автоматическая выдача app/Linux/Kubernetes/admin-прав. OIDC/JWT mapping группы использует `profile`; существующий pilot сохранён.
 
-Жизненный цикл: `scripts/netbird-access.py`, `ansible/playbooks/netbird-access.yml`, [onboarding](../docs/netbird-administrator-onboarding.md). Есть scoped grant/revoke/offboard, защита owner/service identities, свежий hash и private snapshots. Временные grant/revoke/no-op/deletion проверены; bootstrap admin ограничен, старый PAT не даёт прежнего admin-доступа. Не создавать вручную fake JWT-группу с тем же именем.
+Жизненный цикл: `scripts/netbird-access.py`, `ansible/playbooks/netbird-access.yml`, [onboarding](netbird-administrator-onboarding.md). Есть scoped grant/revoke/offboard, защита owner/service identities, свежий hash и private snapshots. Временные grant/revoke/no-op/deletion проверены; bootstrap admin ограничен, старый PAT не даёт прежнего admin-доступа. Не создавать вручную fake JWT-группу с тем же именем.
 
 Допуск в приложение, NetBird policy, Linux SSH key, sudo и Rancher/Kubernetes/app role — независимые решения. Удаление группы не гарантирует мгновенное закрытие старых sessions/SSH forwards. Первый настоящий новый человек с собственным MFA/device enrollment остаётся отдельной приёмкой: временные fixtures её не заменяют.
 
 Recovery WG проверен через новый VPS и все четыре ноды, включая worker `.5/32` и return path owner `.4`. После теста WG выключен, NetBird восстановлен. Устаревший assistant peer `.6` отозван; возможная косметическая запись в GUI не является действующим grant. Phone `.7` и ранее раскрытый phone key требуют отдельного решения о владельце/ротации, не отзываются попутно.
 
-Подробнее: [NetBird](netbird.md), [совместимость с Tunnelblick](../docs/netbird-tunnelblick-coexistence.md), [границы отказоустойчивости](../docs/netbird-independent-access.md). Cold start без management раньше провалился; management/Authentik HA и full DR не доказаны. Не удалять независимый recovery.
+Подробнее: [NetBird](netbird.md), [совместимость с Tunnelblick](netbird-tunnelblick-coexistence.md), [границы отказоустойчивости](netbird-independent-access.md). Cold start без management раньше провалился; management/Authentik HA и full DR не доказаны. Не удалять независимый recovery.
 
 ## 4. Kubernetes: transport mark не даёт pod разрешение
 
@@ -150,7 +150,7 @@ Recovery WG проверен через новый VPS и все четыре н
 
 На всех нодах установлен строго owned nft guard `inet homelab_k3s_overlay_marks`, owner `homelab:k3s-overlay-marks:v1`: prerouting priority `-175` очищает ненулевой mark только на flannel/VXLAN ingress, когда **оба** адреса принадлежат pod CIDR `10.42.0.0/16`. Правила NetBird и прочий трафик не переписываются. Boot oneshot выполняется до K3s; остановка oneshot намеренно не удаляет guard.
 
-Источник/процедура: `scripts/k3s-overlay-marks.py`, `ansible/playbooks/k3s-overlay-marks.yml`, [runbook](../docs/k3s-networkpolicy-overlay-marks.md). Whole-fleet preflight → serial atomic apply, private receipts, совместимость nft 1.0.6. NetBird/workloads не перезапускались.
+Источник/процедура: `scripts/k3s-overlay-marks.py`, `ansible/playbooks/k3s-overlay-marks.yml`, [runbook](k3s-networkpolicy-overlay-marks.md). Whole-fleet preflight → serial atomic apply, private receipts, совместимость nft 1.0.6. NetBird/workloads не перезапускались.
 
 16 обычных и 16 forged wrong-namespace gateway-label probes были заблокированы через разные ноды, PodIP/ClusterIP и порты 9000/9001; настоящий gateway читал согласованный fixture, console оставалась закрыта. Fixtures удалены. Это проверенная конкретная граница, не обещание универсальной защиты от любого root/cluster-admin. Повторять аудит после сетевых/node upgrades.
 
@@ -180,7 +180,7 @@ Kuma public Socket.IO и неизвестные admin APIs закрыты; ст�
 
 Syncthing BasicAuth bytes, process/device identity, keys, config и synchronization не менялись/не перезапускались. Реальный owner Basic login — отдельная опциональная приёмка; пароль не заимствовался и не сбрасывался.
 
-Основные источники: `deploy/public-web/services.json`, `publicEntry` в локальных чартах и `deploy/platform/<app>/public-entry` в существующих Argo Applications, `scripts/public-web-access.py`, `ansible/playbooks/public-web-access.yml`, [публичные входы](../docs/public-web-migration.md). Audit/create-only, drift refusal, outpost preservation, private receipts. Authentik policy denial может быть HTML с HTTP 200: оценивать фактический denial, не требовать фиктивный transport 403.
+Основные источники: `deploy/public-web/services.json`, `publicEntry` в локальных чартах и `deploy/platform/<app>/public-entry` в существующих Argo Applications, `scripts/public-web-access.py`, `ansible/playbooks/public-web-access.yml`, [публичные входы](public-web-migration.md). Audit/create-only, drift refusal, outpost preservation, private receipts. Authentik policy denial может быть HTML с HTTP 200: оценивать фактический denial, не требовать фиктивный transport 403.
 
 ### Владение public ingress после миграции 2026-11-07
 
@@ -211,7 +211,7 @@ Application-only restart для закрытия старых sockets выяви
 
 Secret UID сохранён, **данные Secret при recovery изменились**; не повторять промежуточное утверждение об неизменных credential bytes. Random bootstrap Secret отключён, старое Argo tracking ownership точно снято/keep сохранён, bootstrap guard не позволяет спутать app/DB username. Не менять DB deployment username или регенерировать живой Secret для обхода guard.
 
-Аудит: maintenance task `kuma-db-account-recovery` (без apply), `scripts/kuma-db-account-recovery.py`, [MariaDB runbook](../docs/uptime-kuma-mariadb.md). Private candidate/before/grants/uncertain/after receipts сохранены. При uncertain write остановиться; не менять defaults и не повторять recovery вслепую. Отдельная БД не перезапускалась.
+Аудит: maintenance task `kuma-db-account-recovery` (без apply), `scripts/kuma-db-account-recovery.py`, [MariaDB runbook](uptime-kuma-mariadb.md). Private candidate/before/grants/uncertain/after receipts сохранены. При uncertain write остановиться; не менять defaults и не повторять recovery вслепую. Отдельная БД не перезапускалась.
 
 ## 7. Mac: старый owned DNS lifecycle снят полностью
 
@@ -234,7 +234,7 @@ URL Fully — canonical `grafana.socrat.alchemmist.xyz/public-dashboards/<access
 
 Проверены реальный TV screenshot с живыми данными, YouTube foreground с **одной настоящей VALIDATED VPN network** и последующий Fully без VPN. `NOT_VPN` в Wi-Fi capabilities не считать активным VPN. Физический пульт/холодное включение повторно не проверялись.
 
-Процедуры: [TV](android-tv.md), [операционный runbook](../docs/android-tv.md), `tv-public-dashboard.yml` (только URL), `retire-tv-internal-wireguard.yml`, maintenance `retire-tv-alias`, `grafana-tv-dns.yml` (теперь только retirement). Не удалять данные WireGuard app целиком: там сохранён YouTube-профиль. Private historical backups не уничтожать.
+Процедуры: [TV](android-tv.md), [операционный runbook](android-tv.md), `tv-public-dashboard.yml` (только URL), `retire-tv-internal-wireguard.yml`, maintenance `retire-tv-alias`, `grafana-tv-dns.yml` (теперь только retirement). Не удалять данные WireGuard app целиком: там сохранён YouTube-профиль. Private historical backups не уничтожать.
 
 ## 9. Что доказано и что ещё отдельно
 

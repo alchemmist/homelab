@@ -8,7 +8,7 @@ Read-only настройки панели: routing/onadd `Alchemmist VPN`, Globa
 49 DirectSites, DirectIp/ProxySites/ProxyIp пусты; активность на каждом телефоне не
 проверялась. Это не серверный GeoIP split. Исследование — reference, **не pending
 implementation и не разрешение переносить VPN termination на Москву**.
-[Исследование и альтернативы](../docs/vpn-split-routing-research-20261110.md).
+[Исследование и альтернативы](vpn-split-routing-research-20261110.md).
 
 При закрытии сессии fresh read-only на Москве: именно `vpn-transit-655857b776-9mt9v`
 SANDBOX_READY; watchdog kubernetes/healthy, data_path_healthy=true, failures=0,
@@ -18,7 +18,7 @@ UDP443/32085/32086 →10.250.0.2, freedom sendThrough10.250.0.40.
 Это локальный статус/штатная TLS-проверка пути, **не новая полная проверка клиентов,
 etcd/WAL/всего кластера или DR**. Никаких activate/failback/перезапусков не выполняли.
 
-[Как устроен Pod, границы Xray/3x-ui и ownership](../docs/vpn-mesh-runtime-20261110.md#what-the-pod-actually-does).
+[Как устроен Pod, границы Xray/3x-ui и ownership](vpn-mesh-runtime-20261110.md#what-the-pod-actually-does).
 Public wiki: [VPN](../wiki/content/network/vpn.md). Секреты и recovery receipts
 остаются вне Git; подготовительные/migration apply не повторять.
 
@@ -42,7 +42,7 @@ WG**;17 клиентов/91 bindings/подписки84URI/77JSON/ключи с�
 134 tests+14 subtests, новые private archives2/4 off-host SHA verified.
 Это не zero-downtime rollout: исправлены TIME_WAIT guard, management source IP и
 Pod bind-capability; не скрывать ошибки/короткую недоступность, не приписывать
-результаты native-fallback probe первому неудачному Pod. [Подробности и операции](../docs/vpn-mesh-runtime-20261110.md).
+результаты native-fallback probe первому неудачному Pod. [Подробности и операции](vpn-mesh-runtime-20261110.md).
 API loss при работающем relay не вызывает переключения; native sticky до явного
 failback. Mobile/AWG/полный DR/reboot/HA не доказаны. Подписка/публичный вход прежние,
 Mac/Tunnelblick/default routes не менялись. Подготовительные apply не переигрывать.
@@ -81,8 +81,8 @@ watchdog не отключены. Штатный failback исходного mem
 история/старые recovery receipts сохранены.126 tests+14 subtests passed — срез приёмки,
 не непрерывный healthcheck. Mobile/Happ interactive, authenticated AWG, полный DR/
 chaos/reboot и сохранение end-user IP enforcement не доказаны. Не обещать HA/TSPU immunity.
-Подробности и custody: [production runbook](../docs/vpn-production-cutover-20261109.md).
-Исторический staging: [Moscow bootstrap](../docs/moscow-vpn-transit-20261109.md).
+Подробности и custody: [production runbook](vpn-production-cutover-20261109.md).
+Исторический staging: [Moscow bootstrap](moscow-vpn-transit-20261109.md).
 Не переисполнять migration/prepare/apply: fresh preimage/CAS, uncertain→разбор.
 
 ## Исторические этапы — не текущие запреты/задания
@@ -93,7 +93,7 @@ chaos/reboot и сохранение end-user IP enforcement не доказан
 # VPN hardening — configuration-only phase, 8 November 2026
 
 Issue [#83](https://github.com/alchemmist/homelab/issues/83) remains open.
-Current [implementation/evidence/runbook](../docs/vpn-hardening-20261108.md).
+Current [implementation/evidence/runbook](vpn-hardening-20261108.md).
 
 ## Budget and intent
 
@@ -285,7 +285,7 @@ accepted config migration is not evidence of ongoing availability/IP-ban immunit
 
 ## Справочное исследование RF/NL, 10 ноября — отложено владельцем
 
-[Исследование источников, рисков и архитектуры](../docs/vpn-split-routing-research-20261110.md).
+[Исследование источников, рисков и архитектуры](vpn-split-routing-research-20261110.md).
 Native read-only подтвердил: панель уже выдаёт intent Happ routing/onadd с49
 DirectSites (не отдельный GeoIP-классификатор); активность на телефонах не проверена.
 Серверный runtime пока только api/private-block/default NL. Предложение — RF default,

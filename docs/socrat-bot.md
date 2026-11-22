@@ -102,7 +102,7 @@ Historical event-dispatch staging checklists above are superseded by deployed,
 enabled event dispatch; their individual acceptance scenarios are not all claimed
 verified. Telegram SPI-link delivery is a separate feature and remains OFF in the
 last verified runtime. Full implementation and acceptance status:
-`llm-wiki/spi-incident-triage.md`, “Verified status — 2026-11-04”.
+`docs/spi-incident-triage.md`, “Verified status — 2026-11-04”.
 
 Native bot implementation `fe67913` and live schema `0009_spi_desired_revision`
 provide immutable `/spi/<episode>` keys, firing/resolved monotonicity, shared
@@ -248,7 +248,7 @@ Telegram messages were changed during the pending release verification.
 ### Current SPI original-card acceptance — 2026-11-04 10:49 UTC
 
 Links now ENABLED in production; this supersedes the historical disabled/push
-blocker above. Full evidence: `llm-wiki/spi-incident-triage.md`, current acceptance.
+blocker above. Full evidence: `docs/spi-incident-triage.md`, current acceptance.
 Real SPI26 firing root link revision1 and its exact primary resolved comment
 https://github.com/alchemmist/homelab/issues/26#issuecomment-6628732862 revision2
 were acknowledged on BOTH original copies. Same copy IDs, generation1, resolved

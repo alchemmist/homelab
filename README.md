@@ -16,5 +16,5 @@ keeps the applications in sync with Git, so a deployment change starts with
 a diff I can review and test.
 
 Start with the **[Socrat Wiki](https://wiki.socrat.alchemmist.xyz/)** for the
-public documentation (in Russian). If you’re working on the cluster, see
-[what runs where](llm-wiki/context.md) and [how to check a change](docs/quality/README.md).
+public documentation (in Russian). If you’re working on the cluster, start with the [operator documentation](docs/README.md):
+[what runs where](docs/context/context.md) and [how to check a change](docs/quality/README.md).

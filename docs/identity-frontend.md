@@ -7,7 +7,7 @@
 их UUID/client credentials/callbacks/policy bindings сохранены. n8n,3x-ui, Kuma
 и Syncthing используют собственный login; SearXNG и опубликованные SPI artifacts
 публичны без Authentik и NetBird. Reader допускает только GET/HEAD, проверяет
-manifest/hash и выдаёт безопасные типы inline. [Контракт и границы](../docs/identity/native-browser-auth.md).
+manifest/hash и выдаёт безопасные типы inline. [Контракт и границы](identity/native-browser-auth.md).
 
 Повторная приёмка после восстановления socrat-2: **82/82** публичных проверок
 на HOME и VPS, обычная проверка TLS без отключения верификации. Все4 ноды Ready;
@@ -16,7 +16,7 @@ socrat-2 Ready с17:55:34UTC7 ноября. Все8 затронутых Argo ap
 force-delete не потребовался.10 native OIDC регистраций/providers/bindings и
 сохранённые поля иконок не изменились; Proxy Providers0. Опубликованный artifact
 проверен через оба входа: anonymous GET/HEAD/206, manifest/SHA-256, inline,
-PUT/POST/PATCH/DELETE405. [Приёмка](../docs/identity/native-browser-auth.md#recovered-vps-final-acceptance).
+PUT/POST/PATCH/DELETE405. [Приёмка](identity/native-browser-auth.md#recovered-vps-final-acceptance).
 Это протокольная приёмка, не новая проверка входа от имени каждого человека.
 
 

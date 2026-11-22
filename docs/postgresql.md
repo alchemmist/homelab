@@ -1,8 +1,8 @@
 # PostgreSQL Socrat: рабочая карта
 
-[Отчёт: внезапная потеря `socrat-1`, 21 ноября 2026](socrat-1-loss-20261121.md): проверенный failover `pg-critical` с `1` на `5`, возврат бывшего primary через `pg_rewind`. Другие кластеры этим не проверены.
+[Отчёт: внезапная потеря `socrat-1`, 21 ноября 2026](context/socrat-1-loss-20261121.md): проверенный failover `pg-critical` с `1` на `5`, возврат бывшего primary через `pg_rewind`. Другие кластеры этим не проверены.
 
-Срез после переключений 20 ноября 2026. Описание для пользователей — [страница wiki](https://wiki.socrat.alchemmist.xyz/platform/postgresql/), эксплуатация и ротация CA — [runbook](../docs/postgres-platform.md). Владелец конфигурации — `charts/postgres-platform`, Argo Application `postgres-platform`, namespace `postgres`.
+Срез после переключений 20 ноября 2026. Описание для пользователей — [страница wiki](https://wiki.socrat.alchemmist.xyz/platform/postgresql/), эксплуатация и ротация CA — [runbook](postgres-platform.md). Владелец конфигурации — `charts/postgres-platform`, Argo Application `postgres-platform`, namespace `postgres`.
 
 | Адрес записи внутри кластера | БД → сервис | Контракт |
 |---|---|---|
@@ -20,4 +20,4 @@
 ## Закрытие миграции: не путать приёмку с хранением
 
 - Личный вход в LMS с новой сессией, MFA и открытием защищённой страницы: **не засвидетельствован**. Исправные OIDC discovery и редирект — только техническая проверка. Не отмечать успех по чужому входу, старой сессии или административному доступу.
-- Старые источники: 9 PVC сверены по UID/PV, все `Bound`, активных подов-потребителей не обнаружено; прямой mount старого hostPath Umami не найден. Операционное решение — **удерживать**, а не удалять сейчас. [Задача на ревизию после 2026-12-05 UTC](https://github.com/alchemmist/homelab/issues/216) содержит условия отдельного решения; это не таймер удаления. [Инвентарь](../docs/postgres-retained-pvcs.tsv).
+- Старые источники: 9 PVC сверены по UID/PV, все `Bound`, активных подов-потребителей не обнаружено; прямой mount старого hostPath Umami не найден. Операционное решение — **удерживать**, а не удалять сейчас. [Задача на ревизию после 2026-12-05 UTC](https://github.com/alchemmist/homelab/issues/216) содержит условия отдельного решения; это не таймер удаления. [Инвентарь](postgres-retained-pvcs.tsv).

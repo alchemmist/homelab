@@ -3,10 +3,10 @@
 ## Current placement checkpoint —16 November 2026
 
 SPI worker/storage и queue UI приняты на `socrat-5`; GitHub broker отдельно
-на `socrat-1`. [Stateful handoff](../docs/vm105-stateful-20261116.md) фиксирует
+на `socrat-1`. [Stateful handoff](vm105-stateful-20261116.md) фиксирует
 очередь/leases/history, ограничения rollback и сохранённый failed execution.
 Источник worker: `deploy/spi-triage/values.yaml`; текущая архитектурная навигация:
-[context](context.md). Ниже сохранён датированный этап source extraction, а не
+[context](context/context.md). Ниже сохранён датированный этап source extraction, а не
 утверждение, что production runtime всё ещё ожидает переноса. Не запускать старые
 activation-команды по историческому разделу без новой проверки.
 
@@ -755,7 +755,7 @@ calendar/blog, Telegram test, model invocation or other comment change occurred.
 
 ## SPI token admission — 6 November 2026
 
-See [bounded accounting, checkpoint migration and rollout gates](../docs/n8n/spi/token-admission.md).
+See [bounded accounting, checkpoint migration and rollout gates](n8n/spi/token-admission.md).
 The implementation replaces instance-local RPM sleeps with shared durable
 3 RPM / 30000 TPM / parallel1 reservations, adaptive <=12 batches, labeled
 matching excerpts and restart-safe reviews/final comparisons. The corrected
