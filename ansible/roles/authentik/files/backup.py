@@ -1,6 +1,11 @@
 """Back up the Authentik database and related secrets via kubectl."""
 
-import json, os, subprocess, sys, tarfile, tempfile
+import json
+import os
+import subprocess
+import sys
+import tarfile
+import tempfile
 from pathlib import Path
 
 os.environ["K3S_CONFIG_FILE"] = "/dev/null"

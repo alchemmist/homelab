@@ -6,13 +6,13 @@ import fcntl
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import socket
 import urllib.parse
 import urllib.request
 import uuid
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("root", type=Path)
