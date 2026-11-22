@@ -1,6 +1,6 @@
-# Rancher chart2.15.2, unchanged server version
+# Rancher chart 2.15.3
 
-Upstream: https://releases.rancher.com/server-charts/stable/rancher-2.15.2.tgz
+Upstream: https://releases.rancher.com/server-charts/stable/rancher-2.15.3.tgz
 UPSTREAM-SHA256.json records every original packaged file. All packaged scripts,
 templates and README retained. No standalone license file shipped in that chart;
 upstream licensing is not changed here. Only optional Pod hostAliases added to

@@ -249,13 +249,15 @@ postDelete:
     # Optional: Image-specific registry override
     # registry: ""
     repository: "rancher/shell"
-    tag: "v0.8.2"
+    tag: "v0.8.3"
     # Optional: Image-specific pullPolicy Override
     # options: Always, Never, IfNotPresent
     # pullPolicy: "Always"
   namespaceList:
+    - cattle-fleet-local-system
     - cattle-fleet-system
     - cattle-system
+    - cattle-turtles-system
     - rancher-operator-system
   # Number of seconds to wait for an app to be uninstalled
   timeout: 120
@@ -269,7 +271,7 @@ preUpgrade:
     # Optional: Image-specific registry override
     # registry: ""
     repository: "rancher/shell"
-    tag: "v0.8.2"
+    tag: "v0.8.3"
     # Optional: Image-specific pull policy override
     # pullPolicy: "Always"
 

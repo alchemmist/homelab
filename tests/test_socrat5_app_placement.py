@@ -45,7 +45,7 @@ class VMApplicationPlacementTests(unittest.TestCase):
         assert "nodeSelector" not in values
         assert role["rancher_placement_nodes"] == ["socrat-5"]
         assert role["rancher_replicas"] == 1
-        assert role["rancher_chart_version"] == "2.15.2"
+        assert role["rancher_chart_version"] == "2.15.3"
         assert not values["ingress"]["enabled"]
 
         assert values["extraEnv"] == [
