@@ -430,13 +430,34 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
 
     graph = yaml.safe_load((ROOT / "qg.yaml").read_text())["nodes"]
     assert len({n["title"] for n in graph.values()}) == len(graph)
-    assert set(graph) == {"graph", "javascript", "secrets", "ownership", "docker", "workflow"}
-    for node in ("javascript", "secrets", "ownership", "docker", "workflow"):
+    assert set(graph) == {
+        "graph",
+        "yaml",
+        "javascript",
+        "secrets",
+        "ownership",
+        "docker",
+        "workflow",
+    }
+    for node in ("yaml", "javascript", "secrets", "ownership", "docker", "workflow"):
         assert graph[node]["needs"] == ["graph"]
+    assert graph["yaml"]["profile"] == "default"
+    assert graph["yaml"]["run"] == "uv run python scripts/quality/lint.py yaml"
+    assert graph["yaml"]["results"] == {"native": "reports/yaml.json"}
+    assert graph["yaml"]["policy"] == {
+        "blocking": True,
+        "approvals": {"findings": False, "files": False, "node": False},
+    }
     local = json.loads((ROOT / "quality/local-checks.json").read_text())
     assert set(local) == {
-        "python", "yaml", "shell", "tests-fast",
-        "manifests", "ansible", "tests-medium", "tests-cluster", "dependencies",
+        "python",
+        "shell",
+        "tests-fast",
+        "manifests",
+        "ansible",
+        "tests-medium",
+        "tests-cluster",
+        "dependencies",
     }
 
 

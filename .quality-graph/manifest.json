@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "6b495f02682a7907561662b6bef398daa19249deedb5709539958b52fc00c6aa",
+  "graphDigest": "2942df0459106859cd3b7d628fd03f31fbe68f97b99d0b22fe89c4f8f0117a0a",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -37,6 +37,34 @@
       },
       "timeoutMinutes": 5,
       "title": "Graph integrity"
+    },
+    {
+      "env": {},
+      "id": "yaml",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "native",
+        "path": "reports/yaml.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py yaml"
+      },
+      "timeoutMinutes": 5,
+      "title": "YAML structure"
     },
     {
       "env": {},

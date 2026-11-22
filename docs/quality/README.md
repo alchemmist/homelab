@@ -8,10 +8,12 @@ The operator changed the integration scope: PR182 sets up CI and integrates revi
 
 ## Active CI scope
 
-CI runs `graph`, followed by `secrets`, `javascript`, `ownership`, `docker` and `workflow`.
+CI runs `graph`, followed by `yaml`, `secrets`, `javascript`, `ownership`, `docker` and `workflow`.
+`yaml` runs the full existing YAML check and collects `reports/yaml.json`. Its findings block CI,
+including quote-style, line-length and document-end findings in the pinned compiler's own output.
 Ownership runs six offline checks plus their regression suites; the Ansible
 entrypoint scan covers both `.yml` and `.yaml`.
-The other nine checks remain runnable by name; `make check` and its alias
+The other eight checks remain runnable by name; `make check` and its alias
 `make check-all` still attempt all fifteen. Restore a
 check to `qg.yaml` and remove its local-only entry once it is verified green.
 
