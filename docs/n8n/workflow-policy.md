@@ -3,7 +3,7 @@
 ## Developer/agent loop
 
 Store new workflow JSON templates under the recursive roots declared in
-`n8n-workflow-policy.json` (homelab: `docs/n8n`; SPI: `integrations/n8n`). A file
+`ci/quality/n8n-workflow-policy.json` (homelab: `docs/n8n`; SPI: `integrations/n8n`). A file
 list does not need updating for each new template. JSON object and array exports
 are supported; non-workflow JSON is not mistaken for a template.
 
