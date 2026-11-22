@@ -2,9 +2,10 @@
 
 import json
 import re
+from typing import NotRequired
 
 from delta import remote_objects, source_pod
-from start import kube
+from start import Resource, kube
 
 SOURCE = """
 import json
@@ -22,7 +23,13 @@ print(json.dumps(out))
 """
 
 
-def batch(jobs):
+class SeedJob(Resource):
+    """A listed Job may not have reported status yet."""
+
+    status: NotRequired[dict[str, object]]
+
+
+def batch(jobs: list[SeedJob]) -> list[tuple[str, int]]:
     objects = remote_objects()
     verified = set()
     for job in jobs:
@@ -32,7 +39,7 @@ def batch(jobs):
         if "all files verified" in log:
             verified.update(
                 re.findall(
-                    r"^verified block ([0-9A-Z]{26}) cumulative bytes", log, re.M
+                    r"^verified block ([0-9A-Z]{26}) cumulative bytes", log, re.MULTILINE
                 )
             )
     marks = json.loads(kube("exec", source_pod(), "--", "python3", "-c", SOURCE))
