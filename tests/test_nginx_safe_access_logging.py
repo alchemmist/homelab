@@ -111,7 +111,7 @@ class SafeNginxLoggingTests(unittest.TestCase):
                         "--pull=never",
                         "--entrypoint",
                         "sh",
-                        (ROOT / "quality/nginx-syntax-image.txt").read_text().strip(),
+                        (ROOT / "ci/quality/nginx-syntax-image.txt").read_text().strip(),
                         "-c",
                         "cat > /tmp/test.conf; TZ=UTC nginx -t -c /tmp/test.conf",
                     ],

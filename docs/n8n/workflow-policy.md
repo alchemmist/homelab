@@ -3,7 +3,7 @@
 ## Developer/agent loop
 
 Store new workflow JSON templates under the recursive roots declared in
-`n8n-workflow-policy.json` (homelab: `docs/n8n`; SPI: `integrations/n8n`). A file
+`ci/quality/n8n-workflow-policy.json` (homelab: `docs/n8n`; SPI: `integrations/n8n`). A file
 list does not need updating for each new template. JSON object and array exports
 are supported; non-workflow JSON is not mistaken for a template.
 
@@ -13,7 +13,7 @@ uv run python ci/check_failure_alerts.py
 # If the check reports a missing binding:
 uv run python ci/check_failure_alerts.py --fix
 uv run python ci/check_failure_alerts.py
-uv run qg validate
+make graph-validate
 ```
 
 The checker is standard-library-only, so `python3 ci/check_failure_alerts.py`
@@ -53,8 +53,8 @@ and the `--fix` command. The developer/agent explicitly invokes the fixer.
 
 ```sh
 # After changing qg.yaml:
-uv run qg generate
-uv run qg validate
+make graph-generate
+make graph-validate
 # Commit declaration AND outputs, never edit generated YAML directly:
 git add qg.yaml .github/workflows .quality-graph .prettierignore
 ```

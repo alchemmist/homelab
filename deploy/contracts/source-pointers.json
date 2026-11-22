@@ -4,14 +4,14 @@
   "applicationDirectory": "deploy/argocd/apps",
   "documents": [
     "README.md",
-    "llm-wiki/context.md",
-    "llm-wiki/README.md",
+    "docs/context/context.md",
+    "docs/README.md",
     "docs/infrastructure-contracts.md",
     "docs/wiki.md",
     "wiki/README.md",
     "docs/litellm.md",
     "docs/monitoring-llm.md",
-    "llm-wiki/cluster-deploy.md",
+    "docs/cluster-deploy.md",
     "docs/open-webui-upgrades.md",
     "docs/open-webui-tool-guard.md",
     "docs/open-terminal-browser-cleanup.md"
@@ -37,7 +37,7 @@
         "existingClaim"
       ],
       "documents": [
-        "llm-wiki/context.md"
+        "docs/context/context.md"
       ],
       "application": "grafana"
     },
@@ -50,7 +50,7 @@
         "policy.default"
       ],
       "documents": [
-        "llm-wiki/cluster-deploy.md"
+        "docs/cluster-deploy.md"
       ]
     },
     {

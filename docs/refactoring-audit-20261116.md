@@ -15,7 +15,7 @@
 `socrat-5`. Но `ansible/playbooks/argocd.yml:12` читает другой файл:
 `deploy/argocd/values.yaml`, и выполняет `helm upgrade --install` в том же release.
 В старых values только глобальный selector `socrat-0`, без override контроллера.
-`llm-wiki/cluster-deploy.md:114` также направляет оператора на этот старый путь.
+`docs/cluster-deploy.md:114` также направляет оператора на этот старый путь.
 
 **Риск:** повтор bootstrap может вернуть controller на `socrat-0` и применить
 другой набор настроек. Это риск кода, не утверждение о случившемся запуске.
@@ -66,16 +66,16 @@ BACK/TARGET, `scripts/wg-peer15-endpoint.py:17` отдельно хранит en
 
 **Подтверждённые противоречия:**
 
-- `llm-wiki/context.md` — 1255 строк; раздел о stateless-переносе описывает Monori
+- `docs/context/context.md` — 1255 строк; раздел о stateless-переносе описывает Monori
   backend на `socrat-0`, SPI worker на `socrat-1`, хотя более новый раздел того же
   файла фиксирует их работу на `socrat-5`.
-- `llm-wiki/README.md:42` по-прежнему называет SPI runtime migration pending.
+- `docs/README.md:42` по-прежнему называет SPI runtime migration pending.
 - `ansible/inventory/host_vars/socrat-5.yml:3` утверждает, что приложения остаются
   на `socrat-1`; это устаревший комментарий, не значение настройки.
 - `wiki/README.md:15` и `docs/wiki.md:15` называют действующим claim
   `wiki-runtime-data`, тогда как `deploy/wiki-runtime/values.yaml` указывает
   `wiki-runtime-socrat5`.
-- `llm-wiki/cluster-deploy.md:114` не отражает разделённое размещение Argo CD и
+- `docs/cluster-deploy.md:114` не отражает разделённое размещение Argo CD и
   ссылается на старые bootstrap-values.
 
 **Направление:** короткая актуальная карта компонентов/owners/storage/ограничений,
@@ -143,7 +143,7 @@ baseline выбранного suite; не прятать прежние ошиб
 2. Устранить вторую управляющую конфигурацию Argo CD с render-equivalence тестом.
 3. Подключить небольшой offline CI-контракт, включая запрет нового дрейфа.
 4. Ввести проверяемый каталог endpoint, начать с issuer transport; затем topology.
-5. Сократить llm-wiki/context, разнести историю; согласовать Wiki публикацию отдельно.
+5. Сократить docs/context, разнести историю; согласовать Wiki публикацию отдельно.
 6. Разобрать lifecycle утилит и vendored-исключений, не массово удалять recovery.
 
 Не предлагается массовая замена IP, PVC rename, рестарт сети, перенос новых

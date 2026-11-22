@@ -18,6 +18,7 @@ weight: 20
 
 | Сервис | Вход | Что запросить дополнительно |
 | --- | --- | --- |
+| [Redis Insight]({{< relref "platform/redis.md" >}}) | Шлюз Authentik с MFA | Группа `redisinsight-readers` для общей панели чтения; не доступ из `redis-cli` |
 | Grafana | Native Authentik OIDC | Viewer для чтения; Editor только при необходимости; native admin отдельно |
 | Wiki | Публичное чтение; Authentik OIDC для аккаунта | Роль editor для записи, administrator только для управления wiki |
 | Harbor | Native Authentik OIDC | Membership/роль конкретного проекта; CI и pull используют scoped robots |

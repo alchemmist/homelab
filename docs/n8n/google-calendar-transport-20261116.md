@@ -2,7 +2,8 @@
 
 ## Intent and diagnosis
 
-Read llm-wiki/context/network-access/vpn-hardening/n8n-workflows and public
+Read the [current context](../context/context.md), [network access](../network-access.md),
+[VPN hardening](../vpn-hardening.md), [n8n workflows](../n8n-workflows.md) and public
 wiki/content/network/vpn before selecting a change. NetBird is human access,
 wg-socrat is node transport, Moscow→NL is USER VPN transit, not a blanket app
 exit node. Preserve Mac/Tunnelblick, routes, mesh identities/AllowedIPs, overlays,

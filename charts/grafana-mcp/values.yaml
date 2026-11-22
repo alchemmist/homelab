@@ -2,8 +2,8 @@
 replicaCount: 1
 image:
   repository: grafana/mcp-grafana
-  tag: 2.0.2
-  digest: sha256:78d208116ec52b09b44f0eca66892073b39aefcb64483c54d43255c8eab7e97a
+  tag: 2.3.0-alpine
+  digest: sha256:2483fbc37154988cedda2893abc7d005b9b428147047c8a8e60b8d92d1d0227b
   pullPolicy: IfNotPresent
 service:
   port: 8000

@@ -48,7 +48,7 @@ def check_docker(names: list[str]) -> tuple[list[Finding], int]:
                 [
                     "hadolint",
                     "--config",
-                    "quality/hadolint.yaml",
+                    "ci/quality/hadolint.yaml",
                     "--format",
                     "json",
                     path,

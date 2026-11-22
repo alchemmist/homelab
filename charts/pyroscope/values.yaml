@@ -1,6 +1,6 @@
 ---
 image:
-  docker.io/grafana/pyroscope:2.4.3@sha256:1e7a81ffaa0d959b5746b89db33a1f0da294bccf7559d1b367c926aa67de8cfa
+  docker.io/grafana/pyroscope:2.4.4@sha256:288da0b9b73193b5aee0843b6f1f5d033ee697d4afa280efb95de338d1409870
 storage:
   size: 5Gi
   storageClass: local-path

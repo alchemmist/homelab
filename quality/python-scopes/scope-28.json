@@ -1,4 +1,0 @@
-{
-  "include": ["experiments/venice-autonomy/*.py"],
-  "rules": ["EM101", "EM102"]
-}

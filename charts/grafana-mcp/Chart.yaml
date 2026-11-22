@@ -1,8 +1,8 @@
 ---
 apiVersion: v2
 name: grafana-mcp
-version: 0.1.0
-appVersion: 2.0.2
+version: 0.1.1
+appVersion: 2.3.0
 type: application
 description: Private read-only Grafana Model Context Protocol server
 ...

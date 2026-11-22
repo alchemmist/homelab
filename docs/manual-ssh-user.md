@@ -1,6 +1,6 @@
 # Manual personal SSH account reconciliation
 
-Human runbook: [SSH user](../llm-wiki/ssh-user.md).
+Human runbook: [SSH user](ssh-user.md).
 
 ## Interface and ownership
 

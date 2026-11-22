@@ -1,6 +1,6 @@
 # Homelab agent entrypoint
 
-Read `llm-wiki/context.md` first; use `llm-wiki/README.md` for topic runbooks.
+Read `docs/context/context.md` first; use `docs/README.md` for topic runbooks.
 
 ## MCP
 

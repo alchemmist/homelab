@@ -106,7 +106,10 @@ def software_update_extension(document) -> None:
     assert document == {
         "apiVersion": "v1",
         "kind": "ConfigMap",
-        "metadata": {"name": "software-update-otel", "namespace": "cattle-monitoring-system"},
+        "metadata": {
+            "name": "software-update-otel",
+            "namespace": "cattle-monitoring-system",
+        },
         "data": {"collector.yaml": document["data"]["collector.yaml"]},
     }
     assert yaml.safe_load(document["data"]["collector.yaml"]) == {
@@ -146,14 +149,16 @@ def software_update_extension(document) -> None:
                                     },
                                 }
                             ],
-                        }
+                        },
                     ]
                 }
             }
         },
         "service": {
             "pipelines": {
-                "metrics": {"receivers": ["prometheus", "otlp", "prometheus/software_updates"]}
+                "metrics": {
+                    "receivers": ["prometheus", "otlp", "prometheus/software_updates"]
+                }
             }
         },
     }, "Software update receiver scope changed"
@@ -182,26 +187,44 @@ def migration_payload(document) -> dict[str, object]:
     if kind in {"Deployment", "DaemonSet"} and name in pinned:
         document = copy.deepcopy(document)
         tag, digest = pinned[name]
-        container, = document["spec"]["template"]["spec"]["containers"]
+        (container,) = document["spec"]["template"]["spec"]["containers"]
         assert container["image"] == tag + "@" + digest
         container["image"] = tag
+    if (kind, name) == ("PrometheusRule", "kube-prometheus-stack-node-exporter"):
+        result = copy.deepcopy(document)
+        (group,) = result["spec"]["groups"]
+        assert not any(
+            rule.get("alert") == "NodeSystemSaturation" for rule in group["rules"]
+        )
+        # Restore the one replaced upstream rule for comparison with the frozen handoff.
+        group["rules"].insert(
+            17,
+            json.loads(
+                (ROOT / "tests/fixtures/upstream-node-saturation.json").read_text()
+            ),
+        )
+        return result
     if (kind, name) == ("PrometheusRule", "kube-prometheus-stack-kubernetes-apps"):
         # Undo just the retired upstream rule for comparison to the frozen handoff.
         result = copy.deepcopy(document)
-        group, = result["spec"]["groups"]
+        (group,) = result["spec"]["groups"]
         assert group["name"] == "kubernetes-apps"
         assert not any(rule.get("alert") == "KubeJobFailed" for rule in group["rules"])
-        group["rules"].insert(13, {
-            "alert": "KubeJobFailed",
-            "expr": 'kube_job_failed{job="kube-state-metrics", namespace=~".*"}  > 0',
-            "for": "15m", "labels": {"severity": "warning"},
-            "annotations": {
-                "description": "Job {{ $labels.namespace }}/{{ $labels.job_name }} failed to complete. "
-                "Removing failed job after investigation should clear this alert on cluster {{ $labels.cluster }}.",
-                "runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubejobfailed",
-                "summary": "Job failed to complete.",
+        group["rules"].insert(
+            13,
+            {
+                "alert": "KubeJobFailed",
+                "expr": 'kube_job_failed{job="kube-state-metrics", namespace=~".*"}  > 0',
+                "for": "15m",
+                "labels": {"severity": "warning"},
+                "annotations": {
+                    "description": "Job {{ $labels.namespace }}/{{ $labels.job_name }} failed to complete. "
+                    "Removing failed job after investigation should clear this alert on cluster {{ $labels.cluster }}.",
+                    "runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubejobfailed",
+                    "summary": "Job failed to complete.",
+                },
             },
-        })
+        )
         return result
     if kind not in {"Prometheus", "Alertmanager", "Deployment"} and (kind, name) != (
         "ServiceMonitor",
@@ -227,12 +250,17 @@ def migration_payload(document) -> dict[str, object]:
         return result
     # Reverse only the verified warm-S3 shipper delta (2948f0e2).
     shipper = spec["thanos"]
-    assert shipper["objectStorageConfig"] == {"name": "thanos-warm-shipper", "key": "objstore.yml"}
+    assert shipper["objectStorageConfig"] == {
+        "name": "thanos-warm-shipper",
+        "key": "objstore.yml",
+    }
     shipper["objectStorageConfig"]["name"] = "thanos-objstore-raw"
     assert shipper["volumeMounts"] == [
         {"mountPath": "/trust", "name": "thanos-warm-ca", "readOnly": True}
     ]
-    shipper["volumeMounts"] = [{"mountPath": "/var/lib/socrat-thanos", "name": "thanos-data"}]
+    shipper["volumeMounts"] = [
+        {"mountPath": "/var/lib/socrat-thanos", "name": "thanos-data"}
+    ]
     assert spec["volumes"][0] == {
         "name": "thanos-warm-ca",
         "secret": {
@@ -247,7 +275,9 @@ def migration_payload(document) -> dict[str, object]:
     source = yaml.safe_load((ROOT / "charts/prometheus/values.yaml").read_text())[
         "kube-prometheus-stack"
     ]["prometheus"]["prometheusSpec"]
-    assert spec["containers"] == source["containers"], "OTel overrides differ from owning inputs"
+    assert spec["containers"] == source["containers"], (
+        "OTel overrides differ from owning inputs"
+    )
     collector, probes = spec["containers"]
     assert collector["name"] == "otel-cluster"
     assert collector["args"] == [
@@ -277,8 +307,16 @@ def migration_payload(document) -> dict[str, object]:
     assert collector["volumeMounts"] == [
         {"mountPath": "/etc/otel/config", "name": "otel-config", "readOnly": True},
         {"mountPath": "/etc/otel/tls", "name": "otel-tls", "readOnly": True},
-        {"mountPath": "/etc/otel/source-auth", "name": "otel-source-auth", "readOnly": True},
-        {"mountPath": "/etc/prometheus/certs", "name": "otel-source-tls", "readOnly": True},
+        {
+            "mountPath": "/etc/otel/source-auth",
+            "name": "otel-source-auth",
+            "readOnly": True,
+        },
+        {
+            "mountPath": "/etc/prometheus/certs",
+            "name": "otel-source-tls",
+            "readOnly": True,
+        },
         {
             "mountPath": "/var/lib/otel-data",
             "name": "prometheus-kube-prometheus-stack-prometheus-db",
@@ -294,7 +332,14 @@ def migration_payload(document) -> dict[str, object]:
         "name": "prometheus",
         **{
             name: {
-                "exec": {"command": ["/bin/promtool", "check", kind, "--url=http://127.0.0.1:9090"]}
+                "exec": {
+                    "command": [
+                        "/bin/promtool",
+                        "check",
+                        kind,
+                        "--url=http://127.0.0.1:9090",
+                    ]
+                }
             }
             for name, kind in [
                 ("livenessProbe", "healthy"),
@@ -310,7 +355,10 @@ def migration_payload(document) -> dict[str, object]:
         }
     }
     spec.pop("containers")
-    extension = {"name": "software-update-otel", "configMap": {"name": "software-update-otel"}}
+    extension = {
+        "name": "software-update-otel",
+        "configMap": {"name": "software-update-otel"},
+    }
     assert spec["volumes"].count(extension) == 1
     spec["volumes"].remove(extension)
     return cast("dict[str, object]", result)
@@ -318,7 +366,9 @@ def migration_payload(document) -> dict[str, object]:
 
 def test_disjoint_complete_payload_identical_handoff() -> None:
     """Test behavior for test_disjoint_complete_payload_identical_handoff."""
-    fixture = json.loads((ROOT / "tests/fixtures/prometheus-service-handoff.json").read_text())
+    fixture = json.loads(
+        (ROOT / "tests/fixtures/prometheus-service-handoff.json").read_text()
+    )
     actual = {}
     all_owners = {}
     for name in COMPONENTS:
@@ -326,27 +376,49 @@ def test_disjoint_complete_payload_identical_handoff() -> None:
             k = key(d)
             assert k not in all_owners, "Duplicate owner: " + k
             all_owners[k] = name
+            if (
+                k
+                == "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-node-saturation"
+            ):
+                assert name == "node-exporter"
+                (group,) = d["spec"]["groups"]
+                (rule,) = group["rules"]
+                assert rule["alert"] == "NodeSystemSaturation" and rule["for"] == "15m"
+                special, normal = rule["expr"].split("\nor\n")
+                assert 'node="socrat-4"' in special and special.endswith("> 6)")
+                assert 'node!="socrat-4"' in normal and normal.endswith("> 2)")
+                continue
             if k == "ConfigMap/cattle-monitoring-system/software-update-otel":
                 assert name == "prometheus"
                 software_update_extension(d)
                 continue
-            if k == "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-homelab-job-failures":
+            if (
+                k
+                == "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-homelab-job-failures"
+            ):
                 assert name == "prometheus"
-                group, = d["spec"]["groups"]
+                (group,) = d["spec"]["groups"]
                 assert [r["alert"] for r in group["rules"]] == [
-                    "KubeJobFailed", "SocratPrAgentWebhookRedeliveryFailed",
+                    "KubeJobFailed",
+                    "SocratPrAgentWebhookRedeliveryFailed",
                 ]
                 # Pin the reviewed additive rule without refreshing the historical fixture.
                 payload = json.dumps(d, sort_keys=True, separators=(",", ":")).encode()
-                assert hashlib.sha256(payload).hexdigest() == "16942316eebb144ae6d63b1afe04d1ade1981e7d7a2cf45f449a1f4172ed633b"
+                assert (
+                    hashlib.sha256(payload).hexdigest()
+                    == "71e5746199c421a83062d81345ec0c79982c53afb68f68b56e1b22d94db1e1c5"
+                )
                 continue
             actual[k] = {
                 "owner": name,
                 "sha256": hashlib.sha256(
-                    json.dumps(migration_payload(d), sort_keys=True, separators=(",", ":")).encode()
+                    json.dumps(
+                        migration_payload(d), sort_keys=True, separators=(",", ":")
+                    ).encode()
                 ).hexdigest(),
             }
     assert set(all_owners) == set(fixture) | {
+        "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-node-saturation",
         "ConfigMap/cattle-monitoring-system/software-update-otel",
         "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-homelab-job-failures",
     }
@@ -357,11 +429,15 @@ def test_disjoint_complete_payload_identical_handoff() -> None:
 def test_kube_state_metrics_does_not_collect_or_watch_secrets() -> None:
     """Secret objects are outside KSM's metrics contract and RBAC authority."""
     documents = render("kube-state-metrics")
-    role, = [d for d in documents if d["kind"] == "ClusterRole"]
+    (role,) = [d for d in documents if d["kind"] == "ClusterRole"]
     assert all("secrets" not in rule.get("resources", []) for rule in role["rules"])
-    deployment, = [d for d in documents if d["kind"] == "Deployment"]
-    container, = deployment["spec"]["template"]["spec"]["containers"]
-    resources, = [arg.removeprefix("--resources=") for arg in container["args"] if arg.startswith("--resources=")]
+    (deployment,) = [d for d in documents if d["kind"] == "Deployment"]
+    (container,) = deployment["spec"]["template"]["spec"]["containers"]
+    (resources,) = [
+        arg.removeprefix("--resources=")
+        for arg in container["args"]
+        if arg.startswith("--resources=")
+    ]
     assert "secrets" not in resources.split(",")
 
 
@@ -381,7 +457,10 @@ def test_each_application_has_only_its_own_runtime() -> None:
         assert len(deps) == int(name in ("prometheus-operator", "kube-state-metrics"))
         assert ("CustomResourceDefinition" in kinds) == (name == "prometheus-operator")
         if name != "prometheus-operator":
-            assert not kinds & {"MutatingWebhookConfiguration", "ValidatingWebhookConfiguration"}
+            assert not kinds & {
+                "MutatingWebhookConfiguration",
+                "ValidatingWebhookConfiguration",
+            }
 
 
 def test_offline_source_is_immutable_shared_code_not_shared_ownership() -> None:
@@ -414,7 +493,10 @@ def test_offline_source_is_immutable_shared_code_not_shared_ownership() -> None:
                 else []
             ),
         }
-        assert app["spec"]["syncPolicy"]["automated"] == {"prune": False, "selfHeal": True}
+        assert app["spec"]["syncPolicy"]["automated"] == {
+            "prune": False,
+            "selfHeal": True,
+        }
 
 
 def test_aggregate_application_and_values_are_gone() -> None:
@@ -424,7 +506,8 @@ def test_aggregate_application_and_values_are_gone() -> None:
 
 
 @pytest.mark.parametrize(
-    "violation", ["scrape-target", "second-owner", "otel-image", "otel-mount", "probe", "service"]
+    "violation",
+    ["scrape-target", "second-owner", "otel-image", "otel-mount", "probe", "service"],
 )
 def test_current_extension_projection_rejects_mutations(violation: str) -> None:
     """The historical comparison stays strict after validating each new input."""
@@ -455,7 +538,8 @@ def test_current_extension_projection_rejects_mutations(violation: str) -> None:
     else:
         next(d for d in docs if d["kind"] == "Service")["spec"]["type"] = "NodePort"
     with patch(
-        "tests.test_prometheus_component_ownership.render", side_effect=lambda name: graphs[name]
+        "tests.test_prometheus_component_ownership.render",
+        side_effect=lambda name: graphs[name],
     ):
         with pytest.raises(AssertionError):
             test_disjoint_complete_payload_identical_handoff()

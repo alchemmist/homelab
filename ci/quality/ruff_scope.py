@@ -12,7 +12,7 @@ def run(rules: str, roots: list[str]) -> int:
         "ruff",
         "check",
         "--config",
-        "quality/ruff.toml",
+        "ci/quality/ruff.toml",
         "--select",
         rules,
         "--ignore-noqa",

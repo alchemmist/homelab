@@ -2,7 +2,7 @@
 
 Owner rejected the prior ad-hoc SSH-to-NL implementation. Explicitly authorized
 replacement by a service identity in existing3x-ui, its subscription and a Pod
-VPN client. No AI delegation. Current standard: [runbook](../../llm-wiki/service-vpn-egress.md).
+VPN client. No AI delegation. Current standard: [runbook](../service-vpn-egress.md).
 
 ## Implemented
 
