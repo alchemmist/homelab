@@ -93,13 +93,23 @@ def materialize(name: str, directory: Path, offline: bool) -> None:
                 timeout=60,
                 stdout=subprocess.DEVNULL,
             )
-            with (Path(cached) / f"{stem}.tgz").open("rb") as archive:
+            # npm flattens scoped names when naming tarballs. Select the sole
+            # regular .tgz in our newly-created private directory, not stdout.
+            archives = list(Path(cached).iterdir())
+            if (
+                len(archives) != 1
+                or archives[0].suffix != ".tgz"
+                or archives[0].is_symlink()
+                or not archives[0].is_file()
+            ):
+                raise ValueError(f"Expected one regular npm pack tarball for {name}@{version}")
+            with archives[0].open("rb") as archive:
                 raw = archive.read(4 * 1024 * 1024 + 1)
     else:
         with urllib.request.urlopen(url, timeout=30) as response:
             raw = response.read(4 * 1024 * 1024 + 1)
     if hashlib.sha512(raw).digest() != base64.b64decode(digest):
-        raise ValueError(f"Unexpected upstream bytes for {name}")
+        raise ValueError(f"Unexpected upstream SHA-512 for {name}@{version}")
     with tempfile.TemporaryDirectory(dir=directory) as staging:
         tmp = Path(staging) / "patched.tar"
         with (
