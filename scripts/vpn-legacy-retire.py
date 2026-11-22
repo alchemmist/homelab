@@ -40,7 +40,7 @@ TIMER = "homelab-vpn-watchdog.timer"
 
 def run(args: list[str]) -> str:
     """Run one dependency operation, failing loudly on any nonzero exit."""
-    r = subprocess.run(args, capture_output=True, text=True, timeout=30)
+    r = subprocess.run(args, check=False, capture_output=True, text=True, timeout=30)
     if r.returncode:
         raise RuntimeError("Retirement dependency operation failed; inspect private receipt")
     return r.stdout
@@ -222,6 +222,7 @@ def wait_watchdog_drained() -> None:
     for attempt in range(100):
         active = subprocess.run(
             ["systemctl", "is-active", "homelab-vpn-watchdog.service"],
+            check=False,
             capture_output=True,
             text=True,
             timeout=5,
@@ -295,7 +296,11 @@ def wait_port_converged() -> None:
         if guard.read_table() is None:
             raise ValueError("Backend guard missing")
         result = subprocess.run(
-            ["ss", "-Hltn", "sport = :32063"], capture_output=True, text=True, timeout=5
+            ["ss", "-Hltn", "sport = :32063"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if result.returncode == 0 and not result.stdout.strip():
             try:

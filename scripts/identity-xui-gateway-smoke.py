@@ -56,7 +56,7 @@ SSH = [
     "socrat-0",
 ]
 credential = json.loads(
-    subprocess.check_output(SSH + ["cat ~/.cache/homelab-authentik/credentials.json"])
+    subprocess.check_output([*SSH, "cat ~/.cache/homelab-authentik/credentials.json"])
 )
 
 
@@ -171,7 +171,7 @@ try:
         page.locator("input[type=password]").filter(visible=True).fill(password)
         page.locator("button[type=submit]").click()
         denied = False
-        for step in range(100):
+        for _step in range(100):
             if page.locator("ak-stage-authenticator-totp").is_visible():
                 source = (
                     challenge.get("secret")
@@ -255,7 +255,7 @@ try:
             },
         )
         # Native policy/outpost caches may briefly retain the preceding denial.
-        for attempt in range(8):
+        for _attempt in range(8):
             page.goto(launch)
             page.wait_for_timeout(1800)
             if (
@@ -328,7 +328,7 @@ try:
             ),
         )
         page.locator("button[type=submit]").click()
-        for attempt in range(100):
+        for _attempt in range(100):
             page.wait_for_timeout(200)
             proxy = [
                 c

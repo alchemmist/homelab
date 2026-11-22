@@ -25,7 +25,10 @@ replicaCount: 1
 persistence:
   mountInApp: false
 
-webNodes: [socrat-5]
+# The single web worker has no local PVC. Preserve the normal placement,
+# but let the replacement start on a healthy home node after eviction.
+webNodes: [socrat-5, socrat-0, socrat-1]
+preferredWebNode: socrat-5
 # Same issuer/certificate/SNI, narrow in-Pod route through the existing ingress.
 hostAliases:
   - ip: 10.43.218.222

@@ -20,7 +20,7 @@ for (r,marked), rows in sorted(groups.items()):
 """
 
 
-def main():
+def main() -> None:
     for tier, app, node, path in [
         ("workshop", "thanos-disk", "socrat-0", "/host/var/lib/socrat-thanos"),
         ("5m", "thanos-shelf-5m", None, ""),
