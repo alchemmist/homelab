@@ -22,3 +22,5 @@ hosts override to declare the public deployment complete. Verify public TLS, ano
 owner sign-in, and denied access for a nonmember before acceptance.
 
 DNS is HOME-only: the VPS ingress does not watch namespace `postgres`. Do not grant the edge controller watch access to database Secrets to publish this UI.
+
+Non-owner SharedServer rows omit the owner's CA filename. Keep `verify-full`; the init container builds libpq's default `root.crt` from only the three public CNPG CA certificates. Roll pgAdmin when a cluster CA rotates. Verify a connection **without** supplying `sslrootcert`, using the shared login and its password helper.

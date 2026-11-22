@@ -67,6 +67,18 @@ spec:
       automountServiceAccountToken: false
       hostAliases: [{ip: 10.43.218.222, hostnames: [auth.socrat.alchemmist.xyz]}]
       securityContext: {runAsUser: 5050, runAsGroup: 5050, fsGroup: 5050, seccompProfile: {type: RuntimeDefault}}
+      # SharedServer rows deliberately omit the owner's sslrootcert. libpq then
+      # needs its default trust file even when the server uses verify-full.
+      initContainers:
+        - name: build-cnpg-trust
+          image: dpage/pgadmin4:9.19@sha256:3591b3d02910dcd817dec6fcaa681c278ba6966945283dd0ea0042731c330c83
+          command: [/bin/sh, -ec]
+          args: ['umask 022; for tier in common critical internal; do cat /cnpg/$tier.crt; echo; done > /trust/root.crt; test -s /trust/root.crt']
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          resources: {requests: {cpu: 5m, memory: 16Mi}, limits: {memory: 64Mi}}
+          volumeMounts:
+            - {name: cas, mountPath: /cnpg, readOnly: true}
+            - {name: browser-trust, mountPath: /trust}
       containers:
         - name: pgadmin
           image: dpage/pgadmin4:9.19@sha256:3591b3d02910dcd817dec6fcaa681c278ba6966945283dd0ea0042731c330c83
@@ -88,7 +100,9 @@ spec:
             - {name: config, mountPath: /browser-helper/password.py, subPath: password.py, readOnly: true}
             - {name: browser-auth, mountPath: /browser-auth, readOnly: true}
             - {name: cas, mountPath: /cnpg, readOnly: true}
+            - {name: browser-trust, mountPath: /home/pgadmin/.postgresql, readOnly: true}
       volumes:
+        - {name: browser-trust, emptyDir: {}}
         - {name: state, persistentVolumeClaim: {claimName: pgadmin-state}}
         - {name: config, configMap: {name: pgadmin-config-browser-v2}}
         - name: browser-auth
