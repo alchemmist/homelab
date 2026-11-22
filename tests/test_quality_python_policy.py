@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 with patch.dict(sys.modules, {"common": common}):
-    from scripts.quality import strict_guard
+    from scripts.quality import quote_inputs, strict_guard
 
 SAMPLE = """\
 def test_behavior() -> None:
@@ -107,3 +107,26 @@ def test_suppression_blocks_owned_source(
     assert capsys.readouterr().out.splitlines() == ["suppressions=1", "owned.py:1"]
     source.write_text("value = 1\n")
     assert strict_guard.main() == 0
+
+
+def test_quote_inputs_use_owned_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+    scripts = ["scripts/a.py", "scripts/deep/with space.py"]
+    tests = ["tests/test_a.py", "tests/nested/helper.py"]
+    names = [*scripts, *tests, "tests/vendor/v.py", "tests/readme.md", "services/a.py"]
+    monkeypatch.setattr(quote_inputs, "tracked", lambda: names)
+
+    def owned(paths: list[str]) -> list[str]:
+        assert paths == names
+        return [name for name in paths if name != "tests/vendor/v.py"]
+
+    monkeypatch.setattr(quote_inputs, "owned", owned)
+    assert quote_inputs.quote_inputs() == scripts + tests
+
+
+@pytest.mark.parametrize("names", [[], ["scripts/a.py"], ["tests/a.py"]])
+def test_quote_inputs_reject_incomplete_inventory(
+    names: list[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(quote_inputs, "tracked", lambda: names)
+    with pytest.raises(ValueError, match="No tracked owned Python inputs"):
+        quote_inputs.quote_inputs()

@@ -12,6 +12,8 @@ CI runs `graph` (including the blocking strict configuration and suppression gua
 followed by `scripts-q000`, `secrets`, `javascript`, `ownership`, `docker`, `workflow`,
 `tests-fast`, `shell` and `rustfs-return-types`. The latter blocks missing public return annotations (Ruff
 `ANN201`) in `services/rustfs_gateway/`; the full Python check remains available locally.
+`scripts-q000` checks every tracked, owned `.py` file under `scripts/` and `tests/`,
+not just changed files. It does not cover all owned Python.
 Ownership runs six offline checks plus their regression suites; the Ansible
 entrypoint scan covers both `.yml` and `.yaml`.
 The other seven checks remain runnable by name; `make check` and its alias
