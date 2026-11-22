@@ -64,6 +64,7 @@ profiles:
     extends: default
     setup:
     - run: uv run python scripts/quality/install_tools.py --tools shellcheck
+    - run: .quality-tools/bin/shellcheck --version
   quality-delivery:
     extends: default
     setup:
@@ -175,6 +176,15 @@ nodes:
       GH_TOKEN: ${{ github.token }}
     results:
       native: reports/workflow.json
+  shell:
+    title: Shell safety
+    profile: quality-shell
+    needs:
+    - graph
+    policy: *id001
+    run: uv run python scripts/quality/lint.py shell
+    results:
+      native: reports/shell.json
   rustfs-return-types:
     title: RustFS gateway public return types
     profile: default
