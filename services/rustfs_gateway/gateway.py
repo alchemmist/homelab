@@ -13,12 +13,13 @@ import os
 import re
 import socket
 import socketserver
+import ssl
 import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Never, cast, override
+from typing import IO, Never, cast, override
 
 HOST = "rustfs.socrat.alchemmist.xyz"
 ORIGIN = "https://" + HOST
@@ -32,7 +33,16 @@ MAX_BYTES = 2 * 1024 * 1024
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
-    def redirect_request(self, _request, response, _code, _message, _headers, _newurl) -> Never:
+    @override
+    def redirect_request(
+        self,
+        _request: urllib.request.Request | None,
+        response: IO[bytes] | None,
+        _code: int,
+        _message: str,
+        _headers: http.client.HTTPMessage,
+        _newurl: str,
+    ) -> Never:
         """Close the response and refuse redirects instead of following them."""
         if response is not None:
             response.close()
@@ -46,14 +56,14 @@ UPSTREAM_SECONDS = 10
 MAX_CONNECTIONS = 8
 
 
-def expire(sock) -> None:
+def expire(sock: socket.socket) -> None:
     try:
         sock.shutdown(socket.SHUT_RDWR)
     except OSError:
         pass
 
 
-def watchdog(sock, seconds) -> threading.Timer:
+def watchdog(sock: socket.socket, seconds: float) -> threading.Timer:
     timer = threading.Timer(seconds, expire, (sock,))
     timer.daemon = True
     timer.start()
@@ -108,7 +118,7 @@ class DeadlineConnection:
             cast("http.client.HTTPConnection", super()).connect()
             connected_socket.append(self.sock)
             if self.deadline_expired or time.monotonic() - start >= UPSTREAM_SECONDS:
-                expire(self.sock)
+                expire(cast("socket.socket", self.sock))
                 raise TimeoutError("upstream deadline")
         except BaseException:
             self.close()
@@ -155,7 +165,8 @@ class HTTPSConnection(DeadlineConnection, http.client.HTTPSConnection):
 class HTTPHandler(urllib.request.HTTPHandler):
     """URL handler returning deadline-bounded HTTP connections."""
 
-    def http_open(self, request) -> http.client.HTTPResponse:
+    @override
+    def http_open(self, request: urllib.request.Request) -> http.client.HTTPResponse:
         """Open HTTP connections through the deadline-aware handler."""
         return self.do_open(HTTPConnection, request)
 
@@ -163,7 +174,10 @@ class HTTPHandler(urllib.request.HTTPHandler):
 class HTTPSHandler(urllib.request.HTTPSHandler):
     """URL handler returning deadline-bounded HTTPS connections."""
 
-    def https_open(self, request) -> http.client.HTTPResponse:
+    _context: ssl.SSLContext
+
+    @override
+    def https_open(self, request: urllib.request.Request) -> http.client.HTTPResponse:
         """Open HTTPS connections through the deadline-aware handler."""
         return self.do_open(HTTPSConnection, request, context=self._context)
 
@@ -181,7 +195,15 @@ def valid_key(path: str) -> str:
     return path[1:]
 
 
-def sign(method, url, access, secret, now=None, region="us-east-1", payload=b"") -> dict[str, str]:
+def sign(
+    method: str,
+    url: str,
+    access: str,
+    secret: str,
+    now: datetime.datetime | None = None,
+    region: str = "us-east-1",
+    payload: bytes = b"",
+) -> dict[str, str]:
     """AWS SigV4, unsigned query unsupported; canonical URI encoded exactly once."""
     u = urllib.parse.urlsplit(url)
     if u.query or u.fragment or u.username or u.password:
@@ -255,11 +277,11 @@ class Reader:
         self.access = os.environ["S3_ACCESS_KEY"]
         self.secret = os.environ["S3_SECRET_KEY"]
 
-    def authorized(self, cookie) -> bool:
+    def authorized(self, cookie: str | None) -> bool:
         """Check the session cookie against the authorization endpoint."""
         return self.authorization(cookie) == 200
 
-    def authorization(self, cookie) -> int:
+    def authorization(self, cookie: str | None) -> int:
         """Validate the cookie with the auth proxy and return its status code."""
         if not cookie or len(cookie) > 8192 or "\r" in cookie or "\n" in cookie:
             return 401
@@ -286,14 +308,14 @@ class Reader:
                 return code if code in (401, 403) else 503
             return 503
 
-    def object(self, key) -> bytes:
+    def object(self, key: str) -> bytes:
         """Fetch one signed object body from the evidence bucket."""
         url = self.s3 + "/spi-evidence/" + key
         request = urllib.request.Request(url, headers=sign("GET", url, self.access, self.secret))
         with self.http.open(request, timeout=10) as response:
             return bounded(response)
 
-    def read(self, key) -> bytes:
+    def read(self, key: str) -> bytes:
         """Validate the key and return the object body and its manifest."""
         valid_key("/" + key)
         prefix, filename = key.rsplit("/", 1)
@@ -360,7 +382,7 @@ PREVIEW_TYPES = {
 }
 
 
-def presentation(filename) -> tuple[str, bool]:
+def presentation(filename: str | None) -> tuple[str, bool]:
     suffix = (filename or "").rsplit(".", 1)[-1].lower()
     mime = PREVIEW_TYPES.get(suffix)
     return (mime, True) if mime else ("application/octet-stream", False)
@@ -407,7 +429,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.header_timer.cancel()
             self.request_timer.cancel()
 
-    def log_message(self, *args) -> None:
+    @override
+    def log_message(self, *args: object) -> None:
         """Suppress default request-line logging."""
 
     def do_GET(self) -> None:
@@ -522,7 +545,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         self.respond(200, body, filename)
 
-    def send_error(self, _code, _message=None, _explain=None) -> None:
+    @override
+    def send_error(self, _code: int, _message: str | None = None, _explain: str | None = None) -> None:
         # Parser/unsupported-method errors must not echo raw request lines or
         # distinguish paths to unauthenticated callers.
         """Answer every parser error with an opaque 400."""
@@ -530,7 +554,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.respond(400)
 
     def respond(
-        self, status, body=b"", filename=None, content_range=None, full_length=None, location=None
+        self,
+        status: int,
+        body: bytes = b"",
+        filename: str | None = None,
+        content_range: str | None = None,
+        full_length: int | None = None,
+        location: str | None = None,
     ) -> None:
         """Write the response with fixed security headers and body framing."""
         mime, inline = presentation(filename) if filename else ("text/plain; charset=utf-8", True)
@@ -573,6 +603,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(body)
 
 
+# ThreadingMixIn types its hooks for both stream and datagram servers.
+type ServerRequest = socket.socket | tuple[bytes, socket.socket]
+type ClientAddress = tuple[str, int] | tuple[str, int, int, int]
+
+
 class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
     """Threaded HTTP server for the artifact reader."""
 
@@ -580,11 +615,17 @@ class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
     reader: "Reader"
     slots: threading.BoundedSemaphore
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(
+        self,
+        server_address: ClientAddress,
+        RequestHandlerClass: type[socketserver.BaseRequestHandler],
+        bind_and_activate: bool = True,
+    ) -> None:
         self.slots = threading.BoundedSemaphore(MAX_CONNECTIONS)
-        super().__init__(*args, **kwargs)
+        super().__init__(server_address, RequestHandlerClass, bind_and_activate)
 
-    def process_request(self, request, client_address) -> None:
+    @override
+    def process_request(self, request: ServerRequest, client_address: ClientAddress) -> None:
         """Admit a request only when a connection slot is free."""
         if not self.slots.acquire(blocking=False):
             self.shutdown_request(request)
@@ -595,14 +636,16 @@ class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
             self.slots.release()
             raise
 
-    def process_request_thread(self, request, client_address) -> None:
+    @override
+    def process_request_thread(self, request: ServerRequest, client_address: ClientAddress) -> None:
         """Process an admitted request and always release its slot."""
         try:
             super().process_request_thread(request, client_address)
         finally:
             self.slots.release()
 
-    def handle_error(self, request, client_address) -> None:
+    @override
+    def handle_error(self, request: ServerRequest, client_address: ClientAddress) -> None:
         # Network resets/timeouts must not emit request context or upstream errors.
         """Swallow handler errors without echoing request or upstream context."""
 
