@@ -136,14 +136,14 @@ nodes:
         xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \
           --ignore-noqa --output-format concise --
   deploy-i001:
-    title: Owned Ansible and deploy Python import order (I001)
+    title: Owned Ansible, deploy and scripts Python import order (I001)
     profile: default
     needs:
       - graph
     policy: *id001
     run: |-
       set -euo pipefail
-      uv run python -m scripts.quality.python_inputs ansible/ deploy/ |
+      uv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ |
         xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \
           --ignore-noqa --output-format concise --
   secrets:

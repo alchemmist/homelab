@@ -1,10 +1,21 @@
 """NetBird v0.83.2 offline transfer into isolated, freshly provisioned pg-critical databases.
 Never reuse against a live database. Caller must stop all target writers. Dex keeps its native migration ledger.
 """
-import collections,datetime as dt,decimal,json,os,pathlib,re,shutil,sqlite3,sys,tempfile
-import psycopg
-from psycopg.types.json import Json,Jsonb
+import collections
+import datetime as dt
+import decimal
+import json
+import os
+import pathlib
+import re
+import shutil
+import sqlite3
+import sys
+import tempfile
 from urllib.parse import urlparse
+
+import psycopg
+from psycopg.types.json import Json, Jsonb
 
 NAMES={"idp":"netbird_idp","events":"netbird_activity","store":"netbird","access_logs":"netbird_access"}
 LEGACY={"peer_status_last_seen":"timestamptz","peer_status_session_started_at":"bigint","peer_status_connected":"boolean"}

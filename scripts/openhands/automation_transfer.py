@@ -1,24 +1,24 @@
 """Run inside the exact Canvas image, with no worker started and source mounted read-only."""
 import asyncio
-from collections import Counter
-from datetime import datetime, timezone, date
 import ipaddress
 import json
 import os
-from pathlib import Path
 import re
 import socket
 import sqlite3
 import ssl
 import sys
 import uuid
+from collections import Counter
+from datetime import date, datetime, timezone
+from pathlib import Path
 
 import asyncpg
+from alembic import command
+from alembic.config import Config
+from openhands.automation import migrations
 from sqlalchemy import event, text
 from sqlalchemy.engine import Engine, make_url
-from alembic.config import Config
-from alembic import command
-from openhands.automation import migrations
 
 
 def ident(name):
@@ -96,7 +96,8 @@ if __name__=="__main__":
     else:
         # The writer must already be stopped. A read-only WAL volume may not
         # permit SQLite to create its shared memory file. Recover privately.
-        import shutil,tempfile
+        import shutil
+        import tempfile
         with tempfile.TemporaryDirectory() as work:
             cold=Path(work)/source.name
             for suffix in ("","-wal","-journal"):
