@@ -178,6 +178,12 @@ spec:
           podSelector: {matchLabels: {app: rustfs-gateway}}
       ports: [{port: 9000, protocol: TCP}]
     {{- end }}
+    {{- if and .Values.browserRoutes.enabled .Values.browserRoutes.unifiedOrigin }}
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: identity}}
+          podSelector: {matchLabels: {app: rustfs-public-reader}}
+      ports: [{port: 9000, protocol: TCP}]
+    {{- end }}
     {{- if .Values.browserRoutes.enabled }}
     - from:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: identity}}
