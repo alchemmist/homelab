@@ -146,6 +146,24 @@ def migration_payload(document) -> dict[str, object]:
     """Check declared runtime overrides before comparing the unchanged handoff payload."""
     kind = document["kind"]
     name = document["metadata"]["name"]
+    if (kind, name) == ("PrometheusRule", "kube-prometheus-stack-kubernetes-apps"):
+        # Undo just the retired upstream rule for comparison to the frozen handoff.
+        result = copy.deepcopy(document)
+        group, = result["spec"]["groups"]
+        assert group["name"] == "kubernetes-apps"
+        assert not any(rule.get("alert") == "KubeJobFailed" for rule in group["rules"])
+        group["rules"].insert(13, {
+            "alert": "KubeJobFailed",
+            "expr": 'kube_job_failed{job="kube-state-metrics", namespace=~".*"}  > 0',
+            "for": "15m", "labels": {"severity": "warning"},
+            "annotations": {
+                "description": "Job {{ $labels.namespace }}/{{ $labels.job_name }} failed to complete. "
+                "Removing failed job after investigation should clear this alert on cluster {{ $labels.cluster }}.",
+                "runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubejobfailed",
+                "summary": "Job failed to complete.",
+            },
+        })
+        return result
     if kind not in {"Prometheus", "Alertmanager", "Deployment"} and (kind, name) != (
         "ServiceMonitor",
         "kube-prometheus-stack-apiserver",
@@ -273,6 +291,16 @@ def test_disjoint_complete_payload_identical_handoff() -> None:
                 assert name == "prometheus"
                 software_update_extension(d)
                 continue
+            if k == "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-homelab-job-failures":
+                assert name == "prometheus"
+                group, = d["spec"]["groups"]
+                assert [r["alert"] for r in group["rules"]] == [
+                    "KubeJobFailed", "SocratPrAgentWebhookRedeliveryFailed",
+                ]
+                # Pin the reviewed additive rule without refreshing the historical fixture.
+                payload = json.dumps(d, sort_keys=True, separators=(",", ":")).encode()
+                assert hashlib.sha256(payload).hexdigest() == "16942316eebb144ae6d63b1afe04d1ade1981e7d7a2cf45f449a1f4172ed633b"
+                continue
             actual[k] = {
                 "owner": name,
                 "sha256": hashlib.sha256(
@@ -280,7 +308,8 @@ def test_disjoint_complete_payload_identical_handoff() -> None:
                 ).hexdigest(),
             }
     assert set(all_owners) == set(fixture) | {
-        "ConfigMap/cattle-monitoring-system/software-update-otel"
+        "ConfigMap/cattle-monitoring-system/software-update-otel",
+        "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-homelab-job-failures",
     }
     assert len(actual) == 77
     assert actual == fixture
