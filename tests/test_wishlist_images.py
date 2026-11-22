@@ -5,6 +5,8 @@ from pathlib import Path
 
 import yaml
 
+from scripts.quality.common import command
+
 ROOT = Path(__file__).resolve().parents[1]
 
 OPTIMIZER_SYNC_WAVE_COUNT = 3
@@ -46,13 +48,36 @@ class WishlistImages(unittest.TestCase):
         assert "app.kubernetes.io/name: {{ .Chart.Name }}" in source
         assert "app.kubernetes.io/instance: {{ .Release.Name }}" in source
         assert "namespaceSelector:" not in source
-        app = (ROOT / "charts/wishlist/templates/deployment.yaml").read_text()
-        assert "IMAGE_OPTIMIZER_URL" in app
-        assert "mountPath: /data/media-cache" in app
-        assert (
-            "      volumes:\n        - name: media-cache\n          emptyDir:\n            sizeLimit: 2Gi"
-            in app
+        output = command(
+            [
+                "helm",
+                "template",
+                "wishlist",
+                str(ROOT / "charts/wishlist"),
+                "--namespace",
+                "wishlist",
+                "-f",
+                str(ROOT / "deploy/wishlist/values.yaml"),
+                "--show-only",
+                "templates/deployment.yaml",
+                "--kubeconfig",
+                "/dev/null",
+            ],
         )
+        pod = yaml.safe_load(output.stdout)["spec"]["template"]["spec"]
+        [app] = [c for c in pod["containers"] if c["name"] == "wishlist"]
+        assert [e for e in app["env"] if e["name"] == "IMAGE_OPTIMIZER_URL"] == [
+            {"name": "IMAGE_OPTIMIZER_URL", "value": "http://wishlist-image-optimizer:8081"}
+        ]
+        assert [v for v in pod["volumes"] if v["name"] == "media-cache"] == [
+            {"name": "media-cache", "emptyDir": {"sizeLimit": "2Gi"}}
+        ]
+        assert [m for m in app["volumeMounts"] if m["mountPath"] == "/data/media-cache"] == [
+            {"name": "media-cache", "mountPath": "/data/media-cache"}
+        ]
+        assert [v for v in pod["volumes"] if v["name"] == "data"] == [
+            {"name": "data", "persistentVolumeClaim": {"claimName": "wishlist-socrat5"}}
+        ]
 
     def test_native_memory_limit_no_application_job_semaphore(self) -> None:
         """Memory and ephemeral storage stay native limits, with no CPU pin."""
