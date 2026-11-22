@@ -107,6 +107,25 @@ class SyncthingSchedulingTests(unittest.TestCase):
         }
         assert "nodeAffinity" in pod["affinity"]
 
+    def test_syncthing_has_listener_probes_without_service_account_tokens(self) -> None:
+        """Probe the actual GUI listener and never mount an unused API token."""
+        resources = self.resources({})
+        pod = next(
+            item
+            for item in resources
+            if item["kind"] == "Deployment" and item["metadata"]["name"] == "syncthing"
+        )["spec"]["template"]["spec"]
+        assert pod["automountServiceAccountToken"] is False
+        syncthing = next(
+            container
+            for container in pod["containers"]
+            if container["name"] == "syncthing"
+        )
+        assert syncthing["livenessProbe"]["tcpSocket"]["port"] == "gui"
+        assert syncthing["readinessProbe"]["tcpSocket"]["port"] == "gui"
+        gui = next(port for port in syncthing["ports"] if port["name"] == "gui")
+        assert gui["containerPort"] == 8384
+
     def test_public_gui_does_not_require_private_node_configuration(self) -> None:
         """Leave affinity unset when the private GUI is disabled."""
         resources = self.resources({"privateGui": {"enabled": False, "nodes": []}})

@@ -24,6 +24,7 @@ spec:
         checksum/private-nginx: {{ omit (get (include (print $.Template.BasePath "/private-nginx.yaml") . | fromYaml) "data") "rancher-layout.js" | toYaml | sha256sum | quote }}
       {{- end }}
     spec:
+      automountServiceAccountToken: false
       {{- if .Values.hostNetwork }}
       hostNetwork: true
       dnsPolicy: Default
@@ -65,6 +66,14 @@ spec:
             - name: {{ $name }}
               value: {{ if and $.Values.privateGui.enabled (eq $name "STGUIADDRESS") }}{{ printf "http://127.0.0.1:%v" $.Values.service.guiPort | quote }}{{ else }}{{ $value | quote }}{{ end }}
             {{- end }}
+          livenessProbe:
+            tcpSocket:
+              port: gui
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: gui
+            periodSeconds: 10
           ports:
             - name: gui
               containerPort: {{ .Values.service.guiPort }}
