@@ -21,6 +21,12 @@ spec:
         app.kubernetes.io/name: {{ .Chart.Name }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: {type: RuntimeDefault}
       serviceAccountName: {{ .Release.Name | quote }}
       automountServiceAccountToken: false
       {{- if .Values.imagePullSecrets }}
@@ -63,5 +69,25 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.service.targetPort }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: nginx-run, mountPath: /run}
+            - {name: nginx-cache, mountPath: /var/cache/nginx}
+          readinessProbe:
+            httpGet: {path: /robots.txt, port: {{ .Values.service.targetPort }}}
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            tcpSocket: {port: {{ .Values.service.targetPort }}}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 6
           resources:
 {{ toYaml .Values.resources | indent 12 }}
+      volumes:
+        - {name: nginx-run, emptyDir: {}}
+        - {name: nginx-cache, emptyDir: {}}
