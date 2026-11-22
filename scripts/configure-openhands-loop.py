@@ -14,7 +14,7 @@ DEST = "/home/openhands/.openhands/tools/filesystem"
 
 
 def main():
-    files = {n:(ROOT/"tools/openhands-mcp"/n).read_text() for n in ["package.json","package-lock.json"]}
+    files = {n:(ROOT/"services/openhands/mcp"/n).read_text() for n in ["package.json","package-lock.json"]}
     stage = """import pathlib,json,sys
 files=json.load(sys.stdin);p=pathlib.Path('/home/openhands/.openhands/tools/filesystem');p.mkdir(parents=True,exist_ok=True)
 for n,v in files.items():

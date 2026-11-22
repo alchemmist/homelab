@@ -319,7 +319,7 @@ Instance credential IDs сопоставлять при импорте чере�
   и `tools/list`: этот blocker закрыт. В локальном project config Mac клиент
   включён; доступны `search_workflows` и `get_workflow_details`, серверный
   `execute_workflow` скрыт от агента. Workflow при проверке не исполнялись.
-  В committed `.pi/mcp.json` запись пока disabled — не переносить локальное
+  В примере `deploy/mcp/examples/pi-mcp.json` запись пока disabled — не переносить локальное
   включение на другие checkout/машины как уже выполненное.
   Exact ingress принадлежит `charts/n8n/templates/access.yaml`; UI gate сохранён.
   [MCP runbook в wiki](official-mcp.md) фиксирует текущее состояние и границы доступа.

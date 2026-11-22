@@ -24,7 +24,7 @@ from ci.quality import check_dependencies as lint
 _REPO = Path(__file__).resolve().parents[1]
 _LOCAL_AUDIT = ["pip-audit", "--local", "--strict", "--format", "json"]
 _INTEGRITY = "sha512-" + base64.b64encode(bytes((0x11,)) * 64).decode("ascii")
-_OWNED_LOCK = "tools/official-mcp/package-lock.json"
+_OWNED_LOCK = "deploy/mcp/clients/package-lock.json"
 _OWNED_DISTRIBUTIONS = 127
 _UNCHANGED_FUNCTION_DIGESTS = {
     "validate_requirement_lock": "b3a33235549137f1",

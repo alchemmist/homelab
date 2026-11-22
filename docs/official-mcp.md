@@ -8,9 +8,13 @@ Rancher/Fleet components. Supporting automation is not turned into one MCP per P
 
 ## Project connections
 
-Pi reads the tracked [`.pi/mcp.json`](../.pi/mcp.json) for a **trusted** project.
-These are real Pi settings, not an unconsumed example. Global servers are merged;
-project names override the same global names. Secrets never appear in Git.
+No agent is required to contribute. A fresh clone contains no active Pi project
+configuration. [The optional Pi example](../deploy/mcp/examples/pi-mcp.json)
+documents reviewed connections; it does not install or enable anything. To opt in
+after installing the runtime, copy it to `.pi/mcp.json` in a trusted checkout
+(`mkdir -p .pi && cp -n deploy/mcp/examples/pi-mcp.json .pi/mcp.json`). Do not
+commit local settings. Other clients should configure their own credential
+transport; Pi's `!command` headers are not portable MCP configuration syntax.
 
 | Name | Upstream / connection | State / purpose |
 | --- | --- | --- |
@@ -37,7 +41,7 @@ amd64/arm64 artifacts are explicitly checksum-pinned.
 python3 scripts/setup-official-mcp.py
 ```
 
-This installs npm packages using `tools/official-mcp/package-lock.json`, verifies
+This installs npm packages using `deploy/mcp/clients/package-lock.json`, verifies
 the official Prometheus release archive SHA256 and extracts only the regular binary.
 It reuses, **without rotation**, the already-provisioned Grafana Viewer/client
 tokens into `~/.config/homelab/mcp/` (directory0700, files0600). The original
@@ -145,14 +149,12 @@ All decisions and source links are in the audit, including infrastructure,
 controllers, exporters, platform dependencies and our own applications.
 
 
-### Existing dirty checkout
+### Optional Pi setup with cached launchers
 
-Do not reset/stash unrelated dashboard/Traefik work to install MCP settings. When
-an older checkout still ignores `.pi/mcp.json`, setup supports explicit
-`--configure-project /path/to/homelab`: it refuses tracked/unignored config,
-backs up the old private config0600 and installs nonsecret settings referencing
-cached launcher files. It does not change that checkout's tracked source or branch.
-After a normal later update to main, use the tracked project settings and scripts.
+Authorized operators can instead pass `--configure-project /path/to/homelab`
+to the installer to use absolute cached launcher paths. This option backs up
+existing private settings before rewriting them and refuses tracked/unignored
+configurations. Without the option, setup does not write any agent configuration.
 
 ## Verified closeout
 

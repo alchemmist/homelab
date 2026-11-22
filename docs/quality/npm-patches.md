@@ -7,7 +7,7 @@ The patch builds the actual server with explicit `zod/v4` imports, the SDK's
 `registerTool` API and matching runtime/manifest metadata. Both consumers now
 resolve one Zod 4.6.7. No out-of-range override or legacy peer resolution.
 
-`tools/official-mcp/patch_npm.py` is used by `setup-official-mcp.py`. It verifies the npm release SHA-512,
+`deploy/mcp/clients/patch_npm.py` is used by `setup-official-mcp.py`. It verifies the npm release SHA-512,
 rewrites the reviewed files in memory, retains licenses and runtime files,
 and emits deterministic tar files beside the materialized npm lock. The output
 must match lock integrity. Offline MCP setup reuses the verified patched tar

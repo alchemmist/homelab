@@ -17,7 +17,7 @@ class LoopSetup(unittest.TestCase):
 
     def test_official_mcp_is_version_and_integrity_pinned(self) -> None:
         """Verify the official MCP package is version and integrity pinned."""
-        p = json.loads((ROOT/"tools/openhands-mcp/package-lock.json").read_text())
+        p = json.loads((ROOT/"services/openhands/mcp/package-lock.json").read_text())
         fs = p["packages"]["node_modules/@modelcontextprotocol/server-filesystem"]
         assert fs["version"] == "2.4.0"
         assert fs["integrity"] == "sha512-BoT8Gws5MsetfAey4vDyuzy8WYQES6mGYLSShuqSNGAC0X0NBV4p78/R78KfW4RkxtWz+zxhS9jwhzJrQUTt2Q=="

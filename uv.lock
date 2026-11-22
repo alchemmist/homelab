@@ -582,7 +582,7 @@ dev = [
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "quality-graph-cli", specifier = "==0.2.4" },
     { name = "quality-graph-core", specifier = "==0.2.4" },
-    { name = "quality-graph-github", directory = "tools/quality-graph-github" },
+    { name = "quality-graph-github", directory = "vendor/quality-graph-github" },
     { name = "ruff", specifier = "==0.15.12" },
     { name = "types-pyyaml", specifier = "==6.0.12.20261113" },
     { name = "yamllint", specifier = "==1.38.0" },
@@ -1316,7 +1316,7 @@ wheels = [
 [[package]]
 name = "quality-graph-github"
 version = "0.2.4"
-source = { directory = "tools/quality-graph-github" }
+source = { directory = "vendor/quality-graph-github" }
 dependencies = [
     { name = "httpx" },
     { name = "jinja2" },
