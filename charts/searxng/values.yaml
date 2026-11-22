@@ -1,6 +1,6 @@
 ---
 image:
-  docker.io/searxng/searxng@sha256:d81e14a4328ba7a57f297dff0472be629d30bf29580406c0d5b3bdab563c9bed
+  docker.io/searxng/searxng@sha256:fc1d81d7e9d04d3c8b3e23c7162feddf5c3d6aecd32e67a56eaabcb8d8747f79
 nodeName: socrat-5
 secretName: searxng-secret
 baseUrl: https://search.socrat.alchemmist.xyz/
