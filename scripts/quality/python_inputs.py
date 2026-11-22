@@ -19,11 +19,11 @@ def python_inputs(roots: list[str]) -> list[str]:
             message = f"No tracked owned Python inputs in {root}"
             raise ValueError(message)
         result.extend(selected)
-    return result
+    return list(dict.fromkeys(result))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("roots", nargs="+", choices=("deploy/", "scripts/", "tests/"))
+    parser.add_argument("roots", nargs="+", choices=("ansible/", "deploy/", "scripts/", "tests/"))
     for path in python_inputs(parser.parse_args().roots):
         sys.stdout.buffer.write(os.fsencode(path) + b"\0")
