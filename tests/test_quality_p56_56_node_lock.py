@@ -55,12 +55,18 @@ _UNCHANGED_FUNCTION_DIGESTS = {
     "workflow_script_findings": "a9c8e6afff47f8fd",
     # 7a45c9cd split check into a dispatcher and nine typed implementations.
     # Pin the entire extracted implementations as well as the dispatch mapping.
-    "check": "a034cb98212a1060",
+    # #459 deliberately changed the workflow dispatch and both workflow scanners.
+    # Sources of the revised pins (leading docstrings excluded as below):
+    # d525d349 for the scanner commands, a7cfd08e for check/workflow_directives,
+    # 82e99f75 for physical-line attribution. All other original pins remain.
+    "check": "f05cf59d286c0457",
+    "workflow_directives": "42d74e4c8b199427",
+    "python_directive_lines": "69a68cc0a476fc79",
     "check_python": "732041b20fcacae1",
     "check_yaml": "c25bae72f56b16aa",
     "check_shell": "3cb39cc5d1303f55",
-    "check_actions": "325a4180ce49b34b",
-    "check_actionlint": "57df6b004f8b3161",
+    "check_actions": "640d695b3edece7c",
+    "check_actionlint": "caa982e539c3e36c",
     "check_ansible": "bac2463835490282",
     "check_docker": "6f0eec5c22cd10e4",
     "check_javascript": "75a30298a56e4d97",
@@ -832,6 +838,9 @@ def test_docker_selector_proof_refuses_argument_mutation(
         ("check", '"javascript": check_javascript', '"javascript": check_docker'),
         ("check_docker", '"hadolint", "--config"', '"hadolint", "--wrong-config"'),
         ("check_javascript", '["node", "--check", path]', '["node", "--version", path]'),
+        ("check", "security + expressions + directives", "security + expressions + []"),
+        ("check_actions", '"--strict-collection"', '"--invalid-collection"'),
+        ("check_actionlint", '"-config-file", os.devnull', '"-unreviewed-config", os.devnull'),
     ],
 )
 def test_docker_selector_proof_preserves_surrounding_body(
