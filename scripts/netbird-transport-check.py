@@ -49,20 +49,24 @@ class WS:
         while b"\r\n\r\n" not in data:
             chunk = self.s.recv(4096)
             if not chunk:
-                raise ValueError("closed handshake")
+                msg = "closed handshake"
+                raise ValueError(msg)
             data += chunk
             if len(data) > 32768:
-                raise ValueError("oversized handshake")
+                msg = "oversized handshake"
+                raise ValueError(msg)
         headers, self.buffer = data.split(b"\r\n\r\n", 1)
         if not headers.startswith(b"HTTP/1.1 101"):
-            raise ValueError("relay upgrade rejected")
+            msg = "relay upgrade rejected"
+            raise ValueError(msg)
         expected = base64.b64encode(
             hashlib.sha1((key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()).digest()
         )
         if expected.lower() not in headers.lower():
-            raise ValueError("wrong WS accept")
+            msg = "wrong WS accept"
+            raise ValueError(msg)
 
-    def send(self, data, opcode=2):
+    def send(self, data, opcode=2) -> None:
         """Send a masked WebSocket frame on the raw socket."""
         n = len(data)
         mask = os.urandom(4)
@@ -78,7 +82,8 @@ class WS:
         while len(self.buffer) < n:
             data = self.s.recv(4096)
             if not data:
-                raise ValueError("relay session closed")
+                msg = "relay session closed"
+                raise ValueError(msg)
             self.buffer += data
         data, self.buffer = self.buffer[:n], self.buffer[n:]
         return data
@@ -94,17 +99,20 @@ class WS:
             if n == 127:
                 n = struct.unpack("!Q", self.read(8))[0]
             if n > 16384:
-                raise ValueError("oversized relay frame")
+                msg = "oversized relay frame"
+                raise ValueError(msg)
             data = self.read(n)
             if opcode == 9:
                 self.send(data, 10)
                 continue
             if opcode != 2:
-                raise ValueError("unexpected relay frame")
+                msg = "unexpected relay frame"
+                raise ValueError(msg)
             return data
-        raise ValueError("no relay payload")
+        msg = "no relay payload"
+        raise ValueError(msg)
 
-    def close(self):
+    def close(self) -> None:
         """Send a close frame and shut the socket down."""
         try:
             self.send(b"", 8)
@@ -112,7 +120,7 @@ class WS:
             self.s.close()
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     config = yaml.safe_load(
         (Path.home() / ".local/state/netbird-internal-stage/config.yaml").read_text()
@@ -135,13 +143,15 @@ def main():
             ws.send(b"\x01\x06\x21\x12\xa4\x42" + identity + token)
             response = ws.receive()
             if response[:2] != b"\x01\x07":
-                raise ValueError("relay auth response mismatch")
+                msg = "relay auth response mismatch"
+                raise ValueError(msg)
         nonce = os.urandom(32)
         for source, destination in [(0, 1), (1, 0)]:
             sessions[source].send(b"\x01\x03" + ids[destination] + nonce)
             actual = sessions[destination].receive()
             if actual != b"\x01\x03" + ids[source] + nonce:
-                raise ValueError("relay payload mismatch")
+                msg = "relay payload mismatch"
+                raise ValueError(msg)
         result["relay"] = {
             "both_entrances_authenticated": True,
             "bidirectional_cross_entrance_payload": True,

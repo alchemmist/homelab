@@ -13,17 +13,16 @@ from psycopg import sql
 from psycopg.conninfo import conninfo_to_dict
 
 
-def reconcile(src, db, apply):
+def reconcile(src, db, apply) -> None:
     src.execute("BEGIN")
-    assert (
-        src.execute("pragma integrity_check").fetchall() == [("ok",)]
-        and not src.execute("pragma foreign_key_check").fetchone()
-    )
+    assert src.execute("pragma integrity_check").fetchall() == [("ok",)]
+    assert not src.execute("pragma foreign_key_check").fetchone()
     tabs = [
         r[0]
         for r in src.execute("select name from sqlite_master where type='table' order by rowid")
     ]
-    assert len(tabs) == 19 and set(tabs) == {
+    assert len(tabs) == 19
+    assert set(tabs) == {
         r[0] for r in db.execute("select tablename from pg_tables where schemaname='public'")
     }
     db.execute("select pg_advisory_xact_lock(1397770578)")
@@ -35,19 +34,23 @@ def reconcile(src, db, apply):
         names = [r[1] for r in cols]
         types = [r[2].upper() for r in cols]
         keys = [r[1] for r in sorted(cols, key=lambda r: r[5]) if r[5]]
-        assert keys and names == [
+        assert keys
+        assert names == [
             r[0]
             for r in db.execute(
                 "select column_name from information_schema.columns where table_schema='public' and table_name=%s order by ordinal_position",
                 (t,),
             )
         ]
-        join = lambda a: sql.SQL(",").join(map(sql.Identifier, a))
+
+        def join(a):
+            return sql.SQL(",").join(map(sql.Identifier, a))
+
         pgsig = sql.SQL(",").join(
             sql.SQL("sha256(convert_to({},'UTF8'))").format(sql.Identifier(n))
             if typ == "TEXT"
             else sql.Identifier(n)
-            for n, typ in zip(names, types)
+            for n, typ in zip(names, types, strict=False)
         )
         query = sql.SQL("select {},{} from {}").format(join(keys), pgsig, sql.Identifier(t))
 
@@ -83,7 +86,7 @@ def reconcile(src, db, apply):
             key = tuple(row[names.index(n)] for n in keys)
             sig = tuple(
                 hashlib.sha256(v.encode()).digest() if typ == "TEXT" and v is not None else v
-                for typ, v in zip(types, row)
+                for typ, v in zip(types, row, strict=False)
             )
             expected[key] = sig
             if old.get(key) != sig:
@@ -137,11 +140,9 @@ if __name__ == "__main__":
     assert mode in ("seed", "cold")
     u = os.environ["SPI_POSTGRES_URL"]
     info = conninfo_to_dict(u)
-    assert (
-        info["dbname"] == "spi_triage"
-        and info["host"] == "pg-common-rw.postgres.svc.cluster.local"
-        and info["sslmode"] == "verify-full"
-    )
+    assert info["dbname"] == "spi_triage"
+    assert info["host"] == "pg-common-rw.postgres.svc.cluster.local"
+    assert info["sslmode"] == "verify-full"
     with tempfile.TemporaryDirectory() as tmp, psycopg.connect(u) as db:
         assert db.execute("select live from handoff.mode").fetchone() == (False,)
         if mode == "seed":

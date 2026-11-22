@@ -36,7 +36,8 @@ def test_only_two_allowedip_lines_change_preserving_private_key_and_other_peers(
     """Keep every non-AllowedIPs line and the unrelated peer."""
     text, peers = fixture()
     new, after = m.candidate(text, peers)
-    assert m.project(new)[1] == after and after["other"] == peers["other"]
+    assert m.project(new)[1] == after
+    assert after["other"] == peers["other"]
     for key, target in m.PEERS.items():
         assert after[key] == peers[key] + [target]
     assert [l for l in new.splitlines() if not l.startswith("AllowedIPs")] == [
@@ -63,8 +64,10 @@ def test_inventory_keeps_exact_api_host_routes_and_no_default() -> None:
         "socrat-4": {"socrat-0": ["192.168.0.23/32"], "socrat-1": ["192.168.0.24/32"]}
     }
     source = (ROOT / "ansible/scripts/moscow-api-routes-repair.py").read_text()
-    assert "'route','add'" in source and "wg-quick" not in source
-    assert "'systemctl'" not in source and "private-key" not in source
+    assert "'route','add'" in source
+    assert "wg-quick" not in source
+    assert "'systemctl'" not in source
+    assert "private-key" not in source
 
 
 def test_runtime_parser_retains_every_prefix_with_tabs_spaces_or_commas() -> None:

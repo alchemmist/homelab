@@ -168,7 +168,7 @@ if __name__ == "__main__":
 
 
 @pytest.mark.parametrize(
-    "rc,stdout,stderr,expected",
+    ("rc", "stdout", "stderr", "expected"),
     [
         (0, "same", "", "current"),
         (0, "different", "", "upgrade"),
@@ -176,7 +176,9 @@ if __name__ == "__main__":
         (1, "", "forbidden", None),
     ],
 )
-def test_explicit_plan_preserves_comparison_and_fails_closed(rc, stdout, stderr, expected, capsys):
+def test_explicit_plan_preserves_comparison_and_fails_closed(
+    rc, stdout, stderr, expected, capsys
+) -> None:
     rendered = subprocess.CompletedProcess(["helm", "template"], 0, "same\n", "")
     installed = subprocess.CompletedProcess(["helm", "get"], rc, stdout, stderr)
     with (

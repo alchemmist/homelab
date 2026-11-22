@@ -130,7 +130,7 @@ def create_model_secret() -> None:
         stop_forward(forward)
 
 
-def main():
+def main() -> None:
     dry = os.environ.get("PROVISION_OPENHANDS_DRY_RUN") == "1"
     current = kube_secret("openhands", "openhands-model")
     if dry and not monori_secret_current(current):

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/blog_updates"))
+import pytest
 from engine import UnsafeInput
 from github import GitHub
 
@@ -47,7 +48,7 @@ class WriterTests(unittest.TestCase):
     def test_advanced_main_refused(self) -> None:
         """Verify staging work never targets the main branch."""
         g = Fake(main="b" * 40)
-        with self.assertRaises(UnsafeInput):
+        with pytest.raises(UnsafeInput):
             g.propose("a" * 40, "new", "why")
         assert all(c[0] == "GET" for c in g.calls)
 

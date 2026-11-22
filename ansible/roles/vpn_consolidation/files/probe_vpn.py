@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 
 
-def main():
+def main() -> None:
     """Execute the main operation."""
     with sqlite3.connect("file:/srv/x-ui-lab/db/x-ui.db?mode=ro", uri=True) as database:
         clients = []
@@ -79,13 +79,15 @@ def main():
             deadline = time.monotonic() + 10
             while True:
                 if process.poll() is not None:
-                    raise RuntimeError("VPN probe client exited before readiness")
+                    msg = "VPN probe client exited before readiness"
+                    raise RuntimeError(msg)
                 try:
                     with socket.create_connection(("127.0.0.1", port), 0.5):
                         break
                 except OSError as exc:
                     if time.monotonic() > deadline:
-                        raise RuntimeError("VPN probe client did not become ready") from exc
+                        msg = "VPN probe client did not become ready"
+                        raise RuntimeError(msg) from exc
                     time.sleep(0.1)
             result = subprocess.run(
                 [
@@ -109,7 +111,8 @@ def main():
                 timeout=30,
             )
             if result.returncode != 0 or result.stdout != "200":
-                raise RuntimeError("Authenticated public Trojan HTTPS probe failed")
+                msg = "Authenticated public Trojan HTTPS probe failed"
+                raise RuntimeError(msg)
             print("Authenticated public Trojan TLS/WebSocket tunnel: HTTPS 200")
         finally:
             process.terminate()

@@ -15,7 +15,8 @@ def kube(*args: str, document: dict[str, object] | None = None) -> dict[str, obj
         capture_output=True,
     )
     if r.returncode:
-        raise RuntimeError("Kubernetes operation failed; sensitive output suppressed")
+        msg = "Kubernetes operation failed; sensitive output suppressed"
+        raise RuntimeError(msg)
     return json.loads(r.stdout) if r.stdout.strip() else {}
 
 

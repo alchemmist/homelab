@@ -1,4 +1,5 @@
 """Install and verify the iptables UDP rule for the WireGuard transport peer."""
+
 import ipaddress
 import re
 import shutil
@@ -6,7 +7,7 @@ import subprocess
 import sys
 
 
-def main():
+def main() -> None:
     interface, address, port = sys.argv[1:]
     if not re.fullmatch(r"[a-zA-Z0-9_.:-]{1,15}", interface):
         message = "Invalid interface"

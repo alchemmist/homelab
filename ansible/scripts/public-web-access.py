@@ -12,7 +12,7 @@ from pathlib import Path
 OWNER = "homelab-public-web-v1"
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     """Execute require."""
     if not ok:
         raise ValueError(message)
@@ -65,7 +65,8 @@ class API:
             rows.extend(d["results"])
             if not d.get("pagination", {}).get("next"):
                 return rows
-        raise ValueError("Pagination exceeded")
+        msg = "Pagination exceeded"
+        raise ValueError(msg)
 
 
 def snapshot(api):
@@ -95,7 +96,7 @@ def plan(s, services):
     return [], unique(s["outposts"], "managed", "goauthentik.io/outposts/embedded")
 
 
-def main():
+def main() -> None:
     """Execute main."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--catalog", required=True)
@@ -129,7 +130,7 @@ def main():
         api = API(a.credentials)
         services = json.loads(Path(a.catalog).read_text())
         s = snapshot(api)
-        ops, outpost = plan(s, services)
+        ops, _outpost = plan(s, services)
         digest = hashlib.sha256(
             json.dumps(ops, sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()

@@ -7,6 +7,8 @@ import pathlib
 import unittest
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
     "fetch_guard", ROOT / "charts/open-webui/files/tool_guard.py"
@@ -78,7 +80,7 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
             await started.wait()
             if cancel:
                 task.cancel()
-                with self.assertRaises(asyncio.CancelledError):
+                with pytest.raises(asyncio.CancelledError):
                     await task
             else:
                 result = await task

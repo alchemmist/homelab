@@ -1,4 +1,5 @@
 """Expose only aggregate usage for the live shared 5m bucket."""
+
 import os
 import threading
 import time
@@ -8,16 +9,17 @@ from pathlib import Path
 import shelf
 
 
-def main():
+def main() -> None:
     """Serve shelf requests and expose fresh cached usage alongside current filesystem headroom."""
     root = os.environ["SHELF_DIRECTORY"]
     token = Path(os.environ["SHELF_TOKEN_FILE"]).read_text().strip()
     if not token:
-        raise ValueError("empty shelf token")
+        msg = "empty shelf token"
+        raise ValueError(msg)
 
     measured = []
 
-    def sample_size():
+    def sample_size() -> None:
         while True:
             try:
                 total = Path(root).lstat().st_blocks * 512
@@ -50,6 +52,7 @@ def main():
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+            return None
 
     ThreadingHTTPServer(("0.0.0.0", int(os.environ["SHELF_PORT"])), MetricsHandler).serve_forever()
 

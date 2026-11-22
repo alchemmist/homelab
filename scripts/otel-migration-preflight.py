@@ -317,14 +317,14 @@ def evaluate(policy, inventory, now=None):
     }
 
 
-def save(path, document):
+def save(path, document) -> None:
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descriptor, "w") as stream:
         json.dump(document, stream, indent=2, allow_nan=False)
         stream.write("\n")
 
 
-def main():
+def main() -> int | None:
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=["collect", "check"])
     parser.add_argument("--policy", type=Path, default=DEFAULT_POLICY)

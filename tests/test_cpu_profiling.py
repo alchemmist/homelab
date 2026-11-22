@@ -135,7 +135,8 @@ def test_backend_is_persistent_bounded_unprivileged_and_private() -> None:
     assert "-usage-stats.enabled=false" in c["args"]
     assert c["resources"]["limits"]["memory"] == "1Gi"
     assert c["workingDir"] == "/data"
-    assert dep["spec"]["replicas"] == 1 and dep["spec"]["strategy"]["type"] == "Recreate"
+    assert dep["spec"]["replicas"] == 1
+    assert dep["spec"]["strategy"]["type"] == "Recreate"
     claim = yaml.safe_load((ROOT / "deploy/storage/pyroscope-drill/pvc.yaml").read_text())
     data = next(v for v in pod["volumes"] if v["name"] == "data")
     assert data == {
@@ -194,7 +195,8 @@ def test_flamegraph_is_native_pyroscope_not_a_span_waterfall() -> None:
         ),
     )
     ds = yaml.safe_load(source["data"]["pyroscope-datasource.yaml"])["datasources"][0]
-    assert ds["uid"] == "pyroscope" and ds["editable"] is False
+    assert ds["uid"] == "pyroscope"
+    assert ds["editable"] is False
     assert ds["url"] == "http://pyroscope.cattle-monitoring-system.svc.cluster.local:4040"
 
 

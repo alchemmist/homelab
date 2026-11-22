@@ -7,8 +7,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("netbird_access", ROOT / "ansible/scripts/netbird-access.py")
+spec = importlib.util.spec_from_file_location(
+    "netbird_access", ROOT / "ansible/scripts/netbird-access.py"
+)
 M = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(M)
 
@@ -172,38 +176,38 @@ class AdmissionTests(unittest.TestCase):
         _sequence(
             _mapping(_mapping(_documents(s["nb_accounts"])[0])["settings"])["jwt_allow_groups"]
         ).append("unreviewed-public-signup")
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             M.reconcile_plan(s)
 
     def test_missing_or_skipping_mfa_blocks_admission(self) -> None:
         """Missing or skipped MFA blocks admission."""
         s = snapshot()
         s["ak_flow_bindings"] = []
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             M.reconcile_plan(s)
         s = snapshot()
         _documents(s["ak_mfa"])[0]["not_configured_action"] = "skip"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             M.reconcile_plan(s)
 
     def test_default_all_policy_blocks_onboarding(self) -> None:
         """A default all-policy blocks onboarding."""
         s = snapshot()
         _mapping(_documents(_documents(s["nb_policies"])[0]["rules"])[0])["sources"] = ["all"]
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             M.reconcile_plan(s)
         s = snapshot()
         _mapping(_documents(_documents(s["nb_policies"])[0]["rules"])[0])["destinations"] = [
             {"id": "all"}
         ]
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             M.reconcile_plan(s)
 
     def test_fake_jwt_source_rejected(self) -> None:
         """A faked JWT source is rejected."""
         s = snapshot()
         _documents(s["nb_groups"])[1]["issued"] = "api"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             M.reconcile_plan(s)
 
     def test_superuser_or_parent_group_rejected(self) -> None:
@@ -216,7 +220,7 @@ class AdmissionTests(unittest.TestCase):
             with self.subTest(key=key):
                 s = snapshot()
                 _documents(s["ak_groups"])[0][key] = value
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     M.reconcile_plan(s)
 
     def test_unexpected_app_bypass_rejected(self) -> None:
@@ -228,7 +232,7 @@ class AdmissionTests(unittest.TestCase):
         ]:
             s = snapshot()
             s["ak_bindings"] = [binding]
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 M.reconcile_plan(s)
 
     def test_membership_action_never_replaces_other_groups_or_grants_superuser(
@@ -245,11 +249,11 @@ class AdmissionTests(unittest.TestCase):
     def test_no_email_fallback_or_ambiguous_adoption(self) -> None:
         """No email fallback and no ambiguous adoptions."""
         s = snapshot()
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             M.membership_plan(s, "new-admin", "wrong-uuid")
         users = _documents(s["ak_users"])
         users.append(dict(users[0]))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             M.membership_plan(s, "new-admin", "exact-reviewed-uuid")
 
     def test_nonhuman_inactive_superuser_rejected(self) -> None:
@@ -261,7 +265,7 @@ class AdmissionTests(unittest.TestCase):
         ]:
             s = snapshot()
             _documents(s["ak_users"])[0][key] = value
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 M.membership_plan(s, "new-admin", "exact-reviewed-uuid")
 
     def test_membership_grant_revoke_idempotence(self) -> None:
@@ -283,7 +287,7 @@ class AdmissionTests(unittest.TestCase):
             p = root / "run"
             p.mkdir()
             M.atomic(p / "receipt.json", {"state": "uncertain-stop"})
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 M.check_state_folder(root)
 
     def offboard_state(self) -> dict[str, object]:
@@ -337,11 +341,11 @@ class AdmissionTests(unittest.TestCase):
         """Owners or foreign connectors cannot offboard."""
         s = self.offboard_state()
         _documents(s["nb_users"])[0]["role"] = "owner"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             M.offboard_plan(s, "new-admin", "exact-reviewed-uuid")
         s = self.offboard_state()
         _documents(s["nb_idps"])[0]["client_id"] = "unexpected"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             M.offboard_plan(s, "new-admin", "exact-reviewed-uuid")
 
     def test_already_disabled_authentik_user_can_still_be_offboarded(self) -> None:

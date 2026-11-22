@@ -34,11 +34,11 @@ def _verified_database_host() -> object:
             base64.b64decode(secret["data"]["LMS_DATABASE_URL"], validate=True).decode()
         ).hostname
     except (KeyError, ValueError, UnicodeError):
-        raise ValueError(
-            "Refusing restore: application database endpoint cannot be verified"
-        ) from None
+        msg = "Refusing restore: application database endpoint cannot be verified"
+        raise ValueError(msg) from None
     if host not in {"lms-postgres", "lms-postgres.lms.svc.cluster.local"}:
-        raise ValueError("Refusing to overwrite HA database: application no longer uses legacy DB")
+        msg = "Refusing to overwrite HA database: application no longer uses legacy DB"
+        raise ValueError(msg)
     return host
 
 
@@ -153,17 +153,19 @@ def _await_job_completion(name: str) -> None:
     import time
 
     try:
-        for attempt in range(60):
+        for _attempt in range(60):
             status = json.loads(kube("-n", "lms", "get", "job", name, "-o", "json")).get(
                 "status", {}
             )
             if status.get("succeeded"):
                 break
             if status.get("failed"):
-                raise RuntimeError("Copy job failed; production endpoint not changed")
+                msg = "Copy job failed; production endpoint not changed"
+                raise RuntimeError(msg)
             time.sleep(2)
         else:
-            raise RuntimeError("Copy job timed out")
+            msg = "Copy job timed out"
+            raise RuntimeError(msg)
     finally:
         logs = kube("-n", "lms", "logs", "job/" + name)
         for line in logs.splitlines():
@@ -186,7 +188,8 @@ def _await_job_completion(name: str) -> None:
 def run(args: argparse.Namespace) -> None:
     _verified_database_host()
     if not args.rehearsal and not args.confirm_web_stopped:
-        raise ValueError("Final copy requires --confirm-web-stopped")
+        msg = "Final copy requires --confirm-web-stopped"
+        raise ValueError(msg)
     if not args.rehearsal:
         dep = json.loads(kube("-n", "lms", "get", "deployment", "lms", "-o", "json"))
         pods = json.loads(
@@ -202,7 +205,8 @@ def run(args: argparse.Namespace) -> None:
             )
         )
         if dep["spec"]["replicas"] != 0 or pods["items"]:
-            raise ValueError("Refusing final restore: LMS is not fully stopped")
+            msg = "Refusing final restore: LMS is not fully stopped"
+            raise ValueError(msg)
     name = "lms-ha-copy-" + datetime.now(UTC).strftime("%Y%m%d%H%M%S")
     job = _copy_job_document(name, rehearsal=args.rehearsal)
     kube("create", "-f", "-", document=job)

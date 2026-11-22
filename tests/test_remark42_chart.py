@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class Remark42ChartRenderTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         rendered = subprocess.run(
             [
                 "helm",
@@ -27,35 +27,29 @@ class Remark42ChartRenderTests(unittest.TestCase):
         ).stdout
         cls.objects = [obj for obj in yaml.safe_load_all(rendered) if obj]
 
-    def test_deployment_health_and_service_account_contract(self):
+    def test_deployment_health_and_service_account_contract(self) -> None:
         deployment = next(obj for obj in self.objects if obj["kind"] == "Deployment")
         pod = deployment["spec"]["template"]["spec"]
-        self.assertFalse(pod["automountServiceAccountToken"])
+        assert not pod["automountServiceAccountToken"]
         container = pod["containers"][0]
         for name in ("livenessProbe", "readinessProbe"):
             probe = container[name]
-            self.assertEqual(probe["httpGet"], {"path": "/ping", "port": "http"})
-        self.assertEqual(pod["hostNetwork"], True)
-        self.assertEqual(pod["nodeSelector"]["kubernetes.io/hostname"], "socrat-2")
+            assert probe["httpGet"] == {"path": "/ping", "port": "http"}
+        assert pod["hostNetwork"] == True
+        assert pod["nodeSelector"]["kubernetes.io/hostname"] == "socrat-2"
 
-    def test_existing_data_and_service_contract_remains_intact(self):
+    def test_existing_data_and_service_contract_remains_intact(self) -> None:
         deployment = next(obj for obj in self.objects if obj["kind"] == "Deployment")
         pod = deployment["spec"]["template"]["spec"]
         container = pod["containers"][0]
-        self.assertEqual(
-            pod["volumes"][0]["hostPath"],
-            {"path": "/srv/remark42", "type": "Directory"},
-        )
-        self.assertEqual(
-            [
-                (mount["mountPath"], mount["subPath"])
-                for mount in container["volumeMounts"]
-            ],
-            [("/srv/var", "data"), ("/srv/web/remark.css", "remark42/custom.css")],
-        )
+        assert pod["volumes"][0]["hostPath"] == {"path": "/srv/remark42", "type": "Directory"}
+        assert [(mount["mountPath"], mount["subPath"]) for mount in container["volumeMounts"]] == [
+            ("/srv/var", "data"),
+            ("/srv/web/remark.css", "remark42/custom.css"),
+        ]
         service = next(obj for obj in self.objects if obj["kind"] == "Service")
-        self.assertEqual(service["spec"]["selector"], {"app": "remark42"})
-        self.assertEqual(service["spec"]["ports"][0]["targetPort"], "http")
+        assert service["spec"]["selector"] == {"app": "remark42"}
+        assert service["spec"]["ports"][0]["targetPort"] == "http"
 
 
 if __name__ == "__main__":

@@ -1,10 +1,13 @@
 """Real loopback trickle regressions; never contacts deployed services."""
 
+import contextlib
 import socket
 import threading
 import time
 import unittest
 from unittest.mock import patch
+
+import pytest
 
 from tests.test_rustfs_gateway import g
 
@@ -30,10 +33,8 @@ class Deadlines(unittest.TestCase):
                     except OSError:
                         break
                     time.sleep(0.05)
-                try:
+                with contextlib.suppress(ConnectionResetError):
                     assert s.recv(1024) == b""
-                except ConnectionResetError:
-                    pass
                 assert time.monotonic() - start < ELAPSED_UPPER_BOUND
                 s.close()
                 with socket.create_connection(server.server_address) as c:
@@ -55,7 +56,7 @@ class Deadlines(unittest.TestCase):
                 listener.bind(("127.0.0.1", 0))
                 listener.listen()
 
-                def peer(listener=listener, headers=headers):
+                def peer(listener=listener, headers=headers) -> None:
                     c, _ = listener.accept()
                     with c:
                         c.recv(4096)
@@ -74,12 +75,14 @@ class Deadlines(unittest.TestCase):
                 t.start()
                 start = time.monotonic()
                 try:
-                    with self.assertRaises((OSError, ValueError)):
-                        with g.opener().open(
+                    with (
+                        pytest.raises((OSError, ValueError)),
+                        g.opener().open(
                             "http://127.0.0.1:%d/" % listener.getsockname()[1],
                             timeout=1,
-                        ) as response:
-                            g.bounded(response)
+                        ) as response,
+                    ):
+                        g.bounded(response)
                     assert time.monotonic() - start < ELAPSED_UPPER_BOUND
                 finally:
                     listener.close()
@@ -97,7 +100,7 @@ class Deadlines(unittest.TestCase):
                 listener.listen()
                 url = "http://127.0.0.1:%d/" % listener.getsockname()[1]
 
-                def peer(listener=listener, version=version):
+                def peer(listener=listener, version=version) -> None:
                     c, _ = listener.accept()
                     with c:
                         c.recv(4096)
@@ -118,7 +121,7 @@ class Deadlines(unittest.TestCase):
                 t.start()
 
                 class Reader:
-                    def authorization(self, cookie):
+                    def authorization(self, cookie) -> int:
                         return 200 if cookie else 401
 
                     def read(self, _key, url=url):
@@ -154,7 +157,8 @@ class Deadlines(unittest.TestCase):
                             break
                         time.sleep(0.01)
                     if not acquired:
-                        raise AssertionError("slot not returned before deadline")
+                        msg = "slot not returned before deadline"
+                        raise AssertionError(msg)
                     server.slots.release()
                     with socket.create_connection(server.server_address) as c:
                         c.settimeout(1)
@@ -172,7 +176,7 @@ class Deadlines(unittest.TestCase):
         listener.bind(("127.0.0.1", 0))
         listener.listen()
 
-        def peer():
+        def peer() -> None:
             c, _ = listener.accept()
             with c:
                 c.recv(4096)
@@ -195,12 +199,12 @@ class Deadlines(unittest.TestCase):
 
     def test_response_write_deadline_releases_worker(self) -> None:
         class Handler(g.Handler):
-            def setup(self):
+            def setup(self) -> None:
                 self.request.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
                 super().setup()
 
         class Reader:
-            def authorization(self, _cookie):
+            def authorization(self, _cookie) -> int:
                 return 200
 
             def read(self, _key):

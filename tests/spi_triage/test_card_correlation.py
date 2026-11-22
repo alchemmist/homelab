@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "charts/spi-triage/files"))
+import pytest
 from card_correlation import record_receipt
 from core import Failure, Store, normalize
 
@@ -76,7 +77,7 @@ class CorrelationTests(unittest.TestCase):
     def test_invalid_copy_and_empty_receipt(self) -> None:
         """Verify invalid copies and empty receipts fail closed."""
         self.payload["receipt"]["copies"] = [{"chat_id": 1, "message_id": "2"}]
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             record_receipt(self.store, self.payload)
         self.payload["receipt"]["copies"] = []
         assert record_receipt(self.store, self.payload)["state"] == "unknown"

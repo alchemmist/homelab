@@ -70,7 +70,7 @@ def _live_allowed_ips(interface):
     return live
 
 
-def _require_live_state(routes, live):
+def _require_live_state(routes, live) -> None:
     """Reject missing peers or routes that already belong to another peer."""
     if not set(routes).issubset(live):
         msg = "Requested peer absent from live interface"
@@ -86,7 +86,7 @@ def _require_live_state(routes, live):
             raise ValueError(msg)
 
 
-def _write_config(config, updated):
+def _write_config(config, updated) -> None:
     """Atomically replace the WireGuard config after backing up the original."""
     backup = str(config) + ".before-k3s-ha-" + str(time.time_ns())
     shutil.copy2(config, backup)
@@ -123,7 +123,7 @@ def _apply_routes(interface, source, routes, live):
     return changed
 
 
-def main():
+def main() -> None:
     """Apply reviewed host routes for the HA cluster to a WireGuard interface."""
     interface, source, payload = sys.argv[1:]
     if not re.fullmatch(r"[a-zA-Z0-9_=+.-]{1,15}", interface):

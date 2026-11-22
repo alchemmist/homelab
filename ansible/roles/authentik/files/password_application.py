@@ -10,16 +10,17 @@ import urllib.request
 from pathlib import Path
 
 
-def validate(spec):
+def validate(spec) -> None:
     """Document the validate operation."""
     assert spec["slug"] == "password-self-service"
     assert spec["provider"] is None
     assert spec["meta_launch_url"] == "https://auth.socrat.alchemmist.xyz/change-password"
     assert spec["policy_engine_mode"] == "any"
-    assert spec["name"] == "Change password" and spec["group"] == "Account"
+    assert spec["name"] == "Change password"
+    assert spec["group"] == "Account"
 
 
-def main():
+def main() -> None:
     """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("root", type=Path)
@@ -47,7 +48,8 @@ def main():
 
     def existing() -> list[dict[str, object]]:
         data = api("GET", "core/applications/?superuser_full_list=true&slug=password-self-service")
-        assert not data.get("next") and len(cast("list[object]", data["results"])) <= 1
+        assert not data.get("next")
+        assert len(cast("list[object]", data["results"])) <= 1
         return cast("list[dict[str, object]]", data["results"])
 
     before = existing()
@@ -75,9 +77,11 @@ def main():
     created = api("POST", "core/applications/", spec)
     (receipt / "created.json").write_text(json.dumps(created, indent=2))
     after = existing()
-    assert len(after) == 1 and all(after[0].get(k) == v for k, v in spec.items())
+    assert len(after) == 1
+    assert all(after[0].get(k) == v for k, v in spec.items())
     bindings = api("GET", "policies/bindings/?target=" + cast("str", after[0]["pk"]))
-    assert not bindings.get("next") and bindings["results"] == []
+    assert not bindings.get("next")
+    assert bindings["results"] == []
     (receipt / "verified.json").write_text(json.dumps(after[0], indent=2))
     print(
         "Verified Change password / Account dashboard link, no provider or restrictive bindings. Receipt:",

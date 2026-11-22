@@ -8,7 +8,7 @@ import urllib.parse
 from playwright.async_api import async_playwright
 
 
-async def main():
+async def main() -> None:
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context()  # trusted TLS, fresh anonymous context
@@ -36,10 +36,8 @@ async def main():
         )
         await page.wait_for_timeout(5000)
         parts = urllib.parse.urlsplit(page.url)
-        assert (
-            parts.hostname == "auth.socrat.alchemmist.xyz"
-            and parts.path == "/if/flow/default-authentication-flow/"
-        )
+        assert parts.hostname == "auth.socrat.alchemmist.xyz"
+        assert parts.path == "/if/flow/default-authentication-flow/"
         query = urllib.parse.parse_qs(parts.query)
         assert query["redirect_uri"] == ["https://netbird.socrat.alchemmist.xyz/oauth2/callback"]
         assert any("/oauth2/auth" in u for u in navigation)

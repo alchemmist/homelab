@@ -37,14 +37,14 @@ def require(ok: object, message: str) -> None:
         raise ValueError(message)
 
 
-def private(path, data):
+def private(path, data) -> None:
     require(not path.is_symlink(), "private path is a symlink")
     fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(data, f)
 
 
-def evidence(root, name):
+def evidence(root, name) -> None:
     data = json.loads((root / "journal" / (name + ".evidence.json")).read_text())
     age = datetime.datetime.now(datetime.UTC) - datetime.datetime.fromisoformat(data["created_at"])
     require(
@@ -114,10 +114,11 @@ def forward(call, process_slot):
             break
         time.sleep(1)
     else:
-        raise ValueError("no unique running server")
+        msg = "no unique running server"
+        raise ValueError(msg)
     process_slot["process"] = subprocess.Popen(
-        KUBE
-        + [
+        [
+            *KUBE,
             "port-forward",
             "--address=127.0.0.1",
             "pod/" + running[0]["metadata"]["name"],
@@ -131,10 +132,11 @@ def forward(call, process_slot):
             return call("GET", "instance")
         except urllib.error.URLError:
             time.sleep(1)
-    raise ValueError("private port-forward unavailable")
+    msg = "private port-forward unavailable"
+    raise ValueError(msg)
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["bootstrap", "configure-idp"])

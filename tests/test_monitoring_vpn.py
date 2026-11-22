@@ -12,6 +12,8 @@ from typing import override
 from unittest.mock import patch
 from urllib.error import URLError
 
+import pytest
+
 SOURCE = Path(__file__).resolve().parents[1] / "ansible/roles/monitoring_vpn/files/collect_vpn.py"
 SPEC = importlib.util.spec_from_file_location("collect_vpn", SOURCE)
 MODULE = importlib.util.module_from_spec(SPEC)
@@ -128,7 +130,7 @@ class XrayCountersTests(unittest.TestCase):
         """Malformed payload bodies raise an error."""
         for body in (b'{"memstats": {}}', b"[]", b"not json"):
             with patch.object(MODULE.urllib.request, "urlopen", return_value=io.BytesIO(body)):
-                with self.assertRaises((KeyError, TypeError, ValueError)):
+                with pytest.raises((KeyError, TypeError, ValueError)):
                     MODULE.read_xray_user_counters("http://x", HTTP_TIMEOUT)
 
 

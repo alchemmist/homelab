@@ -59,7 +59,7 @@ def rows(api, path):
 GROUP_MARKER = {"homelab_app_iam": 1}
 
 
-def validate_group(group):
+def validate_group(group) -> None:
     """Validate group."""
     # Authentik 2026.8.6 uses plural parents (M2M), not legacy parent.
     # Missing/null/reduced responses are not evidence of absence of privilege.

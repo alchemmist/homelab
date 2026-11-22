@@ -29,7 +29,7 @@ def block(i, res, age):
 
 
 class Bucket:
-    def __init__(self, ms):
+    def __init__(self, ms) -> None:
         self.files = {m["ulid"] + "/meta.json": json.dumps(m).encode() for m in ms}
 
     def listing(self, groups):
@@ -42,7 +42,7 @@ class Bucket:
 
 
 @pytest.mark.parametrize(
-    "age,readable,wrong,expect_raw,expect_five",
+    ("age", "readable", "wrong", "expect_raw", "expect_five"),
     [
         (4, True, False, False, False),
         (5, True, False, True, False),
@@ -52,7 +52,7 @@ class Bucket:
         (91, True, True, True, False),
     ],
 )
-def test_windows(tmp_path, monkeypatch, age, readable, wrong, expect_raw, expect_five):
+def test_windows(tmp_path, monkeypatch, age, readable, wrong, expect_raw, expect_five) -> None:
     r, f, h = [block(i, res, age) for i, res in enumerate([0, T.FIVE, T.HOUR])]
     b = Bucket([r, f, h])
     if wrong:
@@ -82,7 +82,7 @@ def test_windows(tmp_path, monkeypatch, age, readable, wrong, expect_raw, expect
             assert IDS[1] + "/no-downsample-mark.json" in b.files
 
 
-def test_gaps_and_unrelated_lineage():
+def test_gaps_and_unrelated_lineage() -> None:
     a = block(0, 0, 10)
     b = block(1, T.FIVE, 10)
     b["minTime"] += 1

@@ -6,6 +6,8 @@ import sqlite3
 import unittest
 from pathlib import Path
 
+import pytest
+
 SPEC = importlib.util.spec_from_file_location(
     "verify_vpn",
     Path(__file__).resolve().parents[1] / "ansible/roles/vpn_consolidation/files/verify_vpn.py",
@@ -52,7 +54,7 @@ class SubscriptionTests(unittest.TestCase):
             b"<html>not a subscription</html>",
             base64.b64encode(b"invalid"),
         ):
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 VPN.normalize_subscription(value)
 
 

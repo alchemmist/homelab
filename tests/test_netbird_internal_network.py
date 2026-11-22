@@ -5,6 +5,8 @@ import types
 import unittest
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -30,13 +32,13 @@ class InternalNetworkTests(unittest.TestCase):
         actual = {a for _, addresses in net.NETWORKS.values() for a in addresses}
         assert actual == expected
         assert set(net.NETWORKS) == {"socrat-0"}
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             net.resource_body("socrat-0", "10.250.0.1/32")
         assert (
             net.resource_body("socrat-0", "10.250.0.1/32", local_input_authorized=True)["name"]
             == "wg-socrat-0"
         )
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             net.resource_body("socrat-2", "10.250.0.2/32")
         rule = net.gateway_input_policy("real-admin-jwt", "exact-gateway-api")["rules"][0]
         assert rule["sources"] == ["real-admin-jwt"]
@@ -44,7 +46,7 @@ class InternalNetworkTests(unittest.TestCase):
         assert not rule["bidirectional"]
         assert "destinationResource" not in rule
         for address in ["0.0.0.0/0", "10.250.0.0/24", "10.42.0.0/16", "192.168.0.0/24"]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 net.resource_body("socrat-0", address)
 
     def test_clients_do_not_import_routes_but_serve_explicit_networks(self) -> None:
@@ -76,7 +78,7 @@ class InternalNetworkTests(unittest.TestCase):
             [{"name": net.ADMIN_GROUP, "issued": "api", "id": "fake"}],
             [{"name": "netbird-pilot-login", "issued": "jwt", "id": "observer"}],
         ]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 net.genuine_admin_group(groups)
         assert (
             net.genuine_admin_group([{"name": net.ADMIN_GROUP, "issued": "jwt", "id": "real"}])
@@ -110,7 +112,7 @@ class InternalNetworkTests(unittest.TestCase):
                 peers if endpoint == "peers" else (policies or []) if endpoint == "policies" else []
             )
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             owner.network_snapshot(api([p]))
         assert owner.network_snapshot(api([p]), True)[0]["id"] == "mac"
         for peers in [
@@ -119,7 +121,7 @@ class InternalNetworkTests(unittest.TestCase):
             [dict(p, approval_required=True)],
             [dict(p, login_expired=True)],
         ]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 owner.network_snapshot(api(peers), True)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             owner.network_snapshot(api([p], ["unexpected-policy"]), True)

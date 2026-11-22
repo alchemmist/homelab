@@ -11,7 +11,7 @@ mcp = MCPServer("monori-github-read")
 class NoRedirect(HTTPRedirectHandler):
     """HTTP redirect handler that disables redirects."""
 
-    def redirect_request(self, *args):
+    def redirect_request(self, *args) -> None:
         return None
 
 
@@ -27,14 +27,16 @@ def read(path: str):
     with build_opener(ProxyHandler({}), NoRedirect()).open(req, timeout=12) as r:
         b = r.read(2_000_001)
         if len(b) > 2_000_000:
-            raise ValueError("Response too large; not complete")
+            msg = "Response too large; not complete"
+            raise ValueError(msg)
         return json.loads(b), 'rel="next"' in r.headers.get("Link", "")
 
 
 def positive(n: object) -> int:
     """Test behavior for positive."""
     if type(n) is not int or not 1 <= n <= 1_000_000_000:
-        raise ValueError("Positive ID/page required")
+        msg = "Positive ID/page required"
+        raise ValueError(msg)
     return n
 
 
@@ -79,7 +81,8 @@ def pr(number: int, section: str = "summary", page: int = 1) -> dict:
         "statuses": f"commits/{sha}/statuses",
     }
     if section not in paths:
-        raise ValueError("Unknown read section")
+        msg = "Unknown read section"
+        raise ValueError(msg)
     data, more = read(paths[section] + f"?per_page=5&page={pg}")
     rows = []
     for item in data["check_runs"] if section == "checks" else data:

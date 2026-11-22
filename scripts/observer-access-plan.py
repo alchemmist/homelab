@@ -54,12 +54,11 @@ def build(state, policy):
     try:
         return _build(state, policy)
     except (KeyError, TypeError, AttributeError, IndexError):
-        raise ValueError(
-            "Malformed observer state/policy: missing field or incorrect nested structure"
-        ) from None
+        msg = "Malformed observer state/policy: missing field or incorrect nested structure"
+        raise ValueError(msg) from None
 
 
-def native_admission_ops(ops, state, policy, group):
+def native_admission_ops(ops, state, policy, group) -> None:
     """Queue admission bindings for reviewed native apps; leave all other grants alone."""
     for slug in policy["nativeAdmission"]:
         app = exact(state["apps"], "slug", slug)
@@ -103,7 +102,7 @@ def native_admission_ops(ops, state, policy, group):
             )
 
 
-def harbor_project_ops(ops, harbor, state, policy, native_groups):
+def harbor_project_ops(ops, harbor, state, policy, native_groups) -> None:
     """Queue removals for existing Harbor memberships of the observer group."""
     for project in harbor["projects"]:
         require(project in state["harbor"]["projects"], "Missing reviewed Harbor project")
@@ -137,9 +136,9 @@ def harbor_project_ops(ops, harbor, state, policy, native_groups):
             )
 
 
-def require_native_definitions_match(login, role, binding, definitions):
+def require_native_definitions_match(login, role, binding, definitions) -> None:
     """Require the deployed rancher RBAC objects to match the reviewed definitions."""
-    for actual, desired in zip([login, role, binding], definitions):
+    for actual, desired in zip([login, role, binding], definitions, strict=False):
         for key, value in desired.items():
             if key == "metadata":
                 require(
@@ -413,7 +412,7 @@ def _build(state, policy):
             kpatch(
                 auth,
                 "/apis/management.cattle.io/v3/authconfigs/genericoidc",
-                {"allowedPrincipalIds": allowed + [rancher["groupPrincipal"]]},
+                {"allowedPrincipalIds": [*allowed, rancher["groupPrincipal"]]},
             )
         )
     # Close only this group's Harbor admission; Guest CLI cache is not revocable.

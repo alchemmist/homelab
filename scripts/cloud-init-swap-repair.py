@@ -25,13 +25,13 @@ DEST = Path("/etc/cloud/cloud.cfg.d/99-homelab-preserve-swap.cfg")
 RECEIPT = Path("/var/lib/homelab-recovery/20261114-cloud-init-swap")
 
 
-def require(condition, message):
+def require(condition, message) -> None:
     """Raise an error when a required condition is not met."""
     if not condition:
         raise RuntimeError(message)
 
 
-def validate(base, others, swaps, fstab, size):
+def validate(base, others, swaps, fstab, size) -> None:
     """Perform the validate operation."""
     require(base.get("bootcmd") == EXPECTED, "Provider bootcmd differs; refuse")
     require(not any("bootcmd" in d for d in others), "Another bootcmd owner exists")
@@ -56,7 +56,7 @@ def command(argv):
     return subprocess.run(argv, check=True, capture_output=True, text=True).stdout
 
 
-def atomic(path, text, mode):
+def atomic(path, text, mode) -> None:
     """Perform the atomic operation."""
     fd, tmp = tempfile.mkstemp(dir=path.parent)
     try:
@@ -76,7 +76,7 @@ def atomic(path, text, mode):
             os.unlink(tmp)
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     import yaml  # Existing cloud-init dependency on the target, not pip on production.
 
@@ -98,7 +98,8 @@ def main():
             try:
                 data = yaml.safe_load(p.read_text())
             except yaml.YAMLError as exc:
-                raise RuntimeError("Instance configuration is not a simple mapping") from exc
+                msg = "Instance configuration is not a simple mapping"
+                raise RuntimeError(msg) from exc
             if isinstance(data, dict):
                 others.append(data)
     before_stat = Path("/swap.img").stat()

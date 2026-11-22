@@ -57,7 +57,7 @@ STUN_PORT = 3478
 HEALTH_PORT = 9000
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     if not ok:
         raise ValueError(message)
 
@@ -260,7 +260,7 @@ def image(name):
     return item["repository"] + ":" + item["tag"] + "@" + item["digest"]
 
 
-def witness_ready(path):
+def witness_ready(path) -> None:
     """Proof that Dex already has an external connector. localAuthDisabled fails closed without one."""
     data = json.loads(path.read_text())
     require(
@@ -367,7 +367,7 @@ def port_forward_sources(cidrs):
     return cleaned
 
 
-def ingress_allowed(policy, source, port, protocol="TCP"):
+def ingress_allowed(policy, source, port, protocol="TCP") -> bool:
     """Return whether one ingress rule matches the source."""
     source_ip = ipaddress.ip_address(source)
     for rule in policy["spec"].get("ingress") or []:
@@ -1068,7 +1068,7 @@ def access_requests(c, bindings, snapshot):
     return requests
 
 
-def dump(path, value, yaml_format=False, private=False):
+def dump(path, value, yaml_format=False, private=False) -> None:
     # No overwrites or symlink following; runtime output must be on a protected local tmpfs.
     flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
     fd = os.open(path, flags, 0o600 if private else 0o644)
@@ -1080,7 +1080,7 @@ def dump(path, value, yaml_format=False, private=False):
         )
 
 
-def render_control_plane(c, out, port_forward_cidrs):
+def render_control_plane(c, out, port_forward_cidrs) -> None:
     """Write the internal-only manifests. Does not write Services, Ingress, or routers."""
     validate_internal(c)
     out.mkdir(mode=0o700, parents=True, exist_ok=False)
@@ -1088,7 +1088,7 @@ def render_control_plane(c, out, port_forward_cidrs):
         yaml.safe_dump_all(manifests(c, "internal", port_forward_cidrs), f, sort_keys=False)
 
 
-def render(c, out):
+def render(c, out) -> None:
     # Host-router generation is a separate artifact. router_compose stays the old interface.
     require(
         not any(existing_node_host(p["host"]) for p in c["routing_peers"]),
@@ -1119,7 +1119,7 @@ def render(c, out):
         dump(out / (p["name"] + ".compose.yaml"), router_compose(c, p), yaml_format=True)
 
 
-def verify_images():
+def verify_images() -> None:
     for name, item in json.loads(LOCK.read_text())["images"].items():
         if item.get("skip_registry_verify"):
             require(
@@ -1164,7 +1164,7 @@ def verify_images():
         print(name + ": verified registry index and Linux amd64/arm64 pins")
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "command",

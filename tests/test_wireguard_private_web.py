@@ -20,13 +20,13 @@ UNIT = (ROLE / "templates/wireguard-private-web.service.j2").read_text()
 class WireGuardPrivateWebTests(unittest.TestCase):
     """Tests for WireGuardPrivateWebTests."""
 
-    def test_defaults_are_disabled_and_use_nftables(self):
+    def test_defaults_are_disabled_and_use_nftables(self) -> None:
         assert "wireguard_private_web_enabled: false" in DEFAULTS
         assert "Debian: nftables" in DEFAULTS
         assert "Archlinux: nftables" in DEFAULTS
         assert "wireguard_private_web_proxy_port: 18443" in DEFAULTS
 
-    def test_installs_and_starts_dedicated_unit(self):
+    def test_installs_and_starts_dedicated_unit(self) -> None:
         assert "ansible.builtin.apt" in TASKS
         assert "community.general.pacman" in TASKS
         assert "systemd_service" in TASKS
@@ -37,7 +37,7 @@ class WireGuardPrivateWebTests(unittest.TestCase):
         assert "After=network-online.target {{ wireguard_private_web_wg_service }}" in UNIT
         assert "ExecStop=" not in UNIT
 
-    def test_owns_only_its_nft_table_and_nat_hooks(self):
+    def test_owns_only_its_nft_table_and_nat_hooks(self) -> None:
         assert "table={{ wireguard_private_web_table | quote }}" in SCRIPT
         assert "delete table ip $table" in SCRIPT
         assert (
@@ -52,13 +52,13 @@ class WireGuardPrivateWebTests(unittest.TestCase):
         assert "output ip daddr %s tcp dport %s dnat to %s:%s" in SCRIPT
         assert "flush ruleset" not in SCRIPT
 
-    def test_validates_before_apply_and_preserves_an_owned_backup(self):
+    def test_validates_before_apply_and_preserves_an_owned_backup(self) -> None:
         assert 'nft" -c -f "$tmp"' in SCRIPT
         assert 'cp "$old" "$backup"' in SCRIPT
         assert 'nft" -f "$tmp"' in SCRIPT
         assert 'nft" -f "$backup"' not in SCRIPT
 
-    def test_failed_atomic_apply_does_not_append_backup_rules(self):
+    def test_failed_atomic_apply_does_not_append_backup_rules(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             directory = Path(directory)
             state = directory / "state.json"

@@ -362,7 +362,7 @@ def run(args):
             log.close()
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     for name in ["binaries", "config", "tls", "workspace"]:
         parser.add_argument("--" + name, type=Path, required=True)

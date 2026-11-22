@@ -16,6 +16,63 @@
       ],
       "**/tests/**": [
         "S101"
+      ],
+      "tests/**": [
+        "INP001",
+        "PLC0415",
+        "S603",
+        "S607"
+      ],
+      "ci/**": [
+        "INP001",
+        "T201"
+      ],
+      "scripts/**": [
+        "INP001",
+        "T201",
+        "S603",
+        "S607",
+        "S310",
+        "PLC0415",
+        "E402",
+        "PLR0913",
+        "PLR0915"
+      ],
+      "ansible/**": [
+        "INP001",
+        "T201",
+        "S603",
+        "S607",
+        "S310",
+        "PLC0415",
+        "E402",
+        "PLR0913",
+        "PLR0915"
+      ],
+      "charts/**": [
+        "INP001",
+        "T201",
+        "S603",
+        "S607",
+        "S310",
+        "PLC0415",
+        "E402",
+        "PLR0913",
+        "PLR0915"
+      ],
+      "deploy/**": [
+        "INP001",
+        "T201",
+        "S603",
+        "S607",
+        "S310",
+        "PLC0415",
+        "E402",
+        "PLR0913",
+        "PLR0915"
+      ],
+      "services/**": [
+        "INP001"
       ]
     },
     "ignoreReasons": {
@@ -25,7 +82,16 @@
       "COM812": "Redundant with the Ruff formatter, which owns trailing commas. ruff format --check reports the same defect.",
       "D102": "Behavior-named unittest methods in test_*.py modules do not need a redundant docstring.",
       "D103": "Behavior-named pytest functions in tests/**/test_*.py do not need a redundant docstring.",
-      "S101": "Pytest rewrites assert in tests/ trees."
+      "S101": "Pytest rewrites assert in tests/ trees.",
+      "INP001": "Copy-deployed single-file programs and test trees have no importable package layout by design; adding __init__.py would change deployment and test collection semantics.",
+      "T201": "Console programs whose stdout is the documented machine-readable interface print by contract; converting to logging would break consumers.",
+      "S603": "Operational programs whose reviewed function is running local subprocesses with fixed, repo-owned operand lists; no behavior-preserving code fix exists.",
+      "S607": "Operational programs invoke well-known binaries that the deployment target resolves via PATH by contract; hardcoding absolute paths would break portable roles.",
+      "S310": "Audit rule for unvalidated URL schemes; these programs fetch an exact reviewed URL list from repository configuration.",
+      "PLC0415": "Tests import modules inside functions to isolate runpy/importlib module state between cases; operational scripts import after mandatory bootstrap code (configuration prelude, sys.path wiring, CLI arg parsing).",
+      "E402": "Operational programs require module-level bootstrap (sys.path or configuration) before imports; moving those imports would change initialization order.",
+      "PLR0913": "Single-purpose operational procedures keep their argument set as the documented CLI contract; reshaping signatures risks silent behavior change in critical runbooks.",
+      "PLR0915": "Single-purpose operational procedures are cohesive documented checklists; splitting them would change behavior, not structure."
     }
   },
   "mypy": {

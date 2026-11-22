@@ -133,7 +133,7 @@ def _check_prometheus(client: Client) -> None:
     print("PASS: live Prometheus query returned data")
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default=URL)

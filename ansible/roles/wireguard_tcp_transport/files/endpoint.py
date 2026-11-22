@@ -1,4 +1,5 @@
 """Rewrite the WireGuard config with the current TCP transport endpoint."""
+
 import json
 import os
 import re
@@ -38,7 +39,7 @@ def update_config(original, public_key, endpoint):
     return "".join(blocks)
 
 
-def main():
+def main() -> None:
     interface, public_key, endpoint = sys.argv[1:]
     if not re.fullmatch(r"[a-zA-Z0-9_=+.-]{1,15}", interface):
         message = "Invalid interface"

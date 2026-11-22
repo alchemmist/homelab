@@ -19,6 +19,7 @@ import uuid
 from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Never
 
 HOSTS = ("socrat-0", "socrat-1", "socrat-2", "socrat-3")
 SOURCE_FILES = (
@@ -98,11 +99,14 @@ def addresses(old: str, new: str):
     try:
         parsed = tuple(ipaddress.IPv4Address(v) for v in (old, new))
     except ipaddress.AddressValueError:
-        raise MigrationError("Both addresses must be canonical IPv4 literals") from None
+        msg = "Both addresses must be canonical IPv4 literals"
+        raise MigrationError(msg) from None
     if old == new or tuple(str(v) for v in parsed) != (old, new):
-        raise MigrationError("Require two different canonical IPv4 addresses")
+        msg = "Require two different canonical IPv4 addresses"
+        raise MigrationError(msg)
     if not all(v.is_global and not v.is_multicast and not v.is_reserved for v in parsed):
-        raise MigrationError("Require public unicast IPv4 addresses")
+        msg = "Require public unicast IPv4 addresses"
+        raise MigrationError(msg)
     return parsed
 
 
@@ -125,12 +129,14 @@ class Preimages:
 
         raw = Path(root).expanduser()
         if not raw.is_absolute() or raw.is_symlink():
-            raise MigrationError("Backup root must be an absolute non-symlink directory")
+            msg = "Backup root must be an absolute non-symlink directory"
+            raise MigrationError(msg)
         root = raw.resolve()
         root.mkdir(mode=0o700, parents=True, exist_ok=True)
         info = root.stat()
         if info.st_uid != os.geteuid() or stat.S_IMODE(info.st_mode) & 0o077:
-            raise MigrationError("Backup root must be owned by caller and mode 0700")
+            msg = "Backup root must be owned by caller and mode 0700"
+            raise MigrationError(msg)
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         self.path = root / (label + "-" + stamp + "-" + uuid.uuid4().hex[:8])
         self.path.mkdir(mode=0o700)
@@ -139,7 +145,8 @@ class Preimages:
         """Resolve a relative path inside the artifact directory, or fail."""
         relative = Path(relative)
         if relative.is_absolute() or ".." in relative.parts:
-            raise MigrationError("Invalid preimage path")
+            msg = "Invalid preimage path"
+            raise MigrationError(msg)
         dest = self.path / relative
         dest.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         return dest
@@ -152,19 +159,20 @@ class Preimages:
         dest.chmod(0o600)
         return dest
 
-    def receipt(self, report: Mapping[str, object]):
+    def receipt(self, report: Mapping[str, object]) -> None:
         """Write the migration receipt alongside the artifacts."""
         p = self.path / "receipt.json"
         p.write_text(json.dumps(report, indent=2) + "\n")
         p.chmod(0o600)
 
 
-def refuse_unfinished(root: str | Path | None, label: str):
+def refuse_unfinished(root: str | Path | None, label: str) -> None:
     if not root:
         return
     directory = Path(root).expanduser()
     if not directory.is_absolute() or directory.is_symlink():
-        raise MigrationError("Backup root must be absolute and not a symlink")
+        msg = "Backup root must be absolute and not a symlink"
+        raise MigrationError(msg)
     if directory.exists():
         info = directory.stat()
         if (
@@ -172,24 +180,26 @@ def refuse_unfinished(root: str | Path | None, label: str):
             or info.st_uid != os.geteuid()
             or stat.S_IMODE(info.st_mode) & 0o077
         ):
-            raise MigrationError("Existing backup root must be caller-owned and mode 0700")
+            msg = "Existing backup root must be caller-owned and mode 0700"
+            raise MigrationError(msg)
         for path in directory.glob(label + "-*/receipt.json"):
             state = json.loads(path.read_text()).get("state")
             if state in ("applying", "partial-failure-stop-and-investigate"):
-                raise MigrationError(
-                    "Unfinished prior migration: inspect private receipts; no blind rerun"
-                )
+                msg = "Unfinished prior migration: inspect private receipts; no blind rerun"
+                raise MigrationError(msg)
 
 
 def file_plan(paths: Sequence[Path], old: str, new: str):
     changes = []
     for path in paths:
         if path.is_symlink():
-            raise MigrationError("Refusing a symlink configuration file")
+            msg = "Refusing a symlink configuration file"
+            raise MigrationError(msg)
         if not path.exists():
             continue
         if not path.is_file():
-            raise MigrationError("Expected a regular configuration file")
+            msg = "Expected a regular configuration file"
+            raise MigrationError(msg)
         text = path.read_text()
         updated = replace_address(text, old, new)
         if updated != text:
@@ -201,10 +211,11 @@ def write_changes(
     changes: Sequence[Change],
     preimages: Preimages,
     relative: Callable[[Path], str | Path],
-):
+) -> None:
     for path, before, after in changes:
         if path.is_symlink() or path.read_text() != before:
-            raise MigrationError("Configuration drift after planning; stop and re-audit")
+            msg = "Configuration drift after planning; stop and re-audit"
+            raise MigrationError(msg)
         preimages.save(path, relative(path))
         # Preserve owner/mode and support /etc/hosts bind mounts. Replacements
         # never change syntax, only validated IP literals. Preimages survive errors.
@@ -214,17 +225,20 @@ def write_changes(
             os.fsync(stream.fileno())
 
 
-def validate_dns_anchor(text: str, old: str, new: str):
+def validate_dns_anchor(text: str, old: str, new: str) -> None:
     values = {}
     for name in ("HOME", "VPS"):
         match = re.search(r"^" + name + r' = [\'"]([^\'"]+)[\'"]$', text, re.MULTILINE)
         if not match:
-            raise MigrationError("DNS owner anchors changed; review required")
+            msg = "DNS owner anchors changed; review required"
+            raise MigrationError(msg)
         values[name] = match[1]
     if values["VPS"] not in (old, new):
-        raise MigrationError("VPS anchor differs from both requested addresses")
+        msg = "VPS anchor differs from both requested addresses"
+        raise MigrationError(msg)
     if values["HOME"] in (old, new):
-        raise MigrationError("Refusing to replace the HOME entrance as a VPS address")
+        msg = "Refusing to replace the HOME entrance as a VPS address"
+        raise MigrationError(msg)
 
 
 def repository(
@@ -241,13 +255,16 @@ def repository(
         root / "charts/traefik-edge/values.yaml",
     )
     if not all(p.is_file() for p in required):
-        raise MigrationError("Not the reviewed homelab repository")
+        msg = "Not the reviewed homelab repository"
+        raise MigrationError(msg)
     validate_dns_anchor(required[0].read_text(), old, new)
     paths = [root / name for name in SOURCE_FILES]
     if any(not p.resolve().is_relative_to(root) for p in paths):
-        raise MigrationError("Source path escapes the worktree")
+        msg = "Source path escapes the worktree"
+        raise MigrationError(msg)
     if not all(p.is_file() for p in paths):
-        raise MigrationError("Owned source layout changed; review the explicit manifest")
+        msg = "Owned source layout changed; review the explicit manifest"
+        raise MigrationError(msg)
     changes = file_plan(paths, old, new)
     report = {
         "component": "repository",
@@ -269,12 +286,15 @@ def repository(
             ]
         )
         if dirty.strip():
-            raise MigrationError("Owned source files are dirty; use a clean isolated worktree")
+            msg = "Owned source files are dirty; use a clean isolated worktree"
+            raise MigrationError(msg)
         if not backup_root:
-            raise MigrationError("Apply requires a private backup root")
+            msg = "Apply requires a private backup root"
+            raise MigrationError(msg)
         dest = Path(backup_root).expanduser().resolve()
         if dest == root or root in dest.parents:
-            raise MigrationError("Repository preimages must be outside the worktree")
+            msg = "Repository preimages must be outside the worktree"
+            raise MigrationError(msg)
         store = Preimages(backup_root, old + "-to-" + new)
         report.update(preimages=str(store.path), state="applying")
         store.receipt(report)
@@ -291,14 +311,17 @@ def repository(
 
 def db_plan(path: Path, old: str):
     if path.is_symlink():
-        raise MigrationError("Refusing a symlink database")
+        msg = "Refusing a symlink database"
+        raise MigrationError(msg)
     with sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=20) as connection:
         if connection.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
-            raise MigrationError("SQLite quick_check failed; preserve data and investigate")
+            msg = "SQLite quick_check failed; preserve data and investigate"
+            raise MigrationError(msg)
         table = connection.execute("SELECT type FROM sqlite_master WHERE name='hosts'").fetchone()
         cols = [r[1] for r in connection.execute("PRAGMA table_info(hosts)")]
         if table != ("table",) or "address" not in cols:
-            raise MigrationError("3x-ui hosts schema changed; manual review required")
+            msg = "3x-ui hosts schema changed; manual review required"
+            raise MigrationError(msg)
         count = connection.execute(
             "SELECT count(*) FROM hosts WHERE address = ?", (old,)
         ).fetchone()[0]
@@ -307,9 +330,8 @@ def db_plan(path: Path, old: str):
             (old, old),
         ).fetchone()[0]
         if partial:
-            raise MigrationError(
-                "Non-literal host address contains old IP; do not rewrite automatically"
-            )
+            msg = "Non-literal host address contains old IP; do not rewrite automatically"
+            raise MigrationError(msg)
     return count
 
 
@@ -321,12 +343,14 @@ def backup_database(path: Path, store: Preimages):
         with sqlite3.connect(target) as backup:
             source.backup(backup)
             if backup.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
-                raise MigrationError("Database preimage failed integrity; stop")
+                msg = "Database preimage failed integrity; stop"
+                raise MigrationError(msg)
     return target
 
 
-def migrate_database(path: Path, old: str, new: str, store: Preimages):
-    raise MigrationError("Production panel writes require native API; SQL migration prohibited")
+def migrate_database(path: Path, old: str, new: str, store: Preimages) -> Never:
+    msg = "Production panel writes require native API; SQL migration prohibited"
+    raise MigrationError(msg)
 
 
 def service_plan(services: Sequence[str], reviewed: Mapping[str, str] | None = None):
@@ -335,21 +359,25 @@ def service_plan(services: Sequence[str], reviewed: Mapping[str, str] | None = N
     for service in services:
         state = run(["systemctl", "show", service, "-p", "ActiveState", "--value"]).strip()
         if service in reviewed and reviewed[service] != state:
-            raise MigrationError("Reviewed native service state drifted; re-audit")
+            msg = "Reviewed native service state drifted; re-audit"
+            raise MigrationError(msg)
         if (
             state == "activating"
             and run(["systemctl", "show", service, "-p", "SubState", "--value"]).strip()
             != "auto-restart"
         ):
-            raise MigrationError("Only reviewed auto-restarting native transport may recover")
+            msg = "Only reviewed auto-restarting native transport may recover"
+            raise MigrationError(msg)
         if state != "active" and reviewed.get(service) != state:
-            raise MigrationError("Affected native service is not active; review before changing it")
+            msg = "Affected native service is not active; review before changing it"
+            raise MigrationError(msg)
         if state in ("active", "activating"):
             restart.append(service)
         elif state == "inactive":
             dormant.append(service)
         else:
-            raise MigrationError("Unsupported reviewed native service state")
+            msg = "Unsupported reviewed native service state"
+            raise MigrationError(msg)
     return restart, dormant
 
 
@@ -360,13 +388,16 @@ def wg_endpoint_changes(text: str, old: str, new: str):
         endpoint = re.search(r"^Endpoint\s*=\s*([^\s#]+)", block, re.MULTILINE)
         if endpoint and endpoint[1].startswith(old + ":"):
             if not key:
-                raise MigrationError("Malformed WireGuard peer block")
+                msg = "Malformed WireGuard peer block"
+                raise MigrationError(msg)
             allowed = re.search(r"^AllowedIPs\s*=\s*([^\n#]+)", block, re.MULTILINE)
             if not allowed or "10.250.0.2/32" not in [p.strip() for p in allowed[1].split(",")]:
-                raise MigrationError("Old endpoint belongs to a different peer; do not retarget it")
+                msg = "Old endpoint belongs to a different peer; do not retarget it"
+                raise MigrationError(msg)
             port = endpoint[1].split(":")[1]
             if not port.isdigit() or not 0 < int(port) < 65536:
-                raise MigrationError("Invalid WireGuard peer port")
+                msg = "Invalid WireGuard peer port"
+                raise MigrationError(msg)
             result.append((key[1], new + ":" + port))
     return result
 
@@ -390,13 +421,14 @@ def required_services(changes: Sequence[Change]):
     ]
 
 
-def refresh_guard(old_text: str, new: str):
+def refresh_guard(old_text: str, new: str) -> None:
     match = re.search(
         r"wireguard-tcp-transport-guard.py\s+([A-Za-z0-9_.:-]{1,15})\s+([0-9.]+)\s+([0-9]+)",
         old_text,
     )
     if not match:
-        raise MigrationError("Unknown guard unit format; manual review required")
+        msg = "Unknown guard unit format; manual review required"
+        raise MigrationError(msg)
     interface, old, port = match.groups()
     # Add the new owned rule before removing exactly its old counterpart.
     run(
@@ -432,7 +464,8 @@ def refresh_guard(old_text: str, new: str):
     if check.returncode == 0:
         run(["iptables", "-w", "10", "-D", "INPUT", *rule])
     elif check.returncode != 1:
-        raise MigrationError("Unable to inspect old owned guard rule")
+        msg = "Unable to inspect old owned guard rule"
+        raise MigrationError(msg)
 
 
 def host(
@@ -447,18 +480,22 @@ def host(
     reviewed_service_states: Mapping[str, str] | None = None,
 ):
     if hostname not in HOSTS or socket.gethostname().split(".")[0] != hostname:
-        raise MigrationError("Unexpected host identity")
+        msg = "Unexpected host identity"
+        raise MigrationError(msg)
     refuse_unfinished(backup_root, hostname + "-" + old + "-to-" + new)
     if require_assigned and hostname == "socrat-2":
         links = json.loads(run(["ip", "-j", "-4", "addr", "show"]))
         assigned = [a["local"] for link in links for a in link.get("addr_info", [])]
         if new not in assigned:
-            raise MigrationError("Provider has not assigned new IPv4 on this VPS")
+            msg = "Provider has not assigned new IPv4 on this VPS"
+            raise MigrationError(msg)
     paths = [Path(p) for p in COMMON_FILES + (VPS_FILES if hostname == "socrat-2" else ())]
     if not Path("/etc/wireguard/wg-socrat.conf").is_file():
-        raise MigrationError("Required WireGuard configuration is missing")
+        msg = "Required WireGuard configuration is missing"
+        raise MigrationError(msg)
     if hostname in HOSTS[:3] and not Path("/usr/local/libexec/public_dns_zone.py").is_file():
-        raise MigrationError("Required authoritative DNS owner is missing")
+        msg = "Required authoritative DNS owner is missing"
+        raise MigrationError(msg)
     dns_owner = Path("/usr/local/libexec/public_dns_zone.py")
     if dns_owner.is_file():
         validate_dns_anchor(dns_owner.read_text(), old, new)
@@ -471,11 +508,13 @@ def host(
             r"wireguard-tcp-transport-guard.py\s+\S+\s+" + re.escape(old) + r"\s+\d+",
             before,
         ):
-            raise MigrationError("Unknown guard unit format")
+            msg = "Unknown guard unit format"
+            raise MigrationError(msg)
     databases = {}
     if hostname == "socrat-2":
         if not Path(DATABASES[0]).is_file():
-            raise MigrationError("Primary 3x-ui database missing")
+            msg = "Primary 3x-ui database missing"
+            raise MigrationError(msg)
         databases = {p: db_plan(Path(p), old) for p in DATABASES if Path(p).exists()}
     services = required_services(changes)
     restart_services, dormant_services = service_plan(services, reviewed_service_states)
@@ -494,9 +533,8 @@ def host(
     }
     if apply and changes:
         if os.geteuid() != 0 or not backup_root or not allow_service_restarts:
-            raise MigrationError(
-                "Host apply requires root, private backup root and restart approval"
-            )
+            msg = "Host apply requires root, private backup root and restart approval"
+            raise MigrationError(msg)
         store = Preimages(backup_root, hostname + "-" + old + "-to-" + new)
         report["preimages"] = str(store.path)
         report["state"] = "applying"
@@ -534,7 +572,7 @@ def host(
     return report
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("component", choices=["repository", "host"])
     parser.add_argument("--old-ip", required=True)
@@ -552,7 +590,8 @@ def main():
         addresses(args.old_ip, args.new_ip)
         if args.component == "repository":
             if args.root is None:
-                raise MigrationError("Repository root is required")
+                msg = "Repository root is required"
+                raise MigrationError(msg)
             report = repository(args.root, args.old_ip, args.new_ip, args.apply, args.backup_root)
         else:
             report = host(

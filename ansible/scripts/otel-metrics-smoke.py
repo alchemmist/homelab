@@ -418,7 +418,7 @@ def run(args):
     return result
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     for name in ["binary", "prometheus", "config", "tls", "workspace"]:
         parser.add_argument("--" + name, type=Path, required=True)

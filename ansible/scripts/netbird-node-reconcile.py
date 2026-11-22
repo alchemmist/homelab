@@ -33,7 +33,7 @@ def require(ok: object, message: str) -> None:
         raise ValueError(message)
 
 
-def atomic(path, value):
+def atomic(path, value) -> None:
     """Durably write a JSON value to disk via a temporary file and rename."""
     tmp = path.with_suffix(".tmp")
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
@@ -286,7 +286,7 @@ def node_ready(node: object) -> bool:
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
-    def redirect_request(self, *_a, **_kw):
+    def redirect_request(self, *_a, **_kw) -> None:
         """Refuse redirects so credentials are never forwarded."""
         return
 
@@ -365,8 +365,7 @@ class Runtime:
             input=stdin
             if stdin is not None
             else (None if obj is None else json.dumps(obj).encode()),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=180,
         )
         require(
@@ -380,7 +379,7 @@ class Runtime:
         out = self.kub(["-n", ns, "get", kind, name, "-o", "json"], optional=optional)
         return json.loads(out) if out.strip() else None
 
-    def save(self):
+    def save(self) -> None:
         """Persist the reconciler state atomically."""
         atomic(self.state_path, self.state)
 
@@ -408,7 +407,7 @@ class Runtime:
             "workload/PVC must already be owned by the root-managed netbird Argo CD Application",
         )
 
-    def restart_without_key(self, host, deployment):
+    def restart_without_key(self, host, deployment) -> None:
         # Operational acceptance restart only: never edit/create a workload spec.
         """Restart the deployment pod so the node key is never persisted."""
         pods = json.loads(
@@ -701,7 +700,7 @@ class Runtime:
         )
         return p, status
 
-    def verify_deployment(self, host, d):
+    def verify_deployment(self, host, d) -> None:
         """Verify the deployment manifest matches the expected rendering."""
         expected = manifests(
             host,
@@ -1117,7 +1116,7 @@ class Runtime:
         }
 
 
-def main():
+def main() -> None:
     """Verify the pinning config and reconcile the reviewed node state."""
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)

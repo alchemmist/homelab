@@ -11,7 +11,7 @@ import logging
 import urllib.request
 
 
-def run():
+def run() -> None:
     logging.disable(logging.CRITICAL)
     with (
         contextlib.redirect_stdout(io.StringIO()),

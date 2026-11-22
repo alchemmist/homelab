@@ -103,7 +103,7 @@ def public_certificate_hash(kube, namespace, application="litellm"):
     return public_certificate_identity(kube, namespace, application)["certificateSHA256"]
 
 
-def run(output, application="litellm"):
+def run(output, application="litellm") -> None:
     leaf_name(application)
     os.umask(0o077)
     controller = Path.home() / "Library/Application Support/homelab/otel-controller"

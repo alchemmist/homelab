@@ -30,15 +30,15 @@ for key, (contract, stdin, stdout, faults) in SPECS.items():
         for c in suite.get("cases", [])
         if c.get("public")
     ]
-    data = dict(
-        statement=(path / "statement.md").read_text(),
-        contract=contract,
-        calls=0,
-        cases=[],
-        examples=examples or [dict(input=stdin, output=stdout)],
-        example_origin="canonical" if examples else "operator_fixture",
-        faults=[["empty", "pass"], *faults],
-    )
+    data = {
+        "statement": (path / "statement.md").read_text(),
+        "contract": contract,
+        "calls": 0,
+        "cases": [],
+        "examples": examples or [{"input": stdin, "output": stdout}],
+        "example_origin": "canonical" if examples else "operator_fixture",
+        "faults": [["empty", "pass"], *faults],
+    }
     if contract == "noinput_reviewed":
         data.update(
             examples=examples,
@@ -47,14 +47,14 @@ for key, (contract, stdin, stdout, faults) in SPECS.items():
         )
     if contract == "beautiful_digits":
         data["targetedCases"] = [
-            dict(input="513\n", output="Вы ввели красивое число\n"),
-            dict(input="777\n", output="Вы ввели красивое число\n"),
-            dict(input="124\n", output="Жаль, вы ввели обычное число\n"),
+            {"input": "513\n", "output": "Вы ввели красивое число\n"},
+            {"input": "777\n", "output": "Вы ввели красивое число\n"},
+            {"input": "124\n", "output": "Жаль, вы ввели обычное число\n"},
         ]
     if contract == "adjacent_sums":
-        data["targetedCases"] = [dict(input="258\n", output="137\n")]
+        data["targetedCases"] = [{"input": "258\n", "output": "137\n"}]
     if contract == "thank_count":
-        data["targetedCases"] = [dict(input="спасибо.\n Спасибо. \nСпасибо.\n", output="3\n")]
+        data["targetedCases"] = [{"input": "спасибо.\n Спасибо. \nСпасибо.\n", "output": "3\n"}]
     if contract in ("xmas2", "xmas3"):
         prereqs = ["xmas-tree"] + (["xmas-tree-2"] if contract == "xmas3" else [])
         data["statement"] = "\n\n".join(
@@ -62,7 +62,8 @@ for key, (contract, stdin, stdout, faults) in SPECS.items():
             + [data["statement"]]
         )
         data["targetedCases"] = [
-            dict(input=x, output="НЕ ГОРИ\n") for x in ("раз\n2\nтри\n", "3\n2\n1\n", "1 \n2\n3\n")
+            {"input": x, "output": "НЕ ГОРИ\n"}
+            for x in ("раз\n2\nтри\n", "3\n2\n1\n", "1 \n2\n3\n")
         ]
     if contract.startswith("until_"):
         assert examples, "Loop contract requires canonical examples"
@@ -72,12 +73,12 @@ for key, (contract, stdin, stdout, faults) in SPECS.items():
             "until_empty": (" \na\n\nлишнее\n", " \na\n"),
         }
         x, y = cases[contract]
-        data["targetedCases"] = [dict(input=x, output=y)]
+        data["targetedCases"] = [{"input": x, "output": y}]
     if contract == "xmas":
         data["coverageHints"] = (
             "Допустимы только слова раз, два, три в этом порядке. Цифры 1,2,3 не подходят."
         )
-        data["targetedCases"] = [dict(input="1\n2\n3\n", output="НЕ ГОРИ\n")]
+        data["targetedCases"] = [{"input": "1\n2\n3\n", "output": "НЕ ГОРИ\n"}]
     if contract == "yes_no":
         data["repairGuidance"] = (
             "Только точные слова да и нет: пробелы и регистр значимы. Нельзя strip() или lower()."
@@ -85,10 +86,10 @@ for key, (contract, stdin, stdout, faults) in SPECS.items():
     if contract in ("parrot", "reverse"):
         values = [" left ", " mid ", " right "]
         data["targetedCases"] = [
-            dict(
-                input="\n".join(values) + "\n",
-                output="\n".join(values if contract == "parrot" else values[::-1]) + "\n",
-            )
+            {
+                "input": "\n".join(values) + "\n",
+                "output": "\n".join(values if contract == "parrot" else values[::-1]) + "\n",
+            }
         ]
         data["coverageHints"] = "Проверь сохранение ведущих и завершающих пробелов каждой строки."
     if contract == "heights":

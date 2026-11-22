@@ -48,10 +48,12 @@ def validate(document) -> list[dict[str, object]]:
         or document.get("warnings")
         or document.get("data", {}).get("resultType") != "vector"
     ):
-        raise ValueError("Invalid or partial metadata response")
+        msg = "Invalid or partial metadata response"
+        raise ValueError(msg)
     points = document["data"]["result"]
     if len(points) > 10000:
-        raise ValueError("Series budget exceeded")
+        msg = "Series budget exceeded"
+        raise ValueError(msg)
     clean = []
     for point in points:
         labels = point["metric"]
@@ -59,10 +61,12 @@ def validate(document) -> list[dict[str, object]]:
             k not in LABELS or not isinstance(v, str) or (v and not SAFE.fullmatch(v))
             for k, v in labels.items()
         ):
-            raise ValueError("Unsafe metadata")
+            msg = "Unsafe metadata"
+            raise ValueError(msg)
         count = float(point["value"][1])
         if not math.isfinite(count) or count < 0:
-            raise ValueError("Invalid count")
+            msg = "Invalid count"
+            raise ValueError(msg)
         clean.append({"labels": labels, "count": count})
     return clean
 
@@ -101,11 +105,14 @@ def inventory(pods, workloads, hosts) -> list[dict[str, object]]:
         if set(host) - {"host", "unit", "exists", "emission"} or not all(
             SAFE.fullmatch(host[k]) for k in ("host", "unit")
         ):
-            raise ValueError("Invalid host registry")
+            msg = "Invalid host registry"
+            raise ValueError(msg)
         if host.get("exists") is not None and type(host["exists"]) is not bool:
-            raise ValueError("Invalid existence attestation")
+            msg = "Invalid existence attestation"
+            raise ValueError(msg)
         if host.get("emission", "unknown") not in {"unknown", "expected", "silent"}:
-            raise ValueError("Invalid emission expectation")
+            msg = "Invalid emission expectation"
+            raise ValueError(msg)
         sources.append(
             dict(
                 host,
@@ -128,12 +135,14 @@ def host_registry(snapshots) -> list[dict[str, object]]:
     for snapshot in snapshots:
         host = snapshot["host"]
         if not isinstance(host, str) or not SAFE.fullmatch(host):
-            raise ValueError("Invalid inventory host")
+            msg = "Invalid inventory host"
+            raise ValueError(msg)
         for unit, facts in snapshot["services"].items():
             if facts.get("source") != "systemd" or not unit.endswith(".service"):
                 continue
             if not SAFE.fullmatch(unit) or (host, unit) in seen:
-                raise ValueError("Invalid or duplicate inventory unit")
+                msg = "Invalid or duplicate inventory unit"
+                raise ValueError(msg)
             seen.add((host, unit))
             registry.append({"host": host, "unit": unit, "exists": True, "emission": "unknown"})
     return registry
@@ -212,7 +221,8 @@ def kubectl(resource) -> dict[str, object]:
         timeout=20,
     )
     if result.returncode:
-        raise ValueError("Read-only inventory request failed")
+        msg = "Read-only inventory request failed"
+        raise ValueError(msg)
     return cast("dict[str, object]", json.loads(result.stdout))
 
 
@@ -221,7 +231,8 @@ def fetch(base, context, selector, window) -> list[dict[str, object]]:
     with urllib.request.urlopen(url, context=context, timeout=15) as response:
         body = response.read(8 * 1024 * 1024 + 1)
     if len(body) > 8 * 1024 * 1024:
-        raise ValueError("Response budget exceeded")
+        msg = "Response budget exceeded"
+        raise ValueError(msg)
     return validate(json.loads(body))
 
 

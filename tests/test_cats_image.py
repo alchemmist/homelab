@@ -35,16 +35,12 @@ class CatsImageTest(unittest.TestCase):
     def test_workload_uses_a_tokenless_dedicated_service_account(self) -> None:
         """Avoid the default identity and disable unnecessary API credentials."""
         documents = [
-            document
-            for document in yaml.safe_load_all(self.render())
-            if document is not None
+            document for document in yaml.safe_load_all(self.render()) if document is not None
         ]
         service_account = next(
             document for document in documents if document["kind"] == "ServiceAccount"
         )
-        deployment = next(
-            document for document in documents if document["kind"] == "Deployment"
-        )
+        deployment = next(document for document in documents if document["kind"] == "Deployment")
 
         assert service_account["automountServiceAccountToken"] is False
         pod_spec = deployment["spec"]["template"]["spec"]

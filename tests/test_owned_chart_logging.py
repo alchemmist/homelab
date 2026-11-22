@@ -23,7 +23,7 @@ class OwnedLoggingTests(unittest.TestCase):
         assert row["service"] == service
         assert row["level"] in ["info", "warn", "error", "debug"]
         assert row["ts"].endswith("Z")
-        datetime.fromisoformat(row["ts"].replace("Z", "+00:00"))
+        datetime.fromisoformat(row["ts"])
         assert "\n" not in row["msg"]
 
     def test_worker_allowlist(self) -> None:
@@ -68,7 +68,8 @@ class OwnedLoggingTests(unittest.TestCase):
         sys.modules[spec.name] = module
         spec.loader.exec_module(module)
         try:
-            raise ValueError("private\ncredential")
+            msg = "private\ncredential"
+            raise ValueError(msg)
         except ValueError:
             record = logging.LogRecord("test", logging.ERROR, "", 0, "private", (), sys.exc_info())
         raw = module.JsonFormatter().format(record)

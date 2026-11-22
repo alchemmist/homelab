@@ -120,7 +120,7 @@ if __name__ == "__main__":
 
 def test_warm_workshop_distinguishes_retained_tree_from_active_and_excludes_seeds(
     tmp_path, monkeypatch
-):
+) -> None:
     monkeypatch.setenv("WARM_WORKSHOP", "1")
     pvc = (
         tmp_path

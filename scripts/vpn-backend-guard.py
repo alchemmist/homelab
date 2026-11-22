@@ -25,7 +25,8 @@ OWNER = "homelab issue83 public backend guard v1"
 def run(args, *, check: bool = False, **kwargs) -> str:
     r = subprocess.run(args, check=check, capture_output=True, text=True, timeout=20, **kwargs)
     if r.returncode:
-        raise RuntimeError("Backend guard operation failed; inspect private receipts")
+        msg = "Backend guard operation failed; inspect private receipts"
+        raise RuntimeError(msg)
     output: str = r.stdout
     return output
 
@@ -84,8 +85,8 @@ def expected() -> "list[dict[str, object]]":
                 "table": TABLE,
                 "chain": "input",
                 "comment": "owned83:established",
-                "expr": prefix
-                + [
+                "expr": [
+                    *prefix,
                     {
                         "match": {
                             "op": "in",
@@ -104,7 +105,7 @@ def expected() -> "list[dict[str, object]]":
                 "table": TABLE,
                 "chain": "input",
                 "comment": "owned83:public-deny",
-                "expr": prefix + [{"counter": {}}, {"reject": {"type": "tcp reset"}}],
+                "expr": [*prefix, {"counter": {}}, {"reject": {"type": "tcp reset"}}],
             }
         },
     ]
@@ -120,7 +121,8 @@ def validate(objects) -> None:
         if "table" in obj:
             comment = obj["table"].pop("comment", None)
             if comment not in (None, OWNER):
-                raise ValueError("Foreign table owner")
+                msg = "Foreign table owner"
+                raise ValueError(msg)
     # NetBird inserts this exact private-interface accept into input hook chains.
     # It cannot match eth0 and is redundant with this chain's accept policy.
     # Preserve it; allow no other foreign rule, duplicate, interface or verdict.
@@ -143,10 +145,12 @@ def validate(objects) -> None:
         }
     }
     if data.count(private_allow) > 1:
-        raise ValueError("Duplicate private interface allowance")
+        msg = "Duplicate private interface allowance"
+        raise ValueError(msg)
     data = [obj for obj in data if obj != private_allow]
     if data != expected():
-        raise ValueError("Not the exact owned backend guard")
+        msg = "Not the exact owned backend guard"
+        raise ValueError(msg)
 
 
 def read_table() -> "list[dict[str, object]] | None":
@@ -168,10 +172,12 @@ def read_table() -> "list[dict[str, object]] | None":
 
 def require_host() -> None:
     if os.geteuid() != 0 or socket.gethostname() != "socrat-2":
-        raise ValueError("Requires root on socrat-2")
+        msg = "Requires root on socrat-2"
+        raise ValueError(msg)
     links = json.loads(run(["ip", "-j", "link", "show", "eth0"]))
     if len(links) != 1 or links[0]["ifname"] != "eth0":
-        raise ValueError("Public interface missing")
+        msg = "Public interface missing"
+        raise ValueError(msg)
 
 
 def plan() -> "dict[str, object]":
@@ -193,16 +199,19 @@ def apply(state, approval) -> "dict[str, object]":
     require_host()
     wanted = plan()
     if h.digest(wanted) != approval or read_table() is not None:
-        raise ValueError("Fresh empty-table approval required")
+        msg = "Fresh empty-table approval required"
+        raise ValueError(msg)
     run(["nft", "--check", "-f", "-"], input=rules())
     h.save(state / "backend-guard-before.json", None)
     h.save(state / "backend-guard-uncertain.json", {"approval": approval, "plan": wanted})
     if plan() != wanted:
-        raise ValueError("Preimage drift")
+        msg = "Preimage drift"
+        raise ValueError(msg)
     run(["nft", "-f", "-"], input=rules())
     after = read_table()
     if after is None:
-        raise RuntimeError("Guard not present")
+        msg = "Guard not present"
+        raise RuntimeError(msg)
     h.save(state / "backend-guard-after.json", after)
     h.save(state / "backend-guard-receipt.json", wanted)
     (state / "backend-guard-uncertain.json").unlink()
@@ -213,16 +222,20 @@ def finalize_readback(state, approval) -> "dict[str, object]":
     require_host()
     marker = json.loads((state / "backend-guard-uncertain.json").read_text())
     if marker["approval"] != approval or h.digest(marker["plan"]) != approval:
-        raise ValueError("Interrupted approval mismatch")
+        msg = "Interrupted approval mismatch"
+        raise ValueError(msg)
     if marker["plan"]["rules_sha256"] != h.digest(rules()) or marker["plan"][
         "before_sha256"
     ] != h.digest(None):
-        raise ValueError("Interrupted rules/preimage mismatch")
+        msg = "Interrupted rules/preimage mismatch"
+        raise ValueError(msg)
     if json.loads((state / "backend-guard-before.json").read_text()) is not None:
-        raise ValueError("Nonempty original table")
+        msg = "Nonempty original table"
+        raise ValueError(msg)
     current = read_table()
     if current is None:
-        raise ValueError("No installed guard; do not replay")
+        msg = "No installed guard; do not replay"
+        raise ValueError(msg)
     h.save(state / "backend-guard-after.json", current)
     h.save(
         state / "backend-guard-receipt.json",
@@ -238,7 +251,8 @@ def ensure() -> "dict[str, object]":
         run(["nft", "--check", "-f", "-"], input=rules())
         run(["nft", "-f", "-"], input=rules())
         if read_table() is None:
-            raise RuntimeError("Boot guard missing")
+            msg = "Boot guard missing"
+            raise RuntimeError(msg)
     return {"owned_guard_present": True}
 
 
@@ -261,7 +275,8 @@ WantedBy=multi-user.target
 def persist(state) -> None:
     require_host()
     if read_table() is None:
-        raise ValueError("Verified live guard required before persistence")
+        msg = "Verified live guard required before persistence"
+        raise ValueError(msg)
     dest = h.private_directory("/usr/local/libexec/homelab-vpn-backend-guard")
     files = {
         dest / "vpn-backend-guard.py": Path(__file__).read_bytes(),
@@ -273,7 +288,8 @@ def persist(state) -> None:
     for path, content in files.items():
         h.check_path(path)
         if path.exists():
-            raise ValueError("Persistence path already exists; inspect instead of overwriting")
+            msg = "Persistence path already exists; inspect instead of overwriting"
+            raise ValueError(msg)
     h.save(state / "guard-persistence-uncertain.json", {"paths": [str(p) for p in files]})
     for path, content in files.items():
         fd = os.open(

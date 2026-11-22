@@ -112,7 +112,8 @@ def urllib_opener(url, body) -> object:
         with urllib.request.urlopen(request, timeout=15) as response:
             return json.load(response)
     except urllib.error.HTTPError as exc:
-        raise ValueError("setup endpoint rejected the request") from exc
+        msg = "setup endpoint rejected the request"
+        raise ValueError(msg) from exc
 
 
 def main() -> None:

@@ -4,6 +4,8 @@ import importlib.util
 import unittest
 from pathlib import Path
 
+import pytest
+
 SPEC = importlib.util.spec_from_file_location(
     "etcd_members",
     Path(__file__).resolve().parents[1] / "ansible/roles/k3s_role_rebalance/files/etcd_members.py",
@@ -39,7 +41,8 @@ class FakeEtcd:
     def health(self, name: str) -> None:
         """Raise for any endpoint outside the scripted healthy set."""
         if name not in self.healthy:
-            raise RuntimeError("unhealthy")
+            msg = "unhealthy"
+            raise RuntimeError(msg)
 
     def status(self, name: str) -> dict[str, object]:
         """Report the member identity and the scripted leader."""
@@ -55,10 +58,12 @@ class FakeEtcd:
             self.leader = int(args[1], 16)
         elif args[:2] == ["member", "remove"]:
             if self.fail_remove:
-                raise RuntimeError("failed")
+                msg = "failed"
+                raise RuntimeError(msg)
             del self.membership["socrat-1"]
             if self.ambiguous_remove:
-                raise RuntimeError("response lost")
+                msg = "response lost"
+                raise RuntimeError(msg)
 
 
 class RebalanceTest(unittest.TestCase):
@@ -67,70 +72,67 @@ class RebalanceTest(unittest.TestCase):
     def test_final_verification_never_removes_an_unexpected_member(self) -> None:
         """Fail the final verification before any unexpected removal."""
         client = FakeEtcd()
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             MODULE.verify_final(client)
-        self.assertEqual(client.calls, [])
-        self.assertIn("socrat-1", client.membership)
+        assert client.calls == []
+        assert "socrat-1" in client.membership
 
     def test_offline_socrat_2_allows_guarded_removal(self) -> None:
         """Remove socrat-1 only with the guarded leader move first."""
         client = FakeEtcd()
         result = MODULE.remove_socrat_1(client)
-        self.assertTrue(result["changed"])
-        self.assertEqual(set(result["members"]), MODULE.FINAL)
-        self.assertEqual(
-            client.calls,
-            [
-                (["move-leader", "1"], MODULE.ENDPOINTS["socrat-1"], False),
-                (["member", "remove", "2"], None, False),
-            ],
-        )
+        assert result["changed"]
+        assert set(result["members"]) == MODULE.FINAL
+        assert client.calls == [
+            (["move-leader", "1"], MODULE.ENDPOINTS["socrat-1"], False),
+            (["member", "remove", "2"], None, False),
+        ]
 
     def test_target_membership_is_idempotent(self) -> None:
         """Treat the target membership as already converged."""
         client = FakeEtcd()
         del client.membership["socrat-1"]
-        self.assertFalse(MODULE.remove_socrat_1(client)["changed"])
-        self.assertEqual(client.calls, [])
+        assert not MODULE.remove_socrat_1(client)["changed"]
+        assert client.calls == []
 
     def test_unhealthy_required_member_blocks_mutation(self) -> None:
         """Refuse mutation while any required member is unhealthy."""
         for name in ("socrat-0", "socrat-1", "socrat-3"):
             client = FakeEtcd()
             client.healthy.remove(name)
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 MODULE.remove_socrat_1(client)
-            self.assertEqual(client.calls, [])
+            assert client.calls == []
 
     def test_learner_blocks_mutation(self) -> None:
         """Refuse mutation while any member is still a learner."""
         client = FakeEtcd()
         client.membership["socrat-3"]["learner"] = True
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             MODULE.remove_socrat_1(client)
-        self.assertEqual(client.calls, [])
+        assert client.calls == []
 
     def test_unknown_membership_blocks_mutation(self) -> None:
         """Refuse mutation on unexpected membership."""
         client = FakeEtcd()
         client.membership["unknown"] = client.membership.pop("socrat-3")
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             MODULE.remove_socrat_1(client)
-        self.assertEqual(client.calls, [])
+        assert client.calls == []
 
     def test_failed_removal_requires_operator_action(self) -> None:
         """Surface failed removals as operator action items."""
         client = FakeEtcd()
         client.fail_remove = True
-        with self.assertRaisesRegex(RuntimeError, "restore its staged configuration"):
+        with pytest.raises(RuntimeError, match="restore its staged configuration"):
             MODULE.remove_socrat_1(client)
-        self.assertIn("socrat-1", client.membership)
+        assert "socrat-1" in client.membership
 
     def test_lost_success_response_is_verified(self) -> None:
         """Recover a lost success response through final verification."""
         client = FakeEtcd()
         client.ambiguous_remove = True
-        self.assertTrue(MODULE.remove_socrat_1(client)["changed"])
+        assert MODULE.remove_socrat_1(client)["changed"]
 
 
 if __name__ == "__main__":

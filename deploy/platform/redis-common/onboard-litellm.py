@@ -8,12 +8,54 @@ import subprocess
 import sys
 
 HOST = "redis-common-haproxy.redis.svc.cluster.local"
-COMMANDS = (
-    "info ping get set setex psetex mget mset del exists ttl pttl expire pexpire incr incrby incrbyfloat "
-    "decr decrby hget hset hgetall hincrby hdel hmget eval evalsha script|load multi exec discard "
-    "publish subscribe unsubscribe zadd zcount zcard zrange zrem zremrangebyscore lpush rpush lrange "
-    "ltrim client|setinfo time"
-).split()
+COMMANDS = [
+    "info",
+    "ping",
+    "get",
+    "set",
+    "setex",
+    "psetex",
+    "mget",
+    "mset",
+    "del",
+    "exists",
+    "ttl",
+    "pttl",
+    "expire",
+    "pexpire",
+    "incr",
+    "incrby",
+    "incrbyfloat",
+    "decr",
+    "decrby",
+    "hget",
+    "hset",
+    "hgetall",
+    "hincrby",
+    "hdel",
+    "hmget",
+    "eval",
+    "evalsha",
+    "script|load",
+    "multi",
+    "exec",
+    "discard",
+    "publish",
+    "subscribe",
+    "unsubscribe",
+    "zadd",
+    "zcount",
+    "zcard",
+    "zrange",
+    "zrem",
+    "zremrangebyscore",
+    "lpush",
+    "rpush",
+    "lrange",
+    "ltrim",
+    "client|setinfo",
+    "time",
+]
 
 
 def kube(ns, *args, data=None):
@@ -43,12 +85,10 @@ def secret(ns, name, make):
             ),
         )
         current = kube(ns, *args)
-    return {
-        k: base64.b64decode(v).decode() for k, v in json.loads(current)["data"].items()
-    }
+    return {k: base64.b64decode(v).decode() for k, v in json.loads(current)["data"].items()}
 
 
-def main():
+def main() -> None:
     if sys.argv[1:] != ["--create-missing"]:
         sys.exit("usage: onboard-litellm.py --create-missing")
     ca = base64.b64decode(
@@ -63,7 +103,7 @@ def main():
     ).decode()
     assert ca.startswith("-----BEGIN CERTIFICATE-----")
 
-    def url(pw):
+    def url(pw) -> str:
         return f"rediss://litellm:{pw}@{HOST}:6379/0?ssl_ca_certs=/etc/redis-common/ca.crt&ssl_check_hostname=true&ssl_cert_reqs=required"
 
     def make():
@@ -73,9 +113,7 @@ def main():
     client = secret("llm", "redis-common-litellm", make)
     if client["ca.crt"] != ca or client["url"] != url(client["password"]):
         sys.exit("Existing client credential mismatch; use rotation runbook")
-    probe = secret(
-        "redis", "redis-common-probe", lambda: {"password": secrets.token_hex(32)}
-    )
+    probe = secret("redis", "redis-common-probe", lambda: {"password": secrets.token_hex(32)})
     users = {
         "litellm": (
             client["password"],
@@ -89,10 +127,9 @@ def main():
     install_rules(users)
 
 
-def install_rules(users):
+def install_rules(users) -> None:
     rules = {
-        u: ["on", "#" + hashlib.sha256(p.encode()).hexdigest(), *r]
-        for u, (p, r) in users.items()
+        u: ["on", "#" + hashlib.sha256(p.encode()).hexdigest(), *r] for u, (p, r) in users.items()
     }
     obj = json.loads(kube("redis", "get", "secret", "redis-common-users", "-o", "json"))
     lines = base64.b64decode(obj["data"]["client.conf"]).decode().splitlines()
@@ -149,9 +186,7 @@ def install_rules(users):
                 sys.exit("Conflicting live ACL: " + u)
             if json.loads(cli("acl", "setuser", u, "reset", *rule)) != "OK":
                 sys.exit("ACL install failed")
-    print(
-        "Persistent ACL and all three runtimes updated."
-    )
+    print("Persistent ACL and all three runtimes updated.")
 
 
 if __name__ == "__main__":

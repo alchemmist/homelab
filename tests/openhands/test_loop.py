@@ -5,6 +5,7 @@ import json
 import unittest
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -64,7 +65,7 @@ class LoopSetup(unittest.TestCase):
         assert not m.selector_matches(
             {"matchExpressions": [{"key": "app", "operator": "DoesNotExist"}]}, labels
         )
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             m.selector_matches(
                 {"matchExpressions": [{"key": "app", "operator": "Unknown"}]}, labels
             )

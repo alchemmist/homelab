@@ -25,7 +25,8 @@ class ManifestLoader(yaml.SafeLoader):
                 continue
             name = self.construct_object(key, deep=deep)
             if name in seen:
-                raise yaml.YAMLError("Duplicate rendered YAML key")
+                msg = "Duplicate rendered YAML key"
+                raise yaml.YAMLError(msg)
             seen.add(name)
         return super().construct_mapping(node, deep=deep)
 
@@ -45,7 +46,8 @@ def local_path(value):
     """Execute local_path."""
     path = (ROOT / value).resolve()
     if not path.is_relative_to(ROOT) or not path.exists():
-        raise ValueError("Missing or escaping chart/value path")
+        msg = "Missing or escaping chart/value path"
+        raise ValueError(msg)
     return path
 
 
@@ -100,9 +102,7 @@ class RenderTarget(TypedDict):
     parameters: list[HelmParameter]
 
 
-def resolve_values(
-    helm: HelmOverrides, chart: Path, refs: dict[str, ValueRef]
-) -> list[Path]:
+def resolve_values(helm: HelmOverrides, chart: Path, refs: dict[str, ValueRef]) -> list[Path]:
     """Resolve a Helm valueFiles list to local paths, rejecting foreign references."""
     relative = chart.relative_to(ROOT)
     values = []
@@ -110,7 +110,8 @@ def resolve_values(
         if value.startswith("$"):
             ref, subpath = value[1:].split("/", 1)
             if ref not in refs or refs[ref].get("targetRevision") != "main":
-                raise ValueError("Unsupported value reference")
+                msg = "Unsupported value reference"
+                raise ValueError(msg)
             values.append(local_path(subpath))
         else:
             values.append(local_path(str(relative / value)))
@@ -135,9 +136,11 @@ def argocd_targets() -> tuple[list[RenderTarget], set[str]]:
             consumed.add(str(chart.relative_to(ROOT)))
             helm = source.get("helm", {})
             if set(helm) - {"releaseName", "valueFiles", "parameters", "valuesObject"}:
-                raise ValueError("Unsupported Helm override: extend the renderer explicitly")
+                msg = "Unsupported Helm override: extend the renderer explicitly"
+                raise ValueError(msg)
             if not isinstance(helm.get("valuesObject", {}), dict):
-                raise ValueError("Helm valuesObject must be a mapping")
+                msg = "Helm valuesObject must be a mapping"
+                raise ValueError(msg)
             result.append(
                 {
                     "id": app["metadata"]["name"] + f"-{index}",
@@ -185,7 +188,8 @@ def targets():
 def arguments(target):
     """Execute arguments."""
     if not re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,52}", target["release"]):
-        raise ValueError("Invalid Helm release name")
+        msg = "Invalid Helm release name"
+        raise ValueError(msg)
     args = ["--kube-version", KUBE_VERSION, "--namespace", target["namespace"]]
     for value in target["values"]:
         args += ["--values", str(value)]
@@ -193,9 +197,11 @@ def arguments(target):
         args += ["--values", "-"]
     for parameter in target["parameters"]:
         if set(parameter) - {"name", "value", "forceString"}:
-            raise ValueError("Unsupported Helm parameter")
+            msg = "Unsupported Helm parameter"
+            raise ValueError(msg)
         if not re.fullmatch(r"[a-zA-Z0-9_][a-zA-Z0-9_.\[\]\\/-]*", parameter["name"]):
-            raise ValueError("Unsafe Helm parameter name")
+            msg = "Unsafe Helm parameter name"
+            raise ValueError(msg)
         flag = "--set-string" if parameter.get("forceString") else "--set"
         args += [flag + "=" + parameter["name"] + "=" + str(parameter["value"])]
     return args
@@ -277,20 +283,23 @@ def authentik_accounts():
     """Use the same namespace-scoped account documents applied by the Ansible role."""
     path = ROOT / "deploy/authentik/foundation.yaml"
     return [
-        doc for doc in yaml.load_all(path.read_text(), Loader=ManifestLoader)
+        doc
+        for doc in yaml.load_all(path.read_text(), Loader=ManifestLoader)
         if doc and doc["kind"] == "ServiceAccount"
     ]
 
 
 def kube_lint(target, resources, peers=()):
     """Execute kube_lint."""
+
     def key(doc):
         meta = doc["metadata"]
         return doc["kind"], meta.get("namespace", ""), meta["name"]
 
     peer_keys = {key(doc) for doc in peers}
     if peer_keys.intersection(map(key, resources)):
-        raise ValueError("Ambiguous cross-release lint resource")
+        msg = "Ambiguous cross-release lint resource"
+        raise ValueError(msg)
     data = command(
         [
             "kube-linter",
@@ -308,9 +317,11 @@ def kube_lint(target, resources, peers=()):
     if value.get("Reports") is None and data.returncode == 0 and "Summary" in value:
         value["Reports"] = []
     if not isinstance(value.get("Reports"), list):
-        raise ValueError("Invalid kube-linter report")
+        msg = "Invalid kube-linter report"
+        raise ValueError(msg)
     if data.returncode and not value["Reports"]:
-        raise RuntimeError("kube-linter failed without findings")
+        msg = "kube-linter failed without findings"
+        raise RuntimeError(msg)
     result = []
     for item in value["Reports"]:
         obj = item["Object"]["K8sObject"]
@@ -342,7 +353,8 @@ def contract_hash(target):
     for path in sorted(target["chart"].rglob("*")):
         if path.is_file():
             if not path.resolve().is_relative_to(ROOT):
-                raise ValueError("Chart dependency escapes repository")
+                msg = "Chart dependency escapes repository"
+                raise ValueError(msg)
             parts += [str(path.relative_to(ROOT)), digest(path.read_bytes().hex())]
     for path in target["values"]:
         parts += [str(path.relative_to(ROOT)), digest(path.read_bytes().hex())]
@@ -441,7 +453,8 @@ def check(*, validate=True):
     """Execute check."""
     selected = targets()
     if not selected:
-        raise ValueError("No local chart targets")
+        msg = "No local chart targets"
+        raise ValueError(msg)
     findings = []
     inventory = []
     renders = {}
@@ -482,12 +495,18 @@ def check(*, validate=True):
             peer = next(t for t in selected if t["id"] == peer_id)
             if peer_id not in renders:
                 renders[peer_id] = render(peer)
-            peers = [doc for doc in renders[peer_id] or []
-                     if doc["kind"] == kind and doc["metadata"]["name"] == name]
+            peers = [
+                doc
+                for doc in renders[peer_id] or []
+                if doc["kind"] == kind and doc["metadata"]["name"] == name
+            ]
         if target["id"] == "authentik-0":
             peers = authentik_accounts()
             # Do not discard the foundation accounts' own lint diagnostics.
-            foundation = {"id": "authentik-foundation", "source": "deploy/authentik/foundation.yaml"}
+            foundation = {
+                "id": "authentik-foundation",
+                "source": "deploy/authentik/foundation.yaml",
+            }
             findings.extend(kube_lint(foundation, peers) if peers else [])
         findings.extend(kube_lint(target, resources, peers))
         seen = set()
@@ -496,7 +515,8 @@ def check(*, validate=True):
                 not isinstance(resource, dict)
                 or not {"apiVersion", "kind", "metadata"} <= resource.keys()
             ):
-                raise ValueError("Rendered output is not a Kubernetes object")
+                msg = "Rendered output is not a Kubernetes object"
+                raise ValueError(msg)
             resource = cast("RenderedObject", resource)
             key = identity_key(target=target, resource=resource)
             if key in seen:
@@ -512,9 +532,7 @@ def check(*, validate=True):
             seen.add(key)
             inventory.append(schema_name(resource))
             findings.extend(
-                schema_findings(
-                    target=target, resource=resource, key=key, validate=validate
-                )
+                schema_findings(target=target, resource=resource, key=key, validate=validate)
             )
             findings.extend(policy_findings(target=target, resource=resource, key=key))
     return findings, len(selected), sorted(set(inventory))

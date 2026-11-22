@@ -144,7 +144,7 @@ def require(expected: object, message: str) -> None:
         raise ValueError(message)
 
 
-def replay_require_mtls_denial(args, report):
+def replay_require_mtls_denial(args, report) -> None:
     """Require every synthetic endpoint to refuse unauthenticated TLS clients."""
     anonymous = ssl.create_default_context(cafile=str(args.tls / "ca.crt"))
     anonymous.minimum_version = ssl.TLSVersion.TLSv1_3
@@ -159,7 +159,8 @@ def replay_require_mtls_denial(args, report):
             with urllib.request.urlopen(
                 "https://127.0.0.1:%d%s" % (port, path), context=anonymous, timeout=4
             ):
-                raise ValueError("Synthetic endpoint accepted anonymous TLS client")
+                msg = "Synthetic endpoint accepted anonymous TLS client"
+                raise ValueError(msg)
         except ssl.SSLError:
             denied.append(port)
         except OSError as error:
@@ -170,7 +171,7 @@ def replay_require_mtls_denial(args, report):
     report["anonymousClientRejectedPorts"] = denied
 
 
-def replay_save(root, report):
+def replay_save(root, report) -> None:
     """Persist the current report to the private workspace."""
     (root / "result.json").write_text(json.dumps(report, indent=2) + "\n")
 
@@ -186,14 +187,16 @@ def replay_request(context, port, path, body=None):
     with urllib.request.urlopen(req, context=context, timeout=4) as response:
         data = response.read(4 * 1024**2 + 1)
     if len(data) > 4 * 1024**2:
-        raise ValueError("Bounded synthetic response exceeded")
+        msg = "Bounded synthetic response exceeded"
+        raise ValueError(msg)
     return json.loads(data) if data and path not in {"/ready", "/-/ready"} else {}
 
 
-def replay_start(args, root, environment, children, generations, name):
+def replay_start(args, root, environment, children, generations, name) -> None:
     """Start one named synthetic component exactly once per generation."""
     if name in children and children[name].poll() is None:
-        raise ValueError("Duplicate synthetic process")
+        msg = "Duplicate synthetic process"
+        raise ValueError(msg)
     generations[name] = generations.get(name, 0) + 1
     if name == "prometheus":
         command = [
@@ -225,18 +228,20 @@ def replay_start(args, root, environment, children, generations, name):
         )
 
 
-def replay_stop(children, name):
+def replay_stop(children, name) -> None:
     """Stop one synthetic component and require a graceful exit."""
     process = children[name]
     if process.poll() is not None:
-        raise ValueError("Synthetic process exited before controlled stop")
+        msg = "Synthetic process exited before controlled stop"
+        raise ValueError(msg)
     process.terminate()
     process.wait(timeout=20)
     if process.returncode != 0:
-        raise ValueError("Synthetic process graceful stop failed")
+        msg = "Synthetic process graceful stop failed"
+        raise ValueError(msg)
 
 
-def replay_wait(check, seconds=100):
+def replay_wait(check, seconds=100) -> None:
     """Poll a bounded check until it passes or a TLS fault aborts the run."""
     end = time.monotonic() + seconds
     while True:
@@ -249,11 +254,12 @@ def replay_wait(check, seconds=100):
             ):
                 raise
         if time.monotonic() >= end:
-            raise TimeoutError("Bounded synthetic phase failed")
+            msg = "Bounded synthetic phase failed"
+            raise TimeoutError(msg)
         time.sleep(1)
 
 
-def replay_ready(context, report):
+def replay_ready(context, report) -> bool:
     """Require every synthetic backend to report readiness."""
     for port, path in [(29090, "/-/ready"), (3100, "/ready"), (3200, "/ready")]:
         try:
@@ -368,7 +374,7 @@ def replay_prepare(args, root):
     return environment, report, context, boundary
 
 
-def replay_recovered(context, report, metrics_query, logs_query, expected, ids):
+def replay_recovered(context, report, metrics_query, logs_query, expected, ids) -> bool:
     """Return whether every recovered signal matches the exact synthetic fixtures."""
     metric_document = replay_request(context, 29090, metrics_query)
     log_document = replay_request(context, 3100, logs_query)
@@ -406,7 +412,7 @@ def replay_recovered(context, report, metrics_query, logs_query, expected, ids):
     return True
 
 
-def replay_rollback_phase(args, root, environment, children, generations, report):
+def replay_rollback_phase(args, root, environment, children, generations, report) -> None:
     """Exercise the restart and exact-configuration-rollback recovery path."""
     preimage = (root / "cluster.json").read_bytes()
     (root / "cluster-config-preimage.json").write_bytes(preimage)
@@ -442,7 +448,7 @@ def replay_rollback_phase(args, root, environment, children, generations, report
     }
 
 
-def replay_post_fixtures(context, metrics, logs, traces):
+def replay_post_fixtures(context, metrics, logs, traces) -> None:
     """Post each synthetic fixture exactly once; an ambiguous response fails the run."""
     # Never retry a fixture POST: an ambiguous response is a failed run,
     # not permission to change fixture multiplicity by resending it.

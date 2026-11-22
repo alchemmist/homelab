@@ -55,7 +55,9 @@ def test_graphs_have_native_edge_schema_and_instant_tables() -> None:
     for p in graphs:
         t = _mapping(_list(p["targets"])[0])
         assert t["refId"] == "edges"
-        assert bool(t["instant"]) and not bool(t["range"]) and t["format"] == "table"
+        assert bool(t["instant"])
+        assert not bool(t["range"])
+        assert t["format"] == "table"
         include = _mapping(_mapping(_mapping(_list(p["transformations"])[0])["options"])["include"])
         names = _list(include["names"])
         assert {"id", "source", "target", "Value"} <= set(names)
@@ -65,7 +67,8 @@ def test_graphs_have_native_edge_schema_and_instant_tables() -> None:
         assert rename["Value"] == "mainstat"
         expr = t["expr"]
         assert isinstance(expr, str)
-        assert "timestamp(" in expr and "< 120" in expr
+        assert "timestamp(" in expr
+        assert "< 120" in expr
 
 
 def test_probe_color_requires_real_fresh_success_or_failure() -> None:
@@ -74,10 +77,14 @@ def test_probe_color_requires_real_fresh_success_or_failure() -> None:
     p = _mapping(next(page for page in _list(doc["panels"]) if _mapping(page)["id"] == 4))
     q = _mapping(_list(p["targets"])[0])["expr"]
     assert isinstance(q, str)
-    assert "probe_success" in q and 'job="service-probes"' in q
-    assert "== 1" in q and "== 0" in q
-    assert "#73BF69" in q and "#F2495C" in q
-    assert "detail__observer" in q and "detail__endpoint" in q
+    assert "probe_success" in q
+    assert 'job="service-probes"' in q
+    assert "== 1" in q
+    assert "== 0" in q
+    assert "#73BF69" in q
+    assert "#F2495C" in q
+    assert "detail__observer" in q
+    assert "detail__endpoint" in q
     assert "${probe_group:regex}" in q
 
 
@@ -87,9 +94,11 @@ def test_placement_is_not_colored_as_connectivity() -> None:
     p = _mapping(next(page for page in _list(doc["panels"]) if _mapping(page)["id"] == 5))
     q = _mapping(_list(p["targets"])[0])["expr"]
     assert isinstance(q, str)
-    assert "kube_pod_info" in q and "kube_pod_status_phase" in q
+    assert "kube_pod_info" in q
+    assert "kube_pod_status_phase" in q
     assert 'phase="Running"' in q
-    assert "color" not in q and "probe_success" not in q
+    assert "color" not in q
+    assert "probe_success" not in q
     assert "${namespace:regex}" in q
     description = p["description"]
     assert isinstance(description, str)
@@ -105,7 +114,8 @@ def test_scope_and_unknown_state_are_explicit() -> None:
     text = _mapping(text_panel["options"])["content"]
     assert isinstance(text, str)
     assert "не обнаруживает" in text
-    assert "No data" in text and "не восстановление" in text
+    assert "No data" in text
+    assert "не восстановление" in text
     assert "одного cluster-prober" in text
     assert "Ready ≠" in text
 

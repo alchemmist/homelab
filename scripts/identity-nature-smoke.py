@@ -51,23 +51,24 @@ with sync_playwright() as p:
             scenes = [r for r in responses if r.url.endswith("/nature/scene.css")]
             assert len(scenes) == 1, "One journey CSS response per document"
             scene = scenes[0]
-            assert scene.status == 200 and scene.headers["cache-control"] == "no-store"
+            assert scene.status == 200
+            assert scene.headers["cache-control"] == "no-store"
             assert hashlib.sha256(scene.body()).hexdigest() in css_hashes
             photo = next(p for p in photos if p["id"] == scene.headers["x-quiet-mono-scene"])
             key = photo[variant + "Avif"]
             item = assets[key]
             image = next(r for r in responses if r.url.endswith("-" + Path(item["path"]).name))
-            assert image.status == 200 and image.headers["content-type"] == "image/avif"
-            assert (
-                "immutable" in image.headers["cache-control"]
-                and hashlib.sha256(image.body()).hexdigest() == item["sha256"]
-            )
+            assert image.status == 200
+            assert image.headers["content-type"] == "image/avif"
+            assert "immutable" in image.headers["cache-control"]
+            assert hashlib.sha256(image.body()).hexdigest() == item["sha256"]
             full = [
                 r for r in responses if r.url.endswith((".avif", ".webp")) and "-nature-" in r.url
             ]
             assert len(full) == 1, "Only one full-size photograph; no desktop download on mobile"
             style = page.evaluate("getComputedStyle(document.body,'::before').backgroundImage")
-            assert "data:image/webp;base64," in style and Path(item["path"]).name in style
+            assert "data:image/webp;base64," in style
+            assert Path(item["path"]).name in style
             assert (
                 page.locator("ak-drawer#flow-drawer").evaluate(
                     "e=>getComputedStyle(e).backgroundImage"
@@ -125,7 +126,8 @@ with sync_playwright() as p:
                 BASE
                 + "/application/o/authorize/?client_id=quiet-mono-layout-probe&response_type=code"
             )
-            assert error.status == 400 and current_scene() == chosen
+            assert error.status == 400
+            assert current_scene() == chosen
             page.goto(journey)
             page.locator("input[name=uidField]").wait_for()
             assert current_scene() == chosen
@@ -150,7 +152,8 @@ with sync_playwright() as p:
         scenes = set()
         for _ in range(12):
             r = page.goto(BASE + "/-/quiet-mono/v1/nature/scene.css")
-            assert r.status == 200 and hashlib.sha256(r.body()).hexdigest() in css_hashes
+            assert r.status == 200
+            assert hashlib.sha256(r.body()).hexdigest() in css_hashes
             scenes.add(r.headers["x-quiet-mono-scene"])
         assert len(scenes) == 1, (
             "Repeated CSS requests must not rotate a working-session background"
@@ -161,12 +164,10 @@ with sync_playwright() as p:
             for c in context.cookies(BASE + "/-/quiet-mono/v1/nature/scene.css")
             if c["name"] == "__Secure-qm_nature"
         )
-        assert (
-            cookie["value"] == chosen
-            and cookie["secure"]
-            and cookie["httpOnly"]
-            and cookie["sameSite"] == "Lax"
-        )
+        assert cookie["value"] == chosen
+        assert cookie["secure"]
+        assert cookie["httpOnly"]
+        assert cookie["sameSite"] == "Lax"
         assert cookie["path"] == "/-/quiet-mono/v1/"
         for i in range(12):
             # Synthetic public test identifiers, not real callback/session artifacts.
@@ -200,9 +201,11 @@ with sync_playwright() as p:
             headers={"Accept": "image/webp"},
             max_redirects=0,
         )
-        assert r.status == 302 and r.headers["cache-control"] == "no-store"
+        assert r.status == 302
+        assert r.headers["cache-control"] == "no-store"
         fallback = context.request.get(BASE + r.headers["location"])
-        assert fallback.status == 200 and fallback.headers["content-type"] == "image/webp"
+        assert fallback.status == 200
+        assert fallback.headers["content-type"] == "image/webp"
         assert hashlib.sha256(fallback.body()).hexdigest() in {
             assets[p["mobile"]]["sha256"] for p in photos
         }
@@ -223,7 +226,7 @@ if args.delay_hq:
 
     from playwright.async_api import async_playwright
 
-    async def preview_only():
+    async def preview_only() -> None:
         """Perform the preview only operation."""
         async with async_playwright() as p:
             for edge in (
@@ -249,7 +252,8 @@ if args.delay_hq:
                             wait_until="domcontentloaded",
                         )
                         await page.locator("input[name=uidField]").wait_for()
-                        assert pending and not release.is_set()
+                        assert pending
+                        assert not release.is_set()
                         assert await page.locator("input[name=uidField]").is_enabled()
                         assert "data:image/webp;base64," in await page.evaluate(
                             "getComputedStyle(document.body,'::before').backgroundImage"

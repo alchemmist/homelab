@@ -22,11 +22,9 @@ from typing import NamedTuple, cast
 def _require_private_paths(root: Path) -> None:
     """Refuse root directories or credentials that other users can touch."""
     for path in (root, root / "credentials.json"):
-        assert (
-            not path.is_symlink()
-            and path.stat().st_uid == os.getuid()
-            and not path.stat().st_mode & 0o077
-        )
+        assert not path.is_symlink()
+        assert path.stat().st_uid == os.getuid()
+        assert not path.stat().st_mode & 0o077
 
 
 def _pin_public_dns() -> Callable[..., object]:
@@ -69,7 +67,8 @@ def _rows(credential: dict[str, object], path: str) -> list[dict[str, object]]:
         rows.extend(cast("list[dict[str, object]]", data["results"]))
         if not cast("dict[str, object]", data.get("pagination", {})).get("next"):
             return rows
-    raise RuntimeError("Incomplete inventory")
+    msg = "Incomplete inventory"
+    raise RuntimeError(msg)
 
 
 class _FixtureContext(NamedTuple):
@@ -89,7 +88,8 @@ class _FixtureContext(NamedTuple):
 def _check_fixture(context: _FixtureContext) -> dict[str, object]:
     """Fetch the fixture and assert it stays inactive with only our marker."""
     current = cast("dict[str, object]", _api(context.credential, "GET", context.path))
-    assert current["uuid"] == context.fixture["uuid"] and not current["is_active"]
+    assert current["uuid"] == context.fixture["uuid"]
+    assert not current["is_active"]
     assert current["attributes"] == {"homelab_app_access_fixture": context.marker}
     return current
 
@@ -123,7 +123,8 @@ def _admitted(context: _FixtureContext, group_pk: object) -> list[str]:
     for app in context.apps:
         subset = [b for b in context.bindings if b["target"] == app["pk"]]
         # Test guarantees only the simple ANY group lanes in this inventory.
-        assert subset and app["policy_engine_mode"] == "any"
+        assert subset
+        assert app["policy_engine_mode"] == "any"
         assert all(b.get("enabled") and not b.get("negate") and not b.get("policy") for b in subset)
         if any(b.get("group") == group_pk for b in subset):
             slugs.append(cast("str", app["slug"]))
@@ -184,7 +185,8 @@ def _run_cases(context: _FixtureContext) -> None:
             assert actual["litellm_user_role"] == expected
             assert actual["litellm_user_id"] == "authentik:" + context.fixture["uuid"]
         else:
-            assert expected in actual["groups"] and "homelab-owner" not in actual["groups"]
+            assert expected in actual["groups"]
+            assert "homelab-owner" not in actual["groups"]
         # Projection aliases exist only in this client's token, not in IdP membership.
         assert _check_fixture(context)["groups"] == [group_pk]
         successes.append(group)
@@ -219,7 +221,7 @@ def _delete_fixture(context: _FixtureContext) -> None:
     )
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("root", type=Path)

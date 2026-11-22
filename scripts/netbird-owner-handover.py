@@ -43,14 +43,12 @@ def subject(uuid=UUID, connector=CONNECTOR) -> str:
 def target_user(users, expected) -> dict[str, object]:
     """Resolve the exact owner user from the subject encoding, refusing look-alikes."""
     if expected != subject():
-        raise ValueError(
-            "refusing subject: requires encoded raw owner UUID plus exact connector, never email"
-        )
+        msg = "refusing subject: requires encoded raw owner UUID plus exact connector, never email"
+        raise ValueError(msg)
     matches = [u for u in users if u["id"] == expected]
     if len(matches) != 1:
-        raise ValueError(
-            "exact owner identity absent/ambiguous: personally log in first; no email fallback"
-        )
+        msg = "exact owner identity absent/ambiguous: personally log in first; no email fallback"
+        raise ValueError(msg)
     u = matches[0]
     if (
         u["email"] != EMAIL
@@ -60,11 +58,13 @@ def target_user(users, expected) -> dict[str, object]:
         or u.get("pending_approval")
         or u.get("status") != "active"
     ):
-        raise ValueError("owner identity fields mismatch; refusing UUID/email substitution")
-    stamp = datetime.datetime.fromisoformat(u["last_login"].replace("Z", "+00:00"))
+        msg = "owner identity fields mismatch; refusing UUID/email substitution"
+        raise ValueError(msg)
+    stamp = datetime.datetime.fromisoformat(u["last_login"])
     age = datetime.datetime.now(datetime.UTC) - stamp
     if not 0 <= age.total_seconds() < 86400:
-        raise ValueError("no recent genuine owner OIDC login evidence")
+        msg = "no recent genuine owner OIDC login evidence"
+        raise ValueError(msg)
     owner: dict[str, object] = u
     return owner
 
@@ -73,7 +73,8 @@ def network_snapshot(api, allow_owner_device=False) -> list[dict[str, object]]:
     """Verify that no network grants remain and collect the sole allowed owner device."""
     for name in ["setup-keys", "policies", "networks"]:
         if api(name) != []:
-            raise ValueError("unexpected network grants; stop")
+            msg = "unexpected network grants; stop"
+            raise ValueError(msg)
     peers = api("peers")
     if not peers:
         return []
@@ -84,7 +85,8 @@ def network_snapshot(api, allow_owner_device=False) -> list[dict[str, object]]:
         or peers[0].get("approval_required") is not False
         or peers[0].get("login_expired") is not False
     ):
-        raise ValueError("only one exact-owner approved personal device may preexist")
+        msg = "only one exact-owner approved personal device may preexist"
+        raise ValueError(msg)
     return [
         {
             "id": peers[0]["id"],
@@ -168,15 +170,19 @@ def main() -> None:
     )
     after = api("users")
     if [u["id"] for u in after if u["role"] == "owner"] != [target["id"]]:
-        raise ValueError("post-transfer owner mismatch; stop")
+        msg = "post-transfer owner mismatch; stop"
+        raise ValueError(msg)
     if next(u for u in after if u["id"] == TECHNICAL)["role"] != "admin":
-        raise ValueError("technical owner was not demoted")
+        msg = "technical owner was not demoted"
+        raise ValueError(msg)
     expected_roles = {u["id"]: u["role"] for u in users}
     expected_roles.update({target["id"]: "owner", TECHNICAL: "admin"})
     if {u["id"]: u["role"] for u in after} != expected_roles:
-        raise ValueError("unexpected other user/role change")
+        msg = "unexpected other user/role change"
+        raise ValueError(msg)
     if network_snapshot(api, a.allow_existing_owner_device) != network_before:
-        raise ValueError("unexpected post-transfer network grants/device identity change")
+        msg = "unexpected post-transfer network grants/device identity change"
+        raise ValueError(msg)
     print(
         "Native owner transfer verified. Technical PAT remains private; existing owner device preserved; no network or other human role granted."
     )

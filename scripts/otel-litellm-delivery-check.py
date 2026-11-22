@@ -12,7 +12,7 @@ from typing import cast
 APPLICATIONS = ("litellm", "vllm")
 
 
-def run(pod, application="litellm"):
+def run(pod, application="litellm") -> None:
     if application not in APPLICATIONS or not re.fullmatch(application + r"-[a-z0-9-]+", pod):
         message = "Expected one exact allowlisted application SDK pod identity"
         raise ValueError(message)

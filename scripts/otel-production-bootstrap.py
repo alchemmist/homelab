@@ -178,7 +178,7 @@ def resources(contract, api_server, pod):
     return out
 
 
-def run(bundle, output):
+def run(bundle, output) -> None:
     os.umask(0o077)
     output.mkdir(mode=0o700, exist_ok=True)
     if (output / "bootstrap.json").exists():

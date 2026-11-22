@@ -21,10 +21,12 @@ def read_private(path) -> str:
     with os.fdopen(fd) as stream:
         st = os.fstat(stream.fileno())
         if not stat.S_ISREG(st.st_mode) or st.st_uid != os.getuid() or st.st_mode & 0o077:
-            raise ValueError("Credential must be a current-user-owned regular file with mode 0600")
+            msg = "Credential must be a current-user-owned regular file with mode 0600"
+            raise ValueError(msg)
         value = stream.read(16385).strip()
     if not value or len(value) > 16384 or "\n" in value or "\r" in value:
-        raise ValueError("Invalid credential file format")
+        msg = "Invalid credential file format"
+        raise ValueError(msg)
     return value
 
 

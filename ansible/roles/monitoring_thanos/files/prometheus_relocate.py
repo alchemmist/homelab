@@ -43,7 +43,7 @@ def claim_name(volumes):
     return None
 
 
-def decide(desired_node, current_node, relocate):
+def decide(desired_node, current_node, relocate) -> str:
     """Execute the decide operation."""
     if current_node in (None, "", desired_node):
         return "proceed"
@@ -59,7 +59,7 @@ def evaluate(payload):
     return {"action": action, "node": current, "claim": claim_name(volumes)}
 
 
-def main():
+def main() -> int:
     """Execute the main operation."""
     json.dump(evaluate(json.load(sys.stdin)), sys.stdout)
     sys.stdout.write("\n")

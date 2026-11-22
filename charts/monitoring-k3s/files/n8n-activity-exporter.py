@@ -44,7 +44,7 @@ STATE: Snapshot = {"ok": 0, "at": 0, "counts": {}}
 
 
 def timestamp(value: str) -> float:
-    return dt.datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+    return dt.datetime.fromisoformat(value).timestamp()
 
 
 def summarize(rows: Iterable[Execution], now: float) -> Counts:

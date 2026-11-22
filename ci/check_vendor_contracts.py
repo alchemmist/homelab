@@ -42,17 +42,19 @@ def _check_tree(root: Path, tree: _VendorTree) -> None:
         or not tree["reviewedCommit"]
         or not tree["provenanceNote"]
     ):
-        raise ValueError("Missing explicit vendor baseline/provenance boundary")
+        msg = "Missing explicit vendor baseline/provenance boundary"
+        raise ValueError(msg)
     actual, expected = inventory(root, tree["path"]), tree["files"]
     if not expected:
         raise ValueError("Empty vendor inventory: " + tree["path"])
     added, removed = set(actual) - set(expected), set(expected) - set(actual)
     changed = {p for p in actual.keys() & expected.keys() if actual[p] != expected[p]}
     if added or removed or changed:
-        raise ValueError(
+        msg = (
             f"Vendor drift {tree['path']}: added={sorted(added)}, removed={sorted(removed)}, "
             f"changed={sorted(changed)}"
         )
+        raise ValueError(msg)
 
 
 def _check_links(root: Path, links: dict[str, str], trees: list[_VendorTree]) -> None:
@@ -77,7 +79,8 @@ def _check_links(root: Path, links: dict[str, str], trees: list[_VendorTree]) ->
 def check(root=ROOT):
     contract = json.loads((root / "deploy/contracts/vendors.json").read_text())
     if contract["schemaVersion"] != 1:
-        raise ValueError("Unsupported vendor contract schema")
+        msg = "Unsupported vendor contract schema"
+        raise ValueError(msg)
     links = contract.get("links", {})
     discovered = {
         p.relative_to(root).as_posix()
@@ -85,7 +88,8 @@ def check(root=ROOT):
         for p in root.glob(pattern)
     }
     if discovered != set(links):
-        raise ValueError("Vendor dependency alias inventory drift")
+        msg = "Vendor dependency alias inventory drift"
+        raise ValueError(msg)
     seen = set()
     for tree in contract["trees"]:
         directory = tree["path"]

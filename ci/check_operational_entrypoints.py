@@ -78,7 +78,8 @@ def _helm_holders(root: Path) -> set[str]:
         if p.suffix not in {".yml", ".yaml"}:
             continue
         if not p.resolve().is_relative_to(root.resolve()):
-            raise ValueError("Operational scan symlink escapes repository")
+            msg = "Operational scan symlink escapes repository"
+            raise ValueError(msg)
         if HELM.search(p.read_text()):
             found.add(p.relative_to(root).as_posix())
     return found
@@ -88,12 +89,14 @@ def check(root=ROOT):
     """Check the requested inputs."""
     c = json.loads((root / "deploy/contracts/operational-entrypoints.json").read_text())
     if c["schemaVersion"] != 1:
-        raise ValueError("Unsupported entrypoint schema")
+        msg = "Unsupported entrypoint schema"
+        raise ValueError(msg)
     entries = {}
     for entry in c["entries"]:
         name = entry["path"]
         if name in entries:
-            raise ValueError("Duplicate operational entrypoint")
+            msg = "Duplicate operational entrypoint"
+            raise ValueError(msg)
         entries[name] = entry
         _validate_classification(root, entry)
         if entry["status"] == "retired":

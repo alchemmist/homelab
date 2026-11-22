@@ -17,7 +17,7 @@ import urllib.request
 from pathlib import Path
 
 
-def run():
+def run() -> None:
     logging.disable(logging.CRITICAL)
     with (
         contextlib.redirect_stdout(io.StringIO()),

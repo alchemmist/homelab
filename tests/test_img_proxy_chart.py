@@ -27,7 +27,9 @@ def test_rendered_img_proxy_identity_and_dependency_free_probes() -> None:
     container = pod["containers"][0]
     assert pod["securityContext"]["runAsUser"] == pod["securityContext"]["fsGroup"] == 101
     assert container["securityContext"]["readOnlyRootFilesystem"] is True
-    writable = {m["name"]: m["mountPath"] for m in container["volumeMounts"] if not m.get("readOnly")}
+    writable = {
+        m["name"]: m["mountPath"] for m in container["volumeMounts"] if not m.get("readOnly")
+    }
     assert writable == {"nginx-run": "/run", "nginx-cache": "/var/cache/nginx"}
     assert all(v["emptyDir"] == {} for v in pod["volumes"] if v["name"] in writable)
     for probe_name in ("livenessProbe", "readinessProbe"):
@@ -38,6 +40,8 @@ def test_rendered_img_proxy_identity_and_dependency_free_probes() -> None:
     nginx = config["data"]["default.conf"]
     assert "location = /healthz" in nginx
     assert "return 204;" in nginx
-    health_location = nginx.split("location = /healthz", maxsplit=1)[1].split("location /", maxsplit=1)[0]
+    health_location = nginx.split("location = /healthz", maxsplit=1)[1].split(
+        "location /", maxsplit=1
+    )[0]
     assert "proxy_pass" not in health_location
     assert "proxy_pass https://images.weserv.nl;" in nginx

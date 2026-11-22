@@ -7,6 +7,7 @@ import time
 import unittest
 from unittest.mock import Mock, patch
 
+import pytest
 import test_triage as f
 from core import REPORT_SCHEMA, Failure
 from integrations import Model
@@ -64,9 +65,9 @@ class ReferenceContractTests(unittest.TestCase):
         result["facts"] = ["PRIVATE-FACT-TEXT [E002] and [E999]"]
         m.http.request.return_value = {"choices": [{"message": {"content": json.dumps(result)}}]}
         with self.assertLogs("integrations", level="WARNING") as logs:
-            with self.assertRaises(Failure) as caught:
+            with pytest.raises(Failure) as caught:
                 m.call("analysis", self.data(), REPORT_SCHEMA, time.monotonic() + 20)
-        assert caught.exception.code == "LLM_INVALID_EVIDENCE_REFERENCE"
+        assert caught.value.code == "LLM_INVALID_EVIDENCE_REFERENCE"
         # Invalid evidence references trigger one retry, so the model is called twice.
         expected_model_calls = 2
         assert m.http.request.call_count == expected_model_calls
@@ -78,7 +79,7 @@ class ReferenceContractTests(unittest.TestCase):
     def test_unsupported_artifact_identity_fails_before_any_paid_call(self) -> None:
         """Reject an illegal artifact id before HTTP or budget reservation."""
         m = self.model()
-        with self.assertRaisesRegex(Failure, "LLM_INVALID_EVIDENCE_CONTEXT"):
+        with pytest.raises(Failure, match="LLM_INVALID_EVIDENCE_CONTEXT"):
             m.call(
                 "analysis",
                 self.data(("E001|.*",)),

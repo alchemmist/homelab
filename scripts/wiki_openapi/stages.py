@@ -107,7 +107,8 @@ def render_page(after: object, bot: PageBot) -> str:
             timeout=30,
         )
         if run.returncode:
-            raise UnsafeInput("Wiki renderer failed")
+            msg = "Wiki renderer failed"
+            raise UnsafeInput(msg)
         return page_ok(target.read_text())
 
 
@@ -140,11 +141,13 @@ def stage(
             return [{"after": after, "status": "dry_run"}]
         result = homelab.propose(after, markdown)
         if not isinstance(result, dict):
-            raise UnsafeInput("GitHub proposal returned invalid data")
+            msg = "GitHub proposal returned invalid data"
+            raise UnsafeInput(msg)
         result["after"] = after
         return [result]
     if name != "close-older":
-        raise UnsafeInput("Unknown stage")
+        msg = "Unknown stage"
+        raise UnsafeInput(msg)
     if not write or payload.get("status") == "dry_run":
         return []
     keep = payload.get("number")

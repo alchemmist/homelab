@@ -8,7 +8,7 @@ import logging
 from pathlib import Path
 
 
-async def run():
+async def run() -> None:
     logging.disable(logging.CRITICAL)
     with (
         contextlib.redirect_stdout(io.StringIO()),

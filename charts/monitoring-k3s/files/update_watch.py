@@ -95,7 +95,8 @@ def searxng_image_tags(timeout: int) -> list[Release]:
     with urllib.request.urlopen(url, timeout=timeout) as response:
         payload = json.load(response)
     if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
-        raise ValueError("unexpected Docker Hub response")
+        msg = "unexpected Docker Hub response"
+        raise ValueError(msg)
     return [
         {"tag_name": item["name"]}
         for item in payload["results"]
@@ -179,9 +180,7 @@ def render_metrics(samples: Iterable[Sample]) -> str:
             f'current="{escape_label(sample["current"])}",'
             f'latest="{escape_label(sample["latest"])}"'
         )
-        lines.append(
-            f"socrat_software_update_available{{{labels}}} {sample['available']}"
-        )
+        lines.append(f"socrat_software_update_available{{{labels}}} {sample['available']}")
         lines.append(
             "socrat_software_update_check_success"
             f'{{app="{escape_label(sample["app"])}"}} {sample["success"]}'
@@ -207,7 +206,8 @@ class State:
 def actionable_metrics(alerts: list[dict]) -> bytes:
     """Count Alertmanager instances after silencing and inhibition, not rule states."""
     if not isinstance(alerts, list):
-        raise ValueError("expected Alertmanager alert list")
+        msg = "expected Alertmanager alert list"
+        raise ValueError(msg)
     counts = {"critical": 0, "warning": 0}
     for alert in alerts:
         labels = alert["labels"]
@@ -278,9 +278,7 @@ def deployment_image(target: Target, timeout: int) -> str | None:
     if ":" in host and not host.startswith("["):
         host = f"[{host}]"
     token = (
-        open("/var/run/secrets/kubernetes.io/serviceaccount/token", encoding="utf-8")
-        .read()
-        .strip()
+        open("/var/run/secrets/kubernetes.io/serviceaccount/token", encoding="utf-8").read().strip()
     )
     url = f"https://{host}:{port}/apis/apps/v1/namespaces/{namespace}/{resource}/{name}"
     request = urllib.request.Request(
@@ -331,11 +329,7 @@ def main() -> None:
 
     def refresh() -> None:
         while True:
-            state.update(
-                evaluate(
-                    targets, fetch_releases, timeout, load_images(targets, timeout)
-                )
-            )
+            state.update(evaluate(targets, fetch_releases, timeout, load_images(targets, timeout)))
             time.sleep(interval)
 
     threading.Thread(target=refresh, daemon=True).start()

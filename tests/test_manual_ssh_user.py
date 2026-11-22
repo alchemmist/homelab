@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -53,12 +54,12 @@ class ManualSSHTests(unittest.TestCase):
             self.public.rstrip() + "\tcomment",
             self.public.replace("ssh-ed25519", "ssh-ed25519-cert-v01@openssh.com"),
         ]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 check.validate("guest", bad)
 
     def test_invalid_base64_ssh_wire_data_is_rejected_by_actual_parser(self) -> None:
         """Malformed wire data is rejected by the actual parser."""
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             check.validate("guest", "ssh-ed25519 AAAA")
 
     def test_protected_and_injectable_names_are_rejected_before_parsing_key(
@@ -78,7 +79,7 @@ class ManualSSHTests(unittest.TestCase):
                 "UPPER",
                 "x" * 32,
             ]:
-                with self.subTest(name=name), self.assertRaises(ValueError):
+                with self.subTest(name=name), pytest.raises(ValueError):
                     check.validate(name, self.public)
             parser.assert_not_called()
 

@@ -34,7 +34,7 @@ def read_secret(binary, kubeconfig, namespace, name):
     return {key: base64.b64decode(value).decode() for key, value in data.items()}
 
 
-def apply_secret(binary, kubeconfig, namespace, name, data):
+def apply_secret(binary, kubeconfig, namespace, name, data) -> None:
     """Execute the apply_secret operation."""
     body = {
         "apiVersion": "v1",
@@ -80,7 +80,7 @@ def ensure(binary, kubeconfig, namespace):
     return created
 
 
-def main():
+def main() -> int:
     """Execute the main operation."""
     binary, kubeconfig, namespace = sys.argv[1:4]
     ensure(binary, kubeconfig, namespace)

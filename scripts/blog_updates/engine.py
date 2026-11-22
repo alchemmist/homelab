@@ -5,8 +5,10 @@ from __future__ import annotations
 import datetime as dt
 import json
 import re
-from collections.abc import Mapping, Sequence
-from typing import Literal, NotRequired, TypedDict, cast
+from typing import TYPE_CHECKING, Literal, NotRequired, TypedDict, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
 
 REPO = "alchemmist/blog"
 UPDATES = "site/content/updates.md"
@@ -220,7 +222,7 @@ def render(updates: str, entries: Sequence[RenderedEntry], timestamp: str) -> st
     if end == -1:
         msg = "Unterminated front matter"
         raise UnsafeInput(msg)
-    stamp = dt.datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    stamp = dt.datetime.fromisoformat(timestamp)
     if stamp.tzinfo is None:
         msg = "Timestamp must include timezone"
         raise UnsafeInput(msg)

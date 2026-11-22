@@ -30,10 +30,13 @@ def render() -> bytes:
 def apply() -> None:
     """Install the rendered resolver file under explicit macOS root authorization."""
     if sys.platform != "darwin" or os.geteuid() != 0:
-        raise RuntimeError("Explicit macOS root authorization required")
+        msg = "Explicit macOS root authorization required"
+        raise RuntimeError(msg)
     folder = Path("/etc/resolver")
-    assert folder.is_dir() and not folder.is_symlink()
-    assert folder.stat().st_uid == 0 and not folder.stat().st_mode & 0o022
+    assert folder.is_dir()
+    assert not folder.is_symlink()
+    assert folder.stat().st_uid == 0
+    assert not folder.stat().st_mode & 0o022
     backup = Path("/var/root/.local/state/netbird-bootstrap-dns")
     backup.mkdir(parents=True, exist_ok=True, mode=0o700)
     assert not (backup / "complete.json").exists(), "existing completed change: stop, inspect"

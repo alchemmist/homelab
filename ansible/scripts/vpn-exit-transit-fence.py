@@ -42,7 +42,8 @@ def projection() -> object:
 
 
 def run(boot=False) -> None:
-    assert os.geteuid() == 0 and socket.gethostname() == "socrat-2"
+    assert os.geteuid() == 0
+    assert socket.gethostname() == "socrat-2"
     os.umask(0o077)
     route = json.loads(command(["ip", "-j", "route", "get", "91.189.82.238"]))
     assert route[0]["dev"] == "eth0", "WAN interface changed; inspect rather than guess"

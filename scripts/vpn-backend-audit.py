@@ -55,7 +55,7 @@ def rules() -> str:
             + str(port)
             + ':other"'
         )
-    return "\n".join(lines + [" }", "}"]) + "\n"
+    return "\n".join([*lines, " }", "}"]) + "\n"
 
 
 def stable(value) -> object:
@@ -73,7 +73,8 @@ def stable(value) -> object:
 def run(args, *, check: bool = False, **kwargs) -> str:
     result = subprocess.run(args, check=check, capture_output=True, text=True, timeout=20, **kwargs)
     if result.returncode:
-        raise RuntimeError("nft operation failed; inspect private state")
+        msg = "nft operation failed; inspect private state"
+        raise RuntimeError(msg)
     output: str = result.stdout
     return output
 
@@ -142,11 +143,13 @@ def validate_objects(selected) -> None:
         if "table" in item:
             comment = item["table"].pop("comment", None)
             if comment not in (None, OWNER):
-                raise ValueError("Unowned table comment")
+                msg = "Unowned table comment"
+                raise ValueError(msg)
     # nft 1.0.6 omits table comments in JSON. Recognize ONLY the complete exact
     # counter policy, including chain parameters, expressions and rule comments.
     if normalize(copy) != normalize(expected_objects()):
-        raise ValueError("Existing table is not the exact owned counter policy")
+        msg = "Existing table is not the exact owned counter policy"
+        raise ValueError(msg)
 
 
 def read_table() -> "list[dict[str, object]] | None":
@@ -166,7 +169,8 @@ def read_table() -> "list[dict[str, object]] | None":
         return None
     tables = [x["table"] for x in selected if "table" in x]
     if len(tables) != 1:
-        raise ValueError("Unowned existing table; refusing modification")
+        msg = "Unowned existing table; refusing modification"
+        raise ValueError(msg)
     validate_objects(selected)
     return selected
 
@@ -185,23 +189,28 @@ def plan(current) -> "dict[str, object]":
 
 def apply(approval, state) -> "dict[str, object]":
     if socket.gethostname() != "socrat-2" or os.geteuid() != 0:
-        raise ValueError("Apply requires root on socrat-2")
+        msg = "Apply requires root on socrat-2"
+        raise ValueError(msg)
     directory = helpers.private_directory(state)
     fd = os.open(directory / "lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         if any(p.name != "lock" for p in directory.iterdir()):
-            raise ValueError("State exists; inspect receipts instead of replaying")
+            msg = "State exists; inspect receipts instead of replaying"
+            raise ValueError(msg)
         before = read_table()
         if before is not None:
-            raise ValueError("Counter table already exists; do not reset observations")
+            msg = "Counter table already exists; do not reset observations"
+            raise ValueError(msg)
         desired = plan(before)
         if approval != helpers.digest(desired):
-            raise ValueError("Fresh exact plan hash required")
+            msg = "Fresh exact plan hash required"
+            raise ValueError(msg)
         batch = rules()
         run(["nft", "--check", "-f", "-"], input=batch)
         if stable(read_table()) != stable(before):
-            raise ValueError("Table changed before apply")
+            msg = "Table changed before apply"
+            raise ValueError(msg)
         helpers.save(directory / "before.json", before)
         helpers.save(directory / "uncertain.json", {"plan_sha256": approval})
         run(["nft", "-f", "-"], input=batch)
@@ -209,7 +218,8 @@ def apply(approval, state) -> "dict[str, object]":
         if after is None or len([x for x in after if "rule" in x]) != len(PORTS) * (
             len(INTERFACES) + 1
         ):
-            raise RuntimeError("Unexpected readback; inspect uncertain state")
+            msg = "Unexpected readback; inspect uncertain state"
+            raise RuntimeError(msg)
         helpers.save(directory / "after.json", after)
         helpers.save(directory / "receipt.json", {**desired, "installed": True})
         (directory / "uncertain.json").unlink()
@@ -218,7 +228,8 @@ def apply(approval, state) -> "dict[str, object]":
 
 def finalize_readback(approval, state) -> "dict[str, object]":
     if socket.gethostname() != "socrat-2" or os.geteuid() != 0:
-        raise ValueError("Finalization requires root on socrat-2")
+        msg = "Finalization requires root on socrat-2"
+        raise ValueError(msg)
     directory = helpers.private_directory(state)
     fd = os.open(directory / "lock", os.O_RDWR | os.O_NOFOLLOW)
     with os.fdopen(fd, "w") as lock:
@@ -230,10 +241,12 @@ def finalize_readback(approval, state) -> "dict[str, object]":
             or marker["plan_sha256"] != approval
             or helpers.digest(plan(before)) != approval
         ):
-            raise ValueError("Original empty preimage and exact interrupted approval required")
+            msg = "Original empty preimage and exact interrupted approval required"
+            raise ValueError(msg)
         after = read_table()  # Exact semantic validation, never an install/retry.
         if after is None:
-            raise ValueError("No completed table to finalize")
+            msg = "No completed table to finalize"
+            raise ValueError(msg)
         helpers.save(directory / "after.json", after)
         receipt = {
             **plan(before),
@@ -286,6 +299,5 @@ if __name__ == "__main__":
     try:
         main()
     except (OSError, ValueError, RuntimeError, ImportError, subprocess.SubprocessError):
-        raise SystemExit(
-            "Counter audit stopped; no automatic retry/rollback. Inspect private receipts."
-        ) from None
+        msg = "Counter audit stopped; no automatic retry/rollback. Inspect private receipts."
+        raise SystemExit(msg) from None

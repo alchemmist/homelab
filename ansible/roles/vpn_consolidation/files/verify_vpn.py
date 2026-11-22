@@ -70,7 +70,8 @@ def normalize_subscription(body):
             continue
         parsed = urllib.parse.urlsplit(line)
         if not parsed.scheme or "://" not in line:
-            raise ValueError("Invalid subscription response")
+            msg = "Invalid subscription response"
+            raise ValueError(msg)
         query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
         if ("security", "reality") in query:
             query = [(key, value) for key, value in query if key != "sid"]
@@ -78,7 +79,8 @@ def normalize_subscription(body):
             urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(sorted(query))))
         )
     if not links:
-        raise ValueError("Empty subscription response")
+        msg = "Empty subscription response"
+        raise ValueError(msg)
     return sorted(links)
 
 
@@ -101,17 +103,20 @@ def subscriptions(connection):
     """Execute the subscriptions operation."""
     settings = dict(connection.execute("SELECT key, value FROM settings"))
     if settings.get("subCertFile") or settings.get("subKeyFile"):
-        raise ValueError("Local TLS subscription endpoint is unsupported")
+        msg = "Local TLS subscription endpoint is unsupported"
+        raise ValueError(msg)
     port = int(settings.get("subPort", "2096"))
     host = settings.get("subListen", "") or ("127.0.0.1" if port == 12096 else "172.18.0.1")
     if host in ("0.0.0.0", "::"):
         host = "127.0.0.1"
     if host not in ("127.0.0.1", "172.18.0.1"):
-        raise ValueError("Unexpected local subscription address")
+        msg = "Unexpected local subscription address"
+        raise ValueError(msg)
     path = settings.get("subPath", "/sub/")
     identifiers = subscription_identifiers(connection)
     if not identifiers:
-        raise ValueError("No enabled subscriptions found")
+        msg = "No enabled subscriptions found"
+        raise ValueError(msg)
     result = {}
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     for identifier in sorted(identifiers):
@@ -129,7 +134,8 @@ def subscriptions(connection):
             with opener.open(url, timeout=15) as response:
                 links = normalize_subscription(response.read(4 * 1024 * 1024))
         except Exception:
-            raise ValueError("Subscription request or validation failed") from None
+            msg = "Subscription request or validation failed"
+            raise ValueError(msg) from None
         result[digest(identifier)] = {"fingerprint": digest(links), "links": len(links)}
     return result
 
@@ -142,7 +148,8 @@ def connect(path):
 def inspect(connection):
     """Execute the inspect operation."""
     if connection.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
-        raise ValueError("SQLite integrity check failed")
+        msg = "SQLite integrity check failed"
+        raise ValueError(msg)
     config = configuration(connection)
     return {
         "configuration": {table: digest(rows) for table, rows in config.items()},
@@ -150,10 +157,11 @@ def inspect(connection):
     }
 
 
-def run(mode, directory):
+def run(mode, directory) -> None:
     """Execute the run operation."""
     if os.geteuid() != 0:
-        raise ValueError("Run as root")
+        msg = "Run as root"
+        raise ValueError(msg)
     os.umask(0o077)
     directory = Path(directory)
     if mode == "snapshot":
@@ -164,10 +172,12 @@ def run(mode, directory):
         or directory.stat().st_uid != 0
         or directory.stat().st_mode & 0o077
     ):
-        raise ValueError("Snapshot directory must be root-owned and mode 0700")
+        msg = "Snapshot directory must be root-owned and mode 0700"
+        raise ValueError(msg)
     manifest_path = directory / "manifest.json"
     if mode == "snapshot" and any(directory.iterdir()):
-        raise ValueError("Snapshot directory must be empty")
+        msg = "Snapshot directory must be empty"
+        raise ValueError(msg)
     current = {}
     for name, path in DATABASES.items():
         with connect(path) as source:
@@ -188,13 +198,14 @@ def run(mode, directory):
     else:
         expected = json.loads(manifest_path.read_text())
         if expected != current:
-            raise ValueError("VPN configuration or subscriptions changed")
+            msg = "VPN configuration or subscriptions changed"
+            raise ValueError(msg)
     count = sum(len(item["subscriptions"]) for item in current.values())
     links = sum(sub["links"] for item in current.values() for sub in item["subscriptions"].values())
     print(f"{mode}: {len(current)} databases, {count} subscriptions, {links} links verified")
 
 
-def main():
+def main() -> int:
     """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=("snapshot", "verify"))

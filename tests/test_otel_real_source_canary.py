@@ -4,6 +4,8 @@ import importlib.util
 import unittest
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
     "real_canary", ROOT / "ansible/scripts/otel-real-source-canary.py"
@@ -34,7 +36,7 @@ class RealSourceCanaryTests(unittest.TestCase):
 
     def test_existing_discovery_auth_is_never_silently_replaced(self) -> None:
         """Existing discovery auth is never silently replaced."""
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             CANARY.rewrite_assets(
                 {"kubernetes_sd_configs": [{"api_server": "https://other"}]},
                 {},
@@ -50,12 +52,12 @@ class RealSourceCanaryTests(unittest.TestCase):
         }
         expected = CANARY.expected_targets({"activeTargets": [item]}, {"owned"})
         assert expected == {CANARY.fingerprint({**item["labels"], "__name__": "up"})}
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             CANARY.expected_targets({"activeTargets": [item, item]}, {"owned"})
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             CANARY.expected_targets({"activeTargets": [{**item, "health": "down"}]}, {"owned"})
 
     def test_cleanup_refuses_non_canary_workspaces(self) -> None:
         """Cleanup refuses non canary workspaces."""
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             CANARY.cleanup_workspace(Path("/tmp/production-history"))

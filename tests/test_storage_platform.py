@@ -18,7 +18,7 @@ CM = next(d for d in DOCS if d["kind"] == "ConfigMap")
 class StoragePlatformTest(unittest.TestCase):
     """Validate storage tier classes stay dynamic, retained, and local."""
 
-    def test_explicit_dynamic_retained_local_tiers(self):
+    def test_explicit_dynamic_retained_local_tiers(self) -> None:
         for d in yaml.safe_load_all((ROOT / "deploy/storage/tiers/classes.yaml").read_text()):
             assert d["provisioner"] == "rancher.io/local-path"
             assert d["reclaimPolicy"] == "Retain"
@@ -30,7 +30,7 @@ class StoragePlatformTest(unittest.TestCase):
             )
             assert d["allowedTopologies"][0]["matchLabelExpressions"][0]["values"] == ["socrat-5"]
 
-    def test_preserve_legacy_classes_and_default_node_mapping(self):
+    def test_preserve_legacy_classes_and_default_node_mapping(self) -> None:
         c = json.loads(CM["data"]["config.json"])
         assert c["nodePathMap"] == []
         for name in [
@@ -49,7 +49,7 @@ class StoragePlatformTest(unittest.TestCase):
                 "storageClassConfigs"
             ][name]["nodePathMap"]
 
-    def test_legacy_is_not_default(self):
+    def test_legacy_is_not_default(self) -> None:
         sc = next(d for d in DOCS if d["kind"] == "StorageClass")
         assert (
             sc["metadata"]["annotations"]["storageclass.kubernetes.io/is-default-class"] == "false"
@@ -80,33 +80,33 @@ class StoragePlatformTest(unittest.TestCase):
             )
             return p.returncode, (parent / "pvc-test").exists()
 
-    def test_missing_hdd_rejects_even_copied_identity_marker(self):
+    def test_missing_hdd_rejects_even_copied_identity_marker(self) -> None:
         code, created = self.run_setup(2049, "3ec3263e-32e3-4b38-84e6-17cd168244b9")
         assert code != 0
         assert not created
 
-    def test_wrong_marker_rejects_even_correct_device(self):
+    def test_wrong_marker_rejects_even_correct_device(self) -> None:
         code, created = self.run_setup(2065, "wrong-filesystem")
         assert code != 0
         assert not created
 
-    def test_matching_identity_allows_directory_creation(self):
+    def test_matching_identity_allows_directory_creation(self) -> None:
         code, created = self.run_setup(2065, "3ec3263e-32e3-4b38-84e6-17cd168244b9")
         assert code == 0
         assert created
 
-    def test_teardown_guard_precedes_removal(self):
+    def test_teardown_guard_precedes_removal(self) -> None:
         text = CM["data"]["teardown"]
         assert text.index("HDD_DEVICE_MISMATCH") < text.index("rm -rf")
 
-    def test_rancher_native_cache_can_reach_exact_node5_api(self):
+    def test_rancher_native_cache_can_reach_exact_node5_api(self) -> None:
         text = (
             ROOT / "deploy/platform/rancher/public-entry/templates/observer-membership.yaml"
         ).read_text()
         assert "ipBlock: {cidr: 10.250.0.41/32}" in text
         assert "port: 6443" in text
 
-    def test_archive_day2_refuses_unaccepted_mounts_and_never_restarts(self):
+    def test_archive_day2_refuses_unaccepted_mounts_and_never_restarts(self) -> None:
         text = (ROOT / "ansible/playbooks/socrat-5-runtime-storage.yml").read_text()
         assert "Require already accepted archive binds" in text
         assert "/mnt/files/homelab/openhands-archives/cold-backups" in text
@@ -115,7 +115,7 @@ class StoragePlatformTest(unittest.TestCase):
         assert "/dev/sdb1[/homelab/openhands-archives/cold-backups]" in guard
         assert "/dev/sdb1[/homelab/openhands-archives/upgrade-backups]" in guard
 
-    def test_containerd_guard_requires_both_stat_probes_to_succeed(self):
+    def test_containerd_guard_requires_both_stat_probes_to_succeed(self) -> None:
         """Identical output is not proof of identity if stat failed."""
         guard = ROOT / "ansible/files/socrat5-containerd-hdd-check"
         with tempfile.TemporaryDirectory() as temp:
@@ -145,7 +145,7 @@ class StoragePlatformTest(unittest.TestCase):
                 )
                 assert result.returncode == status
 
-    def test_inventory_matches_claim_namespace_not_only_name(self):
+    def test_inventory_matches_claim_namespace_not_only_name(self) -> None:
         spec = importlib.util.spec_from_file_location(
             "audit_storage", ROOT / "scripts/audit_storage.py"
         )
@@ -171,7 +171,7 @@ class StoragePlatformTest(unittest.TestCase):
         ]
         assert module.inventory([pv], pods)[0]["consumers"] == [{"pod": "a", "node": "socrat-5"}]
 
-    def test_storage_dashboard_keeps_missing_as_unknown(self):
+    def test_storage_dashboard_keeps_missing_as_unknown(self) -> None:
         d = json.loads((ROOT / "charts/monitoring-k3s/dashboards/storage.json").read_text())
         assert d["uid"] == "socrat-storage"
         for p in d["panels"]:

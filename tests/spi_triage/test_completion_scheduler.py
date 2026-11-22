@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
+import pytest
 import test_triage as f
 from core import Failure, Store, digest
 from service import Engine
@@ -136,7 +137,7 @@ class CompletionSchedulerTests(unittest.TestCase):
         self.now = 764
         assert self.s.claim()["job_id"] == "analysis"
         self.s.reserve_llm(28931)
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.s.reserve_llm(1)
 
     def test_stage_ties_and_age_alert_remain_natural(self) -> None:

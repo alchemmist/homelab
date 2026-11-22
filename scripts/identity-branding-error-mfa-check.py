@@ -52,11 +52,14 @@ with sync_playwright() as pw:
                     autocomplete:input.autocomplete,part:stage.getAttribute('part')};
             } finally {stage.remove()}
         }""")
-        assert result["bg"] == "rgba(0, 0, 0, 0)" and result["color"] == "rgb(21, 34, 60)"
-        assert result["height"] == 43 and result["arrow"] == '"→"' and "QuietMono" in result["font"]
-        assert (
-            result["focused"] and result["required"] and result["autocomplete"] == "one-time-code"
-        )
+        assert result["bg"] == "rgba(0, 0, 0, 0)"
+        assert result["color"] == "rgb(21, 34, 60)"
+        assert result["height"] == 43
+        assert result["arrow"] == '"→"'
+        assert "QuietMono" in result["font"]
+        assert result["focused"]
+        assert result["required"]
+        assert result["autocomplete"] == "one-time-code"
         assert result["part"] is None
         print("PASS: native nested MFA appearance/focus/validation attributes", width)
     response = page.goto(
@@ -69,8 +72,10 @@ with sync_playwright() as pw:
         button = page.locator("#ak-back-home")
         result = button.evaluate("""e=>({bg:getComputedStyle(e).backgroundColor,color:getComputedStyle(e).color,
             height:e.getBoundingClientRect().height,arrow:getComputedStyle(e,'::after').content})""")
-        assert result["height"] == 43 and result["bg"] == "rgba(0, 0, 0, 0)"
-        assert result["color"] == "rgb(21, 34, 60)" and result["arrow"] == '"→"'
+        assert result["height"] == 43
+        assert result["bg"] == "rgba(0, 0, 0, 0)"
+        assert result["color"] == "rgb(21, 34, 60)"
+        assert result["arrow"] == '"→"'
         card = page.locator(".pf-c-login__main").bounding_box()
         assert abs(card["x"] + card["width"] / 2 - width / 2) < 1
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")

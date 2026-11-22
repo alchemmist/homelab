@@ -10,14 +10,14 @@ DS = {"type": "prometheus", "uid": "prometheus"}
 IDS = {930, 931, 932, 933, 934, 935, 936}
 
 
-def fresh_job(job):
+def fresh_job(job) -> str:
     """Perform the fresh job operation."""
     return (
         f'(max(up{{job="{job}"}}) == 1) and on() (time() - max(timestamp(up{{job="{job}"}})) < 90)'
     )
 
 
-def fresh_metric(metric):
+def fresh_metric(metric) -> str:
     """Perform the fresh metric operation."""
     return f"(time() - max(timestamp({metric})) < 90)"
 
@@ -478,7 +478,7 @@ def build(source=None):
     return d
 
 
-def write(d):
+def write(d) -> None:
     # Compact generated widgets only; keep original owner panels byte-formatted.
     # This reduces actual ConfigMap/annotation bytes without relaxing the size guard.
     """Write the write output."""

@@ -20,7 +20,8 @@ spec = importlib.util.spec_from_file_location(
     "reconcile", Path(__file__).with_name("netbird-node-reconcile.py")
 )
 if spec is None or spec.loader is None:
-    raise RuntimeError("netbird-node-reconcile module missing or unloadable")
+    msg = "netbird-node-reconcile module missing or unloadable"
+    raise RuntimeError(msg)
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -83,7 +84,7 @@ def renew(folder, config, bootstrap=None) -> bool:
             user["is_service_user"] and user["role"] == "admin" and not user["is_blocked"],
             "bound service account changed; no automatic role repair",
         )
-        deadline = dt.datetime.fromisoformat(runtime.auth["expiration_date"].replace("Z", "+00:00"))
+        deadline = dt.datetime.fromisoformat(runtime.auth["expiration_date"])
         if deadline - dt.datetime.now(dt.UTC) > dt.timedelta(days=30):
             return False
         mod.atomic(

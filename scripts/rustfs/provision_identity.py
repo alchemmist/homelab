@@ -103,7 +103,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         """Close the body and refuse redirects instead of following them."""
         if response is not None:
             response.close()
-        raise ValueError("redirect refused")
+        msg = "redirect refused"
+        raise ValueError(msg)
 
 
 def reconcile_app_bindings(
@@ -122,7 +123,8 @@ def reconcile_app_bindings(
             or not binding.get("enabled")
             or binding.get("failure_result")
         ):
-            raise ValueError("unexpected authorization binding")
+            msg = "unexpected authorization binding"
+            raise ValueError(msg)
     for order, group in enumerate(groups):
         if not any(b.get("group") == group for b in bindings):
             call_api(
@@ -145,7 +147,8 @@ def builtin_scope(rows: list[dict[str, object]], name: str) -> object:
         r for r in rows if r.get("managed") == "goauthentik.io/providers/oauth2/scope-" + name
     ]
     if len(matches) != 1 or matches[0].get("scope_name") != name:
-        raise ValueError("missing/duplicate/mismatched builtin scope")
+        msg = "missing/duplicate/mismatched builtin scope"
+        raise ValueError(msg)
     return matches[0]["pk"]
 
 
@@ -159,7 +162,8 @@ def call_api(
 ) -> dict[str, object] | None:
     """Send one JSON request, refusing redirects and oversized responses."""
     if method != "GET" and not session["writable"]:
-        raise ValueError("writes disabled")
+        msg = "writes disabled"
+        raise ValueError(msg)
     request = urllib.request.Request(
         BASE + path,
         method=method,
@@ -173,7 +177,8 @@ def call_api(
         with session["opener"].open(request, timeout=30) as r:
             data = r.read(2 * 1024 * 1024 + 1)
             if len(data) > 2 * 1024 * 1024:
-                raise ValueError("oversized inventory")
+                msg = "oversized inventory"
+                raise ValueError(msg)
             value = json.loads(data)
             return cast("dict[str, object] | None", value)
     except urllib.error.HTTPError as e:
@@ -181,7 +186,8 @@ def call_api(
         e.close()
         if allow_missing and code == 404:
             return None
-        raise ValueError("identity request failed") from None
+        msg = "identity request failed"
+        raise ValueError(msg) from None
 
 
 def read_generator(session: Session, path: str) -> list[dict[str, object]]:
@@ -199,8 +205,10 @@ def read_generator(session: Session, path: str) -> list[dict[str, object]]:
         if nxt is None or nxt == 0:
             return result
         if type(nxt) is not int or nxt != page_number + 1:
-            raise ValueError("pagination mismatch")
-    raise ValueError("inventory too large")
+            msg = "pagination mismatch"
+            raise ValueError(msg)
+    msg = "inventory too large"
+    raise ValueError(msg)
 
 
 def lookup(
@@ -213,7 +221,8 @@ def lookup(
     """Return the unique inventory row matching the key/value, if adopted."""
     found = [r for r in records if r.get(key) == value]
     if len(found) > 1 or (required and not found):
-        raise ValueError("missing/duplicate prerequisite")
+        msg = "missing/duplicate prerequisite"
+        raise ValueError(msg)
     return found[0] if found else None
 
 
@@ -264,7 +273,8 @@ def require_private_root(directory: Path) -> None:
         or st.st_uid != os.getuid()
         or st.st_mode & 0o077
     ):
-        raise ValueError("private directory required")
+        msg = "private directory required"
+        raise ValueError(msg)
 
 
 def load_or_init_client(
@@ -280,7 +290,8 @@ def load_or_init_client(
         module.private(client_record_path)
         return cast("dict[str, object]", json.loads(client_record_path.read_text()))
     if native_taken:
-        raise ValueError("lost private client journal")
+        msg = "lost private client journal"
+        raise ValueError(msg)
     client: dict[str, object] = {
         "client_id": "spi-rustfs-console",
         "client_secret": secrets.token_urlsafe(48),
@@ -302,7 +313,8 @@ def main() -> None:
         "bootstrap", Path(__file__).with_name("bootstrap.py")
     )
     if spec is None or spec.loader is None:
-        raise ImportError("Cannot load RustFS bootstrap")
+        msg = "Cannot load RustFS bootstrap"
+        raise ImportError(msg)
     b = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(b)
     d = args.private_dir
@@ -326,7 +338,8 @@ def main() -> None:
         app = call_api(session, "GET", "core/applications/" + slug + "/", allow_missing=True)
         if app is not None:
             if app.get("slug") != slug:
-                raise ValueError("application detail identity mismatch")
+                msg = "application detail identity mismatch"
+                raise ValueError(msg)
             inventory["core/applications/"].append(app)
 
     def required_pk(path: str, key: str, value: str) -> object:
@@ -389,7 +402,7 @@ def main() -> None:
             "authentication_flow": flow["default-authentication-flow"],
             "authorization_flow": flow["default-provider-authorization-explicit-consent"],
             "invalidation_flow": flow["default-provider-invalidation-flow"],
-            "property_mappings": mappings + [scope["pk"]],
+            "property_mappings": [*mappings, scope["pk"]],
             "signing_key": cert,
             "redirect_uris": [
                 {
@@ -437,6 +450,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception:
-        raise SystemExit(
-            "Identity provisioning stopped; private state may be partial. No automatic rollback or existing identity edits."
-        )
+        msg = "Identity provisioning stopped; private state may be partial. No automatic rollback or existing identity edits."
+        raise SystemExit(msg)

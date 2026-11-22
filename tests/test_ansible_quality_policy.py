@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.parametrize(
-    "task,rule",
+    ("task", "rule"),
     [
         ({"ansible.builtin.shell": "false | true"}, "risky-shell-pipe"),
         ({"unavailable.collection.fake_module": {}}, "syntax-check"),
@@ -59,8 +59,8 @@ def test_real_linter_rejects_unsafe_or_unresolved_tasks(tmp_path, task, rule) ->
     assert any(r.startswith(rule) for r in rules)
 
 
-@pytest.mark.parametrize("prop,rc", [("LoadState", 0), (None, 3), (None, 4), (None, 1)])
-def test_unit_probe_preserves_systemctl_status(prop, rc, monkeypatch):
+@pytest.mark.parametrize(("prop", "rc"), [("LoadState", 0), (None, 3), (None, 4), (None, 1)])
+def test_unit_probe_preserves_systemctl_status(prop, rc, monkeypatch) -> None:
     """Keep the real active-state exit status for the caller's failure policy."""
     import runpy
     from unittest.mock import Mock

@@ -6,30 +6,46 @@ Redis-command/SQL-statement/full-URL/error-message hooks. Not blanket unsupporte
 coverage: DB/Redis tracing is intentionally disabled pending source-safe hooks.
 SDK source privacy guard must already be active before this module installs.
 """
+
 import sys
 
 
 def activate() -> None:
     from opentelemetry.sdk.trace import TracerProvider
+
     if not getattr(TracerProvider, "_homelab_source_privacy", False):
-        raise ValueError("Early before-export source guard must be active first")
+        msg = "Early before-export source guard must be active first"
+        raise ValueError(msg)
     if "open_webui.utils.telemetry.setup" in sys.modules:
-        raise ValueError("Native setup already imported; never allow late unsafe-hook fallback")
+        msg = "Native setup already imported; never allow late unsafe-hook fallback"
+        raise ValueError(msg)
     from open_webui.utils.telemetry import instrumentors as native
+
     if getattr(native.Instrumentor, "_homelab_http_only_profile", False):
         return
+
     class SourceSafeHttpInstrumentor(native.Instrumentor):
         _homelab_http_only_profile = True
+
         def _instrument(self, **kwargs) -> None:
             self.instrumentors = []
-            native.FastAPIInstrumentor.instrument_app(app=self.app,
-                http_capture_headers_server_request=[], http_capture_headers_server_response=[])
-            for cls in [native.RequestsInstrumentor, native.HTTPXClientInstrumentor, native.AioHttpClientInstrumentor]:
+            native.FastAPIInstrumentor.instrument_app(
+                app=self.app,
+                http_capture_headers_server_request=[],
+                http_capture_headers_server_response=[],
+            )
+            for cls in [
+                native.RequestsInstrumentor,
+                native.HTTPXClientInstrumentor,
+                native.AioHttpClientInstrumentor,
+            ]:
                 instrumentor = cls()
                 instrumentor.instrument()
                 self.instrumentors.append(instrumentor)
+
         def _uninstrument(self, **kwargs) -> None:
             native.FastAPIInstrumentor.uninstrument_app(self.app)
             for instrumentor in getattr(self, "instrumentors", []):
                 instrumentor.uninstrument()
+
     native.Instrumentor = SourceSafeHttpInstrumentor

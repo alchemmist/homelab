@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 from typing import cast, override
 
+import pytest
 import yaml
 
 MODULE_PATH = (
@@ -67,15 +68,15 @@ class RoleConfigTests(unittest.TestCase):
             )
         )
         result = MODULE.configure(self.args)
-        self.assertTrue(result["changed"])
+        assert result["changed"]
         actual = self.read()
         for key, value in preserved.items():
-            self.assertEqual(actual[key], value)
-        self.assertNotIn("disable-etcd", actual)
-        self.assertNotIn("cluster-init", actual)
-        self.assertEqual(actual["tls-san"], ["existing.example", "10.250.0.5", "127.0.0.1"])
-        self.assertEqual(actual["token-file"], self.args.token_file)
-        self.assertEqual(actual["flannel-iface"], "wg-socrat")
+            assert actual[key] == value
+        assert "disable-etcd" not in actual
+        assert "cluster-init" not in actual
+        assert actual["tls-san"] == ["existing.example", "10.250.0.5", "127.0.0.1"]
+        assert actual["token-file"] == self.args.token_file
+        assert actual["flannel-iface"] == "wg-socrat"
 
     def test_explicit_token_file_replaces_inline_token_only(self) -> None:
         """Replace an inline token with the explicit token file only."""
@@ -89,10 +90,10 @@ class RoleConfigTests(unittest.TestCase):
         )
         MODULE.configure(self.args)
         actual = self.read()
-        self.assertNotIn("token", actual)
-        self.assertEqual(actual["token-file"], self.args.token_file)
-        self.assertFalse(actual["disable-agent"])
-        self.assertEqual(actual["node-label"], ["a=b"])
+        assert "token" not in actual
+        assert actual["token-file"] == self.args.token_file
+        assert not actual["disable-agent"]
+        assert actual["node-label"] == ["a=b"]
 
     def test_control_plane_removes_conflicting_flags(self) -> None:
         """Strip server-role flags that conflict with control-plane membership."""
@@ -110,14 +111,14 @@ class RoleConfigTests(unittest.TestCase):
         self.args.role = "control-plane"
         MODULE.configure(self.args)
         actual = self.read()
-        self.assertTrue(actual["disable-etcd"])
+        assert actual["disable-etcd"]
         for key in (
             "cluster-init",
             "disable-apiserver",
             "disable-controller-manager",
             "disable-scheduler",
         ):
-            self.assertNotIn(key, actual)
+            assert key not in actual
 
     def test_idempotence_private_backup_and_atomic_permissions(self) -> None:
         """Apply once atomically with a private backup, then no-op."""
@@ -126,17 +127,17 @@ class RoleConfigTests(unittest.TestCase):
         original = self.path.read_bytes()
         first = MODULE.configure(self.args)
         backup = self.path.parent / first["backup"]
-        self.assertEqual(backup.read_bytes(), original)
-        self.assertEqual(stat.S_IMODE(backup.stat().st_mode), 0o600)
-        self.assertEqual(stat.S_IMODE(self.path.stat().st_mode), 0o600)
+        assert backup.read_bytes() == original
+        assert stat.S_IMODE(backup.stat().st_mode) == 384
+        assert stat.S_IMODE(self.path.stat().st_mode) == 384
         inode = self.path.stat().st_ino
-        self.assertEqual(MODULE.configure(self.args), {"changed": False, "backup": None})
-        self.assertEqual(self.path.stat().st_ino, inode)
-        self.assertEqual(len(list(self.path.parent.glob("*.backup-*"))), 1)
+        assert MODULE.configure(self.args) == {"changed": False, "backup": None}
+        assert self.path.stat().st_ino == inode
+        assert len(list(self.path.parent.glob("*.backup-*"))) == 1
         self.args.node_name = "socrat-1"
         second = MODULE.configure(self.args)
-        self.assertNotEqual(first["backup"], second["backup"])
-        self.assertEqual(backup.read_bytes(), original)
+        assert first["backup"] != second["backup"]
+        assert backup.read_bytes() == original
 
     def test_check_does_not_write(self) -> None:
         """Keep check mode free of any config or directory side effects."""
@@ -144,22 +145,22 @@ class RoleConfigTests(unittest.TestCase):
         self.args.token_file = None
         self.args.check = True
         original = self.path.read_bytes()
-        self.assertTrue(MODULE.configure(self.args)["changed"])
-        self.assertEqual(self.path.read_bytes(), original)
-        self.assertEqual(list(self.path.parent.iterdir()), [self.path])
+        assert MODULE.configure(self.args)["changed"]
+        assert self.path.read_bytes() == original
+        assert list(self.path.parent.iterdir()) == [self.path]
         self.args.check = False
         MODULE.configure(self.args)
-        self.assertEqual(self.read()["token-file"], "/existing/token")
+        assert self.read()["token-file"] == "/existing/token"
 
     def test_rejects_symlink_and_non_mapping(self) -> None:
         """Refuse non-mapping documents and symlinked config paths."""
         self.write(["invalid"])
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             MODULE.configure(self.args)
         target = self.path.with_name("target.yaml")
         self.path.rename(target)
         self.path.symlink_to(target)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             MODULE.configure(self.args)
 
 

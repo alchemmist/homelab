@@ -1,4 +1,5 @@
 """Apply a hash-verified edit patch to the wiki runtime auth module."""
+
 import hashlib
 import json
 from pathlib import Path

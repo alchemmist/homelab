@@ -30,7 +30,8 @@ def main() -> None:
         "items"
     ]
     if len(pods) != 1:
-        raise RuntimeError("Ambiguous policy pod")
+        msg = "Ambiguous policy pod"
+        raise RuntimeError(msg)
     pod = pods[0]["metadata"]["name"]
     config = k("exec", pod, "--", "cat", "/etc/nginx/nginx.conf")
     for marker in [
@@ -40,7 +41,8 @@ def main() -> None:
         "/etc/nginx/basic/users",
     ]:
         if marker not in config:
-            raise RuntimeError("Unexpected policy configuration")
+            msg = "Unexpected policy configuration"
+            raise RuntimeError(msg)
     test = (
         config.replace("pid /tmp/nginx.pid;", "pid /tmp/nginx-acceptance.pid;")
         .replace("listen 8080;", "listen 127.0.0.1:18080;")
@@ -87,7 +89,8 @@ def main() -> None:
     )
     after = json.loads(k("get", "secret", "syncthing-basic-auth", "-o", "json"))["data"]
     if old != after:
-        raise RuntimeError("Existing BasicAuth credential changed; stop")
+        msg = "Existing BasicAuth credential changed; stop"
+        raise RuntimeError(msg)
     print("Existing production BasicAuth bytes unchanged; test credential was loopback-only")
 
 

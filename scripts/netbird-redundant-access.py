@@ -23,7 +23,8 @@ NODE_ADDRESSES = {
 
 def peer(host):
     if host not in HOSTS:
-        raise ValueError("existing reviewed node required")
+        msg = "existing reviewed node required"
+        raise ValueError(msg)
     spec = importlib.util.spec_from_file_location(
         "node_peer", ROOT / "scripts/netbird-host-peer.py"
     )
@@ -46,7 +47,8 @@ def reviewed_id(value):
 
 def router_body(node_group):
     if not reviewed_id(node_group):
-        raise ValueError("dedicated API group containing exact node agents required")
+        msg = "dedicated API group containing exact node agents required"
+        raise ValueError(msg)
     return {
         "peer_groups": [node_group],
         "enabled": True,
@@ -57,7 +59,8 @@ def router_body(node_group):
 
 def admin_input_policy(jwt_group, node_group):
     if not reviewed_id(jwt_group) or not reviewed_id(node_group) or jwt_group == node_group:
-        raise ValueError("separate genuine admin JWT and exact node destinations required")
+        msg = "separate genuine admin JWT and exact node destinations required"
+        raise ValueError(msg)
     return {
         "name": "admin-nodes-local-input",
         "enabled": True,
@@ -82,7 +85,8 @@ def pilot_input_policy(jwt_group, node2_destination):
         or not reviewed_id(node2_destination)
         or jwt_group == node2_destination
     ):
-        raise ValueError("separate genuine pilot JWT and exact node2 destination required")
+        msg = "separate genuine pilot JWT and exact node2 destination required"
+        raise ValueError(msg)
     return {
         "name": "pilot-local-ssh-socrat-2",
         "enabled": True,

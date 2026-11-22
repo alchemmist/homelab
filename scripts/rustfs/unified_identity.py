@@ -200,31 +200,36 @@ class DriftHuman(Protocol):
 def require_outpost_shape(outpost: DriftOutpost) -> None:
     """Fail unless the embedded proxy outpost keeps its managed identity."""
     if outpost.managed != "goauthentik.io/outposts/embedded" or outpost.type != "proxy":
-        raise ValueError("outpost identity drift")
+        msg = "outpost identity drift"
+        raise ValueError(msg)
 
 
 def require_human_shape(human: DriftHuman) -> None:
     """Fail unless the pinned human operator identity is unchanged."""
     if human.username != "alchemmist" or str(human.uuid) != "9e33877a-3eaa-4541-98eb-8cdc10088ef6":
-        raise ValueError("human identity drift")
+        msg = "human identity drift"
+        raise ValueError(msg)
 
 
 def require_unique_origin(hosts: Iterable[str]) -> None:
     """Fail if any existing provider already answers on the canonical origin."""
     if any(authority(url) == authority(HOST) for url in hosts):
-        raise ValueError("canonical-host provider already exists")
+        msg = "canonical-host provider already exists"
+        raise ValueError(msg)
 
 
 def require_fresh_journal(journal: Path) -> None:
     """Fail if a rerun journal exists; interrupted applies are resolved manually."""
     if journal.exists():
-        raise ValueError("journal already exists; no retry")
+        msg = "journal already exists; no retry"
+        raise ValueError(msg)
 
 
 def require_valid_action(action: str, nonce: str | None) -> None:
     """Fail unless an explicit supported action carries a 128-bit hex nonce."""
     if action not in ("plan", "apply", "rollback") or not re.fullmatch("[a-f0-9]{32}", nonce or ""):
-        raise ValueError("explicit action and random 128-bit operator nonce required")
+        msg = "explicit action and random 128-bit operator nonce required"
+        raise ValueError(msg)
 
 
 def ensure_journal_dir(root: Path, action: str) -> None:
@@ -234,7 +239,8 @@ def ensure_journal_dir(root: Path, action: str) -> None:
     if root.exists():
         st = root.lstat()
         if root.is_symlink() or st.st_uid != os.getuid() or st.st_mode & 0o077:
-            raise ValueError("unsafe journal directory")
+            msg = "unsafe journal directory"
+            raise ValueError(msg)
     else:
         root.mkdir(mode=0o700)
 
@@ -243,7 +249,8 @@ def require_safe_journal(journal: Path) -> None:
     """Fail unless the journal file is an operator-owned private regular file."""
     st = journal.lstat()
     if journal.is_symlink() or st.st_uid != os.getuid() or st.st_mode & 0o077:
-        raise ValueError("unsafe journal")
+        msg = "unsafe journal"
+        raise ValueError(msg)
 
 
 def expected_native_bindings() -> list[dict[str, object]]:
@@ -286,7 +293,8 @@ def authority(url: str) -> tuple[str, int]:
         or parsed.username
         or parsed.password
     ):
-        raise ValueError("invalid provider origin")
+        msg = "invalid provider origin"
+        raise ValueError(msg)
     return (
         parsed.hostname.lower().rstrip("."),
         parsed.port or (443 if parsed.scheme == "https" else 80),
@@ -337,7 +345,8 @@ def run(action: str = "plan", nonce: str | None = None) -> None:
         )
         expected_bindings = expected_native_bindings()
         if app_native.policy_engine_mode != "any" or native_bindings != expected_bindings:
-            raise ValueError("native authorization drift")
+            msg = "native authorization drift"
+            raise ValueError(msg)
         native_guard = digest(
             {
                 "native": native.pk,
@@ -383,15 +392,18 @@ def run(action: str = "plan", nonce: str | None = None) -> None:
                 pk=saved["created"]["app"], slug=NAME, provider=provider
             )
             if digest(state(provider, app)) != saved["created_hash"]:
-                raise ValueError("rollback CAS drift; do not delete")
+                msg = "rollback CAS drift; do not delete"
+                raise ValueError(msg)
             if provider.backchannel_application.exists():
-                raise ValueError("unexpected provider consumers")
+                msg = "unexpected provider consumers"
+                raise ValueError(msg)
             outpost.providers.remove(provider)
             if (
                 sorted(outpost.providers.values_list("pk", flat=True))
                 != saved["original_outpost_providers"]
             ):
-                raise ValueError("outpost restore mismatch")
+                msg = "outpost restore mismatch"
+                raise ValueError(msg)
             PolicyBinding.objects.filter(target=app.pk).delete()
             app.delete()
             provider.delete()
@@ -402,7 +414,8 @@ def run(action: str = "plan", nonce: str | None = None) -> None:
             ProxyProvider.objects.filter(name=NAME).exists()
             or Application.objects.filter(slug=NAME).exists()
         ):
-            raise ValueError("name already exists; no adoption/overwrite")
+            msg = "name already exists; no adoption/overwrite"
+            raise ValueError(msg)
         require_unique_origin(ProxyProvider.objects.values_list("external_host", flat=True))
         if action == "plan":
             print(

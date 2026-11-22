@@ -35,9 +35,7 @@ def main() -> None:
         path = "/thanos-workshop/" + quote(key, safe="/")
         spec = {"bytes": n}
         for method in ("HEAD", "GET", "PUT"):
-            req = "\n".join(
-                [method, path, q, "host:" + host + "\n", "host", "UNSIGNED-PAYLOAD"]
-            )
+            req = "\n".join([method, path, q, "host:" + host + "\n", "host", "UNSIGNED-PAYLOAD"])
             data = "\n".join(
                 [
                     "AWS4-HMAC-SHA256",

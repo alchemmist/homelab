@@ -59,7 +59,7 @@ class Etcd:
             }
         return result
 
-    def health(self, name):
+    def health(self, name) -> None:
         """Assert linearizable health of the named member endpoint."""
         result = self.call(["endpoint", "health"], ENDPOINTS[name])
         if len(result) != 1 or result[0].get("health") is not True:
@@ -73,7 +73,7 @@ class Etcd:
         return result[0]["Status"]
 
 
-def require_members(members, names):
+def require_members(members, names) -> None:
     """Document the require members operation."""
     if set(members) != set(names) or any(item["learner"] for item in members.values()):
         msg = "Unexpected voting membership; refusing reconfiguration"
@@ -105,7 +105,7 @@ def remove_socrat_1(client):
         client.call(
             ["move-leader", members["socrat-0"]["id_hex"]], ENDPOINTS["socrat-1"], structured=False
         )
-        for attempt in range(10):
+        for _attempt in range(10):
             if int(client.status("socrat-0")["leader"]) == members["socrat-0"]["id"]:
                 break
             time.sleep(0.5)
@@ -122,9 +122,7 @@ def remove_socrat_1(client):
         current = client.members()
         if "socrat-1" in current:
             msg_0 = "Removal failed and socrat-1 remains a member; restore its staged configuration"
-            raise RuntimeError(
-                msg_0
-            ) from None
+            raise RuntimeError(msg_0) from None
     return {"changed": True, "members": verify_final(client)}
 
 
@@ -151,7 +149,7 @@ def inspect(client):
     }
 
 
-def main():
+def main() -> int:
     """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=["inspect", "remove-socrat-1", "verify-final"])

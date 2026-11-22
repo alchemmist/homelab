@@ -80,7 +80,7 @@ def run(c, expect, phase, attempts=1, interval=2, negative=None):
     return results
 
 
-def main():
+def main() -> int:
     """Execute the probe plan from the inputs file and report observed outcomes."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--inputs", required=True, type=Path)

@@ -76,7 +76,7 @@ def python_directive_lines(source: str) -> set[int]:
                 continue
             for token in tokenize.generate_tokens(io.StringIO(script.value).readline):
                 if token.type == tokenize.COMMENT and re.match(
-                    r"#\s*noqa(?:\s*:|\s*$)", token.string, re.I
+                    r"#\s*noqa(?:\s*:|\s*$)", token.string, re.IGNORECASE
                 ):
                     if script.style == "|":
                         offset = token.start[0]
@@ -99,7 +99,7 @@ def workflow_directives(name: str) -> list[Finding]:
     source = (ROOT / name).read_text()
     lines = python_directive_lines(source)
     for number, line in enumerate(source.splitlines(), 1):
-        if re.search(r"#\s*(?:zizmor:\s*ignore|shellcheck\s+disable=)", line, re.I):
+        if re.search(r"#\s*(?:zizmor:\s*ignore|shellcheck\s+disable=)", line, re.IGNORECASE):
             lines.add(number)
     return [
         finding(
@@ -117,7 +117,8 @@ def check_actionlint(names: list[str]) -> tuple[list[Finding], int]:
     files = workflow_files(names)
     for helper in ("shellcheck", "pyflakes"):
         if shutil.which(helper) is None:
-            raise LintToolError(f"Missing required actionlint helper: {helper}")
+            msg = f"Missing required actionlint helper: {helper}"
+            raise LintToolError(msg)
     process = command(
         ["actionlint", "-config-file", os.devnull, "-format", "{{json .}}", *files],
         allowed=(0, 1),

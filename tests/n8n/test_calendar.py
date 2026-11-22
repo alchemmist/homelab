@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from typing import TypedDict, cast
 
+import pytest
+
 BASE = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("sync", BASE / "scripts/n8n/sync.py")
 sync = importlib.util.module_from_spec(spec)
@@ -73,12 +75,12 @@ class CalendarTests(unittest.TestCase):
         ]:
             w = self.render()
             w["nodes"].append({"type": "n8n-nodes-base.httpRequest", "parameters": {"url": url}})
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 sync.require_yandex_policy(w)
 
     def test_missing_auth_rejected(self) -> None:
         """Verify a node without the prepared auth is rejected."""
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             sync.render_workflow(self.template, {}, {})
 
     def test_maintenance_renews_without_speech(self) -> None:

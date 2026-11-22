@@ -50,22 +50,22 @@ def running_core() -> str:
 
 
 def promote(candidate, old_image, new_image) -> None:
-    assert os.geteuid() == 0 and socket.gethostname() == "socrat-2"
-    assert (
-        candidate.parent == ROOT
-        and candidate.name.startswith("staged-")
-        and not candidate.is_symlink()
-    )
+    assert os.geteuid() == 0
+    assert socket.gethostname() == "socrat-2"
+    assert candidate.parent == ROOT
+    assert candidate.name.startswith("staged-")
+    assert not candidate.is_symlink()
     assert not RECEIPT.exists(), "Existing attempt/receipt; inspect, never replay"
     proof = json.loads((candidate / ".isolated-smoke-accepted.json").read_text())
-    assert (
-        proof["healthy"] and proof["cleanup_verified"] and not proof["production_runtime_changed"]
-    )
+    assert proof["healthy"]
+    assert proof["cleanup_verified"]
+    assert not proof["production_runtime_changed"]
     assert 0 <= time.time() - proof["accepted_at"] <= 900, "Fresh isolated smoke required"
     assert proof["image"] == new_image
     new = candidate / "primary"
     current = ROOT / "primary"
-    assert not new.is_symlink() and not current.is_symlink()
+    assert not new.is_symlink()
+    assert not current.is_symlink()
     assert new.stat().st_dev == current.stat().st_dev
     assert (new / ".homelab-image").read_text().strip() == new_image
     assert hashlib.sha256((new / "app/x-ui").read_bytes()).hexdigest() == proof["ui_sha256"]
@@ -73,9 +73,11 @@ def promote(candidate, old_image, new_image) -> None:
     assert core == running_core(), "Candidate core differs from live; stop for explicit review"
     with (STATE / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        assert not (STATE / "active").exists() and not (STATE / "inhibit").exists()
+        assert not (STATE / "active").exists()
+        assert not (STATE / "inhibit").exists()
         assert active("k3s.service")
-        assert not active("homelab-vpn-primary.service") and not active("homelab-vpn-caddy.service")
+        assert not active("homelab-vpn-primary.service")
+        assert not active("homelab-vpn-caddy.service")
         status = subprocess.run(
             ["/usr/local/sbin/homelab-vpn-failover", "status"],
             check=False,
@@ -83,7 +85,8 @@ def promote(candidate, old_image, new_image) -> None:
             text=True,
             timeout=30,
         )
-        assert status.returncode == 0 and json.loads(status.stdout)["healthy"]
+        assert status.returncode == 0
+        assert json.loads(status.stdout)["healthy"]
         assert (current / ".homelab-image").read_text().strip() == old_image
         # Durable intent before atomic syscall; any uncertainty prohibits replay.
         fd = os.open(RECEIPT, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -144,6 +147,5 @@ if __name__ == "__main__":
     try:
         promote(a.candidate, a.old_image, a.new_image)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
-        raise SystemExit(
-            "Native image promotion stopped; inspect private intent/receipts, never replay."
-        ) from None
+        msg = "Native image promotion stopped; inspect private intent/receipts, never replay."
+        raise SystemExit(msg) from None

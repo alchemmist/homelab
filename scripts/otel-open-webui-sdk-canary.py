@@ -26,10 +26,10 @@ MARKERS = [
 class SyntheticBackend(http.server.BaseHTTPRequestHandler):
     """Minimal fixtured backend that refuses oversized synthetic payloads."""
 
-    def log_message(self, *args):
+    def log_message(self, *args) -> None:
         pass
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         length = int(self.headers.get("Content-Length", "0"))
         require(length <= 65536, "Synthetic backend budget exceeded")
         self.rfile.read(length)
@@ -74,10 +74,10 @@ def make_audit(audit):
     from opentelemetry.sdk.trace import SpanProcessor
 
     class Audit(SpanProcessor):
-        def on_start(self, span, parent_context=None):
+        def on_start(self, span, parent_context=None) -> None:
             pass
 
-        def on_end(self, span):
+        def on_end(self, span) -> None:
             audit["endedSpans"] += 1
             audit["sensitiveSyntheticContentFoundBeforeDownstreamProcessor"] |= any(
                 marker in span.to_json() for marker in MARKERS
@@ -85,10 +85,10 @@ def make_audit(audit):
             audit["httpClientSpanSeen"] |= span.kind.name == "CLIENT"
             audit["serverSpanSeen"] |= span.kind.name == "SERVER"
 
-        def shutdown(self):
+        def shutdown(self) -> None:
             pass
 
-        def force_flush(self, timeout_millis=30000):
+        def force_flush(self, timeout_millis=30000) -> bool:
             return True
 
     return Audit
@@ -147,7 +147,7 @@ def progress(value: object) -> None:
     temporary.replace(path)
 
 
-def run():
+def run() -> None:
     logging.disable(logging.CRITICAL)
     renewal = os.environ.get("HOMELAB_AWAIT_LEAF_RENEWAL") == "1"
     loaded = []

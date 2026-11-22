@@ -25,7 +25,7 @@ ENTRIES = {
 }
 
 
-def valid_discovery(data):
+def valid_discovery(data) -> bool:
     """Execute valid_discovery."""
     if not isinstance(data, dict) or data.get("issuer") != ISSUER:
         return False
@@ -48,7 +48,7 @@ def valid_discovery(data):
     return True
 
 
-def classify_failure(error):
+def classify_failure(error) -> str | None:
     """Map an expected transport, TLS or JSON failure to its failure kind."""
     if isinstance(error, ssl.SSLCertVerificationError):
         return "tls_certificate"
@@ -65,7 +65,7 @@ def classify_failure(error):
     return None
 
 
-def attempt_probe(entry, result, timeout, phase):
+def attempt_probe(entry, result, timeout, phase) -> None:
     """Drive one forced-IP probe attempt, updating result through phase states."""
     raw = None
     tls = None
@@ -119,9 +119,11 @@ def require_known_pair(entry, vantage) -> None:
         "workstation",
         "external",
     ]:
-        raise ValueError("Unknown owned entry or vantage")
+        msg = "Unknown owned entry or vantage"
+        raise ValueError(msg)
     if entry == "internal" and vantage != "home":
-        raise ValueError("Private LAN probe is home-only")
+        msg = "Private LAN probe is home-only"
+        raise ValueError(msg)
 
 
 def probe(entry, vantage, timeout=3):
@@ -153,7 +155,7 @@ def probe(entry, vantage, timeout=3):
     return result
 
 
-def main():
+def main() -> None:
     """Execute main."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--vantage", required=True, choices=["home", "vps", "workstation", "external"])

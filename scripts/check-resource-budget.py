@@ -129,9 +129,11 @@ def _validate_container(resources: dict[str, dict[str, object]]) -> None:
             raise ValueError("Profile limit below request: " + name)
     remove = resources.get("removeCpuLimit", False)
     if not isinstance(remove, bool):
-        raise ValueError("removeCpuLimit must be boolean")
+        msg = "removeCpuLimit must be boolean"
+        raise ValueError(msg)
     if remove and "cpu" in resources.get("limits", {}):
-        raise ValueError("Profile cannot set and remove CPU limit")
+        msg = "Profile cannot set and remove CPU limit"
+        raise ValueError(msg)
 
 
 def _validate_profile(profile: dict[str, object]) -> None:
@@ -143,7 +145,8 @@ def _validate_profile(profile: dict[str, object]) -> None:
     re.compile(cast("str", profile["ownerPattern"]))
     containers = profile.get("containers")
     if not isinstance(containers, dict) or not containers:
-        raise ValueError("Profile requires containers")
+        msg = "Profile requires containers"
+        raise ValueError(msg)
     for resources in containers.values():
         _validate_container(resources)
 
@@ -151,7 +154,8 @@ def _validate_profile(profile: dict[str, object]) -> None:
 def validate_profiles(profiles: object) -> None:
     """Validate the shape and content of every budget profile."""
     if not isinstance(profiles, list):
-        raise ValueError("Profiles must be a JSON list")
+        msg = "Profiles must be a JSON list"
+        raise ValueError(msg)
     for profile in profiles:
         _validate_profile(profile)
 
@@ -219,7 +223,7 @@ def budget(pods, nodes, profiles):
     return report
 
 
-def main():
+def main() -> int | None:
     parser = argparse.ArgumentParser(
         description="Read-only current-placement request budget comparison"
     )

@@ -18,7 +18,7 @@ def kubectl(*arguments):
     )
 
 
-def verify():
+def verify() -> None:
     """Verify."""
     expected = sorted(node["metadata"]["name"] for node in kubectl("get", "nodes")["items"])
     tokens = kubectl("get", "tokens.management.cattle.io")["items"]

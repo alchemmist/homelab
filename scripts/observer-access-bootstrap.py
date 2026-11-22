@@ -29,7 +29,7 @@ planner = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(planner)
 
 
-def private(path, directory=False, owner_uid=None):
+def private(path, directory=False, owner_uid=None) -> None:
     """Reject symlinks, unexpected ownership or type, and group or other access."""
     expected_uid = os.geteuid() if owner_uid is None else owner_uid
     planner.require(
@@ -52,7 +52,7 @@ def readiness_directory(path: Path) -> None:
     private(path, directory=True, owner_uid=owner_uid)
 
 
-def validate_path(system, path):
+def validate_path(system, path) -> None:
     """Reject traversal and paths outside the reviewed API prefixes for this system."""
     planner.require(
         isinstance(path, str)
@@ -188,7 +188,8 @@ class Client:
             result.extend(data["results"])
             if not data["pagination"].get("next"):
                 return result
-        raise RuntimeError("Incomplete IdP pagination")
+        msg = "Incomplete IdP pagination"
+        raise RuntimeError(msg)
 
     def harbor_members(self, project):
         """List all Harbor project members for the given project."""
@@ -202,7 +203,8 @@ class Client:
             result.extend(data)
             if len(data) < 100:
                 return result
-        raise RuntimeError("Incomplete Harbor pagination")
+        msg = "Incomplete Harbor pagination"
+        raise RuntimeError(msg)
 
     def harbor_groups(self):
         """List the Harbor user groups matching the observer group."""
@@ -216,17 +218,24 @@ class Client:
             result.extend(g for g in data if g.get("group_name") == "homelab-observer")
             if len(data) < 100:
                 return result
-        raise RuntimeError("Incomplete Harbor group pagination")
+        msg = "Incomplete Harbor group pagination"
+        raise RuntimeError(msg)
 
 
 def snapshot(client, policy):
     """Read native RBAC, admission, and Harbor membership state for the planner."""
     kbase = "/apis/management.cattle.io/v3/"
-    get = lambda path: client.call("kubernetes", "GET", kbase + path)
+
+    def get(path):
+        return client.call("kubernetes", "GET", kbase + path)
+
     globals_ = get("globalroles")["items"]
     cluster = policy["rancher"]["cluster"]
     config = client.call("harbor", "GET", client.harbor_config_path)
-    value = lambda key: config[key]["value"]
+
+    def value(key):
+        return config[key]["value"]
+
     apps = client.rows("core/applications/?superuser_full_list=true")
     apps = [{k: app[k] for k in ["slug", "pk", "provider", "policy_engine_mode"]} for app in apps]
     return {

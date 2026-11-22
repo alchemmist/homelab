@@ -35,9 +35,7 @@ def kubectl(args: list[str], body: object = None) -> str:
     )
     if result.returncode:
         msg_0 = "Kubernetes operation failed; details suppressed to protect configuration"
-        raise RuntimeError(
-            msg_0
-        )
+        raise RuntimeError(msg_0)
     return result.stdout
 
 
@@ -530,9 +528,7 @@ elif service == "monori":
             "kind": "Secret",
             "metadata": {"name": "monori-oidc", "namespace": "monori"},
             "type": "Opaque",
-            "data": {
-                "client-secret": base64.b64encode(secret.encode()).decode()
-            },
+            "data": {"client-secret": base64.b64encode(secret.encode()).decode()},
         },
     )
     print("Monori confidential client Secret reconciled")

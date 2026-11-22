@@ -5,6 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
+import pytest
+
 SPEC = importlib.util.spec_from_file_location(
     "bootstrap",
     Path(__file__).resolve().parents[1] / "ansible/scripts/bootstrap-wiki-runtime.py",
@@ -84,7 +86,7 @@ class BootstrapTests(unittest.TestCase):
 
     def test_missing_sources_fail_before_any_creation(self) -> None:
         del self.resources["configmap", "wiki-editor-hosts", "wiki"]
-        with self.assertRaises(BOOTSTRAP.BootstrapError):
+        with pytest.raises(BOOTSTRAP.BootstrapError):
             BOOTSTRAP.bootstrap(self.kube)
         self.kube.create.assert_not_called()
 
@@ -92,7 +94,7 @@ class BootstrapTests(unittest.TestCase):
         self.resources["secret", "wiki-runtime-bootstrap", "wiki"] = {
             "data": {"token": BOOTSTRAP.encoded("short")}
         }
-        with self.assertRaises(BOOTSTRAP.BootstrapError):
+        with pytest.raises(BOOTSTRAP.BootstrapError):
             BOOTSTRAP.bootstrap(self.kube)
         self.kube.create.assert_not_called()
 

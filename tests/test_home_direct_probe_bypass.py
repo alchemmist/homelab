@@ -5,7 +5,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("egress", ROOT / "ansible/scripts/vpn-home-transit-egress.py")
+spec = importlib.util.spec_from_file_location(
+    "egress", ROOT / "ansible/scripts/vpn-home-transit-egress.py"
+)
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
@@ -35,4 +37,5 @@ def test_cas_migration_preserves_receipts_and_rejects_unreviewed_drift() -> None
     assert "assert output_rules[0]['comment']" in source
     assert "assert (ROOT / 'rules.nft').read_text() == old" in source
     assert "assert added[0]['rule']['expr'] == expected_expr" in source
-    assert "delete table" not in source and "flush ruleset" not in source
+    assert "delete table" not in source
+    assert "flush ruleset" not in source

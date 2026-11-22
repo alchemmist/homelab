@@ -40,7 +40,8 @@ def test_listener_does_not_replace_relay_or_require_wireguard() -> None:
     assert verify["homelab_systemd_probe"] == {"units": ["knot", "homelab-vpn-dns-transit"]}
     assert verify["changed_when"] is False
     assert "k3s-agent.service" not in text
-    assert "iptables" not in text and "nft " not in text
+    assert "iptables" not in text
+    assert "nft " not in text
 
 
 def test_staging_does_not_publish_moscow_web_records() -> None:

@@ -370,14 +370,22 @@ def _assert_owner_oidc_extensions(documents: list[dict[str, object]]) -> None:
     assert _get(pod, "securityContext", "fsGroup") == 65532
     keys = ["client-secret", "cookie-secret"]
     assert oauth["volumeMounts"] == [
-        {"name": "oauth-keys", "subPath": k, "mountPath": "/run/oidc-" + k, "readOnly": True} for k in keys
+        {"name": "oauth-keys", "subPath": k, "mountPath": "/run/oidc-" + k, "readOnly": True}
+        for k in keys
     ]
-    assert pod["volumes"] == [{"name": "oauth-keys", "secret": {
-        "secretName": "openhands-oidc", "defaultMode": 288,
-        "items": [{"key": k, "path": k} for k in keys],
-    }}]
+    assert pod["volumes"] == [
+        {
+            "name": "oauth-keys",
+            "secret": {
+                "secretName": "openhands-oidc",
+                "defaultMode": 288,
+                "items": [{"key": k, "path": k} for k in keys],
+            },
+        }
+    ]
     assert {_mapping(v)["name"] for v in _list(oauth["env"])} == {
-        "OAUTH2_PROXY_CLIENT_ID", "OAUTH2_PROXY_REDIS_PASSWORD"
+        "OAUTH2_PROXY_CLIENT_ID",
+        "OAUTH2_PROXY_REDIS_PASSWORD",
     }
     ingress = _named(documents, "Ingress", "openhands-oidc")
     assert ingress["spec"] == {
@@ -477,14 +485,19 @@ def _assert_owner_policy_declarations(documents: list[dict[str, object]]) -> Non
             for suffix in ("{{- end }}", "{{- if not .Values.retireFailedBackup }}"):
                 literal = literal.removesuffix(suffix).rstrip()
             # Resolve only the reviewed metadata header; policy bodies must remain literal.
-            literal = literal.replace("\nmetadata: {namespace: {{ $.Release.Namespace | quote }}, name:",
-                                      "\nmetadata: {namespace: openhands, name:", 1)
+            literal = literal.replace(
+                "\nmetadata: {namespace: {{ $.Release.Namespace | quote }}, name:",
+                "\nmetadata: {namespace: openhands, name:",
+                1,
+            )
             assert "{{" not in literal, "Policy template requires explicit review"
             declaration = _mapping(yaml.safe_load(literal))
             name = _get(declaration, "metadata", "name")
             assert isinstance(name, str)
             actual = _named(documents, "NetworkPolicy", name)
-            assert _get(actual, "metadata", "namespace") == _get(declaration, "metadata", "namespace")
+            assert _get(actual, "metadata", "namespace") == _get(
+                declaration, "metadata", "namespace"
+            )
             assert actual["spec"] == declaration["spec"], (
                 "Network policy differs from declared edges"
             )

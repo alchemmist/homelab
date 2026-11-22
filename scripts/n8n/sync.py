@@ -57,7 +57,8 @@ def render_workflow(template, creds, calendar, cloud=None) -> dict[str, object]:
             raise RuntimeError("Missing credential mapping: " + kind)
     ids = calendar.get("calendar_ids", ["primary"])
     if not isinstance(ids, list) or not ids or not all(isinstance(x, str) and x for x in ids):
-        raise RuntimeError("calendar_ids must be a nonempty list of calendar IDs")
+        msg = "calendar_ids must be a nonempty list of calendar IDs"
+        raise RuntimeError(msg)
     w: dict[str, object] = copy.deepcopy(template)
     for n in cast("list[dict[str, object]]", w["nodes"]):
         if n["name"] == "Select Calendars":
@@ -75,7 +76,8 @@ def require_yandex_policy(workflow) -> None:
     for node in workflow["nodes"]:
         if node["type"] == "CUSTOM.yandexStation":
             if set(node.get("credentials", {})) != {"yandexStationApi"}:
-                raise RuntimeError("Automatic Yandex node requires encrypted x-token credentials")
+                msg = "Automatic Yandex node requires encrypted x-token credentials"
+                raise RuntimeError(msg)
         if node["type"] != "n8n-nodes-base.httpRequest":
             continue
         params = node.get("parameters", {})
@@ -89,18 +91,16 @@ def require_yandex_policy(workflow) -> None:
             or url.query
             or url.fragment
         ):
-            raise RuntimeError(
-                "Only public Yandex scenario execution with token credentials is allowed"
-            )
+            msg = "Only public Yandex scenario execution with token credentials is allowed"
+            raise RuntimeError(msg)
 
 
 def main() -> None:
     """Upsert the inactive calendar workflow from the reviewed local template."""
     mapping = CONFIG / "calendar-credentials.json"
     if not mapping.exists():
-        raise RuntimeError(
-            "Create credentials in n8n and provide ~/.config/n8n/calendar-credentials.json"
-        )
+        msg = "Create credentials in n8n and provide ~/.config/n8n/calendar-credentials.json"
+        raise RuntimeError(msg)
     creds = json.loads(mapping.read_text())
     calendar_config = CONFIG / "calendar-config.json"
     calendar = json.loads(calendar_config.read_text()) if calendar_config.exists() else {}
@@ -111,9 +111,11 @@ def main() -> None:
     data = cast("list[dict[str, object]]", api("GET", "workflows?limit=250")["data"])
     existing = [x for x in data if x["name"] == w["name"]]
     if len(existing) > 1:
-        raise RuntimeError("Duplicate workflow names; refusing to update")
+        msg = "Duplicate workflow names; refusing to update"
+        raise RuntimeError(msg)
     if existing and existing[0]["active"]:
-        raise RuntimeError("Workflow is active; deactivate explicitly before sync")
+        msg = "Workflow is active; deactivate explicitly before sync"
+        raise RuntimeError(msg)
     result = api(
         "PUT" if existing else "POST",
         "workflows/" + cast("str", existing[0]["id"]) if existing else "workflows",

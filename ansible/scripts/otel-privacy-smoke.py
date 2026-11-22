@@ -60,7 +60,7 @@ def isolated_config(source, output):
     return document
 
 
-def send(context, payload):
+def send(context, payload) -> None:
     request = urllib.request.Request(
         "https://127.0.0.1:14318/v1/logs",
         data=json.dumps(payload).encode(),
@@ -228,7 +228,7 @@ def run(binary, config, tls, workspace):
     return result
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     for name in ["binary", "config", "tls", "workspace"]:
         parser.add_argument("--" + name, type=Path, required=True)

@@ -73,7 +73,7 @@ class ManagementMove(unittest.TestCase):
                 data = data[: -len(SUFFIX.encode())]
             if name in NAMESPACE_PATCHES:
                 text = data.decode()
-                self.assertEqual(text.count(NAMESPACE_LINE), NAMESPACE_PATCHES[name], name)
+                assert text.count(NAMESPACE_LINE) == NAMESPACE_PATCHES[name], name
                 data = text.replace(NAMESPACE_LINE, "").encode()
             assert hashlib.sha256(data).hexdigest() == digest, name
             p = target / name

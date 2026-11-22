@@ -177,7 +177,7 @@ def expected_rules(dashboard, resources, formatter, name_prefix=""):
     return expected
 
 
-def require_convergence(response, expected):
+def require_convergence(response, expected) -> None:
     """Execute the require_convergence operation."""
     actual = set()
     for group in response["data"]["groups"]:
@@ -250,7 +250,7 @@ def fetch(path):
     return json.loads(completed.stdout)
 
 
-def main():
+def main() -> None:
     """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--dashboard", required=True)

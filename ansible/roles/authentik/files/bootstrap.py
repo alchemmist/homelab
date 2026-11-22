@@ -12,24 +12,20 @@ path = root / "credentials.json"
 kube = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml", "-n", "identity"]
 if not path.exists():
     check = subprocess.run(
-        kube + ["get", "secret", "authentik-runtime", "--ignore-not-found", "-o", "name"],
+        [*kube, "get", "secret", "authentik-runtime", "--ignore-not-found", "-o", "name"],
         capture_output=True,
         text=True,
         check=True,
     )
     if check.stdout.strip():
         msg = "Runtime Secret exists but credential file is missing; refusing implicit rotation"
-        raise SystemExit(
-            msg
-        )
+        raise SystemExit(msg)
     claims = subprocess.run(
-        kube + ["get", "pvc", "-o", "name"], capture_output=True, text=True, check=True
+        [*kube, "get", "pvc", "-o", "name"], capture_output=True, text=True, check=True
     )
     if claims.stdout.strip():
         msg = "Identity PVCs already exist without credential file; restore credentials before deployment"
-        raise SystemExit(
-            msg
-        )
+        raise SystemExit(msg)
     values = {
         "AUTHENTIK_SECRET_KEY": secrets.token_urlsafe(64),
         "AUTHENTIK_POSTGRESQL__HOST": "authentik-postgres",
@@ -69,7 +65,7 @@ manifest = {
     "stringData": runtime_values,
 }
 subprocess.run(
-    kube + ["apply", "-f", "-"],
+    [*kube, "apply", "-f", "-"],
     input=json.dumps(manifest),
     text=True,
     stdout=subprocess.DEVNULL,

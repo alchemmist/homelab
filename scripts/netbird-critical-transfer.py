@@ -40,11 +40,12 @@ def convert(v, k):
         return None
     if k == "bool":
         if v not in (True, False, 0, 1):
-            raise ValueError("unexpected boolean")
+            msg = "unexpected boolean"
+            raise ValueError(msg)
         return bool(v)
     if k == "timestamptz":
         if isinstance(v, str):
-            v = dt.datetime.fromisoformat(v.replace("Z", "+00:00"))
+            v = dt.datetime.fromisoformat(v)
         return (v if v.tzinfo else v.replace(tzinfo=dt.UTC)).astimezone(dt.UTC)
     if k == "bytea":
         return v.encode() if isinstance(v, str) else bytes(v)
@@ -55,11 +56,9 @@ def convert(v, k):
     return v
 
 
-def move(name, src, db):
-    assert (
-        src.execute("pragma integrity_check").fetchall() == [("ok",)]
-        and not src.execute("pragma foreign_key_check").fetchone()
-    )
+def move(name, src, db) -> None:
+    assert src.execute("pragma integrity_check").fetchall() == [("ok",)]
+    assert not src.execute("pragma foreign_key_check").fetchone()
     st = {
         r[0]
         for r in src.execute(
@@ -71,10 +70,8 @@ def move(name, src, db):
     tables = set(st)
     if name == "idp":
         tables.remove("migrations")
-        assert (
-            db.execute("select count(*) from migrations").fetchone()[0] == 22
-            and src.execute("select count(*) from migrations").fetchone()[0] == 23
-        )
+        assert db.execute("select count(*) from migrations").fetchone()[0] == 22
+        assert src.execute("select count(*) from migrations").fetchone()[0] == 23
     if name == "store":
         for n, typ in LEGACY.items():
             db.execute("ALTER TABLE peers ADD COLUMN IF NOT EXISTS " + q(n) + " " + typ)
@@ -116,7 +113,7 @@ def move(name, src, db):
             for row in rows:
                 values = []
                 digest = []
-                for (n, k), v in zip(cols, row):
+                for (n, k), v in zip(cols, row, strict=False):
                     try:
                         if k in ("json", "jsonb") and v is not None:
                             obj = json.loads(v)
@@ -149,7 +146,7 @@ def move(name, src, db):
                     json.dumps(json.loads(v), sort_keys=True)
                     if k in ("json", "jsonb") and v is not None
                     else convert(v, k)
-                    for (_, k), v in zip(cols, r)
+                    for (_, k), v in zip(cols, r, strict=False)
                 )
                 for r in db.execute("SELECT " + sel + " FROM " + q(t))
             ]
@@ -178,16 +175,15 @@ if __name__ == "__main__":
     mode = sys.argv[1]
     assert mode in ("cold", "trial")
     names = sys.argv[2:]
-    assert names and set(names) <= NAMES.keys()
+    assert names
+    assert set(names) <= NAMES.keys()
     for name in names:
         f = name + ".db"
         url = (pathlib.Path("/dsn") / f).read_text()
         p = urlparse(url)
-        assert (
-            p.hostname == "pg-critical-rw.postgres.svc.cluster.local"
-            and p.path == "/" + NAMES[name]
-            and "sslmode=verify-full" in p.query
-        )
+        assert p.hostname == "pg-critical-rw.postgres.svc.cluster.local"
+        assert p.path == "/" + NAMES[name]
+        assert "sslmode=verify-full" in p.query
         with tempfile.TemporaryDirectory() as d:
             srcpath = pathlib.Path("/src") / f
             dest = pathlib.Path(d) / f

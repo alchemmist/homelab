@@ -10,6 +10,7 @@ from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "charts/spi-triage/files"))
+import pytest
 from core import (
     REPORT_SCHEMA,
     Failure,
@@ -131,13 +132,13 @@ class CoreTests(unittest.TestCase):
         first = event()
         second = event(start="2026-11-03T14:00:00Z")
         second.pop("episode")
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             self.store.enqueue_many([first, second])
         assert self.store.health()["counts"] == {}
 
     def test_invalid_annotations_rejected_before_storage(self) -> None:
         """Verify invalid annotations are rejected before storage."""
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             normalize(
                 {
                     "alert": {
@@ -151,7 +152,7 @@ class CoreTests(unittest.TestCase):
 
     def test_bad_timestamp_is_rejected(self) -> None:
         """Verify bad timestamps are rejected."""
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             event(start="not a time")
 
     def test_redaction_precedes_model(self) -> None:
@@ -172,18 +173,18 @@ class CoreTests(unittest.TestCase):
         """Verify the English report contract."""
         r = report()
         r["summary"] = "Ошибка сервиса"
-        with self.assertRaisesRegex(Failure, "NON_ENGLISH"):
+        with pytest.raises(Failure, match="NON_ENGLISH"):
             render(r, event())
 
     def test_strict_schema_and_boolean_target(self) -> None:
         """Verify the strict schema and boolean target."""
         r = report()
         r["issue_number"] = True
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             validate(r, REPORT_SCHEMA)
         r = report()
         r["unexpected"] = "x"
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             validate(r, REPORT_SCHEMA)
 
     def test_publication_marker_and_prefix(self) -> None:
@@ -199,7 +200,7 @@ class CoreTests(unittest.TestCase):
         """Verify model-output secrets are rejected."""
         r = report()
         r["summary"] = "Authorization: Bearer ghp_" + "x" * 25
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             render(r, event())
 
 
@@ -249,7 +250,7 @@ class AdapterTests(unittest.TestCase):
         model.call = Mock(
             return_value={"issue_number": 999, "reason": "Same", "confidence": "high"}
         )
-        with self.assertRaisesRegex(Failure, "INVALID_MATCH_TARGET"):
+        with pytest.raises(Failure, match="INVALID_MATCH_TARGET"):
             model.match(event(), [{"number": 1}])
 
     def test_schema_retry_is_bounded(self) -> None:
@@ -257,7 +258,7 @@ class AdapterTests(unittest.TestCase):
         http = Mock()
         http.request.return_value = {"choices": [{"message": {"content": "not json"}}]}
         model = Model(http, "fake", min_interval=0, store=Mock())
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             model.match(event(), [])
         assert http.request.call_count == 1
 
@@ -288,7 +289,7 @@ class EvidenceTests(unittest.TestCase):
         """Verify HTTP 200 observability errors are not evidence."""
         http = Mock()
         http.request.return_value = {"status": "error", "error": "not secret"}
-        with self.assertRaisesRegex(Failure, "OBSERVABILITY_QUERY_ERROR"):
+        with pytest.raises(Failure, match="OBSERVABILITY_QUERY_ERROR"):
             Evidence(http, "fake", "http://grafana").get("/api/test")
 
     def test_host_profile_and_no_raw_trace_attributes(self) -> None:
@@ -415,7 +416,7 @@ class EngineTests(unittest.TestCase):
         key = self.process(through=3)
         self.github.request.side_effect = Failure("UPSTREAM_NETWORK_ERROR")
         self.github.reconcile.return_value = 7
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.run("publish", key)
         with self.store.db() as c:
             c.execute("UPDATE jobs SET available=0,lease=0")
@@ -429,13 +430,13 @@ class EngineTests(unittest.TestCase):
         self.engine.write = True
         key = self.process(through=3)
         self.github.request.side_effect = Failure("HTTP_500")
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.run("publish", key)
         self.github.reconcile.return_value = 0
         with self.store.db() as c:
             c.execute("UPDATE jobs SET available=0,lease=0")
         self.store.claim()
-        with self.assertRaisesRegex(Failure, "WRITE_NEEDS_REVIEW"):
+        with pytest.raises(Failure, match="WRITE_NEEDS_REVIEW"):
             self.engine.run("publish", key)
         assert self.store.get(key)["state"] == "dead"
         assert self.github.request.call_count == 1
@@ -445,7 +446,7 @@ class EngineTests(unittest.TestCase):
         self.engine.write = True
         key = self.process(through=3)
         self.github.snapshot.return_value = [{"number": 3, "updated_at": "later"}]
-        with self.assertRaisesRegex(Failure, "OPEN_SPI_CHANGED"):
+        with pytest.raises(Failure, match="OPEN_SPI_CHANGED"):
             self.engine.run("publish", key)
         assert self.store.get(key)["stage"] == 0
         self.github.request.assert_not_called()

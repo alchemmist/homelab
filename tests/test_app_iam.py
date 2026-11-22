@@ -19,6 +19,7 @@ FILES = ROOT / "ansible/roles/authentik/files"
 sys.path.insert(0, str(FILES))
 import app_iam
 import lifecycle
+import pytest
 
 from tests import test_identity as identity
 
@@ -144,7 +145,7 @@ class AppIAMTests(unittest.TestCase):
     def test_approval_hash_and_live_state_drift(self) -> None:
         """Stale approval hashes and drifted live state block writes."""
         plan = self.plan()
-        with self.assertRaisesRegex(RuntimeError, "hash mismatch"):
+        with pytest.raises(RuntimeError, match="hash mismatch"):
             lifecycle.apply_plan(self.api, plan, "stale")
         tim = next(u for u in self.fake.data["core/users/"] if u["username"] == "antropophag")
         tim["is_active"] = False
@@ -154,32 +155,32 @@ class AppIAMTests(unittest.TestCase):
     def test_uuid_collision_and_email_do_not_link(self) -> None:
         """UUID collisions or email matches never link accounts."""
         self.fake.data["core/users/"][1]["uuid"] = "e51e6956-16b5-455a-bbda-b73f96e85232"
-        with self.assertRaisesRegex(RuntimeError, "UUID required"):
+        with pytest.raises(RuntimeError, match="UUID required"):
             self.plan()
         before = len(self.fake.requests)
-        with self.assertRaisesRegex(RuntimeError, "UUID mismatch"):
+        with pytest.raises(RuntimeError, match="UUID mismatch"):
             identity.IdentityTests().configure(Path(self.temp.name), self.fake)
         assert not any(m != "GET" for m, _, _, _ in self.fake.requests[before:])
 
     def test_protected_owner_and_elevated_grants_refused(self) -> None:
         """Owner disablement and elevated grants are refused before writes."""
         self.manifest["users"]["alchemmist"]["state"] = "disabled"
-        with self.assertRaisesRegex(RuntimeError, "Owner"):
+        with pytest.raises(RuntimeError, match="Owner"):
             self.plan()
         self.manifest["users"]["alchemmist"]["state"] = "preserve"
         self.manifest["users"]["antropophag"]["appGroups"] = ["homelab-owner"]
-        with self.assertRaisesRegex(RuntimeError, "declared app groups"):
+        with pytest.raises(RuntimeError, match="declared app groups"):
             self.plan()
         assert self.api.writes == []
 
     def test_unsupported_native_role_and_machine_account_refused(self) -> None:
         """Unready native roles and machine accounts are refused."""
         self.manifest["users"]["antropophag"]["appGroups"] = ["app-rancher-user"]
-        with self.assertRaisesRegex(RuntimeError, "not ready"):
+        with pytest.raises(RuntimeError, match="not ready"):
             self.plan()
         self.manifest["users"]["antropophag"]["appGroups"] = []
         self.fake.data["core/users/"][1]["type"] = "service_account"
-        with self.assertRaisesRegex(RuntimeError, "service/external"):
+        with pytest.raises(RuntimeError, match="service/external"):
             self.plan()
 
     def test_app_group_inheritance_or_superuser_refused(self) -> None:
@@ -205,7 +206,7 @@ class AppIAMTests(unittest.TestCase):
         ]:
             old = copy.deepcopy(group)
             group[field] = value
-            with self.assertRaisesRegex(RuntimeError, "non-superuser"):
+            with pytest.raises(RuntimeError, match="non-superuser"):
                 self.plan()
             assert self.api.writes == []
             group.clear()
@@ -224,7 +225,7 @@ class AppIAMTests(unittest.TestCase):
                     group[field] = value
                 with (
                     self.subTest(field=field, value=value),
-                    self.assertRaisesRegex(RuntimeError, "non-superuser"),
+                    pytest.raises(RuntimeError, match="non-superuser"),
                 ):
                     self.plan()
                 assert self.api.writes == []
@@ -242,9 +243,9 @@ class AppIAMTests(unittest.TestCase):
         ]:
             old = copy.deepcopy(binding)
             binding.update(change)
-            with self.assertRaisesRegex(RuntimeError, "binding drift"):
+            with pytest.raises(RuntimeError, match="binding drift"):
                 self.plan()
-            with self.assertRaisesRegex(RuntimeError, "binding drift"):
+            with pytest.raises(RuntimeError, match="binding drift"):
                 identity.IdentityTests().configure(Path(self.temp.name), self.fake)
             assert binding == {**old, **change}
             binding.clear()
@@ -253,10 +254,10 @@ class AppIAMTests(unittest.TestCase):
     def test_missing_user_is_not_created_and_omission_is_not_revocation(self) -> None:
         """Missing users abort; manifest omission does not revoke access."""
         self.fake.data["core/users/"].pop()
-        with self.assertRaisesRegex(RuntimeError, "existing username"):
+        with pytest.raises(RuntimeError, match="existing username"):
             self.plan()
         before = len(self.fake.requests)
-        with self.assertRaisesRegex(RuntimeError, "instead of recreating"):
+        with pytest.raises(RuntimeError, match="instead of recreating"):
             identity.IdentityTests().configure(Path(self.temp.name), self.fake)
         assert not any(m != "GET" for m, _, _, _ in self.fake.requests[before:])
         del self.manifest["users"]["antropophag"]
@@ -267,17 +268,17 @@ class AppIAMTests(unittest.TestCase):
         """Unmarked app groups are never adopted by the reconciler."""
         group = next(g for g in self.fake.data["core/groups/"] if g["name"] == "app-grafana-viewer")
         group["attributes"] = {}
-        with self.assertRaisesRegex(RuntimeError, "unmarked app group"):
+        with pytest.raises(RuntimeError, match="unmarked app group"):
             self.plan()
-        with self.assertRaisesRegex(RuntimeError, "unmarked app group"):
+        with pytest.raises(RuntimeError, match="unmarked app group"):
             identity.IdentityTests().configure(Path(self.temp.name), self.fake)
 
     def test_policy_mode_is_not_silently_reset(self) -> None:
         """Application policy engine mode drift aborts both planners."""
         self.fake.data["core/applications/"][0]["policy_engine_mode"] = "all"
-        with self.assertRaisesRegex(RuntimeError, "mode drift"):
+        with pytest.raises(RuntimeError, match="mode drift"):
             self.plan()
-        with self.assertRaisesRegex(RuntimeError, "mode drift"):
+        with pytest.raises(RuntimeError, match="mode drift"):
             identity.IdentityTests().configure(Path(self.temp.name), self.fake)
 
     def test_pagination_and_binding_duplicates(self) -> None:
@@ -291,7 +292,7 @@ class AppIAMTests(unittest.TestCase):
 
         assert app_iam.rows(api, "core/groups/") == [1, 2]
         assert "page=2" in calls[-1]
-        with self.assertRaisesRegex(RuntimeError, "binding drift"):
+        with pytest.raises(RuntimeError, match="binding drift"):
             app_iam.validate_bindings([{"group": "a"}, {"group": "a"}], {"a"})
 
     def test_wiki_integration_keeps_exact_links_and_overrides(self) -> None:
@@ -328,7 +329,7 @@ class AppIAMTests(unittest.TestCase):
             patch("sys.argv", ["integrate.py", self.temp.name, "wiki"]),
             patch("urllib.request.urlopen", self.fake),
             patch("subprocess.run") as kube,
-            self.assertRaisesRegex(RuntimeError, "subject mismatch"),
+            pytest.raises(RuntimeError, match="subject mismatch"),
         ):
             runpy.run_path(
                 str(ROOT / "ansible/roles/identity_integrations/files/integrate.py"),

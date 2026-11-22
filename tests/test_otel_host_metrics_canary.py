@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -143,12 +144,12 @@ class HostMetricsCanaryTests(unittest.TestCase):
             }
             canary.validate_contract(directory, request, now)
             for delta in (901, -1):
-                with self.subTest(delta=delta), self.assertRaises(ValueError):
+                with self.subTest(delta=delta), pytest.raises(ValueError):
                     canary.validate_contract(
                         directory, request, now + datetime.timedelta(seconds=delta)
                     )
             (directory / "scrape.json").write_text('{"scrape_configs":[{}]}')
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 canary.validate_contract(directory, request, now)
 
     def test_request_binary_receipt_requires_image_and_executable_digest(self) -> None:
@@ -172,7 +173,7 @@ class HostMetricsCanaryTests(unittest.TestCase):
             images = {"collector": {"image": "official@sha256:abc"}}
             assert request.pinned_binary(directory, "collector", "binary", images) == digest
             (directory / "binary").write_bytes(b"changed")
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 request.pinned_binary(directory, "collector", "binary", images)
 
     def test_request_refuses_public_backend_before_source_access(self) -> None:
@@ -182,7 +183,7 @@ class HostMetricsCanaryTests(unittest.TestCase):
         )
         request = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(request)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             request.create(
                 Path("/missing"),
                 Path("/missing"),

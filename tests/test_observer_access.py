@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import TypedDict
 from unittest.mock import patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
     "observer_plan", ROOT / "scripts/observer-access-plan.py"
@@ -454,7 +456,7 @@ class ObserverPolicyTests(unittest.TestCase):
             with self.subTest(change=mutations.index(change)):
                 state = fixture()
                 change(state)
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     plan.build(state, POLICY)
 
     def test_reject_policy_scope_widening(self) -> None:
@@ -469,7 +471,7 @@ class ObserverPolicyTests(unittest.TestCase):
         ]:
             policy = copy.deepcopy(POLICY)
             mutation(policy)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 plan.build(fixture(), policy)
 
     def test_native_reconciler_retains_but_never_opens_group_admission(self) -> None:
@@ -493,7 +495,7 @@ class ObserverPolicyTests(unittest.TestCase):
                 == expected
             )
         state["rancherSessionSetting"]["value"] = "960"
-        with self.assertRaisesRegex(RuntimeError, "defaults drifted"):
+        with pytest.raises(RuntimeError, match="defaults drifted"):
             guard.retain_observer(
                 {"allowedPrincipalIds": [guard.PRINCIPAL]},
                 [],
@@ -515,7 +517,7 @@ class ObserverPolicyTests(unittest.TestCase):
             (fixture(), None),
         ]
         for state, policy in snapshots:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 plan.build(state, policy)
 
     def test_harbor_group_type_and_native_entity_id_are_verified(self) -> None:
@@ -533,11 +535,11 @@ class ObserverPolicyTests(unittest.TestCase):
             }
         ]
         state["harbor"]["groups"][0]["group_type"] = 1
-        with self.assertRaisesRegex(ValueError, "non-OIDC"):
+        with pytest.raises(ValueError, match="non-OIDC"):
             plan.build(state, POLICY)
         state["harbor"]["groups"][0]["group_type"] = 3
         state["harbor"]["projects"]["homelab"][0]["entity_id"] = 999
-        with self.assertRaisesRegex(ValueError, "reviewed OIDC group"):
+        with pytest.raises(ValueError, match="reviewed OIDC group"):
             plan.build(state, POLICY)
 
     def test_unsupported_services_are_explicit_not_fake_viewers(self) -> None:
@@ -598,7 +600,7 @@ class BootstrapSafetyTests(unittest.TestCase):
             def __init__(self, credentials) -> None:
                 pass
 
-            def call(self, system, method, path, body=None):
+            def call(self, system, method, path, body=None) -> None:
                 outer.calls.append((system, method, path))
                 converge(
                     outer.state,
@@ -644,7 +646,7 @@ class BootstrapSafetyTests(unittest.TestCase):
             ("kubernetes", "//other.example/api"),
             ("authentik", "https://other.example/core/users/"),
         ]:
-            with self.subTest(path=path), self.assertRaises(ValueError):
+            with self.subTest(path=path), pytest.raises(ValueError):
                 self.bootstrap.validate_path(system, path)
         for system, path in [
             ("authentik", "core/users/?username=antropophag&page=1"),
@@ -665,7 +667,7 @@ class BootstrapSafetyTests(unittest.TestCase):
         )
         assert header.startswith("Basic ")
         assert path == "/api/v2.0/configurations"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.bootstrap.harbor_authorization({"harborJobserviceSecret": ""})
 
     def test_foundation_ready_path_preserves_explicit_trusted_owner(self) -> None:
@@ -692,7 +694,7 @@ class BootstrapSafetyTests(unittest.TestCase):
 
     def test_wrong_approval_stops_before_mutation(self) -> None:
         """A wrong approval stops before any mutation."""
-        with self.assertRaisesRegex(ValueError, "plan hash"):
+        with pytest.raises(ValueError, match="plan hash"):
             self.run_main("--apply", "--approve-plan-hash", "wrong")
         assert self.calls == []
 
@@ -724,10 +726,10 @@ class BootstrapSafetyTests(unittest.TestCase):
         self.fake_client.call = lambda *args: (_ for _ in ()).throw(
             RuntimeError("simulated uncertain write")
         )
-        with self.assertRaisesRegex(RuntimeError, "uncertain"):
+        with pytest.raises(RuntimeError, match="uncertain"):
             self.run_main("--apply", "--approve-plan-hash", approved)
         assert (self.root / "state/uncertain.json").exists()
-        with self.assertRaisesRegex(ValueError, "Uncertain run"):
+        with pytest.raises(ValueError, match="Uncertain run"):
             self.run_main("--apply", "--approve-plan-hash", approved)
         assert not (self.root / "observer-ready.json").exists()
 
@@ -793,7 +795,8 @@ class LegacyChatMigrationTests(unittest.TestCase):
                     return copy.deepcopy(outer.state["bindings"])
                 if path.startswith("core/users/"):
                     return copy.deepcopy(outer.state["users"])
-                raise AssertionError("Unexpected API read")
+                msg = "Unexpected API read"
+                raise AssertionError(msg)
 
             def call(self, system, method, path, body=None):
                 outer.calls.append((system, method, path, body))
@@ -819,7 +822,9 @@ class LegacyChatMigrationTests(unittest.TestCase):
                         next(b for b in outer.state["bindings"] if b["pk"] == path.split("/")[-2])
                     )
                 else:
-                    raise AssertionError("Unexpected API mutation")
+                    msg = "Unexpected API mutation"
+                    raise AssertionError(msg)
+                return None
 
         self.client = FakeClient()
 
@@ -862,7 +867,7 @@ class LegacyChatMigrationTests(unittest.TestCase):
         ]:
             state = copy.deepcopy(self.state)
             modify(state)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 self.migration.build(state, POLICY)
             assert self.calls == []
 
@@ -870,7 +875,7 @@ class LegacyChatMigrationTests(unittest.TestCase):
         """Legacy admission cannot be removed before preservation."""
         operations = self.migration.build(self.state, POLICY)
         self.migration.apply(self.client, operations[0], copy.deepcopy(self.state))
-        with self.assertRaisesRegex(ValueError, "not safely admitted"):
+        with pytest.raises(ValueError, match="not safely admitted"):
             self.migration.apply(self.client, operations[-1], copy.deepcopy(self.state))
         assert not any(method == "DELETE" for _, method, _, _ in self.calls)
 

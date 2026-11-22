@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import TypedDict
 from unittest.mock import patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -86,7 +88,7 @@ class LeafRotationTests(unittest.TestCase):
                 cert["status"]["conditions"][0]["status"] = "False"
             if kind == "already-issuing":
                 cert["status"]["conditions"].append({"type": "Issuing", "status": "True"})
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 module.renewal_conditions(cert)
 
     def test_inspection_selects_only_public_pem_not_private_key(self) -> None:
@@ -122,16 +124,16 @@ class LeafRotationTests(unittest.TestCase):
         cert = self.certificate()
         cert["metadata"]["name"] = "otel-app-tls-vllm"
         assert module.renewal_conditions(cert, "vllm")[-1]["type"] == "Issuing"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             module.renewal_conditions(cert)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             module.leaf_name("otel-root-ca")
         assert module.leaf_name("litellm") == "otel-app-tls-litellm"
 
     def test_private_key_is_never_accepted_as_public_certificate(self) -> None:
         """Verify a private key payload is rejected before it is treated as public."""
         module = load()
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             module.public_certificate_identity(
                 lambda *args: {
                     "certificatePemBase64": base64.b64encode(

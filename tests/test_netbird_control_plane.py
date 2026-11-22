@@ -10,6 +10,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -127,7 +128,7 @@ class ControlPlaneTests(unittest.TestCase):
         """The control plane does not require routers or grant resources."""
         inputs = control_inputs()
         nb.validate_control_plane(inputs)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             nb.validate(inputs)
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory) / "rendered"
@@ -202,7 +203,7 @@ class ControlPlaneTests(unittest.TestCase):
         delta = json.loads((ROOT / "deploy/netbird/traefik-scope-delta.json").read_text())
         blocked = deploy.report(control_inputs(), candidates, cleared_audit(), chart, delta)
         assert not blocked["apply_allowed"]
-        chart["watchNamespaces"] = list(chart["watchNamespaces"]) + ["netbird-edge"]
+        chart["watchNamespaces"] = [*list(chart["watchNamespaces"]), "netbird-edge"]
         ready = deploy.report(control_inputs(), candidates, cleared_audit(), chart, delta)
         assert ready["apply_allowed"]
         assert not ready["network_grant_allowed"]
@@ -217,7 +218,7 @@ class ControlPlaneTests(unittest.TestCase):
             argv = deploy.apply_argv(manifest, "lab")
             assert argv[:4] == ["kubectl", "--context", "lab", "apply"]
             assert "argocd" not in argv
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 deploy.apply_argv(manifest, "default")
 
     def test_auth_modes_match_upstream_startup_rules(self) -> None:
@@ -237,10 +238,10 @@ class ControlPlaneTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             witness = Path(directory) / "witness.json"
             witness.write_text(json.dumps({"external_connectors": 0}))
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 nb.witness_ready(witness)
             witness.write_text(json.dumps({"external_connectors": 1, "client_secret": "nope"}))
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 nb.witness_ready(witness)
             witness.write_text(json.dumps({"external_connectors": 1}))
             nb.witness_ready(witness)
@@ -314,7 +315,7 @@ class BootstrapTests(unittest.TestCase):
             "http://10.250.0.2:80",
             "http://127.0.0.1:8080/api/setup",
         ]:
-            with self.subTest(origin=origin), self.assertRaises(ValueError):
+            with self.subTest(origin=origin), pytest.raises(ValueError):
                 bootstrap.assert_loopback(origin)
         body = bootstrap.setup_body("owner@example.com", "long-enough", "Owner")
         assert set(body) == {"email", "password", "name"}
@@ -353,7 +354,7 @@ class BootstrapTests(unittest.TestCase):
         def claimed(_url, _body) -> dict[str, object]:
             return {"setup_required": False}
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             bootstrap.claim(
                 "http://127.0.0.1:18080",
                 "owner@example.com",

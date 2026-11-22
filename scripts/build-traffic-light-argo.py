@@ -77,7 +77,7 @@ def queries(include_root=False):
     return state_expr, result, full_query
 
 
-def application_query():
+def application_query() -> str:
     """One positive status code per fresh Application; NOT a percentage/count."""
     raw = 'argocd_app_info{job="socrat-argocd"}'
     fresh = f"({raw} and (time() - timestamp({raw}) < 90))"

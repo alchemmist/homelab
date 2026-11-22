@@ -158,7 +158,7 @@ def test_openhands_uses_running_canvas_tag_not_sdk_version() -> None:
     assert samples[0]["success"] == 1
 
 
-def test_searxng_uses_only_versioned_image_tags():
+def test_searxng_uses_only_versioned_image_tags() -> None:
     import io
     import json
 
@@ -190,13 +190,11 @@ def test_actionable_counts_exclude_suppressed_but_emit_real_zero() -> None:
 
 
 def test_status_page_catalog_tracks_gatus_not_retired_kuma() -> None:
-    targets = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())[
-        "updateWatch"
-    ]["targets"]
+    targets = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())["updateWatch"][
+        "targets"
+    ]
     catalog = {item["id"]: item for item in targets}
-    chart = yaml.safe_load(
-        Path("charts/uptime-kuma/charts/gatus/Chart.yaml").read_text()
-    )
+    chart = yaml.safe_load(Path("charts/uptime-kuma/charts/gatus/Chart.yaml").read_text())
     assert "uptime-kuma" not in catalog
     assert catalog["gatus"]["github"] == "TwiN/gatus"
     assert catalog["gatus"]["current"] == chart["appVersion"]

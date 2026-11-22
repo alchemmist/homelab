@@ -17,7 +17,7 @@ import urllib.request
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    def redirect_request(self, req, fp, code, msg, headers, newurl) -> None:
         """Block redirects so authorization headers are never forwarded."""
         return  # Never forward an authorization header to a redirected host.
 
@@ -25,7 +25,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 def _get(runner, kubectl, namespace, kind, name):
     """Run one required kubectl read with no fallback permitted."""
     result = runner(
-        kubectl + ["-n", namespace, "get", kind, name, "-o", "json"],
+        [*kubectl, "-n", namespace, "get", kind, name, "-o", "json"],
         capture_output=True,
         text=True,
         timeout=30,
@@ -37,7 +37,7 @@ def _get(runner, kubectl, namespace, kind, name):
     return json.loads(result.stdout)
 
 
-def _require_argocd_source(app, release, namespace):
+def _require_argocd_source(app, release, namespace) -> None:
     """Require the single Git-owned LiteLLM source and its destination."""
     spec = app["spec"]
     sources = spec.get("sources", [spec.get("source", {})])
@@ -107,7 +107,7 @@ def _request(opener, base, path, credential=None, read_json=False):
         return error.code, None
 
 
-def _require_key_state(request, token, master):
+def _require_key_state(request, token, master) -> None:
     """Require the existing key restricted to metrics and still enforced."""
     status, info = request("/key/info?" + urllib.parse.urlencode({"key": token}), master, True)
     if status != 200 or info.get("info", {}).get("allowed_routes") != ["/metrics"]:
@@ -124,7 +124,7 @@ def _require_key_state(request, token, master):
         raise RuntimeError(msg)
 
 
-def verify(args, runner=None, opener=None):
+def verify(args, runner=None, opener=None) -> bool:
     """Execute the verify operation."""
     runner = runner or subprocess.run
     opener = opener or urllib.request.build_opener(NoRedirect()).open
@@ -165,7 +165,7 @@ def verify(args, runner=None, opener=None):
     return False
 
 
-def main():
+def main() -> None:
     """Execute the main operation."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--namespace", required=True)
@@ -184,9 +184,7 @@ def main():
     except Exception:
         # HTTP/key-info errors may contain a token in their URL. Never echo them.
         msg = "Read-only gateway verification failed; review Git ownership and existing metrics prerequisites privately. No repair or fallback attempted."
-        raise SystemExit(
-            msg
-        ) from None
+        raise SystemExit(msg) from None
     print("changed=false")
 
 

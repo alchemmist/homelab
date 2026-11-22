@@ -40,7 +40,7 @@ def test_scoped_web_groups_create_no_users() -> None:
 
 
 @pytest.mark.parametrize(
-    "field,value",
+    ("field", "value"),
     [
         ("is_superuser", True),
         ("parents", ["owner"]),
@@ -133,7 +133,9 @@ def test_grafana_only_reviewed_env_changes() -> None:
     d = grafana()
     before = copy.deepcopy(d)
     index, changes, result = m.env_plan(d)
-    assert d == before and index == 1 and set(changes) == set(m.DESIRED)
+    assert d == before
+    assert index == 1
+    assert set(changes) == set(m.DESIRED)
     assert next(x for x in result if x["name"] == "GOMEMLIMIT")["value"] == "1GiB"
     for e in before["spec"]["template"]["spec"]["containers"][1]["env"]:
         if e["name"] not in m.DESIRED:
@@ -143,7 +145,7 @@ def test_grafana_only_reviewed_env_changes() -> None:
 
 
 @pytest.mark.parametrize(
-    "key,value",
+    ("key", "value"),
     [
         ("GF_AUTH_GENERIC_OAUTH_ENABLED", "false"),
         ("GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_STRICT", "false"),
@@ -164,17 +166,18 @@ def test_grafana_drift_stops(key, value) -> None:
 
 def test_public_policies_keep_machine_auth_and_block_human_fallbacks() -> None:
     gf = (ROOT / "deploy/platform/grafana/public-entry/files/grafana-policy.conf").read_text()
-    assert "~*^Basic 1" in gf and "~^POST:/login/?$ 1" in gf
-    assert (
-        'proxy_set_header Authorization ""' not in gf
-        and "proxy_set_header Upgrade $http_upgrade" in gf
-    )
+    assert "~*^Basic 1" in gf
+    assert "~^POST:/login/?$ 1" in gf
+    assert 'proxy_set_header Authorization ""' not in gf
+    assert "proxy_set_header Upgrade $http_upgrade" in gf
     kuma = (ROOT / "charts/uptime-kuma/files/kuma-policy.conf").read_text()
     assert_read_only_status_policy(kuma)
     sync = (ROOT / "charts/syncthing/files/syncthing-policy.conf").read_text()
-    assert "proxy_pass http://gui0/;" in sync and "auth_basic" not in sync
+    assert "proxy_pass http://gui0/;" in sync
+    assert "auth_basic" not in sync
     assert "auth_request" not in sync
-    assert "return 410" in sync and "syncthing-sync-1" not in sync
+    assert "return 410" in sync
+    assert "syncthing-sync-1" not in sync
 
 
 def render_status(*args: str) -> list[dict[str, object]]:
@@ -215,11 +218,18 @@ def test_kuma_no_gitops_random_secret_by_default() -> None:
 
 
 def test_schema_recovery_never_resets_existing_passwords_or_restarts_database() -> None:
-    text = ast.unparse(ast.parse((ROOT / "ansible/scripts/kuma-db-account-recovery.py").read_text()))
-    assert "CREATE USER" in text and "ALTER USER" not in text and "DROP USER" not in text
-    assert "rollout restart" not in text and "secret['metadata']['resourceVersion']" in text
-    assert "schema_grant.replace" in text and "--patch-file=/dev/stdin" in text
-    assert "Foreign/partial service account; stop" in text and "uncertain.json" in text
+    text = ast.unparse(
+        ast.parse((ROOT / "ansible/scripts/kuma-db-account-recovery.py").read_text())
+    )
+    assert "CREATE USER" in text
+    assert "ALTER USER" not in text
+    assert "DROP USER" not in text
+    assert "rollout restart" not in text
+    assert "secret['metadata']['resourceVersion']" in text
+    assert "schema_grant.replace" in text
+    assert "--patch-file=/dev/stdin" in text
+    assert "Foreign/partial service account; stop" in text
+    assert "uncertain.json" in text
 
 
 def test_retired_bootstrap_cannot_provision_a_database_or_account() -> None:
@@ -237,7 +247,8 @@ def test_retired_bootstrap_cannot_provision_a_database_or_account() -> None:
 def test_dns_cleanup_only_owned_files_and_no_global_flush_or_vpn_commands() -> None:
     text = (ROOT / "scripts/macos-public-dns-cleanup.py").read_text()
     m = module("macos-public-dns-cleanup", "scripts")
-    assert len(m.DOMAINS) == 12 and all(x.endswith(".alchemmist.xyz") for x in m.DOMAINS)
+    assert len(m.DOMAINS) == 12
+    assert all(x.endswith(".alchemmist.xyz") for x in m.DOMAINS)
     for forbidden in [
         "dscacheutil",
         "killall",
@@ -251,7 +262,8 @@ def test_dns_cleanup_only_owned_files_and_no_global_flush_or_vpn_commands() -> N
         isinstance(node, ast.Call) and ast.dump(node) == ast.dump(expected)
         for node in ast.walk(ast.parse(text))
     )
-    assert "Backup verification failed" in text and "Fresh exact plan approval required" in text
+    assert "Backup verification failed" in text
+    assert "Fresh exact plan approval required" in text
 
 
 def test_new_clients_do_not_reinstall_private_dns_by_default() -> None:

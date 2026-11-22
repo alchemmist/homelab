@@ -9,6 +9,8 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 from types import ModuleType
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -59,7 +61,7 @@ class ShelfTransferTest(unittest.TestCase):
                 listed, ok = CASCADE.fetch_shelf(base, "token")
                 assert listed[0]["deletionMark"]
                 assert (shelf_dir / ULID / "chunks" / "000001").read_bytes() == b"abc"
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     SHELF.write_file(str(shelf_dir), ULID, "../escape", [b"no"])
             finally:
                 server.shutdown()

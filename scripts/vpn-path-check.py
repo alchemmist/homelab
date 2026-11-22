@@ -36,11 +36,11 @@ def endpoint(url) -> "urllib.parse.SplitResult":
         or parsed.fragment
         or any(c in url for c in ("\r", "\n", "\x00"))
     ):
-        raise ValueError(
-            "Only approved public HTTPS endpoints on 443 without credentials/query/fragment"
-        )
+        msg = "Only approved public HTTPS endpoints on 443 without credentials/query/fragment"
+        raise ValueError(msg)
     if parsed.hostname == "vpn.alchemmist.xyz" and parsed.path not in ("", "/"):
-        raise ValueError("VPN subscription/panel paths must not be used as diagnostic inputs")
+        msg = "VPN subscription/panel paths must not be used as diagnostic inputs"
+        raise ValueError(msg)
     return parsed
 
 
@@ -51,7 +51,8 @@ def check(url, vantage, family=4, control_address=None) -> "dict[str, object]":
         reason = "Approved hostname required"
         raise ValueError(reason)
     if control_address is not None and (control_address not in CONTROL_ADDRESSES or family != 4):
-        raise ValueError("Explicit controls are limited to the two approved IPv4 ingress addresses")
+        msg = "Explicit controls are limited to the two approved IPv4 ingress addresses"
+        raise ValueError(msg)
     result = {
         "utc": datetime.datetime.now(datetime.UTC).isoformat(),
         "vantage_label": vantage,

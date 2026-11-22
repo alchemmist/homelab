@@ -9,6 +9,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 SOURCE = (
     Path(__file__).resolve().parents[1]
     / "ansible/roles/node_disk_reserve/files/configure_node_disk_reserve.py"
@@ -57,7 +59,7 @@ class PauseFolderTests(unittest.TestCase):
     def test_missing_folder_leaves_configuration_unchanged(self) -> None:
         """Refuse a missing folder before rewriting the configuration."""
         original = self.config.read_bytes()
-        with self.assertRaisesRegex(RuntimeError, "Missing Syncthing folder"):
+        with pytest.raises(RuntimeError, match="Missing Syncthing folder"):
             MODULE.pause_folder(self.config, "missing")
         assert self.config.read_bytes() == original
 
@@ -110,7 +112,7 @@ class ServiceSelectionTests(unittest.TestCase):
                         patch.object(MODULE.subprocess, "run", side_effect=effects) as run,
                     ):
                         if fail_restart:
-                            with self.assertRaises(subprocess.CalledProcessError):
+                            with pytest.raises(subprocess.CalledProcessError):
                                 MODULE.apply(policy)
                             assert kubelet.read_bytes() == b"previous"
                             assert run.call_args_list[1].args[0] == [

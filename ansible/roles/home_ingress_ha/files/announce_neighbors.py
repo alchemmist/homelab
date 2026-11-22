@@ -149,7 +149,7 @@ def announce(config):
     return len(frames)
 
 
-def main():
+def main() -> None:
     """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)

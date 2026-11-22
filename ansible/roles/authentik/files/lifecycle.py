@@ -306,7 +306,7 @@ def apply_plan(api: Api, plan: dict[str, object], approval: object) -> None:
             )
 
 
-def main():
+def main() -> int:
     """Print the membership plan, report drift, or apply and verify the approved changes."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)

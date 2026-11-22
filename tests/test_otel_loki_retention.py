@@ -5,6 +5,8 @@ import json
 import unittest
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("retention", ROOT / "scripts/otel-loki-retention.py")
 m = importlib.util.module_from_spec(spec)
@@ -14,11 +16,11 @@ spec.loader.exec_module(m)
 class RetentionTests(unittest.TestCase):
     """Check Loki retention policy against the deployed configuration."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Load the reviewed retention policy."""
         self.policy = json.loads(m.POLICY.read_text())
 
-    def test_copies_and_defaults(self):
+    def test_copies_and_defaults(self) -> None:
         """Config copies match and default severity rules render."""
         text = m.COPIES[0].read_text()
         assert text == m.COPIES[1].read_text()
@@ -31,19 +33,19 @@ class RetentionTests(unittest.TestCase):
         assert (10, '{severity="warn"}', 336) in rules
         assert "k8s.namespace.name, severity]" in text
 
-    def test_service_beats_severity(self):
+    def test_service_beats_severity(self) -> None:
         """Service-level retention beats severity defaults."""
         self.policy["services"] = {"example": {"debug": 48, "error": 336}}
         _, rules = m.rules(self.policy)
         assert (100, '{service_name="example",severity="debug"}', 48) in rules
         assert len({(p, s) for p, s, _ in rules}) == len(rules)
 
-    def test_reject_invalid_and_unmeasured_long_retention(self):
+    def test_reject_invalid_and_unmeasured_long_retention(self) -> None:
         """Invalid or unmeasured long retentions are rejected."""
         for value in (0, 23, 8761, True, "72", 8760):
             with self.subTest(value=value):
                 self.policy["severityHours"]["error"] = value
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     m.rules(self.policy)
 
     def approval(self):
@@ -63,20 +65,20 @@ class RetentionTests(unittest.TestCase):
             "sampleSeconds": 604800,
         }
 
-    def test_any_extension_needs_approval(self):
+    def test_any_extension_needs_approval(self) -> None:
         """Any retention extension needs an approval."""
         for level in m.LEVELS - {"unknown"}:
             for value in (337, 720):
                 with self.subTest(level=level, value=value):
                     policy = json.loads(m.POLICY.read_text())
                     policy["severityHours"][level] = value
-                    with self.assertRaises(ValueError):
+                    with pytest.raises(ValueError):
                         m.rules(policy)
         self.policy["services"] = {"example": {"debug": 337}}
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             m.rules(self.policy)
 
-    def test_capacity_gate(self):
+    def test_capacity_gate(self) -> None:
         """The capacity gate validates approval measurements."""
         self.policy["capacityApproval"] = self.approval()
         self.policy["severityHours"]["warn"] = 720
@@ -92,10 +94,10 @@ class RetentionTests(unittest.TestCase):
             with self.subTest(key=key):
                 self.policy["capacityApproval"] = self.approval()
                 self.policy["capacityApproval"][key] = value
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     m.rules(self.policy)
 
-    def test_unknown_and_fallback_preserved(self):
+    def test_unknown_and_fallback_preserved(self) -> None:
         """Unknown tiers and the fallback are preserved and required."""
         for field in ("fallback", "unknown", "service"):
             policy = json.loads(m.POLICY.read_text())
@@ -105,13 +107,13 @@ class RetentionTests(unittest.TestCase):
                 policy["severityHours"]["unknown"] = 168
             else:
                 policy["services"] = {"example": {"unknown": 168}}
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 m.rules(policy)
 
-    def test_reject_selector_injection(self):
+    def test_reject_selector_injection(self) -> None:
         """Selector injection is rejected."""
         self.policy["services"] = {'bad"}': {"error": 336}}
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             m.rules(self.policy)
 
 

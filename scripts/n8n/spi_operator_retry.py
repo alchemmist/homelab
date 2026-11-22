@@ -63,27 +63,32 @@ def ordered_table_scan(c: sqlite3.Connection, name: str) -> sqlite3.Cursor:
     tables = list(c.execute("PRAGMA main.table_list"))
     matches = [r for r in tables if r[1] == name]
     if len(matches) != 1 or matches[0][2] != "table":
-        raise ValueError("unsupported table kind")
+        msg = "unsupported table kind"
+        raise ValueError(msg)
     q = quoted(name)
     info = list(c.execute("PRAGMA main.table_xinfo(" + q + ")"))
     if not info:
-        raise ValueError("unsupported table columns")
+        msg = "unsupported table columns"
+        raise ValueError(msg)
     if matches[0][4]:  # WITHOUT ROWID: declared primary key is the table btree.
         keys = sorted((r for r in info if r[5]), key=lambda r: r[5])
         if not keys:
-            raise ValueError("missing WITHOUT ROWID primary key")
+            msg = "missing WITHOUT ROWID primary key"
+            raise ValueError(msg)
         order = ",".join(quoted(r[1]) for r in keys)
     else:
         names = {r[1].lower() for r in info}
         alias = next((a for a in ("rowid", "_rowid_", "oid") if a not in names), None)
         if alias is None:
             # Refuse rather than risk an index sort or a nullable/nonunique key.
-            raise ValueError("all rowid aliases shadowed: unsupported schema")
+            msg = "all rowid aliases shadowed: unsupported schema"
+            raise ValueError(msg)
         order = quoted(alias)
     sql = "SELECT * FROM main." + q + " ORDER BY " + order
     plan = list(c.execute("EXPLAIN QUERY PLAN " + sql))
     if not plan or any("TEMP B-TREE" in r[3].upper() for r in plan):
-        raise ValueError("table scan requires temporary sort")
+        msg = "table scan requires temporary sort"
+        raise ValueError(msg)
     return c.execute(sql)
 
 
@@ -117,7 +122,8 @@ def _checked_manifest(manifest: object) -> tuple[str, list[dict[object, object]]
         or manifest.get("nonce") != NONCE
         or not re.fullmatch(r"[0-9a-f]{64}", manifest.get("original_target_file_sha256", ""))
     ):
-        raise ValueError("invalid target manifest")
+        msg = "invalid target manifest"
+        raise ValueError(msg)
     rows = manifest.get("rows")
     if (
         not isinstance(rows, list)
@@ -125,7 +131,8 @@ def _checked_manifest(manifest: object) -> tuple[str, list[dict[object, object]]
         or any(not isinstance(r, dict) for r in rows)
         or {r.get("id") for r in rows} != set(TARGETS)
     ):
-        raise ValueError("invalid manifest IDs")
+        msg = "invalid manifest IDs"
+        raise ValueError(msg)
     return digest(manifest), rows
 
 
@@ -146,14 +153,16 @@ def authorize(a: _Authorization) -> None:
         or not a.get("recorded_at")
         or a.get("supervisor_run_id") != "497906c9-c254-4586-9762-e1aa195b8f24"
     ):
-        raise ValueError("authorization mismatch")
-    datetime.datetime.fromisoformat(a["recorded_at"].replace("Z", "+00:00"))
+        msg = "authorization mismatch"
+        raise ValueError(msg)
+    datetime.datetime.fromisoformat(a["recorded_at"])
 
 
 def _require_retryable(row: dict[str, object], error: str) -> None:
     """Refuse unless the row is dead, unleased, and matches the reviewed failure."""
     if row["state"] == "complete" and row["stage"] == 2:
-        raise ValueError("already complete: skip, never rerun")
+        msg = "already complete: skip, never rerun"
+        raise ValueError(msg)
     if (
         row["state"] != "dead"
         or row["stage"] != 2
@@ -161,7 +170,8 @@ def _require_retryable(row: dict[str, object], error: str) -> None:
         or row["error"] != error
         or row["intent"] is not None
     ):
-        raise ValueError("unexpected state/stage/lease/error/intent")
+        msg = "unexpected state/stage/lease/error/intent"
+        raise ValueError(msg)
 
 
 def _reviewed_selected_rows(c: sqlite3.Connection, rows: list[dict[object, object]]) -> list[_Job]:
@@ -170,17 +180,20 @@ def _reviewed_selected_rows(c: sqlite3.Connection, rows: list[dict[object, objec
     for key, error in TARGETS.items():
         matches = list(c.execute("SELECT * FROM jobs WHERE id=?", (key,)))
         if len(matches) != 1:
-            raise ValueError("missing exact full ID")
+            msg = "missing exact full ID"
+            raise ValueError(msg)
         row = dict(matches[0])
         if row != next(r for r in rows if r["id"] == key):
-            raise ValueError("reviewed full row drift")
+            msg = "reviewed full row drift"
+            raise ValueError(msg)
         _require_retryable(row, error)
         if c.execute(
             "SELECT 1 FROM jobs WHERE episode=? AND (intent IS NOT NULL OR state='complete') "
             "LIMIT 1",
             (row["episode"],),
         ).fetchone():
-            raise ValueError("episode publication or active intent")
+            msg = "episode publication or active intent"
+            raise ValueError(msg)
         selected.append(row)
     return selected
 
@@ -191,7 +204,8 @@ def _require_fresh_audit(c: sqlite3.Connection) -> None:
         if c.execute(
             "SELECT 1 FROM operator_retry_audit WHERE nonce=? LIMIT 1", (NONCE,)
         ).fetchone():
-            raise ValueError("authorization nonce already consumed")
+            msg = "authorization nonce already consumed"
+            raise ValueError(msg)
 
 
 def _prepare_audit(c: sqlite3.Connection) -> tuple[list[object], list[_AuditEntry]]:
@@ -212,9 +226,11 @@ def _prepare_audit(c: sqlite3.Connection) -> tuple[list[object], list[_AuditEntr
         if existing is None:
             c.execute(sql)
         elif existing[0] != sql:
-            raise ValueError("audit immutability schema mismatch")
+            msg = "audit immutability schema mismatch"
+            raise ValueError(msg)
     if c.execute("SELECT count(*) FROM operator_retry_audit").fetchone()[0] + 2 > 2:
-        raise ValueError("bounded audit full")
+        msg = "bounded audit full"
+        raise ValueError(msg)
     audit_schema = list(
         c.execute("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name")
     )
@@ -254,7 +270,8 @@ def _mutate_reviewed_rows(
         expected_audit.append(entry)
         actual = dict(c.execute("SELECT * FROM jobs WHERE id=?", (row["id"],)).fetchone())
         if actual != dict(row, **change):
-            raise ValueError("unexpected selected row mutation")
+            msg = "unexpected selected row mutation"
+            raise ValueError(msg)
     return now
 
 
@@ -263,7 +280,8 @@ def _verify_targets(c: sqlite3.Connection, rows: list[_Job], now: float) -> None
     expected = {r["id"]: dict(r, state="retry", available=now, updated=now) for r in rows}
     for key, row in expected.items():
         if dict(c.execute("SELECT * FROM jobs WHERE id=?", (key,)).fetchone()) != row:
-            raise ValueError("final target mismatch")
+            msg = "final target mismatch"
+            raise ValueError(msg)
 
 
 def _verify_audit_state(
@@ -279,7 +297,8 @@ def _verify_audit_state(
     if actual_audit != sorted(expected_audit, key=lambda r: (r[0], r[1])) or (
         actual_schema != audit_schema
     ):
-        raise ValueError("audit content/schema mismatch")
+        msg = "audit content/schema mismatch"
+        raise ValueError(msg)
 
 
 def retry(
@@ -290,11 +309,13 @@ def retry(
 ) -> dict[str, object]:
     """Verify state and re-queue the two reviewed dead jobs under immutable audit."""
     if os.environ.get("SPI_POSTGRES_URL"):
-        raise ValueError("Historical SQLite-only tool; refusing a PostgreSQL deployment")
+        msg = "Historical SQLite-only tool; refusing a PostgreSQL deployment"
+        raise ValueError(msg)
     authorize(authorization)
     bound, manifest_rows = _checked_manifest(manifest)
     if authorization.get("target_manifest_digest") != bound:
-        raise ValueError("authorization manifest mismatch")
+        msg = "authorization manifest mismatch"
+        raise ValueError(msg)
     c = sqlite3.connect("file:" + str(path) + "?mode=rw", uri=True, isolation_level=None)
     c.row_factory = sqlite3.Row
     try:
@@ -315,7 +336,8 @@ def retry(
         # no compensating UPDATEs or history rewrites are performed.
         now = _mutate_reviewed_rows(c, rows, authorization, bound, expected_audit)
         if table_hashes(c, {cast("str", r["id"]): r for r in rows}) != before:
-            raise ValueError("non-authorized row/table mutation")
+            msg = "non-authorized row/table mutation"
+            raise ValueError(msg)
         _verify_targets(c, rows, now)
         _verify_audit_state(c, expected_audit, audit_schema)
         c.commit()

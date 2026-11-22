@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Protocol, cast
 from unittest.mock import patch
 
+import pytest
+
 
 class SyncCall(Protocol):
     """Duck-type of a unittest.mock call record captured from the fake API."""
@@ -180,7 +182,7 @@ class EventWorkflowTests(unittest.TestCase):
             if "credentials" in node:
                 assert node["credentials"] == {"httpHeaderAuth": self.mapping["worker"]}
         assert self.workflow == original
-        with self.assertRaisesRegex(RuntimeError, "Missing private SPI credential mapping: worker"):
+        with pytest.raises(RuntimeError, match="Missing private SPI credential mapping: worker"):
             sync.render(self.workflow, {})
 
     def run_sync(self, pages: list[dict[str, object]]) -> tuple[dict[str, object], list[SyncCall]]:
@@ -225,7 +227,7 @@ class EventWorkflowTests(unittest.TestCase):
             [{"name": self.workflow["name"], "id": "original-id", "active": True}],
             [{"name": self.workflow["name"], "id": str(i), "active": False} for i in range(2)],
         ]:
-            with self.subTest(entries=entries), self.assertRaises(RuntimeError):
+            with self.subTest(entries=entries), pytest.raises(RuntimeError):
                 self.run_sync([{"data": entries}])
 
     def test_sync_refuses_missing_original_without_write(self) -> None:
@@ -240,7 +242,7 @@ class EventWorkflowTests(unittest.TestCase):
                     side_effect=[{"data": [], "nextCursor": "next"}, {"data": []}],
                 ) as api,
             ):
-                with self.assertRaisesRegex(RuntimeError, "refusing creation"):
+                with pytest.raises(RuntimeError, match="refusing creation"):
                     sync.sync(RELATIVE)
                 # The sync walks both pages before giving up.
                 pages_walked = 2
@@ -250,7 +252,7 @@ class EventWorkflowTests(unittest.TestCase):
     def test_sync_refuses_duplicate_names_across_pages(self) -> None:
         """Verify sync refuses duplicate names across pagination pages."""
         entry = {"name": self.workflow["name"], "id": "original-id", "active": False}
-        with self.assertRaisesRegex(RuntimeError, "Ambiguous workflow name"):
+        with pytest.raises(RuntimeError, match="Ambiguous workflow name"):
             self.run_sync(
                 [
                     {"data": [entry], "nextCursor": "next"},

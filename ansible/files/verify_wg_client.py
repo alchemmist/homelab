@@ -123,7 +123,7 @@ def _cleanup(
         resolver_dir.rmdir()
 
 
-def main():
+def main() -> None:
     """Main."""
     parser = argparse.ArgumentParser()
     parser.add_argument("profile")

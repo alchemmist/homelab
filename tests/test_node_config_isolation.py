@@ -5,6 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 SOURCE = (
     Path(__file__).resolve().parents[1]
     / "ansible/roles/node_config_isolation/files/isolate_node_configs.py"
@@ -96,7 +98,7 @@ class IsolationTests(unittest.TestCase):
     def test_outside_home_rejected_before_any_change(self) -> None:
         """Reject a link that leaves the home before creating isolation state."""
         (self.home / ".tmux.conf").symlink_to("/etc/passwd")
-        with self.assertRaisesRegex(ValueError, "outside"):
+        with pytest.raises(ValueError, match="outside"):
             MODULE.isolate(self.home)
         assert (self.home / ".tmux.conf").is_symlink()
         assert not (self.home / ".local").exists()
@@ -107,14 +109,14 @@ class IsolationTests(unittest.TestCase):
         source.mkdir()
         (source / "cycle").symlink_to(source, target_is_directory=True)
         (self.home / ".config/hypr").symlink_to(source, target_is_directory=True)
-        with self.assertRaisesRegex(ValueError, "cycle"):
+        with pytest.raises(ValueError, match="cycle"):
             MODULE.isolate(self.home)
 
     def test_symlink_parent_rejected(self) -> None:
         """Reject isolation when a parent directory is itself a symlink."""
         (self.home / ".config").rmdir()
         (self.home / ".config").symlink_to(self.source, target_is_directory=True)
-        with self.assertRaisesRegex(ValueError, "parent"):
+        with pytest.raises(ValueError, match="parent"):
             MODULE.isolate(self.home)
 
 
