@@ -10,8 +10,8 @@ oidc:
 images:
   front:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
-    tag: c3c12b4dd10db49dd0cf6202c5c800857d21e41f
-    digest: sha256:fad8823a29af240f1da66300096e824577b7a74c7c433becf0243cf18db35cd2
+    tag: 3cec37a6ee3e16fdfa82d80215374ccdc82b0964
+    digest: sha256:6f198e5c83afb74218ee8e932dc442821c4e51eb59a7c9851ae962c3f06752bb
     fallback: ghcr.io/alchemmist/homelab-monori-front:latest
   back:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
