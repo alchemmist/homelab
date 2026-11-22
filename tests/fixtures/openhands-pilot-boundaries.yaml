@@ -1,3 +1,4 @@
+---
 # Independent expectations for the pilot workloads in the owner Helm render.
 # Compare actual volume sources and every mount, not just allowed volume types.
 canvasVolumes:
@@ -18,7 +19,10 @@ deployments:
       - {name: code, configMap: {name: pi-monori-code}}
       - {name: model, secret: {secretName: openhands-model, defaultMode: 288}}
     mounts:
-      install-pi: [{name: pi, mountPath: /opt/pi}, &code {name: code, mountPath: /code, readOnly: true}, *tmp]
+      install-pi:
+        - {name: pi, mountPath: /opt/pi}
+        - &code {name: code, mountPath: /code, readOnly: true}
+        - *tmp
       sandbox: [*scratch, *tmp, {name: pi, mountPath: /opt/pi, readOnly: true}, *code]
       relay: [*code, {name: model, mountPath: /model, readOnly: true}]
 policies:
@@ -29,7 +33,10 @@ policies:
     egress: []
   automation-postgres-egress:
     podSelector:
-      matchExpressions: [{key: statefulset.kubernetes.io/pod-name, operator: In, values: [openhands-0]}]
+      matchExpressions:
+        - key: statefulset.kubernetes.io/pod-name
+          operator: In
+          values: [openhands-0]
     policyTypes: [Egress]
     egress:
       - to:
@@ -56,3 +63,4 @@ services:
   openhands-oidc-sessions:
     selector: {app: openhands-oidc-sessions}
     ports: [{name: redis, port: 6379, targetPort: redis}]
+...
