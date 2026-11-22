@@ -63,6 +63,7 @@ class MigrationTests(unittest.TestCase):
         d = docs[("Deployment", "lms")]
         old = dict(v)
         old["webNodes"] = ["socrat-0", "socrat-1", "socrat-3"]
+        old.pop("preferredWebNode", None)
         old["hostAliases"] = []
         baseline = render("charts/lms", old, "lms", "lms")
         assert [k for k in docs if docs[k] != baseline[k]] == [("Deployment", "lms")]
@@ -71,7 +72,11 @@ class MigrationTests(unittest.TestCase):
         s = d["spec"]["template"]["spec"]
         assert s["affinity"]["nodeAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"][
             "nodeSelectorTerms"
-        ][0]["matchExpressions"][0]["values"] == ["socrat-5"]
+        ][0]["matchExpressions"][0]["values"] == ["socrat-5", "socrat-0", "socrat-1"]
+        preference = s["affinity"]["nodeAffinity"]["preferredDuringSchedulingIgnoredDuringExecution"]
+        assert preference == [{"weight": 100, "preference": {"matchExpressions": [
+            {"key": "kubernetes.io/hostname", "operator": "In", "values": ["socrat-5"]}
+        ]}}]
         assert s["hostAliases"] == [
             {"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}
         ]
