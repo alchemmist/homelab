@@ -73,6 +73,7 @@ continueQaChat: ''
 unlimitedIterations: true
 
 replicaCount: 1
+automationPostgresAccess: true
 coldBackup20261119: true
 retireFailedBackup: true
 workerRegistries:
