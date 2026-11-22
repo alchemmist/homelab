@@ -163,6 +163,13 @@ def migration_payload(document) -> dict[str, object]:
     """Check declared runtime overrides before comparing the unchanged handoff payload."""
     kind = document["kind"]
     name = document["metadata"]["name"]
+    if (kind, name) == ("PrometheusRule", "kube-prometheus-stack-node-exporter"):
+        result = copy.deepcopy(document)
+        group, = result["spec"]["groups"]
+        assert not any(rule.get("alert") == "NodeSystemSaturation" for rule in group["rules"])
+        # Restore the one replaced upstream rule for comparison with the frozen handoff.
+        group["rules"].insert(17, json.loads((ROOT / "tests/fixtures/upstream-node-saturation.json").read_text()))
+        return result
     if (kind, name) == ("PrometheusRule", "kube-prometheus-stack-kubernetes-apps"):
         # Undo just the retired upstream rule for comparison to the frozen handoff.
         result = copy.deepcopy(document)
@@ -304,6 +311,15 @@ def test_disjoint_complete_payload_identical_handoff() -> None:
             k = key(d)
             assert k not in all_owners, "Duplicate owner: " + k
             all_owners[k] = name
+            if k == "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-node-saturation":
+                assert name == "node-exporter"
+                group, = d["spec"]["groups"]
+                rule, = group["rules"]
+                assert rule["alert"] == "NodeSystemSaturation" and rule["for"] == "15m"
+                special, normal = rule["expr"].split("\nor\n")
+                assert 'node="socrat-4"' in special and special.endswith("> 6)")
+                assert 'node!="socrat-4"' in normal and normal.endswith("> 2)")
+                continue
             if k == "ConfigMap/cattle-monitoring-system/software-update-otel":
                 assert name == "prometheus"
                 software_update_extension(d)
@@ -325,6 +341,7 @@ def test_disjoint_complete_payload_identical_handoff() -> None:
                 ).hexdigest(),
             }
     assert set(all_owners) == set(fixture) | {
+        "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-node-saturation",
         "ConfigMap/cattle-monitoring-system/software-update-otel",
         "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-homelab-job-failures",
     }
