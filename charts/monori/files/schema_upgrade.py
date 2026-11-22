@@ -20,7 +20,10 @@ def upgrade(db, root):
     if len(versions) != 1 or versions[0][0] not in supported:
         raise ValueError("Unsupported schema revision; refusing downgrade or bootstrap")
     for version in supported[supported.index(versions[0][0]) + 1 :]:
-        (migration,) = root.glob(f"{version}_*.sql")
+        matches = list(root.glob(f"{version}_*.sql"))
+        if len(matches) != 1:
+            raise RuntimeError(f"Expected one migration for {version}, found {len(matches)}")
+        migration = matches[0]
         db.execute(migration.read_text())
         if db.execute("SELECT version_num FROM public.alembic_version").fetchall() != [(version,)]:
             raise RuntimeError(f"Migration did not reach {version}")
