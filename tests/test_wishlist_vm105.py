@@ -117,6 +117,7 @@ class Cursor:
                     timeout=10,
                     check=False,
                 )
+                assert trace.is_file(), f"Guard never reached the fixture driver: {result.stderr!r}"
                 calls = [json.loads(line) for line in trace.read_text().splitlines()]
                 expected = [["connect", "fixture", 5]]
                 if rows != "unavailable":
