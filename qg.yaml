@@ -125,15 +125,18 @@ nodes:
     results:
       native: reports/yaml.json
   scripts-q000:
-    title: Python script and test quotes (Q000)
+    title: Python inline quotes and test docstring quotes
     profile: default
     needs:
       - graph
     policy: *id001
     run: |-
       set -euo pipefail
-      uv run python -m scripts.quality.python_inputs scripts/ tests/ |
+      uv run python -m scripts.quality.python_inputs scripts/ |
         xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \
+          --ignore-noqa --output-format concise --
+      uv run python -m scripts.quality.python_inputs tests/ |
+        xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \
           --ignore-noqa --output-format concise --
   deploy-i001:
     title: Ansible, deploy, scripts and tests import order (I001)
