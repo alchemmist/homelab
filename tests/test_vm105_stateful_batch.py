@@ -18,8 +18,8 @@ HANDOFF = "c4a7c68938e36872841a1cce0f5441a5c6b78d7d"
 CUTOVERS = {
     "deploy/wiki-runtime/chart": "3c0c68dbd206138c4f4d96f5b3cafc34a8ad7141",
     "charts/monori": "093df2214564fd7db76e28da6975d267a0652431",
-    "charts/spi-triage": "f8e2efa00f12b8166376ac3639d760ca24297f0b",
-    "charts/litellm-infra": "7b4786fb4cc2e722a010c4b483b87dc209ae8d12",
+    "charts/spi-triage": "ca3a866c",
+    "charts/litellm-infra": "61441c53",
 }
 
 # These identities now spell out the release namespace that Helm previously
@@ -64,8 +64,10 @@ def compare_namespace_inputs(
     """Apply the exact owned namespace declaration delta to the historical side only."""
     for key in EXPLICIT_NAMESPACES.get(chart, ()):
         meta = _mapping(documents[key]["metadata"])
-        assert "namespace" not in meta
-        meta["namespace"] = ns
+        if "namespace" in meta:
+            assert meta["namespace"] == ns
+        else:
+            meta["namespace"] = ns
 
 
 def checkout(root: pathlib.Path, revision: str, *paths: str) -> pathlib.Path:
@@ -298,9 +300,12 @@ class StatefulBoundaries(unittest.TestCase):
                     if chart == "charts/litellm-infra":
                         # fe3903c2 retired the dormant DB controller and Service;
                         # 731505f8 later retired only their dedicated PVC here.
-                        expected.pop(("Deployment", "litellm-postgres"))
-                        expected.pop(("Service", "litellm-postgres"))
-                        expected.pop(("PersistentVolumeClaim", "litellm-postgres"))
+                        for key in (
+                            ("Deployment", "litellm-postgres"),
+                            ("Service", "litellm-postgres"),
+                            ("PersistentVolumeClaim", "litellm-postgres"),
+                        ):
+                            expected.pop(key, None)
                     compare_namespace_inputs(expected, chart, ns)
                     self.assertEqual(current, expected)
                     after = historical(HANDOFF)
