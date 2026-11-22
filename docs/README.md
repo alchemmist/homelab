@@ -22,15 +22,15 @@ The [public wiki](../wiki/README.md) has a separate audience and publication pro
 | Network onboarding, devices, JWT policies and node agents | [NetBird](network/netbird.md), [DNS](network/public-dns.md) |
 | Foreign egress for applications on Russian nodes | [Service VPN: dedicated 3x-ui client and subscription](network/service-vpn-egress.md) |
 | Moscow VPN frontend, NL backend, retained clients and known limits | [Production setup and history](network/vpn-hardening.md), [acceptance and incident](records/handoffs/vpn-production-cutover-20261109.md) |
-| SSH public keys, regular Linux accounts and revocation | [SSH users](auth/ssh-user.md), [host access and RBAC](auth/identity-host-access.md) |
-| Observer group onboarding, Danila and revocation | [Native observer](auth/native-observer.md), [acceptance checks](auth/observer-acceptance-20261108.md) |
-| Check which services enforce Authentik, native sign-in or public access | [Browser authentication audit](auth/browser-auth-audit.md) |
-| Identity reference and routine administration | [Identity](auth/identity.md), [operations](auth/identity-operations.md) |
-| B2C app groups, automatic provisioning and native roles | [Access contract](auth/application-access.md), [technical runbook](auth/app-access-groups.md) |
-| External users changing passwords without internal dashboard access | [Password self-service](auth/password-self-service.md) |
-| OIDC, native app roles and gateway exceptions | [Architecture](auth/identity-architecture.md), [integrations](auth/identity-integrations.md), [troubleshooting](auth/identity-gateway-troubleshooting.md) |
-| Optional SSH-key integration (disabled) | [UUID and key assignments](auth/identity-ssh-keys.md) |
-| Theme, native UI and recovery | [Frontend](auth/identity-frontend.md), [backup and recovery](auth/identity-recovery.md) |
+| SSH public keys, regular Linux accounts and revocation | [SSH users](auth/host-access/ssh-user.md), [host access and RBAC](auth/host-access/identity-host-access.md) |
+| Observer group onboarding, Danila and revocation | [Native observer](auth/roles/observer/native-observer.md), [acceptance checks](records/handoffs/observer-acceptance-20261108.md) |
+| Check which services enforce Authentik, native sign-in or public access | [Browser authentication audit](records/handoffs/browser-auth-audit.md) |
+| Authentication, access and routine administration | [Authentication and access](auth/README.md), [operations](auth/authentik/operations/identity-operations.md) |
+| B2C app groups, automatic provisioning and native roles | [Access contract](auth/applications/application-access.md), [technical runbook](auth/applications/app-access-groups.md) |
+| External users changing passwords without internal dashboard access | [Password self-service](auth/authentik/operations/password-self-service.md) |
+| OIDC, native app roles and gateway exceptions | [Architecture](auth/architecture/identity-architecture.md), [integrations](auth/authentik/integrations/identity-integrations.md), [troubleshooting](auth/authentik/integrations/identity-gateway-troubleshooting.md) |
+| Optional SSH-key integration (disabled) | [UUID and key assignments](auth/host-access/identity-ssh-keys.md) |
+| Theme, native UI and recovery | [Frontend](auth/authentik/custom-ui/README.md), [backup and recovery](auth/authentik/operations/identity-recovery.md) |
 | Registry, robot accounts and scoped push/pull | [Harbor](platform/harbor.md) |
 | Wiki runtime and content | [Lifecycle](applications/wiki/wiki-process-lifecycle.md), [upgrade](records/handoffs/wiki-upgrade-20261107.md), [public onboarding source](../wiki/README.md) |
 | Per-node metric collection and retention | [OTel to Prometheus to Thanos: raw data, five-minute and hourly resolution, and deletion limits](observability/monitoring/observability-current.md#метрики-сбор-прореживание-и-перенос-между-нодами--21-ноября-2026) |

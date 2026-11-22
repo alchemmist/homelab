@@ -2,7 +2,7 @@
 
 > Historical initial two-gateway rollout. A later single-gateway simplification
 > is also historical. Current deployment and explicit outage limitations:
-> [four routing peers and independent relays](../network/netbird-independent-access.md).
+> [four routing peers and independent relays](../../network/netbird-independent-access.md).
 
 2026-11-03. Actual deployment and Mac administrative routing/SSH checks passed.
 Personal user acceptance, non-admin client and outage/HA acceptance remain separate.

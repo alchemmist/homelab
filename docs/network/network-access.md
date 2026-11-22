@@ -81,7 +81,7 @@ chaos/reboot и сохранение end-user IP enforcement не доказан
 их UUID/client credentials/callbacks/policy bindings сохранены. n8n,3x-ui, Kuma
 и Syncthing используют собственный login; SearXNG и опубликованные SPI artifacts
 публичны без Authentik и NetBird. Reader допускает только GET/HEAD, проверяет
-manifest/hash и выдаёт безопасные типы inline. [Контракт и границы](../auth/native-browser-auth.md).
+manifest/hash и выдаёт безопасные типы inline. [Контракт и границы](../auth/applications/native-browser-auth.md).
 
 Повторная приёмка после восстановления socrat-2: **82/82** публичных проверок
 на HOME и VPS, обычная проверка TLS без отключения верификации. Все4 ноды Ready;
@@ -90,7 +90,7 @@ socrat-2 Ready с17:55:34UTC7 ноября. Все8 затронутых Argo ap
 force-delete не потребовался.10 native OIDC регистраций/providers/bindings и
 сохранённые поля иконок не изменились; Proxy Providers0. Опубликованный artifact
 проверен через оба входа: anonymous GET/HEAD/206, manifest/SHA-256, inline,
-PUT/POST/PATCH/DELETE405. [Приёмка](../auth/native-browser-auth.md#recovered-vps-final-acceptance).
+PUT/POST/PATCH/DELETE405. [Приёмка](../auth/applications/native-browser-auth.md#recovered-vps-final-acceptance).
 Это протокольная приёмка, не новая проверка входа от имени каждого человека.
 
 
@@ -102,7 +102,7 @@ PUT/POST/PATCH/DELETE405. [Приёмка](../auth/native-browser-auth.md#recove
 Имена `wg-socrat-*` routes и `wireguard-internal` resource — реальные оставшиеся
 идентификаторы; не переименовывать их автоматически. Межнодовый WG и независимый
 аварийный WG ниже сохранены намеренно. Текущие логины/первый вход:
-[identity-current-state.md](../auth/identity-current-state.md).
+[identity-current-state.md](../auth/authentik/operations/identity-current-state.md).
 
 ## 1. Адреса, транспорт и неприкосновенные границы
 
@@ -116,7 +116,7 @@ PUT/POST/PATCH/DELETE405. [Приёмка](../auth/native-browser-auth.md#recove
 | Независимое восстановление Mac | Standalone WireGuard, обычно выключен; owner client `.4` |
 | Обязательный рабочий VPN Mac | Tunnelblick, не выключать и не перенастраивать |
 
-Межнодовый `wg-socrat` остаётся отдельной сетью Kubernetes/узлов: переход человеческого доступа на NetBird его не заменяет. С 2026-11-10 по указанию владельца обычные SSH aliases 0/1/2/4 используют публичные SSH endpoints; непубличные 3/5 идут напрямую по внутренним адресам через NetBird, ProxyJump none. Pinned host keys сохранены. См. актуальную таблицу в docs/auth/mac-private-ssh.md. Не чинить SSH удалением known_hosts, ослаблением TLS/host-key checks или изменением корпоративных маршрутов.
+Межнодовый `wg-socrat` остаётся отдельной сетью Kubernetes/узлов: переход человеческого доступа на NetBird его не заменяет. С 2026-11-10 по указанию владельца обычные SSH aliases 0/1/2/4 используют публичные SSH endpoints; непубличные 3/5 идут напрямую по внутренним адресам через NetBird, ProxyJump none. Pinned host keys сохранены. См. актуальную таблицу в docs/auth/host-access/mac-private-ssh.md. Не чинить SSH удалением known_hosts, ослаблением TLS/host-key checks или изменением корпоративных маршрутов.
 
 Tunnelblick в приёмках сохранял тот же процесс (тогда PID 40769). Это историческое доказательство, не вечный PID для будущих команд: перед новыми действиями сверить актуальный процесс. Глобальный DNS, corporate resolvers/routes и VPN-профили Mac не менять; cache flush/HUP не использовать.
 

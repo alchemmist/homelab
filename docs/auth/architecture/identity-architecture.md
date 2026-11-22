@@ -1,13 +1,13 @@
 # Авторизация Socrat: архитектура и границы доверия
 
-> **Текущий B2C контракт:** [отдельные app-группы и native роли](application-access.md).
+> **Текущий B2C контракт:** [отдельные app-группы и native роли](../applications/application-access.md).
 > Восемь включённых ролей для LiteLLM, Open WebUI, Grafana, Wiki и LMS;
 > остальные reserved группы не означают допуск. Internal/External не является
 > app permission. Старые owner-only/подготовительные срезы ниже — история;
 > browser E2E и мгновенный отзыв всех сессий/ключей не заявлены.
 
-> Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
-> [NetBird/сеть](../network/network-access.md), [владельцы мониторинга](../observability/monitoring/observability-current.md).
+> Текущий срез7 ноября: [логины, первый вход и native роли](../authentik/operations/identity-current-state.md),
+> [NetBird/сеть](../../network/network-access.md), [владельцы мониторинга](../../observability/monitoring/observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
 
 Срез внедрения **1 ноября 2026**. Начало справочника: [identity.md](identity.md).
@@ -45,7 +45,7 @@ Authentik — Identity Provider (IdP): личные пользователи, п
 - Embedded outpost обслуживает proxy integration n8n. Не надо ставить outpost
   перед каждым приложением: для нативного OIDC браузер идёт прямо в приложение.
 - Статика Quiet Mono — отдельный sandboxed nginx `socrat-authentik-theme`, тоже
-  на `socrat-0`. Подробнее [identity-frontend.md](identity-frontend.md).
+  на `socrat-0`. Подробнее [identity-frontend.md](../authentik/custom-ui/README.md).
 
 Источники: `deploy/authentik/values.yaml`, `foundation.yaml`, роль
 `ansible/roles/authentik/`, playbook `ansible/playbooks/authentik.yml`.
@@ -156,11 +156,11 @@ subject mode после включения и ожидать, что прило�
 IdP superuser и app admin — разные роли, соединённые только явными mappings.
 Даже после отзыва IdP group уже выданная app cookie может оставаться действительной.
 Logout одного приложения, logout Authentik и отзыв всех app sessions не одно и то же.
-Полную offboarding-процедуру см. [identity-operations.md](identity-operations.md).
+Полную offboarding-процедуру см. [identity-operations.md](../authentik/operations/identity-operations.md).
 
 ## 8. Вход в приложение не выдаёт SSH / kubectl
 
-Полная процедура: [Linux/SSH и RBAC](identity-host-access.md).
+Полная процедура: [Linux/SSH и RBAC](../host-access/identity-host-access.md).
 
 Linux и Kubernetes — отдельные контуры. На четырёх нодах настроены личные SSH
 public keys, закрыты password logins управляемых ограниченных пользователей,
@@ -185,10 +185,10 @@ Root внешней ноды — trust boundary для workloads/secrets это�
 
 Текущие публичные edges — `109.173.40.247` и **`109.120.141.97`**. Старый `176.98.185.59` — история до 5 ноября. Reviewed Grafana/Rancher entrances публичны с native SSO/ролями; Grafana MCP — bearer-only. Обычный public DNS работает без Mac overrides, anonymous org access Grafana выключен. Только согласованный traffic-light native share доступен без входа. Не публиковать дополнительные private APIs ради branding/healthcheck.
 
-NetBird — основной human ingress, standalone WG — recovery; межнодовый WG сохранён, обязательный Tunnelblick Mac не трогаем. User/device approval requirement выключен, но личная MFA/genuine JWT admission сохранены. Автоматического app/Linux/Kubernetes grant нет. Четыре routing agents и два relay дают bounded data-plane redundancy; management/Signal и Authentik не HA, холодный запуск без management ранее провалился. Текущий lifecycle/overlay guard/Mac/TV cleanup: [network-access.md](../network/network-access.md), [NetBird](../network/netbird.md).
+NetBird — основной human ingress, standalone WG — recovery; межнодовый WG сохранён, обязательный Tunnelblick Mac не трогаем. User/device approval requirement выключен, но личная MFA/genuine JWT admission сохранены. Автоматического app/Linux/Kubernetes grant нет. Четыре routing agents и два relay дают bounded data-plane redundancy; management/Signal и Authentik не HA, холодный запуск без management ранее провалился. Текущий lifecycle/overlay guard/Mac/TV cleanup: [network-access.md](../../network/network-access.md), [NetBird](../../network/netbird.md).
 
 Harbor обеспечивает приватные images/robots для workload delivery, но его OIDC
-не заменяет registry robot passwords. HA Harbor тоже отложена; см. [harbor.md](../platform/harbor.md).
+не заменяет registry robot passwords. HA Harbor тоже отложена; см. [harbor.md](../../platform/harbor.md).
 
 ## 10. Что не считать завершённым
 

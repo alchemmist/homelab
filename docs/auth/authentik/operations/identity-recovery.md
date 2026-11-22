@@ -1,10 +1,10 @@
 # Авторизация: backup, recovery, диагностика и evidence
 
 > Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
-> [NetBird/сеть](../network/network-access.md), [владельцы мониторинга](../observability/monitoring/observability-current.md).
+> [NetBird/сеть](../../../network/network-access.md), [владельцы мониторинга](../../../observability/monitoring/observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
 
-Начало: [identity.md](identity.md). Любой recovery меняет доверенную систему:
+Начало: [identity.md](../../architecture/identity.md). Любой recovery меняет доверенную систему:
 проверить личность/полномочия оператора, pre-change snapshot и влияние на consumers.
 Не запускать production restore по этому документу без отдельного incident plan.
 
@@ -136,7 +136,7 @@ Provider/app отключать после решения, какой entrypoint
 инвалидировать cookie, но не повод выдавать fallback всем. Immutable runtime image
 и chart выбирать явно, без удаления PVC. Old non-owner password sessions не оживлять.
 
-Theme rollback отдельный, см. [identity-frontend.md](identity-frontend.md): Brand UUID
+Theme rollback отдельный, см. [identity-frontend.md](../custom-ui/README.md): Brand UUID
 и flow identity guards, original baseline, retained static assets. Он не является
 откатом всей identity DB или auth migrations. Live rollback/reapply ради проверки
 не делался, чтобы не прерывать реальные входы.
@@ -248,4 +248,4 @@ consistency. Процедура, guards и доказанные ограниче
 
 ## Сетевой closeout и новые private receipts
 
-См. [network-access.md](../network/network-access.md): VPS migration, owned Mac DNS removal, NetBird lifecycle/overlay guard, Kuma credential recovery и retirement TV peer/alias имеют отдельные root-private before/uncertain/after receipts. Исторические backups/keys не удалять из-за нового public HTTPS. В частности Kuma Secret data при recovery изменились; старые SQL passwords и DB lifecycle не менялись. При uncertain marker не запускать apply повторно и не восстанавливать старый Secret вслепую. Эта документация не означает полного DR или мгновенной revocation старых sessions.
+См. [network-access.md](../../../network/network-access.md): VPS migration, owned Mac DNS removal, NetBird lifecycle/overlay guard, Kuma credential recovery и retirement TV peer/alias имеют отдельные root-private before/uncertain/after receipts. Исторические backups/keys не удалять из-за нового public HTTPS. В частности Kuma Secret data при recovery изменились; старые SQL passwords и DB lifecycle не менялись. При uncertain marker не запускать apply повторно и не восстанавливать старый Secret вслепую. Эта документация не означает полного DR или мгновенной revocation старых sessions.

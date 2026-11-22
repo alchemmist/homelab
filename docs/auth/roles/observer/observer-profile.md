@@ -1,7 +1,7 @@
 # Native observer profile (issue #105)
 
 **Status: active and accepted for four services; Danila's initial membership correction completed (2026-11-08).**
-See [the live acceptance and cleanup](observer-acceptance-20261108.md). Rancher RBAC,
+See [the live acceptance and cleanup](../../../records/handoffs/observer-acceptance-20261108.md). Rancher RBAC,
 safe new-user defaults, native admission and revocation handling are deployed.
 Danila now has observer instead of IdP Read-only; approved NetBird membership is
 preserved. No password/MFA or individual native app/RBAC provisioning was performed.

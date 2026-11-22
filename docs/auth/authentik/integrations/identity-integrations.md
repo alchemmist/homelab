@@ -1,22 +1,22 @@
 # Интеграции Authentik и добавление нового сервиса
 
-> **Live auth audit15Nov:** [actual browser/API boundaries](browser-auth-audit.md).
+> **Live auth audit15Nov:** [actual browser/API boundaries](../../../records/handoffs/browser-auth-audit.md).
 > Current public Kuma Admin/Syncthing/Search routes do not have the previously
 > described Authentik MFA gate. Native service login is not Authentik SSO. Native
 > OIDC apps may serve public HTML but deny private APIs. No auth changes applied.
 
-> **Текущий B2C контракт:** [отдельные app-группы и native роли](application-access.md).
+> **Текущий B2C контракт:** [отдельные app-группы и native роли](../../applications/application-access.md).
 > Восемь включённых ролей для LiteLLM, Open WebUI, Grafana, Wiki и LMS;
 > остальные reserved группы не означают допуск. Internal/External не является
 > app permission. Старые owner-only/подготовительные срезы ниже — история;
 > browser E2E и мгновенный отзыв всех сессий/ключей не заявлены.
 
-> Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
-> [NetBird/сеть](../network/network-access.md), [владельцы мониторинга](../observability/monitoring/observability-current.md).
+> Текущий срез7 ноября: [логины, первый вход и native роли](../operations/identity-current-state.md),
+> [NetBird/сеть](../../../network/network-access.md), [владельцы мониторинга](../../../observability/monitoring/observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
 
-Начало: [identity.md](identity.md). Не путать native SSO, proxy gate и обычную
-плитку. Сетевые entrances/роли актуализированы 6 ноября: [network-access.md](../network/network-access.md). Старые session evidence ниже датированы; изменения версий требуют нового review.
+Начало: [identity.md](../../architecture/identity.md). Не путать native SSO, proxy gate и обычную
+плитку. Сетевые entrances/роли актуализированы 6 ноября: [network-access.md](../../../network/network-access.md). Старые session evidence ниже датированы; изменения версий требуют нового review.
 
 ## 1. Реестр и исходники
 
@@ -29,7 +29,7 @@
 | Native app controllers | `ansible/roles/identity_integrations/files/integrate.py` |
 | LiteLLM dedicated controller | `ansible/roles/identity_integrations/files/litellm_oidc.py` |
 | Argo CD, вне foundation registry | `ansible/roles/argocd_oidc/files/configure.py`, `deploy/argocd/values.yaml` |
-| Сводный live status | `docs/auth/access-management.md` |
+| Сводный live status | `docs/auth/architecture/access-management.md` |
 | Санитизированные результаты | `deploy/identity/migration-evidence/` |
 
 `migration` strings каталога — исторические hints, не oracle live readiness:
@@ -67,7 +67,7 @@ Owner group -> system admin; project grants остаются отдельным�
 приёмка/rotation требует владельца. Robot accounts и scoped project credentials
 остаются способом CI push / private pull; не применять к registry API browser gate.
 
-Harbor 2.15.4 / chart 1.19.4 и HA work описаны отдельно в [harbor.md](../platform/harbor.md).
+Harbor 2.15.4 / chart 1.19.4 и HA work описаны отдельно в [harbor.md](../../../platform/harbor.md).
 OIDC не устраняет single-node storage/PG/Redis риски и не завершает HA.
 
 ## 4. Rancher
@@ -82,7 +82,7 @@ Tim сейчас входит как `antropophag`; UUID пересозданн�
 account mapping. Старые `u-authentik-tim` и `u-22wv2` disabled, grants/history
 сохранены. Native `principalIds` immutable: не обходить webhook и не менять
 старый principal in-place. `rancherOidcUserId`/`rancherBindingPrefix` сохраняют
-reviewed replacement при следующем reconcile. [Текущие связи](identity-current-state.md).
+reviewed replacement при следующем reconcile. [Текущие связи](../operations/identity-current-state.md).
 
 Source: Rancher branch `integrate.py`, reviewed old IDs в account mapping.
 Client secret — `cattle-global-data/genericoidcconfig-clientsecret`.
@@ -140,7 +140,7 @@ Owner подтвердил рабочий вход. Нативный Generic OID
   or **`app-litellm-user`**. Members receive `internal_user`, identity remains
   `authentik:<UUID>`. Vladislav migrated to the group without replacing his account;
   former user binding removed, `litellm-users.json` empty. Not every Authentik user
-  receives access. See [current systemic app groups](app-access-groups.md);
+  receives access. See [current systemic app groups](../../applications/app-access-groups.md);
 - custom scope mapping `homelab-litellm-reviewed-identity`, scope `litellm_identity`;
 - Secret `llm/socrat-authentik-litellm`, Generic SSO env; Helm optional Secret refs.
 
@@ -218,13 +218,13 @@ nginx forward-auth3x-ui на n8n proxy-mode без воспроизведени�
 
 **Uptime Kuma:** native OIDC не внедрён и не заявляется. Но разделение входов **завершено**: status `/status/socrat`, status/heartbeat APIs/assets/badges и token push публичны; public Socket.IO/неизвестные admin APIs закрыты, legacy admin paths ведут на `kuma.socrat.alchemmist.xyz`. На admin host personal MFA owner/`uptime-kuma-web-admins`, затем исходная native Kuma auth. MFA не делает человека native admin. Проверены scoped MFA, WebSocket 101/namespace и denial native `getSettings`; fixtures удалены.
 
-При application restart обнаружен Secret/SQL credential mismatch, был наблюдённый ~35min heartbeat gap. Recovery создал отдельный schema-only app account без изменения старых SQL passwords и без DB restart; Secret data изменились, native Kuma account/auth сохранились. Не регенерировать Secret/не менять DB username: [MariaDB runbook](../observability/monitoring/uptime-kuma-mariadb.md), [итог и ограничения](../network/network-access.md#6-kuma-восстановление-после-инцидента-не-zero-downtime).
+При application restart обнаружен Secret/SQL credential mismatch, был наблюдённый ~35min heartbeat gap. Recovery создал отдельный schema-only app account без изменения старых SQL passwords и без DB restart; Secret data изменились, native Kuma account/auth сохранились. Не регенерировать Secret/не менять DB username: [MariaDB runbook](../../../observability/monitoring/uptime-kuma-mariadb.md), [итог и ограничения](../../../network/network-access.md#6-kuma-восстановление-после-инцидента-не-zero-downtime).
 
 ### Публичные aliases и Syncthing
 
 `deploy/public-web/services.json` хранит admission allowlist; публичные Ingress/proxy принадлежат соответствующим Argo Applications (локальные чарты либо `deploy/platform/<app>/public-entry` в той же Application), отдельный `public-web-entry` удалён; не смешивать их с foundation registry. Search admission owner/`netbird-internal-admins`; app authorization за aliases остаётся native, machine APIs не переводятся на browser redirect. Rancher публичен с native OIDC/ролями и policy proxy против local-password mutations; agents/bearer/WebSockets/private recovery сохранены. Grafana MCP — public verified TLS + отдельный read-only bearer, не human MFA gate.
 
-На node0 `/sync/` — personal MFA owner/`syncthing-web-admins`, затем неизменённый исходный BasicAuth, prefix снимается. Node1 отвечает 410 gateway-only: новую device/identity ради GUI не создавали. Existing BasicAuth, sync process/config/data не менялись. Реальный owner Basic login остаётся отдельной опциональной приёмкой. [Подробности публичного closeout](../applications/public-web/public-web-migration.md).
+На node0 `/sync/` — personal MFA owner/`syncthing-web-admins`, затем неизменённый исходный BasicAuth, prefix снимается. Node1 отвечает 410 gateway-only: новую device/identity ради GUI не создавали. Existing BasicAuth, sync process/config/data не менялись. Реальный owner Basic login остаётся отдельной опциональной приёмкой. [Подробности публичного closeout](../../../applications/public-web/public-web-migration.md).
 
 ## 10. Как подключить новый сервис: безопасный порядок
 
@@ -343,7 +343,7 @@ runbook: [Argo CD refresh](argocd-refresh.md). Старым сессиям ну�
 
 Bearer lifetime — 5 минут; offline-access/8h refresh настроены только новому proxy provider. Но expiry-тест выявил native browser roundtrip к IdP, а не бесшовный refresh; возможен reload панели при истёкшем proxy cookie. Не переносить на этот шлюз утверждение о silent refresh, доказанное для Argo CD. Личная owner recovery/native-login и valid API token acceptance остаются отдельными.
 
-Источники, инсталляция host rule, воспроизводимая приёмка, limits и rollback: [docs/auth/xui-gateway.md](xui-gateway.md). Узкий controller `xui_gateway.py` не replay foundation и не изменяет пользователей/базу панели.
+Источники, инсталляция host rule, воспроизводимая приёмка, limits и rollback: [docs/auth/authentik/integrations/xui-gateway.md](xui-gateway.md). Узкий controller `xui_gateway.py` не replay foundation и не изменяет пользователей/базу панели.
 
 
 ### 3x-ui: исправление Login Failed to fetch
@@ -367,7 +367,7 @@ Owner native-password acceptance остаётся личной. Бесшовны
 Legacy credential key AUTHENTIK_BOOTSTRAP_TOKEN сохранён как alias нового key,
 так что текущие consumers совместимы; runtime Secret исключает admin bootstrap
 env. Детали и широкие privilege boundaries:
-[admin-automation.md](admin-automation.md).
+[admin-automation.md](../operations/admin-automation.md).
 
 ## SPI queue native OIDC — prepared 9 November, not activated
 
@@ -415,4 +415,4 @@ No users, memberships, IdP keys or other applications changed. Proxy credentials
 live in identity, outside coding tools; the native direct ingress stays disabled.
 GitOps source, dedicated native-API bootstrap, network/TLS details and remaining
 public DNS/TLS acceptance and remaining positive-MFA acceptance:
-[OpenHands runbook](../applications/ai/openhands.md).
+[OpenHands runbook](../../../applications/ai/openhands.md).

@@ -330,7 +330,7 @@ snapshot was DURING the owner-approved VM105 handoff, not a continuing outage:
 WebUI is now Ready on5 and native OIDC HTTPS/PKCE redirect passes (handoff above).
 The audit itself did not change/restart apps or write workflows/APIs; no blanket
 gate, provider/user/Secret changes were made. Decisions for human/machine
-path separation and desired gates remain PENDING. [Audit and evidence](../../auth/browser-auth-audit.md).
+path separation and desired gates remain PENDING. [Audit and evidence](browser-auth-audit.md).
 
 ## blog + socrat-home moved off2 —15Nov, accepted
 
@@ -360,7 +360,7 @@ heading Update password. Authentik Dashboard now has providerless English
 **Change password** card in **Account**, no new groups/provider/admission bindings.
 Declarative metadata + bounded controller + standalone Ansible playbook committed;
 External /if/user/ restriction unchanged; direct link remains usable.
-[Runbook](../../auth/password-self-service.md). Supersedes earlier
+[Runbook](../../auth/authentik/operations/password-self-service.md). Supersedes earlier
 incorrect External /if/user/ guidance; no real human password/MFA changes.
 
 ## n8n Google reconnect COMPLETED15Nov; intermittent latency NOT closed
@@ -428,7 +428,7 @@ isolated plan (`changed=0`), final live plan empty. Only Wiki
 restarted to read its native role map; no cluster/VPN/host changes. Full browser
 JIT/login and universal session/key revocation are NOT proven. Reserved Harbor,
 Rancher/Argo/n8n/NetBird/SPI groups are NOT usable B2C grants. Details/triggers/
-private receipts: [app access groups](../../auth/app-access-groups.md).
+private receipts: [app access groups](../../auth/applications/app-access-groups.md).
 Old hard-allowlisted `prepare_app_iam.py` is historical, not current onboarding.
 Functional source: `e38b9053`. Owner subsequently authorized wiki refresh and
 publication of all completed work. Local/shared histories integrated by normal
@@ -436,7 +436,7 @@ merge, preserving newer remote n8n recovery authority and deployed Grafana statu
 plus local DNS/network receipts. No force/reset, runtime migration or blanket
 sync/prune. Source publication is tracked by the closeout commit and origin/main;
 initial publication-blocker notes are historical. Current B2C entrypoint:
-[application access](../../auth/application-access.md).
+[application access](../../auth/applications/application-access.md).
 
 ## LiteLLM: reviewed vladislav onboarding — HISTORICAL, superseded by group migration
 
@@ -654,7 +654,7 @@ Ordinary Mac aliases 0/1/2/4 now use public SSH directly (HOME WAN forwarded
 2222/2223, NL .60:2222, Moscow :2222). Private workers3/5 use direct NetBird, ProxyJump none.
 All six real SSH logins accepted; strict pins retained, no Mac route/DNS/VPN
 changes. Do not restore the older internal-only alias policy.
-[Current table](../../auth/mac-private-ssh.md).
+[Current table](../../auth/host-access/mac-private-ssh.md).
 
 ## socrat-5 workload migration — 2026-11-11
 
@@ -790,7 +790,7 @@ SSH transport, публичный ключ/Linux account, sudo, Kubernetes RBAC 
 Ключи/пароли/QR/подписки/activation URLs не публиковать.
 
 Процедуры: [сеть](../../network/network-access.md), [NetBird и onboarding](../../network/netbird.md),
-[SSH без sudo](../../auth/ssh-user.md), [Linux/RBAC](../../auth/identity-host-access.md),
+[SSH без sudo](../../auth/host-access/ssh-user.md), [Linux/RBAC](../../auth/host-access/identity-host-access.md),
 [публичный DNS](../../network/public-dns.md).
 
 ## Актуально: production VPN через Москву, 9 ноября 2026
@@ -846,8 +846,8 @@ backends ещё не закрыты; у всех7 plaintext-связей уже 
 
 ## Личности и авторизация
 
-Начать с [текущего состояния identity](../../auth/identity-current-state.md), затем
-[операций](../../auth/identity-operations.md) и [карты интеграций](../../auth/identity-integrations.md).
+Начать с [текущего состояния identity](../../auth/authentik/operations/identity-current-state.md), затем
+[операций](../../auth/authentik/operations/identity-operations.md) и [карты интеграций](../../auth/authentik/integrations/identity-integrations.md).
 
 - Owner — `alchemmist`, единственный человек в `homelab-owner`.
 - Tim: **логин `antropophag`**, новая native Authentik identity после согласованного
@@ -870,7 +870,7 @@ backends ещё не закрыты; у всех7 plaintext-связей уже 
   Worker не создаёт users/roles; его доступность контролируют Prometheus alerts.
   Не обещать мгновенный logout всех OAuth/JWT. **Harbor для observer закрыт**:
   нативный CLI-кеш не прошёл отзыв, follow-up #134. Не возвращать Guest grants
-  по старому readiness receipt. [Границы и evidence](../../auth/native-observer.md).
+  по старому readiness receipt. [Границы и evidence](../../auth/roles/observer/native-observer.md).
 - Machine APIs, robots, MCP, agents, webhooks сохраняют отдельные credentials;
   их нельзя переводить на browser MFA redirects.
 - Grafana anonymous org access выключен. Исключение — только явно shared

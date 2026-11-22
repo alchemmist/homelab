@@ -169,7 +169,7 @@ Native OIDC is active; `homelab-owner` maps to Harbor system admin. Local `admin
 remains break-glass and robots are unchanged. The saved initial admin password may
 be stale; do not reset it or rerun the old initializer just to change auth. A supported
 Secret-backed CONFIG_OVERWRITE_JSON and conditional Helm identity overlay preserve
-OIDC configuration. See [identity/access-management.md](../auth/access-management.md)
+OIDC configuration. See [identity/access-management.md](../auth/architecture/access-management.md)
 for migration, backup/restore evidence and remaining browser acceptance.
 
 
@@ -228,7 +228,7 @@ synthetic сессия видит ноль проектов, новый registry
 Не восстанавливать эти права старым bootstrap/readiness receipt, не удалять людей
 и не сбрасывать их пароли ради обхода кеша. Перед reopening нужна отдельная native
 revocation-приёмка: [#134](https://github.com/alchemmist/homelab/issues/134),
-[observer evidence](../auth/observer-acceptance-20261108.md).
+[observer evidence](../records/handoffs/observer-acceptance-20261108.md).
 Остальная registry/robot информация ниже сохраняет дату своего среза.
 
 ## Вход и состояние
@@ -410,7 +410,7 @@ BusyBox manifest 200 с прежним digest. Browser owner login ещё тре
 Перед переключением encrypted DB+registry+credentials backup на Mac; PG18 dump
 восстановлен в isolated PG18, три blob проверены SHA-256. Это не full Harbor DR.
 Не применять legacy bootstrap API с устаревшим initial password после активации OIDC.
-Другие детали/границы SSO: `docs/auth/identity.md`.
+Другие детали/границы SSO: `docs/auth/architecture/identity.md`.
 
 ## Runtime repair — 2026-11-04
 

@@ -3,7 +3,7 @@
 Comprehensive Russian operator manual and session consolidation: [identity manual](identity.md).
 
 Additive granular app IAM, controller ownership and guarded onboarding/offboarding
-(implementation prepared, **not deployed**): [русский runbook](application-iam.md).
+(implementation prepared, **not deployed**): [русский runbook](../applications/application-iam.md).
 The 2026-11-02 GET-only audit preserved the reviewed owner/Tim UUIDs and grants;
 no new app memberships were assigned.
 
@@ -32,7 +32,7 @@ that local bypasses or pre-existing human sessions have been closed.
 | Open WebUI | Native OIDC; owner → admin, Tim → user | Existing users/chats retained through exact UUID linking; no generic email merging; local login retained |
 | n8n | Authentik MFA/group gate in front of browser UI | **Not native account SSO**: Community lacks the appropriate licensed integration; n8n may still ask for its own login |
 | Wiki | Native OIDC + PKCE, owner admin / existing Tim editor / other observers reader | Public reading and machine MCP remain separate; legacy passwords and old local sessions are owner-only |
-| LiteLLM | Native Generic OIDC + PKCE, owner-only application; reviewed UUID → existing `socrat-admin` | Existing owner database password fallback and machine keys retained; free SSO ≤5 users; owner recovery-password acceptance pending. See [LiteLLM](../applications/ai/litellm.md) |
+| LiteLLM | Native Generic OIDC + PKCE, owner-only application; reviewed UUID → existing `socrat-admin` | Existing owner database password fallback and machine keys retained; free SSO ≤5 users; owner recovery-password acceptance pending. See [LiteLLM](../../applications/ai/litellm.md) |
 | Uptime Kuma | Existing native admin authentication + public status pages | **Not migrated to SSO**: installed auth implementation has no native OIDC; public and administrative socket traffic must be separated safely first |
 
 Other app/API credentials (LiteLLM, CI, MCP, Syncthing, VPN and webhooks) are not
@@ -84,7 +84,7 @@ ssh -o Hostname=109.173.40.247 \
 ```
 
 Tim logs in as `tim`, enrolls his own TOTP and changes the initial password.
-`akadmin` was the initial emergency administrator; after the guarded migration it is retired. Current machine API and independent node-admin recovery: [admin-automation.md](admin-automation.md). Do not rely on the retired password/token. Keep an
+`akadmin` was the initial emergency administrator; after the guarded migration it is retired. Current machine API and independent node-admin recovery: [admin-automation.md](../authentik/operations/admin-automation.md). Do not rely on the retired password/token. Keep an
 independent emergency access path and securely escrow MFA recovery codes.
 SMTP invitations/reset mail, independent escrow and finer-grained automation RBAC remain follow-up work; the old bootstrap token is retired.
 

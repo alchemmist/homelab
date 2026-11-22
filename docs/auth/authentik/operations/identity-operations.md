@@ -3,7 +3,7 @@
 **External пароль:** [страница смены пароля](password-self-service.md) —
 https://auth.socrat.alchemmist.xyz/change-password; `/if/user/` для External закрыт.
 
-> **Текущий B2C контракт:** [отдельные app-группы и native роли](application-access.md).
+> **Текущий B2C контракт:** [отдельные app-группы и native роли](../../applications/application-access.md).
 > Восемь включённых ролей для LiteLLM, Open WebUI, Grafana, Wiki и LMS;
 > остальные reserved группы не означают допуск. Internal/External не является
 > app permission. Старые owner-only/подготовительные срезы ниже — история;
@@ -11,7 +11,7 @@ https://auth.socrat.alchemmist.xyz/change-password; `/if/user/` для External 
 
 ## Текущий B2C доступ: отдельные группы приложений
 
-Использовать [актуальную таблицу и правила app-групп](app-access-groups.md).
+Использовать [актуальную таблицу и правила app-групп](../../applications/app-access-groups.md).
 Действуют `app-litellm-user`, `app-open-webui-user`, `app-grafana-viewer/editor`,
 `app-wiki-reader/editor`, `app-lms-student/teacher`. Группы создаются общим Ansible
 hook при штатной регистрации приложения; доступ человеку выдаётся членством в UI
@@ -23,10 +23,10 @@ Authentik, native аккаунт обычно создаётся при перв
 полный browser/JIT/revocation acceptance всех новых групп пока не заявлен.
 
 > Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
-> [NetBird/сеть](../network/network-access.md), [владельцы мониторинга](../observability/monitoring/observability-current.md).
+> [NetBird/сеть](../../../network/network-access.md), [владельцы мониторинга](../../../observability/monitoring/observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
 
-Начало: [identity.md](identity.md). Протокол/границы: [identity-architecture.md](identity-architecture.md).
+Начало: [identity.md](../../architecture/identity.md). Протокол/границы: [identity-architecture.md](../../architecture/identity-architecture.md).
 Все операции с реальными правами требуют согласования scope владельцем.
 
 ## 1. Как пользователю войти
@@ -71,7 +71,7 @@ MFA-сессия может сделать первый этап незамет�
 XHR получает401, native UI выполняет top-level reauthorization. После простоя
 поля могут потребовать повторного ввода — это не silent refresh. Для n8n владелец
 сообщил о сбое, но симптом ещё не воспроизведён; не объявлять его исправленным.
-Диагностика и зафиксированные границы: [identity-gateway-troubleshooting.md](identity-gateway-troubleshooting.md).
+Диагностика и зафиксированные границы: [identity-gateway-troubleshooting.md](../integrations/identity-gateway-troubleshooting.md).
 
 ## 2. Кто сейчас есть и что означают роли
 
@@ -99,9 +99,9 @@ MFA/реального первого входа нет: [актуальная i
 
 **Если это новый администратор кластера:** полный порядок
 [Authentik/MFA → NetBird identity/device + JWT policy → отдельные SSH и
-Kubernetes/app-права](../network/netbird.md#как-добавить-нового-админа). Ни одна из этих
+Kubernetes/app-права](../../../network/netbird.md#как-добавить-нового-админа). Ни одна из этих
 ступеней не выдаёт остальные автоматически. Linux-аккаунт создаётся ручным
-[Ansible username + public key](ssh-user.md), без sudo и n8n.
+[Ansible username + public key](../../host-access/ssh-user.md), без sudo и n8n.
 
 ### Перед созданием
 
@@ -228,11 +228,11 @@ fallback/old sessions: это часть оставшегося cluster-wide lif
 ## 7. SSH и доступ администратора к операциям
 
 Для нового личного Linux-аккаунта без sudo достаточно
-[ручного `ssh-user.yml`: username + публичный `.pub`](ssh-user.md).
+[ручного `ssh-user.yml`: username + публичный `.pub`](../../host-access/ssh-user.md).
 Authentik/n8n для этого не нужны; NetBird, роли приложений и Kubernetes выдаются
 отдельно. Старый `users.yml` ниже остаётся exact-key inventory management.
 
-Отдельный [host-access runbook](identity-host-access.md) описывает точные assignments,
+Отдельный [host-access runbook](../../host-access/identity-host-access.md) описывает точные assignments,
 key replacement, disabled state, sudo verification и отзыв на прежних хостах.
 
 С owner Mac, с существующим проверенным SSH identity:
@@ -298,4 +298,4 @@ ansible-playbook playbooks/identity-integrations.yml \
 
 ## Сетевые изменения 6 ноября
 
-[Сводный итог](../network/network-access.md) и [NetBird](../network/netbird.md) заменяют старую обязательную device-approval процедуру: сейчас approval flags выключены, admission остаётся personal MFA/JWT group-restricted. Новый человек не получает Linux/sudo/app роли автоматически. Не возвращать Mac resolver files, internal TV profile или отдельный TV домен при onboarding. Native Grafana anonymous org access выключен; public traffic-light share — отдельное явно согласованное исключение.
+[Сводный итог](../../../network/network-access.md) и [NetBird](../../../network/netbird.md) заменяют старую обязательную device-approval процедуру: сейчас approval flags выключены, admission остаётся personal MFA/JWT group-restricted. Новый человек не получает Linux/sudo/app роли автоматически. Не возвращать Mac resolver files, internal TV profile или отдельный TV домен при onboarding. Native Grafana anonymous org access выключен; public traffic-light share — отдельное явно согласованное исключение.

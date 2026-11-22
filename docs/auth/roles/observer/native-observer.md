@@ -1,7 +1,7 @@
 # Native observer — accepted 2026-11-08
 
 Canonical runbook: [observer profile](observer-profile.md).
-Live evidence: [accepted rollout](observer-acceptance-20261108.md).
+Live evidence: [accepted rollout](../../../records/handoffs/observer-acceptance-20261108.md).
 Implementation issue [#105](https://github.com/alchemmist/homelab/issues/105) closed;
 Harbor follow-up [#134](https://github.com/alchemmist/homelab/issues/134) remains open.
 

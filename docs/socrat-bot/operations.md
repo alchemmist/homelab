@@ -1,7 +1,7 @@
 # Socrat bot
 
 > Current infrastructure context (7 November): [NetBird](../network/network-access.md),
-> [native identities](../auth/identity-current-state.md), [release/Argo](../platform/cluster-deploy.md).
+> [native identities](../auth/authentik/operations/identity-current-state.md), [release/Argo](../platform/cluster-deploy.md).
 > The latest SPI target receipt is [actual deployment / partial acceptance](../applications/spi/spi-incident-triage.md#actual-activation-and-partial-acceptance--7-november-2026):
 > two of three original cards verified, one blocked; no new retry authorization.
 > Older OFF/pending/push-blocked checkpoints below do not supersede that receipt.

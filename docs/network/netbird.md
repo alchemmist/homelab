@@ -24,8 +24,8 @@ NetBird — управляемый сетевой вход для людей: л
    учётную запись. **Созданная запись без пароля не может начать обычный вход.**
    Сначала выбрать штатную установку пароля; не обещать автоматическое приглашение
    или первый self-set экран. Текущий `antropophag` пока без пароля/MFA.
-   [Первый вход и статус](../auth/identity-current-state.md),
-   [создание человека](../auth/identity-operations.md).
+   [Первый вход и статус](../auth/authentik/operations/identity-current-state.md),
+   [создание человека](../auth/authentik/operations/identity-operations.md).
 2. **Устройство.** Человек устанавливает NetBird и входит своим Authentik/MFA в
    нашу management-систему. Администратор проверяет принадлежность устройства и
    согласованные identity/device policies; ручной approval не является текущим обязательным шагом. Setup keys для регистрации людей не используем.
@@ -37,7 +37,7 @@ NetBird — управляемый сетевой вход для людей: л
    несуществующий `netbird up --force-reauth`. Проверить результат синхронизации,
    membership и реальные политики; имя группы само по себе ничего не доказывает.
 4. **Linux/SSH.** Передать Linux-имя и публичный `.pub` в
-   [ручной Ansible playbook](../auth/ssh-user.md). Он создаёт обычного пользователя **без
+   [ручной Ansible playbook](../auth/host-access/ssh-user.md). Он создаёт обычного пользователя **без
    sudo**, проверяет каждую выбранную ноду и добавляет недостающий ключ, сохраняя
    другие. Никаких Authentik attributes или n8n workflow для этого не нужно.
 5. **Kubernetes и приложения.** Отдельно назначить нужные Rancher/Kubernetes/app
@@ -141,7 +141,7 @@ Missing workloads: `awaiting-argocd-workloads`; missing/non-Ready node:
   Разрешено **только точное GET чтение** с native auth/role checks; локальные
   создание/принятие приглашений, setup и local login/signup по-прежнему закрыты.
   Проверено admin 200 / anonymous 401 на обоих входах.
-  [Диагностика](../auth/netbird-users-invites-403.md).
+  [Диагностика](../records/incidents/netbird-users-invites-403.md).
 
 ## Что действительно испытано и где границы
 
@@ -171,7 +171,7 @@ Mac `.4`); автоматического отзыва не делали, нез
 нужные NetBird devices/доступы и отдельно отозвать SSH-ключи на всех нужных нодах.
 Выключение Authentik user не стирает `authorized_keys`, а добавляющий
 `ssh-user.yml` ничего не отзывает. Применять reviewed exact-key/disabled путь
-[host access](../auth/identity-host-access.md#4-отзыв-ssh); уже открытые SSH sessions и
+[host access](../auth/host-access/identity-host-access.md#4-отзыв-ssh); уже открытые SSH sessions и
 forwards требуют отдельного решения. Пока нет отдельной приёмки, не обещать
 мгновенный отзыв по одному изменению группы или истечению пятиминутного bearer.
 

@@ -1,7 +1,7 @@
 # Public HTTPS application entry: current native-auth contract
 
 Updated7 November 2026. The previous universal browser MFA proxy rollout is
-superseded by [native browser authentication](../../auth/native-browser-auth.md).
+superseded by [native browser authentication](../../auth/applications/native-browser-auth.md).
 Public web access requires neither NetBird nor local resolver overrides. Node SSH,
 databases, Kubernetes APIs and telemetry receivers retain their private boundaries.
 

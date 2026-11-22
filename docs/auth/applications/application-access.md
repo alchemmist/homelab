@@ -1,6 +1,6 @@
 # Авторизация приложений: текущий B2C контракт
 
-**External пароль:** [страница смены пароля](password-self-service.md) —
+**External пароль:** [страница смены пароля](../authentik/operations/password-self-service.md) —
 https://auth.socrat.alchemmist.xyz/change-password; `/if/user/` для External закрыт.
 
 Это актуальная точка входа для выдачи доступа отдельным людям. Исторические

@@ -7,7 +7,7 @@
 
 Live private stage3 выполнен 2026-11-02: dedicated Authentik application и
 native NetBird connector созданы и прочитаны обратно. См.
-[фактический отчёт](netbird-stage3-record.md). Это **не** личный OIDC-вход
+[фактический отчёт](../../../records/handoffs/netbird-stage3-record.md). Это **не** личный OIDC-вход
 владельца, перенос ownership или публичное включение; bootstrap не повторять.
 
 ## Что закрепляет код

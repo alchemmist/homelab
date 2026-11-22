@@ -1,13 +1,13 @@
 # Авторизация кластера Socrat: главный справочник
 
-> **Текущий B2C контракт:** [отдельные app-группы и native роли](application-access.md).
+> **Текущий B2C контракт:** [отдельные app-группы и native роли](../applications/application-access.md).
 > Восемь включённых ролей для LiteLLM, Open WebUI, Grafana, Wiki и LMS;
 > остальные reserved группы не означают допуск. Internal/External не является
 > app permission. Старые owner-only/подготовительные срезы ниже — история;
 > browser E2E и мгновенный отзыв всех сессий/ключей не заявлены.
 
-> Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
-> [NetBird/сеть](../network/network-access.md), [владельцы мониторинга](../observability/monitoring/observability-current.md).
+> Текущий срез7 ноября: [логины, первый вход и native роли](../authentik/operations/identity-current-state.md),
+> [NetBird/сеть](../../network/network-access.md), [владельцы мониторинга](../../observability/monitoring/observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
 
 **Основа identity — 1 ноября 2026; сеть/публичный доступ актуализированы 6 ноября.** Owner-проверка LiteLLM и native inspector/redirect controls относятся к исходной identity-сессии. Это консолидированное описание всей сессии: как
@@ -17,22 +17,22 @@
 **Дополнено 2 ноября 2026:** ограничения gateway/SSO, исправление 3x-ui Login, открытая диагностика n8n и актуальный frontend. Предварительные проверки n8n не означают, что сообщение владельца закрыто.
 
 
-**Сетевой closeout 6 ноября:** [актуальный итог](../network/network-access.md) имеет приоритет над старым журналом ниже. Public HTTPS не требует Mac overrides; Grafana anonymous org access выключен, native Viewer/Editor/Admin разделены; Kuma status/admin boundary завершён без native OIDC; NetBird primary, standalone WG recovery, Tunnelblick сохранён; внутренний TV WG и временный TV домен удалены.
+**Сетевой closeout 6 ноября:** [актуальный итог](../../network/network-access.md) имеет приоритет над старым журналом ниже. Public HTTPS не требует Mac overrides; Grafana anonymous org access выключен, native Viewer/Editor/Admin разделены; Kuma status/admin boundary завершён без native OIDC; NetBird primary, standalone WG recovery, Tunnelblick сохранён; внутренний TV WG и временный TV домен удалены.
 
 ## Читать по задаче
 
 | Вопрос | Раздел |
 |---|---|
 | Как устроен Authentik, OIDC, сессии и границы доверия | [Архитектура](identity-architecture.md) |
-| Как войти, добавить человека, выдать/отозвать права, работать с MFA | [Ежедневные операции](identity-operations.md) |
-| Двойной логин, consent offline_access, Failed to fetch, открытая проблема n8n | [Диагностика SSO и gateway](identity-gateway-troubleshooting.md) |
-| Что сделано для каждого сервиса и как подключать следующий | [Интеграции](identity-integrations.md) |
-| Итог VPS/DNS/публичных входов/Mac/ТВ и границы безопасности | [Сеть и доступ](../network/network-access.md) |
-| Как устроен NetBird, добавить админа/ноду, что с отказоустойчивостью | [NetBird: актуальный справочник](../network/netbird.md) |
-| Как добавить username + публичный SSH-ключ на ноды одним Ansible playbook | [SSH: короткая инструкция](ssh-user.md) |
-| Как отдельно устроены Linux/SSH, sudo, kubeconfig и Kubernetes RBAC | [Host access](identity-host-access.md) |
-| Где frontend/CSS, shadow DOM, фото/шрифты/иконки, inspector, rollback | [Quiet Mono frontend](identity-frontend.md) |
-| Backups, restore checks, аварии, диагностика, tests и безопасный push | [Восстановление и сопровождение](identity-recovery.md) |
+| Как войти, добавить человека, выдать/отозвать права, работать с MFA | [Ежедневные операции](../authentik/operations/identity-operations.md) |
+| Двойной логин, consent offline_access, Failed to fetch, открытая проблема n8n | [Диагностика SSO и gateway](../authentik/integrations/identity-gateway-troubleshooting.md) |
+| Что сделано для каждого сервиса и как подключать следующий | [Интеграции](../authentik/integrations/identity-integrations.md) |
+| Итог VPS/DNS/публичных входов/Mac/ТВ и границы безопасности | [Сеть и доступ](../../network/network-access.md) |
+| Как устроен NetBird, добавить админа/ноду, что с отказоустойчивостью | [NetBird: актуальный справочник](../../network/netbird.md) |
+| Как добавить username + публичный SSH-ключ на ноды одним Ansible playbook | [SSH: короткая инструкция](../host-access/ssh-user.md) |
+| Как отдельно устроены Linux/SSH, sudo, kubeconfig и Kubernetes RBAC | [Host access](../host-access/identity-host-access.md) |
+| Где frontend/CSS, shadow DOM, фото/шрифты/иконки, inspector, rollback | [Quiet Mono frontend](../authentik/custom-ui/README.md) |
+| Backups, restore checks, аварии, диагностика, tests и безопасный push | [Восстановление и сопровождение](../authentik/operations/identity-recovery.md) |
 
 Это единый справочник из нескольких файлов, а не независимые источники
 политик. Реальное конфигурирование — source-controlled manifests/controllers плюс
@@ -47,12 +47,12 @@ runtime Authentik/app state; подробная карта файлов есть
 - Owner `alchemmist` — личная MFA identity, единственный в `homelab-owner`.
   `akadmin` выведен из эксплуатации после отдельной миграции API; recovery — node-admin.
   Машинные учётки Outpost и identity automation не являются людьми.
-  См. [admin automation](admin-automation.md).
+  См. [admin automation](../authentik/operations/admin-automation.md).
 - Tim — логин **`antropophag`**, новая штатная IdP identity с pinned UUID. На
   проверке7 ноября пароль не задан, MFA/первого входа нет. Старый отдельный
   activation flow удалён; SMTP invitation/recovery не настроены. Данные apps
   сохранены; Rancher использует новую native SSO-запись с теми же grants.
-  Текущий контракт: [identity-current-state.md](identity-current-state.md).
+  Текущий контракт: [identity-current-state.md](../authentik/operations/identity-current-state.md).
 - Native SSO: Grafana, Harbor, Rancher, Open WebUI, Wiki, LiteLLM; Argo CD имеет
   собственный отдельный native OIDC controller. Их роли/ограничения неодинаковы.
 - **LiteLLM owner SSO подтверждён владельцем.** Owner-only admission, reviewed
@@ -67,7 +67,7 @@ runtime Authentik/app state; подробная карта файлов есть
   пока не принуждаются к English. Native JSON highlighting/Copy — отдельный backlog.
 - Machine APIs/MCP/robots/webhooks не переводятся на browser redirects.
   Межнодовый WireGuard сохранён; NetBird внедрён как human ingress под Argo CD.
-  [Текущая схема и добавление админа](../network/netbird.md); legacy recovery WG не отключать.
+  [Текущая схема и добавление админа](../../network/netbird.md); legacy recovery WG не отключать.
   Полный cluster-wide human-auth inventory,
   offboarding/old-session enforcement, independent backups/DR и HA ещё не завершены.
 
@@ -91,7 +91,7 @@ fixture smoke и restore check изменяют тестовые ресурсы,
 **1 ноября 2026, после второго rollout.** Пользователь подтвердил работу под
 `alchemmist`, сообщил об отказе Grafana и разрешил sudo-применение/дальнейшую
 миграцию. **На том этапе NetBird был исключён из scope; этот запрет впоследствии
-снят отдельной задачей. Текущее состояние: [NetBird внедрён](../network/netbird.md).**
+снят отдельной задачей. Текущее состояние: [NetBird внедрён](../../network/netbird.md).**
 Посторонние OTel/VPN изменения сохранять.
 
 ## Что работает
@@ -105,7 +105,7 @@ fixture smoke и restore check изменяют тестовые ресурсы,
   `tim-login.json`. **Этот initial credential больше не действующий:**
   7 ноября учётку пересоздали и переименовали в `antropophag`, пароль не задан.
   Не передавать старый файл и не утверждать завершённый первый вход; SMTP
-  приглашения нет. [Текущий статус](identity-current-state.md).
+  приглашения нет. [Текущий статус](../authentik/operations/identity-current-state.md).
 - Девять текущих плиток с локальными SVG-иконками, загруженными в собственное media-хранилище Authentik;
   все icon URLs проверены 200. Assets/hash/attribution: `assets/service-icons/`.
 
@@ -160,7 +160,7 @@ Private Grafana nginx намеренно очищает Authorization header; ad
   Прямые WG-IP:443 сейчас имеют чужой cert из-за отсутствующих Wiki VHs в live
   gateways; public оба IP работают. Не отключать TLS и не запускать вслепую старый
   wiki-editor-access role по уже вынесенному private-gateway.
-- **Kuma boundary завершён 6 ноября:** public status/read/push отделены от personal-MFA admin host и native account controls; public Socket.IO закрыт. Native OIDC по-прежнему нет. Инцидент credential recovery с ~35min heartbeat gap отражён в [сетевом итоге](../network/network-access.md).
+- **Kuma boundary завершён 6 ноября:** public status/read/push отделены от personal-MFA admin host и native account controls; public Socket.IO закрыт. Native OIDC по-прежнему нет. Инцидент credential recovery с ~35min heartbeat gap отражён в [сетевом итоге](../../network/network-access.md).
 - LiteLLM, CI/robots, MCP/API, VPN и другие machine credentials не подменять SSO.
   Каталог покрывает восемь foundation-managed portal services (Argo CD отдельно), не буквально все endpoints кластера.
 
@@ -192,7 +192,7 @@ kube-apiserver/Rancher principal. Никаких новых cluster-admin kubeco
 
 ## Источники и reconciliation
 
-- `docs/auth/access-management.md` — текущая матрица, эксплуатация и ограничения.
+- `docs/auth/architecture/access-management.md` — текущая матрица, эксплуатация и ограничения.
 - `deploy/identity/{services,account-mappings}.json` — reviewed services/identities.
 - `ansible/roles/authentik/`, playbook `authentik.yml` — foundation и proxy gate.
 - `identity-integrations.yml`, explicit `identity_oidc_services` (default empty).
@@ -220,10 +220,10 @@ API keys/SSH/VPN, scheduled independent backups/key escrow/full restore,
 scoped RBAC/rotation нового machine admin API, историческая kubeconfig exposure/rotation.
 IdP disable не отзывает автоматически уже выданные app/API/SSH credentials.
 
-В identity-сессии 1 ноября WG keys/routes/firewall не меняли; **это не описание последующих сетевых работ 5–6 ноября**, перечисленных в [итоге](../network/network-access.md). Не назначать одну подсеть нескольким direct WG
+В identity-сессии 1 ноября WG keys/routes/firewall не меняли; **это не описание последующих сетевых работ 5–6 ноября**, перечисленных в [итоге](../../network/network-access.md). Не назначать одну подсеть нескольким direct WG
 peers: нужен gateway+ACL/failover. Root на чужой ноде = доверие к workloads/secrets
 на ней; SSO/taints/NetworkPolicy не устраняют эту границу. На том этапе NetBird
-ещё не был внедрён; последующее внедрение и ограничения описаны в [актуальном справочнике](../network/netbird.md).
+ещё не был внедрён; последующее внедрение и ограничения описаны в [актуальном справочнике](../../network/netbird.md).
 
 ### Wiki implementation: историческая приёмка1 ноября
 
@@ -234,7 +234,7 @@ peers: нужен gateway+ACL/failover. Root на чужой ноде = дове
   first rollout was automatically rolled back, then corrected, pre-pulled and accepted.
 - На этой старой приёмке Wiki была на socrat-3. **Сейчас Wiki на socrat-0**:
   runtime f52cf2a, digest `sha256:dc5b15b391cd94fad3db51dc7fa917e138d77ea345e27518371073538c5a78d9`,
-  retained PVC. Старый digest выше не production. [Upgrade](../records/handoffs/wiki-upgrade-20261107.md).
+  retained PVC. Старый digest выше не production. [Upgrade](../../records/handoffs/wiki-upgrade-20261107.md).
   Discover actual PVC affinity before any backup pod.
   Frozen full-volume copy made with writer stopped; old app resumed during encrypted
   off-node transfer; snapshot DB integrity/IDs/hash preservation checked. Temporary

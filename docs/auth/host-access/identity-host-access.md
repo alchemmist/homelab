@@ -4,9 +4,9 @@
 > Linux `tim` не переименован вместе с Authentik login `antropophag`.
 > Standalone WG — только recovery; public HTTPS не открывает SSH в Internet.
 
-Часть [общего справочника](identity.md). Authentik SSO не заменяет эти контуры и
+Часть [общего справочника](../architecture/identity.md). Authentik SSO не заменяет эти контуры и
 не выдаёт SSH/root/kubectl автоматически. WireGuard/NetBird topology здесь не менять.
-Сетевой вход и полный сценарий нового админа: [NetBird](../network/netbird.md).
+Сетевой вход и полный сценарий нового админа: [NetBird](../../network/netbird.md).
 
 ## 1. Источники
 
@@ -15,7 +15,7 @@
   добавление без удаления остальных ключей: [короткая инструкция](ssh-user.md).
 - `ansible/playbooks/users.yml` — точный декларативный key set из inventory.
 - `ansible/playbooks/identity-hosts.yml` — защита owner kubeconfig + users playbook.
-- [Реестр персональных SSH-учёток](../../ansible/inventory/group_vars/Socrat/users.yml): `homelab_owner_account` — защищённый sudo-владелец; `homelab_users` — реальные публичные ключи и assignments.
+- [Реестр персональных SSH-учёток](../../../ansible/inventory/group_vars/Socrat/users.yml): `homelab_owner_account` — защищённый sudo-владелец; `homelab_users` — реальные публичные ключи и assignments.
 - `deploy/identity/access-policy.yaml` — intent ролей, не самостоятельный enforcement.
 - [Опциональный Authentik public-key import](identity-ssh-keys.md) — отдельный
   read-only plan/export и guarded Ansible play; сейчас пустой/выключенный, без
@@ -156,4 +156,4 @@ root-хоста «нет доступа к данным», пока там ис�
 
 ## Рабочий транспорт после 6 ноября
 
-Обычные SSH aliases нод используют только `10.250.0.1/.3/.2/.5:2222` с pinned host keys, без public fallback/ProxyJump. Mac NetBird — основной transport, standalone WG owner `.4` — отдельно проверенный recovery, обычно выключен; mandatory Tunnelblick не менять. Наличие публичных human HTTPS entrances не переносит SSH на публичные A records. Внутренний TV peer `.8` отозван, Mac/phone/node identities этим не затронуты. Текущий адрес VPS, DNS lifecycle и acceptance boundaries: [network-access.md](../network/network-access.md).
+Обычные SSH aliases нод используют только `10.250.0.1/.3/.2/.5:2222` с pinned host keys, без public fallback/ProxyJump. Mac NetBird — основной transport, standalone WG owner `.4` — отдельно проверенный recovery, обычно выключен; mandatory Tunnelblick не менять. Наличие публичных human HTTPS entrances не переносит SSH на публичные A records. Внутренний TV peer `.8` отозван, Mac/phone/node identities этим не затронуты. Текущий адрес VPS, DNS lifecycle и acceptance boundaries: [network-access.md](../../network/network-access.md).

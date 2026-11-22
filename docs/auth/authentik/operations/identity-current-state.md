@@ -1,8 +1,8 @@
 # Identity: текущий статус и первый вход
 
-> **PostgreSQL (2026-11-20):** Рабочая БД Authentik — `pg-critical/authentik`, endpoint `pg-critical-rw`; не путать с остановленным authentik-postgres. [Эксплуатация и CA](../data/postgresql/postgres-platform.md).
+> **PostgreSQL (2026-11-20):** Рабочая БД Authentik — `pg-critical/authentik`, endpoint `pg-critical-rw`; не путать с остановленным authentik-postgres. [Эксплуатация и CA](../../../data/postgresql/postgres-platform.md).
 
-> **Live auth audit15Nov:** [actual browser/API boundaries](browser-auth-audit.md).
+> **Live auth audit15Nov:** [actual browser/API boundaries](../../../records/handoffs/browser-auth-audit.md).
 > Current public Kuma Admin/Syncthing/Search routes do not have the previously
 > described Authentik MFA gate. Native service login is not Authentik SSO. Native
 > OIDC apps may serve public HTML but deny private APIs. No auth changes applied.
@@ -10,7 +10,7 @@
 **External пароль:** [страница смены пароля](password-self-service.md) —
 https://auth.socrat.alchemmist.xyz/change-password; `/if/user/` для External закрыт.
 
-> **Текущий B2C контракт:** [отдельные app-группы и native роли](application-access.md).
+> **Текущий B2C контракт:** [отдельные app-группы и native роли](../../applications/application-access.md).
 > Восемь включённых ролей для LiteLLM, Open WebUI, Grafana, Wiki и LMS;
 > остальные reserved группы не означают допуск. Internal/External не является
 > app permission. Старые owner-only/подготовительные срезы ниже — история;
@@ -28,14 +28,14 @@ Danila уже добавлен в эту группу; `authentik Read-only` у�
 группы и автоматический remove/re-add native кеша. Прежние owner/editor/direct
 права аддитивны. **Harbor observer не поддержан:** admission и три Guest grants
 закрыты после реального CLI revocation failure; отдельная задача #134. Не открывать
-его по наличию старого bootstrap receipt. Подробности: [native observer](native-observer.md),
-[приёмка](observer-acceptance-20261108.md), [runbook](observer-profile.md).
+его по наличию старого bootstrap receipt. Подробности: [native observer](../../roles/observer/native-observer.md),
+[приёмка](../../../records/handoffs/observer-acceptance-20261108.md), [runbook](../../roles/observer/observer-profile.md).
 
 ## Исторический срез — 7 ноября, снятие общих внешних auth gates
 
 Ниже зафиксирована приёмка того этапа, не текущее обещание anonymous SPI evidence
 или нулевого числа Proxy Providers. Позднее RustFS получил отдельную private
-single-domain защиту: [live edge](../rustfs/private-single-domain-live.md).
+single-domain защиту: [live edge](../../../rustfs/private-single-domain-live.md).
 Её не отменять при работе с observer, которому RustFS не выдавался.
 
 Удалены11 obsolete Authentik Applications (включая старую Kuma bookmark-карточку)
@@ -43,7 +43,7 @@ single-domain защиту: [live edge](../rustfs/private-single-domain-live.md)
 их UUID/client credentials/callbacks/policy bindings сохранены. n8n,3x-ui, Kuma
 и Syncthing используют собственный login; SearXNG и опубликованные SPI artifacts
 публичны без Authentik и NetBird. Reader допускает только GET/HEAD, проверяет
-manifest/hash и выдаёт безопасные типы inline. [Контракт и границы](native-browser-auth.md).
+manifest/hash и выдаёт безопасные типы inline. [Контракт и границы](../../applications/native-browser-auth.md).
 
 Повторная приёмка после восстановления socrat-2: **82/82** публичных проверок
 на HOME и VPS, обычная проверка TLS без отключения верификации. Все4 ноды Ready;
@@ -52,13 +52,13 @@ socrat-2 Ready с17:55:34UTC7 ноября. Все8 затронутых Argo ap
 force-delete не потребовался.10 native OIDC регистраций/providers/bindings и
 сохранённые поля иконок не изменились; Proxy Providers0. Опубликованный artifact
 проверен через оба входа: anonymous GET/HEAD/206, manifest/SHA-256, inline,
-PUT/POST/PATCH/DELETE405. [Приёмка](native-browser-auth.md#recovered-vps-final-acceptance).
+PUT/POST/PATCH/DELETE405. [Приёмка](../../applications/native-browser-auth.md#recovered-vps-final-acceptance).
 Это протокольная приёмка, не новая проверка входа от имени каждого человека.
 
 
 Актуализировано **7 ноября 2026**; источники:
 `deploy/identity/{account-mappings.json,lifecycle.json,browser-auth-policy.json}`,
-`docs/auth/user-recreation-20261107.md` и read-only проверка IdP.
+`docs/records/handoffs/user-recreation-20261107.md` и read-only проверка IdP.
 Это состояние, не автоматический reconciler паролей или выдача новых прав.
 
 ## Личные identities
@@ -137,5 +137,5 @@ Owner recovery, robots, machine API keys и emergency identities не подме
 тот же аватар. Браузер обращается к внешнему Gravatar; локальные initials — отдельная
 возможная настройка, **её в этой задаче не применяли**.
 
-Процедуры: [операции](identity-operations.md), [интеграции](identity-integrations.md),
-[NetBird](../network/netbird.md), [SSH](ssh-user.md), [recovery](identity-recovery.md).
+Процедуры: [операции](identity-operations.md), [интеграции](../integrations/identity-integrations.md),
+[NetBird](../../../network/netbird.md), [SSH](../../host-access/ssh-user.md), [recovery](identity-recovery.md).
