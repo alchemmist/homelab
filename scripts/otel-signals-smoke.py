@@ -53,7 +53,7 @@ def trace_fixtures(now):
                 attribute("gen_ai.input.messages", SECRET),
                 attribute("url.full", "https://fixture.invalid/path?token=" + SECRET),
             ]
-            if category in ("http5xx", "legacy5xx"):
+            if category in {"http5xx", "legacy5xx"}:
                 key = "http.response.status_code" if category == "http5xx" else "http.status_code"
                 attrs.append({"key": key, "value": {"intValue": "503"}})
             spans.append(
@@ -144,7 +144,7 @@ def start_signal_components(
     for name in ["loki", "tempo", "trace-gateway", "cluster"]:
         path = args.workspace / (name + ".json")
         path.write_text(json.dumps(configs[name]))
-        if name in ("cluster", "trace-gateway"):
+        if name in {"cluster", "trace-gateway"}:
             command = [str(args.binaries / "otelcol-contrib"), "--config=" + str(path)]
         else:
             command = [

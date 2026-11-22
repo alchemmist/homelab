@@ -53,8 +53,8 @@ def audit_expression(expression):
         if "$" in value:
             dynamic += 1
             continue
-        if operator in ("=~", "!~"):
-            if value not in (".*", ".+") and not compatible_numeric_regex(value):
+        if operator in {"=~", "!~"}:
+            if value not in {".*", ".+"} and not compatible_numeric_regex(value):
                 findings.append(
                     {
                         "label": label,
@@ -83,7 +83,7 @@ def audit_expression(expression):
 def expressions(value, path=()):
     if isinstance(value, dict):
         for key, item in value.items():
-            if key in ("expr", "query", "definition") and isinstance(item, str):
+            if key in {"expr", "query", "definition"} and isinstance(item, str):
                 yield path + (str(key),), item
             elif isinstance(item, str) and key.endswith(".json"):
                 try:

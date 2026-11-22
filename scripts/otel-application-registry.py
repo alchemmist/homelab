@@ -67,11 +67,10 @@ def summarize(objects):
     incarnations = []
     for obj in objects:
         kind, meta, spec = obj["kind"], obj["metadata"], obj.get("spec", {})
-        if kind in ("Job", "ReplicaSet") and any(
-            owner.get("kind") in ("CronJob", "Deployment")
-            for owner in meta.get("ownerReferences", [])
-        ):
-            continue
+        if isinstance(kind, str) and kind in {"Job", "ReplicaSet"}:
+            owners = (owner.get("kind") for owner in meta.get("ownerReferences", []))
+            if any(isinstance(k, str) and k in {"CronJob", "Deployment"} for k in owners):
+                continue
         if kind == "CronJob":
             template = spec.get("jobTemplate", {}).get("spec", {}).get("template", {})
         elif kind == "Pod":
