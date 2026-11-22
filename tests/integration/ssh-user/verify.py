@@ -7,12 +7,12 @@ Private test keys and containers are removed in finally/TemporaryDirectory.
 """
 
 import json
-from pathlib import Path
 import re
 import subprocess
 import tempfile
 import time
 import uuid
+from pathlib import Path
 from typing import cast
 
 ROOT = Path(__file__).resolve().parents[3]
