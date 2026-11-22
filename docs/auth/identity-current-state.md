@@ -58,7 +58,7 @@ PUT/POST/PATCH/DELETE405. [Приёмка](native-browser-auth.md#recovered-vps-
 
 Актуализировано **7 ноября 2026**; источники:
 `deploy/identity/{account-mappings.json,lifecycle.json,browser-auth-policy.json}`,
-`docs/identity/user-recreation-20261107.md` и read-only проверка IdP.
+`docs/auth/user-recreation-20261107.md` и read-only проверка IdP.
 Это состояние, не автоматический reconciler паролей или выдача новых прав.
 
 ## Личные identities

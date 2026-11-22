@@ -13,7 +13,7 @@ def main() -> int:
     """Report the authoritative owner without reading arguments or credentials."""
     sys.stderr.write(
         "Retired: grafana-app-admission.py does not read credentials or change identity.\n"
-        "Current contract: docs/identity/app-access-groups.md\n"
+        "Current contract: docs/auth/app-access-groups.md\n"
         "Owner: ansible/roles/authentik/files/reconcile_app_access.py and "
         "ansible/roles/identity_app_access/\n"
         "Review that owner's separate plan/apply prerequisites; nothing was forwarded.\n"

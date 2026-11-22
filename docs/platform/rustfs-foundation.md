@@ -7,7 +7,7 @@ Current runtime: RustFS foundation is deployed through `charts/rustfs` and
 The7 November browser cutover removes Authentik proxy gates: console keeps native
 OIDC; published evidence is anonymous GET/HEAD with safe inline preview and
 manifest/hash verification. S3 itself stays private. See
-[the current browser contract](../identity/native-browser-auth.md).
+[the current browser contract](../auth/native-browser-auth.md).
 
 The historical source-only notes below describe the original staging phase,
 not a claim that production is inactive. Where they mention an external proxy

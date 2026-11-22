@@ -29,7 +29,7 @@
 | Native app controllers | `ansible/roles/identity_integrations/files/integrate.py` |
 | LiteLLM dedicated controller | `ansible/roles/identity_integrations/files/litellm_oidc.py` |
 | Argo CD, вне foundation registry | `ansible/roles/argocd_oidc/files/configure.py`, `deploy/argocd/values.yaml` |
-| Сводный live status | `docs/identity/access-management.md` |
+| Сводный live status | `docs/auth/access-management.md` |
 | Санитизированные результаты | `deploy/identity/migration-evidence/` |
 
 `migration` strings каталога — исторические hints, не oracle live readiness:
@@ -343,7 +343,7 @@ runbook: [Argo CD refresh](argocd-refresh.md). Старым сессиям ну�
 
 Bearer lifetime — 5 минут; offline-access/8h refresh настроены только новому proxy provider. Но expiry-тест выявил native browser roundtrip к IdP, а не бесшовный refresh; возможен reload панели при истёкшем proxy cookie. Не переносить на этот шлюз утверждение о silent refresh, доказанное для Argo CD. Личная owner recovery/native-login и valid API token acceptance остаются отдельными.
 
-Источники, инсталляция host rule, воспроизводимая приёмка, limits и rollback: [docs/identity/xui-gateway.md](xui-gateway.md). Узкий controller `xui_gateway.py` не replay foundation и не изменяет пользователей/базу панели.
+Источники, инсталляция host rule, воспроизводимая приёмка, limits и rollback: [docs/auth/xui-gateway.md](xui-gateway.md). Узкий controller `xui_gateway.py` не replay foundation и не изменяет пользователей/базу панели.
 
 
 ### 3x-ui: исправление Login Failed to fetch

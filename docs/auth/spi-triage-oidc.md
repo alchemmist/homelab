@@ -3,7 +3,7 @@
 Runtime cutover completed on 10 November 2026 UTC; see the final receipt below.
 Earlier prepared/held checkpoints are historical, not the current runtime state.
 
-Read `docs/identity/identity-integrations.md`, `identity-architecture.md`,
+Read `docs/auth/identity-integrations.md`, `identity-architecture.md`,
 `identity-current-state.md`, `cluster-deploy.md`, published wiki `/platform/deploy/`
 and `/start/access/` first. Historical proxy receipts are not a native OIDC recipe.
 

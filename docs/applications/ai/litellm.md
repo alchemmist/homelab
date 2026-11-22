@@ -10,7 +10,7 @@ Vladislav has migrated to this group; his original account is preserved, his
 individual admission binding was removed and `litellm-users.json` is now empty.
 This supersedes the manual allowlist onboarding below. Licensing/capacity gates
 remain; removing membership does not revoke existing API keys automatically.
-See [systemic app groups, verification and limits](../../identity/app-access-groups.md).
+See [systemic app groups, verification and limits](../../auth/app-access-groups.md).
 
 ## Historical reviewed user onboarding: vladislav
 

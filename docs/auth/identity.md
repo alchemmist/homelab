@@ -192,7 +192,7 @@ kube-apiserver/Rancher principal. Никаких новых cluster-admin kubeco
 
 ## Источники и reconciliation
 
-- `docs/identity/access-management.md` — текущая матрица, эксплуатация и ограничения.
+- `docs/auth/access-management.md` — текущая матрица, эксплуатация и ограничения.
 - `deploy/identity/{services,account-mappings}.json` — reviewed services/identities.
 - `ansible/roles/authentik/`, playbook `authentik.yml` — foundation и proxy gate.
 - `identity-integrations.yml`, explicit `identity_oidc_services` (default empty).

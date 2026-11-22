@@ -6,7 +6,7 @@
 | `pgadmin_writer`, `pgadmin_browser`, `pg.socrat` | [pgAdmin SQL roles and Authentik admission](data/postgresql/pgadmin.md#access-as-of-22-november-2026) |
 | `redis-common`, Sentinel, `litellm:*` | [Coordination and limits](data/redis/redis-common.md) |
 | `redisinsight-readers`, `redis.socrat` | [Dashboard grants and revocation](data/redis/redisinsight.md#granting-and-revoking-access) |
-| Authentik, OIDC, groups | [Current identity model](identity/identity-current-state.md); [application access](identity/application-access.md) |
+| Authentik, OIDC, groups | [Current identity model](auth/identity-current-state.md); [application access](auth/application-access.md) |
 | NetBird, WireGuard, 3x-ui | [Human and node access](network/network-access.md); [application egress](network/service-vpn-egress.md) |
 | Argo CD, Rancher, Harbor, k3s | [Deployment](platform/cluster-deploy.md); [node and storage runbooks](platform/) |
 | Grafana, Thanos, Prometheus, Loki | [Monitoring](monitoring/observability-current.md); [log operations](logging/operator-guide.md) |
