@@ -67,3 +67,22 @@ Final check at 21:28 UTC: `raw-packed-copy-20261121` completed. On socrat-3
 manifest; SHA-256 matches the value above. On socrat-0 `offsite-complete.json`
 records the same digest, the transit `raw.tar.zst` is absent, and the pre-cutover
 raw directory has zero entries. No compressed transit copy remains to reclaim.
+
+## Recovery limit observed on 2026-11-22: raw block downsampling EOF
+
+The workshop Compactor failed to expand chunk ref `167710384981` in raw block
+`01M7RY8BC3H3G4HNS4B7BQB8T2` (Nov 13 00:00 through Nov 19 00:00 UTC,
+exclusive). The 54-byte record at offset 206660437 in `chunks/000040` matched
+between an authenticated S3 range GET and the Compactor cache. Its CRC32C was
+valid, but the Prometheus v0.309.1 XOR iterator read 89 of the 120 advertised
+samples before EOF. This does not establish loss of the entire block.
+
+The verified cold manifest on socrat-3 contains this block. Its recorded SHA-256
+for the entire 536870100-byte segment is
+`2b3b77c4356c533b6a0ed7bd4e59b5f38bf8745361bce54f3791bf92f9a7ee23`,
+identical to the freshly hashed cache segment. None of the three immediate
+parents or the 206 source IDs appear in the cold manifest. Restoring this
+archive or downloading the segment again is therefore not a repair for this
+record. Preserve the archive, original block and marks. Before replacing any
+block, validate a candidate offline, including strict historical queries and
+lineage/coverage; do not infer complete coverage from an overlapping interval.
