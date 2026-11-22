@@ -12,24 +12,24 @@ oidc.APP.update(name="Redis Insight", slug="redisinsight", meta_launch_url="http
                 meta_description="Owner-only shared Redis browser.")
 oidc.PROVIDER.update(name="homelab-redisinsight", client_id=oidc.CLIENT,
                      redirect_uris=[{"matching_mode":"strict","url":"https://" + oidc.HOST + "/oauth2/callback"}])
-READERS = 'redisinsight-readers'
-ATTRS = {'homelab_public_web_role': READERS}
+READERS = "redisinsight-readers"
+ATTRS = {"homelab_public_web_role": READERS}
 
 
 def reader_group(api):
-    group = oidc.iam.one(api, 'core/groups/', 'name', READERS)
+    group = oidc.iam.one(api, "core/groups/", "name", READERS)
     if group:
-        oidc.check(group['attributes'] == ATTRS and group['is_superuser'] is False
-                   and all(group[k] == [] for k in ('parents', 'children', 'roles')),
-                   'Unexpected privileged or foreign readers group')
+        oidc.check(group["attributes"] == ATTRS and group["is_superuser"] is False
+                   and all(group[k] == [] for k in ("parents", "children", "roles")),
+                   "Unexpected privileged or foreign readers group")
     return group
 
 
 def extra_bindings(api, app):
     group = reader_group(api)
-    bindings = api.rows('policies/bindings/?target=' + str(app['pk']))
-    return {READERS: group['pk']} if group and any(b.get('group') == group['pk'] for b in bindings) else {}
+    bindings = api.rows("policies/bindings/?target=" + str(app["pk"]))
+    return {READERS: group["pk"]} if group and any(b.get("group") == group["pk"] for b in bindings) else {}
 
 
-if __name__ == '__main__':
-    oidc.main(namespace='redis', extra_bindings=extra_bindings)
+if __name__ == "__main__":
+    oidc.main(namespace="redis", extra_bindings=extra_bindings)
