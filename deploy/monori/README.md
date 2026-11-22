@@ -48,3 +48,5 @@ file per missing revision from the same image. Each file must advance `alembic_v
 by exactly one. Optional `grants/NNNN.sql` files reconcile version-specific runtime
 grants on replay. The transaction rolls back on any failure. The backend init check
 uses the same target. A target older than the database is rejected, not downgraded.
+
+Before the stateful Sync rollout, the `monori-sync-image-cache` PreSync Job pulls the exact Sync image on the Sync node. It runs no application code and mounts no data. A failed or slow pull holds the full Argo sync before the existing single writer is stopped; do not bypass hooks with a selective Deployment sync.
