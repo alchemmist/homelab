@@ -88,7 +88,7 @@ def test_rustfs_names_additive_without_changes_to_existing_records() -> None:
         # Require the exact reviewed new records before the unchanged historical comparison.
         new = _reviewed_openhands_addition(new, zone.healthy_addresses(home, vps))
         prefix = "pg.socrat IN A "
-        assert [r for r in new if r.startswith(prefix)] == [prefix + a for a in zone.healthy_addresses(home, vps)]
+        assert [r for r in new if r.startswith(prefix)] == [prefix + zone.HOME]
         new = [r for r in new if not r.startswith(prefix)]
         # Independently approved concurrent SPI DNS addition is also historical-fixture scope.
         names = (

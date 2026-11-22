@@ -56,7 +56,7 @@ def delta(old, new):
         )
         require(
             [x for x in after if x.startswith("pg.socrat IN A ")]
-            == ["pg.socrat IN A " + a for a in old.healthy_addresses(home, vps)],
+            == ["pg.socrat IN A " + old.HOME],
             "Wrong new record",
         )
 
@@ -126,7 +126,7 @@ def main():
             )
             require(
                 "A" in result.split()
-                and any(ip in result.split() for ip in newmod.healthy_addresses(True, True)),
+                and newmod.HOME in result.split(),
                 "New authoritative record not confirmed",
             )
             (ROOT / "after.json").write_text(

@@ -36,7 +36,6 @@ FAILOVER = [
     "n8n.socrat",
     "netbird.socrat",
     "openhands.socrat",
-    "pg.socrat",
     "pr-agent.socrat",
     "rancher.socrat",
     "remark42",
@@ -55,6 +54,7 @@ FAILOVER = [
 
 # Names that have a single published address and must not move.
 STATIC_A = {
+    "pg.socrat": [HOME],
     "vpn": ["91.189.82.238"],
     "netbird-relay-vps.socrat": [VPS],
     "devsyringe": [HOME],

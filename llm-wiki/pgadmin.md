@@ -13,3 +13,5 @@ and `pgadmin-oidc` Secrets out of Git. The DNS playbook `pgadmin-public-dns.yml`
 four authoritative zone writers before a serial approved record addition; don't use a client
 hosts override to declare the public deployment complete. Verify public TLS, anonymous redirect,
 owner sign-in, and denied access for a nonmember before acceptance.
+
+DNS is HOME-only: the VPS ingress does not watch namespace `postgres`. Do not grant the edge controller watch access to database Secrets to publish this UI.
