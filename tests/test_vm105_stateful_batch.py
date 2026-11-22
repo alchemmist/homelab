@@ -135,22 +135,7 @@ def expect_spi_cutover(
     expected: dict[tuple[str, str], dict[str, object]], *, postgres: bool
 ) -> None:
     """Extend the pinned SPI render by the committed storage cutover, not the live chart."""
-    # ca3a866c prepares one destination, not independent namespace-wide and pod peers.
-    policy = _mapping(expected["NetworkPolicy", "spi-triage"]["spec"])
-    policy["egress"] = [
-        {
-            "to": [
-                {
-                    "namespaceSelector": {
-                        "matchLabels": {"kubernetes.io/metadata.name": "postgres"}
-                    },
-                    "podSelector": {"matchLabels": {"cnpg.io/cluster": "pg-common"}},
-                }
-            ],
-            "ports": [{"port": 5432, "protocol": "TCP"}],
-        },
-        *_sequence(policy["egress"]),
-    ]
+    # The pinned render already includes the pg-common:5432 egress peer.
     deployment = _mapping(expected["Deployment", "spi-triage"]["spec"])
     pod = _mapping(_mapping(deployment["template"])["spec"])
     (guard,) = [
@@ -159,9 +144,6 @@ def expect_spi_cutover(
         if g["name"] == "require-existing-spi"
     ]
     if not postgres:
-        # Only the conditional's leading newline differs from the original SQLite guard.
-        args = _sequence(guard["args"])
-        guard["args"] = ["\n" + _text(args[0]), *args[1:]]
         return
 
     # ca3a866c wires PG credentials and CA; f927f5a4 checks both required relations.
@@ -411,13 +393,6 @@ class StatefulBoundaries(unittest.TestCase):
                         ):
                             expected.pop(key, None)
                     compare_namespace_inputs(expected, chart, ns)
-                    if chart == "charts/spi-triage":
-                        # The current SPI service is intentionally routed to the
-                        # handoff worker rather than the retired workload label.
-                        service = _mapping(expected[("Service", "spi-triage")])
-                        _mapping(service["spec"])["selector"] = {
-                            "app": "spi-pg-handoff"
-                        }
                     self.assertEqual(current, expected)
                     after = historical(HANDOFF)
                 else:
@@ -464,6 +439,7 @@ class StatefulBoundaries(unittest.TestCase):
         image, _ = self._historical_inputs(chart, values)
         expected = render(pinned, chart, values, "automation", "spi-triage", release_image=image)
         expect_spi_cutover(expected, postgres=False)
+        compare_namespace_inputs(expected, chart, "automation")
         # f927f5a4 retires the handoff Service target, even with the old flag set.
         current = render(
             R, chart, values, "automation", "spi-triage", sqlite_with_retired_handoff=True

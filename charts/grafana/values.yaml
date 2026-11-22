@@ -145,7 +145,7 @@ grafana:
       'homelab-project-maintainer') || contains(groups[*], 'app-grafana-viewer')) && 'Viewer' || ''
   grafana.ini:
     auth.generic_oauth:
-      client_secret: '$__file{/etc/grafana/secrets/authentik/client-secret}'
+      client_secret: $__file{/etc/grafana/secrets/authentik/client-secret}
     analytics:
       check_for_updates: false
       reporting_enabled: false
@@ -190,7 +190,7 @@ grafana:
       secretName: socrat-authentik-grafana
       mountPath: /etc/grafana/secrets/authentik
       readOnly: true
-      defaultMode: 0440
+      defaultMode: 288  # 0440
       items:
         - key: client-secret
           path: client-secret
