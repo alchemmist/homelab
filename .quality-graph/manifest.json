@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e",
+  "graphDigest": "791868d1c458a8bf9a42b44bf23292d1a30c06d75b0df8cc0857dedb096cfa94",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -65,6 +65,33 @@
       },
       "timeoutMinutes": 5,
       "title": "YAML structure"
+    },
+    {
+      "env": {},
+      "id": "python-scopes",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "uv run --locked python -m scripts.quality.python_scopes"
+      },
+      "timeoutMinutes": 5,
+      "title": "Scoped Python rules"
     },
     {
       "env": {},

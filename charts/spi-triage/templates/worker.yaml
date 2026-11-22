@@ -60,7 +60,7 @@ spec:
               {{ if .Values.postgresEnabled }}
               import os,psycopg;
               c=psycopg.connect(os.environ['SPI_POSTGRES_URL'],connect_timeout=5);
-              assert c.execute("SELECT current_database(),EXISTS(SELECT FROM jobs),to_regclass('workflow_wait_owner') IS NOT NULL").fetchone()==('spi_triage',True,True);
+              assert c.execute("SELECT current_database(),to_regclass('public.jobs') IS NOT NULL,to_regclass('workflow_wait_owner') IS NOT NULL").fetchone()==('spi_triage',True,True);
               c.close()
               {{ else }}
               from pathlib import Path;
@@ -233,7 +233,7 @@ spec:
   clusterIP: {{ .Values.serviceClusterIP | quote }}
   {{- end }}
   selector:
-    app: {{ ternary "spi-pg-handoff" "spi-triage" (.Values.pgHandoff | default false) }}
+    app: spi-triage
     {{- if .Values.maintenanceIngressPaused }}
     homelab.io/maintenance-serving: enabled
     {{- end }}

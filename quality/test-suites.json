@@ -82,6 +82,7 @@
       "tests/test_quality_p56_53_vpn_task_names.py",
       "tests/test_quality_p56_56_node_lock.py",
       "tests/test_quality_python_policy.py",
+      "tests/test_quality_python_scopes.py",
       "tests/test_quality_system.py",
       "tests/test_recovery_20261109_contracts.py",
       "tests/test_refactor_acceptance.py",

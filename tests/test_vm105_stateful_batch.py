@@ -108,10 +108,13 @@ def render(
     *,
     release_image: dict[str, str] | None = None,
     monori_images: dict[str, dict[str, str]] | None = None,
+    sqlite_with_retired_handoff: bool = False,
 ) -> dict[tuple[str, str], dict[str, object]]:
     cmd = ["helm", "template", release, str(root / chart), "-n", ns]
     if values:
         cmd += ["-f", str(root / values)]
+    if sqlite_with_retired_handoff:
+        cmd += ["--set", "postgresEnabled=false,pgHandoff=true"]
     if release_image is not None:
         # Release version is an input independent of historical placement. Only
         # the before-render receives it; a wrong current template still differs.
@@ -126,6 +129,68 @@ def render(
         for d in yaml.safe_load_all(subprocess.check_output(cmd, text=True))
         if d
     }
+
+
+def expect_spi_cutover(
+    expected: dict[tuple[str, str], dict[str, object]], *, postgres: bool
+) -> None:
+    """Extend the pinned SPI render by the committed storage cutover, not the live chart."""
+    # ca3a866c prepares one destination, not independent namespace-wide and pod peers.
+    policy = _mapping(expected["NetworkPolicy", "spi-triage"]["spec"])
+    policy["egress"] = [
+        {
+            "to": [
+                {
+                    "namespaceSelector": {
+                        "matchLabels": {"kubernetes.io/metadata.name": "postgres"}
+                    },
+                    "podSelector": {"matchLabels": {"cnpg.io/cluster": "pg-common"}},
+                }
+            ],
+            "ports": [{"port": 5432, "protocol": "TCP"}],
+        },
+        *_sequence(policy["egress"]),
+    ]
+    deployment = _mapping(expected["Deployment", "spi-triage"]["spec"])
+    pod = _mapping(_mapping(deployment["template"])["spec"])
+    (guard,) = [
+        g
+        for g in map(_mapping, _sequence(pod["initContainers"]))
+        if g["name"] == "require-existing-spi"
+    ]
+    if not postgres:
+        # Only the conditional's leading newline differs from the original SQLite guard.
+        args = _sequence(guard["args"])
+        guard["args"] = ["\n" + _text(args[0]), *args[1:]]
+        return
+
+    # ca3a866c wires PG credentials and CA; f927f5a4 checks both required relations.
+    # Compare the rendered command as text; never execute the guard.
+    pg_secret = {"secretRef": {"name": "spi-triage-postgres"}}
+    ca_mount = {"name": "pg-ca", "mountPath": "/pg-ca", "readOnly": True}
+    guard["envFrom"] = [pg_secret]
+    guard["volumeMounts"] = [ca_mount]
+    guard["args"] = [
+        "\nimport os,psycopg; c=psycopg.connect(os.environ['SPI_POSTGRES_URL'],connect_timeout=5); "
+        "assert c.execute(\"SELECT current_database(),to_regclass('public.jobs') IS NOT NULL,"
+        "to_regclass('workflow_wait_owner') IS NOT NULL\").fetchone()==('spi_triage',True,True); "
+        "c.close()"
+    ]
+    pod["volumes"] = [
+        {"name": "pg-ca", "configMap": {"name": "pg-common-ca"}},
+        *_sequence(pod["volumes"]),
+    ]
+    (worker,) = [w for w in map(_mapping, _sequence(pod["containers"])) if w["name"] == "worker"]
+    worker["envFrom"] = [*_sequence(worker["envFrom"]), pg_secret]
+    mounts = _sequence(worker["volumeMounts"])
+    # e4b09e31 keeps graph files accessible, not the SQLite DB at the PVC root.
+    mounts[mounts.index({"name": "data", "mountPath": "/data"})] = {
+        "name": "data",
+        "mountPath": "/data/graphs",
+        "subPath": "graphs",
+    }
+    worker["volumeMounts"] = [ca_mount, *mounts]
+    # The static Service selector in the pinned render is already the final one.
 
 
 def assert_monori_release_images(
@@ -321,6 +386,21 @@ class StatefulBoundaries(unittest.TestCase):
                     # separate contracts. Compare *all* current documents first,
                     # without injecting historical values into the current chart.
                     expected = historical(CUTOVERS[chart])
+                    if chart == "charts/monori":
+                        # Schema delivery adds exactly one pre-rollout Job and
+                        # advances only the backend init check, not placement.
+                        job = current.pop(("Job", "monori-schema-0022"))
+                        annotations = _mapping(_mapping(job["metadata"])["annotations"])
+                        self.assertEqual(annotations["argocd.argoproj.io/hook"], "PreSync")
+                        backend = expected[("Deployment", "monori-back")]
+                        template = _mapping(_mapping(backend["spec"])["template"])
+                        pod = _mapping(template["spec"])
+                        init = _mapping(_sequence(pod["initContainers"])[0])
+                        args = _sequence(init["args"])
+                        args[0] = _text(args[0]).replace("[('0021',)]", "[('0022',)]")
+                        init["args"] = args
+                    if chart == "charts/spi-triage":
+                        expect_spi_cutover(expected, postgres=True)
                     if chart == "charts/litellm-infra":
                         # fe3903c2 retired the dormant DB controller and Service;
                         # 731505f8 later retired only their dedicated PVC here.
@@ -376,6 +456,19 @@ class StatefulBoundaries(unittest.TestCase):
                             old_pod["serviceAccountName"] = "format-quorum"
                             old_pod["automountServiceAccountToken"] = False
                         self._assert_changed_document(key, old, after[key], allowed)
+
+    def test_spi_sqlite_guard_and_retired_handoff_route(self) -> None:
+        chart, values = "charts/spi-triage", "deploy/spi-triage/values.yaml"
+        revision = CUTOVERS[chart]
+        pinned = checkout(pathlib.Path(self.tmp.name), revision, chart, values)
+        image, _ = self._historical_inputs(chart, values)
+        expected = render(pinned, chart, values, "automation", "spi-triage", release_image=image)
+        expect_spi_cutover(expected, postgres=False)
+        # f927f5a4 retires the handoff Service target, even with the old flag set.
+        current = render(
+            R, chart, values, "automation", "spi-triage", sqlite_with_retired_handoff=True
+        )
+        self.assertEqual(current, expected)
 
     def test_all_new_claims_are_prebound_local_retained_and_node5_only(self) -> None:
         count = 0
