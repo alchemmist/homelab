@@ -1,0 +1,4 @@
+{
+  "include": ["scripts/blog_updates/*.py"],
+  "rules": ["ANN001", "ANN002", "ANN201"]
+}

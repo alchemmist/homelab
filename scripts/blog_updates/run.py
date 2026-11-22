@@ -5,13 +5,16 @@ import argparse
 import json
 import os
 import urllib.request
+from collections.abc import Mapping
 from pathlib import Path
 
-from engine import prepare, render, validate_decision, validate_event
+from engine import PushEvent, prepare, render, validate_decision, validate_event
 from github import GitHub
 
 
-def run(event, github, llm_url, llm_key, write=False):
+def run(
+    event: PushEvent, github: GitHub, llm_url: str, llm_key: str, write: bool = False
+) -> Mapping[str, object]:
     if not validate_event(event):
         return {"status": "ignored"}
     compare = github.compare(event["before"], event["after"])
