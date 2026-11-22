@@ -13,6 +13,8 @@ followed by `yaml`, `scripts-q000`, `secrets`, `javascript`, `ownership`, `docke
 `tests-fast`, `shell` and `rustfs-return-types`. The latter blocks missing public return annotations (Ruff
 `ANN201`) in `services/rustfs_gateway/`; the full Python check remains available locally.
 `yaml` runs the full YAML check, including generated workflows, and collects `reports/yaml.json`.
+`scripts-q000` checks every tracked, owned `.py` file under `scripts/` and `tests/`,
+not just changed files. It does not cover all owned Python.
 Ownership runs six offline checks plus their regression suites; the Ansible
 entrypoint scan covers both `.yml` and `.yaml`.
 The other six checks remain runnable by name; `make check` and its alias

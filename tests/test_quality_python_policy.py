@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from scripts.quality import common
+from scripts.quality import common, quote_inputs
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -107,3 +107,40 @@ def test_suppression_blocks_owned_source(
     assert capsys.readouterr().out.splitlines() == ["suppressions=1", "owned.py:1"]
     source.write_text("value = 1\n")
     assert strict_guard.main() == 0
+
+
+def test_quote_inputs_module_emits_exact_nul_delimited_inventory() -> None:
+    expected = [
+        name
+        for name in common.owned(common.tracked())
+        if name.startswith(("scripts/", "tests/")) and name.endswith(".py")
+    ]
+    result = common.command([sys.executable, "-m", "scripts.quality.quote_inputs"])
+    assert result.stdout.split("\0") == [*expected, ""]
+
+
+def test_quote_inputs_use_owned_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+    scripts = ["scripts/a.py", "scripts/deep/with space.py"]
+    tests = ["tests/test_a.py", "tests/nested/helper.py"]
+    names = [*scripts, *tests, "tests/vendor/v.py", "tests/readme.md", "services/a.py"]
+    monkeypatch.setattr(quote_inputs, "tracked", lambda: names)
+
+    def owned(paths: list[str]) -> list[str]:
+        assert paths == names
+        return [name for name in paths if name != "tests/vendor/v.py"]
+
+    monkeypatch.setattr(quote_inputs, "owned", owned)
+    assert quote_inputs.quote_inputs() == scripts + tests
+
+
+@pytest.mark.parametrize(
+    ("names", "missing"),
+    [([], "scripts/"), (["scripts/a.py"], "tests/"), (["tests/a.py"], "scripts/")],
+)
+def test_quote_inputs_reject_incomplete_inventory(
+    names: list[str], missing: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(quote_inputs, "tracked", lambda: names)
+    monkeypatch.setattr(quote_inputs, "owned", list)
+    with pytest.raises(ValueError, match=rf"^No tracked owned Python inputs in {missing}$"):
+        quote_inputs.quote_inputs()
