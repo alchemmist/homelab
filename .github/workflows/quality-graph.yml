@@ -40,7 +40,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 0430a6c125d2fefeba0b05e20a477d1b0bd7c1084dc99c08c5f83a2f5d358901
+          graph-digest: 5f45f692f66927223168bfd8a28cb35f2f6afa0c29be56a7c931f6f0115458cb
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -85,7 +85,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 0430a6c125d2fefeba0b05e20a477d1b0bd7c1084dc99c08c5f83a2f5d358901
+          graph-digest: 5f45f692f66927223168bfd8a28cb35f2f6afa0c29be56a7c931f6f0115458cb
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -133,7 +133,7 @@ jobs:
           adapter: native
           report-path: reports/secrets.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 0430a6c125d2fefeba0b05e20a477d1b0bd7c1084dc99c08c5f83a2f5d358901
+          graph-digest: 5f45f692f66927223168bfd8a28cb35f2f6afa0c29be56a7c931f6f0115458cb
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -183,7 +183,7 @@ jobs:
           adapter: native
           report-path: reports/javascript.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 0430a6c125d2fefeba0b05e20a477d1b0bd7c1084dc99c08c5f83a2f5d358901
+          graph-digest: 5f45f692f66927223168bfd8a28cb35f2f6afa0c29be56a7c931f6f0115458cb
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -234,7 +234,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 0430a6c125d2fefeba0b05e20a477d1b0bd7c1084dc99c08c5f83a2f5d358901
+          graph-digest: 5f45f692f66927223168bfd8a28cb35f2f6afa0c29be56a7c931f6f0115458cb
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -288,7 +288,7 @@ jobs:
           adapter: native
           report-path: reports/docker.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 0430a6c125d2fefeba0b05e20a477d1b0bd7c1084dc99c08c5f83a2f5d358901
+          graph-digest: 5f45f692f66927223168bfd8a28cb35f2f6afa0c29be56a7c931f6f0115458cb
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -309,6 +309,61 @@ jobs:
     needs:
       - graph
     timeout-minutes: 5
+  tests-fast:
+    name: Unit tests
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: 'false'
+          fetch-depth: '0'
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - run: uv sync --locked
+      - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
+        with:
+          version: v3.19.0
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
+        with:
+          node-version: 24.11.1
+      - run: uv run python scripts/quality/install_tools.py --tools hadolint
+      - run: uv run python scripts/quality/tests.py fast --isolate-network
+        name: Run Unit tests
+        id: quality-command
+        continue-on-error: true
+      - name: Collect Unit tests result
+        id: quality-result
+        if: always()
+        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
+        with:
+          operation: collect
+          node-id: tests-fast
+          title: Unit tests
+          adapter: junit
+          report-path: reports/tests-fast.xml
+          command-outcome: ${{ steps.quality-command.outcome }}
+          graph-digest: 5f45f692f66927223168bfd8a28cb35f2f6afa0c29be56a7c931f6f0115458cb
+          approval-findings: 'false'
+          approval-files: 'false'
+          approval-node: 'false'
+      - name: Upload Unit tests result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: quality-result-tests-fast-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/tests-fast.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce Unit tests result
+        if: always()
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
+        run: exit "${EXIT_CODE:-2}"
+    needs:
+      - graph
+    timeout-minutes: 10
   workflow:
     name: Delivery security
     runs-on: ubuntu-24.04
@@ -338,7 +393,7 @@ jobs:
           adapter: native
           report-path: reports/workflow.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 0430a6c125d2fefeba0b05e20a477d1b0bd7c1084dc99c08c5f83a2f5d358901
+          graph-digest: 5f45f692f66927223168bfd8a28cb35f2f6afa0c29be56a7c931f6f0115458cb
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -360,6 +415,55 @@ jobs:
       - graph
     env:
       GH_TOKEN: ${{ github.token }}
+    timeout-minutes: 5
+  shell:
+    name: Shell safety
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: 'false'
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - run: uv sync --locked
+      - run: uv run python scripts/quality/install_tools.py --tools shellcheck
+      - run: .quality-tools/bin/shellcheck --version
+      - run: uv run python scripts/quality/lint.py shell
+        name: Run Shell safety
+        id: quality-command
+        continue-on-error: true
+      - name: Collect Shell safety result
+        id: quality-result
+        if: always()
+        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
+        with:
+          operation: collect
+          node-id: shell
+          title: Shell safety
+          adapter: native
+          report-path: reports/shell.json
+          command-outcome: ${{ steps.quality-command.outcome }}
+          graph-digest: 5f45f692f66927223168bfd8a28cb35f2f6afa0c29be56a7c931f6f0115458cb
+          approval-findings: 'false'
+          approval-files: 'false'
+          approval-node: 'false'
+      - name: Upload Shell safety result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: quality-result-shell-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/shell.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce Shell safety result
+        if: always()
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
+        run: exit "${EXIT_CODE:-2}"
+    needs:
+      - graph
     timeout-minutes: 5
   rustfs-return-types:
     name: RustFS gateway public return types
@@ -387,7 +491,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 0430a6c125d2fefeba0b05e20a477d1b0bd7c1084dc99c08c5f83a2f5d358901
+          graph-digest: 5f45f692f66927223168bfd8a28cb35f2f6afa0c29be56a7c931f6f0115458cb
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -443,7 +547,7 @@ jobs:
           adapter: junit
           report-path: reports/tests-medium.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 0430a6c125d2fefeba0b05e20a477d1b0bd7c1084dc99c08c5f83a2f5d358901
+          graph-digest: 5f45f692f66927223168bfd8a28cb35f2f6afa0c29be56a7c931f6f0115458cb
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'

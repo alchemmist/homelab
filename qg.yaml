@@ -64,6 +64,7 @@ profiles:
     extends: default
     setup:
     - run: uv run python scripts/quality/install_tools.py --tools shellcheck
+    - run: .quality-tools/bin/shellcheck --version
   quality-delivery:
     extends: default
     setup:
@@ -80,6 +81,13 @@ profiles:
     extends: default
     setup:
     - run: uv run python scripts/quality/install_collections.py
+  quality-fast:
+    extends: quality-helm
+    setup:
+    - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
+      with:
+        node-version: 24.11.1
+    - run: uv run python scripts/quality/install_tools.py --tools hadolint
   quality-integration:
     extends: quality-helm
     setup:
@@ -165,6 +173,15 @@ nodes:
       uv run python scripts/quality/lint.py docker
     results:
       native: reports/docker.json
+  tests-fast:
+    title: Unit tests
+    profile: quality-fast
+    needs:
+    - graph
+    policy: *id001
+    run: uv run python scripts/quality/tests.py fast --isolate-network
+    results:
+      junit: reports/tests-fast.xml
   workflow:
     title: Delivery security
     profile: quality-delivery
@@ -176,6 +193,15 @@ nodes:
       GH_TOKEN: ${{ github.token }}
     results:
       native: reports/workflow.json
+  shell:
+    title: Shell safety
+    profile: quality-shell
+    needs:
+    - graph
+    policy: *id001
+    run: uv run python scripts/quality/lint.py shell
+    results:
+      native: reports/shell.json
   rustfs-return-types:
     title: RustFS gateway public return types
     profile: default

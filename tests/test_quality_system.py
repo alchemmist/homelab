@@ -20,7 +20,9 @@ from jsonschema import Draft4Validator
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts/quality"))
+import common
 import contracts
+import lint
 from common import command, failure, finding, report, unique
 from strict_report import (
     audit_exit_code,
@@ -430,16 +432,49 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
 
     graph = yaml.safe_load((ROOT / "qg.yaml").read_text())["nodes"]
     assert len({n["title"] for n in graph.values()}) == len(graph)
-    first_layer = {"javascript", "secrets", "ownership", "docker", "workflow", "rustfs-return-types"}
+    first_layer = {"javascript", "secrets", "ownership", "docker", "workflow", "rustfs-return-types", "scripts-q000", "shell", "tests-fast"}
     assert set(graph) == {"graph", *first_layer}
     for node in first_layer:
         assert graph[node]["needs"] == ["graph"]
-    assert graph["rustfs-return-types"]["policy"]["blocking"] is True
+        assert graph[node]["policy"]["blocking"] is True
     local = json.loads((ROOT / "quality/local-checks.json").read_text())
     assert set(local) == {
-        "python", "yaml", "shell", "tests-fast",
+        "python", "yaml",
         "manifests", "ansible", "tests-medium", "tests-cluster", "dependencies",
     }
+
+
+def test_shell_policy_finds_extensionless_scripts_and_inline_steps(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Both ShellCheck transports retain diagnostics in the combined shell result."""
+    monkeypatch.setattr(common, "ROOT", tmp_path)
+    monkeypatch.setattr(lint, "ROOT", tmp_path)
+    shell_files = ["entrypoint", "build.sh"]
+    workflow = ".github/workflows/ci.yml"
+    (tmp_path / "entrypoint").write_text("#!/bin/sh\necho $HOME\n")
+    (tmp_path / "build.sh").write_text("#!/bin/bash\necho $HOME\n")
+    (tmp_path / workflow).parent.mkdir(parents=True)
+    (tmp_path / workflow).write_text("jobs: {ci: {steps: [{run: 'echo $HOME'}]}}\n")
+
+    def shellcheck(argv: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        assert argv[:3] == ["shellcheck", "--norc", "--enable=all"]
+        sources = argv[argv.index("--format=json") + 1 :]
+        if "--shell" in argv:
+            assert argv[argv.index("--shell") + 1] == "bash"
+            assert [Path(source).read_text() for source in sources] == ["echo $HOME"]
+        else:
+            assert sources == shell_files
+        rows = [
+            {"file": source, "code": 2086, "line": 1, "message": "quote"} for source in sources
+        ]
+        return subprocess.CompletedProcess(argv, 1, stdout=json.dumps(rows))
+
+    monkeypatch.setattr(lint, "command", shellcheck)
+    findings, checked = lint.check_shell([*shell_files, workflow])
+    assert checked == len(shell_files)
+    assert [row["location"]["path"] for row in findings] == [*shell_files, workflow]
+    assert all(row["ruleId"] == "SC2086" for row in findings)
 
 
 def _load_checker(name):
