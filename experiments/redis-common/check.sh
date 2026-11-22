@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 mode=${1:-transport}
 case "$mode" in transport|proxy|failover) ;; *) echo "usage: $0 [transport|proxy|failover]" >&2; exit 2;; esac
 proxy=harbor.socrat.alchemmist.xyz/homelab/litellm@sha256:21245d86b352d55f42404dfc7be5bcdb53028aa0be10077e9bb606c5e534e5f3
-redis=docker.io/library/redis@sha256:52d1ea8a654b10f06af3ecda4e9dbcd035c7868b5c49ee7975de917f81de13db
+redis=docker.io/library/redis@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
 d=$(mktemp -d); name=redis-probe-${d##*.}
 cleanup() { docker rm -fv "$name-a" "$name-b" "$name-db" "$name-gw" "$name-r0" "$name-r1" "$name-r2" "$name" >/dev/null 2>&1 || :; docker network rm "$name" >/dev/null 2>&1 || :; rm -rf "$d"; }
 trap cleanup EXIT
