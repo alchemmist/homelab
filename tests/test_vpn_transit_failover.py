@@ -187,7 +187,7 @@ def test_vpn_transit_declares_its_actual_readiness_listener() -> None:
 
 def test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse() -> None:
     """Test behavior for test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse."""
-    m = module("vpn-transit-failover")
+    module("vpn-transit-failover")
     import socket
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as owner:

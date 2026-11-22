@@ -81,8 +81,6 @@ def browser(url, data=None):
     except urllib.error.HTTPError as e:
         if e.code in [301, 302, 303, 307]:
             e.headers.replace_header("Location", urllib.parse.urljoin(url, e.headers["Location"]))
-            loc = urllib.parse.urlparse(e.headers["Location"])
-            q = urllib.parse.parse_qs(loc.query)
             return e.code, e.headers, b""
         raise RuntimeError(
             "Browser request failed with HTTP "

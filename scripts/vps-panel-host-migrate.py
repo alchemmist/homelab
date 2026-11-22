@@ -177,7 +177,6 @@ def apply(state: str | Path, old: str, new: str, approval: str | None):
             )
             session.call("POST", "/hosts/update/" + group["groupId"], candidate)
             after = configuration(session.database)
-            expected = expected_configuration(current, old, new, group["groupId"])
             h.save(session.state / ("host-after-private-" + str(index) + ".json"), after)
             if not verify_transition(current, after, old, new, group["groupId"]):
                 raise RuntimeError("Native host invariant mismatch; stop, do not replay")

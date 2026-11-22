@@ -109,7 +109,6 @@ class DeploymentCollector:
             config=manifest.get('config',{}).get('digest','')
             if not re.fullmatch(r'sha256:[a-f0-9]{64}',config):raise Failure('OCI_CONFIG_MISSING')
             raw=self.http.request('GET',base+'/v2/'+repository+'/blobs/'+config,headers,timeout=10,limit=200000)
-            import hashlib
             # Registry JSON reserialization is not byte-identical: record registry claim, not cryptographic binary/source equivalence.
             labels=raw.get('config',{}).get('Labels')or{};revision=labels.get('org.opencontainers.image.revision','');url=labels.get('org.opencontainers.image.source','')
             proof={'imageID':identity,'config_digest':config,'oci_revision':revision if re.fullmatch(r'[a-f0-9]{40}',revision)else None,
