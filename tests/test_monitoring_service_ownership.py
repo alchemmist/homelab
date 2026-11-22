@@ -158,7 +158,7 @@ def test_grafana_native_sso_and_no_anonymous_access_are_declarative() -> None:
     assert v["deploymentStrategy"]["type"] == "Recreate"
     assert v["nodeSelector"] == {"kubernetes.io/hostname": "socrat-1"}
     dependency = yaml.safe_load((ROOT / "charts/grafana/charts/grafana/Chart.yaml").read_text())
-    assert dependency["version"] == "14.0.0"
+    assert dependency["version"] == "14.5.0"
 
 
 def test_each_backend_owns_its_config_without_changing_config_bytes() -> None:

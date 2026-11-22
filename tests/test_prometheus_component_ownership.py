@@ -146,6 +146,28 @@ def migration_payload(document) -> dict[str, object]:
     """Check declared runtime overrides before comparing the unchanged handoff payload."""
     kind = document["kind"]
     name = document["metadata"]["name"]
+    # Verify the exact registry-resolved tag+digest before comparing to the
+    # original tag-only handoff. Never normalize an arbitrary image suffix.
+    pinned = {
+        "kube-prometheus-stack-operator": (
+            "quay.io/prometheus-operator/prometheus-operator:v0.94.1",
+            "sha256:7c88d4e7bae63bd8d0f8da986054337c23b4472fa8d3c6817f5bc4b8407a2d6a",
+        ),
+        "kube-prometheus-stack-kube-state-metrics": (
+            "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.20.0",
+            "sha256:42cfe3723a5f058171c627537fb57a3ea0f26e4380fa18555a95cb1a1b4cfc5b",
+        ),
+        "kube-prometheus-stack-prometheus-node-exporter": (
+            "quay.io/prometheus/node-exporter:v1.12.1-distroless",
+            "sha256:8c9bac11973b94b59be88d6e11fee4429aa743c8846cdc75d65b18db33f6a106",
+        ),
+    }
+    if kind in {"Deployment", "DaemonSet"} and name in pinned:
+        document = copy.deepcopy(document)
+        tag, digest = pinned[name]
+        container, = document["spec"]["template"]["spec"]["containers"]
+        assert container["image"] == tag + "@" + digest
+        container["image"] = tag
     if kind not in {"Prometheus", "Alertmanager", "Deployment"} and (kind, name) != (
         "ServiceMonitor",
         "kube-prometheus-stack-apiserver",

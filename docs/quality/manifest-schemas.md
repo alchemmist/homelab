@@ -24,3 +24,16 @@ objects, preserves dictionary values, recursive references and free-form
 extensions, and validates standard ObjectMeta. JSON Schema alone does not run
 Kubernetes CEL, defaulting, conversion, or admission webhooks. Native schema,
 Helm and lint errors still block; no resource is approved or skipped here.
+
+## Grafana dependency review
+
+The 14.5.0 grafana-community chart release archive has SHA-256
+`e243e77eba1bf3078e6adc0979d694c0e00b998e07875cfb7800a7f5fb69c245`.
+The unpacked dependency retains the upstream template and file bytes; chart
+metadata and default values are YAML-style normalized, not runtime overrides.
+The parent values keep the verified 13.2.4-distroless Grafana and 2.14.1 sidecar
+images. Do not silently take a Grafana database migration with a chart update.
+All 16 release objects were compared with identical Argo inputs: ten chart
+version labels changed and upstream no longer attaches the chart version label
+to the Grafana pod. The selector, pod spec, RBAC, OIDC/TLS, PVC, dashboards and
+renderer are unchanged. The new opt-in repository-sync sidecar is not rendered.

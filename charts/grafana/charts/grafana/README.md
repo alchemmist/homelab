@@ -47,6 +47,17 @@ See the [changelog](https://grafana-community.github.io/helm-charts/changelog/?c
 A major chart version change (like v1.2.3 -> v2.0.0) indicates that there is an
 incompatible breaking change needing manual actions.
 
+### To 14.4.0
+
+Pod templates no longer carry `helm.sh/chart`. The label changed on every chart version
+bump, and because it sat inside the pod template it rolled the Grafana pods on upgrade
+even when neither the configuration nor the image had changed. It remains on the objects
+themselves, so `kubectl get deploy -L helm.sh/chart` is unaffected.
+
+If you group metrics by pod label (`kube_pod_labels` joined on `label_helm_sh_chart`, for
+example), those series stop being populated for Grafana pods. Use the object-level label,
+or add the value you need through `extraLabels`.
+
 ### To 4.0.0 (And 3.12.1)
 
 This version requires Helm >= 2.12.0.
@@ -447,6 +458,71 @@ data:
         uid: 16624780-6564-45dc-825c-8bded4ad92d3
 ```
 
+## Sidecar for Git Sync repositories
+
+[Git Sync](https://grafana.com/docs/grafana/latest/as-code/observability-as-code/git-sync/) repositories can't be
+provisioned from files. They only exist as `provisioning.grafana.app/v0alpha1` `Repository` objects in the Grafana API.
+
+If the parameter `sidecar.repositories.enabled` is set, a sidecar container is deployed in the grafana pod. It watches
+secrets (or configmaps, see `sidecar.repositories.resource`) with the label defined in `sidecar.repositories.label`
+(default is `grafana_repository`) and applies every `Repository` manifest in them through the Grafana API, using the
+admin credentials. Each key may contain one or more YAML or JSON documents.
+
+- Repositories are created when they don't exist and updated when their manifest changes.
+- Values under `secure` (e.g. `secure.token.create`) are only sent when they change, so Grafana keeps the stored token otherwise.
+- Repositories created by the sidecar get the label `app.kubernetes.io/managed-by: grafana-repository-sidecar` and are
+  deleted when their manifest disappears. Grafana then removes the resources synced from that repository.
+  Repositories without that label, e.g. created in the UI, are never deleted, but a manifest with the same name takes them over.
+- Without persistence, the repositories are re-created whenever the pod starts.
+
+The admin credentials are taken from `admin.existingSecret` or the chart generated secret. If the admin user is set via
+`env`, pass `REQ_USERNAME` and `REQ_PASSWORD` with `sidecar.repositories.envValueFrom`.
+Repositories of other organizations can be provisioned by setting `sidecar.repositories.apiNamespace` to `org-<id>`.
+
+Example values:
+
+```yaml
+sidecar:
+  repositories:
+    enabled: true
+```
+
+Example secret:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-repository-dashboards
+  labels:
+    grafana_repository: "1"
+stringData:
+  dashboards.yaml: |
+    apiVersion: provisioning.grafana.app/v0alpha1
+    kind: Repository
+    metadata:
+      name: dashboards
+    spec:
+      title: Dashboards
+      type: github
+      github:
+        url: https://github.com/example/grafana-dashboards
+        branch: main
+        path: grafana/
+      sync:
+        enabled: true
+        target: folder
+        intervalSeconds: 60
+      workflows:
+        - write
+    secure:
+      token:
+        create: github_pat_xxx
+```
+
+The sidecar logs every change. The applied repositories and their sync status can be checked at
+`/apis/provisioning.grafana.app/v0alpha1/namespaces/default/repositories`.
+
 ## Statically provision alerting resources
 
 If you don't need to change alerting resources (alert rules, contact points, notification policies and notification templates) regularly you could use the `alerting` config option instead of the sidecar option above.
@@ -516,6 +592,39 @@ grafana.ini:
   server:
     root_url: http://localhost:3000/grafana # this host can be localhost
 ```
+
+## Admin user and password
+
+The chart passes the admin credentials to Grafana as `GF_SECURITY_ADMIN_USER` and
+`GF_SECURITY_ADMIN_PASSWORD`. They come from the Secret named in `admin.existingSecret`,
+or from a Secret the chart creates from `adminUser` and `adminPassword`.
+
+Grafana reads these variables only when it creates the admin user, that is on the first
+start with an empty database. When the database survives pod restarts
+(`persistence.enabled: true`, or an external database), keep the following in mind:
+
+- Changing `adminPassword`, or the password in `admin.existingSecret`, and running
+  `helm upgrade` restarts the pod but does not change the password stored in the database.
+  The old password keeps working and the new one is rejected.
+- The sidecars (`sidecar.dashboards`, `sidecar.datasources`, `sidecar.alerts`, ...) call
+  the Grafana reload API with the user and password from the same Secret. Once the Secret
+  and the database disagree, these calls fail with `401 Unauthorized`.
+- When neither `adminPassword` nor `admin.existingSecret` is set, the chart generates a
+  random password and uses `lookup` to keep it across upgrades. Tools that render the chart
+  with `helm template`, where `lookup` returns nothing (for example Argo CD), get a new
+  random password on every render, so the Secret no longer matches the password Grafana
+  stored on the first start. Set `adminPassword` or `admin.existingSecret` in that case.
+
+To rotate the password of a running installation, change it in Grafana first and then
+update the Secret (or `adminPassword`) to the same value:
+
+```console
+printf '%s\n' "$NEW_PASSWORD" | kubectl exec -i -n NAMESPACE deploy/RELEASE-NAME -c grafana -- \
+  grafana cli --config /etc/grafana/grafana.ini admin reset-admin-password --password-from-stdin
+```
+
+See [Grafana CLI](https://grafana.com/docs/grafana/latest/administration/cli/#reset-admin-password) for
+the other ways to reset the admin password.
 
 ## How to securely reference secrets in grafana.ini
 
@@ -609,6 +718,31 @@ grafana.ini:
 
   alerting:
     enabled: false
+```
+
+### High Availability with the embedded NATS bus
+
+Grafana 13.4 and later can run an embedded NATS server in each pod so that several replicas sharing one external MySQL or PostgreSQL database notify each other of changes.
+This needs Grafana 13.4 or later: older versions bind the cluster port to loopback only, so the pods can't connect to each other.
+The pods find each other through the database and connect to each other's pod IP on the NATS cluster port (`[nats] cluster_port`, `6222` by default), so no extra Service is needed.
+
+When `networkPolicy.enabled` is true, set `networkPolicy.natsCluster.enabled: true` so that the NetworkPolicy also lets the Grafana pods of the release reach each other on the cluster port. Without it, the pods start but cannot connect to each other, and each one only sees its own changes until clients list again. This rule allows sources matching the release's pod selector in the same namespace; other NetworkPolicies may allow additional sources.
+The rule uses `networkPolicy.natsCluster.port`, `6222` by default. If you change `[nats] cluster_port` in `grafana.ini`, set `networkPolicy.natsCluster.port` to the same number.
+
+```yaml
+replicas: 3
+
+grafana.ini:
+  database:
+    type: postgres
+    # ...
+  nats:
+    enabled: true
+
+networkPolicy:
+  enabled: true
+  natsCluster:
+    enabled: true
 ```
 
 ### Installing plugins
