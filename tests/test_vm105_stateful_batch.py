@@ -14,11 +14,11 @@ LOCAL_STORAGE_CLAIM_PAIR_COUNT = 9
 BASE = "ba7a1f34d36b12ede791269b084e5957657758ae"
 HANDOFF = "c4a7c68938e36872841a1cce0f5441a5c6b78d7d"
 # Independent post-handoff owners: Wiki and Monori pg-common cutovers,
-# SPI pg-common egress/handoff routing, and the retired LiteLLM legacy DB writer.
+# SPI egress/portable broker, and the retired LiteLLM legacy DB writer.
 CUTOVERS = {
     "deploy/wiki-runtime/chart": "3c0c68dbd206138c4f4d96f5b3cafc34a8ad7141",
     "charts/monori": "093df2214564fd7db76e28da6975d267a0652431",
-    "charts/spi-triage": "e4b09e31e3606cd4c9388373c50a519898e32d76",
+    "charts/spi-triage": "f8e2efa00f12b8166376ac3639d760ca24297f0b",
     "charts/litellm-infra": "7b4786fb4cc2e722a010c4b483b87dc209ae8d12",
 }
 
@@ -59,10 +59,13 @@ def render(
     *,
     release_image: dict[str, str] | None = None,
     monori_images: dict[str, dict[str, str]] | None = None,
+    pg_handoff: bool | None = None,
 ) -> dict[tuple[str, str], dict[str, object]]:
     cmd = ["helm", "template", release, str(root / chart), "-n", ns]
     if values:
         cmd += ["-f", str(root / values)]
+    if pg_handoff is not None:
+        cmd += ["--set", f"pgHandoff={str(pg_handoff).lower()}"]
     if release_image is not None:
         # Release version is an input independent of historical placement. Only
         # the before-render receives it; a wrong current template still differs.
@@ -77,6 +80,41 @@ def render(
         for d in yaml.safe_load_all(subprocess.check_output(cmd, text=True))
         if d
     }
+
+
+def expect_spi_pg_preparation(expected: dict[tuple[str, str], dict[str, object]]) -> None:
+    """Extend the historical render only by the committed SPI preparation and handoff."""
+    # ca3a866c prepares one destination, not independent namespace-wide and pod peers.
+    policy = _mapping(expected["NetworkPolicy", "spi-triage"]["spec"])
+    policy["egress"] = [
+        {
+            "to": [
+                {
+                    "namespaceSelector": {
+                        "matchLabels": {"kubernetes.io/metadata.name": "postgres"}
+                    },
+                    "podSelector": {"matchLabels": {"cnpg.io/cluster": "pg-common"}},
+                }
+            ],
+            "ports": [{"port": 5432, "protocol": "TCP"}],
+        },
+        *_sequence(policy["egress"]),
+    ]
+    # The conditional PG guard adds a newline before the original SQLite argument.
+    # Keep comparing the entire command, including every other byte and argument.
+    deployment = _mapping(expected["Deployment", "spi-triage"]["spec"])
+    pod = _mapping(_mapping(deployment["template"])["spec"])
+    (guard,) = [
+        g
+        for g in map(_mapping, _sequence(pod["initContainers"]))
+        if g["name"] == "require-existing-spi"
+    ]
+    args = _sequence(guard["args"])
+    guard["args"] = ["\n" + _text(args[0]), *args[1:]]
+
+    # 0e6ef2dd sends new admissions to the handoff while the SQLite owners drain.
+    service = _mapping(expected["Service", "spi-triage"]["spec"])
+    _mapping(service["selector"])["app"] = "spi-pg-handoff"
 
 
 def assert_monori_release_images(
@@ -250,6 +288,8 @@ class StatefulBoundaries(unittest.TestCase):
                     # separate contracts. Compare *all* current documents first,
                     # without injecting historical values into the current chart.
                     expected = historical(CUTOVERS[chart])
+                    if chart == "charts/spi-triage":
+                        expect_spi_pg_preparation(expected)
                     if chart == "charts/litellm-infra":
                         # fe3903c2 retired the dormant DB controller and Service;
                         # 731505f8 later retired only their dedicated PVC here.
@@ -262,6 +302,20 @@ class StatefulBoundaries(unittest.TestCase):
                 for key, old in before.items():
                     if old != after[key]:
                         self._assert_changed_document(key, old, after[key], allowed)
+
+    def test_spi_handoff_service_selector_in_both_modes(self) -> None:
+        for enabled, app in ((False, "spi-triage"), (True, "spi-pg-handoff")):
+            with self.subTest(pg_handoff=enabled):
+                docs = render(
+                    R,
+                    "charts/spi-triage",
+                    "deploy/spi-triage/values.yaml",
+                    "automation",
+                    "spi-triage",
+                    pg_handoff=enabled,
+                )
+                service = _mapping(docs["Service", "spi-triage"]["spec"])
+                self.assertEqual(service["selector"], {"app": app})
 
     def test_all_new_claims_are_prebound_local_retained_and_node5_only(self) -> None:
         count = 0
