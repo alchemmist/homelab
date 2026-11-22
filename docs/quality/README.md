@@ -10,7 +10,7 @@ The operator changed the integration scope: PR182 sets up CI and integrates revi
 
 CI runs `graph` (including the blocking strict configuration and suppression guard
 and a SIM300 check for constant-first comparisons in tracked, owned Python under `scripts/quality/`),
-followed by `yaml`, `scripts-q000`, `deploy-i001`, `secrets`, `javascript`, `ownership`, `docker`, `workflow`,
+followed by `python-scopes`, `yaml`, `scripts-q000`, `deploy-i001`, `secrets`, `javascript`, `ownership`, `docker`, `workflow`,
 `tests-fast`, `shell` and `rustfs-return-types`. The latter blocks missing public return annotations (Ruff
 `ANN201`) in `services/rustfs_gateway/`; the full Python check remains available locally.
 `yaml` runs the full YAML check, including generated workflows, and collects `reports/yaml.json`.
@@ -31,6 +31,17 @@ The blocking `dependencies` audit runs in CI after `ownership`.
 Local-only checks are listed in [`quality/local-checks.json`](../../quality/local-checks.json)
 with their Make target names. `make check` and its alias `make check-all` run both the CI and local-only checks. Restore a
 check to `qg.yaml` and remove its local-only entry once it is verified green.
+
+### Adding a blocking Python scope
+
+Add a distinct `quality/python-scopes/*.json` file; no workflow or runner edit is needed.
+For example, the initial scope is `{"include":["tests/test_quality*.py"],"rules":["SIM117"]}`.
+Patterns are case-sensitive POSIX globs anchored at the repository root: `*` does not
+cross `/`; `**/` matches zero or more directories. Each pattern must match at least
+one tracked, owned `.py` file (the same vendor/frozen provenance checks as the full
+Python gate apply). Each rule must be a full, active ID in the locked Ruff catalog,
+not a prefix. Every file/rule pair from every scope is checked, irrespective of inline
+or per-file ignores. `make python-scopes` runs the same read-only check locally.
 
 ## Historical 15-node DAG (before PR #454)
 
