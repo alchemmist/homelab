@@ -58,7 +58,7 @@ def main():
         }[args.service]
     )
     archive = subprocess.check_output(
-        SSH + ["python3", "-"], input=helper.read_bytes(), timeout=180
+        [*SSH, "python3", "-"], input=helper.read_bytes(), timeout=180
     )
     nonce = os.urandom(12)
     cipher = AESGCM(args.key.read_bytes()).encrypt(nonce, archive, HEADER)
