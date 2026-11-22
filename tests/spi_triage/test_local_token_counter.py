@@ -4,6 +4,7 @@ import os
 import sys
 import unittest
 from pathlib import Path
+from typing import TypedDict
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "charts/spi-triage/files"))
@@ -11,10 +12,19 @@ from core import Failure
 from local_token_counter import LocalCounter, configured_counter, render
 
 
+class CounterBody(TypedDict):
+    """Canonical request before a test injects an invalid field."""
+
+    model: str
+    messages: list[dict[str, str]]
+    chat_template_kwargs: dict[str, bool]
+    max_tokens: int
+
+
 class CounterContract(unittest.TestCase):
     """Tests for the local token counter contract."""
 
-    def body(self) -> dict[str, object]:
+    def body(self) -> CounterBody:
         """Return the canonical request body fixture."""
         return {
             "model": "qwen3.8-27b",
@@ -39,10 +49,10 @@ class CounterContract(unittest.TestCase):
             ("max_tokens", 1),
             ("chat_template_kwargs", {"enable_thinking": True}),
         ]:
-            body = self.body()
-            body[key] = value
+            bad = dict(self.body())
+            bad[key] = value
             with self.assertRaises(Failure):
-                render(body)
+                render(bad)
         body = self.body()
         body["messages"][1]["content"] = "a" * 524289
         with self.assertRaises(Failure):
