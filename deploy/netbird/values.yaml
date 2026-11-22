@@ -909,7 +909,7 @@ resources:
               secretKeyRef:
                 key: auth-secret
                 name: netbird-relay-home-auth
-          image: netbirdio/relay:0.82.0@sha256:8f6b9e4193653ede89e83dd4aa4e2cf2562579b3e2481dcf259a7ab28bcd5fa1
+          image: netbirdio/relay:0.83.2@sha256:1b27bbadef5ae7632c46c086c91a872dad7a024aaeb2e0ee7a99faeba23c859f
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3

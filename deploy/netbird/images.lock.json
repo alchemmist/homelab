@@ -46,10 +46,12 @@
     },
     "relay": {
       "repository": "netbirdio/relay",
-      "tag": "0.82.0",
-      "digest": "sha256:8f6b9e4193653ede89e83dd4aa4e2cf2562579b3e2481dcf259a7ab28bcd5fa1",
+      "tag": "0.83.2",
+      "digest": "sha256:1b27bbadef5ae7632c46c086c91a872dad7a024aaeb2e0ee7a99faeba23c859f",
       "checked_at": "2026-11-03",
-      "verification": "Docker-Content-Digest equals SHA256 of downloaded official multi-platform manifest bytes"
+      "verification": "Docker Hub release index and per-platform digests",
+      "linux_amd64": "sha256:ef9b815b9482e26ea18769206ae86f02acd90c8255b62bb996ce86a090020d1a",
+      "linux_arm64": "sha256:c26bbbe2e1e2e6bd3eb8b3342d0de6154ba552e16b08384d7b650ec3a30d660b"
     }
   }
 }
