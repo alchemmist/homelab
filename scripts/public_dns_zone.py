@@ -36,6 +36,7 @@ FAILOVER = [
     "n8n.socrat",
     "netbird.socrat",
     "openhands.socrat",
+    "pg.socrat",
     "pr-agent.socrat",
     "rancher.socrat",
     "remark42",
