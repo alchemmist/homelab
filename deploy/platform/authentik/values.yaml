@@ -32,6 +32,9 @@ global:
 postgresql:
   enabled: false
 server:
+  # Both platform manifests of the pinned image start as numeric UID 1000.
+  containerSecurityContext:
+    runAsNonRoot: true
   # Remove a slow backend from routing on the normal readiness budget. Avoid
   # recycling its warm workers during a transient shared latency spike.
   livenessProbe:
@@ -77,6 +80,9 @@ server:
 serviceAccount:
   create: false
 worker:
+  # Both platform manifests of the pinned image start as numeric UID 1000.
+  containerSecurityContext:
+    runAsNonRoot: true
   affinity:
     nodeAffinity: *preferredNodes
     podAntiAffinity:
