@@ -1,6 +1,6 @@
-# Implement distributed Harbor with single-node failure tolerance
+# Proposal: distributed Harbor with single-node failure tolerance
 
-> Draft issue body. Not yet published: GitHub MCP was unavailable in the session.
+> Status: proposal only; not implemented. This draft is not a rollout procedure.
 
 ## Goal
 
