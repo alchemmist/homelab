@@ -445,7 +445,10 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         "shell",
         "rustfs-return-types",
     }
-    assert set(graph) == {"graph", "ansible", *first_layer}
+    assert set(graph) == {"graph", *first_layer, "tests-medium", "ansible"}
+    assert graph["tests-medium"]["needs"] == ["ownership"]
+    assert graph["tests-medium"]["policy"]["blocking"] is True
+    assert graph["tests-medium"]["run"] == "uv run python scripts/quality/tests.py medium --isolate-network"
     policy = graph["graph"]["policy"]
     assert policy["blocking"] is True
     assert policy["approvals"] == {"files": False, "findings": False, "node": False}
@@ -464,8 +467,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     }
     local = json.loads((ROOT / "quality/local-checks.json").read_text())
     assert set(local) == {
-        "python",
-        "manifests", "tests-medium", "tests-cluster", "dependencies",
+        "python", "manifests", "tests-cluster", "dependencies",
     }
 
 

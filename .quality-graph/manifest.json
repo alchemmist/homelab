@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "8e30a117e48da5678fd2ccbaef8aa7142e654dced0cbc771de94a6c429ed85d8",
+  "graphDigest": "f968f8b5a06fce5fe2dbbc8244bafb5af01d8168faba8055f3128e039b26f19a",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -349,6 +349,34 @@
     },
     {
       "env": {},
+      "id": "tests-medium",
+      "needs": [
+        "ownership"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-integration",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-medium.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py medium --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Integration tests"
+    },
+    {
+      "env": {},
       "id": "ansible",
       "needs": [
         "ownership"
@@ -644,6 +672,9 @@
         },
         {
           "run": "uv run python scripts/quality/install_tools.py --tools promtool"
+        },
+        {
+          "run": "set -euo pipefail\nread -r image < quality/nginx-syntax-image.txt\ndocker pull \"${image}\"\n"
         }
       ],
       "timeoutMinutes": 10

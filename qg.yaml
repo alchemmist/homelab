@@ -95,6 +95,10 @@ profiles:
         with:
           node-version: 24.11.1
       - run: uv run python scripts/quality/install_tools.py --tools promtool
+      - run: |
+          set -euo pipefail
+          read -r image < quality/nginx-syntax-image.txt
+          docker pull "${image}"
 nodes:
   graph:
     title: Graph integrity
@@ -234,6 +238,15 @@ nodes:
     run: >-
       uv run ruff check --config quality/ruff.toml --select ANN201 --ignore-noqa
       services/rustfs_gateway
+  tests-medium:
+    title: Integration tests
+    profile: quality-integration
+    run: uv run python scripts/quality/tests.py medium --isolate-network
+    policy: *id001
+    needs:
+      - ownership
+    results:
+      junit: reports/tests-medium.xml
   ansible:
     title: Playbook safety
     profile: quality-ansible

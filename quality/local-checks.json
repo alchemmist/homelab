@@ -13,13 +13,6 @@
       "native": "reports/manifests.json"
     }
   },
-  "tests-medium": {
-    "title": "Integration tests",
-    "run": "uv run python scripts/quality/tests.py medium --isolate-network",
-    "results": {
-      "junit": "reports/tests-medium.xml"
-    }
-  },
   "tests-cluster": {
     "title": "Cluster lifecycle",
     "run": "uv run python scripts/quality/tests.py cluster",
