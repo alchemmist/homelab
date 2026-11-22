@@ -1,6 +1,7 @@
 ---
 replicaCount: 1
 telegramRelay:
+  routeBot: false
   enabled: false
   clusterIP: 10.43.0.213
 telegramPathProbes:
