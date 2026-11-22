@@ -257,7 +257,7 @@ def scale_compactor(namespace, name, replicas):
 
 
 def wait_compactor_idle(namespace, name, timeout=180):
-    """Wait until desired, current and ready replica counts are all zero, or time out."""
+    """Poll for zero desired, current and ready replicas; missing counts are treated as zero."""
     deadline = time.monotonic() + timeout
     path = f"/apis/apps/v1/namespaces/{namespace}/deployments/{name}"
     while True:

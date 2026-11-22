@@ -93,7 +93,7 @@ def write_file(directory, ulid, relative, chunks):
 
 
 def commit(directory, ulid):
-    """Check the staged metadata ULID before moving the block into the published tree."""
+    """Publish a matching staged block; replacing a live tree takes two separate renames."""
     if not ULID.match(ulid):
         message = "bad ulid"
         raise ValueError(message)

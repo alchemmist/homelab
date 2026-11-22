@@ -117,7 +117,7 @@ class Bucket:
 
 
 def covers(target, source):
-    """Check time range, labels, downsampling and source lineage before skipping a covered copy."""
+    """Require matching labels and downsample metadata, and full interval and source coverage."""
     a, b = target["thanos"], source["thanos"]
     src = set(source["compaction"]["sources"])
     return (
