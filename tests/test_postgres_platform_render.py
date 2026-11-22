@@ -80,7 +80,6 @@ def test_rendered_cnpg_services_and_policies_follow_operator_role_labels() -> No
         "pg-common-ingress",
         "pg-critical-ingress",
         "pg-internal-ingress",
-        "pg-critical-async-ingress",
         "pg-common-writer-service-probes",
     }
 
@@ -103,9 +102,13 @@ def test_rendered_cnpg_services_and_policies_follow_operator_role_labels() -> No
         assert _matches(selector, promoted)
         assert _matches(selected_by_policy, promoted)
 
-    for cluster in ("pg-internal", "pg-critical-async"):
-        pod = {"cnpg.io/cluster": cluster, "cnpg.io/instanceRole": "primary"}
-        assert _matches(policies[f"{cluster}-ingress"]["spec"]["podSelector"], pod)
+    internal = {"cnpg.io/cluster": "pg-internal", "cnpg.io/instanceRole": "primary"}
+    assert _matches(policies["pg-internal-ingress"]["spec"]["podSelector"], internal)
+    # 77c83ffd retired the standalone async standby and its inbound peer grant.
+    assert all(obj["metadata"]["name"] != "pg-critical-async" for obj in objects)
+    critical = policies["pg-critical-ingress"]["spec"]["ingress"]
+    assert not any(peer.get("podSelector", {}).get("matchLabels", {}).get("cnpg.io/cluster")
+                   == "pg-critical-async" for rule in critical for peer in rule["from"])
 
 
 def test_database_client_and_probe_policy_peers_remain_narrow() -> None:

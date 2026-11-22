@@ -227,7 +227,11 @@ def test_hibernated_database_alerts_do_not_page_for_production_lms() -> None:
         groups = _documents(_mapping(rule["spec"])["groups"])
         return {r["alert"] for r in _documents(groups[0]["rules"])}
 
-    assert rules() == {"LMSWebUnavailable"}
-    assert rules("--set", "lms-database-ha.hibernate=false") == {
+    production = render("-f", str(ROOT / "deploy/lms/values.yaml"))
+    assert not any(d and d["kind"] == "PrometheusRule" and _name(d) == "lms-availability"
+                   for d in production)
+    enable = ("--set", "database.ha.resources=true")
+    assert rules(*enable, "--set", "lms-database-ha.hibernate=true") == {"LMSWebUnavailable"}
+    assert rules(*enable, "--set", "lms-database-ha.hibernate=false") == {
         "LMSWebUnavailable", "LMSDatabaseQuorumAtRisk", "LMSDatabaseRedundancyDegraded", "LMSDatabaseBackupOverdue"
     }
