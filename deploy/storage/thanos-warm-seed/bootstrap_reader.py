@@ -1,7 +1,10 @@
 """Provision one new, bucket-scoped Store identity. Never rotate an existing key."""
 
-import json, secrets, sys
-from start import create, kube, BASE, SEC, RES
+import json
+import secrets
+import sys
+
+from start import BASE, RES, SEC, create, kube
 
 NAME = "thanos-warm-store-reader"
 ROOT = "thanos-warm-root"

@@ -1,6 +1,9 @@
 """Approved single retirement. Refuse if live writer, coverage or cold restore is unverified."""
 
-import json, re, subprocess, sys
+import json
+import re
+import subprocess
+import sys
 from pathlib import Path
 
 D = Path(__file__).resolve().parent

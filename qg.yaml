@@ -128,8 +128,19 @@ nodes:
     policy: *id001
     run: |-
       set -euo pipefail
-      uv run python -m scripts.quality.quote_inputs |
+      uv run python -m scripts.quality.python_inputs scripts/ tests/ |
         xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \
+          --ignore-noqa --output-format concise --
+  deploy-i001:
+    title: Owned deploy Python import order (I001)
+    profile: default
+    needs:
+      - graph
+    policy: *id001
+    run: |-
+      set -euo pipefail
+      uv run python -m scripts.quality.python_inputs deploy/ |
+        xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \
           --ignore-noqa --output-format concise --
   secrets:
     title: Credential hygiene

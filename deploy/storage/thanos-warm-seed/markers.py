@@ -1,8 +1,10 @@
 """Discover only existing source compaction marks with an independently seeded replacement."""
 
-import json, re
-from start import kube
+import json
+import re
+
 from delta import remote_objects, source_pod
+from start import kube
 
 SOURCE = """
 import json
