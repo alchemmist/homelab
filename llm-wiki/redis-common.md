@@ -2,7 +2,7 @@
 
 **Срез на 22 ноября 2026 года.** `redis-common` — отдельный платформенный сервис в namespace `redis`, а не встроенный Redis LiteLLM, Harbor или Argo CD. Первый клиент — `llm/litellm`. Для записи используется один внутренний адрес: **`redis-common-haproxy.redis.svc.cluster.local:6379`**, только TLS с проверкой CA и имени сервера. Не привязывать клиента к pod, ноде или порту Sentinel.
 
-Панель владельца: [Redis Insight — Authentik, права и состояние публикации](redisinsight.md).
+Общая панель чтения: [Redis Insight — Authentik, права и состояние публикации](redisinsight.md).
 
 ## Что где хранится
 

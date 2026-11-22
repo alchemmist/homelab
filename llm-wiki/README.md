@@ -20,6 +20,8 @@ Research is not a pending deployment task. Private recovery evidence remains off
 
 [pgAdmin: вход через Authentik, действующие права чтения и статус подключения writer](pgadmin.md).
 
+[Redis Insight: группы Authentik, выдача и отзыв доступа к общей панели](redisinsight.md).
+
 [Общий Redis: адрес записи, гарантии и подключение LiteLLM](redis-common.md).
 
 1. [Текущий контекст](context.md) — краткая схема, ограничения и порядок работы.
