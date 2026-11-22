@@ -40,6 +40,33 @@ def smoke(group: str, directory: Path) -> None:
     if group == "argo":
         shutil.copy(ROOT / "tests/fixtures/npm/mcp-smoke.mjs", directory)
         run("node", "mcp-smoke.mjs")
+        # A fresh destination needs only the warmed npm cache, not a previous patch tar.
+        offline = directory / "offline"
+        offline.mkdir()
+        for filename in ("package.json", "package-lock.json"):
+            shutil.copy(directory / filename, offline)
+        subprocess.run(
+            [sys.executable, "-I", str(PI / "patch_npm.py"), group, "--offline"],
+            cwd=offline,
+            env=env,
+            timeout=120,
+            check=True,
+        )
+        subprocess.run(
+            [
+                "npm",
+                "ci",
+                "--offline",
+                "--strict-peer-deps",
+                "--ignore-scripts",
+                "--no-audit",
+                "--no-fund",
+            ],
+            cwd=offline,
+            env=env,
+            timeout=120,
+            check=True,
+        )
     else:
         pi = "node_modules/.bin/pi"
         agent = directory / ".pi/agent"

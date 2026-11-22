@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import os
+import subprocess
 import tarfile
 import tempfile
 import urllib.request
@@ -69,16 +70,34 @@ def materialize(name: str, directory: Path, offline: bool) -> None:
     version, digest = SOURCES[name]
     stem = f"{name.rsplit('/', 1)[-1]}-{version}"
     dest = directory / f"{stem}-homelab.tar"
-    if offline:
-        # npm ci verifies the materialized artifact integrity even on offline installs.
+    if offline and dest.exists():
         if not dest.is_file() or dest.is_symlink():
-            raise ValueError(f"Offline setup needs {dest.name} from a previous setup")
+            raise ValueError(f"Unsafe offline artifact: {dest.name}")
         verify(dest, name, directory)
         return
-    with urllib.request.urlopen(
-        f"https://registry.npmjs.org/{name}/-/{stem}.tgz", timeout=30
-    ) as response:
-        raw = response.read(4 * 1024 * 1024 + 1)
+    url = f"https://registry.npmjs.org/{name}/-/{stem}.tgz"
+    if name == "argocd-mcp" or offline:
+        # The workstation installer supports fresh destinations using just npm's cache.
+        with tempfile.TemporaryDirectory(dir=directory) as cached:
+            subprocess.run(
+                [
+                    "npm",
+                    "pack",
+                    "--ignore-scripts",
+                    "--silent",
+                    "--offline" if offline else "--prefer-online",
+                    url,
+                ],
+                cwd=cached,
+                check=True,
+                timeout=60,
+                stdout=subprocess.DEVNULL,
+            )
+            with (Path(cached) / f"{stem}.tgz").open("rb") as archive:
+                raw = archive.read(4 * 1024 * 1024 + 1)
+    else:
+        with urllib.request.urlopen(url, timeout=30) as response:
+            raw = response.read(4 * 1024 * 1024 + 1)
     if hashlib.sha512(raw).digest() != base64.b64decode(digest):
         raise ValueError(f"Unexpected upstream bytes for {name}")
     with tempfile.TemporaryDirectory(dir=directory) as staging:

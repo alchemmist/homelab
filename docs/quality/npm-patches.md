@@ -17,7 +17,7 @@ container and `setup-official-mcp.py`. It verifies the npm release SHA-512,
 rewrites the reviewed files in memory, retains licenses and runtime files,
 and emits deterministic tar files beside the materialized npm lock. The output
 must match lock integrity. Offline MCP setup reuses the verified patched tar
-from a previous setup. Do not commit these archives or put them in a ConfigMap.
+from a previous setup or reconstructs it from the warmed npm cache in a fresh destination. Do not commit these archives or put them in a ConfigMap.
 
 The gate admits these three local archives only for their reviewed owner,
 package, version, local filename and output SHA-512. It still refuses install
