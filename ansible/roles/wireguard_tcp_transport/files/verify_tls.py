@@ -1,4 +1,5 @@
 """Verify TLS and authentication behavior of the WireGuard transport endpoint."""
+
 import socket
 import ssl
 import struct
@@ -11,7 +12,7 @@ def connect(host, port, context, name):
     )
 
 
-def require_rejection(host, port, context, name):
+def require_rejection(host, port, context, name) -> None:
     try:
         with connect(host, port, context, name):
             message = "Untrusted TLS connection unexpectedly succeeded"
@@ -20,7 +21,7 @@ def require_rejection(host, port, context, name):
         pass
 
 
-def main():
+def main() -> None:
     host, port, certificate, username = sys.argv[1:]
     port = int(port)
     name = "wg-transport.socrat.internal"

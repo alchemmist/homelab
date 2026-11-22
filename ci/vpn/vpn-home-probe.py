@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import cast
 
 
-def exclusive(path, value):
+def exclusive(path, value) -> None:
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(value, f)
@@ -34,10 +34,12 @@ def network(endpoint="91.189.82.238"):
         timeout=10,
     )
     if r.returncode:
-        raise ValueError("Route read failed")
+        msg = "Route read failed"
+        raise ValueError(msg)
     rows = json.loads(r.stdout)
     if len(rows) != 1 or rows[0].get("dev") != "eno1" or rows[0].get("gateway") != "192.168.0.1":
-        raise ValueError("Not approved home WAN route")
+        msg = "Not approved home WAN route"
+        raise ValueError(msg)
     main = subprocess.run(
         ["ip", "-j", "route", "show", "table", "main"],
         check=False,
@@ -45,7 +47,8 @@ def network(endpoint="91.189.82.238"):
         timeout=10,
     )
     if main.returncode:
-        raise ValueError("Route snapshot failed")
+        msg = "Route snapshot failed"
+        raise ValueError(msg)
     return {
         "route_device": "eno1",
         "gateway": "192.168.0.1",
@@ -59,13 +62,15 @@ def require_global_endpoint(endpoint: str) -> None:
     import ipaddress
 
     if not ipaddress.ip_address(endpoint).is_global:
-        raise ValueError("Public probe endpoint required")
+        msg = "Public probe endpoint required"
+        raise ValueError(msg)
 
 
 def require_home_host() -> None:
     """Refuse any host other than the pinned home controller running as root."""
     if socket.gethostname() != "socrat-0" or os.geteuid() != 0:
-        raise ValueError("Requires socrat-0 root")
+        msg = "Requires socrat-0 root"
+        raise ValueError(msg)
 
 
 def require_private_state(state: Path) -> None:
@@ -76,7 +81,8 @@ def require_private_state(state: Path) -> None:
         or state.stat().st_mode & 0o077
         or state.stat().st_uid != 0
     ):
-        raise ValueError("Private state required")
+        msg = "Private state required"
+        raise ValueError(msg)
 
 
 def require_pinned_runtime(state: Path, approved_binary: str) -> tuple[Path, Path]:
@@ -84,9 +90,11 @@ def require_pinned_runtime(state: Path, approved_binary: str) -> tuple[Path, Pat
     binary = state / "xray-probe"
     configs = state / "home-configs-private.json"
     if binary.is_symlink() or configs.is_symlink():
-        raise ValueError("Symlink refused")
+        msg = "Symlink refused"
+        raise ValueError(msg)
     if hashlib.sha256(binary.read_bytes()).hexdigest() != approved_binary:
-        raise ValueError("Binary checksum mismatch")
+        msg = "Binary checksum mismatch"
+        raise ValueError(msg)
     return binary, configs
 
 
@@ -108,7 +116,8 @@ def require_literal_endpoints(prepared: dict[str, dict[str, object]], endpoint: 
         cast("str", reality_vnext[0]["address"]) != endpoint
         or cast("str", trojan_servers[0]["address"]) != endpoint
     ):
-        raise ValueError("Both protocols must use literal approved VPS IP")
+        msg = "Both protocols must use literal approved VPS IP"
+        raise ValueError(msg)
 
 
 def add_ipify_rule(config: dict[str, object]) -> None:
@@ -131,7 +140,8 @@ def wait_listener(process: subprocess.Popen[bytes], port: int) -> None:
     """Wait for the local SOCKS listener, failing if the client exits first."""
     for attempt in range(40):
         if process.poll() is not None:
-            raise RuntimeError("Own home client exited")
+            msg = "Own home client exited"
+            raise RuntimeError(msg)
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=0.3):
                 return
@@ -163,7 +173,8 @@ def require_nl_egress(port: int) -> None:
         env=dict(os.environ, NO_PROXY="", no_proxy=""),
     )
     if egress.returncode or egress.stdout.strip() != "109.120.141.60":
-        raise RuntimeError("Expected Netherlands IPv4 egress not proven")
+        msg = "Expected Netherlands IPv4 egress not proven"
+        raise RuntimeError(msg)
 
 
 def transfer_and_verify(state: Path, label: str, port: int) -> dict[str, object]:
@@ -198,7 +209,8 @@ def transfer_and_verify(state: Path, label: str, port: int) -> dict[str, object]
         {"returncode": r.returncode, "stdout": r.stdout, "stderr": r.stderr},
     )
     if r.returncode or r.stdout.strip() != "200 65536" or body.stat().st_size != 65536:
-        raise RuntimeError("Home tunnel transfer failed")
+        msg = "Home tunnel transfer failed"
+        raise RuntimeError(msg)
     proof: dict[str, object] = {
         "http_status": 200,
         "bytes": 65536,
@@ -260,7 +272,8 @@ def run(state, approved_binary, endpoint="91.189.82.238"):
             proofs[label] = probe_label(state, label, prepared[label], binary)
         after = network(endpoint)
         if before != after:
-            raise ValueError("Network state changed during home probe")
+            msg = "Network state changed during home probe"
+            raise ValueError(msg)
         result = {
             "vantage": "home-fixed-WAN-not-mobile",
             "expected_home_public_source": expected_home_source,
@@ -289,6 +302,5 @@ if __name__ == "__main__":
     try:
         print(json.dumps(run(a.state, a.approved_binary_sha256, endpoint=a.endpoint)))
     except Exception:
-        raise SystemExit(
-            "Home probe stopped; inspect private evidence; no global network changes requested."
-        ) from None
+        msg = "Home probe stopped; inspect private evidence; no global network changes requested."
+        raise SystemExit(msg) from None

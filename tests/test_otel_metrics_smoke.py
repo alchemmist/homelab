@@ -4,6 +4,8 @@ import importlib.util
 import unittest
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
     "metrics_smoke", ROOT / "ansible/scripts/otel-metrics-smoke.py"
@@ -32,7 +34,7 @@ class MetricsSmokeTests(unittest.TestCase):
     def test_semantic_view_never_merges_duplicate_series(self) -> None:
         """Reject a semantic view that would collapse two distinct series."""
         data = {**series("1.0"), **series("1")}
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             SMOKE.equivalent_series(data, data)
 
     def test_ordinary_string_labels_are_not_normalized(self) -> None:

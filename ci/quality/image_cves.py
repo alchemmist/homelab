@@ -16,7 +16,8 @@ def main() -> int:
     for source in SOURCES:
         image = yaml.safe_load(Path(source).read_text())["image"]
         if not re.fullmatch(r"sha256:[a-f0-9]{64}", image["digest"]):
-            raise ValueError(f"Missing immutable image digest in {source}")
+            msg = f"Missing immutable image digest in {source}"
+            raise ValueError(msg)
         ref = f"{image['repository']}@{image['digest']}"
         print(f"Scanning {source}: {ref}", flush=True)
         output = subprocess.check_output(

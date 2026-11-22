@@ -26,7 +26,7 @@ def serialize(result):
     return result if isinstance(result, str) else json.dumps(result)
 
 
-async def main():
+async def main() -> None:
     """Run the command-line entry point."""
     connections = await Config.get("terminal_server.connections", [])
     connection = next(
@@ -112,8 +112,10 @@ async def main():
                 }
             )
             error = cast("str", result[1]["error"])
-            assert "target" in error and "replacement" in error
-            assert original not in error and changed not in error
+            assert "target" in error
+            assert "replacement" in error
+            assert original not in error
+            assert changed not in error
             assert guard_stopped(metadata) == should_stop
         assert dispatches == 0, "Invalid calls reached terminal"
         read = await raw("read_file", {"path": path})
@@ -127,7 +129,8 @@ async def main():
                 "replacements": [{"target": original, "replacement": changed}],
             }
         )
-        assert dispatches == 1 and not guard_stopped(metadata)
+        assert dispatches == 1
+        assert not guard_stopped(metadata)
         read = await raw("read_file", {"path": path})
         assert changed in serialize(read) and original not in serialize(read), (
             "Corrected edit did not change fixture"

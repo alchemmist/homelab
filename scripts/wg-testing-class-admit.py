@@ -26,7 +26,7 @@ def peers():
     )
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     assert run("hostname") == "socrat-4"
     assert (
@@ -40,9 +40,11 @@ def main():
     assert hashlib.sha256(before).hexdigest() == EXPECTED, (
         "STOP persistent CAS mismatch; inspect receipt, do not replay"
     )
-    assert KEY.encode() not in before and b"SaveConfig" not in before
+    assert KEY.encode() not in before
+    assert b"SaveConfig" not in before
     original = peers()
-    assert KEY not in original and not any("10.250.0.41" in x for x in original.values())
+    assert KEY not in original
+    assert not any("10.250.0.41" in x for x in original.values())
     root = pathlib.Path("/var/lib/homelab-recovery/20261110-socrat5-bootstrap")
     root.mkdir(mode=0o700, exist_ok=False)
     (root / "wg-socrat.before.conf").write_bytes(before)
@@ -102,7 +104,8 @@ def main():
         check=True,
     )
     current = peers()
-    assert current.pop(KEY) == IP and current == original
+    assert current.pop(KEY) == IP
+    assert current == original
     assert f.read_bytes() == candidate
     result = {
         "phase": "peer-admitted-awaiting-client",

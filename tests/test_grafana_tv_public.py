@@ -104,10 +104,14 @@ def test_live_update_is_url_only_and_does_not_reprovision_tv() -> None:
     assert "tv_public_hash == tv_plan_hash" in s
     assert "tv_network_after.stdout == tv_network_before.stdout" in s
     assert "tv-uncertain.json" in s
-    assert "import_role" not in s and "include_role" not in s
-    assert "adb install" not in s and "settings put" not in s
+    assert "import_role" not in s
+    assert "include_role" not in s
+    assert "adb install" not in s
+    assert "settings put" not in s
     assert "am force-stop de.ozerov.fully; am start -n de.ozerov.fully/.FullyActivity" in s
-    assert "initialScale" not in s and "fontSize" not in s and "injectJsCode" not in s
+    assert "initialScale" not in s
+    assert "fontSize" not in s
+    assert "injectJsCode" not in s
 
 
 def test_no_dedicated_tv_alias_or_internal_vpn_in_helpers() -> None:
@@ -124,7 +128,8 @@ def test_no_dedicated_tv_alias_or_internal_vpn_in_helpers() -> None:
         assert "xiaomi-tv" not in s
         assert "setWireguardAlwaysOn" not in s
         assert '"alchemmist-tv"' in s
-        assert ":open_public" in s and "->launchDestination()V" in s
+        assert ":open_public" in s
+        assert "->launchDestination()V" in s
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node is needed for JS runtime contract")

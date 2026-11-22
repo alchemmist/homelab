@@ -51,7 +51,7 @@ def api(method, path, payload=None):
         return json.loads(body) if body else None
 
 
-def private_json(path, value):
+def private_json(path, value) -> None:
     """Private json."""
     with open(path, "x", opener=lambda p, f: os.open(p, f, 0o600)) as out:
         json.dump(value, out)
@@ -137,11 +137,7 @@ for filename, source in json.loads((assets / "sources.json").read_text())["files
     if targets:
         plan.append((filename, content, digest, name, targets))
 
-run_id = (
-    datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%SZ")
-    + "-"
-    + uuid.uuid4().hex[:8]
-)
+run_id = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid.uuid4().hex[:8]
 private_json(root / ("portal-icons-before-" + run_id + ".json"), inventory["results"])
 private_json(uncertain, {"run": run_id, "targets": sorted(seen)})
 changed = []

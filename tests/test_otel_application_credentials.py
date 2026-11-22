@@ -8,6 +8,7 @@ import types
 import unittest
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,13 +42,13 @@ class ApplicationCredentialTests(unittest.TestCase):
             ("application", "unknown"),
         ]:
             bad = {**good, field: value}
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 module.validate_destination(bad)
 
     def test_unrelated_workload_cannot_be_reloaded(self) -> None:
         """Unrelated workloads cannot trigger a reload."""
         module = load("otel-application-credentials")
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             module.validate_destination(
                 {
                     "application": "litellm",

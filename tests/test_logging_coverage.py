@@ -4,6 +4,8 @@ import importlib.util
 import unittest
 from pathlib import Path
 
+import pytest
+
 SPEC = importlib.util.spec_from_file_location(
     "coverage_check",
     Path(__file__).resolve().parents[1] / "scripts/logging-coverage.py",
@@ -77,14 +79,14 @@ class CoverageTests(unittest.TestCase):
             {"metric": {"body": "secret"}, "value": [0, "1"]},
             {"metric": {}, "value": [0, "NaN"]},
         ):
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 M.validate(
                     {
                         "status": "success",
                         "data": {"resultType": "vector", "result": [point]},
                     }
                 )
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             M.validate(
                 {
                     "status": "success",
@@ -179,7 +181,7 @@ class CoverageTests(unittest.TestCase):
         assert all(r["exists"] is True and r["emission"] == "unknown" for r in registry)
         rows = M.assess(M.inventory({}, {}, registry), [], [])
         assert all(r["status"] == "unknown" and r["emits"] is None for r in rows)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             M.host_registry(snapshots + snapshots)
 
     def test_host_canonical_requires_matching_host_and_unit(self) -> None:

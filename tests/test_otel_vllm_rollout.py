@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 from types import ModuleType
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,7 +47,7 @@ class VllmRolloutTests(unittest.TestCase):
             ["model", "--otlp-traces-endpoint=http://public"],
             ["model", "--otlp-traces-endpoint", "grpc://insecure"],
         ]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 helper.trace_arguments(args)
 
     def test_exact_mtls_protocol_always_on_no_duplicate_signals(self) -> None:

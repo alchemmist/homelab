@@ -1,5 +1,6 @@
 """Tests for the open-terminal browser test runner."""
 
+import contextlib
 import os
 import signal
 import subprocess
@@ -32,10 +33,8 @@ class BrowserTestRunnerTests(unittest.TestCase):
                 process.kill()
             process.wait()
         if self.pidfile.exists():
-            try:
+            with contextlib.suppress(ProcessLookupError):
                 os.kill(int(self.pidfile.read_text()), signal.SIGKILL)
-            except ProcessLookupError:
-                pass
         self.directory.cleanup()
 
     def launch(self, body, timeout=5) -> subprocess.Popen[bytes]:

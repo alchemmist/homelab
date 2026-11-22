@@ -28,7 +28,8 @@ spec.loader.exec_module(c)
 pods = json.load(open(a.pods))
 metadata = json.load(open(a.metadata))
 if metadata.get("failedQueries"):
-    raise SystemExit("STOP: incomplete metadata queries")
+    msg = "STOP: incomplete metadata queries"
+    raise SystemExit(msg)
 source_counts = {}
 if a.source_counts:
     snapshot = json.load(open(a.source_counts))
@@ -37,7 +38,8 @@ if a.source_counts:
         or abs(snapshot["end"] - metadata["observedAtUnix"]) > 0.001
         or abs(snapshot["end"] - snapshot["start"] - 600) > 0.001
     ):
-        raise SystemExit("STOP: source/query windows not aligned")
+        msg = "STOP: source/query windows not aligned"
+        raise SystemExit(msg)
     source_counts = {(r["namespace"], r["pod"], r["container"]): r for r in snapshot["sources"]}
 sources = []
 excluded = collections.Counter()

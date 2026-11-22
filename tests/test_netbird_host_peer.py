@@ -6,6 +6,7 @@ import types
 import unittest
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,7 +49,7 @@ class HostPeerTest(unittest.TestCase):
             ([], self.groups(), [], 400 * 1024),
             ([], [dict(g, peers=["unplanned"]) for g in self.groups()], [], 600 * 1024),
         ]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 peer.preflight(policies, groups, peers, mem)
 
     def test_machine_not_router_no_credentials_or_host_root(self) -> None:
@@ -101,7 +102,7 @@ class HostPeerTest(unittest.TestCase):
             assert key["auto_groups"] == []
             assert key["usage_limit"] == 1
             assert key["expires_in"] <= 600
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             peer.setup_key_body("new-vm")
 
     def test_only_directed_tcp_ports_dedicated_groups(self) -> None:
@@ -113,7 +114,7 @@ class HostPeerTest(unittest.TestCase):
             assert rule["ports"] == [port]
             assert not rule["bidirectional"]
             assert "All" not in str(rule)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             peer.policies(["same", "same"], ["d1", "d2"])
 
     def test_overlay_only_tls_host_sni_verified_upstream(self) -> None:
@@ -136,7 +137,7 @@ class HostPeerTest(unittest.TestCase):
             {"url": "https://10.250.0.3:443"}
         ]
         for address in ["0.0.0.0", "109.120.141.60", "10.250.0.2", "100.96.1.2;evil"]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 peer.frontend_config(address)
         deployment = peer.frontend("socrat-0", "100.96.1.2")[1]
         assert deployment["spec"]["replicas"] == 0
@@ -199,7 +200,7 @@ class StunTest(unittest.TestCase):
             b"\x01\x03" + response[2:],
             response + b"bad",
         ]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 probe.parse_binding(packet, bad)
 
 

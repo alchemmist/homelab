@@ -27,27 +27,33 @@ def unit(name) -> bool:
 
 def install(candidate, expected) -> None:
     if os.geteuid() != 0 or os.uname().nodename != "socrat-4":
-        raise RuntimeError("Wrong privilege or host")
+        msg = "Wrong privilege or host"
+        raise RuntimeError(msg)
     data = candidate.read_bytes()
     ast.parse(data)
     if sha(data) != expected:
-        raise RuntimeError("Unreviewed candidate SHA")
+        msg = "Unreviewed candidate SHA"
+        raise RuntimeError(msg)
     with (STATE / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         old = DEST.read_bytes()
         if DEST.is_symlink() or sha(old) != OLD:
-            raise RuntimeError("Controller drift or prior attempt")
+            msg = "Controller drift or prior attempt"
+            raise RuntimeError(msg)
         state = json.loads((STATE / "state.json").read_text())
         if (
             state["mode"] != "native"
             or not state.get("healthy")
             or not (STATE / "fallback.active").is_file()
         ):
-            raise RuntimeError("Expected healthy fenced native")
+            msg = "Expected healthy fenced native"
+            raise RuntimeError(msg)
         if not unit("homelab-vpn-transit-native") or unit("k3s-agent"):
-            raise RuntimeError("Runtime ownership conflict")
+            msg = "Runtime ownership conflict"
+            raise RuntimeError(msg)
         if ROOT.exists():
-            raise RuntimeError("Prior upgrade attempt; inspect, do not replay")
+            msg = "Prior upgrade attempt; inspect, do not replay"
+            raise RuntimeError(msg)
         ROOT.mkdir(mode=0o700, parents=True)
         for path, payload in [
             (ROOT / "before.py", old),
@@ -75,7 +81,8 @@ def install(candidate, expected) -> None:
         os.fsync(fd)
         os.close(fd)
         if sha(DEST.read_bytes()) != expected:
-            raise RuntimeError("Postcondition drift")
+            msg = "Postcondition drift"
+            raise RuntimeError(msg)
         accepted = {"installed": expected, "runtime_changed": False}
         with (ROOT / "accepted.json").open("x") as stream:
             json.dump(accepted, stream)

@@ -25,12 +25,12 @@ def graph(w) -> dict[str, object]:
 def guard(w, target) -> None:
     """Refuse binding when an error workflow is already set or a draft differs from the published graph."""
     if w.get("settings", {}).get("errorWorkflow") not in (None, "", target):
-        raise RuntimeError("Existing error handler differs; refusing overwrite")
+        msg = "Existing error handler differs; refusing overwrite"
+        raise RuntimeError(msg)
     published = w.get("activeVersion")
     if w["active"] and (not published or graph(published) != graph(w)):
-        raise RuntimeError(
-            "Published graph differs from draft; refusing to publish unrelated changes"
-        )
+        msg = "Published graph differs from draft; refusing to publish unrelated changes"
+        raise RuntimeError(msg)
 
 
 def body(w) -> dict[str, object]:
@@ -52,7 +52,8 @@ def bind(api, before, target) -> dict[str, object]:
         "activeVersionId",
     ):
         if fresh.get(k) != before.get(k):
-            raise RuntimeError("Concurrent workflow change; stop")
+            msg = "Concurrent workflow change; stop"
+            raise RuntimeError(msg)
     guard(fresh, target)
     if cast("dict[str, object]", fresh.get("settings", {})).get("errorWorkflow") == target:
         return fresh
@@ -71,7 +72,8 @@ def bind(api, before, target) -> dict[str, object]:
     after = api("GET", "workflows/" + before["id"])
     check(before, after, target)
     if before["active"] and after["activeVersionId"] != result["versionId"]:
-        raise RuntimeError("New settings version not published; stop")
+        msg = "New settings version not published; stop"
+        raise RuntimeError(msg)
     verified: dict[str, object] = after
     return verified
 
@@ -102,17 +104,21 @@ def check(before, after, target, verify_static=True) -> None:
         or before["name"] != after["name"]
         or before["active"] != after["active"]
     ):
-        raise RuntimeError("Workflow graph/identity/state drift; stop")
+        msg = "Workflow graph/identity/state drift; stop"
+        raise RuntimeError(msg)
     expected = {**before["settings"], "errorWorkflow": target}
     if after["settings"] != expected:
-        raise RuntimeError("Unexpected settings drift; stop")
+        msg = "Unexpected settings drift; stop"
+        raise RuntimeError(msg)
     # PUT returns an entity whose hook staticData may be transient during native
     # registration. Only authoritative GET readback verifies durable state.
     if verify_static and protected_static(before) != protected_static(after):
-        raise RuntimeError("Protected workflow static data drift; stop")
+        msg = "Protected workflow static data drift; stop"
+        raise RuntimeError(msg)
     for key in ("id", "shared", "tags", "pinData", "meta"):
         if key in before and key in after and before[key] != after[key]:
-            raise RuntimeError("Protected workflow field drift; stop")
+            msg = "Protected workflow field drift; stop"
+            raise RuntimeError(msg)
 
 
 def main() -> None:
@@ -122,11 +128,13 @@ def main() -> None:
     args = p.parse_args()
     listing = api("GET", "workflows?limit=250")
     if listing.get("nextCursor"):
-        raise RuntimeError("Workflow enumeration incomplete")
+        msg = "Workflow enumeration incomplete"
+        raise RuntimeError(msg)
     rows = [w for w in listing["data"] if not w.get("isArchived")]
     matches = [w for w in rows if w["name"] == NAME]
     if len(matches) > 1:
-        raise RuntimeError("Ambiguous handler identity")
+        msg = "Ambiguous handler identity"
+        raise RuntimeError(msg)
     target = matches[0]["id"] if matches else None
     targets = [api("GET", "workflows/" + w["id"]) for w in rows if w["id"] != target]
     for w in targets:
@@ -147,12 +155,14 @@ def main() -> None:
             or saved["settings"].get("errorWorkflow")
             or any(saved["settings"].get(k) != v for k, v in template["settings"].items())
         ):
-            raise RuntimeError("Handler drift; refusing replacement")
+            msg = "Handler drift; refusing replacement"
+            raise RuntimeError(msg)
     else:
         saved = api("POST", "workflows", body(template))
         target = saved["id"]
         if saved["active"] or saved["settings"].get("errorWorkflow"):
-            raise RuntimeError("Handler must have no recursive error target")
+            msg = "Handler must have no recursive error target"
+            raise RuntimeError(msg)
     # Error Trigger is called by native error hooks even while handler is inactive.
     # Persist only metadata receipt; never the raw failed-run payload/credential.
     result = []

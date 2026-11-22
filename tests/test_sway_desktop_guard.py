@@ -1,5 +1,6 @@
 """Tests for the Sway desktop session guard."""
 
+import contextlib
 import importlib.util
 import json
 import os
@@ -94,11 +95,11 @@ class GraphicsWake(unittest.TestCase):
         graphics.command_running = lambda command: False
         graphics.graphics_up(
             blank=lambda *args: calls.append(args),
-            spawn=lambda command: spawned.append(command),
+            spawn=spawned.append,
         )
         graphics.graphics_up(
             blank=lambda *args: calls.append(args),
-            spawn=lambda command: spawned.append(command),
+            spawn=spawned.append,
         )
         assert calls[0] == ("output", "*", "dpms", "on")
         assert [item[0] for item in spawned] == [
@@ -144,10 +145,8 @@ class GraphicsWake(unittest.TestCase):
                 return readable, [], []
 
             graphics.select.select = fake_select
-            try:
+            with contextlib.suppress(SystemExit):
                 original(open_devices=open_devices, sleep=lambda _seconds: None)
-            except SystemExit:
-                pass
 
         stop_after_one_read()
         assert spawned == []

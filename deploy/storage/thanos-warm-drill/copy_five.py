@@ -84,9 +84,7 @@ def render() -> dict[str, object]:
                         },
                         {
                             "name": "candidate",
-                            "persistentVolumeClaim": {
-                                "claimName": "thanos-warm-s1-candidate"
-                            },
+                            "persistentVolumeClaim": {"claimName": "thanos-warm-s1-candidate"},
                         },
                     ],
                 }

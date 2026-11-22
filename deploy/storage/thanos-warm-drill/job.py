@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
-PYTHON = (
-    "python@sha256:cb33f7f771ecec2ef1225cf39b159591a040391bd73e4c01f00fdfc4c47611d2"
-)
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+PYTHON = "python@sha256:cb33f7f771ecec2ef1225cf39b159591a040391bd73e4c01f00fdfc4c47611d2"
 PROM = "quay.io/prometheus/prometheus@sha256:b2a413d5a03ea6a76782a508d1c7947440bba3b973931a25676e278431891b01"
-THANOS = "quay.io/thanos/thanos@sha256:b567818fe608067eb0f1d7c2c4fe361e7ad83c8a256234c97685f1d0bf670cc8"
+THANOS = (
+    "quay.io/thanos/thanos@sha256:b567818fe608067eb0f1d7c2c4fe361e7ad83c8a256234c97685f1d0bf670cc8"
+)
 SCRATCH = {"name": "scratch", "mountPath": "/tmp"}
 ROOT = {"name": "candidate", "mountPath": "/candidate"}
 BUCKET = {**ROOT, "subPathExpr": "drill-$(POD_UID)"}
@@ -41,28 +43,28 @@ def container(
     mount: Mapping[str, object] | None = None,
     sidecar: bool = False,
 ) -> Container:
-    result: Container = dict(
-        name=name,
-        image=image,
-        command=command,
-        args=args,
-        env=[
+    result: Container = {
+        "name": name,
+        "image": image,
+        "command": command,
+        "args": args,
+        "env": [
             {
                 "name": "POD_UID",
                 "valueFrom": {"fieldRef": {"fieldPath": "metadata.uid"}},
             }
         ],
-        resources={
+        "resources": {
             "requests": {"cpu": "50m", "memory": "64Mi"},
             "limits": {"cpu": "1", "memory": "768Mi"},
         },
-        securityContext={
+        "securityContext": {
             "allowPrivilegeEscalation": False,
             "readOnlyRootFilesystem": True,
             "capabilities": {"drop": ["ALL"]},
         },
-        volumeMounts=[SCRATCH] + ([mount] if mount else []),
-    )
+        "volumeMounts": [SCRATCH] + ([mount] if mount else []),
+    }
     if sidecar:
         result["restartPolicy"] = "Always"
     return result
@@ -220,15 +222,11 @@ job = {
                     {"name": "scratch", "emptyDir": {"sizeLimit": "1Gi"}},
                     {
                         "name": "candidate",
-                        "persistentVolumeClaim": {
-                            "claimName": "thanos-warm-s1-candidate"
-                        },
+                        "persistentVolumeClaim": {"claimName": "thanos-warm-s1-candidate"},
                     },
                 ],
                 "initContainers": init,
-                "containers": [
-                    container("verify", PYTHON, ["python3", "-Bc"], [verify])
-                ],
+                "containers": [container("verify", PYTHON, ["python3", "-Bc"], [verify])],
             }
         },
     },

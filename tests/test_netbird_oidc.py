@@ -13,6 +13,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import override
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "ansible/roles/identity_integrations/files/netbird_oidc.py"
 SPEC = importlib.util.spec_from_file_location("netbird_oidc", SOURCE)
@@ -233,8 +235,9 @@ class FakeAuthentik(threading.Thread):
                 ) as error:
                     return self._send(500, {"detail": str(error)})
                 self._send(code, body)
+                return None
 
-            def _send(self, code, body):
+            def _send(self, code, body) -> None:
                 data = b"" if body is None else json.dumps(body).encode()
                 self.send_response(code)
                 self.send_header("Content-Type", "application/json")
@@ -313,7 +316,7 @@ class FakeAuthentik(threading.Thread):
                 self.fail_provider = False
                 return 500, {"detail": "unavailable"}
             if self.attach_outpost:
-                self.outposts[0]["providers"] = list(self.outposts[0]["providers"]) + [101]
+                self.outposts[0]["providers"] = [*list(self.outposts[0]["providers"]), 101]
             self._seq += 1
             created = dict(payload)
             self.provider_secrets[self._seq] = created.pop("client_secret", None)
@@ -447,13 +450,13 @@ class NetBirdOIDCTests(unittest.TestCase):
             oidc.callback_from_issuer("https://netbird.socrat.alchemmist.xyz/oauth2//")
             == "https://netbird.socrat.alchemmist.xyz/oauth2//oauth2/callback"
         )
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             oidc.validate_management_issuer("https://example.com/oauth2")
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             oidc.validate_management_issuer(
                 "https://auth.socrat.alchemmist.xyz/application/o/netbird-pilot/"
             )
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             oidc.validate_management_issuer("http://netbird.socrat.alchemmist.xyz/oauth2")
         assert "--callback" not in SOURCE.read_text()
         assert "configure" not in SOURCE.read_text()
@@ -624,7 +627,7 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert code == 0
         plan = json.loads(out)
         assert any("adopt" in _string(item) for item in _sequence(plan["blockers"]))
-        code, out, err = self.run_tool(
+        code, out, _err = self.run_tool(
             "apply",
             "--approve-sha256",
             plan["sha256"],
@@ -718,7 +721,7 @@ class NetBirdOIDCTests(unittest.TestCase):
         """Legacy membership loss stops without a user patch."""
         self.fake.drop_legacy_on_add = True
         approved = self.plan()
-        code, out, err = self.run_tool(
+        code, _out, err = self.run_tool(
             "apply",
             "--approve-sha256",
             approved["sha256"],
@@ -738,7 +741,7 @@ class NetBirdOIDCTests(unittest.TestCase):
         outside = self.root / "outside.json"
         outside.write_text('{"client_secret": "nope"}\n')
         (self.root / oidc.JOURNAL_NAME).symlink_to(outside)
-        code, out, err = self.run_tool(
+        code, _out, err = self.run_tool(
             "apply",
             "--approve-sha256",
             approved["sha256"],
@@ -763,7 +766,7 @@ class NetBirdOIDCTests(unittest.TestCase):
             },
         )
         before = (self.root / oidc.JOURNAL_NAME).read_text()
-        code, out, err = self.run_tool(
+        code, _out, err = self.run_tool(
             "apply",
             "--approve-sha256",
             approved["sha256"],

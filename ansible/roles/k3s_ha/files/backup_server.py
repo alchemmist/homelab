@@ -17,7 +17,7 @@ CONFIG_PATHS = [
 ]
 
 
-def backup():
+def backup() -> None:
     """Document the backup operation."""
     root = Path("/var/backups/homelab-k3s")
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -42,7 +42,7 @@ def backup():
     print(json.dumps({"backup": str(destination)}))
 
 
-def restore(directory):
+def restore(directory) -> None:
     """Document the restore operation."""
     directory = Path(directory).resolve()
     if (

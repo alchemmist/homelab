@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "charts/spi-triage/files"))
+import pytest
 from core import Failure, digest
 from evidence_bundle import (
     PART_SIZE,
@@ -146,7 +147,7 @@ class ArtifactTests(unittest.TestCase):
         b = self.bundle()
         state = {}
         save = Mock()
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             publish_parts(g, 9, b, state, save)
         marker = state["pending"]
         g.comments.return_value = [
@@ -171,9 +172,9 @@ class ArtifactTests(unittest.TestCase):
         b = self.bundle()
         state = {}
         save = Mock()
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             publish_parts(g, 9, b, state, save)
-        with self.assertRaisesRegex(Failure, "WRITE_NEEDS_REVIEW"):
+        with pytest.raises(Failure, match="WRITE_NEEDS_REVIEW"):
             publish_parts(g, 9, b, state, save)
         assert g.request.call_count == 1
 
@@ -201,7 +202,7 @@ class ArtifactTests(unittest.TestCase):
         g.comments.return_value = []
         g.request.side_effect = Failure("HTTP_429")
         progress = {}
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             publish_parts(g, 9, self.bundle(), progress, Mock())
         assert "pending" not in progress
 
@@ -598,7 +599,7 @@ class EngineArtifactTests(unittest.TestCase):
             key = store.claim()["job_id"]
             for stage in ("match", "collect", "analyze"):
                 engine.run(stage, key)
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 engine.run("publish", key)
             saved = store.get(key)
             marker = saved["result"]["artifact_publication"]["pending"]
@@ -652,7 +653,7 @@ class DownloadTests(unittest.TestCase):
         files = module.reconstruct(comments, e["event_key"])
         assert json.loads(files["E001-logs.json"]) == "line one\nline two ` data"
         comments[1]["body"] = comments[1]["body"].replace("line one", "tampered")
-        with self.assertRaisesRegex(ValueError, "CHECKSUM"):
+        with pytest.raises(ValueError, match="CHECKSUM"):
             module.reconstruct(comments, e["event_key"])
 
     def test_primary_and_all_parts_have_bounded_bodies(self) -> None:

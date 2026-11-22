@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/blog_updates"))
+import pytest
 from engine import UnsafeInput
 from stages import checked_model
 
@@ -31,7 +32,7 @@ class ModelBoundaryTests(unittest.TestCase):
         assert checked_model(model, "prompt", {}, {"files": [{"filename": "a"}]}) == valid
         assert len(calls) == MODEL_CALL_CEILING
 
-    def test_bad_output_stays_rejected(self):
+    def test_bad_output_stays_rejected(self) -> None:
         """Verify malformed stage output stays rejected across retries."""
         calls = []
 
@@ -39,6 +40,6 @@ class ModelBoundaryTests(unittest.TestCase):
             calls.append(1)
             return []
 
-        with self.assertRaises(UnsafeInput):
+        with pytest.raises(UnsafeInput):
             checked_model(model, "prompt", {}, {"files": []})
         assert len(calls) == MODEL_CALL_CEILING

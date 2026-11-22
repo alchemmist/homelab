@@ -15,7 +15,7 @@ NAME = "openhands-oidc-sessions"
 LABELS = {"app": NAME, "app.kubernetes.io/managed-by": "homelab-openhands"}
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     a = p.parse_args()

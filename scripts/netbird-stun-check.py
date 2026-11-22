@@ -28,20 +28,24 @@ def parse_binding(packet, response):
         or response[4:20] != packet[4:20]
         or len(response) != 20 + struct.unpack("!H", response[2:4])[0]
     ):
-        raise ValueError("invalid Binding response/transaction")
+        msg = "invalid Binding response/transaction"
+        raise ValueError(msg)
     offset = 20
     attrs = {}
     while offset < len(response):
         if offset + 4 > len(response):
-            raise ValueError("truncated attribute header")
+            msg = "truncated attribute header"
+            raise ValueError(msg)
         kind, length = struct.unpack("!HH", response[offset : offset + 4])
         if offset + 4 + length > len(response):
-            raise ValueError("truncated attribute value")
+            msg = "truncated attribute value"
+            raise ValueError(msg)
         attrs[kind] = response[offset + 4 : offset + 4 + length]
         offset += 4 + ((length + 3) // 4) * 4
     mapped = attrs.get(0x20, b"")
     if len(mapped) != 8 or mapped[:2] != b"\x00\x01":
-        raise ValueError("missing IPv4 XOR-MAPPED-ADDRESS")
+        msg = "missing IPv4 XOR-MAPPED-ADDRESS"
+        raise ValueError(msg)
     address = socket.inet_ntoa(
         bytes(v ^ c for v, c in zip(mapped[4:], struct.pack("!I", COOKIE), strict=True))
     )
@@ -56,7 +60,8 @@ def exchange(address, packet, timeout):
         try:
             reply, remote = sock.recvfrom(2048)
             if remote != (address, 3478):
-                raise ValueError("reply from unexpected source")
+                msg = "reply from unexpected source"
+                raise ValueError(msg)
             return reply
         except TimeoutError:
             return None
@@ -66,22 +71,27 @@ def check(expected=None, timeout=3):
     packet = request(1)
     response = exchange(PUBLIC, packet, timeout)
     if response is None:
-        raise ValueError("advertised STUN listener timed out")
+        msg = "advertised STUN listener timed out"
+        raise ValueError(msg)
     mapped = parse_binding(packet, response)
     ip = ipaddress.ip_address(mapped["address"])
     if not ip.is_global:
-        raise ValueError("STUN returned nonpublic source: investigate service SNAT/hairpin")
+        msg = "STUN returned nonpublic source: investigate service SNAT/hairpin"
+        raise ValueError(msg)
     if expected and mapped["address"] != expected:
-        raise ValueError("observed source differs from explicitly expected caller public IP")
+        msg = "observed source differs from explicitly expected caller public IP"
+        raise ValueError(msg)
     # RFC5766 REQUESTED-TRANSPORT=UDP. STUN-only must not allocate a TURN relay.
     allocate = request(3, struct.pack("!HHBBBB", 0x19, 4, 17, 0, 0, 0))
     result = exchange(PUBLIC, allocate, timeout)
     if result is not None:
         if len(result) < 20 or result[4:20] != allocate[4:20] or result[:2] != b"\x01\x13":
-            raise ValueError("TURN not demonstrably rejected (or unexpected response)")
+            msg = "TURN not demonstrably rejected (or unexpected response)"
+            raise ValueError(msg)
     home = exchange(HOME, request(1), timeout)
     if home is not None:
-        raise ValueError("home entrance unexpectedly answered; inspect before advertising DNS")
+        msg = "home entrance unexpectedly answered; inspect before advertising DNS"
+        raise ValueError(msg)
     return {
         "advertised_uri": "stun:" + PUBLIC + ":3478",
         "binding_transaction_valid": True,
@@ -93,7 +103,7 @@ def check(expected=None, timeout=3):
     }
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--expected-source", type=ipaddress.IPv4Address)
     a = p.parse_args()

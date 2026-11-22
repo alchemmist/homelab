@@ -135,7 +135,7 @@ def bootstrap(grafana, existing_secret, persist, has_admin=True):
     return {"changed": _issue_credentials(grafana, account_id, values, persist)}
 
 
-def _issue_credentials(grafana, account_id, values, persist):
+def _issue_credentials(grafana, account_id, values, persist) -> bool:
     """Create a fresh Grafana token, persist the Secret, and revoke on failure."""
     token = grafana.request(
         "POST",
@@ -164,15 +164,13 @@ def _issue_credentials(grafana, account_id, values, persist):
             )
         except Exception:
             msg = "Credential persistence failed; newly created token cleanup also failed"
-            raise BootstrapError(
-                msg
-            ) from None
+            raise BootstrapError(msg) from None
         msg = "Credential persistence failed; newly created token revoked"
         raise BootstrapError(msg) from None
     return True
 
 
-def main():
+def main() -> int:
     """Document the main operation."""
     try:
         credentials = json.load(sys.stdin)

@@ -376,7 +376,7 @@ class Client:
     def pods(self) -> list[Pod]:
         """Return the full PodList "items" across all namespaces."""
         result = subprocess.run(
-            self.command + ["get", "pods", "--all-namespaces", "-o", "json"],
+            [*self.command, "get", "pods", "--all-namespaces", "-o", "json"],
             capture_output=True,
             text=True,
             check=True,
@@ -395,7 +395,7 @@ class Client:
             + "/eviction"
         )
         return subprocess.run(
-            self.command + ["create", "--raw", endpoint, "-f", "-"],
+            [*self.command, "create", "--raw", endpoint, "-f", "-"],
             input=json.dumps(eviction_payload(pod)),
             capture_output=True,
             text=True,

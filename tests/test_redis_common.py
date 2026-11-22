@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PLATFORM = ROOT / "deploy/platform/redis-common"
 
 
-def test_storage_class_is_backed_by_allowed_node_paths():
+def test_storage_class_is_backed_by_allowed_node_paths() -> None:
     sc = yaml.safe_load((PLATFORM / "resources/storage.yaml").read_text())
     assert (sc["reclaimPolicy"], sc["volumeBindingMode"]) == (
         "Retain",
@@ -30,29 +30,35 @@ def test_storage_class_is_backed_by_allowed_node_paths():
     )
 
 
-def test_staged_application_and_tls_quorum():
+def test_staged_application_and_tls_quorum() -> None:
     app = yaml.safe_load((ROOT / "deploy/argocd/apps/redis-common.yaml").read_text())["spec"]
-    assert app["destination"]["namespace"] == "redis" and "automated" not in app["syncPolicy"]
+    assert app["destination"]["namespace"] == "redis"
+    assert "automated" not in app["syncPolicy"]
     upstream, local = app["sources"]
-    assert upstream["targetRevision"] == "4.39.0" and local["ref"] == "values"
+    assert upstream["targetRevision"] == "4.39.0"
+    assert local["ref"] == "values"
     v = yaml.safe_load(
         (ROOT / upstream["helm"]["valueFiles"][0].removeprefix("$values/")).read_text()
     )
-    assert v["replicas"] == 3 and v["hardAntiAffinity"] and v["sentinel"]["quorum"] == 2
+    assert v["replicas"] == 3
+    assert v["hardAntiAffinity"]
+    assert v["sentinel"]["quorum"] == 2
     assert v["redis"]["port"] == v["sentinel"]["port"] == 0
     assert all(v[k]["tlsReplication"] for k in ("redis", "sentinel"))
-    assert v["networkPolicy"]["enabled"] and v["haproxy"]["networkPolicy"] == {"enabled": True}
+    assert v["networkPolicy"]["enabled"]
+    assert v["haproxy"]["networkPolicy"] == {"enabled": True}
     assert "default_backend" not in v["haproxy"]["customConfig"]
     assert v["redis"]["config"]["maxmemory-policy"] == "noeviction"
 
 
-def test_production_proxy_uses_only_external_coordination():
+def test_production_proxy_uses_only_external_coordination() -> None:
     v = yaml.safe_load((ROOT / "deploy/platform/litellm/values.yaml").read_text())
     assert v["proxy_config"]["general_settings"]["coordination_redis"] == {
         "namespace": "litellm",
         "url": "os.environ/COORDINATION_REDIS_URL",
     }
-    assert not v["redis"]["enabled"] and not v["proxy_config"]["litellm_settings"].get("cache")
+    assert not v["redis"]["enabled"]
+    assert not v["proxy_config"]["litellm_settings"].get("cache")
     assert v["replicaCount"] == v["numWorkers"] == 1
     assert not v["migrationJob"]["enabled"]
     assert (

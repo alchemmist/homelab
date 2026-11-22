@@ -66,7 +66,7 @@ def checks():
     }
 
 
-def agent_main():
+def agent_main() -> None:
     """Run agent main."""
     import yaml
     from minisweagent import package_dir
@@ -101,7 +101,7 @@ def agent_main():
     (ART / "agent-exit.json").write_text(json.dumps(result))
 
 
-def harden_parent():
+def harden_parent() -> None:
     """Run harden parent."""
     import ctypes
 
@@ -109,10 +109,11 @@ def harden_parent():
     # Together with a parent-only HMAC key this prevents an agent from simply
     # printing a forged passing test envelope through /proc/1/fd/1.
     if len(RESULT_KEY) != 64 or ctypes.CDLL(None).prctl(4, 0, 0, 0, 0) != 0:
-        raise RuntimeError("Authenticated non-dumpable worker wrapper required")
+        msg = "Authenticated non-dumpable worker wrapper required"
+        raise RuntimeError(msg)
 
 
-def main():
+def main() -> None:
     """Run main."""
     harden_parent()
     ART.mkdir(parents=True, exist_ok=True)
@@ -120,7 +121,8 @@ def main():
     lane = os.environ["LANE"]
     phase = os.environ.get("PHASE", "work")
     revision = os.environ["REVISION"]
-    assert len(revision) == 40 and all(c in "0123456789abcdef" for c in revision)
+    assert len(revision) == 40
+    assert all(c in "0123456789abcdef" for c in revision)
     ROOT.parent.mkdir(exist_ok=True)
     if lane == "smoke":
         ROOT.mkdir(exist_ok=True)
@@ -163,9 +165,11 @@ def main():
         ],
         cwd=ROOT.parent,
     ):
-        raise RuntimeError("Clone failed")
+        msg = "Clone failed"
+        raise RuntimeError(msg)
     if command(["git", "checkout", "--detach", revision]):
-        raise RuntimeError("Checkout failed")
+        msg = "Checkout failed"
+        raise RuntimeError(msg)
     setup = {
         "python": command(
             [
@@ -186,7 +190,8 @@ def main():
         ),
     }
     if setup["python"]:
-        raise RuntimeError("Python dependency setup failed; see bounded command log")
+        msg = "Python dependency setup failed; see bounded command log"
+        raise RuntimeError(msg)
     original_package = json.loads(
         subprocess.check_output(["git", "show", revision + ":web/package.json"], cwd=ROOT)
     )
@@ -228,7 +233,8 @@ def main():
                 ["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"],
                 cwd=ROOT / "web",
             ):
-                raise RuntimeError("Candidate dependencies do not install cleanly")
+                msg = "Candidate dependencies do not install cleanly"
+                raise RuntimeError(msg)
         candidate_checks = checks()
         task = """Independently review the existing uncommitted patch. Do not implement or change the patch.
 Read AGENTS.md. Reproduce claims, inspect regression tests and look for security/correctness problems.
@@ -328,7 +334,8 @@ This narrow bootstrap exception overrides the general ban on dependency manifest
         for path in filter(None, paths):
             p = ROOT / path
             if not p.is_file() or p.is_symlink():
-                raise ValueError("Deletion/symlink not permitted")
+                msg = "Deletion/symlink not permitted"
+                raise ValueError(msg)
             result["changes"].append(
                 {
                     "path": path,

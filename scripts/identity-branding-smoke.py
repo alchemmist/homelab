@@ -121,7 +121,7 @@ try:
         components = []
         errors = []
 
-        def observe(response):
+        def observe(response) -> None:
             """Perform the observe operation."""
             if "/api/v3/flows/executor/" in response.url and response.status in [
                 200,
@@ -173,7 +173,8 @@ try:
                     ).get("secret", [None])[0]
                 )
                 if not source:
-                    raise RuntimeError("TOTP setup data unavailable")
+                    msg = "TOTP setup data unavailable"
+                    raise RuntimeError(msg)
                 key = base64.b32decode(source.upper() + "=" * ((-len(source)) % 8))
                 sig = hmac.new(
                     key, struct.pack(">Q", int(time.time()) // 30), hashlib.sha1
@@ -202,17 +203,18 @@ try:
                     page.wait_for_timeout(500)
                     continue
                 profile = resp.json()
-                assert profile["login"] == username and not profile.get("isGrafanaAdmin")
-                assert (
-                    "ak-stage-authenticator-totp" in components and "ak-stage-consent" in components
-                )
+                assert profile["login"] == username
+                assert not profile.get("isGrafanaAdmin")
+                assert "ak-stage-authenticator-totp" in components
+                assert "ak-stage-consent" in components
                 print(
                     "PASS: native browser password + TOTP + consent + Grafana OIDC; observer is not server admin"
                 )
                 break
             page.wait_for_timeout(500)
         else:
-            raise RuntimeError("Browser roundtrip did not complete")
+            msg = "Browser roundtrip did not complete"
+            raise RuntimeError(msg)
         print("Browser JS errors:", len(errors))
         assert not errors
         browser.close()

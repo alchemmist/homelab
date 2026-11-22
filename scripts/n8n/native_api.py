@@ -19,7 +19,8 @@ def api(method, path, body=None) -> dict[str, object]:
     if method not in {"GET", "POST", "PUT"} or not re.fullmatch(
         r"workflows(?:/[A-Za-z0-9_-]+(?:/activate)?)?(?:\?limit=250)?", path
     ):
-        raise ValueError("Unsupported API operation")
+        msg = "Unsupported API operation"
+        raise ValueError(msg)
     payload = {
         "method": method,
         "path": path,
@@ -41,7 +42,6 @@ def api(method, path, body=None) -> dict[str, object]:
         timeout=35,
     )
     if p.returncode or len(p.stdout) > 4194304:
-        raise RuntimeError(
-            "Native n8n API failed; stop and inspect private receipts, no automatic retry"
-        )
+        msg = "Native n8n API failed; stop and inspect private receipts, no automatic retry"
+        raise RuntimeError(msg)
     return cast("dict[str, object]", json.loads(p.stdout))

@@ -36,7 +36,7 @@ PROMETHEUS = os.environ.get(
 LOCK = ROOT / "step.lock"
 
 
-def log(event, **fields):
+def log(event, **fields) -> None:
     print(
         json.dumps({"service": "lms-certify", "event": event, **fields}, ensure_ascii=False),
         flush=True,
@@ -49,7 +49,7 @@ def load_json(path, default):
     return json.loads(path.read_text())
 
 
-def save_json(path, value):
+def save_json(path, value) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(value, ensure_ascii=False))
@@ -141,7 +141,8 @@ def llm(role, prompt):
     text = payload["choices"][0]["message"].get("content") or ""
     start, end = text.find("{"), text.rfind("}")
     if start < 0 or end <= start:
-        raise ValueError("model json")
+        msg = "model json"
+        raise ValueError(msg)
     return json.loads(text[start : end + 1])
 
 
@@ -171,7 +172,7 @@ def open_task(queue, state):
     return None
 
 
-def run_loop(task_id, statement):
+def run_loop(task_id, statement) -> None:
     try:
         state = load_json(ROOT / "state.json", {"tasks": {}})
 
@@ -236,14 +237,14 @@ def step():
 class Handler(BaseHTTPRequestHandler):
     """HTTP handler exposing the lms-certify service."""
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         """Answer liveness probes on /healthz only."""
         if self.path != "/healthz":
             self.send_error(404)
             return
         self._send({"ok": True, "running": LOCK.exists()})
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         """Process one /step certificate request if the worker token matches."""
         if self.path != "/step" or self.headers.get("X-Worker-Token") != TOKEN:
             self.send_error(404)
@@ -265,7 +266,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
-    def log_message(self, _fmt, *_args):
+    def log_message(self, _fmt, *_args) -> None:
         """Suppress default request logging entirely."""
         return
 

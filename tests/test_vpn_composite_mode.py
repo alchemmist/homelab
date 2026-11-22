@@ -37,7 +37,7 @@ def component(c, runtime=0, check=1, off=0, success=1, observed="0+15x20", extra
 class CompositeModeTest(unittest.TestCase):
     """Tests for CompositeModeTest."""
 
-    def test_contract_and_geometry(self):
+    def test_contract_and_geometry(self) -> None:
         assert P["gridPos"] == {"x": 4, "y": 0, "w": 2, "h": 2}
         mapping = P["fieldConfig"]["defaults"]["mappings"][0]["options"]
         assert mapping["-2"]["text"] == "NO DATA"
@@ -48,10 +48,10 @@ class CompositeModeTest(unittest.TestCase):
         assert "/explore?" in P["fieldConfig"]["defaults"]["links"][0]["url"]
 
     @unittest.skipUnless(shutil.which("promtool"), "promtool required")
-    def test_actual_mode_expression_two_components_partial_total_stale_and_errors(self):
+    def test_actual_mode_expression_two_components_partial_total_stale_and_errors(self) -> None:
         cases = []
 
-        def add(name, data, value):
+        def add(name, data, value) -> None:
             cases.append(
                 {
                     "name": name,

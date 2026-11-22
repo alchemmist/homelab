@@ -18,10 +18,13 @@ BODY = b"# Public n8n HTTPS must not depend on private VPN DNS. Authentik remain
 def apply() -> None:
     """Install the reviewed public n8n resolver file after backing up any previous one."""
     if sys.platform != "darwin" or os.geteuid() != 0:
-        raise RuntimeError("Native macOS administrator authorization required")
+        msg = "Native macOS administrator authorization required"
+        raise RuntimeError(msg)
     folder = Path("/etc/resolver")
-    assert folder.is_dir() and not folder.is_symlink()
-    assert folder.stat().st_uid == 0 and not folder.stat().st_mode & 0o022
+    assert folder.is_dir()
+    assert not folder.is_symlink()
+    assert folder.stat().st_uid == 0
+    assert not folder.stat().st_mode & 0o022
     p = folder / HOST
     assert not p.is_symlink()
     old = p.read_bytes() if p.exists() else None
@@ -29,7 +32,8 @@ def apply() -> None:
         print("Exact public n8n resolver already installed")
         return
     if old is not None:
-        assert p.is_file() and len(old) < 4096
+        assert p.is_file()
+        assert len(old) < 4096
     backup = Path("/var/root/.local/state/n8n-public-dns") / str(time.time_ns())
     backup.mkdir(parents=True, mode=0o700)
     if old is not None:

@@ -56,7 +56,7 @@ def _reap_children() -> None:
             break
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--watchdog", required=True)
@@ -71,7 +71,8 @@ def main():
     args = parser.parse_args()
     module = load(args.watchdog)
     if ctypes.CDLL(None, use_errno=True).prctl(36, 1, 0, 0, 0) != 0:
-        raise RuntimeError("Could not enable fixture process adoption")
+        msg = "Could not enable fixture process adoption"
+        raise RuntimeError(msg)
     with tempfile.TemporaryDirectory(prefix="playwright_homelab_probe_") as directory:
         script = Path(directory) / "fixture.js"
         script.write_text(
@@ -163,7 +164,7 @@ def main():
             )
             for identity in identities:
                 module.signal_process(identity, signal.SIGKILL)
-            for process in fixtures + [marker]:
+            for process in [*fixtures, marker]:
                 process.wait(timeout=5)
         _reap_children()
 

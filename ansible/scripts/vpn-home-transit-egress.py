@@ -81,7 +81,8 @@ def projection() -> dict[str, object]:
 
 def upgrade_direct_probe() -> None:
     """One-shot CAS migration of HOME0's owned table; no flush/delete/reload."""
-    assert os.geteuid() == 0 and socket.gethostname() == "socrat-0"
+    assert os.geteuid() == 0
+    assert socket.gethostname() == "socrat-0"
     os.umask(0o077)
     old = rules(direct_probe=False)
     assert (ROOT / "rules.nft").read_text() == old, "Not the reviewed legacy source"
@@ -142,7 +143,8 @@ def upgrade_direct_probe() -> None:
         {"counter": {}},
         {"return": None},
     ]
-    assert len(added) == 1 and added[0]["rule"]["chain"] == "output"
+    assert len(added) == 1
+    assert added[0]["rule"]["chain"] == "output"
     assert added[0]["rule"]["expr"] == expected_expr, "Unexpected inserted rule: inspect"
     without = dict(after, nftables=[v for v in after["nftables"] if v not in added])
     assert without == before, "Unrelated change: inspect"
@@ -174,7 +176,8 @@ def upgrade_direct_probe() -> None:
 
 
 def run(boot=False) -> None:
-    assert os.geteuid() == 0 and socket.gethostname() in (
+    assert os.geteuid() == 0
+    assert socket.gethostname() in (
         "socrat-0",
         "socrat-1",
         "socrat-3",

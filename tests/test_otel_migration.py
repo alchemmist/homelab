@@ -8,6 +8,8 @@ import unittest
 from pathlib import Path
 from typing import TypedDict
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
     "otel_preflight", ROOT / "scripts/otel-migration-preflight.py"
@@ -200,7 +202,7 @@ class MigrationPreflightTests(unittest.TestCase):
         """Negative budget is rejected."""
         policy, inventory = fixtures()
         policy["nodes"]["socrat-1"]["components"]["tempo"] = -1
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             PREFLIGHT.evaluate(policy, inventory, now=1000)
 
     def test_empty_and_old_inventory_fail(self) -> None:
@@ -210,7 +212,7 @@ class MigrationPreflightTests(unittest.TestCase):
         inventory["prometheus"] = []
         assert not PREFLIGHT.evaluate(policy, inventory, now=1000)["readyForCutover"]
         inventory["schemaVersion"] = 0
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             PREFLIGHT.evaluate(policy, inventory, now=1000)
 
     def test_evaluate_does_not_change_inputs(self) -> None:
@@ -226,7 +228,7 @@ class MigrationPreflightTests(unittest.TestCase):
             path = Path(directory) / "inventory.json"
             PREFLIGHT.save(path, {"test": 1})
             assert path.stat().st_mode & 511 == 384
-            with self.assertRaises(FileExistsError):
+            with pytest.raises(FileExistsError):
                 PREFLIGHT.save(path, {"test": 2})
             assert json.loads(path.read_text()) == {"test": 1}
 

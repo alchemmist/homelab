@@ -53,7 +53,7 @@ def module_note(path):
         return value
 
 
-def validate():
+def validate() -> None:
     """Document the validate operation."""
     if os.geteuid() != 0:
         msg = "This guard must run as root"
@@ -66,7 +66,8 @@ def validate():
     expected = f"{DKMS_NAME}/{DKMS_VERSION}, {kernel}, {platform.machine()}: installed"
     accepted = {expected, expected + " (Original modules exist)"}
     if not accepted.intersection(line.strip() for line in status.splitlines()):
-        raise RuntimeError(f"Required ALX DKMS module is not installed for {kernel}")
+        msg_0 = f"Required ALX DKMS module is not installed for {kernel}"
+        raise RuntimeError(msg_0)
     path = Path(run(["modinfo", "-n", "alx"]).decode().strip()).resolve(strict=True)
     directory = (Path("/lib/modules") / kernel / "updates/dkms").resolve()
     if path.parent != directory or path.name not in (
@@ -81,12 +82,10 @@ def validate():
     run(["modprobe", "alx"])
     if LOADED_NOTE.read_bytes() != expected_note:
         msg_0 = "Loaded ALX build-id differs from the guarded DKMS module; reboot required"
-        raise RuntimeError(
-            msg_0
-        )
+        raise RuntimeError(msg_0)
 
 
-def main():
+def main() -> int:
     """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
@@ -97,9 +96,8 @@ def main():
             run(["modprobe", "rtl8723ae", "msi=1", "ips=0", "fwlps=0", "swlps=0"])
             for name, expected in {"msi": "Y", "ips": "N", "fwlps": "N", "swlps": "N"}.items():
                 if (WIFI_PARAMETERS / name).read_text().strip() != expected:
-                    raise RuntimeError(
-                        f"Loaded Wi-Fi parameter {name} differs from guarded configuration; no automatic reload attempted"
-                    )
+                    msg = f"Loaded Wi-Fi parameter {name} differs from guarded configuration; no automatic reload attempted"
+                    raise RuntimeError(msg)
     except (
         OSError,
         RuntimeError,

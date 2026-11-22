@@ -52,7 +52,7 @@ def configure(args):
     if not isinstance(sans, list) or any(not isinstance(value, str) for value in sans):
         msg = "tls-san must contain strings"
         raise ValueError(msg)
-    desired["tls-san"] = list(dict.fromkeys(sans + [args.advertise_ip, "127.0.0.1"]))
+    desired["tls-san"] = list(dict.fromkeys([*sans, args.advertise_ip, "127.0.0.1"]))
     changed = desired != current or not exists or stat.S_IMODE(path.stat().st_mode) != 0o600
     result = {"changed": changed, "backup": None}
     if not changed or args.check:
@@ -89,7 +89,7 @@ def _write_desired(path, original, encoded, exists):
     return Path(backup).name if backup else None
 
 
-def main():
+def main() -> int:
     """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)

@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 from typing import NotRequired, TypedDict
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -208,7 +209,7 @@ class ScrapeConfigTests(unittest.TestCase):
         """Unattributed inline secret is rejected."""
         source, targets = fixtures()
         source["scrape_configs"][0]["authorization"] = {"credentials": "<secret>"}
-        with self.assertRaisesRegex(ValueError, "monitor"):
+        with pytest.raises(ValueError, match="monitor"):
             SCRAPE.compile_config(source, targets)
 
     def test_unknown_owner_and_missing_node_fail_closed(self) -> None:
@@ -219,7 +220,7 @@ class ScrapeConfigTests(unittest.TestCase):
                 targets["activeTargets"][0]["labels"]["job"] = "unregistered"
             else:
                 targets["activeTargets"].pop()
-            with self.subTest(mutate=mutate), self.assertRaises(ValueError):
+            with self.subTest(mutate=mutate), pytest.raises(ValueError):
                 SCRAPE.compile_config(source, targets)
 
     def test_validation_assets_are_inert_and_do_not_mutate_the_real_config(
@@ -242,7 +243,7 @@ class ScrapeConfigTests(unittest.TestCase):
 
     def test_unsafe_file_dependency_is_rejected(self) -> None:
         """Unsafe file dependency is rejected."""
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             SCRAPE.assets({"credentials_file": "/etc/otel/source-auth/../outside"})
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             SCRAPE.assets({"credentials_file": "/etc/shadow"})

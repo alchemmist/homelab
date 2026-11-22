@@ -9,12 +9,12 @@ def main() -> None:
     target = releases["monitoring-k3s-0"]
     resources = render(target)
     peer_resources = render(releases["grafana-mcp-0"])
-    assert resources and peer_resources
+    assert resources
+    assert peer_resources
     (service,) = [
         doc
         for doc in resources
-        if doc["kind"] == "Service"
-        and doc["metadata"]["name"] == "monitoring-grafana-mcp-health"
+        if doc["kind"] == "Service" and doc["metadata"]["name"] == "monitoring-grafana-mcp-health"
     ]
     (deployment,) = [doc for doc in peer_resources if doc["kind"] == "Deployment"]
 
@@ -35,8 +35,11 @@ def main() -> None:
     accounts = authentik_accounts()
 
     def missing() -> set[str]:
-        return {item["message"] for item in kube_lint(auth, workloads, accounts)
-                if item["ruleId"] == "kube-linter-non-existent-service-account"}
+        return {
+            item["message"]
+            for item in kube_lint(auth, workloads, accounts)
+            if item["ruleId"] == "kube-linter-non-existent-service-account"
+        }
 
     assert not missing()
     for doc in workloads:
@@ -48,15 +51,22 @@ def main() -> None:
         ("rustfs-0", "rustfs-authentik-browser", "authentik-0", "authentik-server"),
     ):
         target = releases[target_id]
-        ingress, = [r for r in render(target) or [] if r["kind"] == "Ingress"
-                    and r["metadata"]["name"] == ingress_name]
-        service, = [r for r in render(releases[provider_id]) or [] if r["kind"] == "Service"
-                    and r["metadata"]["name"] == service_name]
+        (ingress,) = [
+            r
+            for r in render(target) or []
+            if r["kind"] == "Ingress" and r["metadata"]["name"] == ingress_name
+        ]
+        (service,) = [
+            r
+            for r in render(releases[provider_id]) or []
+            if r["kind"] == "Service" and r["metadata"]["name"] == service_name
+        ]
         assert ingress["metadata"]["namespace"] == service["metadata"].get(
             "namespace", releases[provider_id]["namespace"]
         )
-        routes = [p["backend"]["service"] for r in ingress["spec"]["rules"]
-                  for p in r["http"]["paths"]]
+        routes = [
+            p["backend"]["service"] for r in ingress["spec"]["rules"] for p in r["http"]["paths"]
+        ]
         for route in routes:
             assert route["name"] == service_name
             assert route["port"]["number"] in {p["port"] for p in service["spec"]["ports"]}

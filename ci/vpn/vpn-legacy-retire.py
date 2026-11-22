@@ -42,7 +42,8 @@ def run(args: list[str]) -> str:
     """Run one dependency operation, failing loudly on any nonzero exit."""
     r = subprocess.run(args, check=False, capture_output=True, text=True, timeout=30)
     if r.returncode:
-        raise RuntimeError("Retirement dependency operation failed; inspect private receipt")
+        msg = "Retirement dependency operation failed; inspect private receipt"
+        raise RuntimeError(msg)
     return r.stdout
 
 
@@ -50,11 +51,13 @@ def watchdog_after(before: dict[str, object]) -> dict[str, object]:
     """Return the pre-image-exact watchdog config with the 32063 dependency removed."""
     after = copy.deepcopy(before)
     if before.get("state_dir") != "/var/lib/homelab-vpn-failover":
-        raise ValueError("Unexpected watchdog state")
+        msg = "Unexpected watchdog state"
+        raise ValueError(msg)
     endpoints = cast("list[list[str]]", after["tcp_endpoints"])
     endpoint_matches = [v for v in endpoints if v == ["127.0.0.1", 32063]]
     if len(endpoint_matches) != 1:
-        raise ValueError("Watchdog preimage drift")
+        msg = "Watchdog preimage drift"
+        raise ValueError(msg)
     endpoints.remove(endpoint_matches[0])
     ports = cast("list[dict[str, object]]", after["listen_ports"])
     primary_ports = cast(
@@ -64,7 +67,8 @@ def watchdog_after(before: dict[str, object]) -> dict[str, object]:
     for items in (ports, primary_ports):
         port_matches = [v for v in items if v.get("port") == 32063 and v.get("protocol") == "tcp"]
         if len(port_matches) != 1:
-            raise ValueError("Watchdog preimage drift")
+            msg = "Watchdog preimage drift"
+            raise ValueError(msg)
         items.remove(port_matches[0])
     return after
 
@@ -73,7 +77,8 @@ def monitoring_after(before: str) -> str:
     """Return the monitoring unit text without the retired 32063 port."""
     old = "--ports 32087,32053,32083,32063 "
     if before.count(old) != 1:
-        raise ValueError("Monitoring preimage drift")
+        msg = "Monitoring preimage drift"
+        raise ValueError(msg)
     return before.replace(old, "--ports 32087,32053,32083 ")
 
 
@@ -83,7 +88,8 @@ def select(config: dict[str, object]) -> dict[str, object]:
         r for r in cast("list[dict[str, object]]", config["inbounds"]) if r.get("port") == 32063
     ]
     if len(rows) != 1:
-        raise ValueError("Legacy count drift")
+        msg = "Legacy count drift"
+        raise ValueError(msg)
     row = rows[0]
     stream = cast("dict[str, object]", json.loads(cast("str", row["stream_settings"])))
     if (
@@ -93,7 +99,8 @@ def select(config: dict[str, object]) -> dict[str, object]:
         or stream.get("network") != "xhttp"
         or stream.get("security") not in (None, "", "none")
     ):
-        raise ValueError("Not the excluded legacy plaintext inbound")
+        msg = "Not the excluded legacy plaintext inbound"
+        raise ValueError(msg)
     return row
 
 
@@ -129,7 +136,8 @@ def atomic(path: Path, content: str, mode: int) -> None:
     """Write one file atomically via an owned temp file in the same directory."""
     h.check_path(path)
     if path.stat().st_uid != 0:
-        raise ValueError("Non-root-owned dependency")
+        msg = "Non-root-owned dependency"
+        raise ValueError(msg)
     fd, name = tempfile.mkstemp(prefix=".vpn83-retire-", dir=path.parent)
     try:
         with os.fdopen(fd, "w") as f:
@@ -155,7 +163,8 @@ def healthy() -> dict[str, object]:
         json.loads(run(["python3", "/usr/local/sbin/homelab-vpn-failover", "status"])),
     )
     if data.get("mode") != "kubernetes" or not data.get("healthy") or data.get("inhibited"):
-        raise ValueError("Watchdog not healthy Kubernetes mode")
+        msg = "Watchdog not healthy Kubernetes mode"
+        raise ValueError(msg)
     return {"mode": "kubernetes", "healthy": True, "inhibited": False}
 
 
@@ -191,7 +200,8 @@ class StageEvidence(TypedDict):
 def require_vps_root() -> None:
     """Refuse any host other than the pinned VPS running as root."""
     if socket.gethostname() != "socrat-2" or os.geteuid() != 0:
-        raise ValueError("Requires VPS root")
+        msg = "Requires VPS root"
+        raise ValueError(msg)
 
 
 def stage_evidence(
@@ -205,7 +215,8 @@ def stage_evidence(
     before = publication.snapshot(s.database, s.state, "before-uri")
     before_json = publication.snapshot(s.database, s.state, "before-json", True)
     if any(publication.is_legacy(v) for links in before.values() for v in links):
-        raise ValueError("Legacy still published")
+        msg = "Legacy still published"
+        raise ValueError(msg)
     h.save(
         s.state / "retirement-uncertain.json",
         {"approval": stage["approval"], "dependency_writes_may_follow": True},
@@ -230,7 +241,8 @@ def wait_watchdog_drained() -> None:
         if active in ("inactive", "failed"):
             return
         if attempt == 99:
-            raise RuntimeError("Existing watchdog job did not drain")
+            msg = "Existing watchdog job did not drain"
+            raise RuntimeError(msg)
         time.sleep(0.25)
 
 
@@ -248,7 +260,8 @@ def require_preimages_unchanged(s: SessionLike, stage: StageEvidence) -> None:
         or UNIT.read_text() != stage["u"]
         or target.semantic(target.configuration(s.database)) != target.semantic(stage["original"])
     ):
-        raise ValueError("Concurrent preimage change")
+        msg = "Concurrent preimage change"
+        raise ValueError(msg)
 
 
 def write_dependencies(next_w: dict[str, object], next_u: str) -> None:
@@ -266,19 +279,23 @@ def disable_api_inbound(
     rows = s.call("GET", "/inbounds/list")
     matches = [r for r in rows if r["id"] == legacy["id"]]
     if len(matches) != 1:
-        raise ValueError("Native inbound missing")
+        msg = "Native inbound missing"
+        raise ValueError(msg)
     dto = copy.deepcopy(matches[0])
     if dto.get("enable") is not True or not dto.get("excludeFromSub"):
-        raise ValueError("API state drift")
+        msg = "API state drift"
+        raise ValueError(msg)
     for api_key, db_key in [
         ("settings", "settings"),
         ("streamSettings", "stream_settings"),
         ("sniffing", "sniffing"),
     ]:
         if target.json_field(dto[api_key]) != target.json_field(legacy[db_key]):
-            raise ValueError("API/DB drift")
+            msg = "API/DB drift"
+            raise ValueError(msg)
     if target.semantic(target.configuration(s.database)) != target.semantic(original):
-        raise ValueError("Proxy changed before API write")
+        msg = "Proxy changed before API write"
+        raise ValueError(msg)
     dto["enable"] = False
     dto.pop("clientStats", None)
     s.call(
@@ -287,14 +304,16 @@ def disable_api_inbound(
     current = target.configuration(s.database)
     h.save(s.state / "proxy-after-private.json", current)
     if target.semantic(current) != target.semantic(desired(original)):
-        raise ValueError("Unexpected native change")
+        msg = "Unexpected native change"
+        raise ValueError(msg)
 
 
 def wait_port_converged() -> None:
     """Confirm the retired port stopped listening and the watchdog stayed healthy."""
     for attempt in range(60):
         if guard.read_table() is None:
-            raise ValueError("Backend guard missing")
+            msg = "Backend guard missing"
+            raise ValueError(msg)
         result = subprocess.run(
             ["ss", "-Hltn", "sport = :32063"],
             check=False,
@@ -310,7 +329,8 @@ def wait_port_converged() -> None:
             else:
                 return
         if attempt == 59:
-            raise RuntimeError("Retired port/runtime not converged")
+            msg = "Retired port/runtime not converged"
+            raise RuntimeError(msg)
         time.sleep(0.5)
 
 
@@ -327,12 +347,14 @@ def verify_publication_readback(
     if before != cast("dict[object, object]", after) or before_json != cast(
         "dict[object, object]", after_json
     ):
-        raise ValueError("Publication changed unexpectedly")
+        msg = "Publication changed unexpectedly"
+        raise ValueError(msg)
     if (
         cast("dict[str, object]", json.loads(CONFIG.read_text())) != next_w
         or UNIT.read_text() != next_u
     ):
-        raise ValueError("Dependency readback mismatch")
+        msg = "Dependency readback mismatch"
+        raise ValueError(msg)
 
 
 def apply(state: Path, approval: str) -> dict[str, object]:
@@ -340,7 +362,8 @@ def apply(state: Path, approval: str) -> dict[str, object]:
     require_vps_root()
     wanted = plan(state)
     if h.digest(wanted) != approval:
-        raise ValueError("Fresh complete approval required")
+        msg = "Fresh complete approval required"
+        raise ValueError(msg)
     original = target.configuration(native.DB)
     legacy = select(original)
     w = cast("dict[str, object]", json.loads(CONFIG.read_text()))
@@ -439,6 +462,5 @@ if __name__ == "__main__":
                 )
         except (ValueError, OSError):
             pass
-        raise SystemExit(
-            "Legacy retirement stopped; inspect private receipts; never replay writes."
-        ) from None
+        msg = "Legacy retirement stopped; inspect private receipts; never replay writes."
+        raise SystemExit(msg) from None

@@ -14,7 +14,7 @@ probe = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(probe)
 
 
-def test_snapshot_turnover_and_failures():
+def test_snapshot_turnover_and_failures() -> None:
     a, b = ("a", [("192.0.2.1", 8082)]), ("b", [("192.0.2.2", 8082)])
     many = ("many", [(f"192.0.2.{n}", 8082) for n in range(1, 10)])
     for snapshots, results, expected in [
@@ -35,7 +35,7 @@ def test_snapshot_turnover_and_failures():
             assert probe.pair() == expected
 
 
-def test_probe_configuration_trims_vip_whitespace():
+def test_probe_configuration_trims_vip_whitespace() -> None:
     with (
         patch.dict(probe.os.environ, {"BOT_SERVICE_VIP": " 10.43.167.29\n"}),
         patch("socket.gethostbyname", return_value="10.43.167.29"),
@@ -49,7 +49,7 @@ def test_probe_configuration_trims_vip_whitespace():
         assert probe.pair() == "ok"
 
 
-def test_rendered_source_environment_is_a_string():
+def test_rendered_source_environment_is_a_string() -> None:
     rendered = subprocess.check_output(
         [
             "helm",
@@ -70,7 +70,7 @@ def test_rendered_source_environment_is_a_string():
         assert isinstance(source, str)
 
 
-def test_prometheus_rules(tmp_path):
+def test_prometheus_rules(tmp_path) -> None:
     rendered = subprocess.check_output(
         [
             "helm",
@@ -139,7 +139,7 @@ def test_prometheus_rules(tmp_path):
     subprocess.run(["promtool", "test", "rules", "suite.yml"], cwd=tmp_path, check=True)
 
 
-def test_native_scrape_uses_two_independent_targets():
+def test_native_scrape_uses_two_independent_targets() -> None:
     import runpy
 
     refresh = runpy.run_path(str(ROOT / "scripts/otel-scrape-config.py"))["add_service_path_scrape"]

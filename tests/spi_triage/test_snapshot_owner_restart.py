@@ -3,6 +3,7 @@
 import unittest
 from unittest.mock import patch
 
+import pytest
 import test_triage as f
 import test_wait_integration as integration_fixtures
 from core import Failure, Store
@@ -63,7 +64,7 @@ class SnapshotOwnerRestartTests(unittest.TestCase):
                 data = self.engine.run_v1(stage, data)
             self.github.snapshot.return_value = [{"number": 9, "updated_at": "changed"}]
             if generation == 2:
-                with self.assertRaisesRegex(Failure, "WRITE_NEEDS_REVIEW"):
+                with pytest.raises(Failure, match="WRITE_NEEDS_REVIEW"):
                     self.engine.run_v1("publish", data)
                 break
             sent = data
@@ -112,7 +113,7 @@ class SnapshotOwnerRestartTests(unittest.TestCase):
                     "snapshot_replaced",
                     side_effect=RuntimeError("local fixture"),
                 ),
-                self.assertRaises(RuntimeError),
+                pytest.raises(RuntimeError),
             ):
                 self.store.replace_snapshot(self.key, job, {}, False)
         finally:

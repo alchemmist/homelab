@@ -10,6 +10,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
 import yaml
 
 from tests.portable_placement import home_affinity
@@ -50,7 +51,7 @@ class MigrationTests(unittest.TestCase):
 
     def test_renderer_retry_after_transport_repair_preserves_grafana_and_adapter_placement(
         self,
-    ):
+    ) -> None:
         v = load("charts/grafana/alert-graphs.runtime.values.yaml")
         assert v["grafana"]["imageRenderer"]["nodeSelector"] == {
             "kubernetes.io/hostname": "socrat-5"
@@ -59,7 +60,7 @@ class MigrationTests(unittest.TestCase):
         assert v["alertGraphs"]["affinity"] == home_affinity()
         assert v["grafana"]["imageRenderer"]["existingSecret"] == "socrat-grafana-renderer"
 
-    def test_lms_single_worker_and_migrated_database_and_identity(self):
+    def test_lms_single_worker_and_migrated_database_and_identity(self) -> None:
         v = load("charts/lms/values.yaml")
         v.update(load("deploy/lms/values.yaml"))
         docs = render("charts/lms", v, "lms", "lms")
@@ -111,7 +112,7 @@ class MigrationTests(unittest.TestCase):
             == "socrat-authentik-lms"
         )
 
-    def test_vendor_preserves_every_upstream_file_after_reversing_local_extensions(self):
+    def test_vendor_preserves_every_upstream_file_after_reversing_local_extensions(self) -> None:
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         root = Path(tmp.name) / "litellm"
@@ -132,7 +133,7 @@ class MigrationTests(unittest.TestCase):
 
     def test_litellm_only_deployment_changes_no_migration_job_or_config_or_secrets(
         self,
-    ):
+    ) -> None:
         v = load("deploy/platform/litellm/values.yaml")
         after = render("charts/litellm", v, "litellm", "llm")
         old = dict(v)
@@ -162,7 +163,7 @@ class MigrationTests(unittest.TestCase):
         broken = dict(v)
         broken["image"] = dict(v["image"])
         broken["image"]["tag"] = "not-reviewed-next-version"
-        with self.assertRaises(subprocess.CalledProcessError):
+        with pytest.raises(subprocess.CalledProcessError):
             render("charts/litellm", broken, "litellm", "llm")
         assert v["envVars"]["DISABLE_SCHEMA_UPDATE"].lower() == "true"
         assert re.search(
@@ -171,14 +172,14 @@ class MigrationTests(unittest.TestCase):
         )
         assert v["masterkeySecretName"] == "litellm-env"
 
-    def test_app_source_keeps_version_and_selective_sync_safety(self):
+    def test_app_source_keeps_version_and_selective_sync_safety(self) -> None:
         a = load("deploy/argocd/apps/litellm.yaml")["spec"]
         assert a["sources"][0]["path"] == "charts/litellm"
         assert not a["syncPolicy"]["automated"]["prune"]
         assert "ApplyOutOfSyncOnly=true" in a["syncPolicy"]["syncOptions"]
         assert load("charts/litellm/Chart.yaml")["version"] == "1.105.1"
 
-    def test_ansible_cannot_silently_revert_to_old_node_or_oci_chart(self):
+    def test_ansible_cannot_silently_revert_to_old_node_or_oci_chart(self) -> None:
         s = (R / "ansible/playbooks/litellm.yml").read_text()
         p = yaml.safe_load(s)
         assert len(p) == 1

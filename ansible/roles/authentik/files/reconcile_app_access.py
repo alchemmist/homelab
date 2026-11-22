@@ -17,7 +17,7 @@ import tempfile
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import cast
+from typing import Never, cast
 
 from app_iam import GROUP_MARKER, rows, validate_group
 
@@ -397,7 +397,7 @@ def execute(api, state, services, expected, receipt):
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
-    def redirect_request(self, _req, fp, _code, _msg, _headers, _newurl):
+    def redirect_request(self, _req, fp, _code, _msg, _headers, _newurl) -> Never:
         """Refuse redirects by closing the body and raising instead."""
         if fp:
             fp.close()
@@ -458,7 +458,7 @@ def api_for(root):
     return api
 
 
-def main():
+def main() -> None:
     """Print the access plan and apply it only when its digest matches the confirmation."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("root", type=Path)

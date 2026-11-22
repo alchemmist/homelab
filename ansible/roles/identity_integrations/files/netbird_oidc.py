@@ -155,7 +155,7 @@ def _seal(body):
     return body
 
 
-def _private_write(path, value):
+def _private_write(path, value) -> None:
     path = Path(path)
     if path.is_symlink():
         msg = "Refusing to follow a private-file symlink"
@@ -405,7 +405,7 @@ def _plan_context(inventory, issuer):
     }
 
 
-def _plan_adoption_blockers(inventory, context, journal):
+def _plan_adoption_blockers(inventory, context, journal) -> None:
     """Record blockers for adopting existing objects without their journal PKs."""
     blockers = context["blockers"]
     mapping = _one(inventory["scopes"], "name", MAPPING_NAME)
@@ -440,7 +440,7 @@ def _plan_adoption_blockers(inventory, context, journal):
 def _group_and_scope_operations(context):
     """Draft the group creation and profile mapping scope operations."""
     operations = []
-    for name, group in zip(GROUP_NAMES, context["groups"]):
+    for name, group in zip(GROUP_NAMES, context["groups"], strict=False):
         if group is None:
             operations.append({"action": "create", "kind": "group", "name": name})
     mapping = context["mapping"]
@@ -453,7 +453,7 @@ def _group_and_scope_operations(context):
     return operations
 
 
-def _provider_operation(context, desired_mappings, operations):
+def _provider_operation(context, desired_mappings, operations) -> None:
     """Draft the provider create/update operation once a callback is known."""
     provider = context["provider"]
     callback = context["callback"]
@@ -480,7 +480,7 @@ def _provider_operation(context, desired_mappings, operations):
         operations.append({"action": "update", "kind": "provider", "pk": provider["pk"]})
 
 
-def _application_operation(context, operations):
+def _application_operation(context, operations) -> None:
     """Draft the application create/update operation, keeping provider linkage."""
     application = context["application"]
     provider_pk = context["provider"].get("pk") if context["provider"] is not None else None
@@ -495,12 +495,14 @@ def _application_operation(context, operations):
             operations.append({"action": "update", "kind": "application", "pk": application["pk"]})
 
 
-def _review_application_bindings(inventory, context, operations):
+def _review_application_bindings(inventory, context, operations) -> None:
     """Audit existing application bindings and draft the admission binding."""
     blockers = context["blockers"]
     application = context["application"]
     admission = next(
-        group for name, group in zip(GROUP_NAMES, context["groups"]) if name == ADMISSION_GROUP
+        group
+        for name, group in zip(GROUP_NAMES, context["groups"], strict=False)
+        if name == ADMISSION_GROUP
     )
     app_bindings = []
     if application is not None:
@@ -536,11 +538,11 @@ def _review_application_bindings(inventory, context, operations):
         operations.append({"action": "create", "kind": "binding"})
 
 
-def _membership_operations(context, operations):
+def _membership_operations(context, operations) -> None:
     """Draft add-user operations within the pinned owner and Tim pilot."""
     blockers = context["blockers"]
     users_by_pk = {user["pk"]: user for user in context["users"]}
-    for name, group in zip(GROUP_NAMES, context["groups"]):
+    for name, group in zip(GROUP_NAMES, context["groups"], strict=False):
         if group is None:
             operations.extend(
                 {
@@ -710,15 +712,13 @@ def _load_secret(path, journal, create):
         return None
     if journal and journal.get("provider_pk"):
         msg_0 = "Provider exists but the runtime client secret is missing; refusing to rotate it"
-        raise RuntimeError(
-            msg_0
-        )
+        raise RuntimeError(msg_0)
     secret = secrets.token_urlsafe(48)
     _private_write(path, {"client_id": CLIENT_ID, "client_secret": secret})
     return secret
 
 
-def _legacy_preserved(before, after):
+def _legacy_preserved(before, after) -> None:
     previous = {row["username"]: set(row["legacy_groups"]) for row in before}
     for row in after:
         if previous[row["username"]] - set(row["legacy_groups"]):
@@ -731,9 +731,7 @@ def _prepare_journal(plan, journal, journal_path):
     if not journal.get("marker"):
         if journal:
             msg = "Refusing to replace a markerless journal before generating a client secret"
-            raise RuntimeError(
-                msg
-            )
+            raise RuntimeError(msg)
         journal = {
             "version": 1,
             "marker": secrets.token_hex(16),
@@ -753,7 +751,7 @@ def _prepare_journal(plan, journal, journal_path):
     return journal
 
 
-def _apply_group_create(api, operation, journal):
+def _apply_group_create(api, operation, journal) -> None:
     """Create one journaled NetBird admission group."""
     created = api("POST", "core/groups/", _group_body(operation["name"], journal["marker"]))
     journal.setdefault("groups", {})[operation["name"]] = {
@@ -762,7 +760,7 @@ def _apply_group_create(api, operation, journal):
     }
 
 
-def _apply_scope_create(api, journal):
+def _apply_scope_create(api, journal) -> None:
     """Create the dedicated profile scope mapping."""
     created = api(
         "POST",
@@ -772,7 +770,7 @@ def _apply_scope_create(api, journal):
     journal["mapping_pk"] = created["pk"]
 
 
-def _apply_scope_update(api, operation, journal):
+def _apply_scope_update(api, operation, journal) -> None:
     """Update the journaled profile scope mapping."""
     if operation["pk"] != journal.get("mapping_pk"):
         msg = "Mapping PK does not match the journal"
@@ -784,7 +782,7 @@ def _apply_scope_update(api, operation, journal):
     )
 
 
-def _apply_provider(state, operation):
+def _apply_provider(state, operation) -> None:
     """Create or update the NetBird OAuth2 provider with restrictive scopes."""
     inventory = state["inventory"]
     journal = state["journal"]
@@ -819,7 +817,7 @@ def _apply_provider(state, operation):
         state["api"]("PATCH", "providers/oauth2/" + str(operation["pk"]) + "/", body)
 
 
-def _apply_application(api, operation, journal):
+def _apply_application(api, operation, journal) -> None:
     """Create or update the journaled NetBird application entry."""
     fields = _application_fields()
     fields["provider"] = journal.get("provider_pk")
@@ -836,7 +834,7 @@ def _apply_application(api, operation, journal):
         api("PATCH", "core/applications/" + APP_SLUG + "/", fields)
 
 
-def _apply_binding(api, journal):
+def _apply_binding(api, journal) -> None:
     """Create the journaled admission binding."""
     group_pk = (journal.get("groups") or {}).get(ADMISSION_GROUP, {}).get("pk")
     if not isinstance(journal.get("application_pk"), str) or not isinstance(group_pk, str):
@@ -857,7 +855,7 @@ def _apply_binding(api, journal):
     journal["binding_pk"] = created["pk"]
 
 
-def _apply_add_user(api, plan, operation, journal):
+def _apply_add_user(api, plan, operation, journal) -> None:
     """Add one journaled pilot user to their admission group."""
     group_pk = (journal.get("groups") or {}).get(operation["group"], {}).get("pk")
     if not isinstance(group_pk, str) or operation["user_pk"] != next(
@@ -868,7 +866,7 @@ def _apply_add_user(api, plan, operation, journal):
     api("POST", "core/groups/" + group_pk + "/add_user/", {"pk": operation["user_pk"]})
 
 
-def _apply_operations(state):
+def _apply_operations(state) -> None:
     """Apply the approved operation list once. Mid-apply plans change as objects appear."""
     api = state["api"]
     journal = state["journal"]
@@ -952,7 +950,7 @@ def execute_apply(api, root, issuer, approved):
     return _verify_post_apply(api, state["plan"], journal, journal_path, issuer)
 
 
-def _mappings_agree(path):
+def _mappings_agree(path) -> None:
     loaded = json.loads(Path(path).read_text())
     for wanted in PILOT:
         row = loaded.get(wanted["username"]) if isinstance(loaded, dict) else None
@@ -968,7 +966,7 @@ def _mappings_agree(path):
             raise RuntimeError(msg)
 
 
-def execute(argv):
+def execute(argv) -> int:
     """Document the execute operation."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)

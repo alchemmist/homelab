@@ -199,7 +199,7 @@ def configure(home, username, login_file, cleanup, disable_shutdown, *, check=Fa
     return _apply_changes(home, user, edits, obsolete)
 
 
-def main():
+def main() -> None:
     """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--home", type=Path, required=True)

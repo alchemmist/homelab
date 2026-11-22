@@ -49,7 +49,8 @@ def test_native_panel_and_vpn_transports_keep_exact_backends() -> None:
     paths = rules[0]["http"]["paths"]
     assert len(paths) == len(values["routes"])
     for p, v in zip(paths, values["routes"], strict=True):
-        assert p["path"] == v["path"] and p["pathType"] == v["pathType"]
+        assert p["path"] == v["path"]
+        assert p["pathType"] == v["pathType"]
         assert p["backend"]["service"] == {
             "name": "traefik-edge-" + v["name"],
             "port": {"number": v["port"]},
@@ -70,7 +71,8 @@ def test_retired_controller_cannot_provision_or_apply() -> None:
     """Require the retired controller to fail before it can provision."""
     source = ROOT / "ansible/roles/identity_integrations/files/xui_gateway.py"
     p = subprocess.run(["python3", str(source)], capture_output=True, text=True)
-    assert p.returncode != 0 and "retired" in p.stderr
+    assert p.returncode != 0
+    assert "retired" in p.stderr
     assert not (ROOT / "deploy/xui-auth-gateway").exists()
     assert not (ROOT / "deploy/identity/xui-panel.json").exists()
 
@@ -79,4 +81,5 @@ def test_private_backend_firewall_is_not_removed_with_auth_proxy() -> None:
     """Require the private backend firewall to keep its reject rule."""
     rules = (ROOT / "deploy/xui-auth-gateway-host/rules.nft").read_text()
     assert "tcp dport 18082 reject with tcp reset" in rules
-    assert "flush ruleset" not in rules and "hook forward" not in rules
+    assert "flush ruleset" not in rules
+    assert "hook forward" not in rules

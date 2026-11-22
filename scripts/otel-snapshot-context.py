@@ -19,7 +19,7 @@ def require(expected: object, message: str) -> None:
         raise ValueError(message)
 
 
-def bind(source, output, proof_path, expected_path, binary):
+def bind(source, output, proof_path, expected_path, binary) -> None:
     os.umask(0o077)
     with binary.open("rb") as stream:
         require(

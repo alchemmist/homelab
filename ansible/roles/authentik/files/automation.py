@@ -100,7 +100,7 @@ def bootstrap_is_migration_aware(source: str) -> bool:
         isinstance(key, ast.Constant)
         and key.value == "stringData"
         and _expression_matches(value, "runtime_values")
-        for key, value in zip(manifest.keys, manifest.values)
+        for key, value in zip(manifest.keys, manifest.values, strict=False)
     ):
         return False
     for index, conditional in enumerate(tree.body):
@@ -347,7 +347,7 @@ def _ensure_token(old: str, user: dict[str, object], journal: dict[str, object])
         )
 
 
-def migrate(root, action):
+def migrate(root, action) -> None:
     """Migrate."""
     if root.stat().st_mode & 0o077:
         msg = "Deployment directory is not private"
@@ -405,7 +405,7 @@ def _require_no_bootstrap_credentials() -> None:
     env = dict(os.environ, K3S_CONFIG_FILE="/dev/null")
     k = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml", "-n", "identity"]
     secret = json.loads(
-        subprocess.check_output(k + ["get", "secret", "authentik-runtime", "-o", "json"], env=env)
+        subprocess.check_output([*k, "get", "secret", "authentik-runtime", "-o", "json"], env=env)
     )
     keys = {"AUTHENTIK_BOOTSTRAP_TOKEN", "AUTHENTIK_BOOTSTRAP_PASSWORD"}
     if keys.intersection(secret.get("data", {})):
@@ -424,7 +424,7 @@ def _require_no_bootstrap_credentials() -> None:
         raise RuntimeError(msg)
     for name in ["authentik-server", "authentik-worker"]:
         deploy = json.loads(
-            subprocess.check_output(k + ["get", "deploy", name, "-o", "json"], env=env)
+            subprocess.check_output([*k, "get", "deploy", name, "-o", "json"], env=env)
         )
         for c in deploy["spec"]["template"]["spec"]["containers"]:
             if keys.intersection(e["name"] for e in c.get("env", [])):
@@ -453,7 +453,7 @@ def _require_clean_default_tokens(token: str, target: dict[str, object]) -> None
         raise RuntimeError(msg)
 
 
-def retire_default_admin(root):
+def retire_default_admin(root) -> None:
     """Only after an independent node-admin recovery drill and encrypted backup."""
     migrate(root, "check")
     path = root / "automation-api.json"

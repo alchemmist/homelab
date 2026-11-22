@@ -42,8 +42,10 @@ def main() -> None:
     assert os.geteuid() == 0
     mode = sys.argv[1]
     if mode == "prepare":
-        assert not R.exists() and not D.exists()
-        assert S.is_dir() and not S.is_symlink()
+        assert not R.exists()
+        assert not D.exists()
+        assert S.is_dir()
+        assert not S.is_symlink()
         assert mount_source("/mnt/files") == "/dev/sdb1"
         assert shutil.disk_usage("/mnt/files").free > 100 * 1024**3
         R.mkdir(parents=True, mode=0o700)
@@ -80,10 +82,11 @@ def main() -> None:
         assert run(["mountpoint", "-q", str(S)], allowed=(0, 1, 32)).returncode != 0
         for line in pathlib.Path("/proc/self/mountinfo").read_text().splitlines():
             target = line.split()[4]
-            assert target != str(S) and not target.startswith(str(S) + "/")
-        assert (
-            str(D) == "/mnt/files/homelab/runtime/containerd" and D.is_dir() and not D.is_symlink()
-        )
+            assert target != str(S)
+            assert not target.startswith(str(S) + "/")
+        assert str(D) == "/mnt/files/homelab/runtime/containerd"
+        assert D.is_dir()
+        assert not D.is_symlink()
         if x["phase"] != "cold-verify":
             x["phase"] = "cold-final-sync"
             save(x)
@@ -132,7 +135,8 @@ def main() -> None:
         x["new_boot_id"] = boot_id()
         save(x)
     else:
-        raise ValueError("Unknown mode")
+        msg = "Unknown mode"
+        raise ValueError(msg)
 
 
 if __name__ == "__main__":

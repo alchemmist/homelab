@@ -17,7 +17,7 @@ spec.loader.exec_module(ri)
 o = ri.oidc
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--credentials", required=True, type=Path)
     parser.add_argument("--approve-plan-hash")

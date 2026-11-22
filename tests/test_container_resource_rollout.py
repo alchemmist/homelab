@@ -12,6 +12,8 @@ from types import SimpleNamespace
 from typing import TypedDict, cast
 from unittest.mock import Mock, patch
 
+import pytest
+
 PATH = (
     Path(__file__).resolve().parents[1]
     / "ansible/roles/container_resource_policy/files/reconcile_pods.py"
@@ -175,11 +177,10 @@ class RolloutTests(unittest.TestCase):
         for selector in ({}, {"kubernetes.io/hostname": "socrat-2"}):
             value = profiled_pod()
             value["spec"]["nodeSelector"] = selector
-            self.assertIn(
-                "nodeSelector/kubernetes.io/hostname",
-                ROLLOUT.profile_mismatches(value, expected),
+            assert "nodeSelector/kubernetes.io/hostname" in ROLLOUT.profile_mismatches(
+                value, expected
             )
-            self.assertTrue(ROLLOUT.needs_reconcile(value, [expected]))
+            assert ROLLOUT.needs_reconcile(value, [expected])
 
     def test_profile_node_selector_preserves_unrelated_labels(self) -> None:
         """Profile node selector preserves unrelated labels."""
@@ -190,8 +191,8 @@ class RolloutTests(unittest.TestCase):
             "kubernetes.io/os": "linux",
         }
         before = copy.deepcopy(value)
-        self.assertFalse(ROLLOUT.needs_reconcile(value, [expected]))
-        self.assertEqual(value, before)
+        assert not ROLLOUT.needs_reconcile(value, [expected])
+        assert value == before
 
     def test_profile_node_selector_detects_bound_wrong_node(self) -> None:
         """Profile node selector detects bound wrong node."""
@@ -201,9 +202,9 @@ class RolloutTests(unittest.TestCase):
         assert isinstance(selector, dict)
         value["spec"]["nodeSelector"] = selector
         value["spec"]["nodeName"] = "socrat-2"
-        self.assertIn("nodeName", ROLLOUT.profile_mismatches(value, expected))
+        assert "nodeName" in ROLLOUT.profile_mismatches(value, expected)
         del value["spec"]["nodeName"]
-        self.assertFalse(ROLLOUT.needs_reconcile(value, [expected]))
+        assert not ROLLOUT.needs_reconcile(value, [expected])
 
     def test_profile_without_placement_does_not_reconcile_node(self) -> None:
         """Profile without placement does not reconcile node."""
@@ -211,7 +212,7 @@ class RolloutTests(unittest.TestCase):
         value["spec"]["nodeName"] = "socrat-2"
         value["spec"]["nodeSelector"] = {"custom": "unchanged"}
         for expected in (profile(), dict(profile(), nodeSelector={})):
-            self.assertFalse(ROLLOUT.needs_reconcile(value, [expected]))
+            assert not ROLLOUT.needs_reconcile(value, [expected])
 
     def test_node_selector_schema_accepts_literal_labels(self) -> None:
         """Node selector schema accepts literal labels."""
@@ -224,7 +225,7 @@ class RolloutTests(unittest.TestCase):
             with tempfile.NamedTemporaryFile(mode="w+", suffix=".json") as source:
                 json.dump([expected], source)
                 source.flush()
-                self.assertEqual(ROLLOUT.load_profiles(source.name), [expected])
+                assert ROLLOUT.load_profiles(source.name) == [expected]
 
     def test_node_selector_schema_rejects_invalid_maps_and_labels(self) -> None:
         """Node selector schema rejects invalid maps and labels."""
@@ -246,7 +247,7 @@ class RolloutTests(unittest.TestCase):
             ),
         ):
             with self.subTest(selector=selector):
-                with self.assertRaisesRegex(ValueError, "nodeSelector"):
+                with pytest.raises(ValueError, match="nodeSelector"):
                     ROLLOUT.validate_node_selector(selector)
 
     def test_excluded_nodes_remain_visible_but_not_actionable(self) -> None:
@@ -255,33 +256,33 @@ class RolloutTests(unittest.TestCase):
         output = io.StringIO()
         with redirect_stdout(output):
             actionable = ROLLOUT.audit(values, {"socrat-3"})
-        self.assertEqual([value["metadata"]["uid"] for value in actionable], ["old"])
+        assert [value["metadata"]["uid"] for value in actionable] == ["old"]
         summary = json.loads(output.getvalue().splitlines()[-1])["summary"]
-        self.assertEqual(summary["deficient"], 2)
-        self.assertEqual(summary["actionable_deficient"], 1)
-        self.assertEqual(summary["excluded_deficient"], 1)
+        assert summary["deficient"] == 2
+        assert summary["actionable_deficient"] == 1
+        assert summary["excluded_deficient"] == 1
 
     def test_no_exclusions_remains_strict(self) -> None:
         """No exclusions remains strict."""
         values = [pod(), pod("other", node="socrat-3")]
         with redirect_stdout(io.StringIO()):
-            self.assertEqual(ROLLOUT.audit(values), values)
+            assert ROLLOUT.audit(values) == values
 
     def test_profile_matches_namespace_owner_kind_and_regex(self) -> None:
         """Profile matches namespace owner kind and regex."""
         value, expected = profiled_pod(), profile()
-        self.assertEqual(ROLLOUT.matching_profile(value, [expected]), expected)
+        assert ROLLOUT.matching_profile(value, [expected]) == expected
         for field, different in [
             ("namespace", "other"),
             ("ownerKind", "DaemonSet"),
             ("ownerPattern", "other-.*"),
         ]:
             changed = dict(expected, **{field: different})
-            self.assertIsNone(ROLLOUT.matching_profile(value, [changed]))
+            assert ROLLOUT.matching_profile(value, [changed]) is None
 
     def test_ambiguous_profiles_fail_even_for_already_compliant_pod(self) -> None:
         """Ambiguous profiles fail even for already compliant pod."""
-        with self.assertRaisesRegex(RuntimeError, "Ambiguous"):
+        with pytest.raises(RuntimeError, match="Ambiguous"):
             ROLLOUT.audit([profiled_pod()], profiles=[profile(), profile()])
 
     def test_equivalent_units_do_not_require_reconciliation(self) -> None:
@@ -290,10 +291,10 @@ class RolloutTests(unittest.TestCase):
         resources = value["spec"]["containers"][0]["resources"]
         resources["limits"]["cpu"] = "0.5"
         resources["limits"]["ephemeral-storage"] = "1024Mi"
-        self.assertFalse(ROLLOUT.needs_reconcile(value, [profile()]))
-        self.assertEqual(ROLLOUT.quantity("1"), ROLLOUT.quantity("1000m"))
-        self.assertEqual(ROLLOUT.quantity("1Gi"), ROLLOUT.quantity("1024Mi"))
-        self.assertEqual(ROLLOUT.quantity("1e3"), ROLLOUT.quantity("1k"))
+        assert not ROLLOUT.needs_reconcile(value, [profile()])
+        assert ROLLOUT.quantity("1") == ROLLOUT.quantity("1000m")
+        assert ROLLOUT.quantity("1Gi") == ROLLOUT.quantity("1024Mi")
+        assert ROLLOUT.quantity("1e3") == ROLLOUT.quantity("1k")
 
     def test_changed_requests_and_limits_require_reconciliation(self) -> None:
         """Changed requests and limits require reconciliation."""
@@ -302,10 +303,9 @@ class RolloutTests(unittest.TestCase):
             cast("dict[str, dict[str, str]]", value["spec"]["containers"][0]["resources"])[mode][
                 "cpu"
             ] = "1"
-            self.assertTrue(ROLLOUT.needs_reconcile(value, [profile()]))
-            self.assertIn(
-                "containers/main/" + mode + "/cpu",
-                ROLLOUT.profile_mismatches(value, profile()),
+            assert ROLLOUT.needs_reconcile(value, [profile()])
+            assert "containers/main/" + mode + "/cpu" in ROLLOUT.profile_mismatches(
+                value, profile()
             )
 
     def test_gpu_and_custom_resources_are_ignored(self) -> None:
@@ -314,18 +314,18 @@ class RolloutTests(unittest.TestCase):
         value["spec"]["containers"][0]["resources"]["limits"]["nvidia.com/gpu"] = "1"
         value["spec"]["containers"][0]["resources"]["requests"]["example.com/device"] = "1"
         before = copy.deepcopy(value)
-        self.assertFalse(ROLLOUT.needs_reconcile(value, [profile()]))
-        self.assertEqual(value, before)
+        assert not ROLLOUT.needs_reconcile(value, [profile()])
+        assert value == before
 
     def test_unknown_workload_is_reported_in_profile_coverage(self) -> None:
         """Unknown workload is reported in profile coverage."""
         value = pod(compliant=True)
         output = io.StringIO()
         with redirect_stdout(output):
-            self.assertEqual(ROLLOUT.audit([value], profiles=[profile()]), [])
+            assert ROLLOUT.audit([value], profiles=[profile()]) == []
         lines = [json.loads(line) for line in output.getvalue().splitlines()]
-        self.assertEqual(lines[0]["profile"], "unmatched")
-        self.assertEqual(lines[-1]["summary"]["unprofiled_active"], 1)
+        assert lines[0]["profile"] == "unmatched"
+        assert lines[-1]["summary"]["unprofiled_active"] == 1
 
     def test_ready_replacement_with_stale_profile_times_out(self) -> None:
         """Ready replacement with stale profile times out."""
@@ -339,7 +339,7 @@ class RolloutTests(unittest.TestCase):
         with (
             patch.object(ROLLOUT.time, "monotonic", side_effect=[0, 0, 0, 11]),
             patch.object(ROLLOUT.time, "sleep"),
-            self.assertRaisesRegex(TimeoutError, "Replacement"),
+            pytest.raises(TimeoutError, match="Replacement"),
         ):
             ROLLOUT.reconcile_one(client, old, 10, 0.01, [profile()])
 
@@ -349,7 +349,7 @@ class RolloutTests(unittest.TestCase):
         expected["containers"]["main"]["removeCpuLimit"] = True
         del expected["containers"]["main"]["limits"]["cpu"]
         del value["spec"]["containers"][0]["resources"]["limits"]["cpu"]
-        self.assertFalse(ROLLOUT.needs_reconcile(value, [expected]))
+        assert not ROLLOUT.needs_reconcile(value, [expected])
 
     def test_unlimited_profile_detects_existing_cpu_limit_including_zero(self) -> None:
         """Unlimited profile detects existing cpu limit including zero."""
@@ -359,18 +359,17 @@ class RolloutTests(unittest.TestCase):
         for limit in ("2", "0"):
             value = profiled_pod()
             value["spec"]["containers"][0]["resources"]["limits"]["cpu"] = limit
-            self.assertIn(
-                "containers/main/limits/cpu-present",
-                ROLLOUT.profile_mismatches(value, expected),
+            assert "containers/main/limits/cpu-present" in ROLLOUT.profile_mismatches(
+                value, expected
             )
 
     def test_unknown_workload_needs_requests_but_not_cpu_limit(self) -> None:
         """Unknown workload needs requests but not cpu limit."""
         value = pod(compliant=True)
         del value["spec"]["containers"][0]["resources"]["limits"]["cpu"]
-        self.assertFalse(ROLLOUT.needs_reconcile(value))
+        assert not ROLLOUT.needs_reconcile(value)
         del value["spec"]["containers"][0]["resources"]["requests"]["memory"]
-        self.assertTrue(ROLLOUT.needs_reconcile(value))
+        assert ROLLOUT.needs_reconcile(value)
 
     def test_profile_schema_validates_selective_limits(self) -> None:
         """Profile schema validates selective limits."""
@@ -380,7 +379,7 @@ class RolloutTests(unittest.TestCase):
         with tempfile.NamedTemporaryFile(mode="w+", suffix=".json") as source:
             json.dump([expected], source)
             source.flush()
-            self.assertEqual(ROLLOUT.load_profiles(source.name), [expected])
+            assert ROLLOUT.load_profiles(source.name) == [expected]
 
     def test_profile_schema_rejects_ambiguous_limit_intent_and_unanchored_regex(
         self,
@@ -403,7 +402,7 @@ class RolloutTests(unittest.TestCase):
             with tempfile.NamedTemporaryFile(mode="w+", suffix=".json") as source:
                 json.dump([expected], source)
                 source.flush()
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     ROLLOUT.load_profiles(source.name)
 
     def test_profile_template_casts_mixed_resource_values_individually(self) -> None:
@@ -425,23 +424,22 @@ class RolloutTests(unittest.TestCase):
         rendered = environment.get_template("resource-policy.yaml.j2").render(**variables)
         policy = yaml.safe_load(rendered)
         expression = policy["spec"]["variables"][0]["expression"]
-        self.assertIn('"removeCpuLimit": dyn(true)', expression)
-        self.assertIn('"requests": dyn({', expression)
-        self.assertIn('"limits": dyn({', expression)
-        self.assertIn('"nodeSelector": dyn({"kubernetes.io/hostname": "socrat-1"})', expression)
-        self.assertIn('"nodeSelector": dyn({})', expression)
+        assert '"removeCpuLimit": dyn(true)' in expression
+        assert '"requests": dyn({' in expression
+        assert '"limits": dyn({' in expression
+        assert '"nodeSelector": dyn({"kubernetes.io/hostname": "socrat-1"})' in expression
+        assert '"nodeSelector": dyn({})' in expression
         removal = policy["spec"]["mutations"][0]["jsonPatch"]["expression"]
-        self.assertIn("variables.profileNodeSelector.size() == 0 ? []", removal)
-        self.assertIn("!has(object.spec.nodeSelector)", removal)
-        self.assertIn("jsonpatch.escapeKey(key)", removal)
-        self.assertEqual(
-            removal.count('quantity(c.resources.limits["cpu"]).compareTo(quantity("0")) == 0'),
-            2,
+        assert "variables.profileNodeSelector.size() == 0 ? []" in removal
+        assert "!has(object.spec.nodeSelector)" in removal
+        assert "jsonpatch.escapeKey(key)" in removal
+        assert (
+            removal.count('quantity(c.resources.limits["cpu"]).compareTo(quantity("0")) == 0') == 2
         )
-        self.assertEqual(
-            [mutation["patchType"] for mutation in policy["spec"]["mutations"]],
-            ["JSONPatch", "ApplyConfiguration"],
-        )
+        assert [mutation["patchType"] for mutation in policy["spec"]["mutations"]] == [
+            "JSONPatch",
+            "ApplyConfiguration",
+        ]
 
     def test_role_rolls_back_validation_failures_before_evictions(self) -> None:
         """Role rolls back validation failures before evictions."""
@@ -451,35 +449,33 @@ class RolloutTests(unittest.TestCase):
             self.skipTest("PyYAML is required for role validation")
         tasks = yaml.safe_load((PATH.parent.parent / "tasks/main.yml").read_text())
         activation = next(task for task in tasks if "block" in task)
-        self.assertEqual(len(activation["rescue"]), 3)
-        self.assertEqual(
-            activation["rescue"][-1]["ansible.builtin.fail"]["msg"].split(";")[0],
-            "Admission validation failed",
+        assert len(activation["rescue"]) == 3
+        assert (
+            activation["rescue"][-1]["ansible.builtin.fail"]["msg"].split(";")[0]
+            == "Admission validation failed"
         )
-        self.assertTrue(all("reconcile_pods.py" not in str(task) for task in activation["block"]))
-        self.assertTrue(all("retries" not in task for task in activation["block"]))
+        assert all("reconcile_pods.py" not in str(task) for task in activation["block"])
+        assert all("retries" not in task for task in activation["block"])
         names = [task["name"] for task in tasks]
-        self.assertLess(
-            names.index("Read current admission configuration for rollback"),
-            names.index(activation["name"]),
+        assert names.index("Read current admission configuration for rollback") < names.index(
+            activation["name"]
         )
-        self.assertLess(
-            names.index(activation["name"]),
-            names.index("Reconcile existing pods when explicitly enabled"),
+        assert names.index(activation["name"]) < names.index(
+            "Reconcile existing pods when explicitly enabled"
         )
 
     def test_positive_quantities(self) -> None:
         """Positive quantities."""
         for value in ("1", "500m", "1Gi", "1e3", "1E-3", "0.001", "10Ki"):
-            self.assertTrue(ROLLOUT.positive(value), value)
+            assert ROLLOUT.positive(value), value
         for invalid in (None, "0", "0Mi", "-1", "NaN", "bad", "0.0"):
-            self.assertFalse(ROLLOUT.positive(invalid), invalid)
+            assert not ROLLOUT.positive(invalid), invalid
 
     def test_limits_check_includes_init_containers(self) -> None:
         """Limits check includes init containers."""
         value = pod(compliant=True)
         value["spec"]["initContainers"] = [{"name": "init"}]
-        self.assertEqual(len(ROLLOUT.deficits(value)), 5)
+        assert len(ROLLOUT.deficits(value)) == 5
 
     def test_does_not_change_existing_resources(self) -> None:
         """Does not change existing resources."""
@@ -487,33 +483,29 @@ class RolloutTests(unittest.TestCase):
         original = copy.deepcopy(value)
         ROLLOUT.deficits(value)
         payload = ROLLOUT.eviction_payload(value)
-        self.assertEqual(value, original)
-        self.assertEqual(payload["deleteOptions"]["preconditions"], {"uid": "old"})
-        self.assertNotIn("spec", payload)
+        assert value == original
+        assert payload["deleteOptions"]["preconditions"] == {"uid": "old"}
+        assert "spec" not in payload
 
     def test_unsupported_owners(self) -> None:
         """Unsupported owners."""
-        self.assertFalse(ROLLOUT.supported(pod(kind="Job")))
+        assert not ROLLOUT.supported(pod(kind="Job"))
         value = pod()
         value["metadata"]["ownerReferences"] = []
-        self.assertFalse(ROLLOUT.supported(value))
+        assert not ROLLOUT.supported(value)
         value["status"]["phase"] = "Succeeded"
-        self.assertFalse(ROLLOUT.active(value))
+        assert not ROLLOUT.active(value)
 
     def test_daemonset_requires_same_node(self) -> None:
         """Daemonset requires same node."""
-        self.assertFalse(
-            ROLLOUT.same_workload(
-                pod(kind="DaemonSet"), pod("new", kind="DaemonSet", node="socrat-2")
-            )
+        assert not ROLLOUT.same_workload(
+            pod(kind="DaemonSet"), pod("new", kind="DaemonSet", node="socrat-2")
         )
-        self.assertTrue(ROLLOUT.same_workload(pod(kind="DaemonSet"), pod("new", kind="DaemonSet")))
+        assert ROLLOUT.same_workload(pod(kind="DaemonSet"), pod("new", kind="DaemonSet"))
 
     def test_statefulset_requires_same_name(self) -> None:
         """Statefulset requires same name."""
-        self.assertFalse(
-            ROLLOUT.same_workload(pod(kind="StatefulSet"), pod("new", kind="StatefulSet"))
-        )
+        assert not ROLLOUT.same_workload(pod(kind="StatefulSet"), pod("new", kind="StatefulSet"))
 
     def test_waits_for_new_ready_pod_and_old_deletion(self) -> None:
         """Waits for new ready pod and old deletion."""
@@ -532,7 +524,7 @@ class RolloutTests(unittest.TestCase):
         client.evict.return_value = SimpleNamespace(returncode=0)
         with patch.object(ROLLOUT.time, "sleep") as sleep:
             ROLLOUT.reconcile_one(client, old, 10, 0.01)
-        self.assertEqual(sleep.call_count, 2)
+        assert sleep.call_count == 2
         client.evict.assert_called_once_with(old)
 
     def test_retries_disruption_budget(self) -> None:
@@ -546,7 +538,7 @@ class RolloutTests(unittest.TestCase):
         ]
         with patch.object(ROLLOUT.time, "sleep"):
             ROLLOUT.reconcile_one(client, old, 10, 0.01)
-        self.assertEqual(client.evict.call_count, 2)
+        assert client.evict.call_count == 2
 
     def test_stops_on_eviction_error(self) -> None:
         """Stops on eviction error."""
@@ -554,7 +546,7 @@ class RolloutTests(unittest.TestCase):
         client = Mock()
         client.pods.return_value = [old]
         client.evict.return_value = SimpleNamespace(returncode=1, stderr="Forbidden", stdout="")
-        with self.assertRaisesRegex(RuntimeError, "Forbidden"):
+        with pytest.raises(RuntimeError, match="Forbidden"):
             ROLLOUT.reconcile_one(client, old, 10, 0.01)
 
     def test_existing_ready_replica_does_not_count_as_replacement(self) -> None:
@@ -566,7 +558,7 @@ class RolloutTests(unittest.TestCase):
         with (
             patch.object(ROLLOUT.time, "monotonic", side_effect=[0, 0, 0, 11]),
             patch.object(ROLLOUT.time, "sleep"),
-            self.assertRaisesRegex(TimeoutError, "Replacement"),
+            pytest.raises(TimeoutError, match="Replacement"),
         ):
             ROLLOUT.reconcile_one(client, old, 10, 0.01)
 
@@ -579,7 +571,7 @@ class RolloutTests(unittest.TestCase):
         with (
             patch.object(ROLLOUT.time, "monotonic", side_effect=[0, 0, 0, 11]),
             patch.object(ROLLOUT.time, "sleep"),
-            self.assertRaisesRegex(TimeoutError, "Replacement"),
+            pytest.raises(TimeoutError, match="Replacement"),
         ):
             ROLLOUT.reconcile_one(client, old, 10, 0.01)
 
@@ -589,10 +581,8 @@ class RolloutTests(unittest.TestCase):
         with patch.object(ROLLOUT.subprocess, "run") as run:
             client.evict(pod())
         args, kwargs = run.call_args
-        self.assertIn("/api/v1/namespaces/test/pods/old/eviction", args[0])
-        self.assertEqual(
-            json.loads(kwargs["input"])["deleteOptions"]["preconditions"]["uid"], "old"
-        )
+        assert "/api/v1/namespaces/test/pods/old/eviction" in args[0]
+        assert json.loads(kwargs["input"])["deleteOptions"]["preconditions"]["uid"] == "old"
 
 
 if __name__ == "__main__":

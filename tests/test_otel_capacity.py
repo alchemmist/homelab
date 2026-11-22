@@ -6,6 +6,8 @@ import unittest
 from pathlib import Path
 from typing import TypedDict
 
+import pytest
+
 spec = importlib.util.spec_from_file_location(
     "otel_capacity", Path(__file__).parents[1] / "ansible/scripts/otel-capacity-placement.py"
 )
@@ -112,7 +114,7 @@ class CapacityPlacementTests(unittest.TestCase):
         for key in ("persistentVolumeClaim", "hostPath", "nfs"):
             doc = deployment()
             doc["spec"]["template"]["spec"]["volumes"] = [{"name": "data", key: {}}]
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 capacity.placement(doc)
 
     def test_unhealthy_unapproved_paused_and_conflicting_placements_refused(
@@ -136,5 +138,5 @@ class CapacityPlacementTests(unittest.TestCase):
         ):
             doc = deployment()
             change(doc)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 capacity.placement(doc)

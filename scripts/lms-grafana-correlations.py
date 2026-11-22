@@ -37,7 +37,7 @@ def configure(document: _Provisioning) -> _Provisioning:
     loki = next(source for source in document["datasources"] if source["uid"] == "loki")
     data = loki.setdefault("jsonData", {})
     fields = [field for field in data.get("derivedFields", []) if field.get("name") != "TraceID"]
-    data["derivedFields"] = fields + [FIELD]
+    data["derivedFields"] = [*fields, FIELD]
     return document
 
 
@@ -68,7 +68,8 @@ def run() -> None:
         capture_output=True,
     )
     if result.returncode:
-        raise RuntimeError("Datasource update failed; sensitive response suppressed")
+        msg = "Datasource update failed; sensitive response suppressed"
+        raise RuntimeError(msg)
     print(
         json.dumps(
             {

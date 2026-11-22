@@ -16,7 +16,7 @@ READINESS_SUBJECTS = {
 }
 
 
-def apply_alert_descriptions(resource):
+def apply_alert_descriptions(resource) -> None:
     """Apply alert descriptions."""
     if not isinstance(resource, dict) or resource.get("kind") != "PrometheusRule":
         return
@@ -55,7 +55,7 @@ def panels(dashboard):
         yield from panels(panel)
 
 
-def apply_descriptions(dashboard, descriptions=None):
+def apply_descriptions(dashboard, descriptions=None) -> None:
     """Apply descriptions."""
     catalog = load_descriptions() if descriptions is None else descriptions
     uid = dashboard["uid"]

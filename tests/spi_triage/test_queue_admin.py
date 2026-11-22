@@ -8,6 +8,7 @@ import unittest
 from email.message import Message
 from pathlib import Path
 
+import pytest
 import test_triage as f
 from core import Failure, Store
 from queue_admin import QueueAdmin, authorized
@@ -110,7 +111,7 @@ class QueueAdminTests(unittest.TestCase):
         """Verify stale versions are rejected after claims."""
         item = self.row()
         self.store.claim()
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.api.cancel({"job_id": self.key, "expected_updated": item["updated"]})
         assert self.store.get(self.key)["state"] == "processing"
 
@@ -129,7 +130,7 @@ class QueueAdminTests(unittest.TestCase):
             c.execute("UPDATE jobs SET state='retry' WHERE id=?", (self.key,))
         item = self.row()
         assert not item["can_cancel"]
-        with self.assertRaisesRegex(Failure, "QUEUE_ITEM_NOT_CANCELLABLE"):
+        with pytest.raises(Failure, match="QUEUE_ITEM_NOT_CANCELLABLE"):
             self.api.cancel({"job_id": self.key, "expected_updated": item["updated"]})
 
     def test_terminal_and_publication_states_are_not_cancellable(self) -> None:
@@ -150,7 +151,7 @@ class QueueAdminTests(unittest.TestCase):
                         (state, intent, issue, json.dumps(result), self.key),
                     )
                 current = self.store.get(self.key)
-                with self.assertRaisesRegex(Failure, "QUEUE_ITEM_NOT_CANCELLABLE"):
+                with pytest.raises(Failure, match="QUEUE_ITEM_NOT_CANCELLABLE"):
                     self.api.cancel({"job_id": self.key, "expected_updated": current["updated"]})
 
     def test_audit_failure_rolls_back_cancellation(self) -> None:
@@ -160,7 +161,7 @@ class QueueAdminTests(unittest.TestCase):
                 "CREATE TRIGGER block_operator_audit BEFORE INSERT ON queue_operator_actions BEGIN SELECT RAISE(ABORT,'blocked'); END"
             )
         item = self.row()
-        with self.assertRaisesRegex(sqlite3.IntegrityError, r"^blocked$"):
+        with pytest.raises(sqlite3.IntegrityError, match=r"^blocked$"):
             self.api.cancel({"job_id": self.key, "expected_updated": item["updated"]})
         assert self.store.get(self.key)["state"] == "queued"
 
@@ -172,7 +173,7 @@ class QueueAdminTests(unittest.TestCase):
             {"limit": 101},
             {"offset": -1},
         ):
-            with self.assertRaisesRegex(Failure, "INVALID_QUEUE_QUERY"):
+            with pytest.raises(Failure, match="INVALID_QUEUE_QUERY"):
                 self.api.list(bad)
         for bad in (
             {},
@@ -180,7 +181,7 @@ class QueueAdminTests(unittest.TestCase):
             {"job_id": self.key, "expected_updated": True},
             {"job_id": "../", "expected_updated": 1},
         ):
-            with self.assertRaisesRegex(Failure, "INVALID_QUEUE_CANCEL"):
+            with pytest.raises(Failure, match="INVALID_QUEUE_CANCEL"):
                 self.api.cancel(bad)
 
 

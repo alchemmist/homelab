@@ -36,7 +36,8 @@ if not args.apply:
     )
     raise SystemExit(0)
 if args.approve_policy_sha256 != policy_hash or args.state is None:
-    raise SystemExit("Exact approval hash and private --state required")
+    msg = "Exact approval hash and private --state required"
+    raise SystemExit(msg)
 root = args.state
 assert (
     not root.is_symlink()
@@ -92,7 +93,8 @@ def rows(path):
         out += d["results"]
         if not d.get("pagination", {}).get("next"):
             return out
-    raise RuntimeError("Incomplete pagination")
+    msg = "Incomplete pagination"
+    raise RuntimeError(msg)
 
 
 name = "homelab-observer-membership-read"
@@ -193,8 +195,8 @@ import subprocess
 k = ["/usr/local/bin/kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
 for namespace in policy["namespaces"]:
     result = subprocess.run(
-        k
-        + [
+        [
+            *k,
             "-n",
             namespace,
             "get",
@@ -225,7 +227,7 @@ for namespace in policy["namespaces"]:
         "data": {"token": base64.b64encode(key.encode()).decode()},
     }
     result = subprocess.run(
-        k + ["create", "-f", "-"], input=json.dumps(secret), capture_output=True, text=True
+        [*k, "create", "-f", "-"], input=json.dumps(secret), capture_output=True, text=True
     )
     assert result.returncode == 0, "Scoped Secret creation failed; inspect private receipts"
 print("READ_ONLY_MEMBERSHIP_SECRETS_INSTALLED", policy["namespaces"])

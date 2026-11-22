@@ -81,7 +81,7 @@ def check(namespace: str, kubectl: str, kubeconfig: str, profile: Profile, owner
             ]
             spec["initContainers"] = copy.deepcopy(containers)
         result = subprocess.run(
-            command + ["create", "--dry-run=server", "-o", "json", "-f", "-"],
+            [*command, "create", "--dry-run=server", "-o", "json", "-f", "-"],
             input=json.dumps(pod),
             text=True,
             capture_output=True,

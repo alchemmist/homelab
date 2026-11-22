@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
     "privacy_smoke", ROOT / "ansible/scripts/otel-privacy-smoke.py"
@@ -63,7 +65,7 @@ class PrivacySmokeTests(unittest.TestCase):
     def test_host_network_namespace_is_rejected_before_startup(self) -> None:
         """Host network namespace is rejected before startup."""
         with patch.object(SMOKE.os, "readlink", return_value="net:[same]"):
-            with self.assertRaisesRegex(ValueError, "separate network namespace"):
+            with pytest.raises(ValueError, match="separate network namespace"):
                 SMOKE.run(Path("/unused"), Path("/unused"), Path("/unused"), Path("/unused"))
 
     def test_otlp_partial_rejection_is_a_failure(self) -> None:
@@ -74,6 +76,6 @@ class PrivacySmokeTests(unittest.TestCase):
                 "urlopen",
                 return_value=io.BytesIO(b'{"partialSuccess":{"rejectedLogRecords":"1"}}'),
             ),
-            self.assertRaisesRegex(ValueError, "rejected"),
+            pytest.raises(ValueError, match="rejected"),
         ):
             SMOKE.send(None, {})

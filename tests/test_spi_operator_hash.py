@@ -10,6 +10,8 @@ import unittest
 from contextlib import closing
 from pathlib import Path
 
+import pytest
+
 from ci.quality.common import command
 
 spec = importlib.util.spec_from_file_location(
@@ -140,14 +142,14 @@ class HashTests(unittest.TestCase):
         """Refuse tables whose names shadow SQLite rowid aliases."""
         c = self.connection()
         c.execute("CREATE TABLE t(rowid, _rowid_, oid, value)")
-        with self.assertRaisesRegex(ValueError, "shadowed"):
+        with pytest.raises(ValueError, match="shadowed"):
             m.table_hashes(c)
 
     def test_virtual_refused(self) -> None:
         """Refuse virtual tables that have no physical btree order."""
         c = self.connection()
         c.execute("CREATE VIRTUAL TABLE t USING fts5(value)")
-        with self.assertRaisesRegex(ValueError, "unsupported table kind"):
+        with pytest.raises(ValueError, match="unsupported table kind"):
             m.table_hashes(c)
 
     def test_physical_order_is_not_external_canonical(self) -> None:

@@ -23,7 +23,7 @@ spec.loader.exec_module(m)
 
 
 @pytest.mark.parametrize(
-    "error,kind",
+    ("error", "kind"),
     [
         (socket.gaierror("SECRET"), "dns_error"),
         (TimeoutError("SECRET"), "timeout"),
@@ -79,11 +79,14 @@ def test_body_read_failure_and_context_survives_safe_controller_wrap() -> None:
             with m.ObservedHTTP(inner).open(req) as result:
                 result.read()
         except m.DiagnosticFailure:
-            raise RuntimeError("SECRET") from None
+            msg = "SECRET"
+            raise RuntimeError(msg) from None
     except RuntimeError as error:
         event = m.failure_event(error)
-    assert event["stage"] == "idp_groups" and event["phase"] == "response_read"
-    assert event["kind"] == "timeout" and "SECRET" not in json.dumps(event)
+    assert event["stage"] == "idp_groups"
+    assert event["phase"] == "response_read"
+    assert event["kind"] == "timeout"
+    assert "SECRET" not in json.dumps(event)
     response.close.assert_called_once()
 
 

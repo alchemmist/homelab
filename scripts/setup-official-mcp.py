@@ -49,10 +49,12 @@ def private_write(path: Path, data: bytes) -> None:
     """Write data to a path atomically after rejecting unsafe directories."""
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     if path.parent.is_symlink() or path.parent.stat().st_uid != os.getuid():
-        raise ValueError("Unsafe credentials directory")
+        msg = "Unsafe credentials directory"
+        raise ValueError(msg)
     path.parent.chmod(0o700)
     if path.exists() and (path.is_symlink() or path.stat().st_uid != os.getuid()):
-        raise ValueError("Unsafe destination")
+        msg = "Unsafe destination"
+        raise ValueError(msg)
     fd, tmp = tempfile.mkstemp(prefix=".mcp-", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as f:
@@ -95,25 +97,28 @@ def install_runtime(target: Path, *, offline: bool, archive: Path | None) -> Non
     )
     art = ARTIFACTS.get((platform.system(), platform.machine()))
     if not art:
-        raise SystemExit(
-            "Platform not reviewed; add a verified stable release artifact/checksum first."
-        )
+        msg = "Platform not reviewed; add a verified stable release artifact/checksum first."
+        raise SystemExit(msg)
     suffix, digest = art
     url = f"https://github.com/prometheus/prometheus-mcp/releases/download/v{VERSION}/prometheus-mcp-server_{VERSION}_{suffix}.tar.gz"
     if offline and not archive:
-        raise ValueError("Offline setup requires a checksum-verified --archive")
+        msg = "Offline setup requires a checksum-verified --archive"
+        raise ValueError(msg)
     data = archive.read_bytes() if archive else urllib.request.urlopen(url, timeout=90).read()
     if hashlib.sha256(data).hexdigest() != digest:
-        raise ValueError("Upstream archive checksum mismatch")
+        msg = "Upstream archive checksum mismatch"
+        raise ValueError(msg)
     # Extract a single regular file, never archive paths/symlinks.
     with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive_file:
         try:
             member = archive_file.getmember("prometheus-mcp-server")
         except KeyError:
-            raise ValueError("Expected regular binary") from None
+            msg = "Expected regular binary"
+            raise ValueError(msg) from None
         extracted = archive_file.extractfile(member)
         if extracted is None or not member.isfile():
-            raise ValueError("Expected regular binary")
+            msg = "Expected regular binary"
+            raise ValueError(msg)
         binary = extracted.read()
     dest = target / f"prometheus-{VERSION}/prometheus-mcp-server"
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -162,11 +167,11 @@ def configure_project_files(project: Path, *, target: Path, folder: Path) -> Non
         subprocess.run(["git", "-C", str(project), "check-ignore", "-q", relative]).returncode == 0
     )
     if tracked or not ignored:
-        raise ValueError(
-            "Refuse to overwrite tracked/unignored project config; use an ignored local configuration."
-        )
+        msg = "Refuse to overwrite tracked/unignored project config; use an ignored local configuration."
+        raise ValueError(msg)
     if destination.parent.is_symlink() or destination.is_symlink():
-        raise ValueError("Refuse symlink project config")
+        msg = "Refuse symlink project config"
+        raise ValueError(msg)
     if destination.exists():
         private_write(
             folder / "project-backups" / ("mcp-" + str(time.time_ns()) + ".json"),
@@ -192,7 +197,7 @@ def configure_project_files(project: Path, *, target: Path, folder: Path) -> Non
     )
 
 
-def main():
+def main() -> None:
     """Execute main."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--ssh-host", default="socrat-0")

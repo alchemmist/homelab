@@ -63,7 +63,8 @@ def test_links_use_body_color_without_extra_word_emphasis() -> None:
     assert ".onboarding a{display:inline;padding:0;font:inherit;color:inherit;" in HTML
     assert "color:inherit;text-decoration:underline;" in HTML
     assert ".copy a:hover{color:var(--muted)}" in HTML
-    assert "<strong" not in HTML and "<em>" not in HTML
+    assert "<strong" not in HTML
+    assert "<em>" not in HTML
 
 
 def test_wiki_font_is_self_hosted_and_mounted() -> None:

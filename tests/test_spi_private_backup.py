@@ -10,6 +10,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/n8n/spi_private_backup.py"
 
 PRIVATE_BACKUP_FILE_MODE = 0o600
@@ -60,7 +62,7 @@ class BackupTests(unittest.TestCase):
             c = sqlite3.connect(src)
             c.execute("CREATE TABLE x(a)")
             c.close()
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 m.backup(str(src), d, max_bytes=1)
             assert list(Path(d).glob(".spi-prechange-*")) == []
 
@@ -152,8 +154,7 @@ except Exception:sys.exit(1)
             c.close()
             result = subprocess.run(
                 [sys.executable, "-c", code, str(SCRIPT), str(src), d],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 timeout=4,
             )
             assert result.returncode != 0
@@ -177,12 +178,12 @@ except Exception:sys.exit(1)
             def checked(path, *a, **kw):
                 if not kw.get("uri"):
                     assert stat.S_IMODE(Path(path).stat().st_mode) == PRIVATE_BACKUP_FILE_MODE
-                    raise OSError("synthetic destination open failure")
+                    msg = "synthetic destination open failure"
+                    raise OSError(msg)
                 return original(path, *a, **kw)
 
-            with patch.object(m.sqlite3, "connect", checked):
-                with self.assertRaises(OSError):
-                    m.backup(str(src), d)
+            with patch.object(m.sqlite3, "connect", checked), pytest.raises(OSError):
+                m.backup(str(src), d)
             assert list(Path(d).glob(".spi-prechange-*")) == []
             assert signal.getsignal(signal.SIGALRM) == old
             assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
@@ -225,7 +226,8 @@ class CleanupBoundaryTests(unittest.TestCase):
                         if boundary == "pending-close":
                             os.kill(os.getpid(), signal.SIGALRM)
                         if count[0] == (2 if boundary == "second-close" else 1):
-                            raise TimeoutError("synthetic close failure")
+                            msg = "synthetic close failure"
+                            raise TimeoutError(msg)
 
                 def connected(*a, **kw):
                     return connect(*a, **kw, factory=Conn)
@@ -233,7 +235,7 @@ class CleanupBoundaryTests(unittest.TestCase):
                 with (
                     patch.object(m.tempfile, "mkstemp", owned),
                     patch.object(m.sqlite3, "connect", connected),
-                    self.assertRaises(TimeoutError),
+                    pytest.raises(TimeoutError),
                 ):
                     m.backup(str(src), d)
                 assert list(Path(d).glob(".spi-prechange-*")) == []
@@ -249,14 +251,14 @@ class CleanupBoundaryTests(unittest.TestCase):
         handler = signal.getsignal(signal.SIGALRM)
         timer = signal.getitimer(signal.ITIMER_REAL)
 
-        def caller(*args):
+        def caller(*args) -> None:
             pass
 
         try:
             signal.signal(signal.SIGALRM, caller)
             signal.setitimer(signal.ITIMER_REAL, TIMER_INITIAL_SECONDS, TIMER_INTERVAL_SECONDS)
             with tempfile.TemporaryDirectory() as d:
-                with self.assertRaises(sqlite3.OperationalError):
+                with pytest.raises(sqlite3.OperationalError):
                     m.backup(str(Path(d) / "absent"), d)
                 assert list(Path(d).glob(".spi-prechange-*")) == []
             assert signal.getsignal(signal.SIGALRM) is caller

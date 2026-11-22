@@ -42,7 +42,8 @@ def admit(path, data):
         if path == "/enqueue-group":
             alerts = data.get("alerts")
             if not isinstance(alerts, list) or not 0 < len(alerts) <= 200:
-                raise Failure("INVALID_ALERT_GROUP")
+                msg = "INVALID_ALERT_GROUP"
+                raise Failure(msg)
             events = [
                 normalize({"source": data.get("externalURL", "socrat-alerts"), "alert": a})
                 for a in alerts
@@ -66,7 +67,7 @@ def admit(path, data):
         return r
 
 
-def activate():
+def activate() -> None:
     with txn() as d:
         assert d.execute("SELECT live FROM handoff.mode").fetchone()["live"] is False
         assert d.execute("SELECT EXISTS(SELECT FROM public.jobs) ready").fetchone()["ready"]
@@ -93,10 +94,10 @@ def activate():
 
 
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self, *args):
+    def log_message(self, *args) -> None:
         pass
 
-    def output(self, status, body, typ="application/json"):
+    def output(self, status, body, typ="application/json") -> None:
         if not isinstance(body, bytes):
             body = json.dumps(body).encode()
         self.send_response(status)
@@ -111,8 +112,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/metrics":
             return self.forward(None)
         self.output(404, {})
+        return None
 
-    def forward(self, data):
+    def forward(self, data) -> None:
         conn = http.client.HTTPConnection(
             "spi-cutover-backend.automation.svc.cluster.local", 80, timeout=1950
         )
@@ -158,7 +160,8 @@ class Handler(BaseHTTPRequestHandler):
             if self.path not in ADMIT:
                 return self.forward(data)
             if self.headers.get("X-SPI-Workflow-Contract") not in (None, "1"):
-                raise Failure("INVALID_WORKFLOW_CONTRACT")
+                msg = "INVALID_WORKFLOW_CONTRACT"
+                raise Failure(msg)
             self.output(200, admit(self.path, data))
         except Failure as e:
             self.output(422, {"code": e.code})

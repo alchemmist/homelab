@@ -10,19 +10,23 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_default_prepares_without_activating_and_has_explicit_acceptance() -> None:
     """Require preflight by default and one gated activation task."""
     p = yaml.safe_load((ROOT / "ansible/playbooks/moscow-native-primary.yml").read_text())[0]
-    assert p["hosts"] == "socrat-4" and p["any_errors_fatal"]
+    assert p["hosts"] == "socrat-4"
+    assert p["any_errors_fatal"]
     assert 'default("preflight")' in p["vars"]["phase"]
     text = (ROOT / "ansible/playbooks/moscow-native-primary.yml").read_text()
     assert "moscow_native_data_path_accepted" in text
-    assert "spec.nodeName=socrat-4" in text and "protected" not in p["hosts"]
+    assert "spec.nodeName=socrat-4" in text
+    assert "protected" not in p["hosts"]
     acts = [
         t
         for t in p["tasks"]
         if t.get("ansible.builtin.command", "")
         == "python3 /usr/local/libexec/vpn-transit-failover.py activate"
     ]
-    assert len(acts) == 1 and acts[0]["when"] == "phase == 'activate'"
-    assert "state: absent" not in text and "k3s-uninstall" not in text
+    assert len(acts) == 1
+    assert acts[0]["when"] == "phase == 'activate'"
+    assert "state: absent" not in text
+    assert "k3s-uninstall" not in text
 
 
 def test_enrollment_cannot_release_native_fence() -> None:

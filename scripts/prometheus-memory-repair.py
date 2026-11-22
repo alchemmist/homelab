@@ -23,7 +23,7 @@ PATTERN = "^prometheus\\-kube\\-prometheus\\-stack\\-prometheus$"
 RECEIPT = Path.home() / ".cache/homelab-recovery/20261114-prometheus-memory"
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     if not ok:
         raise RuntimeError(message)
 
@@ -157,7 +157,7 @@ def kubectl(args, data=None):
     return json.loads(p.stdout)
 
 
-def save(name, data):
+def save(name, data) -> None:
     fd = os.open(RECEIPT / name, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     with os.fdopen(fd, "w") as out:
         json.dump(data, out, indent=2)
@@ -239,7 +239,7 @@ def wait_future_admission(sts, timeout=20):
         time.sleep(1)
 
 
-def main():
+def main() -> None:
     global RECEIPT
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")

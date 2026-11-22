@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Watchdog service that detects VPN failures and triggers homelab failover."""
+
 import argparse
 import base64
+import contextlib
 import fcntl
 import hashlib
 import json
@@ -29,13 +31,13 @@ class Watchdog:
         self.agent = config.get("agent_unit", "k3s.service")
         self.fenced_units = list(
             dict.fromkeys(
-                config.get("fenced_units", ["k3s-agent.service", "k3s.service"]) + [self.agent]
+                [*config.get("fenced_units", ["k3s-agent.service", "k3s.service"]), self.agent]
             )
         )
         self.units = config.get("native_units", NATIVE_UNITS)
         self.timeout = config.get("timeout_seconds", 4)
 
-    def write(self, name, data):
+    def write(self, name, data) -> None:
         """Persist state data atomically to the state directory."""
         target = self.state / name
         temporary = target.with_suffix(".tmp")
@@ -65,7 +67,7 @@ class Watchdog:
             args, check=True, capture_output=True, text=True, timeout=timeout
         ).stdout.strip()
 
-    def service_installed(self, unit):
+    def service_installed(self, unit) -> bool:
         """Report whether a systemd unit is installed on this host."""
         state = self.command("systemctl", "show", unit, "--property=LoadState", "--value")
         if state == "not-found":
@@ -100,7 +102,7 @@ class Watchdog:
                 result.append(int(entry.name))
         return result
 
-    def terminate(self, pid, sig):
+    def terminate(self, pid, sig) -> None:
         """Signal a PID and wait for it to exit via pidfd."""
         try:
             descriptor = os.pidfd_open(pid)
@@ -112,21 +114,21 @@ class Watchdog:
             except FileNotFoundError:
                 return
             if not self.kubernetes_group(group):
-                raise RuntimeError("Process cgroup changed while fencing")
-            try:
+                msg = "Process cgroup changed while fencing"
+                raise RuntimeError(msg)
+            with contextlib.suppress(ProcessLookupError):
                 signal.pidfd_send_signal(descriptor, sig)
-            except ProcessLookupError:
-                pass
         finally:
             os.close(descriptor)
 
-    def fence(self):
+    def fence(self) -> None:
         """Stop and mask the fenced services, then kill Kubernetes processes."""
         installed = [unit for unit in self.fenced_units if self.service_installed(unit)]
         for unit in installed:
             self.command("systemctl", "stop", unit)
         if any(self.service_active(unit) for unit in installed):
-            raise RuntimeError("Kubernetes service did not stop")
+            msg = "Kubernetes service did not stop"
+            raise RuntimeError(msg)
         for sig in (signal.SIGTERM, signal.SIGKILL):
             for pid in self.processes():
                 self.terminate(pid, sig)
@@ -135,9 +137,10 @@ class Watchdog:
                 time.sleep(0.2)
             if not self.processes():
                 return
-        raise RuntimeError("Kubernetes processes remain; refusing native startup")
+        msg = "Kubernetes processes remain; refusing native startup"
+        raise RuntimeError(msg)
 
-    def guard(self):
+    def guard(self) -> None:
         """Validate state consistency before any failover action is taken."""
         if (
             not (self.state / "active").exists()
@@ -147,7 +150,8 @@ class Watchdog:
             )
             or self.processes()
         ):
-            raise RuntimeError("Native startup requires verified Kubernetes fencing")
+            msg = "Native startup requires verified Kubernetes fencing"
+            raise RuntimeError(msg)
 
     def occupied(self):
         """Report which configured listen ports are already bound on this host."""
@@ -164,7 +168,7 @@ class Watchdog:
                         found.add((protocol, port))
         return sorted(found)
 
-    def preflight(self):
+    def preflight(self) -> None:
         """Verify required preflight files exist and are non-empty."""
         for name in self.config.get("preflight_files", []):
             path = Path(name)
@@ -173,12 +177,14 @@ class Watchdog:
         for name in self.config.get("databases", []):
             path = Path(name)
             if not path.is_file() or path.stat().st_size == 0:
-                raise RuntimeError("VPN database missing or empty")
+                msg = "VPN database missing or empty"
+                raise RuntimeError(msg)
             with sqlite3.connect(
                 path.as_uri() + "?mode=ro", uri=True, timeout=self.timeout
             ) as database:
                 if database.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
-                    raise RuntimeError("VPN database integrity check failed")
+                    msg = "VPN database integrity check failed"
+                    raise RuntimeError(msg)
 
     def health(self):
         """Probe configured TCP endpoints and collect per-host failures."""
@@ -221,7 +227,8 @@ class Watchdog:
                     status = lines[0].split()[1] if len(lines[0].split()) >= 2 else ""
                     diagnostics["http_status"] = int(status) if status.isdigit() else None
                     if len(lines[0].split()) < 2 or lines[0].split()[1] != "101":
-                        raise ValueError("WebSocket upgrade rejected")
+                        msg = "WebSocket upgrade rejected"
+                        raise ValueError(msg)
                     accept = next(
                         (
                             line.split(":", 1)[1].strip()
@@ -231,7 +238,8 @@ class Watchdog:
                         "",
                     )
                     if accept != expected or headers.get("upgrade", "").strip() != "websocket":
-                        raise ValueError("WebSocket handshake invalid")
+                        msg = "WebSocket handshake invalid"
+                        raise ValueError(msg)
         except (OSError, ValueError) as error:
             errors.append("Public VPN TLS/WebSocket handshake failed")
             diagnostics.update(stage=stage, exception=type(error).__name__)
@@ -275,7 +283,7 @@ class Watchdog:
                 return False, health
         return True, health
 
-    def native_warmup(self):
+    def native_warmup(self) -> None:
         """Record bootstrap evidence that native WireGuard came up cleanly."""
         boot, uptime = self.clock()
         self.write(
@@ -305,7 +313,8 @@ class Watchdog:
         for unit in reversed(self.units):
             self.command("systemctl", "stop", unit)
         if any(self.service_active(unit) for unit in self.units) or self.occupied():
-            raise RuntimeError("Native VPN did not release ports for recovery restart")
+            msg = "Native VPN did not release ports for recovery restart"
+            raise RuntimeError(msg)
         self.guard()
         self.native_warmup()
         for unit in self.units:
@@ -320,7 +329,8 @@ class Watchdog:
         self.fence()
         running = [unit for unit in self.units if self.service_active(unit)]
         if not running and self.occupied():
-            raise RuntimeError("VPN ports still occupied; refusing native startup")
+            msg = "VPN ports still occupied; refusing native startup"
+            raise RuntimeError(msg)
         self.guard()
         self.start_native_units()
         health = self.health()
@@ -381,18 +391,20 @@ class Watchdog:
     def failback(self):
         """Exit fallback mode and restart the primary Kubernetes path."""
         if not (self.state / "active").exists():
-            raise RuntimeError("Fallback is not active")
+            msg = "Fallback is not active"
+            raise RuntimeError(msg)
         if not self.service_installed(self.agent):
-            raise RuntimeError("Configured Kubernetes service is not installed; keeping native VPN")
+            msg = "Configured Kubernetes service is not installed; keeping native VPN"
+            raise RuntimeError(msg)
         if self.agent == "k3s-agent.service" and self.service_installed("k3s.service"):
-            raise RuntimeError(
-                "Legacy agent target conflicts with installed server; keeping native VPN"
-            )
+            msg = "Legacy agent target conflicts with installed server; keeping native VPN"
+            raise RuntimeError(msg)
         self.fence()
         for unit in reversed(self.units):
             self.command("systemctl", "stop", unit)
         if any(self.service_active(unit) for unit in self.units) or self.occupied():
-            raise RuntimeError("Native VPN has not released its ports; keeping Kubernetes fenced")
+            msg = "Native VPN has not released its ports; keeping Kubernetes fenced"
+            raise RuntimeError(msg)
         boot, uptime = self.clock()
         self.write(
             "failures.json",
@@ -427,7 +439,7 @@ class Watchdog:
         }
 
 
-def main():
+def main() -> int | None:
     """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=["tick", "check", "status", "guard", "failback"])

@@ -50,7 +50,9 @@ def collect_protocol_evidence(comments, handlers):
     return evidence
 
 
-def remark_blockers(remarks, evidence, commits, repo_url, handlers, reviewers, threads, blockers):
+def remark_blockers(
+    remarks, evidence, commits, repo_url, handlers, reviewers, threads, blockers
+) -> None:
     """Append a blocker for every bot remark lacking an evidenced disposition."""
     for remark in remarks:
         author = remark.get("author") or {}
@@ -102,7 +104,7 @@ def base_blockers(pr, reviewers, handlers):
     return blockers
 
 
-def ci_blockers(checks, blockers):
+def ci_blockers(checks, blockers) -> None:
     """Append a blocker for every CI context that is not a successful completed run."""
     if not checks.get("nodes"):
         blockers.append("No remote CI evidence")

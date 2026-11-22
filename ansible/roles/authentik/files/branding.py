@@ -372,7 +372,7 @@ def _apply_brand(
     )
 
 
-def main():
+def main() -> None:
     """Prepare the theme assets, apply the reviewed brand, or restore it from backup."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)

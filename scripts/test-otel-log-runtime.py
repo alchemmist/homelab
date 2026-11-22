@@ -187,7 +187,8 @@ def main() -> None:
         assert len(records) == 9
         encoded = json.dumps(records)
         assert "PRIVATE_SENTINEL" not in encoded
-        assert encoded.count("safe-event") == 2 and encoded.count("safe-value") == 2
+        assert encoded.count("safe-event") == 2
+        assert encoded.count("safe-value") == 2
         if source == "agent":
             actual = {
                 next(
@@ -242,7 +243,8 @@ def main() -> None:
                     return completed
                 except (OSError, ValueError, http.client.HTTPException):
                     time.sleep(0.2)
-            raise AssertionError("request retry deadline")
+            msg = "request retry deadline"
+            raise AssertionError(msg)
 
         with futures.ThreadPoolExecutor(max_workers=12) as pool:
             pending = [pool.submit(retry, i) for i in range(12)]

@@ -136,13 +136,13 @@ def render(serial, home_up, vps_up, *, monori_health=None):
         "@ IN NS ns1.alchemmist.xyz.",
         "@ IN NS ns2.alchemmist.xyz.",
         "@ IN NS ns3.alchemmist.xyz.",
-        "ns1 IN A %s" % HOME,
-        "ns2 IN A %s" % VPS,
+        f"ns1 IN A {HOME}",
+        f"ns2 IN A {VPS}",
         "ns3 IN A 91.189.82.238",
         "@ IN MX 10 mail.alchemmist.xyz.",
     ]
     for value in TXT:
-        lines.append('@ IN TXT "%s"' % value)
+        lines.append(f'@ IN TXT "{value}"')
     for name in FAILOVER:
         # Preserve the existing production LMS/OIDC primary/standby policy.
         selected = [HOME] if home_up and name in {"lms", "auth.socrat"} else addresses
@@ -151,15 +151,15 @@ def render(serial, home_up, vps_up, *, monori_health=None):
                 *(monori_health if monori_health is not None else (home_up, True))
             )
         for address in selected:
-            lines.append("%s IN A %s" % (name, address))
+            lines.append(f"{name} IN A {address}")
     for name in sorted(STATIC_A):
         for address in STATIC_A[name]:
-            lines.append("%s IN A %s" % (name, address))
+            lines.append(f"{name} IN A {address}")
     lines.append("")
     return "\n".join(lines)
 
 
-def probe(address, port, timeout):
+def probe(address, port, timeout) -> bool | None:
     """Execute probe."""
     sock = socket.socket()
     sock.settimeout(timeout)
@@ -172,7 +172,7 @@ def probe(address, port, timeout):
         sock.close()
 
 
-def main():
+def main() -> None:
     """Execute main."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--serial", type=int, required=True)
@@ -215,9 +215,9 @@ def main():
         temporary = args.output.with_suffix(".zone.tmp")
         temporary.write_text(text)
         temporary.replace(args.output)
-        print("updated home=%s vps=%s" % (home_up, vps_up))
+        print(f"updated home={home_up} vps={vps_up}")
     else:
-        print("unchanged home=%s vps=%s" % (home_up, vps_up))
+        print(f"unchanged home={home_up} vps={vps_up}")
 
 
 if __name__ == "__main__":

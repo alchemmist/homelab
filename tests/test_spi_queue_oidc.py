@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -91,9 +92,10 @@ class NativeQueueChartTests(unittest.TestCase):
             ]:
                 continue
             assert old[k] == new[k], k
-        pod = lambda docs: docs["Deployment", "automation", "spi-queue-ui"]["spec"]["template"][
-            "spec"
-        ]
+
+        def pod(docs):
+            return docs["Deployment", "automation", "spi-queue-ui"]["spec"]["template"]["spec"]
+
         assert pod(old)["containers"][0]["resources"] == pod(new)["containers"][0]["resources"]
         assert pod(old)["nodeSelector"] == pod(new)["nodeSelector"]
 
@@ -141,11 +143,11 @@ class NativeQueueChartTests(unittest.TestCase):
             {"is_superuser": True},
             {"attributes": {}},
         ):
-            with self.subTest(update=update), self.assertRaises(RuntimeError):
+            with self.subTest(update=update), pytest.raises(RuntimeError):
                 identity.group_valid({**good, **update})
 
     def test_no_unknown_provider_is_adopted_without_private_journal(self) -> None:
-        with self.assertRaisesRegex(RuntimeError, "without private client journal"):
+        with pytest.raises(RuntimeError, match="without private client journal"):
             identity.validate_existing(None, {}, None, {"pk": 1}, None, {}, {})
 
 
@@ -167,7 +169,7 @@ class NativeAPIResponseTests(unittest.TestCase):
             api.call = Mock(return_value=value)
             with (
                 self.subTest(value=value),
-                self.assertRaisesRegex(RuntimeError, "Malformed native"),
+                pytest.raises(RuntimeError, match="Malformed native"),
             ):
                 api.rows("core/groups/")
 
@@ -194,7 +196,7 @@ class NativeAPIResponseTests(unittest.TestCase):
             api.http.open.return_value.__exit__ = Mock(return_value=False)
             with (
                 self.subTest(value=value),
-                self.assertRaisesRegex(RuntimeError, "Malformed native create"),
+                pytest.raises(RuntimeError, match="Malformed native create"),
             ):
                 api.call("POST", "core/groups/", {})
 
@@ -261,7 +263,7 @@ class NativeStatePersistenceTests(unittest.TestCase):
             for destination in (victim, link):
                 with (
                     self.subTest(destination=destination.name),
-                    self.assertRaises(FileExistsError),
+                    pytest.raises(FileExistsError),
                 ):
                     identity.save(destination, {"fixture": "must not write"})
             assert victim.read_text() == "original"
@@ -269,7 +271,7 @@ class NativeStatePersistenceTests(unittest.TestCase):
             dangling = root / "after.json"
             target = root / "missing.json"
             dangling.symlink_to(target)
-            with self.assertRaises(FileExistsError):
+            with pytest.raises(FileExistsError):
                 identity.save(dangling, {"fixture": "must not create"})
             assert not target.exists()
 
@@ -282,7 +284,7 @@ class NativeStatePersistenceTests(unittest.TestCase):
             identity.save(path, {"fixture": "not a real credential"})
             assert stat.S_IMODE(path.stat().st_mode) == STATE_FILE_MODE
             assert json.loads(path.read_text()) == {"fixture": "not a real credential"}
-            with self.assertRaises(FileExistsError):
+            with pytest.raises(FileExistsError):
                 identity.save(path, {})
 
     def test_cli_rejects_symlink_state_directory_before_api_access(self) -> None:

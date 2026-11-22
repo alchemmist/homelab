@@ -6,6 +6,7 @@ import unittest
 import urllib.error
 from unittest.mock import Mock
 
+import pytest
 import test_triage as f
 from core import LLM_TRANSIENT, MATCH_SCHEMA, Failure, Store
 from integrations import HTTP, Model
@@ -103,12 +104,12 @@ class ModelRetryTests(unittest.TestCase):
             http = Mock()
             hint_seconds = 91
             http.request.side_effect = Failure(code, retry_after=hint_seconds)
-            with self.assertRaises(Failure) as caught:
+            with pytest.raises(Failure) as caught:
                 Model(http, "fake", min_interval=0, store=Mock()).call(
                     "test", {}, MATCH_SCHEMA, time.monotonic() + 30
                 )
-            assert caught.exception.code in LLM_TRANSIENT
-            assert caught.exception.retry_after == hint_seconds
+            assert caught.value.code in LLM_TRANSIENT
+            assert caught.value.retry_after == hint_seconds
             assert http.request.call_count == 1  # durable queue retry, no busy loop
 
     def test_retry_after_seconds_and_date(self) -> None:
@@ -126,14 +127,14 @@ class ModelRetryTests(unittest.TestCase):
             h.opener.open.side_effect = urllib.error.HTTPError(
                 "http://internal", 429, "busy", {"Retry-After": value}, None
             )
-            with self.assertRaises(Failure) as caught:
+            with pytest.raises(Failure) as caught:
                 h.request("GET", "http://internal")
             if value in ["invalid", "NaN"]:
-                assert caught.exception.retry_after is None
+                assert caught.value.retry_after is None
             else:
                 # A Retry-After above two minutes survives parsing into the hint.
                 minimum_hint_seconds = 100
-                assert caught.exception.retry_after > minimum_hint_seconds
+                assert caught.value.retry_after > minimum_hint_seconds
 
     def test_batch_checkpoint_resumes_and_changed_snapshot_invalidates(self) -> None:
         """Verify batch checkpoints resume and invalidate on change."""
@@ -142,7 +143,7 @@ class ModelRetryTests(unittest.TestCase):
         m = Model(Mock(), "fake")
         m.call = Mock(side_effect=[good, Failure("LLM_HTTP_503")])
         saved = []
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             m.match(
                 f.event(),
                 issues,
@@ -155,7 +156,7 @@ class ModelRetryTests(unittest.TestCase):
         assert m.call.call_count == remaining_batches
         assert r["reviewed_numbers"] == list(range(25))
         m.call.reset_mock()
-        m.match(f.event(), issues + [{"number": 25}], progress=saved[-1])
+        m.match(f.event(), [*issues, {"number": 25}], progress=saved[-1])
         assert m.call.call_count == remaining_batches
 
 
@@ -170,12 +171,13 @@ class EngineCheckpointTests(unittest.TestCase):
 
         def matching(event, issues, progress=None, on_progress=None) -> None:
             on_progress({"signature": "test", "decisions": []})
-            raise Failure("LLM_HTTP_429")
+            msg = "LLM_HTTP_429"
+            raise Failure(msg)
 
         self.model.match.side_effect = matching
         key = self.store.enqueue(f.event())["job_id"]
         self.store.claim()
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.run("match", key)
         r = self.store.get(key)
         assert r["result"]["match_progress_v3"]["signature"] == "test"
@@ -188,7 +190,7 @@ class EngineCheckpointTests(unittest.TestCase):
         self.model.match.side_effect = Failure("LLM_HTTP_429")
         for _ in range(20):
             self.store.claim()
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 self.engine.run("match", key)
             assert self.store.get(key)["state"] == "retry"
             with self.store.db() as c:
@@ -199,7 +201,7 @@ class EngineCheckpointTests(unittest.TestCase):
             self.engine.run(stage, key)
         self.engine.write = True
         self.github.request.side_effect = Failure("UPSTREAM_TIMEOUT")
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.run("publish", key)
         r = self.store.get(key)
         assert r["state"] == "retry"

@@ -49,7 +49,8 @@ def command(args: list[str], timeout: int = 30) -> subprocess.CompletedProcess[s
 def active(unit: str) -> bool:
     p = command(["systemctl", "is-active", unit], 5)
     if p.returncode not in (0, 3):
-        raise ValueError("Unobservable unit")
+        msg = "Unobservable unit"
+        raise ValueError(msg)
     return p.returncode == 0
 
 
@@ -70,7 +71,8 @@ def listening(proc: Path, protocol: str) -> set[int]:
         for line in lines[1:]:
             fields = line.split()
             if len(fields) < 4:
-                raise ValueError("Malformed socket table")
+                msg = "Malformed socket table"
+                raise ValueError(msg)
             # TCP LISTEN or established sessions; any UDP socket prevents a false OFF.
             if protocol == "udp" or fields[3] in ("0A", "01"):
                 ports.add(int(fields[1].rsplit(":", 1)[1], 16))
@@ -119,15 +121,18 @@ def units_snapshot(units: list[str]) -> dict[str, bool]:
         5,
     )
     if result.returncode:
-        raise ValueError("Unobservable unit set")
+        msg = "Unobservable unit set"
+        raise ValueError(msg)
     states: dict[str, bool] = {}
     for block in result.stdout.strip().split("\n\n"):
         fields = dict(line.split("=", 1) for line in block.splitlines() if "=" in line)
         if fields.get("LoadState") != "loaded":
-            raise ValueError("Unloaded unit")
+            msg = "Unloaded unit"
+            raise ValueError(msg)
         states[fields["Id"]] = fields["ActiveState"] == "active"
     if set(states) != set(units):
-        raise ValueError("Incomplete unit set")
+        msg = "Incomplete unit set"
+        raise ValueError(msg)
     return states
 
 
@@ -144,9 +149,11 @@ def observe(
         status = json.loads(path.read_text())
         after = path.stat()
         if (stamp.st_ino, stamp.st_mtime_ns) != (after.st_ino, after.st_mtime_ns):
-            raise ValueError("Concurrent state write")
+            msg = "Concurrent state write"
+            raise ValueError(msg)
         if type(status.get("healthy")) is not bool:
-            raise ValueError("Missing cached health")
+            msg = "Missing cached health"
+            raise ValueError(msg)
         status["data_path_healthy"] = status["healthy"]
         observed = stamp.st_mtime
     else:
@@ -156,12 +163,14 @@ def observe(
             raise ValueError(reason)
         result = command([str(x) for x in profile_command])
         if result.returncode not in (0, 1):
-            raise ValueError("Status command failed")
+            msg = "Status command failed"
+            raise ValueError(msg)
         status = json.loads(result.stdout)
         observed = time.time()
     key = "data_path_healthy" if profile["component"] == "relay" else "healthy"
     if type(status.get(key)) is not bool:
-        raise ValueError("Missing health observation")
+        msg = "Missing health observation"
+        raise ValueError(msg)
     native_names = _unit_list(profile["native"])
     agent_unit = str(profile["agent"])
     states = units_snapshot([agent_unit, *native_names])
@@ -169,7 +178,8 @@ def observe(
     native = [states[u] for u in native_names]
     marker = Path(str(profile["marker"])).exists()
     if marker != before:
-        raise ValueError("Concurrent runtime transition")
+        msg = "Concurrent runtime transition"
+        raise ValueError(msg)
     if cached:
         status.update(agent_active=agent, native_active=all(native), fallback_marker=marker)
     runtime = classify(profile, status, agent=agent, native=native, marker=marker)
@@ -303,7 +313,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     host = socket.gethostname()
     if os.geteuid() != 0 or host not in PROFILES:
-        raise SystemExit("Requires intended local root host")
+        msg = "Requires intended local root host"
+        raise SystemExit(msg)
     profile = PROFILES[host]
     try:
         if args.audit:
@@ -323,6 +334,5 @@ if __name__ == "__main__":
                     "observed_timestamp_seconds": 0,
                 },
             )
-        raise SystemExit(
-            "VPN observer failed; telemetry unknown, no runtime actions taken."
-        ) from None
+        msg = "VPN observer failed; telemetry unknown, no runtime actions taken."
+        raise SystemExit(msg) from None

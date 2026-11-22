@@ -28,17 +28,16 @@ def receipt(rows):
 
 def transfer(src, db):
     src.execute("BEGIN")
-    assert (
-        src.execute("pragma integrity_check").fetchall() == [("ok",)]
-        and not src.execute("pragma foreign_key_check").fetchone()
-    )
+    assert src.execute("pragma integrity_check").fetchall() == [("ok",)]
+    assert not src.execute("pragma foreign_key_check").fetchone()
     assert not db.execute("select from pg_tables where schemaname='public'").fetchone()
     db.execute(Path(__file__).with_name("schema.sql").read_text())
     tabs = [
         r[0]
         for r in src.execute("select name from sqlite_master where type='table' order by rowid")
     ]
-    assert len(tabs) == 19 and set(tabs) == {
+    assert len(tabs) == 19
+    assert set(tabs) == {
         r[0] for r in db.execute("select tablename from pg_tables where schemaname='public'")
     }
     total = 0
@@ -81,11 +80,9 @@ if __name__ == "__main__":
     assert mode in ("trial", "cold")
     url = os.environ["SPI_POSTGRES_URL"]
     params = conninfo_to_dict(url)
-    assert (
-        params["host"] == "pg-common-rw.postgres.svc.cluster.local"
-        and params["dbname"] == "spi_triage"
-        and params["sslmode"] == "verify-full"
-    )
+    assert params["host"] == "pg-common-rw.postgres.svc.cluster.local"
+    assert params["dbname"] == "spi_triage"
+    assert params["sslmode"] == "verify-full"
     p = Path("/src/.spi-pg-rehearsal.sqlite" if mode == "trial" else "/src/spi.sqlite")
     with tempfile.TemporaryDirectory() as tmp:
         if mode == "cold":

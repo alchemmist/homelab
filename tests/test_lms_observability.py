@@ -82,9 +82,11 @@ def test_dashboard_is_gitops_provisioned_and_uses_real_log_labels() -> None:
     assert dashboard["uid"] == "lms-performance"
     assert any(p["type"] == "traces" for p in dashboard["panels"])
     variable = next(x for x in dashboard["templating"]["list"] if x["name"] == "trace_id")
-    assert variable["type"] == "query" and variable["refresh"] == 2
+    assert variable["type"] == "query"
+    assert variable["refresh"] == 2
     assert variable["query"]["label"] == "lms.trace_id"
-    assert variable["current"] == {} and variable["allowCustomValue"] is False
+    assert variable["current"] == {}
+    assert variable["allowCustomValue"] is False
     logs = next(p for p in dashboard["panels"] if p["id"] == 4)
     assert '{k8s_namespace_name="lms"}' in logs["targets"][0]["expr"]
     recent = next(p for p in dashboard["panels"] if p["id"] == 5)
@@ -176,7 +178,10 @@ def test_correlations_preserve_credentials_and_survive_refresh() -> None:
     assert fields[-1]["url"] == "$${__value.raw}"
     mod.configure(document)
     assert len(result["datasources"][0]["jsonData"]["derivedFields"]) == 2
-    for script in ["ansible/scripts/otel-host-credentials.py", "scripts/otel-production-grafana.py"]:
+    for script in [
+        "ansible/scripts/otel-host-credentials.py",
+        "scripts/otel-production-grafana.py",
+    ]:
         source = (ROOT / script).read_text()
         assert "trace_id=([0-9a-f]{32})" in source
         assert "$${__value.raw}" in source
@@ -219,7 +224,8 @@ def test_dashboard_starts_with_waterfall_without_instruction_text_panel() -> Non
     dashboard = json.loads((ROOT / "charts/lms/files/lms-performance.json").read_text())
     assert not any(panel["type"] == "text" or panel["id"] == 1 for panel in dashboard["panels"])
     first = min(dashboard["panels"], key=lambda panel: panel["gridPos"]["y"])
-    assert first["id"] == 3 and first["gridPos"]["y"] == 0
+    assert first["id"] == 3
+    assert first["gridPos"]["y"] == 0
 
 
 def test_hibernated_database_alerts_do_not_page_for_production_lms() -> None:

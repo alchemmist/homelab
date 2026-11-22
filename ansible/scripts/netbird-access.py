@@ -270,7 +270,7 @@ def _trusted_admission_updates(account: object, settings: object) -> list[dict[s
         "Unexpected login allowlist; do not relax approval",
     )
     updated = dict(raw_settings)
-    updated["jwt_allow_groups"] = allowed if ADMIN in allowed else allowed + [ADMIN]
+    updated["jwt_allow_groups"] = allowed if ADMIN in allowed else [*allowed, ADMIN]
     extra = dict(cast("dict[str, object]", raw_settings.get("extra") or {}))
     require(
         extra.get("peer_approval_enabled") is False,
@@ -531,7 +531,8 @@ class API:
             result.extend(data["results"])
             if not data.get("pagination", {}).get("next"):
                 return result
-        raise ValueError("Pagination limit exceeded")
+        msg = "Pagination limit exceeded"
+        raise ValueError(msg)
 
     def snapshot(self):
         """Read the pinned NetBird collections into an inventory snapshot."""
@@ -559,7 +560,7 @@ class API:
         return state
 
 
-def atomic(path, value):
+def atomic(path, value) -> None:
     """Durably write a JSON value to disk via a temporary file and rename."""
     temp = path.with_suffix(".tmp")
     fd = os.open(temp, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
@@ -570,7 +571,7 @@ def atomic(path, value):
     os.replace(temp, path)
 
 
-def check_state_folder(folder):
+def check_state_folder(folder) -> None:
     """Require a caller-owned private state directory with no unfinished receipts."""
     require(
         folder.is_absolute() and not folder.is_symlink(),
@@ -602,7 +603,7 @@ def build_plan(state, action, username=None, expected_uuid=None):
     )
 
 
-def main():
+def main() -> None:
     """Run the requested reconciler action against the verified state snapshot."""
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)

@@ -1,4 +1,5 @@
 """HTTP service that stores and manages Thanos blocks on the shelf."""
+
 import json
 import os
 import re
@@ -64,7 +65,7 @@ def list_blocks(directory):
     return blocks
 
 
-def begin(directory, ulid):
+def begin(directory, ulid) -> None:
     """Start a fresh upload for a ULID, discarding its previous incomplete staging tree."""
     if not ULID.match(ulid):
         message = "bad ulid"
@@ -75,7 +76,7 @@ def begin(directory, ulid):
     os.makedirs(path, mode=0o775)
 
 
-def write_file(directory, ulid, relative, chunks):
+def write_file(directory, ulid, relative, chunks) -> None:
     """Stream chunks into a temporary staging file and rename it after the write completes."""
     if not ULID.match(ulid):
         message = "bad ulid"
@@ -92,7 +93,7 @@ def write_file(directory, ulid, relative, chunks):
     os.replace(temporary, destination)
 
 
-def commit(directory, ulid):
+def commit(directory, ulid) -> None:
     """Publish a matching staged block; replacing a live tree takes two separate renames."""
     if not ULID.match(ulid):
         message = "bad ulid"
@@ -115,7 +116,7 @@ def commit(directory, ulid):
     os.rename(staged, final)
 
 
-def mark_deleted(directory, ulid, details="cascade"):
+def mark_deleted(directory, ulid, details="cascade") -> None:
     """Replace the deletion marker atomically, leaving the block files in place."""
     if not ULID.match(ulid):
         message = "bad ulid"
@@ -233,8 +234,9 @@ def _serve_put(handler: BaseHTTPRequestHandler, directory: str, token: str) -> N
 
 def handler(directory, token):
     """Bind inventory reads, staged uploads and marker requests to one shelf directory and token."""
+
     class ShelfHandler(BaseHTTPRequestHandler):
-        def log_message(self, fmt, *args):
+        def log_message(self, fmt, *args) -> None:
             return
 
         def do_GET(self):
@@ -249,13 +251,13 @@ def handler(directory, token):
     return ShelfHandler
 
 
-def serve(directory, token, port=8080):
+def serve(directory, token, port=8080) -> None:
     """Listen on all interfaces for concurrent shelf requests until the server is stopped."""
     server = ThreadingHTTPServer(("0.0.0.0", port), handler(directory, token))
     server.serve_forever()
 
 
-def main():
+def main() -> None:
     """Create the shelf root and serve it using the configured token or token file."""
     directory = os.environ["SHELF_DIRECTORY"]
     token = os.environ.get("SHELF_TOKEN")

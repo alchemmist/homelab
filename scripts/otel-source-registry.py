@@ -72,7 +72,7 @@ def scrub(value, key=""):
     return value
 
 
-def monitor_key(kind, namespace, name):
+def monitor_key(kind, namespace, name) -> str:
     kinds = {
         "ServiceMonitor": "serviceMonitor",
         "PodMonitor": "podMonitor",
@@ -82,7 +82,7 @@ def monitor_key(kind, namespace, name):
     return f"{kinds[kind]}/{namespace}/{name}"
 
 
-def selected(selector, attributes):
+def selected(selector, attributes) -> bool:
     if any(attributes.get(key) != value for key, value in selector.get("matchLabels", {}).items()):
         return False
     for expression in selector.get("matchExpressions", []):
@@ -422,7 +422,7 @@ def attach_producers(registry, producers, daemonsets):
     return registry
 
 
-def main():
+def main() -> int | None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ssh-host", default="socrat-0")
     parser.add_argument("--output", type=Path, required=True)

@@ -6,6 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
+import pytest
+
 MODULE_PATH = (
     Path(__file__).resolve().parents[1] / "ansible/roles/grafana_mcp/files/bootstrap_credentials.py"
 )
@@ -43,9 +45,9 @@ class CredentialsTests(unittest.TestCase):
             ),
             persist,
         )
-        self.assertEqual(result, {"changed": False})
+        assert result == {"changed": False}
         persist.assert_not_called()
-        self.assertEqual(grafana.request.call_args.kwargs["token"], "existing")
+        assert grafana.request.call_args.kwargs["token"] == "existing"
 
     def test_existing_secret_does_not_require_admin(self) -> None:
         """Verify an existing secret with a plain, non-admin token probe."""
@@ -63,7 +65,7 @@ class CredentialsTests(unittest.TestCase):
             persist,
             has_admin=False,
         )
-        self.assertFalse(result["changed"])
+        assert not result["changed"]
         grafana.request.assert_called_once_with("GET", "/api/org", token="existing")
         persist.assert_not_called()
 
@@ -77,12 +79,12 @@ class CredentialsTests(unittest.TestCase):
             {"id": 1},
         ]
         persist = Mock()
-        self.assertTrue(MODULE.bootstrap(grafana, None, persist)["changed"])
-        self.assertEqual(grafana.request.call_args_list[1].args[2]["role"], "Viewer")
+        assert MODULE.bootstrap(grafana, None, persist)["changed"]
+        assert grafana.request.call_args_list[1].args[2]["role"] == "Viewer"
         data = persist.call_args.args[0]["stringData"]
-        self.assertEqual(data["grafana-token"], "grafana-secret")
-        self.assertNotEqual(data["client-token"], data["grafana-token"])
-        self.assertGreaterEqual(len(data["client-token"]), 64)
+        assert data["grafana-token"] == "grafana-secret"
+        assert data["client-token"] != data["grafana-token"]
+        assert len(data["client-token"]) >= 64
 
     def test_failed_persistence_revokes_only_new_token(self) -> None:
         """Revoke the freshly created token when persistence fails."""
@@ -93,7 +95,7 @@ class CredentialsTests(unittest.TestCase):
             {},
             {},
         ]
-        with self.assertRaisesRegex(MODULE.BootstrapError, "newly created token revoked"):
+        with pytest.raises(MODULE.BootstrapError, match="newly created token revoked"):
             MODULE.bootstrap(grafana, None, Mock(side_effect=RuntimeError("secret")))
         grafana.request.assert_called_with("DELETE", "/api/serviceaccounts/12/tokens/7")
 
@@ -118,7 +120,7 @@ class CredentialsTests(unittest.TestCase):
             ),
             persist,
         )
-        self.assertEqual(persist.call_args.args[0]["stringData"]["client-token"], "stable")
+        assert persist.call_args.args[0]["stringData"]["client-token"] == "stable"
 
     def test_disabled_account_is_not_reenabled(self) -> None:
         """Refuse to re-enable a disabled service account."""
@@ -129,7 +131,7 @@ class CredentialsTests(unittest.TestCase):
             ]
         }
         persist = Mock()
-        with self.assertRaisesRegex(MODULE.BootstrapError, "disabled"):
+        with pytest.raises(MODULE.BootstrapError, match="disabled"):
             MODULE.bootstrap(grafana, None, persist)
         persist.assert_not_called()
 

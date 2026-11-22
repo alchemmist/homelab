@@ -6,8 +6,10 @@ import hashlib
 import json
 import re
 import stat
-from pathlib import Path
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 ID = r"[0-9A-HJKMNP-TV-Z]{26}"
 FILE = re.compile(rf"{ID}/(?:index|meta\.json|deletion-mark\.json|chunks/[0-9]{{6}})")
@@ -22,7 +24,8 @@ class Manifest(TypedDict):
 
 
 def shape(root: Path) -> tuple[dict[str, int], list[str]]:
-    assert root.is_dir() and not root.is_symlink()
+    assert root.is_dir()
+    assert not root.is_symlink()
     dev = root.stat().st_dev
     files = {}
     dirs = []
@@ -36,13 +39,12 @@ def shape(root: Path) -> tuple[dict[str, int], list[str]]:
         else:
             assert stat.S_ISREG(st.st_mode) and FILE.fullmatch(rel), rel
             files[rel] = st.st_size
-    assert files and dirs
+    assert files
+    assert dirs
     for u in (d for d in dirs if "/" not in d):
-        assert (
-            u + "/index" in files
-            and u + "/meta.json" in files
-            and any(k.startswith(u + "/chunks/") for k in files)
-        )
+        assert u + "/index" in files
+        assert u + "/meta.json" in files
+        assert any(k.startswith(u + "/chunks/") for k in files)
         assert json.loads((root / u / "meta.json").read_bytes())["ulid"] == u
     return files, dirs
 
@@ -64,6 +66,4 @@ def manifest(root: Path) -> Manifest:
 
 
 def digest(m: Manifest) -> str:
-    return hashlib.sha256(
-        json.dumps(m, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
+    return hashlib.sha256(json.dumps(m, sort_keys=True, separators=(",", ":")).encode()).hexdigest()

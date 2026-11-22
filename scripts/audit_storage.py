@@ -63,7 +63,7 @@ def inventory(pvs, pods):
     return rows
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument("--node", default="socrat-5", choices=[f"socrat-{i}" for i in range(6)])
     args = parser.parse_args()
@@ -99,8 +99,8 @@ print(json.dumps(out))"""
         input=json.dumps(
             sorted(
                 set(
-                    paths
-                    + [
+                    [
+                        *paths,
                         "/",
                         "/mnt/files",
                         "/var/lib/rancher/k3s",

@@ -88,18 +88,18 @@ def expressions(value, path=()):
     if isinstance(value, dict):
         for key, item in value.items():
             if key in {"expr", "query", "definition"} and isinstance(item, str):
-                yield path + (str(key),), item
+                yield (*path, str(key)), item
             elif isinstance(item, str) and key.endswith(".json"):
                 try:
                     embedded = json.loads(item)
                 except ValueError:
                     continue
-                yield from expressions(embedded, path + (str(key),))
+                yield from expressions(embedded, (*path, str(key)))
             else:
-                yield from expressions(item, path + (str(key),))
+                yield from expressions(item, (*path, str(key)))
     elif isinstance(value, list):
         for index, item in enumerate(value):
-            yield from expressions(item, path + (str(index),))
+            yield from expressions(item, (*path, str(index)))
 
 
 def audit_files(paths):
@@ -141,7 +141,7 @@ def audit_files(paths):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("paths", type=Path, nargs="+")
     parser.add_argument("--output", type=Path, required=True)

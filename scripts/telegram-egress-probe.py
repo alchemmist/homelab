@@ -24,19 +24,20 @@ def resolve(host):
             [sys.executable, "-c", program, host], capture_output=True, timeout=3
         )
     except subprocess.TimeoutExpired as exc:
-        raise TimeoutError("DNS deadline") from exc
+        msg = "DNS deadline"
+        raise TimeoutError(msg) from exc
     if result.returncode:
-        raise socket.gaierror("resolution failed")
+        msg = "resolution failed"
+        raise socket.gaierror(msg)
     try:
         rows = json.loads(result.stdout)
         if not isinstance(rows, list) or not rows:
-            raise ValueError("expected resolved addresses")
-        return [
-            (socket.AddressFamily(f), k, p, n, tuple(a))
-            for f, k, p, n, a in rows
-        ]
+            msg = "expected resolved addresses"
+            raise ValueError(msg)
+        return [(socket.AddressFamily(f), k, p, n, tuple(a)) for f, k, p, n, a in rows]
     except (ValueError, TypeError) as exc:
-        raise socket.gaierror("invalid resolver response") from exc
+        msg = "invalid resolver response"
+        raise socket.gaierror(msg) from exc
 
 
 def samples(host, context):
@@ -79,13 +80,11 @@ def samples(host, context):
 
 def batch(context):
     return [
-        row
-        for target in ("api.telegram.org", "example.com")
-        for row in samples(target, context)
+        row for target in ("api.telegram.org", "example.com") for row in samples(target, context)
     ]
 
 
-def periodic(context):
+def periodic(context) -> None:
     # Per-address diagnostics stay local. No unbounded container logs or IP labels.
     batches = deque(maxlen=120)
     target = Path("/samples/recent.json")

@@ -172,7 +172,9 @@ def bootstrap(kube: Kubernetes, *, skip_legacy_git: bool = False) -> list[str]:
             results.append(
                 metadata.get("namespace", "cluster") + "/" + metadata["name"] + ": created"
             )
-    for target, old, item in zip(targets, existing, [pvc, bootstrap_secret, git_secret]):
+    for target, old, item in zip(
+        targets, existing, [pvc, bootstrap_secret, git_secret], strict=False
+    ):
         if not old and item is not None:
             kube.create(item)
         results.append(
@@ -182,7 +184,7 @@ def bootstrap(kube: Kubernetes, *, skip_legacy_git: bool = False) -> list[str]:
     return results
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Create isolated wiki runtime storage and Secret prerequisites without changing routes or deployments"
     )

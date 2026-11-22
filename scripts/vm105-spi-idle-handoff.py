@@ -28,13 +28,14 @@ def call(args: list[str], timeout: int = 40) -> str:
         timeout=timeout,
     )
     if r.returncode:
-        raise RuntimeError("Kubernetes operation failed; inspect private controller context")
+        msg = "Kubernetes operation failed; inspect private controller context"
+        raise RuntimeError(msg)
     return r.stdout
 
 
 def get(args: list[str]) -> dict[str, object]:
     """Run one kubectl get/... and decode its JSON answer."""
-    return cast("dict[str, object]", json.loads(call(args + ["-o", "json"])))
+    return cast("dict[str, object]", json.loads(call([*args, "-o", "json"])))
 
 
 def patch_service(*, paused: bool) -> None:
@@ -104,7 +105,8 @@ with psycopg.connect(os.environ['SPI_POSTGRES_URL'],connect_timeout=5) as db:
 
 def stop_signal(*_: object) -> None:
     """Turn SIGTERM/SIGINT into an interrupted stop so the finally block restores."""
-    raise SystemExit("Interrupted; restoring temporary hold")
+    msg = "Interrupted; restoring temporary hold"
+    raise SystemExit(msg)
 
 
 def require_expected_worker() -> None:
@@ -114,9 +116,8 @@ def require_expected_worker() -> None:
     template = cast("dict[str, object]", spec["template"])
     tspec = cast("dict[str, object]", template["spec"])
     if tspec.get("nodeSelector") != {"kubernetes.io/hostname": "socrat-1"}:
-        raise RuntimeError(
-            "Historical one-way handoff refuses an already-migrated or unexpected worker"
-        )
+        msg = "Historical one-way handoff refuses an already-migrated or unexpected worker"
+        raise RuntimeError(msg)
 
 
 def require_unheld() -> None:
@@ -125,7 +126,8 @@ def require_unheld() -> None:
     metadata = cast("dict[str, object]", a["metadata"])
     annotations = cast("dict[str, object]", metadata.get("annotations", {}))
     if annotations.get("argocd.argoproj.io/skip-reconcile") == "true":
-        raise RuntimeError("App already held by someone else")
+        msg = "App already held by someone else"
+        raise RuntimeError(msg)
 
 
 def quiesce_endpoints() -> None:
@@ -154,7 +156,8 @@ def quiesce_endpoints() -> None:
         ):
             break
         if time.monotonic() > deadline:
-            raise RuntimeError("Service did not quiesce")
+            msg = "Service did not quiesce"
+            raise RuntimeError(msg)
         time.sleep(0.15)
 
 
@@ -163,7 +166,8 @@ def publish_stopped_state() -> None:
     p = ROOT / "deploy/spi-triage/values.yaml"
     text = p.read_text()
     if "workerReplicas:" in text:
-        raise RuntimeError("Unreviewed replica override exists")
+        msg = "Unreviewed replica override exists"
+        raise RuntimeError(msg)
     text = (
         text.replace("maintenanceIngressPaused: false", "maintenanceIngressPaused: true")
         + "\nworkerReplicas: 0\n"
@@ -262,9 +266,8 @@ def main() -> None:
             continue
         if attempt_idle_handoff():
             return
-    raise RuntimeError(
-        "No naturally idle window; worker remains running, no cancellation performed"
-    )
+    msg = "No naturally idle window; worker remains running, no cancellation performed"
+    raise RuntimeError(msg)
 
 
 if __name__ == "__main__":

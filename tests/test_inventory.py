@@ -43,10 +43,10 @@ class InventoryStructureTests(unittest.TestCase):
         """Map every node with connection-only settings once."""
         inventory = yaml.safe_load((ANSIBLE / "inventory/hosts.yml").read_text())
         hosts = inventory["all"]["children"]["Socrat"]["hosts"]
-        self.assertEqual(set(hosts), NODES)
+        assert set(hosts) == NODES
         for host, settings in hosts.items():
-            self.assertTrue(all(key.startswith("ansible_") for key in settings), host)
-            self.assertTrue((ANSIBLE / "inventory/host_vars" / f"{host}.yml").is_file())
+            assert all(key.startswith("ansible_") for key in settings), host
+            assert (ANSIBLE / "inventory/host_vars" / f"{host}.yml").is_file()
 
     def test_default_connections_are_internal_without_bastions(self) -> None:
         """Pin the internal addresses and ports with no bastion jumps."""
@@ -60,10 +60,10 @@ class InventoryStructureTests(unittest.TestCase):
             "socrat-3": "10.250.0.5",
         }
         for name, address in addresses.items():
-            self.assertEqual(hosts[name]["ansible_host"], address)
-            self.assertEqual(hosts[name]["ansible_port"], 2222)
-            self.assertIn("ProxyJump=none", hosts[name]["ansible_ssh_common_args"])
-            self.assertIn("HostKeyAlias=", hosts[name]["ansible_ssh_common_args"])
+            assert hosts[name]["ansible_host"] == address
+            assert hosts[name]["ansible_port"] == 2222
+            assert "ProxyJump=none" in hosts[name]["ansible_ssh_common_args"]
+            assert "HostKeyAlias=" in hosts[name]["ansible_ssh_common_args"]
 
     def test_default_sources_are_explicit_not_the_whole_inventory_directory(
         self,
@@ -71,11 +71,11 @@ class InventoryStructureTests(unittest.TestCase):
         """List both inventory sources explicitly in ansible.cfg."""
         config = configparser.ConfigParser()
         config.read(ANSIBLE / "ansible.cfg")
-        self.assertEqual(
-            [s.strip() for s in config["defaults"]["inventory"].split(",")],
-            ["inventory/hosts.yml", "inventory/netbird-controller.yml"],
-        )
-        self.assertFalse((ANSIBLE / "inventory/socrat-3.yml").exists())
+        assert [s.strip() for s in config["defaults"]["inventory"].split(",")] == [
+            "inventory/hosts.yml",
+            "inventory/netbird-controller.yml",
+        ]
+        assert not (ANSIBLE / "inventory/socrat-3.yml").exists()
 
 
 @unittest.skipUnless(shutil.which("ansible-inventory"), "ansible-inventory is required")
@@ -86,7 +86,7 @@ class ResolvedInventoryTests(unittest.TestCase):
         for source in sources:
             command += ["-i", f"inventory/{source}.yml"]
         result = subprocess.run(
-            command + ["--list"],
+            [*command, "--list"],
             cwd=ANSIBLE,
             check=True,
             capture_output=True,
@@ -100,14 +100,14 @@ class ResolvedInventoryTests(unittest.TestCase):
         for sources in [(), ("hosts",)]:
             with self.subTest(sources=sources):
                 data = self.inventory(*sources)
-                self.assertEqual(set(data["Socrat"]["hosts"]), NODES)
+                assert set(data["Socrat"]["hosts"]) == NODES
                 host = data["_meta"]["hostvars"]["socrat-3"]
-                self.assertEqual(host["ansible_host"], "10.250.0.5")
-                self.assertEqual(host["ansible_port"], 2222)
-                self.assertEqual(host["homelab_boot_k3s_service"], "k3s-agent.service")
-                self.assertTrue(host["k3s_worker_swap_enabled"])
-        self.assertNotIn("netbird-controller", data["Socrat"]["hosts"])
-        self.assertIn("netbird-controller", self.inventory()["_meta"]["hostvars"])
+                assert host["ansible_host"] == "10.250.0.5"
+                assert host["ansible_port"] == 2222
+                assert host["homelab_boot_k3s_service"] == "k3s-agent.service"
+                assert host["k3s_worker_swap_enabled"]
+        assert "netbird-controller" not in data["Socrat"]["hosts"]
+        assert "netbird-controller" in self.inventory()["_meta"]["hostvars"]
 
     def test_connection_overlays_still_override_main_inventory(self) -> None:
         """Apply the committed overlay connections on top of the main map."""
@@ -124,13 +124,11 @@ class ResolvedInventoryTests(unittest.TestCase):
         }.items():
             with self.subTest(overlay=overlay):
                 data = self.inventory("hosts", overlay)
-                self.assertEqual(set(data["Socrat"]["hosts"]), NODES)
+                assert set(data["Socrat"]["hosts"]) == NODES
                 for node, connection in expected.items():
                     host = data["_meta"]["hostvars"][node]
-                    self.assertEqual((host["ansible_host"], host["ansible_port"]), connection)
-                self.assertEqual(
-                    data["_meta"]["hostvars"]["socrat-3"]["ansible_host"], "10.250.0.5"
-                )
+                    assert (host["ansible_host"], host["ansible_port"]) == connection
+                assert data["_meta"]["hostvars"]["socrat-3"]["ansible_host"] == "10.250.0.5"
 
 
 if __name__ == "__main__":

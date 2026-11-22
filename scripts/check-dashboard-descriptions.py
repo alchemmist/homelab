@@ -34,7 +34,7 @@ def panel_descriptions(dashboard):
     return result
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--ssh-host", default="socrat-0")

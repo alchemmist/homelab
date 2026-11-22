@@ -8,6 +8,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
     "credential", ROOT / "ansible/scripts/netbird-node-credential.py"
@@ -64,6 +66,7 @@ class CredentialTest(unittest.TestCase):
                     assert (
                         json.loads((folder / "credential.json").read_text())["token_id"] == "new-id"
                     )
+                return None
 
         return Runtime, calls, users
 
@@ -71,7 +74,7 @@ class CredentialTest(unittest.TestCase):
         """A valid long-lived token is not rotated on every run."""
         with tempfile.TemporaryDirectory() as t:
             folder = Path(t)
-            runtime, calls, users = self.setup_runtime(folder, 300)
+            runtime, calls, _users = self.setup_runtime(folder, 300)
             with patch.object(c.mod, "Runtime", runtime):
                 assert not c.renew(folder, {})
             assert calls == [("GET", "users")]
@@ -80,7 +83,7 @@ class CredentialTest(unittest.TestCase):
         """Renewal verifies, switches atomically, then revokes the old token."""
         with tempfile.TemporaryDirectory() as t:
             folder = Path(t)
-            runtime, calls, users = self.setup_runtime(folder, 10)
+            runtime, calls, _users = self.setup_runtime(folder, 10)
             with patch.object(c.mod, "Runtime", runtime):
                 assert c.renew(folder, {})
             assert [method for method, path in calls] == [
@@ -106,7 +109,7 @@ class CredentialTest(unittest.TestCase):
                 users[0][field] = value
                 with (
                     patch.object(c.mod, "Runtime", runtime),
-                    self.assertRaises(ValueError),
+                    pytest.raises(ValueError),
                 ):
                     c.renew(folder, {})
                 assert calls == [("GET", "users")]
@@ -116,10 +119,10 @@ class CredentialTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             folder = Path(t)
             (folder / "credential-intent.json").write_text("{}")
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 c.renew(folder, {})
 
     def test_missing_credential_needs_explicit_bootstrap(self) -> None:
         """A missing credential requires explicit bootstrap."""
-        with tempfile.TemporaryDirectory() as t, self.assertRaises(ValueError):
+        with tempfile.TemporaryDirectory() as t, pytest.raises(ValueError):
             c.renew(Path(t), {})

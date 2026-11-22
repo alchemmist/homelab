@@ -10,7 +10,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_apiserver_scrape_targets():
+def test_apiserver_scrape_targets() -> None:
     """Observe each control plane exactly once, not the old worker or LAN alias."""
     chart = ROOT / "charts/prometheus"
     rendered = subprocess.check_output(
@@ -48,7 +48,7 @@ def test_apiserver_scrape_targets():
     assert {address for address in candidates if re.fullmatch(rule["regex"], address)} == accepted
 
 
-def test_native_frozen_scrape_preserves_tls_auth_and_other_jobs():
+def test_native_frozen_scrape_preserves_tls_auth_and_other_jobs() -> None:
     import runpy
 
     refresh = runpy.run_path(str(ROOT / "scripts/otel-scrape-config.py"))["refresh_api_targets"]

@@ -15,7 +15,7 @@ TIMEOUT = 180
 OLD_CONTEXT_LIMIT = 8192
 
 
-def require(condition, message):
+def require(condition, message) -> None:
     """Raise an error when a required condition is not met."""
     if not condition:
         raise ValueError(message)
@@ -31,7 +31,7 @@ def request(path, payload=None):
     )
 
 
-def report(name, started, usage=None):
+def report(name, started, usage=None) -> None:
     """Perform the report operation."""
     tokens = ""
     if usage:
@@ -59,7 +59,7 @@ def complete(messages, **options):
     return result
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     require(bool(API_KEY), "LLM_API_KEY must be set")
     started = time.monotonic()

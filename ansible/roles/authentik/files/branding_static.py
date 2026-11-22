@@ -12,9 +12,7 @@ from typing import cast
 
 def _collect_assets(root: Path) -> tuple[dict[str, str], dict[str, str]]:
     """Verify each reviewed asset; return base64 payload by hashed name and key map."""
-    assets = cast(
-        "dict[str, dict[str, str]]", json.loads((root / "assets.json").read_text())
-    )
+    assets = cast("dict[str, dict[str, str]]", json.loads((root / "assets.json").read_text()))
     binary: dict[str, str] = {}
     names: dict[str, str] = {}
     for key, asset in assets.items():
@@ -76,8 +74,7 @@ def _nature_config(root: Path, names: dict[str, str]) -> tuple[str, str]:
     # Equal weights to two decimal places, final bucket receives rounding remainder.
     base, remainder = divmod(10000, len(photos))
     weights = [
-        f" {(base + (i < remainder)) / 100:.2f}% {p['id']};"
-        for i, p in enumerate(photos[:-1])
+        f" {(base + (i < remainder)) / 100:.2f}% {p['id']};" for i, p in enumerate(photos[:-1])
     ]
     weights.append(f" * {photos[-1]['id']};")
     # A document/request is NOT an authorization journey. Native full-page
@@ -99,16 +96,12 @@ map $nature_flow_seed $nature_seed {
  default $nature_flow_seed;
 }
 """
-    random_config += (
-        'split_clients "$nature_seed" $nature_draw {\n' + "\n".join(weights) + "\n}\n"
-    )
+    random_config += 'split_clients "$nature_seed" $nature_draw {\n' + "\n".join(weights) + "\n}\n"
     cookie_ids = "|".join(p["id"] for p in photos)
     # $cookie_* does not normalize hyphens in cookie names like $http_*.
     random_config += (
         'map $http_cookie $nature_previous {\n default "";\n'
-        ' "~(?:^|;[ ]*)__Secure-qm_nature=(?<qm_cookie>'
-        + cookie_ids
-        + ')(?:;|$)" $qm_cookie;\n}\n'
+        ' "~(?:^|;[ ]*)__Secure-qm_nature=(?<qm_cookie>' + cookie_ids + ')(?:;|$)" $qm_cookie;\n}\n'
     )
     random_config += """map $nature_previous $nature_fallback {
  "" $nature_draw;
@@ -133,16 +126,12 @@ map $nature_flow_seed $nature_scene {
    limit_except GET HEAD { deny all; }
   }
 """
-    random_config += (
-        "map $http_accept $nature_format { default webp; ~*image/avif avif; }\n"
-    )
+    random_config += "map $http_accept $nature_format { default webp; ~*image/avif avif; }\n"
     for variant in ["desktop", "mobile"]:
         rows = [f" {p['id']}:webp {names[p[variant]]};" for p in photos]
         rows += [f" {p['id']}:avif {names[p[variant + 'Avif']]};" for p in photos]
         random_config += (
-            f'map "$nature_scene:$nature_format" $nature_{variant} {{\n'
-            + "\n".join(rows)
-            + "\n}\n"
+            f'map "$nature_scene:$nature_format" $nature_{variant} {{\n' + "\n".join(rows) + "\n}\n"
         )
         random_locations += f"""
   location = /-/quiet-mono/v1/nature/{variant} {{
@@ -213,9 +202,7 @@ http {
 
     image = cast(
         "str",
-        cast("dict[str, object]", json.loads((root / "static-image.json").read_text()))[
-            "image"
-        ],
+        cast("dict[str, object]", json.loads((root / "static-image.json").read_text()))["image"],
     )
     if "@sha256:" not in image:
         message = "Static image must be pinned by registry digest"
@@ -226,9 +213,7 @@ http {
         shard_name = (
             name
             + "-assets-"
-            + hashlib.sha256(json.dumps(chunk, sort_keys=True).encode()).hexdigest()[
-                :12
-            ]
+            + hashlib.sha256(json.dumps(chunk, sort_keys=True).encode()).hexdigest()[:12]
         )
         shard_names.append(shard_name)
         shards.append(
@@ -363,9 +348,7 @@ http {
                                 "name": "config",
                                 "configMap": {
                                     "name": config_name,
-                                    "items": [
-                                        {"key": "nginx.conf", "path": "nginx.conf"}
-                                    ],
+                                    "items": [{"key": "nginx.conf", "path": "nginx.conf"}],
                                 },
                             },
                             {

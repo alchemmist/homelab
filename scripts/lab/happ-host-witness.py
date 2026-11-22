@@ -46,9 +46,11 @@ def sample() -> Sample:
     sessions = cmd("ss", "-Hnt", "state", "established", "dst", "91.189.82.238:51840")
     flows = [" ".join(line.split()[-2:]) for line in sessions.splitlines() if line.strip()]
     if not flows:
-        raise RuntimeError("no established GOST relay TCP connection")
+        msg = "no established GOST relay TCP connection"
+        raise RuntimeError(msg)
     if any(i["ifname"] == "happ-xray" for i in json.loads(cmd("ip", "-j", "link", "show"))):
-        raise RuntimeError("host Happ interface is present")
+        msg = "host Happ interface is present"
+        raise RuntimeError(msg)
     return {
         "relay_route": route("91.189.82.238"),
         "mesh_route": route("10.250.0.2"),
@@ -60,10 +62,12 @@ def sample() -> Sample:
 
 def main() -> None:
     if socket.gethostname().split(".")[0] != "socrat-1" or len(sys.argv) != 2:
-        raise SystemExit("usage on socrat-1: happ-host-witness.py SECONDS (5..600)")
+        msg = "usage on socrat-1: happ-host-witness.py SECONDS (5..600)"
+        raise SystemExit(msg)
     seconds = int(sys.argv[1])
     if not 5 <= seconds <= 600:
-        raise SystemExit("bounded sample window required")
+        msg = "bounded sample window required"
+        raise SystemExit(msg)
 
     def check_mesh_tcp() -> None:
         with socket.create_connection(("10.250.0.2", 2380), timeout=2):
@@ -91,14 +95,15 @@ def main() -> None:
         current = sample()
         survivors &= current.pop("flows")
         if not survivors:
-            raise SystemExit("no original GOST relay TCP tuple survived")
+            msg = "no original GOST relay TCP tuple survived"
+            raise SystemExit(msg)
         if current != original:
-            raise SystemExit(
-                "host witness changed; stop acceptance and investigate, do not alter host routes"
-            )
+            msg = "host witness changed; stop acceptance and investigate, do not alter host routes"
+            raise SystemExit(msg)
     check_mesh_tcp()
     if mesh_failures:
-        raise SystemExit(f"mesh TCP failed in {mesh_failures} sample(s); acceptance failed")
+        msg = f"mesh TCP failed in {mesh_failures} sample(s); acceptance failed"
+        raise SystemExit(msg)
     print(
         "witness passed: sampled host state and an original relay tuple persisted; guest VPN state must be verified independently"
     )

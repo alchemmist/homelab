@@ -1,5 +1,6 @@
 """Exercise probe errors without sending a packet."""
 
+import contextlib
 import runpy
 import socket
 import subprocess
@@ -11,12 +12,12 @@ samples = runpy.run_path(
 )["samples"]
 
 
-def test_dns_error():
+def test_dns_error() -> None:
     with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("resolver", 3)):
         assert list(samples("example.com", None))[0]["stage"] == "dns"
 
 
-def test_tcp_and_tls_are_distinct():
+def test_tcp_and_tls_are_distinct() -> None:
     address = (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.1", 443))
     with (
         patch.dict(samples.__globals__, {"resolve": lambda host: [address, address]}),
@@ -26,12 +27,15 @@ def test_tcp_and_tls_are_distinct():
         ctx = MagicMock()
         sock.connect.side_effect = TimeoutError
         (row,) = samples("example.com", ctx)
-        assert row["stage"] == "tcp" and "tls_ms" not in row
+        assert row["stage"] == "tcp"
+        assert "tls_ms" not in row
         ctx.wrap_socket.assert_not_called()
         sock.connect.side_effect = None
         ctx.wrap_socket.side_effect = TimeoutError
         (row,) = samples("example.com", ctx)
-        assert row["stage"] == "tls" and "tcp_ms" in row and "tls_ms" in row
+        assert row["stage"] == "tls"
+        assert "tcp_ms" in row
+        assert "tls_ms" in row
         ctx.wrap_socket.assert_called_with(sock, server_hostname="example.com")
         ctx.wrap_socket.reset_mock()
         ctx.wrap_socket.side_effect = None
@@ -40,12 +44,12 @@ def test_tcp_and_tls_are_distinct():
         ctx.wrap_socket.assert_called_once_with(sock, server_hostname="example.com")
 
 
-def test_malformed_resolver_output():
+def test_malformed_resolver_output() -> None:
     with patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, stdout=b"[")):
         assert list(samples("example.com", None))[0]["stage"] == "dns"
 
 
-def test_each_distinct_address_is_sampled():
+def test_each_distinct_address_is_sampled() -> None:
     targets = [
         (socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, 443)) for ip in ("192.0.2.1", "192.0.2.2")
     ]
@@ -59,7 +63,7 @@ def test_each_distinct_address_is_sampled():
         ]
 
 
-def test_periodic_chart_isolated_and_bounded():
+def test_periodic_chart_isolated_and_bounded() -> None:
     """Only the probe shares the bot network; it gets no bot credentials or ports."""
     import subprocess
 
@@ -109,7 +113,7 @@ def test_periodic_chart_isolated_and_bounded():
     )
 
 
-def test_periodic_retains_last_120_batches(tmp_path):
+def test_periodic_retains_last_120_batches(tmp_path) -> None:
     """No network, sleeps or pod runtime required."""
     import json
 
@@ -117,22 +121,22 @@ def test_periodic_retains_last_120_batches(tmp_path):
     periodic = runpy.run_path(
         str(Path(__file__).resolve().parents[1] / "scripts/telegram-egress-probe.py")
     )["periodic"]
-    with patch.dict(
-        periodic.__globals__,
-        {
-            "Path": lambda _: tmp_path / "recent.json",
-            "batch": lambda _: next(rows),
-            "sleep": lambda _: None,
-        },
+    with (
+        patch.dict(
+            periodic.__globals__,
+            {
+                "Path": lambda _: tmp_path / "recent.json",
+                "batch": lambda _: next(rows),
+                "sleep": lambda _: None,
+            },
+        ),
+        contextlib.suppress(StopIteration),
     ):
-        try:
-            periodic(None)
-        except StopIteration:
-            pass
+        periodic(None)
     assert json.loads((tmp_path / "recent.json").read_text()) == list(range(1, 121))
 
 
-def test_streamable_probe_matches_helm_payload():
+def test_streamable_probe_matches_helm_payload() -> None:
     """The standalone stdin entrypoint and chart payload must remain byte-identical."""
     root = Path(__file__).resolve().parents[1]
     assert (root / "scripts/telegram-egress-probe.py").read_bytes() == (
@@ -140,7 +144,7 @@ def test_streamable_probe_matches_helm_payload():
     ).read_bytes()
 
 
-def test_overrun_skips_ticks_and_transient_write_failure_recovers(tmp_path):
+def test_overrun_skips_ticks_and_transient_write_failure_recovers(tmp_path) -> None:
     import json
 
     periodic = samples.__globals__["periodic"]
@@ -151,7 +155,8 @@ def test_overrun_skips_ticks_and_transient_write_failure_recovers(tmp_path):
 
     def flaky_write(path, data):
         if not waits:
-            raise OSError("simulated transient failure")
+            msg = "simulated transient failure"
+            raise OSError(msg)
         return write(path, data)
 
     with (
@@ -165,10 +170,8 @@ def test_overrun_skips_ticks_and_transient_write_failure_recovers(tmp_path):
                 "sleep": waits.append,
             },
         ),
+        contextlib.suppress(StopIteration),
     ):
-        try:
-            periodic(None)
-        except StopIteration:
-            pass
+        periodic(None)
     assert waits == [22, 25]
     assert json.loads((tmp_path / "recent.json").read_text()) == [1, 2]

@@ -57,7 +57,7 @@ def mypy_argv(files):
     ]
 
 
-def mypy_status(parsed, code, text):
+def mypy_status(parsed, code, text) -> str:
     """Separate a finished type-check from a fatal run that did not cover its files."""
     if any(
         marker in text
@@ -116,7 +116,8 @@ def mypy_on(files, timeout):
     if len(files) == 1:
         if status == "syntax":
             return parsed
-        raise RuntimeError("mypy coverage incomplete")
+        msg = "mypy coverage incomplete"
+        raise RuntimeError(msg)
     groups = {}
     for name in files:
         groups.setdefault(str(Path(name).parent), []).append(name)
@@ -136,7 +137,8 @@ def mypy_findings(files):
     syntax, remaining = python_syntax_findings(files)
     syntax_names = {item["location"]["path"] for item in syntax}
     if syntax_names | set(remaining) != set(files) or syntax_names & set(remaining):
-        raise RuntimeError("mypy coverage incomplete")
+        msg = "mypy coverage incomplete"
+        raise RuntimeError(msg)
     # Exit 2 is a fatal mypy stop. Retry smaller sets instead of keeping a partial report.
     return syntax + mypy_on(remaining, 2400)
 
@@ -179,7 +181,8 @@ def format_findings(files):
                     )
                 )
     if process.returncode not in (0, 1) and not result:
-        raise RuntimeError("ruff format failed without a file list")
+        msg = "ruff format failed without a file list"
+        raise RuntimeError(msg)
     return result
 
 
@@ -204,7 +207,8 @@ def check_python(names: list[str]) -> tuple[list[Finding], int]:
     except json.JSONDecodeError:
         data = None
     if not isinstance(data, list):
-        raise LintToolError("ruff failed")
+        msg = "ruff failed"
+        raise LintToolError(msg)
     result = [
         finding(
             item.get("code") or "ruff-syntax",

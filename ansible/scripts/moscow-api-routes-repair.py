@@ -30,7 +30,8 @@ def allowed_ips(text):
         if not fields:
             continue
         if fields[0] in result:
-            raise ValueError("Duplicate runtime peer")
+            msg = "Duplicate runtime peer"
+            raise ValueError(msg)
         result[fields[0]] = [value for token in fields[1:] for value in token.split(",") if value]
     return result
 
@@ -56,7 +57,8 @@ def project(text):
         }
         key = fields["PublicKey"]
         if key in parsed:
-            raise ValueError("Duplicate peer")
+            msg = "Duplicate peer"
+            raise ValueError(msg)
         parsed[key] = [x.strip() for x in fields["AllowedIPs"].split(",")]
     return blocks, parsed
 
@@ -69,7 +71,8 @@ def _confirm_no_overlap(peers: dict[str, list[str]]) -> None:
                 if key != owner and ipaddress.ip_network(target).overlaps(
                     ipaddress.ip_network(network, strict=False)
                 ):
-                    raise ValueError("API address owned by another peer")
+                    msg = "API address owned by another peer"
+                    raise ValueError(msg)
 
 
 def _render_config(blocks: list[list[str]], after: dict[str, list[str]]) -> str:
@@ -92,9 +95,11 @@ def _render_config(blocks: list[list[str]], after: dict[str, list[str]]) -> str:
 def candidate(text, runtime):
     blocks, peers = project(text)
     if peers != runtime:
-        raise ValueError("Boot/runtime AllowedIPs drift")
+        msg = "Boot/runtime AllowedIPs drift"
+        raise ValueError(msg)
     if not set(PEERS) <= set(peers):
-        raise ValueError("Missing pinned HOME peer")
+        msg = "Missing pinned HOME peer"
+        raise ValueError(msg)
     _confirm_no_overlap(peers)
     after = {k: list(v) for k, v in peers.items()}
     for key, target in PEERS.items():
@@ -103,7 +108,7 @@ def candidate(text, runtime):
     return _render_config(blocks, after), after
 
 
-def atomic(path, data):
+def atomic(path, data) -> None:
     temp = path.with_name(path.name + ".repair-tmp")
     with temp.open("xb") as stream:
         stream.write(data)
@@ -119,15 +124,19 @@ def atomic(path, data):
 def _refuse_unsafe_context() -> tuple[bytes, str]:
     """Refuse to run except as root on the designated host with a clean config."""
     if os.geteuid() != 0:
-        raise RuntimeError("Root required")
+        msg = "Root required"
+        raise RuntimeError(msg)
     if os.uname().nodename != "socrat-4":
-        raise RuntimeError("Wrong host")
+        msg = "Wrong host"
+        raise RuntimeError(msg)
     if CONFIG.is_symlink():
-        raise ValueError("Unowned boot config symlink")
+        msg = "Unowned boot config symlink"
+        raise ValueError(msg)
     old = CONFIG.read_bytes()
     text = old.decode()
     if any(line.strip().lower() == "saveconfig = true" for line in text.splitlines()):
-        raise ValueError("SaveConfig would overwrite reviewed boot state")
+        msg = "SaveConfig would overwrite reviewed boot state"
+        raise ValueError(msg)
     return old, text
 
 
@@ -139,7 +148,8 @@ def _refuse_existing_routes() -> None:
     }
     for values in routes.values():
         if values:
-            raise ValueError("Existing explicit route/attempt; inspect, do not replace")
+            msg = "Existing explicit route/attempt; inspect, do not replace"
+            raise ValueError(msg)
     # Do not add routes to a peer without checking the existing WG API transport.
     for address in ("10.250.0.1", "10.250.0.3"):
         with socket.create_connection((address, 6443), timeout=3):
@@ -149,12 +159,14 @@ def _refuse_existing_routes() -> None:
 def _stage_intent(old: bytes, new: str, result: dict[str, object]) -> None:
     """Persist the reviewed intent and swap the boot config atomically."""
     if ROOT.exists():
-        raise ValueError("Existing recovery attempt; do not replay")
+        msg = "Existing recovery attempt; do not replay"
+        raise ValueError(msg)
     ROOT.mkdir(parents=True, mode=0o700)
     atomic(ROOT / "intent.json", json.dumps(result).encode())
     atomic(ROOT / "before.conf", old)
     if CONFIG.read_bytes() != old:
-        raise ValueError("Concurrent boot config change")
+        msg = "Concurrent boot config change"
+        raise ValueError(msg)
     atomic(CONFIG, new.encode())
 
 
@@ -170,7 +182,8 @@ def _verify_routes() -> None:
     for target in PEERS.values():
         route = json.loads(run("ip", "-j", "route", "get", target.split("/")[0]))[0]
         if route.get("dev") != "wg-socrat" or route.get("prefsrc") != "10.250.0.40":
-            raise ValueError("Route verification failed")
+            msg = "Route verification failed"
+            raise ValueError(msg)
         with socket.create_connection((target.split("/")[0], 6443), timeout=3):
             pass
 
@@ -194,7 +207,8 @@ def repair(apply=False):
     _verify_routes()
     expected = allowed_ips(run("wg", "show", "wg-socrat", "allowed-ips"))
     if expected != after or CONFIG.read_text() != new:
-        raise ValueError("Postcondition drift")
+        msg = "Postcondition drift"
+        raise ValueError(msg)
     result["accepted"] = True
     atomic(ROOT / "accepted.json", json.dumps(result).encode())
     return result

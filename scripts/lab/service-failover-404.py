@@ -25,7 +25,8 @@ def docker(*args: str, data: bytes | None = None, timeout: float = 30) -> bytes:
     result = subprocess.run(["docker", *args], input=data, capture_output=True, timeout=timeout)
     if result.returncode:
         # Never include environment, server tokens, kubeconfig or raw journals.
-        raise RuntimeError(f"docker {args[0]} failed ({result.returncode})")
+        msg = f"docker {args[0]} failed ({result.returncode})"
+        raise RuntimeError(msg)
     return result.stdout
 
 
@@ -47,7 +48,8 @@ def wait(check: Callable[[], bool], seconds: float) -> bool:
         except (RuntimeError, subprocess.TimeoutExpired):
             pass
         time.sleep(1)
-    raise TimeoutError("condition did not converge")
+    msg = "condition did not converge"
+    raise TimeoutError(msg)
 
 
 def start(name: str, flags: Sequence[str]) -> None:
@@ -148,7 +150,8 @@ def choose_peer() -> str:
         ip = socket.inet_ntoa(bytes.fromhex(addr[-8:])[::-1])
         if ip in peers:
             return ip
-    raise RuntimeError("no observable active remote datastore socket; trial inconclusive")
+    msg = "no observable active remote datastore socket; trial inconclusive"
+    raise RuntimeError(msg)
 
 
 def trial(mode: str) -> None:
@@ -221,7 +224,8 @@ def trial(mode: str) -> None:
                 obj = json.loads(line).get("object", {})
                 if obj.get("spec", {}).get("selector", {}).get("backend") == "b":
                     return time.monotonic()
-            raise RuntimeError("new value missing from watch")
+            msg = "new value missing from watch"
+            raise RuntimeError(msg)
 
         starttime = time.monotonic()
         with ThreadPoolExecutor(1) as ex:
@@ -254,7 +258,8 @@ def trial(mode: str) -> None:
                 wait(converged, 60)
                 elapsed = time.monotonic() - starttime
                 if elapsed > 60 or uid() != original_uid:
-                    raise RuntimeError("60s or client UID acceptance failed")
+                    msg = "60s or client UID acceptance failed"
+                    raise RuntimeError(msg)
                 counters = (
                     shell("api", "iptables", "-L", "OUTPUT", "-v", "-n", "-x").decode().splitlines()
                 )
@@ -262,7 +267,8 @@ def trial(mode: str) -> None:
                     mode in row and peer in row and "dpt:2379" in row and int(row.split()[0]) > 0
                     for row in counters
                 ):
-                    raise RuntimeError("fault rule did not observe traffic; inconclusive")
+                    msg = "fault rule did not observe traffic; inconclusive"
+                    raise RuntimeError(msg)
                 print(
                     f"{mode}: fresh API read, EndpointSlice and same-client B in {elapsed:.2f}s; watch in {event.result() - starttime:.2f}s",
                     flush=True,
@@ -277,15 +283,15 @@ def trial(mode: str) -> None:
 
 def main() -> None:
     if sys.argv[1:] != ["--local-disposable"]:
-        raise SystemExit(
-            "Requires --local-disposable; launches privileged containers in a dedicated local Docker VM."
-        )
+        msg = "Requires --local-disposable; launches privileged containers in a dedicated local Docker VM."
+        raise SystemExit(msg)
     endpoint = (
         os.getenv("DOCKER_HOST")
         or docker("context", "inspect", "--format", "{{.Endpoints.docker.Host}}").decode().strip()
     )
     if not endpoint.startswith("unix://"):
-        raise SystemExit("local Unix Docker socket required")
+        msg = "local Unix Docker socket required"
+        raise SystemExit(msg)
     # Context variables must not override the verified socket on subsequent commands.
     os.environ.pop("DOCKER_CONTEXT", None)
     os.environ["DOCKER_HOST"] = endpoint

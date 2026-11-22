@@ -4,7 +4,7 @@ import copy
 import hashlib
 import json
 import subprocess
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 from typing import TypedDict, cast
 from unittest.mock import patch
@@ -66,7 +66,7 @@ class _RenderedDoc(TypedDict, total=False):
     spec: _Spec
 
 
-@lru_cache(maxsize=None)
+@cache
 def render(name) -> list[_RenderedDoc]:
     """Test behavior for render."""
     text = subprocess.check_output(
@@ -146,7 +146,7 @@ def software_update_extension(document) -> None:
                                     },
                                 }
                             ],
-                        }
+                        },
                     ]
                 }
             }
@@ -165,28 +165,34 @@ def migration_payload(document) -> dict[str, object]:
     name = document["metadata"]["name"]
     if (kind, name) == ("PrometheusRule", "kube-prometheus-stack-node-exporter"):
         result = copy.deepcopy(document)
-        group, = result["spec"]["groups"]
+        (group,) = result["spec"]["groups"]
         assert not any(rule.get("alert") == "NodeSystemSaturation" for rule in group["rules"])
         # Restore the one replaced upstream rule for comparison with the frozen handoff.
-        group["rules"].insert(17, json.loads((ROOT / "tests/fixtures/upstream-node-saturation.json").read_text()))
+        group["rules"].insert(
+            17, json.loads((ROOT / "tests/fixtures/upstream-node-saturation.json").read_text())
+        )
         return result
     if (kind, name) == ("PrometheusRule", "kube-prometheus-stack-kubernetes-apps"):
         # Undo just the retired upstream rule for comparison to the frozen handoff.
         result = copy.deepcopy(document)
-        group, = result["spec"]["groups"]
+        (group,) = result["spec"]["groups"]
         assert group["name"] == "kubernetes-apps"
         assert not any(rule.get("alert") == "KubeJobFailed" for rule in group["rules"])
-        group["rules"].insert(13, {
-            "alert": "KubeJobFailed",
-            "expr": 'kube_job_failed{job="kube-state-metrics", namespace=~".*"}  > 0',
-            "for": "15m", "labels": {"severity": "warning"},
-            "annotations": {
-                "description": "Job {{ $labels.namespace }}/{{ $labels.job_name }} failed to complete. "
-                "Removing failed job after investigation should clear this alert on cluster {{ $labels.cluster }}.",
-                "runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubejobfailed",
-                "summary": "Job failed to complete.",
+        group["rules"].insert(
+            13,
+            {
+                "alert": "KubeJobFailed",
+                "expr": 'kube_job_failed{job="kube-state-metrics", namespace=~".*"}  > 0',
+                "for": "15m",
+                "labels": {"severity": "warning"},
+                "annotations": {
+                    "description": "Job {{ $labels.namespace }}/{{ $labels.job_name }} failed to complete. "
+                    "Removing failed job after investigation should clear this alert on cluster {{ $labels.cluster }}.",
+                    "runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubejobfailed",
+                    "summary": "Job failed to complete.",
+                },
             },
-        })
+        )
         return result
     if kind not in {"Prometheus", "Alertmanager", "Deployment"} and (kind, name) != (
         "ServiceMonitor",
@@ -313,26 +319,36 @@ def test_disjoint_complete_payload_identical_handoff() -> None:
             all_owners[k] = name
             if k == "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-node-saturation":
                 assert name == "node-exporter"
-                group, = d["spec"]["groups"]
-                rule, = group["rules"]
-                assert rule["alert"] == "NodeSystemSaturation" and rule["for"] == "15m"
+                (group,) = d["spec"]["groups"]
+                (rule,) = group["rules"]
+                assert rule["alert"] == "NodeSystemSaturation"
+                assert rule["for"] == "15m"
                 special, normal = rule["expr"].split("\nor\n")
-                assert 'node="socrat-4"' in special and special.endswith("> 6)")
-                assert 'node!="socrat-4"' in normal and normal.endswith("> 2)")
+                assert 'node="socrat-4"' in special
+                assert special.endswith("> 6)")
+                assert 'node!="socrat-4"' in normal
+                assert normal.endswith("> 2)")
                 continue
             if k == "ConfigMap/cattle-monitoring-system/software-update-otel":
                 assert name == "prometheus"
                 software_update_extension(d)
                 continue
-            if k == "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-homelab-job-failures":
+            if (
+                k
+                == "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-homelab-job-failures"
+            ):
                 assert name == "prometheus"
-                group, = d["spec"]["groups"]
+                (group,) = d["spec"]["groups"]
                 assert [r["alert"] for r in group["rules"]] == [
-                    "KubeJobFailed", "SocratPrAgentWebhookRedeliveryFailed",
+                    "KubeJobFailed",
+                    "SocratPrAgentWebhookRedeliveryFailed",
                 ]
                 # Pin the reviewed additive rule without refreshing the historical fixture.
                 payload = json.dumps(d, sort_keys=True, separators=(",", ":")).encode()
-                assert hashlib.sha256(payload).hexdigest() == "461ecd97ea3b1f2c9d6ff8aaf8be167ed64458d9b21fe9693bf40fa06e7f64be"
+                assert (
+                    hashlib.sha256(payload).hexdigest()
+                    == "461ecd97ea3b1f2c9d6ff8aaf8be167ed64458d9b21fe9693bf40fa06e7f64be"
+                )
                 continue
             actual[k] = {
                 "owner": name,
@@ -384,7 +400,8 @@ def test_offline_source_is_immutable_shared_code_not_shared_ownership() -> None:
             }
         ]
         link = chart / "charts/kube-prometheus-stack-92.10.0.tgz"
-        assert link.is_symlink() and link.resolve() == archive.resolve()
+        assert link.is_symlink()
+        assert link.resolve() == archive.resolve()
         app = yaml.safe_load((ROOT / f"deploy/argocd/apps/{name}.yaml").read_text())
         assert app["spec"]["project"] == "default"
         assert app["spec"]["source"]["path"] == "charts/" + name
@@ -438,8 +455,11 @@ def test_current_extension_projection_rejects_mutations(violation: str) -> None:
         )
     else:
         next(d for d in docs if d["kind"] == "Service")["spec"]["type"] = "NodePort"
-    with patch(
-        "tests.test_prometheus_component_ownership.render", side_effect=lambda name: graphs[name]
+    with (
+        patch(
+            "tests.test_prometheus_component_ownership.render",
+            side_effect=lambda name: graphs[name],
+        ),
+        pytest.raises(AssertionError),
     ):
-        with pytest.raises(AssertionError):
-            test_disjoint_complete_payload_identical_handoff()
+        test_disjoint_complete_payload_identical_handoff()

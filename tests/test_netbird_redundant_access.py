@@ -5,6 +5,7 @@ import types
 import unittest
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,7 +36,7 @@ class IndependentAccessTest(unittest.TestCase):
         docs = mesh.manifests()
         assert len(docs) == 8
         for host in mesh.HOSTS:
-            pvc, deploy = mesh.peer(host)
+            _pvc, deploy = mesh.peer(host)
             assert deploy["spec"]["replicas"] == 0
             spec = deploy["spec"]["template"]["spec"]
             assert spec["nodeSelector"] == {"kubernetes.io/hostname": host}
@@ -45,9 +46,9 @@ class IndependentAccessTest(unittest.TestCase):
             assert env["NB_DISABLE_CLIENT_ROUTES"] == "true"
             assert env["NB_DISABLE_DNS"] == "true"
             assert "@sha256:" in spec["containers"][0]["image"]
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             base.peer("socrat-1")
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             mesh.peer("new-vm")
 
     def test_native_group_router_not_single_peer_or_default_route(self) -> None:
@@ -65,7 +66,7 @@ class IndependentAccessTest(unittest.TestCase):
             "10.250.0.5/32",
         }
         for bad in [None, "", "All", "default", [], "group/other", "group name"]:
-            with self.subTest(bad=bad), self.assertRaises(ValueError):
+            with self.subTest(bad=bad), pytest.raises(ValueError):
                 mesh.router_body(bad)
 
     def test_distinct_input_policies_keep_pilot_tcp_only(self) -> None:
@@ -87,7 +88,7 @@ class IndependentAccessTest(unittest.TestCase):
                 ("jwt", "default"),
                 ([], "nodes"),
             ]:
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     fn(*args)
 
     def test_relay_pinned_vps_and_no_secret_values_or_management(self) -> None:

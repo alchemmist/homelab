@@ -20,7 +20,8 @@ def desktop(tmp_path):
     # Execute the actual role task with a synthetic home; not a repository play or inventory.
     (task,) = yaml.safe_load((ROLE / "tasks/caffeine.yml").read_text())
     user = pwd.getpwuid(os.geteuid()).pw_name
-    assert task["become"] and task["become_user"] == "{{ homelab_user }}"
+    assert task["become"]
+    assert task["become_user"] == "{{ homelab_user }}"
     assert task["homelab_user_unit"]["group"] == "{{ homelab_user }}"
     try:
         expected_gid = grp.getgrnam(user).gr_gid
@@ -117,7 +118,7 @@ def desktop(tmp_path):
     return dest, run
 
 
-def test_user_unit_converges_before_continuation_and_leaves_handlers_queued(desktop):
+def test_user_unit_converges_before_continuation_and_leaves_handlers_queued(desktop) -> None:
     dest, run = desktop
     assert run(check=True) == []
     assert not list(dest.parent.iterdir())
@@ -132,7 +133,9 @@ def test_user_unit_converges_before_continuation_and_leaves_handlers_queued(desk
     assert dest.stat().st_mode & 0o777 == 0o644
 
 
-def test_failed_reload_blocks_later_tasks_and_retries_with_unchanged_bytes(desktop, tmp_path):
+def test_failed_reload_blocks_later_tasks_and_retries_with_unchanged_bytes(
+    desktop, tmp_path
+) -> None:
     dest, run = desktop
     target = tmp_path / "overridden-unit"
     target.write_text("old contents")
@@ -140,7 +143,8 @@ def test_failed_reload_blocks_later_tasks_and_retries_with_unchanged_bytes(deskt
     fail = tmp_path / "fail"
     fail.touch()
     assert run(fails=True) == ["reload"]
-    assert dest.is_symlink() and target.read_bytes() == (ROLE / "files" / UNIT).read_bytes()
+    assert dest.is_symlink()
+    assert target.read_bytes() == (ROLE / "files" / UNIT).read_bytes()
     (backup,) = tmp_path.glob("overridden-unit.*~")
     assert backup.read_text() == "old contents"
     fail.unlink()
@@ -152,7 +156,7 @@ def test_failed_reload_blocks_later_tasks_and_retries_with_unchanged_bytes(deskt
     assert run(changed=False) == ["continue", "terminal"]
 
 
-def test_install_failure_never_reloads_or_runs_later_work(desktop):
+def test_install_failure_never_reloads_or_runs_later_work(desktop) -> None:
     dest, run = desktop
     dest.mkdir()
     assert run(fails=True) == []

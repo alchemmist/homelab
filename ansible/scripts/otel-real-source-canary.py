@@ -103,7 +103,7 @@ def fail(message: str) -> None:
     raise RuntimeError(message)
 
 
-def cleanup_workspace(workspace):
+def cleanup_workspace(workspace) -> None:
     require(
         all(
             [
@@ -574,7 +574,7 @@ def run(args):
     return result
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     names = ["binary", "prometheus", "config", "bundle", "tls", "workspace"]
     for name in names:

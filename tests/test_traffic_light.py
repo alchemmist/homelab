@@ -45,10 +45,10 @@ def cells(grid):
 class TrafficLightLayoutTest(unittest.TestCase):
     """Tests for TrafficLightLayoutTest."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.dashboard = load()
 
-    def test_vpn_mode_replaces_top_nodes_without_resizing(self):
+    def test_vpn_mode_replaces_top_nodes_without_resizing(self) -> None:
         panel = panel_by_id(self.dashboard, 9)
         assert panel["gridPos"] == {"x": 4, "y": 0, "w": 2, "h": 2}
         assert panel["title"] == ""
@@ -72,7 +72,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
         for node_panel_ids, x in NODE_COLUMN_X.items():
             assert panel_by_id(self.dashboard, node_panel_ids)["gridPos"]["x"] == x
 
-    def test_panels_use_the_integer_tv_grid(self):
+    def test_panels_use_the_integer_tv_grid(self) -> None:
         for panel in self.dashboard["panels"]:
             grid = panel["gridPos"]
             assert isinstance(grid["x"], int), f"panel {panel['id']} fractional x"
@@ -80,7 +80,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
             assert isinstance(grid["w"], int), f"panel {panel['id']} fractional w"
             assert isinstance(grid["h"], int), f"panel {panel['id']} fractional h"
 
-    def test_panels_fill_the_tv_grid_without_holes_or_overlaps(self):
+    def test_panels_fill_the_tv_grid_without_holes_or_overlaps(self) -> None:
         occupied = {}
         for panel in self.dashboard["panels"]:
             grid = panel["gridPos"]
@@ -96,11 +96,11 @@ class TrafficLightLayoutTest(unittest.TestCase):
         assert {str(p["id"]): p["gridPos"] for p in self.dashboard["panels"]} == approved
         assert len(holes) == OWNER_LAYOUT_HOLE_COUNT  # intentional whitespace in owner layout
 
-    def test_cpu_temperature_bar_removed(self):
+    def test_cpu_temperature_bar_removed(self) -> None:
         ids = {panel["id"] for panel in self.dashboard["panels"]}
         assert CPU_TEMP_PANEL_ID not in ids
 
-    def test_cluster_health_column_layout(self):
+    def test_cluster_health_column_layout(self) -> None:
         digits = ["0", "1", "2", "3", "4", "5"]
         for i, panel_id in enumerate((901, 902, 903, 904, 926, 927)):
             panel = panel_by_id(self.dashboard, panel_id)
@@ -122,7 +122,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
         assert history["gridPos"] == {"x": 0, "y": 18, "w": 12, "h": 1}
         assert history["type"] == "bargauge"
 
-    def test_unmodified_resource_columns(self):
+    def test_unmodified_resource_columns(self) -> None:
         cpu = panel_by_id(self.dashboard, 21)
         memory = panel_by_id(self.dashboard, 22)
         disk = panel_by_id(self.dashboard, 23)
@@ -132,7 +132,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
         assert memory["gridPos"] == {"x": 18, "y": 0, "w": 5, "h": 10}
         assert disk["gridPos"] == {"x": 8, "y": 0, "w": 5, "h": 10}
 
-    def test_ingress_chart_preserves_live_rps_queries(self):
+    def test_ingress_chart_preserves_live_rps_queries(self) -> None:
         panel = panel_by_id(self.dashboard, 334)
         assert len(panel["targets"]) == INGRESS_RPS_TARGET_COUNT
         for target in panel["targets"]:
@@ -140,7 +140,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
             assert 'entrypoint=~"web|websecure"' in target["expr"]
             assert "[5m]" in target["expr"]
 
-    def test_rps_and_n8n_share_a_shorter_graph_row(self):
+    def test_rps_and_n8n_share_a_shorter_graph_row(self) -> None:
         panel = panel_by_id(self.dashboard, 334)
         assert panel["gridPos"] == {"x": 0, "y": 14, "w": 6, "h": 4}
         assert panel_by_id(self.dashboard, 920)["gridPos"] == {
@@ -154,7 +154,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
 class TrafficLightQueriesTest(unittest.TestCase):
     """Tests for TrafficLightQueriesTest."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.dashboard = load()
 
     def node_panel(self, node):
@@ -164,7 +164,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
             NODE_TILE_ID_BY_DIGIT.get(int(digit), LEGACY_NODE_TILE_BASE_ID + int(digit)),
         )
 
-    def test_node_tiles_reference_each_node_with_health_priorities(self):
+    def test_node_tiles_reference_each_node_with_health_priorities(self) -> None:
         for node in (
             "socrat-0",
             "socrat-1",
@@ -180,7 +180,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
             assert "or vector(-2)" in expr
             assert "2 * (1 -" in expr
 
-    def test_node_tiles_map_every_state_to_color_semantics(self):
+    def test_node_tiles_map_every_state_to_color_semantics(self) -> None:
         colors = {
             "0": "#26783D",
             "1": "#A85D08",
@@ -201,7 +201,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
                 assert value in mappings
                 assert mappings[value]["color"] == color
 
-    def test_vpn_chart_uses_freshness_guarded_textfile_metrics(self):
+    def test_vpn_chart_uses_freshness_guarded_textfile_metrics(self) -> None:
         expr = panel_by_id(self.dashboard, 907)["targets"][0]["expr"]
         assert "socrat_vpn_active_clients" in expr
         assert "socrat_vpn_collection_success == 1" in expr
@@ -209,7 +209,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
         panel = panel_by_id(self.dashboard, 907)
         assert panel["fieldConfig"]["defaults"]["min"] == 0
 
-    def test_edge_tiles_match_probe_catalog(self):
+    def test_edge_tiles_match_probe_catalog(self) -> None:
         text = VALUES.read_text()
         for panel_id, service_id, alert in (
             (905, "edge-home", "SocratServiceEdgeHomeUnavailable"),
@@ -225,7 +225,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
             assert f"id: {service_id}\n" in text
             assert alert in text
 
-    def test_n8n_history_is_a_gauge_not_counter_rate(self):
+    def test_n8n_history_is_a_gauge_not_counter_rate(self) -> None:
         panel = panel_by_id(self.dashboard, 920)
         assert panel["fieldConfig"]["defaults"]["custom"]["drawStyle"] == "bars"
         expr = panel["targets"][0]["expr"]
@@ -234,17 +234,17 @@ class TrafficLightQueriesTest(unittest.TestCase):
         assert "increase(" not in expr
         assert "rate(" not in expr
 
-    def test_dashboard_time_window_is_twelve_hours(self):
+    def test_dashboard_time_window_is_twelve_hours(self) -> None:
         assert self.dashboard["time"] == {"from": "now-12h", "to": "now"}
 
-    def test_vpn_preserves_latest_manual_stat_visualization(self):
+    def test_vpn_preserves_latest_manual_stat_visualization(self) -> None:
         panel = panel_by_id(self.dashboard, 907)
         assert panel["type"] == "stat"
         assert panel["gridPos"]["y"] + panel["gridPos"]["h"] == ACTIVITY_ROW_BOTTOM_Y
         assert panel["fieldConfig"]["defaults"]["min"] == 0
         assert "max" not in panel["fieldConfig"]["defaults"]
 
-    def test_argocd_has_current_state_strip(self):
+    def test_argocd_has_current_state_strip(self) -> None:
         panel = panel_by_id(self.dashboard, 909)
         assert panel["type"] == "bargauge"
         assert len(panel["targets"]) == 1
@@ -255,7 +255,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
         assert not panel["targets"][0]["range"]
         assert 'name!="root"' not in panel["targets"][0]["expr"]
 
-    def test_new_activity_visuals_have_no_headers_legends_or_period_badges(self):
+    def test_new_activity_visuals_have_no_headers_legends_or_period_badges(self) -> None:
         for panel_id in (920,):
             panel = panel_by_id(self.dashboard, panel_id)
             assert panel.get("title", "") == ""
@@ -270,7 +270,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
             assert not panel["options"]["wideLayout"]
             assert panel["gridPos"]["h"] == COMPACT_READOUT_HEIGHT
 
-    def test_user_approved_resource_panels_remain_unchanged(self):
+    def test_user_approved_resource_panels_remain_unchanged(self) -> None:
         approved = json.loads(
             (ROOT / "tests/fixtures/traffic-light-approved-resources.json").read_text()
         )
@@ -284,7 +284,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
         heights = [panel_by_id(self.dashboard, i)["gridPos"]["h"] for i in (21, 22, 23)]
         assert heights == [10, 10, 10]
 
-    def test_absolute_resource_values_and_dynamic_capacity(self):
+    def test_absolute_resource_values_and_dynamic_capacity(self) -> None:
         for panel_id, unit in [(21, "suffix: cores"), (22, "bytes"), (23, "bytes")]:
             panel = panel_by_id(self.dashboard, panel_id)
             defaults = panel["fieldConfig"]["defaults"]
@@ -303,17 +303,17 @@ class TrafficLightQueriesTest(unittest.TestCase):
             in panel_by_id(self.dashboard, DISK_IO_PANEL_ID)["targets"][0]["expr"]
         )
 
-    def test_activity_replaces_incident_list_and_latency(self):
+    def test_activity_replaces_incident_list_and_latency(self) -> None:
         for panel in self.dashboard["panels"]:
             if panel["id"] != LOCAL_AI_PANEL_ID:  # Owner-approved compact local AI block.
                 assert "histogram_quantile" not in str(panel.get("targets"))
             assert panel["type"] != "table"
         assert not {923, 924, 925, 930} & {p["id"] for p in self.dashboard["panels"]}
 
-    def test_owner_removed_up_tile(self):
+    def test_owner_removed_up_tile(self) -> None:
         assert REMOVED_UP_TILE_ID not in {p["id"] for p in self.dashboard["panels"]}
 
-    def test_platform_tiles_fill_the_gap_under_grafana(self):
+    def test_platform_tiles_fill_the_gap_under_grafana(self) -> None:
         expected = {
             335: (
                 "n8n",
@@ -348,13 +348,13 @@ class TrafficLightQueriesTest(unittest.TestCase):
             assert alert in expr
             assert panel["gridPos"] == grid
 
-    def test_vpn_fraction_tiles_are_removed(self):
+    def test_vpn_fraction_tiles_are_removed(self) -> None:
         ids = {panel["id"] for panel in self.dashboard["panels"]}
         assert ids.isdisjoint(REMOVED_VPN_FRACTION_TILE_IDS)
         names = {item.get("name") for item in self.dashboard.get("templating", {}).get("list", [])}
         assert "vpn_now" not in names
 
-    def test_new_panels_have_an_english_description(self):
+    def test_new_panels_have_an_english_description(self) -> None:
         for panel in self.dashboard["panels"]:
             if panel["id"] >= LEGACY_NODE_TILE_BASE_ID and panel["id"] not in (
                 909,
@@ -366,7 +366,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
             ):
                 assert panel.get("description", "").strip(), f"panel {panel['id']}"
 
-    def test_row_panels_have_unique_target_ids_and_series_names(self):
+    def test_row_panels_have_unique_target_ids_and_series_names(self) -> None:
         for panel_id in (901, 902, 903, 904, 926, 927, 905, 906):
             panel = panel_by_id(self.dashboard, panel_id)
             ref_ids = [t["refId"] for t in panel["targets"]]

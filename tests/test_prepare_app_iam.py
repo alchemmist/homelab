@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "ansible/roles/authentik/files"))
 import prepare_app_iam as prep
+import pytest
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -100,10 +101,12 @@ class FakeAPI:
                 "results": copy.deepcopy(data[start : start + self.page_size]),
                 "pagination": {"next": page + 1 if start + self.page_size < len(data) else 0},
             }
-        assert method == "POST" and path in ("core/groups/", "policies/bindings/")
+        assert method == "POST"
+        assert path in ("core/groups/", "policies/bindings/")
         self.writes += 1
         if self.fail_write == self.writes:
-            raise RuntimeError("simulated private failure")
+            msg = "simulated private failure"
+            raise RuntimeError(msg)
         created = dict(payload, pk="created-" + str(self.writes))
         if path == "policies/bindings/":
             created.update(user=None, policy=None)
@@ -187,7 +190,7 @@ class PreparationTests(unittest.TestCase):
     def test_current_dynamic_catalog_is_not_a_legacy_migration_apply(self) -> None:
         """Current dynamic catalog is not a legacy migration apply."""
         current = json.loads((ROOT / "deploy/identity/services.json").read_text())
-        with self.assertRaisesRegex(RuntimeError, "Catalog allowlist changed"):
+        with pytest.raises(RuntimeError, match="Catalog allowlist changed"):
             prep.build_plan(self.api, current, self.reviewed)
         assert self.api.writes == 0
 
@@ -236,7 +239,7 @@ class PreparationTests(unittest.TestCase):
 
     def test_stage_b_requires_real_fresh_group_pks(self) -> None:
         """Stage b requires real fresh group pks."""
-        with self.assertRaisesRegex(RuntimeError, "groups-only first"):
+        with pytest.raises(RuntimeError, match="groups-only first"):
             self.plan("groups+empty-bindings")
         assert self.api.writes == 0
 
@@ -263,12 +266,12 @@ class PreparationTests(unittest.TestCase):
                         group.pop(field)
                     else:
                         group[field] = value
-                    with self.assertRaises(RuntimeError):
+                    with pytest.raises(RuntimeError):
                         self.plan()
         group.clear()
         group.update(good)
         cast("list[object]", self.api.data["core/users/"][0]["groups"]).append(group["pk"])
-        with self.assertRaisesRegex(RuntimeError, "membership"):
+        with pytest.raises(RuntimeError, match="membership"):
             self.plan()
 
     def test_unexpected_objects_catalog_uuids_and_links_fail_closed(self) -> None:
@@ -286,16 +289,16 @@ class PreparationTests(unittest.TestCase):
             lambda: self.api.data["core/users/"][0].update(is_active=False),
             lambda: self.api.data["core/applications/"][0].update(policy_engine_mode="all"),
             lambda: self.api.data["core/applications/"][0].update(provider=999),
-            lambda: self.api.data["core/applications/"].pop(),
+            self.api.data["core/applications/"].pop,
         ]
         for change in changes:
             self.api.data = copy.deepcopy(baseline)
             change()
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 self.plan()
         self.api.data = baseline
         self.services["grafana"]["appRoles"]["admin"] = {}
-        with self.assertRaisesRegex(RuntimeError, "allowlist"):
+        with pytest.raises(RuntimeError, match="allowlist"):
             self.plan()
         assert self.api.writes == 0
 
@@ -323,13 +326,13 @@ class PreparationTests(unittest.TestCase):
             for stage in ("groups-only", "groups+empty-bindings"):
                 with (
                     self.subTest(field=field, stage=stage),
-                    self.assertRaises(RuntimeError),
+                    pytest.raises(RuntimeError),
                 ):
                     self.plan(stage)
         binding.clear()
         binding.update(good)
         self.api.data["policies/bindings/"].append(dict(good, pk="duplicate"))
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             self.plan()
 
     def test_protected_drift_invalidates_approval_without_any_write(self) -> None:
@@ -342,7 +345,7 @@ class PreparationTests(unittest.TestCase):
                 self.api.data[path].append({"pk": "new-protected"})
             else:
                 self.api.data[path][0]["unrelated-setting"] = "drift"
-            with self.subTest(path=path), self.assertRaises(RuntimeError):
+            with self.subTest(path=path), pytest.raises(RuntimeError):
                 self.apply(approval=plan["sha256"])
         assert self.api.writes == 0
 
@@ -352,7 +355,7 @@ class PreparationTests(unittest.TestCase):
 
         state: list[int] = [0]
 
-        def drift(path):
+        def drift(path) -> None:
             # One page per empty proxy collection: second pass is pre-write revalidation.
             if path == "providers/proxy/":
                 state[0] += 1
@@ -360,7 +363,7 @@ class PreparationTests(unittest.TestCase):
                     self.api.data["outposts/instances/"][0]["setting"] = "drift"
 
         self.api.after_get = drift
-        with self.assertRaisesRegex(RuntimeError, "Baseline drift"):
+        with pytest.raises(RuntimeError, match="Baseline drift"):
             self.apply(approval=approval)
         assert self.api.writes == 0
 
@@ -369,7 +372,7 @@ class PreparationTests(unittest.TestCase):
     ) -> None:
         """Partial failure durable pending and no retry rollback or adoption."""
         self.api.fail_write = 2
-        with self.assertRaisesRegex(RuntimeError, "simulated"):
+        with pytest.raises(RuntimeError, match="simulated"):
             self.apply()
         journals = list((self.root / "app-iam-prepare-journal").iterdir())
         assert len(journals) == 1
@@ -377,7 +380,7 @@ class PreparationTests(unittest.TestCase):
         assert json.loads((journals[0] / "02.json").read_text())["status"] == "pending"
         assert json.loads((journals[0] / "run.json").read_text())["status"] == "stopped-uncertain"
         self.api.fail_write = None
-        with self.assertRaisesRegex(RuntimeError, "Unresolved prior journal"):
+        with pytest.raises(RuntimeError, match="Unresolved prior journal"):
             self.apply()
         assert self.api.writes == 2
 
@@ -388,11 +391,12 @@ class PreparationTests(unittest.TestCase):
         def uncertain(method, path, payload=None):
             result = original(method, path, payload)
             if method == "POST":
-                raise RuntimeError("connection lost after server accepted POST")
+                msg = "connection lost after server accepted POST"
+                raise RuntimeError(msg)
             return result
 
         approval = self.plan(evidence=self.evidence)["sha256"]
-        with prep.locked(self.root), self.assertRaises(RuntimeError):
+        with prep.locked(self.root), pytest.raises(RuntimeError):
             prep.apply_plan(
                 uncertain,
                 self.root,
@@ -404,7 +408,7 @@ class PreparationTests(unittest.TestCase):
             )
         assert self.api.writes == 1
         assert len(self.plan()["operations"]) == 8
-        with self.assertRaisesRegex(RuntimeError, "Unresolved prior journal"):
+        with pytest.raises(RuntimeError, match="Unresolved prior journal"):
             self.apply()
         assert self.api.writes == 1
         entry = next((self.root / "app-iam-prepare-journal").glob("*/01.json"))
@@ -416,12 +420,13 @@ class PreparationTests(unittest.TestCase):
 
         def fail_intent(path, value):
             if path.name == "01.json":
-                raise OSError("disk full")
+                msg = "disk full"
+                raise OSError(msg)
             return original(path, value)
 
         with (
             patch.object(prep, "atomic_json", side_effect=fail_intent),
-            self.assertRaises(OSError),
+            pytest.raises(OSError),
         ):
             self.apply()
         assert self.api.writes == 0
@@ -439,7 +444,7 @@ class PreparationTests(unittest.TestCase):
         approval = self.plan(evidence=self.evidence)["sha256"]
         with (
             prep.locked(self.root),
-            self.assertRaisesRegex(RuntimeError, "post-create drift"),
+            pytest.raises(RuntimeError, match="post-create drift"),
         ):
             prep.apply_plan(
                 api,
@@ -463,7 +468,7 @@ class PreparationTests(unittest.TestCase):
             {"results": [], "pagination": {"next": True}},
         )
         for response in responses:
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 prep.rows(lambda *args, response=response: response, "core/users/")
         original = self.api.__call__
 
@@ -474,7 +479,7 @@ class PreparationTests(unittest.TestCase):
                 results *= 2
             return result
 
-        with self.assertRaisesRegex(RuntimeError, "ambiguous"):
+        with pytest.raises(RuntimeError, match="ambiguous"):
             prep.snapshot(api)
 
     def test_private_credentials_alias_tls_redirect_and_request_boundary(self) -> None:
@@ -499,8 +504,8 @@ class PreparationTests(unittest.TestCase):
                     {},
                     io.BytesIO(b"SECRET-RESPONSE-BODY"),
                 )
-                with self.assertRaisesRegex(
-                    RuntimeError, "^API request failed; outcome may be uncertain$"
+                with pytest.raises(
+                    RuntimeError, match="^API request failed; outcome may be uncertain$"
                 ):
                     api("GET", "core/users/?page=1")
                 for method, endpoint in [
@@ -509,23 +514,23 @@ class PreparationTests(unittest.TestCase):
                     ("POST", "core/users/"),
                     ("POST", "outposts/instances/"),
                 ]:
-                    with self.assertRaises(RuntimeError):
+                    with pytest.raises(RuntimeError):
                         api(method, endpoint, {})
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             prep.NoRedirect().redirect_request(None, None, 302, "", {}, "https://evil.invalid/")
         path.chmod(0o644)
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             prep.api_for(self.root)
         path.chmod(0o600)
         path.write_text(
             json.dumps({"AUTHENTIK_API_TOKEN": "one", "AUTHENTIK_BOOTSTRAP_TOKEN": "two"})
         )
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             prep.api_for(self.root)
 
     def test_apply_evidence_approval_and_exclusive_lock(self) -> None:
         """Apply evidence approval and exclusive lock."""
-        with self.assertRaisesRegex(RuntimeError, "evidence"):
+        with pytest.raises(RuntimeError, match="evidence"):
             prep.apply_plan(
                 self.api,
                 self.root,
@@ -535,7 +540,7 @@ class PreparationTests(unittest.TestCase):
                 None,
                 "",
             )
-        with self.assertRaisesRegex(RuntimeError, "Approval"):
+        with pytest.raises(RuntimeError, match="Approval"):
             self.apply(approval="not-approved")
         path = self.root / "evidence.json"
         path.write_text(json.dumps(self.evidence))
@@ -552,14 +557,14 @@ class PreparationTests(unittest.TestCase):
                 **{field: False if field == "writers_paused" else "invalid"},
             )
             path.write_text(json.dumps(evidence))
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 prep.evidence_input(path)
         with (
             prep.locked(self.root),
-            self.assertRaisesRegex(RuntimeError, "holds the lock"),
+            pytest.raises(RuntimeError, match="holds the lock"),
+            prep.locked(self.root),
         ):
-            with prep.locked(self.root):
-                self.fail("second lock acquired")
+            self.fail("second lock acquired")
         assert self.api.writes == 0
 
     def test_cli_default_plan_and_check_are_get_only_no_journal(self) -> None:

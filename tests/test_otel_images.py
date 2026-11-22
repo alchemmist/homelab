@@ -11,6 +11,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -76,17 +78,17 @@ class ImageLockTests(unittest.TestCase):
 
     def test_registry_hash_mismatch(self) -> None:
         """Reject a registry digest that does not match the body."""
-        with self.assertRaisesRegex(ValueError, "digest mismatch"):
+        with pytest.raises(ValueError, match="digest mismatch"):
             self.resolve([], bad_digest=True)
 
     def test_no_amd64_platform(self) -> None:
         """Reject an index that has no linux/amd64 manifest."""
-        with self.assertRaisesRegex(ValueError, "one linux/amd64"):
+        with pytest.raises(ValueError, match="one linux/amd64"):
             self.resolve([{"platform": {"os": "linux", "architecture": "arm64"}}])
 
     def test_ambiguous_platform(self) -> None:
         """Reject an index that has two linux/amd64 manifests."""
-        with self.assertRaisesRegex(ValueError, "one linux/amd64"):
+        with pytest.raises(ValueError, match="one linux/amd64"):
             self.resolve([{"platform": {"os": "linux", "architecture": "amd64"}}] * 2)
 
 
@@ -146,7 +148,7 @@ class ValidationBinaryTests(unittest.TestCase):
         """Reject a symlink planted at the expected binary path."""
         with (
             tempfile.TemporaryDirectory() as temporary,
-            self.assertRaisesRegex(ValueError, "Unexpected"),
+            pytest.raises(ValueError, match="Unexpected"),
         ):
             self.extract(Path(temporary), symlink=True)
 
@@ -154,7 +156,7 @@ class ValidationBinaryTests(unittest.TestCase):
         """Reject a layer body whose checksum does not match the manifest."""
         with (
             tempfile.TemporaryDirectory() as temporary,
-            self.assertRaisesRegex(ValueError, "checksum mismatch"),
+            pytest.raises(ValueError, match="checksum mismatch"),
         ):
             self.extract(Path(temporary), corrupt=True)
 
@@ -162,6 +164,6 @@ class ValidationBinaryTests(unittest.TestCase):
         """Reject a layer that does not contain the expected binary."""
         with (
             tempfile.TemporaryDirectory() as temporary,
-            self.assertRaisesRegex(ValueError, "not found"),
+            pytest.raises(ValueError, match="not found"),
         ):
             self.extract(Path(temporary), absent=True)

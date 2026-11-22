@@ -5,6 +5,7 @@ import time
 import unittest
 from unittest.mock import Mock
 
+import pytest
 import test_triage as f
 from core import Failure
 from integrations import GitHub, Model
@@ -82,11 +83,12 @@ class LargeCatalogTests(unittest.TestCase):
         def first(task, data, schema, deadline) -> "dict[str, object]":
             calls.append([x["number"] for x in data["open_issues"]])
             if len(calls) == deferred_batch:
-                raise Failure("LLM_ADMISSION_DEFERRED", 61)
+                msg = "LLM_ADMISSION_DEFERRED"
+                raise Failure(msg, 61)
             return dict(GOOD)
 
         m.call = first
-        with self.assertRaisesRegex(Failure, "LLM_ADMISSION_DEFERRED"):
+        with pytest.raises(Failure, match="LLM_ADMISSION_DEFERRED"):
             m.match(f.event(), rows, on_progress=lambda p: saved.append(copy.deepcopy(p)))
         assert saved[-1]["version"] == receipt_version
         assert len(saved[-1]["reviews"]) == reviewed_batches

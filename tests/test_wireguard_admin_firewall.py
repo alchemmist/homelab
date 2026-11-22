@@ -18,14 +18,14 @@ ROLLBACK = (ROLE / "ROLLBACK.md").read_text()
 class WireGuardAdminFirewallTests(unittest.TestCase):
     """Tests for WireGuardAdminFirewallTests."""
 
-    def test_uses_client_registry_and_exact_interface(self):
+    def test_uses_client_registry_and_exact_interface(self) -> None:
         assert "wg_socrat_admin_clients" in DEFAULTS
         assert "interface={{ wg_socrat_admin_firewall_interface | quote }}" in SCRIPT
         assert "wg-socrat" in DEFAULTS
         assert "dict2items" in SCRIPT
         assert "item.value.address" in TASKS
 
-    def test_only_allows_ssh_and_private_dns_to_the_node(self):
+    def test_only_allows_ssh_and_private_dns_to_the_node(self) -> None:
         assert "--dport {{ wg_socrat_admin_firewall_ssh_port }}" in SCRIPT
         assert "--dport {{ wg_socrat_admin_firewall_dns_port }}" in SCRIPT
         assert "-p tcp" in SCRIPT
@@ -35,19 +35,19 @@ class WireGuardAdminFirewallTests(unittest.TestCase):
         assert "--ctorigdstport" in SCRIPT
         assert "REJECT --reject-with icmp-port-unreachable" in SCRIPT
 
-    def test_private_web_access_is_explicitly_disabled_by_default(self):
+    def test_private_web_access_is_explicitly_disabled_by_default(self) -> None:
         assert "wireguard_private_web_enabled: false" in DEFAULTS
         assert "{% if wireguard_private_web_enabled | bool %}" in SCRIPT
         assert "--dport {{ wireguard_private_web_proxy_port }}" in SCRIPT
         assert "--ctorigdstport {{ wireguard_private_web_public_port }}" in SCRIPT
 
-    def test_forwarding_from_admin_clients_is_rejected(self):
+    def test_forwarding_from_admin_clients_is_rejected(self) -> None:
         assert "FORWARD" in SCRIPT
         assert "REJECT --reject-with icmp-admin-prohibited" in SCRIPT
         assert 'INPUT 1 -i "$interface"' in SCRIPT
         assert 'FORWARD 1 -i "$interface"' in SCRIPT
 
-    def test_preserves_unrelated_firewall_chains(self):
+    def test_preserves_unrelated_firewall_chains(self) -> None:
         assert "input_chain_a={{ wg_socrat_admin_firewall_chain_prefix }}_INPUT_A" in SCRIPT
         assert "input_chain_b={{ wg_socrat_admin_firewall_chain_prefix }}_INPUT_B" in SCRIPT
         assert "forward_chain_a={{ wg_socrat_admin_firewall_chain_prefix }}_FORWARD_A" in SCRIPT
@@ -57,7 +57,7 @@ class WireGuardAdminFirewallTests(unittest.TestCase):
         assert "remove_rules" in SCRIPT
         assert "delete_all" in SCRIPT
 
-    def test_replaces_owned_policy_only_after_new_chain_is_built(self):
+    def test_replaces_owned_policy_only_after_new_chain_is_built(self) -> None:
         assert '"$iptables" -w 5' in SCRIPT
         assert "new_input_chain" in SCRIPT
         assert "new_forward_chain" in SCRIPT
@@ -66,11 +66,11 @@ class WireGuardAdminFirewallTests(unittest.TestCase):
         )
         assert SCRIPT.index('ipt -A "$new_input_chain"') < SCRIPT.index("ipt -I INPUT 1")
 
-    def test_transit_is_scoped_and_nat_is_reversible(self):
+    def test_transit_is_scoped_and_nat_is_reversible(self) -> None:
         env = Environment()
         env.filters["quote"] = shlex.quote
         env.filters["bool"] = bool
-        env.filters["dict2items"] = lambda value: [dict(key=k, value=v) for k, v in value.items()]
+        env.filters["dict2items"] = lambda value: [{"key": k, "value": v} for k, v in value.items()]
         script = env.from_string(SCRIPT).render(
             wg_socrat_admin_firewall_interface="wg-socrat",
             wg_socrat_admin_firewall_chain_prefix="WG_SOCRAT_ADMIN",
@@ -105,7 +105,7 @@ class WireGuardAdminFirewallTests(unittest.TestCase):
         assert 'nat_delete_all "$chain"' in script
         assert 'nat_delete_chain "$chain"' in script
 
-    def test_persistent_unit_runs_after_wireguard_and_supports_removal(self):
+    def test_persistent_unit_runs_after_wireguard_and_supports_removal(self) -> None:
         assert "After=network-online.target wg-quick@wg-socrat.service" in UNIT
         assert "ExecStart={{ wg_socrat_admin_firewall_script_path }}" in UNIT
         assert "ExecStop={{ wg_socrat_admin_firewall_script_path }} remove" in UNIT

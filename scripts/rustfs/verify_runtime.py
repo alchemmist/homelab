@@ -23,7 +23,8 @@ def load(path: Path, name: str) -> ModuleType:
     """Execute load."""
     spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
-        raise ImportError(f"Cannot load {name}")
+        msg = f"Cannot load {name}"
+        raise ImportError(msg)
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m
@@ -41,7 +42,8 @@ def main() -> None:
     b.private(a.machine_credentials)
     c = json.loads(a.machine_credentials.read_text())
     if set(c) != {"reader", "writer"} or c["reader"]["access"] == c["writer"]["access"]:
-        raise ValueError("separate machine-only credentials required, no root")
+        msg = "separate machine-only credentials required, no root"
+        raise ValueError(msg)
     g = load(root / "services/rustfs_gateway/gateway.py", "gateway")
     http = g.opener()
     if not a.apply_fixture:
@@ -62,7 +64,8 @@ def main() -> None:
             with http.open(req, timeout=15) as response:
                 data = response.read(g.MAX_BYTES + 1)
                 if len(data) > g.MAX_BYTES:
-                    raise ValueError("oversized response")
+                    msg = "oversized response"
+                    raise ValueError(msg)
                 return response.status, data
         except urllib.error.HTTPError as error:
             try:
@@ -113,15 +116,19 @@ def ensure_fixture(request: Request, prefix: str, body: bytes, manifest: bytes) 
         status, old = request("writer", "GET", path, b"")
         if status == 200:
             if old != content:
-                raise ValueError("existing deterministic fixture mismatch; no overwrite")
+                msg = "existing deterministic fixture mismatch; no overwrite"
+                raise ValueError(msg)
         elif status == 404:
             if request("writer", "PUT", path, content)[0] != 200:
-                raise ValueError("fixture PUT failed; inspect privately, no blind retry")
+                msg = "fixture PUT failed; inspect privately, no blind retry"
+                raise ValueError(msg)
         else:
-            raise ValueError("cannot verify fixture absence; no PUT")
+            msg = "cannot verify fixture absence; no PUT"
+            raise ValueError(msg)
         status, received = request("reader", "GET", path, b"")
         if status != 200 or received != content:
-            raise ValueError("reader bytes mismatch")
+            msg = "reader bytes mismatch"
+            raise ValueError(msg)
 
 
 def verify_denial_gates(request: Request, cases: list[tuple[str, str, str]]) -> None:
@@ -129,20 +136,19 @@ def verify_denial_gates(request: Request, cases: list[tuple[str, str, str]]) -> 
     for role, method, path in cases:
         status, data = request(role, method, path, b"")
         if status != 403:
-            raise ValueError(
-                "negative IAM gate failed; require explicit deny, not 404 or transport failure"
-            )
+            msg = "negative IAM gate failed; require explicit deny, not 404 or transport failure"
+            raise ValueError(msg)
         # XML parsing only, no remote entities/external fetch and no body logging.
         doc = ET.fromstring(data)
         code = next((e.text for e in doc.iter() if e.tag.rsplit("}", 1)[-1] == "Code"), None)
         if code not in ("AccessDenied", "AllAccessDisabled"):
-            raise ValueError("unexpected denial response")
+            msg = "unexpected denial response"
+            raise ValueError(msg)
 
 
 if __name__ == "__main__":
     try:
         main()
     except (OSError, ValueError, SyntaxError, ImportError, RuntimeError):
-        raise SystemExit(
-            "Runtime gate failed; no secret/response body printed. Inspect private state; do not activate SPI."
-        ) from None
+        msg = "Runtime gate failed; no secret/response body printed. Inspect private state; do not activate SPI."
+        raise SystemExit(msg) from None

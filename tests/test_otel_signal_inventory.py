@@ -6,6 +6,8 @@ import unittest
 from datetime import UTC
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
     "signal_inventory", ROOT / "scripts/otel-signal-inventory.py"
@@ -69,7 +71,7 @@ class SignalInventoryTests(unittest.TestCase):
 
     def test_zero_measurement_window_is_rejected(self) -> None:
         """Zero measurement window is rejected."""
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             SIGNALS.summarize({"windowSeconds": 0, "sources": []}, {})
 
     def test_probe_returns_counts_not_log_contents_or_env_values(self) -> None:
@@ -140,7 +142,7 @@ class PrivilegedJournalTests(unittest.TestCase):
             with self.subTest(update=update), tempfile.TemporaryDirectory() as name:
                 directory = Path(name)
                 self.evidence(directory, **update)
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     SIGNALS.privileged_journals(directory)
 
     def test_public_evidence_file_is_rejected(self) -> None:
@@ -151,7 +153,7 @@ class PrivilegedJournalTests(unittest.TestCase):
             directory = Path(name)
             self.evidence(directory)
             (directory / "socrat-0.json").chmod(0o644)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 SIGNALS.privileged_journals(directory)
 
 

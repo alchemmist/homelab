@@ -7,6 +7,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import TypedDict
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
     "signal_check", ROOT / "scripts/netbird-signal-check.py"
@@ -116,5 +118,5 @@ class ProbeTests(unittest.TestCase):
             (check.ENTRANCES[0], 0),
             (check.ENTRANCES[0], 11),
         ]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 check.probe(address, deadline)

@@ -203,10 +203,10 @@ def test_rancher_public_proxy_denies_local_password_without_changing_private_bac
     )
     pod = d["spec"]["template"]["spec"]
     c = pod["containers"][0]
-    assert pod["automountServiceAccountToken"] is False and pod["securityContext"]["runAsNonRoot"]
-    assert c["securityContext"]["readOnlyRootFilesystem"] and c["securityContext"]["capabilities"][
-        "drop"
-    ] == ["ALL"]
+    assert pod["automountServiceAccountToken"] is False
+    assert pod["securityContext"]["runAsNonRoot"]
+    assert c["securityContext"]["readOnlyRootFilesystem"]
+    assert c["securityContext"]["capabilities"]["drop"] == ["ALL"]
     assert "@sha256:" in c["image"]
     i = next(
         x for x in docs if x["kind"] == "Ingress" and x["metadata"]["name"] == "public-web-rancher"

@@ -77,7 +77,7 @@ def problems(document, pods=None):
     return found
 
 
-def main():
+def main() -> int:
     """Execute the main operation."""
     document = json.load(sys.stdin)
     found = (

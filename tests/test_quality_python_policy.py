@@ -196,7 +196,9 @@ def test_python_inputs_reject_incomplete_inventory(
         python_inputs.python_inputs(roots)
 
 
-def test_scoped_ruff_preserves_paths_and_nonzero_status_across_batches(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_scoped_ruff_preserves_paths_and_nonzero_status_across_batches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from subprocess import CompletedProcess
 
     from ci.quality import ruff_scope
@@ -207,7 +209,7 @@ def test_scoped_ruff_preserves_paths_and_nonzero_status_across_batches(monkeypat
 
     def invoke(argv, *, check):
         assert check is False
-        calls.append(argv[argv.index("--") + 1:])
+        calls.append(argv[argv.index("--") + 1 :])
         return CompletedProcess(argv, int(len(calls) == 1))
 
     monkeypatch.setattr(ruff_scope.subprocess, "run", invoke)

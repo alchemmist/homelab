@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts/n8n"))
+import pytest
 import sync_failure_alerts as sync
 
 TEMPLATE = json.loads((ROOT / "docs/n8n/workflow-failure-alerts.json").read_text())
@@ -127,11 +128,11 @@ class FailureAlertsTests(unittest.TestCase):
         """Guard rejects unpublished changes and foreign handlers."""
         w = self.wf()
         _mapping(w["activeVersion"])["nodes"] = []
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             sync.guard(w, "handler")
         w = self.wf()
         _mapping(w["settings"])["errorWorkflow"] = "other"
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             sync.guard(w, "handler")
 
     def test_only_settings_change_and_active_state_preserved(self) -> None:
@@ -178,7 +179,7 @@ class FailureAlertsTests(unittest.TestCase):
         assert len(calls) == 1
         before = self.wf()
         w["name"] = "Changed"
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             sync.bind(api, before, "handler")
 
     def test_only_native_github_registration_may_change(self) -> None:
@@ -200,12 +201,12 @@ class FailureAlertsTests(unittest.TestCase):
         )
         sync.check(before, after, "handler")
         _mapping(_mapping(after["staticData"])["global"])["checkpoint"] = "changed"
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             sync.check(before, after, "handler")
         after = copy.deepcopy(before)
         _mapping(after["settings"])["errorWorkflow"] = "handler"
         _mapping(_mapping(after["staticData"])["node:Push"])["webhookEvents"] = ["issues"]
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             sync.check(before, after, "handler")
 
     def test_transient_put_state_requires_authoritative_readback(self) -> None:
@@ -216,7 +217,7 @@ class FailureAlertsTests(unittest.TestCase):
         _mapping(transient["settings"])["errorWorkflow"] = "handler"
         transient["staticData"] = None
         sync.check(before, transient, "handler", verify_static=False)
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             sync.check(before, transient, "handler")
         stable = copy.deepcopy(before)
         _mapping(stable["settings"])["errorWorkflow"] = "handler"
@@ -227,7 +228,7 @@ class FailureAlertsTests(unittest.TestCase):
         before = self.wf()
         after = copy.deepcopy(before)
         after["settings"] = {"errorWorkflow": "handler"}
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             sync.check(before, after, "handler")
 
 

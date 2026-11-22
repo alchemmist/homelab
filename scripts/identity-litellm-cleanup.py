@@ -37,5 +37,6 @@ result = subprocess.run(
     check=False,
 )
 if result.returncode:
-    raise RuntimeError("Fixture database cleanup failed; details suppressed")
+    msg = "Fixture database cleanup failed; details suppressed"
+    raise RuntimeError(msg)
 print("Temporary LiteLLM identity, session keys and admission binding removed")

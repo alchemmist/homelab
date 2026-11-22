@@ -4,6 +4,8 @@ import importlib.util
 import unittest
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 PUBLIC_FILE_MODE = 0o755
@@ -19,7 +21,7 @@ def load(path, name):
 class SPIOnlyDNSTests(unittest.TestCase):
     """Ensure DNS zone changes stay SPI-only across health states."""
 
-    def test_only_spi_changes_for_all_four_health_states(self):
+    def test_only_spi_changes_for_all_four_health_states(self) -> None:
         new = load(ROOT / "ansible/scripts/public_dns_zone.py", "spi_zone")
         old = load(ROOT / "ansible/scripts/public_dns_zone.py", "previous_zone")
         old.FAILOVER.remove("spi.socrat")
@@ -35,14 +37,14 @@ class SPIOnlyDNSTests(unittest.TestCase):
                 ]
                 assert "*.socrat" not in "\n".join(after)
         new.TTL += 1
-        with self.assertRaisesRegex(RuntimeError, "Unrelated DNS record change"):
+        with pytest.raises(RuntimeError, match="Unrelated DNS record change"):
             guard.delta(old, new)
 
 
 class DNSPreflightSafetyTests(unittest.TestCase):
     """Verify preflight rejects directories and symlinked inputs."""
 
-    def test_loader_rejects_directories_and_symlinks(self):
+    def test_loader_rejects_directories_and_symlinks(self) -> None:
         import tempfile
 
         guard = load(ROOT / "ansible/scripts/spi-public-dns.py", "safe_loader")
@@ -55,11 +57,11 @@ class DNSPreflightSafetyTests(unittest.TestCase):
             for path in (base, link):
                 with (
                     self.subTest(path=path.name),
-                    self.assertRaisesRegex(RuntimeError, "Unsafe renderer"),
+                    pytest.raises(RuntimeError, match="Unsafe renderer"),
                 ):
                     guard.load(path, "invalid")
 
-    def test_malformed_renderer_has_controlled_error(self):
+    def test_malformed_renderer_has_controlled_error(self) -> None:
         import tempfile
 
         guard = load(ROOT / "ansible/scripts/spi-public-dns.py", "syntax_guard")
@@ -69,11 +71,11 @@ class DNSPreflightSafetyTests(unittest.TestCase):
                 path.write_text(content)
                 with (
                     self.subTest(content=content),
-                    self.assertRaisesRegex(RuntimeError, "^Invalid DNS renderer: proposed.py$"),
+                    pytest.raises(RuntimeError, match="^Invalid DNS renderer: proposed.py$"),
                 ):
                     guard.load(path, "malformed")
 
-    def test_uncertain_marker_is_checked_after_lock_acquisition(self):
+    def test_uncertain_marker_is_checked_after_lock_acquisition(self) -> None:
         import tempfile
         from unittest.mock import Mock, patch
 
@@ -82,7 +84,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
         previous_umask = guard.os.umask(0o077)
         self.addCleanup(guard.os.umask, previous_umask)
 
-        def fixture_permissions(ok, message):
+        def fixture_permissions(ok, message) -> None:
             # Fixture files are user-owned; retain every non-ownership safety check.
             if message not in ("Unsafe renderer", "Unsafe state directory"):
                 require(ok, message)
@@ -93,7 +95,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
             current.write_text("VALUE = 1\n")
             (base / "proposed.py").write_text("VALUE = 2\n")
 
-            def acquired(fd, operation):
+            def acquired(fd, operation) -> None:
                 assert operation == guard.fcntl.LOCK_EX
                 # Simulate a prior writer leaving an uncertain marker before releasing its lock.
                 (base / "uncertain.json").write_text("{}")
@@ -106,14 +108,14 @@ class DNSPreflightSafetyTests(unittest.TestCase):
                 patch.object(guard.fcntl, "flock", side_effect=acquired),
                 patch.object(guard, "load", loader),
                 patch("sys.argv", ["spi-public-dns"]),
-                self.assertRaisesRegex(RuntimeError, "Uncertain prior write"),
+                pytest.raises(RuntimeError, match="Uncertain prior write"),
             ):
                 guard.main()
             loader.assert_not_called()
             assert not (base / "before.py").exists()
             assert current.read_text() == "VALUE = 1\n"
 
-    def test_missing_state_directory_has_controlled_stop(self):
+    def test_missing_state_directory_has_controlled_stop(self) -> None:
         import tempfile
         from unittest.mock import patch
 
@@ -125,7 +127,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
             with (
                 patch.object(guard, "ROOT", missing),
                 patch("sys.argv", ["spi-public-dns"]),
-                self.assertRaisesRegex(RuntimeError, "Unsafe state directory"),
+                pytest.raises(RuntimeError, match="Unsafe state directory"),
             ):
                 guard.main()
             assert not missing.exists()
@@ -134,18 +136,18 @@ class DNSPreflightSafetyTests(unittest.TestCase):
 class ExclusiveRendererTests(unittest.TestCase):
     """Check the renderer never overwrites an existing regular file."""
 
-    def test_existing_regular_file_is_not_overwritten(self):
+    def test_existing_regular_file_is_not_overwritten(self) -> None:
         import tempfile
 
         guard = load(ROOT / "ansible/scripts/spi-public-dns.py", "exclusive_file_guard")
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "stage.tmp"
             path.write_bytes(b"original")
-            with self.assertRaisesRegex(RuntimeError, "Unexpected temporary renderer"):
+            with pytest.raises(RuntimeError, match="Unexpected temporary renderer"):
                 guard.stage_renderer(path, b"replacement")
             assert path.read_bytes() == b"original"
 
-    def test_existing_and_dangling_symlinks_are_not_followed(self):
+    def test_existing_and_dangling_symlinks_are_not_followed(self) -> None:
         import tempfile
 
         guard = load(ROOT / "ansible/scripts/spi-public-dns.py", "exclusive_link_guard")
@@ -159,7 +161,7 @@ class ExclusiveRendererTests(unittest.TestCase):
                 link.symlink_to(target)
                 with (
                     self.subTest(existing=existing),
-                    self.assertRaisesRegex(RuntimeError, "Unexpected temporary renderer"),
+                    pytest.raises(RuntimeError, match="Unexpected temporary renderer"),
                 ):
                     guard.stage_renderer(link, b"replacement")
                 assert link.is_symlink()
@@ -168,7 +170,7 @@ class ExclusiveRendererTests(unittest.TestCase):
                 else:
                     assert not target.exists()
 
-    def test_new_inode_has_expected_public_renderer_mode_and_contents(self):
+    def test_new_inode_has_expected_public_renderer_mode_and_contents(self) -> None:
         import stat
         import tempfile
 

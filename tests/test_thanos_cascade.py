@@ -233,7 +233,7 @@ if __name__ == "__main__":
     unittest.main()
 
 
-def test_shared_pressure_reads_only_one_fresh_bucket_sample(monkeypatch):
+def test_shared_pressure_reads_only_one_fresh_bucket_sample(monkeypatch) -> None:
     from io import BytesIO
     from urllib.parse import parse_qs, urlparse
 
@@ -243,7 +243,8 @@ def test_shared_pressure_reads_only_one_fresh_bucket_sample(monkeypatch):
     def fetch(url, timeout):
         query = parse_qs(urlparse(url).query)["query"][0]
         assert 'socrat_five_bucket_available_bytes{backing_node="socrat-0"}' in query
-        assert "timestamp(" in query and "node_filesystem" not in query
+        assert "timestamp(" in query
+        assert "node_filesystem" not in query
         return BytesIO(json.dumps({"status": "success", "data": {"result": rows}}).encode())
 
     monkeypatch.setattr(CASCADE.urllib.request, "urlopen", fetch)

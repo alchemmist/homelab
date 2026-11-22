@@ -30,13 +30,15 @@ def remote_objects() -> dict[str, int]:
         for entry in root.findall("{*}Contents"):
             key, size = entry.findtext("{*}Key"), entry.findtext("{*}Size")
             if not key or size is None:
-                raise ValueError("ListObjectsV2 Contents missing Key or Size")
+                msg = "ListObjectsV2 Contents missing Key or Size"
+                raise ValueError(msg)
             assert key not in obj
             obj[key] = int(size)
         if root.findtext("{*}IsTruncated") == "false":
             return obj
         nxt = root.findtext("{*}NextContinuationToken")
-        assert nxt and nxt != token
+        assert nxt
+        assert nxt != token
         token = nxt
 
 
@@ -83,9 +85,7 @@ if __name__ == "__main__":
                 "missing_bytes": sum(src[k] for k in src.keys() - live_dst.keys()),
                 "extra_active_on_s3": summary(live_dst.keys() - src.keys()),
                 "s3_marked_blocks": sorted(inactive),
-                "different_size": sorted(
-                    k for k in src.keys() & dst.keys() if src[k] != dst[k]
-                ),
+                "different_size": sorted(k for k in src.keys() & dst.keys() if src[k] != dst[k]),
                 "source_markers": markers,
             },
             indent=2,

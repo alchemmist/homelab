@@ -15,7 +15,7 @@ def document(path):
 class VMApplicationPlacementTests(unittest.TestCase):
     """Verify vm application placement keeps original claims."""
 
-    def test_n8n_uses_original_vm_claim_without_repointing_recovery_storage(self):
+    def test_n8n_uses_original_vm_claim_without_repointing_recovery_storage(self) -> None:
         values = document("charts/n8n/values.yaml")
         assert values["nodeName"] == "socrat-5"
         assert values["persistence"]["claimName"] == "n8n-socrat5"
@@ -28,13 +28,13 @@ class VMApplicationPlacementTests(unittest.TestCase):
             == "/home/alchemmist/.local/share/homelab/n8n-recovery-20261114/data"
         )
 
-    def test_pr_agent_uses_vm_and_preserves_secret_identity(self):
+    def test_pr_agent_uses_vm_and_preserves_secret_identity(self) -> None:
         values = document("charts/pr-agent/values.yaml")
         assert values["nodeName"] == "socrat-5"
         assert values["secretName"] == "pr-agent"
         assert values["replicaCount"] == 1
 
-    def test_rancher_single_replica_recovery_preserves_native_oidc_trust(self):
+    def test_rancher_single_replica_recovery_preserves_native_oidc_trust(self) -> None:
         values = document("deploy/platform/rancher/values.yaml")
         role = document("ansible/roles/rancher_placement/defaults/main.yml")
         assert values["replicas"] == 1

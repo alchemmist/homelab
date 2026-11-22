@@ -329,7 +329,7 @@ for slug, service in services.items():
             "signing_key": cert["pk"],
             "redirect_uris": [
                 {"matching_mode": "strict", "url": url}
-                for url in [service["redirect"]] + service.get("extraRedirects", [])
+                for url in [service["redirect"], *service.get("extraRedirects", [])]
             ],
             "include_claims_in_id_token": True,
             "sub_mode": service.get("subMode", "hashed_user_id"),

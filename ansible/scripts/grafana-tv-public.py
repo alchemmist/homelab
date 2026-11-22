@@ -45,13 +45,13 @@ def main() -> None:
         cmd = ["kubectl", "-n", "cattle-monitoring-system"]
         secret = json.loads(
             subprocess.check_output(
-                cmd + ["get", "secret", "socrat-grafana-admin", "-o", "json"],
+                [*cmd, "get", "secret", "socrat-grafana-admin", "-o", "json"],
                 stderr=subprocess.DEVNULL,
             )
         )["data"]
         ip = subprocess.check_output(
-            cmd
-            + [
+            [
+                *cmd,
                 "get",
                 "svc",
                 "kube-prometheus-stack-grafana",
@@ -127,7 +127,7 @@ def main() -> None:
             need(a.approve_plan_hash == digest, "Fresh exact plan approval required")
             (STATE / "before.json").write_text(json.dumps(context))
             (STATE / "uncertain.json").write_text(json.dumps({"plan_hash": digest}))
-            code, after = api("POST", endpoint, desired)
+            code, _after = api("POST", endpoint, desired)
             need(
                 code in [200, 201],
                 "Public share create failed; no fallback to anonymous Viewer",

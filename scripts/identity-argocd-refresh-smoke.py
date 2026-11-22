@@ -103,7 +103,8 @@ offline = [
     if x["scope_name"] == "offline_access"
 ]
 if len(offline) != 1 or offline[0]["pk"] not in provider["property_mappings"]:
-    raise SystemExit("Refresh deployment not activated; no fixtures created")
+    msg = "Refresh deployment not activated; no fixtures created"
+    raise SystemExit(msg)
 username = "argocd-refresh-smoke-" + uuid.uuid4().hex[:10]
 password = secrets.token_urlsafe(32)
 group = next(
@@ -169,7 +170,7 @@ try:
         components = []
         errors = []
 
-        def observe(response):
+        def observe(response) -> None:
             """Perform the observe operation."""
             if (
                 urllib.parse.urlparse(response.url).hostname == "argocd.socrat.alchemmist.xyz"
@@ -283,7 +284,8 @@ try:
                     ).get("secret", [None])[0]
                 )
                 if not source:
-                    raise RuntimeError("TOTP setup data unavailable")
+                    msg = "TOTP setup data unavailable"
+                    raise RuntimeError(msg)
                 key = base64.b32decode(source.upper() + "=" * ((-len(source)) % 8))
                 sig = hmac.new(
                     key, struct.pack(">Q", int(time.time()) // 30), hashlib.sha1
@@ -326,7 +328,8 @@ try:
                     return payload
 
                 old = claims()
-                assert "homelab-observer" in old["groups"] and not set(old["groups"]) & {
+                assert "homelab-observer" in old["groups"]
+                assert not set(old["groups"]) & {
                     "homelab-owner",
                     "homelab-platform-operator",
                 }
@@ -367,7 +370,8 @@ try:
                     "Native session lost authentication"
                 )
                 new = claims()
-                assert new["exp"] > old["exp"] and new["sub"] == old["sub"]
+                assert new["exp"] > old["exp"]
+                assert new["sub"] == old["sub"]
                 assert not auth_navigations, "Browser must not navigate to IdP for refresh"
                 assert api_page("/api/v1/account/can-i/applications/create/*")["value"] == "no"
                 print(
@@ -388,14 +392,16 @@ try:
                         assert before_request < active["exp"], (
                             "Active refresh must occur BEFORE expiry"
                         )
-                        assert candidate["sub"] == old["sub"] and not auth_navigations
+                        assert candidate["sub"] == old["sub"]
+                        assert not auth_navigations
                         print(
                             "PASS: active preemptive refresh before expiry; Secure preserved; no browser IdP redirect",
                             flush=True,
                         )
                         break
                 else:
-                    raise AssertionError("Preemptive renewal was not observed")
+                    msg = "Preemptive renewal was not observed"
+                    raise AssertionError(msg)
                 assert api_page("/api/v1/account/can-i/applications/create/*")["value"] == "no"
                 break
             page.wait_for_timeout(500)
@@ -405,7 +411,8 @@ try:
                 urllib.parse.urlparse(page.url).hostname,
                 urllib.parse.urlparse(page.url).path,
             )
-            raise RuntimeError("Browser roundtrip did not complete")
+            msg = "Browser roundtrip did not complete"
+            raise RuntimeError(msg)
         print("Browser JS errors:", len(errors))
         assert not errors
         browser.close()

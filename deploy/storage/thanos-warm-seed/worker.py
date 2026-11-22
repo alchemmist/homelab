@@ -31,11 +31,7 @@ def digest_local(path: Path) -> str:
 
 def transfer(key: str, spec: Capability) -> str:
     path = ROOT / key
-    if (
-        path.resolve() != path
-        or not path.is_file()
-        or path.stat().st_size != spec["bytes"]
-    ):
+    if path.resolve() != path or not path.is_file() or path.stat().st_size != spec["bytes"]:
         raise RuntimeError("source changed: " + key)
     n = spec["bytes"]
     started = time.monotonic()
@@ -85,7 +81,8 @@ def main() -> None:
     batch: dict[str, Capability] = json.loads(Path("/caps/keys.json").read_text())
     for spec in batch.values():
         if not Capability.__required_keys__.issubset(spec):
-            raise ValueError("incomplete transfer capability")
+            msg = "incomplete transfer capability"
+            raise ValueError(msg)
     block = None
     manifest = {}
     total = 0
@@ -94,10 +91,7 @@ def main() -> None:
         if ident != block:
             print("starting", ident, flush=True)
             block = ident
-        if (
-            key != ident + "/deletion-mark.json"
-            and (ROOT / ident / "deletion-mark.json").exists()
-        ):
+        if key != ident + "/deletion-mark.json" and (ROOT / ident / "deletion-mark.json").exists():
             raise RuntimeError("source now marked: " + ident)
         manifest[key] = transfer(key, spec)
         total += spec["bytes"]

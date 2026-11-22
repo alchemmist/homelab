@@ -25,10 +25,7 @@ def encloses(target, source, res):
     return (
         resolution(target) == res
         and target["thanos"]["labels"] == source["thanos"]["labels"]
-        and target["minTime"]
-        <= source["minTime"]
-        < source["maxTime"]
-        <= target["maxTime"]
+        and target["minTime"] <= source["minTime"] < source["maxTime"] <= target["maxTime"]
         and bool(ids)
         and ids <= set(target["compaction"]["sources"])
         and target["stats"]["numSamples"] > 0
@@ -51,7 +48,8 @@ def get(url):
     with urlopen(url, timeout=30) as r:
         reply = json.load(r)
     if reply["status"] != "success" or reply.get("warnings"):
-        raise OSError("incomplete Thanos response")
+        msg = "incomplete Thanos response"
+        raise OSError(msg)
     return reply["data"]
 
 
@@ -59,7 +57,8 @@ def loaded(store):
     """Index loaded blocks by ULID, rejecting an inventory that reports a Store error."""
     d = get("http://" + store + ":10902/api/v1/blocks?view=loaded")
     if d.get("err"):
-        raise OSError("Store cannot load its inventory")
+        msg = "Store cannot load its inventory"
+        raise OSError(msg)
     return {m["ulid"]: m for m in d["blocks"]}
 
 
@@ -82,7 +81,7 @@ def serves(store, block, source):
     return any(float(row["value"][1]) > 0 for row in data["result"])
 
 
-def marker(b, uid, name, apply):
+def marker(b, uid, name, apply) -> bool:
     """Keep existing marks; in apply mode write missing marks and verify them by reading back."""
     key = uid + "/" + name + "-mark.json"
     if not ULID.fullmatch(uid) or name not in (
@@ -90,7 +89,8 @@ def marker(b, uid, name, apply):
         "no-compact",
         "no-downsample",
     ):
-        raise ValueError("invalid mark")
+        msg = "invalid mark"
+        raise ValueError(msg)
     if b.read(key, method="HEAD", absent=True) is not None:
         return True
     print("mark" if apply else "would mark", name, uid, flush=True)
@@ -111,11 +111,12 @@ def marker(b, uid, name, apply):
         body["reason"] = "manual"
     b.read(key, method="PUT", payload=json.dumps(body).encode())
     if json.loads(b.read(key)) != body:
-        raise OSError("marker readback mismatch")
+        msg = "marker readback mismatch"
+        raise OSError(msg)
     return True
 
 
-def tiers(b, dest, confirmed, apply=False):
+def tiers(b, dest, confirmed, apply=False) -> None:
     """Evaluate warm blocks for retention marks using successor coverage and Store readbacks."""
     warm, cold = loaded("thanos-store"), loaded("thanos-store-1h")
     active = {}
@@ -123,8 +124,7 @@ def tiers(b, dest, confirmed, apply=False):
         uid = prefix.rstrip("/")
         if (
             not ULID.fullmatch(uid)
-            or b.read(prefix + "deletion-mark.json", method="HEAD", absent=True)
-            is not None
+            or b.read(prefix + "deletion-mark.json", method="HEAD", absent=True) is not None
         ):
             continue
         raw = b.read(prefix + "meta.json", absent=True)
@@ -132,7 +132,8 @@ def tiers(b, dest, confirmed, apply=False):
             continue
         m = json.loads(raw)
         if m["ulid"] != uid:
-            raise ValueError("unexpected block id")
+            msg = "unexpected block id"
+            raise ValueError(msg)
         active[uid] = m
 
     def current(m):
@@ -180,11 +181,7 @@ def tiers(b, dest, confirmed, apply=False):
         if res not in (FIVE, HOUR):
             continue
         for k, t in cold.items():
-            if (
-                not encloses(t, m, HOUR)
-                or not cold_ok(t)
-                or not serves("thanos-store-1h", t, m)
-            ):
+            if not encloses(t, m, HOUR) or not cold_ok(t) or not serves("thanos-store-1h", t, m):
                 continue
             # Never retire a 5m parent on the basis of an hourly file near its own expiry.
             if now - t["maxTime"] >= (730 - 2) * DAY:

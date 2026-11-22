@@ -17,7 +17,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location("netbird_pilot", ROOT / "scripts/netbird-pilot.py")
 if SPEC is None or SPEC.loader is None:
-    raise RuntimeError("netbird-pilot module missing or unloadable")
+    msg = "netbird-pilot module missing or unloadable"
+    raise RuntimeError(msg)
 nb = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(nb)
 CONFIRM = "apply-netbird-control-plane"
@@ -342,7 +343,8 @@ def main() -> None:
             "edge": status["edge_apply_allowed"],
         }.get(a.stage)
         if allowed is not True:
-            raise ValueError("control plane apply is blocked")
+            msg = "control plane apply is blocked"
+            raise ValueError(msg)
         return
     nb.require(a.stage in ("internal", "edge"), "stage required")
     nb.require(

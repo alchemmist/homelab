@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
+import pytest
 import test_triage as f
 from core import PATIENT_TRANSIENT, Failure, Store
 from integrations import GitHub
@@ -37,16 +38,16 @@ class GitHubReadTimeoutTests(unittest.TestCase):
                         http = Mock()
                         http.request.side_effect = original
                         github = GitHub(http, str(token))
-                        with self.assertRaises(Failure) as caught:
+                        with pytest.raises(Failure) as caught:
                             github.request(method, "/issues")
                         if method == "GET" and code == "UPSTREAM_TIMEOUT":
                             read_timeout_retry_after = 60
-                            assert caught.exception.code == "GITHUB_READ_TIMEOUT"
-                            assert caught.exception.retry_after == read_timeout_retry_after
+                            assert caught.value.code == "GITHUB_READ_TIMEOUT"
+                            assert caught.value.retry_after == read_timeout_retry_after
                         else:
-                            assert caught.exception is original
+                            assert caught.value is original
             http.request.side_effect = TimeoutError("not a typed Failure")
-            with self.assertRaises(TimeoutError):
+            with pytest.raises(TimeoutError):
                 github.request("GET", "/issues")
 
     def test_durable_patient_restart_and_later_snapshot(self) -> None:
@@ -85,9 +86,9 @@ class GitHubReadTimeoutTests(unittest.TestCase):
             github = GitHub(http, str(token))
             for _ in range(3):
                 old = copy.deepcopy(store.get(key))
-                with self.assertRaises(Failure) as caught:
+                with pytest.raises(Failure) as caught:
                     github.open_signature()
-                error = caught.exception
+                error = caught.value
                 store.fail(key, error.code, error.retry_after, error.rate_metadata)
                 store = Store(store.path)
                 row = store.get(key)
@@ -152,10 +153,10 @@ class EngineReadRecoveryTests(unittest.TestCase):
         self.engine.github = GitHub(http, str(token))
         REQUEST_DEADLINE.at = time.monotonic() + 1
         try:
-            with self.assertRaises(Failure) as caught:
+            with pytest.raises(Failure) as caught:
                 self.engine.run("analyze", key)
-            assert caught.exception.code == "GITHUB_READ_TIMEOUT"
-            self.store.fail(key, caught.exception.code, caught.exception.retry_after)
+            assert caught.value.code == "GITHUB_READ_TIMEOUT"
+            self.store.fail(key, caught.value.code, caught.value.retry_after)
         finally:
             if hasattr(REQUEST_DEADLINE, "at"):
                 del REQUEST_DEADLINE.at

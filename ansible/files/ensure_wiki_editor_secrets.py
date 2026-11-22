@@ -20,7 +20,7 @@ def get_secret(name):
     return json.loads(result.stdout).get("data", {}) if result.stdout.strip() else {}
 
 
-def apply(kind, namespace, name, data):
+def apply(kind, namespace, name, data) -> None:
     """Apply."""
     payload = {
         "apiVersion": "v1",

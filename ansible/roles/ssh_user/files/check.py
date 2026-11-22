@@ -37,13 +37,13 @@ KEY = re.compile(
 )
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     """Execute the require operation."""
     if not ok:
         raise ValueError(message)
 
 
-def username(name):
+def username(name) -> None:
     """Execute the username operation."""
     require(
         bool(re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", name)) and name not in PROTECTED,
@@ -124,7 +124,7 @@ def safe_paths(name, account):
     return home
 
 
-def ssh_policy(name):
+def ssh_policy(name) -> None:
     """Execute the ssh_policy operation."""
     daemon = shutil.which("sshd") or "/usr/sbin/sshd"
     r = subprocess.run(
@@ -253,7 +253,7 @@ def inspect(name, expected=None, enforce=False):
     }
 
 
-def main():
+def main() -> None:
     """Execute the main operation."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("mode", choices=["validate", "inspect", "as-user"])

@@ -10,7 +10,9 @@ parser.add_argument("--chart", required=True)
 parser.add_argument("--namespace", required=True)
 parser.add_argument("--values", required=True)
 parser.add_argument("--kubeconfig", required=True)
-parser.add_argument("--plan", action="store_true", help="Print the required Helm action instead of change JSON")
+parser.add_argument(
+    "--plan", action="store_true", help="Print the required Helm action instead of change JSON"
+)
 arguments = parser.parse_args()
 common = ["--namespace", arguments.namespace, "--kubeconfig", arguments.kubeconfig]
 desired = subprocess.run(

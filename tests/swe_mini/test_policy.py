@@ -6,6 +6,8 @@ import json
 import unittest
 from pathlib import Path
 
+import pytest
+
 spec = importlib.util.spec_from_file_location(
     "policy", Path(__file__).resolve().parents[2] / "services/swe-mini/policy.py"
 )
@@ -44,7 +46,7 @@ class PublicationPolicy(unittest.TestCase):
             "server/app/./a.py",
             "server/app/a\\b",
         ]:
-            with self.subTest(path=path), self.assertRaises(ValueError):
+            with self.subTest(path=path), pytest.raises(ValueError):
                 p.validate_changes([self.item(path)])
 
     def test_dependency_repair_boundary(self) -> None:
@@ -67,25 +69,25 @@ class PublicationPolicy(unittest.TestCase):
 
         p.validate_dependency_update(p.validate_changes(changes()), original)
         updated["scripts"]["build"] = "true"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             p.validate_dependency_update(changes(), original)
         updated["scripts"]["build"] = "vite build"
         updated["dependencies"]["new-package"] = "1.0.0"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             p.validate_dependency_update(changes(), original)
-        with self.assertRaises(ValueError):
-            p.validate_changes(changes() + [self.item()])
+        with pytest.raises(ValueError):
+            p.validate_changes([*changes(), self.item()])
 
     def test_modes(self) -> None:
         """Reject symlink, submodule, and executable file modes."""
         for mode in ["120000", "160000", "100755"]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 p.validate_changes([self.item(mode=mode)])
 
     def test_binary_and_size(self) -> None:
         """Reject binary content and payloads above the size limit."""
         for content in [b"\x00", b"x" * (p.MAX_BYTES + 1)]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 p.validate_changes([self.item(content=content)])
 
     def test_empty_duplicates_many(self) -> None:
@@ -95,7 +97,7 @@ class PublicationPolicy(unittest.TestCase):
             [self.item(), self.item()],
             [self.item(f"common/a{i}") for i in range(21)],
         ]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 p.validate_changes(items)
 
     def test_result_roundtrip(self) -> None:
@@ -107,16 +109,16 @@ class PublicationPolicy(unittest.TestCase):
         """Enforce the phase key when decoding result markers."""
         marker = p.encode_result({"checks": {"backend": 0}}, "parent-only-key")
         assert p.decode_result(marker, "parent-only-key")["checks"]["backend"] == 0
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             p.decode_result(marker, "wrong-key")
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             p.decode_result(p.encode_result({}), "parent-only-key")
 
     def test_missing_ambiguous_result(self) -> None:
         """Reject missing markers and duplicated marker text."""
         marker = p.encode_result({})
         for text in ["", marker + "\n" + marker]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 p.decode_result(text)
 
     def test_result_decompression_limit(self) -> None:
@@ -124,7 +126,7 @@ class PublicationPolicy(unittest.TestCase):
         import gzip
 
         marker = "SWE_RESULT:" + base64.b64encode(gzip.compress(b"x" * 900_001)).decode()
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             p.decode_result(marker)
 
 

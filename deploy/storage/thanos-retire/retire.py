@@ -48,47 +48,41 @@ def output(args: list[str], stdin: str | None = None) -> str:
 
 def main() -> None:
     if sys.flags.optimize:
-        raise RuntimeError("safety checks need standard Python")
+        msg = "safety checks need standard Python"
+        raise RuntimeError(msg)
     apply = sys.argv[1:] == ["--release-verified-files"]
     assert apply or sys.argv[1:] in (["--check"], ["--audit-cluster"])
-    j = json.loads(output(K + ["get", "job", WATCH, "-o", "json"]))
+    j = json.loads(output([*K, "get", "job", WATCH, "-o", "json"]))
     assert j["status"].get("succeeded") == 1, "first real shipper upload not verified"
-    log = output(K + ["logs", "job/" + WATCH])
+    log = output([*K, "logs", "job/" + WATCH])
     mat = re.search(
         r"new sidecar block verified ([0-9A-Z]{26}) files (\d+) index/chunk bytes (\d+)",
         log,
     )
-    assert mat and int(mat[2]) >= 2 and int(mat[3]) > 0
+    assert mat
+    assert int(mat[2]) >= 2
+    assert int(mat[3]) > 0
     print("new shipper evidence", mat.group(0), flush=True)
-    pods = json.loads(output(K + ["get", "pod", "-o", "json"]))["items"]
+    pods = json.loads(output([*K, "get", "pod", "-o", "json"]))["items"]
     p = next(
-        p
-        for p in pods
-        if p["metadata"]["name"] == "prometheus-kube-prometheus-stack-prometheus-0"
+        p for p in pods if p["metadata"]["name"] == "prometheus-kube-prometheus-stack-prometheus-0"
     )
-    assert p["metadata"]["uid"] == UID and any(
-        c["type"] == "Ready" and c["status"] == "True"
-        for c in p["status"]["conditions"]
-    )
+    assert p["metadata"]["uid"] == UID
+    assert any(c["type"] == "Ready" and c["status"] == "True" for c in p["status"]["conditions"])
     side = next(c for c in p["spec"]["containers"] if c["name"] == "thanos-sidecar")
     assert any(
-        e.get("valueFrom", {}).get("secretKeyRef", {}).get("name")
-        == "thanos-warm-shipper"
+        e.get("valueFrom", {}).get("secretKeyRef", {}).get("name") == "thanos-warm-shipper"
         for e in side["env"]
     )
     assert not any(
-        v.get("hostPath", {}).get("path", "").rstrip("/") == RAW
-        for v in p["spec"]["volumes"]
+        v.get("hostPath", {}).get("path", "").rstrip("/") == RAW for v in p["spec"]["volumes"]
     )
     pvc = next(
         v["persistentVolumeClaim"]["claimName"]
         for v in p["spec"]["volumes"]
         if "persistentVolumeClaim" in v
     )
-    assert (
-        json.loads(output(K + ["get", "pvc", pvc, "-o", "json"]))["spec"]["volumeName"]
-        == PV
-    )
+    assert json.loads(output([*K, "get", "pvc", pvc, "-o", "json"]))["spec"]["volumeName"] == PV
     for p in pods:
         if p.get("status", {}).get("phase") in ("Succeeded", "Failed"):
             continue
@@ -99,20 +93,20 @@ def main() -> None:
         ("thanos-compactor", "thanos-warm-compactor"),
         ("thanos-store", "thanos-warm-store-reader"),
     ]:
-        dep = json.loads(output(K + ["get", "deploy", name, "-o", "json"]))
-        assert dep["status"].get("readyReplicas") == 1 and any(
+        dep = json.loads(output([*K, "get", "deploy", name, "-o", "json"]))
+        assert dep["status"].get("readyReplicas") == 1
+        assert any(
             v.get("secret", {}).get("secretName") == cred
             for v in dep["spec"]["template"]["spec"]["volumes"]
         )
-    spec = json.loads(output(K + ["get", "cj", "thanos-cascade", "-o", "json"]))[
-        "spec"
-    ]["jobTemplate"]["spec"]["template"]["spec"]
-    assert spec["nodeSelector"][
-        "kubernetes.io/hostname"
-    ] == "socrat-3" and "hour_copy.py" in str(spec["containers"][0]["command"])
+    spec = json.loads(output([*K, "get", "cj", "thanos-cascade", "-o", "json"]))["spec"][
+        "jobTemplate"
+    ]["spec"]["template"]["spec"]
+    assert spec["nodeSelector"]["kubernetes.io/hostname"] == "socrat-3"
+    assert "hour_copy.py" in str(spec["containers"][0]["command"])
     data = output(
-        K
-        + [
+        [
+            *K,
             "exec",
             "deploy/thanos-store",
             "--",
@@ -137,7 +131,7 @@ def main() -> None:
     assert remote
     old: list[BlockMeta] = json.loads(
         output(
-            SSH + ["python3 -"],
+            [*SSH, "python3 -"],
             """import json
 from pathlib import Path
 p=Path('/var/lib/socrat-thanos');print(json.dumps([json.loads(f.read_bytes()) for f in p.glob('*/meta.json')]))""",
@@ -181,7 +175,7 @@ for f in m['files']:(root/f).unlink()
 for d in sorted(m['dirs'],key=lambda x:x.count('/'),reverse=True):(root/d).rmdir()
 fd=os.open(root,os.O_DIRECTORY);os.fsync(fd);os.close(fd);assert not any(root.iterdir());rec={'files':len(m['files']),'logical_bytes':sum(v[0] for v in m['files'].values()),'source_empty':True,'free_before':before,'free_after':shutil.disk_usage(root).free,'manifest':digest(m),'archive':sha};(spool/'released.json').write_text(json.dumps(rec));print(json.dumps(rec),flush=True)
 """
-    print(output(SSH + ["nice -n 12 ionice -c2 -n7 python3 -I -"], prog), flush=True)
+    print(output([*SSH, "nice -n 12 ionice -c2 -n7 python3 -I -"], prog), flush=True)
 
 
 if __name__ == "__main__":

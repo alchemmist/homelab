@@ -25,14 +25,14 @@ SSH = [
 HEADER = b"SOCRAT-IDENTITY-BACKUP-v1\n"
 
 
-def save(path, data):
+def save(path, data) -> None:
     """Write the save output."""
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "wb") as f:
         f.write(data)
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--output", type=Path, required=True)
@@ -44,12 +44,14 @@ def main():
     p.add_argument("--key", type=Path, default=Path.home() / ".config/homelab/identity-backup.key")
     args = p.parse_args()
     if args.output.exists():
-        raise SystemExit("Refusing overwrite")
+        msg = "Refusing overwrite"
+        raise SystemExit(msg)
     args.key.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     if not args.key.exists():
         save(args.key, AESGCM.generate_key(bit_length=256))
     if args.key.stat().st_mode & 0o077:
-        raise SystemExit("Backup key must be private (0600)")
+        msg = "Backup key must be private (0600)"
+        raise SystemExit(msg)
     helper = (
         ROOT
         / {

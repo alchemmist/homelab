@@ -49,7 +49,7 @@ def reconcile(api, root, rollback=False):
     return bool(changed)
 
 
-def main():
+def main() -> None:
     """Update authorization flow titles or restore the titles from the local backup."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)

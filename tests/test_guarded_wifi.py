@@ -82,15 +82,12 @@ class GuardedWifiTests(unittest.TestCase):
 
     def assert_wifi_not_loaded(self) -> None:
         """Assert the rtl8723ae load path was never attempted."""
-        self.assertFalse(any(call[:2] == ["modprobe", "rtl8723ae"] for call in self.calls))
+        assert not any(call[:2] == ["modprobe", "rtl8723ae"] for call in self.calls)
 
     def test_matching_loaded_identity_allows_wifi(self) -> None:
         """Load Wi-Fi for a matching guarded identity."""
-        self.assertEqual(self.invoke(), 0)
-        self.assertEqual(
-            self.calls[-1],
-            ["modprobe", "rtl8723ae", "msi=1", "ips=0", "fwlps=0", "swlps=0"],
-        )
+        assert self.invoke() == 0
+        assert self.calls[-1] == ["modprobe", "rtl8723ae", "msi=1", "ips=0", "fwlps=0", "swlps=0"]
 
     def test_existing_wifi_with_wrong_parameters_fails_without_reload(self) -> None:
         """Fail wrong parameters without reloading the module."""
@@ -99,41 +96,39 @@ class GuardedWifiTests(unittest.TestCase):
                 path = self.wifi_parameters / name
                 original = path.read_text()
                 path.write_text("N" if name == "msi" else "Y")
-                self.assertEqual(self.invoke(), 1)
-                self.assertFalse(
-                    any("-r" in command or "rmmod" in command for command in self.calls)
-                )
+                assert self.invoke() == 1
+                assert not any("-r" in command or "rmmod" in command for command in self.calls)
                 path.write_text(original)
 
     def test_missing_wifi_parameter_fails(self) -> None:
         """Fail on a missing Wi-Fi parameter file."""
         (self.wifi_parameters / "msi").unlink()
-        self.assertEqual(self.invoke(), 1)
+        assert self.invoke() == 1
 
     def test_installed_dkms_with_original_modules_annotation_is_accepted(self) -> None:
         """Accept the original-modules dkms annotation."""
         self.status = (
             b"homelab-alx/6.12.111-1, test-kernel, x86_64: installed (Original modules exist)\n"
         )
-        self.assertEqual(self.invoke(), 0)
+        assert self.invoke() == 0
 
     def test_unknown_dkms_annotation_is_rejected(self) -> None:
         """Reject an unknown dkms annotation."""
         self.status = (
             b"homelab-alx/6.12.111-1, test-kernel, x86_64: installed (WARNING: mismatch)\n"
         )
-        self.assertEqual(self.invoke(), 1)
+        assert self.invoke() == 1
         self.assert_wifi_not_loaded()
 
     def test_check_never_loads_wifi(self) -> None:
         """Check mode never loads Wi-Fi."""
-        self.assertEqual(self.invoke("--check"), 0)
+        assert self.invoke("--check") == 0
         self.assert_wifi_not_loaded()
 
     def test_old_running_module_rejected_even_when_dkms_installed(self) -> None:
         """Reject an old running module despite dkms."""
         self.note.write_bytes(b"old-in-tree-build-id")
-        self.assertEqual(self.invoke(), 1)
+        assert self.invoke() == 1
         self.assert_wifi_not_loaded()
 
     def test_wrong_kernel_or_uninstalled_dkms_rejected(self) -> None:
@@ -145,35 +140,35 @@ class GuardedWifiTests(unittest.TestCase):
         ):
             with self.subTest(status=status):
                 self.status = status
-                self.assertEqual(self.invoke(), 1)
+                assert self.invoke() == 1
                 self.assert_wifi_not_loaded()
-                self.assertNotIn(["modprobe", "alx"], self.calls)
+                assert ["modprobe", "alx"] not in self.calls
 
     def test_in_tree_module_rejected(self) -> None:
         """Reject an in-tree module."""
         self.module = self.modules / "test-kernel/kernel/drivers/alx.ko"
         self.module.parent.mkdir(parents=True)
         self.module.write_bytes(b"in-tree")
-        self.assertEqual(self.invoke(), 1)
+        assert self.invoke() == 1
         self.assert_wifi_not_loaded()
 
     def test_missing_loaded_note_rejected(self) -> None:
         """Reject a missing loaded note."""
         self.note.unlink()
-        self.assertEqual(self.invoke(), 1)
+        assert self.invoke() == 1
         self.assert_wifi_not_loaded()
 
     def test_wrong_board_rejected_without_commands(self) -> None:
         """Reject a wrong board without running commands."""
         self.board.write_text("other-board")
-        self.assertEqual(self.invoke(), 1)
-        self.assertEqual(self.calls, [])
+        assert self.invoke() == 1
+        assert self.calls == []
 
     def test_nonroot_rejected_without_commands(self) -> None:
         """Reject non-root invocation without running commands."""
         with mock.patch.object(GUARD.os, "geteuid", return_value=1000):
-            self.assertEqual(self.invoke(), 1)
-        self.assertEqual(self.calls, [])
+            assert self.invoke() == 1
+        assert self.calls == []
 
 
 class ModuleNoteTests(unittest.TestCase):
@@ -196,15 +191,15 @@ class ModuleNoteTests(unittest.TestCase):
 
                 def objcopy(command: list[str]) -> bytes:
                     """Dump the note section into a distinct output file."""
-                    self.assertEqual(command[:2], ["objcopy", "--dump-section"])
-                    self.assertEqual(Path(command[3]).read_bytes(), b"elf-module")
-                    self.assertNotEqual(command[3], command[4])
+                    assert command[:2] == ["objcopy", "--dump-section"]
+                    assert Path(command[3]).read_bytes() == b"elf-module"
+                    assert command[3] != command[4]
                     Path(command[2].split("=", 1)[1]).write_bytes(b"note-section")
                     return b""
 
                 with mock.patch.object(GUARD, "run", side_effect=objcopy):
-                    self.assertEqual(GUARD.module_note(source), b"note-section")
-                self.assertEqual(source.read_bytes(), encoded)
+                    assert GUARD.module_note(source) == b"note-section"
+                assert source.read_bytes() == encoded
 
 
 if __name__ == "__main__":

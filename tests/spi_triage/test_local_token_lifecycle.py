@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import pytest
 from core import Failure
 from integrations import Model
 from local_token_counter import MAX_BYTES, LocalCounter
@@ -81,7 +82,7 @@ class Lifecycle(unittest.TestCase):
                     stack.enter_context(patch("local_token_counter.json.loads", return_value={}))
                 http = Mock()
                 store = Mock()
-                with self.assertRaises(Failure):
+                with pytest.raises(Failure):
                     Model(http, "unused", store=store)
                 http.request.assert_not_called()
                 store.recover_on_start.assert_not_called()
@@ -106,15 +107,15 @@ class Lifecycle(unittest.TestCase):
             ("chat_template_kwargs", {"enable_thinking": True}),
             ("messages", [{"role": "assistant", "content": "x"}]),
         ]:
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 m.counter.reservation(dict(base, **{key: value}))
         m.http.request.assert_not_called()
 
     def test_cached_native_does_not_bypass_validation(self) -> None:
         """Verify a cached native counter still validates every request."""
         LocalCounter()
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             LocalCounter("/nonexistent/spi-tokenizer")
         with patch("local_token_counter.PINS", {"tokenizer.json": "0" * 64}):
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 LocalCounter()

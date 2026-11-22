@@ -11,6 +11,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,7 +19,9 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE_DB_MODE = 0o640
 PREIMAGE_FILE_MODE = 0o600
 BACKUP_DIR_MODE = 0o700
-SPEC = importlib.util.spec_from_file_location("vps_migration", ROOT / "ansible/scripts/vps-ip-migration.py")
+SPEC = importlib.util.spec_from_file_location(
+    "vps_migration", ROOT / "ansible/scripts/vps-ip-migration.py"
+)
 M = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(M)
 OLD, NEW = "1.1.1.1", "8.8.8.8"
@@ -37,11 +40,11 @@ class AddressTests(unittest.TestCase):
             ("bad", NEW),
             ("224.0.0.1", NEW),
         ]:
-            with self.subTest(old=old, new=new), self.assertRaises(M.MigrationError):
+            with self.subTest(old=old, new=new), pytest.raises(M.MigrationError):
                 M.addresses(old, new)
 
     def test_home_entrance_cannot_be_mistaken_for_old_vps(self) -> None:
-        with self.assertRaises(M.MigrationError):
+        with pytest.raises(M.MigrationError):
             M.validate_dns_anchor('HOME = "1.1.1.1"\nVPS = "8.8.8.8"\n', OLD, NEW)
 
     def test_replace_exact_ip_not_prefix(self) -> None:
@@ -117,33 +120,33 @@ class RepositoryTests(unittest.TestCase):
         assert len(list(self.backup.iterdir())) == 1
 
     def test_backup_must_be_outside_worktree(self) -> None:
-        with self.assertRaises(M.MigrationError):
+        with pytest.raises(M.MigrationError):
             M.repository(self.repo, OLD, NEW, True, self.repo / "private")
 
     def test_third_address_anchor_fails_closed(self) -> None:
         (self.repo / "ansible/scripts/public_dns_zone.py").write_text('VPS = "9.9.9.9"\n')
-        with self.assertRaises(M.MigrationError):
+        with pytest.raises(M.MigrationError):
             M.repository(self.repo, OLD, NEW)
 
     def test_missing_or_symlink_source_fails_closed(self) -> None:
         p = self.repo / M.SOURCE_FILES[0]
         p.unlink()
-        with self.assertRaises(M.MigrationError):
+        with pytest.raises(M.MigrationError):
             M.repository(self.repo, OLD, NEW)
         p.symlink_to(self.repo / M.SOURCE_FILES[1])
-        with self.assertRaises(M.MigrationError):
+        with pytest.raises(M.MigrationError):
             M.repository(self.repo, OLD, NEW)
 
     def test_partial_receipt_blocks_blind_rerun(self) -> None:
         store = M.Preimages(self.backup, OLD + "-to-" + NEW)
         store.receipt({"state": "partial-failure-stop-and-investigate"})
-        with self.assertRaises(M.MigrationError):
+        with pytest.raises(M.MigrationError):
             M.repository(self.repo, OLD, NEW, backup_root=self.backup)
 
     def test_dirty_owned_source_is_preserved(self) -> None:
         path = self.repo / M.SOURCE_FILES[0]
         path.write_text(path.read_text() + "concurrent change")
-        with self.assertRaises(M.MigrationError):
+        with pytest.raises(M.MigrationError):
             M.repository(self.repo, OLD, NEW, True, self.backup)
         assert "concurrent change" in path.read_text()
         assert not self.backup.exists()
@@ -156,13 +159,13 @@ class RepositoryTests(unittest.TestCase):
         shutil.rmtree(parent)
         (outside / "values.yaml").write_text(OLD)
         parent.symlink_to(outside, target_is_directory=True)
-        with self.assertRaises(M.MigrationError):
+        with pytest.raises(M.MigrationError):
             M.repository(self.repo, OLD, NEW)
         assert (outside / "values.yaml").read_text() == OLD
 
     def test_source_failure_leaves_stop_receipt(self) -> None:
         with patch.object(M, "write_changes", side_effect=M.MigrationError("injected failure")):
-            with self.assertRaises(M.MigrationError):
+            with pytest.raises(M.MigrationError):
                 M.repository(self.repo, OLD, NEW, True, self.backup)
         receipts = list(self.backup.glob("*/receipt.json"))
         assert len(receipts) == 1
@@ -174,7 +177,7 @@ class RepositoryTests(unittest.TestCase):
         changes = M.file_plan([self.repo / M.SOURCE_FILES[0]], OLD, NEW)
         changes[0][0].write_text("concurrent edit")
         store = M.Preimages(self.backup, "test")
-        with self.assertRaises(M.MigrationError):
+        with pytest.raises(M.MigrationError):
             M.write_changes(changes, store, lambda p: p.name)
         assert changes[0][0].read_text() == "concurrent edit"
 
@@ -199,7 +202,7 @@ class DatabaseTests(unittest.TestCase):
     def test_production_sql_write_prohibited_and_backup_read_only(self) -> None:
         before = self.db.read_bytes()
         store = M.Preimages(self.base / "backups", "test")
-        with self.assertRaisesRegex(M.MigrationError, "native API"):
+        with pytest.raises(M.MigrationError, match="native API"):
             M.migrate_database(self.db, OLD, NEW, store)
         backup = M.backup_database(self.db, store)
         assert self.db.read_bytes() == before
@@ -211,16 +214,16 @@ class DatabaseTests(unittest.TestCase):
     def test_nonliteral_address_needs_review(self) -> None:
         with sqlite3.connect(self.db) as c:
             c.execute("UPDATE hosts SET address=? WHERE id=1", (OLD + ":443",))
-        with self.assertRaises(M.MigrationError):
+        with pytest.raises(M.MigrationError):
             M.db_plan(self.db, OLD)
 
     def test_wrong_schema_and_corrupt_database_fail_before_mutation(self) -> None:
         with sqlite3.connect(self.db) as c:
             c.execute("DROP TABLE hosts")
-        with self.assertRaises(M.MigrationError):
+        with pytest.raises(M.MigrationError):
             M.db_plan(self.db, OLD)
         self.db.write_bytes(b"not sqlite")
-        with self.assertRaises(sqlite3.DatabaseError):
+        with pytest.raises(sqlite3.DatabaseError):
             M.db_plan(self.db, OLD)
 
 
@@ -231,7 +234,7 @@ class RuntimeTests(unittest.TestCase):
         a, b = "A" * 43 + "=", "B" * 43 + "="
         text = f"[Peer]\nPublicKey = {a}\nEndpoint = {OLD}:51830\nAllowedIPs = 10.250.0.2/32\n[Peer]\nPublicKey = {b}\nEndpoint = 127.0.0.1:51840\n"
         assert M.wg_endpoint_changes(text, OLD, NEW) == [(a, NEW + ":51830")]
-        with self.assertRaises(M.MigrationError):
+        with pytest.raises(M.MigrationError):
             M.wg_endpoint_changes("[Peer]\nEndpoint = " + OLD + ":123", OLD, NEW)
 
     def test_do_not_retarget_home_peer(self) -> None:
@@ -242,7 +245,7 @@ class RuntimeTests(unittest.TestCase):
             + OLD
             + ":51830\nAllowedIPs = 10.250.0.1/32\n"
         )
-        with self.assertRaises(M.MigrationError):
+        with pytest.raises(M.MigrationError):
             M.wg_endpoint_changes(text, OLD, NEW)
 
     def test_only_owned_native_services(self) -> None:
@@ -265,31 +268,31 @@ class RuntimeTests(unittest.TestCase):
             "run",
             side_effect=lambda a: "auto-restart" if "SubState" in a else states[a[2]],
         ):
-            with self.assertRaises(M.MigrationError):
+            with pytest.raises(M.MigrationError):
                 M.service_plan(services)
             assert M.service_plan(services, states) == ([services[0]], [services[1]])
-            with self.assertRaises(M.MigrationError):
+            with pytest.raises(M.MigrationError):
                 M.service_plan(services, {services[0]: "inactive"})
 
     def test_reviewed_dormant_service_becoming_active_stops(self) -> None:
         with patch.object(M, "run", return_value="active"):
-            with self.assertRaisesRegex(M.MigrationError, "drifted"):
+            with pytest.raises(M.MigrationError, match="drifted"):
                 M.service_plan(["knot.service"], {"knot.service": "inactive"})
 
     def test_wrong_host_and_unassigned_address_fail_before_files(self) -> None:
         with patch.object(socket, "gethostname", return_value="socrat-2"):
-            with self.assertRaises(M.MigrationError):
+            with pytest.raises(M.MigrationError):
                 M.host("socrat-0", OLD, NEW)
             with patch.object(M, "run", return_value="[]"):
-                with self.assertRaises(M.MigrationError):
+                with pytest.raises(M.MigrationError):
                     M.host("socrat-2", OLD, NEW, require_assigned=True)
 
     def test_command_failure_never_echoes_secret_stderr(self) -> None:
         fake = type("Result", (), {"returncode": 1, "stderr": "private-sentinel", "stdout": ""})()
         with patch.object(M.subprocess, "run", return_value=fake):
-            with self.assertRaises(M.MigrationError) as caught:
+            with pytest.raises(M.MigrationError) as caught:
                 M.run(["example", "private-argument"])
-        assert "private" not in str(caught.exception)
+        assert "private" not in str(caught.value)
 
     def test_guard_adds_new_before_removing_exact_old_rule(self) -> None:
         calls: list[list[str]] = []

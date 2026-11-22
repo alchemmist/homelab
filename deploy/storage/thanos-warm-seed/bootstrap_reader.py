@@ -116,13 +116,18 @@ echo 'workshop read-only policy attached'
             policy["Statement"][1]["Action"].append("s3:DeleteObject")
         if role == "tier-marker":
             policy = json.loads(json.dumps(POLICY))
-            policy["Statement"].append({"Effect": "Allow", "Action": ["s3:PutObject"],
-                "Resource": ["arn:aws:s3:::thanos-workshop/*/" + f + "-mark.json"
-                             for f in ("deletion", "no-downsample", "no-compact")]})
+            policy["Statement"].append(
+                {
+                    "Effect": "Allow",
+                    "Action": ["s3:PutObject"],
+                    "Resource": [
+                        "arn:aws:s3:::thanos-workshop/*/" + f + "-mark.json"
+                        for f in ("deletion", "no-downsample", "no-compact")
+                    ],
+                }
+            )
         policy_value["value"] = json.dumps(policy)
-        command = script.replace(
-            "thanos-workshop-read", "thanos-workshop-" + role
-        ).replace(
+        command = script.replace("thanos-workshop-read", "thanos-workshop-" + role).replace(
             "workshop read-only policy attached",
             "bucket-scoped " + role + " policy attached",
         )
@@ -158,9 +163,7 @@ echo 'workshop read-only policy attached'
                     "readOnly": True,
                 }
             )
-        command = script.replace(
-            "thanos-workshop-read", "thanos-hour-fixture-read"
-        ).replace(
+        command = script.replace("thanos-workshop-read", "thanos-hour-fixture-read").replace(
             "printf '%s'",
             """/tmp/mc mb warm/thanos-hour-fixture >/dev/null
 for d in /fixture/*/*; do
@@ -192,12 +195,9 @@ printf '%s'""",
                         "nodeSelector": {"kubernetes.io/hostname": "socrat-1"},
                         "initContainers": [fetch],
                         "containers": [c],
-                        "volumes": extra
-                        + [
-                            {
-                                "name": "tmp",
-                                "emptyDir": {"medium": "Memory", "sizeLimit": "96Mi"},
-                            },
+                        "volumes": [
+                            *extra,
+                            {"name": "tmp", "emptyDir": {"medium": "Memory", "sizeLimit": "96Mi"}},
                             {
                                 "name": "trust",
                                 "secret": {

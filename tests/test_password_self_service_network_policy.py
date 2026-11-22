@@ -12,7 +12,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def _render() -> list[dict]:
     result = subprocess.run(
-        ["helm", "template", "password-self-service", "charts/password-self-service", "--namespace", "identity"],
+        [
+            "helm",
+            "template",
+            "password-self-service",
+            "charts/password-self-service",
+            "--namespace",
+            "identity",
+        ],
         cwd=ROOT,
         check=True,
         capture_output=True,
@@ -22,11 +29,7 @@ def _render() -> list[dict]:
 
 
 def _ports(rules: list[dict]) -> set[tuple[str, int]]:
-    return {
-        (port["protocol"], port["port"])
-        for rule in rules
-        for port in rule["ports"]
-    }
+    return {(port["protocol"], port["port"]) for rule in rules for port in rule["ports"]}
 
 
 def test_rendered_password_service_network_policy_is_minimal() -> None:
@@ -68,12 +71,16 @@ def test_rendered_password_service_network_policy_is_minimal() -> None:
 
     # No wildcard peer/range rule can silently grant unrelated callers or destinations.
     assert all("ipBlock" not in str(rule) for rule in ingress + egress)
-    assert all("namespaceSelector" in str(rule) and "podSelector" in str(rule) for rule in ingress + egress)
+    assert all(
+        "namespaceSelector" in str(rule) and "podSelector" in str(rule) for rule in ingress + egress
+    )
 
     service = next(doc for doc in documents if doc.get("kind") == "Service")
     assert service["spec"]["selector"] == spec["podSelector"]["matchLabels"]
     deployment = next(doc for doc in documents if doc.get("kind") == "Deployment")
-    assert deployment["spec"]["template"]["metadata"]["labels"] == spec["podSelector"]["matchLabels"]
+    assert (
+        deployment["spec"]["template"]["metadata"]["labels"] == spec["podSelector"]["matchLabels"]
+    )
 
     nginx = (ROOT / "charts/password-self-service/files/nginx.conf").read_text()
     assert "authentik-server.identity.svc.cluster.local" in nginx

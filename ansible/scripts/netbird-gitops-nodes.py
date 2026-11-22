@@ -19,7 +19,8 @@ spec = importlib.util.spec_from_file_location(
     "node_controller", ROOT / "ansible/scripts/netbird-node-reconcile.py"
 )
 if spec is None or spec.loader is None:
-    raise RuntimeError("netbird-node-reconcile module missing or unloadable")
+    msg = "netbird-node-reconcile module missing or unloadable"
+    raise RuntimeError(msg)
 node = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(node)
 

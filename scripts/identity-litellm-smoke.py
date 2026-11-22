@@ -143,7 +143,7 @@ try:
         components = []
         errors = []
 
-        def observe(response):
+        def observe(response) -> None:
             """Perform the observe operation."""
             if (
                 urllib.parse.urlparse(response.url).hostname == "llm.alchemmist.xyz"
@@ -236,7 +236,8 @@ try:
                     ).get("secret", [None])[0]
                 )
                 if not source:
-                    raise RuntimeError("TOTP setup data unavailable")
+                    msg = "TOTP setup data unavailable"
+                    raise RuntimeError(msg)
                 key = base64.b32decode(source.upper() + "=" * ((-len(source)) % 8))
                 sig = hmac.new(
                     key, struct.pack(">Q", int(time.time()) // 30), hashlib.sha1
@@ -272,10 +273,8 @@ try:
                 assert session["secure"], "SSO session cookie must be HTTPS-only"
                 part = token.split(".")[1]
                 payload = json.loads(base64.urlsafe_b64decode(part + "=" * ((-len(part)) % 4)))
-                assert (
-                    payload["user_id"] == fixture_id
-                    and payload["user_role"] == "internal_user_viewer"
-                )
+                assert payload["user_id"] == fixture_id
+                assert payload["user_role"] == "internal_user_viewer"
                 request = urllib.request.Request(
                     "https://llm.alchemmist.xyz/user/info?"
                     + urllib.parse.urlencode({"user_id": fixture_id}),
@@ -284,9 +283,8 @@ try:
                 with urllib.request.urlopen(request, timeout=30) as response:
                     profile = json.load(response)
                 assert profile["user_info"]["user_role"] == "internal_user_viewer"
-                assert (
-                    "ak-stage-authenticator-totp" in components and "ak-stage-consent" in components
-                )
+                assert "ak-stage-authenticator-totp" in components
+                assert "ak-stage-consent" in components
                 print(
                     "PASS: LiteLLM native password + TOTP + consent + PKCE/OIDC callback and server-verified read-only identity"
                 )
@@ -298,7 +296,8 @@ try:
                 urllib.parse.urlparse(page.url).hostname,
                 urllib.parse.urlparse(page.url).path,
             )
-            raise RuntimeError("Browser roundtrip did not complete")
+            msg = "Browser roundtrip did not complete"
+            raise RuntimeError(msg)
         print("Browser JS errors:", len(errors))
         assert not errors
         browser.close()

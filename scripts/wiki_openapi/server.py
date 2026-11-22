@@ -3,13 +3,15 @@
 import hmac
 import json
 import os
-from collections.abc import Mapping
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Lock
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from engine import UnsafeInput
 from stages import stage
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 LOCK = Lock()
 PATHS = {"/check", "/render", "/create-pr", "/close-older"}

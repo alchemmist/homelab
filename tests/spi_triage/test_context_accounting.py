@@ -4,6 +4,7 @@ import copy
 import unittest
 from unittest.mock import Mock
 
+import pytest
 import test_triage as f
 from core import MATCH_SCHEMA, Failure
 from integrations import Model
@@ -27,9 +28,9 @@ class ContextAccountingTests(unittest.TestCase):
             {"chat_template_kwargs": {"enable_thinking": True}},
             {"messages": []},
         ):
-            with self.assertRaises(Failure) as e:
+            with pytest.raises(Failure) as e:
                 m.reservation({**b, **change})
-            assert e.exception.code == "LLM_ACCOUNTING_CONTRACT_MISMATCH"
+            assert e.value.code == "LLM_ACCOUNTING_CONTRACT_MISMATCH"
         m.http.request.assert_not_called()
 
     def test_excerpts_identity_reference_metadata_and_no_mutation(self) -> None:
@@ -103,7 +104,7 @@ class ContextAccountingTests(unittest.TestCase):
             raise Stop
 
         m.call = call
-        with self.assertRaises(Stop):
+        with pytest.raises(Stop):
             m.analyze(event, match, evidence)
         assert (event, match, evidence) == original
         assert [x["number"] for x in captured["preliminary_match"]["candidates"]] == [
@@ -120,9 +121,9 @@ class ContextAccountingTests(unittest.TestCase):
         m = Model(Mock(), "unused")
         event = f.event()
         event["path"] = ["x" * 120000] * 5
-        with self.assertRaises(Failure) as e:
+        with pytest.raises(Failure) as e:
             m.analyze(event, {"candidates": []}, {})
-        assert e.exception.code == "LLM_CONTEXT_METADATA_TOO_LARGE"
+        assert e.value.code == "LLM_CONTEXT_METADATA_TOO_LARGE"
         m.http.request.assert_not_called()
 
     def test_local_120_long_report_analysis(self) -> None:
@@ -154,7 +155,7 @@ class ContextAccountingTests(unittest.TestCase):
             raise Stop
 
         m.call = call
-        with self.assertRaises(Stop):
+        with pytest.raises(Stop):
             m.analyze(f.event(), match, evidence)
         assert (match, evidence) == original
         assert [c["number"] for c in captured["preliminary_match"]["candidates"]] == list(

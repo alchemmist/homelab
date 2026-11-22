@@ -63,7 +63,8 @@ def ready_canary_pod(pods: dict[str, object], nodes: dict[str, object]) -> str:
         )
     ]
     if not candidates:
-        raise RuntimeError("No active ready LMS pod available for canary")
+        msg = "No active ready LMS pod available for canary"
+        raise RuntimeError(msg)
     return max(candidates, key=lambda pod: pod["metadata"].get("creationTimestamp", ""))[
         "metadata"
     ]["name"]
@@ -78,7 +79,8 @@ def kubepython(code: str) -> dict[str, object]:
             timeout=30,
         )
         if result.returncode:
-            raise RuntimeError("Canary pod discovery failed; sensitive output suppressed")
+            msg = "Canary pod discovery failed; sensitive output suppressed"
+            raise RuntimeError(msg)
         payload: dict[str, object] = json.loads(result.stdout)
         return payload
 
@@ -96,7 +98,8 @@ def kubepython(code: str) -> dict[str, object]:
     ]
     result = subprocess.run(command, input=code, text=True, capture_output=True, timeout=60)
     if result.returncode:
-        raise RuntimeError("LMS canary operation failed; sensitive output suppressed")
+        msg = "LMS canary operation failed; sensitive output suppressed"
+        raise RuntimeError(msg)
     return cast("dict[str, object]", json.loads(result.stdout))
 
 
@@ -183,7 +186,8 @@ def _run_browser_canary(args: argparse.Namespace, cookie: str) -> tuple[_Browser
     observation = cast("_BrowserObservation", json.loads(browser.stdout))
     trace_id = observation["pageTrace"].split("-")[1]
     if observation["apiContext"].split("-")[1] != trace_id:
-        raise ValueError("Browser and backend trace IDs differ")
+        msg = "Browser and backend trace IDs differ"
+        raise ValueError(msg)
     return observation, trace_id
 
 
@@ -191,7 +195,7 @@ def _await_trace(grafana_url: object, trace_id: str) -> dict[str, object]:
     """Poll production Tempo until the browser canary trace is visible."""
     trace = None
     # Existing tail sampler waits 30 seconds; backend visibility is eventual.
-    for attempt in range(36):
+    for _attempt in range(36):
         try:
             trace = get_json(
                 str(grafana_url) + "/api/datasources/proxy/uid/tempo/api/traces/" + trace_id
@@ -203,7 +207,8 @@ def _await_trace(grafana_url: object, trace_id: str) -> dict[str, object]:
                 raise
         time.sleep(5)
     if trace is None:
-        raise ValueError("Production Tempo did not receive the browser trace")
+        msg = "Production Tempo did not receive the browser trace"
+        raise ValueError(msg)
     return trace
 
 
@@ -221,16 +226,19 @@ def _verify_waterfall(
     proxy_names = []
     while api["name"] != "browser.api":
         if api["id"] in seen or api["parent"] not in by_id:
-            raise ValueError("Waterfall parent relationships are broken")
+            msg = "Waterfall parent relationships are broken"
+            raise ValueError(msg)
         seen.add(api["id"])
         api = by_id[api["parent"]]
         if api["name"] != "browser.api":
             proxy_names.append(api["name"])
     if api["parent"] != page["id"]:
-        raise ValueError("Browser API span is not a child of the page")
+        msg = "Browser API span is not a child of the page"
+        raise ValueError(msg)
     names = {s["name"] for s in records}
     if not {"content.read_render", "db.connect", "db.transaction"} <= names:
-        raise ValueError("Real backend operation spans missing")
+        msg = "Real backend operation spans missing"
+        raise ValueError(msg)
     return names, proxy_names
 
 
@@ -250,7 +258,8 @@ def _verify_loki_correlation(grafana_url: object, trace_id: str) -> int:
     streams = cast("list[_LokiStream]", data["result"])
     count = sum(len(stream["values"]) for stream in streams)
     if count < 2:
-        raise ValueError("Correlated real LMS Loki log lines missing")
+        msg = "Correlated real LMS Loki log lines missing"
+        raise ValueError(msg)
     return count
 
 
@@ -261,7 +270,8 @@ def _verify_dashboard(
     dashboard = get_json(args.grafana_url + "/api/dashboards/uid/lms-performance")
     model = cast("dict[str, object]", dashboard["dashboard"])
     if model["uid"] != "lms-performance":
-        raise ValueError("Dashboard not provisioned")
+        msg = "Dashboard not provisioned"
+        raise ValueError(msg)
     meta = cast("dict[str, object]", dashboard["meta"])
     grafana_url: str = args.grafana_url
     dashboard_url = grafana_url + cast("str", meta["url"]) + "?var-trace_id=" + trace_id
@@ -295,15 +305,15 @@ def _verify_dashboard(
         for field in derived
     )
     if not link_verified:
-        raise ValueError("Loki-to-Tempo derived link not provisioned")
+        msg = "Loki-to-Tempo derived link not provisioned"
+        raise ValueError(msg)
     return dashboard_url, ui_proof, link_verified
 
 
 def run(args: argparse.Namespace) -> None:
     if not args.create_canary_session:
-        raise ValueError(
-            "Explicit --create-canary-session required; temporary privileged test identity will be deleted"
-        )
+        msg = "Explicit --create-canary-session required; temporary privileged test identity will be deleted"
+        raise ValueError(msg)
     issuer, subject = "urn:homelab:lms-telemetry-canary", str(uuid.uuid4())
     try:
         result = kubepython(f"""
@@ -354,7 +364,8 @@ with store.connect() as db:
 print(json.dumps(dict(deleted=count==0)))
 """)
         if not cleanup["deleted"]:
-            raise RuntimeError("Canary profile cleanup failed")
+            msg = "Canary profile cleanup failed"
+            raise RuntimeError(msg)
     report["syntheticProfileDeleted"] = True
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n")

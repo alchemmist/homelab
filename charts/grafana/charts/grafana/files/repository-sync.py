@@ -56,12 +56,16 @@ def _log_stream():
 LOG = _log_stream()
 
 
-def log(level, msg):
-    print(f"{time.strftime('%Y-%m-%dT%H:%M:%S%z')} {level} repository-sync: {msg}", file=LOG, flush=True)
+def log(level, msg) -> None:
+    print(
+        f"{time.strftime('%Y-%m-%dT%H:%M:%S%z')} {level} repository-sync: {msg}",
+        file=LOG,
+        flush=True,
+    )
 
 
 class ApiError(Exception):
-    def __init__(self, status, body):
+    def __init__(self, status, body) -> None:
         super().__init__(f"HTTP {status}: {body}")
         self.status = status
 
@@ -88,7 +92,9 @@ def api(method, url, body=None):
 def sidecar_ready():
     # k8s-sidecar answers 503 "NOT READY" on /healthz until its initial list of all resources is done.
     try:
-        with urllib.request.urlopen(f"http://localhost:{HEALTH_PORT}/healthz", timeout=5) as response:
+        with urllib.request.urlopen(
+            f"http://localhost:{HEALTH_PORT}/healthz", timeout=5
+        ) as response:
             return response.status == 200
     except urllib.error.HTTPError as e:
         return "NOT READY" not in e.read().decode(errors="replace")
@@ -97,12 +103,12 @@ def sidecar_ready():
         return True
 
 
-def grafana_ready():
+def grafana_ready() -> bool:
     api("GET", COLLECTION + "?limit=1")
     return True
 
 
-def wait_for(check, what, timeout=API_TIMEOUT):
+def wait_for(check, what, timeout=API_TIMEOUT) -> None:
     deadline = None if timeout is None else time.monotonic() + timeout
     delay = 1
     while True:
@@ -113,7 +119,8 @@ def wait_for(check, what, timeout=API_TIMEOUT):
         except (ApiError, OSError) as e:
             reason = str(e)
         if deadline is not None and time.monotonic() >= deadline:
-            raise TimeoutError(f"{what} not available after {timeout}s: {reason}")
+            msg = f"{what} not available after {timeout}s: {reason}"
+            raise TimeoutError(msg)
         log("INFO", f"waiting for {what} ({reason}), retrying in {delay}s")
         time.sleep(delay)
         delay = min(delay * 2, 30)
@@ -138,8 +145,15 @@ def load_manifests():
             complete = False
             continue
         for doc in docs:
-            if not isinstance(doc, dict) or doc.get("apiVersion") != API_GROUP_VERSION or doc.get("kind") != KIND:
-                log("ERROR", f"{filename}: skipping document, expected apiVersion {API_GROUP_VERSION} and kind {KIND}")
+            if (
+                not isinstance(doc, dict)
+                or doc.get("apiVersion") != API_GROUP_VERSION
+                or doc.get("kind") != KIND
+            ):
+                log(
+                    "ERROR",
+                    f"{filename}: skipping document, expected apiVersion {API_GROUP_VERSION} and kind {KIND}",
+                )
                 complete = False
                 continue
             name = (doc.get("metadata") or {}).get("name")
@@ -160,17 +174,26 @@ def desired_object(name, manifest, existing=None):
     labels = dict(metadata.get("labels") or {})
     labels[MANAGED_LABEL] = MANAGED_VALUE
     annotations = dict(metadata.get("annotations") or {})
-    annotations[SPEC_CHECKSUM] = checksum([manifest.get("spec"), metadata.get("labels"), metadata.get("annotations")])
+    annotations[SPEC_CHECKSUM] = checksum(
+        [manifest.get("spec"), metadata.get("labels"), metadata.get("annotations")]
+    )
     annotations[SECURE_CHECKSUM] = checksum(manifest.get("secure"))
     obj = {
         "apiVersion": API_GROUP_VERSION,
         "kind": KIND,
-        "metadata": {"name": name, "namespace": API_NAMESPACE, "labels": labels, "annotations": annotations},
+        "metadata": {
+            "name": name,
+            "namespace": API_NAMESPACE,
+            "labels": labels,
+            "annotations": annotations,
+        },
         "spec": manifest.get("spec") or {},
     }
     if existing is not None:
         obj["metadata"]["resourceVersion"] = existing["metadata"]["resourceVersion"]
-    stored_secure_checksum = (existing or {}).get("metadata", {}).get("annotations", {}).get(SECURE_CHECKSUM)
+    stored_secure_checksum = (
+        (existing or {}).get("metadata", {}).get("annotations", {}).get(SECURE_CHECKSUM)
+    )
     if manifest.get("secure") and stored_secure_checksum != annotations[SECURE_CHECKSUM]:
         # Grafana stores a new secure value every time secure.*.create is sent and keeps
         # the stored values if secure is omitted, so only send it when it changed.
@@ -178,7 +201,7 @@ def desired_object(name, manifest, existing=None):
     return obj
 
 
-def apply(name, manifest):
+def apply(name, manifest) -> None:
     url = f"{COLLECTION}/{name}"
     try:
         existing = api("GET", url)
@@ -192,14 +215,22 @@ def apply(name, manifest):
     existing_metadata = existing.get("metadata", {})
     managed = existing_metadata.get("labels", {}).get(MANAGED_LABEL) == MANAGED_VALUE
     if not managed:
-        log("WARN", f"repository {name} already exists and was not created by this sidecar, taking it over")
+        log(
+            "WARN",
+            f"repository {name} already exists and was not created by this sidecar, taking it over",
+        )
     want = desired_object(name, manifest, existing)
     have_annotations = existing_metadata.get("annotations", {})
-    if managed and all(have_annotations.get(k) == want["metadata"]["annotations"][k]
-                       for k in (SPEC_CHECKSUM, SECURE_CHECKSUM)):
+    if managed and all(
+        have_annotations.get(k) == want["metadata"]["annotations"][k]
+        for k in (SPEC_CHECKSUM, SECURE_CHECKSUM)
+    ):
         return
     api("PUT", url, want)
-    log("INFO", f"updated repository {name}" + (" including secure values" if "secure" in want else ""))
+    log(
+        "INFO",
+        f"updated repository {name}" + (" including secure values" if "secure" in want else ""),
+    )
 
 
 def prune(manifests):
@@ -238,7 +269,7 @@ def sync(timeout):
     return errors
 
 
-def locked_sync(timeout=API_TIMEOUT):
+def locked_sync(timeout=API_TIMEOUT) -> int:
     try:
         with open(LOCK_FILE, "w") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
@@ -246,7 +277,10 @@ def locked_sync(timeout=API_TIMEOUT):
     except Exception as e:  # pylint: disable=broad-except
         log("ERROR", f"sync failed: {e}")
         return 1
-    log("INFO" if errors == 0 else "ERROR", f"sync of {API_NAMESPACE} finished with {errors} error(s)")
+    log(
+        "INFO" if errors == 0 else "ERROR",
+        f"sync of {API_NAMESPACE} finished with {errors} error(s)",
+    )
     return 1 if errors else 0
 
 
@@ -272,9 +306,13 @@ def main():
         # once in the background when the initial list is done. This also keeps the sidecar from
         # blocking while Grafana is still starting.
         log("INFO", "initial sidecar sync in progress, syncing repositories once it is done")
-        subprocess.Popen([sys.executable, os.path.abspath(__file__), "--deferred"],
-                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                         start_new_session=True)
+        subprocess.Popen(
+            [sys.executable, os.path.abspath(__file__), "--deferred"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
         return 0
 
     return locked_sync()

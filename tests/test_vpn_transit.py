@@ -43,7 +43,8 @@ def test_transport_never_advertises_a_default_route_or_mutates_old_interface() -
     template = (ROOT / "ansible/roles/vpn_transit/templates/wg-vpn-transit.conf.j2").read_text()
     assert "0.0.0.0/0" not in template
     assert "::/0" not in template
-    assert "10.251.4.2/32" in template and "10.251.4.1/32" in template
+    assert "10.251.4.2/32" in template
+    assert "10.251.4.1/32" in template
     play = yaml.safe_load((ROOT / "ansible/playbooks/vpn-transit-transport.yml").read_text())
     assert play[0]["hosts"] == "socrat-2:socrat-4"
     tasks = yaml.safe_load((ROOT / "ansible/roles/vpn_transit/tasks/main.yml").read_text())
@@ -85,11 +86,13 @@ def test_home_egress_has_only_known_exact_destination_and_no_default_route() -> 
 
     path = ROOT / "ansible/scripts/vpn-home-transit-egress.py"
     spec = importlib.util.spec_from_file_location("home_egress", path)
-    assert spec is not None and spec.loader is not None
+    assert spec is not None
+    assert spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     rules = mod.rules()
-    assert "0.0.0.0/0" not in rules and "flush" not in rules
+    assert "0.0.0.0/0" not in rules
+    assert "flush" not in rules
     assert rules.count("ip daddr 109.120.141.60") == 10
     assert "dnat ip to 10.250.0.40:53" in rules
     assert "dnat ip to 91.189.82.238:51832" in rules
@@ -99,7 +102,10 @@ def test_home_egress_has_only_known_exact_destination_and_no_default_route() -> 
     assert play[0]["hosts"] == "socrat-0:socrat-1:socrat-3"
     assert play[0]["serial"] == 1
     source = path.read_text()
-    assert 'fence = ["ip", "-4", "route", "del", "prohibit", EXIT + "/32", "metric", "32760"]' in source
+    assert (
+        'fence = ["ip", "-4", "route", "del", "prohibit", EXIT + "/32", "metric", "32760"]'
+        in source
+    )
     assert '"default_routes_unchanged": True' in source
 
 
@@ -110,12 +116,15 @@ def test_exit_fence_never_blocks_shared_https_or_dns() -> None:
     spec = importlib.util.spec_from_file_location(
         "exit_fence", ROOT / "ansible/scripts/vpn-exit-transit-fence.py"
     )
-    assert spec is not None and spec.loader is not None
+    assert spec is not None
+    assert spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     assert "{ 32053, 32083, 32084 }" in mod.RULES
     assert "{ 32085, 32086 }" in mod.RULES
-    assert "443" not in mod.RULES and "12096" not in mod.RULES and "flush" not in mod.RULES
+    assert "443" not in mod.RULES
+    assert "12096" not in mod.RULES
+    assert "flush" not in mod.RULES
     assert 'iifname "eth0"' in mod.RULES
 
 

@@ -14,7 +14,7 @@ NAME = "uptime-kuma-db"
 TRACK = "uptime-kuma:/Secret:uptime-kuma/uptime-kuma-db"
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     """Raise an error when a required condition is not met."""
     if not ok:
         raise RuntimeError(message)
@@ -27,7 +27,7 @@ def get(kind, name, ns=NS):
     )
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")

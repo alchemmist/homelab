@@ -6,6 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from services.rustfs_gateway.gateway import Reader
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -65,7 +67,7 @@ class Namespace(unittest.TestCase):
             storage = next(d for d in docs if "kind: Deployment" in d and "  name: rustfs\n" in d)
             assert "namespace: identity" not in storage
             assert "rustfs-root" in storage
-        with self.assertRaises(subprocess.CalledProcessError):
+        with pytest.raises(subprocess.CalledProcessError):
             self.render("default")
 
     def test_fixed_destination(self) -> None:
@@ -84,5 +86,5 @@ class Namespace(unittest.TestCase):
                 "http://rustfs.rustfs.svc.cluster.local:9000/evil",
             ):
                 with patch.dict(os.environ, S3_ENDPOINT=endpoint):
-                    with self.assertRaises(ValueError):
+                    with pytest.raises(ValueError):
                         Reader()
