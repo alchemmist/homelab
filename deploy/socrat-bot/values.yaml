@@ -1,6 +1,9 @@
 ---
 databaseSecret: socrat-bot-pg-common
 replicaCount: 1
+telegramRelay:
+  enabled: true
+  clusterIP: 10.43.0.213
 telegramPathProbes:
   enabled: true
 image:
