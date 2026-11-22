@@ -431,7 +431,7 @@ def test_arc_state_preserves_symbol_and_quiet_exit() -> None:
     assert other.stdout == f"{YELLOW}{_arc_symbol('*)')}{RESET} "
 
 
-def test_build_local_clears_cdpath_and_keeps_the_usage_guard() -> None:
+def test_build_local_clears_cdpath_and_keeps_the_usage_guard(tmp_path: Path) -> None:
     """CDPATH='' is an empty assignment, and the required asset argument stays."""
     text = BUILD_LOCAL.read_text(encoding="utf-8")
     assert "set -eu\n" in text
@@ -441,13 +441,15 @@ def test_build_local_clears_cdpath_and_keeps_the_usage_guard() -> None:
         [
             _executable("bash"),
             "-c",
-            "bare=$(CDPATH= cd -- /private && pwd)\n"
-            "empty=$(CDPATH='' cd -- /private && pwd)\n"
+            "set -eu\n"
+            'bare=$(CDPATH= cd -- "$1" && pwd)\n'
+            "empty=$(CDPATH='' cd -- \"$1\" && pwd)\n"
             'printf \'%s\\n%s\\n\' "$bare" "$empty"\n',
+            "bash", str(tmp_path),
         ],
     )
     assert result.returncode == SUCCESS_EXIT
-    assert result.stdout == "/private\n/private\n"
+    assert result.stdout.splitlines() == [str(tmp_path)] * 2
 
 
 def _deploy(

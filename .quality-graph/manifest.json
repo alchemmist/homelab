@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "0a7ead727e5cf0ce3761727051af1c5f4ef03b3470dc46fa645d1ddeb1c97b6d",
+  "graphDigest": "7b4116d6bb41adee6b172559ede609b69f6f3d4a260be7f9df4bdb749abfcdf2",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -374,6 +374,34 @@
       },
       "timeoutMinutes": 5,
       "title": "Dependency audit"
+    },
+    {
+      "env": {},
+      "id": "tests-medium",
+      "needs": [
+        "ownership"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-integration",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-medium.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py medium --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Integration tests"
     }
   ],
   "profiles": {
@@ -644,6 +672,9 @@
         },
         {
           "run": "uv run python scripts/quality/install_tools.py --tools promtool"
+        },
+        {
+          "run": "set -euo pipefail\nread -r image < quality/nginx-syntax-image.txt\ndocker pull \"${image}\"\n"
         }
       ],
       "timeoutMinutes": 10
