@@ -82,7 +82,7 @@ and `k3s-ha.yml`. Before Kubernetes Ready it reports deferred; after the WG mesh
 and Kubernetes membership are ready it registers the persistent machine peer and
 adds the exact administrative resource without a Mac VPN change. The default
 inventory now also loads the socrat-3 overlay and a strict connection-only
-controller alias. See [automatic NetBird onboarding](../network/netbird/infrastructure/netbird-node-onboarding.md)
+controller alias. See [automatic NetBird onboarding](../../network/netbird/infrastructure/netbird-node-onboarding.md)
 for the generic worker command, prerequisites, opt-out and actual acceptance limits.
 
 Removing a node also requires removing its router mapping and any relay socket explicitly; reconciliation never deletes unrelated mappings or infers removals from an unreachable node.
@@ -107,13 +107,13 @@ loginctl show-user alchemmist -p Linger
 upnpc -l
 ```
 
-In the deployed static mode, expect public TCP mappings `2222`, `2223`, and `2224` in the router configuration, a disabled gateway timer, an active relay socket, and `Linger=yes`. Ansible does not recreate missing static router mappings. See [router desired state](../network/lan/router-static-mappings.md) and the [private administrative access runbook](../network/wireguard/wireguard-admin-access-plan.md#reapply-the-deployed-configuration). Test public endpoints from an external network as well as from the LAN.
+In the deployed static mode, expect public TCP mappings `2222`, `2223`, and `2224` in the router configuration, a disabled gateway timer, an active relay socket, and `Linger=yes`. Ansible does not recreate missing static router mappings. See [router desired state](../../network/lan/router-static-mappings.md) and the [private administrative access runbook](../../network/wireguard/wireguard-admin-access-plan.md#reapply-the-deployed-configuration). Test public endpoints from an external network as well as from the LAN.
 
 For SSH server persistence, rerun `ssh.yml` without a bootstrap override, check `sudo sshd -T`, and verify the service is enabled (`ssh.service` on Debian, `sshd.service` on Arch). At a suitable maintenance time, reboot the node and verify fresh SSH access.
 
 ## Independent laptop-to-VPS transport
 
-The HA topology requires the `wireguard_tcp_transport` services on `socrat-1` and `socrat-2` while their direct WAN UDP path is unreliable. Apply `playbooks/wireguard-tcp-transport.yml` through the canonical networking/HA workflow and verify its client, relay and health timer after reboot. Preserve the private mode-`0600` authentication material and pinned TLS trust configuration; do not copy secrets into inventory or logs. This transport does not depend on `socrat-0`. Deployment and validation status are recorded in [the HA runbook](k3s-ha.md#home-laptop-to-vps-transport).
+The HA topology requires the `wireguard_tcp_transport` services on `socrat-1` and `socrat-2` while their direct WAN UDP path is unreliable. Apply `playbooks/wireguard-tcp-transport.yml` through the canonical networking/HA workflow and verify its client, relay and health timer after reboot. Preserve the private mode-`0600` authentication material and pinned TLS trust configuration; do not copy secrets into inventory or logs. This transport does not depend on `socrat-0`. Deployment and validation status are recorded in [the HA runbook](../kubernetes/k3s-ha.md#home-laptop-to-vps-transport).
 
 ## Automatic boot and local desktop
 
@@ -186,7 +186,7 @@ loginctl show-user alchemmist --property=Linger
 
 Check `ssh.service` and `k3s.service` on `socrat-0`, or `sshd.service` and `k3s.service` on `socrat-1`, with both `systemctl is-enabled` and `systemctl is-active`. For the laptop also check `NetworkManager.service`. The effective getty command must contain `--autologin alchemmist`, and user lingering must be `yes`.
 
-After agreeing on a maintenance test, reboot one home node at a time. Start with `socrat-1`, verify fresh SSH access through the normal alias, local Hyprland startup without a selector, WireGuard connectivity, Kubernetes `Ready`, and absence of `DiskPressure`. Confirm the `socrat-1` backup folder stays paused. Rebooting `socrat-0` still interrupts NFS and the public SSH relay. The [HA migration](k3s-ha.md) adds a second home API server, a third etcd voter on the VPS, and redundant ingress; verify the router cutover and two remaining healthy voters before planning that test. A reboot test does not verify firmware behavior after loss of mains power; that needs a separate controlled test.
+After agreeing on a maintenance test, reboot one home node at a time. Start with `socrat-1`, verify fresh SSH access through the normal alias, local Hyprland startup without a selector, WireGuard connectivity, Kubernetes `Ready`, and absence of `DiskPressure`. Confirm the `socrat-1` backup folder stays paused. Rebooting `socrat-0` still interrupts NFS and the public SSH relay. The [HA migration](../kubernetes/k3s-ha.md) adds a second home API server, a third etcd voter on the VPS, and redundant ingress; verify the router cutover and two remaining healthy voters before planning that test. A reboot test does not verify firmware behavior after loss of mains power; that needs a separate controlled test.
 
 If the graphical session fails, use SSH or log into tty2 with the normal account password. Inspect `journalctl -b -u getty@tty1.service` and the managed launcher/profile. To disable automatic local login, remove `/etc/systemd/system/getty@tty1.service.d/50-homelab-autologin.conf` and run `sudo systemctl daemon-reload`; leave the active getty alone until a planned restart. Set `homelab_desktop_autologin: false` in inventory before rerunning Ansible to avoid reinstalling the drop-in; this flag skips the role and does not remove an existing configuration by itself. Restore individual profile contents into the node-local files from the timestamped backup if necessary; do not reconnect managed paths to personal dotfiles. The isolation manifest records original paths for inspection. Reinstall removed Sway packages only if deliberately reverting to the previous desktop setup.
 
@@ -227,3 +227,7 @@ Personal browsers, Telegram, and Obsidian were removed from automatic startup; t
 `desktop_terminal` explicitly configures `FiraCode Nerd Font Propo` for normal, bold, italic, and bold-italic faces. It checks fontconfig as the desktop user so an existing per-user installation is recognized. When missing, it installs the pinned Nerd Fonts 3.5.1 FiraCode archive with SHA-256 verification under `/usr/local/share/fonts/homelab-firacode-nerd`, refreshes the font cache, and rejects fallback to a different family. Existing working font installations are retained.
 
 Apply with `ansible-playbook playbooks/desktop.yml --tags alacritty --limit socrat-0,socrat-1 --ask-become-pass`. An Alacritty process started before a missing font was installed may need to be reopened; attaching its existing tmux session preserves running shells and monitors. On socrat-1 the original missing Nerd Font caused fontconfig to substitute proportional Noto Sans, which produced uneven spacing in terminal cells.
+
+## Home desktop and workload ownership
+
+For boot ordering and local desktop sessions, consult the [desktop playbook](../../../ansible/playbooks/desktop.yml). Boot services and the interactive session have separate owners; a working desktop is not evidence that the cluster recovered. For host Docker service and socket policy, see the [host workload role](../../../ansible/roles/host_workload_policy/tasks/main.yml).

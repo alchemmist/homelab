@@ -8,7 +8,7 @@
 | `redisinsight-readers`, `redis.socrat` | [Dashboard grants and revocation](data/redis/redisinsight.md#granting-and-revoking-access) |
 | Authentik, OIDC, groups | [Current identity model](auth/authentik/operations/identity-current-state.md); [application access](auth/applications/application-access.md) |
 | NetBird, WireGuard, 3x-ui | [Human and node access](network/README.md); [application egress](network/vpn-egress/service-vpn-egress.md) |
-| Argo CD, Rancher, Harbor, k3s | [Deployment](platform/cluster-deploy.md); [node and storage runbooks](platform/) |
+| Argo CD, Rancher, Harbor, k3s | [Deployment](platform/delivery/cluster-deploy.md); [node and storage runbooks](platform/) |
 | Grafana, Thanos, Prometheus, Loki | [Monitoring](observability/monitoring/observability-current.md); [log operations](observability/logging/operator-guide.md) |
 | RustFS | [Foundation](data/object-storage/rustfs-foundation.md); [verification records](rustfs/) |
 | n8n, SPI | [Workflow operations](n8n/n8n-workflows.md); [incident triage](applications/spi/spi-incident-triage.md) |

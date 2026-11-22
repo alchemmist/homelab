@@ -180,7 +180,7 @@ Grafana MCP — public verified-TLS endpoint с отдельным bearer и Vie
 native identity. Secret нельзя коммитить/печатать; browser MFA не подходит machine
 API. Для чтения использовать MCP/API, браузер — для визуального acceptance.
 
-[Деплой](../../platform/cluster-deploy.md) · [сеть](../../network/README.md) · [TV](../../applications/android-tv/README.md) ·
+[Деплой](../../platform/delivery/cluster-deploy.md) · [сеть](../../network/README.md) · [TV](../../applications/android-tv/README.md) ·
 [SPI](../../applications/spi/spi-incident-triage.md) · [n8n](../../n8n/n8n-workflows.md).
 
 

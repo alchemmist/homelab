@@ -15,7 +15,7 @@
 `socrat-5`. Но `ansible/playbooks/argocd.yml:12` читает другой файл:
 `deploy/argocd/values.yaml`, и выполняет `helm upgrade --install` в том же release.
 В старых values только глобальный selector `socrat-0`, без override контроллера.
-`docs/platform/cluster-deploy.md:114` также направляет оператора на этот старый путь.
+`docs/platform/delivery/cluster-deploy.md:114` также направляет оператора на этот старый путь.
 
 **Риск:** повтор bootstrap может вернуть controller на `socrat-0` и применить
 другой набор настроек. Это риск кода, не утверждение о случившемся запуске.
@@ -75,7 +75,7 @@ BACK/TARGET, `scripts/wg-peer15-endpoint.py:17` отдельно хранит en
 - `wiki/README.md:15` и `docs/applications/wiki/README.md:15` называют действующим claim
   `wiki-runtime-data`, тогда как `deploy/wiki-runtime/values.yaml` указывает
   `wiki-runtime-socrat5`.
-- `docs/platform/cluster-deploy.md:114` не отражает разделённое размещение Argo CD и
+- `docs/platform/delivery/cluster-deploy.md:114` не отражает разделённое размещение Argo CD и
   ссылается на старые bootstrap-values.
 
 **Направление:** короткая актуальная карта компонентов/owners/storage/ограничений,

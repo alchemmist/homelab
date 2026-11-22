@@ -33,7 +33,7 @@ The primary native image digest comes from `charts/x-ui/values.yaml`, `instances
 
 ## Interaction with the HA datastore
 
-`socrat-2` now runs an etcd-only k3s server together with its workload agent. Native VPN recovery deliberately stops its etcd vote as well as every VPS pod. The two healthy home voters retain quorum. If either home voter is also unavailable, native recovery on the VPS leaves only one of three voters: Kubernetes loses quorum even though native VPN can keep serving. This prioritizes independent VPN recovery; it does not promise cluster availability through two simultaneous failures. Return to Kubernetes only after checking the surviving datastore and connectivity. See [the HA recovery runbook](../../platform/k3s-ha.md).
+`socrat-2` now runs an etcd-only k3s server together with its workload agent. Native VPN recovery deliberately stops its etcd vote as well as every VPS pod. The two healthy home voters retain quorum. If either home voter is also unavailable, native recovery on the VPS leaves only one of three voters: Kubernetes loses quorum even though native VPN can keep serving. This prioritizes independent VPN recovery; it does not promise cluster availability through two simultaneous failures. Return to Kubernetes only after checking the surviving datastore and connectivity. See [the HA recovery runbook](../../platform/kubernetes/k3s-ha.md).
 
 ## Inspection and maintenance
 

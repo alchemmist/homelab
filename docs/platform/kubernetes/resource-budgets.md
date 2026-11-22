@@ -213,7 +213,7 @@ request would exceed current socrat-0 reservations; 3 GiB covers the observed
 not reconciled. Existing Pod was resized through its native resize subresource,
 without restart. No retention or alert weakening. Fresh future-Pod dry-run and
 actual cgroup limit verified. Details, rollback/propagation receipt and measured
-post-change improvement: [dated acceptance](../records/handoffs/cloud-init-and-prometheus-memory-20261114.md).
+post-change improvement: [dated acceptance](../../records/handoffs/cloud-init-and-prometheus-memory-20261114.md).
 The upstream template may still declare 4 GiB request; actual Pod resources remain
 owned by admission as documented above. Capacity under simultaneous peaks is not
 proved by the short acceptance sample.

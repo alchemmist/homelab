@@ -188,7 +188,7 @@ Root внешней ноды — trust boundary для workloads/secrets это�
 NetBird — основной human ingress, standalone WG — recovery; межнодовый WG сохранён, обязательный Tunnelblick Mac не трогаем. User/device approval requirement выключен, но личная MFA/genuine JWT admission сохранены. Автоматического app/Linux/Kubernetes grant нет. Четыре routing agents и два relay дают bounded data-plane redundancy; management/Signal и Authentik не HA, холодный запуск без management ранее провалился. Текущий lifecycle/overlay guard/Mac/TV cleanup: [network-access.md](../../network/README.md), [NetBird](../../network/netbird/README.md).
 
 Harbor обеспечивает приватные images/robots для workload delivery, но его OIDC
-не заменяет registry robot passwords. HA Harbor тоже отложена; см. [harbor.md](../../platform/harbor.md).
+не заменяет registry robot passwords. HA Harbor тоже отложена; см. [harbor.md](../../platform/harbor/harbor.md).
 
 ## 10. Что не считать завершённым
 

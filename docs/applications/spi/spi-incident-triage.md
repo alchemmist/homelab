@@ -1355,3 +1355,5 @@ integrity check passed. See `docs/observability/monitoring/alert-graphs.md` for 
 expiry/rotation, backups, CNI admission and explicit browser-SSO test limitation.
 No historical replay/reset, fake incident or paid probe was used. Historical
 unrelated matching/backlog receipts are not superseded by this graph deployment.
+
+[Token admission receipt](../../records/handoffs/spi-token-admission.md): two of the three original cards verified; full acceptance was not established.

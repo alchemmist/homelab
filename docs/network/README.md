@@ -163,7 +163,7 @@ Recovery WG проверен через новый VPS и все четыре н
 
 На всех нодах установлен строго owned nft guard `inet homelab_k3s_overlay_marks`, owner `homelab:k3s-overlay-marks:v1`: prerouting priority `-175` очищает ненулевой mark только на flannel/VXLAN ingress, когда **оба** адреса принадлежат pod CIDR `10.42.0.0/16`. Правила NetBird и прочий трафик не переписываются. Boot oneshot выполняется до K3s; остановка oneshot намеренно не удаляет guard.
 
-Источник/процедура: `scripts/k3s-overlay-marks.py`, `ansible/playbooks/k3s-overlay-marks.yml`, [runbook](../platform/k3s-networkpolicy-overlay-marks.md). Whole-fleet preflight → serial atomic apply, private receipts, совместимость nft 1.0.6. NetBird/workloads не перезапускались.
+Источник/процедура: `scripts/k3s-overlay-marks.py`, `ansible/playbooks/k3s-overlay-marks.yml`, [runbook](../platform/kubernetes/k3s-networkpolicy-overlay-marks.md). Whole-fleet preflight → serial atomic apply, private receipts, совместимость nft 1.0.6. NetBird/workloads не перезапускались.
 
 16 обычных и 16 forged wrong-namespace gateway-label probes были заблокированы через разные ноды, PodIP/ClusterIP и порты 9000/9001; настоящий gateway читал согласованный fixture, console оставалась закрыта. Fixtures удалены. Это проверенная конкретная граница, не обещание универсальной защиты от любого root/cluster-admin. Повторять аудит после сетевых/node upgrades.
 
@@ -211,7 +211,7 @@ machine authentication не менялись. Не создавать общий
 Все 22 ресурса переданы без пересоздания; TLS/проверки доступа сохранены.
 После удаления старого owner public regression — **134/134**. Это не новый
 browser-MFA/onboarding тест. Детальная карта, безопасная передача ownership и
-граница LiteLLM hooks: [cluster-deploy.md](../platform/cluster-deploy.md#публичные-входы-принадлежат-приложениям--2026-11-07).
+граница LiteLLM hooks: [cluster-deploy.md](../platform/delivery/cluster-deploy.md#публичные-входы-принадлежат-приложениям--2026-11-07).
 Ingress handoff был завершён в `e7fe891`; затем monitoring split `8862770`
 передал Grafana собственному app. Не возвращать старого владельца. Текущие sources
 и незавершённый aggregate cleanup: [observability-current.md](../observability/monitoring/observability-current.md).

@@ -169,7 +169,7 @@ Native OIDC is active; `homelab-owner` maps to Harbor system admin. Local `admin
 remains break-glass and robots are unchanged. The saved initial admin password may
 be stale; do not reset it or rerun the old initializer just to change auth. A supported
 Secret-backed CONFIG_OVERWRITE_JSON and conditional Helm identity overlay preserve
-OIDC configuration. See [identity/access-management.md](../auth/architecture/access-management.md)
+OIDC configuration. See [identity/access-management.md](../../auth/architecture/access-management.md)
 for migration, backup/restore evidence and remaining browser acceptance.
 
 
@@ -211,7 +211,7 @@ activation proof; do not rotate working secrets to diagnose this TLS symptom.
 
 ## Harbor: registry кластера Socrat
 
-> **PostgreSQL (2026-11-20):** Рабочая БД registry — внешняя `pg-common/registry`; исходный PVC удерживается, blob storage не переносился. [Эксплуатация и CA](../data/postgresql/postgres-platform.md).
+> **PostgreSQL (2026-11-20):** Рабочая БД registry — внешняя `pg-common/registry`; исходный PVC удерживается, blob storage не переносился. [Эксплуатация и CA](../../data/postgresql/postgres-platform.md).
 
 Срез на **30 октября 2026**. Harbor уже развёрнут; распределённая HA-схема пока
 не развёрнута из-за ресурсов. Это контекст и инструкция, не замена live-проверке.
@@ -228,7 +228,7 @@ synthetic сессия видит ноль проектов, новый registry
 Не восстанавливать эти права старым bootstrap/readiness receipt, не удалять людей
 и не сбрасывать их пароли ради обхода кеша. Перед reopening нужна отдельная native
 revocation-приёмка: [#134](https://github.com/alchemmist/homelab/issues/134),
-[observer evidence](../records/handoffs/observer-acceptance-20261108.md).
+[observer evidence](../../records/handoffs/observer-acceptance-20261108.md).
 Остальная registry/robot информация ниже сохраняет дату своего среза.
 
 ## Вход и состояние
@@ -345,7 +345,7 @@ Trivy, автоматические GC и retention deletion пока отклю
 
 - `deploy/harbor/values.yaml`;
 - `ansible/roles/harbor/`, `ansible/playbooks/harbor.yml`;
-- `docs/platform/harbor.md` — эксплуатация и восстановление;
+- `docs/platform/harbor/harbor.md` — эксплуатация и восстановление;
 - из `ansible/`: `ansible-playbook playbooks/harbor.yml`.
 
 SSH dual-address hostname может попасть на неправильный публичный вход. Для
@@ -361,7 +361,7 @@ push BusyBox push-роботом, pull Pod на socrat-1 pull-роботом с 
 ## Согласованное направление HA
 
 Пользователь выбрал полноценный распределённый Harbor, но принял текущую
-нехватку ресурсов. План в `docs/platform/harbor-ha.md`:
+нехватку ресурсов. План в `docs/platform/harbor/harbor-ha.md`:
 
 1. По две реплики core/portal/jobservice/registry на socrat-0/1.
 2. Трёхузловое S3-хранилище на socrat-0/1/3, кандидат Garage с RF=3;

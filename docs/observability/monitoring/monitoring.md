@@ -10,7 +10,7 @@ Production metrics, logs and traces are collected by the in-cluster OpenTelemetr
 
 ## Container resource budgets
 
-`ansible/playbooks/container-resources.yml` manages measured per-workload requests and selective CPU limits through the native `socrat-container-resource-defaults` admission policy. The authoritative catalog is `ansible/vars/container-resources.yml`; see [resource budgets](../../platform/resource-budgets.md) for measurements, per-container values, capacity checks, rollout and rollback.
+`ansible/playbooks/container-resources.yml` manages measured per-workload requests and selective CPU limits through the native `socrat-container-resource-defaults` admission policy. The authoritative catalog is `ansible/vars/container-resources.yml`; see [resource budgets](../../platform/kubernetes/resource-budgets.md) for measurements, per-container values, capacity checks, rollout and rollback.
 
 Ordinary services can burst CPU without a quota. Open Terminal, vLLM and SearXNG retain explicit caps. Memory and ephemeral-storage limits remain safety ceilings, not capacity reservations. Unknown workloads receive fallback requests and memory/storage limits but no automatic CPU cap. GPU/custom resources remain intact. Pod admission does not manage host K3s/etcd services.
 

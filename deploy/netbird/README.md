@@ -56,6 +56,6 @@ socrat-0..3.
 Host NetBird reverse-route skb marks overlap kube-router/CNI bits and can bypass
 cross-node NetworkPolicy when inherited through VXLAN. The narrowly scoped,
 persistent pod-overlay boundary guard and its live acceptance are documented in
-[`docs/platform/k3s-networkpolicy-overlay-marks.md`](../../docs/platform/k3s-networkpolicy-overlay-marks.md).
+[`docs/platform/kubernetes/k3s-networkpolicy-overlay-marks.md`](../../docs/platform/kubernetes/k3s-networkpolicy-overlay-marks.md).
 Audit this guard after host NetBird or overlay changes; do not use S3 HTTP403 as
 proof of packet isolation. This does not require changing administrators' clients.

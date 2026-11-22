@@ -89,7 +89,7 @@ with a copied HDD UUID marker. Never unmount the production HDD for a test.
 Native DeepSeek account reauthorization and physical Proxmox capacity evidence
 are separate owner/external prerequisites; do not bypass authorization or claim
 them green from storage checks. Historical runtime handoff:
-[socrat5-runtime-hdd-complete-20261120.md](../records/handoffs/socrat5-runtime-hdd-complete-20261120.md).
+[socrat5-runtime-hdd-complete-20261120.md](../../records/handoffs/socrat5-runtime-hdd-complete-20261120.md).
 
 
 ## Existing SSD exceptions and archive move

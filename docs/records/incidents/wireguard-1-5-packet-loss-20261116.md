@@ -97,7 +97,7 @@ out. Header-only136byte filtering produced the complete bounded result above.
 
 ## This fault class was already known, and only one peer pair was covered
 
-[Existing HA runbook](../../platform/k3s-ha.md#home-laptop-to-vps-transport) already records
+[Existing HA runbook](../../platform/kubernetes/k3s-ha.md#home-laptop-to-vps-transport) already records
 40–100% loss on direct1↔VPS WAN UDP, healthy0↔VPS/local LAN, ineffective MTU,
 offload/port/2.4GHz experiments, and a successful TCP transfer control. It explicitly
 states the underlying router/Wi-Fi fault was NOT repaired.

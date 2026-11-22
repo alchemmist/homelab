@@ -67,7 +67,7 @@ Owner group -> system admin; project grants остаются отдельным�
 приёмка/rotation требует владельца. Robot accounts и scoped project credentials
 остаются способом CI push / private pull; не применять к registry API browser gate.
 
-Harbor 2.15.4 / chart 1.19.4 и HA work описаны отдельно в [harbor.md](../../../platform/harbor.md).
+Harbor 2.15.4 / chart 1.19.4 и HA work описаны отдельно в [harbor.md](../../../platform/harbor/harbor.md).
 OIDC не устраняет single-node storage/PG/Redis риски и не завершает HA.
 
 ## 4. Rancher

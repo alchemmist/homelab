@@ -7,7 +7,7 @@
 
 **Снятие GitOps Fleet.** В репозитории больше нет Fleet `GitRepo` и `deploy/**/fleet.yaml`. Выкладка приложений — только Argo CD (`deploy/argocd/apps`). Это не удаление контроллеров Fleet из кластера: Rancher v2.15.2 снова включает Feature Fleet, пока включён multi-cluster-management. Бюджеты `cattle-fleet-*`, размещение `gitjob`/`helmops` и описания исключённых Fleet-дашбордов поэтому оставлены. Не возвращать GitRepo и не считать multi-cluster-management выключенным. Образы на GHCR — отдельная миграция registry, не повод оставлять Fleet-бандл.
 
-Журнал первого пилота и registry: `docs/platform/harbor.md`.
+Журнал первого пилота и registry: `docs/platform/harbor/harbor.md`.
 
 ## Что является правдой
 
@@ -107,7 +107,7 @@ Harbor: push-учётка в секретах CI (`HARBOR_USERNAME`, `HARBOR_PAS
 
 Текущий клиент — официальный Argo CD Labs MCP из project settings, с
 `MCP_READ_ONLY=true`: диагностика, не imperative deployment. Установка и приватное
-хранение credentials описаны в [official MCP runbook](official-mcp.md).
+хранение credentials описаны в [official MCP runbook](../agent-access/official-mcp.md).
 Не запускать credential helper для показа токена и не возвращать старый
 пользовательский wrapper из исторических инструкций.
 
@@ -127,7 +127,7 @@ OIDC и существующие credentials сохраняются. Приня�
 
 ## Как устроен Argo CD
 
-Argo CD размещён раздельно: application-controller на `socrat-5`, остальные компоненты на `socrat-0`. UI: `https://argocd.socrat.alchemmist.xyz`, native Authentik OIDC. Canonical values: `deploy/platform/argo-cd/values.yaml`; старый путь — compatibility symlink. `ansible/playbooks/argocd.yml` допускает только явный empty-cluster bootstrap и отказывает при существующих workloads. Текущий контракт: [context](system-overview.md), приёмка: [management handoff](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-management-20261116.md).
+Argo CD размещён раздельно: application-controller на `socrat-5`, остальные компоненты на `socrat-0`. UI: `https://argocd.socrat.alchemmist.xyz`, native Authentik OIDC. Canonical values: `deploy/platform/argo-cd/values.yaml`; старый путь — compatibility symlink. `ansible/playbooks/argocd.yml` допускает только явный empty-cluster bootstrap и отказывает при существующих workloads. Текущий контракт: [context](../system-overview.md), приёмка: [management handoff](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-management-20261116.md).
 
 Базовая схема и NetBird:
 
@@ -177,10 +177,10 @@ Action умеет один образ на приложение и только 
 ### NetBird: переход существующего сервиса под Argo CD
 
 Пользовательский onboarding, топология, результаты отказных тестов и незакрытые
-границы: [актуальный NetBird runbook](../network/netbird/README.md).
+границы: [актуальный NetBird runbook](../../network/netbird/README.md).
 
 NetBird больше не исключение: Application создаёт `root` из каталога apps, не
-ручной apply/UI. Подробнее: [netbird-argocd.md](../network/netbird/infrastructure/netbird-argocd.md). Сохраняются
+ручной apply/UI. Подробнее: [netbird-argocd.md](../../network/netbird/infrastructure/netbird-argocd.md). Сохраняются
 существующие версии upstream-образов по digest; миграция не обновляет образы и
 не переиздаёт идентичности/секреты. Значения секретов и содержимое PVC не в Git.
 Для нового узла: inventory → `scripts/netbird-gitops-nodes.py` → commit inventory
@@ -247,7 +247,7 @@ Pending из-за 512Mi request на socrat-0, до запуска контей�
 Ownership-таблица выше учитывает последующий monitoring split `8862770`.
 Первоначальная передача22 ресурсов в восемь apps была отдельной завершённой
 приёмкой; она не доказывает финальный cleanup новых monitoring owners.
-[Текущая карта и read-only status](../observability/monitoring/observability-current.md).
+[Текущая карта и read-only status](../../observability/monitoring/observability-current.md).
 
 Приёмка миграции: **134/134** public TLS/anonymous/forged-header/invalid-token
 checks до и после, **88 профильных тестов**. Пять старых ошибок
@@ -257,8 +257,8 @@ DaemonSet при текущем Deployment); полный repository suite не 
 
 Коммиты: disarm `41e10a2`, перенос `7ae691a`, временная пауза LiteLLM `4e2c72e`,
 окончательное удаление/возврат auto-sync **`e7fe891`**. Подробности:
-[операционная миграция](../applications/public-web/public-web-migration.md),
-[доступ и авторизация](../network/README.md). Старый aggregate chart не возвращать
+[операционная миграция](../../applications/public-web/public-web-migration.md),
+[доступ и авторизация](../../network/README.md). Старый aggregate chart не возвращать
 при откате одного приложения; менять только источник его действующего владельца.
 
 
@@ -299,7 +299,7 @@ verified mTLS readiness, отказ без client certificate, свежие Loki
 browser-MFA/enrollment, backup/restore/HA или every-service telemetry acceptance.
 
 Точные владельцы, безопасный handoff и границы проверок:
-[monitoring-service-split.md](../observability/monitoring/monitoring-service-split.md).
+[monitoring-service-split.md](../../observability/monitoring/monitoring-service-split.md).
 На том промежуточном этапе guard отказывал при наличии независимых owners;
 после окончательного split `monitoring.yml` / `monitoring_stack` retired
 **безусловно**, до любых мутаций, включая запуск на свежем кластере. Править действующие Git sources, не старый
@@ -342,14 +342,14 @@ Ansible installer окончательно retired: always-tag fail до люб�
 При handoff сначала disarm/no finalizers, затем adopt, live проверки, затем удаление
 старого Application/values. Ни глобальный prune, ни restart/WAL repair/DB migration,
 ни ротация TLS или alert credentials не выполнялись. Проверки/границы и диаграмма
-владения: [prometheus-service-split.md](../observability/monitoring/prometheus-service-split.md).
+владения: [prometheus-service-split.md](../../observability/monitoring/prometheus-service-split.md).
 
 
 Закрывающие коммиты окончательного разделения: `652e286` (disarm), `78a9336`
 (adopt), `bcc93ca` (удаление aggregate), **`0bb4e31`** (финальная проверка/rollback
 safeguards). 104 tests + 24 subtests и 134/134 public checks прошли; на закрытии
 49 Applications Synced/Healthy, но старый WAL alert не маскировался и не исправлялся.
-Подробный итог/границы: [observability-current.md](../observability/monitoring/observability-current.md#зафиксированный-closeout-не-новая-команда-миграции).
+Подробный итог/границы: [observability-current.md](../../observability/monitoring/observability-current.md#зафиксированный-closeout-не-новая-команда-миграции).
 
 **Не откатывать передачу владения простым удалением новых Applications с active
 finalizers.** Это может каскадно удалить уже переданные workloads. Обратная
@@ -381,4 +381,4 @@ publishing. Activation, two namespace pull Secrets and live/browser proof remain
 pending approved private cluster/Harbor reachability. On activation all three roles
 use the same image digest with no ConfigMap shadowing. Do not manually seed image
 versions, start a second backend/PVC, restore budgets or call the migration done.
-See [authoritative SPI checkpoint](../applications/spi/spi-incident-triage.md#current-source-extraction--9-november-2026).
+See [authoritative SPI checkpoint](../../applications/spi/spi-incident-triage.md#current-source-extraction--9-november-2026).

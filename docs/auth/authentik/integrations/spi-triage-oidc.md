@@ -97,7 +97,7 @@ Do not assume two quick commits are atomic or manually sync either half.
    still applies to identity provisioning). Preserve every job, deadline and
    credential. No reset/replay/forced stop. Keep claims paused through release
    verification. See the [authoritative SPI activation gate](../../../applications/spi/spi-incident-triage.md#remaining-activation-gate)
-   and [shared-image release contract](../../../platform/cluster-deploy.md#spi-full-service-extraction--9-november-2026).
+   and [shared-image release contract](../../../platform/delivery/cluster-deploy.md#spi-full-service-extraction--9-november-2026).
 3. With the hold confirmed and runtime Secret/provider already provisioned,
    merge the native source and approve its protected standard publication gate.
    Let `deploy-to-socrat@v1` make its normal robot image-digest commit to homelab.

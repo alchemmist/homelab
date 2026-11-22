@@ -224,5 +224,5 @@ profile to make the list look shorter. Removal of that obsolete GUI entry is a
 cosmetic remaining action, not a second working recovery identity.
 
 Infrastructure prerequisite: preserve the installed [Kubernetes overlay mark
-guard](../../../platform/k3s-networkpolicy-overlay-marks.md). Its audit is necessary after node,
+guard](../../../platform/kubernetes/k3s-networkpolicy-overlay-marks.md). Its audit is necessary after node,
 host NetBird or overlay changes, not a new step for each person's enrollment.

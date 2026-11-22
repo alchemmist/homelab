@@ -17,7 +17,7 @@ Use the [ready-to-merge skill](.agents/skills/ready-to-merge/SKILL.md) when open
 
 ## MCP
 
-No particular agent or MCP client is required. For optional connections, read `docs/platform/official-mcp.md` and
+No particular agent or MCP client is required. For optional connections, read `docs/platform/agent-access/official-mcp.md` and
 `deploy/mcp/service-audit.json` for scope, installation, coverage and blocked items.
 Only a trusted project loads its commands. Never execute a credential helper to
 show its output: it writes a token into the MCP client's private pipe.

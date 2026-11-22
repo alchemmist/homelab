@@ -100,7 +100,7 @@ tracking всех ресурсов. UID объектов/PVC/namespaces, сек�
 сохранились; из-за нормализации ссылки на тот же digest пересоздался только UI
 pod, не management/agents/relays. Исторические direct-apply скрипты не являются
 путём деплоя. Не создавать Application руками и не лечить drift ручным Helm.
-Подробнее: [контракт](../../platform/cluster-deploy.md), [adoption](infrastructure/netbird-argocd.md).
+Подробнее: [контракт](../../platform/delivery/cluster-deploy.md), [adoption](infrastructure/netbird-argocd.md).
 
 ## Как добавляется новая нода
 
@@ -186,4 +186,4 @@ forwards требуют отдельного решения. Пока нет о�
 - `scripts/netbird-access.py` / `ansible/playbooks/netbird-access.yml`: audit-first scoped grant/revoke/offboard, owner/service protections, private snapshots и fresh exact hash. Временный lifecycle проверен; bootstrap admin ограничен, fixtures удалены. Membership не даёт автоматически app/Linux/Kubernetes/admin роли и не отзывает все старые sessions.
 - Approval mode выключен, но genuine JWT group admission и личная MFA сохранены. Первый реальный новый человек/device остаётся отдельной приёмкой.
 - Межнодовый WG не удалён. Отозваны только obsolete assistant `.6` и явно согласованный TV `.8`; owner recovery `.4` сохранён. Phone `.7`/скомпрометированный key — отдельное решение.
-- После исправления overlapping transport marks на flannel ingress NetworkPolicy проверена cross-node ordinary/forged probes. Не возвращать старый bypass и не менять NetBird marking глобально: [overlay guard](../../platform/k3s-networkpolicy-overlay-marks.md).
+- После исправления overlapping transport marks на flannel ingress NetworkPolicy проверена cross-node ordinary/forged probes. Не возвращать старый bypass и не менять NetBird marking глобально: [overlay guard](../../platform/kubernetes/k3s-networkpolicy-overlay-marks.md).

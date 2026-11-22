@@ -31,7 +31,7 @@ a worker-mode condition guard; `k3s-agent.service` is the enabled boot service.
 The worker-topology markers block the superseded rebalance playbook.
 
 Use `ansible/playbooks/k3s-worker-topology-verify.yml` for read-only role/quorum
-checks (it refreshes verification scripts only). See `docs/platform/socrat3-worker.md`
+checks (it refreshes verification scripts only). See `docs/records/handoffs/socrat3-worker.md`
 for the before/after evidence and migration details.
 
 ## Historical external-voter topology (superseded on 2026-11-01)
@@ -60,7 +60,7 @@ The following transport and home-ingress sections describe the existing home-nod
 **16Nov follow-up:** the same direct WAN UDP failure class also affects1↔5.
 A matched two-end capture found missing encrypted packets before node1 WireGuard
 decryption; the existing TLS workaround below protects only1↔2, not other peers.
-See [measurements, exact limits and next decisions](../records/incidents/wireguard-1-5-packet-loss-20261116.md).
+See [measurements, exact limits and next decisions](../../records/incidents/wireguard-1-5-packet-loss-20261116.md).
 No physical fault repair, relay expansion or network restart was done in that investigation.
 
 Direct WAN UDP between `socrat-1` and the VPS exhibited severe 40–100% packet loss, including raw UDP probes. The `socrat-0`–VPS path and local LAN UDP were healthy. MTU, offload, port and 2.4 GHz experiments did not resolve this; the original Wi-Fi configuration was restored. A TCP probe completed twenty 16 KiB transfers cleanly. The underlying router/Wi-Fi fault is not repaired.
@@ -105,7 +105,7 @@ VPS `traefik-edge` now uses `https://127.0.0.1:6444`, the standard k3s agent API
 - The health script checks authenticated local API readiness and certificate-validated Rancher `/ping` through the node's own ingress address.
 - Persistent router WAN2 TCP 80/443 forwards target the VIP. DNS retains the same home public address; this is not DNS failover.
 
-See [router operations](../network/lan/router-static-mappings.md). Verify exactly one VIP owner, both direct ingress endpoints and public Rancher before and after cutover. A keepalived handover checks ingress, not complete node-loss recovery.
+See [router operations](../../network/lan/router-static-mappings.md). Verify exactly one VIP owner, both direct ingress endpoints and public Rancher before and after cutover. A keepalived handover checks ingress, not complete node-loss recovery.
 
 ### Keepalived startup ordering
 
@@ -166,7 +166,7 @@ SQLite rollback applies only before other etcd members join. Once this is a thre
 ## Availability limits
 
 - One failed voter is tolerated; two are not. Keep two voters healthy during maintenance.
-- Native VPN failover stops the VPS etcd voter. Two healthy home voters retain quorum; a simultaneous home-node failure loses quorum. Native VPN can still serve independently. See [VPN failover](../network/vpn-egress/vpn-failover.md).
+- Native VPN failover stops the VPS etcd voter. Two healthy home voters retain quorum; a simultaneous home-node failure loses quorum. Native VPN can still serve independently. See [VPN failover](../../network/vpn-egress/vpn-failover.md).
 - Router, home WAN and shared power remain common dependencies. The VIP covers a home node failure, not a site failure.
 - NFS at `/srv/k8s-nfs` remains on `socrat-0`; dependent applications are not made highly available.
 - The public VPS SSH relay still depends on `socrat-0`; retain direct VPS SSH.

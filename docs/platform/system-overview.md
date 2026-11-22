@@ -6,6 +6,8 @@ This guide reflects the migrations accepted on 16 November 2026. Git describes i
 
 ## Sources of truth
 
+Use lowercase inventory node names. A change made only in Rancher is not a durable configuration change; follow the owning Application or Ansible role in Git.
+
 - Applications: `deploy/argocd/apps/`. Follow each Application to its values file.
 - Ansible inventory: `ansible/inventory/hosts.yml`. Mesh registry: `wg_socrat_nodes` in `ansible/inventory/group_vars/Socrat/cluster.yml`.
 - Shared issuer transport and its consumers: `deploy/contracts/infrastructure.json`. `ci/check_infrastructure_contracts.py` checks it offline by default; `--write` updates repository files only.
@@ -14,6 +16,6 @@ This guide reflects the migrations accepted on 16 November 2026. Git describes i
 
 ## Choose the next question
 
-- [Placement and data ownership](workload-placement.md): where a workload was verified and where to check now.
+- [Placement and data ownership](kubernetes/workload-placement.md): where a workload was verified and where to check now.
 - [Safety constraints](operational-boundaries.md): operational boundaries and outstanding risks.
 - [Implementation history](../records/handoffs/infrastructure-refactoring-history.md): dated changes and acceptance limits, not current rollout instructions.

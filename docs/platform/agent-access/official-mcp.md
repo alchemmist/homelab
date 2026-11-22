@@ -1,7 +1,7 @@
 # Official MCP connections for Homelab agents
 
 Audit date: **2026-11-07**. Full point-in-time inventory and one decision per
-Application: [`deploy/mcp/service-audit.json`](../../deploy/mcp/service-audit.json).
+Application: [`deploy/mcp/service-audit.json`](../../../deploy/mcp/service-audit.json).
 This covers all 49 Argo Applications, every Deployment/StatefulSet/DaemonSet and
 running systemd services on socrat-0/1/2/3, including internal database/cache and
 Rancher/Fleet components. Supporting automation is not turned into one MCP per Pod.
@@ -9,7 +9,7 @@ Rancher/Fleet components. Supporting automation is not turned into one MCP per P
 ## Project connections
 
 No agent is required to contribute. A fresh clone contains no active Pi project
-configuration. [The optional Pi example](../../deploy/mcp/examples/pi-mcp.json)
+configuration. [The optional Pi example](../../../deploy/mcp/examples/pi-mcp.json)
 documents reviewed connections; it does not install or enable anything. To opt in
 after installing the runtime, copy it to `.pi/mcp.json` in a trusted checkout
 (`mkdir -p .pi && cp -n deploy/mcp/examples/pi-mcp.json .pi/mcp.json`). Do not
@@ -19,7 +19,7 @@ transport; Pi's `!command` headers are not portable MCP configuration syntax.
 | Name | Upstream / connection | State / purpose |
 | --- | --- | --- |
 | `socrat-grafana` | `grafana/mcp-grafana` 2.0.2, existing digest-pinned HTTPS server | Read-only Grafana plus Prometheus/Thanos, Alertmanager, Loki, Tempo and Pyroscope |
-| `argocd` | `argoproj-labs/mcp-for-argocd`, npm `argocd-mcp` 0.9.0 with the [homelab Zod 4 port](../quality/npm-patches.md) | Official project **Labs**, stdio, `MCP_READ_ONLY=true`; diagnostics, not an imperative deploy path |
+| `argocd` | `argoproj-labs/mcp-for-argocd`, npm `argocd-mcp` 0.9.0 with the [homelab Zod 4 port](../../quality/npm-patches.md) | Official project **Labs**, stdio, `MCP_READ_ONLY=true`; diagnostics, not an imperative deploy path |
 | `socrat-metrics` | `prometheus/prometheus-mcp`, stable 0.18.0 | Official upstream binary, stdio; queries/docs/metadata through existing Grafana Viewer datasource proxy |
 | `n8n` | Built into installed n8n 1.123.87 | **Disabled client pending owner enablement**, no third-party n8n wrapper |
 | `umami` | Official `@umami/mcp` 0.2.0; native endpoint also exists in installed 3.4.1 | **Disabled client pending an authorized API key** |
@@ -194,7 +194,7 @@ extracted wholesale. Private original-profile rollback metadata is under
 
 Точка входа агента — `AGENTS.md`, Pi необязателен; пример — `deploy/mcp/examples/pi-mcp.json`, локальные настройки не в Git.
 Протокол первоначального подключения: [runbook](official-mcp.md),
-[реестр всех сервисов на момент аудита](../../deploy/mcp/service-audit.json).
+[реестр всех сервисов на момент аудита](../../../deploy/mcp/service-audit.json).
 Последующее локальное включение n8n описано ниже; прежний blocker в реестре
 не означает текущий отказ endpoint.
 Аудит охватил 49 Argo Applications, все Deployment/StatefulSet/DaemonSet и running

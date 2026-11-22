@@ -5,7 +5,7 @@ Choose the narrowest route that answers the question. Nothing below is required 
 | Starting point | Open |
 | --- | --- |
 | Where do I check metrics, logs, traces or alert delivery? | [Observability](observability/README.md) |
-| How does the cluster fit together? | [System overview and sources of truth](platform/system-overview.md) |
+| How does the cluster fit together? | [System overview and sources of truth](platform/system-overview.md); [platform guides by task](platform/README.md) |
 | I have a service, namespace, group or endpoint | [Entity lookup](entities.md) |
 | I have a symptom or alert | [Symptom lookup](symptoms.md) |
 | Why was this design chosen? | [Accepted decisions](decisions/) |
@@ -31,7 +31,7 @@ The [public wiki](../wiki/README.md) has a separate audience and publication pro
 | OIDC, native app roles and gateway exceptions | [Architecture](auth/architecture/identity-architecture.md), [integrations](auth/authentik/integrations/identity-integrations.md), [troubleshooting](auth/authentik/integrations/identity-gateway-troubleshooting.md) |
 | Optional SSH-key integration (disabled) | [UUID and key assignments](auth/host-access/identity-ssh-keys.md) |
 | Theme, native UI and recovery | [Frontend](auth/authentik/custom-ui/README.md), [backup and recovery](auth/authentik/operations/identity-recovery.md) |
-| Registry, robot accounts and scoped push/pull | [Harbor](platform/harbor.md) |
+| Registry, robot accounts and scoped push/pull | [Harbor](platform/harbor/harbor.md) |
 | Wiki runtime and content | [Lifecycle](applications/wiki/wiki-process-lifecycle.md), [upgrade](records/handoffs/wiki-upgrade-20261107.md), [public onboarding source](../wiki/README.md) |
 | Per-node metric collection and retention | [OTel to Prometheus to Thanos: raw data, five-minute and hourly resolution, and deletion limits](observability/monitoring/observability-current.md#метрики-сбор-прореживание-и-перенос-между-нодами--21-ноября-2026) |
 | Logs, metrics, traces and profiles | [Current observability](observability/monitoring/observability-current.md), [monitoring](observability/monitoring/monitoring.md) |
@@ -44,4 +44,4 @@ The [public wiki](../wiki/README.md) has a separate audience and publication pro
 | Dedicated DeepSeek web-session bridge, LiteLLM `o-deepseek` and rate limits to avoid a ban | [Status and limitations](applications/ai/deeperseeker.md) |
 | Other subsystems | [RustFS](data/object-storage/rustfs-foundation.md), [smart home](applications/smart-home/smart-home-automation.md), [inference reliability](applications/ai/inference-client-reliability.md) |
 
-[Official MCP connections for agents](platform/official-mcp.md): project settings, service inventory, read-only scope and known blockers.
+[Official MCP connections for agents](platform/agent-access/official-mcp.md): project settings, service inventory, read-only scope and known blockers.

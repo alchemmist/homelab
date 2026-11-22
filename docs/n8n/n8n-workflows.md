@@ -322,7 +322,7 @@ Instance credential IDs сопоставлять при импорте чере�
   В примере `deploy/mcp/examples/pi-mcp.json` запись пока disabled — не переносить локальное
   включение на другие checkout/машины как уже выполненное.
   Exact ingress принадлежит `charts/n8n/templates/access.yaml`; UI gate сохранён.
-  [MCP runbook в wiki](../platform/official-mcp.md) фиксирует текущее состояние и границы доступа.
+  [MCP runbook в wiki](../platform/agent-access/official-mcp.md) фиксирует текущее состояние и границы доступа.
   API key и MCP token — разные credentials, не взаимозаменяемы.
 - Локальные файлы: `~/.config/n8n/api-key`, `~/.config/n8n/mcp-token`.
   Каталог — mode 0700, секретные файлы — 0600. Не выводить содержимое.

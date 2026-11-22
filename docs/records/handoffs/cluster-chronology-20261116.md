@@ -925,7 +925,7 @@ Prometheus-компонентов повторно проверены все 77 
 Остаётся отдельная проблема WAL Prometheus; сбой digest блога исправлен
 параллельным релизом `f485c74` (blog снова Synced/Healthy). Это **не** обещание
 целостности WAL или здоровья всего кластера. Карта/приёмка и границы:
-[деплой](../../platform/cluster-deploy.md), [наблюдаемость](../../observability/monitoring/observability-current.md),
+[деплой](../../platform/delivery/cluster-deploy.md), [наблюдаемость](../../observability/monitoring/observability-current.md),
 [первый closeout](../../observability/monitoring/monitoring-service-split.md),
 [окончательное разделение Prometheus-компонентов](../../observability/monitoring/prometheus-service-split.md).
 
@@ -986,7 +986,7 @@ TV layout в Git, старые panel coordinates не повторять. Физ
 ## MCP в репозитории
 
 Agent entrypoint — `AGENTS.md`, settings — `.pi/mcp.json` (без секретов в Git).
-Официальные подключения и полный audit/ограничения: [official-mcp.md](../../platform/official-mcp.md).
+Официальные подключения и полный audit/ограничения: [official-mcp.md](../../platform/agent-access/official-mcp.md).
 n8n MCP после локального обновления токена проверен (`initialize`/`tools/list`)
 и включён на Mac: поиск/чтение workflows, без execution. Токен только в private
 файле0600, не в Git. В committed config n8n пока disabled; другие машины не
