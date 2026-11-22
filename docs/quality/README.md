@@ -9,19 +9,21 @@ The operator changed the integration scope: PR182 sets up CI and integrates revi
 ## Active CI scope
 
 CI runs `graph` (including the blocking strict configuration and suppression guard),
-followed by `yaml`, `scripts-q000`, `secrets`, `javascript`, `ownership`, `docker`, `workflow`,
+followed by `yaml`, `scripts-q000`, `deploy-i001`, `secrets`, `javascript`, `ownership`, `docker`, `workflow`,
 `tests-fast`, `shell` and `rustfs-return-types`. The latter blocks missing public return annotations (Ruff
 `ANN201`) in `services/rustfs_gateway/`; the full Python check remains available locally.
 `yaml` runs the full YAML check, including generated workflows, and collects `reports/yaml.json`.
 `scripts-q000` checks every tracked, owned `.py` file under `scripts/` and `tests/`,
-not just changed files. It does not cover all owned Python.
+not just changed files. `deploy-i001` checks import order in tracked, owned Python under
+`ansible/`, `deploy/` and `scripts/`. Neither gate covers all owned Python.
 Ownership runs six offline checks plus their regression suites; the Ansible
 entrypoint scan covers both `.yml` and `.yaml`.
 `tests-medium` runs the complete loopback-isolated integration suite after `ownership`.
 Blocking `ansible` (Playbook safety) also runs after `ownership`, using locked parser collections.
-`dependencies` runs after `ownership`.
-The other three checks remain runnable by name; `make check` and its alias
-`make check-all` attempt both active and local-only checks. Restore a
+The blocking `dependencies` audit runs in CI after `ownership`.
+
+Local-only checks are listed in [`quality/local-checks.json`](../../quality/local-checks.json)
+with their Make target names. `make check` and its alias `make check-all` run both the CI and local-only checks. Restore a
 check to `qg.yaml` and remove its local-only entry once it is verified green.
 
 ## Historical 15-node DAG (before PR #454)

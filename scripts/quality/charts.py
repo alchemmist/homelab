@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import NotRequired, TypedDict, cast
 
 import yaml
-
 from common import ROOT, command, digest, failure, finding, report, tracked
 
 
