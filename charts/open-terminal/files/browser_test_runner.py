@@ -8,10 +8,13 @@ import signal
 import subprocess
 import sys
 import time
+from collections.abc import Sequence
 from pathlib import Path
 
+ProcessIdentity = tuple[int, int]
 
-def processes():
+
+def processes() -> dict[int, tuple[int, int]]:
     result = {}
     for directory in Path("/proc").iterdir():
         if not directory.name.isdigit():
@@ -25,10 +28,10 @@ def processes():
     return result
 
 
-def descendants():
+def descendants() -> set[ProcessIdentity]:
     current = processes()
     parents = {os.getpid()}
-    owned = set()
+    owned: set[ProcessIdentity] = set()
     while True:
         children = {(pid, start) for pid, (ppid, start) in current.items() if ppid in parents}
         additions = children - owned
@@ -38,7 +41,7 @@ def descendants():
         parents.update(pid for pid, start in additions)
 
 
-def send(identity, sig):
+def send(identity: ProcessIdentity, sig: int) -> None:
     pid, start = identity
     try:
         descriptor = os.pidfd_open(pid)
@@ -55,7 +58,7 @@ def send(identity, sig):
         os.close(descriptor)
 
 
-def reap():
+def reap() -> None:
     while True:
         try:
             pid, status = os.waitpid(-1, os.WNOHANG)
@@ -65,7 +68,7 @@ def reap():
             return
 
 
-def cleanup(owned, grace):
+def cleanup(owned: set[ProcessIdentity], grace: float) -> None:
     deadline = time.monotonic() + grace
     while True:
         owned.update(descendants())
@@ -87,7 +90,7 @@ def cleanup(owned, grace):
         time.sleep(0.05)
 
 
-def run(command, timeout=180, grace=2):
+def run(command: Sequence[str], timeout: float = 180, grace: float = 2) -> int:
     if sys.platform != "linux":
         message = "homelab-browser-test requires Linux"
         raise RuntimeError(message)
@@ -95,7 +98,7 @@ def run(command, timeout=180, grace=2):
     if libc.prctl(36, 1, 0, 0, 0) != 0:
         error = ctypes.get_errno()
         raise OSError(error, os.strerror(error))
-    interrupted = []
+    interrupted: list[int] = []
     previous = {}
     owned = set()
     process = None
@@ -128,7 +131,7 @@ def run(command, timeout=180, grace=2):
                 signal.signal(sig, handler)
 
 
-def positive(value):
+def positive(value: str) -> float:
     number = float(value)
     if not math.isfinite(number) or number <= 0:
         message = "timeout must be finite and positive"
@@ -136,7 +139,7 @@ def positive(value):
     return number
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run a bounded browser test and clean up all its child processes"
     )
