@@ -36,3 +36,23 @@ policies:
           - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: postgres}}
             podSelector: {matchLabels: {cnpg.io/cluster: pg-common}}
         ports: [{port: 5432, protocol: TCP}]
+services:
+  openhands:
+    type: ClusterIP
+    selector: &canvas {app.kubernetes.io/instance: openhands, app.kubernetes.io/name: agent-canvas}
+    ports: &http [{name: http, port: 8000, protocol: TCP, targetPort: http}]
+  openhands-headless:
+    type: ClusterIP
+    clusterIP: None
+    publishNotReadyAddresses: true
+    selector: *canvas
+    ports: *http
+  monori-publisher:
+    selector: {app: monori-publisher}
+    ports: [{port: 8081, targetPort: 8081}]
+  openhands-oidc:
+    selector: {app: openhands-oidc}
+    ports: [{name: http, port: 4180, targetPort: http}]
+  openhands-oidc-sessions:
+    selector: {app: openhands-oidc-sessions}
+    ports: [{name: redis, port: 6379, targetPort: redis}]

@@ -297,9 +297,10 @@ def _assert_owner_canvas_extensions(
         },
     ]
     mounts = _list(containers[0]["volumeMounts"])
-    assert mounts[:3] == [{"name": "pg-ca", "mountPath": "/pg-ca", "readOnly": True}, *overlay], (
-        "Database CA or SDK overlay mount boundary changed"
+    assert mounts[0] == {"name": "pg-ca", "mountPath": "/pg-ca", "readOnly": True}, (
+        "Database CA mount boundary changed"
     )
+    assert mounts[1:3] == overlay, "SDK overlay mount boundary changed"
     # Check sources and uniqueness: a second literal URL must not override the Secret.
     required = {
         "AUTOMATION_DB_URL": {"valueFrom": {"secretKeyRef": {"name": "automations-postgres", "key": "url"}}},
@@ -563,8 +564,9 @@ def _assert_pilot_boundaries(documents: list[dict[str, object]]) -> None:
                 if container_name == "sandbox"
                 else []
             )
-    for name, expected in _mapping(fixture["policies"]).items():
-        assert _named(documents, "NetworkPolicy", name)["spec"] == expected
+    for section, kind in [("policies", "NetworkPolicy"), ("services", "Service")]:
+        for name, expected in _mapping(fixture[section]).items():
+            assert _named(documents, kind, name)["spec"] == expected, f"{kind} {name} changed"
     boundary = _named(documents, "NetworkPolicy", "openhands-boundary")
     assert _get(boundary, "spec", "podSelector") == {
         "matchExpressions": [
@@ -792,6 +794,7 @@ def _violation_target(
         ),
         "judge-egress": ("pi-monori-judge-offline", "NetworkPolicy", ("spec", "egress"), [{}]),
         "database-egress": ("automation-postgres-egress", "NetworkPolicy", ("spec", "egress"), [{}]),
+        "oidc-service-selector": ("openhands-oidc", "Service", ("spec", "selector", "app"), "pi-monori-author"),
         "publisher-token": (
             "monori-publisher",
             "Deployment",
@@ -831,6 +834,7 @@ def _violation_target(
         "relay-secret-in-author",
         "judge-egress",
         "database-egress",
+        "oidc-service-selector",
         "publisher-token",
         "redis-egress",
         "duplicate-identity",
@@ -850,7 +854,12 @@ def test_current_owner_extensions_reject_targeted_mutations(
     role, kind, path, replacement = target
     resource = _named(documents, kind, role)
     documents[documents.index(resource)] = _mapping(_replace_path(resource, path, replacement))
-    with pytest.raises(AssertionError):
+    message = {
+        "oidc-service-selector": "Service openhands-oidc changed",
+        "database-ca-write": "Database CA mount boundary changed",
+        "overlay-write": "SDK overlay mount boundary changed",
+    }.get(violation)
+    with pytest.raises(AssertionError, match=message):
         _assert_boundary(documents)
 
 
