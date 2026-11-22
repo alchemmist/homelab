@@ -467,6 +467,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         "    --ignore-noqa --output-format concise --"
     )
     imports = graph["deploy-i001"]
+    assert imports["title"] == "Python import order (I001) and script imports (F401)"
     assert imports["policy"] == policy
     assert imports["run"] == (
         "set -euo pipefail\n"
