@@ -102,10 +102,10 @@ redis:
     tag: 8.2-alpine
   resources:
     limits:
-      memory: 256Mi
+      memory: 512Mi  # Cache reached 255.6Mi and was OOM-killed with the old 256Mi cap.
     requests:
       cpu: 50m
-      memory: 64Mi
+      memory: 128Mi
 redis-ha:
   enabled: false
 repoServer:

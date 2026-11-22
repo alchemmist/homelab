@@ -133,16 +133,16 @@ class CurrentDocumentation(unittest.TestCase):
         claim = yaml.safe_load((ROOT / "deploy/wiki-runtime/values.yaml").read_text())[
             "persistence"
         ]["existingClaim"]
-        for name in ["wiki/README.md", "docs/wiki.md"]:
+        for name in ["wiki/README.md", "docs/applications/wiki/README.md"]:
             assert "`" + claim + "`" in (ROOT / name).read_text()
 
     def test_current_context_is_bounded_and_history_separate(self) -> None:
         """Current context is bounded and history separate."""
-        text = (ROOT / "docs/context/context.md").read_text()
+        text = (ROOT / "docs/platform/system-overview.md").read_text()
         context_line_budget = 160
         assert len(text.splitlines()) < context_line_budget
-        assert "context-history-20261116.md" in text
-        assert (ROOT / "docs/context/context-history-20261116.md").is_file()
+        assert "cluster-chronology-20261116.md" in text
+        assert (ROOT / "docs/records/handoffs/cluster-chronology-20261116.md").is_file()
 
 
 class GrafanaStorage(unittest.TestCase):
@@ -213,7 +213,7 @@ class GrafanaStorage(unittest.TestCase):
         """Mcp remains read only stateless and exact version."""
         v = yaml.safe_load((ROOT / "charts/grafana-mcp/values.yaml").read_text())
         assert v["nodeSelector"]["kubernetes.io/hostname"] == "socrat-5"
-        assert v["image"]["tag"] == "2.0.2"
+        assert v["image"]["tag"] == "2.3.0-alpine"
         assert v["credentialsSecret"] == "grafana-mcp-credentials"
 
 

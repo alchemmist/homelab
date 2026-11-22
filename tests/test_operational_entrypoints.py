@@ -211,7 +211,7 @@ def _assert_retired_grafana_source(source: str) -> None:
     assert isinstance(call.args[0].value, str)
     text = call.args[0].value
     assert text.startswith("Retired:")
-    assert "docs/identity/app-access-groups.md" in text
+    assert "docs/auth/applications/app-access-groups.md" in text
     assert "ansible/roles/authentik/files/reconcile_app_access.py" in text
     assert "ansible/roles/identity_app_access/" in text
     assert isinstance(result, ast.Return)

@@ -140,7 +140,7 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
 
     def test_real_blockers_documented(self) -> None:
         """Keep the recorded native-worker blockers visible."""
-        text = (ROOT / "docs/socrat-5-worker-20261110.md").read_text()
+        text = (ROOT / "docs/records/handoffs/socrat-5-worker-20261110.md").read_text()
         assert "Negative NetworkPolicy acceptance failed" in text
         assert "NFS mount denied" in text
         assert "Owner-approved no-NFS profile" in text

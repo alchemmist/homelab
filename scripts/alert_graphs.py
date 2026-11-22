@@ -497,7 +497,7 @@ def outputs(rules):
         result[ROOT / "charts/monitoring-k3s/alert-dashboards" / f"{uid}.json"] = (
             json.dumps(dashboard, indent=2) + "\n"
         )
-    result[ROOT / "docs/monitoring/alert-graphs.inventory.json"] = json.dumps(rows, indent=2) + "\n"
+    result[ROOT / "docs/observability/monitoring/alert-graphs.inventory.json"] = json.dumps(rows, indent=2) + "\n"
     policy = {
         uid + ":" + str(panel["id"]): []
         for uid, dashboard in dashboards.items()

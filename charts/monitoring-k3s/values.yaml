@@ -284,7 +284,7 @@ updateWatch:
       github: BerriAI/litellm
     - id: searxng
       title: SearXNG
-      current: 2026.10.19
+      current: 2026.11.21
       source: searxng-image-tags
     - id: remark42
       title: Remark42
