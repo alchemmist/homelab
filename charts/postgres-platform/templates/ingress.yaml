@@ -24,7 +24,7 @@ spec:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: identity}}
           podSelector: {matchLabels: {app.kubernetes.io/instance: authentik}, matchExpressions: [{key: app.kubernetes.io/component, operator: In, values: [server, worker]}]}
         {{- else }}
-        {{- range $p := list (list "llm" "app.kubernetes.io/instance" "litellm") (list "llm" "app" "open-webui") (list "monori" "app" "monori-back") (list "openhands" "statefulset.kubernetes.io/pod-name" "openhands-0") (list "openhands" "maintenance" "automation-import") (list "wiki" "app.kubernetes.io/instance" "wiki-runtime") (list "uptime-kuma" "app" "gatus") (list "lms" "app.kubernetes.io/name" "lms") (list "automation" "app" "n8n") (list "umami" "app" "umami") (list "socrat-bot" "app.kubernetes.io/name" "socrat-bot") }}
+        {{- range $p := list (list "llm" "app.kubernetes.io/instance" "litellm") (list "llm" "app" "open-webui") (list "monori" "app" "monori-back") (list "openhands" "statefulset.kubernetes.io/pod-name" "openhands-0") (list "wiki" "app.kubernetes.io/instance" "wiki-runtime") (list "uptime-kuma" "app" "gatus") (list "lms" "app.kubernetes.io/name" "lms") (list "automation" "app" "n8n") (list "umami" "app" "umami") (list "socrat-bot" "app.kubernetes.io/name" "socrat-bot") }}
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: {{ index $p 0 }}}}
           podSelector: {matchLabels: { {{ index $p 1 }}: {{ index $p 2 }} }}
         {{- end }}
