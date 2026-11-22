@@ -1,0 +1,12 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: redis-local-retain
+  annotations: {argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'}
+provisioner: rancher.io/local-path
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+allowedTopologies:
+  - matchLabelExpressions:
+      - key: kubernetes.io/hostname
+        values: [socrat-0, socrat-1, socrat-5]
