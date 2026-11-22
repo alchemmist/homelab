@@ -1,12 +1,11 @@
 """Tests for wishlist vm105 deployment moves."""
 
-import os
+import json
 import pathlib
-import runpy
 import subprocess
+import sys
 import tempfile
 import unittest
-from unittest.mock import MagicMock, patch
 
 import yaml
 
@@ -44,7 +43,9 @@ class WishlistMove(unittest.TestCase):
 
     def test_production_has_one_writer_exact_image_and_fails_closed_on_empty_data(self) -> None:
         docs = self.render()
-        d = next(d for d in docs if d["kind"] == "Deployment")
+        d = next(
+            d for d in docs if d["kind"] == "Deployment" and d["metadata"]["name"] == "wishlist"
+        )
         s = d["spec"]["template"]["spec"]
         assert d["spec"]["replicas"] == 1
         assert d["spec"]["strategy"] == {"type": "Recreate"}
@@ -73,27 +74,55 @@ class WishlistMove(unittest.TestCase):
         # Exercise the rendered read against a synthetic driver, never real
         # credentials or a database. Missing data and connection errors must stop.
         with tempfile.TemporaryDirectory() as t:
-            script = pathlib.Path(t) / "guard.py"
-            script.write_text(init["args"][0])
-            driver = MagicMock()
-            connection = driver.connect.return_value.__enter__.return_value
-            with (
-                patch.dict("sys.modules", psycopg=driver),
-                patch.dict(os.environ, WISHLIST_DATABASE_URL="fixture"),
-            ):
-                for exists in (False, True):
-                    driver.reset_mock()
-                    connection.execute.return_value.fetchone.return_value = (exists,)
-                    if exists:
-                        runpy.run_path(str(script))
-                    else:
-                        with self.assertRaises(AssertionError):
-                            runpy.run_path(str(script))
-                    driver.connect.assert_called_once_with("fixture", connect_timeout=5)
-                    connection.execute.assert_called_once_with("SELECT EXISTS(SELECT FROM users)")
-                driver.connect.side_effect = ConnectionError("fixture unavailable")
-                with self.assertRaises(ConnectionError):
-                    runpy.run_path(str(script))
+            root = pathlib.Path(t)
+            # Model the driver's context manager and record every query. Run the
+            # real init body in a fresh child for each case; failure is its exit
+            # status, not a particular Python exception or a missing dependency.
+            (root / "psycopg.py").write_text("""\
+import json
+import os
+from contextlib import contextmanager
+
+
+def log(*args):
+    with open("calls.jsonl", "a") as stream:
+        print(json.dumps(args), file=stream)
+
+
+@contextmanager
+def connect(url, *, connect_timeout):
+    log("connect", url, connect_timeout)
+    if os.environ["ROWS"] == "unavailable":
+        raise ConnectionError("fixture unavailable")
+    yield Cursor()
+
+
+class Cursor:
+    def execute(self, sql):
+        log("execute", sql)
+        return self
+
+    def fetchone(self):
+        log("fetchone")
+        return (os.environ["ROWS"] == "populated",)
+""")
+            trace = root / "calls.jsonl"
+            for rows in ("empty", "populated", "unavailable"):
+                trace.unlink(missing_ok=True)
+                result = subprocess.run(
+                    [sys.executable, "-c", init["args"][0]],
+                    cwd=root,
+                    env={"WISHLIST_DATABASE_URL": "fixture", "ROWS": rows},
+                    capture_output=True,
+                    timeout=10,
+                    check=False,
+                )
+                calls = [json.loads(line) for line in trace.read_text().splitlines()]
+                expected = [["connect", "fixture", 5]]
+                if rows != "unavailable":
+                    expected.extend([["execute", "SELECT EXISTS(SELECT FROM users)"], ["fetchone"]])
+                assert calls == expected
+                assert (result.returncode == 0) == (rows == "populated"), result.stderr
         old = next(d for d in docs if d["kind"] == "PersistentVolumeClaim")
         assert old["metadata"]["name"] == "wishlist-data"
 
