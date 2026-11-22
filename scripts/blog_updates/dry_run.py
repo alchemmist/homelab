@@ -7,7 +7,7 @@ import subprocess
 import urllib.request
 from pathlib import Path
 
-from engine import REPO, UPDATES, prepare, validate_decision
+from engine import REPO, UPDATES, Comparison, prepare, validate_decision
 
 p = argparse.ArgumentParser()
 p.add_argument("before")
@@ -18,11 +18,12 @@ p.add_argument("--model", default="qwen3.8-27b")
 a = p.parse_args()
 
 
-def gh(path):
-    return json.loads(subprocess.check_output(["gh", "api", path], text=True))
+def gh_compare(path: str) -> Comparison:
+    comparison: Comparison = json.loads(subprocess.check_output(["gh", "api", path], text=True))
+    return comparison
 
 
-compare = gh(f"repos/{REPO}/compare/{a.before}...{a.after}")
+compare = gh_compare(f"repos/{REPO}/compare/{a.before}...{a.after}")
 # Local git reads the committed snapshot, never uncommitted working-tree changes.
 updates = subprocess.check_output(
     ["git", "-C", str(Path.home() / "code/blog"), "show", f"{a.after}:{UPDATES}"], text=True

@@ -5,6 +5,8 @@ from __future__ import annotations
 import datetime as dt
 import json
 import re
+from collections.abc import Mapping, Sequence
+from typing import Literal, NotRequired, TypedDict, cast
 
 REPO = "alchemmist/blog"
 UPDATES = "site/content/updates.md"
@@ -13,17 +15,88 @@ MAX_INPUT_BYTES = 120_000
 MAX_ENTRIES = 5
 
 
+class PushEvent(TypedDict, total=False):
+    """Push webhook fields consumed by the worker; other GitHub fields are ignored."""
+
+    repository: Mapping[str, object]
+    ref: str
+    deleted: bool
+    before: str
+    after: str
+
+
+class ChangedFile(TypedDict):
+    """GitHub file metadata used for filtering; additional diff fields can be copied."""
+
+    filename: str
+    status: NotRequired[str]
+    changes: NotRequired[int]
+    patch: NotRequired[str]
+
+
+class CommitInfo(TypedDict):
+    """Nested git commit metadata, including the timestamp used for rendering."""
+
+    message: str
+    committer: dict[str, str]
+
+
+class Commit(TypedDict):
+    """Commit metadata indexed by the compared SHA."""
+
+    sha: str
+    commit: CommitInfo
+
+
+class Comparison(TypedDict, total=False):
+    """Relevant fields of a GitHub compare response."""
+
+    files: list[ChangedFile]
+    commits: list[Commit]
+    status: str
+    total_commits: int
+
+
+class Context(TypedDict):
+    """Filtered, size-limited compare data passed to the model."""
+
+    files: list[dict[str, object]]
+    recent_updates: str
+    commits: list[dict[str, str]]
+
+
+class RenderedEntry(TypedDict):
+    """Text needed to render one entry, independent of model provenance."""
+
+    text: str
+
+
+class Entry(RenderedEntry):
+    """Model entry attributed to at least one changed path."""
+
+    source_paths: list[str]
+
+
+class Decision(TypedDict):
+    """Model output after the exact schema and provenance checks succeed."""
+
+    should_update: bool
+    reason: str
+    entries: list[Entry]
+
+
 class UnsafeInput(ValueError):
     """Value error raised on unsafe blog update input."""
 
 
-def validate_event(event):
+def validate_event(event: PushEvent) -> bool:
     if event.get("repository", {}).get("full_name") != REPO:
         msg = "Unexpected repository"
         raise UnsafeInput(msg)
     if event.get("ref") != "refs/heads/main" or event.get("deleted"):
         return False
-    for key in ("before", "after"):
+    sha_keys: tuple[Literal["before"], Literal["after"]] = ("before", "after")
+    for key in sha_keys:
         if not re.fullmatch(r"[0-9a-f]{40}", event.get(key, "")):
             msg = "Invalid commit SHA"
             raise UnsafeInput(msg)
@@ -33,7 +106,7 @@ def validate_event(event):
     return True
 
 
-def prepare(compare, updates):
+def prepare(compare: Comparison, updates: str) -> Context | None:
     files = compare.get("files", [])
     if not files or len(files) > MAX_FILES:
         msg = "Missing or oversized file list; do not silently truncate"
@@ -46,7 +119,7 @@ def prepare(compare, updates):
     ]
     if not relevant:
         return None
-    candidates = []
+    candidates: list[dict[str, object]] = []
     for f in relevant:
         name = f["filename"]
         if f.get("status") in ("removed", "renamed"):
@@ -60,9 +133,10 @@ def prepare(compare, updates):
         if binary_asset:
             candidates.append({"filename": name, "status": f.get("status"), "binary_asset": True})
             continue
+        fields: Mapping[str, object] = f
         candidates.append(
             {
-                k: f[k]
+                k: fields[k]
                 for k in (
                     "filename",
                     "previous_filename",
@@ -74,7 +148,7 @@ def prepare(compare, updates):
                 if k in f
             }
         )
-    context = {
+    context: Context = {
         "files": candidates,
         "recent_updates": updates,
         "commits": [
@@ -88,7 +162,7 @@ def prepare(compare, updates):
     return context
 
 
-def validate_decision(raw, context):
+def validate_decision(raw: object, context: Context) -> Decision:
     """Model chooses a description, never a path to write or arbitrary Markdown."""
     if not isinstance(raw, dict) or set(raw) != {"should_update", "reason", "entries"}:
         msg = "Unexpected model schema"
@@ -124,10 +198,10 @@ def validate_decision(raw, context):
         ):
             msg = "Unsubstantiated entry"
             raise UnsafeInput(msg)
-    return raw
+    return cast("Decision", raw)
 
 
-def render(updates, entries, timestamp):
+def render(updates: str, entries: Sequence[RenderedEntry], timestamp: str) -> str:
     if not updates.startswith("---\n"):
         msg = "Missing front matter"
         raise UnsafeInput(msg)
@@ -139,8 +213,8 @@ def render(updates, entries, timestamp):
     if stamp.tzinfo is None:
         msg = "Timestamp must include timezone"
         raise UnsafeInput(msg)
-    stamp = stamp.astimezone(dt.timezone(dt.timedelta(hours=3))).strftime("%Y-%m-%d %H:%M")
-    lines = [f"- [ ] *\\[{stamp}\\]* {e['text']}" for e in entries]
+    display_stamp = stamp.astimezone(dt.timezone(dt.timedelta(hours=3))).strftime("%Y-%m-%d %H:%M")
+    lines = [f"- [ ] *\\[{display_stamp}\\]* {e['text']}" for e in entries]
     # Prevent exact duplicate descriptions, including manually added ones.
     existing = {
         re.sub(r"^- \[[ x]\] \*\\\[.*?\\\]\*\s*", "", l).strip() for l in updates.splitlines()

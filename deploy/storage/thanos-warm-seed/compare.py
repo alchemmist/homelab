@@ -45,7 +45,7 @@ print('matched time windows',len(rows),flush=True)
 """
 
 
-def main():
+def main() -> None:
     rows = json.loads(kube("exec", source_pod(), "--", "python3", "-c", TIMES))
     assert rows
     st = container(

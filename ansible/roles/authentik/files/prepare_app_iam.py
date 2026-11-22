@@ -223,6 +223,7 @@ def empty_group(group):
 
 
 def group_payload(name):
+    """Build a marked, empty app group with no roles or inherited access."""
     return {
         "name": name,
         "is_superuser": False,
@@ -235,6 +236,7 @@ def group_payload(name):
 
 
 def evidence_input(path):
+    """Load optional private recovery evidence and verify it names this tool revision."""
     if path is None:
         return None
     private(path)
@@ -295,6 +297,7 @@ def _require_pinned(
 
 
 def build_plan(api, services, reviewed, stage="groups-only", evidence=None):
+    """Return the staged create plan and the read-only inventory used to derive it."""
     require(stage in ("groups-only", "groups+empty-bindings"), "Unknown stage")
     actual = {slug: set(s.get("appRoles", {})) for slug, s in services.items() if s.get("appRoles")}
     require(actual == {k: set(v) for k, v in ALLOWLIST.items()}, "Catalog allowlist changed")
@@ -327,17 +330,16 @@ def build_plan(api, services, reviewed, stage="groups-only", evidence=None):
         and groups["homelab-owner"]["pk"] not in users["antropophag"]["groups"],
         "Tim privilege drift",
     )
-    operations = []
     missing = names - groups.keys()
     # Never invent future PK pairs. Stage B is planned only AFTER Stage A GET verification.
     require(
         stage == "groups-only" or not missing,
         "Run groups-only first; binding pairs require existing group PKs",
     )
-    for name in sorted(missing):
-        operations.append(
-            {"method": "POST", "path": "core/groups/", "payload": group_payload(name)}
-        )
+    operations = [
+        {"method": "POST", "path": "core/groups/", "payload": group_payload(name)}
+        for name in sorted(missing)
+    ]
     bindings = state["policies/bindings/"]
     for slug in sorted(ALLOWLIST):
         app = apps.get(slug)
@@ -375,24 +377,24 @@ def build_plan(api, services, reviewed, stage="groups-only", evidence=None):
             seen.add(group)
         require({groups[n]["pk"] for n in legacy} <= seen, "Legacy binding missing")
         if stage == "groups+empty-bindings":
-            for name in sorted(set(allowed_names) - set(legacy)):
-                if groups[name]["pk"] not in seen:
-                    operations.append(
-                        {
-                            "method": "POST",
-                            "path": "policies/bindings/",
-                            "payload": {
-                                "target": app["pk"],
-                                "group": groups[name]["pk"],
-                                "enabled": True,
-                                "negate": False,
-                                "failure_result": False,
-                                "user": None,
-                                "policy": None,
-                                "order": 100,
-                            },
-                        }
-                    )
+            operations.extend(
+                {
+                    "method": "POST",
+                    "path": "policies/bindings/",
+                    "payload": {
+                        "target": app["pk"],
+                        "group": groups[name]["pk"],
+                        "enabled": True,
+                        "negate": False,
+                        "failure_result": False,
+                        "user": None,
+                        "policy": None,
+                        "order": 100,
+                    },
+                }
+                for name in sorted(set(allowed_names) - set(legacy))
+                if groups[name]["pk"] not in seen
+            )
     require(len(operations) <= 9, "Preparation request bound exceeded")
     context = {
         "version": 1,
@@ -416,6 +418,7 @@ def build_plan(api, services, reviewed, stage="groups-only", evidence=None):
 
 @contextmanager
 def locked(root):
+    """Hold the exclusive preparation lock without unlinking its inode."""
     private(root, directory=True)
     fd = os.open(root / ".app-iam-prepare.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
     try:
@@ -431,6 +434,7 @@ def locked(root):
 
 
 def sync_directory(path):
+    """Flush directory entries to disk before continuing."""
     fd = os.open(path, os.O_RDONLY)
     try:
         os.fsync(fd)
@@ -439,6 +443,7 @@ def sync_directory(path):
 
 
 def atomic_json(path, value):
+    """Replace a JSON file atomically and sync both its contents and directory entry."""
     fd, tmp = tempfile.mkstemp(prefix=".pending-", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as f:
@@ -532,6 +537,7 @@ def apply_plan(api, root, services, reviewed, stage, evidence, approval):
 
 
 def main():
+    """Plan, check, or apply the requested preparation stage under the local lock."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("action", choices=("plan", "check", "apply"), default="plan", nargs="?")

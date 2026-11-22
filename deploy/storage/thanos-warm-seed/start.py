@@ -4,7 +4,9 @@ import json
 import secrets
 import subprocess
 import sys
+from collections.abc import Mapping
 from pathlib import Path
+from typing import NotRequired, TypedDict
 
 D = Path(__file__).parent
 NS = "cattle-monitoring-system"
@@ -31,7 +33,36 @@ RES = {
 }
 
 
-def kube(*args, data=None):
+class ResourceMetadata(TypedDict):
+    """Identity fields assigned to a persisted Kubernetes resource."""
+
+    name: str
+    uid: str
+
+
+class Resource(TypedDict):
+    """Fields the seed needs from a kubectl JSON response."""
+
+    metadata: ResourceMetadata
+
+
+class JobCondition(TypedDict):
+    type: str
+    status: str
+
+
+class JobStatus(TypedDict, total=False):
+    succeeded: int
+    conditions: list[JobCondition]
+
+
+class SeedJob(Resource):
+    """A listed Job may not have reported status yet."""
+
+    status: NotRequired[JobStatus | None]
+
+
+def kube(*args: str, data: str | None = None) -> str:
     p = subprocess.run(
         ["kubectl", "--context=Socrat", "-n", NS, *args],
         input=data,
@@ -46,8 +77,10 @@ def kube(*args, data=None):
     return p.stdout
 
 
-def create(kind, body, name=NAME, api="v1"):
-    return json.loads(
+def create(
+    kind: str, body: Mapping[str, object], name: str = NAME, api: str = "v1"
+) -> Resource:
+    created: Resource = json.loads(
         kube(
             "create",
             "-f",
@@ -59,6 +92,7 @@ def create(kind, body, name=NAME, api="v1"):
             ),
         )
     )
+    return created
 
 
 INVENTORY = """
@@ -77,18 +111,18 @@ print(json.dumps([f for _,files in sorted(blocks) for f in files]))
 """
 
 
-def main():
+def main() -> None:
     delta = sys.argv[1:] == ["--run", "--delta"]
     marks = sys.argv[1:] == ["--run", "--source-compaction-marks"]
     if not delta and not marks and sys.argv[1:] != ["--run"]:
         sys.exit("use --run explicitly")
-    jobs = json.loads(
+    jobs: list[SeedJob] = json.loads(
         kube("get", "jobs", "-l", "thanos-warm-client=seed", "-o", "json")
     )["items"]
     assert not any(
         not any(
             c["type"] in ("Complete", "Failed") and c["status"] == "True"
-            for c in j.get("status", {}).get("conditions", [])
+            for c in (j.get("status") or {}).get("conditions", [])
         )
         for j in jobs
     ), "another seed in flight"
@@ -121,16 +155,16 @@ def main():
         objects = remote_objects()
         verified = set()
         for j in jobs:
-            if not j.get("status", {}).get("succeeded"):
+            if not (j.get("status") or {}).get("succeeded"):
                 continue
             log = kube("logs", "job/" + j["metadata"]["name"])
             if not re.search(
-                r"^all files verified .*sha256\(manifest\) [a-f0-9]{64}$", log, re.M
+                r"^all files verified .*sha256\(manifest\) [a-f0-9]{64}$", log, re.MULTILINE
             ):
                 continue
             verified.update(
                 re.findall(
-                    r"^verified block ([0-9A-Z]{26}) cumulative bytes", log, re.M
+                    r"^verified block ([0-9A-Z]{26}) cumulative bytes", log, re.MULTILINE
                 )
             )
         assert not any(k in objects and objects[k] != n for k, n in files), (

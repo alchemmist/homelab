@@ -9,14 +9,14 @@ import sys
 from urllib.parse import quote, urlencode
 
 
-def main():
+def main() -> None:
     host = "thanos-warm-api:9000"
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.datetime.now(datetime.UTC)
     stamp = now.strftime("%Y%m%dT%H%M%SZ")
     day = stamp[:8]
     scope = day + "/us-east-1/s3/aws4_request"
 
-    def mac(k, v):
+    def mac(k: bytes, v: str) -> bytes:
         return hmac.digest(k, v.encode(), "sha256")
 
     k = ("AWS4" + os.environ["SECRET"]).encode()

@@ -22,7 +22,7 @@ base = "https://auth.socrat.alchemmist.xyz/api/v3/"
 
 
 def api(method, path, payload=None):
-    """Api."""
+    """Send a request with the deployment token and decode any JSON response."""
     req = urllib.request.Request(
         base + path,
         method=method,
@@ -42,7 +42,7 @@ import secrets
 
 
 def unique(path, field, value):
-    """Unique."""
+    """Return the exact match, or refuse to choose between duplicate records."""
     from urllib.parse import urlencode
 
     query = {field: value}

@@ -4,12 +4,12 @@ import json
 import xml.etree.ElementTree as ET
 from urllib.parse import urlencode
 
-from start import INVENTORY, kube
+from start import INVENTORY, Resource, kube
 
 
-def remote_objects():
+def remote_objects() -> dict[str, int]:
     obj = {}
-    token = None
+    token: str | None = None
     while True:
         params = {"list-type": "2"}
         if token:
@@ -28,9 +28,11 @@ def remote_objects():
         )
         root = ET.fromstring(data)
         for entry in root.findall("{*}Contents"):
-            key = entry.findtext("{*}Key")
+            key, size = entry.findtext("{*}Key"), entry.findtext("{*}Size")
+            if not key or size is None:
+                raise ValueError("ListObjectsV2 Contents missing Key or Size")
             assert key not in obj
-            obj[key] = int(entry.findtext("{*}Size"))
+            obj[key] = int(size)
         if root.findtext("{*}IsTruncated") == "false":
             return obj
         nxt = root.findtext("{*}NextContinuationToken")
@@ -38,8 +40,8 @@ def remote_objects():
         token = nxt
 
 
-def source_pod():
-    pods = json.loads(
+def source_pod() -> str:
+    pods: list[Resource] = json.loads(
         kube(
             "get",
             "pods",
@@ -69,7 +71,7 @@ if __name__ == "__main__":
     inactive = {k.split("/")[0] for k in dst if k.endswith("/deletion-mark.json")}
     live_dst = {k: n for k, n in dst.items() if k.split("/")[0] not in inactive}
 
-    def summary(keys):
+    def summary(keys: set[str]) -> dict[str, int | list[str]]:
         return {"objects": len(keys), "blocks": sorted({k.split("/")[0] for k in keys})}
 
     print(

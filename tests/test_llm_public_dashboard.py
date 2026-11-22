@@ -49,8 +49,15 @@ def _sharing_contract(source: str) -> None:
     # A docstring is inert; only discard an actual leading function docstring.
     guards = [n for n in module.body if isinstance(n, ast.FunctionDef) and n.name == "need"]
     assert len(guards) == 1
-    if ast.get_docstring(guards[0]) is not None:
-        guards[0].body.pop(0)
+    guard = guards[0]
+    if ast.get_docstring(guard) is not None:
+        guard.body.pop(0)
+    # Ignore simple type names/literals, never executable annotation expressions.
+    for arg in guard.args.args:
+        assert arg.annotation is None or isinstance(arg.annotation, (ast.Name, ast.Constant))
+        arg.annotation = None
+    assert guard.returns is None or isinstance(guard.returns, (ast.Name, ast.Constant))
+    guard.returns = None
     _same_statement(
         module.body, "def need(ok, msg):\n    if not ok:\n        raise RuntimeError(msg)"
     )
@@ -126,6 +133,8 @@ def test_public_sharing_does_not_enable_org_anonymous() -> None:
         ('live["panels"] == expected["panels"]', "True"),
         ("code == 200 and anonymous.get", "code == 200 or anonymous.get"),
         ('settings.get("auth.anonymous", {})', '{"enabled": False}'),
+        ("msg: str)", 'msg: str = "")'),
+        ("ok: bool,", "ok: side_effect(),"),
         ("raise RuntimeError(msg)", "return"),
     ],
 )

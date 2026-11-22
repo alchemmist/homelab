@@ -315,7 +315,8 @@ class ControllerFaultTests(unittest.TestCase):
 
         try:
             try:
-                raise BadGatewayError("502")
+                status = "502"
+                raise BadGatewayError(status)
             except BadGatewayError as inner:
                 message = "wrapper text mentions InternalServerError"
                 raise SDKError(message) from inner
