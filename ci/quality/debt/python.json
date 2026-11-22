@@ -2334,16 +2334,6 @@
       "rule": "S607"
     },
     {
-      "id": "fd283f44ecf3d915170388a46f200f5790a3a393d9646e25624d1dcf47f55f73.1",
-      "path": "scripts/grafana-tv-dns.py",
-      "rule": "S607"
-    },
-    {
-      "id": "26ce9ccb36f8493e546598e3797cde6e8f9ffeaaca6a7471a73cd35df79c2009.1",
-      "path": "scripts/grafana-tv-dns.py",
-      "rule": "S607"
-    },
-    {
       "id": "b8e862a010caab396ac1b5c08ea2933787dd5bb2b381f1338dc3c79a5b7e2efd.1",
       "path": "scripts/grafana-tv-public.py",
       "rule": "S603"
@@ -5291,31 +5281,6 @@
     {
       "id": "d7b42253d9a2dbe105d45c06594421c85267d45ac21ce4790d8d12daae2b8700.1",
       "path": "scripts/retire-grafana-proxy-gate.py",
-      "rule": "S607"
-    },
-    {
-      "id": "7db8dbd5261cbf66201ccf4e1f7ec583d66e7525cebd9dc31791e4beb771e76e.1",
-      "path": "scripts/retire-tv-public-alias.py",
-      "rule": "S603"
-    },
-    {
-      "id": "c80cc571cd73974385ecff26b92ad2adb62c381a0aa8eaf303d5522ce8002cee.1",
-      "path": "scripts/retire-tv-public-alias.py",
-      "rule": "S607"
-    },
-    {
-      "id": "daf11677e850f9fc6e347e793cd5c105affb7397cc5cd71695e7536896fd1c3d.1",
-      "path": "scripts/retire-tv-public-alias.py",
-      "rule": "B007"
-    },
-    {
-      "id": "3775d7a5802756e7f309973c58c6961d2e6ee6d479815f110e10ddc5d04f425d.1",
-      "path": "scripts/retire-tv-public-alias.py",
-      "rule": "S603"
-    },
-    {
-      "id": "b34bf67c5a7588751df36e5cdad4ace5393cdbf2846bc62c4f725d2efb63fab6.1",
-      "path": "scripts/retire-tv-public-alias.py",
       "rule": "S607"
     },
     {

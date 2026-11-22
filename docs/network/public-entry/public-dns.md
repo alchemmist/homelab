@@ -57,9 +57,7 @@ The temporary `tv.alchemmist.xyz` is **fully retired**: it is no longer in the r
 Do not blindly edit different authoritative servers independently. First check all four health-combinations of the renderer: all unrelated records must stay byte-equivalent. Then a whole-fleet preflight, a fresh exact hash, a serial owned-zone refresh with private backups/receipts, without a daemon/node restart. On an uncertain marker, stop, do not repeat the write.
 
 - `ansible/scripts/public-web-dns.py` / `public-web-dns.yml` — a narrow initial Kuma addition, not a universal DNS editor.
-- `ansible/scripts/grafana-tv-dns.py` / `grafana-tv-dns.yml` — now only the retirement of the temporary TV alias, not its creation.
 - `ansible/scripts/vps-ip-migration.py` — a separate completed migration; do not run it just for a current DNS check.
-- `ansible/scripts/retire-tv-public-alias.py` — only exact owned Kubernetes alias resources; no blanket Argo prune.
 
 The final DNS retirement audits of three nodes showed operations=0; the alias-resource audit — operations=0. The other records are kept. Do not put NS/SSH keys, credentials and private receipts into the wiki.
 

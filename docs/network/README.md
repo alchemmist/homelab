@@ -247,7 +247,7 @@ The server JS/CSS restores a 5px inset, hides the public header/footer and autof
 
 A real TV screenshot with live data, a YouTube foreground with **one real VALIDATED VPN network** and a subsequent Fully without VPN were verified. Do not consider `NOT_VPN` in the Wi-Fi capabilities an active VPN. The physical remote/cold start were not re-verified.
 
-Procedures: [TV](../applications/android-tv/README.md), [operational runbook](../applications/android-tv/README.md), `tv-public-dashboard.yml` (URL only), the maintenance `retire-tv-alias`, `grafana-tv-dns.yml` (now retirement only). Do not delete the WireGuard app data entirely: the YouTube profile is stored there. Do not destroy private historical backups.
+Procedures: [TV](../applications/android-tv/README.md), [operational runbook](../applications/android-tv/README.md), `tv-public-dashboard.yml` (URL only). Do not delete the WireGuard app data entirely: the YouTube profile is stored there. Do not destroy private historical backups.
 
 ## 9. What is proven and what is still separate
 
