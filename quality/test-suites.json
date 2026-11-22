@@ -2,6 +2,7 @@
   "version": 1,
   "suites": {
     "fast": [
+      "tests/test_redis_common.py",
       "tests/test_storage_platform.py",
       "tests/test_swe_mini_retirement.py",
       "tests/openhands/test_dns.py",

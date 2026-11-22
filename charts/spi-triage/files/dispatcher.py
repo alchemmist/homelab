@@ -5,6 +5,7 @@ import http.client
 import socket
 import time
 
+DISPATCH_URL = 'http://n8n.automation.svc.cluster.local/webhook/spi-incident-triage-dispatch'
 
 class Dispatcher:
     def __init__(self, store, token, enabled=False, post=None, busy=None):
