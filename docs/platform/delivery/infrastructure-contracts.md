@@ -54,7 +54,6 @@ has been changed. No broad test discovery against production is introduced.
 | `vm105-spi-idle-handoff.py` | Historical one-way maintenance | Refuses non-original placement; full owner/lease drain and targeted reconcile hold; never force idle or replay. |
 | `socrat5-storage-guard.py` | Active host storage prerequisite | Review role/invocation and expected mounts; not permission to format a disk. |
 | `socrat5-otel-leaf-bootstrap.py` | Scoped credential maintenance | Existing security/secret-delivery contract; not a general deployment tool. |
-| `migrate-wiki-runtime.py` | Offline migration/validation utility | Trusted private archives; stopped writer for copy/restore, no restore onto authoritative live data. |
 | `wg-peer15-relay.py`, `wg-peer15-endpoint.py` | Active network mitigation | Real non-HA production dependency. Dedicated reviewed change; no shared-library rewrite or endpoint restart as cleanup. |
 
 Other scripts have not been certified harmless by this table. Do not mass-delete

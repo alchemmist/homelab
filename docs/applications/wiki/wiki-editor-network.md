@@ -2,7 +2,7 @@
 
 The runtime serves public reading and locally authenticated editing on `wiki.socrat.alchemmist.xyz`. Users can sign in at `/login` from the internet or the administrative WireGuard network. Authorization comes from reader/editor/administrator accounts, not network membership. OIDC is not configured.
 
-Production public ingress and both private virtual hosts have switched to the shared runtime. Local administrator login/logout over HTTPS was verified through public `109.173.40.247` and private `10.250.0.1` addresses. See [the migration runbook](wiki-runtime-migration.md) for data preservation and rollback.
+Production public ingress and both private virtual hosts have switched to the shared runtime. Local administrator login/logout over HTTPS was verified through public `109.173.40.247` and private `10.250.0.1` addresses.
 
 ## Gateway cutover
 
@@ -34,4 +34,4 @@ Configure split DNS for the **exact hostname** `wiki.socrat.alchemmist.xyz` on t
 - WG disconnect removes the managed resolver and restores public resolution; reconnect restores the private route.
 - Existing private virtual hosts and Syncthing remain functional.
 
-`tests/test_wiki_editor_resolver.py` exercises private routing, disconnect/public fallback and unmanaged-file preservation without changing live networking. For rollback, follow the migration runbook: switching the gateway flag back is safe only after considering content accepted by the new runtime.
+`tests/test_wiki_editor_resolver.py` exercises private routing, disconnect/public fallback and unmanaged-file preservation without changing live networking. Do not use the gateway flag as a data rollback: it changes routing, not the content accepted by the runtime.
