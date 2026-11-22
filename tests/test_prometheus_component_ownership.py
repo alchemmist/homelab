@@ -129,6 +129,23 @@ def software_update_extension(document) -> None:
                                     },
                                 }
                             ],
+                        },
+                        {
+                            "job_name": "socrat-actionable-alerts",
+                            "metrics_path": "/actionable-alerts",
+                            "scrape_interval": "30s",
+                            "scrape_timeout": "8s",
+                            "static_configs": [
+                                {
+                                    "targets": [
+                                        "monitoring-update-watch.cattle-monitoring-system.svc.cluster.local:8080"
+                                    ],
+                                    "labels": {
+                                        "namespace": "cattle-monitoring-system",
+                                        "service": "monitoring-update-watch",
+                                    },
+                                }
+                            ],
                         }
                     ]
                 }
@@ -266,7 +283,7 @@ def migration_payload(document) -> dict[str, object]:
     }
     assert spec.pop("podMetadata") == {
         "annotations": {
-            "homelab.alchemmist.xyz/software-update-scrape-version": "1",
+            "homelab.alchemmist.xyz/software-update-scrape-version": "2",
             "homelab.alchemmist.xyz/otel-config-sha256": "db9921b7fe480086f1378726a72c2159cababf78c4cc45eb9ad8e2f212698067",
         }
     }

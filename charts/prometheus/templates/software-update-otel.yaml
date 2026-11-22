@@ -19,6 +19,15 @@ data:
                   labels:
                     namespace: cattle-monitoring-system
                     service: monitoring-update-watch
+            - job_name: socrat-actionable-alerts
+              metrics_path: /actionable-alerts
+              scrape_interval: 30s
+              scrape_timeout: 8s
+              static_configs:
+                - targets: [monitoring-update-watch.cattle-monitoring-system.svc.cluster.local:8080]
+                  labels:
+                    namespace: cattle-monitoring-system
+                    service: monitoring-update-watch
     service:
       pipelines:
         metrics:
