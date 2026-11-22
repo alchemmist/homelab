@@ -1175,3 +1175,29 @@ def test_existing_main_push_regression_cannot_be_deferred(omitted: str) -> None:
     contracts.require_retained_push_tests(complete)
     with pytest.raises(ValueError, match="push regression lost"):
         contracts.require_retained_push_tests(complete - {omitted})
+
+
+@pytest.mark.parametrize("record", [
+    record for record in json.loads((ROOT / "quality/schemas.lock.json").read_text())["files"]
+    if "inputSha256" in record
+], ids=lambda record: record["kind"])
+def test_locked_controller_schemas_close_objects_but_keep_metadata_maps(record: dict) -> None:
+    """Every projected GVK rejects unknown fields even when they are nested in metadata."""
+    schema = json.loads((ROOT / "quality/schemas" / record["path"]).read_text())
+    Draft4Validator.check_schema(schema)
+    metadata = schema["properties"]["metadata"]
+    validator = Draft4Validator({**metadata, "definitions": schema.get("definitions", {})})
+    assert validator.is_valid({"name": "sample", "labels": {"example.org/key": "value"}})
+    assert not validator.is_valid({"name": "sample", "labelz": {}})
+    assert schema["additionalProperties"] is False
+    assert schema["properties"]["apiVersion"]["enum"] == [record["apiVersion"]]
+    assert schema["properties"]["kind"]["enum"] == [record["kind"]]
+
+
+def test_schema_ref_property_name_does_not_allow_remote_references() -> None:
+    """A CRD may describe a field literally called $ref, but not load a remote schema."""
+    from contracts import local_refs
+
+    local_refs({"properties": {"$ref": {"type": "string"}}})
+    with pytest.raises(ValueError, match="Remote schema reference"):
+        local_refs({"properties": {"$ref": {"$ref": "https://example.invalid/schema"}}})

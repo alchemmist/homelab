@@ -1,0 +1,392 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "enum": [
+        "management.cattle.io/v3"
+      ],
+      "type": "string"
+    },
+    "clusterName": {
+      "type": "string"
+    },
+    "groupName": {
+      "type": "string"
+    },
+    "groupPrincipalName": {
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "ClusterRoleTemplateBinding"
+      ],
+      "type": "string"
+    },
+    "metadata": {
+      "allOf": [
+        {
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "annotations": {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "creationTimestamp": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "deletionGracePeriodSeconds": {
+              "format": "int64",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "deletionTimestamp": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "finalizers": {
+              "items": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": [
+                "array",
+                "null"
+              ],
+              "x-kubernetes-list-type": "set",
+              "x-kubernetes-patch-strategy": "merge"
+            },
+            "generateName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "generation": {
+              "format": "int64",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "labels": {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "managedFields": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "apiVersion": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "fieldsType": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "fieldsV1": {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  },
+                  "manager": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "operation": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "subresource": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "time": {
+                    "format": "date-time",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "type": [
+                "array",
+                "null"
+              ],
+              "x-kubernetes-list-type": "atomic"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "namespace": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "ownerReferences": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "apiVersion": {
+                    "type": "string"
+                  },
+                  "blockOwnerDeletion": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "controller": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "uid": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "apiVersion",
+                  "kind",
+                  "name",
+                  "uid"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "x-kubernetes-map-type": "atomic"
+              },
+              "type": [
+                "array",
+                "null"
+              ],
+              "x-kubernetes-list-map-keys": [
+                "uid"
+              ],
+              "x-kubernetes-list-type": "map",
+              "x-kubernetes-patch-merge-key": "uid",
+              "x-kubernetes-patch-strategy": "merge"
+            },
+            "resourceVersion": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "selfLink": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "uid": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      ]
+    },
+    "roleTemplateName": {
+      "type": "string"
+    },
+    "status": {
+      "additionalProperties": false,
+      "properties": {
+        "lastUpdateTime": {
+          "type": "string"
+        },
+        "localConditions": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "lastTransitionTime": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "message": {
+                "maxLength": 32768,
+                "type": "string"
+              },
+              "observedGeneration": {
+                "format": "int64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "reason": {
+                "maxLength": 1024,
+                "minLength": 1,
+                "pattern": "^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$",
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "True",
+                  "False",
+                  "Unknown"
+                ],
+                "type": "string"
+              },
+              "type": {
+                "maxLength": 316,
+                "pattern": "^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "lastTransitionTime",
+              "message",
+              "reason",
+              "status",
+              "type"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "observedGenerationLocal": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "observedGenerationRemote": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "remoteConditions": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "lastTransitionTime": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "message": {
+                "maxLength": 32768,
+                "type": "string"
+              },
+              "observedGeneration": {
+                "format": "int64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "reason": {
+                "maxLength": 1024,
+                "minLength": 1,
+                "pattern": "^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$",
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "True",
+                  "False",
+                  "Unknown"
+                ],
+                "type": "string"
+              },
+              "type": {
+                "maxLength": 316,
+                "pattern": "^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "lastTransitionTime",
+              "message",
+              "reason",
+              "status",
+              "type"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "summaryLocal": {
+          "type": "string"
+        },
+        "summaryRemote": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "userName": {
+      "type": "string"
+    },
+    "userPrincipalName": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "clusterName",
+    "roleTemplateName"
+  ],
+  "type": "object"
+}
