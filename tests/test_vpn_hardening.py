@@ -26,7 +26,7 @@ RECEIVED_BYTES_SENTINEL = 40000
 
 def load(name: str, filename: str) -> ModuleType:
     """Test behavior for load."""
-    spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
+    spec = importlib.util.spec_from_file_location(name, ROOT / "ci/vpn" / filename)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -256,7 +256,7 @@ class HardeningTests(unittest.TestCase):
     def test_cli_renders_expected_counter_policy(self) -> None:
         """Exercise the real entrypoint, not just its importable main function."""
         result = subprocess.run(
-            [sys.executable, str(ROOT / "scripts/vpn-backend-audit.py"), "--render"],
+            [sys.executable, str(ROOT / "ci/vpn/vpn-backend-audit.py"), "--render"],
             check=True,
             capture_output=True,
             text=True,

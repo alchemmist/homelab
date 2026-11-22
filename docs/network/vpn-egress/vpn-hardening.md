@@ -126,20 +126,20 @@ separate November7 watchdog fence as a demonstrated TSPU IP ban.
   downloading65536 bytes before and after. Full semantic proxy comparison proved
   only target changed; SNI, keys, short IDs, flow, port and human records preserved.
   Same-node acceptance is not Russian ISP or every real-device acceptance.
-- `scripts/vpn-hardening-inventory.py`: read-only consistent SQLite snapshot,
+- `ci/vpn/vpn-hardening-inventory.py`: read-only consistent SQLite snapshot,
   WAL-aware backup, config hash, sanitized counts. Private backup checked under
   `/var/lib/homelab-vpn-hardening/20261108-phase1`, mode0700/files0600.
-- `scripts/vpn-backend-audit.py`: default preview, explicit hash-gated root apply.
+- `ci/vpn/vpn-backend-audit.py`: default preview, explicit hash-gated root apply.
   ACCEPT-only passive table installed for12096/32087, no reject/drop/NAT/logging
   or persistence. Observed32087 on lo and wg-socrat;12096 still lacks samples.
   Exact nft1.0.6 readback validates expressions even when JSON omits table comments.
   Interrupted readback finalized without replay. No Xray/pod/node restart occurred.
 - Panel18082 guard stays unchanged; its live nb-host allowance is absent in older
   Git rules. Never reinstall that old ruleset over live state as a side effect.
-- `scripts/vpn-path-check.py`: bounded DNS/TCP/verified-TLS/complete-HTTPS stages,
+- `ci/vpn/vpn-path-check.py`: bounded DNS/TCP/verified-TLS/complete-HTTPS stages,
   no credentials/retries/autorecovery/tunnel claim. Small workstation responses
   passed but did not qualify as >32KiB. Russian fixed/mobile and tunnel tests open.
-- `deploy/vpn-hardening/policy.json` and `scripts/vpn-reality-plan.py` encode intent
+- `deploy/vpn-hardening/policy.json` and `ci/vpn/vpn-reality-plan.py` encode intent
   and strict preview, not runtime readiness or an executable SQL migration.
 
 ## Approved native access, clean teardown, remaining gates

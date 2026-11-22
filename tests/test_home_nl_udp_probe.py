@@ -9,7 +9,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "udp_probe", ROOT / "scripts/vpn-home-nl-udp-probe.py"
+    "udp_probe", ROOT / "ci/vpn/vpn-home-nl-udp-probe.py"
 )
 assert spec is not None
 assert spec.loader is not None
@@ -66,7 +66,7 @@ def test_only_small_exact_shape_from_home_gets_echoed() -> None:
 
 def test_bounded_no_reuse_or_network_state_mutation() -> None:
     """Require a bounded diagnostic that does not mutate routes, firewalls, or VPN state."""
-    s = (ROOT / "scripts/vpn-home-nl-udp-probe.py").read_text()
+    s = (ROOT / "ci/vpn/vpn-home-nl-udp-probe.py").read_text()
     _bounded_echo_contract(s)
     assert "setsockopt" not in s
     for forbidden in ["subprocess", "wg set", "nft", "iptables", "sudo"]:
@@ -84,7 +84,7 @@ def test_bounded_no_reuse_or_network_state_mutation() -> None:
 )
 def test_bounded_echo_rejects_guard_mutations(needle: str, replacement: str) -> None:
     """Reject weakened bounds, comment decoys, bypassed validation and retargeted echo."""
-    source = (ROOT / "scripts/vpn-home-nl-udp-probe.py").read_text()
+    source = (ROOT / "ci/vpn/vpn-home-nl-udp-probe.py").read_text()
     assert source.count(needle) == 1
     with pytest.raises(AssertionError):
         _bounded_echo_contract(source.replace(needle, replacement, 1))
