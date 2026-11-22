@@ -70,7 +70,7 @@
       "tests/test_public_web_access.py",
       "tests/test_quality_dependency_coverage.py",
       "tests/test_quality_evidence_regressions.py",
-      "tests/test_quality_experiment_admission.py",
+      "tests/test_quality_source_admission.py",
       "tests/test_quality_p56_45_service_availability_quotes.py",
       "tests/test_quality_p56_46_wifi_dns_modes.py",
       "tests/test_quality_p56_48_chart_appversion.py",
@@ -327,11 +327,6 @@
     "tests/spi_triage/test_wait_admission.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling.",
     "tests/spi_triage/test_wait_integration.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling.",
     "tests/wiki_openapi/test_flow.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling.",
-    "experiments/venice-autonomy/test_continue.py": "Owner upstream experimental autonomy source; not imported or executed. Provider/container/archive operations are outside this mission; individual offline isolation review required before scheduling.",
-    "experiments/venice-autonomy/test_controller_faults.py": "Owner upstream experimental autonomy source; not imported or executed. Provider/container/archive operations are outside this mission; individual offline isolation review required before scheduling.",
-    "experiments/venice-autonomy/test_lab.py": "Owner upstream experimental autonomy source; not imported or executed. Provider/container/archive operations are outside this mission; individual offline isolation review required before scheduling.",
-    "experiments/venice-autonomy/test_protocol_regression.py": "Owner upstream experimental autonomy source; not imported or executed. Provider/container/archive operations are outside this mission; individual offline isolation review required before scheduling.",
-    "experiments/venice-autonomy/test_runner_decision.py": "Owner upstream experimental autonomy source; not imported or executed. Provider/container/archive operations are outside this mission; individual offline isolation review required before scheduling.",
     "tests/openhands/test_loop.py": "Owner source synchronized from main; imports an operational provisioning/validation entrypoint. Not imported or run in this source-only mission. Pending bounded offline interface/isolation review; not passed or runtime acceptance.",
     "tests/openhands/test_oidc.py": "Owner source synchronized from main; imports an operational provisioning/validation entrypoint. Not imported or run in this source-only mission. Pending bounded offline interface/isolation review; not passed or runtime acceptance."
   }

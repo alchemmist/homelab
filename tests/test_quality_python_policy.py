@@ -32,11 +32,9 @@ DOC_RULES = {"D100", "D101", "D102", "D103", "S101"}
     [
         ("tests/test_quality_system.py", {"D100", "D101"}),
         ("tests/kubernetes/test_cluster.py", {"D100", "D101"}),
-        ("experiments/venice-autonomy/test_continue.py", {"D100", "D101", "D103", "S101"}),
         ("tests/public_entry_contract.py", DOC_RULES - {"S101"}),
         ("ci/quality/tests.py", DOC_RULES),
         ("ansible/roles/vpn_failover/files/smoke_test.py", DOC_RULES),
-        ("experiments/venice-autonomy/protocol_regression.py", DOC_RULES),
     ],
 )
 def test_ruff_missing_docstrings_follow_module_scope(filename: str, expected: set[str]) -> None:

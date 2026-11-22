@@ -14,9 +14,6 @@
         "D102",
         "D103"
       ],
-      "experiments/venice-autonomy/test_*.py": [
-        "D102"
-      ],
       "**/tests/**": [
         "S101"
       ]

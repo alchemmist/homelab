@@ -1,4 +1,4 @@
-"""Inventory experimental source without importing or running its provider machinery."""
+"""Verify CI admission for dependency locks and container build files."""
 
 from __future__ import annotations
 
@@ -22,27 +22,13 @@ def test_experimental_test_names_require_explicit_classification() -> None:
     """An experimental test must not disappear from the coverage inventory."""
     names = [
         "tests/test_existing.py",
-        "experiments/venice-autonomy/test_controller_faults.py",
+        "experiments/fixture/test_existing.py",
         "experiments/future/test_future.py",
         "experiments/future/runner.py",
         "docs/test_example.py",
         "tests/test_not_python.txt",
     ]
     assert contracts.owned_test_files(names) == set(names[:3])
-
-
-def test_new_lab_tests_are_visible_but_not_execution_authorized() -> None:
-    """All actual lab tests stay explicit deferred entries, never auto-collected in CI."""
-    inventory = json.loads((ROOT / "ci/quality/test-suites.json").read_text())
-    experimental = {
-        path.relative_to(ROOT).as_posix()
-        for path in (ROOT / "experiments/venice-autonomy").glob("test_*.py")
-    }
-    assert experimental
-    assert experimental <= set(inventory["notScheduled"])
-    scheduled = {path for paths in inventory["suites"].values() for path in paths}
-    assert not experimental & scheduled
-    assert all(path.startswith("tests/") for path in scheduled)
 
 
 def test_unhashed_alternate_requirements_block_without_source_transport(tmp_path: Path) -> None:
@@ -93,24 +79,6 @@ def test_hashed_alternate_requirements_retain_full_audit_flags(tmp_path: Path) -
             "json",
         ],
         name,
-    )
-
-
-def test_worker_docker_install_consumes_a_hashed_lock_matching_its_inputs() -> None:
-    """Check the real image inputs without importing or building the worker."""
-    worker = ROOT / "experiments/venice-autonomy"
-    lock = worker / "worker-requirements.txt"
-    lint.validate_requirement_hashes(lock)
-    direct = set((worker / "worker-requirements.in").read_text().splitlines())
-    pins = {line.removesuffix("\\").strip() for line in lock.read_text().splitlines()}
-    assert direct
-    assert direct <= pins
-    recipe = (worker / "worker.Dockerfile").read_text().splitlines()
-    assert "COPY worker-requirements.txt /opt/worker/requirements.txt" in recipe
-    assert (
-        "RUN python -m pip install --no-cache-dir --require-hashes "
-        "-r /opt/worker/requirements.txt \\"
-        in recipe
     )
 
 
@@ -177,16 +145,23 @@ def test_docker_filename_variants_are_admitted(name: str, *, expected: bool) -> 
     assert check_docker.docker_targets([name]) == ([name] if expected else [])
 
 
-def test_docker_adapter_transports_each_source_and_keeps_findings() -> None:
+def test_docker_adapter_transports_each_source_and_keeps_findings(tmp_path: Path) -> None:
     """The owning adapter sends old and new paths to hadolint with no build effects."""
     sources = [
         "services/spi-tokenizer/Dockerfile",
-        "experiments/venice-autonomy/worker.Dockerfile",
+        "services/fixture/worker.Dockerfile",
     ]
+    for source in sources:
+        path = tmp_path / source
+        path.parent.mkdir(parents=True)
+        path.write_text("FROM synthetic:1\n")
     names = [*sources, "docs/not_a_dockerfile.md"]
     payload = [{"code": "DL3013", "line": 1, "message": "synthetic source diagnostic"}]
     process = subprocess.CompletedProcess(["hadolint"], 1, stdout=json.dumps(payload), stderr="")
-    with patch.object(check_docker, "command", return_value=process) as command:
+    with (
+        patch("ci.quality.common.ROOT", tmp_path),
+        patch.object(check_docker, "command", return_value=process) as command,
+    ):
         findings, checked = check_docker.check_docker(names)
     assert checked == len(sources)
     assert [row["location"]["path"] for row in findings] == sources

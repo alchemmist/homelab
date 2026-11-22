@@ -69,7 +69,7 @@ shell:
 	uv run python -m ci.quality.check_shell
 
 docker:
-	uv run pytest -q tests/test_quality_experiment_admission.py -k docker
+	uv run pytest -q tests/test_quality_source_admission.py -k docker
 	uv run python -m ci.quality.check_docker
 
 ansible:

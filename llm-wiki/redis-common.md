@@ -22,4 +22,3 @@
 
 - [Argo Application](../deploy/argocd/apps/redis-common.yaml) и [values платформы](../deploy/platform/redis-common/values.yaml) — топология и настройки сервиса. [Активные values LiteLLM](../deploy/platform/litellm/values.yaml) — внешний `general_settings.coordination_redis`.
 - [Операционный runbook](../docs/redis-platform.md) — выдача прав, ротация CA, точечный откат и запись о production-приёмке. Откат подключения LiteLLM не требует удаления PVC или возврата PostgreSQL; без Redis считать лимиты локальными.
-- [Результаты экспериментов](../experiments/redis-common/README.md) — отдельно о доступном Redis, потере связи и восстановлении после смены primary.
