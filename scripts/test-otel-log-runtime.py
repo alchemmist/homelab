@@ -12,7 +12,6 @@ import tempfile
 import time
 import urllib.request
 import uuid
-from collections.abc import Mapping
 from concurrent import futures
 from typing import cast
 

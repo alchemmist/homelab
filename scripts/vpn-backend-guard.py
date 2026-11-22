@@ -11,9 +11,7 @@ import json
 import os
 import socket
 import subprocess
-from collections.abc import Sequence
 from pathlib import Path
-from typing import TypedDict, Unpack
 
 spec = importlib.util.spec_from_file_location(
     "inventory", Path(__file__).with_name("vpn-hardening-inventory.py")

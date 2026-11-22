@@ -1,23 +1,21 @@
 """Run inside the exact Canvas image, with no worker started and source mounted read-only."""
 import asyncio
-import ipaddress
 import json
 import os
 import re
-import socket
 import sqlite3
 import ssl
 import sys
 import uuid
 from collections import Counter
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 import asyncpg
 from alembic import command
 from alembic.config import Config
 from openhands.automation import migrations
-from sqlalchemy import event, text
+from sqlalchemy import event
 from sqlalchemy.engine import Engine, make_url
 
 

@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "90d1f3ed79406841e881413aa86a4f748f3fb895c2d13093c78f6caf9e700d60",
+  "graphDigest": "bf393f77265da95382b2884cb74470cb9e91ce489d8a6352f55e6908a28e5ab1",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -115,10 +115,10 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n    --ignore-noqa --output-format concise --"
+        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n    --ignore-noqa --output-format concise --\nuv run python -m scripts.quality.python_inputs scripts/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select F401 \\\n    --ignore-noqa --output-format concise --"
       },
       "timeoutMinutes": 5,
-      "title": "Ansible, deploy, scripts and tests import order (I001)"
+      "title": "Python import order (I001) and script imports (F401)"
     },
     {
       "env": {},
