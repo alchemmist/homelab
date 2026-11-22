@@ -10,7 +10,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: {name: rustfs-public-reader, namespace: identity}
 spec:
-  replicas: 1
+  replicas: 2
   selector: {matchLabels: {app: rustfs-public-reader}}
   template:
     metadata:
@@ -18,6 +18,11 @@ spec:
       annotations:
         checksum/config: {{ .Files.Get "files/public-reader.conf" | sha256sum }}
     spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector: {matchLabels: {app: rustfs-public-reader}}
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
