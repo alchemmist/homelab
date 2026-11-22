@@ -11,6 +11,8 @@ import tempfile
 import time
 from pathlib import Path
 
+WRAPPER_TIMEOUT_EXIT_CODE = 124
+
 
 def load(path):
     """Load a Python module from the supplied path."""
@@ -101,7 +103,7 @@ def main():
                     recognized |= any(module.is_test_browser(p) for p in own.values())
                     time.sleep(0.05)
                 output = process.communicate(timeout=2)[0]
-                assert process.returncode == 124, (process.returncode, output)
+                assert process.returncode == WRAPPER_TIMEOUT_EXIT_CODE, (process.returncode, output)
                 assert recognized and "BROWSER_READY" in output, output
                 assert not alive(module, identities), alive(module, identities)
                 print(

@@ -41,7 +41,7 @@ class Diagnosis(TypedDict, total=False):
 def run(
     args: list[str], timeout: int = 25, *, check: bool = True
 ) -> subprocess.CompletedProcess[str]:
-    p = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+    p = subprocess.run(args, check=False, capture_output=True, text=True, timeout=timeout)
     if check and p.returncode:
         raise RuntimeError("Command failed: " + str(args[:3]))
     return p
