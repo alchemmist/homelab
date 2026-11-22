@@ -1,8 +1,0 @@
-{
-  "repository": "alchemmist/monori",
-  "repository_id": 1290610202,
-  "issue": 509,
-  "adapter": "monori-mutmut-v1",
-  "label": "mutation-report",
-  "publication_limit": 5
-}

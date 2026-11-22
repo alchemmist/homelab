@@ -2,7 +2,6 @@
 
 import base64
 import hashlib
-import hmac
 import json
 import re
 import uuid
@@ -12,13 +11,6 @@ from urllib.error import HTTPError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 REPO = "alchemmist/monori"
-PREFIX = "openhands/issue-509/"
-
-
-REPO = "alchemmist/monori"
-PREFIX = "openhands/issue-509/"
-
-
 class NoRedirect(HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
@@ -54,21 +46,6 @@ def check(condition):
 
 
 QA = "openhands/qa-issue-"
-MUT = "openhands/issue-"
-
-
-def mutation_target(issue):
-    check(type(issue) is int and 0 < issue < 2**31)
-    i = api("issues/" + str(issue))
-    check(
-        "pull_request" not in i
-        and i["state"] == "open"
-        and i["user"]["id"] == 104511335
-        and any(l["name"] == "mutation-report" for l in i["labels"])
-    )
-    return issue
-
-
 def clean_text(t, lo, hi):
     check(
         isinstance(t, str)
@@ -214,7 +191,7 @@ def qa_issue(x):
     return {"issue": issue["number"], "url": issue["html_url"], "evidence": links}
 
 
-def changes(files, qa=False, pi_ci=False):
+def changes(files, qa=False):
     check(isinstance(files, dict) and 1 <= len(files) <= 12)
     result = []
     for p, value in files.items():
@@ -222,10 +199,6 @@ def changes(files, qa=False, pi_ci=False):
             (
                 re.fullmatch(
                     r"server/(?:tests|app)/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py", p
-                )
-                or (
-                    pi_ci
-                    and re.fullmatch(r"ci/tests/test_mutation_[0-9a-f]{12}\.py", p)
                 )
                 or (
                     qa
@@ -258,7 +231,7 @@ def owned_pr(n, sha):
         and p["head"]["repo"]["full_name"] == REPO
         and p["user"]["login"] == "alchemmist"
         and re.fullmatch(
-            "(?:" + MUT + "[1-9][0-9]*/|" + QA + "[0-9]+/)[a-f0-9]{32}",
+            QA + "[0-9]+/[a-f0-9]{32}",
             p["head"]["ref"],
         )
         and p["head"]["sha"] == sha
@@ -294,7 +267,7 @@ def review(x):
         res = api(
             f"issues/{target}/comments",
             {
-                "body": f"OpenHands: mutation coverage PR #{p['number']}, head `{sha}`. Review/CI status is tracked on the PR."
+                "body": f"OpenHands: QA PR #{p['number']}, head `{sha}`. Review/CI status is tracked on the PR."
             },
         )
         return {"url": res["html_url"]}
@@ -343,59 +316,6 @@ def review(x):
 def dispatch(x):
     check(isinstance(x, dict))
     action = x.get("action")
-    signed_create = action == "create" and Path("/proof").is_dir()
-    signed_update = action == "update" and "proof" in x and Path("/proof").is_dir()
-    life = action in (
-        "life_snapshot",
-        "life_dispose",
-        "life_ready",
-        "life_head",
-        "life_ci",
-        "life_request",
-    )
-    check(not life or Path("/proof").is_dir())
-    if signed_create or signed_update or life:
-        signature = x.pop("proof", "")
-        check(
-            isinstance(signature, str)
-            and hmac.compare_digest(
-                signature,
-                hmac.new(
-                    Path("/proof/key").read_bytes(),
-                    json.dumps(x, sort_keys=True).encode(),
-                    "sha256",
-                ).hexdigest(),
-            )
-        )
-    if life:
-        import runpy
-
-        if action == "life_head":
-            n = x["pr"]
-            check(type(n) is int and n > 0)
-            p = api("pulls/" + str(n))
-            return {
-                "head": p["head"]["sha"],
-                "enrolled": p["state"] == "open"
-                and p["head"]["repo"]["full_name"] == REPO
-                and p["user"]["login"] == "alchemmist"
-                and p["base"]["ref"] == "main"
-                and re.fullmatch(MUT + r"[1-9][0-9]*/[a-f0-9]{32}", p["head"]["ref"])
-                is not None
-                and any(l["name"] == "mutation-pr" for l in p["labels"]),
-            }
-        if action == "life_ci":
-            p = owned_pr(x["pr"], x["head"])
-            check(
-                p["head"]["ref"].startswith(MUT)
-                and any(l["name"] == "mutation-pr" for l in p["labels"])
-            )
-            return runpy.run_path(str(Path(__file__).with_name("ci_excerpt.py")))[
-                "extract"
-            ](x["pr"], x["head"], api, NoRedirect, check)
-        return runpy.run_path(str(Path(__file__).with_name("pr_lifecycle.py")))[
-            "lifecycle"
-        ](x, api, owned_pr, check)
     if action == "qa_issue":
         return qa_issue(x)
     if action == "qa_capabilities":
@@ -411,23 +331,13 @@ def dispatch(x):
             "evidence": "reviewed synthetic PNG and optional 6fps H.264 MP4 from frames",
             "merge": False,
         }
-    if action == "capabilities":
-        return {
-            "repository": REPO,
-            "issue": 509,
-            "actions": ["create", "update", "report", "threads", "reply_then_resolve"],
-            "merge": False,
-            "main_write": False,
-        }
     if action in ("report", "threads", "reply_then_resolve"):
         return review(x)
-    check(action in ("create", "qa_create", "update"))
+    check(action in ("qa_create", "update"))
     required = {"action", "head", "files", "title"} | (
         {"pr"}
         if action == "update"
         else {"issue"}
-        if action == "qa_create" or (signed_create and "issue" in x)
-        else set()
     )
     check(set(x) == required)
     sha = x["head"]
@@ -439,11 +349,6 @@ def dispatch(x):
         and all(c.isprintable() for c in title)
         and "@" not in title
     )
-    target = 509
-    prefix = PREFIX
-    if signed_create and "issue" in x:
-        target = mutation_target(x["issue"])
-        prefix = MUT + str(target) + "/"
     if action == "qa_create":
         target = x["issue"]
         check(type(target) is int and target > 0)
@@ -456,11 +361,11 @@ def dispatch(x):
         )
         prefix = QA + str(target) + "/"
     if action != "update":
-        files = changes(x["files"], action == "qa_create", signed_create)
+        files = changes(x["files"], True)
         check(api("git/ref/heads/main")["object"]["sha"] == sha)
         # cap outstanding work; use a bounded list fail-closed if incomplete.
         prs = api("pulls?state=open&per_page=100")
-        check(len(prs) < 100 and sum(p["head"]["ref"].startswith(MUT) for p in prs) < 5)
+        check(len(prs) < 100)
         check(
             action != "qa_create"
             or not any(p["head"]["ref"].startswith(prefix) for p in prs)
@@ -471,10 +376,7 @@ def dispatch(x):
     else:
         p = owned_pr(x["pr"], sha)
         branch = p["head"]["ref"]
-        check(not branch.startswith(MUT) or branch.startswith(PREFIX) or signed_update)
-        files = changes(
-            x["files"], branch.startswith(QA), signed_update and branch.startswith(MUT)
-        )
+        files = changes(x["files"], True)
     mutation = "mutation($i:CreateCommitOnBranchInput!){createCommitOnBranch(input:$i){commit{oid}}}"
     res = api(
         "graphql",
@@ -502,8 +404,6 @@ def dispatch(x):
                 "body": f"Follow-up for #{target}. Published via the scoped OpenHands publisher. Human review and merge required.",
             },
         )
-    if signed_create:
-        api("issues/" + str(p["number"]) + "/labels", {"labels": ["mutation-pr"]})
     return {"pr": p["number"], "head": oid, "url": p["html_url"]}
 
 

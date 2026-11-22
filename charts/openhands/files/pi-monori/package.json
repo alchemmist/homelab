@@ -1,1 +1,0 @@
-{"name":"socrat-pi-monori","private":true,"version":"1.0.0","dependencies":{"@earendil-works/pi-coding-agent":"1.6.0","@google/genai":"file:genai-2.32.0-homelab.tar","protobufjs":"file:protobufjs-7.6.6-homelab.tar"}}

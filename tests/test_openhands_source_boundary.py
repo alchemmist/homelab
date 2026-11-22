@@ -147,10 +147,6 @@ def _assert_owner_inventory(documents: list[dict[str, object]]) -> None:
     """Check the explicit owner inventory without executing its source."""
     expected = {
         ("Namespace", "", "openhands"),
-        ("ConfigMap", "openhands", "pi-monori-code"),
-        ("Deployment", "openhands", "pi-monori-author"),
-        ("Deployment", "openhands", "pi-monori-judge"),
-        ("NetworkPolicy", "openhands", "pi-monori-judge-offline"),
         ("NetworkPolicy", "openhands", "automation-postgres-egress"),
         ("ResourceQuota", "openhands", "openhands-budget"),
         ("ServiceAccount", "openhands", "openhands"),
@@ -195,7 +191,7 @@ def _assert_owner_inventory(documents: list[dict[str, object]]) -> None:
     assert identities == expected, "Missing owner resource"
 
 
-def _assert_owner_pods(documents: list[dict[str, object]], *, continuation: bool) -> None:
+def _assert_owner_pods(documents: list[dict[str, object]]) -> None:
     """Check the explicit owner pods without executing its source."""
     values = _mapping(yaml.safe_load((ROOT / "deploy/openhands/values.yaml").read_text()))
     for document in documents:
@@ -222,10 +218,7 @@ def _assert_owner_pods(documents: list[dict[str, object]], *, continuation: bool
         role = _get(document, "metadata", "name")
         assert isinstance(role, str)
         names = {
-            "openhands": ["agent-canvas"]
-            + (["iteration-continuation"] if continuation else []),
-            "pi-monori-author": ["sandbox", "relay"],
-            "pi-monori-judge": ["sandbox"],
+            "openhands": ["agent-canvas"],
             "monori-publisher": ["publisher"],
             "openhands-oidc": ["oauth2-proxy"],
             "openhands-oidc-sessions": ["redis"],
@@ -237,7 +230,6 @@ def _assert_owner_pods(documents: list[dict[str, object]], *, continuation: bool
         expected_init = {
             "openhands": ["prepare-iteration-policy"],
             "monori-publisher": ["prepare-encoder"],
-            "pi-monori-author": ["install-pi"],
         }
         assert [c["name"] for c in init] == expected_init.get(role, [])
         for container in containers + init:
@@ -265,7 +257,7 @@ def _pilot_fixture() -> dict[str, object]:
 
 
 def _assert_owner_canvas_extensions(
-    documents: list[dict[str, object]], *, continuation: bool
+    documents: list[dict[str, object]]
 ) -> None:
     """Check the explicit owner canvas extensions without executing its source."""
     pod = _pod(documents)
@@ -312,36 +304,6 @@ def _assert_owner_canvas_extensions(
     env = [_mapping(entry) for entry in _list(containers[0]["env"])]
     for name, source in required.items():
         assert [v for v in env if v["name"] == name] == [{"name": name, **source}], name
-    if not continuation:
-        return
-    sidecar = containers[1]
-    assert sidecar["command"] == ["python", "-IBu", "-c"]
-    assert sidecar["args"] == [_embedded("files/continue_iterations.py")]
-    assert sidecar["env"] == [
-        {"name": "CONVERSATION_ID", "value": "1ab3985a-2193-4177-8dd2-8ec7d54dbfeb"},
-        {"name": "QA_CONVERSATION_ID", "value": "51a35822-a870-43cc-a775-fd5e662f0039"},
-    ]
-    assert sidecar["volumeMounts"] == [
-        {"name": "data", "mountPath": "/wait-state", "subPath": "iteration-wait-state"},
-        {
-            "name": "data",
-            "mountPath": "/session-key",
-            "subPath": "openhands/agent-canvas/api-key.txt",
-            "readOnly": True,
-        },
-        {
-            "name": "data",
-            "mountPath": "/mutation-registry",
-            "subPath": "openhands/agent-canvas/workspaces/75ad056ce4354c2e86fd12f8e1f4f6fe/.worker-registry",
-            "readOnly": True,
-        },
-        {
-            "name": "data",
-            "mountPath": "/qa-registry",
-            "subPath": "openhands/agent-canvas/workspaces/e74a67536db4498196f4a961070bf471/.worker-registry",
-            "readOnly": True,
-        },
-    ], "Continuation session mount changed"
 
 
 def _assert_owner_publisher_extensions(documents: list[dict[str, object]]) -> None:
@@ -352,7 +314,6 @@ def _assert_owner_publisher_extensions(documents: list[dict[str, object]]) -> No
         {"name": "encoder", "emptyDir": {"sizeLimit": "120Mi"}},
         {"name": "temp", "emptyDir": {"sizeLimit": "24Mi"}},
         {"name": "code", "configMap": {"name": "monori-publisher-code"}},
-        {"name": "proof", "secret": {"secretName": "monori-proof-ticket", "defaultMode": 288}},
         {
             "name": "credential",
             "secret": {"secretName": "monori-publisher-user", "defaultMode": 288},
@@ -365,7 +326,6 @@ def _assert_owner_publisher_extensions(documents: list[dict[str, object]]) -> No
         {"name": "encoder", "mountPath": "/encoder", "readOnly": True},
         {"name": "temp", "mountPath": "/tmp"},
         {"name": "credential", "mountPath": "/credential", "readOnly": True},
-        {"name": "proof", "mountPath": "/proof", "readOnly": True},
     ], "Publisher credential mount changed"
     encoder = _mapping(_list(_get(pub, "initContainers"))[0])
     assert encoder["volumeMounts"] == [{"name": "encoder", "mountPath": "/encoder"}]
@@ -543,27 +503,6 @@ def _assert_owner_core_projection(documents: list[dict[str, object]]) -> None:
 def _assert_pilot_boundaries(documents: list[dict[str, object]]) -> None:
     """Separate scratch/data access from model and report credentials."""
     fixture = _pilot_fixture()
-    for name, expected in _mapping(fixture["deployments"]).items():
-        role = _named(documents, "Deployment", name)
-        pod = _mapping(_get(role, "spec", "template", "spec"))
-        assert _get(role, "spec", "template", "metadata", "labels") == {"app": name}
-        assert pod["volumes"] == _get(expected, "volumes")
-        assert pod.get("shareProcessNamespace", False) is False
-        assert not pod.get("ephemeralContainers")
-        for value in _list(pod["containers"]) + _list(pod.get("initContainers", [])):
-            container = _mapping(value)
-            container_name = container["name"]
-            assert isinstance(container_name, str)
-            assert container["volumeMounts"] == _get(expected, "mounts", container_name)
-            assert "envFrom" not in container
-            assert container.get("env", []) == (
-                [
-                    {"name": "HOME", "value": "/scratch/home"},
-                    {"name": "PYTHONDONTWRITEBYTECODE", "value": "1"},
-                ]
-                if container_name == "sandbox"
-                else []
-            )
     for section, kind in [("policies", "NetworkPolicy"), ("services", "Service")]:
         for name, expected in _mapping(fixture[section]).items():
             assert _named(documents, kind, name)["spec"] == expected, f"{kind} {name} changed"
@@ -571,16 +510,15 @@ def _assert_pilot_boundaries(documents: list[dict[str, object]]) -> None:
     assert _get(boundary, "spec", "podSelector") == {
         "matchExpressions": [
             {"key": "app", "operator": "NotIn", "values": ["openhands-backup-pre142"]},
-            {"key": "app", "operator": "NotIn", "values": ["pi-monori-judge"]},
         ]
     }
 
 
-def _assert_boundary(documents: list[dict[str, object]], *, continuation: bool = False) -> None:
+def _assert_boundary(documents: list[dict[str, object]]) -> None:
     """Validate every extension before invoking the unchanged original core guard."""
     _assert_owner_inventory(documents)
-    _assert_owner_pods(documents, continuation=continuation)
-    _assert_owner_canvas_extensions(documents, continuation=continuation)
+    _assert_owner_pods(documents)
+    _assert_owner_canvas_extensions(documents)
     _assert_pilot_boundaries(documents)
     _assert_owner_publisher_extensions(documents)
     _assert_owner_oidc_extensions(documents)
@@ -653,7 +591,7 @@ def test_database_connection_rejects_changed_source(
 
 def test_retired_pilot_switch_cannot_restore_any_authority() -> None:
     """A stale owner override must not reintroduce the pilot, its ticket, or intake."""
-    _assert_boundary(_render("--set", "monoriPilot=true"))
+    _assert_boundary(_render("--set", "monoriPilot=true,piMonori=true,publisherProofTicket=true"))
 
 
 def test_openhands_mcp_inventory_is_explicitly_no_client() -> None:
@@ -786,15 +724,8 @@ def _violation_target(
             ("spec", "template", "spec", "containers", 0, "volumeMounts", 3, "readOnly"),
             False,
         ),
-        "relay-secret-in-author": (
-            "pi-monori-author",
-            "Deployment",
-            ("spec", "template", "spec", "containers", 0, "volumeMounts", 0, "name"),
-            "model",
-        ),
-        "judge-egress": ("pi-monori-judge-offline", "NetworkPolicy", ("spec", "egress"), [{}]),
         "database-egress": ("automation-postgres-egress", "NetworkPolicy", ("spec", "egress"), [{}]),
-        "oidc-service-selector": ("openhands-oidc", "Service", ("spec", "selector", "app"), "pi-monori-author"),
+        "oidc-service-selector": ("openhands-oidc", "Service", ("spec", "selector", "app"), "wrong-workload"),
         "publisher-token": (
             "monori-publisher",
             "Deployment",
@@ -831,8 +762,6 @@ def _violation_target(
         "publisher-write",
         "backup-volume-write",
         "backup-mount-write",
-        "relay-secret-in-author",
-        "judge-egress",
         "database-egress",
         "oidc-service-selector",
         "publisher-token",
@@ -862,32 +791,6 @@ def test_current_owner_extensions_reject_targeted_mutations(
     with pytest.raises(AssertionError, match=message):
         _assert_boundary(documents)
 
-
-@pytest.mark.parametrize("mount", ["/session-key", "/mutation-registry", "/qa-registry"])
-def test_opt_in_continuation_rejects_writable_credentials_and_registries(mount: str) -> None:
-    """Retain the guard on real opt-in Helm output even though owner continuation is disarmed."""
-    documents = _render(
-        "--set-string",
-        "continueIterationChat=1ab3985a-2193-4177-8dd2-8ec7d54dbfeb",
-        "--set-string",
-        "continueQaChat=51a35822-a870-43cc-a775-fd5e662f0039",
-    )
-    _assert_boundary(documents, continuation=True)
-    stateful = _one(documents, "StatefulSet")
-    pod = _pod(documents)
-    sidecar = _mapping(_list(pod["containers"])[-1])
-    index = next(
-        i for i, v in enumerate(_list(sidecar["volumeMounts"])) if _get(v, "mountPath") == mount
-    )
-    documents[documents.index(stateful)] = _mapping(
-        _replace_path(
-            stateful,
-            ("spec", "template", "spec", "containers", 1, "volumeMounts", index, "readOnly"),
-            replacement=False,
-        )
-    )
-    with pytest.raises(AssertionError, match="Continuation session mount changed"):
-        _assert_boundary(documents, continuation=True)
 
 
 @pytest.fixture

@@ -9,7 +9,6 @@ import os
 import subprocess
 import tarfile
 import tempfile
-import urllib.request
 from pathlib import Path
 
 # Keys are upstream identities (also used for advisory lookup), not package aliases.
@@ -18,16 +17,9 @@ SOURCES = {
         "0.9.0",
         "5xfz8JB2ZNCcl/fvkJJnX1aH7AdmSD68cZDY/xzwRoBtoedfDXnwEKN3TBcItFkr0IDpMNR4sXwcsEE4R14trw==",
     ),
-    "@google/genai": (
-        "2.32.0",
-        "60c79uXpR0a47bmGqDxbXEBuQUalNmwo5mx5kqb91jIW4FoqpsLSt86DeVhRhtH5+s/16Wqxt3sXzFQn2U1OHQ==",
-    ),
-    "protobufjs": (
-        "7.6.6",
-        "dYDWdjSl5RNb7SgPxGQcRU+GtvP7s2fpkrY0r432PcOIaZ0/rBcxEZnQN67iJhFuQiVw754JDoPruPCNdGsbjg==",
-    ),
+
 }
-GROUPS = {"argo": ("argocd-mcp",), "pi": ("@google/genai", "protobufjs")}
+GROUPS = {"argo": ("argocd-mcp",)}
 
 
 def rewrite(name: str, path: str, data: bytes) -> bytes:
@@ -40,14 +32,6 @@ def rewrite(name: str, path: str, data: bytes) -> bytes:
             if manifest.get("dependencies", {}).get("zod") != "^3.25.0":
                 raise ValueError("Review the new upstream Zod dependency before patching")
             manifest["dependencies"]["zod"] = "^4.6.7"
-        else:
-            hook, expected = {
-                "protobufjs": ("postinstall", "node scripts/postinstall"),
-                "@google/genai": ("preinstall", "echo 'preinstall: no-op'"),
-            }[name]
-            if manifest.get("scripts", {}).get(hook) != expected:
-                raise ValueError(f"Upstream {name} {hook} hook changed; review the patch")
-            del manifest["scripts"][hook]
         return (json.dumps(manifest, indent=2) + "\n").encode()
     if name == "argocd-mcp" and path == "package/dist/index.js":
         for old, new, count in (
@@ -76,38 +60,35 @@ def materialize(name: str, directory: Path, offline: bool) -> None:
         verify(dest, name, directory)
         return
     url = f"https://registry.npmjs.org/{name}/-/{stem}.tgz"
-    if name == "argocd-mcp" or offline:
-        # The workstation installer supports fresh destinations using just npm's cache.
-        with tempfile.TemporaryDirectory(dir=directory) as cached:
-            subprocess.run(
-                [
-                    "npm",
-                    "pack",
-                    "--ignore-scripts",
-                    "--silent",
-                    "--offline" if offline else "--prefer-online",
-                    url,
-                ],
-                cwd=cached,
-                check=True,
-                timeout=60,
-                stdout=subprocess.DEVNULL,
-            )
-            # npm flattens scoped names when naming tarballs. Select the sole
-            # regular .tgz in our newly-created private directory, not stdout.
-            archives = list(Path(cached).iterdir())
-            if (
-                len(archives) != 1
-                or archives[0].suffix != ".tgz"
-                or archives[0].is_symlink()
-                or not archives[0].is_file()
-            ):
-                raise ValueError(f"Expected one regular npm pack tarball for {name}@{version}")
-            with archives[0].open("rb") as archive:
-                raw = archive.read(4 * 1024 * 1024 + 1)
-    else:
-        with urllib.request.urlopen(url, timeout=30) as response:
-            raw = response.read(4 * 1024 * 1024 + 1)
+    # The workstation installer supports fresh destinations using just npm's cache.
+    with tempfile.TemporaryDirectory(dir=directory) as cached:
+        subprocess.run(
+            [
+                "npm",
+                "pack",
+                "--ignore-scripts",
+                "--silent",
+                "--offline" if offline else "--prefer-online",
+                url,
+            ],
+            cwd=cached,
+            check=True,
+            timeout=60,
+            stdout=subprocess.DEVNULL,
+        )
+        # npm flattens scoped names when naming tarballs. Select the sole
+        # regular .tgz in our newly-created private directory, not stdout.
+        archives = list(Path(cached).iterdir())
+        if (
+            len(archives) != 1
+            or archives[0].suffix != ".tgz"
+            or archives[0].is_symlink()
+            or not archives[0].is_file()
+        ):
+            raise ValueError(f"Expected one regular npm pack tarball for {name}@{version}")
+        with archives[0].open("rb") as archive:
+            raw = archive.read(4 * 1024 * 1024 + 1)
+
     if hashlib.sha512(raw).digest() != base64.b64decode(digest):
         raise ValueError(f"Unexpected upstream SHA-512 for {name}@{version}")
     with tempfile.TemporaryDirectory(dir=directory) as staging:
