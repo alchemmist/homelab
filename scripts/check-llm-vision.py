@@ -16,6 +16,7 @@ BASE_URL = os.environ.get("LLM_BASE_URL", "http://127.0.0.1:8000/v1").rstrip("/"
 API_KEY = os.environ.get("LLM_API_KEY", "")
 MODEL = os.environ.get("LLM_MODEL", "qwen3.8-27b")
 TIMEOUT = 300
+HISTORY_IMAGE_COUNT = 9
 CODE_WORDS = (
     "APPLE",
     "RIVER",
@@ -165,7 +166,7 @@ def main():
     if args.large:
         large_messages = []
         history_codes = []
-        while len(history_codes) < 9:
+        while len(history_codes) < HISTORY_IMAGE_COUNT:
             code = make_code()
             if code not in history_codes:
                 history_codes.append(code)

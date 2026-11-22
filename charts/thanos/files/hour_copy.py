@@ -20,7 +20,10 @@ HOUR = 3600000
 
 
 class Bucket:
+    """Issue signed path-style S3 requests to the configured workshop bucket."""
+
     def __init__(self, cfg):
+        """Use the object-store configuration's CA file to verify the S3 endpoint."""
         self.cfg = cfg
         self.ctx = ssl.create_default_context(
             cafile=cfg["http_config"]["tls_config"]["ca_file"]
@@ -29,8 +32,12 @@ class Bucket:
     def read(
         self, key="", query=None, *, sink=None, method="GET", absent=False, payload=None
     ):
+        """Return bounded bytes or stream to a sink for a (size, SHA-256) pair.
+
+        With absent=True, a 404 returns None rather than raising.
+        """
         c = self.cfg
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.UTC)
         stamp = now.strftime("%Y%m%dT%H%M%SZ")
         day = stamp[:8]
         host = c["endpoint"]
@@ -74,7 +81,7 @@ class Bucket:
             if absent and res.status == 404:
                 return None
             if res.status != 200:
-                raise IOError(f"{method} {key}: status {res.status}")
+                raise OSError(f"{method} {key}: status {res.status}")
             if sink is None:
                 body = res.read(16 * 1024**2 + 1)
                 if len(body) > 16 * 1024**2:
@@ -91,6 +98,7 @@ class Bucket:
             conn.close()
 
     def listing(self, prefix="", groups=False):
+        """List all keys with sizes, or all common prefixes with zero sizes in group mode."""
         q = {"list-type": "2", "prefix": prefix}
         result = {}
         if groups:
@@ -109,6 +117,7 @@ class Bucket:
 
 
 def covers(target, source):
+    """Require matching labels and downsample metadata, and full interval and source coverage."""
     a, b = target["thanos"], source["thanos"]
     src = set(source["compaction"]["sources"])
     return (
@@ -122,6 +131,7 @@ def covers(target, source):
 
 
 def hashes(root):
+    """Index relative file names by size and SHA-256, refusing symlinks in the block tree."""
     out = {}
     for f in root.rglob("*"):
         if f.is_symlink():
@@ -136,6 +146,7 @@ def hashes(root):
 
 
 def run(bucket, dest):
+    """Verify and publish eligible hourly blocks without replacement; return confirmed ULIDs."""
     if not dest.is_dir():
         raise ValueError("destination not mounted")
     confirmed = set()
@@ -181,7 +192,7 @@ def run(bucket, dest):
         ):
             raise ValueError("unexpected block inventory: " + uid)
         if shutil.disk_usage(dest).free < sum(rel.values()) + 10 * 2**30:
-            raise IOError("hour shelf headroom too low")
+            raise OSError("hour shelf headroom too low")
         with tempfile.TemporaryDirectory(prefix=".warm-copy-", dir=dest) as temp:
             stage = Path(temp) / uid
             stage.mkdir()
@@ -194,13 +205,13 @@ def run(bucket, dest):
                     w.flush()
                     os.fsync(w.fileno())
                 if expected[k][0] != rel[k]:
-                    raise IOError("object size mismatch")
+                    raise OSError("object size mismatch")
             if (
                 hashes(stage) != expected
                 or (stage / "meta.json").read_bytes() != meta
                 or bucket.listing(prefix) != keys
             ):
-                raise IOError("block changed during copy")
+                raise OSError("block changed during copy")
             # Persist staging directory entries before making the block visible.
             for sub in (stage / "chunks", stage):
                 fd = os.open(sub, os.O_DIRECTORY)
@@ -210,7 +221,7 @@ def run(bucket, dest):
                     os.close(fd)
             if target.exists():
                 if hashes(target) != expected:
-                    raise IOError("existing block differs; refusing replacement")
+                    raise OSError("existing block differs; refusing replacement")
             else:
                 # Linux renameat2(RENAME_NOREPLACE): atomic publication, never overwrite.
                 import ctypes
@@ -236,7 +247,7 @@ def run(bucket, dest):
             ).encode()
             if receipt.exists():
                 if receipt.read_bytes() != body:
-                    raise IOError("conflicting copy receipt")
+                    raise OSError("conflicting copy receipt")
             else:
                 with tempfile.NamedTemporaryFile(dir=receipts) as f:
                     f.write(body)

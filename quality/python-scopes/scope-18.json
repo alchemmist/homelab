@@ -1,0 +1,4 @@
+{
+  "include": ["ansible/roles/identity_integrations/files/*.py"],
+  "rules": ["ANN002", "E501", "F601", "F821", "RUF005"]
+}

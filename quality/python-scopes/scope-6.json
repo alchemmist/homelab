@@ -1,0 +1,1 @@
+{"include":["scripts/lms-*.py"],"rules":["ANN001","ANN002","ANN201"]}
