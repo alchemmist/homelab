@@ -4,10 +4,11 @@ import pathlib
 import subprocess
 import unittest
 
+import yaml
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 RETENTION_MARKER_COUNT = 2
-ROOT_SECRET_REF_COUNT = 2
 READER_SECRET_REF_COUNT = 2
 
 
@@ -74,7 +75,24 @@ class Foundation(unittest.TestCase):
         assert "nodePort:" not in text
         assert "type: LoadBalancer" not in text
         # Root is referenced by storage only; gateway has its isolated reader Secret.
-        assert text.count("name: rustfs-root") == ROOT_SECRET_REF_COUNT
+        docs = list(yaml.safe_load_all(text))
+        storage, = [doc for doc in docs if doc and "rustfs-root" in str(doc)
+                    and doc["kind"] == "Deployment" and doc["metadata"]["name"] == "rustfs"]
+        assert all("rustfs-root" not in str(doc) for doc in docs if doc is not storage)
+        pod = storage["spec"]["template"]["spec"]
+        volume, = [v for v in pod["volumes"] if v.get("secret", {}).get("secretName") == "rustfs-root"]
+        assert volume["secret"]["items"] == [
+            {"key": "access-key", "path": "access"}, {"key": "secret-key", "path": "secret"}
+        ]
+        assert all(volume["name"] not in str(c) for c in pod["initContainers"])
+        container, = pod["containers"]
+        mount, = [m for m in container["volumeMounts"] if m["name"] == volume["name"]]
+        assert mount["readOnly"]
+        env = {v["name"]: v.get("value") for v in container["env"]}
+        for field in ("access", "secret"):
+            key = "RUSTFS_" + field.upper() + "_KEY"
+            assert key not in env
+            assert f"--{field}-key-file={mount['mountPath']}/{field}" in container["args"]
         assert text.count("name: rustfs-reader") == READER_SECRET_REF_COUNT
         assert "rustfs-writer" not in text
         assert "path: /health/ready" in text

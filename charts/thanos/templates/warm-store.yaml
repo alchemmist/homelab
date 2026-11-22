@@ -72,9 +72,10 @@ spec:
           image: rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2
           resources: {requests: {cpu: 250m, memory: 1Gi}, limits: {cpu: '2', memory: 4Gi}}
           securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          args:
+            - --access-key-file=/run/rustfs-root/access
+            - --secret-key-file=/run/rustfs-root/secret
           env:
-            - {name: RUSTFS_ACCESS_KEY, valueFrom: {secretKeyRef: {name: thanos-warm-root, key: access}}}
-            - {name: RUSTFS_SECRET_KEY, valueFrom: {secretKeyRef: {name: thanos-warm-root, key: secret}}}
             - {name: RUSTFS_VOLUMES, value: /data}
             - {name: RUSTFS_CONSOLE_ENABLE, value: 'false'}
             - {name: RUSTFS_TLS_PATH, value: /tls}
@@ -86,9 +87,16 @@ spec:
             - {name: data, mountPath: /data, subPath: workshop-s3}
             - {name: tmp, mountPath: /tmp}
             - {name: tls, mountPath: /tls, readOnly: true}
+            - {name: root-credentials, mountPath: /run/rustfs-root, readOnly: true}
       volumes:
         - {name: data, persistentVolumeClaim: {claimName: thanos-warm-s1-candidate}}
         - {name: tmp, emptyDir: {sizeLimit: 256Mi}}
+        - name: root-credentials
+          secret:
+            secretName: thanos-warm-root
+            # Only the server mounts this volume; do not apply fsGroup to its data PVC.
+            defaultMode: 292  # 0444
+            items: [{key: access, path: access}, {key: secret, path: secret}]
         - name: tls
           secret:
             secretName: thanos-warm-api-tls
