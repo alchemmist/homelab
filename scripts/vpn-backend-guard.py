@@ -22,8 +22,8 @@ TABLE = "homelab_xui_backend_guard"
 OWNER = "homelab issue83 public backend guard v1"
 
 
-def run(args, **kwargs) -> str:
-    r = subprocess.run(args, capture_output=True, text=True, timeout=20, **kwargs)
+def run(args, *, check: bool = False, **kwargs) -> str:
+    r = subprocess.run(args, check=check, capture_output=True, text=True, timeout=20, **kwargs)
     if r.returncode:
         raise RuntimeError("Backend guard operation failed; inspect private receipts")
     output: str = r.stdout
