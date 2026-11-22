@@ -12,7 +12,7 @@ from typing import NamedTuple, TypedDict, cast
 POLICY = "n8n-workflow-policy.json"
 
 
-def unique_object(pairs):
+def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
     result = {}
     for key, value in pairs:
         if key in result:
@@ -21,11 +21,11 @@ def unique_object(pairs):
     return result
 
 
-def load(path):
+def load(path: Path) -> object:
     return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique_object)
 
 
-def inside(root, name):
+def inside(root: Path, name: str) -> Path:
     relative = Path(name)
     if relative.is_absolute() or ".." in relative.parts:
         raise ValueError("policy paths must be repository-relative")
@@ -56,13 +56,13 @@ class _Document(NamedTuple):
     """Positional identity of one workflow candidate inside a JSON file."""
 
     relative: str
-    index: int
+    position: int
     is_list: bool
 
 
 def _load_policy(root: Path) -> _ScanContext:
     """Load and validate the workflow failure policy before any scan."""
-    policy = load(inside(root, POLICY))
+    policy = cast("dict[str, object]", load(inside(root, POLICY)))
     if (
         policy.get("version") != 1
         or not policy.get("handler_id")
@@ -74,7 +74,7 @@ def _load_policy(root: Path) -> _ScanContext:
         raise ValueError("invalid handler identity")
     handler = policy.get("handler_template")
     if handler:
-        inside(root, handler)
+        inside(root, cast("str", handler))
     return _ScanContext(policy=policy, target=target, handler=handler)
 
 
@@ -85,7 +85,7 @@ def _collect_workflow_files(root: Path, policy: dict[str, object]) -> set[Path]:
         directory = inside(root, cast("str", name))
         if not directory.is_dir():
             raise ValueError("configured workflow root is missing")
-        for path in cast("Path", directory).rglob("*"):
+        for path in directory.rglob("*"):
             if path.is_symlink() or not path.resolve().is_relative_to(root):
                 raise ValueError("symlinked workflow JSON is forbidden")
             if path.is_file() and path.suffix == ".json":
@@ -106,7 +106,7 @@ def _review_handler_workflow(
     w: dict[str, object], doc: _Document, context: _ScanContext, state: _ScanState
 ) -> None:
     """Enforce the reviewed error-handler workflow shape and trigger."""
-    label = doc.relative + (f"#{doc.index}" if doc.is_list else "")
+    label = doc.relative + (f"#{doc.position}" if doc.is_list else "")
     settings = cast("dict[str, object]", w.get("settings", {}))
     if (
         w["name"] != context.policy["handler_name"]
@@ -138,7 +138,7 @@ def _review_workflow(
     state["checked"] += 1
     settings = w.get("settings", {})
     if not _has_workflow_shape(cast("dict[str, object]", w), settings):
-        label = doc.relative + (f"#{doc.index}" if doc.is_list else "")
+        label = doc.relative + (f"#{doc.position}" if doc.is_list else "")
         state["errors"].append(f"{label}: invalid workflow shape; repair explicitly")
         return
     if doc.relative == context.handler:
@@ -149,11 +149,11 @@ def _review_workflow(
     if existing == context.target:
         return
     if existing not in (None, ""):
-        label = doc.relative + (f"#{doc.index}" if doc.is_list else "")
+        label = doc.relative + (f"#{doc.position}" if doc.is_list else "")
         state["errors"].append(f"{label}: different error handler; refusing to overwrite")
         return
     if fix:
-        cast("dict[str, object]", w).setdefault("settings", {})["errorWorkflow"] = context.target
+        w.setdefault("settings", {})["errorWorkflow"] = context.target
     else:
         state["errors"].append(
             f"{doc.relative}: missing settings.errorWorkflow; "
@@ -178,10 +178,9 @@ def _review_documents(
             state["errors"].append(f"{relative}: invalid/duplicate-key JSON; repair explicitly")
             continue
         original = copy.deepcopy(document)
-        is_list = isinstance(document, list)
-        candidates = document if is_list else [document]
+        candidates = document if (is_list := isinstance(document, list)) else [document]
         for index, w in enumerate(candidates):
-            doc = _Document(relative=relative, index=index, is_list=is_list)
+            doc = _Document(relative=relative, position=index, is_list=is_list)
             _review_workflow(w, doc, state, context, fix=fix)
         if document != original:
             state["repairs"].append((path, document))
@@ -209,7 +208,7 @@ def _finish_scan(root: Path, state: _ScanState, context: _ScanContext, *, fix: b
     return 0
 
 
-def run(root, fix=False):
+def run(root: Path, fix: bool = False) -> int:
     root = root.resolve()
     context = _load_policy(root)
     files = _collect_workflow_files(root, context.policy)
@@ -218,7 +217,7 @@ def run(root, fix=False):
     return _finish_scan(root, state, context, fix=fix)
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--fix",
