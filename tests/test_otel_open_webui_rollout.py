@@ -24,7 +24,8 @@ def module() -> ModuleType:
 
 
 @pytest.mark.parametrize(
-    "filename", ["sitecustomize.py", "source_privacy.py", "open_webui_source_profile.py"]
+    "filename",
+    ["sitecustomize.py", "source_privacy.py", "open_webui_source_profile.py"],
 )
 def test_stale_source_receipt_refuses_candidate_before_cluster_access(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, filename: str
@@ -88,7 +89,9 @@ def test_stale_source_receipt_refuses_candidate_before_cluster_access(
 class OpenWebuiRolloutTests(unittest.TestCase):
     """Validate the Open WebUI rollout's SDK tracing environment."""
 
-    def test_sdk_environment_trace_only_private_mtls_and_long_request_drain(self) -> None:
+    def test_sdk_environment_trace_only_private_mtls_and_long_request_drain(
+        self,
+    ) -> None:
         """Sdk environment trace only private mtls and long request drain."""
         env = module().sdk_environment()
         assert env["OTEL_OTLP_SPAN_EXPORTER"] == "http"

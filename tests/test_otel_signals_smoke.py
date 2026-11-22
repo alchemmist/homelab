@@ -47,6 +47,10 @@ class SignalSmokeTests(unittest.TestCase):
         """Require fresh, zero, and one-hour-old log timestamps in that order."""
         now = 10**18
         records = SMOKE.logs_fixture(now)["resourceLogs"][0]["scopeLogs"][0]["logRecords"]
-        assert [int(record["timeUnixNano"]) for record in records] == [now, 0, now - 3600 * 10**9]
+        assert [int(record["timeUnixNano"]) for record in records] == [
+            now,
+            0,
+            now - 3600 * 10**9,
+        ]
         assert SMOKE.SECRET in records[0]["body"]["stringValue"]
         assert SMOKE.SERVICE.startswith("otel-isolated-")

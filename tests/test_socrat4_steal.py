@@ -71,7 +71,11 @@ def test_socrat4_steal() -> None:
         (p / "rules.yml").write_text(yaml.safe_dump({"groups": [{"name": "psi", "rules": rules}]}))
         (p / "test.yml").write_text(
             yaml.safe_dump(
-                {"rule_files": ["rules.yml"], "evaluation_interval": "1m", "tests": tests}
+                {
+                    "rule_files": ["rules.yml"],
+                    "evaluation_interval": "1m",
+                    "tests": tests,
+                }
             )
         )
         command([promtool, "test", "rules", "test.yml"], cwd=p)

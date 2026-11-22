@@ -122,7 +122,12 @@ def main():
     token = b"\x01" + hmac.new(secret, payload, hashlib.sha256).digest() + payload
     ids = [b"sha-" + hashlib.sha256(os.urandom(32)).digest() for _ in range(2)]
     sessions = []
-    result = {"management_enrollment": False, "trusted_TLS": True, "relay": {}, "stun": {}}
+    result = {
+        "management_enrollment": False,
+        "trusted_TLS": True,
+        "relay": {},
+        "stun": {},
+    }
     try:
         for address, identity in zip(ENTRANCES, ids, strict=True):
             ws = WS(address)
@@ -172,7 +177,14 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (ValueError, KeyError, TypeError, RuntimeError, OSError, yaml.YAMLError) as exc:
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        RuntimeError,
+        OSError,
+        yaml.YAMLError,
+    ) as exc:
         print(
             "BLOCKED: transport check stopped: "
             + type(exc).__name__

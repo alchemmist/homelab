@@ -1,4 +1,5 @@
 """Create an Open WebUI terminal session token for a given admin user."""
+
 import argparse
 import base64
 import getpass
@@ -28,7 +29,9 @@ def request(path, data=None, token=None):
     if token:
         headers["Authorization"] = "Bearer " + token
     req = urllib.request.Request(
-        base + path, headers=headers, data=None if data is None else json.dumps(data).encode()
+        base + path,
+        headers=headers,
+        data=None if data is None else json.dumps(data).encode(),
     )
     with opener.open(req, timeout=60) as response:
         return json.load(response)
@@ -50,11 +53,15 @@ connection = {
 }
 config = request("/api/v1/configs/terminal_servers", token=session["token"])
 existing = next(
-    (c for c in config["TERMINAL_SERVER_CONNECTIONS"] if c.get("id") == connection["id"]), None
+    (c for c in config["TERMINAL_SERVER_CONNECTIONS"] if c.get("id") == connection["id"]),
+    None,
 )
 if existing is not None:
     connection = {**existing, "url": connection["url"], "key": key}
-    connection["config"] = {**(connection.get("config") or {}), "chat_uploads": "filesystem"}
+    connection["config"] = {
+        **(connection.get("config") or {}),
+        "chat_uploads": "filesystem",
+    }
 verified = request("/api/v1/configs/terminal_servers/verify", connection, session["token"])
 assert verified["status"], "Terminal verification failed"
 config = request("/api/v1/configs/terminal_servers", token=session["token"])

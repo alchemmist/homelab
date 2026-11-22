@@ -50,7 +50,10 @@ class QueueWebTests(unittest.TestCase):
         cls.auth_patch.stop()
 
     def request(self, method="GET", path="/queue/", body=None, extra=None):
-        headers = {"Host": "rustfs.socrat.alchemmist.xyz", "X-authentik-groups": "homelab-owner"}
+        headers = {
+            "Host": "rustfs.socrat.alchemmist.xyz",
+            "X-authentik-groups": "homelab-owner",
+        }
         headers.update(extra or {})
         c = RealConnection("127.0.0.1", self.server.server_port, timeout=3)
         c.request(method, path, body=body, headers=headers)
@@ -78,7 +81,9 @@ class QueueWebTests(unittest.TestCase):
         assert self.request(path="/queue/app.js?x=1")[0] == NOT_FOUND_STATUS
         assert self.request(path="/queue")[0] == PERMANENT_REDIRECT_STATUS
 
-    def test_anonymous_challenge_returns_exact_queue_and_does_not_trust_identity_header(self):
+    def test_anonymous_challenge_returns_exact_queue_and_does_not_trust_identity_header(
+        self,
+    ):
         with patch.object(web.Handler, "authorization", return_value=401):
             code, headers, _ = self.request(extra={"X-authentik-groups": "homelab-owner"})
         assert code == CHALLENGE_REDIRECT_STATUS
@@ -122,7 +127,11 @@ class QueueWebTests(unittest.TestCase):
         connection.close.assert_called_once()
 
     def test_no_arbitrary_proxy_target_or_cors(self):
-        headers = {"Origin": web.ORIGIN, "X-SPI-Queue": "1", "Content-Type": "application/json"}
+        headers = {
+            "Origin": web.ORIGIN,
+            "X-SPI-Queue": "1",
+            "Content-Type": "application/json",
+        }
         with patch.object(web.http.client, "HTTPConnection") as upstream:
             assert self.request("POST", "/queue/api/claim", "{}", headers)[0] == NOT_FOUND_STATUS
             upstream.assert_not_called()

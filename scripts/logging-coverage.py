@@ -199,7 +199,15 @@ def assess(sources, recent, hour) -> list[dict[str, object]]:
 
 def kubectl(resource) -> dict[str, object]:
     result = subprocess.run(
-        ["kubectl", "get", resource, "--all-namespaces", "-o", "json", "--request-timeout=15s"],
+        [
+            "kubectl",
+            "get",
+            resource,
+            "--all-namespaces",
+            "-o",
+            "json",
+            "--request-timeout=15s",
+        ],
         capture_output=True,
         timeout=20,
     )
@@ -221,7 +229,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     hosts = parser.add_mutually_exclusive_group(required=True)
     hosts.add_argument(
-        "--hosts", type=Path, help="Explicit JSON host/unit expectations; [] means none inventoried"
+        "--hosts",
+        type=Path,
+        help="Explicit JSON host/unit expectations; [] means none inventoried",
     )
     hosts.add_argument(
         "--host-inventory",
@@ -241,7 +251,9 @@ def main() -> None:
             else host_registry(json.loads(args.host_inventory.read_text()))
         )
         sources = inventory(
-            kubectl("pods"), kubectl("deployments,statefulsets,daemonsets,jobs,cronjobs"), registry
+            kubectl("pods"),
+            kubectl("deployments,statefulsets,daemonsets,jobs,cronjobs"),
+            registry,
         )
         context = ssl.create_default_context(cafile=str(args.tls_dir / "ca.crt"))
         context.load_cert_chain(str(args.tls_dir / "client.crt"), str(args.tls_dir / "client.key"))

@@ -47,10 +47,16 @@ def main():
     )
     need(not ROOT.is_symlink(), "Unsafe state")
     ROOT.mkdir(mode=0o700, exist_ok=True)
-    need(ROOT.stat().st_uid == 0 and not ROOT.stat().st_mode & 0o077, "Unsafe state owner/mode")
+    need(
+        ROOT.stat().st_uid == 0 and not ROOT.stat().st_mode & 0o077,
+        "Unsafe state owner/mode",
+    )
     with (ROOT / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        need(not (ROOT / "uncertain.json").exists(), "Uncertain previous retirement; stop")
+        need(
+            not (ROOT / "uncertain.json").exists(),
+            "Uncertain previous retirement; stop",
+        )
         need(
             not CONF.is_symlink() and CONF.stat().st_uid == 0 and not CONF.stat().st_mode & 0o077,
             "Unsafe WireGuard config",
@@ -76,7 +82,10 @@ def main():
             all(k == KEY or v.strip() != IP for k, v in runtime.items()),
             "Address belongs to another identity",
         )
-        need(KEY not in runtime or runtime[KEY].strip() == IP, "Unexpected owned peer routes")
+        need(
+            KEY not in runtime or runtime[KEY].strip() == IP,
+            "Unexpected owned peer routes",
+        )
         context = {
             "before_sha": digest(before),
             "after_sha": digest(after),
@@ -94,7 +103,10 @@ def main():
             (ROOT / "before.conf").write_bytes(before)
             (ROOT / "before.json").write_text(json.dumps(context))
             (ROOT / "uncertain.json").write_text(json.dumps({"plan_hash": h}))
-            need(CONF.read_bytes() == before and peers() == runtime, "Concurrent drift; stop")
+            need(
+                CONF.read_bytes() == before and peers() == runtime,
+                "Concurrent drift; stop",
+            )
             if count:
                 temp = CONF.with_name("wg-socrat.conf.tv-retirement")
                 need(not temp.exists(), "Unexpected temporary config")
@@ -114,13 +126,21 @@ def main():
             need(CONF.read_bytes() == after, "Persistent readback failed")
             (ROOT / "after.json").write_text(
                 json.dumps(
-                    {"plan_hash": h, "other_peers_unchanged": True, "interface_restarted": False}
+                    {
+                        "plan_hash": h,
+                        "other_peers_unchanged": True,
+                        "interface_restarted": False,
+                    }
                 )
             )
             (ROOT / "uncertain.json").unlink()
         print(
             json.dumps(
-                {"operations": int(changed), "plan_hash": h, "applied": bool(a.apply and changed)}
+                {
+                    "operations": int(changed),
+                    "plan_hash": h,
+                    "applied": bool(a.apply and changed),
+                }
             )
         )
 

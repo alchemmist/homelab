@@ -156,7 +156,10 @@ def apply(state: str | Path, old: str, new: str, approval: str | None):
         if len(chosen) != len(targets) or {g["groupId"] for g in chosen} != targets:
             raise ValueError("Native group ownership mismatch")
         candidates = [(g, payload(g, old, new)) for g in chosen]
-        h.save(session.state / "host-migration-plan-private.json", {"plan": plan, "groups": chosen})
+        h.save(
+            session.state / "host-migration-plan-private.json",
+            {"plan": plan, "groups": chosen},
+        )
         current = before
         for index, (group, candidate) in enumerate(candidates):
             if canonical_projection(configuration(session.database)) != canonical_projection(

@@ -130,7 +130,13 @@ def validate(objects) -> None:
             "table": TABLE,
             "chain": "input",
             "expr": [
-                {"match": {"op": "==", "left": {"meta": {"key": "iifname"}}, "right": "nb-host"}},
+                {
+                    "match": {
+                        "op": "==",
+                        "left": {"meta": {"key": "iifname"}},
+                        "right": "nb-host",
+                    }
+                },
                 {"counter": {}},
                 {"accept": None},
             ],
@@ -279,7 +285,13 @@ def persist(state) -> None:
             f.write(content)
             f.flush()
             os.fsync(f.fileno())
-    run(["systemd-analyze", "verify", "/etc/systemd/system/homelab-xui-backend-guard.service"])
+    run(
+        [
+            "systemd-analyze",
+            "verify",
+            "/etc/systemd/system/homelab-xui-backend-guard.service",
+        ]
+    )
     run(["systemctl", "daemon-reload"])
     run(["systemctl", "enable", "--now", "homelab-xui-backend-guard.service"])
     run(["systemctl", "is-enabled", "homelab-xui-backend-guard.service"])

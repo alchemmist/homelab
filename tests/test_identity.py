@@ -293,8 +293,18 @@ class IdentityTests(unittest.TestCase):
             (root / "monori-services.json").write_bytes(
                 (ROOT / "deploy/identity/services.json").read_bytes()
             )
-            (root / "monori-account-mappings.json").write_text(json.dumps({"antropophag": {"idpUserUuid": "reviewed"}}))
-            fake.data["core/users/"].append({"pk": 7, "username": "antropophag", "uuid": "reviewed", "is_active": True})
+            (root / "monori-account-mappings.json").write_text(
+                json.dumps({"antropophag": {"idpUserUuid": "reviewed"}})
+            )
+            fake.data["core/users/"].append(
+                {
+                    "pk": 7,
+                    "username": "antropophag",
+                    "uuid": "reviewed",
+                    "is_active": True,
+                }
+            )
+
             def malformed(method, path, payload=None):
                 if path.startswith("providers/oauth2/?"):
                     return {"results": ["invalid row"]}
@@ -311,24 +321,29 @@ class IdentityTests(unittest.TestCase):
 
             with self.assertRaisesRegex(RuntimeError, "simulated interruption"):
                 configure_monori(root, interrupted)
-            sent = [body for method, path, body, _ in fake.requests
-                    if (method, path) == ("POST", "providers/oauth2/")]
+            sent = [
+                body
+                for method, path, body, _ in fake.requests
+                if (method, path) == ("POST", "providers/oauth2/")
+            ]
             self.assertEqual(len(sent), 1)
-            self.assertEqual(sent[0]["redirect_uris"], [{
-                "matching_mode": "strict", "url": "https://monori.alchemmist.xyz/oidc/callback",
-                "redirect_uri_type": "authorization",
-            }])
+            self.assertEqual(
+                sent[0]["redirect_uris"],
+                [
+                    {
+                        "matching_mode": "strict",
+                        "url": "https://monori.alchemmist.xyz/oidc/callback",
+                        "redirect_uri_type": "authorization",
+                    }
+                ],
+            )
             secret_path = root / "monori-client-secret"
             secret = secret_path.read_text()
             self.assertEqual(secret_path.stat().st_mode & 0o777, 0o600)
             self.assertEqual(fake.data["providers/oauth2/"][0]["client_secret"], secret)
             self.assertEqual(configure_monori(root, api), secret)
             self.assertEqual(configure_monori(root, api), secret)
-            writes = [
-                (method, path)
-                for method, path, _, _ in fake.requests
-                if method != "GET"
-            ]
+            writes = [(method, path) for method, path, _, _ in fake.requests if method != "GET"]
             self.assertEqual(
                 writes,
                 [
@@ -356,17 +371,25 @@ class IdentityTests(unittest.TestCase):
 
         scripts = ROOT / "ansible/roles/identity_integrations/files"
         with tempfile.TemporaryDirectory() as directory, patch.dict(sys.modules):
-            with patch.object(sys, "path", [str(scripts), *sys.path]), patch(
-                "monori_oidc.configure_monori", return_value="test-value"
-            ), patch.object(sys, "argv", ["integrate.py", directory, "monori"]), patch(
-                "subprocess.run", return_value=subprocess.CompletedProcess([], 0, stdout="")
-            ) as command, contextlib.redirect_stdout(io.StringIO()):
+            with (
+                patch.object(sys, "path", [str(scripts), *sys.path]),
+                patch("monori_oidc.configure_monori", return_value="test-value"),
+                patch.object(sys, "argv", ["integrate.py", directory, "monori"]),
+                patch(
+                    "subprocess.run",
+                    return_value=subprocess.CompletedProcess([], 0, stdout=""),
+                ) as command,
+                contextlib.redirect_stdout(io.StringIO()),
+            ):
                 runpy.run_path(str(scripts / "integrate.py"), run_name="__main__")
             args, kwargs = command.call_args
             self.assertIn("--server-side", args[0])
             self.assertIn("--field-manager=monori-oidc", args[0])
             self.assertNotIn("--force-conflicts", args[0])
-            self.assertEqual(json.loads(kwargs["input"])["metadata"], {"name": "monori-oidc", "namespace": "monori"})
+            self.assertEqual(
+                json.loads(kwargs["input"])["metadata"],
+                {"name": "monori-oidc", "namespace": "monori"},
+            )
 
     def test_existing_litellm_custom_scope_survives_foundation_replay(self) -> None:
         """Preserve the custom litellm scope across replays."""
@@ -475,14 +498,19 @@ class RolloutRegressionTests(unittest.TestCase):
         manifest = json.loads((ROOT / "assets/service-icons/sources.json").read_text())
         services = json.loads((ROOT / "deploy/identity/services.json").read_text())
         managed = {
-            slug: service for slug, service in services.items() if not service.get("managedBy") or slug == "monori"
+            slug: service
+            for slug, service in services.items()
+            if not service.get("managedBy") or slug == "monori"
         }
         self.assertEqual(len(managed), 8)
         for slug, service in managed.items():
             data = (ROOT / "assets/service-icons" / f"{slug}.svg").read_bytes()
             digest = hashlib.sha256(data).hexdigest()
             self.assertEqual(digest, manifest["files"][f"{slug}.svg"]["sha256"])
-            self.assertEqual(service["icon"], f"https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/{digest[:12]}-{slug}.svg")
+            self.assertEqual(
+                service["icon"],
+                f"https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/{digest[:12]}-{slug}.svg",
+            )
             for node in ET.fromstring(data).iter():
                 self.assertNotIn(node.tag.split("}")[-1], ["script", "foreignObject"])
                 self.assertFalse(any(k.lower().startswith("on") for k in node.attrib))
@@ -553,7 +581,6 @@ class RolloutRegressionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             (Path(d) / ".ssh").mkdir()
             (Path(d) / ".ssh/authorized_keys").write_text("key1\nkey2\n")
-
 
             def run(args: list[str], **_kwargs) -> subprocess.CompletedProcess[str]:
                 """Answer sshd -T, sudo, and generic probes with scripted results."""

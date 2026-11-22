@@ -64,7 +64,9 @@ def test_runtime_refuses_unknown_workloads_and_pvc() -> None:
         "items": [
             pod("vpn-transit", "vpn-transit-a", "a"),
             pod(
-                "cattle-monitoring-system", "kube-prometheus-stack-prometheus-node-exporter-b", "b"
+                "cattle-monitoring-system",
+                "kube-prometheus-stack-prometheus-node-exporter-b",
+                "b",
             ),
         ]
     }

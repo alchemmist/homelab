@@ -74,11 +74,17 @@ j = {
                     {"name": "host", "hostPath": {"path": "/", "type": "Directory"}},
                     {
                         "name": "units",
-                        "hostPath": {"path": "/etc/systemd/system", "type": "Directory"},
+                        "hostPath": {
+                            "path": "/etc/systemd/system",
+                            "type": "Directory",
+                        },
                     },
                     {
                         "name": "rules",
-                        "hostPath": {"path": "/etc/xui-panel-auth", "type": "DirectoryOrCreate"},
+                        "hostPath": {
+                            "path": "/etc/xui-panel-auth",
+                            "type": "DirectoryOrCreate",
+                        },
                     },
                 ],
             }

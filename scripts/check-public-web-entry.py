@@ -128,7 +128,9 @@ def main():
     """Run the command-line entry point."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--address", action="append", help="Repeat twice when running outside the repository"
+        "--address",
+        action="append",
+        help="Repeat twice when running outside the repository",
     )
     ips = addresses(parser.parse_args().address)
     cases = [
@@ -209,7 +211,11 @@ def main():
     failed = [r for r in results if not r["passed"]]
     print(
         json.dumps(
-            {"checks": len(results), "passed": len(results) - len(failed), "failures": failed},
+            {
+                "checks": len(results),
+                "passed": len(results) - len(failed),
+                "failures": failed,
+            },
             indent=2,
         )
     )

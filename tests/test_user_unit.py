@@ -44,7 +44,10 @@ def desktop(tmp_path):
         'test ! -f "$FAIL"\n'
     )
     fake.chmod(0o755)
-    handler = {"name": "Terminal restart", "ansible.builtin.shell": 'echo terminal >> "$EVENTS"'}
+    handler = {
+        "name": "Terminal restart",
+        "ansible.builtin.shell": 'echo terminal >> "$EVENTS"',
+    }
     play = {
         "hosts": "localhost",
         "gather_facts": False,
@@ -105,7 +108,10 @@ def desktop(tmp_path):
         )
         assert result.returncode == (2 if fails else 0), result.stdout + result.stderr
         if dest.is_file() and not check and not fails:
-            assert (dest.stat().st_uid, dest.stat().st_gid) == (os.geteuid(), expected_gid)
+            assert (dest.stat().st_uid, dest.stat().st_gid) == (
+                os.geteuid(),
+                expected_gid,
+            )
         return events.read_text().splitlines() if events.exists() else []
 
     return dest, run

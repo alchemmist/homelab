@@ -49,7 +49,6 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
     @typing.override
     def redirect_request(self, *args, **kwargs) -> typing.NoReturn:
-
         """Refuse API redirects instead of following them."""
         raise ValueError("API redirect refused")
 
@@ -125,7 +124,17 @@ def request(base, token, method, path, body=None) -> object:
 def pod_identity() -> "dict[str, object]":
     items = json.loads(
         command(
-            KUBE + ["-n", "x-ui", "get", "pods", "-l", "app.kubernetes.io/name=x-ui", "-o", "json"]
+            KUBE
+            + [
+                "-n",
+                "x-ui",
+                "get",
+                "pods",
+                "-l",
+                "app.kubernetes.io/name=x-ui",
+                "-o",
+                "json",
+            ]
         )
     )["items"]
     if len(items) != 1:
@@ -155,7 +164,6 @@ class NativeSession:
 
     def __init__(self, state, database=DB, worker_scope="node-sync") -> None:
         """Initialize the native panel session."""
-
         if worker_scope not in ("node-sync", "admin"):
             raise ValueError("Unreviewed worker scope")
         self.worker_scope = worker_scope
@@ -358,7 +366,12 @@ class NativeSession:
                 {"temporary_rows_removed": True, "existing_tokens_unchanged": True},
             )
             (self.state / "uncertain.json").unlink()
-        for name in ("bootstrap.stdout", "bootstrap.json", "cleanup.json", "worker.json"):
+        for name in (
+            "bootstrap.stdout",
+            "bootstrap.json",
+            "cleanup.json",
+            "worker.json",
+        ):
             path = self.state / name
             if path.exists():
                 path.unlink()

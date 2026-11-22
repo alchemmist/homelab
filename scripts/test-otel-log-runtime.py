@@ -157,7 +157,11 @@ def main() -> None:
             + ["transform/log-privacy"]
         }
         name = TAG + "-" + source
-        url = launch(name, config(processors, {"file": {"path": "/tmp/output.json"}}), publish=True)
+        url = launch(
+            name,
+            config(processors, {"file": {"path": "/tmp/output.json"}}),
+            publish=True,
+        )
         for level in ["INFO", "WARN", "ERROR"]:
             send(url, level, level + " synthetic healthy operation")
         sensitive = {
@@ -216,10 +220,15 @@ def main() -> None:
             }
         }
         cfg = config(
-            {"transform/log-privacy": cluster["processors"]["transform/log-privacy"]}, exporter
+            {"transform/log-privacy": cluster["processors"]["transform/log-privacy"]},
+            exporter,
         )
         cfg["extensions"] = {
-            "file_storage": {"directory": "/tmp/queue", "create_directory": True, "fsync": True}
+            "file_storage": {
+                "directory": "/tmp/queue",
+                "create_directory": True,
+                "fsync": True,
+            }
         }
         cast("dict[str, dict[str, object]]", cfg)["service"]["extensions"] = ["file_storage"]
         url = launch(sender, cfg, network, publish=True)

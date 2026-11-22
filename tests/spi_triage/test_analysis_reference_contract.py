@@ -21,7 +21,9 @@ class ReferenceContractTests(unittest.TestCase):
         return Model(Mock(), "test-only", store=Mock())
 
     @staticmethod
-    def data(ids=("E002", "E007")) -> dict[str, dict[str, dict[str, list[dict[str, str]]]]]:
+    def data(
+        ids=("E002", "E007"),
+    ) -> dict[str, dict[str, dict[str, list[dict[str, str]]]]]:
         """Return evidence context indexing the given ids."""
         return {"evidence": {"artifact_context": {"index": [{"id": x} for x in ids]}}}
 
@@ -53,7 +55,9 @@ class ReferenceContractTests(unittest.TestCase):
         m.http.request.return_value = {"choices": [{"message": {"content": json.dumps(result)}}]}
         assert m.call("analysis", self.data(()), REPORT_SCHEMA, time.monotonic() + 20) == result
 
-    def test_invalid_reference_fails_after_one_repair_and_logs_counts_not_content(self) -> None:
+    def test_invalid_reference_fails_after_one_repair_and_logs_counts_not_content(
+        self,
+    ) -> None:
         """Log the invalid-reference count and omit the private fact text."""
         m = self.model()
         result = f.report()
@@ -75,7 +79,12 @@ class ReferenceContractTests(unittest.TestCase):
         """Reject an illegal artifact id before HTTP or budget reservation."""
         m = self.model()
         with self.assertRaisesRegex(Failure, "LLM_INVALID_EVIDENCE_CONTEXT"):
-            m.call("analysis", self.data(("E001|.*",)), REPORT_SCHEMA, time.monotonic() + 20)
+            m.call(
+                "analysis",
+                self.data(("E001|.*",)),
+                REPORT_SCHEMA,
+                time.monotonic() + 20,
+            )
         m.http.request.assert_not_called()
         m.store.reserve_llm.assert_not_called()
 

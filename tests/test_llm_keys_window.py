@@ -11,7 +11,11 @@ REQUEST_TARGET_COUNT = 5
 DASHBOARD_PANEL_COUNT = 4
 TABLE_GRID_Y = 16
 REQUEST_PANEL_HEIGHT = 8
-REQUEST_MODELS = ("qwen3.8-27b", "venice-agentic-deepseek-v4.1-flash-uncensored", "o-deepseek")
+REQUEST_MODELS = (
+    "qwen3.8-27b",
+    "venice-agentic-deepseek-v4.1-flash-uncensored",
+    "o-deepseek",
+)
 
 
 @pytest.mark.parametrize("panel_id", [1, 2, 3])
@@ -42,9 +46,7 @@ def test_temporary_acceptance_keys_are_not_user_activity() -> None:
             Path(__file__).resolve().parents[1] / "charts/monitoring-k3s/dashboards/llm-keys.json"
         ).read_text()
     )
-    targets = [
-        t for p in d["panels"] for t in p.get("targets", []) if "api_key_alias" in t["expr"]
-    ]
+    targets = [t for p in d["panels"] for t in p.get("targets", []) if "api_key_alias" in t["expr"]]
     assert len(targets) == REQUEST_TARGET_COUNT
     assert all('api_key_alias!~"venice-acceptance-.*"' in t["expr"] for t in targets)
 

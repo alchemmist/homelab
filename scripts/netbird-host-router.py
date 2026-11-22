@@ -146,7 +146,8 @@ def client_image() -> str:
         "client lock is not the pinned 0.82.0 image",
     )
     require(
-        re.fullmatch(r"sha256:[0-9a-f]{64}", item["digest"]) is not None, "client digest invalid"
+        re.fullmatch(r"sha256:[0-9a-f]{64}", item["digest"]) is not None,
+        "client digest invalid",
     )
     return item["repository"] + ":" + item["tag"] + "@" + item["digest"]
 
@@ -175,7 +176,8 @@ def classify(host, address) -> str:
 def validate(facts) -> dict[str, object]:
     """Enforce every reviewed invariant on the facts document after freezing."""
     require(
-        isinstance(facts, dict) and facts.get("schema_version") == 1, "unsupported schema_version"
+        isinstance(facts, dict) and facts.get("schema_version") == 1,
+        "unsupported schema_version",
     )
     allowed = {
         "schema_version",
@@ -202,7 +204,10 @@ def validate(facts) -> dict[str, object]:
         "overlay must be a CGNAT IPv4 /16 through /24",
     )
     for prefix in PROTECTED:
-        require(not overlay.overlaps(ipaddress.ip_network(prefix)), "overlay overlaps " + prefix)
+        require(
+            not overlay.overlaps(ipaddress.ip_network(prefix)),
+            "overlay overlaps " + prefix,
+        )
     iface = facts["interface"]
     require(
         iface == IFACE and re.fullmatch(r"[a-z][a-z0-9-]{0,14}", iface) is not None,
@@ -219,7 +224,8 @@ def validate(facts) -> dict[str, object]:
         "upstream must stay the verified Grafana listener 10.250.0.3:443",
     )
     require(
-        facts["ssh_address"] == SSH_ADDR, "SSH target must stay the existing 10.250.0.2 address"
+        facts["ssh_address"] == SSH_ADDR,
+        "SSH target must stay the existing 10.250.0.2 address",
     )
     require(
         type(facts["ssh_port"]) is int and facts["ssh_port"] in SSH_PORTS,
@@ -258,7 +264,8 @@ def validate(facts) -> dict[str, object]:
     require(parse_mib(facts["frontend_memory"]) >= 16, "frontend memory cap too small")
     hosts = _host_map(facts)
     require(
-        len({hosts[name]["failure_domain"] for name in HOSTS}) == 2, "failure domains must differ"
+        len({hosts[name]["failure_domain"] for name in HOSTS}) == 2,
+        "failure domains must differ",
     )
     for host in hosts.values():
         require(
@@ -278,10 +285,12 @@ def validate(facts) -> dict[str, object]:
             "host keys invalid",
         )
         require(
-            host["egress_iface"] == "wg-socrat", "egress interface is the existing mesh interface"
+            host["egress_iface"] == "wg-socrat",
+            "egress interface is the existing mesh interface",
         )
         require(
-            host["runtime"] in {None, "docker", "host"}, "runtime must be docker, host, or unknown"
+            host["runtime"] in {None, "docker", "host"},
+            "runtime must be docker, host, or unknown",
         )
         require(
             type(host["sudo_nopass"]) is bool
@@ -307,8 +316,14 @@ def validate(facts) -> dict[str, object]:
         },
         "socrat-0 must not own the SSH target",
     )
-    require(classify(hosts["socrat-2"], SSH_ADDR) == "input", "socrat-2 delivery must be INPUT")
-    require(classify(hosts["socrat-0"], SSH_ADDR) == "forward", "socrat-0 delivery must be FORWARD")
+    require(
+        classify(hosts["socrat-2"], SSH_ADDR) == "input",
+        "socrat-2 delivery must be INPUT",
+    )
+    require(
+        classify(hosts["socrat-0"], SSH_ADDR) == "forward",
+        "socrat-0 delivery must be FORWARD",
+    )
     routers = [name for name in HOSTS if classify(hosts[name], SSH_ADDR) == "forward"]
     require(
         routers == ["socrat-0"],
@@ -413,7 +428,13 @@ def _nft(host, facts) -> str:
     if host["name"] == "socrat-0":
         lines.append(
             'add rule ip %s forward iifname "%s" oifname "%s" ip daddr %s tcp dport %d ct state new,established accept'
-            % (TABLE, iface, host["egress_iface"], facts["ssh_address"], facts["ssh_port"])
+            % (
+                TABLE,
+                iface,
+                host["egress_iface"],
+                facts["ssh_address"],
+                facts["ssh_port"],
+            )
         )
         lines.append(
             'add rule ip %s forward oifname "%s" ct state established,related accept'
@@ -451,7 +472,8 @@ cat >"$tmp" <<'NFT'
 def assign_overlay(script, address, overlay_cidr) -> str:
     """Substitute the concrete overlay IP into the verified firewall script."""
     require(
-        bind_allowed(address, overlay_cidr), "overlay address is not a dedicated NetBird address"
+        bind_allowed(address, overlay_cidr),
+        "overlay address is not a dedicated NetBird address",
     )
     require(script.count(OVERLAY_TOKEN) >= 1, "firewall script lost its overlay token")
     concrete = str(ipaddress.ip_address(address))
@@ -799,7 +821,10 @@ def assert_clean(filename, content) -> None:
             "ip rule",
         )
     for marker in markers:
-        require(marker not in content, "%s contains forbidden marker %s" % (filename, marker))
+        require(
+            marker not in content,
+            "%s contains forbidden marker %s" % (filename, marker),
+        )
 
 
 def render_host(host, facts, image) -> dict[str, str]:
@@ -818,7 +843,10 @@ def render_host(host, facts, image) -> dict[str, str]:
         files["99-netbird-host-router.conf"] = "net.ipv4.ip_forward=1\n"
     for name, content in files.items():
         assert_clean(name, content)
-        require("--allow-server-ssh=false" in files["netbird-up.sh"], "NetBird SSH must be off")
+        require(
+            "--allow-server-ssh=false" in files["netbird-up.sh"],
+            "NetBird SSH must be off",
+        )
     if host["name"] == "socrat-2":
         require(
             "10.250.0.2" not in files["table.nft.sh"],
@@ -934,7 +962,10 @@ def _safe_rel(rel) -> Path:
 
 
 OWNED = {
-    "etc/systemd/system/netbird-host-router.service": ("netbird-host-router.service", 0o644),
+    "etc/systemd/system/netbird-host-router.service": (
+        "netbird-host-router.service",
+        0o644,
+    ),
     "etc/systemd/system/netbird-grafana-frontend.service": (
         "netbird-grafana-frontend.service",
         0o644,
@@ -942,7 +973,10 @@ OWNED = {
     "etc/netbird-host-router/client.env": ("client.env", 0o644),
     "usr/local/libexec/netbird-host-router/table.nft.sh": ("table.nft.sh", 0o755),
     "usr/local/libexec/netbird-host-router/netbird-up.sh": ("netbird-up.sh", 0o755),
-    "usr/local/libexec/netbird-host-router/grafana-frontend.py": ("grafana-frontend.py", 0o644),
+    "usr/local/libexec/netbird-host-router/grafana-frontend.py": (
+        "grafana-frontend.py",
+        0o644,
+    ),
     "usr/local/libexec/netbird-host-router/install.yml": ("install.yml", 0o644),
 }
 
@@ -970,7 +1004,10 @@ def apply_tree(plan_dir, root, host, overlay_ip=None) -> list[str]:
     root.mkdir(parents=True, exist_ok=True)
     mapping = dict(OWNED)
     if host == "socrat-0":
-        mapping["etc/sysctl.d/99-netbird-host-router.conf"] = ("99-netbird-host-router.conf", 0o644)
+        mapping["etc/sysctl.d/99-netbird-host-router.conf"] = (
+            "99-netbird-host-router.conf",
+            0o644,
+        )
     written = []
     for rel, (filename, mode) in mapping.items():
         rel_path = _safe_rel(rel)
@@ -1014,7 +1051,11 @@ def main(argv) -> int:
         if args.cmd == "check":
             print(
                 json.dumps(
-                    {"apply_allowed": plan["apply_allowed"], "blockers": plan["blockers"]}, indent=2
+                    {
+                        "apply_allowed": plan["apply_allowed"],
+                        "blockers": plan["blockers"],
+                    },
+                    indent=2,
                 )
             )
             return 0 if plan["apply_allowed"] else 2

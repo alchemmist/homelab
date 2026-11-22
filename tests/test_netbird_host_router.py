@@ -107,10 +107,20 @@ class HostRouterTests(unittest.TestCase):
             plan = json.loads((target / "plan.json").read_text())
         assert not plan["apply_allowed"]
         assert "socrat-2 MemAvailable is 446 MiB (455948 KiB)" in plan["notes"]
-        assert plan["ssh"] == {"address": "10.250.0.2", "port": 2222, "routers": ["socrat-0"], "destination": "socrat-2", "destination_delivery": "input", "ha": False}
+        assert plan["ssh"] == {
+            "address": "10.250.0.2",
+            "port": 2222,
+            "routers": ["socrat-0"],
+            "destination": "socrat-2",
+            "destination_delivery": "input",
+            "ha": False,
+        }
         assert plan["grafana"]["upstream"] == "10.250.0.3:443"
         assert not plan["grafana"]["shared_vip_published"]
-        assert plan["grafana"]["policies"] == ["overlay-peer:socrat-0", "overlay-peer:socrat-2"]
+        assert plan["grafana"]["policies"] == [
+            "overlay-peer:socrat-0",
+            "overlay-peer:socrat-2",
+        ]
         image = json.loads((ROOT / "deploy/netbird/images.lock.json").read_text())["images"][
             "client"
         ]
@@ -129,7 +139,10 @@ class HostRouterTests(unittest.TestCase):
             line for line in hr.firewall_rules(vps, "forward") if line.endswith("accept")
         ]
         assert len(home_forward) == 2
-        assert any("daddr 10.250.0.2 tcp dport 2222" in line and 'oifname "wg-socrat"' in line for line in home_forward)
+        assert any(
+            "daddr 10.250.0.2 tcp dport 2222" in line and 'oifname "wg-socrat"' in line
+            for line in home_forward
+        )
         assert vps_forward == []
         assert hr.firewall_rules(vps, "postrouting") == []
         assert "snat to 10.250.0.1" in "\n".join(hr.firewall_rules(home, "postrouting"))
@@ -137,7 +150,9 @@ class HostRouterTests(unittest.TestCase):
         assert "10.250.0.3" not in home
         assert "10.250.0.3" not in vps
         assert not any("dport 2222" in line for line in hr.firewall_rules(home, "input"))
-        assert not any("dport 2222" in line or "dport 22 " in line for line in hr.firewall_rules(vps, "input"))
+        assert not any(
+            "dport 2222" in line or "dport 22 " in line for line in hr.firewall_rules(vps, "input")
+        )
         assert 'iifname != "nb-host" tcp dport 8443 drop' in home
         assert "add table ip netbird_host_router" in home
         assert "/etc/wireguard" not in home
@@ -189,7 +204,10 @@ class HostRouterTests(unittest.TestCase):
             ("rancher.socrat.alchemmist.xyz", "grafana.socrat.alchemmist.xyz"),
             ("grafana.socrat.alchemmist.xyz", "rancher.socrat.alchemmist.xyz"),
             ("grafana.socrat.alchemmist.xyz", "10.250.0.3"),
-            ("grafana.socrat.alchemmist.xyz.evil.test", "grafana.socrat.alchemmist.xyz"),
+            (
+                "grafana.socrat.alchemmist.xyz.evil.test",
+                "grafana.socrat.alchemmist.xyz",
+            ),
             ("", "grafana.socrat.alchemmist.xyz"),
             ("grafana.socrat.alchemmist.xyz", ""),
         ):
@@ -198,7 +216,10 @@ class HostRouterTests(unittest.TestCase):
         assert isinstance(context, ssl.SSLContext)
         assert context.verify_mode == ssl.CERT_REQUIRED
         assert context.check_hostname
-        assert _invoke(sni_callback, None, "rancher.socrat.alchemmist.xyz", None) == ssl.ALERT_DESCRIPTION_UNRECOGNIZED_NAME
+        assert (
+            _invoke(sni_callback, None, "rancher.socrat.alchemmist.xyz", None)
+            == ssl.ALERT_DESCRIPTION_UNRECOGNIZED_NAME
+        )
         tls_socket = type("S", (), {})()
         assert _invoke(sni_callback, tls_socket, "grafana.socrat.alchemmist.xyz", None) is None
         assert _invoke(bind_allowed, "100.96.0.8")
@@ -218,7 +239,10 @@ class HostRouterTests(unittest.TestCase):
         home = rendered["socrat-0"]["netbird-host-router.service"]
         vps = rendered["socrat-2"]["netbird-host-router.service"]
         for unit in (home, vps):
-            assert "netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965" in unit
+            assert (
+                "netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965"
+                in unit
+            )
             assert "--cap-drop=ALL" in unit
             assert "--cap-add=NET_ADMIN" in unit
             assert "--memory=96m" in unit

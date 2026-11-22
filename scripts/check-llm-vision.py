@@ -1,4 +1,5 @@
 """Check an LLM vision model by having it read code words from an image."""
+
 import argparse
 import base64
 import io
@@ -56,11 +57,20 @@ def make_image(code, large=False):
     if large:
         draw.rectangle((320, 432, 960, 592), fill="white")
     font = ImageFont.load_default(size=96)
-    draw.text((image.width // 2, image.height // 2), code, fill="black", font=font, anchor="mm")
+    draw.text(
+        (image.width // 2, image.height // 2),
+        code,
+        fill="black",
+        font=font,
+        anchor="mm",
+    )
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
-    return {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{encoded}"}}
+    return {
+        "type": "image_url",
+        "image_url": {"url": f"data:image/png;base64,{encoded}"},
+    }
 
 
 def complete(name, messages, expected, minimum_request_bytes=0):
@@ -103,7 +113,9 @@ def main():
     """Run the command-line entry point."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--large", action="store_true", help="Also test nine images in a request exceeding 4 MiB"
+        "--large",
+        action="store_true",
+        help="Also test nine images in a request exceeding 4 MiB",
     )
     args = parser.parse_args()
     if not API_KEY:

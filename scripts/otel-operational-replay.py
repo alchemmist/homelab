@@ -294,7 +294,10 @@ def replay_prepare(args, root):
     cluster["extensions"].pop("health_check", None)
     cluster["service"]["extensions"] = ["file_storage"]
     cluster["processors"]["batch/metrics"].update(send_batch_size=2, send_batch_max_size=2)
-    for name, config, port in [("cluster", cluster, 18888), ("trace-gateway", gateway, 18889)]:
+    for name, config, port in [
+        ("cluster", cluster, 18888),
+        ("trace-gateway", gateway, 18889),
+    ]:
         config["service"]["telemetry"] = {
             "metrics": {
                 "readers": [
@@ -328,7 +331,10 @@ def replay_prepare(args, root):
                 "global": {"scrape_interval": "5s", "scrape_timeout": "4s"},
                 "scrape_configs": [],
                 "storage": {"tsdb": {"out_of_order_time_window": "30m"}},
-                "otlp": {"translation_strategy": "NoTranslation", "promote_scope_metadata": False},
+                "otlp": {
+                    "translation_strategy": "NoTranslation",
+                    "promote_scope_metadata": False,
+                },
             }
         )
     )
@@ -440,7 +446,11 @@ def replay_post_fixtures(context, metrics, logs, traces):
     """Post each synthetic fixture exactly once; an ambiguous response fails the run."""
     # Never retry a fixture POST: an ambiguous response is a failed run,
     # not permission to change fixture multiplicity by resending it.
-    for path, body in [("/v1/metrics", metrics), ("/v1/logs", logs), ("/v1/traces", traces)]:
+    for path, body in [
+        ("/v1/metrics", metrics),
+        ("/v1/logs", logs),
+        ("/v1/traces", traces),
+    ]:
         response = replay_request(context, 4318, path, body)
         require(
             not response.get("partialSuccess"),
@@ -497,7 +507,11 @@ def run(args):
             {"query": 'homelab_ops_probe{source="isolated"}[10m]'}
         )
         logs_query = "/loki/api/v1/query_range?" + urllib.parse.urlencode(
-            {"query": '{service_name="' + SERVICE + '"}', "start": str(boundary), "limit": 100}
+            {
+                "query": '{service_name="' + SERVICE + '"}',
+                "start": str(boundary),
+                "limit": 100,
+            }
         )
 
         def recovered():

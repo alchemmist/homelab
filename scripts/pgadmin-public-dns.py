@@ -29,7 +29,15 @@ def load(path, name):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
-    except (ImportError, NameError, OSError, RuntimeError, SyntaxError, TypeError, ValueError):
+    except (
+        ImportError,
+        NameError,
+        OSError,
+        RuntimeError,
+        SyntaxError,
+        TypeError,
+        ValueError,
+    ):
         # Contain loader/renderer failures before any DNS write; other bugs fail with a traceback.
         raise RuntimeError("Invalid DNS renderer: " + path.name) from None
 
@@ -52,13 +60,12 @@ def delta(old, new):
         before = old.render(123, home, vps).splitlines()
         after = new.render(123, home, vps).splitlines()
         require(
-            [x for x in after if not x.startswith((NAME + " IN A "))]
-            == [x for x in before if not x.startswith((NAME + " IN A "))],
+            [x for x in after if not x.startswith(NAME + " IN A ")]
+            == [x for x in before if not x.startswith(NAME + " IN A ")],
             "Unrelated DNS record change; stop",
         )
         require(
-            [x for x in after if x.startswith((NAME + " IN A "))]
-            == [(NAME + " IN A ") + old.HOME],
+            [x for x in after if x.startswith(NAME + " IN A ")] == [(NAME + " IN A ") + old.HOME],
             "Wrong new record",
         )
 
@@ -127,8 +134,7 @@ def main():
                 text=True,
             )
             require(
-                "A" in result.split()
-                and newmod.HOME in result.split(),
+                "A" in result.split() and newmod.HOME in result.split(),
                 "New authoritative record not confirmed",
             )
             (ROOT / "after.json").write_text(

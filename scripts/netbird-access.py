@@ -389,7 +389,10 @@ def subject_identity(value):
     offset = 0
     fields = []
     for expected_tag in (10, 18):
-        require(offset < len(raw) and raw[offset] == expected_tag, "Unexpected subject encoding")
+        require(
+            offset < len(raw) and raw[offset] == expected_tag,
+            "Unexpected subject encoding",
+        )
         offset += 1
         size = 0
         shift = 0
@@ -425,13 +428,17 @@ def offboard_plan(s, username, expected_uuid):
         "authentik",
     )
     connector = idp["id"]
-    require(connector.startswith("authentik-"), "Unexpected native Authentik connector identifier")
+    require(
+        connector.startswith("authentik-"),
+        "Unexpected native Authentik connector identifier",
+    )
     matches = []
     for user in s["nb_users"]:
         if user.get("is_service_user") or user.get("idp_id") != connector:
             continue
         require(
-            subject_identity(user["id"])[1] == connector, "NetBird connector provenance mismatch"
+            subject_identity(user["id"])[1] == connector,
+            "NetBird connector provenance mismatch",
         )
         if subject_identity(user["id"])[0] == expected_uuid:
             matches.append(user)
@@ -439,7 +446,10 @@ def offboard_plan(s, username, expected_uuid):
     if not matches:
         return membership
     user = matches[0]
-    require(user.get("role") == "user", "Owner/admin NetBird account needs explicit owner review")
+    require(
+        user.get("role") == "user",
+        "Owner/admin NetBird account needs explicit owner review",
+    )
     path = "users/" + urllib.parse.quote(user["id"], safe="")
     plan = []
     if not user.get("is_blocked"):
@@ -605,7 +615,8 @@ def main():
         "--nb-credentials", default="/var/lib/homelab-netbird-nodes/credential.json"
     )
     parser.add_argument(
-        "--ak-credentials", default="/home/alchemmist/.cache/homelab-authentik/credentials.json"
+        "--ak-credentials",
+        default="/home/alchemmist/.cache/homelab-authentik/credentials.json",
     )
     parser.add_argument("--state-dir", type=Path, default=Path("/var/lib/homelab-netbird-access"))
     args = parser.parse_args()

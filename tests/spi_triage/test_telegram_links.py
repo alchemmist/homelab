@@ -54,7 +54,9 @@ class OutboxTest(unittest.TestCase):
         """Record calls and answer with a canned response."""
         self.calls.append((method, path, kwargs))
         return self.status, self.item if method == "GET" else {
-            "key": "Alert/pod/ns/name", "updated": [{"chat_id": 1, "message_id": 2}], "pending": []
+            "key": "Alert/pod/ns/name",
+            "updated": [{"chat_id": 1, "message_id": 2}],
+            "pending": [],
         }
 
     def publication(self, **changes) -> dict[str, object]:
@@ -183,7 +185,8 @@ class OutboxTest(unittest.TestCase):
             "e",
             revision_two,
             self.publication(
-                id=8, html_url="https://github.com/alchemmist/homelab/issues/42#issuecomment-8"
+                id=8,
+                html_url="https://github.com/alchemmist/homelab/issues/42#issuecomment-8",
             ),
         )
         self.enqueue()
@@ -229,7 +232,8 @@ class OutboxTest(unittest.TestCase):
         assert (
             links.primary_url(
                 self.publication(
-                    kind="issue", html_url="https://github.com/alchemmist/homelab/issues/42"
+                    kind="issue",
+                    html_url="https://github.com/alchemmist/homelab/issues/42",
                 )
             )
             == "https://github.com/alchemmist/homelab/issues/42"

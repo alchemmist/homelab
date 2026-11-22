@@ -38,7 +38,10 @@ SCHEMA = {
             "items": {
                 "type": "object",
                 "required": ["target", "replacement"],
-                "properties": {"target": {"type": "string"}, "replacement": {"type": "string"}},
+                "properties": {
+                    "target": {"type": "string"},
+                    "replacement": {"type": "string"},
+                },
             },
         },
     },
@@ -48,7 +51,10 @@ BAD = {
     "path": "/tmp/example",
     "replacements": [{"old_text": "PRIVATE CODE", "new_text": "PRIVATE CODE 2"}],
 }
-GOOD = {"path": "/tmp/example", "replacements": [{"target": "old", "replacement": "new"}]}
+GOOD = {
+    "path": "/tmp/example",
+    "replacements": [{"target": "old", "replacement": "new"}],
+}
 
 
 class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
@@ -57,7 +63,12 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.metadata = {
             "message_id": "one",
-            "tools": {"replace_file_content": {"type": "terminal", "spec": {"parameters": SCHEMA}}},
+            "tools": {
+                "replace_file_content": {
+                    "type": "terminal",
+                    "spec": {"parameters": SCHEMA},
+                }
+            },
         }
         self.calls = 0
         self.result = {"success": True}
@@ -140,7 +151,10 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         assert GUARD.guard_stop_message(self.metadata) == GUARD.REPEAT_STOP_MESSAGE
 
     async def test_alternating_valid_calls_escalate_to_stop(self):
-        other = {"path": "/tmp/other", "replacements": [{"target": "x", "replacement": "y"}]}
+        other = {
+            "path": "/tmp/other",
+            "replacements": [{"target": "x", "replacement": "y"}],
+        }
         executed = 0
         for _ in range(6):
             await self.call(GOOD)
@@ -186,7 +200,12 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
                 {},
                 self.metadata,
                 None,
-                {"function": {"name": "terminal_replace_alias", "arguments": json.dumps(BAD)}},
+                {
+                    "function": {
+                        "name": "terminal_replace_alias",
+                        "arguments": json.dumps(BAD),
+                    }
+                },
             )
         assert "target" in result[1]["error"]
         assert self.calls == 0
@@ -318,7 +337,12 @@ class NoProgressRoundTests(unittest.TestCase):
                 metadata, self.call("missing_tool", "Error: Tool not found")
             )
         executed = [
-            {"type": "function_call", "call_id": "c1", "name": "present_tool", "arguments": "{}"},
+            {
+                "type": "function_call",
+                "call_id": "c1",
+                "name": "present_tool",
+                "arguments": "{}",
+            },
             {
                 "type": "function_call_output",
                 "call_id": "c1",

@@ -27,7 +27,15 @@ def load(path, name):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
-    except (ImportError, NameError, OSError, RuntimeError, SyntaxError, TypeError, ValueError):
+    except (
+        ImportError,
+        NameError,
+        OSError,
+        RuntimeError,
+        SyntaxError,
+        TypeError,
+        ValueError,
+    ):
         # Contain loader/renderer failures before any DNS write; other bugs fail with a traceback.
         raise RuntimeError("Invalid DNS renderer: " + path.name) from None
 

@@ -143,9 +143,17 @@ def run(bundle, output, cutover):
         "imagePullPolicy": "IfNotPresent",
         "args": ["--config=/etc/otel/config/collector.yaml"],
         "ports": [
-            {"name": "otel-grpc", "containerPort": 4317, "hostPort": 4317, "hostIP": "10.250.0.1"}
+            {
+                "name": "otel-grpc",
+                "containerPort": 4317,
+                "hostPort": 4317,
+                "hostIP": "10.250.0.1",
+            }
         ],
-        "resources": {"requests": {"memory": "256Mi", "cpu": "100m"}, "limits": {"memory": "1Gi"}},
+        "resources": {
+            "requests": {"memory": "256Mi", "cpu": "100m"},
+            "limits": {"memory": "1Gi"},
+        },
         "env": [
             {"name": key, "value": value}
             for key, value in {
@@ -170,8 +178,16 @@ def run(bundle, output, cutover):
         "volumeMounts": [
             {"name": "otel-config", "mountPath": "/etc/otel/config", "readOnly": True},
             {"name": "otel-tls", "mountPath": "/etc/otel/tls", "readOnly": True},
-            {"name": "otel-source-auth", "mountPath": "/etc/otel/source-auth", "readOnly": True},
-            {"name": "otel-source-tls", "mountPath": "/etc/prometheus/certs", "readOnly": True},
+            {
+                "name": "otel-source-auth",
+                "mountPath": "/etc/otel/source-auth",
+                "readOnly": True,
+            },
+            {
+                "name": "otel-source-tls",
+                "mountPath": "/etc/prometheus/certs",
+                "readOnly": True,
+            },
             {**volume, "mountPath": "/var/lib/otel-data"},
         ],
         "readinessProbe": {"httpGet": {"path": "/", "port": 13133}, "periodSeconds": 5},
@@ -245,7 +261,10 @@ def run(bundle, output, cutover):
             enableOTLPReceiver=True,
             listenLocal=True,
             evaluationInterval="5s",
-            otlp={"translationStrategy": "NoTranslation", "promoteScopeMetadata": False},
+            otlp={
+                "translationStrategy": "NoTranslation",
+                "promoteScopeMetadata": False,
+            },
             tsdb={**current["spec"].get("tsdb", {}), "outOfOrderTimeWindow": "30m"},
         )
         for key in [
@@ -269,7 +288,8 @@ def run(bundle, output, cutover):
             for key in ["startupProbe", "readinessProbe", "livenessProbe"]
         }
         existing = next(
-            (value for value in containers if value["name"] == "prometheus"), {"name": "prometheus"}
+            (value for value in containers if value["name"] == "prometheus"),
+            {"name": "prometheus"},
         )
         change["containers"] = [value for value in containers if value["name"] != "prometheus"] + [
             {**existing, **probes}

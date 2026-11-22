@@ -1,4 +1,5 @@
 """Check the web fetch timeout setting and fetch tool call behaviour."""
+
 import asyncio
 import json
 import time
@@ -32,7 +33,12 @@ async def main():
                 {},
                 metadata,
                 None,
-                {"function": {"name": "fetch_url", "arguments": json.dumps({"url": url})}},
+                {
+                    "function": {
+                        "name": "fetch_url",
+                        "arguments": json.dumps({"url": url}),
+                    }
+                },
             ),
         )
 

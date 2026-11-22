@@ -185,7 +185,11 @@ class GrafanaStorage(unittest.TestCase):
         assert o["env"]["GF_DATABASE_CA_CERT_PATH"] == expected["PGSSLROOTCERT"]
         assert o["envValueFrom"]["GF_DATABASE_PASSWORD"] == password
         assert guard["volumeMounts"] == [
-            {"name": "pg-common-ca", "mountPath": "/etc/grafana/pg-ca", "readOnly": True}
+            {
+                "name": "pg-common-ca",
+                "mountPath": "/etc/grafana/pg-ca",
+                "readOnly": True,
+            }
         ]
         assert guard["securityContext"]["runAsNonRoot"]
         docs = list(

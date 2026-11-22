@@ -32,9 +32,7 @@ def cmd(*args: str) -> str:
 
 def route(ip: str) -> dict[str, str | int]:
     row = json.loads(cmd("ip", "-j", "-4", "route", "get", ip))[0]
-    return {
-        key: row[key] for key in ("gateway", "dev", "prefsrc", "table") if key in row
-    }
+    return {key: row[key] for key in ("gateway", "dev", "prefsrc", "table") if key in row}
 
 
 def digest(value: str) -> str:
@@ -44,18 +42,12 @@ def digest(value: str) -> str:
 def sample() -> Sample:
     rules = [cmd("ip", family, "rule", "show") for family in ("-4", "-6")]
     # Fingerprint full policy and main table locally; never publish their contents.
-    tables = [
-        cmd("ip", family, "route", "show", "table", "all") for family in ("-4", "-6")
-    ]
+    tables = [cmd("ip", family, "route", "show", "table", "all") for family in ("-4", "-6")]
     sessions = cmd("ss", "-Hnt", "state", "established", "dst", "91.189.82.238:51840")
-    flows = [
-        " ".join(line.split()[-2:]) for line in sessions.splitlines() if line.strip()
-    ]
+    flows = [" ".join(line.split()[-2:]) for line in sessions.splitlines() if line.strip()]
     if not flows:
         raise RuntimeError("no established GOST relay TCP connection")
-    if any(
-        i["ifname"] == "happ-xray" for i in json.loads(cmd("ip", "-j", "link", "show"))
-    ):
+    if any(i["ifname"] == "happ-xray" for i in json.loads(cmd("ip", "-j", "link", "show"))):
         raise RuntimeError("host Happ interface is present")
     return {
         "relay_route": route("91.189.82.238"),
@@ -91,7 +83,10 @@ def main() -> None:
                 check_mesh_tcp()
             except OSError as exc:
                 mesh_failures += 1
-                print(f"mesh TCP failed at +{time.monotonic()-start:.1f}s: {type(exc).__name__}", flush=True)
+                print(
+                    f"mesh TCP failed at +{time.monotonic() - start:.1f}s: {type(exc).__name__}",
+                    flush=True,
+                )
             next_connect = time.monotonic() + 15
         current = sample()
         survivors &= current.pop("flows")

@@ -35,9 +35,13 @@ class OperationalReplayTests(unittest.TestCase):
         points = metrics["resourceMetrics"][0]["scopeMetrics"][0]["metrics"][0]["gauge"][
             "dataPoints"
         ]
-        assert [int(p["timeUnixNano"]) // 10 ** 6 for p in points] == [int(p[0] * 1000) for p in expected]
+        assert [int(p["timeUnixNano"]) // 10**6 for p in points] == [
+            int(p[0] * 1000) for p in expected
+        ]
 
-    def test_matrix_requires_exact_values_timestamps_multiplicity_and_no_partial(self) -> None:
+    def test_matrix_requires_exact_values_timestamps_multiplicity_and_no_partial(
+        self,
+    ) -> None:
         """Matrix requires exact values timestamps multiplicity and no partial."""
         helper = module()
         expected = [[1, "0"], [6, "1"]]
@@ -58,7 +62,9 @@ class OperationalReplayTests(unittest.TestCase):
                 changed["warnings"] = ["partial"]
             assert not helper.check_metrics(changed, expected)
 
-    def test_rollback_candidate_changes_only_batch_timeout_preserving_queues_and_tls(self) -> None:
+    def test_rollback_candidate_changes_only_batch_timeout_preserving_queues_and_tls(
+        self,
+    ) -> None:
         """Rollback candidate changes only batch timeout preserving queues and tls."""
         import json
 
@@ -83,4 +89,6 @@ class OperationalReplayTests(unittest.TestCase):
         helper = module()
         trace = "12" * 16
         for identity in [trace, base64.b64encode(bytes.fromhex(trace)).decode()]:
-            assert helper.trace_records({"traceId": identity, "spanId": "34" * 8, "name": "fixture"}) == [(trace, "fixture")]
+            assert helper.trace_records(
+                {"traceId": identity, "spanId": "34" * 8, "name": "fixture"}
+            ) == [(trace, "fixture")]

@@ -126,7 +126,18 @@ def prepare(compare: Comparison, updates: str) -> Context | None:
             # Removals/renames still matter to the model, but are not new publications.
             pass
         binary_asset = name.lower().endswith(
-            (".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".woff", ".woff2", ".mp4", ".pdf")
+            (
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".gif",
+                ".webp",
+                ".ico",
+                ".woff",
+                ".woff2",
+                ".mp4",
+                ".pdf",
+            )
         )
         if "patch" not in f and f.get("changes", 0) and not binary_asset:
             raise UnsafeInput("Missing text diff: " + name)

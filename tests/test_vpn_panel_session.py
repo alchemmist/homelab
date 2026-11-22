@@ -156,7 +156,12 @@ class SessionTests(unittest.TestCase):
                 "existing_tokens_unchanged"
             ]
             assert not (state / "uncertain.json").exists()
-            for filename in ("bootstrap.stdout", "bootstrap.json", "cleanup.json", "worker.json"):
+            for filename in (
+                "bootstrap.stdout",
+                "bootstrap.json",
+                "cleanup.json",
+                "worker.json",
+            ):
                 assert not (state / filename).exists()
             assert "B" * 48 not in json.dumps(
                 json.loads((state / "credential-cleanup.json").read_text())
@@ -351,7 +356,11 @@ class SubscriptionMigrationTests(unittest.TestCase):
                 "outbounds": [
                     {
                         "protocol": "vless",
-                        "settings": {"address": "192.0.2.1", "port": 32063, "id": "PRESERVE"},
+                        "settings": {
+                            "address": "192.0.2.1",
+                            "port": 32063,
+                            "id": "PRESERVE",
+                        },
                     }
                 ]
             }
@@ -391,7 +400,9 @@ class BackendGuardTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             m.validate(objects)
 
-    def test_exact_existing_netbird_allowance_preserved_without_relaxing_public_guard(self):
+    def test_exact_existing_netbird_allowance_preserved_without_relaxing_public_guard(
+        self,
+    ):
         import copy
 
         m = self.module("vpn-backend-guard.py")
@@ -451,7 +462,11 @@ class BackendGuardTests(unittest.TestCase):
     def test_trojan_probe_uses_fresh_own_secret_and_verified_tls443(self):
         m = self.module("vpn-backend-enforce.py")
         cfg = m.client(
-            {"network": "ws", "security": "none", "wsSettings": {"path": "/owned-test"}},
+            {
+                "network": "ws",
+                "security": "none",
+                "wsSettings": {"path": "/owned-test"},
+            },
             "OWN_FRESH_SECRET",
             12345,
         )
@@ -493,7 +508,12 @@ class HomeProbeTests(unittest.TestCase):
         text = (ROOT / "scripts/vpn-home-probe.py").read_text()
         assert "65536" in text
         assert "socks5h://127.0.0.1:" in text
-        for forbidden in ["ip route add", "networksetup", "resolvectl dns", "sysctl -w"]:
+        for forbidden in [
+            "ip route add",
+            "networksetup",
+            "resolvectl dns",
+            "sysctl -w",
+        ]:
             assert forbidden not in text
 
 
@@ -513,7 +533,10 @@ class LegacyRetirementTests(unittest.TestCase):
         old = {
             "state_dir": "/var/lib/homelab-vpn-failover",
             "tcp_endpoints": [["127.0.0.1", 32063], ["127.0.0.1", 32053]],
-            "listen_ports": [{"protocol": "tcp", "port": 32063}, {"protocol": "tcp", "port": 443}],
+            "listen_ports": [
+                {"protocol": "tcp", "port": 32063},
+                {"protocol": "tcp", "port": 443},
+            ],
             "native_unit_ports": {
                 "homelab-vpn-primary.service": [
                     {"protocol": "tcp", "port": 32063},

@@ -231,7 +231,11 @@ class ObserverPolicyTests(unittest.TestCase):
 
     def test_native_only_no_user_objects(self) -> None:
         """The RBAC is group-native with no user objects."""
-        assert [o["kind"] for o in RBAC] == ["GlobalRole", "RoleTemplate", "ClusterRoleTemplateBinding"]
+        assert [o["kind"] for o in RBAC] == [
+            "GlobalRole",
+            "RoleTemplate",
+            "ClusterRoleTemplateBinding",
+        ]
         binding = RBAC[2]
         assert binding["groupPrincipalName"] == "genericoidc_group://homelab-observer"
         assert not any(k in binding for k in ["userName", "userPrincipalName"])
@@ -362,19 +366,29 @@ class ObserverPolicyTests(unittest.TestCase):
         operations = plan.build(fixture(), POLICY)
         for op in operations:
             if op["system"] == "kubernetes":
-                assert [p["path"] for p in op["body"][:2]] == ["/metadata/uid", "/metadata/resourceVersion"]
+                assert [p["path"] for p in op["body"][:2]] == [
+                    "/metadata/uid",
+                    "/metadata/resourceVersion",
+                ]
                 assert all(p["op"] == "test" for p in op["body"][:2])
         auth = next(o for o in operations if o["path"].endswith("/authconfigs/genericoidc"))
         principals = fixture()["rancherAuth"]["allowedPrincipalIds"]
         assert isinstance(principals, list)
-        assert auth["body"][-1]["value"] == [*principals, "genericoidc_group://homelab-observer"]
+        assert auth["body"][-1]["value"] == [
+            *principals,
+            "genericoidc_group://homelab-observer",
+        ]
 
     def test_safe_defaults_and_harbor_before_admission(self) -> None:
         """Safe defaults run first and harbor precedes admission."""
         operations = plan.build(fixture(), POLICY)
         first_auth = next(i for i, o in enumerate(operations) if o["system"] == "authentik")
         assert all(o["system"] == "authentik" for o in operations[first_auth:])
-        assert operations[0]["body"][-1] == {"op": "add", "path": "/newUserDefault", "value": False}
+        assert operations[0]["body"][-1] == {
+            "op": "add",
+            "path": "/newUserDefault",
+            "value": False,
+        }
         harbor_ops = [o for o in operations if o["system"] == "harbor"]
         assert harbor_ops[0]["body"] == {"project_creation_restriction": "adminonly"}
 
@@ -472,7 +486,12 @@ class ObserverPolicyTests(unittest.TestCase):
             ({}, []),
             ({"allowedPrincipalIds": [guard.PRINCIPAL]}, [guard.PRINCIPAL]),
         ]:
-            assert guard.retain_observer(original, [], state["globalRoles"], state["rancherSessionSetting"]) == expected
+            assert (
+                guard.retain_observer(
+                    original, [], state["globalRoles"], state["rancherSessionSetting"]
+                )
+                == expected
+            )
         state["rancherSessionSetting"]["value"] = "960"
         with self.assertRaisesRegex(RuntimeError, "defaults drifted"):
             guard.retain_observer(
@@ -482,7 +501,10 @@ class ObserverPolicyTests(unittest.TestCase):
                 state["rancherSessionSetting"],
             )
         patch = guard.authconfig_patch(state["rancherAuth"], {"allowedPrincipalIds": ["preserved"]})
-        assert patch[:2] == [{"op": "test", "path": "/metadata/uid", "value": "auth-uid"}, {"op": "test", "path": "/metadata/resourceVersion", "value": "9"}]
+        assert patch[:2] == [
+            {"op": "test", "path": "/metadata/uid", "value": "auth-uid"},
+            {"op": "test", "path": "/metadata/resourceVersion", "value": "9"},
+        ]
 
     def test_malformed_snapshot_is_a_clear_validation_error(self) -> None:
         """A malformed snapshot is a clear validation error."""
@@ -807,7 +829,12 @@ class LegacyChatMigrationTests(unittest.TestCase):
         """The one-time migration preserves subject and owner, then converges."""
         before = copy.deepcopy(self.state)
         operations = self.migration.build(self.state, POLICY)
-        assert [op["action"] for op in operations] == ["create-chat-group", "preserve-chat-user", "admit-chat-group", "remove-observer-chat-admission"]
+        assert [op["action"] for op in operations] == [
+            "create-chat-group",
+            "preserve-chat-user",
+            "admit-chat-group",
+            "remove-observer-chat-admission",
+        ]
         for op in operations:
             self.migration.apply(self.client, op, before)
         assert self.migration.build(self.state, POLICY) == []
@@ -818,7 +845,9 @@ class LegacyChatMigrationTests(unittest.TestCase):
         assert self.state["bindings"][0] == before["bindings"][0]
         assert not any("password" in path or "set_password" in path for _, _, path, _ in self.calls)
         assert not any(system != "authentik" for system, _, _, _ in self.calls)
-        assert [path for _, method, path, _ in self.calls if method == "DELETE"] == ["policies/bindings/old-observer-binding/"]
+        assert [path for _, method, path, _ in self.calls if method == "DELETE"] == [
+            "policies/bindings/old-observer-binding/"
+        ]
 
     def test_unreviewed_observer_or_subject_change_stops_before_writes(self) -> None:
         """Unreviewed observer or subject changes stop before writes."""

@@ -58,7 +58,8 @@ class GitHub:
                 msg = "Full SHA required"
                 raise UnsafeInput(msg)
         result = cast(
-            "Comparison", self.api("GET", f"compare/{before}...{after}?per_page=100&page=1")
+            "Comparison",
+            self.api("GET", f"compare/{before}...{after}?per_page=100&page=1"),
         )
         if result.get("status") not in ("ahead", "identical"):
             msg = "Non-forward push requires manual review"

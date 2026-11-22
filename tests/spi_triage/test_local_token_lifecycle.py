@@ -73,7 +73,8 @@ class Lifecycle(unittest.TestCase):
                 elif change == "library":
                     stack.enter_context(
                         patch(
-                            "local_token_counter.importlib.metadata.version", return_value="0.0.0"
+                            "local_token_counter.importlib.metadata.version",
+                            return_value="0.0.0",
                         )
                     )
                 else:
@@ -91,7 +92,10 @@ class Lifecycle(unittest.TestCase):
                 m = Model(Mock(), "unused")
         base = {
             "model": "qwen3.8-27b",
-            "messages": [{"role": "system", "content": "s"}, {"role": "user", "content": "u"}],
+            "messages": [
+                {"role": "system", "content": "s"},
+                {"role": "user", "content": "u"},
+            ],
             "chat_template_kwargs": {"enable_thinking": False},
             "max_tokens": 768,
             "response_format": {},

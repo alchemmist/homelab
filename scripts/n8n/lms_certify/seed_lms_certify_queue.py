@@ -24,9 +24,15 @@ contracts = {
     "length": (
         "length",
         [
-            ("strip spaces", "s=input().strip();print(f'Слово {s} имеет длину {len(s)}')"),
+            (
+                "strip spaces",
+                "s=input().strip();print(f'Слово {s} имеет длину {len(s)}')",
+            ),
             ("off by one", "s=input();print(f'Слово {s} имеет длину {len(s)+1}')"),
-            ("ascii bytes", "s=input();print(f'Слово {s} имеет длину {len(s.encode())}')"),
+            (
+                "ascii bytes",
+                "s=input();print(f'Слово {s} имеет длину {len(s.encode())}')",
+            ),
         ],
         [],
     ),
@@ -34,7 +40,10 @@ contracts = {
         "parity",
         [
             ("invert parity", "print('нечётное' if int(input())%2==0 else 'чётное')"),
-            ("zero not even", "n=int(input());print('чётное' if n and n%2==0 else 'нечётное')"),
+            (
+                "zero not even",
+                "n=int(input());print('чётное' if n and n%2==0 else 'нечётное')",
+            ),
             (
                 "negative not even",
                 "n=int(input());print('чётное' if n>0 and n%2==0 else 'нечётное')",

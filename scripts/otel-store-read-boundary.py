@@ -104,7 +104,11 @@ def run(output):
             if item["name"] == "thanos"
         )
         arguments = unclamped(container["args"])
-        stamps = ["2026-10-31T19:00:00Z", "2026-10-31T19:50:00Z", "2026-10-31T20:15:00Z"]
+        stamps = [
+            "2026-10-31T19:00:00Z",
+            "2026-10-31T19:50:00Z",
+            "2026-10-31T20:15:00Z",
+        ]
         prior = {stamp: query(stamp, True) for stamp in stamps}
         (output / "queries-before.json").write_text(json.dumps(prior, indent=2) + "\n")
         if arguments != container["args"]:

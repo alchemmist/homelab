@@ -24,11 +24,15 @@ class PublicationOrigin(unittest.TestCase):
             bundle = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(bundle)
             objects = [
-                ("spi/v1/" + "a" * 64 + "/" + "b" * 64 + "/manifest.json", b'{"immutable":true}')
+                (
+                    "spi/v1/" + "a" * 64 + "/" + "b" * 64 + "/manifest.json",
+                    b'{"immutable":true}',
+                )
             ]
             before = list(objects)
             with patch.dict(
-                os.environ, SPI_EVIDENCE_PUBLIC_ORIGIN="https://rustfs.socrat.alchemmist.xyz"
+                os.environ,
+                SPI_EVIDENCE_PUBLIC_ORIGIN="https://rustfs.socrat.alchemmist.xyz",
             ):
                 text = bundle.storage_markdown(objects)
             assert "](https://rustfs.socrat.alchemmist.xyz/" + objects[0][0] + ")" in text

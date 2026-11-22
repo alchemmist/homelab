@@ -19,7 +19,10 @@ class WishlistMove(unittest.TestCase):
         pv, pvc = list(yaml.safe_load_all((R / "deploy/storage/wishlist-socrat5.yaml").read_text()))
         assert pv["spec"]["persistentVolumeReclaimPolicy"] == "Retain"
         assert pv["spec"]["local"]["path"] == "/mnt/files/homelab/wishlist/data"
-        assert pv["spec"]["claimRef"] == {"namespace": "wishlist", "name": "wishlist-socrat5"}
+        assert pv["spec"]["claimRef"] == {
+            "namespace": "wishlist",
+            "name": "wishlist-socrat5",
+        }
         assert pvc["spec"]["volumeName"] == pv["metadata"]["name"]
         assert pvc["metadata"]["name"] != "wishlist-data"
 
@@ -41,7 +44,9 @@ class WishlistMove(unittest.TestCase):
         )
         return [d for d in yaml.safe_load_all(raw) if d]
 
-    def test_production_has_one_writer_exact_image_and_fails_closed_on_empty_data(self) -> None:
+    def test_production_has_one_writer_exact_image_and_fails_closed_on_empty_data(
+        self,
+    ) -> None:
         docs = self.render()
         d = next(
             d for d in docs if d["kind"] == "Deployment" and d["metadata"]["name"] == "wishlist"
@@ -127,7 +132,9 @@ class Cursor:
         old = next(d for d in docs if d["kind"] == "PersistentVolumeClaim")
         assert old["metadata"]["name"] == "wishlist-data"
 
-    def test_retained_sqlite_mode_refuses_missing_empty_or_invalid_database(self) -> None:
+    def test_retained_sqlite_mode_refuses_missing_empty_or_invalid_database(
+        self,
+    ) -> None:
         docs = self.render("--set", "postgresEnabled=false")
         d = next(
             d for d in docs if d["kind"] == "Deployment" and d["metadata"]["name"] == "wishlist"
@@ -149,7 +156,10 @@ class Cursor:
 
     def test_shared_defaults_do_not_repoint_existing_data(self) -> None:
         v = yaml.safe_load((R / "charts/wishlist/values.yaml").read_text())
-        assert v["persistence"] == {"existingClaim": "wishlist-data", "requireExistingData": False}
+        assert v["persistence"] == {
+            "existingClaim": "wishlist-data",
+            "requireExistingData": False,
+        }
         assert v["hostAliases"] == []
 
 

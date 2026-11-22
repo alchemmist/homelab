@@ -180,7 +180,10 @@ resources = [
         "apiVersion": "v1",
         "kind": "Service",
         "metadata": meta,
-        "spec": {"selector": labels, "ports": [{"name": "http", "port": 80, "targetPort": "http"}]},
+        "spec": {
+            "selector": labels,
+            "ports": [{"name": "http", "port": 80, "targetPort": "http"}],
+        },
     },
 ]
 Path("deploy/xui-auth-gateway/resources.yaml").write_text(

@@ -65,7 +65,8 @@ def render(directory: str | Path) -> None:
         if private_json(d / "bootstrap-journal.json") != intended:
             raise ValueError
         payload = json.dumps(
-            {k: storage["writer"][k] for k in ("access", "secret")}, separators=(",", ":")
+            {k: storage["writer"][k] for k in ("access", "secret")},
+            separators=(",", ":"),
         ).encode()
         doc = {
             "apiVersion": "v1",

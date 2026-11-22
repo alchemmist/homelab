@@ -1,4 +1,5 @@
 """Check that the terminal browser watchdog cleans up browser artifacts."""
+
 import argparse
 import ctypes
 import importlib.util
@@ -64,7 +65,8 @@ def main():
         default="/home/user/.npm/_npx/e41f203b7505f1fb/node_modules/playwright-core",
     )
     parser.add_argument(
-        "--browser", default="/home/user/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome"
+        "--browser",
+        default="/home/user/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome",
     )
     args = parser.parse_args()
     module = load(args.watchdog)
@@ -89,7 +91,15 @@ def main():
         try:
             with tempfile.TemporaryDirectory(prefix="playwright_homelab_wrapper_") as profile:
                 process = subprocess.Popen(
-                    ["homelab-browser-test", "--timeout", "8", "--", "node", str(script), profile],
+                    [
+                        "homelab-browser-test",
+                        "--timeout",
+                        "8",
+                        "--",
+                        "node",
+                        str(script),
+                        profile,
+                    ],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
@@ -103,7 +113,10 @@ def main():
                     recognized |= any(module.is_test_browser(p) for p in own.values())
                     time.sleep(0.05)
                 output = process.communicate(timeout=2)[0]
-                assert process.returncode == WRAPPER_TIMEOUT_EXIT_CODE, (process.returncode, output)
+                assert process.returncode == WRAPPER_TIMEOUT_EXIT_CODE, (
+                    process.returncode,
+                    output,
+                )
                 assert recognized and "BROWSER_READY" in output, output
                 assert not alive(module, identities), alive(module, identities)
                 print(

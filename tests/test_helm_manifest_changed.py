@@ -101,13 +101,19 @@ class HelmManifestComparisonTests(unittest.TestCase):
             "Error: forbidden",
             "unexpected error",
         ]:
-            with self.subTest(error=error), pytest.raises(subprocess.CalledProcessError):
+            with (
+                self.subTest(error=error),
+                pytest.raises(subprocess.CalledProcessError),
+            ):
                 self.compare(subprocess.CompletedProcess(["helm", "get"], 1, "", error))
 
 
 @pytest.mark.parametrize(
     ("payload", "expected_result"),
-    [('{"changed":true}', {"changed": True}), ('{"changed":false}', {"changed": False})],
+    [
+        ('{"changed":true}', {"changed": True}),
+        ('{"changed":false}', {"changed": False}),
+    ],
 )
 def test_comparison_result_preserves_boolean(
     payload: str, expected_result: dict[str, bool]
@@ -173,7 +179,10 @@ if __name__ == "__main__":
 def test_explicit_plan_preserves_comparison_and_fails_closed(rc, stdout, stderr, expected, capsys):
     rendered = subprocess.CompletedProcess(["helm", "template"], 0, "same\n", "")
     installed = subprocess.CompletedProcess(["helm", "get"], rc, stdout, stderr)
-    with patch("sys.argv", [*ARGUMENTS, "--plan"]), patch("subprocess.run", side_effect=[rendered, installed]):
+    with (
+        patch("sys.argv", [*ARGUMENTS, "--plan"]),
+        patch("subprocess.run", side_effect=[rendered, installed]),
+    ):
         if expected is None:
             with pytest.raises(subprocess.CalledProcessError):
                 runpy.run_path(str(SCRIPT), run_name="__main__")

@@ -30,7 +30,9 @@ class QueueAdminTests(unittest.TestCase):
         value: dict[str, object] = next(x for x in items if x["id"] == self.key)
         return value
 
-    def test_dedicated_auth_does_not_accept_worker_key_duplicates_or_non_ascii(self) -> None:
+    def test_dedicated_auth_does_not_accept_worker_key_duplicates_or_non_ascii(
+        self,
+    ) -> None:
         """Verify dedicated auth rejects worker keys, dupes and non-ascii."""
         token = "local-fixture-" * 4
         headers = Message()
@@ -51,12 +53,22 @@ class QueueAdminTests(unittest.TestCase):
         assert value["can_cancel"]
         assert value["state"] == "queued"
         assert value["failures"] == 0
-        for field in ("event", "result", "intent", "fence", "request_fence", "response", "episode"):
+        for field in (
+            "event",
+            "result",
+            "intent",
+            "fence",
+            "request_fence",
+            "response",
+            "episode",
+        ):
             assert field not in value
         token_limit_per_minute = 30000
         assert self.api.list({})["limits"]["tokens_per_minute"] == token_limit_per_minute
 
-    def test_cancel_preserves_row_checkpoint_budget_and_previous_error_audit(self) -> None:
+    def test_cancel_preserves_row_checkpoint_budget_and_previous_error_audit(
+        self,
+    ) -> None:
         """Verify cancel preserves checkpoints, budget and error audit."""
         with self.store.db() as c:
             c.execute(
@@ -74,7 +86,8 @@ class QueueAdminTests(unittest.TestCase):
         with self.store.db() as c:
             assert (
                 c.execute(
-                    "SELECT failures FROM job_failure_budget WHERE job_id=?", (self.key,)
+                    "SELECT failures FROM job_failure_budget WHERE job_id=?",
+                    (self.key,),
                 ).fetchone()[0]
                 == failure_budget_spent
             )

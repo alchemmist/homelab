@@ -27,9 +27,7 @@ class CredentialTest(unittest.TestCase):
             "user_id": "service-id",
             "token_id": "old-id",
             "token": "fixture-old",
-            "expiration_date": (
-                dt.datetime.now(dt.UTC) + dt.timedelta(days=days)
-            ).isoformat(),
+            "expiration_date": (dt.datetime.now(dt.UTC) + dt.timedelta(days=days)).isoformat(),
         }
         c.mod.atomic(folder / "credential.json", old)
         calls: list[tuple[str, str]] = []
@@ -85,19 +83,31 @@ class CredentialTest(unittest.TestCase):
             runtime, calls, users = self.setup_runtime(folder, 10)
             with patch.object(c.mod, "Runtime", runtime):
                 assert c.renew(folder, {})
-            assert [method for method, path in calls] == ["GET", "POST", "GET", "DELETE"]
+            assert [method for method, path in calls] == [
+                "GET",
+                "POST",
+                "GET",
+                "DELETE",
+            ]
             assert not (folder / "credential-intent.json").exists()
             owner_only_mode = 0o600
             assert (folder / "credential.json").stat().st_mode & 511 == owner_only_mode
 
     def test_human_blocked_or_lowered_account_not_repaired(self) -> None:
         """Human, blocked or lowered accounts are never repaired."""
-        for field, value in [("is_service_user", False), ("is_blocked", True), ("role", "user")]:
+        for field, value in [
+            ("is_service_user", False),
+            ("is_blocked", True),
+            ("role", "user"),
+        ]:
             with tempfile.TemporaryDirectory() as t:
                 folder = Path(t)
                 runtime, calls, users = self.setup_runtime(folder, 10)
                 users[0][field] = value
-                with patch.object(c.mod, "Runtime", runtime), self.assertRaises(ValueError):
+                with (
+                    patch.object(c.mod, "Runtime", runtime),
+                    self.assertRaises(ValueError),
+                ):
                     c.renew(folder, {})
                 assert calls == [("GET", "users")]
 

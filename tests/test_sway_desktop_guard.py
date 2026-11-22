@@ -46,7 +46,9 @@ class LaunchGuard(unittest.TestCase):
         app.open_shortcut("max", now=1005, spawn=self.spawn)
         assert len(self.spawned) == 1
 
-    def test_click_during_cooldown_does_not_spawn_even_if_the_process_exited(self) -> None:
+    def test_click_during_cooldown_does_not_spawn_even_if_the_process_exited(
+        self,
+    ) -> None:
         app.open_shortcut("browser", now=1000, spawn=self.spawn)
         app.pid_alive = lambda pid: False
         app.open_shortcut("browser", now=1009, spawn=self.spawn)
@@ -91,10 +93,12 @@ class GraphicsWake(unittest.TestCase):
         spawned = []
         graphics.command_running = lambda command: False
         graphics.graphics_up(
-            blank=lambda *args: calls.append(args), spawn=lambda command: spawned.append(command)
+            blank=lambda *args: calls.append(args),
+            spawn=lambda command: spawned.append(command),
         )
         graphics.graphics_up(
-            blank=lambda *args: calls.append(args), spawn=lambda command: spawned.append(command)
+            blank=lambda *args: calls.append(args),
+            spawn=lambda command: spawned.append(command),
         )
         assert calls[0] == ("output", "*", "dpms", "on")
         assert [item[0] for item in spawned] == [

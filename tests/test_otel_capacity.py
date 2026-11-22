@@ -82,7 +82,10 @@ class CapacityPlacementTests(unittest.TestCase):
         patch, undo = capacity.placement(doc)
         assert doc == before
         assert patch["metadata"]["resourceVersion"] == "123"
-        assert patch["spec"]["strategy"]["rollingUpdate"] == {"maxSurge": 1, "maxUnavailable": 0}
+        assert patch["spec"]["strategy"]["rollingUpdate"] == {
+            "maxSurge": 1,
+            "maxUnavailable": 0,
+        }
         assert set(patch["spec"]["template"]["spec"]) == {"affinity"}
         assert "replicas" not in patch["spec"]
         assert undo["uid"] == "controller-uid"

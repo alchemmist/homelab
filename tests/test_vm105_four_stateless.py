@@ -18,7 +18,16 @@ def render(chart, values, namespace):
         yaml.safe_dump(values, f)
         f.flush()
         raw = subprocess.check_output(
-            ["helm", "template", chart, str(R / "charts" / chart), "-n", namespace, "-f", f.name],
+            [
+                "helm",
+                "template",
+                chart,
+                str(R / "charts" / chart),
+                "-n",
+                namespace,
+                "-f",
+                f.name,
+            ],
             text=True,
         )
     return {(x["kind"], x["metadata"]["name"]): x for x in yaml.safe_load_all(raw) if x}
@@ -57,7 +66,10 @@ class PlacementTests(unittest.TestCase):
         old = copy.deepcopy(new)
         old["queueUI"]["nodeName"] = "socrat-3"
         old["queueUI"]["hostAliases"] = []
-        a, b = render("spi-triage", old, "automation"), render("spi-triage", new, "automation")
+        a, b = (
+            render("spi-triage", old, "automation"),
+            render("spi-triage", new, "automation"),
+        )
         assert [k for k in a if a[k] != b[k]] == [("Deployment", "spi-queue-ui")]
         pod = b["Deployment", "spi-queue-ui"]["spec"]["template"]["spec"]
         assert pod["nodeSelector"] == {"kubernetes.io/hostname": "socrat-5"}

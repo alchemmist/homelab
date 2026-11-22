@@ -57,7 +57,9 @@ class KumaPrivateMonitorTests(unittest.TestCase):
                 },
             )
 
-    def test_migration_preserves_history_groups_identity_and_unrelated_fields(self) -> None:
+    def test_migration_preserves_history_groups_identity_and_unrelated_fields(
+        self,
+    ) -> None:
         """Rewrite identity while preserving history, groups, and layout."""
         before = self.snapshot()
         result = MODULE.configure(self.path)
@@ -97,7 +99,8 @@ class KumaPrivateMonitorTests(unittest.TestCase):
         """Refuse ambiguous matches without leaving any database writes."""
         with closing(sqlite3.connect(self.path)) as db, db:
             db.execute(
-                "UPDATE monitor SET url = ? WHERE id = 8", (f"https://{MODULE.HOSTNAME}/ping",)
+                "UPDATE monitor SET url = ? WHERE id = 8",
+                (f"https://{MODULE.HOSTNAME}/ping",),
             )
         before = self.path.read_bytes()
         for check in (True, False):

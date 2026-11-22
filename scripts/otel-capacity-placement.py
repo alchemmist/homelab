@@ -1,4 +1,5 @@
 """Pin Rancher Fleet controller pods to specific nodes for OTEL capacity."""
+
 import argparse
 import copy
 import json
@@ -55,7 +56,11 @@ def placement(document):
             "nodeSelectorTerms": [
                 {
                     "matchExpressions": [
-                        {"key": "kubernetes.io/hostname", "operator": "In", "values": NODES}
+                        {
+                            "key": "kubernetes.io/hostname",
+                            "operator": "In",
+                            "values": NODES,
+                        }
                     ]
                 }
             ]
@@ -126,7 +131,16 @@ def run(kubeconfig, state_directory):
         command(args + ["--dry-run=server"])
         command(args)
         try:
-            command(["-n", namespace, "rollout", "status", "deployment/" + name, "--timeout=180s"])
+            command(
+                [
+                    "-n",
+                    namespace,
+                    "rollout",
+                    "status",
+                    "deployment/" + name,
+                    "--timeout=180s",
+                ]
+            )
             live = json.loads(command(get))
             pods = json.loads(command(["-n", namespace, "get", "pods", "-o", "json"]))
             replicasets = json.loads(command(["-n", namespace, "get", "replicasets", "-o", "json"]))
@@ -183,7 +197,16 @@ def run(kubeconfig, state_directory):
                     json.dumps(restore),
                 ]
             )
-            command(["-n", namespace, "rollout", "status", "deployment/" + name, "--timeout=180s"])
+            command(
+                [
+                    "-n",
+                    namespace,
+                    "rollout",
+                    "status",
+                    "deployment/" + name,
+                    "--timeout=180s",
+                ]
+            )
             raise
     return {
         "schemaVersion": 1,

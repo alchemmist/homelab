@@ -70,7 +70,9 @@ def test_no_api_only_failover_and_failure_threshold(ctl, monkeypatch) -> None:
     monkeypatch.setattr(m, "boot_id", lambda: "test-boot")
     c.save(mode="kubernetes", boot_id="test-boot", grace_until=0)
     monkeypatch.setattr(
-        c, "recovery_scope", lambda: {"recover_local": True, "scope": "local-listener-failed"}
+        c,
+        "recovery_scope",
+        lambda: {"recover_local": True, "scope": "local-listener-failed"},
     )
     calls = []
     monkeypatch.setattr(c, "healthy", lambda: False)
@@ -312,7 +314,6 @@ def test_failure_scope_uses_direct_upstream_not_api(
     monkeypatch.setattr(m, "active", lambda _unit: agent)
     monkeypatch.setattr(m, "local_listeners_respond", lambda: listeners)
 
-
     def check(_config, host, source, detail) -> bool:
         assert host == "10.250.0.2" and source == ("10.250.0.40", 0)
         assert isinstance(detail, dict)  # probe records its observation in-place
@@ -332,7 +333,9 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatc
     c.save(mode="kubernetes", boot_id="boot", grace_until=0)
     monkeypatch.setattr(c, "healthy", lambda: False)
     monkeypatch.setattr(
-        c, "recovery_scope", lambda: {"recover_local": False, "scope": "upstream-or-path-unhealthy"}
+        c,
+        "recovery_scope",
+        lambda: {"recover_local": False, "scope": "upstream-or-path-unhealthy"},
     )
     monkeypatch.setattr(
         c,
@@ -359,7 +362,6 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatc
 def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch) -> None:
     """Test behavior for test_probe_failure_records_stage_not_private_path."""
     m, c = ctl
-
 
     def fail(*_a, **_kw) -> None:
         raise TimeoutError

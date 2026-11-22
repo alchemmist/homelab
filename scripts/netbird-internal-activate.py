@@ -47,9 +47,13 @@ def _api(token: str, method: str, endpoint: str, body: object = None) -> object:
 
 def _reviewed_journal() -> tuple[str, dict[str, object]]:
     """Load the private bootstrap token and journal state, refusing replays."""
-    token = cast("str", json.loads((ROOT / "bootstrap.json").read_text())["personal_access_token"])
+    token = cast(
+        "str",
+        json.loads((ROOT / "bootstrap.json").read_text())["personal_access_token"],
+    )
     state = cast(
-        "dict[str, object]", json.loads((ROOT / "internal-network-stage.json").read_text())
+        "dict[str, object]",
+        json.loads((ROOT / "internal-network-stage.json").read_text()),
     )
     if state["state"] != "internal-resources-ready-await-genuine-admin-JWT":
         raise ValueError("unexpected stage or replay")
@@ -86,7 +90,8 @@ def _reviewed_admin_group(token: str, compiler: object) -> tuple[str, object]:
     """Resolve the genuine admin JWT group id and its current membership."""
     groups = _api(token, "GET", "groups")
     genuine_admin_group = cast(
-        "Callable[[object], str]", cast("dict[str, object]", compiler)["genuine_admin_group"]
+        "Callable[[object], str]",
+        cast("dict[str, object]", compiler)["genuine_admin_group"],
     )
     admin_id = genuine_admin_group(groups)
     group = _api(token, "GET", "groups/" + admin_id)
@@ -153,7 +158,8 @@ def _build_activation_plan(
     networks = cast("dict[str, object]", state["networks"])
     peers = cast("dict[str, object]", state["peers"])
     compiled_networks = cast(
-        "dict[str, tuple[object, list[str]]]", cast("dict[str, object]", compiler)["NETWORKS"]
+        "dict[str, tuple[object, list[str]]]",
+        cast("dict[str, object]", compiler)["NETWORKS"],
     )
     for host, (name, addresses) in compiled_networks.items():
         network = cast("dict[str, object]", networks[host])
@@ -213,7 +219,10 @@ def _require_activation_converged(
 ) -> None:
     """Require no unrelated policy or human role changes after activation."""
     after = cast("list[object]", _api(token, "GET", "policies"))
-    if {cast("dict[str, object]", p)["id"] for p in after} != {state["ssh_policy"], *created}:
+    if {cast("dict[str, object]", p)["id"] for p in after} != {
+        state["ssh_policy"],
+        *created,
+    }:
         raise ValueError("unexpected policies after activation")
     if {
         cast("dict[str, object]", u)["id"]: cast("dict[str, object]", u)["role"]

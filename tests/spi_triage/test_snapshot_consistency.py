@@ -15,7 +15,13 @@ class SnapshotConsistencyTests(unittest.TestCase):
     def rows(self, n=61) -> list[dict[str, int | str]]:
         """Build n synthetic snapshot rows."""
         return [
-            {"number": i, "title": "[SPI] fake", "updated_at": "first", "body": "", "comments": 0}
+            {
+                "number": i,
+                "title": "[SPI] fake",
+                "updated_at": "first",
+                "body": "",
+                "comments": 0,
+            }
             for i in range(1, n + 1)
         ]
 
@@ -40,7 +46,9 @@ class SnapshotConsistencyTests(unittest.TestCase):
         g.request = request
         return g, calls
 
-    def test_old_desc_insert_reproduces_actual_current_duplicate_with_valid_proof(self) -> None:
+    def test_old_desc_insert_reproduces_actual_current_duplicate_with_valid_proof(
+        self,
+    ) -> None:
         """Verify late inserts reproduce duplicates with a valid proof."""
         original = self.rows()
         m = Model(Mock(), "fake")

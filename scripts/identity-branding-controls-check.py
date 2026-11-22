@@ -14,7 +14,9 @@ from playwright.sync_api import sync_playwright
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--run", action="store_true")
 parser.add_argument(
-    "--public-edge", choices=["109.173.40.247", "109.120.141.60"], default="109.173.40.247"
+    "--public-edge",
+    choices=["109.173.40.247", "109.120.141.60"],
+    default="109.173.40.247",
 )
 args = parser.parse_args()
 if not args.run:
@@ -29,7 +31,8 @@ with sync_playwright() as p:
     statuses = []
     page.on("pageerror", lambda e: errors.append(type(e).__name__))
     page.on(
-        "response", lambda r: statuses.append(r.status) if "/flows/inspector/" in r.url else None
+        "response",
+        lambda r: statuses.append(r.status) if "/flows/inspector/" in r.url else None,
     )
     page.goto(BASE + "/if/flow/default-authentication-flow/?inspector=available")
     page.locator("input[name=uidField]").wait_for()

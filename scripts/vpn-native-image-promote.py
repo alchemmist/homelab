@@ -23,7 +23,10 @@ RECEIPT = Path("/var/lib/homelab-recovery/20261113-vpn-native-image/promotion.js
 
 def active(unit) -> bool:
     p = subprocess.run(
-        ["systemctl", "is-active", "--quiet", unit], check=False, capture_output=True, timeout=5
+        ["systemctl", "is-active", "--quiet", unit],
+        check=False,
+        capture_output=True,
+        timeout=5,
     )
     assert p.returncode in (0, 3)
     return p.returncode == 0
@@ -85,7 +88,10 @@ def promote(candidate, old_image, new_image) -> None:
         # Durable intent before atomic syscall; any uncertainty prohibits replay.
         fd = os.open(RECEIPT, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, "w") as stream:
-            json.dump({"state": "intent", "old_image": old_image, "new_image": new_image}, stream)
+            json.dump(
+                {"state": "intent", "old_image": old_image, "new_image": new_image},
+                stream,
+            )
             stream.flush()
             os.fsync(stream.fileno())
         fd = os.open(RECEIPT.parent, os.O_DIRECTORY)
@@ -93,7 +99,13 @@ def promote(candidate, old_image, new_image) -> None:
         os.close(fd)
         libc = ctypes.CDLL(None, use_errno=True)
         fn = libc.renameat2
-        fn.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+        fn.argtypes = [
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_uint,
+        ]
         if fn(-100, os.fsencode(current), -100, os.fsencode(new), 2) != 0:
             raise OSError(ctypes.get_errno(), "Atomic image exchange failed; inspect intent")
         for path in (ROOT, candidate):

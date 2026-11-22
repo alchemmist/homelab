@@ -93,7 +93,6 @@ class DeadlineConnection:
     sock: socket.socket | None
     deadline_timer: threading.Timer
 
-
     def connect(self) -> None:
         """Connect under an absolute deadline watched by a timer."""
         start = time.monotonic()
@@ -134,7 +133,8 @@ class DeadlineConnection:
         self.transferring_response = True
         try:
             response = cast(
-                "DeadlineResponse", cast("http.client.HTTPConnection", super()).getresponse()
+                "DeadlineResponse",
+                cast("http.client.HTTPConnection", super()).getresponse(),
             )
             response.deadline_timer = self.deadline_timer
             self.response_owns_deadline = True
@@ -514,7 +514,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 raise ValueError("normalized target denied")
             if raw_target == "/":
                 self.respond(
-                    200, b"Socrat evidence reader. Open an artifact link from an incident issue.\n"
+                    200,
+                    b"Socrat evidence reader. Open an artifact link from an incident issue.\n",
                 )
                 return
             key = valid_key(raw_target)
@@ -548,7 +549,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.respond(200, body, filename)
 
     @override
-    def send_error(self, _code: int, _message: str | None = None, _explain: str | None = None) -> None:
+    def send_error(
+        self, _code: int, _message: str | None = None, _explain: str | None = None
+    ) -> None:
         # Parser/unsupported-method errors must not echo raw request lines or
         # distinguish paths to unauthenticated callers.
         """Answer every parser error with an opaque 400."""

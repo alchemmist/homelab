@@ -94,7 +94,11 @@ def main():
         f.write(old)
     (state / "attempt.json").write_text(
         json.dumps(
-            {"config_sha256": hashlib.sha256(old).hexdigest(), "new_peer": KEY, "address": ADDRESS}
+            {
+                "config_sha256": hashlib.sha256(old).hexdigest(),
+                "new_peer": KEY,
+                "address": ADDRESS,
+            }
         )
     )
     changing_address = bool(matches) and before.get(KEY) == str(legacy_target)

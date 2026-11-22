@@ -116,7 +116,8 @@ def finish(s: SessionLike) -> dict[str, object]:
     finally:
         s.cleanup()
     original = cast(
-        "dict[str, object]", json.loads((s.state / "home-proxy-before-private.json").read_text())
+        "dict[str, object]",
+        json.loads((s.state / "home-proxy-before-private.json").read_text()),
     )
     if target.semantic(target.configuration(s.database)) != target.semantic(original):
         raise ValueError("Proxy preservation failed")
@@ -240,7 +241,9 @@ def add_udp_probe(
 def register_probe_client(s: SessionLike, context: ProbeContext) -> None:
     """Register exactly one probe client restricted to the selected inbounds."""
     s.call(
-        "POST", "/clients/add", {"client": context["client"], "inboundIds": context["inbound_ids"]}
+        "POST",
+        "/clients/add",
+        {"client": context["client"], "inboundIds": context["inbound_ids"]},
     )
 
 
@@ -308,11 +311,15 @@ def prepare(
             add_udp_probe(context, rows, original, endpoint)
         register_probe_client(s, context)
         reality = target.vless_client(
-            json.loads(cast("str", rows[32053]["stream_settings"])), identity["uuid"], 1080
+            json.loads(cast("str", rows[32053]["stream_settings"])),
+            identity["uuid"],
+            1080,
         )
         reality["outbounds"][1]["settings"]["vnext"][0]["address"] = endpoint
         trojan = backend.client(
-            json.loads(cast("str", rows[32087]["stream_settings"])), identity["password"], 1080
+            json.loads(cast("str", rows[32087]["stream_settings"])),
+            identity["password"],
+            1080,
         )
         trojan["outbounds"][1]["settings"]["servers"][0]["address"] = endpoint
         configs: dict[str, object] = {"reality": reality, "trojan": trojan}
@@ -353,7 +360,9 @@ if __name__ == "__main__":
     p.add_argument("--approve-session-hash")
     p.add_argument("--endpoint", default="91.189.82.238")
     p.add_argument(
-        "--include-udp", action="store_true", help="Add an owned userspace WireGuard probe binding"
+        "--include-udp",
+        action="store_true",
+        help="Add an owned userspace WireGuard probe binding",
     )
     p.add_argument("--include-all-vless", action="store_true")
     a = p.parse_args()

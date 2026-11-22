@@ -22,9 +22,7 @@ created: list[str] = []
 
 
 def docker(*args: str, data: bytes | None = None, timeout: float = 30) -> bytes:
-    result = subprocess.run(
-        ["docker", *args], input=data, capture_output=True, timeout=timeout
-    )
+    result = subprocess.run(["docker", *args], input=data, capture_output=True, timeout=timeout)
     if result.returncode:
         # Never include environment, server tokens, kubeconfig or raw journals.
         raise RuntimeError(f"docker {args[0]} failed ({result.returncode})")
@@ -140,9 +138,7 @@ def choose_peer() -> str:
         .strip()
         for n in ("v0", "v1", "v2")
     }
-    for line in (
-        shell("api", "cat", "/proc/net/tcp", "/proc/net/tcp6").decode().splitlines()
-    ):
+    for line in shell("api", "cat", "/proc/net/tcp", "/proc/net/tcp6").decode().splitlines():
         fields = line.split()
         if len(fields) < 4 or fields[3] != "01":
             continue
@@ -152,9 +148,7 @@ def choose_peer() -> str:
         ip = socket.inet_ntoa(bytes.fromhex(addr[-8:])[::-1])
         if ip in peers:
             return ip
-    raise RuntimeError(
-        "no observable active remote datastore socket; trial inconclusive"
-    )
+    raise RuntimeError("no observable active remote datastore socket; trial inconclusive")
 
 
 def trial(mode: str) -> None:
@@ -178,9 +172,7 @@ def trial(mode: str) -> None:
     def sync_sample() -> str:
         try:
             lines = (
-                shell(
-                    "api", "wget", "-T", "2", "-qO-", "http://127.0.0.1:10249/metrics"
-                )
+                shell("api", "wget", "-T", "2", "-qO-", "http://127.0.0.1:10249/metrics")
                 .decode()
                 .splitlines()
             )
@@ -188,9 +180,7 @@ def trial(mode: str) -> None:
                 (
                     line
                     for line in lines
-                    if line.startswith(
-                        "kubeproxy_sync_proxy_rules_last_timestamp_seconds"
-                    )
+                    if line.startswith("kubeproxy_sync_proxy_rules_last_timestamp_seconds")
                     and "IPv6" not in line
                 ),
                 "unavailable",
@@ -199,9 +189,7 @@ def trial(mode: str) -> None:
             return "unavailable"
 
     print(f"{mode} before: {sync_sample()}", flush=True)
-    rv = kube(
-        "api", "get", "svc", "canary", "-o", "jsonpath={.metadata.resourceVersion}"
-    ).decode()
+    rv = kube("api", "get", "svc", "canary", "-o", "jsonpath={.metadata.resourceVersion}").decode()
     watchpath = (
         "/api/v1/namespaces/default/services?watch=1&fieldSelector=metadata.name%3Dcanary&resourceVersion="
         + rv
@@ -261,29 +249,20 @@ def trial(mode: str) -> None:
                         )
                         == b"b"
                     )
-                    return (
-                        fresh and targets() == {"b"} and body() == "b" and event.done()
-                    )
+                    return fresh and targets() == {"b"} and body() == "b" and event.done()
 
                 wait(converged, 60)
                 elapsed = time.monotonic() - starttime
                 if elapsed > 60 or uid() != original_uid:
                     raise RuntimeError("60s or client UID acceptance failed")
                 counters = (
-                    shell("api", "iptables", "-L", "OUTPUT", "-v", "-n", "-x")
-                    .decode()
-                    .splitlines()
+                    shell("api", "iptables", "-L", "OUTPUT", "-v", "-n", "-x").decode().splitlines()
                 )
                 if not any(
-                    mode in row
-                    and peer in row
-                    and "dpt:2379" in row
-                    and int(row.split()[0]) > 0
+                    mode in row and peer in row and "dpt:2379" in row and int(row.split()[0]) > 0
                     for row in counters
                 ):
-                    raise RuntimeError(
-                        "fault rule did not observe traffic; inconclusive"
-                    )
+                    raise RuntimeError("fault rule did not observe traffic; inconclusive")
                 print(
                     f"{mode}: fresh API read, EndpointSlice and same-client B in {elapsed:.2f}s; watch in {event.result() - starttime:.2f}s",
                     flush=True,
@@ -303,9 +282,7 @@ def main() -> None:
         )
     endpoint = (
         os.getenv("DOCKER_HOST")
-        or docker("context", "inspect", "--format", "{{.Endpoints.docker.Host}}")
-        .decode()
-        .strip()
+        or docker("context", "inspect", "--format", "{{.Endpoints.docker.Host}}").decode().strip()
     )
     if not endpoint.startswith("unix://"):
         raise SystemExit("local Unix Docker socket required")

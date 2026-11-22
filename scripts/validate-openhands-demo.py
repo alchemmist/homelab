@@ -82,7 +82,14 @@ def resources(
                 "name": "validate",
                 "image": IMAGE,
                 "imagePullPolicy": "IfNotPresent",
-                "command": ["python", "-B", "-m", "unittest", "-v", "test_intervals.py"],
+                "command": [
+                    "python",
+                    "-B",
+                    "-m",
+                    "unittest",
+                    "-v",
+                    "test_intervals.py",
+                ],
                 "workingDir": "/snapshot",
                 "env": [{"name": "PYTHONDONTWRITEBYTECODE", "value": "1"}],
                 "volumeMounts": [{"name": "snapshot", "mountPath": "/snapshot", "readOnly": True}],
@@ -119,7 +126,13 @@ def main() -> None:
     ).decode()
     original = (ROOT / "services/openhands/the-loop-demo/test_intervals.py.fixture").read_text()
     live_tests = kubectl(
-        "-n", "openhands", "exec", "openhands-0", "--", "cat", base + "test_intervals.py"
+        "-n",
+        "openhands",
+        "exec",
+        "openhands-0",
+        "--",
+        "cat",
+        base + "test_intervals.py",
     ).decode()
     if live_tests != original:
         raise SystemExit("STOP: agent modified acceptance tests")

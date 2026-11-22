@@ -80,7 +80,10 @@ class EventWorkflowTests(unittest.TestCase):
         assert targets("Dispatch Triage Job") == [["Claim Triage Job"]]
         assert targets("Claim Triage Job") == [["Select Claimed Job"]]
         assert targets("Select Claimed Job") == [["Route Stage Outcome"]]
-        assert targets("Route Stage Outcome") == [["Wait For Admission"], ["Resume Pinned Stage"]]
+        assert targets("Route Stage Outcome") == [
+            ["Wait For Admission"],
+            ["Resume Pinned Stage"],
+        ]
         assert targets("Wait For Admission") == [["Resume Pinned Stage"]]
         assert targets("Resume Pinned Stage") == [[n] for n in chain[3:]] + [[]]
         for name in chain[3:]:
@@ -197,7 +200,15 @@ class EventWorkflowTests(unittest.TestCase):
         result, calls = self.run_sync(
             [
                 {"data": [], "nextCursor": "next/page"},
-                {"data": [{"name": self.workflow["name"], "id": "original-id", "active": False}]},
+                {
+                    "data": [
+                        {
+                            "name": self.workflow["name"],
+                            "id": "original-id",
+                            "active": False,
+                        }
+                    ]
+                },
                 {"id": "original-id", "name": self.workflow["name"]},
             ]
         )
@@ -224,7 +235,9 @@ class EventWorkflowTests(unittest.TestCase):
             with (
                 patch.object(sync, "CONFIG", Path(config)),
                 patch.object(
-                    sync, "api", side_effect=[{"data": [], "nextCursor": "next"}, {"data": []}]
+                    sync,
+                    "api",
+                    side_effect=[{"data": [], "nextCursor": "next"}, {"data": []}],
                 ) as api,
             ):
                 with self.assertRaisesRegex(RuntimeError, "refusing creation"):
@@ -239,7 +252,10 @@ class EventWorkflowTests(unittest.TestCase):
         entry = {"name": self.workflow["name"], "id": "original-id", "active": False}
         with self.assertRaisesRegex(RuntimeError, "Ambiguous workflow name"):
             self.run_sync(
-                [{"data": [entry], "nextCursor": "next"}, {"data": [dict(entry, id="other")]}]
+                [
+                    {"data": [entry], "nextCursor": "next"},
+                    {"data": [dict(entry, id="other")]},
+                ]
             )
 
 
