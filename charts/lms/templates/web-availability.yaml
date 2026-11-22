@@ -18,7 +18,7 @@ spec:
           for: 1m
           labels: {severity: critical, service: lms}
           annotations:
-            {{- with index ((index $.Values "lms-database-ha").alertGraphAnnotations | default dict) "LMSWebUnavailable" }}
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "LMSWebUnavailable" }}
             spi_graphs: {{ . | quote }}
             {{- end }}
             summary: LMS has no available web worker.

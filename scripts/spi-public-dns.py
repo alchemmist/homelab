@@ -28,7 +28,7 @@ def load(path, name) -> "types.ModuleType":
     require(path.is_file() and not path.is_symlink(), "Unsafe renderer")
     try:
         spec = importlib.util.spec_from_file_location(name, path)
-        require("Invalid renderer module", ok=spec is not None and spec.loader is not None)
+        require(message="Invalid renderer module", ok=spec is not None and spec.loader is not None)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
@@ -54,12 +54,12 @@ def delta(old, new) -> None:
         before = old.render(123, home_up=home, vps_up=vps).splitlines()
         after = new.render(123, home_up=home, vps_up=vps).splitlines()
         require(
-            "Unrelated DNS record change; stop",
+            message="Unrelated DNS record change; stop",
             ok=[x for x in after if not x.startswith("spi.socrat IN A ")]
             == [x for x in before if not x.startswith("spi.socrat IN A ")],
         )
         require(
-            "Wrong new record",
+            message="Wrong new record",
             ok=[x for x in after if x.startswith("spi.socrat IN A ")]
             == ["spi.socrat IN A " + a for a in old.healthy_addresses(home_up=home, vps_up=vps)],
         )
@@ -72,7 +72,7 @@ def main() -> None:
     a = p.parse_args()
     os.umask(0o077)
     require(
-        "Unsafe state directory",
+        message="Unsafe state directory",
         ok=ROOT.is_dir()
         and not ROOT.is_symlink()
         and ROOT.stat().st_uid == 0
@@ -83,7 +83,7 @@ def main() -> None:
     # violate integrity. importlib does not apply Unix setuid/setgid semantics.
     for path in [CURRENT, proposed]:
         require(
-            "Unsafe renderer",
+            message="Unsafe renderer",
             ok=path.is_file()
             and not path.is_symlink()
             and path.stat().st_uid == 0
@@ -91,7 +91,7 @@ def main() -> None:
         )
     with (ROOT / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        require("Uncertain prior write; stop", ok=not (ROOT / "uncertain.json").exists())
+        require(message="Uncertain prior write; stop", ok=not (ROOT / "uncertain.json").exists())
         old = CURRENT.read_bytes()
         new = proposed.read_bytes()
         oldmod = load(CURRENT, "old")
@@ -106,7 +106,7 @@ def main() -> None:
         }
         digest = hashlib.sha256(json.dumps(context, sort_keys=True).encode()).hexdigest()
         if a.apply and changed:
-            require("Fresh hash approval required", ok=a.approve_plan_hash == digest)
+            require(message="Fresh hash approval required", ok=a.approve_plan_hash == digest)
             (ROOT / "before.py").write_bytes(old)
             (ROOT / "uncertain.json").write_text(json.dumps(context))
             temp = CURRENT.with_name("public_dns_zone.py.spi-public.tmp")
@@ -128,7 +128,7 @@ def main() -> None:
                 text=True,
             )
             require(
-                "New authoritative record not confirmed",
+                message="New authoritative record not confirmed",
                 ok="A" in result.split()
                 and any(ip in result.split() for ip in newmod.healthy_addresses(home_up=True, vps_up=True)),
             )
