@@ -1,10 +1,11 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: lms-certify
   namespace: automation
 spec:
-  replicas: 0 # Retired: never execute generated code in this worker.
+  replicas: 0  # Retired: never execute generated code in this worker.
   strategy:
     type: Recreate
   selector:
@@ -24,7 +25,8 @@ spec:
           type: RuntimeDefault
       containers:
         - name: worker
-          image: python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
+          image:
+            python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
           command: [python, -B, /app/server.py]
           envFrom:
             - secretRef:
@@ -77,6 +79,7 @@ spec:
           emptyDir: {}
         - name: tmp
           emptyDir: {}
+...
 ---
 apiVersion: v1
 kind: Service
@@ -89,3 +92,4 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
+...

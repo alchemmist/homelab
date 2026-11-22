@@ -8,21 +8,25 @@ roles:
   owner:
     description: Owner only; local break-glass plus explicit Authentik administration.
   observer:
-    description: Explicit project read-only resources; no Secrets, exec, logs or node access by default.
+    description: >-
+      Explicit project read-only resources; no Secrets, exec, logs or node access by default.
   project-maintainer:
-    description: Reviewed namespace-only write access; inherently trusted with that namespace's secrets.
+    description: >-
+      Reviewed namespace-only write access; inherently trusted with that namespace's secrets.
   platform-operator:
     description: Reviewed infrastructure scope; not automatically root or cluster-admin.
   machine-owner:
     description: Root on an owned machine is not authorization for other nodes or workloads.
 existingIdentities:
   owner:
-    authentikUuid: 9e33877a-3eaa-4541-98eb-8cdc10088ef6  # gitleaks:allow -- public reviewed subject UUID, not a credential
+    authentikUuid: 9e33877a-3eaa-4541-98eb-8cdc10088ef6  # gitleaks:allow -- public reviewed
+    # subject UUID, not a credential
     linux: alchemmist
     rancher: user-zc7lw
     migration: preserve-local-break-glass
   antropophag:
-    authentikUuid: 6015c85b-82e9-49ce-a4e3-0270c676e26d  # gitleaks:allow -- public reviewed subject UUID, not a credential
+    authentikUuid: 6015c85b-82e9-49ce-a4e3-0270c676e26d  # gitleaks:allow -- public reviewed
+    # subject UUID, not a credential
     linux: tim
     rancher: u-22wv2  # disabled legacy row retained for grant-mirroring history
     rancherOidc: u-authentik-tim-v2
@@ -53,5 +57,7 @@ network:
   mode: existing-wireguard-direct-peers
   nodeIPs: [10.250.0.1, 10.250.0.3, 10.250.0.2, 10.250.0.5]
   migration: no-automatic-route-change
-  reason: A subnet cannot be assigned to multiple direct WireGuard peers. A stable gateway topology requires separate ACL and failover design.
+  reason: >-
+    A subnet cannot be assigned to multiple direct WireGuard peers. A stable gateway topology
+    requires separate ACL and failover design.
 ...

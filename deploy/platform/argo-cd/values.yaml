@@ -33,7 +33,7 @@ configs:
       g, mcp, role:readonly
       p, mcp, applications, sync, */*, allow
     policy.default: role:unassigned
-    scopes: '[groups]'
+    scopes: "[groups]"
 controller:
   # Controller-only move; server/repo/Redis and identity stay on0.
   nodeSelector:
@@ -64,27 +64,33 @@ notifications:
     limits:
       memory: 128Mi
   notifiers:
-    service.webhook.grafana: |
-      url: http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local/api/annotations
+    service.webhook.grafana: >
+      url:
+      http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local/api/annotations
+
       headers:
+
       - name: Authorization
         value: Bearer $grafana-api-key
       - name: Content-Type
         value: application/json
   templates:
-    template.app-deployed: |
-      message: deployed
-      webhook:
-        grafana:
-          method: POST
-          body: |
-            {"text":"{{.app.metadata.name}} deployed {{.app.status.sync.revision}}","tags":["deploy","{{.app.metadata.name}}"]}
+    template.app-deployed:
+      "message: deployed\n\
+      webhook:\n\
+      \  grafana:\n\
+      \    method: POST\n\
+      \    body: |\n\
+      \      {\"text\":\"{{.app.metadata.name}} deployed\
+      \ {{.app.status.sync.revision}}\",\"tags\":[\"deploy\",\"{{.app.metadata.name}}\"]}\n"
   triggers:
-    trigger.on-deployed: |
-      - description: Annotate Grafana once per synced revision after the app is healthy.
-        oncePer: app.status.sync.revision
-        send: [app-deployed]
-        when: app.status.operationState != nil && app.status.operationState.phase in ['Succeeded'] && app.status.health.status == 'Healthy' && app.metadata.name != 'root' && time.Now().Sub(time.Parse(app.status.operationState.finishedAt)).Minutes() < 10
+    trigger.on-deployed:
+      "- description: Annotate Grafana once per synced revision after the app is healthy.\n\
+      \  oncePer: app.status.sync.revision\n\
+      \  send: [app-deployed]\n\
+      \  when: app.status.operationState != nil && app.status.operationState.phase in\
+      \ ['Succeeded'] && app.status.health.status == 'Healthy' && app.metadata.name != 'root' &&\
+      \ time.Now().Sub(time.Parse(app.status.operationState.finishedAt)).Minutes() < 10\n"
   subscriptions:
     - recipients:
         - grafana
@@ -130,22 +136,23 @@ server:
     type: ClusterIP
     annotations:
       traefik.ingress.kubernetes.io/service.serversscheme: https
-      traefik.ingress.kubernetes.io/service.serverstransport: argocd-argocd-verified-tls@kubernetescrd
+      traefik.ingress.kubernetes.io/service.serverstransport:
+        argocd-argocd-verified-tls@kubernetescrd
 
 # Keep the verified transport managed by both bootstrap Helm and live GitOps.
 extraObjects:
-- apiVersion: traefik.io/v1alpha1
-  kind: ServersTransport
-  metadata:
-    name: argocd-verified-tls
-    namespace: argocd
-    labels:
-      homelab.alchemmist.xyz/edge-transport: argocd
-      app.kubernetes.io/managed-by: Helm
-    annotations:
-      meta.helm.sh/release-name: argo-cd
-      meta.helm.sh/release-namespace: argocd
-  spec:
-    serverName: argocd.socrat.alchemmist.xyz
-    insecureSkipVerify: false
+  - apiVersion: traefik.io/v1alpha1
+    kind: ServersTransport
+    metadata:
+      name: argocd-verified-tls
+      namespace: argocd
+      labels:
+        homelab.alchemmist.xyz/edge-transport: argocd
+        app.kubernetes.io/managed-by: Helm
+      annotations:
+        meta.helm.sh/release-name: argo-cd
+        meta.helm.sh/release-namespace: argocd
+    spec:
+      serverName: argocd.socrat.alchemmist.xyz
+      insecureSkipVerify: false
 ...
