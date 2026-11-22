@@ -4,8 +4,11 @@
     that:
       - netbird_access_action in ['reconcile', 'grant', 'revoke', 'offboard']
       - not (netbird_access_apply | bool) or (netbird_access_approve_plan_hash | length == 64)
-      - netbird_access_action == 'reconcile' or (netbird_access_username | length > 0 and netbird_access_expected_user_uuid | length > 0)
-    fail_msg: Read the NetBird administrator onboarding runbook. Audit first and approve its fresh hash.
+      - >-
+        netbird_access_action == 'reconcile' or (netbird_access_username | length > 0
+        and netbird_access_expected_user_uuid | length > 0)
+    fail_msg: >-
+      Read the NetBird administrator onboarding runbook. Audit first and approve its fresh hash.
 - name: Run guarded human admission helper using existing private controller credentials
   ansible.builtin.script:
     cmd: >-

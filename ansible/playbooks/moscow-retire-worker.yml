@@ -44,14 +44,18 @@
         group: root
         mode: "0700"
     - name: Preview exact owned processes; reject any unknown workload or shim
-      ansible.builtin.command: python3 /usr/local/libexec/moscow-retire-worker-runtime.py {{ recovery_root }}/worker-pods.json
+      ansible.builtin.command: >-
+        python3 /usr/local/libexec/moscow-retire-worker-runtime.py {{ recovery_root
+        }}/worker-pods.json
       changed_when: false
       register: preview
     - name: Display the verified runtime retirement preview
       ansible.builtin.debug:
         var: preview.stdout
     - name: Stop only the verified leftover pod tasks and their runtime shims
-      ansible.builtin.command: python3 /usr/local/libexec/moscow-retire-worker-runtime.py {{ recovery_root }}/worker-pods.json --apply
+      ansible.builtin.command: >-
+        python3 /usr/local/libexec/moscow-retire-worker-runtime.py {{ recovery_root
+        }}/worker-pods.json --apply
       register: retirement
       changed_when: true
     - name: Record the runtime retirement receipt
@@ -66,7 +70,9 @@
     - name: Delete only the retired Node with a server-side UID precondition
       ansible.builtin.command:
         argv: [kubectl, delete, --raw=/api/v1/nodes/socrat-4, -f, "-"]
-        stdin: "{{ {\"apiVersion\": \"v1\", \"kind\": \"DeleteOptions\", \"preconditions\": {\"uid\": old_node_uid}, \"propagationPolicy\": \"Background\"} | to_json }}"
+        stdin: >-
+          {{ {"apiVersion": "v1", "kind": "DeleteOptions", "preconditions": {"uid": old_node_uid},
+          "propagationPolicy": "Background"} | to_json }}
       delegate_to: socrat-0
       vars: {ansible_host: socrat-0, ansible_port: 2222}
       changed_when: true

@@ -26,8 +26,8 @@
         state: directory
         owner: root
         group: root
-        mode: '0700'
-      loop: ['', tls, "bundle-{{ otel_real_canary_suffix }}"]
+        mode: "0700"
+      loop: ["", tls, "bundle-{{ otel_real_canary_suffix }}"]
 
     - name: Copy pinned validation binaries
       ansible.builtin.copy:
@@ -35,7 +35,7 @@
         dest: "{{ otel_real_canary_stage }}/{{ item.name }}"
         owner: root
         group: root
-        mode: '0700'
+        mode: "0700"
       loop:
         - source: "{{ otel_validation_binaries }}/otelcol-contrib"
           name: otelcol-contrib
@@ -48,7 +48,7 @@
         dest: "{{ otel_real_canary_stage }}/tls/{{ item }}"
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
       loop: [ca.crt, server.crt, server.key, client.crt, client.key]
       no_log: true
 
@@ -58,7 +58,7 @@
         dest: "{{ otel_real_canary_stage }}/bundle-{{ otel_real_canary_suffix }}/contract.json"
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
 
     - name: Render the actual source and candidate pipeline configurations
       ansible.builtin.copy:
@@ -66,10 +66,10 @@
         dest: "{{ otel_real_canary_stage }}/{{ item.destination }}"
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
       loop:
         - source: "{{ otel_scrape_bundle }}/cluster.yaml"
-          destination: "bundle-{{ otel_real_canary_suffix }}/cluster.json"
+          destination: bundle-{{ otel_real_canary_suffix }}/cluster.json
         - source: "{{ playbook_dir }}/../../deploy/monitoring/otel/cluster.yaml"
           destination: source.json
 
@@ -79,7 +79,7 @@
         dest: "{{ otel_real_canary_stage }}/canary.py"
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
 
     - name: Bound the canary lifetime and always remove its temporary authentication
       block:
@@ -91,7 +91,7 @@
               - --collect
               - --wait
               - --pipe
-              - "--unit=otel-source-canary-{{ otel_real_canary_suffix }}"
+              - --unit=otel-source-canary-{{ otel_real_canary_suffix }}
               - --property=MemoryMax=3221225472
               - --property=CPUQuota=200%
               - --property=RuntimeMaxSec=300
@@ -132,7 +132,7 @@
       ansible.builtin.copy:
         content: "{{ otel_real_canary.stdout }}\n"
         dest: /tmp/otel-real-source-canary-result-20261029.json
-        mode: '0600'
+        mode: "0600"
       delegate_to: localhost
       become: false
 ...

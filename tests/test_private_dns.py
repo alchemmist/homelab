@@ -8,6 +8,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 ROLE = ROOT / "ansible/roles/homelab_private_dns"
 
@@ -24,9 +26,19 @@ class PrivateDnsRoleTests(unittest.TestCase):
 
     def test_role_has_separate_service_and_config(self) -> None:
         """Role has separate service and config."""
-        assert "homelab_private_dns_unit_name: homelab-private-dns.service" in self.defaults
-        assert "homelab_private_dns_config_path: /etc/homelab-private-dns.conf" in self.defaults
-        assert 'dest: "/etc/systemd/system/{{ homelab_private_dns_unit_name }}"' in self.tasks
+        defaults = yaml.safe_load(self.defaults)
+        assert defaults["homelab_private_dns_unit_name"] == "homelab-private-dns.service"
+        assert defaults["homelab_private_dns_config_path"] == "/etc/homelab-private-dns.conf"
+        templates = [
+            task["ansible.builtin.template"]
+            for task in yaml.safe_load(self.tasks)
+            if "ansible.builtin.template" in task
+        ]
+        destinations = {template["src"]: template["dest"] for template in templates}
+        assert destinations["dnsmasq.conf.j2"] == "{{ homelab_private_dns_config_path }}"
+        assert destinations["homelab-private-dns.service.j2"] == (
+            "/etc/systemd/system/{{ homelab_private_dns_unit_name }}"
+        )
 
     def test_dnsmasq_is_bound_to_wireguard_address_and_has_explicit_upstreams(self) -> None:
         """Dnsmasq is bound to wireguard address and has explicit upstreams."""
@@ -42,7 +54,6 @@ class PrivateDnsRoleTests(unittest.TestCase):
 
     def test_only_configured_upstreams_are_rendered(self) -> None:
         """Only configured upstreams are rendered."""
-        import yaml
         from jinja2 import Template
 
         values = yaml.safe_load(self.defaults)

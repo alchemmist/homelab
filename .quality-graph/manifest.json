@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "d4153c12c8c22569b16064f11f3252286153870a65d06560d2b1756bc4a98670",
+  "graphDigest": "1d7f4e7f04e9e5154a4a8f577f31be82fa0d8c94faa1c15f0f86d0ceef7fcc82",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -40,6 +40,34 @@
     },
     {
       "env": {},
+      "id": "yaml",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "native",
+        "path": "reports/yaml.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py yaml"
+      },
+      "timeoutMinutes": 5,
+      "title": "YAML structure"
+    },
+    {
+      "env": {},
       "id": "scripts-q000",
       "needs": [
         "graph"
@@ -60,7 +88,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run python scripts/quality/quote_inputs.py |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 --ignore-noqa --output-format concise --"
+        "run": "set -euo pipefail\nuv run python scripts/quality/quote_inputs.py |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \\\n    --ignore-noqa --output-format concise --"
       },
       "timeoutMinutes": 5,
       "title": "Python script and test quotes (Q000)"

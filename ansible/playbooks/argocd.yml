@@ -20,12 +20,14 @@
       ansible.builtin.assert:
         that:
           - argocd_allow_empty_bootstrap | bool
-        fail_msg: Existing Argo CD is Git-owned. This playbook is empty-cluster bootstrap only; inspect the release before explicitly opting in.
+        fail_msg: >-
+          Existing Argo CD is Git-owned. This playbook is empty-cluster bootstrap only; inspect the
+          release before explicitly opting in.
 
     - name: Inspect existing Argo namespace workloads before any mutation
       ansible.builtin.command:
         argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, argocd,
-               get, deployments,statefulsets, -o, json]
+               get, deployments, statefulsets, -o, json]
       environment:
         K3S_CONFIG_FILE: /dev/null
       register: argocd_existing_workloads
@@ -35,7 +37,9 @@
       ansible.builtin.assert:
         that:
           - (argocd_existing_workloads.stdout | from_json)['items'] | length == 0
-        fail_msg: Existing workloads must be reconciled through the owning Git Application, not bootstrap Helm or OIDC writes.
+        fail_msg: >-
+          Existing workloads must be reconciled through the owning Git Application, not bootstrap
+          Helm or OIDC writes.
 
     - name: Read the VPS ingress backend transport prerequisite
       ansible.builtin.command:
@@ -85,7 +89,8 @@
       environment:
         K3S_CONFIG_FILE: /dev/null
       register: argocd_transport
-      changed_when: "'created' in argocd_transport.stdout or 'configured' in argocd_transport.stdout"
+      changed_when: >-
+        'created' in argocd_transport.stdout or 'configured' in argocd_transport.stdout
 
     - name: Install Argo CD control plane only
       ansible.builtin.command:

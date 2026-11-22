@@ -1,5 +1,5 @@
 ---
-serviceClusterIP: 10.43.194.185 # Native SPI RPC contract; preserves existing Service UID/VIP.
+serviceClusterIP: 10.43.194.185  # Native SPI RPC contract; preserves existing Service UID/VIP.
 # Canonical full-service cluster values. No secret values.
 tokenAccountingMode: local-qwen-v1
 durableWaitEnabled: true
@@ -14,26 +14,27 @@ queueUI:
   nodeName: socrat-5
   # Preserve issuer/SNI/TLS; avoid the unreliable public-edge path from5.
   hostAliases:
-  - ip: 10.43.218.222
-    hostnames: [auth.socrat.alchemmist.xyz]
+    - ip: 10.43.218.222
+      hostnames: [auth.socrat.alchemmist.xyz]
   oidc:
     # Prepared under the Git-owned SPI reconciliation hold.
     enabled: true
     existingSecret: spi-queue-oidc
   authEgressCIDRs:
-  - 109.173.40.247/32
-  - 109.120.141.60/32
-  - 192.168.0.250/32
-legacyImage: harbor.socrat.alchemmist.xyz/spi-triage/runtime@sha256:4cd6a12c1b046c03b74195b2d93aff183d8465230d364b527fa116fd25624a91
+    - 109.173.40.247/32
+    - 109.120.141.60/32
+    - 192.168.0.250/32
+legacyImage:
+  harbor.socrat.alchemmist.xyz/spi-triage/runtime@sha256:4cd6a12c1b046c03b74195b2d93aff183d8465230d364b527fa116fd25624a91
 legacyImagePullSecrets:
-- name: spi-harbor-pull
+  - name: spi-harbor-pull
 bundleEnabled: true
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/spi-triage
   tag: bda8be14ef8f0c32685bbfdf41bad876e813ce52
   digest: sha256:bc5656843dfc5ee06ceb86efd5a188e7ba5e33991063a6304cf6da0ae3644439
 imagePullSecrets:
-- name: spi-triage-harbor-pull
+  - name: spi-triage-harbor-pull
 
 # Activated only after natural drain and verified idle checkpoint.
 graphs:
