@@ -335,7 +335,7 @@ updateWatch:
       github: netbirdio/netbird
     - id: nvidia-device-plugin
       title: NVIDIA device plugin
-      current: 0.20.1
+      current: 0.20.2
       github: NVIDIA/k8s-device-plugin
     - id: pr-agent
       title: PR-Agent
