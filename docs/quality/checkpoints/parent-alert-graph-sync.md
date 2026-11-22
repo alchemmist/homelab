@@ -20,7 +20,7 @@ The inventory/dashboard still described the earlier unsplit condition. Called th
 canonical generator's inventory()/outputs() functions, inspected its proposed
 changes before writing, and wrote ONLY these two differing outputs:
 - charts/monitoring-k3s/alert-dashboards/alerts-9943c0b05432b778.json;
-- docs/monitoring/alert-graphs.inventory.json.
+- docs/observability/monitoring/alert-graphs.inventory.json.
 
 This is generated diagnostic synchronization against an already merged main
 source change, NOT debt/approval baseline recapture. The native11-case PromQL test
