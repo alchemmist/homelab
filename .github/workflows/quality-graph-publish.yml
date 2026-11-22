@@ -26,7 +26,7 @@ jobs:
       pull-requests: write  # Create and update the dashboard and apply labels on PRs.
     steps:
       - name: Reconcile trusted Quality Graph state
-        uses: alchemmist/quality-graph@6714b6ea824125a2c7d6ea6bd27fcfec69efd133
+        uses: alchemmist/quality-graph@f5cef503eaf0734b9c9a0c6f88ee8206b2a6235d
         with:
           operation: reconcile
   command:
@@ -43,7 +43,7 @@ jobs:
       pull-requests: write  # Write command feedback and the approval ledger on PRs.
     steps:
       - name: Handle trusted Quality Graph command
-        uses: alchemmist/quality-graph@6714b6ea824125a2c7d6ea6bd27fcfec69efd133
+        uses: alchemmist/quality-graph@f5cef503eaf0734b9c9a0c6f88ee8206b2a6235d
         with:
           operation: scheduled-command
 ...
