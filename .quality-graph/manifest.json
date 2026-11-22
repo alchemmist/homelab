@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "791868d1c458a8bf9a42b44bf23292d1a30c06d75b0df8cc0857dedb096cfa94",
+  "graphDigest": "9859604fabd299b0b2c2962f60d24ad595c42405a48db5711095c7376aa70ecd",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -820,6 +820,9 @@
         },
         {
           "run": "uv run python scripts/quality/install_tools.py --tools kubeconform kube-linter"
+        },
+        {
+          "run": "uv run python scripts/quality/check_monitoring_selector.py"
         }
       ],
       "timeoutMinutes": 10
