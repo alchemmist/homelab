@@ -133,10 +133,14 @@ def test_quote_inputs_use_owned_paths(monkeypatch: pytest.MonkeyPatch) -> None:
     assert quote_inputs.quote_inputs() == scripts + tests
 
 
-@pytest.mark.parametrize("names", [[], ["scripts/a.py"], ["tests/a.py"]])
+@pytest.mark.parametrize(
+    ("names", "missing"),
+    [([], "scripts/"), (["scripts/a.py"], "tests/"), (["tests/a.py"], "scripts/")],
+)
 def test_quote_inputs_reject_incomplete_inventory(
-    names: list[str], monkeypatch: pytest.MonkeyPatch
+    names: list[str], missing: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(quote_inputs, "tracked", lambda: names)
-    with pytest.raises(ValueError, match="No tracked owned Python inputs"):
+    monkeypatch.setattr(quote_inputs, "owned", list)
+    with pytest.raises(ValueError, match=rf"^No tracked owned Python inputs in {missing}$"):
         quote_inputs.quote_inputs()
