@@ -140,3 +140,14 @@ evidence, not a new session test. Human logout/outsider-session tests were NOT
 performed here. Console GetOnly is not upload/admin access. Standalone Retain is
 not HA or an independent backup. No network/IAM/DNS/shared-edge/PVC/workflow,
 calendar/blog, Telegram test, model invocation or other comment change occurred.
+
+## Checking public downloads
+
+A public object under `/public/` should not redirect to sign-in. Test a known public object, not the bucket directory: an anonymous directory listing may be denied even when the file is readable.
+
+```sh
+curl --silent --show-error --connect-timeout 5 --max-time 15 --range 0-1023 --dump-header - --output /dev/null \
+  'https://rustfs.socrat.alchemmist.xyz/public/<known-public-object>'
+```
+
+For an object larger than 1 KiB, expect `206 Partial Content` and `Content-Range: bytes 0-1023/<total>`, without an OIDC redirect. The console and private data **must not** become anonymous. If only one network fails, report the time, network, hostname and status (or TCP/TLS timeout); do not send credentials or signed URLs. [Regional access investigation (#557)](https://github.com/alchemmist/homelab/issues/557).

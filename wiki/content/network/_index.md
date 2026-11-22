@@ -10,3 +10,4 @@ weight: 40
 - [Доступ администратора к нодам по SSH]({{< relref "network/ssh.md" >}}).
 - [Как получить доступ и исключения из SSO]({{< relref "start/access.md" >}}).
 - [Как сервису получить VPN-доступ]({{< relref "network/service-vpn.md" >}}).
+- [Monori public entrances and DNS policy](https://github.com/alchemmist/homelab/blob/main/docs/applications/monori/monori-public-entrances.md).
