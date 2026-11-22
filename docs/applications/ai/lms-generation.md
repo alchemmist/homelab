@@ -1,40 +1,40 @@
-# LMS: фоновая генерация решений и тестов
+# LMS: background generation of solutions and tests
 
-Срез на **2 ноября 2026**. Процесс локальный, на кластере его нет, и кабинет ученика его базу не читает.
+Cut on **2 November 2026**. The process is local, there is none on the cluster, and the student's workspace does not read its database.
 
-## Что это
+## What this is
 
-Ночной обход задач курса. Для задачи с публичными примерами модель пишет два независимых решения, предлагает дополнительные stdin и четыре заведомо неверные программы, потом два отдельных ревьюера принимают или отклоняют решения и тесты. Код: `migration/` в репозитории `lms`. Очередь: `var/notion-pilot/night-run/certify-queue.py`. Артефакты — файлы SHA-256 в `var/notion-pilot/agent-artifacts`. Состояние — Postgres на `localhost:55433`, база `migration`, пользователь `migration`, схема `lms_migration.jobs`.
+A night pass over the course tasks. For a task with public examples, the model writes two independent solutions, proposes extra stdin and four knowingly-wrong programs, then two separate reviewers accept or reject the solutions and tests. Code: `migration/` in the `lms` repository. The queue: `var/notion-pilot/night-run/certify-queue.py`. The artifacts are SHA-256 files in `var/notion-pilot/agent-artifacts`. The state is Postgres on `localhost:55433`, database `migration`, user `migration`, schema `lms_migration.jobs`.
 
-Модель: `qwen3.8-27b` через `https://llm.alchemmist.xyz/v1`. Ключ лежит в `~/.config/lms-migrator/litellm-key`. У ключа лимит **один** параллельный запрос. Второй воркер или ручной пробный вызов получает 429 `max_parallel_requests`, пока очередь держит слот.
+The model: `qwen3.8-27b` via `https://llm.alchemmist.xyz/v1`. The key lives in `~/.config/lms-migrator/litellm-key`. The key has a limit of **one** parallel request. A second worker or a manual trial call gets 429 `max_parallel_requests` while the queue holds the slot.
 
-## Кого очередь берёт
+## Who the queue takes
 
-В staging 777 задач. Очередь идёт только по тем, у кого в условии есть публичный пример с input: таких **423**. **354** без примера она пишет в лог как `needs_review` и не шлёт модели. Один проход, без цикла. Повтор `retry_wait` сам не начинается: тот же скрипт надо запустить ещё раз, когда текущий процесс уже вышел. Пока он жив, второй экземпляр не стартовать.
+There are 777 tasks in staging. The queue goes only over those whose statement has a public example with an input: **423** of them. For the **354** without an example it writes `needs_review` to the log and does not send them to the model. One pass, no loop. The `retry_wait` repeat does not start on its own: the same script must be launched again once the current process has exited. While it is alive, do not start a second instance.
 
-`certified` — не «модель что-то написала». Оба решения проходят исходные примеры, ревьюер решений принимает оба, ревьюер тестов принимает набор. Иначе задача становится `retry_wait` или `needs_review`, и очередь идёт дальше. Причина в state часто одна строка: `model unavailable or invalid after bounded attempts`. Под ней прячутся три разных сбоя: HTTP (429/5xx), обрыв по таймауту 300 с, JSON не по схеме (`ValidationError`). Две неудачные попытки на вызов — и шаг брошен.
+`certified` is not "the model wrote something". Both solutions pass the original examples, the solution reviewer accepts both, the test reviewer accepts the set. Otherwise the task becomes `retry_wait` or `needs_review`, and the queue moves on. The reason in the state is often one line: `model unavailable or invalid after bounded attempts`. It hides three different failures: HTTP (429/5xx), a timeout break at 300s, JSON not matching the schema (`ValidationError`). Two failed attempts per call — and the step is dropped.
 
-## На чём остановились
+## Where it stopped
 
-Очередь была жива с утра 2 ноября и шла по блоку 1. К моменту заметки обработано порядка 75–80 задач из 423. В базе примерно так:
+The queue had been alive since the morning of 2 November and was working through block 1. By the time of the note, about 75–80 tasks of 423 were processed. The database looks roughly like this:
 
-| status | смысл | сколько |
+| status | meaning | how many |
 | --- | --- | --- |
-| certified | все автоматические ворота пройдены | 4 |
-| needs_review | ворота не прошли, чинить нечем автоматически | несколько |
-| retry_wait | модель или ответ не приняты, ждёт нового прохода | около 70 |
-| running | текущая задача | 1, пока процесс не умер |
+| certified | all automatic gates passed | 4 |
+| needs_review | the gates did not pass, nothing can be fixed automatically | a few |
+| retry_wait | the model or the response was not accepted, awaits a new pass | about 70 |
+| running | the current task | 1, until the process dies |
 
-Сертифицированы: **FizzBuzz**, **Попугай**, **Обратный попугай**, **Билетная касса**. Утром около 09:00 UTC 56 задач умерли на первом же вызове solver_a за доли секунды (`HTTPStatusError`, код не запускался). Дальше модель отвечает, но задача чаще не сертифицируется: невалидный JSON, таймаут ревьюера или отказ ревьюера. На такую задачу уходит примерно 15–20 минут. Весь хвост из 423 при таком темпе — несколько суток, и большинство всё равно не станет `certified`.
+Certified: **FizzBuzz**, **Popugai** (Parrot), **Obratnyi popugai** (Reverse parrot), **Biletnaya kassa** (Ticket box). In the morning around 09:00 UTC, 56 tasks died on the very first solver_a call within fractions of a second (`HTTPStatusError`, the code never ran). Further the model answers, but a task is more often not certified: invalid JSON, a reviewer timeout or a reviewer rejection. Such a task takes about 15–20 minutes. The whole tail of 423 at this pace is several days, and most will still not become `certified`.
 
-Сохранённый текст решения (черновик, не обязательно certified) нашёлся примерно у **22** задач. Именно они попали в `backend/app/data/reference.json` образа LMS. Остальные в кабинете учителя пустые, пока справочник заново не соберут и не запекут в образ. База `migration` с подом LMS не связана.
+A saved solution text (a draft, not necessarily certified) was found for about **22** tasks. It is exactly they that ended up in the LMS image's `backend/app/data/reference.json`. The rest are empty in the teacher's workspace until the reference is rebuilt and baked into the image. The `migration` database is not connected to the LMS pod.
 
-## input() и sys.stdin
+## input() and sys.stdin
 
-Ученики до урока «Обработка коллекций. Потоковый ввод sys.stdin» пишут через `input()`, не через `sys.stdin`. Это правило внесено в локальный `migration/pipeline.py`, но **файл не закоммичен**: в нём ещё и другая незаконченная логика генерации тестов. Уже сохранённые решения, включая FizzBuzz, могут читать `sys.stdin`. Новый проход их не переписывает, пока job не возьмут заново и чекпоинт солвера не сбросят.
+Students before the lesson "Processing collections. Streaming input sys.stdin" write via `input()`, not via `sys.stdin`. This rule was added into the local `migration/pipeline.py`, but **the file is not committed**: it also contains other unfinished test-generation logic. Already-saved solutions, including FizzBuzz, may read `sys.stdin`. A new pass does not rewrite them until the job is retaken and the solver checkpoint is reset.
 
-## Что не делать
+## What not to do
 
-- Не поднимать параллелизм ключа, пока работает один certify-task: слот и так один.
-- Не коммитить `migration/pipeline.py` вместе с правками кабинета.
-- Не считать `retry_wait` готовым эталоном для ученика. В панели это черновик, если текст вообще сохранился.
+- Do not raise the key's parallelism while a single certify-task runs: the slot is one anyway.
+- Do not commit `migration/pipeline.py` together with the workspace edits.
+- Do not consider `retry_wait` a ready reference for a student. In the panel it is a draft, if the text was saved at all.

@@ -1,94 +1,105 @@
-# VPN: актуальный production и исторический hardening
+# VPN: current production and historical hardening
 
-## Закрытие сессии: RF/NL split отложен владельцем
+## Session close: RF/NL split deferred by the owner
 
-**10 ноября: владелец решил оставить рабочую схему, серверный split не внедрять.**
-VPN-трафик по-прежнему Москва → NL → Интернет; существующий Happ bypass сохранён.
-Read-only настройки панели: routing/onadd `Alchemmist VPN`, GlobalProxy=true,
-49 DirectSites, DirectIp/ProxySites/ProxyIp пусты; активность на каждом телефоне не
-проверялась. Это не серверный GeoIP split. Исследование — reference, **не pending
-implementation и не разрешение переносить VPN termination на Москву**.
-[Исследование и альтернативы](../../research/vpn-split-routing-research-20261110.md).
+**November 10: the owner decided to keep the working scheme and not implement the server-side split.**
+VPN traffic still goes Moscow → NL → Internet; the existing Happ bypass is preserved.
+Read-only panel settings: routing/onadd `Alchemmist VPN`, GlobalProxy=true,
+49 DirectSites, DirectIp/ProxySites/ProxyIp empty; activity on each phone was not
+checked. This is not a server-side GeoIP split. The research is a reference,
+**not a pending implementation and not a permission to move VPN termination to
+Moscow**.
+[Research and alternatives](../../research/vpn-split-routing-research-20261110.md).
 
-При закрытии сессии fresh read-only на Москве: именно `vpn-transit-655857b776-9mt9v`
-SANDBOX_READY; watchdog kubernetes/healthy, data_path_healthy=true, failures=0,
-agent_active=true, native_active=false, fallback_marker=false. Конфиг user.json
-совпадает по содержимому с Git: tunnel TCP80/443/32053/32083/32084 и
-UDP443/32085/32086 →10.250.0.2, freedom sendThrough10.250.0.40.
-Это локальный статус/штатная TLS-проверка пути, **не новая полная проверка клиентов,
-etcd/WAL/всего кластера или DR**. Никаких activate/failback/перезапусков не выполняли.
+At session close, a fresh read-only check on Moscow showed: exactly
+`vpn-transit-655857b776-9mt9v` SANDBOX_READY; watchdog kubernetes/healthy,
+data_path_healthy=true, failures=0, agent_active=true, native_active=false,
+fallback_marker=false. The user.json config matches Git in content: tunnel
+TCP80/443/32053/32083/32084 and UDP443/32085/32086 →10.250.0.2, freedom
+sendThrough10.250.0.40. This is local status/a routine TLS path check, **not a
+new full validation of clients, etcd/WAL/the whole cluster or DR**. No
+activate/failback/restarts were performed.
 
-[Как устроен Pod, границы Xray/3x-ui и ownership](../../records/handoffs/vpn-mesh-runtime-20261110.md#what-the-pod-actually-does).
-Public wiki: [VPN](../../../wiki/content/network/vpn.md). Секреты и recovery receipts
-остаются вне Git; подготовительные/migration apply не повторять.
-
-
-## Текущий транспорт — 10 ноября 2026 (supersedes прежний отдельный WG)
-
-Пользовательский relay Москвы теперь **Pod `vpn-transit` на socrat-4** под Argo;
-при реальном отказе — независимый fenced systemd fallback. Оба используют тот же
-Xray и конфиг. Общий `wg-socrat`:Москва10.250.0.40→NL10.250.0.2; отдельный
-`wg-vpn-transit` остановлен/disabled на обеих нодах, ключи/конфиги архивированы.
-Management51832UDP/51840TCP остаётся отдельным systemd-relay, независимо от Pod.
-DNS:.40:53→.2:5354, старый dnsmasq.2:53 не трогали. Только machine.40 исключён из
-старого private-web443 DNAT; human/admin ACL не расширены. Trojan допускает
-только mesh.40/32 и точный health-loopback127.0.0.1/32.
-
-Реальный timer автоматически восстановил native relay после остановки только
-московского worker-agent и его relay-контейнера; затем штатный failback вернул Pod.
-Все пять HOME профилей приняты в Pod/native/fallback и **после удаления отдельного
-WG**;17 клиентов/91 bindings/подписки84URI/77JSON/ключи сохранены, fixture cleanup
-подтверждён. Кластер:3 healthy voters/hashKV equal revision17514049,5Ready/noMemoryPressure.
-134 tests+14 subtests, новые private archives2/4 off-host SHA verified.
-Это не zero-downtime rollout: исправлены TIME_WAIT guard, management source IP и
-Pod bind-capability; не скрывать ошибки/короткую недоступность, не приписывать
-результаты native-fallback probe первому неудачному Pod. [Подробности и операции](../../records/handoffs/vpn-mesh-runtime-20261110.md).
-API loss при работающем relay не вызывает переключения; native sticky до явного
-failback. Mobile/AWG/полный DR/reboot/HA не доказаны. Подписка/публичный вход прежние,
-Mac/Tunnelblick/default routes не менялись. Подготовительные apply не переигрывать.
+[How the Pod is structured, Xray/3x-ui boundaries and ownership](../../records/handoffs/vpn-mesh-runtime-20261110.md#what-the-pod-actually-does).
+Public wiki: [VPN](../../../wiki/content/network/vpn.md). Secrets and recovery
+receipts stay out of Git; do not replay preparatory/migration applies.
 
 
-## Актуально: production VPN через Москву, 9 ноября 2026
+## Current transport — November 10, 2026 (supersedes the former separate WG)
 
-**Клиенты/HOME → Москва91.189.82.238 → NL109.120.141.60**. URL подписки
-`vpn.alchemmist.xyz` неизменен; обновлять существующую подписку, не аккаунт/ключи.
-Все три DNS-writer публикуют статический VPN A Москвы без NL fail-open. Нативные
-Hosts7/7 обновлены:17 identities/91 bindings сохранены,32063 disabled. Подписки всех
-17 клиентов:84 URI/77 JSON, обычный DNS/валидный TLS, старого NL endpoint нет.
-После восстановления проверены из HOME три VLESS/REALITY, Trojan и WG:200/65536B/
-контрольный hash, отдельный HTTPS exit-check=NL. UDP32…8192B через реальный
-зашифрованный межсерверный канал также проверен; это не authenticated AWG/mobile.
+The Moscow user relay is now **the `vpn-transit` Pod on socrat-4** under Argo;
+on a real failure — an independent fenced systemd fallback. Both use the same
+Xray and config. The shared `wg-socrat`: Moscow10.250.0.40→NL10.250.0.2; the
+separate `wg-vpn-transit` is stopped/disabled on both nodes, keys/configs
+archived. Management51832UDP/51840TCP remains a separate systemd-relay,
+independent of the Pod. DNS: .40:53→.2:5354; the old dnsmasq on .2:53 was not
+touched. Only machine.40 is excluded from the old private-web443 DNAT; human/admin
+ACLs were not widened. Trojan admits only mesh.40/32 and the exact health
+loopback127.0.0.1/32.
 
-HOME0/3 management WG и HOME1 pinned-TLS/GOST идут через Москву; известные NL
-DNS/HTTPS/VPN потоки на HOME0/1/3 перенаправляются scoped persistent nft DNAT.
-Не глобальный exit node, Mac/default routes/DNS-настройки не менялись. Private
-DNS:Москва10.250.0.40:53→NL10.251.4.2:53. NS1 HOME и NS2/glue NL сохранены.
-NL WAN raw VPN закрыт; только Trojan HTTP-путь на shared443 допускает московский
-private10.251.4.1/32 и точный loopback127.0.0.1/32 для штатной health-проверки.
-Public403/private101, spoofedXFF не помогает; портал200/LMS303/Argo200 сохранены.
-Такой же gate установлен/проверен в native Caddy fallback.
+A real timer automatically restored the native relay after stopping only the
+Moscow worker-agent and its relay container; then a routine failback returned
+the Pod. All five HOME profiles were accepted in Pod/native/fallback and
+**after removing the separate WG**; 17 clients/91 bindings/subscription 84URI/
+77JSON/keys preserved, fixture cleanup confirmed. Cluster: 3 healthy voters/
+hashKV equal revision17514049, 5Ready/noMemoryPressure. 134 tests+14 subtests,
+new private archives 2/4 off-host SHA verified. This was not a zero-downtime
+rollout: the TIME_WAIT guard, management source IP and Pod bind-capability were
+fixed; do not hide errors/brief unavailability or attribute the native-fallback
+probe results to the first failed Pod. [Details and operations](../../records/handoffs/vpn-mesh-runtime-20261110.md).
+API loss while the relay works does not trigger switchover; native is sticky
+until an explicit failback. Mobile/AWG/full DR/reboot/HA are not proven.
+Subscriptions/public entry are unchanged; Mac/Tunnelblick/default routes were
+not modified. Preparatory applies are not to be replayed.
 
-**Инцидент не скрывать:** первоначальный ACL пропустил local health и вызвал
-watchdog fallback/остановку NL K3s. Исправлено loopback-исключением, проверки и
-watchdog не отключены. Штатный failback исходного member без reset/replacement;
-160MB Raft catch-up занял3m45s, bounded start timeout180→600s. После восстановления:
-3 healthy voters/common leader/hashKV equal (revision17449598),5Ready/noMemoryPressure,
-все пять транспортов и17 подписок повторно приняты, watchdog healthy/fallback off.
-Московский socrat-4 — agent-only10.250.0.40, bootstrap NoSchedule сохранён,
-не control-plane/etcd/обычный heavy worker. Четыре human admin routes не расширялись.
 
-Бэкапы пяти нод плюс post-recovery supplement — private/off-host/SHA verified;
-история/старые recovery receipts сохранены.126 tests+14 subtests passed — срез приёмки,
-не непрерывный healthcheck. Mobile/Happ interactive, authenticated AWG, полный DR/
-chaos/reboot и сохранение end-user IP enforcement не доказаны. Не обещать HA/TSPU immunity.
-Подробности и custody: [production runbook](../../records/handoffs/vpn-production-cutover-20261109.md).
-Исторический staging: [Moscow bootstrap](../../records/handoffs/moscow-vpn-transit-20261109.md).
-Не переисполнять migration/prepare/apply: fresh preimage/CAS, uncertain→разбор.
+## Current: production VPN via Moscow, November 9, 2026
 
-## Исторические этапы — не текущие запреты/задания
+**Clients/HOME → Moscow91.189.82.238 → NL109.120.141.60**. The subscription
+URL `vpn.alchemmist.xyz` is unchanged; update the existing subscription, not
+accounts/keys. All three DNS-writers publish the static Moscow VPN A record
+without an NL fail-open. Native Hosts7/7 updated: 17 identities/91 bindings
+preserved, 32063 disabled. Subscriptions of all 17 clients: 84 URI/77 JSON,
+regular DNS/valid TLS, no old NL endpoint. After recovery, from HOME, three
+VLESS/REALITY, Trojan and WG were verified: 200/65536B/control hash, a separate
+HTTPS exit-check=NL. UDP32…8192B through the real encrypted inter-server channel
+was also verified; this is not authenticated AWG/mobile.
 
-Запрет новой VPS/IP относился к8ноября;9ноября владелец отдельно разрешил
-Москву и production cutover. Старые enabled32063/pending утверждения ниже superseded.
+HOME0/3 management WG and HOME1 pinned-TLS/GOST go via Moscow; known NL
+DNS/HTTPS/VPN flows on HOME0/1/3 are redirected by scoped persistent nft DNAT.
+Not a global exit node; Mac/default routes/DNS settings were not changed. Private
+DNS: Moscow10.250.0.40:53→NL10.251.4.2:53. NS1 HOME and NS2/glue NL preserved.
+NL WAN raw VPN is closed; only the Trojan HTTP path on shared443 admits the
+Moscow private10.251.4.1/32 and the exact loopback127.0.0.1/32 for the routine
+health check. Public403/private101, spoofedXFF does not help; portal200/LMS303/
+Argo200 preserved. The same gate was installed/verified in the native Caddy
+fallback.
+
+**Do not hide the incident:** the initial ACL missed the local health check and
+caused a watchdog fallback/shutdown of the NL K3s. Fixed with a loopback
+exception; checks and the watchdog were not disabled. A routine failback of the
+original member without reset/replacement; the 160MB Raft catch-up took 3m45s,
+bounded start timeout raised 180→600s. After recovery: 3 healthy voters/common
+leader/hashKV equal (revision17449598), 5Ready/noMemoryPressure, all five
+transports and 17 subscriptions re-accepted, watchdog healthy/fallback off.
+Moscow socrat-4 is agent-only10.250.0.40, the bootstrap NoSchedule is preserved;
+it is not control-plane/etcd/a regular heavy worker. The four human admin routes
+were not widened.
+
+Backups of the five nodes plus a post-recovery supplement — private/off-host/SHA
+verified; history/old recovery receipts preserved. 126 tests+14 subtests passed —
+an acceptance snapshot, not a continuous healthcheck. Mobile/Happ interactive,
+authenticated AWG, full DR/chaos/reboot and end-user IP enforcement preservation
+are not proven. Do not promise HA/TSPU immunity. Details and custody:
+[production runbook](../../records/handoffs/vpn-production-cutover-20261109.md).
+Historical staging: [Moscow bootstrap](../../records/handoffs/moscow-vpn-transit-20261109.md).
+Do not re-execute migration/prepare/apply: fresh preimage/CAS; uncertain → investigate.
+
+## Historical stages — not current prohibitions/tasks
+
+The ban on a new VPS/IP referred to November 8; on November 9 the owner
+separately approved Moscow and the production cutover. The old
+enabled32063/pending statements below are superseded.
 
 # VPN hardening — configuration-only phase, 8 November 2026
 
@@ -283,13 +294,15 @@ owner authorization. Do not silently shift VPN users onto HOME IP (risks all hom
 infra endpoints). Mobile failure is owner-reported. Root-cause incident still open;
 accepted config migration is not evidence of ongoing availability/IP-ban immunity.
 
-## Справочное исследование RF/NL, 10 ноября — отложено владельцем
+## Reference RF/NL research, November 10 — deferred by the owner
 
-[Исследование источников, рисков и архитектуры](../../research/vpn-split-routing-research-20261110.md).
-Native read-only подтвердил: панель уже выдаёт intent Happ routing/onadd с49
-DirectSites (не отдельный GeoIP-классификатор); активность на телефонах не проверена.
-Серверный runtime пока только api/private-block/default NL. Предложение — RF default,
-явный проверяемый foreign allowlist, no cross-country fail-open. Москва пока opaque
-relay: настоящая классификация на ней требует переноса VPN termination/auth/accounting.
-Менее инвазивная альтернатива — правила в NL и private Moscow egress с лишним сетевым
-кругом; это не считать классификацией на Москве. Production/ключи/подписки не менялись.
+[Research on sources, risks and architecture](../../research/vpn-split-routing-research-20261110.md).
+Native read-only confirmed: the panel already yields the Happ intent routing/onadd
+with 49 DirectSites (not a separate GeoIP classifier); activity on phones was
+not verified. The server runtime so far is only api/private-block/default NL.
+The proposal is RF default, an explicit verifiable foreign allowlist, no
+cross-country fail-open. Moscow so far is an opaque relay: real classification
+there requires moving VPN termination/auth/accounting. A less invasive
+alternative — rules in NL and private Moscow egress with an extra network hop;
+that must not be counted as classification in Moscow. Production/keys/
+subscriptions were not changed.

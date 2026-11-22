@@ -1,107 +1,119 @@
 # Theme ownership, CSS and form controls
 
-## 1. Что работает в production
+## 1. What runs in production
 
-**Quiet Mono v5**: полноэкранное nature photo, светлая полупрозрачная матовая панель,
-реальная маска Socrat, точный Wiki favicon, CourierCyr UI и жирный Computer Modern
-для заголовков. Без маркетинговых панелей/приветствий. Production использует
-фиксированное согласованное озеро; случайная owner photo collection не внедрена.
+**Quiet Mono v5**: full-screen nature photo, light semi-transparent matte panel,
+the real Socrat mask, the exact Wiki favicon, CourierCyr UI and bold Computer
+Modern for headings. No marketing panels/greetings. Production uses a fixed
+agreed lake; the random owner photo collection is not implemented.
 
-В браузере остаётся **нативный Authentik 2026.8.5**:
+The browser keeps **native Authentik 2026.8.5**:
 
-- `ak-flow-executor` исполняет server challenges;
-- native identification/password, TOTP/validation, consent и redirect stages;
-- `ak-flow-card` рисует карточку;
-- `ak-flow-inspector-button` / `ak-flow-inspector` — штатные debug controls;
-- `ak-drawer#flow-drawer` — штатная немодальная панель.
+- `ak-flow-executor` executes server challenges;
+- native identification/password, TOTP/validation, consent and redirect stages;
+- `ak-flow-card` draws the card;
+- `ak-flow-inspector-button` / `ak-flow-inspector` — the stock debug controls;
+- `ak-drawer#flow-drawer` — the stock non-modal panel.
 
-Наш login JS не подменяет executor и не проверяет пароли. Нельзя копировать в
-production `quiet-mono.js` из demo: там только synthetic offline navigation/MFA.
-Он не является OIDC client или middleware и никогда не должен получать реальные secrets.
+Our login JS does not replace the executor and does not check passwords. Do not
+copy `quiet-mono.js` from the demo into production: it contains only synthetic
+offline navigation/MFA. It is not an OIDC client or middleware and must never
+receive real secrets.
 
-## 2. Карта файлов и владение
+## 2. File map and ownership
 
-| Путь | Назначение |
+| Path | Purpose |
 |---|---|
-| `prototypes/authentik/01-frost.html` … `05-typewriter.html` | Исторические визуальные варианты; выбран v5 |
-| `prototypes/authentik/05-consent.html`, shared CSS/JS | Offline demo, не backend auth |
+| `prototypes/authentik/01-frost.html` … `05-typewriter.html` | Historical visual variants; v5 chosen |
+| `prototypes/authentik/05-consent.html`, shared CSS/JS | Offline demo, not backend auth |
 | `deploy/authentik/quiet-mono/reference/` | Frozen approved reference; manifest sizes/SHA-256 |
 | `deploy/authentik/quiet-mono/theme.css` | Production native Brand CSS |
 | `deploy/authentik/quiet-mono/assets.json` | Reviewed asset names, paths, digests |
 | `deploy/authentik/quiet-mono/static-image.json` | Digest-pinned nginx provenance |
 | `deploy/authentik/quiet-mono/README.md`, `ACCEPTANCE.md` | Rollout/rollback, parity, measured checks |
 | `ansible/roles/authentik/files/branding.py` | Brand/native presentation reconciliation + private backups |
-| `ansible/roles/authentik/files/branding_static.py` | Детерминированные isolated static Kubernetes resources |
-| `ansible/roles/authentik/files/flow_titles.py` | Neutral authorization titles, отдельный guarded rollback |
-| `ansible/playbooks/authentik-branding.yml` | Explicit prepare/apply/rollback, без IdP upgrade/restart |
+| `ansible/roles/authentik/files/branding_static.py` | Deterministic isolated static Kubernetes resources |
+| `ansible/roles/authentik/files/flow_titles.py` | Neutral authorization titles, separate guarded rollback |
+| `ansible/playbooks/authentik-branding.yml` | Explicit prepare/apply/rollback, no IdP upgrade/restart |
 | `scripts/identity-branding-controls-check.py` | Read-only real native component CSS probe |
-| `scripts/identity-branding-smoke.py` | Реальный temporary observer MFA/OIDC roundtrip |
+| `scripts/identity-branding-smoke.py` | Real temporary observer MFA/OIDC roundtrip |
 | `tests/test_authentik_branding.py`, `test_authentik_flow_titles.py` | Offline regression/security contracts |
 
-Frozen reference не редактировать, чтобы замаскировать production limitations.
-Новая owner revision оформляется отдельно с описанием отличий. Старые фразы
-«no cluster changes» в прототипах относятся к историческому этапу до rollout.
+Do not edit the frozen reference to disguise production limitations. A new
+owner revision is produced separately with a description of the differences.
+The old “no cluster changes” phrases in the prototypes refer to the historical
+stage before rollout.
 
-## 3. Где хранится фактический theme config
+## 3. Where the actual theme config lives
 
-Domain-specific Brand `auth.socrat.alchemmist.xyz`, не blanket replacement default
-Brand для всех доменов. `branding_custom_css` содержит rendered `theme.css`.
-Brand также задаёт logo/favicon/background и light/en defaults. Эти поля лежат
-в Authentik DB; файл в Git — reproducible source, но сам commit DB не меняет.
+A domain-specific Brand `auth.socrat.alchemmist.xyz`, not a blanket
+replacement of the default Brand for all domains. `branding_custom_css`
+contains the rendered `theme.css`. The Brand also sets logo/favicon/background
+and light/en defaults. These fields live in the Authentik DB; the file in Git
+is the reproducible source, but the commit itself does not change the DB.
 
-Native presentation changes помимо CSS:
+Native presentation changes beyond CSS:
 
 1. `default-authentication-flow` title — `Sign in`.
-2. Identification использует уже существующий default Password Stage: username
-   и password в одной native форме, без нового authentication backend.
-3. Native allow-show-password включён; глаз работает штатным кодом.
-4. Explicit/implicit authorization flow title — literal `Redirecting`.
-5. MFA/consent bindings и их разрешения не ослаблялись ради оформления.
+2. Identification uses the already existing default Password Stage: username
+   and password in one native form, without a new authentication backend.
+3. Native allow-show-password is enabled; the eye works via stock code.
+4. Explicit/implicit authorization flow title — the literal `Redirecting`.
+5. MFA/consent bindings and their permissions were not weakened for styling.
 
-Для identification PATCH у данной версии требуется `user_fields`; нельзя считать
-пустой minimal payload универсально допустимым. DRF обрезает whitespace CSS,
-поэтому reconciler нормализует `.strip()` для настоящей идемпотентности.
+For the identification PATCH, this version requires `user_fields`; do not
+assume an empty minimal payload is universally valid. DRF trims CSS
+whitespace, so the reconciler normalizes with `.strip()` for real idempotency.
 
-## 4. Shadow DOM: почему обычный CSS иногда не работает
+## 4. Shadow DOM: why plain CSS sometimes does not work
 
-У Lit components отдельные shadow roots. Селектор из document не проникает
-произвольно внутрь `ak-stage-*`. Authentik AKElement применяет Brand CSS к своим
-components; поэтому `:host(ak-stage-consent)` работает внутри соответствующего root,
-а `:host([part='challenge'])` — в native challenge stage.
+Lit components have separate shadow roots. A selector from the document does
+not penetrate arbitrarily into `ak-stage-*`. Authentik's AKElement applies
+Brand CSS to its own components; that is why `:host(ak-stage-consent)` works
+inside the corresponding root, and `:host([part='challenge'])` — in the native
+challenge stage.
 
-Примеры действующих scopes:
+Examples of working scopes:
 
 ```css
-:host(ak-flow-executor) .pf-c-login__main { /* панель */ }
+:host(ak-flow-executor) .pf-c-login__main { /* panel */ }
 :host(ak-flow-card) h1 { /* native heading */ }
-:host([part='challenge']) input.pf-c-form-control { /* поля */ }
+:host([part='challenge']) input.pf-c-form-control { /* fields */ }
 :host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary { /* primary */ }
-:host(ak-flow-inspector-button) button.inspector-toggle { /* лупа */ }
+:host(ak-flow-inspector-button) button.inspector-toggle { /* magnifier */ }
 ak-drawer#flow-drawer::part(drawer-panel) { /* exported part */ }
 ```
 
-`ak-drawer` — **обычный LitElement, не AKElement**. Его private root не получает
-Brand CSS обычным способом. Для него используются внешние exported parts:
-`drawer-content`, `drawer-panel`, `drawer-main`, `drawer-body`. Не добавлять
-случайный deep selector и не заявлять success без computed style/geometry.
+`ak-drawer` is **a plain LitElement, not an AKElement**. Its private root does
+not receive Brand CSS in the usual way. It uses the external exported parts:
+`drawer-content`, `drawer-panel`, `drawer-main`, `drawer-body`. Do not add a
+random deep selector and do not claim success without a computed
+style/geometry check.
 
-Часть селекторов version-specific; после upgrade проверять реальный DOM/source,
-не только сохранённый screenshot. `!important` здесь осознанно перебивает native
-component rules, но новые overrides ограничивать конкретным host/part, не всем UI.
+Some selectors are version-specific; after an upgrade, check the real
+DOM/source, not just the saved screenshot. `!important` here deliberately
+overrides native component rules, but new overrides should be limited to a
+specific host/part, not the whole UI.
 
-## 5. Контракт полей и primary actions
+## 5. Field and primary-action contract
 
-- Поля имеют простую рамку; hover/focus/Tab не добавляют outline/glow.
-- Validation сохранена: invalid input получает error border, а не всегда «чистый» вид.
-- Eye button — native control внутри input group; не декоративная картинка.
-- Primary: прозрачный фон, тёмный текст, тонкая рамка, Courier, стрелка.
-- Hover: ink tint **4.5%**, arrow **3px / 160ms**, без dark/light inversion.
-- `prefers-reduced-motion` выключает движение. Browser может сериализовать alpha
-  с округлением до 8-bit; CSS `.045` не переписывать по одному computed RGB string.
-- `Follow redirect` — **anchor**, не button; оба охватывает `:is(button,a.pf-c-button)`.
-  Ранее из-за button-only selector эта ссылка оставалась синей с плохим контрастом.
-- Keyboard/ARIA/events не заменялись. Лупа имеет отдельный focus-visible indicator;
-  требование «без focus glow» для text inputs не запрещает видимый фокус у кнопки.
+- Fields have a simple border; hover/focus/Tab add no outline/glow.
+- Validation is preserved: invalid input gets an error border, not a permanent
+  “clean” look.
+- The eye button is a native control inside the input group, not a decorative
+  picture.
+- Primary: transparent background, dark text, thin border, Courier, arrow.
+- Hover: ink tint **4.5%**, arrow **3px / 160ms**, no dark/light inversion.
+- `prefers-reduced-motion` disables the motion. The browser may serialize the
+  alpha with rounding to 8-bit; do not rewrite CSS `.045` because of a single
+  computed RGB string.
+- `Follow redirect` is an **anchor**, not a button; `:is(button,a.pf-c-button)`
+  covers both. Previously, due to a button-only selector, this link stayed blue
+  with poor contrast.
+- Keyboard/ARIA/events were not replaced. The magnifier has a separate
+  focus-visible indicator; the “no focus glow” requirement for text inputs
+  does not forbid a visible focus on the button.
 
-Не стилизовать только English text match: перевод/динамический label поменяет текст,
-а component/class contract останется. Не скрывать реальные validation messages.
+Do not style by English text match alone: translation/dynamic labels change
+the text, while the component/class contract stays. Do not hide real
+validation messages.

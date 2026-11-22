@@ -1,151 +1,163 @@
-# Гранулярный IAM приложений
+# Granular application IAM
 
-> **Текущий механизм уже включён:** [App access groups](app-access-groups.md).
-> Работают восемь app-ролей для LiteLLM, Open WebUI, Grafana, Wiki и LMS.
-> Динамический reconciler и Ansible hook заменяют ручное создание групп;
-> `prepare_app_iam.py` и описанная ниже пустая миграция — исторический этап,
-> не команда текущего B2C onboarding. Зарезервированные staff/unsupported группы
-> не означают действующий доступ. Ниже сохранены исходные границы старой миграции.
+> **The current mechanism is already enabled:** [App access groups](app-access-groups.md).
+> Eight app roles for LiteLLM, Open WebUI, Grafana, Wiki and LMS are working.
+> The dynamic reconciler and the Ansible hook replace manual group creation;
+> `prepare_app_iam.py` and the empty migration described below are a historical
+> stage, not the current B2C onboarding command. Reserved staff/unsupported
+> groups do not mean working access. The original boundaries of the old
+> migration are preserved below.
 
-## Что меняется — и что не меняется
+## What changes — and what does not
 
-Это **аддитивная миграция без выдачи новых прав людям**. `homelab-*` и
-`lms-students` остаются действующими; существующие разрешения владельца и Tim,
-их UUID, локальные аварийные учётные записи и точные привязки subject не заменяются.
-Текущий `lifecycle.json` содержит только этих двух существующих пользователей,
-`state: preserve` и пустые `appGroups`. Он не выключает аккаунты и не снимает
-старые группы (у владельца также остаётся `lms-students`).
+This is an **additive migration with no new rights granted to people**.
+`homelab-*` and `lms-students` remain active; the existing permissions of the
+owner and Tim, their UUIDs, local emergency accounts and the exact subject
+links are not replaced. The current `lifecycle.json` contains only these two
+existing users, `state: preserve` and empty `appGroups`. It disables no
+accounts and removes no old groups (the owner also keeps `lms-students`).
 
-Источники истины:
+Sources of truth:
 
-- `deploy/identity/services.json`: прежние `groups` плюс `appRoles`, `admission`,
-  `groupsScope`. Имя новой группы: `app-<service>-<role>`.
-- `deploy/identity/account-mappings.json`: **рассмотренные старые связи**, не каталог
-  будущих сотрудников. UUID Tim подтверждён GET-аудитом; старые ID приложений,
-  email для проверки и роли не изменены. Email **не** является ключом объединения.
-- `deploy/identity/lifecycle.json`: точные username + UUID, желаемые **только app-**
-  членства и состояние существующих людей. Удаление строки не означает увольнение.
-- `deploy/identity/access-policy.yaml`: индекс политики и границ ответственности.
+- `deploy/identity/services.json`: the former `groups` plus `appRoles`,
+  `admission`, `groupsScope`. The new group name: `app-<service>-<role>`.
+- `deploy/identity/account-mappings.json`: **reviewed old links**, not a
+  catalog of future staff. Tim's UUID was confirmed by a GET audit; the old
+  application IDs, the email for verification and the roles are unchanged.
+  Email is **not** a join key.
+- `deploy/identity/lifecycle.json`: exact username + UUID, desired **only
+  app-** memberships and the state of the existing people. Deleting a row does
+  not mean dismissal.
+- `deploy/identity/access-policy.yaml`: the policy index and responsibility
+  boundaries.
 
-`prepare_app_iam.py` подготавливает только пустые app-группы без superuser,
-родителей, детей, пользователей и RBAC-ролей, с маркером
-`attributes: {homelab_app_iam: 1}`. Чужая одноимённая группа не усыновляется.
-**Полный `configure.py` — НЕ команда этой миграции.** У него top-level side effects:
-он может менять owner privileges, MFA stages, scopes, providers, applications и
-outpost. Не запускать и не импортировать его ради создания app-групп/bindings.
-Для pinned Authentik **2026.8.5** проверяются явные `is_superuser: false`,
-**`parents: []`** (M2M, не устаревший singular `parent`) и `roles: []`.
-Missing/null/incomplete responses запрещены; **любое** наследование, включая
-owner-superuser или RBAC ancestor, блокируется **до** assignment, не после grant.
-Тесты fake API учитывают текущие поля; это не замена GET-аудиту и реальному MFA/
-consent browser acceptance владельца/Tim. До него новые live assignments запрещены.
-Существующие app-членства не переписываются foundation-контроллером. Владельцу
-не добавляется ещё одна административная группа: его прежний `homelab-owner`
-остаётся единственным источником административного сопоставления.
+`prepare_app_iam.py` prepares only empty app groups without superuser, parents,
+children, users and RBAC roles, with the marker
+`attributes: {homelab_app_iam: 1}`. A foreign group of the same name is not
+adopted. **The full `configure.py` is NOT a command of this migration.** It has
+top-level side effects: it can change owner privileges, MFA stages, scopes,
+providers, applications and the outpost. Do not run or import it for the sake
+of creating app groups/bindings. For pinned Authentik **2026.8.5**, explicit
+`is_superuser: false`, **`parents: []`** (M2M, not the obsolete singular
+`parent`) and `roles: []` are checked. Missing/null/incomplete responses are
+forbidden; **any** inheritance, including owner-superuser or an RBAC ancestor,
+is blocked **before** assignment, not after the grant. The fake-API tests cover
+the current fields; that is not a substitute for a GET audit and the real
+MFA/consent browser acceptance by the owner/Tim. Until it happens, new live
+assignments are forbidden. Existing app memberships are not rewritten by the
+foundation controller. The owner does not get another administrative group: his
+former `homelab-owner` remains the single source of the administrative mapping.
 
-**Допуск в Authentik application ≠ роль внутри приложения.** Привязки application
-имеют режим `any`: прежние группы ИЛИ новые app-группы. Группа app не наследует
-глобальную роль. Неизвестная/отключённая/инвертированная привязка, user/policy binding,
-дубликат или другой режим — ошибка, а не повод молча затереть изменения в UI.
-Подготовительный инструмент добавляет только отсутствующие разрешённые связи и
-ничего не удаляет. Полной транзакции/CAS между объектами/API нет: частичный сбой
-означает STOP, ручную GET-инвентаризацию и новый review, не автоматический retry,
-rollback, усыновление посторонних объектов или восстановление старых паролей.
+**Admission to an Authentik application ≠ a role inside the application.**
+The application bindings have mode `any`: the former groups OR the new app
+groups. An app group does not inherit a global role. An unknown/disabled/
+inverted binding, a user/policy binding, a duplicate or another mode is an
+error, not a reason to silently overwrite changes in the UI. The preparatory
+tool adds only the missing permitted links and deletes nothing. There is no
+full transaction/CAS between objects/APIs: a partial failure means STOP, a
+manual GET inventory and a new review — not an automatic retry, rollback,
+adoption of foreign objects, or restoration of old passwords.
 
-## Матрица: допуск отдельно от полномочий
+## The matrix: admission apart from authority
 
-| Приложение | Новые группы | Что они действительно дают | Ограничение |
+| Application | New groups | What they actually grant | Limit |
 |---|---|---|---|
-| Grafana | `app-grafana-viewer`, `app-grafana-editor` | OIDC-допуск + Viewer / Editor | GrafanaAdmin по-прежнему только `homelab-owner`; Editor не server admin, но может менять dashboards — выдавать только после review |
-| Open WebUI | `app-open-webui-user` | OIDC-допуск + user | Admin только `homelab-owner`; email merge выключен; старые user IDs/chats сохраняются |
-| Wiki | `app-wiki-reader`, `app-wiki-editor` | OIDC-допуск + reader / editor | Точные subject overrides приоритетнее групп: Tim **остаётся editor**, владелец admin; публичное чтение и MCP отдельно |
-| Harbor | `app-harbor-user` | OIDC-допуск, не системный администратор | Проекты/репозитории/роботы — native Harbor RBAC, отдельное согласование; admin group не меняется |
-| n8n | `app-n8n-user` | Только Authentik MFA-gate браузерного UI | **Не native SSO и не роль n8n**; native аккаунт/роль нужны отдельно; machine-маршруты не меняются |
-| Rancher | `app-rancher-user` | Подготовлена только app admission | `assignable: false`: restricted principal allowlist и native grants остаются ровно для рассмотренных UUID. Новым людям нужны отдельные scoped bindings, без копирования owner |
-| LMS | `app-lms-student` | Подготовлена только app admission | `assignable: false`: развёрнутый образ принимает одну `LMS_OIDC_ALLOWED_GROUP=lms-students`; нельзя обещать, что новая группа даст вход |
-| LiteLLM | Нет новых групп | Прежний owner-only native OIDC + точный UUID → `socrat-admin` | Не расширяем reviewed identity expression и не выдаём proxy_admin |
-| Uptime Kuma | Нет новых групп | Только прежняя portal tile | Tile не защищает native admin UI/socket; миграция SSO не завершена |
-| Argo CD / x-ui | Не управляются этим catalog/controller | Существующая отдельно управляемая политика | См. ownership ниже; нет самовольного расширения owner-only/reviewed доступа |
+| Grafana | `app-grafana-viewer`, `app-grafana-editor` | OIDC admission + Viewer / Editor | GrafanaAdmin still only `homelab-owner`; the Editor is not a server admin but can change dashboards — grant only after a review |
+| Open WebUI | `app-open-webui-user` | OIDC admission + user | Admin only `homelab-owner`; email merge off; old user IDs/chats preserved |
+| Wiki | `app-wiki-reader`, `app-wiki-editor` | OIDC admission + reader / editor | The exact subject overrides take precedence over groups: Tim **remains editor**, the owner admin; public reading and MCP are separate |
+| Harbor | `app-harbor-user` | OIDC admission, not system administrator | Projects/repositories/robots are native Harbor RBAC, a separate agreement; the admin group does not change |
+| n8n | `app-n8n-user` | Only the Authentik MFA-gate of the browser UI | **Not native SSO and not an n8n role**; the native account/role are needed separately; machine routes are unchanged |
+| Rancher | `app-rancher-user` | Only app admission prepared | `assignable: false`: the restricted principal allowlist and native grants stay exactly for the reviewed UUIDs. New people need separate scoped bindings, without copying the owner |
+| LMS | `app-lms-student` | Only app admission prepared | `assignable: false`: the deployed image accepts a single `LMS_OIDC_ALLOWED_GROUP=lms-students`; one cannot promise that the new group grants access |
+| LiteLLM | No new groups | The former owner-only native OIDC + the exact UUID → `socrat-admin` | We do not widen the reviewed identity expression and do not grant proxy_admin |
+| Uptime Kuma | No new groups | Only the former portal tile | The tile does not protect the native admin UI/socket; the SSO migration is not finished |
+| Argo CD / x-ui | Not managed by this catalog/controller | The separately managed existing policy | See ownership below; no unauthorized widening of owner-only/reviewed access |
 
-Все новые OIDC-проверки групп получают явный scope `groups` с объектом claims
-`{"groups": [...]}`; это не изменение `sub_mode`. Native MFA,
-`default-provider-authorization-explicit-consent`, строгие callback URI,
-TLS и PKCE не ослабляются. Proxy n8n/x-ui сохраняет свой implicit-consent flow:
-это не подмена native consent у остальных приложений.
+All the new OIDC group checks get an explicit `groups` scope with the claims
+object `{"groups": [...]}`; this is not a change of `sub_mode`. Native MFA,
+`default-provider-authorization-explicit-consent`, strict callback URIs, TLS
+and PKCE are not weakened. The n8n/x-ui proxy keeps its implicit-consent flow:
+that is not a substitution of the native consent of the other applications.
 
-## Кто перезапишет изменения из UI
+## Who will overwrite changes from the UI
 
-| Контроллер / файлы | Авторитетная область | Где допустимы ручные изменения |
+| Controller / files | Authoritative area | Where manual changes are acceptable |
 |---|---|---|
-| `authentik/files/prepare_app_iam.py`, `services.json`, `account-mappings.json` | Только create-only пустые allowlisted app-группы; отдельный stage — пустые app bindings | Нет human assignment, repair, PATCH/DELETE или native rollout; любое расхождение требует review |
-| `authentik/files/configure.py`, `services.json` | Полный Foundation app/providers, группы, bindings, scopes, MFA validation; **не команда app-IAM миграции** | Пароль, MFA devices, recovery codes, native consent принадлежат человеку. Managed provider/MFA/settings править в Git. Повторный полный запуск требует отдельного review всей write surface |
-| `authentik/files/lifecycle.py`, `lifecycle.json` | Только явное ручное применение app-членств и active/disabled | UI-членство расходится с декларацией и следующий **явно одобренный** apply его снимет; фонового apply нет. Остальные группы/пароли/MFA не управляются |
-| `identity_integrations/files/integrate.py` + identity overlays | Grafana OAuth env, Harbor `CONFIG_OVERWRITE_JSON`, WebUI OAuth env; Wiki Secret с role/subject maps | Изменение этих параметров в UI/Secret временное. Harbor project RBAC, native n8n роли — отдельно, не порождаются из app-группы |
-| Rancher branch `integrate.py` | restricted principal list; managed mirror bindings для старых local identities | Ручная правка `identity-*` binding будет сверена с оригиналом. Прямое изменение исходных grants — отдельная привилегированная операция, не автоматическое onboarding |
-| Wiki `deploy/wiki-runtime/oidc/oidc.py` + integration Secret | Групповые роли и рассмотренные subject overrides | Обычный UI role edit будет заменён при следующем OIDC login. Изменения extension требуют **rebuild/deploy runtime**, не только Secret |
-| Grafana monitoring Helm / Harbor Helm | Загружают identity overlay при наличии activation Secret | Не выполнять полный monitoring upgrade ради OAuth: он затрагивает не относящиеся к IAM ресурсы |
-| WebUI playbooks | Условный identity reconcile после deploy/upgrade | `ENABLE_OAUTH_PERSISTENT_CONFIG=False`: UI OAuth config не источник истины; не перетирать OTel env целым старым snapshot |
-| Argo CD `argocd_oidc/files/configure.py`; `deploy/argocd/values.yaml` и `deploy/platform/argo-cd/values.yaml` | Отдельный provider/bindings и native Argo RBAC | Legacy platform-operator уже отображается в admin; **не расширяем это**. Контроллер ожидает bootstrap-token env в pod и единственный groups mapping: после retirement/появления второго mapping нужна отдельная исправленная миграция, не обход защиты |
-| Authentik Helm / Argo `deploy/argocd/apps/authentik.yaml` | K8s deployment, values из `deploy/platform/authentik/values.yaml`, selfHeal | Это не декларация БД пользователей Authentik. Полный `authentik.yml` использует bootstrap values из другого пути; не смешивать upgrade с этой app-policy миграцией |
-| LiteLLM / x-ui controllers | Собственные строго рассмотренные owner policy/UUID | Не расширять через foundation/lifecycle; x-ui имеет отдельную SSH-lane границу, файлы не менялись |
+| `authentik/files/prepare_app_iam.py`, `services.json`, `account-mappings.json` | Only create-only empty allowlisted app groups; a separate stage — empty app bindings | No human assignment, repair, PATCH/DELETE or native rollout; any divergence requires review |
+| `authentik/files/configure.py`, `services.json` | The full Foundation app/providers, groups, bindings, scopes, MFA validation; **not a command of the app-IAM migration** | Password, MFA devices, recovery codes, native consent belong to the person. Edit managed provider/MFA/settings in Git. Repeating a full run requires a separate review of the whole write surface |
+| `authentik/files/lifecycle.py`, `lifecycle.json` | Only the explicit manual application of app memberships and active/disabled | UI membership diverging from the declaration, and the next **explicitly approved** apply will remove it; there is no background apply. Other groups/passwords/MFA are not managed |
+| `identity_integrations/files/integrate.py` + identity overlays | Grafana OAuth env, Harbor `CONFIG_OVERWRITE_JSON`, WebUI OAuth env; the Wiki Secret with role/subject maps | Changing these parameters in the UI/Secret is temporary. Harbor project RBAC, native n8n roles are separate, not derived from an app group |
+| Rancher branch `integrate.py` | The restricted principal list; managed mirror bindings for old local identities | A manual edit of an `identity-*` binding will be reconciled with the original. Changing the source grants directly is a separate privileged operation, not automatic onboarding |
+| Wiki `deploy/wiki-runtime/oidc/oidc.py` + integration Secret | Group roles and the reviewed subject overrides | An ordinary UI role edit will be replaced at the next OIDC login. Extension changes require a **rebuild/deploy of the runtime**, not only the Secret |
+| Grafana monitoring Helm / Harbor Helm | Load the identity overlay if the activation Secret is present | Do not run a full monitoring upgrade for the sake of OAuth: it touches resources unrelated to IAM |
+| WebUI playbooks | A conditional identity reconcile after deploy/upgrade | `ENABLE_OAUTH_PERSISTENT_CONFIG=False`: the UI OAuth config is not the source of truth; do not overwrite the OTel env with a whole old snapshot |
+| Argo CD `argocd_oidc/files/configure.py`; `deploy/argocd/values.yaml` and `deploy/platform/argo-cd/values.yaml` | A separate provider/bindings and native Argo RBAC | The legacy platform-operator already maps to admin; **we do not widen this**. The controller expects the bootstrap-token env in the pod and a single groups mapping: after its retirement/the appearance of a second mapping, a separate fixed migration is needed, not a bypass of the protection |
+| Authentik Helm / Argo `deploy/argocd/apps/authentik.yaml` | K8s deployment, values from `deploy/platform/authentik/values.yaml`, selfHeal | This is not a declaration of the Authentik user DB. The full `authentik.yml` uses bootstrap values from another path; do not mix the upgrade with this app-policy migration |
+| LiteLLM / x-ui controllers | Their own strictly reviewed owner policy/UUID | Do not widen via foundation/lifecycle; x-ui has a separate SSH-lane boundary; the files were not changed |
 
-GET-аудит 2026-11-02 подтвердил Helm release labels у Grafana, Harbor, WebUI,
-Authentik, Argo и Wiki. `managedFields` в обычном ответе kubectl были пустыми:
-это **не** доказательство отсутствия других writers. Сведения об ownership выше
-получены из исходников контроллеров/Helm/Argo; все UI writers не инвентаризированы.
+The 2026-11-02 GET audit confirmed the Helm release labels of Grafana, Harbor,
+WebUI, Authentik, Argo and Wiki. `managedFields` in a normal kubectl response
+were empty: that is **not** proof that no other writers exist. The ownership
+information above comes from controller/Helm/Argo sources; all UI writers are
+not inventoried.
 
-## Подготовка без выдачи прав: два отдельно рассмотренных этапа
+## Preparation without granting rights: two separately reviewed stages
 
-В этой реализации **ничего не применялось к production и ничего не push-илось**.
-Code/test readiness не означает live approval. Ниже — граница инструмента, а не
-разрешение на запуск apply. Сначала независимый owner break-glass, защищённый
-backup и свидетельство проверенного восстановления; затем change window и пауза
-всех UI/controller writers. Не читать/печатать private cache целиком, API responses
-или Secret diff. Проверить live API schema pinned Authentik **2026.8.5** до записи.
+In this implementation **nothing was applied to production and nothing was
+pushed**. Code/test readiness does not mean live approval. Below is the tool's
+boundary, not permission to run apply. First an independent owner break-glass,
+a protected backup and a verified recovery certificate; then a change window
+and a pause of all UI/controller writers. Do not read/print the private cache
+as a whole, API responses or Secret diffs. Verify the live API schema of pinned
+Authentik **2026.8.5** before writing.
 
 ### Write boundary
 
-`ansible/roles/authentik/files/prepare_app_iam.py` — самостоятельный CLI, не импортирует
-`configure.py`. По умолчанию `plan`; `plan` и `check` вызывают **только GET**.
-`check` возвращает 1, если нужны create, 0 если выбранный этап уже выполнен.
-Локально они создают только private lock, не journal и не API-объекты.
+`ansible/roles/authentik/files/prepare_app_iam.py` is a standalone CLI; it does
+not import `configure.py`. Default is `plan`; `plan` and `check` call **only
+GET**. `check` returns 1 if creates are needed, 0 if the chosen stage is
+already done. Locally they create only the private lock, not the journal and
+not API objects.
 
-- **Stage A `groups-only` (default):** максимум девять `POST core/groups/`, только
-  девять имён из матрицы выше и точный список appRoles из `services.json`.
-  Payload явно задаёт `is_superuser: false`, `parents: []`, `children: []`,
-  `users: []`, `roles: []`, `attributes: {homelab_app_iam: 1}`. Existing group
-  требует те же явные поля; missing/null, inheritance, membership, RBAC, чужой
-  marker, лишняя `app-*` группа или duplicate — STOP, не «исправление».
-- **Stage B `groups+empty-bindings`:** отдельный plan/review **после Stage A**.
-  Все девять групп должны уже существовать: инструмент не угадывает их будущие PK.
-  Максимум девять `POST policies/bindings/`, точные application/group PK пары из
-  свежего inventory. `enabled: true`, `negate: false`, `failure_result: false`,
-  `order: 100`; ни user, ни policy. Только семь существующих приложений с
-  `policy_engine_mode: any` и существующими provider links. Неизвестные, duplicate,
-  missing-field, disabled, negated, user/policy bindings на этих targets — STOP.
-  Все legacy bindings должны уже присутствовать; они не меняются и не создаются.
-  Другие applications/bindings остаются защищённым baseline, не входят в управление.
+- **Stage A `groups-only` (default):** at most nine `POST core/groups/`, only
+  the nine names from the matrix above and the exact appRoles list from
+  `services.json`. The payload explicitly sets `is_superuser: false`,
+  `parents: []`, `children: []`, `users: []`, `roles: []`, `attributes:
+  {homelab_app_iam: 1}`. An existing group requires the same explicit fields;
+  missing/null, inheritance, membership, RBAC, a foreign marker, an extra
+  `app-*` group or a duplicate — STOP, not a “fix-up”.
+- **Stage B `groups+empty-bindings`:** a separate plan/review **after Stage
+  A**. All nine groups must already exist: the tool does not guess their future
+  PKs. At most nine `POST policies/bindings/`, the exact application/group PK
+  pairs from a fresh inventory. `enabled: true`, `negate: false`,
+  `failure_result: false`, `order: 100`; no user, no policy. Only the seven
+  existing applications with `policy_engine_mode: any` and existing provider
+  links. Unknown, duplicate, missing-field, disabled, negated, user/policy
+  bindings on these targets — STOP. All legacy bindings must already be
+  present; they are neither changed nor created. Other applications/bindings
+  remain a protected baseline, outside management.
 
-В обоих этапах owner/Tim должны быть активными internal identities с **pinned
-UUID** из рассмотренного mapping и неизменёнными legacy членствами. Любое app-
-членство блокирует этот инструмент подготовки. Никаких PATCH/DELETE, создания
-users/apps/providers, membership/MFA/outpost/roles/native writes. Empty bindings
-не дают людям доступ и не доказывают, что native role mapping работает.
-Stage A сам по себе не завершает admission foundation: lifecycle check может
-закономерно отказать до Stage B. Rancher/LMS остаются nonassignable.
+In both stages the owner/Tim must be active internal identities with a
+**pinned UUID** from the reviewed mapping and unchanged legacy memberships. Any
+app membership blocks this preparatory tool. No PATCH/DELETE, no creation of
+users/apps/providers, no membership/MFA/outpost/roles/native writes. Empty
+bindings grant no one access and do not prove that the native role mapping
+works. Stage A alone does not complete the admission foundation: a lifecycle
+check may legitimately refuse until Stage B. Rancher/LMS stay nonassignable.
 
-### План, evidence и отдельно одобренный apply
+### Plan, evidence and the separately approved apply
 
-1. С reviewed commit скопировать на socrat-0 в существующий **owned 0700** cache
-   `~/.cache/homelab-authentik/` только `prepare_app_iam.py`, `services.json`,
-   `account-mappings.json` (0600). Не заменять credentials, login files, clients,
-   journals или signing keys. Использовать прежний проверенный SSH host key/alias.
-   `credentials.json` должен быть owned regular 0600, не symlink; предпочтительный
-   ключ `AUTHENTIK_API_TOKEN`, compatibility alias `AUTHENTIK_BOOTSTRAP_TOKEN`.
-   Если присутствуют оба, значения должны совпадать. Token не передаётся в argv.
-   Используется только фиксированный HTTPS origin, системная TLS verification;
-   redirects запрещены, `--insecure` нет. Не расширять permissions ради обхода STOP.
-2. Первый GET-only plan можно посмотреть без evidence:
+1. From the reviewed commit, copy to socrat-0 into the existing **owned 0700**
+   cache `~/.cache/homelab-authentik/` only `prepare_app_iam.py`,
+   `services.json`, `account-mappings.json` (0600). Do not replace
+   credentials, login files, clients, journals or signing keys. Use the former
+   verified SSH host key/alias. `credentials.json` must be an owned regular
+   0600 file, not a symlink; the preferred key `AUTHENTIK_API_TOKEN`, the
+   compatibility alias `AUTHENTIK_BOOTSTRAP_TOKEN`. If both are present, the
+   values must be equal. The token is not passed in argv. Only a fixed HTTPS
+   origin, system TLS verification; redirects are forbidden, there is no
+   `--insecure`. Do not widen permissions to bypass a STOP.
+2. The first GET-only plan can be viewed without evidence:
 
    ```sh
    CACHE="$HOME/.cache/homelab-authentik"
@@ -153,14 +165,15 @@ Stage A сам по себе не завершает admission foundation: lifec
    python3 "$CACHE/prepare_app_iam.py" "$CACHE" plan --stage groups-only
    ```
 
-   Inventory **всех страниц** включает groups, users/memberships, providers/all
-   плюс detailed OAuth2/proxy, applications, global bindings, MFA validation/TOTP
-   и stages/all, flows/instances/bindings, propertymappings/all и outpost instances.
-   В stdout — только allowlisted requests, tool SHA и hashes; raw responses и
-   provider credentials не печатаются и не пишутся в journal. MFA devices, факторы,
-   recovery codes и native databases этот инструмент не читает/не валидирует.
-3. В отдельном private 0600 JSON `preparation-evidence.json` оператор фиксирует
-   **реальные** evidence, не placeholders:
+   The inventory of **all pages** includes groups, users/memberships,
+   providers/all plus detailed OAuth2/proxy, applications, global bindings,
+   MFA validation/TOTP and stages/all, flows/instances/bindings,
+   propertymappings/all and outpost instances. Only allowlisted requests, the
+   tool SHA and hashes go to stdout; raw responses and provider credentials
+   are neither printed nor written to the journal. MFA devices, factors,
+   recovery codes and native databases are not read/validated by this tool.
+3. In a separate private 0600 JSON `preparation-evidence.json` the operator
+   records **real** evidence, not placeholders:
 
    ```json
    {
@@ -175,12 +188,14 @@ Stage A сам по себе не завершает admission foundation: lifec
    }
    ```
 
-   Это **операторская аттестация**: helper проверяет структуру, hashes и совпадение
-   своего исходника, но не открывает backup и не выполняет restore, не подтверждает
-   достижимость break-glass и не проверяет review commit в Git на remote host.
-   Проверка актуальности backup, восстановления и review commit/input diff —
-   обязательный внешний gate, а не свойство наличия JSON. Не писать в evidence
-   секреты/response bodies. С evidence получить **новый** plan:
+   This is an **operator attestation**: the helper checks the structure,
+   hashes and the match of its own source, but does not open the backup, does
+   not perform a restore, does not confirm break-glass reachability and does
+   not check the review commit in Git on the remote host. Verifying the
+   backup's currency, restoration and the review commit/input diff is a
+   mandatory external gate, not a property of the JSON's existence. Do not
+   write secrets/response bodies into the evidence. With the evidence, get a
+   **new** plan:
 
    ```sh
    EVIDENCE="$CACHE/preparation-evidence.json"
@@ -188,11 +203,12 @@ Stage A сам по себе не завершает admission foundation: lifec
      --evidence "$EVIDENCE" > "$CACHE/preparation-plan.json"
    ```
 
-   Digest включает tool hash, полный catalog/mapping, stage, evidence, hashes
-   **свежего полного baseline**, точные method/path/payload операции. Review должен
-   охватить все эти inputs и точный список запросов; сохранить approval digest
-   независимо. Не получать approval автоматически из текущего plan в apply shell.
-4. Только после отдельного approval на этот digest:
+   The digest includes the tool hash, the full catalog/mapping, the stage, the
+   evidence, the hashes of the **fresh full baseline**, the exact
+   method/path/payload operations. The review must cover all these inputs and
+   the exact list of requests; store the approval digest separately. Do not
+   derive approval automatically from the current plan in the apply shell.
+4. Only after separate approval for this digest:
 
    ```sh
    python3 "$CACHE/prepare_app_iam.py" "$CACHE" apply --stage groups-only \
@@ -200,13 +216,14 @@ Stage A сам по себе не завершает admission foundation: lifec
    python3 "$CACHE/prepare_app_iam.py" "$CACHE" check --stage groups-only
    ```
 
-   Apply без evidence или с другим baseline/approval откажет до POST. Перед первым
-   POST выполняется ещё один полный fresh snapshot; после **каждого** POST — полный
-   GET и проверка, что изменилось только возвращённое созданное object. Затем
-   final GET/check. Любое постороннее изменение останавливает дальнейшие POST.
-   Уже существующие объекты сравниваются без «нормализации»/repair. Изменение даже
-   protected config или активности человека требует нового plan/review.
-5. Если нужны admission bindings, отдельно рассмотренный Stage B:
+   Apply without evidence or with a different baseline/approval refuses
+   before the POST. Before the first POST one more full fresh snapshot is
+   taken; after **each** POST — a full GET and a check that only the returned
+   created object changed. Then the final GET/check. Any foreign change stops
+   further POSTs. Already existing objects are compared without
+   “normalization”/repair. A change even in protected config or a person's
+   activity requires a new plan/review.
+5. If admission bindings are needed, the separately reviewed Stage B:
 
    ```sh
    python3 "$CACHE/prepare_app_iam.py" "$CACHE" plan --stage groups+empty-bindings \
@@ -217,141 +234,166 @@ Stage A сам по себе не завершает admission foundation: lifec
    python3 "$CACHE/prepare_app_iam.py" "$CACHE" check --stage groups+empty-bindings
    ```
 
-   После Stage B текущий preserve/empty manifest должен давать ноль lifecycle
-   операций: `lifecycle.py plan`, затем `check`. **Lifecycle apply не нужен.**
+   After Stage B the current preserve/empty manifest must yield zero lifecycle
+   operations: `lifecycle.py plan`, then `check`. **No lifecycle apply is
+   needed.**
 
-### Lock, journal и частичный сбой
+### Lock, journal and partial failure
 
-Все CLI действия берут exclusive nonblocking local lock `.app-iam-prepare.lock`;
-он не удаляется при освобождении. Это защита только cooperating invocations на
-**этом cache**, не UI, других hosts/cache или full controllers. Distributed lock
-и conditional API transaction/CAS отсутствуют; competing writers должны быть
-остановлены на всё окно. GET snapshot также не является серверной транзакцией.
+All CLI actions take an exclusive nonblocking local lock
+`.app-iam-prepare.lock`; it is not removed on release. That protects only
+cooperating invocations on **this cache**, not the UI, other hosts/caches or
+full controllers. There is no distributed lock and no conditional API
+transaction/CAS; competing writers must be stopped for the whole window. The
+GET snapshot is not a server transaction either.
 
-Apply создаёт private 0700 `app-iam-prepare-journal/<run-id>/`: atomic 0600
-`run.json` и отдельный JSON каждого запроса, fsync durable intent **до POST**, затем
-PK/status и hashes GET-проверки. Ни response bodies, ни credentials не сохраняются.
-Crash, timeout, schema mismatch, drift или ошибка на N-м POST: **fail-stop**, без
-rollback/retry и без следующих create. Pending может означать, что POST уже дошёл.
-Незавершённый journal блокирует все следующие apply, даже если новый plan пуст.
+Apply creates a private 0700 `app-iam-prepare-journal/<run-id>/`: an atomic
+0600 `run.json` and a separate JSON per request, fsync of the durable intent
+**before the POST**, then the PK/status and the hashes of the GET check.
+Neither response bodies nor credentials are stored. A crash, timeout, schema
+mismatch, drift or an error on the N-th POST: **fail-stop**, without
+rollback/retry and without further creates. Pending may mean the POST already
+arrived. An unfinished journal blocks all subsequent applies, even if the new
+plan is empty.
 
-Сохранить journal, вручную сделать read-only inventory и сопоставить созданные
-PK/payload/результаты с одобренным plan; не усыновлять одноимённые посторонние
-ресурсы. Только после отдельного incident review можно вручную архивировать
-разобранный run **вне активного journal directory**, документировать partial
-результат, получить новый plan/approval и продолжить. Автоматического resume или
-journal-clear нет. Не удалять lock/journal «для починки», не replay `configure.py`,
-не восстанавливать целиком IdP ради пустых групп. Deletion/cleanup — отдельное
-рассмотренное административное изменение, не функция этого helper.
+Keep the journal, do a manual read-only inventory and match the created
+PKs/payload/results with the approved plan; do not adopt foreign resources of
+the same name. Only after a separate incident review may one manually archive
+the investigated run **outside the active journal directory**, document the
+partial result, get a new plan/approval and continue. There is no automatic
+resume or journal clearing. Do not delete the lock/journal “for repair”, do
+not replay `configure.py`, and do not restore the whole IdP for the sake of
+empty groups. Deletion/cleanup is a separate reviewed administrative change,
+not a function of this helper.
 
-## Native integrations: отдельный gated rollout
+## Native integrations: a separate gated rollout
 
-Подготовка выше **не запускает integrations playbook** и не является разрешением
-на него. Native OAuth env/Secret/role maps, Wiki runtime rebuild и browser login
-меняют другую write surface и требуют собственного reviewed plan, backup/recovery,
-change window и per-service acceptance. Не запускать полный integrations playbook,
-monitoring/Helm upgrade или prune «ради пустых групп»; не включать Rancher/LiteLLM/
-Argo повторно в этот change.
+The preparation above **does not run the integrations playbook** and is not
+permission for it. Native OAuth env/Secret/role maps, the Wiki runtime rebuild
+and browser login change a different write surface and need their own reviewed
+plan, backup/recovery, change window and per-service acceptance. Do not run
+the full integrations playbook, a monitoring/Helm upgrade or a prune “for the
+sake of empty groups”; do not re-include Rancher/LiteLLM/Argo in this change.
 
-Перед выдачей новых app-членств отдельно подтвердить owner/Tim login с их
-собственным MFA/consent (без извлечения факторов), прежние UUID/native user IDs,
-Tim editor Wiki / viewer Grafana / user WebUI, owner admin; machine keys/webhooks
-и независимый owner fallback. Wiki extension требует отдельного rebuild/deploy
-по `deploy/wiki-runtime/oidc/README.md`. Существующие smoke helpers могут создавать
-аккаунты/сессии — это production writes, не read-only acceptance. Только после
-успешной native приёмки разрешать отдельные reviewed lifecycle изменения;
-существующим людям миграция app-групп не требуется.
+Before granting new app memberships, separately confirm the owner/Tim login
+with their own MFA/consent (without extracting factors), the former
+UUIDs/native user IDs, Tim editor Wiki / viewer Grafana / user WebUI, owner
+admin; machine keys/webhooks and the independent owner fallback. The Wiki
+extension needs a separate rebuild/deploy per
+`deploy/wiki-runtime/oidc/README.md`. Existing smoke helpers may create
+accounts/sessions — those are production writes, not read-only acceptance.
+Only after successful native acceptance permit separate reviewed lifecycle
+changes; the app-group migration is not needed for the existing people.
 
-## Onboarding настоящего человека
+## Onboarding a real person
 
-1. Владелец утверждает конкретные приложения/роли и native scopes. Не давать
-   `homelab-owner`, platform-operator или kubeconfig для «удобства входа».
-2. Создать **отдельного** человека штатным Authentik admin/enrollment flow.
-   Саморегистрация/SMTP здесь не включаются. Изначально без superuser и без app/legacy
-   grants; доставить enrollment/временный пароль защищённым независимым каналом,
-   потребовать смену пароля и его собственное MFA. Не копировать чужой TOTP.
-3. GET-проверкой получить точный UUID; добавить только реальную учётную запись в
-   `lifecycle.json` (`state: preserve` либо осознанное `active`, конкретные appGroups).
-   Для native account linking нужен отдельный review существующего ID, не совпадение
-   email. Не добавлять человека в `account-mappings.json` только ради provisioning:
-   это legacy migration contract. При missing pinned owner/Tim foundation теперь
-   останавливается, а не создаёт другую личность со старым именем.
-4. На owner node выполнить `plan`, проверить все операции и digest. Применение:
+1. The owner approves specific applications/roles and native scopes. Do not
+   give `homelab-owner`, platform-operator or kubeconfig for “convenient
+   login”.
+2. Create a **separate** person through the ordinary Authentik
+   admin/enrollment flow. Self-registration/SMTP are not enabled here.
+   Initially without superuser and without app/legacy grants; deliver the
+   enrollment/temporary password over a protected independent channel,
+   require a password change and his own MFA. Do not copy someone else's
+   TOTP.
+3. Obtain the exact UUID by a GET check; add only the real account to
+   `lifecycle.json` (`state: preserve` or a deliberate `active`, specific
+   appGroups). Native account linking needs a separate review of the existing
+   ID, not an email match. Do not add a person to `account-mappings.json` just
+   for provisioning: that is the legacy migration contract. If a pinned
+   owner/Tim is missing, the foundation now stops instead of creating another
+   identity with the old name.
+4. On the owner node run `plan`, review all operations and the digest.
+   Application:
 
    ```sh
    python3 "$CACHE/lifecycle.py" "$CACHE" apply --approve-sha256 "$REVIEWED_PLAN_SHA256"
    python3 "$CACHE/lifecycle.py" "$CACHE" check
    ```
 
-   Digest связан с input, UUID, текущими группами/active и операциями. При изменении
-   состояния нужен новый plan/review. Lock защищает только этот инструмент; UI и
-   другие контроллеры не блокируются. Нет распределённой транзакции/CAS: остановить
-   конкурирующих writers. Частичный apply — повторно plan, не rollback всего IdP.
-5. Проверить положительный вход и **отказ** для чужих приложений/операций. Harbor
-   project RBAC, n8n native account и machine credentials оформить отдельно.
-   Rancher/LMS с `assignable: false` инструмент откажется назначать.
+   The digest is bound to the input, the UUIDs, the current groups/active and
+   the operations. A state change needs a new plan/review. The lock protects
+   only this tool; the UI and other controllers are not blocked. There is no
+   distributed transaction/CAS: stop competing writers. A partial apply —
+   plan again, not a rollback of the whole IdP.
+5. Verify the positive login and the **denial** for other applications/
+   operations. Harbor project RBAC, the n8n native account and machine
+   credentials are arranged separately. For Rancher/LMS with `assignable:
+   false` the tool will refuse to assign.
 
-## Offboarding и срок действия отзыва
+## Offboarding and the revocation horizon
 
-- Записать явное `state: disabled`, `appGroups: []` и применить проверенный plan.
-  Сначала disable IdP, затем снять управляемые app-членства. Владелец защищён от
-  disable/изменения app-членства этим инструментом. Legacy группы сохраняются:
-  **это не полное удаление прав** и не повод автоматически снова включить аккаунт.
-- Удаление пользователя из manifest **не** деактивация. Повторный foundation не
-  включает initialized disabled аккаунты и не меняет его пароль/MFA.
-- Отдельно отозвать IdP sessions, OAuth grants/access/refresh tokens штатными
-  средствами Authentik; зафиксировать проверку отказа входа. Инструмент не угадывает
-  API endpoint массового session revoke и не обещает успешного logout браузеров.
-- Отозвать native sessions и локальные способы входа **в каждом** приложении:
-  Grafana, WebUI, Harbor, Wiki, Rancher, n8n, LMS и прочих. Группы/роль обычно
-  пересчитываются при новом login/refresh, не при каждом запросе. У Wiki subject
-  override Tim editor остаётся рассмотренным исключением; отзыв app-группы не
-  удаляет native session, а legacy observer всё ещё допускает новый вход, пока
-  аккаунт активен. Native session/token следует отзывать отдельно, а не менять
-  этот override тайно.
-- Native OIDC provider TTL сейчас 5 минут access / 8 часов refresh — **не верхняя
-  граница native session**. Grafana/Argo имеют 8-часовую policy, другие cookies,
-  proxy sessions и уже выданные JWT могут жить по своим правилам. Прокси n8n в
-  read-only аудите имел 1 час access / 30 дней refresh; не сокращалось без review.
-- Отозвать личные API keys/PAT, Harbor robot при личной принадлежности, WebUI keys,
-  LiteLLM keys, wiki API tokens/MCP, Rancher tokens/kubeconfigs и sharing links;
-  не ломать организационные machine accounts без передачи владения.
-- Host/SSH/VPN и активные shell/tunnel sessions — отдельный согласованный runbook.
-  Этот commit не меняет NetBird/SSH/WireGuard lane. Снять группу в IdP недостаточно,
-  чтобы закрыть эти каналы или уже скопированный сертификат.
-- Записать per-service результат, время и остаточные окна; не заявлять «все сессии
-  отозваны» по одному успешному lifecycle check. Восстановление старого backup может
-  воскресить аккаунт/гранты: повторить актуальное offboarding перед открытием входа.
+- Record an explicit `state: disabled`, `appGroups: []` and apply the checked
+  plan. First disable in the IdP, then remove the managed app memberships. The
+  owner is protected from disable/app-membership changes by this tool. Legacy
+  groups are preserved: **this is not a full removal of rights** and not a
+  reason to automatically re-enable the account.
+- Removing a user from the manifest is **not** deactivation. A repeated
+  foundation run does not enable initialized disabled accounts and does not
+  change their password/MFA.
+- Separately revoke IdP sessions, OAuth grants/access/refresh tokens by the
+  ordinary Authentik means; record the verification of the login denial. The
+  tool does not guess the API endpoint for mass session revocation and does
+  not promise a successful browser logout.
+- Revoke native sessions and local login methods **in each** application:
+  Grafana, WebUI, Harbor, Wiki, Rancher, n8n, LMS and others. Group/role are
+  usually recomputed on a new login/refresh, not on every request. For the
+  Wiki, Tim's editor subject override remains a reviewed exception; revoking
+  an app group does not delete the native session, and the legacy observer
+  still admits a new login while the account is active. A native
+  session/token should be revoked separately, not by silently changing this
+  override.
+- The native OIDC provider TTL is now 5 minutes access / 8 hours refresh —
+  **not** the upper bound of a native session. Grafana/Argo have an 8-hour
+  policy; other cookies, proxy sessions and already-issued JWTs may live by
+  their own rules. The n8n proxy had 1 hour access / 30 days refresh in the
+  read-only audit; it was not shortened without a review.
+- Revoke personal API keys/PATs, personally owned Harbor robots, WebUI keys,
+  LiteLLM keys, wiki API tokens/MCP, Rancher tokens/kubeconfigs and sharing
+  links; do not break organizational machine accounts without transferring
+  ownership.
+- Host/SSH/VPN and active shell/tunnel sessions are a separate agreed
+  runbook. This commit changes no NetBird/SSH/WireGuard lane. Removing a
+  group in the IdP is not enough to close those channels or an
+  already-copied certificate.
+- Record the per-service result, time and the residual windows; do not claim
+  “all sessions revoked” from one successful lifecycle check. Restoring an
+  old backup can resurrect an account/grants: repeat the current offboarding
+  before opening entry.
 
-## Откат
+## Rollback
 
-До выдачи app-членств откат — вернуть только новые public OAuth settings/role maps
-к рассмотренной предыдущей версии и отдельно убрать только новые app bindings,
-если это действительно требуется. Legacy bindings, точные subject links, пароли,
-MFA и базы пользователей не удалять. Не восстанавливать целиком старый Deployment
-поверх OTel/других параллельных изменений и не применять старый IdP backup ради
-OAuth env. После реальной выдачи/отзыва прав rollback требует нового review:
-автоматический обратный lifecycle apply может воскресить уже отозванный доступ.
+Before granting app memberships, the rollback is to return only the new
+public OAuth settings/role maps to the reviewed previous version and,
+separately, to remove only the new app bindings if that is really needed. Do
+not remove legacy bindings, exact subject links, passwords, MFA or user
+databases. Do not restore a whole old Deployment over OTel/other parallel
+changes and do not apply an old IdP backup for the sake of OAuth env. After
+rights have really been granted/revoked, a rollback needs a new review: an
+automatic reverse lifecycle apply can resurrect already-revoked access.
 
-## Проверки и оставшиеся блокеры
+## Tests and remaining blockers
 
-`tests/test_prepare_app_iam.py` проверяет current-schema fake API, оба ограниченных
-этапа, GET-only default/plan/check, pagination, pinned UUID, все явные пустые
-relations/marker, unexpected objects/bindings, protected snapshot drift, повторную
-pre-write проверку, отсутствие любых иных permission side effects, TLS/token alias,
-exclusive lock и private atomic per-request journal. Проверяются partial failure,
-принятый сервером POST с потерянным ответом, journal failure до POST, post-create
-посторонний drift и запрет автоматического retry/adoption. Это isolated tests,
-**не live schema verification, backup/restore или native acceptance**.
+`tests/test_prepare_app_iam.py` verifies the current-schema fake API, both
+limited stages, GET-only default/plan/check, pagination, pinned UUID, all the
+explicit empty relations/marker, unexpected objects/bindings, protected
+snapshot drift, the repeated pre-write check, the absence of any other
+permission side effects, TLS/token alias, the exclusive lock and the private
+atomic per-request journal. Partial failure, a POST accepted by the server
+with a lost response, journal failure before a POST, post-Create foreign drift
+and the ban on automatic retry/adoption are checked. These are isolated tests,
+**not live schema verification, backup/restore or native acceptance**.
 
-`tests/test_app_iam.py` проверяет отсутствие исходных grants, идемпотентное
-добавление/снятие, disable-before-remove, stale hash, несовпадение UUID,
-защиту owner, отказ service accounts/чужих групп/наследования, pagination и
-UI binding drift. `tests/test_identity.py` сохраняет проверки MFA/consent,
-client credentials, legacy membership и non-superuser Tim. Native browser
-приёмка новых app-ролей **не выполнялась**: это post-deploy задача.
+`tests/test_app_iam.py` verifies the absence of source grants, idempotent
+add/remove, disable-before-remove, stale hash, UUID mismatch, owner
+protection, refusal of service accounts/foreign groups/inheritance, pagination
+and UI binding drift. `tests/test_identity.py` keeps the MFA/consent checks,
+client credentials, legacy membership and the non-superuser Tim. The native
+browser acceptance of the new app roles **was not done**: that is a
+post-deploy task.
 
-Не завершены: native session revocation automation, LMS multi-group admission,
-новые scoped Rancher principals, отдельная безопасная модернизация Argo controller,
-Kuma SSO/admin/socket boundary, полная live-инвентаризация всех человеческих входов.
-Наличие portal tile или пустой app-группы не закрывает эти блокеры.
+Unfinished: native session revocation automation, LMS multi-group admission,
+new scoped Rancher principals, a separate safe modernization of the Argo
+controller, the Kuma SSO/admin/socket boundary, a full live inventory of all
+human entrances. The presence of a portal tile or an empty app group does not
+close these blockers.

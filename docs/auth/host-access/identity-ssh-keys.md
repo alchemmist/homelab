@@ -1,49 +1,57 @@
-# Authentik → публичные SSH-ключи: только reviewed Ansible assignments
+# Authentik → public SSH keys: reviewed Ansible assignments only
 
-## Статус и границы
+## Status and boundaries
 
-**Основной выбранный сценарий теперь проще:**
-[ручной Ansible: username + публичный ключ](ssh-user.md), без Authentik/n8n.
-Этот документ описывает оставленную выключенной опциональную интеграцию,
-не обязательный этап добавления SSH-пользователя.
+**The main chosen scenario is now simpler:**
+[manual Ansible: username + public key](ssh-user.md), without Authentik/n8n.
+This document describes the retained, disabled optional integration, not a
+mandatory step for adding an SSH user.
 
-Интеграция **опциональна и сейчас выключена**: `deploy/identity/ssh-bindings.json`
-и `ssh-assignments.json` содержат пустые списки. Существующий `users.yml`, роль
-`users`, owner/root/automation accounts и оба текущих публичных ключа Tim в
-`ansible/inventory/group_vars/Socrat.yml` не изменены. Никакого live rollout нет.
+The integration is **optional and currently off**: `deploy/identity/ssh-bindings.json`
+and `ssh-assignments.json` contain empty lists. The existing `users.yml`, the
+`users` role, the owner/root/automation accounts and both of Tim's current public
+keys in `ansible/inventory/group_vars/Socrat.yml` are unchanged. There is no
+live rollout.
 
-Authentik хранит **только источник публичных ключей**, не Linux authorization.
-`username`, email, группы, `attributes.hosts`, `attributes.sudo` и похожие поля
-не дают доступ и не выбирают Linux account. Добавление ключа в IdP само по себе
-ничего не меняет на hosts: каждый новый exact key set требует plan → review →
-export → отдельный guarded Ansible apply. Это не SSH SSO и не SSH CA.
-Приватные ключи остаются на устройствах людей; пароль Linux не создаётся.
-App IAM `configure.py`, VPN/NetBird и topology этой интеграцией не управляются.
+Authentik stores **only the source of public keys**, not Linux authorization.
+`username`, email, groups, `attributes.hosts`, `attributes.sudo` and similar
+fields give no access and do not choose the Linux account. Adding a key in the
+IdP by itself changes nothing on hosts: every new exact key set requires
+plan → review → export → a separate guarded Ansible apply. This is not SSH SSO
+and not an SSH CA. Private keys stay on people's devices; no Linux password is
+created. App IAM `configure.py`, VPN/NetBird and topology are not managed by
+this integration.
 
-Источники:
+Sources:
 
-- `scripts/identity-ssh-plan.py`: stdlib Python + системный `ssh-keygen`, только
-  HTTPS GET; по умолчанию выводит read-only план без raw public keys/attributes.
-- `deploy/identity/ssh-bindings.json`: append-only UUID → Linux username ledger.
-- `deploy/identity/ssh-assignments.json`: reviewed state, active и revoked hosts.
-- `ansible/playbooks/authentik-ssh-users.yml`: по умолчанию **только intent check**;
-  реальный apply использует существующую restricted `users` role и её verifier.
-- `ansible/files/verify_authentik_ssh_binding.py`: read-only root preflight,
-  запрещающий автоматическое присоединение существующего локального аккаунта.
+- `scripts/identity-ssh-plan.py`: stdlib Python + the system `ssh-keygen`,
+  HTTPS GET only; by default it prints a read-only plan without raw public
+  keys/attributes.
+- `deploy/identity/ssh-bindings.json`: an append-only UUID → Linux username
+  ledger.
+- `deploy/identity/ssh-assignments.json`: reviewed state, active and revoked
+  hosts.
+- `ansible/playbooks/authentik-ssh-users.yml`: by default **an intent check
+  only**; a real apply uses the existing restricted `users` role and its
+  verifier.
+- `ansible/files/verify_authentik_ssh_binding.py`: a read-only root preflight
+  that forbids automatically adopting an existing local account.
 
-## Неизменяемая личность и явный scope
+## Immutable identity and explicit scope
 
-Нужен **raw immutable `uuid` из Authentik User API**, не integer `pk`, не `uid`,
-не email и не кастомный UUID attribute. API без поля `uuid` или без работающего
-UUID filter намеренно отклоняется; не добавлять fallback по имени. Проверить
-поддержку установленной версии до enrollment. Ответ должен содержать ровно одну
-точную UUID-запись и `pagination.next: null`; неполная/неоднозначная выборка — ошибка.
-Активный источник должен иметь `is_active: true`, `type: internal` (human user).
-Сервисные пользователи исключены; `root`, `alchemmist`, `ghactions` запрещены
-как управляемые Linux usernames. Привилегированные accounts — отдельная процедура.
+The **raw immutable `uuid` from the Authentik User API** is required, not the
+integer `pk`, not `uid`, not email and not a custom UUID attribute. An API
+without a `uuid` field or without a working UUID filter is rejected on purpose;
+do not add a name-based fallback. Verify support in the installed version
+before enrollment. The response must contain exactly one exact UUID record
+and `pagination.next: null`; an incomplete/ambiguous selection is an error.
+The active source must have `is_active: true`, `type: internal` (human user).
+Service users are excluded; `root`, `alchemmist`, `ghactions` are forbidden
+as managed Linux usernames. Privileged accounts are a separate procedure.
 
-После независимой проверки личности добавить **новую**, а не заменить старую
-binding-запись. Пример схемы (UUID ниже вымышленный, не enrollment Tim):
+After independently verifying identity, add a **new** binding record rather
+than replacing the old one. Example schema (the UUID below is fictional, not
+Tim's enrollment):
 
 ```json
 {
@@ -54,7 +62,7 @@ binding-запись. Пример схемы (UUID ниже вымышленн�
 }
 ```
 
-Assignments для этой binding:
+Assignments for this binding:
 
 ```json
 {
@@ -71,54 +79,60 @@ Assignments для этой binding:
 }
 ```
 
-`hosts` и `revoked_hosts` обязательны, не пересекаются; active assignment требует
-непустой `hosts`. Нет семантики «отсутствует hosts → все машины». Bindings не
-выдаются автоматически: UUID без assignment не имеет SSH scope.
-Дополнительные поля вроде `sudo`, `groups` или shell в policy отклоняются:
-эта интеграция выдаёт только bash/no-sudo, без supplementary groups.
+`hosts` and `revoked_hosts` are mandatory and must not intersect; an active
+assignment requires a non-empty `hosts`. There is no “absent hosts → all
+machines” semantics. Bindings are not granted automatically: a UUID without an
+assignment has no SSH scope. Extra fields like `sudo`, `groups` or shell in a
+policy are rejected: this integration grants only bash/no-sudo, without
+supplementary groups.
 
-Проверяется **вся доступная Git history HEAD** обоих фиксированных файлов.
-UUID/name нельзя удалить или переиспользовать; старые host scopes должны остаться
-в active/revoked tombstones, даже после применения revoke. Shallow checkout
-отклоняется. Использовать полный доверенный checkout и обычный review; Git history
-не является защитой от администратора, переписывающего историю/сам код. Не менять
-ledger при восстановлении IdP из backup: новый UUID означает другую личность,
-а не автоматическое слияние с прежней. Смена Linux username — отдельная миграция,
-не правка binding. Исторический username не освобождается для другой identity.
+The **entire available Git history HEAD** of both pinned files is checked. A
+UUID/name cannot be deleted or reused; old host scopes must remain in
+active/revoked tombstones even after a revoke is applied. A shallow checkout
+is rejected. Use a full trusted checkout and the usual review; Git history is
+not a defense against an administrator rewriting the history/the code itself.
+Do not change the ledger when restoring the IdP from a backup: a new UUID
+means a different identity, not an automatic merge with the previous one.
+Changing the Linux username is a separate migration, not a binding edit. A
+freed historical username is not released for another identity.
 
-Для `ssh_public_keys` поддерживается **JSON list отдельных OpenSSH public-key
-строк**, не строка с переносами. Отсутствующий/пустой/некорректный список у
-active assignment блокирует весь export. Каждый ключ проверяет настоящий
-`ssh-keygen -l -E sha256`; regex недостаточно. Поддержан тот же набор типов,
-что у users role: ed25519, RSA, nistp256, OpenSSH security-key варианты.
-Private material, certificates, authorized_keys options, control characters,
-multiline и дубликаты запрещены. Comments отбрасываются. План показывает SHA256
-fingerprints; export содержит только canonical public keys и reviewed metadata.
-Ни shell interpolation ключей, ни remote shell из IdP attributes нет.
+For `ssh_public_keys` a **JSON list of individual OpenSSH public-key strings**
+is supported, not one string with line breaks. A missing/empty/incorrect list
+on an active assignment blocks the whole export. Every key is checked with a
+real `ssh-keygen -l -E sha256`; a regex is not enough. The same set of types
+as the users role is supported: ed25519, RSA, nistp256, OpenSSH security-key
+variants. Private material, certificates, authorized_keys options, control
+characters, multiline entries and duplicates are forbidden. Comments are
+discarded. The plan shows SHA256 fingerprints; the export contains only
+canonical public keys and reviewed metadata. There is no shell interpolation
+of keys and no remote shell from IdP attributes.
 
-## Plan, export и проверка — без live writes
+## Plan, export and verification — without live writes
 
-Необходимы доверенный HTTPS origin Authentik, CA trust, отдельный read-only token
-с минимальным разрешением чтения нужных users/attributes, подтверждённые UUID,
-точные inventory aliases и проверенные fingerprints. Bootstrap/admin token не
-нужен. Не получать token через распечатку Kubernetes Secret и не коммитить его.
-Пример **bash**, token вводится без echo и не попадает в аргументы процесса:
+Required: a trusted Authentik HTTPS origin, CA trust, a separate read-only
+token with minimal read permission on the needed users/attributes, confirmed
+UUIDs, exact inventory aliases and verified fingerprints. No bootstrap/admin
+token is needed. Do not obtain the token by printing a Kubernetes Secret and
+do not commit it. Example in **bash**; the token is entered without echo and
+never appears in process arguments:
 
 ```sh
 read -r -s -p 'Authentik read-only token: ' AUTHENTIK_SSH_TOKEN; printf '\n'
 export AUTHENTIK_SSH_TOKEN
 python3 scripts/identity-ssh-plan.py --authentik-url https://sso.example.invalid
-# Для собственного CA дополнительно: --ca-file /secure/trusted-ca.pem
+# For your own CA additionally: --ca-file /secure/trusted-ca.pem
 ```
 
-Нет `--insecure`: hostname/chain verification включены; redirects запрещены,
-включая redirect на другой HTTPS host. Script не пишет в Authentik, не запускает
-Ansible/SSH и не сохраняет исходные API responses. При error не печатает ответ
-сервера, token, raw attributes или некорректный ввод. Не включать shell tracing,
-HTTP debug logging или запись environment в сторонний CI artifact.
+There is no `--insecure`: hostname/chain verification is on; redirects are
+forbidden, including redirects to another HTTPS host. The script does not
+write to Authentik, run Ansible/SSH or save the raw API responses. On error it
+does not print the server response, the token, raw attributes or the invalid
+input. Do not enable shell tracing, HTTP debug logging or writing the
+environment to a third-party CI artifact.
 
-Проверить каждого человека, все active/revoked hosts, fingerprint и `review_sha256`.
-Потом новый GET и **явно подтверждённый export** в новый файл вне repository:
+Review every person, all active/revoked hosts, the fingerprints and
+`review_sha256`. Then a fresh GET and an **explicitly approved export** to a
+new file outside the repository:
 
 ```sh
 python3 scripts/identity-ssh-plan.py --authentik-url https://sso.example.invalid \
@@ -126,30 +140,32 @@ python3 scripts/identity-ssh-plan.py --authentik-url https://sso.example.invalid
 unset AUTHENTIK_SSH_TOKEN
 ```
 
-Если ключ/policy/binding изменились, digest будет другим, export откажет.
-Файл создаётся `O_EXCL`, mode 0600, без overwrite. Пустая интеграция не экспортируется.
-Сохранять public export в Git не нужно. Для полностью offline tests разрешён
-`--snapshot /secure/public-users.json` (список API user records), но **только plan**,
-никогда export. Не сохранять в snapshot passwords/tokens/прочие IdP attributes.
+If a key/policy/binding changed, the digest differs and the export refuses.
+The file is created with `O_EXCL`, mode 0600, without overwrite. An empty
+integration is not exported. The public export does not need to be stored in
+Git. For fully offline tests a `--snapshot /secure/public-users.json` (a list
+of API user records) is allowed, but **plan only**, never export. Do not store
+passwords/tokens/other IdP attributes in a snapshot.
 
 ```sh
 cd ansible
 ansible-playbook -i inventory/hosts.yml \
   playbooks/authentik-ssh-users.yml -e @/tmp/reviewed-ssh-users.json --check
-# Без --check поведение тоже read-only, пока нет explicit apply flags.
+# Without --check the behavior is also read-only until explicit apply flags.
 ```
 
-Это **локальная проверка intent, digest, aliases, полного scope и конфликтов с
-manual inventory**, не симуляция создания user и не проверка текущего host state.
-Она не устанавливает remote connections. Не подменять её утверждением, что
-удалённый SSH login уже работает. `--limit`, исключающий хотя бы один required
-active/revoked host, запрещён. Unknown inventory host тоже блокирует play.
-Export нельзя редактировать после review: Ansible пересчитывает digest payload.
+This is a **local check of intent, digest, aliases, full scope and conflicts
+with the manual inventory**, not a simulation of user creation and not a check
+of the current host state. It opens no remote connections. Do not replace it
+with a claim that remote SSH login already works. A `--limit` excluding at
+least one required active/revoked host is forbidden. An unknown inventory
+host also blocks the play. The export must not be edited after review: Ansible
+recomputes the digest payload.
 
-## Отдельный, явно разрешённый apply
+## A separate, explicitly authorized apply
 
-Только после review и свежего export (ниже инструкция будущего deployment,
-не выполненное действие):
+Only after review and a fresh export (below is an instruction for a future
+deployment, not a performed action):
 
 ```sh
 cd ansible
@@ -159,96 +175,109 @@ ansible-playbook -i inventory/hosts.yml \
   -e homelab_authentik_ssh_approval=REVIEWED_SHA256 --ask-become-pass
 ```
 
-Нужны **оба** apply/approval flags; `--check` всё равно остаётся read-only.
-Перед account/key изменениями root preflight на всех целевых hosts проверяет binding:
+**Both** apply/approval flags are required; `--check` still stays read-only.
+Before any account/key change, the root preflight on all target hosts checks
+the binding:
 
-- existing Linux account без root enrollment marker → остановка, не auto merge;
-- marker с другим UUID/name, symlink или небезопасными permissions → остановка;
-- для нового account сначала резервируется `/var/lib/homelab-authentik-ssh-bindings/<name>.json`
-  (`root:root`, directory 0700/file 0600), затем вызывается users role;
-- marker не перезаписывается, остаётся после disable; частичный apply можно
-  повторить с той же binding. Ничего не удалять ради обхода mismatch;
-- даже с правильным marker passwd home обязан быть `/home/<name>`. Symlink в
-  `/home`, home, `.ssh` или `authorized_keys` запрещён. Нестандартный home не
-  мигрируется и старые effective keys не оставляются за пределами managed path;
-- проверяется настоящий `sshd -T`: **единственный** AuthorizedKeysFile должен быть
-  `.ssh/authorized_keys`, `%h/.ssh/authorized_keys` или точный `/home/<name>/.ssh/authorized_keys`;
-  второй файл (включая default `authorized_keys2`), AuthorizedKeysCommand и
-  TrustedUserCAKeys запрещены. Требуется pubkey=yes, password/kbd-interactive/
-  hostbased/GSSAPI/Kerberos=no. Отсутствие требуемых effective полей — отказ;
-- все `Match` directives, в том числе через recursive `Include`, сейчас **unsupported**:
-  один `sshd -T -C` не доказывает отсутствие alternate key source для других клиентов.
-  Preflight ничего не переписывает в sshd и не меняет auth policy owner/Tim. Если
-  действующий sshd запущен с другим `-f`/CLI overrides, STOP: этот режим не поддержан,
-  перед пилотом подтвердить стандартный `/etc/ssh/sshd_config` и отсутствие overrides.
+- an existing Linux account without the root enrollment marker → stop, no
+  auto merge;
+- a marker with a different UUID/name, a symlink or unsafe permissions → stop;
+- for a new account, `/var/lib/homelab-authentik-ssh-bindings/<name>.json`
+  (`root:root`, directory 0700/file 0600) is reserved first, then the users
+  role is invoked;
+- the marker is not overwritten and remains after disable; a partial apply can
+  be repeated with the same binding. Delete nothing to bypass a mismatch;
+- even with a correct marker the passwd home must be `/home/<name>`. Symlinks
+  in `/home`, home, `.ssh` or `authorized_keys` are forbidden. A non-standard
+  home is not migrated and old effective keys are not left outside the managed
+  path;
+- a real `sshd -T` is checked: the **single** AuthorizedKeysFile must be
+  `.ssh/authorized_keys`, `%h/.ssh/authorized_keys` or exactly
+  `/home/<name>/.ssh/authorized_keys`; a second file (including the default
+  `authorized_keys2`), AuthorizedKeysCommand and TrustedUserCAKeys are
+  forbidden. pubkey=yes, password/kbd-interactive/hostbased/GSSAPI/Kerberos=no
+  is required. Missing required effective fields means refusal;
+- all `Match` directives, including via recursive `Include`, are currently
+  **unsupported**: a single `sshd -T -C` does not prove the absence of an
+  alternate key source for other clients. The preflight rewrites nothing in
+  sshd and does not change the auth policy of owner/Tim. If the live sshd runs
+  with a different `-f`/CLI overrides, STOP: this mode is not supported;
+  before the pilot confirm the standard `/etc/ssh/sshd_config` and the absence
+  of overrides.
 
-Весь host apply (preflight → marker reservation → users role → exact-key postflight)
-сериализован exclusive `mkdir /run/homelab-authentik-ssh-apply.lock` от root.
-Второй writer **отказывает**, не ждёт и не переиспользует чужой lock; marker/name/UUID
-проверяется уже под lock. `always` удаляет только lock успешно начатого apply.
-Crash/unreachable host или ошибка другого host может оставить stale lock: сначала
-проверить отсутствие работающего apply, marker/account/effective keys и только потом
-отдельно согласовать удаление lock. Не автоматизировать lock stealing/TTL.
-Manual user-management/adoption вне этого playbook тоже требует операционной
-сериализации; lock не защищает от произвольного другого root writer.
+The whole host apply (preflight → marker reservation → users role → exact-key
+postflight) is serialized by an exclusive `mkdir /run/homelab-authentik-ssh-apply.lock`
+as root. A second writer **fails**, does not wait and does not reuse someone
+else's lock; the marker/name/UUID are checked already under the lock. `always`
+removes the lock only of a successfully started apply. A crash/unreachable host
+or another host's error can leave a stale lock: first verify no apply is
+running, the marker/account/effective keys, and only then separately agree on
+removing the lock. Do not automate lock stealing/TTL. Manual user-management/
+adoption outside this playbook also requires operational serialization; the
+lock does not protect against an arbitrary other root writer.
 
-`any_errors_fatal` останавливает остальные hosts при preflight error; Ansible не
-транзакционен: поздняя ошибка может оставить частичный результат. Исправить
-причину, повторить свежий plan/apply и проверить **каждый** host. Не заявлять
-об успешном revoke по одному успешно обработанному узлу.
+`any_errors_fatal` stops the remaining hosts on a preflight error; Ansible is
+not transactional: a late error can leave a partial result. Fix the cause,
+repeat a fresh plan/apply and check **every** host. Do not claim a successful
+revoke from one successfully processed node.
 
-Автоматическая миграция существующих accounts **не реализована**. Для неё нужны
-отдельно согласованные доказательства владения, exact keys и local account
-review; лишь затем администратор может отдельно зарезервировать проверенный
-root marker и перенести account из manual inventory. Не создавать marker из
-совпадения email/username. Пока Tim остаётся в manual `homelab_users`, импорт
-того же Linux name запрещён. Не удалять его manual запись и не менять оба ключа
-ради тестирования интеграции.
+Automatic migration of existing accounts is **not implemented**. It needs
+separately agreed proof of ownership, exact keys and local account review;
+only then can an administrator separately reserve a verified root marker and
+move the account out of the manual inventory. Do not create a marker from a
+matching email/username. While Tim remains in the manual `homelab_users`,
+importing the same Linux name is forbidden. Do not delete his manual record
+and do not change both keys for the sake of testing the integration.
 
-Apply управляет **только импортированными accounts**, не пересобирает manual users.
-Используется существующая `users` role: exact authorized_keys replacement,
-password_lock, отсутствие sudo/root-equivalent groups, private .ssh permissions,
-удаление legacy direct sudoers grant и effective SSH/PAM/sudo/kubeconfig verifier.
-Единственное scoped расширение role — explicit `/home/<name>` при создании
-импортированного account; default/manual users сохраняют прежний OS home behavior.
-После role отдельный scoped verifier повторяет binding/home/sshd checks, разбирает
-**каждую** effective key строку настоящим `ssh-keygen`, требует exact fingerprints
-из reviewed export (без лишних/duplicate/invalid keys). Для disabled требуется
-**ноль effective keys** и nologin; одного nologin недостаточно для отзыва forwarding.
-Эти проверки не добавлены к manual Tim/owner path. Отдельно проверить permissions,
-effective forwarding policy и войти с собственного устройства. Verifier не доказывает наличие
-private key у человека. Без реального apply/login acceptance этого не обещать.
+The apply manages **only the imported accounts**; it does not rebuild manual
+users. The existing `users` role is used: exact authorized_keys replacement,
+password_lock, no sudo/root-equivalent groups, private `.ssh` permissions,
+removal of the legacy direct sudoers grant and the effective SSH/PAM/sudo/
+kubeconfig verifier. The only scoped role extension is an explicit
+`/home/<name>` when creating an imported account; default/manual users keep
+their previous OS home behavior. After the role, a separate scoped verifier
+repeats the binding/home/sshd checks, parses **every** effective key line with
+a real `ssh-keygen`, and requires the exact fingerprints from the reviewed
+export (no extra/duplicate/invalid keys). For a disabled state, **zero
+effective keys** and nologin are required; nologin alone is not enough to
+revoke forwarding. These checks were not added to the manual Tim/owner path.
+Separately verify permissions, the effective forwarding policy, and log in
+from your own device. The verifier does not prove that a person possesses the
+private key. Do not promise this without a real apply/login acceptance.
 
-## Отзыв и removed-host workflow
+## Revocation and the removed-host workflow
 
-1. Для удаления ключа удалить **только этот public key** из IdP attribute,
-   получить новый план, independently проверить оставшиеся fingerprints,
-   экспортировать и применить exact set. Удаление attribute/последнего ключа
-   **не означает успешный revoke**: active plan откажет. Для полного отзыва
-   требуется explicit `state: disabled`.
-2. Для отзыва **одного host** переместить alias из `hosts` в `revoked_hosts`.
-   На остальных hosts оставить `state: present`. Removed host получает explicit
-   disabled record, не исчезает из scope. Если убирается последний active host,
-   поставить `state: disabled`, можно оставить `hosts: []` и все aliases в revoked.
-3. Для полного отзыва оставить прежние hosts/tombstones, поставить `state: disabled`.
-   Disabled records не требуют доступного IdP или ключей: можно отозвать доступ
-   даже после удаления IdP user/при отказе IdP. UUID binding всё равно обязательна.
-4. Применить **ко всем** required hosts. Disabled означает сохранённые account/home,
-   nologin shell, пустой authorized_keys и отсутствие managed privileges.
-   Проверить каждый host/effective verifier. Оставить ledger и host tombstones
-   в Git и host markers на месте. Простое удаление assignment/host блокируется
-   проверкой history, а не считается revoke.
-5. При недоступной/выведенной из эксплуатации машине нельзя объявлять доступ
-   отозванным. Нужна отдельная проверяемая decommission/isolation процедура;
-   не удалять tombstone для получения зелёного результата.
+1. To remove a key, delete **only that public key** from the IdP attribute,
+   get a new plan, independently verify the remaining fingerprints, export
+   and apply the exact set. Deleting the attribute/the last key **does not
+   mean a successful revoke**: the active plan will refuse. A full revocation
+   requires an explicit `state: disabled`.
+2. To revoke **one host**, move the alias from `hosts` to `revoked_hosts`.
+   Keep `state: present` on the other hosts. The removed host gets an explicit
+   disabled record; it does not disappear from scope. If the last active host
+   is removed, set `state: disabled`; you may keep `hosts: []` and all aliases
+   in revoked.
+3. For a full revocation, keep the previous hosts/tombstones and set
+   `state: disabled`. Disabled records do not require an available IdP or
+   keys: access can be revoked even after the IdP user is deleted/when the
+   IdP is down. The UUID binding is still mandatory.
+4. Apply to **all** required hosts. Disabled means a preserved account/home,
+   nologin shell, empty authorized_keys and no managed privileges. Check each
+   host/effective verifier. Keep the ledger and host tombstones in Git and
+   the host markers in place. Simply deleting an assignment/host is blocked
+   by the history check and is not a revoke.
+5. With a machine unreachable/decommissioned, access cannot be declared
+   revoked. A separate verifiable decommission/isolation procedure is needed;
+   do not delete a tombstone just to get a green result.
 
-**Уже установленные SSH sessions, port forwards и процессы этим не гарантированно
-завершаются.** Отдельно согласовать inspection/termination active sessions/jobs,
-проверить другие SSH key providers/sshd overrides и доступные пользователю
-credentials. Не удалять home и не запускать глобальный destructive account cleanup.
-Возврат доступа — новое reviewed решение, не rollback старого export с отозванными
-ключами. Изменение IdP groups или отключение IdP account само по себе hosts не
-меняет; inactive active-assignment блокирует план с требованием explicit disable.
+**Already established SSH sessions, port forwards and processes are not
+guaranteed to terminate by this.** Separately arrange inspection/termination
+of active sessions/jobs, check other SSH key providers/sshd overrides and the
+user's available credentials. Do not delete the home or run a global
+destructive account cleanup. Restoring access is a new reviewed decision, not
+a rollback of an old export with revoked keys. Changing IdP groups or
+disabling an IdP account by itself changes nothing on hosts; an inactive
+active-assignment blocks the plan with a demand for an explicit disable.
 
 ## Offline acceptance
 
@@ -260,31 +289,33 @@ ansible-playbook -i inventory/hosts.yml \
   playbooks/authentik-ssh-users.yml --syntax-check
 ```
 
-Тесты используют fake HTTPS, настоящий parser публичных ключей, временный local
-inventory и **только default/--check Ansible**, без remote writes, реальных tokens
-или private key fixtures. SSH CA не реализуется.
+The tests use fake HTTPS, a real public-key parser, a temporary local inventory
+and **only default/--check Ansible**, without remote writes, real tokens or
+private key fixtures. An SSH CA is not implemented.
 
-**До production всё ещё нужны disposable Linux real-apply acceptance**, не на Tim/owner:
-creation → login; rotation (old key denied/new key allowed); disabled и removed-host
-(old keys denied, включая `ssh -N`/new forwards); корректный marker и отказ при
-другом UUID/unbound account; nonstandard home/alternate key file/Match отказ **до**
-account/key writes; competing writers и crash/stale-lock recovery. Также проверить
-реально запущенный sshd command line, fresh login с разных client addresses,
-уже установленные sessions/forwards, недоступный host и повтор partial apply.
-Эти действия здесь не выполнялись. Без них нельзя объявлять revocation работающим.
+**Before production, disposable-Linux real-apply acceptance is still needed**,
+not on Tim/owner: creation → login; rotation (old key denied/new key allowed);
+disabled and removed-host (old keys denied, including `ssh -N`/new forwards);
+a correct marker and refusal on a different UUID/unbound account; nonstandard
+home/alternate key file/Match refusal **before** account/key writes; competing
+writers and crash/stale-lock recovery. Also check the actually running sshd
+command line, fresh logins from different client addresses, already
+established sessions/forwards, an unreachable host and a repeated partial
+apply. None of these actions were performed here. Without them revocation
+cannot be declared working.
 
-### Ограниченный синтаксис OpenSSH Include
+### The limited OpenSSH Include syntax
 
-Импорт намеренно принимает только простые `Include` paths/globs из букв, цифр,
-`_ . / - * ? [ ]`, без кавычек, escape-последовательностей, `#`, `~` и `%`.
-Комментарии поддерживаются отдельными строками. Остальные формы могут быть
-валидными для OpenSSH, но importer останавливается до изменения accounts/keys:
-он не должен интерпретировать конфигурацию иначе, чем sshd. Любой `Match`
-в основном или включённом файле остаётся блокирующим условием. Не упрощать
-рабочую SSH-политику ради прохождения importer; использовать существующий
-reviewed manual Ansible path либо отдельно расширять verifier с реальными
-OpenSSH regression tests.
+The importer deliberately accepts only simple `Include` paths/globs of letters,
+digits, `_ . / - * ? [ ]`, without quotes, escape sequences, `#`, `~` and `%`.
+Comments are supported as separate lines. Other forms may be valid for
+OpenSSH, but the importer stops before changing accounts/keys: it must not
+interpret the configuration differently from sshd. Any `Match` in the main or
+an included file remains a blocking condition. Do not simplify the working SSH
+policy to satisfy the importer; use the existing reviewed manual Ansible path
+or separately extend the verifier with real OpenSSH regression tests.
 
-Регрессия использует настоящий `sshd -T` и `-T -C` с временным host key:
-Include filename с буквальным `#` может скрыть `Match` от shell-парсера, но
-теперь отвергается preflight. Это offline test, не приёмка SSH на нодах.
+The regression tests use a real `sshd -T` and `-T -C` with a temporary host
+key: an Include filename with a literal `#` can hide a `Match` from the shell
+parser, but is now rejected by the preflight. This is an offline test, not
+SSH acceptance on the nodes.

@@ -7,7 +7,7 @@ replay commands or infer present authority from a historical recovery claim.
 
 ---
 
-# Socrat: текущий контекст
+# Socrat: current context
 
 ## Management RAM move —16Nov, COMPLETE / CURRENT
 
@@ -352,7 +352,7 @@ normal login and back; top-level redirect (iframe blocked by native X-Frame-Opti
 password/repeat flow in existing theme/random background. No admin token or
 password processing in mini-service, External/groups unchanged. Native fixture
 update/CSRF/mismatch/success tests passed; fixture deleted. Owner now reports
-“вроде заработало” after fixes: no iframe (native DENY preserved), constant public
+“seems to work now” after fixes: no iframe (native DENY preserved), constant public
 HTTPS redirects (no internal :8080). Argo verified at4216e51c Synced/Healthy;
 authenticated External HTTP redirect probe passed. Full real-human password
 change/logout/re-login/MFA cycle not independently confirmed. Native submit label Continue,
@@ -638,15 +638,16 @@ no push or broad reconciliation. NL provider console remains unverified.
 [DNS rollout](moscow-authoritative-dns-stage-20261112.md).
 
 
-## TV / Traffic Light — принято 11 ноября 2026
+## TV / Traffic Light — accepted November 11, 2026
 
-Owner-approved адресный CSS только для native Argo909 на public TV opt-in:
-padding3CSSpx, gap2CSSpx, flex redistribution. Ручныеw12/h1 сохранены,49 блоков
-подтверждены реальным screenshot и WebView-замерами. Обычный ноутбук/другие панели/
-Fully55%/font75% не менялись; не возвращать прежнее растягиваниеw24/h2. MoscowIP928
-добавлен справа и работает по свежему TCP443 probe91.189.82.238. Код, scoped Helm,
-приёмка и границы: [TV-CSS и сопровождение](../../applications/android-tv/README.md#maintaining-the-argo-tv-stylesheet).
-Это исключение из старого «без CSS» только для одной панели, не глобальное разрешение.
+Owner-approved scoped CSS only for the native Argo909 panel on the public TV
+opt-in: padding3CSSpx, gap2CSSpx, flex redistribution. The manual w12/h1 are
+preserved;49 blocks confirmed by a real screenshot and WebView measurements.
+The ordinary laptop/other panels/Fully55%/font75% were not changed; do not
+bring back the former w24/h2 stretching. MoscowIP928 was added on the right and
+works via a fresh TCP443 probe of91.189.82.238. Code, scoped Helm, acceptance
+and boundaries: [TV-CSS and its maintenance](../../applications/android-tv/README.md#maintaining-the-argo-tv-stylesheet).
+This is an exception to the old "no CSS" rule for one panel only, not a global permission.
 
 ## SSH management policy — owner override 2026-11-10
 
@@ -698,300 +699,342 @@ accepted restricted profile.30Mbit Proxmox cap, physical reboot/HA/NAT rebinding
 remain unverified. Do not replay earlier failed enrollment or bootstrap admission.
 [Current setup and remaining gates](socrat-5-worker-20261110.md).
 
-## Исторический bootstrap socrat-5 — superseded by worker setup above
+## Historical socrat-5 bootstrap — superseded by the worker setup above
 
-Владелец выдал NATed Debian13 LXC, исходное имя testing-class; WG create/delete
-успешен, SSH22 root key-only. Новый согласованный идентификатор **socrat-5**,
-mesh **10.250.0.41/32**, peer только Moscow.40. На Москве source-scoped pre-DNAT
-изоляция+boot dependency и один persistent/runtime WG peer приняты без restart;
-старые peers и VPN relay healthy сохранены. **Owner запустил WG: handshake/ping приняты; native SSH root по independently
-pinned ED25519 принят, Ansible pipelining работает. Один negative TCP443 probe
-из.41 к Moscow.40 получил timeout. Полная mesh/failure/isolation matrix и
-K3s/LXC suitability НЕ приняты.**
-[Runbook, source, fingerprint и pending gates](socrat-5-bootstrap-20261110.md).
-Исторический bootstrap завершён и superseded:5 уже в Socrat/K3s. Не переигрывать one-time admission; для5 обычный scheduling требует no-NFS toleration и storage admission guard.
+The owner provided a NATed Debian13 LXC, original name testing-class; WG
+create/delete succeeded, SSH22 root key-only. The new agreed identifier is
+**socrat-5**, mesh **10.250.0.41/32**, peer only Moscow.40. On Moscow,
+source-scoped pre-DNAT isolation+boot dependency and one persistent/runtime WG
+peer were accepted without a restart; the old peers and the healthy VPN relay
+are preserved. **The owner started WG: handshake/ping accepted; native SSH root
+via an independently pinned ED25519 accepted, Ansible pipelining works. One
+negative TCP443 probe from .41 to Moscow.40 got a timeout. The full
+mesh/failure/isolation matrix and K3s/LXC suitability are NOT accepted.**
+[Runbook, source, fingerprint and pending gates](socrat-5-bootstrap-20261110.md).
+The historical bootstrap is complete and superseded:5 is already in Socrat/K3s.
+Do not replay the one-time admission; for5 ordinary scheduling requires the
+no-NFS toleration and the storage admission guard.
 
-## Закрытие сессии: RF/NL split отложен владельцем
+## Session close: RF/NL split deferred by the owner
 
-**10 ноября: владелец решил оставить рабочую схему, серверный split не внедрять.**
-VPN-трафик по-прежнему Москва → NL → Интернет; существующий Happ bypass сохранён.
-Read-only настройки панели: routing/onadd `Alchemmist VPN`, GlobalProxy=true,
-49 DirectSites, DirectIp/ProxySites/ProxyIp пусты; активность на каждом телефоне не
-проверялась. Это не серверный GeoIP split. Исследование — reference, **не pending
-implementation и не разрешение переносить VPN termination на Москву**.
-[Исследование и альтернативы](../../research/vpn-split-routing-research-20261110.md).
+**November 10: the owner decided to keep the working scheme and not to deploy
+the server split.** VPN traffic still goes Moscow → NL → Internet; the existing
+Happ bypass is preserved. Read-only panel settings: routing/onadd
+`Alchemmist VPN`, GlobalProxy=true, 49 DirectSites, DirectIp/ProxySites/ProxyIp
+empty; per-phone activity was not checked. This is not a server-side GeoIP
+split. The research is a reference, **not a pending implementation and not
+permission to move VPN termination to Moscow**.
+[Research and alternatives](../../research/vpn-split-routing-research-20261110.md).
 
-При закрытии сессии fresh read-only на Москве: именно `vpn-transit-655857b776-9mt9v`
-SANDBOX_READY; watchdog kubernetes/healthy, data_path_healthy=true, failures=0,
-agent_active=true, native_active=false, fallback_marker=false. Конфиг user.json
-совпадает по содержимому с Git: tunnel TCP80/443/32053/32083/32084 и
-UDP443/32085/32086 →10.250.0.2, freedom sendThrough10.250.0.40.
-Это локальный статус/штатная TLS-проверка пути, **не новая полная проверка клиентов,
-etcd/WAL/всего кластера или DR**. Никаких activate/failback/перезапусков не выполняли.
+At session close a fresh read-only check on Moscow: exactly
+`vpn-transit-655857b776-9mt9v` was SANDBOX_READY; watchdog kubernetes/healthy,
+data_path_healthy=true, failures=0, agent_active=true, native_active=false,
+fallback_marker=false. The user.json config matches the Git contents: tunnel
+TCP80/443/32053/32083/32084 and UDP443/32085/32086 →10.250.0.2, freedom
+sendThrough10.250.0.40. This is a local status/routine TLS check of the path,
+**not a new full verification of clients, etcd/WAL/the whole cluster, or DR**.
+No activate/failback/restart was performed.
 
-[Как устроен Pod, границы Xray/3x-ui и ownership](vpn-mesh-runtime-20261110.md#what-the-pod-actually-does).
-Public wiki: [VPN](../../../wiki/content/network/vpn.md). Секреты и recovery receipts
-остаются вне Git; подготовительные/migration apply не повторять.
-
-
-## Текущий транспорт — 10 ноября 2026 (supersedes прежний отдельный WG)
-
-Пользовательский relay Москвы теперь **Pod `vpn-transit` на socrat-4** под Argo;
-при реальном отказе — независимый fenced systemd fallback. Оба используют тот же
-Xray и конфиг. Общий `wg-socrat`:Москва10.250.0.40→NL10.250.0.2; отдельный
-`wg-vpn-transit` остановлен/disabled на обеих нодах, ключи/конфиги архивированы.
-Management51832UDP/51840TCP остаётся отдельным systemd-relay, независимо от Pod.
-DNS:.40:53→.2:5354, старый dnsmasq.2:53 не трогали. Только machine.40 исключён из
-старого private-web443 DNAT; human/admin ACL не расширены. Trojan допускает
-только mesh.40/32 и точный health-loopback127.0.0.1/32.
-
-Реальный timer автоматически восстановил native relay после остановки только
-московского worker-agent и его relay-контейнера; затем штатный failback вернул Pod.
-Все пять HOME профилей приняты в Pod/native/fallback и **после удаления отдельного
-WG**;17 клиентов/91 bindings/подписки84URI/77JSON/ключи сохранены, fixture cleanup
-подтверждён. Кластер:3 healthy voters/hashKV equal revision17514049,5Ready/noMemoryPressure.
-134 tests+14 subtests, новые private archives2/4 off-host SHA verified.
-Это не zero-downtime rollout: исправлены TIME_WAIT guard, management source IP и
-Pod bind-capability; не скрывать ошибки/короткую недоступность, не приписывать
-результаты native-fallback probe первому неудачному Pod. [Подробности и операции](vpn-mesh-runtime-20261110.md).
-API loss при работающем relay не вызывает переключения; native sticky до явного
-failback. Mobile/AWG/полный DR/reboot/HA не доказаны. Подписка/публичный вход прежние,
-Mac/Tunnelblick/default routes не менялись. Подготовительные apply не переигрывать.
+[How the Pod is arranged, the Xray/3x-ui boundaries and ownership](vpn-mesh-runtime-20261110.md#what-the-pod-actually-does).
+Public wiki: [VPN](../../../wiki/content/network/vpn.md). Secrets and recovery
+receipts stay outside Git; do not replay the preparatory/migration apply.
 
 
-Актуализировано **10 ноября 2026**: production VPN Pod/native и общий mesh приняты; остальные
-срезы сохраняют свои даты. Это не новая полная live-проверка кластера.
-Начинать с [карты справочника](../../README.md). Старые датированные журналы — evidence
-своего этапа, не задания повторить миграцию и не замена текущим manifests/live state.
+## Current transport — November 10, 2026 (supersedes the former separate WG)
 
-## Сеть и вход
+The Moscow user relay is now the **Pod `vpn-transit` on socrat-4** under Argo;
+on a real failure, an independent fenced systemd fallback. Both use the same
+Xray and config. Shared `wg-socrat`: Moscow10.250.0.40→NL10.250.0.2; the
+separate `wg-vpn-transit` is stopped/disabled on both nodes, keys/configs
+archived. Management51832UDP/51840TCP remains a separate systemd-relay,
+independent of the Pod. DNS: .40:53→.2:5354; the old dnsmasq .2:53 untouched.
+Only machine.40 is excluded from the old private-web443 DNAT; human/admin ACLs
+were not widened. Trojan admits only mesh.40/32 and the exact health-loopback
+127.0.0.1/32.
 
-**NetBird — основной пользовательский доступ во внутреннюю сеть Socrat.**
-Не предлагать людям ручной профиль «socrat-wg» как обычный onboarding.
+A real timer automatically restored the native relay after stopping only the
+Moscow worker-agent and its relay container; the ordinary failback then
+returned the Pod. All five HOME profiles were accepted in Pod/native/fallback
+and **after the removal of the separate WG**;17 clients/91 bindings/
+subscriptions84URI/77JSON/keys preserved, fixture cleanup confirmed. Cluster:
+3 healthy voters/hashKV equal revision17514049,5Ready/noMemoryPressure.
+134 tests+14 subtests; the new private archives2/4 off-host SHA verified.
+This is not a zero-downtime rollout: the TIME_WAIT guard, management source
+IP and Pod bind-capability were fixed; do not hide errors/short unavailability
+and do not attribute the native-fallback probe results to the first failed
+Pod. [Details and operations](vpn-mesh-runtime-20261110.md).
+API loss with the relay working causes no switchover; native is sticky until
+an explicit failback. Mobile/AWG/full DR/reboot/HA are not proven. The
+subscription/public entrance are as before; Mac/Tunnelblick/default routes
+unchanged. Do not replay the preparatory apply.
 
-| Слой | Текущий контракт |
+
+Updated **November 10, 2026**: the production VPN Pod/native and the shared
+mesh are accepted; the other sections keep their dates. This is not a new full
+live verification of the cluster. Start from the [reference map](../../README.md).
+Old dated journals are evidence of their stage, not requests to repeat a
+migration and not a replacement for current manifests/live state.
+
+## Network and access
+
+**NetBird is the main user access into the internal Socrat network.**
+Do not offer people a manual "socrat-wg" profile as ordinary onboarding.
+
+| Layer | Current contract |
 | --- | --- |
-| NetBird | Личный Authentik/MFA, отдельно согласованные JWT-группы/device policies |
-| Маршруты администратора | Только четыре адреса нод `/32`, не весь LAN/pod/service CIDR и не exit node |
-| Ноды 0 / 1 / 2 / 3 | `10.250.0.1` / `.3` / `.2` / `.5`; SSH `2222`, pinned host keys |
-| Межнодовая сеть | Реальный интерфейс `wg-socrat` сохранён: NetBird human ingress его не заменял |
-| Recovery | Независимый standalone WireGuard владельца, обычно выключен; не обычный путь входа |
-| Рабочий VPN Mac | Обязательный Tunnelblick; не отключать и не менять DNS/routes ради homelab |
-| Public HTTPS | HOME `109.173.40.247`, VPS `109.120.141.60`; обычный DNS/TLS без Mac overrides |
+| NetBird | Personal Authentik/MFA, separately agreed JWTgroups/device policies |
+| Administrator routes | Only the four node addresses `/32`, not the whole LAN/pod/service CIDR and not an exit node |
+| Nodes 0 / 1 / 2 / 3 | `10.250.0.1` / `.3` / `.2` / `.5`; SSH `2222`, pinned host keys |
+| Inter-node network | The real `wg-socrat` interface preserved: NetBird human ingress did not replace it |
+| Recovery | The owner's independent standalone WireGuard, usually off; not the ordinary entry path |
+| Work VPN on Mac | Tunnelblick mandatory; do not disable it or change DNS/routes for the homelab |
+| Public HTTPS | HOME `109.173.40.247`, VPS `109.120.141.60`; ordinary DNS/TLS without Mac overrides |
 
-У NetBird на Mac DNS выключен, выбраны только четыре согласованных маршрута.
-Setup keys для людей не используются. Автоматический user/device approval выключен,
-но принадлежность устройства и реальные разрешения проверяются. Cold start без
-management ранее не прошёл: не обещать HA и не удалять recovery WG.
+NetBird on the Mac has DNS off; only the four agreed routes are selected.
+Setup keys are not used for people. Automatic user/device approval is off, but
+device ownership and real permissions are checked. A cold start without
+management failed earlier: do not promise HA and do not remove the recovery WG.
 
-SSH transport, публичный ключ/Linux account, sudo, Kubernetes RBAC и app role —
-**независимые разрешения**. Публичные HTTPS-входы не означают публичный SSH.
-Не удалять known_hosts, не добавлять public fallback/ProxyJump и не отключать TLS.
-Ключи/пароли/QR/подписки/activation URLs не публиковать.
+SSH transport, public key/Linux account, sudo, Kubernetes RBAC and the app
+role are **independent permissions**. Public HTTPS entrances do not imply
+public SSH. Do not delete known_hosts, add public fallback/ProxyJump, or
+disable TLS. Do not publish keys/passwords/QR codes/subscriptions/activation URLs.
 
-Процедуры: [сеть](../../network/README.md), [NetBird и onboarding](../../network/netbird/README.md),
-[SSH без sudo](../../auth/host-access/ssh-user.md), [Linux/RBAC](../../auth/host-access/identity-host-access.md),
-[публичный DNS](../../network/public-entry/public-dns.md).
+Procedures: [network](../../network/README.md), [NetBird and onboarding](../../network/netbird/README.md),
+[SSH without sudo](../../auth/host-access/ssh-user.md), [Linux/RBAC](../../auth/host-access/identity-host-access.md),
+[public DNS](../../network/public-entry/public-dns.md).
 
-## Актуально: production VPN через Москву, 9 ноября 2026
+## Current: production VPN via Moscow, November 9, 2026
 
-**Клиенты/HOME → Москва91.189.82.238 → NL109.120.141.60**. URL подписки
-`vpn.alchemmist.xyz` неизменен; обновлять существующую подписку, не аккаунт/ключи.
-Все три DNS-writer публикуют статический VPN A Москвы без NL fail-open. Нативные
-Hosts7/7 обновлены:17 identities/91 bindings сохранены,32063 disabled. Подписки всех
-17 клиентов:84 URI/77 JSON, обычный DNS/валидный TLS, старого NL endpoint нет.
-После восстановления проверены из HOME три VLESS/REALITY, Trojan и WG:200/65536B/
-контрольный hash, отдельный HTTPS exit-check=NL. UDP32…8192B через реальный
-зашифрованный межсерверный канал также проверен; это не authenticated AWG/mobile.
+**Clients/HOME → Moscow91.189.82.238 → NL109.120.141.60**. The subscription
+URL `vpn.alchemmist.xyz` is unchanged; refresh the existing subscription, not
+the account/keys. All three DNS writers publish the static Moscow VPN A record
+without an NL fail-open. Native Hosts7/7 updated:17 identities/91 bindings
+preserved,32063 disabled. Subscriptions of all 17 clients: 84 URI/77 JSON,
+ordinary DNS/valid TLS, and no old NL endpoint. After restoration three
+VLESS/REALITY, Trojan and WG were verified from HOME: 200/65536B/control
+hash, with the separate HTTPS exit-check=NL. UDP32…8192B through the real
+encrypted inter-server channel was also verified; this is not authenticated
+AWG/mobile.
 
-HOME0/3 management WG и HOME1 pinned-TLS/GOST идут через Москву; известные NL
-DNS/HTTPS/VPN потоки на HOME0/1/3 перенаправляются scoped persistent nft DNAT.
-Не глобальный exit node, Mac/default routes/DNS-настройки не менялись. Private
-DNS:Москва10.250.0.40:53→NL10.251.4.2:53. NS1 HOME и NS2/glue NL сохранены.
-NL WAN raw VPN закрыт; только Trojan HTTP-путь на shared443 допускает московский
-private10.251.4.1/32 и точный loopback127.0.0.1/32 для штатной health-проверки.
-Public403/private101, spoofedXFF не помогает; портал200/LMS303/Argo200 сохранены.
-Такой же gate установлен/проверен в native Caddy fallback.
+HOME0/3 management WG and HOME1 pinned-TLS/GOST go through Moscow; the known
+NL DNS/HTTPS/VPN flows on HOME0/1/3 are redirected by a scoped persistent nft
+DNAT. Not a global exit node; Mac/default routes/DNS settings were not changed.
+Private DNS: Moscow10.250.0.40:53→NL10.251.4.2:53. NS1 HOME and NS2/glue NL
+preserved. NL WAN raw VPN is closed; only the Trojan HTTP path on shared443
+admits the Moscow private10.251.4.1/32 and the exact loopback127.0.0.1/32 for
+the routine health check. Public403/private101, spoofedXFF does not help;
+portal200/LMS303/Argo200 preserved. The same gate is installed/verified in the
+native Caddy fallback.
 
-**Инцидент не скрывать:** первоначальный ACL пропустил local health и вызвал
-watchdog fallback/остановку NL K3s. Исправлено loopback-исключением, проверки и
-watchdog не отключены. Штатный failback исходного member без reset/replacement;
-160MB Raft catch-up занял3m45s, bounded start timeout180→600s. После восстановления:
-3 healthy voters/common leader/hashKV equal (revision17449598),5Ready/noMemoryPressure,
-все пять транспортов и17 подписок повторно приняты, watchdog healthy/fallback off.
-Московский socrat-4 — agent-only10.250.0.40, bootstrap NoSchedule сохранён,
-не control-plane/etcd/обычный heavy worker. Четыре human admin routes не расширялись.
+**Do not hide the incident:** the initial ACL missed the local health check and
+caused a watchdog fallback/stop of the NL K3s. Fixed with a loopback exception;
+checks and the watchdog were not disabled. The ordinary failback of the
+original member without reset/replacement; the 160MB Raft catch-up took
+3m45s, the bounded start timeout raised 180→600s. After restoration:
+3 healthy voters/common leader/hashKV equal (revision17449598),
+5Ready/noMemoryPressure, all five transports and17 subscriptions re-accepted,
+watchdog healthy/fallback off.
 
-Бэкапы пяти нод плюс post-recovery supplement — private/off-host/SHA verified;
-история/старые recovery receipts сохранены.126 tests+14 subtests passed — срез приёмки,
-не непрерывный healthcheck. Mobile/Happ interactive, authenticated AWG, полный DR/
-chaos/reboot и сохранение end-user IP enforcement не доказаны. Не обещать HA/TSPU immunity.
-Подробности и custody: [production runbook](vpn-production-cutover-20261109.md).
-Исторический staging: [Moscow bootstrap](moscow-vpn-transit-20261109.md).
-Не переисполнять migration/prepare/apply: fresh preimage/CAS, uncertain→разбор.
+Backups of the five nodes plus a post-recovery supplement — private/off-host/
+SHA verified; history/old recovery receipts preserved. 126 tests+14 subtests
+passed — an acceptance snapshot, not a continuous health check.
+Mobile/Happ interactive, authenticated AWG, full DR/chaos/reboot and
+preservation of end-user IP enforcement are not proven. Do not promise
+HA/TSPU immunity. Details and custody: [production runbook](vpn-production-cutover-20261109.md).
+Historical staging: [Moscow bootstrap](moscow-vpn-transit-20261109.md).
+Do not re-execute migration/prepare/apply: fresh preimage/CAS, uncertain→investigate.
 
-## Исторический VPN-срез 8 ноября (superseded)
-
-
-
-С 8 ноября — только конфигурация существующего socrat-2, **без покупки VPS/IP**.
-Свежий аудит и приватный WAL-aware backup выполнены. Установлены только ACCEPT
-backend-счётчики, не блокировки. REALITY32053 исправлен штатным API: Yahoo→Yahoo;
-прошли fallback TLS1.3/H2 и synthetic64KiB до/после. Временные machine credentials
-и fixture удалены, прежние токены/users/settings сохранены. Plaintext32063 и raw
-backends ещё не закрыты; у всех7 plaintext-связей уже есть encrypted alternative,
-но device/subscription acceptance не доказана. `x-ui -getApiToken` ротирует токен,
-не извлекает его; не запускать ради чтения. Не выключать старые клиентские профили и не обещать обход IP/ASN-ban.
-[Актуальный scope, исследования, инструменты и gates](../../network/vpn-egress/vpn-hardening.md).
-
-## Личности и авторизация
-
-Начать с [текущего состояния identity](../../auth/authentik/operations/identity-current-state.md), затем
-[операций](../../auth/authentik/operations/identity-operations.md) и [карты интеграций](../../auth/authentik/integrations/identity-integrations.md).
-
-- Owner — `alchemmist`, единственный человек в `homelab-owner`.
-- Tim: **логин `antropophag`**, новая native Authentik identity после согласованного
-  пересоздания; UUID закреплён в account mappings. Display name Tim и Linux `tim`
-  — не логин IdP. На read-only проверке пароль ещё не задан, MFA/первого входа нет.
-  Create user не запускает автоматическую установку пароля. Старый отдельный
-  activation flow удалён, ссылка отозвана; SMTP invitation/recovery не настроены.
-- Native OIDC: Grafana, Harbor, Rancher, Open WebUI, Wiki, LiteLLM, отдельно Argo CD.
-  Admission через IdP не выдаёт native admin. Роли и exact subject links проверять
-  по источникам, не по email или похожему имени.
-- n8n/3x-ui, Kuma admin/Syncthing — только штатный логин сервиса; внешние Authentik proxy gates удалены.
-  не универсальный account SSO. Umami для Tim **приостановлен** до native OIDC (#85).
-- **Observer принят 8 ноября:** Rancher, Grafana, Wiki, Argo CD. Danila добавлен в
-  `homelab-observer`, ошибочная `authentik Read-only` снята, согласованный NetBird
-  сохранён; пароль/MFA и персональные native app/RBAC записи не создавались.
-  Обычному следующему человеку достаточно IdP-группы и native SSO/JIT. Имеющиеся
-  owner/editor/direct grants аддитивны, observer их не понижает.
-- Отзыв проверен на synthetic identity: старые cookie/действующий Rancher bearer,
-  Wiki MCP и новый вход без группы; автоматический native cache remove/re-add.
-  Worker не создаёт users/roles; его доступность контролируют Prometheus alerts.
-  Не обещать мгновенный logout всех OAuth/JWT. **Harbor для observer закрыт**:
-  нативный CLI-кеш не прошёл отзыв, follow-up #134. Не возвращать Guest grants
-  по старому readiness receipt. [Границы и evidence](../../auth/roles/observer/native-observer.md).
-- Machine APIs, robots, MCP, agents, webhooks сохраняют отдельные credentials;
-  их нельзя переводить на browser MFA redirects.
-- Grafana anonymous org access выключен. Исключение — только явно shared
-  `socrat-traffic-light`. Wiki read public, запись — native OIDC/роль, MCP — bearer.
-
-## SPI: полный сервис в отдельном репозитории — 9 ноября 2026
-
-Канонический код **frontend + backend** теперь в
-[`alchemmist/spi-triage`](https://github.com/alchemmist/spi-triage), не только UI.
-Старый `spi-queue-ui` — прежнее имя того же репозитория; отдельная frontend-схема
-была ошибкой и убрана из Git. Один образ/релиз, существующий Argo `spi-triage`;
-chart и cluster values остаются в homelab. CI42585299451:295тестов в native image
-без пропусков/сети при1CPU/384Mi, release image собран. **Publish skipped**, не
-релиз: `PUBLISH_ENABLED=false`; native cluster access/Harbor остаются блокерами.
-`bundleEnabled=false`:20ресурсов рендерятся идентично прежним; старые code/UI
-ConfigMap-копии заморожены до безопасной активации, это не второй источник разработки.
-**Продакшн на новый bundle ещё не переключён.** Не заявлять live UID/readiness,
-queue counts или browser acceptance по CI/рендеру. Owner отменил backup prerequisite
-для этого выноса/релизов, но не разрешал удалять архивы, убивать paid work или
-сбрасывать budgets/leases. Нужен естественный drain и protected production review,
-не новый backup blocker. Полные границы/проверки/следующие шаги:
-[SPI](../../applications/spi/spi-incident-triage.md#current-source-extraction--9-november-2026).
-
-## Деплой и источники
-
-Постоянные изменения оформляются в Ansible/Helm/Git. Workloads — Argo CD,
-`root → deploy/argocd/apps`, проект `default`. Fleet GitRepo/bundles retired;
-наличие Rancher Fleet controllers не означает возврат к Fleet deployment.
-
-Для подключённых приложений: build/test → immutable Harbor image →
-`alchemmist/deploy-to-socrat@v1` → tag/digest в homelab main → Argo reconciliation
-→ readiness и функциональная проверка. Push образа или коммит не равен deployment.
-Уточнять состояние `automated.enabled`, hooks и конкретной Application; не делать
-blanket sync/prune, `helm upgrade` или ручной image patch для обхода GitOps.
-
-Публичный ingress/policy принадлежат **своему приложению**. Aggregate
-`public-web-entry` удалён; его не восстанавливать. Grafana сейчас имеет Application
-`grafana`, chart `charts/grafana` и `deploy/platform/grafana/public-entry`.
-Не искать его текущего владельца в старом `kube-prometheus-stack` app.
-
-Мониторинг разделён на `grafana`, `prometheus`, `alertmanager`, `prometheus-operator`,
-`node-exporter`, `kube-state-metrics`, `loki`, `tempo`, `pyroscope`;
-дашборды/rules/probes — отдельный `monitoring-k3s`. Handoff закрыт: старые
-`kube-prometheus-stack`, `prometheus-stack`, `otel-backends`, `profiling` удалены без
-каскадного удаления. Auto-sync включён у действующих владельцев. На закрытии
-первого этапа сохранены 103 UID ресурсов; на окончательном разделении
-Prometheus-компонентов повторно проверены все 77 ресурсов этого подмножества,
-8 runtime Pods без перезапуска, 4 PVC и UID/содержимое 3 целевых Secrets.
-Неиспользуемый общий ConfigMap удалён отдельно по UID. Не повторять retirement и не возвращать старые owners.
-Итоговый checkpoint — `0bb4e31`; 104 профильных теста и 24 subtest, public regression
-134/134. Это результаты закрытия миграции, не замена новой live-проверке.
-Остаётся отдельная проблема WAL Prometheus; сбой digest блога исправлен
-параллельным релизом `f485c74` (blog снова Synced/Healthy). Это **не** обещание
-целостности WAL или здоровья всего кластера. Карта/приёмка и границы:
-[деплой](../../platform/delivery/cluster-deploy.md), [наблюдаемость](../../observability/monitoring/observability-current.md),
-[первый closeout](../../observability/monitoring/monitoring-service-split.md),
-[окончательное разделение Prometheus-компонентов](../../observability/monitoring/prometheus-service-split.md).
-
-## Топология и данные
-
-- Последняя принятая native-проверка etcd: исходные voters **0/1/2**, кворум два;
-  members `socrat-0-36692c46`, `socrat-1-2398a245`, `socrat-2-eb4ac34e`.
-  Прежнюю запись «0/2/3, нода1 без голоса» не использовать как текущую топологию.
-- socrat-0: дом/RTX3090, vLLM/LLM, Authentik/PG, Wiki PVC, Kuma MariaDB и NFS.
-  На проверке Prometheus pod также на socrat-0, не выводить placement из имени app.
-- socrat-1: Grafana, Loki/Tempo/Pyroscope и часть приложений на проверке.
-- socrat-2: VPS/3x-ui/edge; img-proxy закреплён именно здесь (`b3ad6e2`).
-- socrat-3: внешняя control-plane/etcd нода и пользовательский desktop.
-- Два публичных IP не реплицируют backend, GPU, SQLite/PVC или PostgreSQL.
-  Singletons и retained PVC не являются HA/проверенным off-node DR.
-
-Scheduler/placement сверять перед работой; старые offload-таблицы не текущая правда.
-Resource budgets: `ansible/vars/container-resources.yml`, native admission policy;
-requests не резервируют физическую память, сумма limits не доказывает N−1.
-
-## Мониторинг, бот и телевизор
-
-Collector — sole scraper; Prometheus принимает OTLP, Loki/Tempo работают в K8s.
-Dashboard/rules/probes в `charts/monitoring-k3s`, datasource/provisioning Grafana —
-в его текущем chart. English titles/descriptions; не скрывать telemetry gaps,
-не превращать отсутствие данных в здоровый ноль. Чтение метрик — через read-only
-Grafana MCP/API, браузер — для визуальной проверки.
-
-SPI triage использует durable queue, read-only evidence и scoped GitHub App;
-не получает права автоматически чинить инфраструктуру или закрывать инциденты.
-[Бот](../../socrat-bot/operations.md), [SPI](../../applications/spi/spi-incident-triage.md), [n8n](../../n8n/n8n-workflows.md).
-Ручная эскалация20→10 не равна смене severity и не обещает SLA.
-
-TV использует public traffic-light URL канонического Grafana, без внутреннего VPN.
-Профиль `xiaomi-tv`/peer отозван; `alchemmist-tv` для YouTube сохранён отдельно.
-Не стирать app data WireGuard. Fully55%/font75%, injectJsCode пуст; актуальный
-TV layout в Git, старые panel coordinates не повторять. Физический пульт/cold boot
-не считать повторно проверенными по одному screenshot: [TV](../../applications/android-tv/README.md).
-
-## Безопасный порядок работы
-
-1. Fresh status/fetch и сверка владельца ресурса, версии, UID и реального placement.
-2. Read-only аудит; явный scope, private backup, fresh preconditions/lock/CAS.
-3. Декларативное изменение и профильные tests/render/syntax checks.
-4. Только согласованное точечное применение; uncertain write → остановка/разбор,
-   не слепой retry. Никаких глобальных firewall/DNS/VPN/K3s/DB рестартов попутно.
-5. Отдельно доказать readiness, native права, negative cases и реальные user steps.
-
-Не трогать посторонние worktree/Playwright profile. Не stash/reset/force-push.
-Для Ansible единый `inventory/hosts.yml`, четыре ноды `Socrat`; для подмножества
-явный `--limit`. App/browser MFA не даёт право взять owner kubeconfig.
-Локальные `/tmp`-артефакты не постоянный deployment dependency.
-
-Эта актуализация — документация с read-only аудитом, не повторная миграция,
-не browser acceptance, не завершённый первый вход человека и не общий зелёный suite.
+## Historical VPN snapshot of November 8 (superseded)
 
 
-## MCP в репозитории
 
-Agent entrypoint — `AGENTS.md`, settings — `.pi/mcp.json` (без секретов в Git).
-Официальные подключения и полный audit/ограничения: [official-mcp.md](../../platform/agent-access/official-mcp.md).
-n8n MCP после локального обновления токена проверен (`initialize`/`tools/list`)
-и включён на Mac: поиск/чтение workflows, без execution. Токен только в private
-файле0600, не в Git. В committed config n8n пока disabled; другие машины не
-настроены автоматически. Umami остаётся опциональным и ждёт authorized analytics
-key; не обходить это через reset/DB. Новых обязательных MCP на кластере не требуется.
+Since November 8 — only configuration of the existing socrat-2, **without
+buying a VPS/IP**. A fresh audit and a private WAL-aware backup were done.
+Only ACCEPT backend counters were installed, not blocks. REALITY32053 fixed
+via the usual API: Yahoo→Yahoo; the fallback TLS1.3/H2 and synthetic64KiB
+passed before/after. Temporary machine credentials and fixtures deleted, the
+former tokens/users/settings preserved. Plaintext32063 and the raw backends
+are not closed yet; all7 plaintext connections already have an encrypted
+alternative, but device/subscription acceptance is not proven. `x-ui
+-getApiToken` rotates the token, it does not extract it; do not run it just to
+read. Do not switch off the old client profiles and do not promise an
+IP/ASN-ban bypass.
+[Current scope, research, tools and gates](../../network/vpn-egress/vpn-hardening.md).
+
+## Identities and authorization
+
+Start from [the current identity state](../../auth/authentik/operations/identity-current-state.md), then
+[operations](../../auth/authentik/operations/identity-operations.md) and [the integration map](../../auth/authentik/integrations/identity-integrations.md).
+
+- Owner — `alchemmist`, the only person in `homelab-owner`.
+- Tim: **login `antropophag`**, a new native Authentik identity after the
+  agreed recreation; the UUID is pinned in the account mappings. Display name
+  Tim and Linux `tim` are not the IdP login. On the read-only check the
+  password was not yet set; no MFA/first login. Create user does not trigger
+  an automatic password set. The old separate activation flow was deleted, the
+  link revoked; SMTP invitation/recovery are not configured.
+- Native OIDC: Grafana, Harbor, Rancher, Open WebUI, Wiki, LiteLLM, and Argo
+  CD separately. Admission through the IdP does not grant native admin.
+  Verify roles and exact subject links by the sources, not by email or a
+  similar name.
+- n8n/3x-ui, Kuma admin/Syncthing — only the service's ordinary login; the
+  external Authentik proxy gates were removed. This is not universal account
+  SSO. Umami for Tim is **suspended** until native OIDC (#85).
+- **Observer accepted November 8:** Rancher, Grafana, Wiki, Argo CD. Danila
+  was added to `homelab-observer`, the erroneous `authentik Read-only` removed,
+  the agreed NetBird preserved; no password/MFA or personal native app/RBAC
+  records were created. For the ordinary next person, an IdP group and native
+  SSO/JIT suffice. The existing owner/editor/direct grants are additive; the
+  observer does not downgrade them.
+- Revocation was verified on a synthetic identity: old cookies/the valid
+  Rancher bearer, Wiki MCP and a new login without the group; automatic native
+  cache remove/re-add. The worker creates no users/roles; its availability is
+  watched by Prometheus alerts. Do not promise instant logout of all
+  OAuth/JWT. **Harbor is closed for the observer**: the native CLI cache did
+  not pass revocation, follow-up #134. Do not revive Guest grants from the old
+  readiness receipt. [Boundaries and evidence](../../auth/roles/observer/native-observer.md).
+- Machine APIs, robots, MCP, agents, webhooks keep their separate credentials;
+  they must not be moved to browser MFA redirects.
+- Grafana anonymous org access is off. The exception is only the explicitly
+  shared `socrat-traffic-light`. Wiki read is public, writes are native
+  OIDC/role, MCP is bearer.
+
+## SPI: the full service in a separate repository — November 9, 2026
+
+The canonical **frontend + backend** code now lives in
+[`alchemmist/spi-triage`](https://github.com/alchemmist/spi-triage), not just
+the UI. The old `spi-queue-ui` is the former name of the same repository; a
+separate frontend scheme was a mistake and removed from Git. One image/release,
+the existing Argo `spi-triage`; the chart and cluster values stay in the
+homelab. CI42585299451: 295 tests in the native image without skips/network at
+1CPU/384Mi, the release image built. **Publish skipped**, not a release:
+`PUBLISH_ENABLED=false`; native cluster access/Harbor remain blockers.
+`bundleEnabled=false`: 20 resources render identically to before; the old
+code/UI ConfigMap copies are frozen until a safe activation, this is not a
+second development source. **Production has not been switched to the new
+bundle yet.** Do not claim live UID/readiness, queue counts, or browser
+acceptance from CI/render. The owner canceled the backup prerequisite for
+this extraction/releases but did not permit deleting archives, killing paid
+work, or resetting budgets/leases. A natural drain and a protected production
+review are needed, not a new backup blocker. Full boundaries/checks/next
+steps: [SPI](../../applications/spi/spi-incident-triage.md#current-source-extraction--9-november-2026).
+
+## Deploy and sources
+
+Permanent changes are made in Ansible/Helm/Git. Workloads are Argo CD,
+`root → deploy/argocd/apps`, project `default`. Fleet GitRepo/bundles retired;
+the presence of Rancher Fleet controllers does not mean a return to Fleet
+deployment.
+
+For connected applications: build/test → immutable Harbor image →
+`alchemmist/deploy-to-socrat@v1` → tag/digest in homelab main → Argo
+reconciliation → readiness and a functional check. An image push or a commit is
+not a deployment. Check the state of `automated.enabled`, hooks and the
+specific Application; do not do a blanket sync/prune, `helm upgrade`, or a
+manual image patch to bypass GitOps.
+
+The public ingress/policy belongs to **its own application**. The aggregate
+`public-web-entry` is removed; do not restore it. Grafana now has the
+Application `grafana`, the chart `charts/grafana` and
+`deploy/platform/grafana/public-entry`. Do not look for its current owner in
+the old `kube-prometheus-stack` app.
+
+Monitoring is split into `grafana`, `prometheus`, `alertmanager`,
+`prometheus-operator`, `node-exporter`, `kube-state-metrics`, `loki`, `tempo`,
+`pyroscope`; dashboards/rules/probes are the separate `monitoring-k3s`. The
+handoff is closed: the old `kube-prometheus-stack`, `prometheus-stack`,
+`otel-backends`, `profiling` were removed without cascade deletion. Auto-sync
+is enabled on the current owners. At the close of the first stage 103 resource
+UIDs were preserved; at the final split of the Prometheus components all 77
+resources of that subset were re-verified, 8 runtime Pods without restart, 4
+PVCs and the UIDs/contents of the 3 target Secrets. The unused shared
+ConfigMap was deleted separately by UID. Do not repeat the retirement and do
+not bring back the old owners. The final checkpoint is `0bb4e31`; 104 profile
+tests and 24 subtests, public regression 134/134. These are migration-close
+results, not a substitute for a new live check. The separate Prometheus WAL
+problem remains; the blog digest failure was fixed by the parallel release
+`f485c74` (blog Synced/Healthy again). This is **not** a promise of WAL
+integrity or whole-cluster health. Map/acceptance and boundaries:
+[deploy](../../platform/delivery/cluster-deploy.md),
+[observability](../../observability/monitoring/observability-current.md),
+[first closeout](../../observability/monitoring/monitoring-service-split.md),
+[final split of the Prometheus components](../../observability/monitoring/prometheus-service-split.md).
+
+## Topology and data
+
+- The last accepted native etcd check: the original voters **0/1/2**, quorum
+  two; members `socrat-0-36692c46`, `socrat-1-2398a245`, `socrat-2-eb4ac34e`.
+  Do not use the former record "0/2/3, node1 without a vote" as the current
+  topology.
+- socrat-0: home/RTX3090, vLLM/LLM, Authentik/PG, Wiki PVC, Kuma MariaDB and
+  NFS. On the check the Prometheus pod is also on socrat-0; do not infer
+  placement from the app name.
+- socrat-1: Grafana, Loki/Tempo/Pyroscope and some of the checked applications.
+- socrat-2: VPS/3x-ui/edge; img-proxy is pinned exactly here (`b3ad6e2`).
+- socrat-3: the external control-plane/etcd node and the user desktop.
+- The two public IPs do not replicate the backend, GPU, SQLite/PVC or
+  PostgreSQL. Singletons and retained PVCs are not HA/verified off-node DR.
+
+Verify scheduler/placement before work; the old offload tables are not the
+current truth. Resource budgets: `ansible/vars/container-resources.yml`, the
+native admission policy; requests do not reserve physical memory, and the sum
+of limits does not prove N−1.
+
+## Monitoring, the bot and the TV
+
+The Collector is the sole scraper; Prometheus accepts OTLP, Loki/Tempo run in
+K8s. Dashboards/rules/probes are in `charts/monitoring-k3s`; Grafana
+datasource/provisioning is in its current chart. English titles/descriptions;
+do not hide telemetry gaps and do not turn missing data into a healthy zero.
+Reading metrics goes through the read-only Grafana MCP/API; the browser is for
+visual verification.
+
+SPI triage uses a durable queue, read-only evidence and a scoped GitHub App;
+it does not get the right to automatically fix infrastructure or close
+incidents. [Bot](../../socrat-bot/operations.md), [SPI](../../applications/spi/spi-incident-triage.md), [n8n](../../n8n/n8n-workflows.md).
+A manual 20→10 escalation is not a severity change and promises no SLA.
+
+The TV uses the public traffic-light URL of the canonical Grafana, without the
+internal VPN. The `xiaomi-tv` profile/peer is revoked; `alchemmist-tv` for
+YouTube is kept separately. Do not wipe the WireGuard app data. Fully55%/
+font75%, injectJsCode empty; the current TV layout is in Git, do not replay old
+panel coordinates. A physical remote/cold boot are not considered re-verified
+by a single screenshot: [TV](../../applications/android-tv/README.md).
+
+## Safe working order
+
+1. Fresh status/fetch and comparison of the resource's owner, version, UID and
+   real placement.
+2. Read-only audit; explicit scope, private backup, fresh preconditions/lock/CAS.
+3. Declarative change and profile tests/render/syntax checks.
+4. Only the agreed targeted application; an uncertain write → stop/investigate,
+   not a blind retry. No global firewall/DNS/VPN/K3s/DB restarts along the way.
+5. Separately prove readiness, native permissions, negative cases and the real
+   user steps.
+
+Do not touch unrelated worktrees/Playwright profiles. No stash/reset/force-push.
+For Ansible the single `inventory/hosts.yml`, the four `Socrat` nodes; for a
+subset an explicit `--limit`. App/browser MFA does not give the right to take
+the owner kubeconfig. Local `/tmp` artifacts are not a permanent deployment
+dependency.
+
+This update is documentation with a read-only audit, not a repeated migration,
+not browser acceptance, not a completed first human login, and not a green
+overall suite.
+
+
+## MCP in the repository
+
+Agent entrypoint — `AGENTS.md`, settings — `.pi/mcp.json` (no secrets in Git).
+Official connections and the full audit/limitations:
+[official-mcp.md](../../platform/agent-access/official-mcp.md).
+The n8n MCP, after a local token update, was verified (`initialize`/`tools/list`)
+and enabled on the Mac: workflow search/reading, without execution. The token
+lives only in a private 0600 file, not in Git. In the committed config n8n is
+still disabled; other machines are not configured automatically. Umami remains
+optional and waits for an authorized analytics key; do not bypass this via
+reset/DB. No new mandatory MCP is needed on the cluster.
 
 
 VPN83 latest owner clarification: users will refresh subscriptions themselves.

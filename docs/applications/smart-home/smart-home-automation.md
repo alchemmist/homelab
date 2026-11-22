@@ -1,77 +1,92 @@
-# Умный дом Яндекс: публичный API и узкое исключение для озвучки
+# Yandex Smart Home: public API and the narrow voice-announcement exception
 
-Актуализировано **3 ноября 2026**. Пользователь разрешил внутренний API **только
-для динамических календарных уведомлений с автоматическим обновлением сессии**.
-Не распространять исключение на остальные интеграции.
+Updated **November 3, 2026**. The user allowed the internal API **only for
+dynamic calendar notifications with automatic session refresh**. Do not extend
+this exception to other integrations.
 
-## Каналы
+## Channels
 
-- Лампы, розетки, обычные сценарии — публичный `api.iot.yandex.net`, IoT OAuth
+- Lamps, sockets, ordinary scenarios — the public `api.iot.yandex.net`, IoT OAuth
   scopes iot:view/iot:control, native credentials.
-- Календарь → Станция Миди — native **CUSTOM.yandexStation** в n8n. Внутри
-  x-token login → Cookie/CSRF в памяти → update dedicated scenario → execute.
-- Старый yandex-voice/Glagol/HTTP proxy не возвращать. Native node — содержательная
-  авторизация, обновление, сериализация и обработка ошибок, не дополнительный pod.
-- Код ноды/credential/client: `charts/n8n/extensions/`, read-only ConfigMap mount.
-  Пин базового образа сохранён, deployment Recreate предотвращает двух SQLite writers.
+- Calendar → Station Midi — native **CUSTOM.yandexStation** in n8n. Inside:
+  x-token login → Cookie/CSRF in memory → update dedicated scenario → execute.
+- Do not bring back the old yandex-voice/Glagol/HTTP proxy. The native node
+  provides real authorization, refresh, serialization and error handling — not
+  an additional pod.
+- Node/credential/client code: `charts/n8n/extensions/`, read-only ConfigMap mount.
+  The base image pin is preserved; the Recreate deployment prevents two SQLite
+  writers.
 
-## Активные workflow
+## Active workflows
 
-1. Календарь: `Every Minute → Select Calendars → Get Upcoming Events → Match Due Reminders → Announce via Yandex Station → Mark Announced`.
-   Динамическая фраза «Через … начинается “Название”», 50% громкости, без возврата
-   прежней. Токен/персональные IDs — `yandexStationApi` credential, не JSON.
-2. **Yandex Session Maintenance**: каждые 15 минут, silent check реального PUT без
-   исполнения. Здоровая сессия переиспользуется до 6 часов; 401/403 подготовки
-   запускает однократное обновление. Cold start после рестарта тоже автоматический.
+1. Calendar: `Every Minute → Select Calendars → Get Upcoming Events → Match Due Reminders → Announce via Yandex Station → Mark Announced`.
+   Dynamic phrase “In … “Title” is starting”, 50% volume, no revert to the
+   previous one. Token/personal IDs live in the `yandexStationApi` credential,
+   not JSON.
+2. **Yandex Session Maintenance**: every 15 minutes, a silent check performing a
+   real PUT without execution. A healthy session is reused for up to 6 hours;
+   a 401/403 on preparation triggers a single refresh. Cold start after a
+   restart is also automatic.
 
-Cookies/CSRF не сохраняются в outputs/logs. Revoked x-token нельзя восстановить без
-авторизации пользователя: будет явная ошибка X_TOKEN_REJECTED. Обновить credential
-в обоих workflow через поддерживаемые UI/API, никогда не редактировать SQLite.
-При смене token ключ кэша меняется, следующая операция логинится заново.
+Cookies/CSRF are not stored in outputs/logs. A revoked x-token cannot be
+recovered without the user's authorization: an explicit X_TOKEN_REJECTED error
+will occur. Update the credential in both workflows via the supported UI/API;
+never edit SQLite directly. When the token changes, the cache key changes and
+the next operation logs in again.
 
-## Наблюдаемость
+## Observability
 
-Grafana **Automation / Yandex calendar**: финальная ошибка session/announcement
-(окно 20 минут) и отсутствие успешного maintenance 40 минут. Sanitized events в
-Loki; никаких токенов, заголовков, upstream response body или названий встреч.
-Receiver **Yandex calendar via Socrat Alerts** → существующий Telegram bot.
-Он не зависит от Яндекс-сессии, но зависит от n8n: полный отказ n8n может задержать
-доставку. Не выдавать этот маршрут за независимый от всей платформы.
+Grafana **Automation / Yandex calendar**: a final session/announcement error
+(20-minute window) and the absence of a successful maintenance for 40 minutes.
+Sanitized events in Loki; no tokens, headers, upstream response bodies or
+meeting titles. Receiver **Yandex calendar via Socrat Alerts** → the existing
+Telegram bot. It does not depend on the Yandex session, but does depend on
+n8n: a full n8n outage can delay delivery. Do not present this route as
+independent of the whole platform.
 
-Источники: `docs/n8n/yandex-session-alerts.json` и
-`scripts/n8n/provision_yandex_alerts.py`. Глобальная notification policy не менялась.
-Live checks: 1804 auth, 1809 dynamic voice, 1817 maintenance, 1819 Socrat Alerts,
-1832 повторная авторизация после финального рестарта без ручного входа;
-Grafana contact test 200, обе rule evaluations Normal/ok. 28 тестов проходят.
+Sources: `docs/n8n/yandex-session-alerts.json` and
+`scripts/n8n/provision_yandex_alerts.py`. The global notification policy was
+not changed. Live checks: 1804 auth, 1809 dynamic voice, 1817 maintenance,
+1819 Socrat Alerts, 1832 re-authorization after the final restart without
+manual login; Grafana contact test 200, both rule evaluations Normal/ok.
+28 tests pass.
 
-## Почему не public-only для речи
+## Why not public-only for speech
 
-Публичный token читает Миди и запускает готовый сценарий. Но прямой volume дал
-400 invalid capability для устройства, TTS/audio_player — 400 unknown capability
-**type**, PUT сценария — 404. GET metadata audio_player не означает доступный POST.
-Фиксированный сценарий работал, но не произносил название встречи. Проверки:
-`docs/n8n/yandex-public-api-assessment.md`. Эта история не должна возвращать старый
-запрет на согласованное выше исключение или разрешать внутренний API вообще везде.
+The public token reads the Midi and launches a ready-made scenario. But a
+direct volume request gave 400 invalid capability for the device; TTS/audio_player
+— 400 unknown capability **type**; scenario PUT — 404. GET metadata audio_player
+does not imply an available POST. The fixed scenario worked, but did not speak
+the meeting title. Findings:
+`docs/n8n/yandex-public-api-assessment.md`. This story must not bring back the
+old prohibition of the exception agreed above, nor allow the internal API
+everywhere.
 
-## Границы
+## Boundaries
 
-- n8n — пользовательские условия; CronJob — инфраструктурные задачи, без дублей.
-- Предпочитать прямые API/nodes; не плодить пустые capability proxy. Blog worker
-  остаётся ради реальной проверки диффов/файловой логики.
-- Primary не включает Y-team. Только explicit popup overrides; defaults пока не
-  разворачиваются. Dedup best-effort: не обещать exactly-once или outage replay.
-- Не ретраить неоднозначный POST запуска; не считать HTTP 200 с JSON error успехом.
-- Не говорить тестовые фразы без предупреждения. Разводить silent auth check и speech.
-- Workflow JSON, renderer, тесты, alert rules и wiki отражать в git.
-- Старый repo yandex-voice архивирован, workloads/chart/Secret удалены. Приватный
-  архив сохранил исходники с незакоммиченными изменениями; удалять его не нужно.
-- Полный runbook и ручное восстановление: `docs/n8n/setup.md`.
+- n8n is for user-driven conditions; a CronJob is for infrastructure tasks, no
+  duplication.
+- Prefer direct APIs/nodes; do not multiply empty capability proxies. The blog
+  worker stays because of the real diff/filesystem-logic check.
+- Primary does not include Y-team. Only explicit popup overrides; defaults are
+  not being rolled out yet. Dedup is best-effort: do not promise exactly-once
+  or outage replay.
+- Do not retry an ambiguous launch POST; do not treat HTTP 200 with a JSON
+  error as success.
+- Do not speak test phrases without warning. Separate silent auth checks from
+  actual speech.
+- Reflect workflow JSON, renderer, tests, alert rules and the wiki in git.
+- The old yandex-voice repository is archived; workloads/chart/Secret removed.
+  The private archive preserved the sources with uncommitted changes; there is
+  no need to delete it.
+- Full runbook and manual recovery: `docs/n8n/setup.md`.
 
-## Перенос и восстановление
+## Migration and recovery
 
-Секреты и instance mappings не входят в git. При переносе нужны прежние n8n DB,
-encryption key, credential, кастомное расширение и оба workflow. Одного JSON
-недостаточно. Последняя согласованная off-node копия после настройки auto-session
-проверена на SQLite integrity и foreign keys; регулярный backup остаётся отдельной
-задачей. Существующий PVC и pinned image сохранять, Recreate не заменять на запуск
-двух writers. Не сбрасывать owner и не разворачивать пустую базу вместо восстановления.
+Secrets and instance mappings are not in git. A migration needs the previous
+n8n DB, encryption key, credential, the custom extension and both workflows.
+The JSON alone is not enough. The last agreed off-node copy made after the
+auto-session setup was verified for SQLite integrity and foreign keys;
+regular backups remain a separate task. Keep the existing PVC and pinned
+image; do not replace Recreate with running two writers. Do not reset the
+owner or deploy an empty database instead of recovering.

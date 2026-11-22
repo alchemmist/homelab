@@ -1,148 +1,211 @@
-# Наблюдаемость: источники и владельцы
+# Observability: sources and owners
 
-[Отчёт: внезапная потеря `socrat-1`, 21 ноября 2026](../../records/incidents/socrat-1-loss-20261121.md): миграция на NFS, что вернулось во время потери и после неё, доставка алерта и Descheduler.
+[Report: the sudden loss of `socrat-1`, November 21, 2026](../../records/incidents/socrat-1-loss-20261121.md): the migration to NFS, what came back during and after the loss, alert delivery, and the Descheduler.
 
 ## Metric collection, downsampling and node migration (21 November 2026)
 
-| Поток | Вычисления → физический диск | Условие и результат |
+| Flow | Computations → physical disk | Condition and result |
 |---|---|---|
-| Сбор | OTel Collector → Prometheus на `socrat-0` | Единственный scraper, базовый интервал 5s; запись по OTLP в локальные WAL/TSDB. Retention 12h; не включать параллельный scrape тех же targets. |
-| Закрытые raw-блоки | Sidecar на `0` → TLS S3 `thanos-workshop` на `socrat-1` | Обычно блок по 2h; журнал shipper отслеживает отправленные ULID. Основной Store на `1` читает S3. Это асинхронная отправка, не синхронная реплика WAL. |
-| Компакция и downsampling | Основной Compactor и его рабочий каталог на `0` → тот же S3 на `1` | Компакция объединяет блоки одного разрешения; downsampling создаёт агрегаты raw → 5m → 1h по мере старения блоков (обычные пороги Thanos: 40h и 10d). Это не срок удаления и не обещание публикации точно в этот момент. |
-| Часовой архив | `thanos-cascade` на `3` читает S3 на `1` → локальный 1h-архив на `3` | Каждый час в `:30`. Только готовые блоки 1h; staging, проверка хешей, атомарная публикация без перезаписи. Отдельная роль читает S3 и пишет только маркеры, без DeleteObject. У отдельного часового Compactor retention 17 520h (730 дней). |
+| Collection | OTel Collector → Prometheus on `socrat-0` | The only scraper, base interval 5s; OTLP ingestion into local WAL/TSDB. Retention 12h; do not enable a parallel scrape of the same targets. |
+| Closed raw blocks | Sidecar on `0` → TLS S3 `thanos-workshop` on `socrat-1` | Usually 2h blocks; the shipper journal tracks sent ULIDs. The main Store on `1` reads S3. This is asynchronous shipping, not synchronous WAL replication. |
+| Compaction and downsampling | The main Compactor and its working directory on `0` → the same S3 on `1` | Compaction merges blocks of one resolution; downsampling creates raw → 5m → 1h aggregates as blocks age (the usual Thanos thresholds: 40h and 10d). This is not a deletion deadline and not a promise of publication exactly at that moment. |
+| Hourly archive | `thanos-cascade` on `3` reads the S3 on `1` → a local 1h archive on `3` | Every hour at `:30`. Only finished 1h blocks; staging, hash verification, atomic publication without overwriting. A separate role reads S3 and writes only markers, without DeleteObject. The separate hourly Compactor has retention 17 520h (730 days). |
 
-**Политика рабочего архива:** raw ≥5 дней при читаемом покрытии 5m на `1`; 5m ≥90 дней при читаемом покрытии 1h на `3`; 1h на `3` — 730 дней. Возраст — от конца блока, не от выгрузки. Часовой источник освобождается без ожидания 90 дней после проверки файлов, метаданных, чтения через конкретный Store и защиты родительских 5m от повторного downsampling/compaction. Перенос = публикация → проверка → deletion mark; физическую очистку S3 делает Compactor после 48h. Параметры native retention в рабочем S3 остаются `0d` намеренно: срок без проверки покрытия не даёт права удалять. При пропуске интервала, несовпадении меток/источников, отсутствии ответа или дисковой тесноте срок не сокращается. Отдельный старый NFS-архив не входит в эту очистку.
+**Working-archive policy:** raw ≥5 days while 5m coverage on `1` is readable;
+5m ≥90 days while 1h coverage on `3` is readable; 1h on `3` — 730 days. Age counts
+from the end of the block, not from upload. An hourly source is released without
+waiting 90 days after checking files, metadata, reads through the specific Store
+and protecting the parent 5m from re-downsampling/compaction. Migration =
+publish → verify → deletion mark; the physical S3 cleanup is done by the
+Compactor after 48h. The native retention parameters in the working S3 stay
+`0d` deliberately: a deadline without coverage verification does not grant the
+right to delete. On a missed interval, label/source mismatch, absent response or
+disk pressure, the deadline is not shortened. The separate old NFS archive is
+not part of this cleanup.
 
-Реализация: [публикация и квитанции](../../../charts/thanos/files/hour_copy.py), [условия и маркеры](../../../charts/thanos/files/tier.py), [тесты](../../../tests/test_thanos_tiers.py). Для остановки новых маркеров задать `APPLY_TIER_MARKS=false` в шаблоне CronJob; это **не отменит** уже созданные маркеры. После загрузки Store или компакции может понадобиться следующий проход. Ищите `mark deletion <ULID>` и проверяйте оставшийся блок, не считайте успешный пустой Job подтверждённым удалением.
+Implementation: [publication and receipts](../../../charts/thanos/files/hour_copy.py),
+[conditions and markers](../../../charts/thanos/files/tier.py), [tests](../../../tests/test_thanos_tiers.py).
+To stop new markers set `APPLY_TIER_MARKS=false` in the CronJob template; this will
+**not** cancel markers already created. After Store load or compaction, another
+pass may be needed. Look for `mark deletion <ULID>` and check the remaining block;
+do not treat a successful empty Job as a confirmed deletion.
 
-**Проверка по участкам.** Для свежего графика сравнить прямой Prometheus, Sidecar и Thanos Query с одинаковыми параметрами (см. ниже). Для отправки на `1` проверять новый ULID в журнале и объект в S3: это подтверждено штатным блоком `01M7ZQNKDF9JW6PX0TH142HGHX`. Для переноса на `3` проверять число подтверждённых часовых блоков в логе `thanos-cascade`, а не только статус Job: `hourly blocks confirmed 0` означает успешный запуск без переноса. Часовой архив не заменяет резервную копию raw.
+**Per-segment verification.** For a fresh graph, compare direct Prometheus, the
+Sidecar and Thanos Query with identical parameters (see below). For shipping to
+`1`, check the new ULID in the journal and the object in S3: this is confirmed by
+the stock block `01M7ZQNKDF9JW6PX0TH142HGHX`. For the transfer to `3`, check the
+count of confirmed hourly blocks in the `thanos-cascade` log, not just the Job
+status: `hourly blocks confirmed 0` means a successful run without a transfer.
+The hourly archive is not a replacement for a raw backup.
 
-**Итог разовой миграции.** Старый `/var/lib/socrat-thanos` на `0` пуст; освобождено 49,58 GiB. На `3` отдельно от читаемой часовой истории лежит проверенная сжатая копия 148 исходных файлов (13,43 GiB); временная копия на `0` удалена. Это снимок до переключения, не backup последующих записей. [Проверка восстановления и путь к архиву](../../../deploy/storage/thanos-retire/README.md).
+**One-time migration result.** The old `/var/lib/socrat-thanos` on `0` is empty;
+49.58 GiB freed. On `3`, separate from the readable hourly history, lies a
+verified compressed copy of 148 original files (13.43 GiB); the temporary copy on
+`0` was deleted. This is a pre-cutover snapshot, not a backup of later writes.
+[Restore verification and the archive path](../../../deploy/storage/thanos-retire/README.md).
 
-Источники: [Prometheus](../../../charts/prometheus/values.yaml), [размещение и retention Thanos](../../../charts/thanos/values.yaml), [расписание и права каскада](../../../charts/thanos/templates/warm-cascade.yaml), [проверка часовых блоков](../../../charts/thanos/files/hour_copy.py).
+Sources: [Prometheus](../../../charts/prometheus/values.yaml), [Thanos placement and retention](../../../charts/thanos/values.yaml), [cascade schedule and permissions](../../../charts/thanos/templates/warm-cascade.yaml), [hourly block verification](../../../charts/thanos/files/hour_copy.py).
 
 ## Gaps in recent Thanos metrics (19 November 2026)
 
-**Правило чтения:** последние 6 часов обслуживает живой sidecar Prometheus. Только у raw Store Gateway (`thanos-store`) задан `--max-time=-6h`; локальный Prometheus хранит 12 часов, поэтому на границе остаётся около 6 часов перекрытия. Это фильтр чтения, а не удаление блоков. Если sidecar недоступен, на raw-архив как на резерв для последних 6 часов рассчитывать нельзя. При изменении retention перепроверить перекрытие. Источники: [Thanos](../../../charts/thanos/values.yaml), [Prometheus](../../../charts/prometheus/values.yaml); исправление `69a0a2bf`.
+**Reading rule:** the live sidecar Prometheus serves the last 6 hours. Only the
+raw Store Gateway (`thanos-store`) has `--max-time=-6h`; the local Prometheus
+stores 12 hours, so about 6 hours of overlap remain at the boundary. This is a
+read filter, not block deletion. If the sidecar is unavailable, do not rely on
+the raw archive as a fallback for the last 6 hours. If retention changes,
+re-verify the overlap. Sources: [Thanos](../../../charts/thanos/values.yaml),
+[Prometheus](../../../charts/prometheus/values.yaml); fix `69a0a2bf`.
 
-**Что произошло.** На Traffic Light графики n8n (920) и VPN (907) показали разрывы утром. В 08:00 МСК в архив уже попал блок `from-out-of-order` за 07:00–09:00: его границы охватывали два часа, но внутри были только опоздавшие точки. На момент расследования обычного блока за этот период в архиве ещё не было. Один и тот же запрос панели с шагом 60 с дал разные результаты:
+**What happened.** Traffic Light graphs for n8n (920) and VPN (907) showed gaps
+in the morning. At 08:00 MSK a `from-out-of-order` block for 07:00–09:00 had
+already reached the archive: its boundaries covered two hours, but inside it had
+only late points. At the time of the investigation, no regular block for that
+period existed in the archive yet. The same panel query with a 60s step gave
+different results:
 
-| Источник | Результат до исправления |
+| Source | Result before the fix |
 | --- | --- |
-| Напрямую в Prometheus или через Thanos только к sidecar | Нет разрывов |
-| Только raw Store Gateway | Неполный ряд |
-| Sidecar и raw Store Gateway вместе | Разрывы воспроизводятся, в том числе без дедупликации и downsampling |
+| Directly in Prometheus, or through Thanos to the sidecar only | No gaps |
+| Raw Store Gateway only | Incomplete series |
+| Sidecar and raw Store Gateway together | The gaps reproduce, including without deduplication and downsampling |
 
-**Как проверить повторение.** Взять точное выражение панели из [Traffic Light](../../../charts/monitoring-k3s/dashboards/traffic-light.json), не убирая проверку свежести. С одинаковыми `start`, `end` и `step` сравнить `/api/v1/query_range` напрямую в Prometheus и через datasource Grafana `prometheus` (он читает Thanos). Если ответы различаются, в Thanos ограничить `storeMatch[]` сначала адресом sidecar, затем адресом raw gateway из `/api/v1/stores`, затем запросить оба. Сравнивать значения и временные метки каждой серии, а не только статус HTTP или наличие серии. Если ряд отсутствует уже в локальном Prometheus, это другой случай: проверять сбор и доставку, не подставлять нули.
+**How to check reproduction.** Take the exact panel expression from
+[Traffic Light](../../../charts/monitoring-k3s/dashboards/traffic-light.json)
+without dropping the freshness check. With identical `start`, `end` and `step`,
+compare `/api/v1/query_range` directly in Prometheus and through the Grafana
+datasource `prometheus` (it reads Thanos). If the answers differ, in Thanos
+restrict `storeMatch[]` first to the sidecar address, then to the raw gateway
+address from `/api/v1/stores`, then query both. Compare the values and
+timestamps of each series, not just the HTTP status or the presence of a series.
+If the series is already missing in local Prometheus, this is a different case:
+check collection and delivery; do not substitute zeros.
 
-**Приёмка после выкладки:** за 07:15–08:00 МСК все 46 минутных точек каждой серии обеих панелей через Grafana совпали с Prometheus; в двухчасовом окне вокруг границы чтения совпали все 121. На глубине 19–20 часов архив вернул все 61 точку каждой серии. Панели и их запросы не менялись.
+**Acceptance after rollout:** for 07:15–08:00 MSK, all 46 minute points of each
+series of both panels through Grafana matched Prometheus; in the two-hour window
+around the read boundary all 121 matched. At a depth of 19–20 hours the archive
+returned all 61 points of each series. The panels and their queries were not
+changed.
 
-**Отдельная проблема:** в те же часы отправители OTLP регистрировали `DeadlineExceeded`; экспортёр n8n сообщил об отбрасывании 673 точек метрик (не запусков workflow). Это реальная ошибка доставки, но не объяснение разрывов, для которых локальный ряд был полон. Причина таймаутов и отдельного пропуска VPN в 09:16 не установлена.
+**A separate problem:** in the same hours OTLP senders logged `DeadlineExceeded`;
+the n8n exporter reported dropping 673 metric points (not workflow runs). This
+is a real delivery error, but not an explanation for the gaps, whose local series
+was complete. The cause of the timeouts and the separate VPN skip at 09:16 was
+not established.
 
 ## Current placement delta —16 November 2026
 
-Grafana и Grafana MCP приняты на `socrat-5`, новый Grafana claim
-`grafana-socrat5`, старый claim на `socrat-1` stale/Retain. Native SSO, существующие
-идентичности и настоящий read-only MCP→Grafana→Thanos запрос проверены.
-[Полная приёмка и downtime](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-grafana-20261116.md).
-Prometheus/Thanos и другие backend не переносились этим изменением. Таблица
-владельцев ниже остаётся полезной, но runtime-утверждения среза7ноября не являются
-новой приёмкой всех компонентов. Источник Grafana также включает
-`deploy/storage/grafana-socrat5`; актуальные ссылки — в Application.
+Grafana and Grafana MCP were accepted on `socrat-5`, the new Grafana claim
+`grafana-socrat5`, the old claim on `socrat-1` stale/Retain. Native SSO, existing
+identities and a real read-only MCP→Grafana→Thanos query were verified.
+[Full acceptance and downtime](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-grafana-20261116.md).
+Prometheus/Thanos and the other backends were not moved by this change. The
+owners table below remains useful, but the November 7 snapshot's runtime
+statements are not a new acceptance of every component. The Grafana source also
+includes `deploy/storage/grafana-socrat5`; current references are in the
+Application.
 
 ## Historical split checkpoint —7 November 2026
 
-Актуализировано **7 ноября 2026**, после завершённых handoff Grafana/backends (`f4020d1`),
-пяти Prometheus-компонентов и runtime-проверок. Это заменяет ранний read-only срез промежуточного split.
-Не объявляет новый browser-MFA acceptance, каждый producer исправным или независимый DR.
+Updated **November 7, 2026**, after the completed Grafana/backends handoffs
+(`f4020d1`), the five Prometheus components and runtime checks. This replaces
+the early read-only intermediate-split snapshot. It does not declare a new
+browser-MFA acceptance, every producer healthy, or independent DR.
 
-## Argo ownership после split
+## Argo ownership after the split
 
-| Application | Источник | Ответственность |
+| Application | Source | Responsibility |
 | --- | --- | --- |
-| `grafana` | `charts/grafana`, `deploy/platform/grafana/public-entry` | Native Grafana, datasource provisioning, public policy и TV assets |
-| `prometheus` | `charts/prometheus` | Только Prometheus, его storage/конфигурация, общие rules и cluster monitors |
-| `alertmanager` | `charts/alertmanager` | Только Alertmanager, routing/config, свои Service/SA/rules |
-| `prometheus-operator` | `charts/prometheus-operator` | Контроллер, CRD, admission webhooks и правила оператора/reloaders |
-| `node-exporter` | `charts/node-exporter` | Нодовый DaemonSet, Service/monitor и собственные правила |
-| `kube-state-metrics` | `charts/kube-state-metrics` | Экспорт состояния Kubernetes, RBAC/Service/monitor/rules |
-| `loki` | `charts/loki` | Logs backend и scoped retention resources |
+| `grafana` | `charts/grafana`, `deploy/platform/grafana/public-entry` | Native Grafana, datasource provisioning, public policy and TV assets |
+| `prometheus` | `charts/prometheus` | Only Prometheus, its storage/configuration, shared rules and cluster monitors |
+| `alertmanager` | `charts/alertmanager` | Only Alertmanager, routing/config, its own Service/SA/rules |
+| `prometheus-operator` | `charts/prometheus-operator` | Controller, CRDs, admission webhooks and operator/reloader rules |
+| `node-exporter` | `charts/node-exporter` | Per-node DaemonSet, Service/monitor and its own rules |
+| `kube-state-metrics` | `charts/kube-state-metrics` | Kubernetes state export, RBAC/Service/monitor/rules |
+| `loki` | `charts/loki` | Logs backend and scoped retention resources |
 | `tempo` | `charts/tempo` | Traces backend |
-| `pyroscope` | `charts/pyroscope` | Profiling backend и его Grafana integration |
-| `monitoring-k3s` | `charts/monitoring-k3s` | Dashboard JSON, rules, probes и связанные monitoring resources |
+| `pyroscope` | `charts/pyroscope` | Profiling backend and its Grafana integration |
+| `monitoring-k3s` | `charts/monitoring-k3s` | Dashboard JSON, rules, probes and related monitoring resources |
 
-Все указанные apps — Synced/Healthy. Auto-sync Loki/Tempo восстановлен:
-временный `automated.enabled=false` снят, `prune=false/selfHeal=true` сохранены.
-Старые `kube-prometheus-stack`, `prometheus-stack`, `otel-backends`, `profiling` удалены из Git/кластера
-после снятия finalizers и передачи владения. 103 UID существующих объектов сохранены
-(в том числе 10 shared CRD: после окончательного разделения их scope —
-`prometheus-operator`, без принудительных tracking annotations).
-PVC/Secret/Certificate UID не менялись. Только неиспользуемый ConfigMap
-`otel-backends` удалён с UID/resourceVersion preconditions после проверки ссылок.
-Не повторять retirement и не включать старых owners. Карта и полный протокол:
+All the listed apps are Synced/Healthy. Loki/Tempo auto-sync was restored: the
+temporary `automated.enabled=false` was removed; `prune=false/selfHeal=true`
+preserved. The old `kube-prometheus-stack`, `prometheus-stack`, `otel-backends`,
+`profiling` apps were removed from Git/cluster after clearing finalizers and
+handing over ownership. 103 UIDs of existing objects were preserved (including 10
+shared CRDs: after the final split their scope is `prometheus-operator`, without
+forced tracking annotations). PVC/Secret/Certificate UIDs did not change. Only
+the unused ConfigMap `otel-backends` was deleted with UID/resourceVersion
+preconditions after checking references. Do not repeat the retirement or re-enable
+the old owners. Map and full protocol:
 [monitoring-service-split.md](monitoring-service-split.md).
 
-В Grafana сверены private согласованные SQLite snapshots: users/org/memberships,
-datasource identities, dashboard UIDs, OAuth links и public shares сохранены.
-Native OIDC redirect работает; public regression134/134 и TV24/24 на двух IP прошли.
-Loki/Tempo verified-mTLS `/ready`200, отказ без client cert, свежие logs и stored
-traces проверены без вывода содержимого. Это не physical-TV/browser-MFA повторная
-приёмка. Новый TV layout/JS из параллельных `832e341`/`757dc18` сохранён.
+In Grafana, the private agreed SQLite snapshots were reconciled: users/org/
+memberships, datasource identities, dashboard UIDs, OAuth links and public shares
+preserved. Native OIDC redirect works; public regression 134/134 and TV24/24 over
+two IPs passed. Loki/Tempo verified-mTLS `/ready`200, refusal without a client
+cert, fresh logs and stored traces verified without printing contents. This is
+not a re-acceptance of the physical TV/browser MFA. The new TV layout/JS from the
+parallel `832e341`/`757dc18` was preserved.
 
-App name не равен Helm release или Service name: имя
-`kube-prometheus-stack-grafana` у pod/service не возвращает владение старой app.
-Текущие manifests: `deploy/argocd/apps/{grafana,prometheus,alertmanager,prometheus-operator,node-exporter,kube-state-metrics,loki,tempo,pyroscope}.yaml`.
+An app name is not a Helm release or Service name: the pod/service name
+`kube-prometheus-stack-grafana` does not return ownership to the old app. Current
+manifests:
+`deploy/argocd/apps/{grafana,prometheus,alertmanager,prometheus-operator,node-exporter,kube-state-metrics,loki,tempo,pyroscope}.yaml`.
 
-Последний aggregate `prometheus-stack` также разобран: все 77 ресурсов переданы
-пяти независимым Applications, render payload совпадает полностью. Все 8 runtime
-Pods сохранили UID/ноду/readiness/restarts; все 4 PVC сохранили bound volumes;
-3 целевых Secret (включая webhook TLS) сохранили UID **и содержимое**. Prometheus
-по-прежнему находит прежний Alertmanager endpoint. Ни WAL repair, ни переустановка
-оператора, ни миграция данных не требовались. Детали и source-provenance:
-[prometheus-service-split.md](prometheus-service-split.md).
+The last aggregate `prometheus-stack` was also taken apart: all 77 resources were
+transferred to five independent Applications; the render payload matches fully.
+All 8 runtime Pods kept UID/node/readiness/restarts; all 4 PVCs kept their bound
+volumes; the 3 target Secrets (including webhook TLS) kept UID **and content**.
+Prometheus still finds the previous Alertmanager endpoint. No WAL repair,
+operator reinstallation or data migration was needed. Details and source
+provenance: [prometheus-service-split.md](prometheus-service-split.md).
 
-## Зафиксированный closeout, не новая команда миграции
+## A recorded closeout, not a new migration command
 
-Окончательное разделение: disarm `652e286` → передача пяти владельцам `78a9336`
-→ удаление aggregate `bcc93ca` → checkpoint **`0bb4e31`**. На финальном срезе все
-**49 Applications**, включая `root`, были Synced/Healthy. При этом
-`PrometheusTSDBCompactionsFailing` оставался firing: Argo Healthy не означает
-целостность WAL. Watchdog — отдельный ожидаемый heartbeat.
+Final split: disarm `652e286` → handover to five owners `78a9336` → aggregate
+deletion `bcc93ca` → checkpoint **`0bb4e31`**. On the final snapshot all
+**49 Applications**, including `root`, were Synced/Healthy. Meanwhile
+`PrometheusTSDBCompactionsFailing` remained firing: Argo Healthy does not mean
+WAL integrity. The Watchdog is a separate expected heartbeat.
 
-Приёмка последнего этапа: **104 профильных теста + 24 pytest subtest**, Helm lint
-пяти component charts, Ansible syntax check; public-access regression **134/134**.
-Более ранние TV24/24 относятся к предыдущей приёмке Grafana, не к новому физическому
-тесту телевизора. Результаты этапов не складывать в вымышленный общий test suite.
+Final-stage acceptance: **104 profiled tests + 24 pytest subtests**, Helm lint of
+the five component charts, an Ansible syntax check; public-access regression
+**134/134**. The earlier TV24/24 belongs to the previous Grafana acceptance, not
+to a new physical TV test. Do not add up stage results into an invented common
+test suite.
 
-Private UID/Pod/PVC/Secret-hash/render receipts последнего handoff сохранены 0600
-в `~/.config/homelab/monitoring/migrations/2026-11-07-prometheus-components/`.
-Это rollback evidence без вывода содержимого Secrets, не off-node backup/DR.
-Для обратной передачи владельца снова нужны disarm и снятие deletion finalizers;
-**не делать blanket git revert**, удаляющий новые Applications с активными
-finalizers: это может каскадно удалить workload. Обычный rollback версии — новый
-коммит в source текущего владельца, с сохранением данных.
+The last handoff's private UID/Pod/PVC/Secret-hash/render receipts are kept 0600
+in `~/.config/homelab/monitoring/migrations/2026-11-07-prometheus-components/`.
+This is rollback evidence without printing Secret contents, not an off-node
+backup/DR. Handing ownership back again requires a disarm and removal of the
+deletion finalizers;
 
-## Данные и pipeline
+**do not blanket git revert**, which would delete the new Applications with
+active finalizers: it could cascade-delete workloads. An ordinary version
+rollback is a new commit in the current owner's source, with data preserved.
 
-- OTel Collector — sole scraper; Prometheus принимает OTLP с согласованным
-  out-of-order окном30m и NoTranslation. Не добавлять второй scrape path для тех же
-  target и не «чинить» дубли удалением исторических данных.
+## Data and pipeline
+
+- OTel Collector — the sole scraper; Prometheus accepts OTLP with the agreed
+  out-of-order window of 30m and NoTranslation. Do not add a second scrape path
+  for the same targets and do not “fix” duplicates by deleting historical data.
 - Loki3.7.9 / Tempo2.10.10 — Kubernetes workloads, persistent nonroot storage,
-  защищённые backend entrances; старые host units не основной pipeline.
+  protected backend entrances; the old host units are not the main pipeline.
 - Loki retention intent: debug3d / info7d / other14d; scoped marker/temp cleanup,
-  не blanket удаление bucket/PVC. Версии/настройки сверять с актуальными charts.
-- Историческая миграция метрик завершена; факт принятой небольшой потери не
-  разрешает придумывать backfill. Thanos raw/5m/1h storage и compaction — отдельные
-  runbooks; полная hourly shipping/DR acceptance не объявлялась завершённой.
-- Grafana refresh и dashboard range — presentation, не гарантия полноты ingestion.
-  Не превращать отсутствие телеметрии в zero/green и не скрывать gaps интерполяцией.
+  not blanket bucket/PVC deletion. Verify versions/settings against the current
+  charts.
+- The historical metrics migration is finished; the accepted minor loss does not
+  license inventing backfill. Thanos raw/5m/1h storage and compaction have their
+  own runbooks; a full hourly shipping/DR acceptance was not declared complete.
+- Grafana refresh and dashboard range are presentation, not proof of ingestion
+  completeness. Do not turn missing telemetry into zero/green and do not hide
+  gaps with interpolation.
 
-Источники: [monitoring](monitoring.md),
-[logging operations](../logging/unified-logging-operations.ru.md),
+Sources: [monitoring](monitoring.md),
+[logging operations](../logging/unified-logging-operations.md),
 [retention](../logging/otel-loki-retention.md), `deploy/monitoring/otel/`,
-`deploy/monitoring/migration-evidence/`, текущие chart values и resource budgets.
-Старые ссылки на отсутствующие в этом checkout otel-history runbooks не являются
-достаточным основанием запускать migration/delete scripts.
+`deploy/monitoring/migration-evidence/`, current chart values and resource budgets.
+Old references to otel-history runbooks absent from this checkout are not
+sufficient grounds to run migration/delete scripts.
 
 ## Software update alerts
 
@@ -152,71 +215,79 @@ Installed version comes from the running container tag when the tag contains `x.
 
 `SocratSoftwareUpdateCheckFailed` fires when a lookup stays unsuccessful for 6 hours. A failed lookup does not emit an update alert. SearXNG releases do not currently expose a stable `x.y.z` tag, so that target stays on the failed check rather than an update alert.
 
-## Placement — наблюдение, не вечный контракт
+## Placement — an observation, not an eternal contract
 
-На read-only срезе: Grafana/Loki/Tempo/Pyroscope и Grafana MCP на socrat-1,
-Prometheus на socrat-0. Wiki и Authentik тоже на socrat-0. Не использовать старые
-таблицы «весь monitoring на1 / Wiki на3» для работы с дисками или рестарта.
-Scheduler/nodeSelector/PV affinity проверять для конкретного приложения.
+At the read-only snapshot: Grafana/Loki/Tempo/Pyroscope and Grafana MCP on
+socrat-1, Prometheus on socrat-0. The wiki and Authentik are also on socrat-0.
+Do not use the old “all monitoring on1 / wiki on3” tables for disk work or
+restarts. Scheduler/nodeSelector/PV affinity must be checked per application.
 
-## Dashboard, TV и APIs
+## Dashboard, TV and APIs
 
 Dashboard JSON: `charts/monitoring-k3s/dashboards/`; datasource configuration —
-`charts/grafana/values.yaml` и templates. Alerts/probes — monitoring-k3s. Не путать
-native per-app authorization с инфраструктурным namespace и read-only MCP identity.
+`charts/grafana/values.yaml` and templates. Alerts/probes — monitoring-k3s. Do not
+confuse native per-app authorization with the infrastructure namespace and the
+read-only MCP identity.
 
-Public traffic-light — единственный явный share, не anonymous org Viewer.
-Headerless TV geometry обновлена в `832e341`; прежние hard-coded panel positions
-из октябрьских заметок не текущая layout specification. Источники — dashboard JSON,
-`deploy/platform/grafana/public-entry/files/traffic-light-inset.js` и
-[TV design](../../applications/android-tv/traffic-light-tv-design.md), а не инъекция JS в Fully.
-Последующая documented приёмка (`29f41d9`): dashboard `832e341`, kiosk parity
-`757dc18`, четыре real-browser случая (public/authenticated kiosk ×1920×1080/1440×900),
-40 targeted tests и24 public access checks. Это evidence другой выполненной
-приёмки, не повторный браузерный тест этой doc-задачей. Физический remote/cold boot
-и независимый внешний ISP этим не проверялись.
+The public traffic light is the only explicit share, not an anonymous org Viewer.
+Headerless TV geometry was updated in `832e341`; the former hard-coded panel
+positions from the October notes are not the current layout specification. The
+sources are the dashboard JSON,
+`deploy/platform/grafana/public-entry/files/traffic-light-inset.js` and
+[TV design](../../applications/android-tv/traffic-light-tv-design.md), not JS
+injection into Fully. The later documented acceptance (`29f41d9`): dashboard
+`832e341`, kiosk parity `757dc18`, four real-browser cases (public/authenticated
+kiosk ×1920×1080/1440×900), 40 targeted tests and24 public access checks. This is
+evidence of a different completed acceptance, not a repeated browser test by this
+doc task. Physical remote/cold boot and an independent external ISP were not
+verified here.
 
-Grafana MCP — public verified-TLS endpoint с отдельным bearer и Viewer/read-only
-native identity. Secret нельзя коммитить/печатать; browser MFA не подходит machine
-API. Для чтения использовать MCP/API, браузер — для визуального acceptance.
+Grafana MCP — a public verified-TLS endpoint with a separate bearer and a
+Viewer/read-only native identity. The Secret must not be committed/printed;
+browser MFA does not fit a machine API. Use MCP/API for reads; the browser is
+for visual acceptance.
 
-[Деплой](../../platform/delivery/cluster-deploy.md) · [сеть](../../network/README.md) · [TV](../../applications/android-tv/README.md) ·
+[Deployment](../../platform/delivery/cluster-deploy.md) · [network](../../network/README.md) · [TV](../../applications/android-tv/README.md) ·
 [SPI](../../applications/spi/spi-incident-triage.md) · [n8n](../../n8n/n8n-workflows.md).
 
 
-## Отдельные инциденты, замеченные при закрытии split
+## Separate incidents noticed while closing the split
 
-- **PrometheusTSDBCompactionsFailing**: в логах 2026-11-07 09:00 UTC checksum
-  corruption WAL segment `00001786` при checkpoint/truncation. Это раньше disarm
-  split в 10:20 UTC; Prometheus Pod миграцией не перезапускался. Ready/Argo Healthy
-  не доказывает целостность WAL. Алерт не выключали, WAL/blocks не удаляли и не
-  откатывали; нужен отдельный безопасный разбор с backup перед repair.
-- **Blog**: параллельный robot release `8b3e079` записал Harbor digest
+- **PrometheusTSDBCompactionsFailing**: in the 2026-11-07 09:00 UTC logs, checksum
+  corruption of WAL segment `00001786` during checkpoint/truncation. That is
+  before the 10:20 UTC disarm of the split; the Prometheus Pod was not restarted
+  by the migration. Ready/Argo Healthy does not prove WAL integrity. The alert
+  was not silenced, WAL/blocks were not deleted or rolled back; a separate safe
+  investigation with a backup before repair is needed.
+- **Blog**: the parallel robot release `8b3e079` recorded the Harbor digest
   `sha256:c476e069de95fd3daafaac09f1f1fcf58f65230deaecb6740b5b9cf84aae8c99`,
-  который registry возвращает NotFound. Новый pod — ImagePullBackOff, два прежних
-  продолжают обслуживать. Это отдельный release incident, не результат переноса
-  Grafana/Loki/Tempo. Вскоре независимый robot release **`f485c74`** записал
-  доступный digest; повторная проверка после `4124691`: blog **Synced/Healthy**.
-  Этот инцидент закрыт параллельным релизом, не repair мониторинга. Чужой release
-  в ходе split не откатывался и образ вручную не подменялся.
-- Root показывал отдельный metadata drift Rancher: Argo-managed PostDelete
-  finalizers отсутствовали в Git. В manifest задекларированы **уже существующие**
-  finalizers, не удалены hooks и не добавлен ignoreDifferences. Rancher runtime,
-  MCM/Fleet и значения chart этим не менялись.
+  which the registry returns NotFound. The new pod is in ImagePullBackOff; the
+  two old ones keep serving. This is a separate release incident, not a result
+  of the Grafana/Loki/Tempo move. Soon the independent robot release
+  **`f485c74`** recorded an available digest; re-check after `4124691`: blog
+  **Synced/Healthy**. This incident was closed by a parallel release, not a
+  monitoring repair. The foreign release during the split was not rolled back
+  and the image was not manually substituted.
+- Root showed a separate Rancher metadata drift: Argo-managed PostDelete
+  finalizers were missing in Git. The manifest declares the **already existing**
+  finalizers; hooks were not removed and no ignoreDifferences were added. Rancher
+  runtime, MCM/Fleet and chart values were not changed by that.
 
-Watchdog severity=none — ожидаемый heartbeat, не доказательство отсутствия других
-алертов. Не объявлять весь кластер здоровым по зелёным новым Applications.
+The Watchdog with severity=none is an expected heartbeat, not proof of the
+absence of other alerts. Do not declare the whole cluster healthy from green new
+Applications.
 
 ### Public status redirect repair
 
-`status.alchemmist.xyz/` ошибочно редиректил на
-`http://status.alchemmist.xyz:8080/status/socrat`: stock nginx policy proxy
-формировал absolute redirect из внутреннего listener8080 после TLS termination.
-В `charts/uptime-kuma/files/kuma-policy.conf` добавлен `absolute_redirect off`:
-Location теперь относительный `/status/socrat`, HTTPS/public origin сохраняются.
-Изменены только policy config и обусловленный checksum rollout proxy, не Kuma
-DB/PVC, native auth или UI gateway. Reviewed ownership fixture обновляет только
-ConfigMap policy и Deployment proxy; исходная handoff-версия остаётся в Git history.
+`status.alchemmist.xyz/` was incorrectly redirecting to
+`http://status.alchemmist.xyz:8080/status/socrat`: the stock nginx policy proxy
+built an absolute redirect from the internal listener8080 after TLS termination.
+`absolute_redirect off` was added to `charts/uptime-kuma/files/kuma-policy.conf`:
+Location is now the relative `/status/socrat`; the HTTPS/public origin is kept.
+Only the policy config and the checksum-triggered proxy rollout changed, not the
+Kuma DB/PVC, native auth or UI gateway. The reviewed ownership fixture updates
+only the policy ConfigMap and the proxy Deployment; the original handoff version
+remains in Git history.
 
 ### socrat-2 watchdog incident and recovery — 2026-11-07
 

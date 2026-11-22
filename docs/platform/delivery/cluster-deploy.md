@@ -1,50 +1,79 @@
-# Выкатка на кластер Socrat
+# Deploying to the Socrat cluster
 
-Актуализировано **7 ноября 2026**. Workloads управляются Argo CD через root и
-`deploy/argocd/apps`. Ниже — контракт build/image release для подключённых
-сервисов; не все images переведены с GHCR в Harbor. Первый пилот blog — история,
-а не ограничение нынешнего GitOps только одним приложением.
+Updated **November 7, 2026**. Workloads are managed by Argo CD via root and
+`deploy/argocd/apps`. Below is the build/image release contract for connected
+services; not all images have been moved from GHCR to Harbor. The first blog
+pilot is history, not a limitation of the current GitOps to a single
+application.
 
-**Снятие GitOps Fleet.** В репозитории больше нет Fleet `GitRepo` и `deploy/**/fleet.yaml`. Выкладка приложений — только Argo CD (`deploy/argocd/apps`). Это не удаление контроллеров Fleet из кластера: Rancher v2.15.2 снова включает Feature Fleet, пока включён multi-cluster-management. Бюджеты `cattle-fleet-*`, размещение `gitjob`/`helmops` и описания исключённых Fleet-дашбордов поэтому оставлены. Не возвращать GitRepo и не считать multi-cluster-management выключенным. Образы на GHCR — отдельная миграция registry, не повод оставлять Fleet-бандл.
+**Fleet GitOps removal.** The repository no longer has a Fleet `GitRepo` and
+`deploy/**/fleet.yaml`. Application delivery is Argo CD only
+(`deploy/argocd/apps`). This is not a removal of the Fleet controllers from
+the cluster: Rancher v2.15.2 re-enables Feature Fleet while
+multi-cluster-management is enabled. The `cattle-fleet-*` budgets, the
+`gitjob`/`helmops` placement and the descriptions of the excluded Fleet
+dashboards are therefore kept. Do not restore a GitRepo and do not consider
+multi-cluster-management disabled. GHCR images are a separate registry
+migration, not a reason to keep a Fleet bundle.
 
-Журнал первого пилота и registry: `docs/platform/harbor/harbor.md`.
+The first-pilot journal and registry: `docs/platform/harbor/harbor.md`.
 
-## Что является правдой
+## What is the truth
 
-**Желаемая** версия образа лежит в Git, `alchemmist/homelab`, ветка `main`.
-Живую версию доказывают Argo revision, workload image/imageID и функциональная
-приёмка. Argo применяет её только при разрешённом sync; enabled=false, hooks или
-drift могут остановить процесс. CI не вызывает Argo API и не делает Sync.
+The **desired** image version lives in Git, `alchemmist/homelab`, branch
+`main`. The live version is proven by the Argo revision, the workload
+image/imageID and functional acceptance. Argo applies it only on an allowed
+sync; enabled=false, hooks or drift can stop the process. CI calls no Argo API
+and does no Sync.
 
-Ручная правка в UI Argo CD, `kubectl set image`, `helm upgrade` и Helm-parameters на Application не сохраняются. Следующий sync возвращает объект к манифесту из Git. У блога `selfHeal: true`.
+Manual edits in the Argo CD UI, `kubectl set image`, `helm upgrade` and Helm
+parameters on an Application are not persisted. The next sync returns the
+object to the manifest from Git. The blog has `selfHeal: true`.
 
-Ожидаемая цепочка:
+The expected chain:
 
-1. Репозиторий сервиса собирает и проверяет артефакт.
-2. CI пушит immutable-образ в Harbor. Тег образа — полный git SHA коммита сервиса, не `latest`.
-3. Тот же job одним шагом вызывает `alchemmist/deploy-to-socrat@v1` и передаёт digest, который вернул `docker/build-push-action`.
-4. Action коммитит в `homelab` `main` только поля образа этого приложения.
-5. Argo CD на следующем опросе репозитория видит коммит и синкает Application. Обычный интервал опроса — около трёх минут. Webhook на GitHub не настроен.
+1. The service repository builds and verifies the artifact.
+2. CI pushes an immutable image to Harbor. The image tag is the full git SHA
+   of the service's commit, not `latest`.
+3. The same job, in one step, calls `alchemmist/deploy-to-socrat@v1` and
+   passes the digest returned by `docker/build-push-action`.
+4. The Action commits to `homelab` `main` only that application's image fields.
+5. Argo CD sees the commit on the next repository poll and syncs the
+   Application. The usual poll interval is about three minutes. A GitHub
+   webhook is not configured.
 
-Образ:
+The image:
 
 ```text
 harbor.socrat.alchemmist.xyz/homelab/<app>:<git-sha>
 ```
 
-В под уходит `repository@sha256:...`, если `image.digest` непустой. Тег в values остаётся как запись, какой коммит сервиса этот digest собрал. Шаблон блога: `charts/blog/templates/deployment.yaml`.
+The pod gets `repository@sha256:...` if `image.digest` is non-empty. The tag
+in values remains as a record of which service commit built this digest. Blog
+template: `charts/blog/templates/deployment.yaml`.
 
-## Чего не делать
+## What not to do
 
-- Не патчить Application из CI и не писать digest в Helm-parameters. Пустой список в манифесте нужен явно: `parameters: []`. Если поля нет, `kubectl apply` старый список не стирает, и параметр перекроет файл в Git.
-- Не вызывать из CI `argocd app sync`, `helm upgrade`, `helm uninstall`, `kubectl set image`.
-- Не класть второй GitHub Actions job ради коммита версии. Точка входа одна: шаг `Deploy to Socrat` внутри job, который уже собрал и запушил образ.
-- Не заводить свои AppProject и ApplicationSet. Все Application стоят в встроенном проекте `default`. Поле `spec.project` у Argo обязательное; `default` создаётся вместе с Argo CD, отдельным манифестом мы его не описываем.
-- Не коммитить версию образа руками в обход action, кроме аварийного отката.
+- Do not patch an Application from CI and do not write the digest into Helm
+  parameters. An empty list must be explicit in the manifest: `parameters: []`.
+  If the field is absent, `kubectl apply` does not erase the old list, and the
+  parameter overrides the Git file.
+- Do not call `argocd app sync`, `helm upgrade`, `helm uninstall`,
+  `kubectl set image` from CI.
+- Do not add a second GitHub Actions job for the version commit. There is one
+  entry point: the `Deploy to Socrat` step inside the job that already built
+  and pushed the image.
+- Do not create your own AppProject or ApplicationSet. All Applications live
+  in the built-in `default` project. Argo's `spec.project` field is mandatory;
+  `default` is created together with Argo CD and we do not describe it with a
+  separate manifest.
+- Do not hand-commit an image version bypassing the action, except for an
+  emergency rollback.
 
-## Как пользоваться action
+## How to use the action
 
-Репозиторий: `alchemmist/deploy-to-socrat`, тег `v1`. Это composite action, не отдельный workflow.
+Repository: `alchemmist/deploy-to-socrat`, tag `v1`. It is a composite action,
+not a separate workflow.
 
 ```yaml
 - name: Deploy to Socrat
@@ -54,138 +83,241 @@ harbor.socrat.alchemmist.xyz/homelab/<app>:<git-sha>
     image_version: ${{ steps.image.outputs.digest }}
 ```
 
-Имя Application берётся из имени репозитория. Если они разные, передать `app`. Имя — строчные буквы, цифры и дефис, не длиннее 41 символа.
+The Application name is taken from the repository name. If they differ, pass
+`app`. The name is lowercase letters, digits and hyphens, no longer than 41
+characters.
 
 `image_version`:
 
-- `sha256:` и 64 hex. Action пишет это в `image.digest` и ставит `image.tag` равным полному SHA вызывающего коммита. Так надо делать релиз.
-- Обычный тег образа. Action пишет его в `image.tag` и очищает `image.digest`. Это запасной вариант, не основной путь.
+- `sha256:` and 64 hex. The action writes this into `image.digest` and sets
+  `image.tag` equal to the calling commit's full SHA. This is how a release
+  should be done.
+- An ordinary image tag. The action writes it to `image.tag` and clears
+  `image.digest`. That is a fallback, not the main path.
 
-Файлы, которые он меняет:
+Files it changes:
 
-- обязательный `deploy/<app>/values.yaml`;
-- `charts/<app>/values.yaml`, если файл уже есть.
+- the required `deploy/<app>/values.yaml`;
+- `charts/<app>/values.yaml`, if the file already exists.
 
-В обоих в корневом ключе `image` должны уже быть строки `tag` и `digest`. Action не создаёт файл и не добавляет ключи. В коммит попадают только эти файлы. Автор коммита — `socrat-releaser`. Сообщение: `chore(<app>): deploy <image_version>` и строка `Source: <repo>@<sha>`.
+In both, the root `image` key must already contain `tag` and `digest` strings.
+The action does not create files and does not add keys. Only these files enter
+the commit. The commit author is `socrat-releaser`. Message:
+`chore(<app>): deploy <image_version>` plus a `Source: <repo>@<sha>` line.
 
-Если к моменту коммита `GITHUB_SHA` уже не верхушка ветки, action выходит успешно и ничего не пушит. Старая сборка не откатывает более новый коммит. Если значения уже такие, коммита тоже нет.
+If by commit time `GITHUB_SHA` is no longer the branch tip, the action exits
+successfully and pushes nothing. An older build must not revert a newer commit.
+If the values are already these, there is no commit either.
 
-Перед коммитом action делает `git pull --rebase origin main`, чтобы два релиза подряд не затирали чужой коммит версии.
+Before committing, the action runs `git pull --rebase origin main` so two
+releases in a row do not overwrite each other's version commit.
 
-Пример живого вызова: `.github/workflows/deploy.yaml` в `alchemmist/blog`, job `publish-and-deploy`.
+A live invocation example: `.github/workflows/deploy.yaml` in `alchemmist/blog`,
+job `publish-and-deploy`.
 
-## Ключ и права
+## The key and its rights
 
-`token` — приватный ключ write deploy key `socrat-releaser` на репозиторий `alchemmist/homelab`. В GitHub он лежит секретом `HOMELAB_DEPLOY_KEY` у каждого репозитория, который вызывает action. Сейчас это `blog` и сам `deploy-to-socrat`.
+`token` is the private write deploy key `socrat-releaser` on the
+`alchemmist/homelab` repository. In GitHub it is stored as the secret
+`HOMELAB_DEPLOY_KEY` in each repository that calls the action. Currently that
+is `blog` and `deploy-to-socrat` itself.
 
-Ключ пушит в `homelab` что угодно. Ограничение «только поля образа» сидит в коде action, а не в правах ключа. Кто может менять workflow репозитория с этим секретом, может забрать ключ и запушить в `homelab` любой файл.
+The key can push anything to `homelab`. The “only image fields” restriction is
+in the action's code, not in the key's rights. Anyone able to change the
+workflows of a repository with this secret can take the key and push any file
+to `homelab`.
 
-`main` у `homelab` ruleset-ом не закрыт. Deploy key нельзя добавить в bypass ruleset, поэтому закрытая ветка отрежет и робота. Пока в репозиторий пушит только владелец, это принятый зазор. Когда появятся другие люди с правом менять workflow, ключ надо заменить на GitHub App, который можно внести в bypass, а приватный ключ держать только в репозитории action.
+`main` in `homelab` is not closed by a ruleset. A deploy key cannot be added
+to a ruleset bypass, so a closed branch would also cut off the robot. While
+only the owner pushes to the repository, this is an accepted gap. When other
+people appear with the right to change workflows, the key must be replaced by
+a GitHub App that can be put into the bypass, and the private key kept only in
+the action's repository.
 
-Токен Argo CD релизу не нужен. Старый секрет `ARGOCD_AUTH_TOKEN` в репозитории блога к этому пути не относится.
+The Argo CD token is not needed for a release. The old secret
+`ARGOCD_AUTH_TOKEN` in the blog repository is unrelated to this path.
 
-Harbor: push-учётка в секретах CI (`HARBOR_USERNAME`, `HARBOR_PASSWORD`). Pull в namespace — Secret `kubernetes.io/dockerconfigjson` и `imagePullSecrets`. У блога это `blog-harbor-pull`.
+Harbor: the push account in CI secrets (`HARBOR_USERNAME`, `HARBOR_PASSWORD`).
+Pull in the namespace — the Secret `kubernetes.io/dockerconfigjson` and
+`imagePullSecrets`. For the blog that is `blog-harbor-pull`.
 
 
-## Иконка на плитке и внешние Helm-репозитории
+## The tile icon and external Helm repositories
 
-Срез **3 ноября 2026**. Иконка на плитке Application — тип первого источника, а не то, что лежит внутри чарта. У `cats`, `format-quorum`, `blog` и `authentik` первый источник — git `alchemmist/homelab` (`charts/<app>`), поэтому Git. У `cert-manager` и `harbor` первый источник — внешний Helm-чарт (`chart:`), git с values подключён вторым (`ref: values`), поэтому Helm.
+Snapshot of **November 3, 2026**. The icon on an Application tile is the type
+of the first source, not what is inside the chart. For `cats`,
+`format-quorum`, `blog` and `authentik` the first source is the git
+`alchemmist/homelab` (`charts/<app>`), hence Git. For `cert-manager` and
+`harbor` the first source is an external Helm chart (`chart:`), with the git
+values connected second (`ref: values`), hence Helm.
 
-`authentik` больше не качает `charts.goauthentik.io`. Чарт `2026.8.5` лежит в `charts/authentik`, Application читает `deploy/platform/authentik/values.yaml`. Условные субчарты PostgreSQL и `authentik-remote-cluster` в вендоренную копию не входят: в этом кластере оба выключены, а `helm dependency build` до них обрывался по таймауту. Живой Postgres — отдельный StatefulSet, не субчарт.
+`authentik` no longer downloads `charts.goauthentik.io`. The `2026.8.5` chart
+lives in `charts/authentik`; the Application reads
+`deploy/platform/authentik/values.yaml`. The conditional PostgreSQL and
+`authentik-remote-cluster` subcharts are not part of the vendored copy: both
+are disabled in this cluster, and `helm dependency build` timed out on them.
+The live Postgres is a separate StatefulSet, not a subchart.
 
-`ComparisonError` / `failed to generate manifest for source 1 of 2` / `context deadline exceeded` на оставшихся внешних Helm-приложениях — это не падение подов. Repo-server не успевает за 90 секунд выполнить `helm pull`, в частности с `helm.goharbor.io`. Кэш манифеста при промахе качается заново. Пока pull не проходит, sync остаётся `Unknown`, уже запущенные поды не останавливаются.
+`ComparisonError` / `failed to generate manifest for source 1 of 2` /
+`context deadline exceeded` on the remaining external Helm applications is
+not a pod crash. The repo-server does not manage `helm pull` within 90
+seconds, in particular with `helm.goharbor.io`. On a cache miss the manifest
+is re-downloaded. Until the pull succeeds, the sync stays `Unknown`; already
+running pods are not stopped.
 
-## Аннотации релизов на графиках Grafana
+## Release annotations on Grafana charts
 
-Контроллер `argo-cd-argocd-notifications-controller` подписан на все Application, кроме `root`. Условие `on-deployed` в `deploy/platform/argo-cd/values.yaml`: sync `Succeeded`, здоровье `Healthy`, операция закончилась меньше 10 минут назад. `oncePer: app.status.sync.revision` не даёт повторную отметку на тот же коммит. Приложение без `operationState` условие пропускает.
+The `argo-cd-argocd-notifications-controller` subscribes to all Applications
+except `root`. The `on-deployed` condition in
+`deploy/platform/argo-cd/values.yaml`: sync `Succeeded`, health `Healthy`, the
+operation finished less than 10 minutes ago. `oncePer: app.status.sync.revision`
+prevents a repeat mark on the same commit. An application without
+`operationState` is skipped by the condition.
 
-Срабатывание шлёт `POST /api/annotations` на Service `kube-prometheus-stack-grafana` в `cattle-monitoring-system`. Тело: `"<app> deployed <revision>"`, теги `deploy` и имя приложения. Токен сервисного аккаунта Grafana `argocd-deploys` (роль Editor) лежит только в Secret `argocd/argocd-notifications-secret`, ключ `grafana-api-key`. Helm этот Secret не создаёт.
+A trigger sends `POST /api/annotations` to the Service
+`kube-prometheus-stack-grafana` in `cattle-monitoring-system`. Body:
+`"<app> deployed <revision>"`, tags `deploy` and the application name. The
+Grafana service-account token `argocd-deploys` (Editor role) is stored only
+in the Secret `argocd/argocd-notifications-secret`, key `grafana-api-key`.
+Helm does not create this Secret.
 
-На Overview, Services, Nodes, Metrics и LLM переменная `deploy` — выпадающий список имён Application. Прочерк `-` не совпадает ни с одним тегом, поэтому линии скрыты. Выбор сервиса оставляет аннотации, у которых есть оба тега: `deploy` и имя этого сервиса. Переключателя «показать все» на дашборде нет. На Traffic light слоя нет. Отдельной отправки в каждый дашборд нет.
+On Overview, Services, Nodes, Metrics and LLM the `deploy` variable is a
+dropdown of Application names. The dash `-` matches no tag, so the lines are
+hidden. Choosing a service keeps the annotations that carry both tags: `deploy`
+and that service's name. There is no “show all” switch on the dashboard. There
+is no layer on the Traffic light. There is no separate posting into each
+dashboard.
 
-## Локальный API-аккаунт для агента
+## A local API account for the agent
 
-Текущий клиент — официальный Argo CD Labs MCP из project settings, с
-`MCP_READ_ONLY=true`: диагностика, не imperative deployment. Установка и приватное
-хранение credentials описаны в [official MCP runbook](../agent-access/official-mcp.md).
-Не запускать credential helper для показа токена и не возвращать старый
-пользовательский wrapper из исторических инструкций.
+The current client is the official Argo CD Labs MCP from the project
+settings, with `MCP_READ_ONLY=true`: diagnostics, not imperative deployment.
+Installation and private credential storage are described in the
+[official MCP runbook](../agent-access/official-mcp.md).
+Do not run the credential helper to display the token and do not revive the
+old user wrapper from the historical instructions.
 
-В canonical `deploy/platform/argo-cd/values.yaml` сохранён `accounts.mcp: apiKey`,
-`g, mcp, role:readonly` и существующий server-side grant
-`p, mcp, applications, sync, */*, allow`. Это различие между возможностями
-credential и read-only режимом клиента, а не разрешение использовать sync в
-рутинной диагностике. Этот рефакторинг не меняет RBAC, не расширяет grant и не
-выдаёт клиентское ограничение за server-side запрет. Общий default —
-`role:unassigned`, а не `role:readonly`.
+The canonical `deploy/platform/argo-cd/values.yaml` keeps `accounts.mcp:
+apiKey`, `g, mcp, role:readonly` and the existing server-side grant
+`p, mcp, applications, sync, */*, allow`. This is the difference between the
+credential's capabilities and the client's read-only mode, not permission to
+use sync in routine diagnostics. This refactoring changes no RBAC, widens no
+grant, and does not pass off the client restriction as a server-side ban. The
+common default is `role:unassigned`, not `role:readonly`.
 
-Исторический срез7ноября описывал временную прямую правку ConfigMap, пока чарт
-не скачивался. Это не текущий способ сопровождения и не fallback при ошибке
-Application. Сопровождение аккаунта/RBAC — через canonical Git source; native
-OIDC и существующие credentials сохраняются. Принятая приёмка Argo после переноса
-описана в [management handoff](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-management-20261116.md).
+The historical November 7 snapshot described a temporary direct ConfigMap edit
+while the chart failed to download. That is not the current maintenance method
+and not a fallback on an Application error. Account/RBAC maintenance goes
+through the canonical Git source; native OIDC and the existing credentials are
+preserved. The accepted Argo acceptance after the move is described in the
+[management handoff](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-management-20261116.md).
 
-## Как устроен Argo CD
+## How Argo CD is arranged
 
-Argo CD размещён раздельно: application-controller на `socrat-5`, остальные компоненты на `socrat-0`. UI: `https://argocd.socrat.alchemmist.xyz`, native Authentik OIDC. Canonical values: `deploy/platform/argo-cd/values.yaml`; старый путь — compatibility symlink. `ansible/playbooks/argocd.yml` допускает только явный empty-cluster bootstrap и отказывает при существующих workloads. Текущий контракт: [context](../system-overview.md), приёмка: [management handoff](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-management-20261116.md).
+Argo CD is placed separately: application-controller on `socrat-5`, the other
+components on `socrat-0`. UI: `https://argocd.socrat.alchemmist.xyz`, native
+Authentik OIDC. Canonical values: `deploy/platform/argo-cd/values.yaml`; the
+old path is a compatibility symlink. `ansible/playbooks/argocd.yml` permits
+only an explicit empty-cluster bootstrap and refuses when workloads already
+exist. Current contract: [context](../system-overview.md); acceptance:
+[management handoff](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-management-20261116.md).
 
-Базовая схема и NetBird:
+The base scheme and NetBird:
 
-| Имя | Откуда | Что делает |
+| Name | From | What it does |
 | --- | --- | --- |
-| `root` | `deploy/argocd/root.yaml`, применён один раз | Смотрит каталог `deploy/argocd/apps` и держит там Application. `prune: true`, `selfHeal: true`. Самого себя в каталоге нет. |
-| `netbird` | `deploy/argocd/apps/netbird.yaml` | Чарт `charts/netbird`, values `deploy/netbird/values.yaml`. Весь NetBird Kubernetes stack, включая management/dashboard, edge, relays, STUN и machine agents; `prune: false`, `selfHeal: true`. PVC/собственные namespaces защищены `Prune=false,Delete=false`; секреты остаются private bootstrap dependencies. |
-| `blog` | `deploy/argocd/apps/blog.yaml` | Чарт `charts/blog`, values `deploy/blog/values.yaml`, namespace `blog`. `prune: false`, `selfHeal: true`, `CreateNamespace=true`. |
+| `root` | `deploy/argocd/root.yaml`, applied once | Watches the `deploy/argocd/apps` catalog and maintains the Applications there. `prune: true`, `selfHeal: true`. Itself is not in the catalog. |
+| `netbird` | `deploy/argocd/apps/netbird.yaml` | Chart `charts/netbird`, values `deploy/netbird/values.yaml`. The whole NetBird Kubernetes stack, including management/dashboard, edge, relays, STUN and machine agents; `prune: false`, `selfHeal: true`. PVCs/own namespaces are protected with `Prune=false,Delete=false`; secrets remain private bootstrap dependencies. |
+| `blog` | `deploy/argocd/apps/blog.yaml` | Chart `charts/blog`, values `deploy/blog/values.yaml`, namespace `blog`. `prune: false`, `selfHeal: true`, `CreateNamespace=true`. |
 
-`root` — обычный вариант схемы app of apps без ApplicationSet. Удалил Application `blog` — `root` создаст его снова из Git. Удалил файл из `deploy/argocd/apps` — `root` удалит и Application. У блога стоит finalizer `resources-finalizer.argocd.argoproj.io`, поэтому удаление Application сносит и его ресурсы. У `root` finalizer нет: удаление самого `root` дочерние Application не стирает. Вернуть `root` можно только повторным `kubectl apply -f deploy/argocd/root.yaml`.
+`root` is the ordinary app-of-apps scheme without an ApplicationSet. Delete
+the `blog` Application — `root` will create it again from Git. Delete the file
+from `deploy/argocd/apps` — `root` will delete the Application too. The blog
+has the finalizer `resources-finalizer.argocd.argoproj.io`, so deleting the
+Application also removes its resources. `root` has no finalizer: deleting
+`root` itself does not erase the child Applications. `root` can be restored
+only by re-running `kubectl apply -f deploy/argocd/root.yaml`.
 
-Поды восстанавливает ReplicaSet Deployment, не `root`. `root` восстанавливает Application. Старые ReplicaSet с нулём подов — история Deployment (`revisionHistoryLimit` по умолчанию 10). Живые реплики только у текущего.
+Pods are restored by the Deployment's ReplicaSet, not `root`. `root` restores
+Applications. Old zero-pod ReplicaSets are the Deployment's history
+(`revisionHistoryLimit` defaults to 10). Live replicas exist only for the
+current one.
 
-Harbor один, на socrat-0. Падение socrat-0 ломает push и незакешированный pull. Уже запущенные контейнеры при этом не останавливаются. На холодной ноде слой блога шёл около 13 минут. Пока образ качается, Application может быть `Synced` и ещё не `Healthy`.
+Harbor is a single instance, on socrat-0. A socrat-0 outage breaks push and
+uncached pulls. Already running containers are not stopped by that. On a cold
+node the blog layer took about 13 minutes. While the image downloads, the
+Application can be `Synced` but not yet `Healthy`.
 
-## Строгий порядок для нового сервиса
+## The strict order for a new service
 
-Делать по одному сервису. Не копировать шаг в CI, пока в Git нет Application и values.
+Do one service at a time. Do not copy the CI step while Git lacks the
+Application and values.
 
-1. Чарт в `charts/<app>`. В шаблоне Deployment один образ: если `image.digest` задан, использовать `repository@digest`, иначе `repository:tag`.
-2. `deploy/<app>/values.yaml` с корневым `image.repository`, `image.tag`, `image.digest`. До первого релиза digest пустой, tag — тот образ, который уже можно катить. Те же ключи в `charts/<app>/values.yaml`, если файл есть. Application должен читать `deploy/<app>/values.yaml` через `helm.valueFiles`.
-3. В namespace — pull Secret от проектного робота Harbor и ссылка на него в `imagePullSecrets`.
-4. Манифест Application в `deploy/argocd/apps/<app>.yaml`: `project: default`, `parameters: []`, `targetRevision: main`, auto-sync, `prune: false`, `selfHeal: true`. Закоммитить. `root` создаст Application сам. Не создавать его руками в UI.
-5. Дождаться `Synced`. Первый рендер должен совпасть с тем, что уже работает, либо это сознательный первый выкат.
-6. В CI сервиса положить секрет `HOMELAB_DEPLOY_KEY` с тем же приватным ключом и добавить шаг из раздела выше. Запушить образ в `harbor.socrat.alchemmist.xyz/homelab/<app>`.
-7. Проверить коммит `socrat-releaser` в `homelab`, затем `Synced/Healthy` и живой HTTP. На холодной ноде здоровье может опоздать на время pull.
+1. A chart in `charts/<app>`. In the Deployment template a single image: if
+   `image.digest` is set, use `repository@digest`, otherwise `repository:tag`.
+2. `deploy/<app>/values.yaml` with root `image.repository`, `image.tag`,
+   `image.digest`. Before the first release the digest is empty; the tag is an
+   image that can already be rolled out. The same keys in
+   `charts/<app>/values.yaml` if the file exists. The Application must read
+   `deploy/<app>/values.yaml` via `helm.valueFiles`.
+3. In the namespace — a pull Secret from the project's Harbor robot, with a
+   reference in `imagePullSecrets`.
+4. The Application manifest in `deploy/argocd/apps/<app>.yaml`: `project:
+   default`, `parameters: []`, `targetRevision: main`, auto-sync, `prune:
+   false`, `selfHeal: true`. Commit. `root` will create the Application
+   itself. Do not create it manually in the UI.
+5. Wait for `Synced`. The first render must match what already runs, or it is
+   a deliberate first rollout.
+6. In the service's CI, put the `HOMELAB_DEPLOY_KEY` secret with the same
+   private key and add the step from the section above. Push the image to
+`harbor.socrat.alchemmist.xyz/homelab/<app>`.
+7. Check the `socrat-releaser` commit in `homelab`, then `Synced/Healthy` and
+   live HTTP. On a cold node health may lag by the pull time.
 
-Action умеет один образ на приложение и только ключи `image.tag` / `image.digest` в этих двух путях. Несколько образов в одном чарте, другое имя поля или другой каталог values он не обновит.
+The action supports one image per application and only the `image.tag` /
+`image.digest` keys in those two paths. It will not update several images in
+one chart, a different field name, or a different values directory.
 
-## Откат
+## Rollback
 
-Откат — новый коммит в `deploy/<app>/values.yaml` и в парный chart values: предыдущие `repository`, `tag` и `digest`. Auto-sync подхватит его. Правка digest в UI пропадёт на следующем sync.
+A rollback is a new commit to `deploy/<app>/values.yaml` and the paired chart
+values: the previous `repository`, `tag` and `digest`. Auto-sync picks it up.
+A digest edit in the UI disappears on the next sync.
 
-Если нужно вернуть конкретный уже запушенный digest, его можно взять из предыдущего коммита `chore(<app>): deploy ...`. Образ в Harbor не удалять, пока на него ссылается Deployment: следующий рестарт пода не сможет его скачать.
+To return a specific already-pushed digest, take it from a previous
+`chore(<app>): deploy ...` commit. Do not delete an image from Harbor while a
+Deployment references it: the next pod restart would be unable to download it.
 
-## Как проверять, что релиз дошёл
+## How to verify a release arrived
 
-1. Job сервиса зелёный, в нём есть шаг `Deploy to Socrat`, отдельного job нет.
-2. В `homelab` есть коммит `socrat-releaser` с этим digest.
-3. `kubectl -n argocd get application <app>` показывает `Synced` на этот коммит и потом `Healthy`.
-4. Образ Deployment равен `harbor.socrat.alchemmist.xyz/homelab/<app>@sha256:...`.
-5. `spec.source.helm.parameters` пустой.
-6. Живой HTTP сервиса отвечает.
+1. The service's job is green, with the `Deploy to Socrat` step; there is no
+   separate job.
+2. In `homelab` there is a `socrat-releaser` commit with this digest.
+3. `kubectl -n argocd get application <app>` shows `Synced` on this commit and
+   then `Healthy`.
+4. The Deployment image equals
+   `harbor.socrat.alchemmist.xyz/homelab/<app>@sha256:...`.
+5. `spec.source.helm.parameters` is empty.
+6. The service's live HTTP responds.
 
-Если Git уже новый, а кластер старый, это ожидание опроса, а не повод вызывать Sync из CI. Принудительный refresh из UI допустим, когда нужно посмотреть результат сразу.
+If Git is already new and the cluster old, that is the poll wait, not a reason
+to call Sync from CI. A forced refresh from the UI is acceptable when you need
+to see the result immediately.
 
-### NetBird: переход существующего сервиса под Argo CD
+### NetBird: moving an existing service under Argo CD
 
-Пользовательский onboarding, топология, результаты отказных тестов и незакрытые
-границы: [актуальный NetBird runbook](../../network/netbird/README.md).
+User onboarding, topology, negative test results and open boundaries:
+[the current NetBird runbook](../../network/netbird/README.md).
 
-NetBird больше не исключение: Application создаёт `root` из каталога apps, не
-ручной apply/UI. Подробнее: [netbird-argocd.md](../../network/netbird/infrastructure/netbird-argocd.md). Сохраняются
-существующие версии upstream-образов по digest; миграция не обновляет образы и
-не переиздаёт идентичности/секреты. Значения секретов и содержимое PVC не в Git.
-Для нового узла: inventory → `ansible/scripts/netbird-gitops-nodes.py` → commit inventory
-и values → Argo CD → обычный Ansible machine enrollment/API grants. Ansible не
-создаёт Kubernetes Deployment/PVC и не конкурирует с selfHeal.
+NetBird is no longer an exception: the Application is created by `root` from
+the apps catalog, not a manual apply/UI. Details:
+[netbird-argocd.md](../../network/netbird/infrastructure/netbird-argocd.md). The existing
+upstream image versions are preserved by digest; the migration updates no
+images and does not re-issue identities/secrets. Secret values and PVC
+contents are not in Git. For a new node: inventory →
+`ansible/scripts/netbird-gitops-nodes.py` → commit the inventory and
+values → Argo CD → the usual Ansible machine enrollment/API grants. Ansible
+creates no Kubernetes Deployment/PVC and does not compete with selfHeal.
 
 ### Release transport recovery — 2026-11-04
 
@@ -194,167 +326,191 @@ NetBird больше не исключение: Application создаёт `root
 The GitHub Git Operations incident has cleared. Local SSH authentication and `git ls-remote` work again. End-to-end LMS run **41811725828** succeeded on the final retry: robot commit **76e9902** recorded `sha256:9890519389652cdd8c8436a76f81be6bc81131174a728144ab268c4150a80167`; live Deployment uses that GHCR digest and its rollout completed. Earlier failed attempts are not successful releases. LMS remains on GHCR intentionally during HA ownership work.
 
 
-## Публичные входы принадлежат приложениям — 2026-11-07
+## Public entrances belong to the applications — 2026-11-07
 
-**Отдельная Argo Application `public-web-entry` удалена из Git и кластера.**
-Удалён и `charts/public-web-entry`. Не восстанавливать этот сборный слой при
-настройке нового сервиса: Ingress и специфичный защитный proxy/config должны
-принадлежать той же Application, что и сервис.
+**The separate Argo Application `public-web-entry` was removed from Git and
+the cluster.** `charts/public-web-entry` was removed too. Do not restore that
+aggregate layer when setting up a new service: the Ingress and the specific
+protective proxy/config must belong to the same Application as the service.
 
-| Argo Application | Публичный вход / policy | Источник |
+| Argo Application | Public entrance / policy | Source |
 | --- | --- | --- |
-| `grafana` | Grafana, policy proxy и TV JS | `charts/grafana` + `deploy/platform/grafana/public-entry` |
+| `grafana` | Grafana, policy proxy and TV JS | `charts/grafana` + `deploy/platform/grafana/public-entry` |
 | `rancher` | Rancher, policy proxy | `deploy/platform/rancher/public-entry` |
 | `litellm` | `litellm.socrat…` alias | `deploy/platform/litellm/public-entry` |
 | `searxng` | Search | `charts/searxng`, `publicEntry` |
 | `open-webui` | `llm.socrat…` alias | `charts/open-webui`, `publicEntry` |
 | `grafana-mcp` | bearer-only `/mcp` | `charts/grafana-mcp`, `publicEntry` |
-| `syncthing` | оба GUI-входа, policy proxy | `charts/syncthing`, `publicEntry` |
-| `uptime-kuma` | admin-вход, policy proxy | `charts/uptime-kuma`, `publicEntry` |
+| `syncthing` | both GUI entrances, policy proxy | `charts/syncthing`, `publicEntry` |
+| `uptime-kuma` | admin entrance, policy proxy | `charts/uptime-kuma`, `publicEntry` |
 
-Для сторонних Helm-чартов `deploy/platform/<app>/public-entry` добавлен как
-ещё один `spec.sources` **существующей** Application; это не новые Applications.
-Основные upstream chart/version/values сохранены. У локальных чартов public
-шаблоны включены непосредственно в chart. Traefik, cert-manager и Authentik —
-общие платформенные компоненты; admission allowlist/группы по-прежнему управляются
-identity tooling (`deploy/public-web/services.json`), а не дублируются в чартах.
+For third-party Helm charts, `deploy/platform/<app>/public-entry` was added as
+another `spec.sources` entry of the **existing** Application; these are not
+new Applications. The main upstream chart/version/values are preserved. For
+local charts the public templates are included directly in the chart. Traefik,
+cert-manager and Authentik are shared platform components; the admission
+allowlist/groups are still managed by the identity tooling
+(`deploy/public-web/services.json`), not duplicated in the charts.
 
-### Передача владения и проверенные границы
+### The ownership transfer and verified boundaries
 
-1. Старую Application сначала отключили от auto-sync и сняли deletion finalizer
-   **через Git**, чтобы root не запустил каскадное удаление.
-2. Все 22 ресурса передали восьми владельцам; offline-render до/после полностью
-   совпал. Live tracking annotation у каждого ресурса указывает на нового владельца.
-3. UID всех 22 ресурсов и 18 объектов Certificate/TLS Secret сохранены. У 186
-   существовавших проверенных подов UID/readiness/restart counts не изменились.
-4. Затем удалили старую Application и общий chart. Детям оставили `prune: false`,
-   `selfHeal: true`; root после удаления вернулся в `Synced / Healthy`.
+1. The old Application was first disconnected from auto-sync and its deletion
+   finalizer removed **via Git**, so root would not start a cascade deletion.
+2. All 22 resources were transferred to eight owners; the offline render
+   before/after matched completely. The live tracking annotation on each
+   resource points to the new owner.
+3. The UIDs of all 22 resources and the 18 Certificate/TLS Secret objects are
+   preserved. The 186 existing verified pods kept their UIDs/readiness/restart
+   counts.
+4. Then the old Application and the shared chart were deleted. The children
+   kept `prune: false`, `selfHeal: true`; after the deletion root returned to
+   `Synced / Healthy`.
 
-Префикс `public-web-` в **именах ресурсов** намеренно сохранён: он не означает
-наличие старой Application. Namespace `identity` у Authentik-gated Ingress также
-не означает владение Authentik/общим public app. Смотреть на Argo tracking и
-источник соответствующей Application; не переименовывать/пересоздавать TLS или
-Ingress только ради косметики.
+The `public-web-` prefix in resource **names** is kept deliberately: it does
+not imply the old Application's existence. The `identity` namespace of
+Authentik-gated Ingresses also does not imply ownership by Authentik/the shared
+public app. Look at the Argo tracking and the relevant Application's source;
+do not rename/recreate TLS or Ingress for cosmetics alone.
 
-LiteLLM full sync попытался запустить существующий DB migration hook. Job остался
-Pending из-за 512Mi request на socrat-0, до запуска контейнера. На время handoff
-его auto-sync приостановили в Git, операцию остановили, pending Job убрал Argo;
-отдельным resource-only sync передали только alias Ingress без hooks. Обычный
-`prune: false / selfHeal: true` auto-sync восстановлен, активных операций/Jobs
-на закрытии нет. БД/идентичности не мигрировали, scheduling hook не меняли;
-его вместимость при будущем реальном релизе — отдельная проверка.
+A LiteLLM full sync attempted to run an existing DB migration hook. The Job
+ stayed Pending due to the 512Mi request on socrat-0, before the container
+ started. For the duration of the handoff its auto-sync was paused in Git, the
+ operation stopped, Argo removed the pending Job; a separate resource-only sync
+ transferred only the alias Ingress without hooks. The usual
+ `prune: false / selfHeal: true` auto-sync has been restored; there are no
+ active operations/Jobs at closing. The DB/identities were not migrated, the
+ scheduling hook unchanged; its capacity at a future real release is a separate
+ check.
 
-Ownership-таблица выше учитывает последующий monitoring split `8862770`.
-Первоначальная передача22 ресурсов в восемь apps была отдельной завершённой
-приёмкой; она не доказывает финальный cleanup новых monitoring owners.
-[Текущая карта и read-only status](../../observability/monitoring/observability-current.md).
+The ownership table above accounts for the subsequent monitoring split
+`8862770`. The initial transfer of 22 resources into eight apps was a separate
+completed acceptance; it does not prove the final cleanup of the new
+monitoring owners.
+[The current map and read-only status](../../observability/monitoring/observability-current.md).
 
-Приёмка миграции: **134/134** public TLS/anonymous/forged-header/invalid-token
-checks до и после, **88 профильных тестов**. Пять старых ошибок
-`test_syncthing_scheduling.py` воспроизведены на исходном `c612d71` (ожидание
-DaemonSet при текущем Deployment); полный repository suite не объявлялся зелёным.
-Новый browser MFA/enrollment этой передачей владения не проверялся.
+Migration acceptance: **134/134** public TLS/anonymous/forged-header/invalid-
+token checks before and after, **88 profile tests**. Five old
+`test_syncthing_scheduling.py` failures were reproduced on the original
+`c612d71` (a DaemonSet expectation against the current Deployment); the full
+repository suite was not declared green. New browser MFA/enrollment was not
+verified by this ownership transfer.
 
-Коммиты: disarm `41e10a2`, перенос `7ae691a`, временная пауза LiteLLM `4e2c72e`,
-окончательное удаление/возврат auto-sync **`e7fe891`**. Подробности:
-[операционная миграция](../../applications/public-web/public-web-migration.md),
-[доступ и авторизация](../../network/README.md). Старый aggregate chart не возвращать
-при откате одного приложения; менять только источник его действующего владельца.
+Commits: disarm `41e10a2`, transfer `7ae691a`, temporary LiteLLM pause
+`4e2c72e`, final deletion/auto-sync restore **`e7fe891`**. Details:
+[operations migration](../../applications/public-web/public-web-migration.md),
+[access and authorization](../../network/README.md). Do not restore the old
+aggregate chart when rolling back one application; change only the source of
+its current owner.
 
 
-## Мониторинг разделён по самостоятельным сервисам — 2026-11-07
+## Monitoring split into self-contained services — 2026-11-07
 
-- `prometheus-stack`: Prometheus, Alertmanager, оператор, exporters и общие
-  recording/alert rules. Upstream chart по-прежнему `kube-prometheus-stack`
-  92.10.0, но Grafana в нём **выключена**. Helm releaseName остаётся
-  `kube-prometheus-stack`, чтобы не менять имена, selectors, PVC и адреса.
-- `grafana`: локальный wrapper `charts/grafana`, vendored upstream dependency
-  Grafana chart **14.0.0** из прежнего стека (не обновление версии), существующий
-  PVC/admin/OIDC Secrets, datasource provisioning и публичный policy proxy.
-  Native SSO, роль/группы, refresh/session durations и anonymous=false теперь
-  задекларированы в Git, а не зависят от старых live patches.
-- `loki`, `tempo`: независимые чарты и собственные ConfigMap, прежние runtime
-  images, Service имена, hostPath и mTLS. Общий leaf Certificate
-  `otel-tls-backends` принадлежит `monitoring-k3s` как shared PKI; Secret/SANs
-  не переизданы ради разделения. Loki retention rules живут с Loki.
-- `pyroscope`: бывшая Application `profiling`; данные/Deployment/PVC сохранены.
-- `grafana-mcp`, `thanos`: уже самостоятельные Applications, такими и остались.
-  `monitoring-k3s` / `monitoring-llm` — отдельная cluster/domain instrumentation;
-  существующие сборщики не переустанавливались и не перенастраивались этим split.
+- `prometheus-stack`: Prometheus, Alertmanager, the operator, exporters and
+  the shared recording/alert rules. The upstream chart remains
+  `kube-prometheus-stack` 92.10.0, but Grafana inside it is **disabled**. The
+  Helm releaseName stays `kube-prometheus-stack`, so the names, selectors,
+  PVCs and addresses do not change.
+- `grafana`: the local wrapper `charts/grafana`, the vendored upstream
+  dependency Grafana chart **14.0.0** from the former stack (not a version
+  update), the existing PVC/admin/OIDC Secrets, datasource provisioning and
+  the public policy proxy. Native SSO, role/groups, refresh/session durations
+  and anonymous=false are now declared in Git instead of depending on old
+  live patches.
+- `loki`, `tempo`: independent charts and their own ConfigMaps, the former
+  runtime images, Service names, hostPath and mTLS. The shared leaf
+  Certificate `otel-tls-backends` belongs to `monitoring-k3s` as shared PKI;
+  the Secret/SANs were not re-issued for the split's sake. Loki retention
+  rules live with Loki.
+- `pyroscope`: the former Application `profiling`; data/Deployment/PVC
+  preserved.
+- `grafana-mcp`, `thanos`: already independent Applications and they stayed
+  that way. `monitoring-k3s` / `monitoring-llm` are separate cluster/domain
+  instrumentation; the existing collectors were not reinstalled or
+  reconfigured by this split.
 
-Старые Applications `kube-prometheus-stack`, `otel-backends`, `profiling` и
-неиспользуемые агрегирующие чарты/пути удалены после disarm и проверки нового
-владения. Старые имена `kube-prometheus-stack-grafana`, `otel-loki`, `otel-tempo`,
-release labels и `app.kubernetes.io/part-of: otel-backends` — compatibility
-identities, не доказательство наличия старой Application. Не делать `helm
-uninstall` старого release и не переименовывать live PVC ради эстетики.
+The old Applications `kube-prometheus-stack`, `otel-backends`, `profiling` and
+the unused aggregate charts/paths were removed after disarm and verifying the
+new ownership. The old names `kube-prometheus-stack-grafana`, `otel-loki`,
+`otel-tempo`, release labels and `app.kubernetes.io/part-of: otel-backends`
+are compatibility identities, not proof that the old Application exists. Do
+not `helm uninstall` the old release and do not rename live PVCs for
+aesthetics.
 
-Перед Grafana rollout создан согласованный SQLite backup (private 0600, вне Git).
-После rollout сверены сохранность пользователей/организаций/ролей, datasource
-identities, dashboard UIDs, native OAuth links и public sharing; содержимое БД
-и токены не выводились. Grafana/Loki/Tempo перезапущены контролируемо, версии и
-каталоги данных не менялись. TLS/anonymous regression 134/134; native OIDC redirect,
-verified mTLS readiness, отказ без client certificate, свежие Loki logs и доступ
-к сохранённым Tempo traces проверяются отдельно от состояния Argo. Это не новый
-browser-MFA/enrollment, backup/restore/HA или every-service telemetry acceptance.
+Before the Grafana rollout an agreed SQLite backup was made (private 0600,
+outside Git). After the rollout the preservation of users/organizations/roles,
+datasource identities, dashboard UIDs, native OAuth links and public sharing
+was compared; DB contents and tokens were not printed. Grafana/Loki/Tempo
+were restarted in a controlled way; versions and data directories did not
+change. TLS/anonymous regression 134/134; the native OIDC redirect, verified
+mTLS readiness, rejection without a client certificate, fresh Loki logs and
+access to preserved Tempo traces are verified separately from the Argo state.
+This is not a new browser-MFA/enrollment, backup/restore/HA, or
+every-service telemetry acceptance.
 
-Точные владельцы, безопасный handoff и границы проверок:
+The exact owners, safe handoff and check boundaries:
 [monitoring-service-split.md](../../observability/monitoring/monitoring-service-split.md).
-На том промежуточном этапе guard отказывал при наличии независимых owners;
-после окончательного split `monitoring.yml` / `monitoring_stack` retired
-**безусловно**, до любых мутаций, включая запуск на свежем кластере. Править действующие Git sources, не старый
-`deploy/monitoring/values.yaml` и не UI image/Helm overrides.
+At that intermediate stage the guard refused when independent owners existed;
+after the final split `monitoring.yml` / `monitoring_stack` is retired
+**unconditionally**, before any mutations, including a run on a fresh
+cluster. Edit the current Git sources, not the old
+`deploy/monitoring/values.yaml` and not UI image/Helm overrides.
 
 
-## Последний Prometheus aggregate тоже удалён — 2026-11-07
+## The last Prometheus aggregate is also removed — 2026-11-07
 
-Предыдущий раздел описывает промежуточный этап. **Application `prometheus-stack`
-удалена**, больше не объединять Prometheus и Alertmanager по границе upstream chart.
-Текущие владельцы/источники:
+The previous section describes an intermediate stage. **The Application
+`prometheus-stack` was removed**; do not reunite Prometheus and Alertmanager
+on the upstream chart boundary again. The current owners/sources:
 
-| Application | Source | Состав |
+| Application | Source | Composition |
 | --- | --- | --- |
-| `prometheus` | `charts/prometheus` | Prometheus, его конфигурация/storage, общие recording/alert rules и cluster monitors |
-| `alertmanager` | `charts/alertmanager` | Alertmanager, routing/config, свои SA/Service/monitor/rules |
-| `prometheus-operator` | `charts/prometheus-operator` | Оператор, 10 общих CRD, admission webhooks, свои rules |
-| `node-exporter` | `charts/node-exporter` | DaemonSet и его Service/monitor/rules |
-| `kube-state-metrics` | `charts/kube-state-metrics` | Экспорт состояния K8s и поддерживающие RBAC/Service/monitor/rules |
+| `prometheus` | `charts/prometheus` | Prometheus, its configuration/storage, the shared recording/alert rules and cluster monitors |
+| `alertmanager` | `charts/alertmanager` | Alertmanager, routing/config, its own SA/Service/monitor/rules |
+| `prometheus-operator` | `charts/prometheus-operator` | The operator, the 10 shared CRDs, admission webhooks, its own rules |
+| `node-exporter` | `charts/node-exporter` | The DaemonSet and its Service/monitor/rules |
+| `kube-state-metrics` | `charts/kube-state-metrics` | K8s state export and the supporting RBAC/Service/monitor/rules |
 
-Все 77 ресурсов имеют ровно одного владельца, payload до/после совпадает полностью.
-CRD остаются shared definitions без принудительного application tracking; новый
-scope — оператор. 8 существующих runtime Pods не пересоздавались и не меняли ноду
-или restart counters. 4 PVC/bound volumes и UID/содержимое 3 целевых Secrets сохранены.
-Prometheus продолжает находить тот же Alertmanager по прежнему Service.
+All 77 resources have exactly one owner; the payload before/after matches
+completely. The CRDs remain shared definitions without forced application
+tracking; the new scope is the operator. The 8 existing runtime Pods were not
+recreated and did not change node or restart counters. The 4 PVCs/bound
+volumes and the UIDs/contents of the 3 target Secrets are preserved.
+Prometheus keeps finding the same Alertmanager at the former Service.
 
-Upstream kube-prometheus-stack92.10.0 переиспользуется **только как pinned source
-шаблонов**: один проверенный неизменяемый archive в `charts/_vendor`, каждый local
-chart включает только свой компонент. Это не aggregate Application и не общие
-изменяемые values. У каждого сервиса свой chart/values и самостоятельный sync.
-ReleaseName/resource names/labels `kube-prometheus-stack` оставлены для совместимости;
-не переименовывать PVC/Services и не запускать `helm uninstall` прежнего release.
+The upstream kube-prometheus-stack92.10.0 is reused **only as a pinned source
+of templates**: one verified immutable archive in `charts/_vendor`, each local
+chart includes only its component. That is not an aggregate Application and
+not shared mutable values. Each service has its own chart/values and its own
+sync. The kube-prometheus-stack releaseName/resource names/labels are kept for
+compatibility; do not rename PVCs/Services and do not `helm uninstall` the old
+release.
 
-Архив по SHA256, symlinks и полная disjoint/render-equivalence проверка находятся
-в тестах. Argo рендерит всё из Git offline, без dependency downloads. Сборный
-Ansible installer окончательно retired: always-tag fail до любой мутации, даже
-на свежем кластере. Пререквизиты/Secrets восстанавливать отдельно по runbook;
-не обходить guard для возврата старого стека.
+The archive's SHA256, symlinks and the full disjoint/render-equivalence checks
+live in the tests. Argo renders everything from Git offline, without
+dependency downloads. The aggregate Ansible installer is finally retired: an
+always-tag fail before any mutation, even on a fresh cluster.
+Prerequisites/Secrets are restored separately per the runbook; do not bypass
+the guard to bring back the old stack.
 
-При handoff сначала disarm/no finalizers, затем adopt, live проверки, затем удаление
-старого Application/values. Ни глобальный prune, ни restart/WAL repair/DB migration,
-ни ротация TLS или alert credentials не выполнялись. Проверки/границы и диаграмма
-владения: [prometheus-service-split.md](../../observability/monitoring/prometheus-service-split.md).
+At the handoff: first disarm/no finalizers, then adopt, live checks, then the
+deletion of the old Application/values. No global prune, no restart/WAL
+repair/DB migration, no TLS or alert-credential rotation were performed.
+Checks/boundaries and the ownership diagram:
+[prometheus-service-split.md](../../observability/monitoring/prometheus-service-split.md).
 
 
-Закрывающие коммиты окончательного разделения: `652e286` (disarm), `78a9336`
-(adopt), `bcc93ca` (удаление aggregate), **`0bb4e31`** (финальная проверка/rollback
-safeguards). 104 tests + 24 subtests и 134/134 public checks прошли; на закрытии
-49 Applications Synced/Healthy, но старый WAL alert не маскировался и не исправлялся.
-Подробный итог/границы: [observability-current.md](../../observability/monitoring/observability-current.md#зафиксированный-closeout-не-новая-команда-миграции).
+The closing commits of the final split: `652e286` (disarm), `78a9336`
+(adopt), `bcc93ca` (aggregate deletion), **`0bb4e31`** (final verification/
+rollback safeguards). 104 tests + 24 subtests and 134/134 public checks
+passed; at closing 49 Applications were Synced/Healthy, but the old WAL alert
+was neither masked nor fixed. Detailed summary/boundaries:
+[observability-current.md](../../observability/monitoring/observability-current.md#a-recorded-closeout-not-a-new-migration-command).
 
-**Не откатывать передачу владения простым удалением новых Applications с active
-finalizers.** Это может каскадно удалить уже переданные workloads. Обратная
-передача требует такого же disarm/handoff; обычные изменения версии откатываются
-через текущий owning chart. Private audit receipts не являются проверенным DR.
+**Do not roll back an ownership transfer by simply deleting the new
+Applications with active finalizers.** That can cascade-delete the already
+transferred workloads. A reverse transfer needs the same disarm/handoff;
+ordinary version changes roll back via the current owning chart. Private
+audit receipts are not a verified DR.
 
 
 ## SPI full-service extraction — 9 November 2026

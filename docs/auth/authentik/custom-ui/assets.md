@@ -1,245 +1,276 @@
 # Static assets, icons and backgrounds
 
-## 6. Статика без expiring URL
+## 6. Static files without expiring URLs
 
-Первые signed media URLs Authentik оказались непригодны для persistent CSS: JWT
-подпись истекает. Brand не должен хранить такой URL как постоянный background/font.
-Вместо этого используется same-origin endpoint:
+The first signed media URLs of Authentik proved unusable for persistent CSS:
+the JWT signature expires. A Brand must not store such a URL as a permanent
+background/font. A same-origin endpoint is used instead:
 
 ```text
 https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/<sha256-prefix>-<filename>
 ```
 
-`branding.py` проверяет локальный digest каждого asset, строит content-hashed URL,
-проверяет served bytes по HTTPS и заменяет `__ASSET_*__` placeholders. Если hash
-не совпал или placeholder остался, apply не должен продолжаться.
+`branding.py` verifies each asset's local digest, builds content-hashed URLs,
+checks the served bytes over HTTPS and replaces the `__ASSET_*__` placeholders.
+If a hash does not match or a placeholder remains, apply must not continue.
 
-`branding_static.py` создаёт immutable ConfigMap, sandboxed nginx Deployment,
-Service и prefix-only Ingress. Только reviewed `.webp`, `.svg`, `.woff2`, GET/HEAD,
-`nosniff`, годовой immutable cache. Нет JS login bundle, произвольного `/data`
-или private backup directory. API/token/login пути продолжают обслуживаться IdP.
+`branding_static.py` creates the immutable ConfigMap, the sandboxed nginx
+Deployment, the Service and the prefix-only Ingress. Only reviewed `.webp`,
+`.svg`, `.woff2`; GET/HEAD, `nosniff`, a one-year immutable cache. No JS login
+bundle, no arbitrary `/data` or private backup directory. API/token/login paths
+keep being served by the IdP.
 
-Nginx: digest закреплён в `static-image.json`, non-root, read-only FS, no SA token,
-no escalation/capabilities, ограниченный `/tmp`, requests 5m/16Mi, limits 100m/64Mi.
-Секрет TLS `authentik-tls` общий для домена; ingress priority/prefix изолируют статику.
-Это не HA и не justification для доступа к Kubernetes API из auth server.
+Nginx: the digest is pinned in `static-image.json`, non-root, read-only FS, no
+SA token, no escalation/capabilities, a limited `/tmp`, requests 5m/16Mi, limits
+100m/64Mi. The TLS Secret `authentik-tls` is shared for the domain;
+ingress priority/prefix isolate the static files. This is not HA and not a
+justification for accessing the Kubernetes API from the auth server.
 
-Kubernetes apply особенности, уже исправленные:
+Kubernetes apply specifics, already fixed:
 
-- client-side last-applied annotation для binary ConfigMap превышала 256KiB:
-  используется **server-side apply** с выделенным field manager;
-- `kind: List` приводил к недоступному OpenAPI-v2 fallback: CLI выдаёт **отдельные
-  JSON-as-YAML documents**, сохраняется strict OpenAPI-v3 validation;
-- не добавлять `--validate=false` как обход этих ошибок.
+- the client-side last-applied annotation for a binary ConfigMap exceeded
+  256KiB: **server-side apply** with a dedicated field manager is used;
+- `kind: List` led to an unavailable OpenAPI-v2 fallback: the CLI emits
+  **separate JSON-as-YAML documents**, and strict OpenAPI-v3 validation is kept;
+- do not add `--validate=false` as a workaround for these errors.
 
-При замене asset меняются bytes, SHA и URL; старый immutable URL не перезаписывать.
-Проверить разумный размер bundle (renderer guard 900000 bytes) и mobile image.
-Старые ConfigMaps/resources очищать отдельно после acceptance, не во время rollback.
+When replacing an asset the bytes, SHA and URL change; do not overwrite the old
+immutable URL. Check the reasonable bundle size (renderer guard 900000 bytes)
+and the mobile image. Clean up old ConfigMaps/resources separately after
+acceptance, not during a rollback.
 
-## 7. Иконки application dashboard — отдельный слой
+## 7. Application dashboard icons — a separate layer
 
-Источник `assets/service-icons/`, manifest `sources.json` содержит URL/revision,
-SHA/provenance/license; README объясняет derivation. Это не favicon всего Authentik.
-`icons.py` загружает pinned assets и меняет только `meta_icon` существующих apps;
-не трогает provider/policies/launch URLs, включая Argo CD вне foundation registry.
+The source is `assets/service-icons/`; the manifest `sources.json` holds
+URL/revision, SHA/provenance/license; the README explains derivation. This is
+not the favicon of all Authentik. `icons.py` uploads pinned assets and changes
+only the `meta_icon` of existing apps; it does not touch
+providers/policies/launch URLs, including Argo CD outside the foundation
+registry.
 
-У Argo CD — официальный pinned `homarr-labs/dashboard-icons` знак. Wiki больше
-не использует BookStack artwork: исходный круглый Socrat из
-`deploy/litellm/branding/socrat-icon-v1.png` (2349px) уменьшен до 512px и упакован в
-SVG с embedded PNG без перерисовки. После уточнения владельца LiteLLM в dashboard
-использует официальный product monogram SVG из pinned BerriAI/litellm revision;
-круглый Socrat остаётся у Wiki.
-Логотип login — отдельная маска; favicon Authentik — точный Wiki SVG.
+Argo CD uses the official pinned `homarr-labs/dashboard-icons` icon. The wiki no
+longer uses BookStack artwork: the original round Socrat from
+`deploy/litellm/branding/socrat-icon-v1.png` (2349px) was downsized to 512px and
+packed into an SVG with an embedded PNG, without redrawing. After the owner's
+refinement, LiteLLM uses the official product monogram SVG from a pinned
+BerriAI/litellm revision in the dashboard; the round Socrat stays with the wiki.
+The login logo is a separate mask; Authentik's favicon is the exact wiki SVG.
 
-Все девять текущих app icons проверены через разрешённый media URL: HTTPS200 и
-совпадение bytes digest. Для media URL запрашивать свежий native resolved URL,
-не сохранять его signed query в Git. Checksum-sensitive line endings не «чистить»
-глобальным formatter: `.gitattributes` сохраняет нужные asset bytes.
+All nine current app icons were verified through the permitted media URL:
+HTTPS200 and matching byte digests. For media URLs request a fresh native
+resolved URL; do not store its signed query in Git. Do not “clean” checksum-
+sensitive line endings with a global formatter: `.gitattributes` preserves the
+needed asset bytes.
 
 ## 14. Random backgrounds from the Nature dotfiles
 
-На 2026-11-01 owner предоставил `~/code/dotfiles/wallpapers/nature/images`:
-30 JPEG (~40MiB, ширина до 5120px). Репозиторий-источник не изменяется; фактические
-SHA256 каждого оригинала, Git revision и версия Pillow записаны в
-`deploy/authentik/quiet-mono/nature.json`. Это provenance, не передача авторских
-прав на исходные фотографии. Production использует только производные WebP.
+As of 2026-11-01 the owner provided `~/code/dotfiles/wallpapers/nature/images`:
+30 JPEGs (~40MiB, width up to 5120px). The source repository is not changed;
+the actual SHA256 of every original, the Git revision and the Pillow version are
+recorded in `deploy/authentik/quiet-mono/nature.json`. This is provenance, not a
+transfer of copyright on the original photos. Production uses only the derived
+WebPs.
 
 ```sh
 python3 scripts/build-authentik-nature.py --source ~/code/dotfiles
 ```
 
-Нужен Pillow с WebP. Метаданные EXIF/ICC не переносятся. Desktop long edge <=1920,
-mobile <=960; quality обычно 80, при превышении file budget понижается до 68.
-Локальная сборка не деплоит. `assets.json` содержит digest всех 67 assets:
-7 исходных reference assets и 60 Nature derivatives. `reference/` остаётся frozen.
+Pillow with WebP support is required. EXIF/ICC metadata is not carried over.
+Desktop long edge <=1920, mobile <=960; quality usually 80, lowered to 68 when
+the file budget is exceeded. A local build does not deploy. `assets.json` holds
+the digests of all 67 assets: 7 original reference assets and 60 Nature
+derivatives. `reference/` remains frozen.
 
-Nginx `split_clients "$request_id"` почти равновероятно выбирает один из 30 ID.
-`/-/quiet-mono/v1/nature/desktop` и `/mobile` возвращают **сам WebP, HTTP200**:
-только GET/HEAD, `Content-Type: image/webp`, `Cache-Control: no-store`, `nosniff`.
-`X-Quiet-Mono-Scene` — публичный ID фото для проверки, не user/session identifier.
-Это exact locations с alias из закрытого manifest map: никакого произвольного path,
-JS, внешнего CDN, user cookie, IP-based tracking или auth logic. Обычные hash URLs
-по-прежнему immutable. CSS переключает mobile endpoint при width <=700px.
+Nginx `split_clients "$request_id"` picks one of 30 IDs with almost equal
+probability. `/-/quiet-mono/v1/nature/desktop` and `/mobile` return **the WebP
+itself, HTTP200**: GET/HEAD only, `Content-Type: image/webp`,
+`Cache-Control: no-store`, `nosniff`. `X-Quiet-Mono-Scene` is the photo's public
+ID for verification, not a user/session identifier. These are exact locations
+with an alias from a closed manifest map: no arbitrary path, JS, external CDN,
+user cookie, IP-based tracking or auth logic. The ordinary hash URLs remain
+immutable. CSS switches to the mobile endpoint at width <=700px.
 
-Во время одного SPA flow нет таймера/смены видимого фона. Новая загрузка документа
-выбирает заново (повторы возможны). При смене desktop/mobile breakpoint также
-может выбираться другое фото. Native initial background и drawer могут вызывать
-отдельные image requests; это не обещание одного HTTP-запроса на весь документ.
+During a single SPA flow there is no timer/change of the visible background. A
+new document load selects anew (repeats are possible). Crossing the
+desktop/mobile breakpoint can also select a different photo. The native initial
+background and drawer can issue separate image requests; this is not a promise
+of a single HTTP request for the whole document.
 
-Статика раскладывается на content-hashed immutable ConfigMaps, каждый <950KB
-serialized; Pod видит один read-only projected volume. Общий reviewed budget 16MB.
-Playbook передаёт source одним временным tar (owner-only unpack), не десятками
-SSH/stat операций, и рендерит отдельные resource documents в защищённый remote
-file, не огромную Ansible stdout/stdin переменную. Server-side apply и strict
-validation сохраняются. Перезапускается только static Deployment при новом
-content digest; Authentik и shared ingress не перезапускаются.
+The static files are laid out into content-hashed immutable ConfigMaps, each
+<950KB serialized; the Pod sees one read-only projected volume. The overall
+reviewed budget is 16MB. The playbook transfers the source as a single temporary
+tar (owner-only unpack) instead of dozens of SSH/stat operations, and renders
+the separate resource documents into a protected remote file, not a huge Ansible
+stdout/stdin variable. Server-side apply and strict validation are preserved.
+Only the static Deployment restarts on a new content digest; Authentik and the
+shared ingress do not restart.
 
-Применение — стандартный `authentik-branding.yml` с явным `apply`. Сохранён
-protected pre-Nature snapshot `nature-before-20261101.json`; штатный Brand journal
-содержит применимый guarded pre-change backup. Возврат к предыдущей lake CSS —
-через этот backup, не через initial pre-branding baseline (тот отменяет всю тему).
-Не печатать snapshot/journal, не удалять старые ConfigMaps во время rollback.
+Application is the standard `authentik-branding.yml` with an explicit `apply`.
+The protected pre-Nature snapshot `nature-before-20261101.json` was kept; the
+routine Brand journal contains an applicable guarded pre-change backup. Return
+to the previous lake CSS goes through that backup, not through the initial
+pre-branding baseline (that would cancel the whole theme). Do not print the
+snapshot/journal and do not delete old ConfigMaps during a rollback.
 
-Проверки: 30 original/60 derivative hashes, bounded objects, nginx syntax, full
-playbook apply; live desktop1440/mobile390 на обоих edges, reviewed response bytes,
-no-store, стабильность после загрузки, zero JS errors. В 12 выборках каждого edge
-получилось по 11 разных сцен — это evidence, не гарантия отсутствия повторов.
-`python3 scripts/identity-nature-smoke.py --run` повторяет anonymous live checks без
-пароля/MFA/fixtures, screenshots и сохранённых session данных. Actual owner MFA
-roundtrip в этом изменении не проводился. API comparison показал изменение только
-Brand CSS/background; OAuth providers, policy/flow bindings и MFA validate settings
-остались прежними. Argo refresh/VPS rollout этим playbook не затрагивается.
-
-
-
-
-## 15. Оптимизация Nature: preview → резкое фото (2026-11-02)
-
-Предыдущий §14 описывает **историческую первую реализацию**. Схема на момент этого этапа
-устраняет два разных полных background-запроса и не кеширует только выбор сцены,
-а не сами большие фото.
-
-- Ранний `@import /-/quiet-mono/v1/nature/scene.css`, `no-store`, выбирает один из
-  30 reviewed ID через nginx request_id (исторически; выбор исправлен в §16).
-  IP tracking и authentication JS не добавлялись.
-- Ответ <=2481B содержит inline WebP preview124–300B **той же фотографии** и
-  ссылки на SHA-pinned AVIF/WebP. CSS layered background рисует preview под HQ.
-  Никакой отдельной загрузки миниатюры, чужого случайного кадра или ожидания HQ
-  для native login. После загрузки фон неподвижен; breakpoint меняет размер,
-  но не photo ID.
-- AVIF <=1920/960: медиана78,370B desktop /22,289B mobile вместо
-  WebP159,250B /49,560B. Сохранены все30 originals и60 WebP fallback; добавлены
-  60 AVIF и30 checksum-pinned scene CSS. Старые source/derivative hashes сохранены.
-- Большие фото `public,max-age=31536000,immutable`; повторная выбранная картинка
-  отдаётся из browser cache (проверено transferSize=0). Новый документ снова
-  выбирает сцену; повтор допустим. Compatibility `/nature/desktop|mobile` теперь
-  no-store302 на immutable asset, Accept/AVIF negotiation и GET/HEAD403 guard.
-- Единственный фон — native `body::before`, drawer прозрачен. Native default
-  background-prefetch указывает на прозрачный62B immutable SVG, не второе фото.
-  Это presentation field, не подмена flow/authentication code.
-
-В обоих public edges desktop1440/mobile390 проверены ровно один scene stylesheet
-и один HQ image, правильный размер, same-photo preview, кеш, hashes, random sampling,
-POST403, WebP fallback, native login и отсутствие JS errors/slideshow. HQ задержан
-в отдельном browser-only тесте на5секунд: preview видим, поля native login доступны.
-Фото и метаданные подготовлены офлайн; Pillow/libavif version в `nature.json`.
-
-Тест: `python3 scripts/identity-nature-smoke.py --run`. Реальный owner login/recovery
-не имитировался. Protected API comparison подтвердил изменения **только Brand
-CSS/background**, не providers/policies/MFA. Перезапускался только static Deployment,
-несколько раз при проверке подхода; Authentik/ingress/DNS/WireGuard не менялись.
-Нулевая задержка до первого сетевого ответа не обещается; остаётся нейтральный
-fallback на случай сетевой ошибки. Rollback — guarded непосредственно pre-performance
-Brand backup, не initial baseline. Не удалять старые immutable CMs при откате.
+Checks: 30 original/60 derivative hashes, bounded objects, nginx syntax, the
+full playbook apply; live desktop1440/mobile390 on both edges, reviewed response
+bytes, no-store, stability after loading, zero JS errors. In 12 samples from
+each edge, 11 distinct scenes appeared — that is evidence, not a guarantee of no
+repeats. `python3 scripts/identity-nature-smoke.py --run` repeats the anonymous
+live checks without password/MFA/fixtures, screenshots or saved session data.
+No actual owner MFA roundtrip was performed in this change. The API comparison
+showed only a Brand CSS/background change; OAuth providers, policy/flow
+bindings and MFA validate settings stayed as they were. Argo refresh/VPS rollout
+is not affected by this playbook.
 
 
-## 16. Plan History без вложенной прокрутки
-
-По запросу owner сняты ограничения22rem/18rem у native progress-stepper.
-`max-block-size:none;max-height:none;overflow:visible`: список занимает естественную
-высоту на desktop/mobile, прокрутка остаётся у инспектора, не внутри Plan History.
-Это отменяет прежнее presentation-решение о bounded history scroll, но не меняет
-данные, порядок, повторы и права доступа. Оба public edges проверены на1440/390px
-через local empty layout box в native компоненте; настоящая owner history не
-подменялась и не извлекалась. Изменён только CSS Brand, без рестартов.
 
 
-## 16. Стабильный фон на весь OIDC-проход (2026-11-03)
+## 15. Nature optimization: preview → sharp photo (2026-11-02)
 
-Причина редких скачков: `split_clients "$request_id"` выбирал новое фото при
-каждом импорте `scene.css`. Внутри SPA всё выглядело стабильно, но полноценный
-redirect/reload создавал новый документ и новый случайный выбор. Два одинаковых
-анонимных flow URL с неизменным `next` воспроизвели смену фото.
+The previous §14 describes the **historical first implementation**. The scheme
+as of this stage removes two separate full background requests and caches
+everything except the scene choice, not the big photos themselves.
 
-Теперь выбор — не на документ:
+- An early `@import /-/quiet-mono/v1/nature/scene.css`, `no-store`, picks one
+  of the 30 reviewed IDs via the nginx request_id (historically; the selection
+  was fixed in §16). No IP tracking and no authentication JS were added.
+- The response of <=2481B contains an inline WebP preview of 124–300B **of the
+  same photo** and links to SHA-pinned AVIF/WebP. A CSS layered background draws
+  the preview under the HQ. No separate thumbnail download, foreign random frame
+  or waiting for HQ before the native login. After loading, the background is
+  static; the breakpoint changes the size, not the photo ID.
+- AVIF <=1920/960: median 78,370B desktop / 22,289B mobile instead of
+  WebP159,250B / 49,560B. All 30 originals and 60 WebP fallbacks preserved; 60
+  AVIFs and 30 checksum-pinned scene CSS files added. The old source/derivative
+  hashes are preserved.
+- Big photos get `public,max-age=31536000,immutable`; a re-selected picture is
+  served from the browser cache (verified transferSize=0). A new document
+  selects a scene again; a repeat is acceptable. The compatibility
+  `/nature/desktop|mobile` are now no-store 302s to an immutable asset,
+  Accept/AVIF negotiation and a GET/HEAD403 guard.
+- The single background is the native `body::before`; the drawer is
+  transparent. The native default background-prefetch points to a transparent
+  62B immutable SVG, not a second photo. This is a presentation field, not a
+  replacement of flow/authentication code.
 
-- Только same-origin Referer `/if/flow/.../?next=...` с OIDC `state` даёт seed.
-  Пока encoded `next` неизменён, `split_clients` возвращает тот же ID независимо
-  от request_id, slug стадии/flow, смены native auth session, cookie и reload.
-  Новый OIDC state заново выбирает из всех30 фото; независимые выборы могут
-  совпасть. OIDC state не меняем: это только read-only presentation selection.
-- На серверных ошибках и переходах без `next` берётся прежний ID из отдельной
-  host-only `__Secure-qm_nature`. Только30 allowlisted ID, никакого произвольного
-  пути. Secure/HttpOnly/SameSite=Lax; Path=/-/quiet-mono/v1/; Max-Age=1800.
-  Cookie обновляется только ответами selector endpoints, не immutable картинками.
-  Содержимое — публичный ID фото, не user UUID, callback, bearer или session token.
-- Для direct/native входа без уникального OIDC контекста либо при удалённом
-  Referer static-only endpoint **не видит точную границу login/logout**.
-  Здесь честный fallback —30минут с последнего selector request, а не обещание
-  нового фото на каждый клик Login. Приоритет — не менять фон в текущем проходе.
-  Разные вкладки с разными OIDC next имеют независимый устойчивый seed; fallback
-  без next разделяет cosmetic cookie браузера. Cookie не является механизмом auth.
-- Никакого custom authentication JS, HTML injection, IP/UA fingerprinting,
-  смены Authentik cookie, политик, времени жизни токенов или MFA. Сырые next/state
-  не сохраняются в новых cookies/headers/journal; access_log статики выключен.
-- По-прежнему один same-photo inline preview + один кешируемый HQ, без slideshow.
-  `scene.css` no-store; Vary: Cookie, Referer. Legacy selectors также сохраняют ID.
+On both public edges, desktop1440/mobile390 were verified: exactly one scene
+stylesheet and one HQ image, correct sizes, same-photo preview, caching,
+hashes, random sampling, POST403, WebP fallback, native login and the absence
+of JS errors/slideshow. HQ was delayed in a separate browser-only test by 5
+seconds: the preview is visible and the native login fields usable. The photos
+and metadata were prepared offline; the Pillow/libavif versions are in
+`nature.json`.
 
-Применение ограничено новым immutable nginx ConfigMap и guarded заменой только
+Test: `python3 scripts/identity-nature-smoke.py --run`. No real owner
+login/recovery was emulated. The protected API comparison confirmed changes
+**only in Brand CSS/background**, not providers/policies/MFA. Only the static
+Deployment restarted, several times while verifying the approach; Authentik/
+ingress/DNS/WireGuard were not changed. No promise of zero delay until the first
+network response; a neutral fallback remains for network errors. Rollback — the
+guarded immediately pre-performance Brand backup, not the initial baseline. Do
+not delete old immutable CMs on rollback.
+
+
+## 16. Plan History without nested scrolling
+
+At the owner's request, the 22rem/18rem limits of the native progress-stepper
+were removed. `max-block-size:none;max-height:none;overflow:visible`: the list
+takes its natural height on desktop/mobile; scrolling stays with the inspector,
+not inside Plan History. This cancels the earlier presentation decision about
+bounded history scrolling but does not change the data, order, repetitions or
+access rights. Both public edges were verified at 1440/390px via a local empty
+layout box inside the native component; the owner's real history was not
+substituted or extracted. Only the Brand CSS changed, without restarts.
+
+
+## 16. A stable background for the whole OIDC journey (2026-11-03)
+
+The cause of rare jumps: `split_clients "$request_id"` picked a new photo on
+every import of `scene.css`. Inside the SPA everything looked stable, but a
+full redirect/reload created a new document and a new random selection. Two
+identical anonymous flow URLs with an unchanged `next` reproduced the photo
+change.
+
+Now the selection is not per-document:
+
+- Only a same-origin Referer `/if/flow/.../?next=...` with the OIDC `state`
+  gives the seed. While the encoded `next` stays unchanged, `split_clients`
+  returns the same ID regardless of request_id, stage/flow slug, native auth
+  session changes, cookies and reloads. A new OIDC state selects anew from all
+  30 photos; independent selections can coincide. We do not change the OIDC
+  state: this is only a read-only presentation selection.
+- On server errors and transitions without `next`, the previous ID is taken
+  from the separate host-only `__Secure-qm_nature`. Only 30 allowlisted IDs, no
+  arbitrary path. Secure/HttpOnly/SameSite=Lax; Path=/-/quiet-mono/v1/;
+  Max-Age=1800. The cookie is updated only by the selector endpoints'
+  responses, not by the immutable pictures. Its content is the photo's public
+  ID, not a user UUID, callback, bearer or session token.
+- For direct/native login without a unique OIDC context, or with the Referer
+  removed, the static-only endpoint **cannot see the exact login/logout
+  boundary**. The honest fallback here is 30 minutes since the last selector
+  request, not a promise of a new photo per Login click. The priority is not
+  changing the background within the current journey. Different tabs with
+  different OIDC next have an independent stable seed; the fallback without next
+  shares the browser's cosmetic cookie. The cookie is not an auth mechanism.
+- No custom authentication JS, HTML injection, IP/UA fingerprinting, changes to
+  Authentik cookies, policies, token lifetimes or MFA. Raw next/state are not
+  stored in new cookies/headers/journals; the static files' access_log is off.
+- Still one same-photo inline preview + one cacheable HQ, no slideshow.
+  `scene.css` is no-store; Vary: Cookie, Referer. The legacy selectors also
+  preserve the ID.
+
+Application is limited to a new immutable nginx ConfigMap and a guarded
+replacement of only
 `Deployment/socrat-authentik-theme.spec.template.spec.volumes[config].configMap.name`.
-Старый ConfigMap сохранён; приватный backup0600 содержит прежний Deployment/config.
-UID/resourceVersion/old config проверены до PATCH. Остальные identity Deployment
-specs и UID Authentik pods до/после совпали. Authentik API writes:0.
-Откат — guarded возврат **этого config volume** на прежний ConfigMap из private
-backup; не общий rollback Authentik/Traefik и не старый pre-Nature Brand rollback.
-Для воспроизводимого reconcile использовать branding playbook с action=prepare:
-обновляется только public static bundle, без Brand/flow/provider/MFA API writes.
+The old ConfigMap is preserved; a private 0600 backup contains the previous
+Deployment/config. UID/resourceVersion/old config were checked before the PATCH.
+The other identity Deployment specs and Authentik pods' UIDs matched
+before/after. Authentik API writes:0. Rollback is a guarded return of **this
+config volume** to the previous ConfigMap from the private backup; not a general
+Authentik/Traefik rollback and not the old pre-Nature Brand rollback. For a
+reproducible reconcile use the branding playbook with action=prepare: only the
+public static bundle is updated, without Brand/flow/provider/MFA API writes.
 
-`identity-nature-smoke.py --run` на обоих входах, desktop1440/mobile390:
-native login reload×3 → native server error400 → возврат в тот же flow; соседняя
-OIDC-вкладка не меняет первую; повторные CSS requests и смена flow slug устойчивы;
-новые synthetic OIDC journeys дают разнообразие. Это анонимные layout/network
-проверки, не выдача себя за владельца и не личная end-to-end MFA acceptance.
-Также проверены scoped cookie, GET/HEAD, POST403, WebP fallback, hashes, image cache
-transferSize=0; preview-only login доступен при удержании HQ на5секунд. Изолированный
-unexposed canary перед production проверил nginx syntax, absent/foreign referrer
-и отсутствие ротации на десяти одинаковых запросах; собственный canary удалён.
+`identity-nature-smoke.py --run` on both entrances, desktop1440/mobile390:
+native login reload×3 → native server error400 → return to the same flow; a
+neighboring OIDC tab does not change the first; repeated CSS requests and a
+flow slug change are stable; new synthetic OIDC journeys give variety. These
+are anonymous layout/network checks, not an impersonation of the owner and not
+a personal end-to-end MFA acceptance. Also verified: the scoped cookie, GET/HEAD,
+POST403, WebP fallback, hashes, image-cache transferSize=0; the preview-only
+login is usable while holding the HQ back for 5 seconds. An isolated unexposed
+canary in front of production checked the nginx syntax, absent/foreign referer
+and the absence of rotation across ten identical requests; the canary was
+removed.
 
 
-## Аватарки пользователей — 7 ноября 2026
+## User avatars — November 7, 2026
 
-Owner и antropophag получают штатные Gravatar URLs по email hash, без custom
-avatar attributes. Это не импорт Google login и не восстановление удалённой
-identity. Same email даёт тот же avatar. Внешние browser requests и возможность
-локальных initials: [текущий identity status](../operations/identity-current-state.md#аватары).
-Initials в production этой актуализацией не включались.
+The owner and antropophag get stock Gravatar URLs by email hash, without
+custom avatar attributes. This is not a Google login import and not a
+restoration of a deleted identity. The same email gives the same avatar.
+External browser requests and the local-initials option:
+[current identity status](../operations/identity-current-state.md#avatars).
+Initials were not enabled in production by this update.
 
-## Иконки всех существующих приложений — 7 ноября 2026
+## Icons for all existing applications — November 7, 2026
 
-В Authentik21 application: добавлены11 отсутствовавших иконок, включая NetBird,
-LMS, RustFS, поиск, Syncthing и служебные aliases.20 записей используют локальные
-checksum-pinned SVG;3x-ui сохранил собственный branded PNG. Manifest
-`assets/service-icons/sources.json` связывает один asset с несколькими exact slugs
-через `applications`. SPI evidence использует существующую иконку Socrat.
+Authentik has 21 applications: the 11 missing icons were added, including
+NetBird, LMS, RustFS, search, Syncthing and service aliases. 20 entries use
+local checksum-pinned SVGs; 3x-ui kept its own branded PNG. The manifest
+`assets/service-icons/sources.json` ties one asset to several exact slugs via
+`applications`. The SPI evidence uses the existing Socrat icon.
 
-Все21 resolved URL проверены: HTTPS200 и ожидаемый SHA256. PATCH менял только
-`meta_icon`; UUID, providers, URLs, visibility и прочие non-icon application fields
-сохранены. Hidden gateway entries не раскрывались, роли/группы не выдавались,
-приложения не создавались, рестартов не было. Это проверка API/media, не визуальная
-приёмка всех карточек в реальной человеческой сессии.
+All 21 resolved URLs were verified: HTTPS200 and the expected SHA256. The PATCH
+changed only `meta_icon`; UUIDs, providers, URLs, visibility and other non-icon
+application fields were preserved. Hidden gateway entries were not exposed, no
+roles/groups granted, no applications created, no restarts. This is an API/media
+verification, not a visual acceptance of all cards in a real human session.
 
-Для повторного применения — только `ansible/roles/authentik/files/icons.py`,
-не полный Authentik/IAM rollout. Helper использует lock, private backup, SVG/media
-checksum verification и exact before/after checks; при uncertain marker сначала
-reconcile. Порядок provider property-mapping M2M IDs нормализуется, сами memberships
-сравниваются полностью. [Assets/receipt contract](../../../../assets/service-icons/README.md).
+To reapply — only `ansible/roles/authentik/files/icons.py`, not a full
+Authentik/IAM rollout. The helper uses a lock, a private backup, SVG/media
+checksum verification and exact before/after checks; with an uncertain marker,
+reconcile first. The order of provider property-mapping M2M IDs is normalized;
+the memberships themselves are compared in full.
+[Assets/receipt contract](../../../../assets/service-icons/README.md).

@@ -1,109 +1,123 @@
-# Авторизация приложений: текущий B2C контракт
+# Application access: current B2C contract
 
-**External пароль:** [страница смены пароля](../authentik/operations/password-self-service.md) —
-https://auth.socrat.alchemmist.xyz/change-password; `/if/user/` для External закрыт.
+**External password:** [password change page](../authentik/operations/password-self-service.md) —
+https://auth.socrat.alchemmist.xyz/change-password; `/if/user/` is closed for External.
 
-Это актуальная точка входа для выдачи доступа отдельным людям. Исторические
-owner-only/observer bootstrap описания не заменяют этот контракт. Технический
-runbook и private receipt references: [app access groups](app-access-groups.md).
+This is the current entry point for granting access to individuals. Historical
+owner-only/observer bootstrap descriptions do not replace this contract.
+Technical runbook and private receipt references: [app access groups](app-access-groups.md).
 
-## Что делает владелец в UI
+## What the owner does in the UI
 
-1. Создаёт/выбирает личную активную учётную запись Authentik. Тип **External**
-   допустим: Internal/External не является разрешением на приложение.
-2. Назначает только требуемые app-группы из таблицы.
-3. Передаёт человеку обычный адрес входа безопасным способом. Пользователь сам
-   проходит первый вход/MFA; ассистент не сбрасывает пароль/MFA и не входит за него.
+1. Creates/selects the person's active Authentik account. Type **External** is
+   allowed: Internal/External is not an application permission.
+2. Assigns only the required app groups from the table.
+3. Hands the person the ordinary login address through a safe channel. The user
+   performs the first login/MFA on their own; the assistant does not reset
+   password/MFA and does not log in on their behalf.
 
-| Группа | Приложение и роль |
+| Group | Application and role |
 |---|---|
-| `app-litellm-user` | LiteLLM `internal_user`, свои ключи/кабинет, не proxy admin |
-| `app-open-webui-user` | Open WebUI, обычный пользователь |
+| `app-litellm-user` | LiteLLM `internal_user`, own keys/cabinet, not proxy admin |
+| `app-open-webui-user` | Open WebUI, regular user |
 | `app-grafana-viewer` | Grafana Viewer |
-| `app-grafana-editor` | Grafana Editor, не GrafanaAdmin |
+| `app-grafana-editor` | Grafana Editor, not GrafanaAdmin |
 | `app-wiki-reader` | Wiki reader |
 | `app-wiki-editor` | Wiki editor |
 | `app-lms-student` | LMS student |
-| `app-lms-teacher` | LMS teacher; при обеих LMS группах teacher имеет приоритет |
+| `app-lms-teacher` | LMS teacher; with both LMS groups, teacher takes precedence |
 
-Одна app-группа даёт допуск только своему приложению. Существующие дополнительные
-права аддитивны: добавление viewer не понижает уже существующего администратора.
-LMS роль не означает доступ ко всем урокам: lesson grants остаются отдельными.
-Обычно native аккаунт появляется при первом успешном SSO-входе (JIT), а не сразу
-при создании человека/добавлении в группу. Глобального копирования всех людей во
-все приложения нет. Публичные страницы не становятся приватными из-за этой схемы.
+One app group grants access only to its own application. Existing extra rights
+are additive: adding viewer does not demote an already existing administrator.
+An LMS role does not mean access to all lessons: lesson grants remain separate.
+Usually the native account appears on the first successful SSO login (JIT), not
+immediately when the person is created/added to a group. There is no global
+copying of all people into all applications. Public pages do not become
+private because of this scheme.
 
-Не выдавать B2C-пользователю `homelab-owner`, `homelab-platform-operator`,
-Authentik Admins/Read-only или automation/admin groups. `homelab-observer` — старый
-широкий staff-профиль нескольких сервисов, не замена отдельной app-группе.
-`homelab-chat-user` остаётся legacy доступом к чату; новый выбор —
-`app-open-webui-user`. Наличие VPN/NetBird, SSH, sudo или kubectl — отдельные права.
+Do not give a B2C user `homelab-owner`, `homelab-platform-operator`,
+Authentik Admins/Read-only or automation/admin groups. `homelab-observer` is
+an old broad staff profile across several services, not a replacement for a
+dedicated app group. `homelab-chat-user` remains legacy chat access; the new
+choice is `app-open-webui-user`. Having VPN/NetBird, SSH, sudo or kubectl is a
+separate permission.
 
-## Что делает код/Ansible
+## What the code/Ansible does
 
-- Источник ролей: `deploy/identity/services.json` (`appRoles`, `accessManagement`).
-- Общий `identity_app_access` hook вызывается при штатной регистрации Authentik
-  приложений и настройке native integrations; создаёт `app-<slug>-<role>` группы
-  и проверенные admission bindings. Отдельно вручную создавать группы/PK не нужно.
-- Reconciler также обнаруживает уже зарегистрированные Authentik приложения.
-  Неизвестным создаёт пустую зарезервированную user-группу **без допуска**.
-- Для нового приложения ассистент описывает его SSO, native роли и проверенный
-  adapter, затем общий механизм создаёт группы. Новый Pod/Ingress сам по себе
-  не сообщает приложению подходящие роли и не подключает SSO автоматически.
-- Ручная регистрация вне Ansible обнаружится при следующем reconcile. Постоянного
-  watcher/фоновой записи нет; обычный Git push сам не запускает этот IdP writer.
-- Членство B2C людей задаётся в Authentik UI, не обязательными per-human строками
-  Git. Общий reconciler людей не меняет. Старый `prepare_app_iam.py` — исторический
-  ограниченный инструмент миграции, не текущая команда onboarding.
+- Source of roles: `deploy/identity/services.json` (`appRoles`, `accessManagement`).
+- The shared `identity_app_access` hook is invoked during the routine Authentik
+  application registration and native integration setup; it creates
+  `app-<slug>-<role>` groups and verified admission bindings. Groups/PKs must
+  not be created manually in addition.
+- The reconciler also discovers already-registered Authentik applications.
+  Unknown ones get an empty reserved user group **with no access**.
+- For a new application, the assistant describes its SSO, native roles and a
+  verified adapter; then the shared mechanism creates the groups. A new
+  Pod/Ingress by itself does not tell the application the right roles and does
+  not wire up SSO automatically.
+- Manual registration outside Ansible will be discovered at the next
+  reconcile. There is no permanent watcher/background writes; an ordinary Git
+  push does not trigger this IdP writer by itself.
+- B2C membership of people is managed in the Authentik UI, not mandatory
+  per-human rows in Git. The shared people reconciler is not involved. The old
+  `prepare_app_iam.py` is a historical limited migration tool, not the current
+  onboarding command.
 
-Plan по умолчанию GET-only для API; apply — свежий hash, lock, private preimages,
-CAS/drift guards. Не управляет паролями/MFA, не удаляет группы, не ротирует client
-secrets. Неожиданная привилегированная группа/сложная policy/чужое владение — stop,
-не автоматическое исправление. Отдельный playbook и команды — в runbook выше.
+Plan defaults to GET-only for the API; apply requires a fresh hash, lock,
+private preimages, CAS/drift guards. It does not manage passwords/MFA, does not
+delete groups, does not rotate client secrets. An unexpected privileged group/
+complex policy/foreign ownership — stop, not an automatic fix. The separate
+playbook and commands are in the runbook above.
 
-## Native совместимость и идентичность
+## Native compatibility and identity
 
-Wiki role map принимает новые reader/editor группы. В app-local OIDC claims
-Open WebUI получает нужный legacy user-role alias, LMS — student/teacher aliases.
-Это **не** добавляет глобальное членство observer и не открывает соседние сервисы.
-Default scope mappings не менялись; выбирать их надо по точному upstream имени,
-а не все mappings с `scope_name=profile`, иначе возможна утечка aliases между apps.
+The wiki role map accepts the new reader/editor groups. In app-local OIDC
+claims, Open WebUI receives the needed legacy user-role alias, LMS —
+student/teacher aliases. This does **not** add global observer membership and
+does not open neighboring services. Default scope mappings were not changed;
+they must be selected by exact upstream name, not all mappings with
+`scope_name=profile`, otherwise aliases could leak between apps.
 
-LiteLLM: неизменяемый UUID → `authentik:<UUID>`; app member → `internal_user`.
-Только проверенный owner UUID получает `socrat-admin` / `proxy_admin`. Совпадение
-email/username не превращает человека во владельца. Владислав теперь состоит
-только в `app-litellm-user`; его прежний аккаунт сохранён, direct user binding и
-UUID role exception сняты, `litellm-users.json` пуст. В проверенном срезе всего
-3 LiteLLM пользователя; консервативный gate текущей версии — **5 total users**.
-Группы не обходят лицензию и не дают неограниченный B2C provisioning.
+LiteLLM: immutable UUID → `authentik:<UUID>`; app member → `internal_user`.
+Only the verified owner UUID gets `socrat-admin` / `proxy_admin`. A matching
+email/username does not turn someone into the owner. Vladislav is now only in
+`app-litellm-user`; his former account is preserved, the direct user binding and
+UUID role exception removed, `litellm-users.json` is empty. In the verified
+snapshot there are just 3 LiteLLM users; the current version's conservative
+gate is **5 total users**. Groups do not bypass the license and do not provide
+unlimited B2C provisioning.
 
-## Что пока не выдавать как готовый B2C доступ
+## What not to present as ready B2C access yet
 
-Зарезервированные `app-n8n-user`, `app-harbor-user`, `app-rancher-user`,
-`app-argocd-viewer` и обнаруженные NetBird/SPI/RustFS группы не получили новый
-допуск. Их наличие в списке не означает рабочий native аккаунт/роль.
+The reserved `app-n8n-user`, `app-harbor-user`, `app-rancher-user`,
+`app-argocd-viewer` and the discovered NetBird/SPI/RustFS groups were not
+granted new access. Their presence in the list does not mean a working native
+account/role.
 
-- n8n: нет принятой native OIDC/JIT схемы; IdP gate не создаёт n8n аккаунт.
-- Harbor: нужны project grants и отдельная проверка CLI/session revocation (#134).
-- Rancher/Argo CD: staff-инфраструктура и отдельные native RBAC/cache adapters,
-  не автоматические B2C cluster privileges.
-- NetBird/SPI/RustFS: отдельные владельцы/контроллеры и политики сохранены.
+- n8n: no accepted native OIDC/JIT scheme; the IdP gate does not create an
+  n8n account.
+- Harbor: needs project grants and a separate check of CLI/session revocation (#134).
+- Rancher/Argo CD: staff infrastructure and separate native RBAC/cache adapters,
+  not automatic B2C cluster privileges.
+- NetBird/SPI/RustFS: separate owners/controllers, policies preserved.
 
-## Отзыв и границы проверки
+## Revocation and verification boundaries
 
-Снятие app-группы блокирует новый SSO-допуск, **не доказывает мгновенный logout
-всех сессий/ключей**. Для offboarding отдельно отозвать native sessions/API keys
-по правилам приложения. Wiki проверяет текущее членство с ограниченным кешем;
-LMS сессия может сохранять роль до нового входа/expiry; LiteLLM API keys независимы
-от возможности заново войти через Authentik. Не удалять пользователя с данными
-вместо корректного отзыва. Ранее принятый observer revoke не является приёмкой
-новых app-групп во всех приложениях.
+Removing an app group blocks new SSO access, **but does not prove an instant
+logout of all sessions/keys**. For offboarding, separately revoke native
+sessions/API keys per each application's rules. The wiki checks current
+membership with a limited cache; an LMS session may keep the role until a new
+login/expiry; LiteLLM API keys are independent of the ability to log in again
+via Authentik. Do not delete a user with data instead of a proper revocation.
+The previously accepted observer revoke is not acceptance of the new app
+groups in all applications.
 
-Принятый срез: 8 native mapping/admission-graph случаев с отключённой passwordless
-fixture (удалена), реальные owner/Vladislav mapping results, native LMS выбор роли,
-пустой live reconcile plan, LiteLLM read-only preflight, isolated Ansible plan
-`changed=0`. 125 выбранных offline tests: 124 passed/1 skipped. Сохранены прежние
-группы/членства, LiteLLM identities/roles и master/OIDC Secret data; приложения Ready.
-Это не полный browser/MFA/JIT E2E и не универсальная session/key revocation
-приёмка. Git publication не добавляет runtime доказательств; живые права уже были
-применены до текущего documentation/source closeout.
+Accepted snapshot: 8 native mapping/admission-graph cases with the disabled
+passwordless fixture (removed), real owner/Vladislav mapping results, native
+LMS role selection, empty live reconcile plan, LiteLLM read-only preflight,
+isolated Ansible plan `changed=0`. 125 selected offline tests: 124 passed/1
+skipped. Previous groups/memberships, LiteLLM identities/roles and master/OIDC
+Secret data preserved; applications Ready. This is not a full browser/MFA/JIT
+E2E and not a universal session/key revocation acceptance. Git publication adds
+no runtime evidence; live rights had already been applied before the current
+documentation/source closeout.

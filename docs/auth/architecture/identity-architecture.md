@@ -1,204 +1,244 @@
-# Авторизация Socrat: архитектура и границы доверия
+# Socrat authorization: architecture and trust boundaries
 
-> **Текущий B2C контракт:** [отдельные app-группы и native роли](../applications/application-access.md).
-> Восемь включённых ролей для LiteLLM, Open WebUI, Grafana, Wiki и LMS;
-> остальные reserved группы не означают допуск. Internal/External не является
-> app permission. Старые owner-only/подготовительные срезы ниже — история;
-> browser E2E и мгновенный отзыв всех сессий/ключей не заявлены.
+> **Current B2C contract:** [separate app groups and native roles](../applications/application-access.md).
+> Eight enabled roles for LiteLLM, Open WebUI, Grafana, Wiki and LMS;
+> the remaining reserved groups do not imply access. Internal/External is not
+> an app permission. The old owner-only/preparation snapshots below are history;
+> browser E2E and instant revocation of all sessions/keys are not claimed.
 
-> Текущий срез7 ноября: [логины, первый вход и native роли](../authentik/operations/identity-current-state.md),
-> [NetBird/сеть](../../network/README.md), [владельцы мониторинга](../../observability/monitoring/observability-current.md).
-> Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
+> Current November 7 snapshot: [logins, first login and native roles](../authentik/operations/identity-current-state.md),
+> [NetBird/network](../../network/README.md), [monitoring owners](../../observability/monitoring/observability-current.md).
+> The dated rollout/smoke sections below are history of their stage, not general readiness.
 
-Срез внедрения **1 ноября 2026**. Начало справочника: [identity.md](identity.md).
-Это описание реально внедрённой системы и её ограничений, не обещание завершённой
-миграции всех endpoints. Для изменений сначала сверять текущие manifests и live state.
+Implementation snapshot **November 1, 2026**. Start of the reference: [identity.md](identity.md).
+This describes the really deployed system and its limits, not a promise of a
+completed migration of all endpoints. For changes, first reconcile the current
+manifests and live state.
 
-## 1. Что именно централизовано
+## 1. What exactly is centralized
 
-Authentik — Identity Provider (IdP): личные пользователи, пароль, обязательная MFA,
-группы, разрешение входа в приложения, выдача OIDC tokens. Приложения остаются
-отдельными системами со своими данными, локальными ID, правами, сессиями и API keys.
+Authentik is the Identity Provider (IdP): personal users, passwords, mandatory
+MFA, groups, permission to enter applications, issuing OIDC tokens. Applications
+remain separate systems with their own data, local IDs, rights, sessions and API
+keys.
 
-Нельзя смешивать четыре разных слоя:
+Do not mix four different layers:
 
-1. **Сеть:** NetBird — основной human ingress; межнодовый WireGuard и отдельный
-   recovery WG сохранены. Публичный ingress/TLS/NetworkPolicy — отдельные границы.
-2. **Аутентификация:** кто человек и как он доказал личность; здесь Authentik/MFA.
-3. **Авторизация:** какие приложения, проекты, namespaces и операции ему разрешены.
-4. **Машинные credentials:** robots, service accounts, virtual keys, webhooks, MCP.
+1. **Network:** NetBird is the primary human ingress; the inter-node WireGuard
+   and the separate recovery WG are preserved. Public ingress/TLS/NetworkPolicy
+   are separate boundaries.
+2. **Authentication:** who the person is and how they proved identity; here
+   Authentik/MFA.
+3. **Authorization:** which applications, projects, namespaces and operations
+   they are allowed.
+4. **Machine credentials:** robots, service accounts, virtual keys, webhooks, MCP.
 
-Успешный MFA не выдаёт автоматически cluster-admin. Видимая плитка не доказывает,
-что backend использует SSO. Доступ к IP/порту не равен доступу к данным. OIDC не
-переносит пользовательскую базу и не объединяет аккаунты сам по себе.
+A successful MFA does not automatically grant cluster-admin. A visible tile does
+not prove the backend uses SSO. Access to an IP/port is not access to data. OIDC
+does not migrate the user base and does not merge accounts by itself.
 
-## 2. Реальное размещение
+## 2. Actual placement
 
-- Публичный IdP: **https://auth.socrat.alchemmist.xyz/**.
+- Public IdP: **https://auth.socrat.alchemmist.xyz/**.
 - Namespace `identity`, Authentik chart/app **2026.8.5**.
-- По одной реплике server и worker на `socrat-0`; PostgreSQL **17.11** там же.
-- Внешний для chart PostgreSQL: StatefulSet/Service `authentik-postgres`.
-- `authentik-data`: PVC для `/data`; отдельное persistent storage БД.
-- PV сохраняются с `Retain`; это защита от случайного удаления claim, не backup.
-- Runtime Secret `authentik-runtime`; ServiceAccount `identity-runtime`, без
-  автоматически смонтированного API token. Server/worker не должны управлять кластером.
-- Embedded outpost обслуживает proxy integration n8n. Не надо ставить outpost
-  перед каждым приложением: для нативного OIDC браузер идёт прямо в приложение.
-- Статика Quiet Mono — отдельный sandboxed nginx `socrat-authentik-theme`, тоже
-  на `socrat-0`. Подробнее [identity-frontend.md](../authentik/custom-ui/README.md).
+- One replica each of server and worker on `socrat-0`; PostgreSQL **17.11** there
+  too.
+- PostgreSQL external to the chart: StatefulSet/Service `authentik-postgres`.
+- `authentik-data`: PVC for `/data`; the DB has separate persistent storage.
+- PVs are kept with `Retain`; that protects against accidental claim deletion,
+  it is not a backup.
+- Runtime Secret `authentik-runtime`; ServiceAccount `identity-runtime`, without
+  an automatically mounted API token. The server/worker must not manage the
+  cluster.
+- The embedded outpost serves the n8n proxy integration. No need to place an
+  outpost in front of every application: for native OIDC the browser goes
+  straight to the application.
+- The Quiet Mono static files — a separate sandboxed nginx `socrat-authentik-theme`,
+  also on `socrat-0`. Details in [identity-frontend.md](../authentik/custom-ui/README.md).
 
-Источники: `deploy/authentik/values.yaml`, `foundation.yaml`, роль
-`ansible/roles/authentik/`, playbook `ansible/playbooks/authentik.yml`.
-Chart закреплён версией и SHA-256 в defaults роли; assets и nginx — также хешами.
-Не переписывать version guard, пока новая версия не проверена.
+Sources: `deploy/authentik/values.yaml`, `foundation.yaml`, the
+`ansible/roles/authentik/` role, playbook `ansible/playbooks/authentik.yml`.
+The chart is pinned by version and SHA-256 in the role defaults; assets and
+nginx by hashes too. Do not rewrite the version guard until a new version has
+been verified.
 
-**Это не HA.** Два публичных ingress IP и несколько control-plane не реплицируют
-IdP PostgreSQL, PVC или `/data`. Потеря `socrat-0` может лишить новых входов и стилей.
-Уже выданные сессии некоторых приложений могут ещё работать, но это не гарантия.
-Распределённая HA, независимые резервные копии, escrow ключей и полный DR — отдельные задачи.
+**This is not HA.** Two public ingress IPs and several control-plane nodes do
+not replicate the IdP PostgreSQL, PVC or `/data`. Losing `socrat-0` can take away
+new logins and styling. Already issued sessions of some applications may keep
+working, but that is not a guarantee. Distributed HA, independent backups, key
+escrow and full DR are separate tasks.
 
-## 3. Server, worker, БД и frontend
+## 3. Server, worker, DB and frontend
 
-Server обслуживает API, flow executor, OIDC endpoints, UI и embedded outpost.
-Worker выполняет фоновые задачи. PostgreSQL содержит пользователей, группы,
-flows/stages, providers/applications, bindings, токены и служебное состояние.
-Секретный ключ инсталляции, signing keys и client secrets — часть идентичности
-системы: восстановить одну БД без соответствующего secret material недостаточно.
+The server serves the API, flow executor, OIDC endpoints, UI and the embedded
+outpost. The worker runs background tasks. PostgreSQL contains users, groups,
+flows/stages, providers/applications, bindings, tokens and service state. The
+installation's secret key, signing keys and client secrets are part of the
+system's identity: restoring the DB alone without the matching secret material
+is insufficient.
 
-Frontend — **штатные Lit/Web Components Authentik**, не наша форма с собственной
-проверкой пароля. Страницы имеют вложенные shadow roots; flow executor получает
-challenge от сервера и загружает нужный native stage. Наш production frontend —
-Brand CSS + локальная статика + несколько явно управляемых presentation fields.
-Синтетический offline-прототип в `prototypes/authentik/` в аутентификации не участвует.
+The frontend is **Authentik's stock Lit/Web Components**, not our own form with
+its own password validation. Pages have nested shadow roots; the flow executor
+receives a challenge from the server and loads the needed native stage. Our
+production frontend is Brand CSS + local static files + a few explicitly managed
+presentation fields. The synthetic offline prototype in `prototypes/authentik/`
+does not participate in authentication.
 
-Не переносить сюда устаревший универсальный рецепт с Redis из другой версии:
-состав действующего deployment определяют наши manifests и pinned chart.
+Do not carry over a stale generic Redis recipe from some other version here: our
+manifests and the pinned chart define the deployed composition.
 
-## 4. Объекты Authentik
+## 4. Authentik objects
 
-| Объект | Роль |
+| Object | Role |
 |---|---|
-| User | Личная identity, UUID, активность, группы, MFA devices |
-| Group | Набор пользователей; имя группы может идти в signed claims |
-| Flow | Сценарий authentication / authorization / invalidation / enrollment |
-| Stage | Один шаг: identification, password, MFA, consent, login и т.д. |
-| Stage binding | Порядок/условия включения stage в flow |
-| Plan | Рассчитанное выполнение flow с контекстом и текущими bindings |
+| User | Personal identity, UUID, activity, groups, MFA devices |
+| Group | A set of users; a group name can go into signed claims |
+| Flow | An authentication / authorization / invalidation / enrollment scenario |
+| Stage | One step: identification, password, MFA, consent, login etc. |
+| Stage binding | Order/conditions for including a stage in a flow |
+| Plan | The computed flow execution with context and current bindings |
 | Provider | OIDC/proxy protocol config, callbacks, signing key, scope mappings |
-| Application | Плитка/launch URL и связь с provider; admission policies |
-| Policy binding | Условие доступа к приложению/объекту: группа или policy |
-| Property/scope mapping | Код формирования claims; security-sensitive configuration |
-| Brand | Домен, логотип/favicon/background, CSS, defaults языка/темы |
-| Outpost | Proxy/forward-auth компонент для ненативных интеграций |
+| Application | Tile/launch URL and the link to a provider; admission policies |
+| Property/scope binding | Access condition for an application/object: a group or policy |
+| Property/scope mapping | Claim-building code; security-sensitive configuration |
+| Brand | Domain, logo/favicon/background, CSS, language/theme defaults |
+| Outpost | Proxy/forward-auth component for non-native integrations |
 
-Имена default flows важны для reconciler. Не переименовывать и не удалять их
-вслепую: automation ищет конкретные slug/name и должна остановиться при неоднозначности.
+The default flow names matter to the reconciler. Do not rename or delete them
+blindly: automation looks for specific slug/name and must stop on ambiguity.
 
-## 5. Путь обычного входа
+## 5. The ordinary login path
 
 ```text
-браузер -> приложение -> authorize Authentik
+browser -> application -> authorize with Authentik
                        -> admission / authentication flow
-                       -> пароль + MFA, если действующей сессии ещё нет
+                       -> password + MFA if no live session yet
                        -> authorization flow / consent
-                       -> точный callback приложения с одноразовым code
-приложение -> token endpoint Authentik (client credentials + PKCE verifier)
-           -> проверка tokens/identity -> собственная сессия приложения
+                       -> the application's exact callback with a one-time code
+application -> Authentik token endpoint (client credentials + PKCE verifier)
+           -> token/identity validation -> the application's own session
 ```
 
-OIDC использует authorization code, не пароль пользователя в приложении.
-`state` связывает callback с начатым запросом; `nonce` — ID token с этим входом;
-PKCE связывает code с инициатором. Приложение проверяет issuer, подпись, audience,
-expiry и прочие protocol invariants. TLS verification не отключать.
+OIDC uses the authorization code, not the user's password in the application.
+`state` ties the callback to the initiated request; `nonce` ties the ID token to
+this login; PKCE ties the code to the initiator. The application checks issuer,
+signature, audience, expiry and other protocol invariants. Do not disable TLS
+verification.
 
-Если MFA-сессия Authentik уже есть, повторного экрана пароля может не быть.
-Короткий `Redirecting` — нормальный переход, не новый вход и не ошибка.
-Вход через плитку и через кнопку SSO приложения должен вести в один доверенный IdP.
-Старая локальная сессия приложения может не вызвать OIDC до logout/expiry.
-Для проверки нового входа нужен отдельный private browser context, не сброс owner MFA.
+If an Authentik MFA session already exists, repeated password prompts may not
+appear. A brief `Redirecting` is a normal transition, not a new login and not an
+error. Login via the tile and via the application's SSO button must lead to the
+same trusted IdP. An old local application session may not trigger OIDC until
+logout/expiry. To verify a new login, use a separate private browser context,
+not an owner MFA reset.
 
-## 6. Endpoints и subjects
+## 6. Endpoints and subjects
 
-Для foundation-managed OIDC стандартные endpoints на IdP:
+For foundation-managed OIDC, the standard endpoints on the IdP:
 
 - authorize: `/application/o/authorize/`;
 - token: `/application/o/token/`;
 - userinfo: `/application/o/userinfo/`;
-- issuer/discovery конкретного приложения: `/application/o/<slug>/` и его
-  `.well-known/openid-configuration` (проверять metadata установленной версии).
+- issuer/discovery of a specific application: `/application/o/<slug>/` and its
+  `.well-known/openid-configuration` (check the installed version's metadata).
 
-Issuer нужно копировать точно, включая path/trailing slash. Не выбирать issuer
-по недоверенному token payload и не разрешать произвольный discovery URL.
-Callbacks — точный HTTPS URL с `matching_mode: strict`, без `*`.
+The issuer must be copied exactly, including path/trailing slash. Do not pick
+the issuer from an untrusted token payload and do not allow an arbitrary
+discovery URL. Callbacks are exact HTTPS URLs with `matching_mode: strict`, no `*`.
 
-**Immutable subject — не email и не username.** Некоторые наши providers используют
-`sub_mode: user_uuid`, другие сохраняют прежний `hashed_user_id`. Нельзя менять
-subject mode после включения и ожидать, что приложение узнает старые аккаунты.
-`request.user.uuid` — UUID записи Authentik; `uid` в Authentik может зависеть от
-секретного ключа инсталляции и не является заменой этому UUID. LiteLLM mapping
-явно использует UUID; это исправлено после проверки upstream source.
+**The immutable subject is not the email and not the username.** Some of our
+providers use `sub_mode: user_uuid`; others keep the previous `hashed_user_id`.
+One must not change the subject mode after enablement and expect the application
+to recognize old accounts. `request.user.uuid` is the Authentik record's UUID;
+the `uid` in Authentik can depend on the installation's secret key and is not a
+replacement for this UUID. The LiteLLM mapping explicitly uses the UUID; this
+was fixed after checking the upstream source.
 
-Где уже есть данные, до первого входа составляется reviewed map:
-**Authentik subject/UUID -> конкретный существующий application user ID**.
-Ни совпадение email, ни одинаковое отображаемое имя не доказывают владение старым
-аккаунтом. Реестр: `deploy/identity/account-mappings.json`; реальные UUID/IDs там
-метаданные, а не bearer credentials. Пароли и tokens в этот файл не добавлять.
+Where data already exists, a reviewed map is composed before the first login:
+**Authentik subject/UUID -> a specific existing application user ID**. Neither
+a matching email nor an identical display name proves ownership of the old
+account. Registry: `deploy/identity/account-mappings.json`; the real UUID/IDs
+there are metadata, not bearer credentials. Do not add passwords or tokens to
+this file.
 
-## 7. Admission, app roles и sessions — разные проверки
+## 7. Admission, app roles and sessions — different checks
 
-`deploy/identity/services.json` определяет foundation apps, callback, допущенные
-группы, иконку и protocol hints. `groups` приложения ограничивают возможность
-пройти через IdP; role mapping внутри приложения определяет конечные права.
-Общая политика foundation application — `any`: достаточно одной разрешённой
-группы. Это не означает «пускать всех», но лишний permissive binding опасен.
+`deploy/identity/services.json` defines the foundation apps, callbacks, admitted
+groups, icons and protocol hints. An application's `groups` limit the ability to
+pass through the IdP; role mapping inside the application determines the final
+rights. The foundation application common policy is `any`: one permitted group
+suffices. This does not mean “let everyone in”, but an extra permissive binding
+is dangerous.
 
-Допуск observer в приложение не должен автоматически давать Editor/Admin.
-IdP superuser и app admin — разные роли, соединённые только явными mappings.
-Даже после отзыва IdP group уже выданная app cookie может оставаться действительной.
-Logout одного приложения, logout Authentik и отзыв всех app sessions не одно и то же.
-Полную offboarding-процедуру см. [identity-operations.md](../authentik/operations/identity-operations.md).
+Observer admission to an application must not automatically give Editor/Admin.
+An IdP superuser and an app admin are different roles, connected only by
+explicit mappings. Even after revoking the IdP group, an already issued app
+cookie may remain valid. Logging out of one application, logging out of Authentik
+and revoking all app sessions are not the same. See the full offboarding
+procedure in [identity-operations.md](../authentik/operations/identity-operations.md).
 
-## 8. Вход в приложение не выдаёт SSH / kubectl
+## 8. Login to an application grants no SSH / kubectl
 
-Полная процедура: [Linux/SSH и RBAC](../host-access/identity-host-access.md).
+Full procedure: [Linux/SSH and RBAC](../host-access/identity-host-access.md).
 
-Linux и Kubernetes — отдельные контуры. На четырёх нодах настроены личные SSH
-public keys, закрыты password logins управляемых ограниченных пользователей,
-нет неявного sudo/docker/root-equivalent членства. Ключи задаются по хостам.
+Linux and Kubernetes are separate perimeters. On the four nodes personal SSH
+public keys are configured, password logins of managed restricted users are
+closed, and there is no implicit sudo/docker/root-equivalent membership. Keys
+are assigned per host.
 
-`/etc/rancher/k3s/k3s.yaml` на `socrat-0`: **0640 root:alchemmist**, owner-only group.
-Раньше файл был world-readable; chmod закрывает новое чтение, но не отзывает
-раньше скопированный admin certificate. Историческую экспозицию надо оценивать
-отдельно; ротация CA в этой работе не выполнялась.
+`/etc/rancher/k3s/k3s.yaml` on `socrat-0`: **0640 root:alchemmist**, owner-only
+group. The file used to be world-readable; the chmod stops new reads but does
+not revoke the admin certificate copied earlier. The historical exposure must be
+assessed separately; a CA rotation was not performed in that work.
 
-`homelab-project-observer` ClusterRole существует без human bindings. Разрешены
-get/list/watch определённых workload/network объектов; нет Secrets, exec, logs,
-node access. Имя IdP group само не становится Kubernetes/Rancher principal.
-Namespace RoleBinding и project grants требуют отдельного решения владельца.
+The `homelab-project-observer` ClusterRole exists without human bindings.
+get/list/watch of specific workload/network objects is allowed; no Secrets,
+exec, logs or node access. An IdP group name does not itself become a
+Kubernetes/Rancher principal. A namespace RoleBinding and project grants need a
+separate owner decision.
 
-Root внешней ноды — trust boundary для workloads/secrets этой ноды. RBAC не может
-сделать root недоверенным наблюдателем запущенных там pod. Namespace maintainer,
-способный создавать pods/exec, также потенциально получает доступ к secrets namespace.
-Не называть эти полномочия безвредным read-only.
+A node's root is a trust boundary for that node's workloads/secrets. RBAC cannot
+make root an untrusted observer of the pods running there. A namespace maintainer
+able to create pods/exec can also potentially reach the namespace's secrets. Do
+not call these powers a harmless read-only.
 
-## 9. Сеть и публичные входы
+## 9. Network and public entrances
 
-Текущие публичные edges — `109.173.40.247` и **`109.120.141.97`**. Старый `176.98.185.59` — история до 5 ноября. Reviewed Grafana/Rancher entrances публичны с native SSO/ролями; Grafana MCP — bearer-only. Обычный public DNS работает без Mac overrides, anonymous org access Grafana выключен. Только согласованный traffic-light native share доступен без входа. Не публиковать дополнительные private APIs ради branding/healthcheck.
+The current public edges are `109.173.40.247` and **`109.120.141.97`**. The old
+`176.98.185.59` is history before November 5. The reviewed Grafana/Rancher
+entrances are public with native SSO/roles; Grafana MCP is bearer-only. Ordinary
+public DNS works without Mac overrides; anonymous org access to Grafana is off.
+Only the agreed traffic-light native share is available without login. Do not
+publish additional private APIs for branding/healthcheck reasons.
 
-NetBird — основной human ingress, standalone WG — recovery; межнодовый WG сохранён, обязательный Tunnelblick Mac не трогаем. User/device approval requirement выключен, но личная MFA/genuine JWT admission сохранены. Автоматического app/Linux/Kubernetes grant нет. Четыре routing agents и два relay дают bounded data-plane redundancy; management/Signal и Authentik не HA, холодный запуск без management ранее провалился. Текущий lifecycle/overlay guard/Mac/TV cleanup: [network-access.md](../../network/README.md), [NetBird](../../network/netbird/README.md).
+NetBird is the primary human ingress; standalone WG is recovery; the inter-node
+WG is preserved; we do not touch the mandatory Mac Tunnelblick. The user/device
+approval requirement is off, but personal MFA/genuine JWT admission are
+preserved. There is no automatic app/Linux/Kubernetes grant. Four routing agents
+and two relays give bounded data-plane redundancy; management/Signal and
+Authentik are not HA; a cold start without management previously failed.
+Current lifecycle/overlay guard/Mac/TV cleanup:
+[network-access.md](../../network/README.md), [NetBird](../../network/netbird/README.md).
 
-Harbor обеспечивает приватные images/robots для workload delivery, но его OIDC
-не заменяет registry robot passwords. HA Harbor тоже отложена; см. [harbor.md](../../platform/harbor/harbor.md).
+Harbor provides private images/robots for workload delivery, but its OIDC does
+not replace registry robot passwords. Harbor HA is also deferred; see
+[harbor.md](../../platform/harbor/harbor.md).
 
-## 10. Что не считать завершённым
+## 10. What not to consider finished
 
-- Kuma public/admin boundary завершён, но native OIDC не внедрён; n8n — MFA gateway, не native SSO. Exhaustive owner/app recovery acceptance остаётся отдельным.
-- Полный inventory всех человеческих auth paths и lifecycle старых sessions ещё нужен.
-- Owner-only local fallback полностью server-side проверен для Wiki; не переносить
-  этот вывод на весь кластер. LiteLLM сохраняет owner DB password, но его реальная
-  recovery-приёмка отдельно от подтверждённого owner SSO.
-- Tim должен получить credential безопасно и зарегистрировать личный фактор;
-  fixture TOTP не доказывает его личную готовность. SSH private-key acceptance — тоже отдельно.
-- Scheduled independent backups, key escrow и full DR не реализованы фактом
-  наличия manual backup scripts. Старый bootstrap token retired; новый machine
-  API пока broad, его scoped RBAC/rotation — отдельная задача.
+- The Kuma public/admin boundary is closed, but native OIDC is not deployed;
+  n8n is an MFA gateway, not native SSO. Exhaustive owner/app recovery
+  acceptance remains separate.
+- A full inventory of all human auth paths and the lifecycle of old sessions is
+  still needed.
+- The owner-only local fallback is fully server-side verified for the wiki; do
+  not extend this conclusion to the whole cluster. LiteLLM keeps the owner DB
+  password, but its real recovery acceptance is separate from the confirmed
+  owner SSO.
+- Tim must receive credentials safely and register a personal factor; a fixture
+  TOTP does not prove his personal readiness. SSH private-key acceptance is
+  separate too.
+- Scheduled independent backups, key escrow and full DR are not implemented by
+  the mere existence of manual backup scripts. The old bootstrap token is
+  retired; the new machine API is still broad; its scoped RBAC/rotation is a
+  separate task.

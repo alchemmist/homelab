@@ -1,91 +1,95 @@
-# Администраторы: Authentik → NetBird → внутренняя сеть
+# Administrators: Authentik → NetBird → internal network
 
-## Коротко: что делает владелец и что делает человек
+## In short: what the owner does and what the person does
 
-**Владелец:** создаёт личную обычную учётную запись в Authentik, выдаёт человеку
-безопасный способ установить свой пароль, добавляет одну группу
-**`netbird-internal-admins`**. Не выдаёт `homelab-owner`, Authentik superuser,
-NetBird owner/admin, setup key, свой SSH private key или kubeconfig.
+**Owner:** creates the personal ordinary account in Authentik, gives the person
+a safe way to set their password, adds the single group
+**`netbird-internal-admins`**. Does not grant `homelab-owner`, Authentik
+superuser, NetBird owner/admin, a setup key, their SSH private key or
+kubeconfig.
 
-**Пользователь:** устанавливает официальный NetBird, указывает self-hosted server
-**`https://netbird.socrat.alchemmist.xyz`**, нажимает Connect, проходит личный вход
-Authentik и настройку MFA. После синхронизации получает маршруты к узлам.
+**User:** installs the official NetBird, specifies the self-hosted server
+**`https://netbird.socrat.alchemmist.xyz`**, clicks Connect, goes through their
+personal Authentik login and MFA setup. After sync they get routes to the nodes.
 
-Не нужны WireGuard-конфиг, setup key, персональные resolver-файлы, static routes,
-SSH jump-host, индивидуальная NetBird policy или ручное редактирование Kubernetes.
-Адрес self-hosted сервера — обязательный выбор в стандартном клиенте, а не
-дополнительный конфигурационный файл; по умолчанию приложение обращается к Cloud.
-Приложение само генерирует уникальную device identity. Не копировать профиль
-владельца или identity другого устройства.
+No WireGuard config, setup key, personal resolver files, static routes, SSH
+jump-host, individual NetBird policy or manual Kubernetes editing is needed.
+The self-hosted server address is a mandatory choice in the standard client, not
+an extra configuration file; by default the app talks to the Cloud. The app
+generates its own unique device identity. Do not copy the owner's profile or
+another device's identity.
 
-## Реальные границы прав
+## The real rights boundaries
 
-- Доступ к четырём host resources `10.250.0.1/32`, `.3/32`, `.2/32`, `.5/32`
-  выдаётся существующими **групповыми** правилами; user/device policy не нужна.
-- Это доверенная роль внутренних сетевых администраторов, не ограниченная роль
-  наблюдателя. Существующие admin policies разрешают доступ ко всему выбранному
-  хосту, не только SSH. Не добавляйте случайного пользователя в эту группу.
-- Нет default route/exit node, LAN `/24`, Pod/Service CIDR и All-to-All policy.
-- NetBird использует четыре routing peers и существующий серверный `wg-socrat`.
-  Он не заменяет межсерверный транспорт. Не удалять mesh-ключи/AllowedIPs нод.
-- NetBird network admission **не создаёт Linux-пользователя**, не добавляет SSH
-  `authorized_keys`, Kubernetes RBAC или роль приложения. Обычный OpenSSH остаётся
-  с собственной авторизацией; NetBird SSH выключен. Если человеку нужен именно
-  shell/kubectl, оформите отдельную личную авторизацию, не раздавайте ключи владельца.
+- Access to the four host resources `10.250.0.1/32`, `.3/32`, `.2/32`, `.5/32`
+  is granted by the existing **group** rules; no user/device policy is needed.
+- This is a trusted internal network administrator role, not a limited observer
+  role. The existing admin policies allow access to the whole selected host, not
+  only SSH. Do not add a random user to this group.
+- No default route/exit node, LAN `/24`, Pod/Service CIDR or All-to-All policy.
+- NetBird uses four routing peers and the existing server-side `wg-socrat`.
+  It does not replace the inter-server transport. Do not remove the nodes'
+  mesh keys/AllowedIPs.
+- NetBird network admission **does not create a Linux user**, does not add SSH
+  `authorized_keys`, Kubernetes RBAC or an application role. Ordinary OpenSSH
+  keeps its own authorization; NetBird SSH is off. If the person needs an actual
+  shell/kubectl, set up a separate personal authorization; do not hand out the
+  owner's keys.
 
-## Постоянные владельцы настроек
+## Persistent settings owners
 
-| Настройка | Владелец |
+| Setting | Owner |
 |---|---|
-| Личность, пароль, MFA, группа `netbird-internal-admins` | Authentik |
-| OIDC application/provider, group claim | Authentik; `netbird-access.yml` проверяет и аддитивно согласует |
-| JWT allow groups, DNS management exclusions | Native NetBird API; тот же audit-first playbook |
-| JWT-группа админов, route/INPUT policies, devices | Native NetBird API, не YAML-копии identity DB |
+| Identity, password, MFA, `netbird-internal-admins` group | Authentik |
+| OIDC application/provider, group claim | Authentik; `netbird-access.yml` verifies and additively reconciles |
+| JWT allow groups, DNS management exclusions | Native NetBird API; the same audit-first playbook |
+| Admin JWT group, route/INPUT policies, devices | Native NetBird API, not YAML copies of the identity DB |
 | Workloads/volumes/node agents/relays | Root → NetBird Argo CD, `deploy/netbird/values.yaml` |
-| Новые cluster nodes | Отдельная процедура `netbird-node-onboarding.md` |
-| Mac + Tunnelblick | `netbird-tunnelblick-coexistence.md`; Tunnelblick не менять |
+| New cluster nodes | The separate `netbird-node-onboarding.md` procedure |
+| Mac + Tunnelblick | `netbird-tunnelblick-coexistence.md`; do not change Tunnelblick |
 
-Регулярное заведение **человека не требует запуска node onboarding**,
-перевыпуска enrollment keys, deploy или рестарта server/router.
+Regularly onboarding **a person does not require running node onboarding**,
+reissuing enrollment keys, a deploy or a server/router restart.
 
-## Почему группы теперь передаются корректно
+## Why groups now propagate correctly
 
-Для нового админа одновременно должны выполняться **три** условия:
+For a new admin, **three** conditions must hold simultaneously:
 
-1. Authentik application допускает группу `netbird-internal-admins`.
-2. NetBird `jwt_allow_groups` допускает её, `groups` claim и propagation включены.
-3. OIDC действительно передаёт группы именно того пользователя, который вошёл.
+1. The Authentik application admits the `netbird-internal-admins` group.
+2. NetBird `jwt_allow_groups` admits it, with the `groups` claim and propagation
+   enabled.
+3. OIDC actually passes the groups of the very user who logged in.
 
-В штатном embedded IdP 0.82 фактический redirect к Authentik запрашивает
-`openid profile email`, **не `groups`**. Поэтому присоединение стандартного
-scope-mapping `groups` само по себе не работает. Выделенный mapping
-`homelab-netbird-profile-groups`, attached **только к провайдеру NetBird**, добавляет
-в обязательный scope `profile`:
+In the stock embedded IdP 0.82, the actual redirect to Authentik requests
+`openid profile email`, **not `groups`**. Therefore attaching the standard
+`groups` scope mapping alone does not work. The dedicated mapping
+`homelab-netbird-profile-groups`, attached **only to the NetBird provider**, adds
+into the mandatory `profile` scope:
 
 ```python
 return {"groups": [group.name for group in request.user.ak_groups.all()]}
 ```
 
-Обычные profile/email mappings сохранены. Нет фиксированных username/email,
-списка избранных устройств или синтетического `issued: api` вместо JWT-группы.
-Отдельное одобрение каждого SSO-пользователя отключено
-(`extra.user_approval_required=false`); peer approval остаётся выключенным.
-Проверенные группы Authentik и MFA являются входным approval gate;
-публичная регистрация без группы не разрешена.
+The ordinary profile/email mappings are preserved. There are no fixed
+username/email, no favorite-device list and no synthetic `issued: api` instead
+of the JWT group. Separate per-SSO-user approval is disabled
+(`extra.user_approval_required=false`); peer approval stays off. The verified
+Authentik groups and MFA are the entry approval gate; groupless public
+registration is not allowed.
 
-Subject остаётся `user_uuid`; issuer/application slug `netbird-pilot` сохранён как
-стабильный identity identifier. Косметическое переименование issuer ломает вход
-и не является полезной «чисткой».
+The subject stays `user_uuid`; the issuer/application slug `netbird-pilot` is
+kept as the stable identity identifier. A cosmetic issuer rename breaks login and
+is not useful “cleanup”.
 
-В server-side DNS settings встроенная группа **All** включена в
-`disabled_management_groups`: исключение действует и на новые устройства.
-Пользователю не нужно включать CLI `--disable-dns` самому. Проверенный Mac
-дополнительно сохраняет эту защиту локально. Отсутствие NetBird DNS не запрещает
-системный DNS пользователя и не меняет Tunnelblick.
+In the server-side DNS settings, the built-in **All** group is included in
+`disabled_management_groups`: the exclusion also applies to new devices. The
+user does not need to pass CLI `--disable-dns` themselves. The verified Mac also
+keeps this protection locally. The absence of NetBird DNS does not forbid the
+user's system DNS and does not change Tunnelblick.
 
-## Первичная проверка/восстановление инфраструктуры
+## Primary infrastructure check/recovery
 
-Обязательный безопасный entrypoint, audit по умолчанию:
+The mandatory safe entrypoint, audit by default:
 
 ```sh
 cd ansible
@@ -93,30 +97,32 @@ ansible-playbook -i inventory/hosts.yml playbooks/netbird-access.yml \
   -e @/private/path/become.yml
 ```
 
-Выводит только purposes/counts/`plan_sha256`. Для согласованного изменения:
+It prints only purposes/counts/`plan_sha256`. For an agreed change:
 
 ```sh
-# Тот же запуск с approval свежего audit:
+# The same run with a fresh audit approval:
 -e netbird_access_apply=true \
 -e netbird_access_approve_plan_hash=<FRESH_64_HEX_HASH>
 ```
 
-`--check` не меняет API. Helper использует уже существующие private credentials
-контроллера; их значения не копируются человеку/в Git/argv. При uncertain receipt
-остановиться, прочитать protected before/receipt, сверить actual state. Не повторять
-POST/DELETE автоматически и не восстанавливать всю identity DB поверх live данных.
+`--check` does not modify the API. The helper uses the controller's existing
+private credentials; their values are not copied to a person/Git/argv. On an
+uncertain receipt, stop, read the protected before/receipt data, compare actual
+state. Do not replay POST/DELETE automatically and do not restore the whole
+identity DB over live data.
 
-## Добавление нового администратора
+## Adding a new administrator
 
-1. В Authentik создать отдельного **обычного** пользователя с уникальным username
-   и проверенным адресом. Не использовать общего пользователя команды.
-2. Передать начальную регистрацию/восстановление через защищённый канал и
-   ограниченную по времени ссылку, если recovery flow настроен. Не обещать email,
-   пока SMTP/recovery не проверены. Альтернатива — безопасно переданный временный
-   пароль с личной сменой. Не публиковать пароль, MFA seed/QR или recovery URL.
-3. Добавить группу `netbird-internal-admins`. Не добавлять пользователя в старые
-   pilot-группы: они сохраняют отдельный, ранее выданный ограниченный доступ.
-4. Для автоматизации вместо ручной группы — private extra-vars:
+1. In Authentik, create a separate **ordinary** user with a unique username and
+   a verified address. Do not use a shared team user.
+2. Hand over the initial registration/recovery through a protected channel and
+   a time-limited link if a recovery flow is configured. Do not promise email
+   until SMTP/recovery are verified. An alternative is a safely delivered
+   temporary password with a personal change. Do not publish the password, MFA
+   seed/QR or recovery URL.
+3. Add the `netbird-internal-admins` group. Do not add the user to the old pilot
+   groups: they preserve separate, previously granted limited access.
+4. For automation, instead of a manual group — private extra-vars:
 
    ```yaml
    netbird_access_action: grant
@@ -124,89 +130,101 @@ POST/DELETE автоматически и не восстанавливать в
    netbird_access_expected_user_uuid: <REVIEWED_AUTHENTIK_UUID>
    ```
 
-   Запустить audit playbook с `-e @/private/path/person.yml`, проверить план,
-   затем apply с его hash. Применяется **add_user**, не замена всех memberships.
-   Другие группы и приложения не изменяются. Повторный grant — no-op.
-5. Человек устанавливает клиент, выбирает указанный self-hosted server и лично
-   проходит Authentik/MFA. Обновление группы существующему пользователю требует
-   **свежей личной авторизации**, не только повторного использования cached token.
-6. В NetBird убедиться: обычная human role `user`, UUID/connector соответствуют
-   Authentik; JWT-группа админов получила устройство; нет owner/admin escalation,
-   pending approval, blocked или expired session. Не подменять JWT API-группой.
-7. Проверить на **его** устройстве: четыре маршрута появились, новый TCP/SSH к
-   внутреннему адресу проходит (native SSH credential — отдельно). Для web —
-   правильный TLS/SNI и собственная роль пользователя, не только login page.
-8. Отрицательная проверка: не-админ не получает admin resources; пилотная роль не
-   превращается в администратора. Добавление следующего админа не меняет router,
-   resource или policy IDs и не требует перезапуска остальных клиентов.
+   Run the audit playbook with `-e @/private/path/person.yml`, review the plan,
+   then apply with its hash. An **add_user** is performed, not a replacement of
+   all memberships. Other groups and applications are not modified. A repeated
+   grant is a no-op.
+5. The person installs the client, selects the specified self-hosted server and
+   personally goes through Authentik/MFA. Updating the group of an existing
+   user requires a **fresh personal authorization**, not just reuse of a cached
+   token.
+6. In NetBird make sure: the ordinary human role `user`, the UUID/connector match
+   Authentik; the admin JWT group received the device; there is no owner/admin
+   escalation, pending approval, blocked or expired session. Do not substitute a
+   JWT API group.
+7. Verify on **their** device: the four routes appeared; a fresh TCP/SSH to the
+   internal address works (the native SSH credential is separate). For web — the
+   correct TLS/SNI and the user's own role, not just the login page.
+8. Negative check: a non-admin does not get the admin resources; a pilot role
+   does not become an administrator. Adding the next admin changes no router,
+   resource or policy IDs and requires no restart of the other clients.
 
-## Отзыв и увольнение
+## Revocation and offboarding
 
-Не обещать мгновенный отзыв по одному удалению Authentik-группы: текущие JWT и
-устройства могут жить до refresh/expiry (сейчас 8 часов).
+Do not promise instant revocation from a single Authentik group removal:
+current JWTs and devices may live until refresh/expiry (currently 8 hours).
 
-- `action: revoke` снимает **только admin membership**. Это изменение роли,
-  не экстренное отключение существующей NetBird-сессии.
-- Для полного немедленного offboarding — **`action: offboard`**, тот же точный
-  username/UUID и approved hash. Helper связывает UUID с настоящим Dex
-  subject/точным Authentik connector, блокирует обычного NetBird user, удаляет
-  **только его** устройства и снимает admin membership. Не меняет service peers,
-  реальные owner/admin accounts, email-linking или другие приложения.
-- Затем отключить личность в Authentik по общей процедуре и отдельно отозвать
-  SSH keys, kubeconfig/certificates/RBAC и app sessions, если они выдавались.
-- Если нужны лишь меньшие сетевые права, проектировать отдельную роль, не делать
-  полный offboarding. Заблокированного человека нельзя автоматически разблокировать
-  простым повторным добавлением Authentik-группы — требуется отдельное review.
-- Проверить новые соединения с его устройства и отсутствие возвращающегося peer.
-  Удаление device без блокировки личности не мешает новому enrollment.
+- `action: revoke` removes **only the admin membership**. This is a role change,
+  not an emergency kill of an existing NetBird session.
+- For complete immediate offboarding — **`action: offboard`**, the same exact
+  username/UUID and an approved hash. The helper ties the UUID to the real Dex
+  subject/exact Authentik connector, blocks the ordinary NetBird user, deletes
+  **only their** devices and removes the admin membership. It does not change
+  service peers, real owner/admin accounts, email-linking or other applications.
+- Then disable the identity in Authentik per the general procedure, and
+  separately revoke SSH keys, kubeconfig/certificates/RBAC and app sessions if
+  they were issued.
+- If only lesser network rights are needed, design a separate role instead of a
+  full offboarding. A blocked person cannot be automatically unblocked by simply
+  re-adding an Authentik group — a separate review is required.
+- Verify new connections from their device and the absence of a returning peer.
+  Deleting the device without blocking the identity does not prevent a new
+  enrollment.
 
-## Что проверено, а что ещё нельзя утверждать
+## What is verified and what cannot be claimed yet
 
-Live 2026-11-06: OIDC-only, JWT propagation, genuine admin JWT source, MFA enrollment
-`configure`; application and account admission согласованы; server DNS исключает
-All. Реальный public OAuth redirect подтвердил отсутствие `groups` scope, поэтому
-создан и прочитан обратно dedicated `profile` mapping. Повторный reconcile — no-op.
+Live 2026-11-06: OIDC-only, JWT propagation, genuine admin JWT source, MFA
+enrollment `configure`; application and account admission reconciled; server DNS
+excludes All. A real public OAuth redirect confirmed the absence of the `groups`
+scope, so the dedicated `profile` mapping was created and read back. A repeated
+reconcile is a no-op.
 
-Отдельный временный обычный Authentik user без пароля: grant, readback, no-op,
-revoke, no-op и удаление прошли без superuser/app grants, MFA bypass или изменений
-реальных пользователей. Это **не** притворяется личным OIDC/MFA входом нового человека
-и полноценным enrollment нового устройства. Первому реальному админу нужно пройти
-пункты 5–8; credentials/сессия владельца не являются такой приёмкой.
+A separate temporary ordinary Authentik user without a password: grant,
+readback, no-op, revoke, no-op and deletion passed without superuser/app grants,
+MFA bypass or changes to real users. This does **not** pretend to be a new
+person's personal OIDC/MFA login and full new-device enrollment. The first real
+admin must go through steps 5–8; the owner's credentials/session are not such an
+acceptance.
 
-Текущий Mac: реальные SSH с выключенным standalone WireGuard проходят через
-NetBird ко всем четырём узлам. Резервный WG `.4` проверен отдельно при выключенном
-NetBird, после чего снова выключен и восстановлен основной NetBird. Tunnelblick
-оставался на том же OpenVPN процессе и интернет-маршрутах.
+Current Mac: real SSH with the standalone WireGuard off passes through NetBird
+to all four nodes. The backup WG `.4` was verified separately with NetBird off,
+then turned off again and the primary NetBird restored. Tunnelblick stayed on
+the same OpenVPN process and internet routes.
 
-## Cleanup и сохранённые зависимости
+## Cleanup and preserved dependencies
 
-- Локальный SSH: один однозначный блок на узел, no ProxyJump/public fallback,
-  существующие pinned host keys. Отдельный явный `socrat-2-recovery`/`-direct` —
-  break-glass, не часть обычного маршрута.
-- Default Ansible inventory теперь внутренний, port 2222, pinned legacy host-key
-  aliases; `direct.yml`/`lan.yml` остаются явными recovery overlays.
-- Временный assistant WG `.6` удалён из registry и persistent/runtime peers
-  всех четырёх узлов; owned firewall перечитан без рестарта mesh-интерфейсов.
-- Резерв владельца — **одна** identity/profile `.4` `wg-socrat-admin`, отключён.
-  Его key/config — одна credential, не несколько разных ключей.
-- Phone/TV identities не считались ненужными по отсутствию свежего трафика.
-  Историческая отметка об exposed phone key требует отдельного подтверждения
-  владельца/ротации; не выдавать её за выполненную или безопасно забытую.
-- Старый local bootstrap NetBird admin заблокирован и понижен до user; настоящий
-  owner и bound automation service сохранены. Чужие PAT API не разрешил читать:
-  обхода/удаления токенов не было, не заявлять обратное.
-- Исторические activation/owner-transfer scripts и migration evidence — не
-  reconcile API. Не replay. Они оставлены для provenance и зависимых тестов;
-  текущая процедура использует `netbird-access.yml`.
-- Старые SSH rollback-файлы и дубликаты WG-конфига перемещены из рабочих папок
-  в private `~/Backups/homelab-access-cleanup-20261106/`, не уничтожены.
-  Полные emergency backups сервера и node/DB identities не затронуты.
-- Старые macOS resolver overrides — отдельный root-owned owner. Не удалять их
-  и не flush DNS во время обязательного Tunnelblick-сеанса. Они не требуются
-  новому чистому клиенту; ревизия/снятие на этом Mac — отдельное безопасное окно.
+- Local SSH: one unambiguous block per node, no ProxyJump/public fallback, the
+  existing pinned host keys. The separate explicit `socrat-2-recovery`/`-direct`
+  is break-glass, not part of the ordinary route.
+- The default Ansible inventory is now internal, port 2222, pinned legacy
+  host-key aliases; `direct.yml`/`lan.yml` remain explicit recovery overlays.
+- The temporary assistant WG `.6` was removed from the registry and the
+  persistent/runtime peers of all four nodes; the owned firewall was reloaded
+  without restarting the mesh interfaces.
+- The owner's backup is **one** identity/profile `.4` `wg-socrat-admin`,
+  disabled. Its key/config is one credential, not several different keys.
+- Phone/TV identities were not deemed unnecessary for lack of fresh traffic.
+  The historical note about the exposed phone key requires separate owner
+  confirmation/rotation; do not present it as done or safely forgotten.
+- The old local bootstrap NetBird admin is blocked and demoted to user; the real
+  owner and the bound automation service are preserved. The foreign PAT was not
+  permitted to read: there was no bypass/deletion of tokens, do not claim
+  otherwise.
+- The historical activation/owner-transfer scripts and migration evidence are
+  not a reconcile API. Do not replay. They are kept for provenance and dependent
+  tests; the current procedure uses `netbird-access.yml`.
+- Old SSH rollback files and WG config duplicates were moved from working
+  folders to the private `~/Backups/homelab-access-cleanup-20261106/`, not
+  destroyed. The server's full emergency backups and node/DB identities were not
+  touched.
+- The old macOS resolver overrides are a separate root-owned item. Do not delete
+  them and do not flush DNS during the mandatory Tunnelblick session. A fresh
+  client does not need them; their revision/removal on this Mac is a separate
+  safe window.
 
-Control-plane/Auth singleton и провал cold start без management описаны в
-`netbird-independent-access.md`; новые пользователи не устраняют эти пределы HA.
+The control-plane/Auth singleton and the failed cold start without management
+are described in `netbird-independent-access.md`; new users do not remove these
+HA limits.
 
 ### Verification record
 

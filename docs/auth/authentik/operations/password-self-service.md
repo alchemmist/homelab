@@ -1,68 +1,78 @@
-# External: самостоятельная смена пароля
+# External: self-service password change
 
-Адрес: **https://auth.socrat.alchemmist.xyz/change-password**.
-Пользователь остаётся External, admin/staff группы не нужны. `/if/user/` у
-External закрыт самим Authentik; прежнее обещание открыть там настройки неверно.
+Address: **https://auth.socrat.alchemmist.xyz/change-password**.
+The user remains External; no admin/staff groups are needed. `/if/user/` for
+External users is closed by Authentik itself; the earlier promise to open
+settings there is incorrect.
 
-Мини-сервис `password-self-service` развёрнут через отдельный Argo CD Application,
-источник `charts/password-self-service`, namespace identity. nginx проверяет
-действующую cookie-сессию через Authentik `/api/v3/core/users/me/` без admin token;
-анонимный посетитель направляется в штатный authentication flow с возвратом на
-`/change-password`. Ошибки проверки не разрешают доступ. После проверки сессии мини-сервис
-перенаправляет в том же окне на `/if/flow/socrat-change-password/`. Нативный flow
-использует существующие domain Brand/CSS/случайный фон и password/repeat prompts.
-Iframe больше нет; адрес `/change-password` служит постоянной входной ссылкой.
-Нативная кнопка пока называется Continue/Продолжить, заголовок — Update password.
-После обновления появляется подтверждение; Continue завершает сеанс штатным
-logout flow и возвращает к странице (потребуется войти с новым паролем).
+The `password-self-service` mini-service is deployed via a separate Argo CD
+Application, source `charts/password-self-service`, namespace identity. nginx
+validates the active cookie session via Authentik `/api/v3/core/users/me/`
+without an admin token; an anonymous visitor is redirected to the standard
+authentication flow with a return to `/change-password`. Validation errors do
+not grant access. After session validation the mini-service redirects in the
+same window to `/if/flow/socrat-change-password/`. The native flow uses the
+existing domain Brand/CSS/random background and password/repeat prompts.
+There is no iframe anymore; the `/change-password` address serves as the
+permanent entry link. The native button is currently labeled Continue, the
+heading is Update password. After the update a confirmation appears; Continue
+ends the session via the standard logout flow and returns to the page (logging
+in with the new password will be required).
 
-Новый flow: authenticated-only → существующий password/repeat prompt с прежней
-password policy → существующий never-create UserWrite → success message.
-Обработчик пароля остаётся в Authentik; мини-сервис не принимает пароли, не имеет
-API-токена, ServiceAccount token, PVC или БД. Cache-Control no-store, CSP,
-read-only/nonroot контейнер, pinned image. Локальные external пароли поддержаны;
-пароль внешнего upstream IdP этот сценарий не меняет. App группы/тип/UUID не меняются.
+New flow: authenticated-only → existing password/repeat prompt with the previous
+password policy → existing never-create UserWrite → success message.
+The password handler stays in Authentik; the mini-service does not accept
+passwords and has no API token, ServiceAccount token, PVC or database.
+Cache-Control no-store, CSP, read-only/nonroot container, pinned image.
+Local external passwords are supported; this scenario does not change the
+password of the external upstream IdP. App groups/type/UUID are unchanged.
 
-Создание flow: `ansible/roles/authentik/files/password_self_service.py` (GET-only
-по умолчанию; явный --apply создаёт отсутствующие собственные ресурсы, останавливается
-на drift). Первоначальная exact-path redirect route остаётся приоритетом150;
-Argo mini-service имеет160 и обслуживает страницу. Не удалять shared login flow,
-Brand, password policy, shared write/prompt stages при rollback. Для rollback
-маршрута сначала убрать только новый ingress, а не общую авторизацию.
+Flow creation: `ansible/roles/authentik/files/password_self_service.py`
+(GET-only by default; an explicit `--apply` creates missing own resources and
+stops on drift). The initial exact-path redirect route keeps priority 150;
+the Argo mini-service has 160 and serves the page. Do not remove the shared
+login flow, Brand, password policy, or shared write/prompt stages on rollback.
+To roll back the route, first remove only the new ingress, not the shared
+authorization.
 
-Live acceptance: Argo Synced/Healthy, Deployment ready; публичный anonymous GET
-даёт302 на нормальный Authentik login с next=/change-password. Native integration
-на временном zero-group External fixture: anonymous denied, password/repeat fields,
-CSRF missing denied, mismatch rejected, новый пароль записан нативным flow,
-success prompt достигнут, External/zero groups сохранены. Fixture удалена.
-Authenticated fixture session создавалась native test helper — это **не browser
-login/MFA E2E**. Первые прогоны harness исправлены под подписанные Authentik cookies,
-custom CSRF header и цепочку redirects; права/защиты production не ослаблялись.
-Браузерный инструмент не стартовал: профиль занят другой сессией; её не закрывали.
-После двух исправлений владелец сообщил: «ага, вроде заработало». Это
-подтверждение работоспособности страницы со стороны владельца, не доказательство
-полного password-change/logout/re-login/MFA цикла каждого External-пользователя.
-Успешную смену реального пароля не заявлять без отдельного подтверждения.
-Пароль Владислава/других реальных людей не меняли, MFA не сбрасывали.
+Live acceptance: Argo Synced/Healthy, Deployment ready; a public anonymous GET
+returns 302 to the normal Authentik login with next=/change-password. Native
+integration on a temporary zero-group External fixture: anonymous denied,
+password/repeat fields, missing CSRF denied, mismatch rejected, the new
+password written by the native flow, success prompt reached, External/zero
+groups preserved. The fixture was removed. The authenticated fixture session
+was created by a native test helper — this is **not a browser login/MFA E2E**.
+The first harness runs were fixed for signed Authentik cookies, a custom CSRF
+header and the redirect chain; production permissions/protections were not
+weakened. The browser tool did not start: the profile was occupied by another
+session, which was not closed. After two fixes the owner reported: “yeah, seems
+to work now”. This is the owner's confirmation that the page works, not proof
+of the full password-change/logout/re-login/MFA cycle for every External user.
+Do not claim a successful change of a real password without separate
+confirmation. Vladislav's or other real people's passwords were not changed;
+MFA was not reset.
 
-Private preimages: socrat-0 `~/.cache/homelab-authentik/password-self-service-*`;
-initial apply `password-self-service-6nds08hm`. Никакого полного Authentik restart,
-SQL workaround, cluster-wide sync/prune или изменения app admission не было.
+Private preimages: socrat-0
+`~/.cache/homelab-authentik/password-self-service-*`; initial apply
+`password-self-service-6nds08hm`. There was no full Authentik restart, SQL
+workaround, cluster-wide sync/prune, or app admission change.
 
-## Исправления, которые нельзя откатывать
+## Fixes that must not be rolled back
 
-1. `6a2c14b5`: первоначальный iframe блокировался нативным
-   `X-Frame-Options: DENY`. Теперь только top-level redirect; защиту Authentik
-   от framing не отключать и не удалять заголовок.
-2. `4216e51c`: относительный nginx redirect после успешной проверки сессии
-   раскрывал внутренний `http://auth…:8080`. Оба redirect используют константный
-   публичный HTTPS origin; Host/next посетителя не выбирают адрес назначения.
-   Повторный HTTP probe с временной External-сессией подтвердил корректный
-   `Location`; Argo Synced/Healthy именно на `4216e51c`.
+1. `6a2c14b5`: the initial iframe was blocked by the native
+   `X-Frame-Options: DENY`. Now there is only a top-level redirect; do not
+   disable Authentik's framing protection and do not remove the header.
+2. `4216e51c`: a relative nginx redirect after successful session validation
+   expanded to the internal `http://auth…:8080`. Both redirects now use a
+   constant public HTTPS origin; the visitor's Host/next do not choose the
+   destination address. A repeated HTTP probe with a temporary External
+   session confirmed the correct `Location`; Argo Synced/Healthy specifically
+   on `4216e51c`.
 
-Исходники мини-сервиса/flow: `d21935e8`; документация первого этапа `9407b4c4`.
-Все эти изменения опубликованы в origin/main. Текущий closeout меняет только
-документацию, не запускает новую смену пароля, rollout или вход за человека.
+Mini-service/flow sources: `d21935e8`; first-stage documentation `9407b4c4`.
+All these changes are published in origin/main. The current closeout only
+changes documentation; it does not start a new password change, rollout, or
+login on behalf of a person.
 
 ## Authentik Application Dashboard
 

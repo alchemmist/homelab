@@ -1,138 +1,166 @@
-# Интеграции Authentik и добавление нового сервиса
+# Authentik integrations and adding a new service
 
 > **Live auth audit15Nov:** [actual browser/API boundaries](../../../records/handoffs/browser-auth-audit.md).
 > Current public Kuma Admin/Syncthing/Search routes do not have the previously
 > described Authentik MFA gate. Native service login is not Authentik SSO. Native
 > OIDC apps may serve public HTML but deny private APIs. No auth changes applied.
 
-> **Текущий B2C контракт:** [отдельные app-группы и native роли](../../applications/application-access.md).
-> Восемь включённых ролей для LiteLLM, Open WebUI, Grafana, Wiki и LMS;
-> остальные reserved группы не означают допуск. Internal/External не является
-> app permission. Старые owner-only/подготовительные срезы ниже — история;
-> browser E2E и мгновенный отзыв всех сессий/ключей не заявлены.
+> **Current B2C contract:** [separate app groups and native roles](../../applications/application-access.md).
+> Eight enabled roles for LiteLLM, Open WebUI, Grafana, Wiki and LMS;
+> the remaining reserved groups do not imply admission. Internal/External is
+> not an app permission. The old owner-only/preparatory snapshots below are
+> history; browser E2E and instant revocation of all sessions/keys are not
+> claimed.
 
-> Текущий срез7 ноября: [логины, первый вход и native роли](../operations/identity-current-state.md),
-> [NetBird/сеть](../../../network/README.md), [владельцы мониторинга](../../../observability/monitoring/observability-current.md).
-> Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
+> Current November 7 snapshot: [logins, first login and native roles](../operations/identity-current-state.md),
+> [NetBird/network](../../../network/README.md), [monitoring owners](../../../observability/monitoring/observability-current.md).
+> The dated rollout/smoke sections below are history of their stage, not
+> general readiness.
 
-Начало: [identity.md](../../architecture/identity.md). Не путать native SSO, proxy gate и обычную
-плитку. Сетевые entrances/роли актуализированы 6 ноября: [network-access.md](../../../network/README.md). Старые session evidence ниже датированы; изменения версий требуют нового review.
+Start: [identity.md](../../architecture/identity.md). Do not confuse native SSO, a proxy
+gate and an ordinary tile. Network entrances/roles were updated November 6:
+[network-access.md](../../../network/README.md). The old session evidence below is dated;
+version changes require a new review.
 
-## 1. Реестр и исходники
+## 1. The registry and the sources
 
-| Слой | Где менять |
+| Layer | Where to change it |
 |---|---|
-| Каталог восьми foundation services | `deploy/identity/services.json` |
-| Reviewed люди / старые application IDs | `deploy/identity/account-mappings.json` |
-| Общий intent ролей | `deploy/identity/access-policy.yaml` |
+| The catalog of eight foundation services | `deploy/identity/services.json` |
+| Reviewed people / old application IDs | `deploy/identity/account-mappings.json` |
+| The common role intent | `deploy/identity/access-policy.yaml` |
 | Providers, scopes, application bindings, MFA | `ansible/roles/authentik/files/configure.py` |
 | Native app controllers | `ansible/roles/identity_integrations/files/integrate.py` |
 | LiteLLM dedicated controller | `ansible/roles/identity_integrations/files/litellm_oidc.py` |
-| Argo CD, вне foundation registry | `ansible/roles/argocd_oidc/files/configure.py`, `deploy/argocd/values.yaml` |
-| Сводный live status | `docs/auth/architecture/access-management.md` |
-| Санитизированные результаты | `deploy/identity/migration-evidence/` |
+| Argo CD, outside the foundation registry | `ansible/roles/argocd_oidc/files/configure.py`, `deploy/argocd/values.yaml` |
+| Consolidated live status | `docs/auth/architecture/access-management.md` |
+| Sanitized results | `deploy/identity/migration-evidence/` |
 
-`migration` strings каталога — исторические hints, не oracle live readiness:
-например `candidate` может остаться у уже проверенного сервиса. Проверять реальный
-provider, runtime settings и evidence. Foundation catalogue содержит девять dashboard applications с локальными иконками: восемь registry apps плюс отдельно управляемый Argo CD. Дополнительные public gates находятся в отдельном `deploy/public-web/services.json`; это не полный cluster-wide auth inventory.
+The catalog's `migration` strings are historical hints, not an oracle of live
+readiness: for example, `candidate` can remain on an already-verified service.
+Check the actual provider, runtime settings and evidence. The foundation
+catalog contains nine dashboard applications with local icons: the eight
+registry apps plus the separately managed Argo CD. Additional public gates are
+in the separate `deploy/public-web/services.json`; that is not a full
+cluster-wide auth inventory.
 
 ## 2. Grafana
 
-URL `https://grafana.socrat.alchemmist.xyz/` доступен через оба публичных HTTPS входа с native SSO, не требует workstation DNS overrides.
-Нативный Generic OAuth/OIDC + PKCE, refresh token. Callback `/login/generic_oauth`.
-Settings: `deploy/identity/grafana-oidc-values.yaml`; Secret
-`cattle-monitoring-system/socrat-authentik-grafana` хранит client secret.
+URL `https://grafana.socrat.alchemmist.xyz/` is reachable through both public
+HTTPS entrances with native SSO and needs no workstation DNS overrides.
+Native Generic OAuth/OIDC + PKCE, refresh token. Callback `/login/generic_oauth`.
+Settings: `deploy/identity/grafana-oidc-values.yaml`; the Secret
+`cattle-monitoring-system/socrat-authentik-grafana` holds the client secret.
 
-`homelab-owner` -> `GrafanaAdmin`; `app-grafana-editor` -> `Editor`; прочие admitted groups -> `Viewer`. Admission и native роль — разные проверки.
-`ALLOW_INSECURE_EMAIL_LOOKUP=false`, strict role mapping. Anonymous org access **выключен**, OIDC auto-login включён; прежний proxy gate retired после проверки native ролей. Public policy блокирует BasicAuth/POST login/metrics/debug, сохраняет bearer API/WebSockets и private recovery. Публично без входа доступен **только** явно shared `socrat-traffic-light`, не вся организация.
+`homelab-owner` → `GrafanaAdmin`; `app-grafana-editor` → `Editor`; other
+admitted groups → `Viewer`. Admission and the native role are different checks.
+`ALLOW_INSECURE_EMAIL_LOOKUP=false`, strict role mapping. Anonymous org access
+is **off**, OIDC auto-login is on; the former proxy gate was retired after
+verifying native roles. The public policy blocks BasicAuth/POST
+login/metrics/debug, keeps bearer API/WebSockets and private recovery. Publicly,
+without login, only the explicitly shared `socrat-traffic-light` is available,
+not the whole organization.
 
-Первый отказ `Login provider denied login request` был protocol issue: отсутствовал
-`grant_types: authorization_code, refresh_token`. Исправление — явно разрешить
-нужные grants в provider, не отключать MFA/TLS и не расширять admin groups.
+The first `Login provider denied login request` failure was a protocol issue:
+`grant_types: authorization_code, refresh_token` was missing. The fix is to
+explicitly allow the needed grants in the provider, not to disable MFA/TLS or
+widen admin groups.
 
-Проверены реальный temporary observer/MFA/code flow и Grafana API role, не owner
-имперсонация. Private gateway очищает Authorization header намеренно; browser
-cookies работают. Cleanup/API automation использовали internal API, а не ослабление gateway.
+A real temporary observer/MFA/code flow and the Grafana API role were
+verified, not owner impersonation. The private gateway strips the Authorization
+header deliberately; browser cookies work. Cleanup/API automation used the
+internal API, not a weakened gateway.
 
 ## 3. Harbor
 
-URL `https://harbor.socrat.alchemmist.xyz/`, native OIDC, callback `/c/oidc/callback`.
-Controller использует supported `CONFIG_OVERWRITE_JSON` из Secret
-`harbor/socrat-authentik-harbor`; persistence также учитывается ролью Harbor.
-Owner group -> system admin; project grants остаются отдельными.
+URL `https://harbor.socrat.alchemmist.xyz/`, native OIDC, callback
+`/c/oidc/callback`. The controller uses the supported `CONFIG_OVERWRITE_JSON`
+from the Secret `harbor/socrat-authentik-harbor`; persistence is also honored
+by the Harbor role. The owner group → system admin; project grants remain
+separate.
 
-Перед переключением проверялись старые non-admin local identities: нельзя
-переключить auth mode и осиротить пользователей. Локальный `admin` сохранён;
-известный stale initial password не сбрасывался ради теста. Его реальная recovery
-приёмка/rotation требует владельца. Robot accounts и scoped project credentials
-остаются способом CI push / private pull; не применять к registry API browser gate.
+Before the switch the old non-admin local identities were checked: switching
+the auth mode must not orphan users. The local `admin` is preserved; the known
+stale initial password was not reset for testing. Its real recovery
+acceptance/rotation requires the owner. Robot accounts and scoped project
+credentials remain the way for CI push / private pull; do not apply the
+browser gate to the registry API.
 
-Harbor 2.15.4 / chart 1.19.4 и HA work описаны отдельно в [harbor.md](../../../platform/harbor/harbor.md).
-OIDC не устраняет single-node storage/PG/Redis риски и не завершает HA.
+Harbor 2.15.4 / chart 1.19.4 and the HA work are described separately in
+[harbor.md](../../../platform/harbor/harbor.md). OIDC does not remove the
+single-node storage/PG/Redis risks and does not complete HA.
 
 ## 4. Rancher
 
-Native Generic OIDC + PKCE, callback `/verify-auth`; restricted access, subjects
-на базе Authentik user UUID. Old local users не переписывались в external principal.
-Из-за immutable `principalIds` созданы reviewed external identities
-`u-authentik-alchemmist` / **`u-authentik-tim-v2`**, которым зеркалируются конкретные
-старые global/cluster/project grants. Это не повод выдавать всем cluster-admin.
+Native Generic OIDC + PKCE, callback `/verify-auth`; restricted access,
+subjects based on Authentik user UUIDs. Old local users were not rewritten into
+external principals. Because `principalIds` are immutable, the reviewed external
+identities `u-authentik-alchemmist` / **`u-authentik-tim-v2`** were created,
+with the specific old global/cluster/project grants mirrored to them. That is
+not a reason to give everyone cluster-admin.
 
-Tim сейчас входит как `antropophag`; UUID пересозданной identity закреплён в
-account mapping. Старые `u-authentik-tim` и `u-22wv2` disabled, grants/history
-сохранены. Native `principalIds` immutable: не обходить webhook и не менять
-старый principal in-place. `rancherOidcUserId`/`rancherBindingPrefix` сохраняют
-reviewed replacement при следующем reconcile. [Текущие связи](../operations/identity-current-state.md).
+Tim now logs in as `antropophag`; the recreated identity's UUID is pinned in
+the account mapping. The old `u-authentik-tim` and `u-22wv2` are disabled,
+grants/history preserved. Native `principalIds` are immutable: do not bypass
+the webhook and do not change the old principal in place.
+`rancherOidcUserId`/`rancherBindingPrefix` preserve the reviewed replacement at
+the next reconcile. [Current links](../operations/identity-current-state.md).
 
-Source: Rancher branch `integrate.py`, reviewed old IDs в account mapping.
-Client secret — `cattle-global-data/genericoidcconfig-clientsecret`.
-Local emergency identities остаются. Group name сам по себе не Rancher user ID;
-при новых grants проверять actual principal и namespace/project scope.
+Source: the Rancher branch `integrate.py`, reviewed old IDs in the account
+mapping. Client secret: `cattle-global-data/genericoidcconfig-clientsecret`.
+The local emergency identities remain. A group name by itself is not a Rancher
+user ID; with new grants check the actual principal and namespace/project scope.
 
 ## 5. Open WebUI
 
-`https://chat.alchemmist.xyz/`; основной callback `/oauth/oidc/callback`.
-В каталоге также есть reviewed legacy callback другого hostname; не добавлять
-произвольные aliases. Settings: `deploy/identity/open-webui-env.json`, Secret
+`https://chat.alchemmist.xyz/`; the main callback `/oauth/oidc/callback`.
+The catalog also has a reviewed legacy callback of another hostname; do not add
+arbitrary aliases. Settings: `deploy/identity/open-webui-env.json`, Secret
 `llm/socrat-authentik-webui`. Post-Helm: `identity-webui-reconcile.yml`.
 
-Старые users/chats сохранены через точные UUID/OAuth-ID links
-(`Users.update_user_oauth_by_id`), без email merge. Owner admin, Tim обычный user.
-Нельзя ставить `Auth.active=False` как универсальный способ убрать local login:
-установленная реализация `utils/mfa.py:get_auth` этим также выключает OAuth.
-Простое скрытие password form не делает старые local sessions недействительными.
+Old users/chats are preserved through exact UUID/OAuth-ID links
+(`Users.update_user_oauth_by_id`), without email merge. Owner is admin, Tim an
+ordinary user. You must not set `Auth.active=False` as a universal way to
+remove local login: the installed implementation of `utils/mfa.py:get_auth` also
+turns off OAuth that way. Merely hiding the password form does not invalidate
+old local sessions.
 
-Existing OTel environment сохраняется reconciler; не заменять весь env списком
-из OIDC-примера. WebUI -> LiteLLM machine virtual key независим от browser SSO.
+The existing OTel environment is preserved by the reconciler; do not replace
+the whole env with the list from the OIDC example. The WebUI → LiteLLM machine
+virtual key is independent of browser SSO.
 
 ## 6. Wiki
 
-`https://wiki.socrat.alchemmist.xyz/login` -> native OIDC, callback
-`/api/auth/oidc/callback`. Не просто proxy перед редактором. Runtime source —
-соседний `hugo-docs/runtime/oidc.py` / `auth.py`, а homelab хранит immutable image,
-chart/Secret wiring и reviewed account mapping.
+`https://wiki.socrat.alchemmist.xyz/login` → native OIDC, callback
+`/api/auth/oidc/callback`. Not merely a proxy in front of the editor. The
+runtime source is the neighboring `hugo-docs/runtime/oidc.py` / `auth.py`, while
+the homelab keeps the immutable image, chart/Secret wiring and the reviewed
+account mapping.
 
-Authlib authorization code + PKCE, state/nonce, signature/audience/expiry и pinned
-issuer. Secret `wiki/socrat-authentik-wiki` содержит настройки и session signing key.
-При reconcile signing key сохраняется, чтобы не инвалидировать sessions случайно.
-Access logs callback отключены (`UVICORN_ACCESS_LOG=false`) для приватности code/state.
+Authlib authorization code + PKCE, state/nonce, signature/audience/expiry and a
+pinned issuer. The Secret `wiki/socrat-authentik-wiki` contains the settings
+and the session signing key. During reconcile the signing key is preserved so
+as not to accidentally invalidate sessions. Callback access logs are off
+(`UVICORN_ACCESS_LOG=false`) for code/state privacy.
 
-Owner -> существующий admin ID. Tim -> существующий editor ID, отдельное reviewed
-subject role override. Другие admitted observers -> reader. Email не используется
-как доказательство владения старой записью. Хранятся `oidc_accounts` и `oidc_sessions`
-в accounts SQLite; чаты/контент этим не подменяются.
+Owner → the existing admin ID. Tim → the existing editor ID, a separate
+reviewed subject role override. Other admitted observers → reader. Email is not
+used as proof of ownership of an old record. The `oidc_accounts` and
+`oidc_sessions` tables live in the accounts SQLite; chats/content are not
+replaced by this.
 
-`/login?local=1` работает только для existing local owner ID. Non-owner local
-passwords и старые local sessions отсекаются **на сервере**, не только UI.
-Это наиболее полно проверенный owner-only fallback в текущей миграции.
-Public read и machine MCP credentials сохранены; missing/invalid auth для write/MCP
-не должен превращаться в browser redirect. Проверялись MFA, write 403 для reader,
-invalid callback 401, сохранность старых owner/Tim IDs. Wiki placement/storage
-менялись параллельно: не брать старое расположение pod за current truth.
+`/login?local=1` works only for the existing local owner ID. Non-owner local
+passwords and old local sessions are cut off **on the server**, not only in the
+UI. This is the most fully verified owner-only fallback in the current
+migration. Public read and machine MCP credentials are preserved;
+missing/invalid auth for write/MCP must not turn into a browser redirect.
+Verified: MFA, write 403 for reader, invalid callback 401, preservation of the
+old owner/Tim IDs. Wiki placement/storage changed in parallel: do not take the
+old pod location as current truth.
 
 ## 7. LiteLLM
 
-Owner подтвердил рабочий вход. Нативный Generic OIDC + PKCE на **1.105.1**:
+The owner confirmed a working login. Native Generic OIDC + PKCE on **1.105.1**:
 
 - launch: `https://llm.alchemmist.xyz/sso/key/generate`;
 - callback: `https://llm.alchemmist.xyz/sso/callback`;
@@ -144,132 +172,176 @@ Owner подтвердил рабочий вход. Нативный Generic OID
 - custom scope mapping `homelab-litellm-reviewed-identity`, scope `litellm_identity`;
 - Secret `llm/socrat-authentik-litellm`, Generic SSO env; Helm optional Secret refs.
 
-В этой версии free SSO допускает до пяти billable users. Controller консервативно
-проверяет общее число DB users <=5 и pinned versions. Исходных user rows было две.
-Лицензию не подменяли и Enterprise check не обходили.
+In this version free SSO allows up to five billable users. The controller
+conservatively checks that the total number of DB users is <=5 and the pinned
+versions. There were two original user rows. The license was not replaced and
+the Enterprise check was not bypassed.
 
-Mapping выбирает existing `socrat-admin` / `proxy_admin` **по reviewed IdP UUID**
-из account mapping и private journal, не по email/username. Нужный existing email
-подставляется после выбора immutable identity. Другие UUID получают отдельный
-`authentik:<uuid>` и synthetic address под собственным `sso.socrat.alchemmist.xyz`.
-Член `app-litellm-user` получает `internal_user`; без неё безопасная ветка —
-`internal_user_viewer`, но application admission при этом не выдаётся. Observer
-не превращается в пользователя LiteLLM автоматически.
-Адреса под `.invalid` были отвергнуты upstream email-validator — не использовать
-их там, где runtime ожидает валидируемую email-domain модель.
+The mapping selects the existing `socrat-admin` / `proxy_admin` **by reviewed
+IdP UUID** from the account mapping and the private journal, not by
+email/username. The needed existing email is substituted after choosing the
+immutable identity. Other UUIDs get a separate `authentik:<uuid>` and a
+synthetic address under their own `sso.socrat.alchemmist.xyz`. A member of
+`app-litellm-user` receives `internal_user`; without it the safe branch is
+`internal_user_viewer`, but application admission is not granted with it. An
+observer does not automatically become a LiteLLM user.
+Addresses under `.invalid` were rejected by the upstream email-validator — do
+not use them where the runtime expects a validatable email-domain model.
 
-Native browser roundtrip проверен на random read-only fixture: пароль -> TOTP ->
-consent -> PKCE callback 303 -> server `/user/info`. Временный одиночный admission
-binding, обе identity records и UI keys удалены. Реальному owner никто не
-выдавал тестовую MFA и не читал его пароль. Исходные IDs/roles/emails/password
-hashes/SSO IDs сравнены неизменёнными. Старый Open WebUI virtual key продолжает
-читать models, без key по-прежнему 401. Master/salt/DB Secret data, config и явный
-OTel env сохранены; vLLM не перезапускался. LiteLLM прошёл обычный graceful rollout.
+The native browser roundtrip was verified on a random read-only fixture:
+password → TOTP → consent → PKCE callback 303 → server `/user/info`. The
+temporary single admission binding, both identity records and the UI keys were
+deleted. No test MFA was issued to the real owner and his password was not
+read. The original IDs/roles/emails/password hashes/SSO IDs were compared
+unchanged. The old Open WebUI virtual key still reads models; without a key it
+is still 401. Master/salt/DB Secret data, config and the explicit OTel env are
+preserved; vLLM was not restarted. LiteLLM went through the usual graceful
+rollout.
 
-Owner DB password recovery: `/fallback/login`, маршрут HTTP 200. Пароль не
-сбрасывался; его реальная recovery-проверка не следует из подтверждения SSO.
-`litellm.yml` и `llm-vision.yml` выведены из эксплуатации: оба только отказывают
-и не вызывают identity reconciliation. Отдельное identity maintenance требует
-собственной activation/ownership-проверки; метрики и model metadata не являются
-разрешением повторять bootstrap или изменять native SSO.
-Полный runbook/rollback: `docs/applications/ai/litellm.md`.
+Owner DB password recovery: `/fallback/login`, the route returns HTTP 200. The
+password was not reset; its real recovery check does not follow from the SSO
+confirmation. `litellm.yml` and `llm-vision.yml` are decommissioned: both only
+refuse and do not invoke identity reconciliation. Separate identity maintenance
+needs its own activation/ownership verification; metrics and model metadata are
+not permission to repeat the bootstrap or change native SSO.
+The full runbook/rollback: `docs/applications/ai/litellm.md`.
 
 ## 8. Argo CD
 
-Native direct OIDC, Dex выключен. Live GitOps source —
-`deploy/platform/argo-cd/values.yaml`; bootstrap mirror — `deploy/argocd/values.yaml`,
-`ansible/roles/argocd_oidc/files/configure.py`, playbook `argocd.yml`.
-Issuer `/application/o/argocd/`, callback
+Native direct OIDC, Dex off. The live GitOps source is
+`deploy/platform/argo-cd/values.yaml`; the bootstrap mirror is
+`deploy/argocd/values.yaml`, `ansible/roles/argocd_oidc/files/configure.py`,
+playbook `argocd.yml`. Issuer `/application/o/argocd/`, callback
 `https://argocd.socrat.alchemmist.xyz/auth/callback`, client `socrat-argocd`.
-Secret key `oidc.authentik.clientSecret` в Argo CD Secret, без значения в values.
+The secret key `oidc.authentik.clientSecret` is in the Argo CD Secret, with no
+value in values.
 
-Dedicated scope `groups`; scopes openid/profile/email/groups/offline_access. Application admission
-сейчас owner + platform-operator. Argo RBAC owner/operator -> admin; maintainer/
-observer в role table -> readonly, но это **не даёт им admission** через IdP.
-Default readonly также не отменяет application gate. Built-in admin break-glass
-сохраняется до отдельной owner recovery-приёмки. Native server теперь
-`server.insecure=false`: verified HTTPS также от обоих ingress к backend,
-чтобы refresh сохранял Secure cookie. Bootstrap и live values проверяются на
-семантическое равенство; ServersTransport управляется через extraObjects.
+Dedicated `groups` scope; scopes openid/profile/email/groups/offline_access.
+Application admission is currently owner + platform-operator. Argo RBAC
+owner/operator → admin; maintainer/observer in the role table → readonly, but
+that does **not give them admission** through the IdP. The default readonly also
+does not cancel the application gate. The built-in admin break-glass stays
+until a separate owner recovery acceptance. The native server is now
+`server.insecure=false`: verified HTTPS also goes from both ingress to the
+backend, so refresh keeps the Secure cookie. The bootstrap and live values are
+checked for semantic equality; ServersTransport is managed via extraObjects.
 
-В этой сессии у уже существующего app добавлена только официальная pinned icon;
-его provider/policies не перенастраивались icon uploader. Не добавлять Argo CD
-в foundation catalog без явного переноса ownership между controllers.
+In this session only the official pinned icon was added to an already existing
+app; its provider/policies were not reconfigured by the icon uploader. Do not
+add Argo CD to the foundation catalog without an explicit ownership transfer
+between controllers.
 
-## 9. n8n и Kuma — исключения, не готовое native SSO
+## 9. n8n and Kuma — exceptions, not ready native SSO
 
-**n8n:** Community не даёт нужную native SSO integration без лицензии. Embedded
-outpost Authentik охраняет browser UI/rest owner-only, после MFA n8n может ещё
-просить свой логин. Конфигурация `charts/n8n/templates/access.yaml` и proxy settings
-в catalog. Webhooks, waiting webhooks, forms, healthz, `/api/v1` и OAuth credential
-callbacks обходят browser gate по reviewed route boundary. Это не делает API
-анонимным: оно продолжает проверять собственные keys/signatures.
+**n8n:** Community does not provide the needed native SSO integration without a
+license. The embedded outpost Authentik guards the browser UI/rest owner-only;
+after MFA n8n can still ask for its own login. Configuration:
+`charts/n8n/templates/access.yaml` and the proxy settings in the catalog.
+Webhooks, waiting webhooks, forms, healthz, `/api/v1` and OAuth credential
+callbacks bypass the browser gate by the reviewed route boundary. This does
+not make the API anonymous: it keeps checking its own keys/signatures.
 
-Проверки: UI/rest -> 302 на IdP; health -> 200; API без ключа -> 401; отсутствующий
-webhook -> 404. Исходный Fleet ingress/cert сохранялись. Нельзя wildcard-защитой
-`/` заставить robots и callbacks получать HTML login вместо protocol response.
+Checks: UI/rest → 302 to the IdP; health → 200; API without a key → 401; a
+missing webhook → 404. The original Fleet ingress/cert were preserved. You
+cannot make robots and callbacks receive HTML login instead of a protocol
+response with a wildcard guard over `/`.
 
-**Открыто, 2 ноября 2026:** owner сообщил о проблеме n8n login/session. Оба edges
-прошли anonymous redirect в native Authentik, health200, keyless API401 и проверку
-Running/Ready pods. Это не owner/native-login/editor-after-idle acceptance;
-конкретный симптом пока не уточнён. Настройки не менялись. Не переносить fix
-nginx forward-auth3x-ui на n8n proxy-mode без воспроизведения. См.
-[журнал диагностики](identity-gateway-troubleshooting.md#4-n8n-открытое-сообщение-владельца-не-исправленная-проблема).
+**Open, November 2, 2026:** the owner reported an n8n login/session problem.
+Both edges passed the anonymous redirect to native Authentik, health200,
+keyless API401 and a Running/Ready pods check. This is not an
+owner/native-login/editor-after-idle acceptance; the specific symptom is not
+yet clarified. The settings were not changed. Do not port the 3x-ui
+nginx forward-auth fix to the n8n proxy-mode without a reproduction. See the
+[diagnostics journal](identity-gateway-troubleshooting.md#4-n8n-an-open-owner-report-not-a-fixed-problem).
 
-**Uptime Kuma:** native OIDC не внедрён и не заявляется. Но разделение входов **завершено**: status `/status/socrat`, status/heartbeat APIs/assets/badges и token push публичны; public Socket.IO/неизвестные admin APIs закрыты, legacy admin paths ведут на `kuma.socrat.alchemmist.xyz`. На admin host personal MFA owner/`uptime-kuma-web-admins`, затем исходная native Kuma auth. MFA не делает человека native admin. Проверены scoped MFA, WebSocket 101/namespace и denial native `getSettings`; fixtures удалены.
+**Uptime Kuma:** native OIDC is not deployed and not claimed. But the
+separation of entrances is **complete**: status `/status/socrat`,
+status/heartbeat APIs/assets/badges and token push are public; the public
+Socket.IO/unknown admin APIs are closed, and the legacy admin paths lead to
+`kuma.socrat.alchemmist.xyz`. On the admin host: the personal MFA of
+owner/`uptime-kuma-web-admins`, then the original native Kuma auth. MFA does
+not make a person a native admin. Verified: scoped MFA, WebSocket
+101/namespace and the denial of native `getSettings`; fixtures deleted.
 
-При application restart обнаружен Secret/SQL credential mismatch, был наблюдённый ~35min heartbeat gap. Recovery создал отдельный schema-only app account без изменения старых SQL passwords и без DB restart; Secret data изменились, native Kuma account/auth сохранились. Не регенерировать Secret/не менять DB username: [MariaDB runbook](../../../observability/monitoring/uptime-kuma-mariadb.md), [итог и ограничения](../../../network/README.md#6-kuma-восстановление-после-инцидента-не-zero-downtime).
+On an application restart a Secret/SQL credential mismatch was found; an
+observed ~35min heartbeat gap occurred. Recovery created a separate schema-only
+app account without changing the old SQL passwords and without a DB restart;
+the Secret data changed, native Kuma account/auth preserved. Do not regenerate
+the Secret/do not change the DB username:
+[MariaDB runbook](../../../observability/monitoring/uptime-kuma-mariadb.md),
+[summary and limits](../../../network/README.md#6-kuma-recovery-after-the-incident-not-zero-downtime).
 
-### Публичные aliases и Syncthing
+### Public aliases and Syncthing
 
-`deploy/public-web/services.json` хранит admission allowlist; публичные Ingress/proxy принадлежат соответствующим Argo Applications (локальные чарты либо `deploy/platform/<app>/public-entry` в той же Application), отдельный `public-web-entry` удалён; не смешивать их с foundation registry. Search admission owner/`netbird-internal-admins`; app authorization за aliases остаётся native, machine APIs не переводятся на browser redirect. Rancher публичен с native OIDC/ролями и policy proxy против local-password mutations; agents/bearer/WebSockets/private recovery сохранены. Grafana MCP — public verified TLS + отдельный read-only bearer, не human MFA gate.
+`deploy/public-web/services.json` holds the admission allowlist; the public
+Ingresses/proxies belong to the corresponding Argo Applications (local charts or
+`deploy/platform/<app>/public-entry` within the same Application); the separate
+`public-web-entry` was removed — do not mix them with the foundation registry.
+Search admission is owner/`netbird-internal-admins`; app authorization behind the
+aliases remains native, machine APIs are not moved to browser redirects.
+Rancher is public with native OIDC/roles and a policy proxy against
+local-password mutations; agents/bearer/WebSockets/private recovery are
+preserved. Grafana MCP is public verified TLS + a separate read-only bearer,
+not a human MFA gate.
 
-На node0 `/sync/` — personal MFA owner/`syncthing-web-admins`, затем неизменённый исходный BasicAuth, prefix снимается. Node1 отвечает 410 gateway-only: новую device/identity ради GUI не создавали. Existing BasicAuth, sync process/config/data не менялись. Реальный owner Basic login остаётся отдельной опциональной приёмкой. [Подробности публичного closeout](../../../applications/public-web/public-web-migration.md).
+On node0 `/sync/` is personal MFA owner/`syncthing-web-admins`, then the
+unchanged original BasicAuth with the prefix stripped. Node1 answers 410
+gateway-only: no new device/identity was created for the GUI. The existing
+BasicAuth, sync process/config/data were not changed. The real owner Basic
+login remains a separate optional acceptance.
+[Details of the public closeout](../../../applications/public-web/public-web-migration.md).
 
-## 10. Как подключить новый сервис: безопасный порядок
+## 10. Connecting a new service: a safe order
 
-### Шаг 1. Inventory до конфигурации
+### Step 1. Inventory before configuration
 
-Записать version/image/chart, все hostnames и auth paths, текущих людей/IDs/roles,
-локальные способы входа, уже выданные sessions, machine consumers и публичные
-routes. Проверить native OIDC/SAML support, реальную лицензию установленной версии,
-PKCE/claim support. Не ориентироваться только на документацию newest release.
+Record the version/image/chart, all hostnames and auth paths, the current
+people/IDs/roles, local login methods, already-issued sessions, machine
+consumers and public routes. Check native OIDC/SAML support, the installed
+version's actual license, PKCE/claim support. Do not rely only on the newest
+release's documentation.
 
-Сделать encrypted pre-change backup DB/config/Secret references. Не выводить
-secret bodies в общий terminal/log. Подготовить owner recovery и критерии rollback.
+Make an encrypted pre-change backup of DB/config/Secret references. Do not
+print secret bodies to a shared terminal/log. Prepare the owner recovery and
+rollback criteria.
 
-### Шаг 2. Выбрать механизм
+### Step 2. Choose the mechanism
 
-Предпочтение — native OIDC. Auth proxy допустим только с описанным разрезом
-browser/machine/public paths. Если безопасный boundary неизвестен, статус blocked,
-а не «SSO готово, ведь плитка появилась». OIDC code flow требует backend/client
-support; нельзя заменить его рекламным frontend JS или хранить client secret в браузере.
+The preference is native OIDC. An auth proxy is allowed only with the described
+browser/machine/public path split. If a safe boundary is unknown, the status is
+blocked, not “SSO is ready because a tile appeared”. The OIDC code flow needs
+backend/client support; it cannot be replaced with promotional frontend JS or a
+client secret stored in the browser.
 
-### Шаг 3. Спроектировать identity/roles
+### Step 3. Design identity/roles
 
-Определить immutable subject mode **до первого входа**. Проверить старые IDs и
-создать exact linking map, сохранение данных и конфликтную политику. Специально
-проверить другого пользователя с тем же email/display name: он не должен стать owner.
-Определить минимальные app/project roles отдельно от IdP admission groups.
+Define the immutable subject mode **before the first login**. Check the old IDs
+and make an exact linking map, data preservation and a conflict policy.
+Specifically check another user with the same email/display name: he must not
+become the owner. Define the minimal app/project roles separately from the IdP
+admission groups.
 
-### Шаг 4. Provider и application
+### Step 4. Provider and application
 
-Для foundation-managed сервиса добавить reviewed catalog entry: unique slug,
-name, launch URL, exact redirect, approved groups, icon, explicit migration mode,
-при необходимости `subMode` / custom scopes. Не добавлять client secret в JSON.
-Создание runtime provider выполняет owner automation с protected credentials.
+For a foundation-managed service add a reviewed catalog entry: a unique slug,
+name, launch URL, exact redirect, approved groups, icon, explicit migration
+mode, and if needed `subMode` / custom scopes. Do not put the client secret in
+the JSON. The runtime provider is created by the owner automation with
+protected credentials.
 
-Provider: confidential client для server apps; нужные grant types явно, default
-native authentication/MFA flow, подходящий authorization/consent flow, signing key,
-strict callbacks, минимальные claims/scopes. Foundation validity сейчас access
-5 минут / refresh 8 часов; это не обязательно lifetime local app cookie.
+Provider: a confidential client for server apps; the needed grant types
+explicit; the default native authentication/MFA flow; a suitable
+authorization/consent flow; a signing key; strict callbacks; minimal
+claims/scopes. The foundation validity is currently access 5 minutes / refresh
+8 hours; this is not necessarily the local app cookie lifetime.
 
-Проверить custom property mappings: это исполняемый security-sensitive код.
-При missing mapping controller должен остановиться/отложить приложение, а не
-выдать широкую роль по запасному email. Существующий provider без private client
-journal не перегенерировать — сначала восстановить/проверить credentials.
+Check the custom property mappings: that is executable security-sensitive code.
+On a missing mapping the controller must stop/postpone the application, not
+grant a broad role by a fallback email. Do not regenerate an existing provider
+without its private client journal — first restore/verify the credentials.
 
-Минимальный пример **шаблона**, не готовой интеграции (URL/slug заменить после review):
+A minimal example of a **template**, not a ready integration (replace
+URL/slug after review):
 
 ```json
 {
@@ -286,87 +358,118 @@ journal не перегенерировать — сначала восстан�
 }
 ```
 
-Не копировать это в production без проверки actual callback, allowed users и app
-backend. `REPLACE_WITH_DIGEST` — placeholder: сначала добавить reviewed asset и
-provenance в `assets/service-icons/sources.json`, получить реальный digest/name,
-затем проверить served icon и обновить соответствующие regression tests. Generic controller умеет сейчас `grafana`, `harbor`, `rancher`,
-`open-webui`, `wiki`; `litellm` идёт отдельной веткой роли. Для нового slug нужно
-написать/review backend adapter или его declarative equivalent: catalog entry
-сам по себе не создаёт OIDC support внутри нового приложения.
+Do not copy this into production without checking the actual callback, allowed
+users and the app backend. `REPLACE_WITH_DIGEST` is a placeholder: first add the
+reviewed asset and provenance to `assets/service-icons/sources.json`, get the
+real digest/name, then check the served icon and update the corresponding
+regression tests. The generic controller currently supports `grafana`, `harbor`,
+`rancher`, `open-webui`, `wiki`; `litellm` goes through a separate branch of the
+role. For a new slug a backend adapter or its declarative equivalent must be
+written/reviewed: the catalog entry by itself does not create OIDC support
+inside a new application.
 
-### Шаг 5. Настроить backend приложения
+### Step 5. Configure the application backend
 
-Передать client ID/secret через private runtime Secret; issuer/discovery и scope
-настроить согласно установленной версии. Добавить source-controlled references и
-post-upgrade reconcile, не оставлять только ручной Deployment patch. Сохранить
-OTel/env/volumes/machine keys и unrelated chart values. Не повторять blind whole-env
-replacement. Проверить readiness/graceful rollout, не force-delete draining pods.
+Pass the client ID/secret via a private runtime Secret; configure
+issuer/discovery and scopes per the installed version. Add source-controlled
+references and a post-upgrade reconcile; do not leave only a manual Deployment
+patch. Preserve the OTel/env/volumes/machine keys and unrelated chart values. Do
+not repeat a blind whole-env replacement. Check readiness/graceful rollout; do
+not force-delete draining pods.
 
-### Шаг 6. Проверка и публикация
+### Step 6. Verification and publication
 
-- Positive: password + реальная временная MFA + callback + server-verified ID/role.
-- Negative: unadmitted identity denied, non-admin не админ, exact callback/state,
-  wrong issuer/audience/expired token не принимаются, никакого arbitrary email merge.
-- Existing data и IDs сохранены, owner recovery отдельно принят владельцем.
-- Public routes и machine key requests сохраняют semantic HTTP status, без HTML redirects.
-- Fixture users/keys/devices/temporary policy bindings удалены даже при ошибке.
-- Отдельная проверка уже выданных local sessions; UI hide не enforcement.
-- Документация/evidence без cookies/codes/seeds; tests и narrow commit; push не
-  считать deploy до проверки running config/images/controllers.
+- Positive: password + a real temporary MFA + callback + server-verified ID/role.
+- Negative: an unadmitted identity is denied, a non-admin is not admin, exact
+  callback/state, wrong issuer/audience/expired tokens are not accepted, no
+  arbitrary email merge.
+- Existing data and IDs are preserved; the owner recovery is separately accepted
+  by the owner.
+- Public routes and machine key requests keep the semantic HTTP status, without
+  HTML redirects.
+- Fixture users/keys/devices/temporary policy bindings are deleted even on an
+  error.
+- A separate check of already-issued local sessions; UI hiding is not
+  enforcement.
+- Documentation/evidence without cookies/codes/seeds; tests and a narrow
+  commit; a push is not a deploy until the running config/images/controllers
+  are checked.
 
-Не объявлять «все сервисы migrated» после одного успешного app flow.
-
-
-## Фоновый refresh Argo CD и backend TLS
-
-Внедрён `offline_access` (mapping + requested scope), упреждающий refresh `60s`,
-политика Argo session `8h`; access/ID token остаётся `5min`. В Argo CD 3.5.6
-renew-cookie зависит от `!server.insecure`, поэтому backend теперь HTTPS с
-проверкой существующего сертификата и SNI через `argocd-verified-tls`.
-VPS CRD provider ограничен namespace argocd и label выбранного transport;
-без skip-verify/cross-namespace/ExternalName. DNS, WireGuard и MFA не менялись.
-
-Ingress управляется Argo selfHeal: временная пауза только traefik-edge, публикация
-исходников, hard refresh до новой revision, затем восстановление исходного autosync.
-Иначе ручной Helm upgrade откатывается. Статус приёмки/fixture cleanup и подробный
-runbook: [Argo CD refresh](argocd-refresh.md). Старым сессиям нужен
-один новый SSO authorization, чтобы получить refresh token. Остальные приложения
-этой настройкой не изменяются; 8h refresh validity само по себе не доказывает,
-что конкретный клиент получает/использует refresh token.
+Do not declare “all services migrated” after one successful app flow.
 
 
-## 3x-ui: owner MFA gateway (не native SSO)
+## Argo CD background refresh and backend TLS
 
-Публичная VPN-панель защищена Authentik forward-auth (`xui-panel`), только `homelab-owner`; после IdP остаётся native логин 3x-ui. Никакого account/email merge, подмены MFA или автоматического входа в native admin нет. Прямой public TCP 18082 закрыт persistent panel-only nft rule; private/loopback recovery — отдельная доверенная граница с native credentials.
+`offline_access` was deployed (mapping + requested scope), the proactive
+refresh `60s`, the Argo session policy `8h`; the access/ID token stays `5min`.
+In Argo CD 3.5.6 renew-cookie depends on `!server.insecure`, so the backend is
+now HTTPS with verification of the existing certificate and SNI via
+`argocd-verified-tls`. The VPS CRD provider is limited to the argocd namespace
+and the chosen transport's label; no skip-verify/cross-namespace/ExternalName.
+DNS, WireGuard and MFA were not changed.
 
-Подписки text/JSON и Trojan WebSocket сохраняют прежние backends и обходят только human gate, не собственную machine authorization. Native API exception требует Bearer и удаляет Cookie; неверный токен даёт 401, cookie-only browser API требует MFA. VPN/ingress не перезапускались; прошли реальные tunnel/subscription и оба public-edge MFA fixture tests.
-
-Bearer lifetime — 5 минут; offline-access/8h refresh настроены только новому proxy provider. Но expiry-тест выявил native browser roundtrip к IdP, а не бесшовный refresh; возможен reload панели при истёкшем proxy cookie. Не переносить на этот шлюз утверждение о silent refresh, доказанное для Argo CD. Личная owner recovery/native-login и valid API token acceptance остаются отдельными.
-
-Источники, инсталляция host rule, воспроизводимая приёмка, limits и rollback: [docs/auth/authentik/integrations/xui-gateway.md](xui-gateway.md). Узкий controller `xui_gateway.py` не replay foundation и не изменяет пользователей/базу панели.
-
-
-### 3x-ui: исправление Login Failed to fetch
-
-При отсутствующей gateway-cookie фоновый POST раньше уходил в cross-origin
-OAuth redirect и давал TypeError: Failed to fetch. Теперь XHR/fetch и unsafe
-methods получают same-origin401; native 3x-ui3.11 самостоятельно запускает
-обычную top-level навигацию. CSRF, MFA, native пароль и machine Bearer policy
-не обходятся. Проверены оба edges: native CSRF/empty-login JSON200, missing-cookie
-401 без redirect и **реальная native кнопка Login →401 → возврат через SSO**.
-Тестовые credentials до native backend не дошли, fixture users/bindings удалены.
-Owner native-password acceptance остаётся личной. Бесшовный refresh не обещан.
-Подробности: [диагностика gateway](identity-gateway-troubleshooting.md#3-3x-ui-исправленный-failed-to-fetch-на-login).
+The ingress is managed by Argo selfHeal: a temporary pause of traefik-edge
+only, publication of the sources, a hard refresh to the new revision, then
+restoring the original autosync. Otherwise a manual Helm upgrade gets reverted.
+Acceptance status/fixture cleanup and the detailed runbook:
+[Argo CD refresh](argocd-refresh.md). Old sessions need one new SSO
+authorization to get the refresh token. The other applications are not changed
+by this; the 8h refresh validity by itself does not prove that a particular
+client gets/uses a refresh token.
 
 
-## Машинный admin API: не Default Admin
+## 3x-ui: owner MFA gateway (not native SSO)
 
-Для identity controllers выделен `homelab-identity-automation` (service account),
-а Outpost сохраняет свою отдельную техническую идентичность. `akadmin` удалён
-после переноса token и recovery drill. Human IDs/links/roles не переносились.
-Legacy credential key AUTHENTIK_BOOTSTRAP_TOKEN сохранён как alias нового key,
-так что текущие consumers совместимы; runtime Secret исключает admin bootstrap
-env. Детали и широкие privilege boundaries:
+The public VPN panel is protected by the Authentik forward-auth (`xui-panel`),
+`homelab-owner` only; after the IdP the native 3x-ui login remains. There is
+no account/email merge, MFA substitution or automatic native-admin login.
+Direct public TCP 18082 is closed by a persistent panel-only nft rule;
+private/loopback recovery is a separate trusted boundary with native
+credentials.
+
+The text/JSON subscriptions and Trojan WebSocket keep their former backends
+and bypass only the human gate, not their own machine authorization. The
+native API exception requires Bearer and removes the Cookie; a wrong token
+gives 401, a cookie-only browser API requires MFA. VPN/ingress were not
+restarted; real tunnel/subscription and both public-edge MFA fixture tests
+passed.
+
+The Bearer lifetime is 5 minutes; offline-access/8h refresh are configured only
+for the new proxy provider. But the expiry test revealed a native browser
+roundtrip to the IdP, not a seamless refresh; a panel reload with an expired
+proxy cookie is possible. Do not transfer to this gateway the silent-refresh
+claim proven for Argo CD. Personal owner recovery/native-login and valid API
+token acceptance remain separate.
+
+Sources, the install host rule, reproducible acceptance, limits and rollback:
+[docs/auth/authentik/integrations/xui-gateway.md](xui-gateway.md). The narrow
+controller `xui_gateway.py` does not replay the foundation and does not change
+the panel's users/database.
+
+
+### 3x-ui: the Login Failed-to-fetch fix
+
+With the gateway cookie missing, a background POST used to go into a
+cross-origin OAuth redirect and produce TypeError: Failed to fetch. Now XHR/
+fetch and unsafe methods get a same-origin 401; the native 3x-ui3.11 itself
+starts the ordinary top-level navigation. CSRF, MFA, the native password and
+the machine Bearer policy are not bypassed. Both edges were checked: native
+CSRF/empty-login JSON200, missing-cookie 401 without a redirect and a **real
+native Login button →401 → return via SSO**. The test credentials never
+reached the native backend; fixture users/bindings deleted. The owner's
+native-password acceptance remains personal. A seamless refresh is not
+promised. Details: [gateway diagnostics](identity-gateway-troubleshooting.md#3-3x-ui-the-fixed-failed-to-fetch-at-login).
+
+
+## The machine admin API: not Default Admin
+
+For the identity controllers the `homelab-identity-automation` (service
+account) is dedicated, and the Outpost keeps its own separate technical
+identity. `akadmin` was deleted after moving the token and the recovery drill.
+Human IDs/links/roles were not carried over. The legacy credential key
+AUTHENTIK_BOOTSTRAP_TOKEN is kept as an alias of the new key, so current
+consumers stay compatible; the runtime Secret excludes the admin bootstrap env.
+Details and the broad privilege boundaries:
 [admin-automation.md](../operations/admin-automation.md).
 
 ## SPI queue native OIDC — prepared 9 November, not activated

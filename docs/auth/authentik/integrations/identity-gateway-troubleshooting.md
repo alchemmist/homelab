@@ -1,84 +1,84 @@
-# Диагностика входа: native SSO и MFA-шлюзы
+# Login diagnostics: native SSO and MFA gateways
 
-> Текущий срез7 ноября: [логины, первый вход и native роли](../operations/identity-current-state.md),
-> [NetBird/сеть](../../../network/README.md), [владельцы мониторинга](../../../observability/monitoring/observability-current.md).
-> Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
+> Current cut7 November: [logins, first login and native roles](../operations/identity-current-state.md),
+> [NetBird/network](../../../network/README.md), [monitoring owners](../../../observability/monitoring/observability-current.md).
+> The dated rollout/smoke below is the history of its own stage, not general readiness.
 
-> Сетевой итог 6 ноября: [network-access.md](../../../network/README.md). Указанный в старых приёмках `176.98.185.59` — бывший VPS; текущий `109.120.141.97`. Grafana/Rancher теперь имеют reviewed публичные entrances, Mac resolver overrides сняты, Kuma status/admin boundary завершён. Исторические diagnostic symptoms ниже не считать текущим live-срезом.
+> Network summary of 6 November: [network-access.md](../../../network/README.md). The `176.98.185.59` named in the old acceptances is the former VPS; the current one is `109.120.141.97`. Grafana/Rancher now have reviewed public entrances, the Mac resolver overrides were removed, the Kuma status/admin boundary is complete. Do not treat the historical diagnostic symptoms below as the current live cut.
 
-Срез: **2 ноября 2026**. Индекс: [identity.md](../../architecture/identity.md).
-Этот документ фиксирует проверенные результаты и открытые проблемы; не заменяет live-проверку.
+Cut: **2 November 2026**. Index: [identity.md](../../architecture/identity.md).
+This document records verified results and open problems; it does not replace a live check.
 
-## 1. Почему после Authentik остаётся форма приложения
+## 1. Why the application form stays after Authentik
 
-SSO — единый вход; OIDC и SAML — протоколы его реализации. Кнопка/плитка сама по себе не добавляет поддержку протокола приложению.
+SSO is a single sign-in; OIDC and SAML are the protocols implementing it. A button/tile by itself does not add protocol support to an application.
 
-| Приложение | Что реализовано | Что увидит пользователь |
+| Application | What is implemented | What the user will see |
 |---|---|---|
-| Argo CD | Native OIDC, short bearer + server-side refresh | Вход через Authentik; отдельный native пароль не нужен для SSO-пути |
-| 3x-ui 3.11.0 | Внешний Authentik forward-auth gateway | Authentik MFA/допуск → **штатный логин 3x-ui** |
-| n8n, текущая Community-инсталляция | Embedded Authentik proxy охраняет browser UI/rest | Authentik MFA/допуск → **возможен штатный логин n8n**; native SSO не внедрён |
+| Argo CD | Native OIDC, short bearer + server-side refresh | A login through Authentik; a separate native password is not needed for the SSO path |
+| 3x-ui 3.11.0 | An external Authentik forward-auth gateway | Authentik MFA/admission → **the standard 3x-ui login** |
+| n8n, the current Community install | An embedded Authentik proxy guards the browser UI/rest | Authentik MFA/admission → **a standard n8n login is possible**; native SSO is not implemented |
 
-Если родительская сессия Authentik активна, первый этап может пройти автоматически. Отсутствие кнопки Authentik в 3x-ui — ожидаемое свойство этой реализации, не доказательство обхода. В native форме используется существующий пароль приложения, не пароль Authentik. Автоматической привязки по email/name или создания native аккаунтов нет.
+If the parent Authentik session is active, the first stage may pass automatically. The absence of an Authentik button in 3x-ui is an expected property of this implementation, not proof of a bypass. The native form uses the existing application password, not the Authentik password. There is no automatic email/name binding or native account creation.
 
-Один вход вместо двух потребует поддерживаемой интеграции в самом приложении, reviewed доработки или миграции. Не имитировать SSO сохранённым admin-паролем/автозаполнением через прокси и не обходить лицензионные ограничения n8n.
+One login instead of two will require a supported integration in the application itself, a reviewed enhancement or a migration. Do not imitate SSO with a saved admin password/autofill through a proxy and do not bypass n8n's licensing restrictions.
 
-## 2. Argo CD: новое согласие offline_access
+## 2. Argo CD: a new offline_access consent
 
-Текст `Access to request new tokens without interaction` — native consent на scope `offline_access`. Email/profile могут отображаться как уже выданные, offline-access — как новое разрешение. Это нужно для refresh коротких токенов и **не выдаёт admin-роль, не отключает MFA**.
+The text `Access to request new tokens without interaction` is a native consent for the scope `offline_access`. Email/profile may be shown as already granted, offline-access — as a new permission. This is needed for refreshing short tokens and **does not grant an admin role, does not disable MFA**.
 
-Подтверждать только самостоятельно начатый вход в ожидаемое приложение на доверенном Authentik hostname. Не скрывать/подделывать consent ради косметики. Подробности и реальные expiry-тесты: [Argo refresh](argocd-refresh.md).
+Confirm only a self-initiated login into the expected application on a trusted Authentik hostname. Do not hide/fake consent for cosmetics. Details and real expiry tests: [Argo refresh](argocd-refresh.md).
 
-## 3. 3x-ui: исправленный Failed to fetch на Login
+## 3. 3x-ui: the fixed Failed to fetch at Login
 
-**Воспроизведён и исправлен дефект gateway**, а не ошибка пароля:
+**A gateway defect was reproduced and fixed**, not a password error:
 
-1. При свежей gateway-сессии native CSRF и POST с пустыми полями возвращали штатный JSON200.
-2. После удаления только proxy-cookie у временного fixture фоновый POST перенаправлялся в OAuth/Authentik.
-3. Cross-origin redirect фонового fetch приводил к `TypeError: Failed to fetch`.
+1. With a fresh gateway session, the native CSRF and a POST with empty fields returned the standard JSON200.
+2. After removing only the proxy-cookie from a temporary fixture, the background POST redirected into OAuth/Authentik.
+3. The cross-origin redirect of the background fetch led to `TypeError: Failed to fetch`.
 
-Gateway теперь возвращает **same-origin401 без redirect** для native XMLHttpRequest, fetch cors/same-origin, WebSocket и небезопасных методов. Только обычная безопасная навигация браузера запускает OAuth. Штатная 3x-ui3.11 уже умеет обрабатывать401 через top-level `location.replace`; новый authentication JS не добавлялся.
+The gateway now returns a **same-origin401 without redirect** for native XMLHttpRequest, fetch cors/same-origin, WebSocket and unsafe methods. Only an ordinary safe browser navigation starts OAuth. The standard 3x-ui3.11 already handles401 via a top-level `location.replace`; no new authentication JS was added.
 
-Проверены оба public edges: свежий CSRF/POST JSON, отсутствующая proxy-cookie →401 без Failed to fetch, **нажатие реальной native кнопки Login →401 → возврат через top-level SSO**. Синтетические данные формы не достигли native backend; это не проверка настоящего owner-пароля. Временные observer users/admission bindings удалены. Источники:
+Both public edges were verified: a fresh CSRF/POST JSON, a missing proxy-cookie →401 without Failed to fetch, **clicking the real native Login button →401 → returning via a top-level SSO**. The synthetic form data did not reach the native backend; this is not a check of a real owner password. The temporary observer users/admission bindings were removed. Sources:
 
 - `scripts/build-xui-auth-gateway.py`, `deploy/xui-auth-gateway/{nginx.conf,resources.yaml}`;
-- `scripts/identity-xui-gateway-smoke.py --run [--public-edge IP]` — временные identity/admission writes, не read-only;
-- [Полный runbook](xui-gateway.md).
+- `scripts/identity-xui-gateway-smoke.py --run [--public-edge IP]` — temporary identity/admission writes, not read-only;
+- [The full runbook](xui-gateway.md).
 
-Остаётся ограничение: native outpost делает browser roundtrip при истечении proxy-сессии; бесшовный refresh, как у Argo CD, не доказан. После простоя возможны reload и повторный ввод native полей. Bearer TTL не увеличивали ради сокрытия проблемы. Не воспроизводить POST с паролем после OAuth автоматически.
+A limitation remains: the native outpost does a browser roundtrip when the proxy session expires; a seamless refresh, like Argo CD's, is not proven. After idle, a reload and re-entering the native fields are possible. The bearer TTL was not increased to hide the problem. Do not automatically replay a POST with a password after OAuth.
 
-MFA, owner-only admission, native CSRF и отдельные machine credentials не ослаблены. Bearer API exception по-прежнему удаляет Cookie и проверяется самой 3x-ui; invalid Bearer →401. VPN-транспорт, подписки, native x-ui и Traefik этим исправлением не перезапускались — только новый gateway.
+MFA, owner-only admission, native CSRF and separate machine credentials were not weakened. The bearer API exception still removes the Cookie and is checked by the 3x-ui itself; an invalid Bearer →401. The VPN transport, subscriptions, native x-ui and Traefik were not restarted by this fix — only the new gateway.
 
-## 4. n8n: открытое сообщение владельца, не исправленная проблема
+## 4. n8n: an open owner report, not a fixed problem
 
-Владелец сообщил о проблеме с авторизацией, **конкретный симптом и этап пока не уточнены**. Нельзя считать проблему решённой или автоматически приписывать её причине из 3x-ui.
+The owner reported an authorization problem, **the specific symptom and stage are not yet clarified**. You must not consider the problem solved or automatically attribute it to the 3x-ui cause.
 
-Зафиксированные первичные проверки на **обоих** edges `109.173.40.247` / `176.98.185.59` с корректным HTTPS/SNI:
+Recorded primary checks on **both** edges `109.173.40.247` / `176.98.185.59` with a correct HTTPS/SNI:
 
-| Проверка | Результат | Что это доказывает |
+| Check | Result | What this proves |
 |---|---|---|
-| `GET /` без сессии | 302 | Срабатывает browser gateway |
-| Чистый Chromium → n8n | Native Authentik identification/password, без JS errors | Начальный переход работает, не end-to-end owner login |
-| `GET /healthz` | 200 | Backend жив и health не зависит от интерактивного входа |
-| `GET /api/v1/workflows` без API key | 401 | Machine API не стал публичным и не получает login redirect |
-| n8n и Authentik pods | Running/Ready, без текущих рестартов | Нет наблюдаемого падения этих pod на момент проверки |
+| `GET /` without a session | 302 | The browser gateway triggers |
+| Clean Chromium → n8n | Native Authentik identification/password, without JS errors | The initial transition works, not an end-to-end owner login |
+| `GET /healthz` | 200 | The backend is alive and health does not depend on an interactive login |
+| `GET /api/v1/workflows` without an API key | 401 | The machine API did not become public and does not get a login redirect |
+| The n8n and Authentik pods | Running/Ready, without current restarts | There is no observed crash of these pods at the check moment |
 
-**Не проверены:** личная owner-сессия, native login n8n, работа UI/rest после простоя, reconnect/WebSocket и действующий owner API key. Во время этой диагностики конфигурация n8n/IdP не менялась, fixture users не создавались.
+**Not verified:** a personal owner session, a native n8n login, UI/rest work after idle, reconnect/WebSocket and an active owner API key. During this diagnostics the n8n/IdP configuration was not changed, fixture users were not created.
 
-Следующий шаг — получить безопасное описание: на каком экране сбой; точный текст; сразу или после простоя; проблема в native n8n форме, Authentik/MFA, editor/rest или зацикливании. Затем воспроизвести именно этот сценарий. Не переносить XHR401-конфигурацию 3x-ui вслепую: n8n использует **proxy mode embedded outpost**, а 3x-ui — nginx forward-auth.
+The next step is to get a safe description: on which screen the failure occurs; the exact text; at once or after idle; whether the problem is in the native n8n form, Authentik/MFA, editor/rest or a loop. Then reproduce exactly this scenario. Do not blindly port the 3x-ui XHR401 configuration: n8n uses a **proxy-mode embedded outpost**, while 3x-ui — nginx forward-auth.
 
-Источники n8n: `charts/n8n/templates/access.yaml`, `deploy/identity/services.json`, `ansible/roles/authentik/files/configure.py`. UI/rest owner-only; отдельные reviewed routes для webhook/forms/health/API/OAuth credential callbacks и exact MCP HTTP сохраняют собственную native authentication. Не включать их в wildcard browser gate и не открывать весь `/rest` ради обхода ошибки login.
+n8n sources: `charts/n8n/templates/access.yaml`, `deploy/identity/services.json`, `ansible/roles/authentik/files/configure.py`. UI/rest are owner-only; separate reviewed routes for webhook/forms/health/API/OAuth credential callbacks and the exact MCP HTTP keep their own native authentication. Do not include them in a wildcard browser gate and do not open all of `/rest` to bypass a login error.
 
-## 5. Безопасный порядок диагностики
+## 5. A safe diagnostic order
 
-1. Уточнить этап и свежая ли вкладка. Private window — отдельная проверка, не удаление owner MFA devices.
-2. Проверить публичный HTTPS с обоих разрешённых edges без отключения проверки сертификата; не менять системный DNS/WireGuard ради теста.
-3. Сравнить навигацию документа с XHR/fetch: 302 в cross-origin flow, 401, 403/CSRF и JSON с ошибкой пароля — разные причины.
-4. Не копировать пароли, Authorization/Cookie, callback query, OTP/QR, полный HAR или приватный DOM в чат/Git. Для скриншота убрать секреты и параметры адресной строки.
-5. Сначала read-only проверки; реальные тестовые identities/admission bindings — отдельный явный scope с точной cleanup. Не менять факторы владельца.
-6. Не расширять TTL bearer, роли, bypass paths, trusted headers или отключать CSRF/TLS/MFA ради исчезновения ошибки.
-7. Исправлять authoritative GitOps source, дождаться Synced/Healthy; не бороться с selfHeal. Fixtures не являются личной owner acceptance.
+1. Clarify the stage and whether it is a fresh tab. A private window is a separate check, not removing the owner MFA devices.
+2. Check the public HTTPS from both allowed edges without disabling certificate verification; do not change the system DNS/WireGuard for a test.
+3. Compare the document navigation with XHR/fetch: a 302 in a cross-origin flow, 401, 403/CSRF and JSON with a password error are different causes.
+4. Do not copy passwords, Authorization/Cookie, callback query, OTP/QR, a full HAR or a private DOM into chat/Git. For a screenshot, remove secrets and address-bar parameters.
+5. First the read-only checks; real test identities/admission bindings are a separate explicit scope with an exact cleanup. Do not change the owner's factors.
+6. Do not extend the bearer TTL, roles, bypass paths, trusted headers or disable CSRF/TLS/MFA to make an error disappear.
+7. Fix the authoritative GitOps source, wait for Synced/Healthy; do not fight selfHeal. Fixtures are not a personal owner acceptance.
 
-## 6. Актуальный frontend
+## 6. The current frontend
 
-Nature: один scene CSS с inline preview того же фото, один HQ AVIF/WebP, immutable image cache; не два полных случайных кадра. Plan History занимает естественную высоту **без внутреннего scroll**; история/повторы/права не менялись. Подробности и тесты — [identity-frontend.md](../custom-ui/README.md), §§15–16. Эти изменения внешнего вида не являются исправлением сессий n8n.
+Nature: one scene CSS with an inline preview of the same photo, one HQ AVIF/WebP, an immutable image cache; not two full random frames. Plan History takes its natural height **without an internal scroll**; the history/repeats/rights were not changed. Details and tests — [identity-frontend.md](../custom-ui/README.md), §§15–16. These appearance changes are not a fix of n8n sessions.
