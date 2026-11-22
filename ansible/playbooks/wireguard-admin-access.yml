@@ -27,5 +27,6 @@
     - role: wireguard_private_web
       when: wireguard_private_web_enabled | default(false)
 
-- ansible.builtin.import_playbook: wireguard-tcp-transport.yml
+- name: Import wireguard tcp transport playbook
+  ansible.builtin.import_playbook: wireguard-tcp-transport.yml
 ...

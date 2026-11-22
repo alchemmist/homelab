@@ -6,13 +6,6 @@
       "native": "reports/python.json"
     }
   },
-  "ansible": {
-    "title": "Playbook safety",
-    "run": "uv run python scripts/quality/lint.py ansible",
-    "results": {
-      "native": "reports/ansible.json"
-    }
-  },
   "tests-cluster": {
     "title": "Cluster lifecycle",
     "run": "uv run python scripts/quality/tests.py cluster",

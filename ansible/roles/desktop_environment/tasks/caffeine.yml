@@ -1,0 +1,10 @@
+---
+- name: Install the caffeine lid inhibitor and reload its user manager
+  become: true
+  become_user: "{{ homelab_user }}"
+  homelab_user_unit:
+    content: "{{ lookup('ansible.builtin.file', 'caffeine-lid-inhibit.service', rstrip=false) }}"
+    dest: "{{ homelab_user_home }}/.config/systemd/user/caffeine-lid-inhibit.service"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+...

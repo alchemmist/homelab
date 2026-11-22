@@ -34,6 +34,7 @@
         \  sh -\n"
       args:
         executable: /bin/bash
+      changed_when: true
     - name: Ensure k3s server is running
       ansible.builtin.systemd:
         name: k3s

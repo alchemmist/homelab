@@ -10,6 +10,7 @@ parser.add_argument("--chart", required=True)
 parser.add_argument("--namespace", required=True)
 parser.add_argument("--values", required=True)
 parser.add_argument("--kubeconfig", required=True)
+parser.add_argument("--plan", action="store_true", help="Print the required Helm action instead of change JSON")
 arguments = parser.parse_args()
 common = ["--namespace", arguments.namespace, "--kubeconfig", arguments.kubeconfig]
 desired = subprocess.run(
@@ -35,8 +36,10 @@ installed = subprocess.run(
 )
 if installed.returncode != 0 and installed.stderr.strip() != "Error: release: not found":
     installed.check_returncode()
-print(
-    json.dumps(
-        {"changed": installed.returncode != 0 or desired.stdout.strip() != installed.stdout.strip()}
-    )
-)
+if installed.returncode != 0:
+    action = "install"
+elif desired.stdout.strip() != installed.stdout.strip():
+    action = "upgrade"
+else:
+    action = "current"
+print(action if arguments.plan else json.dumps({"changed": action != "current"}))

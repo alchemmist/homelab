@@ -18,6 +18,7 @@
     - name: Apply new owned table with a private complete preimage
       ansible.builtin.command: python3 /usr/local/libexec/vpn-home-transit-egress.py --apply
       when: not egress_state.stat.exists
+      changed_when: true
     - name: Install persistent fail-closed startup ordering
       ansible.builtin.copy:
         dest: /etc/systemd/system/homelab-msk-home-egress.service

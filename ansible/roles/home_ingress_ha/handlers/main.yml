@@ -1,4 +1,8 @@
 ---
+- name: Reload keepalived systemd startup policy
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
 - name: Restart home ingress keepalived
   ansible.builtin.systemd_service:
     name: keepalived

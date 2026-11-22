@@ -13,7 +13,8 @@
       register: harbor_namespace_prepare
       changed_when: "'created' in harbor_namespace_prepare.stdout"
 
-- ansible.builtin.import_playbook: vpn-edge.yml
+- name: Import vpn edge playbook
+  ansible.builtin.import_playbook: vpn-edge.yml
 
 - name: Deploy public authenticated Harbor on socrat-0
   hosts: socrat-0

@@ -36,7 +36,6 @@ TASK_NAMES = (
 )
 COMMANDS = (
     "getconf _NPROCESSORS_ONLN",
-    "systemctl show homelab-otel-agent.service -p DropInPaths --value",
 )
 
 
@@ -127,6 +126,12 @@ def test_otel_cpu_tasks_are_named_without_changing_actions() -> None:
     assert names == list(TASK_NAMES)
     assert len(names) == len(set(names))
     assert _commands(play.get("tasks")) == list(COMMANDS)
+    probe = next(
+        _mapping(item) for item in _sequence(play["tasks"]) if _mapping(item).get("name") == TASK_NAMES[6]
+    )
+    assert probe["homelab_systemd_probe"] == {"units": [SERVICE_NAME], "property": "DropInPaths"}
+    assert probe["register"] == "loaded_overrides"
+    assert probe["changed_when"] is False
     assert _service_restarts(play.get("tasks")) == [SERVICE_NAME, SERVICE_NAME]
     assert "not old_override.stat.exists" in source
     assert "postimages" in source

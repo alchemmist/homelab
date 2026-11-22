@@ -7,5 +7,6 @@
   roles:
     - wireguard_socrat
 
-- ansible.builtin.import_playbook: wireguard-tcp-transport.yml
+- name: Import wireguard tcp transport playbook
+  ansible.builtin.import_playbook: wireguard-tcp-transport.yml
 ...

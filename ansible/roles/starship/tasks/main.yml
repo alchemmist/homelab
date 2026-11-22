@@ -1,6 +1,6 @@
 ---
 - name: Check that starship is installed
-  ansible.builtin.shell: command -v starship
+  ansible.builtin.command: which starship
   changed_when: false
   register: starship_binary
 
