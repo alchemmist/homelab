@@ -8,7 +8,7 @@ global:
     - name: AUTHENTIK_POSTGRESQL__PASSWORD
       valueFrom: {secretKeyRef: {name: authentik-pg-critical, key: password}}
   image:
-    tag: 2026.8.5
+    tag: 2026.8.6
   nodeSelector:
     kubernetes.io/hostname: socrat-0
   deploymentStrategy:

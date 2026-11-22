@@ -44,7 +44,7 @@ fixes are described above.
 
 ## Brief current status
 
-- Portal: **https://auth.socrat.alchemmist.xyz/**, Authentik **2026.8.5**,
+- Portal: **https://auth.socrat.alchemmist.xyz/**, Authentik **2026.8.6**,
   server/worker/PG17.11 on `socrat-0`, retained PVC. **Not HA**.
 - The owner `alchemmist` is a personal MFA identity, the only member of
   `homelab-owner`. `akadmin` was decommissioned after a separate API migration;
@@ -110,7 +110,7 @@ OTel/VPN changes.
 
 ## What works
 
-- **Authentik:** https://auth.socrat.alchemmist.xyz/, chart/app **2026.8.5**,
+- **Authentik:** https://auth.socrat.alchemmist.xyz/, chart/app **2026.8.6**,
   pinned SHA-256; server + worker + PG17.11 on socrat-0, retained local PVCs.
   **Not HA**.
 - Mandatory MFA. The owner `alchemmist` has already logged in and set up his

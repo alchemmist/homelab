@@ -61,7 +61,7 @@ GROUP_MARKER = {"homelab_app_iam": 1}
 
 def validate_group(group):
     """Validate group."""
-    # Authentik 2026.8.5 uses plural parents (M2M), not legacy parent.
+    # Authentik 2026.8.6 uses plural parents (M2M), not legacy parent.
     # Missing/null/reduced responses are not evidence of absence of privilege.
     if (
         group.get("is_superuser") is not False

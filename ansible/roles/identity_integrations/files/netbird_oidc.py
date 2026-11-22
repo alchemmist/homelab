@@ -35,7 +35,7 @@ import yaml
 
 AUTHENTIK_HOST = "auth.socrat.alchemmist.xyz"
 MANAGEMENT_FQDN = "netbird.socrat.alchemmist.xyz"
-AUTHENTIK_VERSION = "2026.8.5"
+AUTHENTIK_VERSION = "2026.8.6"
 NETBIRD_RELEASE = "v0.82.0"
 CONNECTOR_SHA256 = "3ef9df52d86ea9205055a8f44f7e4fa4cacb0d265c746474c506685a39f7ff34"
 DEX_OIDC_SHA256 = "39b2adbe048fbcbe2d2f531f33e0a2de867cbc0eb960eacc39297e5d64e63747"

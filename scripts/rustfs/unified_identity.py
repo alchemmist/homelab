@@ -420,7 +420,7 @@ def run(action: str = "plan", nonce: str | None = None) -> None:
             return
         require_fresh_journal(journal)
         provider = ProxyProvider.objects.create(**settings)
-        # Exact installed ProxyProviderSerializer.create behavior (2026.8.5).
+        # Exact installed ProxyProviderSerializer.create behavior (2026.8.6).
         provider.set_oauth_defaults()
         provider.save()
         app = Application.objects.create(

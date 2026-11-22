@@ -154,7 +154,7 @@ asyncio.run(main())
 
 def _require_versions(api: "ApiCall", container: object) -> None:
     """Refuse to run against unreviewed Authentik or LiteLLM versions."""
-    if cast("dict[str, object]", api("GET", "admin/version/"))["version_current"] != "2026.8.5":
+    if cast("dict[str, object]", api("GET", "admin/version/"))["version_current"] != "2026.8.6":
         msg = "Unreviewed Authentik version"
         raise RuntimeError(msg)
     if cast("dict[str, object]", container)["image"] != "ghcr.io/berriai/litellm:1.105.1":

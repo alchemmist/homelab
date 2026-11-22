@@ -2,7 +2,7 @@
 
 The owner-approved visual reference is frozen in [`reference/`](reference/), with file sizes and SHA-256 in `reference/manifest.json`. Open `reference/05-typewriter.html` locally for the reference; do not use its demonstration JavaScript as a production authentication implementation.
 
-Production target: **Authentik 2026.8.5**, **https://auth.socrat.alchemmist.xyz/**. Current parity and outstanding owner acceptance are in [ACCEPTANCE.md](ACCEPTANCE.md).
+Production target: **Authentik 2026.8.6**, **https://auth.socrat.alchemmist.xyz/**. Current parity and outstanding owner acceptance are in [ACCEPTANCE.md](ACCEPTANCE.md).
 
 ## Implementation
 
