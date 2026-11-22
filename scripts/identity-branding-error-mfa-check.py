@@ -14,7 +14,9 @@ from playwright.sync_api import sync_playwright
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument("--run", action="store_true")
 p.add_argument(
-    "--public-edge", choices=["109.173.40.247", "109.120.141.60"], default="109.173.40.247"
+    "--public-edge",
+    choices=["109.173.40.247", "109.120.141.60"],
+    default="109.173.40.247",
 )
 a = p.parse_args()
 if not a.run:

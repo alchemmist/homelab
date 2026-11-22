@@ -213,7 +213,8 @@ def main():
     data = json.loads(args.input.read_text())
     print(
         json.dumps(
-            plan(data["state"], data["batch"], data["required"], data["now"]), sort_keys=True
+            plan(data["state"], data["batch"], data["required"], data["now"]),
+            sort_keys=True,
         )
     )
 

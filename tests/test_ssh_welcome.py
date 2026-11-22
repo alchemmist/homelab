@@ -38,7 +38,10 @@ class WelcomeTests(unittest.TestCase):
         assert WELCOME.role({"node-role.kubernetes.io/etcd": "true"}) == "etcd"
         assert (
             WELCOME.role(
-                {"node-role.kubernetes.io/control-plane": "", "node-role.kubernetes.io/etcd": ""}
+                {
+                    "node-role.kubernetes.io/control-plane": "",
+                    "node-role.kubernetes.io/etcd": "",
+                }
             )
             == "master + etcd"
         )
@@ -101,7 +104,12 @@ class WelcomeTests(unittest.TestCase):
     def test_plain_output_retains_full_urls(self) -> None:
         """Verify plain output keeps resource stats and full monitoring URLs."""
         result = WELCOME.render(
-            self.config, self.portraits, [("RAM", "13 / 32 GiB used")], 110, False, False
+            self.config,
+            self.portraits,
+            [("RAM", "13 / 32 GiB used")],
+            110,
+            False,
+            False,
         )
         assert "RAM: 13 / 32 GiB used" in result
         assert "Monitoring: https://" in result

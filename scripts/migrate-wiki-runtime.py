@@ -1,4 +1,5 @@
 """Migrate wiki runtime content to the current format version."""
+
 import argparse
 import hashlib
 import json
@@ -37,11 +38,18 @@ def inventory(root) -> dict[str, dict[str, object]]:
         name = path.relative_to(root).as_posix()
         if path.is_symlink():
             target = link_target(root, path)
-            result[name] = {"type": "link", "target": target.relative_to(root).as_posix()}
+            result[name] = {
+                "type": "link",
+                "target": target.relative_to(root).as_posix(),
+            }
         elif path.is_dir():
             result[name] = {"type": "directory"}
         elif path.is_file():
-            result[name] = {"type": "file", "size": path.stat().st_size, "sha256": digest(path)}
+            result[name] = {
+                "type": "file",
+                "size": path.stat().st_size,
+                "sha256": digest(path),
+            }
         else:
             raise ValueError(f"Unsupported filesystem object: {path}")
     return result
@@ -70,7 +78,14 @@ def validate(root) -> dict[str, object]:
             ):
                 raise ValueError(f"Invalid {field} in {path}")
             subprocess.run(
-                ["git", "-C", str(root / "repository"), "cat-file", "-e", revision + "^{commit}"],
+                [
+                    "git",
+                    "-C",
+                    str(root / "repository"),
+                    "cat-file",
+                    "-e",
+                    revision + "^{commit}",
+                ],
                 check=True,
                 capture_output=True,
             )

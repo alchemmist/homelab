@@ -9,10 +9,14 @@ import argparse
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
-    "--run", action="store_true", help="Explicitly authorize temporary acceptance fixtures"
+    "--run",
+    action="store_true",
+    help="Explicitly authorize temporary acceptance fixtures",
 )
 parser.add_argument(
-    "--public-edge", choices=["109.173.40.247", "109.120.141.60"], default="109.173.40.247"
+    "--public-edge",
+    choices=["109.173.40.247", "109.120.141.60"],
+    default="109.173.40.247",
 )
 args = parser.parse_args()
 if not args.run:
@@ -33,7 +37,9 @@ _original_getaddrinfo = socket.getaddrinfo
 def public_auth(host, *params, **kwargs):
     """Perform the public auth operation."""
     return _original_getaddrinfo(
-        args.public_edge if host == "auth.socrat.alchemmist.xyz" else host, *params, **kwargs
+        args.public_edge if host == "auth.socrat.alchemmist.xyz" else host,
+        *params,
+        **kwargs,
     )
 
 
@@ -100,7 +106,11 @@ user = api(
     },
 )
 try:
-    api("POST", "core/users/" + str(user["pk"]) + "/set_password/", {"password": password})
+    api(
+        "POST",
+        "core/users/" + str(user["pk"]) + "/set_password/",
+        {"password": password},
+    )
     with sync_playwright() as p:
         browser = p.chromium.launch(
             args=["--host-resolver-rules=MAP auth.socrat.alchemmist.xyz " + args.public_edge]
@@ -113,7 +123,10 @@ try:
 
         def observe(response):
             """Perform the observe operation."""
-            if "/api/v3/flows/executor/" in response.url and response.status in [200, 400]:
+            if "/api/v3/flows/executor/" in response.url and response.status in [
+                200,
+                400,
+            ]:
                 try:
                     data = response.json()
                     last.clear()
@@ -131,7 +144,14 @@ try:
                     if data.get("component") == "ak-stage-authenticator-totp":
                         totp_challenge.clear()
                         totp_challenge.update(data)
-                except (ValueError, TypeError, IndexError, KeyError, AttributeError, PlaywrightError):
+                except (
+                    ValueError,
+                    TypeError,
+                    IndexError,
+                    KeyError,
+                    AttributeError,
+                    PlaywrightError,
+                ):
                     pass
 
         page.on("response", observe)

@@ -15,7 +15,9 @@ def main():
     """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
-        "--url-file", required=True, help="Private fetched fully-url.json; token is not logged"
+        "--url-file",
+        required=True,
+        help="Private fetched fully-url.json; token is not logged",
     )
     a = p.parse_args()
     url = json.loads(Path(a.url_file).read_text())["startURL"]
@@ -51,7 +53,12 @@ def main():
                 "\n%{http_code}",
             ]
             if body is not None:
-                cmd += ["-H", "Content-Type: application/json", "--data", json.dumps(body)]
+                cmd += [
+                    "-H",
+                    "Content-Type: application/json",
+                    "--data",
+                    json.dumps(body),
+                ]
             for h in headers:
                 cmd += ["-H", h]
             r = subprocess.run(cmd, capture_output=True, check=True)

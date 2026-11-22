@@ -68,9 +68,12 @@ class PrivacySmokeTests(unittest.TestCase):
 
     def test_otlp_partial_rejection_is_a_failure(self) -> None:
         """Otlp partial rejection is a failure."""
-        with patch.object(
-            SMOKE.urllib.request,
-            "urlopen",
-            return_value=io.BytesIO(b'{"partialSuccess":{"rejectedLogRecords":"1"}}'),
-        ), self.assertRaisesRegex(ValueError, "rejected"):
+        with (
+            patch.object(
+                SMOKE.urllib.request,
+                "urlopen",
+                return_value=io.BytesIO(b'{"partialSuccess":{"rejectedLogRecords":"1"}}'),
+            ),
+            self.assertRaisesRegex(ValueError, "rejected"),
+        ):
             SMOKE.send(None, {})

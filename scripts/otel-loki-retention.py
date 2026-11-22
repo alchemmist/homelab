@@ -32,7 +32,10 @@ def rules(policy):
             type(value) is int and 24 <= value <= 8760,
             "Retention must be integer hours between 24h and 365d",
         )
-        require(level != "unknown" or value == 336, "Unknown and fallback must preserve legacy 14d")
+        require(
+            level != "unknown" or value == 336,
+            "Unknown and fallback must preserve legacy 14d",
+        )
         if value > 336:
             approval = policy.get("capacityApproval") or {}
             require(
@@ -133,7 +136,10 @@ def render(text, policy):
         )
     # Replace only the limits retention stanza, preserving all unrelated Loki settings.
     text, count = re.subn(
-        r"  retention_period:.*?\n(?=  allow_structured_metadata:)", block, text, flags=re.DOTALL
+        r"  retention_period:.*?\n(?=  allow_structured_metadata:)",
+        block,
+        text,
+        flags=re.DOTALL,
     )
     if count != 1:
         message = "Expected one bounded limits retention stanza"

@@ -41,7 +41,11 @@ def resources():
                     "commonName": "otel-app-" + app,
                     "duration": "2160h",
                     "renewBefore": "720h",
-                    "privateKey": {"algorithm": "ECDSA", "size": 256, "rotationPolicy": "Always"},
+                    "privateKey": {
+                        "algorithm": "ECDSA",
+                        "size": 256,
+                        "rotationPolicy": "Always",
+                    },
                     "usages": ["digital signature", "client auth"],
                     "issuerRef": {"name": "otel-ca", "kind": "Issuer"},
                 },
@@ -75,7 +79,11 @@ def resources():
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "RoleBinding",
             "metadata": {"name": SA, "namespace": NS, "labels": labels},
-            "roleRef": {"apiGroup": "rbac.authorization.k8s.io", "kind": "Role", "name": SA},
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": SA,
+            },
             "subjects": [{"kind": "ServiceAccount", "name": SA, "namespace": NS}],
         }
     )
@@ -83,7 +91,12 @@ def resources():
 
 
 def assess(resource, verb, name=None, group="", namespace=NS):
-    attributes = {"namespace": namespace, "verb": verb, "group": group, "resource": resource}
+    attributes = {
+        "namespace": namespace,
+        "verb": verb,
+        "group": group,
+        "resource": resource,
+    }
     if name is not None:
         attributes["name"] = name
     document = {
@@ -151,7 +164,14 @@ def run(output):
         msg = "Dedicated application reader is missing or overprivileged"
         raise ValueError(msg)
     observed = BOOTSTRAP.kube(
-        "-n", NS, "get", "certificates", "-l", "homelab-otel-role=application-client", "-o", "json"
+        "-n",
+        NS,
+        "get",
+        "certificates",
+        "-l",
+        "homelab-otel-role=application-client",
+        "-o",
+        "json",
     )["items"]
     report = {
         "collectedAt": datetime.now(UTC).isoformat(),

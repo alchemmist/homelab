@@ -212,7 +212,11 @@ class PilotTests(unittest.TestCase):
             c["resources"][0]["address"] = address
             with self.subTest(address=address), self.assertRaises(ValueError):
                 nb.validate(c)
-        for field, value in [("ports", [80, 443]), ("source_group", "All"), ("kind", "exit")]:
+        for field, value in [
+            ("ports", [80, 443]),
+            ("source_group", "All"),
+            ("kind", "exit"),
+        ]:
             c = inputs()
             c["resources"][0][field] = value
             with self.subTest(field=field), self.assertRaises(ValueError):
@@ -271,8 +275,16 @@ class PilotTests(unittest.TestCase):
         """The internal manifest has no Service and isolates signup."""
         cidrs = ["203.0.113.10/32", "10.42.0.1/32"]
         docs = nb.manifests(inputs(), "internal", cidrs)
-        assert [doc["kind"] for doc in docs] == ["Namespace", "PersistentVolumeClaim", "Deployment", "Deployment", "NetworkPolicy"]
-        assert {doc["metadata"]["namespace"] for doc in docs if doc["kind"] != "Namespace"} == {"netbird-pilot"}
+        assert [doc["kind"] for doc in docs] == [
+            "Namespace",
+            "PersistentVolumeClaim",
+            "Deployment",
+            "Deployment",
+            "NetworkPolicy",
+        ]
+        assert {doc["metadata"]["namespace"] for doc in docs if doc["kind"] != "Namespace"} == {
+            "netbird-pilot"
+        }
         text = yaml.safe_dump_all(docs)
         assert "kind: Service" not in text
         assert "kind: Ingress" not in text
@@ -280,7 +292,10 @@ class PilotTests(unittest.TestCase):
         assert "nodePort" not in text
         server = next(doc for doc in docs if doc["metadata"]["name"] == "server")
         container = server["spec"]["template"]["spec"]["containers"][0]
-        assert container["readinessProbe"]["httpGet"] == {"path": "/oauth2/.well-known/openid-configuration", "port": 80}
+        assert container["readinessProbe"]["httpGet"] == {
+            "path": "/oauth2/.well-known/openid-configuration",
+            "port": 80,
+        }
         assert container["livenessProbe"]["tcpSocket"] == {"port": 9000}
         assert "httpGet" not in container["livenessProbe"]
         secret = server["spec"]["template"]["spec"]["volumes"][0]["secret"]
@@ -301,9 +316,15 @@ class PilotTests(unittest.TestCase):
     def test_manifest_pins_runtime_secret_singleton_no_argo(self) -> None:
         """The manifest pins a runtime-secret singleton without Argo CD."""
         docs = nb.manifests(inputs(), "edge")
-        assert not any(x["kind"] in ["Secret", "Application", "DaemonSet", "IngressRoute"] for x in docs)
+        assert not any(
+            x["kind"] in ["Secret", "Application", "DaemonSet", "IngressRoute"] for x in docs
+        )
         deployments = [x for x in docs if x["kind"] == "Deployment"]
-        assert sorted(x["metadata"]["name"] for x in deployments) == ["dashboard", "edge-forwarder", "server"]
+        assert sorted(x["metadata"]["name"] for x in deployments) == [
+            "dashboard",
+            "edge-forwarder",
+            "server",
+        ]
         for doc in deployments:
             assert doc["spec"]["replicas"] == 1
             assert doc["spec"]["strategy"]["type"] == "Recreate"
@@ -327,12 +348,18 @@ class PilotTests(unittest.TestCase):
         )
         assert grpc_service["metadata"]["annotations"][scheme_key] == "h2c"
         assert grpc_service["spec"]["ports"] == [{"name": "h2c", "port": 8082, "targetPort": "h2c"}]
-        assert all(p["backend"]["service"]["name"] == "edge-forwarder-grpc" for p in grpc["spec"]["rules"][0]["http"]["paths"])
+        assert all(
+            p["backend"]["service"]["name"] == "edge-forwarder-grpc"
+            for p in grpc["spec"]["rules"][0]["http"]["paths"]
+        )
         web_service = next(
             x for x in docs if x["kind"] == "Service" and x["metadata"]["name"] == "edge-forwarder"
         )
         assert scheme_key not in web_service["metadata"].get("annotations", {})
-        assert [p["path"] for p in grpc["spec"]["rules"][0]["http"]["paths"]] == ["/management.ManagementService/", "/signalexchange.SignalExchange/"]
+        assert [p["path"] for p in grpc["spec"]["rules"][0]["http"]["paths"]] == [
+            "/management.ManagementService/",
+            "/signalexchange.SignalExchange/",
+        ]
         http = next(x for x in docs if x["metadata"].get("name") == "netbird-http")
         assert "serversscheme" not in http["metadata"]["annotations"]
         config = yaml.safe_load(
@@ -347,8 +374,17 @@ class PilotTests(unittest.TestCase):
         stun = next(x for x in docs if x["metadata"]["name"] == "stun")
         assert stun["spec"]["ports"][0]["protocol"] == "UDP"
         assert stun["spec"]["ports"][0]["port"] == 3478
-        assert all(port.get("port") != 9090 for doc in docs if doc["kind"] == "Service" for port in doc["spec"]["ports"])
-        assert [doc["metadata"].get("namespace") for doc in docs if "netbird-runtime" in yaml.safe_dump(doc)] == ["netbird-pilot"]
+        assert all(
+            port.get("port") != 9090
+            for doc in docs
+            if doc["kind"] == "Service"
+            for port in doc["spec"]["ports"]
+        )
+        assert [
+            doc["metadata"].get("namespace")
+            for doc in docs
+            if "netbird-runtime" in yaml.safe_dump(doc)
+        ] == ["netbird-pilot"]
 
     def test_router_runtime_key_file_and_separate_interface(self) -> None:
         """The router uses a runtime key file and a separate interface."""
@@ -421,7 +457,9 @@ class PilotTests(unittest.TestCase):
                 ):
                     nb.access_requests(inputs(), bindings(), s)
 
-    def test_destination_group_propagation_and_incomplete_responses_refused(self) -> None:
+    def test_destination_group_propagation_and_incomplete_responses_refused(
+        self,
+    ) -> None:
         """Destination group propagation and incomplete responses are refused."""
         assert nb.account_settings(inputs())["groups_propagation_enabled"]
         for field, values in [
@@ -435,7 +473,10 @@ class PilotTests(unittest.TestCase):
                     s["groups"][2].pop(field)
                 else:
                     s["groups"][2][field] = value
-                with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                with (
+                    self.subTest(field=field, value=value),
+                    self.assertRaises(ValueError),
+                ):
                     nb.access_requests(inputs(), bindings(), s)
         # A second JWT group with the destination name is unsafe even if the bound ID is API-issued.
         s = snapshot()
@@ -459,7 +500,9 @@ class PilotTests(unittest.TestCase):
             a, b = Path(d) / "a", Path(d) / "b"
             nb.render(inputs(), a)
             nb.render(inputs(), b)
-            assert {p.name: p.read_bytes() for p in a.iterdir()} == {p.name: p.read_bytes() for p in b.iterdir()}
+            assert {p.name: p.read_bytes() for p in a.iterdir()} == {
+                p.name: p.read_bytes() for p in b.iterdir()
+            }
             with self.assertRaises(FileExistsError):
                 nb.render(inputs(), a)
 
@@ -508,7 +551,8 @@ class UpstreamContractTests(unittest.TestCase):
     """Optional contract checks against the pinned upstream schema."""
 
     @unittest.skipUnless(
-        os.environ.get("NETBIRD_OPENAPI_FILE"), "optional pinned upstream schema not supplied"
+        os.environ.get("NETBIRD_OPENAPI_FILE"),
+        "optional pinned upstream schema not supplied",
     )
     def test_generated_requests_against_official_v082_openapi(self) -> None:
         """Generated requests validate against the official v0.82 OpenAPI."""
@@ -520,7 +564,10 @@ class UpstreamContractTests(unittest.TestCase):
         schemas = yaml.safe_load(path.read_text())["components"]["schemas"]
 
         def check(name, body):
-            schema = {"$ref": "#/components/schemas/" + name, "components": {"schemas": schemas}}
+            schema = {
+                "$ref": "#/components/schemas/" + name,
+                "components": {"schemas": schemas},
+            }
             jsonschema.Draft4Validator(schema).validate(body)
 
         for req in nb.access_requests(inputs(), bindings(), snapshot()):
@@ -560,7 +607,9 @@ class ProbeTests(unittest.TestCase):
     def test_denial_requires_tcp_block_not_merely_tls_failure(self) -> None:
         """Denial requires a TCP block, not merely a TLS failure."""
         with patch.object(
-            self.probes, "probe", return_value={"tcp_connected": True, "tls_verified": False}
+            self.probes,
+            "probe",
+            return_value={"tcp_connected": True, "tls_verified": False},
         ):
             result = self.probes.run(inputs(), "deny", "revoked")
         assert all(not r["passed"] for r in result)
@@ -569,7 +618,9 @@ class ProbeTests(unittest.TestCase):
         """Allowed web requires TLS and exact DNS resolution."""
         with (
             patch.object(
-                self.probes, "probe", return_value={"tcp_connected": True, "tls_verified": True}
+                self.probes,
+                "probe",
+                return_value={"tcp_connected": True, "tls_verified": True},
             ),
             patch.object(
                 self.probes.socket,
@@ -581,7 +632,9 @@ class ProbeTests(unittest.TestCase):
         assert all(r["passed"] for r in result)
         with (
             patch.object(
-                self.probes, "probe", return_value={"tcp_connected": True, "tls_verified": True}
+                self.probes,
+                "probe",
+                return_value={"tcp_connected": True, "tls_verified": True},
             ),
             patch.object(self.probes.socket, "getaddrinfo", side_effect=OSError),
         ):
@@ -592,7 +645,9 @@ class ProbeTests(unittest.TestCase):
         """Negative probes use the direct IP even when DNS is broken."""
         with (
             patch.object(
-                self.probes, "probe", return_value={"tcp_connected": False, "tls_verified": False}
+                self.probes,
+                "probe",
+                return_value={"tcp_connected": False, "tls_verified": False},
             ),
             patch.object(self.probes.socket, "getaddrinfo", side_effect=OSError) as dns,
         ):

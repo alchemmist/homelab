@@ -59,7 +59,11 @@ class RoleConfigTests(unittest.TestCase):
         self.write(
             dict(
                 preserved,
-                **{"disable-etcd": True, "cluster-init": True, "tls-san": ["existing.example"]},
+                **{
+                    "disable-etcd": True,
+                    "cluster-init": True,
+                    "tls-san": ["existing.example"],
+                },
             )
         )
         result = MODULE.configure(self.args)
@@ -93,15 +97,15 @@ class RoleConfigTests(unittest.TestCase):
     def test_control_plane_removes_conflicting_flags(self) -> None:
         """Strip server-role flags that conflict with control-plane membership."""
         self.write(
-            {
-                key: True
-                for key in (
+            dict.fromkeys(
+                (
                     "cluster-init",
                     "disable-apiserver",
                     "disable-controller-manager",
                     "disable-scheduler",
-                )
-            }
+                ),
+                True,
+            )
         )
         self.args.role = "control-plane"
         MODULE.configure(self.args)

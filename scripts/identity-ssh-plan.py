@@ -45,14 +45,18 @@ def require(ok, message):
 
 def fields(obj, expected):
     """Perform the fields operation."""
-    require(isinstance(obj, dict) and set(obj) == set(expected), "Unexpected document fields")
+    require(
+        isinstance(obj, dict) and set(obj) == set(expected),
+        "Unexpected document fields",
+    )
 
 
 def canonical_uuid(value):
     """Perform the canonical uuid operation."""
     try:
         require(
-            isinstance(value, str) and str(uuid.UUID(value)) == value, "Canonical UUID required"
+            isinstance(value, str) and str(uuid.UUID(value)) == value,
+            "Canonical UUID required",
         )
         require(uuid.UUID(value).int != 0, "Nonzero UUID required")
     except (ValueError, AttributeError):
@@ -63,6 +67,7 @@ def canonical_uuid(value):
 def read_json(path):
     # Do not include decoder errors: they can contain supplied private material.
     """Perform the read json operation."""
+
     def unique_pairs(pairs) -> dict[str, object]:
         result = {}
         for key, value in pairs:
@@ -94,7 +99,8 @@ def bindings_map(document):
             "Restricted Linux username required",
         )
         require(
-            ident not in result and name not in result.values(), "Duplicate UUID or Linux username"
+            ident not in result and name not in result.values(),
+            "Duplicate UUID or Linux username",
         )
         result[ident] = name
     return result
@@ -116,13 +122,17 @@ def binding_history():
     def git(*args) -> str:
         try:
             return subprocess.run(
-                ["git", "-C", str(ROOT), *args], check=True, capture_output=True, text=True
+                ["git", "-C", str(ROOT), *args],
+                check=True,
+                capture_output=True,
+                text=True,
             ).stdout.strip()
         except (OSError, subprocess.SubprocessError):
             raise Refused("Full Git checkout required for binding history") from None
 
     require(
-        git("rev-parse", "--is-shallow-repository") == "false", "Shallow binding history refused"
+        git("rev-parse", "--is-shallow-repository") == "false",
+        "Shallow binding history refused",
     )
     path = str(BINDINGS.relative_to(ROOT))
     revisions = git("log", "--full-history", "--format=%H", "HEAD", "--", path).splitlines()
@@ -160,13 +170,22 @@ def validate_policy(policy, bindings):
     for row in policy["assignments"]:
         fields(row, ["uuid", "state", "hosts", "revoked_hosts"])
         ident = canonical_uuid(row["uuid"])
-        require(ident in bindings and ident not in seen, "Unbound or duplicate assignment UUID")
+        require(
+            ident in bindings and ident not in seen,
+            "Unbound or duplicate assignment UUID",
+        )
         seen.add(ident)
-        require(row["state"] in ["present", "disabled"], "Explicit present/disabled state required")
+        require(
+            row["state"] in ["present", "disabled"],
+            "Explicit present/disabled state required",
+        )
         hosts, revoked = host_list(row["hosts"]), host_list(row["revoked_hosts"])
         require(bool(hosts or revoked), "Empty host scope refused")
         require(not set(hosts) & set(revoked), "Active and revoked hosts overlap")
-        require(row["state"] != "present" or bool(hosts), "Present assignment needs explicit hosts")
+        require(
+            row["state"] != "present" or bool(hosts),
+            "Present assignment needs explicit hosts",
+        )
     return policy
 
 
@@ -191,7 +210,17 @@ def policy_history():
     path = str(POLICY.relative_to(ROOT))
     try:
         revisions = subprocess.run(
-            ["git", "-C", str(ROOT), "log", "--full-history", "--format=%H", "HEAD", "--", path],
+            [
+                "git",
+                "-C",
+                str(ROOT),
+                "log",
+                "--full-history",
+                "--format=%H",
+                "HEAD",
+                "--",
+                path,
+            ],
             check=True,
             text=True,
             capture_output=True,
@@ -298,7 +327,10 @@ class Authentik:
         query = urllib.parse.urlencode({"uuid": ident, "page_size": 100})
         request = urllib.request.Request(
             self.url + "/api/v3/core/users/?" + query,
-            headers={"Authorization": "Bearer " + self.token, "Accept": "application/json"},
+            headers={
+                "Authorization": "Bearer " + self.token,
+                "Accept": "application/json",
+            },
             method="GET",
         )
         try:
@@ -343,13 +375,17 @@ def build_plan(bindings, policy, get_user):
         if state == "present":
             user = get_user(ident)
             require(
-                isinstance(user, dict) and user.get("uuid") == ident, "Missing immutable user UUID"
+                isinstance(user, dict) and user.get("uuid") == ident,
+                "Missing immutable user UUID",
             )
             require(
                 user.get("is_active") is True,
                 "IdP user inactive; review explicit disabled assignment",
             )
-            require(user.get("type") == "internal", "Only internal human users may be assigned")
+            require(
+                user.get("type") == "internal",
+                "Only internal human users may be assigned",
+            )
             attributes = user.get("attributes")
             require(isinstance(attributes, dict), "Missing user attributes")
             keys, fingerprints = public_keys(attributes.get(policy["public_key_attribute"]))
@@ -392,7 +428,10 @@ def export(path, payload, approval):
     """Write the export output."""
     require(bool(payload["required_hosts"]), "Empty integration cannot be exported")
     review = digest(payload)
-    require(approval == review, "Export requires --approve-plan with the current review SHA256")
+    require(
+        approval == review,
+        "Export requires --approve-plan with the current review SHA256",
+    )
     target = Path(path).resolve()
     require(not target.is_relative_to(ROOT), "Export outside the repository for review")
     document = {
@@ -412,7 +451,8 @@ def main(argv=None):
     """Run the command-line entry point."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--authentik-url", help="HTTPS origin, no API path; token from AUTHENTIK_SSH_TOKEN"
+        "--authentik-url",
+        help="HTTPS origin, no API path; token from AUTHENTIK_SSH_TOKEN",
     )
     parser.add_argument(
         "--ca-file", help="Optional trusted CA bundle; verification is always enabled"
@@ -421,7 +461,9 @@ def main(argv=None):
         "--snapshot", type=Path, help="Public-only API user list for OFFLINE PLAN ONLY"
     )
     parser.add_argument(
-        "--export", type=Path, help="Explicit public-only Ansible extra-vars export; no host writes"
+        "--export",
+        type=Path,
+        help="Explicit public-only Ansible extra-vars export; no host writes",
     )
     parser.add_argument("--approve-plan", help="SHA256 printed by the reviewed plan")
     args = parser.parse_args(argv)
@@ -441,7 +483,9 @@ def main(argv=None):
                 return rows[0]
         elif any(r["state"] == "present" for r in policy["assignments"]):
             api = Authentik(
-                args.authentik_url or "", os.environ.get("AUTHENTIK_SSH_TOKEN"), args.ca_file
+                args.authentik_url or "",
+                os.environ.get("AUTHENTIK_SSH_TOKEN"),
+                args.ca_file,
             )
             get_user = api.user
         else:

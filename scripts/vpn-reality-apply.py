@@ -147,13 +147,20 @@ def vless_client(stream, client_id, port):
                         "publicKey": public,
                         "shortId": reality["shortIds"][0],
                     },
-                    "xhttpSettings": {"path": xhttp["path"], "mode": xhttp.get("mode", "auto")},
+                    "xhttpSettings": {
+                        "path": xhttp["path"],
+                        "mode": xhttp.get("mode", "auto"),
+                    },
                 },
             },
         ],
         "routing": {
             "rules": [
-                {"type": "field", "domain": ["full:speed.cloudflare.com"], "outboundTag": "probe"},
+                {
+                    "type": "field",
+                    "domain": ["full:speed.cloudflare.com"],
+                    "outboundTag": "probe",
+                },
                 {"type": "field", "network": "tcp,udp", "outboundTag": "blocked"},
             ]
         },
@@ -198,7 +205,11 @@ def transfer(port, state, phase):
     result = subprocess.run(args, check=False, capture_output=True, text=True, env=env, timeout=30)
     h.save(
         state / (phase + "-curl-private.json"),
-        {"returncode": result.returncode, "stdout": result.stdout, "stderr": result.stderr},
+        {
+            "returncode": result.returncode,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+        },
     )
     if (
         result.returncode
@@ -255,7 +266,12 @@ def apply(state, policy, session_hash, target_hash):
             ).fetchone()[0]:
                 raise ValueError("Fixture collision")
         target = next(r for r in original["inbounds"] if r["port"] == 32053)
-        marker = {"email": email, "uuid": fixture_id, "sub_id": sub_id, "inbound_id": target["id"]}
+        marker = {
+            "email": email,
+            "uuid": fixture_id,
+            "sub_id": sub_id,
+            "inbound_id": target["id"],
+        }
         h.save(s.state / "fixture-private.json", marker)
         # Mark intent before an API response can be lost; cleanup ownership-checks DB.
         fixture = True
@@ -414,7 +430,12 @@ def main():
             parser.error("Both fresh hashes required")
         print(
             h.canonical(
-                apply(args.state, policy, args.approve_session_hash, args.approve_target_plan_hash)
+                apply(
+                    args.state,
+                    policy,
+                    args.approve_session_hash,
+                    args.approve_target_plan_hash,
+                )
             )
         )
     else:

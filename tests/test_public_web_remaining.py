@@ -27,7 +27,10 @@ def module(name: str) -> ModuleType:
 def test_scoped_web_groups_create_no_users() -> None:
     m = module("public-web-role-groups")
     ops = m.plan([])
-    assert {x["name"] for x in ops} == {"syncthing-web-admins", "uptime-kuma-web-admins"}
+    assert {x["name"] for x in ops} == {
+        "syncthing-web-admins",
+        "uptime-kuma-web-admins",
+    }
     assert all(
         x["users"] == x["parents"] == x["children"] == x["roles"] == []
         and x["is_superuser"] is False
@@ -109,7 +112,10 @@ def grafana() -> _Deployment:
         {
             "name": "GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET",
             "valueFrom": {
-                "secretKeyRef": {"name": "socrat-authentik-grafana", "key": "client-secret"}
+                "secretKeyRef": {
+                    "name": "socrat-authentik-grafana",
+                    "key": "client-secret",
+                }
             },
         }
     )
@@ -177,7 +183,14 @@ def render_status(*args: str) -> list[dict[str, object]]:
         x
         for x in yaml.safe_load_all(
             subprocess.check_output(
-                ["helm", "template", "uptime-kuma", str(ROOT / "charts/uptime-kuma"), *args], text=True
+                [
+                    "helm",
+                    "template",
+                    "uptime-kuma",
+                    str(ROOT / "charts/uptime-kuma"),
+                    *args,
+                ],
+                text=True,
             )
         )
         if x
@@ -196,7 +209,8 @@ def test_kuma_no_gitops_random_secret_by_default() -> None:
     deployments = [x for x in docs if x["kind"] == "Deployment"]
     assert len(deployments) == 2
     assert {x["metadata"]["name"]: x["spec"]["replicas"] for x in deployments} == {
-        "gatus": 1, "public-web-kuma-proxy": 1,
+        "gatus": 1,
+        "public-web-kuma-proxy": 1,
     }
 
 
@@ -211,9 +225,13 @@ def test_schema_recovery_never_resets_existing_passwords_or_restarts_database() 
 def test_retired_bootstrap_cannot_provision_a_database_or_account() -> None:
     # The retired chart inputs must have no effect, even if an old override
     # requests a fresh account and a running MariaDB/Kuma writer.
-    assert render_status(
-        "--set", "database.bootstrapSecret=true,database.enabled=true,database.replicaCount=1,replicaCount=1",
-    ) == render_status()
+    assert (
+        render_status(
+            "--set",
+            "database.bootstrapSecret=true,database.enabled=true,database.replicaCount=1,replicaCount=1",
+        )
+        == render_status()
+    )
 
 
 def test_dns_cleanup_only_owned_files_and_no_global_flush_or_vpn_commands() -> None:

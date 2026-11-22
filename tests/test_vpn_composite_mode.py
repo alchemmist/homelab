@@ -70,7 +70,11 @@ class CompositeModeTest(unittest.TestCase):
         add("both Kubernetes", component("relay") + component("backend"), 0)
         add("relay native", component("relay", runtime=1) + component("backend"), 1)
         add("backend native", component("relay") + component("backend", runtime=1), 1)
-        add("both native", component("relay", runtime=1) + component("backend", runtime=1), 1)
+        add(
+            "both native",
+            component("relay", runtime=1) + component("backend", runtime=1),
+            1,
+        )
         add(
             "Kube partial failure is amber not total OFF",
             component("relay", check=0) + component("backend"),
@@ -100,8 +104,16 @@ class CompositeModeTest(unittest.TestCase):
         add("missing relay", component("backend"), -2)
         add("missing backend", component("relay"), -2)
         add("observer error", component("relay", success=0) + component("backend"), -2)
-        add("runtime conflict not green", component("relay", runtime=-1) + component("backend"), -2)
-        add("unknown backend runtime", component("relay") + component("backend", runtime=-1), -2)
+        add(
+            "runtime conflict not green",
+            component("relay", runtime=-1) + component("backend"),
+            -2,
+        )
+        add(
+            "unknown backend runtime",
+            component("relay") + component("backend", runtime=-1),
+            -2,
+        )
         add(
             "fresh scrape cannot hide stale file",
             component("relay", observed="0x20") + component("backend"),
@@ -121,7 +133,10 @@ class CompositeModeTest(unittest.TestCase):
             "unrelated exporter cannot supply component",
             component("relay")
             + [
-                {**s, "series": s["series"].replace("10.250.0.2:9100", "10.250.0.99:9100")}
+                {
+                    **s,
+                    "series": s["series"].replace("10.250.0.2:9100", "10.250.0.99:9100"),
+                }
                 for s in component("backend")
             ],
             -2,

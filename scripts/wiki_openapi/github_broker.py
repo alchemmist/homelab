@@ -90,7 +90,11 @@ def main() -> None:
             auth,
             {
                 "repositories": ["homelab"],
-                "permissions": {"contents": "write", "pull_requests": "write", "metadata": "read"},
+                "permissions": {
+                    "contents": "write",
+                    "pull_requests": "write",
+                    "metadata": "read",
+                },
             },
         ),
     )
@@ -120,7 +124,14 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except (BrokerFailure, ValueError, OSError, KeyError, jwt.PyJWTError, ssl.SSLError) as exc:
+    except (
+        BrokerFailure,
+        ValueError,
+        OSError,
+        KeyError,
+        jwt.PyJWTError,
+        ssl.SSLError,
+    ) as exc:
         code = str(exc) if isinstance(exc, (BrokerFailure, ValueError)) else type(exc).__name__
         print(
             json.dumps(

@@ -19,7 +19,8 @@ assert DESCRIPTION_SPEC is not None
 DESCRIPTIONS = importlib.util.module_from_spec(DESCRIPTION_SPEC)
 DESCRIPTION_SPEC.loader.exec_module(DESCRIPTIONS)
 SPEC = importlib.util.spec_from_file_location(
-    "rancher_renderer", ROOT / "ansible/roles/monitoring_rancher/files/name_node_series.py"
+    "rancher_renderer",
+    ROOT / "ansible/roles/monitoring_rancher/files/name_node_series.py",
 )
 assert SPEC is not None
 RENDERER = importlib.util.module_from_spec(SPEC)

@@ -28,7 +28,10 @@ def load(path, name) -> "types.ModuleType":
     require(path.is_file() and not path.is_symlink(), "Unsafe renderer")
     try:
         spec = importlib.util.spec_from_file_location(name, path)
-        require(message="Invalid renderer module", ok=spec is not None and spec.loader is not None)
+        require(
+            message="Invalid renderer module",
+            ok=spec is not None and spec.loader is not None,
+        )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
@@ -91,7 +94,10 @@ def main() -> None:
         )
     with (ROOT / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        require(message="Uncertain prior write; stop", ok=not (ROOT / "uncertain.json").exists())
+        require(
+            message="Uncertain prior write; stop",
+            ok=not (ROOT / "uncertain.json").exists(),
+        )
         old = CURRENT.read_bytes()
         new = proposed.read_bytes()
         oldmod = load(CURRENT, "old")
@@ -130,7 +136,10 @@ def main() -> None:
             require(
                 message="New authoritative record not confirmed",
                 ok="A" in result.split()
-                and any(ip in result.split() for ip in newmod.healthy_addresses(home_up=True, vps_up=True)),
+                and any(
+                    ip in result.split()
+                    for ip in newmod.healthy_addresses(home_up=True, vps_up=True)
+                ),
             )
             (ROOT / "after.json").write_text(
                 json.dumps({"renderer_sha256": context["after"], "zone_read_confirmed": True})

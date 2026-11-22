@@ -9,7 +9,11 @@ import test_triage as f
 from core import Failure
 from integrations import GitHub, Model
 
-GOOD = {"issue_number": 0, "reason": "No shared cause established.", "confidence": "low"}
+GOOD = {
+    "issue_number": 0,
+    "reason": "No shared cause established.",
+    "confidence": "low",
+}
 
 
 class LargeCatalogTests(unittest.TestCase):

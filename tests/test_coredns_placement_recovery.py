@@ -11,13 +11,21 @@ def test_future_dns_placement_uses_two_sites_without_nl_dependency() -> None:
     """Require CoreDNS on socrat-0 and socrat-3 with no NL site dependency."""
     d = yaml.safe_load((ROOT / "ansible/roles/k3s_ha_dependencies/defaults/main.yml").read_text())
     assert d["k3s_ha_dependencies_coredns_nodes"] == ["socrat-0", "socrat-3"]
-    assert d["k3s_ha_dependencies_manifest_servers"] == ["socrat-0", "socrat-1", "socrat-5"]
+    assert d["k3s_ha_dependencies_manifest_servers"] == [
+        "socrat-0",
+        "socrat-1",
+        "socrat-5",
+    ]
 
 
 def test_recovery_has_bounded_writers_and_stops_on_partial_failure() -> None:
     """Require the three recovery plays, fatal errors, and strict host-key checking."""
     plays = yaml.safe_load((ROOT / "ansible/playbooks/coredns-placement-recovery.yml").read_text())
-    assert [p["hosts"] for p in plays] == ["socrat-0:socrat-1", "socrat-0", "socrat-0:socrat-1"]
+    assert [p["hosts"] for p in plays] == [
+        "socrat-0:socrat-1",
+        "socrat-0",
+        "socrat-0:socrat-1",
+    ]
     assert all(p["any_errors_fatal"] for p in plays)
     assert all("StrictHostKeyChecking=yes" in p["vars"]["ansible_ssh_common_args"] for p in plays)
 

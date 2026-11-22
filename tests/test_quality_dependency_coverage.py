@@ -88,7 +88,12 @@ def test_environment_audit_cannot_hide_service_lock_vulnerabilities(
         {"dependencies": [None]},
         {
             "dependencies": [
-                {"name": "fixture", "version": "1", "vulns": [], "skip_reason": "uncollected"}
+                {
+                    "name": "fixture",
+                    "version": "1",
+                    "vulns": [],
+                    "skip_reason": "uncollected",
+                }
             ]
         },
         {"dependencies": [{"name": "fixture", "version": "1", "vulns": None}]},
@@ -284,7 +289,9 @@ def test_python_audit_refuses_ambiguous_json_before_schema(text: str) -> None:
 
 
 @pytest.mark.parametrize("skip_reason", [None, False, 0, "", [], {}])
-def test_presence_of_falsy_skip_marker_is_not_complete_audit(skip_reason: object) -> None:
+def test_presence_of_falsy_skip_marker_is_not_complete_audit(
+    skip_reason: object,
+) -> None:
     """A contradictory distribution cannot pass just because skip_reason is falsy."""
     payload = {
         "dependencies": [

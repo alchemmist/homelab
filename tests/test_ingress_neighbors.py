@@ -69,7 +69,8 @@ class IngressNeighborsTest(unittest.TestCase):
         frames = NEIGHBORS.frames_for_interface(config(), state())
         self.assertEqual([socket.inet_ntoa(frame[28:32]) for frame in frames], ["192.168.0.24"] * 2)
         self.assertEqual(
-            [socket.inet_ntoa(frame[38:42]) for frame in frames], ["192.168.0.1", "192.168.0.23"]
+            [socket.inet_ntoa(frame[38:42]) for frame in frames],
+            ["192.168.0.1", "192.168.0.23"],
         )
 
     def test_owner_also_announces_vip_to_both_neighbors(self) -> None:
@@ -107,12 +108,20 @@ class IngressNeighborsTest(unittest.TestCase):
             item = config()
             item[field] = value
             variants.append(item)
-        for mac in ["ff:ff:ff:ff:ff:ff", "01:00:5e:00:00:01", "00:00:00:00:00:00", "invalid"]:
+        for mac in [
+            "ff:ff:ff:ff:ff:ff",
+            "01:00:5e:00:00:01",
+            "00:00:00:00:00:00",
+            "invalid",
+        ]:
             item = config()
             cast("list[dict[str, str]]", item["neighbors"])[1]["mac"] = mac
             variants.append(item)
         for item in variants:
-            with self.subTest(config=item), patch.object(NEIGHBORS, "read_interface") as query:
+            with (
+                self.subTest(config=item),
+                patch.object(NEIGHBORS, "read_interface") as query,
+            ):
                 with self.assertRaises(ValueError):
                     NEIGHBORS.announce(item)
                 query.assert_not_called()
@@ -164,7 +173,9 @@ class IngressNeighborsTest(unittest.TestCase):
         """Propagate interface query failures without any transmission."""
         with (
             patch.object(
-                NEIGHBORS.subprocess, "run", side_effect=subprocess.TimeoutExpired("ip", 2)
+                NEIGHBORS.subprocess,
+                "run",
+                side_effect=subprocess.TimeoutExpired("ip", 2),
             ),
             patch.object(NEIGHBORS.socket, "socket") as factory,
         ):

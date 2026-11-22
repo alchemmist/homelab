@@ -30,7 +30,13 @@ class VllmRolloutTests(unittest.TestCase):
     def test_only_native_trace_flag_added_model_args_unmodified(self) -> None:
         """Only native trace flag added model args unmodified."""
         helper = module()
-        original = ["model", "--max-model-len", "114688", "--gpu-memory-utilization", ".95"]
+        original = [
+            "model",
+            "--max-model-len",
+            "114688",
+            "--gpu-memory-utilization",
+            ".95",
+        ]
         updated = helper.trace_arguments(original)
         assert updated[:-2] == original
         assert helper.trace_arguments(updated) == updated
@@ -53,7 +59,9 @@ class VllmRolloutTests(unittest.TestCase):
         assert env["OTEL_LOGS_EXPORTER"] == "none"
         assert env["OTEL_EXPORTER_OTLP_HEADERS"] == "Connection=close"
 
-    def test_maintained_overlay_matches_exact_guard_sources_and_environment(self) -> None:
+    def test_maintained_overlay_matches_exact_guard_sources_and_environment(
+        self,
+    ) -> None:
         """Maintained overlay matches exact guard sources and environment."""
         helper = module()
         overlay = yaml.safe_load(
@@ -62,7 +70,9 @@ class VllmRolloutTests(unittest.TestCase):
         assert overlay["sourceConfigMap"] == helper.source_configmap_name()
         assert overlay["environment"] == helper.sdk_environment()
 
-    def test_sitecustomize_refuses_startup_without_dumping_failure_payload(self) -> None:
+    def test_sitecustomize_refuses_startup_without_dumping_failure_payload(
+        self,
+    ) -> None:
         """Sitecustomize refuses startup without dumping failure payload."""
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)

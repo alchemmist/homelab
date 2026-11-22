@@ -47,7 +47,10 @@ class Deadlines(unittest.TestCase):
 
     def test_trickled_upstream_headers_and_body(self) -> None:
         for headers in (True, False):
-            with self.subTest(headers=headers), patch.object(g, "UPSTREAM_SECONDS", 0.3):
+            with (
+                self.subTest(headers=headers),
+                patch.object(g, "UPSTREAM_SECONDS", 0.3),
+            ):
                 listener = socket.socket()
                 listener.bind(("127.0.0.1", 0))
                 listener.listen()
@@ -73,7 +76,8 @@ class Deadlines(unittest.TestCase):
                 try:
                     with self.assertRaises((OSError, ValueError)):
                         with g.opener().open(
-                            "http://127.0.0.1:%d/" % listener.getsockname()[1], timeout=1
+                            "http://127.0.0.1:%d/" % listener.getsockname()[1],
+                            timeout=1,
                         ) as response:
                             g.bounded(response)
                     assert time.monotonic() - start < ELAPSED_UPPER_BOUND
@@ -202,7 +206,10 @@ class Deadlines(unittest.TestCase):
             def read(self, _key):
                 return b"x" * g.MAX_BYTES
 
-        with patch.object(g, "REQUEST_SECONDS", 0.3), patch.object(g, "MAX_CONNECTIONS", 1):
+        with (
+            patch.object(g, "REQUEST_SECONDS", 0.3),
+            patch.object(g, "MAX_CONNECTIONS", 1),
+        ):
             server = g.Server(("127.0.0.1", 0), Handler)
             server.reader = Reader()
             t = threading.Thread(target=server.serve_forever, daemon=True)

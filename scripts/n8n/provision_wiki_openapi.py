@@ -61,7 +61,17 @@ with urllib.request.urlopen(req, timeout=30) as r:
     print(json.load(r)["key"])
 """
     key = subprocess.run(
-        ["kubectl", "-n", "llm", "exec", "deploy/litellm", "--", "python", "-c", remote],
+        [
+            "kubectl",
+            "-n",
+            "llm",
+            "exec",
+            "deploy/litellm",
+            "--",
+            "python",
+            "-c",
+            remote,
+        ],
         text=True,
         capture_output=True,
         check=True,

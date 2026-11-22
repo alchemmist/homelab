@@ -28,7 +28,10 @@ class CounterContract(unittest.TestCase):
         """Return the canonical request body fixture."""
         return {
             "model": "qwen3.8-27b",
-            "messages": [{"role": "system", "content": " s "}, {"role": "user", "content": " u "}],
+            "messages": [
+                {"role": "system", "content": " s "},
+                {"role": "user", "content": " u "},
+            ],
             "chat_template_kwargs": {"enable_thinking": False},
             "max_tokens": 768,
         }
@@ -84,7 +87,10 @@ class ProxyFloor(unittest.TestCase):
         """Return a request body with the given text and cap."""
         return {
             "model": "qwen3.8-27b",
-            "messages": [{"role": "system", "content": "s"}, {"role": "user", "content": text}],
+            "messages": [
+                {"role": "system", "content": "s"},
+                {"role": "user", "content": text},
+            ],
             "chat_template_kwargs": {"enable_thinking": False},
             "max_tokens": maximum,
             "response_format": {},

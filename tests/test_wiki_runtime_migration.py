@@ -31,7 +31,13 @@ class MigrationTests(unittest.TestCase):
         )
         self.git("add", ".")
         self.git(
-            "-c", "user.name=Test", "-c", "user.email=test@example.org", "commit", "-m", "fixture"
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.org",
+            "commit",
+            "-m",
+            "fixture",
         )
         self.commit = self.git("rev-parse", "HEAD").strip()
         snapshot = self.source / "live/snapshots" / self.commit

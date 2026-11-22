@@ -34,7 +34,8 @@ class LoginRewriteTests(unittest.TestCase):
         before = 'export PATH="$HOME/.elan/bin:$PATH"\n'
         after = 'alias ll="ls -l"\n'
         self.assertEqual(
-            MODULE.rewrite_login(before + LEGACY + after, True), before + MODULE.LOGIN_BLOCK + after
+            MODULE.rewrite_login(before + LEGACY + after, True),
+            before + MODULE.LOGIN_BLOCK + after,
         )
 
     def test_existing_server_guard_is_normalized_and_idempotent(self):
@@ -47,7 +48,8 @@ class LoginRewriteTests(unittest.TestCase):
     def test_nonselected_profile_loses_only_its_competing_startup(self):
         """Unselected profiles drop only their competing startup block."""
         self.assertEqual(
-            MODULE.rewrite_login("export EDITOR=vim\n" + LEGACY, False), "export EDITOR=vim\n"
+            MODULE.rewrite_login("export EDITOR=vim\n" + LEGACY, False),
+            "export EDITOR=vim\n",
         )
 
     def test_multiple_blocks_are_refused(self):
@@ -79,7 +81,11 @@ class LoginRewriteTests(unittest.TestCase):
         ]
         for values, expected in cases:
             assignments = {
-                "TTY": "/dev/tty1", "SSH_CONNECTION": "", "SSH_TTY": "", "WAYLAND_DISPLAY": "", "DISPLAY": ""
+                "TTY": "/dev/tty1",
+                "SSH_CONNECTION": "",
+                "SSH_TTY": "",
+                "WAYLAND_DISPLAY": "",
+                "DISPLAY": "",
             }
             assignments.update(values)
             script = (
@@ -128,7 +134,10 @@ class ConfigureTests(unittest.TestCase):
         self.backups = self.home / ".local/state/homelab/desktop-backups"
         self.backups.mkdir(parents=True)
         user = SimpleNamespace(
-            pw_dir=str(self.home), pw_shell="/usr/bin/zsh", pw_uid=os.getuid(), pw_gid=os.getgid()
+            pw_dir=str(self.home),
+            pw_shell="/usr/bin/zsh",
+            pw_uid=os.getuid(),
+            pw_gid=os.getgid(),
         )
         account = patch.object(MODULE.pwd, "getpwnam", return_value=user)
         account.start()
@@ -159,7 +168,8 @@ class ConfigureTests(unittest.TestCase):
         self.assertTrue(profile.is_symlink())
         self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o640)
         self.assertEqual(
-            (Path(result["backup"]) / ".zshrc").read_text(), "export EDITOR=vim\n" + LEGACY
+            (Path(result["backup"]) / ".zshrc").read_text(),
+            "export EDITOR=vim\n" + LEGACY,
         )
         self.assertIn(MODULE.LOGIN_BLOCK, target.read_text())
         before = target.stat().st_mtime_ns

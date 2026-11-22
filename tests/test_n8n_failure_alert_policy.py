@@ -11,9 +11,7 @@ from pathlib import Path
 from typing import override
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location(
-    "failure_policy", ROOT / "ci/check_failure_alerts.py"
-)
+spec = importlib.util.spec_from_file_location("failure_policy", ROOT / "ci/check_failure_alerts.py")
 policy = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(policy)
 
@@ -76,7 +74,10 @@ class WorkflowPolicyTests(unittest.TestCase):
 
     def run_policy(self, fix=False) -> int:
         """Run the policy checker over the per-test policy root."""
-        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        with (
+            contextlib.redirect_stdout(io.StringIO()),
+            contextlib.redirect_stderr(io.StringIO()),
+        ):
             exit_code: int = policy.run(self.root, fix)
         return exit_code
 
@@ -121,7 +122,8 @@ class WorkflowPolicyTests(unittest.TestCase):
     def test_array_exports(self) -> None:
         """Array exports are repaired in place."""
         p = self.put(
-            "workflows/export.json", [self.workflow(), self.workflow(errorWorkflow="handler1")]
+            "workflows/export.json",
+            [self.workflow(), self.workflow(errorWorkflow="handler1")],
         )
         assert self.run_policy(True) == 0
         assert all(w["settings"]["errorWorkflow"] == "handler1" for w in json.loads(p.read_text()))
@@ -211,7 +213,10 @@ class WorkflowPolicyTests(unittest.TestCase):
 
     def test_actual_repository_policy(self) -> None:
         """The actual repository passes the policy unmodified."""
-        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        with (
+            contextlib.redirect_stdout(io.StringIO()),
+            contextlib.redirect_stderr(io.StringIO()),
+        ):
             assert policy.run(ROOT) == 0
 
 

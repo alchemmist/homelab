@@ -74,7 +74,8 @@ def settings_body(account):
 
 def default_policy(policies):
     require(
-        isinstance(policies, list) and len(policies) == 1, "expected only native Default policy"
+        isinstance(policies, list) and len(policies) == 1,
+        "expected only native Default policy",
     )
     p = policies[0]
     require(
@@ -169,7 +170,8 @@ def main():
     try:
         if args.action == "bootstrap":
             require(
-                not (journal / "bootstrap.json").exists(), "bootstrap journal exists; no replay"
+                not (journal / "bootstrap.json").exists(),
+                "bootstrap journal exists; no replay",
             )
             run(["set", "env", "deploy/server", "NB_SETUP_PAT_ENABLED=true"])
             enabled = True
@@ -260,11 +262,16 @@ def main():
             )
             result = cast("dict[str, object]", api("POST", "identity-providers", body))
             require(
-                len(cast("list[object]", api("GET", "identity-providers"))) == 1, "IdP count drift"
+                len(cast("list[object]", api("GET", "identity-providers"))) == 1,
+                "IdP count drift",
             )
             private(
                 journal / "identity-provider.json",
-                {"id": result["id"], "type": result["type"], "issuer": result["issuer"]},
+                {
+                    "id": result["id"],
+                    "type": result["type"],
+                    "issuer": result["issuer"],
+                },
             )
             print("Authentik connector configured; real owner login/transfer not yet accepted")
     finally:
@@ -279,6 +286,12 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (ValueError, OSError, subprocess.SubprocessError, KeyError, TypeError) as exc:
+    except (
+        ValueError,
+        OSError,
+        subprocess.SubprocessError,
+        KeyError,
+        TypeError,
+    ) as exc:
         print("BLOCKED: stage2 stopped; inspect private journal; no blind write retries")
         raise SystemExit(2) from exc

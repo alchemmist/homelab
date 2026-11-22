@@ -40,7 +40,11 @@ class FullServiceBundleTests(unittest.TestCase):
                 "image.digest=sha256:" + "a" * 64,
             ]
         return {
-            (x["kind"], x["metadata"].get("namespace", "automation"), x["metadata"]["name"]): x
+            (
+                x["kind"],
+                x["metadata"].get("namespace", "automation"),
+                x["metadata"]["name"],
+            ): x
             for x in yaml.safe_load_all(subprocess.check_output(args))
             if x
         }
@@ -87,7 +91,9 @@ class FullServiceBundleTests(unittest.TestCase):
             ]["argocd.argoproj.io/sync-options"]
         )
 
-    def test_bundle_does_not_change_resources_credentials_fences_or_quotas(self) -> None:
+    def test_bundle_does_not_change_resources_credentials_fences_or_quotas(
+        self,
+    ) -> None:
         legacy = self.render()
         bundled = self.render(True)
         a = legacy["Deployment", "automation", "spi-triage"]["spec"]["template"]["spec"][

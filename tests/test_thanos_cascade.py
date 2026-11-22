@@ -76,7 +76,9 @@ class CascadePlanTests(unittest.TestCase):
         assert result["copyFive"] == []
         assert result["markFiveSource"] == []
 
-    def test_covered_five_minute_block_is_copied_when_the_shelf_does_not_have_it(self) -> None:
+    def test_covered_five_minute_block_is_copied_when_the_shelf_does_not_have_it(
+        self,
+    ) -> None:
         raw = [
             block("five", 0, DAY, FIVE),
             block("hour", 0, DAY, HOUR),
@@ -105,7 +107,9 @@ class CascadePlanTests(unittest.TestCase):
         assert result["copyFive"] == []
         assert result["markFiveSource"] == []
 
-    def test_shelf_five_minute_block_is_kept_without_an_hour_on_the_hour_shelf(self) -> None:
+    def test_shelf_five_minute_block_is_kept_without_an_hour_on_the_hour_shelf(
+        self,
+    ) -> None:
         shelf = [block("five", 0, DAY, FIVE)]
         result = call([], shelf, [], now=40 * DAY)
         assert result["markFiveShelf"] == []
@@ -142,7 +146,9 @@ class CascadePlanTests(unittest.TestCase):
         result = call([], shelf, hours, now=25 * DAY, disk=None)
         assert result["markFiveShelf"] == []
 
-    def test_low_disk_marks_oldest_covered_blocks_until_the_deficit_is_covered(self) -> None:
+    def test_low_disk_marks_oldest_covered_blocks_until_the_deficit_is_covered(
+        self,
+    ) -> None:
         shelf = [
             block("young", 20 * DAY, 21 * DAY, FIVE, size=100),
             block("older", 10 * DAY, 11 * DAY, FIVE, size=70),

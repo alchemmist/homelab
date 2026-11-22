@@ -162,7 +162,10 @@ def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60) 
         src, dst = _open_connections(source, path, deadline_seconds)
         page_size = src.execute("PRAGMA page_size").fetchone()[0]
         src.backup(
-            dst, pages=128, progress=_progress_guard(check, page_size, max_bytes), sleep=0.01
+            dst,
+            pages=128,
+            progress=_progress_guard(check, page_size, max_bytes),
+            sleep=0.01,
         )
         dst.set_progress_handler(lambda: int(time.monotonic() - start >= deadline_seconds), 100)
         if dst.execute("PRAGMA integrity_check").fetchone()[0] != "ok":

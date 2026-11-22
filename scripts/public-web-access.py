@@ -44,7 +44,10 @@ class API:
         req = urllib.request.Request(
             "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
             method=method,
-            headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json"},
+            headers={
+                "Authorization": "Bearer " + self.token,
+                "Content-Type": "application/json",
+            },
             data=None if body is None else json.dumps(body).encode(),
         )
         with self.http.open(req, timeout=30) as r:
@@ -56,7 +59,8 @@ class API:
         rows = []
         for page in range(1, 1001):
             d = self.call(
-                "GET", path + ("&" if "?" in path else "?") + f"page_size=100&page={page}"
+                "GET",
+                path + ("&" if "?" in path else "?") + f"page_size=100&page={page}",
             )
             rows.extend(d["results"])
             if not d.get("pagination", {}).get("next"):
@@ -96,7 +100,8 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--catalog", required=True)
     p.add_argument(
-        "--credentials", default="/home/alchemmist/.cache/homelab-authentik/credentials.json"
+        "--credentials",
+        default="/home/alchemmist/.cache/homelab-authentik/credentials.json",
     )
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")
@@ -105,7 +110,8 @@ def main():
     os.umask(0o077)
     root = Path(a.state)
     require(
-        root.is_absolute() and not root.is_symlink(), "Private absolute state directory required"
+        root.is_absolute() and not root.is_symlink(),
+        "Private absolute state directory required",
     )
     if root.exists():
         require(

@@ -124,7 +124,11 @@ def mirror_grafana_sources(api, namespace, grafana):
             "url": "https://10.250.0.3:" + str(port),
             "isDefault": False,
             "editable": False,
-            "jsonData": {"tlsAuth": True, "tlsAuthWithCACert": True, "tlsSkipVerify": False},
+            "jsonData": {
+                "tlsAuth": True,
+                "tlsAuthWithCACert": True,
+                "tlsSkipVerify": False,
+            },
             "secureJsonData": secure,
         }
         for name, port in [("Loki", 3100), ("Tempo", 3200)]
@@ -204,7 +208,10 @@ def restart_units_if_changed(changed):
             )
             if active.returncode == 0:
                 subprocess.run(
-                    ["systemctl", "restart", unit], capture_output=True, check=True, timeout=90
+                    ["systemctl", "restart", unit],
+                    capture_output=True,
+                    check=True,
+                    timeout=90,
                 )
 
 

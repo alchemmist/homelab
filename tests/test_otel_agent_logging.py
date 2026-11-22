@@ -77,10 +77,12 @@ class AgentLoggingTests(unittest.TestCase):
         assert _list(pipeline["exporters"]) == ["otlp/logs"]
         queue = _mapping(_mapping(_mapping(self.agent["exporters"])["otlp/logs"])["sending_queue"])
         assert queue["sizer"] == "bytes"
-        assert queue["queue_size"] == 128 * 2 ** 20
+        assert queue["queue_size"] == 128 * 2**20
         assert queue["block_on_overflow"]
         assert queue["storage"] == "file_storage"
-        assert _list(_mapping(_mapping(_mapping(self.agent["service"])["pipelines"])["metrics"])["exporters"]) == ["otlp"]
+        assert _list(
+            _mapping(_mapping(_mapping(self.agent["service"])["pipelines"])["metrics"])["exporters"]
+        ) == ["otlp"]
 
     def test_common_schema_and_priority_mapping(self) -> None:
         """The common schema keeps severity and identity mappings."""
@@ -107,7 +109,9 @@ class AgentLoggingTests(unittest.TestCase):
         chain = _list(
             _mapping(_mapping(_mapping(self.agent["service"])["pipelines"])["logs"])["processors"]
         )
-        assert chain.index("transform/journal-identity") < chain.index("groupbyattrs/journal-identity")
+        assert chain.index("transform/journal-identity") < chain.index(
+            "groupbyattrs/journal-identity"
+        )
         assert chain.index("groupbyattrs/journal-identity") < chain.index("transform/journal")
 
     def test_serial_rollout_validates_before_handler_flush(self) -> None:
@@ -117,7 +121,9 @@ class AgentLoggingTests(unittest.TestCase):
         ]
         assert play["serial"] == 1
         names = [task["name"] for task in play["tasks"]]
-        assert names.index("Validate installed host agent configuration before restart") < names.index("Apply validated agent changes before advancing serial rollout")
+        assert names.index(
+            "Validate installed host agent configuration before restart"
+        ) < names.index("Apply validated agent changes before advancing serial rollout")
 
 
 if __name__ == "__main__":

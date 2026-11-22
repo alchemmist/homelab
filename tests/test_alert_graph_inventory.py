@@ -39,7 +39,8 @@ class AlertGraphInventoryTests(unittest.TestCase):
         expected_source_rule_count = 219
         assert sum(r["alert"] == "SocratPrAgentWebhookRedeliveryFailed" for r in rows) == 1
         assert {r["alert"] for r in rows if r["group"] == "redis-common"} == {
-            "SocratRedisCommonWriterUnavailable", "SocratRedisCommonRedundancyReduced",
+            "SocratRedisCommonWriterUnavailable",
+            "SocratRedisCommonRedundancyReduced",
         }
         assert sum(row["alert"] == "LMSWebUnavailable" for row in rows) == 1
         assert any(r["alert"] == "ThanosWarmWorkshopDiskLow" for r in rows)

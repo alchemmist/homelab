@@ -34,7 +34,10 @@ def fixture(
     subject: str = "fixture-uuid",
 ) -> tuple[list[dict[str, object]], list[Attribute], AuthPatch]:
     principal = m.PREFIX + subject
-    user: dict[str, object] = {"metadata": {"name": "u-fixture"}, "principalIds": [principal]}
+    user: dict[str, object] = {
+        "metadata": {"name": "u-fixture"},
+        "principalIds": [principal],
+    }
     attr: Attribute = {
         "metadata": {"name": "u-fixture", "uid": "owned", "resourceVersion": "17"},
         "ExtraByProvider": {"genericoidc": {"principalid": [principal]}},
@@ -55,7 +58,11 @@ class MembershipTests(unittest.TestCase):
         name, ops = operations[0]
         assert name == "u-fixture"
         assert [o["op"] for o in ops] == ["test", "test", "test", "test", "replace"]
-        assert ops[-1] == {"op": "replace", "path": "/GroupPrincipals/genericoidc/Items", "value": []}
+        assert ops[-1] == {
+            "op": "replace",
+            "path": "/GroupPrincipals/genericoidc/Items",
+            "value": [],
+        }
 
     def test_owner_and_reviewed_direct_principals_are_never_changed(self) -> None:
         """Leave owner and reviewed direct principals out of the cache plan."""
@@ -105,11 +112,20 @@ class MembershipTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 m.rancher_plan(users, attrs, auth, lambda *a: False)
 
-    def test_unrelated_legacy_orphan_is_preserved_and_does_not_block_current_viewer(self) -> None:
+    def test_unrelated_legacy_orphan_is_preserved_and_does_not_block_current_viewer(
+        self,
+    ) -> None:
         """Keep a legacy orphan unchanged while planning the current viewer."""
         users, attrs, auth = fixture()
-        legacy_user = {"metadata": {"name": "u-old"}, "principalIds": [m.PREFIX + "old-subject"]}
-        legacy_attr = {"metadata": {"name": "u-old"}, "ExtraByProvider": {}, "GroupPrincipals": {}}
+        legacy_user = {
+            "metadata": {"name": "u-old"},
+            "principalIds": [m.PREFIX + "old-subject"],
+        }
+        legacy_attr = {
+            "metadata": {"name": "u-old"},
+            "ExtraByProvider": {},
+            "GroupPrincipals": {},
+        }
         before = copy.deepcopy(legacy_attr)
         ops = m.rancher_plan([legacy_user] + users, [legacy_attr] + attrs, auth, lambda *a: False)
         assert len(ops) == 1
@@ -128,7 +144,10 @@ class MembershipTests(unittest.TestCase):
 
     def test_wiki_module_matches_single_reviewed_controller_source(self) -> None:
         """Require the wiki copy to match the single reviewed controller source."""
-        assert SOURCE.read_bytes() == (ROOT / "deploy/wiki-runtime/chart/files/observer_membership.py").read_bytes()
+        assert (
+            SOURCE.read_bytes()
+            == (ROOT / "deploy/wiki-runtime/chart/files/observer_membership.py").read_bytes()
+        )
 
     def test_reader_gate_applies_to_cookie_and_api_tokens_not_privileged_or_unlinked_accounts(
         self,
@@ -138,7 +157,8 @@ class MembershipTests(unittest.TestCase):
         db.row_factory = sqlite3.Row
         db.execute("CREATE TABLE oidc_accounts(issuer TEXT,subject TEXT,user_id TEXT)")
         db.execute(
-            "INSERT INTO oidc_accounts VALUES (?,?,?)", ("https://issuer/", "subject", "reader")
+            "INSERT INTO oidc_accounts VALUES (?,?,?)",
+            ("https://issuer/", "subject", "reader"),
         )
         db.commit()
 
@@ -207,7 +227,9 @@ class MembershipTests(unittest.TestCase):
         assert not reader.admitted("subject", {"homelab-observer"})
         assert reader.rows.call_count == 2
 
-    def test_grafana_roles_are_explicit_without_unadmitted_viewer_fallback(self) -> None:
+    def test_grafana_roles_are_explicit_without_unadmitted_viewer_fallback(
+        self,
+    ) -> None:
         """Require the same strict Grafana role expression in both value files."""
         import yaml
 
@@ -221,13 +243,19 @@ class MembershipTests(unittest.TestCase):
             assert "groups" in env["GF_AUTH_GENERIC_OAUTH_SCOPES"].split()
             assert env["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"].endswith("|| ''")
             assert "'homelab-observer'" in env["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"]
-        assert a["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"] == b["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"]
+        assert (
+            a["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"]
+            == b["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"]
+        )
 
     def test_argo_unknown_groups_have_no_default_reader_grant_machine_reader_is_explicit(
         self,
     ) -> None:
         """Keep unknown Argo groups unassigned and the machine reader explicit."""
-        for path in ["deploy/platform/argo-cd/values.yaml", "deploy/argocd/values.yaml"]:
+        for path in [
+            "deploy/platform/argo-cd/values.yaml",
+            "deploy/argocd/values.yaml",
+        ]:
             text = (ROOT / path).read_text()
             assert "policy.default: role:unassigned" in text
             assert "g, mcp, role:readonly" in text

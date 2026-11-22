@@ -47,7 +47,12 @@ class SourcePrivacyTests(unittest.TestCase):
         module = load()
         value = "https://synthetic-user:synthetic-password@example.test:443/path?api_key=synthetic-token#fragment"
         cleaned = module.safe_url(value)
-        for private in ["synthetic-user", "synthetic-password", "synthetic-token", "fragment"]:
+        for private in [
+            "synthetic-user",
+            "synthetic-password",
+            "synthetic-token",
+            "fragment",
+        ]:
             assert private not in cleaned
         assert "example.test:443/path" in cleaned
         assert module.attributes({"url.query": "secret-data"}) == {"url.query": "<redacted>"}

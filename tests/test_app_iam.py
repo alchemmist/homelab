@@ -128,7 +128,11 @@ class AppIAMTests(unittest.TestCase):
         assert self.plan()["operations"] == []
         self.manifest["users"]["antropophag"].update(state="disabled", appGroups=[])
         plan = self.plan()
-        assert [o["action"] for o in plan["operations"]] == ["disable", "remove", "remove"]
+        assert [o["action"] for o in plan["operations"]] == [
+            "disable",
+            "remove",
+            "remove",
+        ]
         lifecycle.apply_plan(self.api, plan, plan["sha256"])
         assert not tim["is_active"]
         assert tim["groups"] == before
@@ -280,7 +284,6 @@ class AppIAMTests(unittest.TestCase):
         """Pagination follows cursors; duplicate bindings raise drift errors."""
         calls = []
 
-
         def api(_method, path) -> dict[str, object]:
             calls.append(path)
             page = len(calls)
@@ -312,8 +315,12 @@ class AppIAMTests(unittest.TestCase):
             )
         assert len(writes) == 1
         data = writes[0]["stringData"]
-        assert json.loads(data["WIKI_OIDC_LINKS"]) == {a["idpUserUuid"]: a["wikiUserId"] for a in self.reviewed.values()}
-        assert json.loads(data["WIKI_OIDC_SUBJECT_ROLES"]) == {a["idpUserUuid"]: a["wikiRole"] for a in self.reviewed.values()}
+        assert json.loads(data["WIKI_OIDC_LINKS"]) == {
+            a["idpUserUuid"]: a["wikiUserId"] for a in self.reviewed.values()
+        }
+        assert json.loads(data["WIKI_OIDC_SUBJECT_ROLES"]) == {
+            a["idpUserUuid"]: a["wikiRole"] for a in self.reviewed.values()
+        }
         assert json.loads(data["WIKI_OIDC_GROUP_ROLES"])["app-wiki-editor"] == "editor"
         # A same-name/email replacement must not rewrite any native link.
         self.fake.data["core/users/"][1]["uuid"] = "e51e6956-16b5-455a-bbda-b73f96e85232"
@@ -345,17 +352,27 @@ class AppIAMTests(unittest.TestCase):
         assert webui["OAUTH_MERGE_ACCOUNTS_BY_EMAIL"] == "False"
         assert "app-open-webui-user" in webui["OAUTH_ALLOWED_ROLES"]
         assert self.reviewed["antropophag"]["wikiRole"] == "editor"
-        assert self.reviewed["alchemmist"]["idpUserUuid"] == self.manifest["users"]["alchemmist"]["uuid"]
+        assert (
+            self.reviewed["alchemmist"]["idpUserUuid"]
+            == self.manifest["users"]["alchemmist"]["uuid"]
+        )
         for provider in self.fake.data["providers/oauth2/"]:
-            assert provider["authorization_flow"] == "default-provider-authorization-explicit-consent"
+            assert (
+                provider["authorization_flow"] == "default-provider-authorization-explicit-consent"
+            )
             assert provider["authentication_flow"] == "default-authentication-flow"
-            assert provider["sub_mode"] == self.services[provider["name"][8:]].get("subMode", "hashed_user_id")
+            assert provider["sub_mode"] == self.services[provider["name"][8:]].get(
+                "subMode", "hashed_user_id"
+            )
         scope = next(
             s
             for s in self.fake.data["propertymappings/provider/scope/"]
             if s.get("name") == "homelab-groups"
         )
-        assert scope["expression"] == 'return {"groups": [group.name for group in request.user.ak_groups.all()]}'
+        assert (
+            scope["expression"]
+            == 'return {"groups": [group.name for group in request.user.ak_groups.all()]}'
+        )
 
 
 if __name__ == "__main__":

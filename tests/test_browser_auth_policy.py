@@ -20,7 +20,9 @@ class ExistingHumanBrowserAuthPolicyTests(unittest.TestCase):
         assert self.policy["preserveOwnerRecoveryAndMachineIdentities"]
         assert self.policy["protectedOwner"] not in self.policy["humans"]
         assert set(self.policy["humans"]).issubset(self.people)
-        assert self.policy["humans"]["antropophag"]["desiredBrowserAuthentication"] == "authentik-only"
+        assert (
+            self.policy["humans"]["antropophag"]["desiredBrowserAuthentication"] == "authentik-only"
+        )
 
     def test_disable_legacy_rancher_not_the_oidc_account(self) -> None:
         """Legacy Rancher login is disabled while the OIDC account stays enabled."""
@@ -49,7 +51,9 @@ class ExistingHumanBrowserAuthPolicyTests(unittest.TestCase):
         assert not (ROOT / "deploy/identity/existing-user-activation.json").exists()
         assert self.people["antropophag"]["idpUserUuid"] == "6015c85b-82e9-49ce-a4e3-0270c676e26d"
 
-    def test_native_rancher_replacement_preserves_retired_identity_and_grants(self) -> None:
+    def test_native_rancher_replacement_preserves_retired_identity_and_grants(
+        self,
+    ) -> None:
         """Rancher replacement preserves the retired identity and grant history."""
         rancher = self.policy["humans"]["antropophag"]["rancher"]
         assert rancher["nativePrincipalIsImmutable"]

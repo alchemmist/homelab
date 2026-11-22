@@ -71,7 +71,11 @@ def manifests():
                                     "--pidfile=/tmp/turnserver.pid",
                                 ],
                                 "ports": [
-                                    {"name": "stun", "containerPort": 3478, "protocol": "UDP"}
+                                    {
+                                        "name": "stun",
+                                        "containerPort": 3478,
+                                        "protocol": "UDP",
+                                    }
                                 ],
                                 "resources": {
                                     "requests": {"memory": "8Mi", "cpu": "5m"},
@@ -82,13 +86,19 @@ def manifests():
                                     "readOnlyRootFilesystem": True,
                                     # Official binary carries this file capability; retain
                                     # its bounding bit even though 3478 is unprivileged.
-                                    "capabilities": {"drop": ["ALL"], "add": ["NET_BIND_SERVICE"]},
+                                    "capabilities": {
+                                        "drop": ["ALL"],
+                                        "add": ["NET_BIND_SERVICE"],
+                                    },
                                 },
                                 "volumeMounts": [{"name": "tmp", "mountPath": "/tmp"}],
                             }
                         ],
                         "volumes": [
-                            {"name": "tmp", "emptyDir": {"medium": "Memory", "sizeLimit": "1Mi"}}
+                            {
+                                "name": "tmp",
+                                "emptyDir": {"medium": "Memory", "sizeLimit": "1Mi"},
+                            }
                         ],
                     },
                 },

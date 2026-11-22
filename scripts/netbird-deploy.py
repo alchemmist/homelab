@@ -45,7 +45,8 @@ def assert_candidates(candidates) -> None:
     )
     nb.require(candidates["management_fqdn"]["approved"] is True, "FQDN approval missing")
     nb.require(
-        candidates["management_fqdn"]["dns_tls_verified"] is False, "DNS/TLS was not verified"
+        candidates["management_fqdn"]["dns_tls_verified"] is False,
+        "DNS/TLS was not verified",
     )
     nb.require(
         candidates["authentik_oidc"]["approved"] is True
@@ -74,16 +75,23 @@ def assert_candidates(candidates) -> None:
         candidates["resources"]["socrat_2_openssh"]["deployable"] is False,
         "socrat-2 SSH must not be deployable",
     )
-    nb.require(candidates["pilot_users"] == ["owner", "tim"], "pilot users must stay owner and tim")
+    nb.require(
+        candidates["pilot_users"] == ["owner", "tim"],
+        "pilot users must stay owner and tim",
+    )
     routers = candidates["routers"]
     nb.require(routers["required"] == 1, "SSH has one routing peer")
     nb.require(routers.get("ha") is False, "route HA is false")
-    nb.require(routers.get("ssh_routing_peer") == "socrat-0", "SSH routing peer must be socrat-0")
+    nb.require(
+        routers.get("ssh_routing_peer") == "socrat-0",
+        "SSH routing peer must be socrat-0",
+    )
     nb.require(routers.get("socrat_2_is_router") is False, "socrat-2 is not a routing peer")
     nb.require(routers.get("grafana_route_ha") is False, "Grafana listeners are not route HA")
     nb.require(routers["placement_resolved"] is False, "router placement is unresolved")
     nb.require(
-        routers["mode"] == "existing-node", "router mode must stay the existing-node candidate"
+        routers["mode"] == "existing-node",
+        "router mode must stay the existing-node candidate",
     )
     nb.require(
         routers["existing_node_router_mode_reviewed"] is False,
@@ -199,7 +207,8 @@ def assert_safe_manifests(docs, publication="internal") -> None:
         nb.require(kind not in FORBIDDEN_KINDS, "forbidden manifest kind")
         if publication == "internal":
             nb.require(
-                kind not in {"Service", "Ingress"}, "internal apply has no Service or Ingress"
+                kind not in {"Service", "Ingress"},
+                "internal apply has no Service or Ingress",
             )
         name = doc["metadata"]["name"]
         namespace = doc["metadata"].get("namespace")
@@ -221,7 +230,8 @@ def assert_safe_manifests(docs, publication="internal") -> None:
             nb.require(banned not in blob, "unsafe manifest field")
         if publication == "internal":
             nb.require(
-                "NodePort" not in blob and "nodePort" not in blob, "NodePort is an edge publication"
+                "NodePort" not in blob and "nodePort" not in blob,
+                "NodePort is an edge publication",
             )
         if "netbird-runtime" in blob:
             runtime_refs.append(namespace)
@@ -280,7 +290,8 @@ def apply_argv(manifest, context, publication="internal") -> list[str]:
     )
     nb.require(manifest.is_file(), "rendered manifest required")
     nb.require(
-        not manifest.resolve().is_relative_to(ROOT), "manifest must stay outside the worktree"
+        not manifest.resolve().is_relative_to(ROOT),
+        "manifest must stay outside the worktree",
     )
     docs = list(yaml.safe_load_all(manifest.read_text()))
     assert_safe_manifests(docs, publication)
@@ -339,7 +350,10 @@ def main() -> None:
         a.stage + " apply is blocked",
     )
     nb.require(a.out is not None, "--out required")
-    nb.require(not a.out.resolve().is_relative_to(ROOT), "--out must be outside the Git worktree")
+    nb.require(
+        not a.out.resolve().is_relative_to(ROOT),
+        "--out must be outside the Git worktree",
+    )
     render_publication(inputs, a.out, a.stage, audit)
     manifest = a.out / "management.yaml"
     nb.dump(a.out / "plan.json", plan_document(manifest))
@@ -358,7 +372,13 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except (ValueError, KeyError, TypeError, OSError, subprocess.CalledProcessError) as exc:
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        OSError,
+        subprocess.CalledProcessError,
+    ) as exc:
         print(
             "BLOCKED: " + (str(exc) if isinstance(exc, ValueError) else type(exc).__name__),
             file=sys.stderr,

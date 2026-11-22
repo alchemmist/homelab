@@ -79,7 +79,14 @@ def install_runtime(target: Path, *, offline: bool, archive: Path | None) -> Non
         timeout=120,
     )
     subprocess.run(
-        ["npm", "ci", "--strict-peer-deps", "--ignore-scripts", "--no-audit", "--no-fund"]
+        [
+            "npm",
+            "ci",
+            "--strict-peer-deps",
+            "--ignore-scripts",
+            "--no-audit",
+            "--no-fund",
+        ]
         + (["--offline"] if offline else []),
         cwd=npm,
         check=True,
@@ -195,7 +202,9 @@ def main():
         help="Previously downloaded release archive; the pinned checksum is still mandatory",
     )
     p.add_argument(
-        "--offline", action="store_true", help="Use the existing npm cache; combine with --archive"
+        "--offline",
+        action="store_true",
+        help="Use the existing npm cache; combine with --archive",
     )
     p.add_argument(
         "--configure-project",

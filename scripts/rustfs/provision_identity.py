@@ -163,7 +163,10 @@ def call_api(
     request = urllib.request.Request(
         BASE + path,
         method=method,
-        headers={"Authorization": "Bearer " + session["token"], "Content-Type": "application/json"},
+        headers={
+            "Authorization": "Bearer " + session["token"],
+            "Content-Type": "application/json",
+        },
         data=json.dumps(record).encode() if record is not None else None,
     )
     try:
@@ -307,7 +310,11 @@ def main() -> None:
     b.private(d / "credentials.json")
     token = json.loads((d / "credentials.json").read_text())["AUTHENTIK_API_TOKEN"]
     http = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
-    session: Session = {"opener": cast("Opener", http), "token": token, "writable": args.apply}
+    session: Session = {
+        "opener": cast("Opener", http),
+        "token": token,
+        "writable": args.apply,
+    }
     catalogue: Catalogue = {"session": session, "inventory": {}}
 
     catalogue["inventory"] = {path: read_generator(session, path) for path in COLLECTIONS}
@@ -362,7 +369,11 @@ def main() -> None:
         "propertymappings/provider/scope/",
         "name",
         "spi-rustfs-policy",
-        {"name": "spi-rustfs-policy", "scope_name": "rustfs_policy", "expression": EXPRESSION},
+        {
+            "name": "spi-rustfs-policy",
+            "scope_name": "rustfs_policy",
+            "expression": EXPRESSION,
+        },
     )
     native = reconcile_object(
         catalogue,
@@ -394,7 +405,12 @@ def main() -> None:
         },
     )
     apps = [
-        ("spi-rustfs-native", "RustFS native OIDC", native, "https://rustfs.socrat.alchemmist.xyz/")
+        (
+            "spi-rustfs-native",
+            "RustFS native OIDC",
+            native,
+            "https://rustfs.socrat.alchemmist.xyz/",
+        )
     ]
     for slug, name, provider, url in apps:
         app = reconcile_object(

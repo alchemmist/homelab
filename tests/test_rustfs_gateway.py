@@ -11,7 +11,8 @@ from email.message import Message
 from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
-    "gateway", Path(__file__).resolve().parents[1] / "services/rustfs_gateway/gateway.py"
+    "gateway",
+    Path(__file__).resolve().parents[1] / "services/rustfs_gateway/gateway.py",
 )
 g = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(g)
@@ -68,7 +69,11 @@ class Tests(unittest.TestCase):
                 datetime.datetime(2026, 1, 2, 3, 4, 5),
             )["Authorization"]
         )
-        for url in ["http://rustfs:9000/a?x=1", "http://user@rustfs/a", "http://rustfs/a#frag"]:
+        for url in [
+            "http://rustfs:9000/a?x=1",
+            "http://user@rustfs/a",
+            "http://rustfs/a#frag",
+        ]:
             with self.assertRaises(ValueError):
                 g.sign("GET", url, "a", "b")
 
@@ -124,11 +129,15 @@ class Tests(unittest.TestCase):
             assert request(BASE + "manifest.json")[0] == UNAUTHORIZED_STATUS
             assert reader.calls == []
             assert (
-                request(BASE + "manifest.json", {"Accept": "text/html", "Host": "evil.invalid"})[0]
+                request(
+                    BASE + "manifest.json",
+                    {"Accept": "text/html", "Host": "evil.invalid"},
+                )[0]
                 == MISDIRECTED_REQUEST_STATUS
             )
             status, headers, _ = request(
-                BASE + "manifest.json", {"Accept": "text/html", "X-Forwarded-Host": "evil.invalid"}
+                BASE + "manifest.json",
+                {"Accept": "text/html", "X-Forwarded-Host": "evil.invalid"},
             )
             assert status == REDIRECT_STATUS
             location = g.urllib.parse.urlsplit(headers["Location"])
@@ -213,7 +222,10 @@ class Integrity(unittest.TestCase):
         digest = hashlib.sha256(manifest).hexdigest()
         prefix = "spi/v1/" + "a" * 64 + "/" + digest
         reader = object.__new__(g.Reader)
-        objects = {prefix + "/manifest.json": manifest, prefix + "/E001-safe.json": file}
+        objects = {
+            prefix + "/manifest.json": manifest,
+            prefix + "/E001-safe.json": file,
+        }
         reader.object = lambda key: objects[key]
         assert reader.read(prefix + "/E001-safe.json") == file
         assert reader.read(prefix + "/manifest.json") == manifest
@@ -326,7 +338,12 @@ class PreservedPreviewTests(unittest.TestCase):
             ("E001-file.mp4", "video/mp4"),
         ]:
             assert g.presentation(name) == (mime, True)
-        for name in ["E001-file.html", "E001-file.svg", "E001-file.js", "E001-file.unknown"]:
+        for name in [
+            "E001-file.html",
+            "E001-file.svg",
+            "E001-file.js",
+            "E001-file.unknown",
+        ]:
             assert g.presentation(name) == ("application/octet-stream", False)
         for value in [
             "bytes=0-1,3-4",
@@ -361,7 +378,10 @@ class PreservedPreviewTests(unittest.TestCase):
         digest = hashlib.sha256(manifest).hexdigest()
         prefix = "spi/v1/" + "a" * 64 + "/" + digest
         reader = object.__new__(g.Reader)
-        objects = {prefix + "/manifest.json": manifest, prefix + "/E001-image.png": body}
+        objects = {
+            prefix + "/manifest.json": manifest,
+            prefix + "/E001-image.png": body,
+        }
         reader.object = lambda key: objects[key]
         assert reader.read(prefix + "/E001-image.png") == body
         objects[prefix + "/E001-image.png"] = b"corrupt"

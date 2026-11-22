@@ -88,7 +88,17 @@ def main():
     os.close(fd)
     # Surgical one-peer addition: never sync/replace the other peers or restart WG.
     subprocess.run(
-        ["wg", "set", "wg-socrat", "peer", KEY, "allowed-ips", IP, "persistent-keepalive", "25"],
+        [
+            "wg",
+            "set",
+            "wg-socrat",
+            "peer",
+            KEY,
+            "allowed-ips",
+            IP,
+            "persistent-keepalive",
+            "25",
+        ],
         check=True,
     )
     current = peers()

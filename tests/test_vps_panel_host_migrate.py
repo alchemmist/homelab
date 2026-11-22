@@ -7,7 +7,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location(
-    "host_migrate", Path(__file__).resolve().parents[1] / "scripts/vps-panel-host-migrate.py"
+    "host_migrate",
+    Path(__file__).resolve().parents[1] / "scripts/vps-panel-host-migrate.py",
 )
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
@@ -121,7 +122,15 @@ class HostMigrationTests(unittest.TestCase):
 
     def test_single_sni_fallback_native_pool_is_semantically_equal(self):
         a = {"hosts": [{"sni": "keep.example", "snis": None, "sni_shared_random": None}]}
-        b = {"hosts": [{"sni": "keep.example", "snis": '["keep.example"]', "sni_shared_random": 0}]}
+        b = {
+            "hosts": [
+                {
+                    "sni": "keep.example",
+                    "snis": '["keep.example"]',
+                    "sni_shared_random": 0,
+                }
+            ]
+        }
         assert m.canonical_projection(a) == m.canonical_projection(b)
         b["hosts"][0]["snis"] = '["different.example"]'
         assert m.canonical_projection(a) != m.canonical_projection(b)

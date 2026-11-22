@@ -65,15 +65,27 @@ class ApplicationCredentialTests(unittest.TestCase):
             )
         )
         config = next(resource for resource in resources if resource["kind"] == "ConfigMap")
-        assert config["data"]["mirror.py"] == (ROOT / "scripts/otel-application-credentials.py").read_text()
+        assert (
+            config["data"]["mirror.py"]
+            == (ROOT / "scripts/otel-application-credentials.py").read_text()
+        )
         for destination in json.loads(config["data"]["destinations.json"]):
-            assert destination["reloadDeployments"] == ([destination["application"]] if destination["application"] in {"lms", "wishlist"} else [])
+            assert destination["reloadDeployments"] == (
+                [destination["application"]]
+                if destination["application"] in {"lms", "wishlist"}
+                else []
+            )
         for role in (resource for resource in resources if resource["kind"] == "Role"):
             for rule in role["rules"]:
                 assert rule["resources"] in [["secrets"], ["deployments"]]
                 assert set(rule["verbs"]) == {"get", "patch"}
                 assert rule["resourceNames"]
-                assert all(name.startswith("otel-app-tls-") for name in rule["resourceNames"]) if rule["resources"] == ["secrets"] else role["metadata"]["namespace"] in {"lms", "wishlist"} and rule["resourceNames"] == [role["metadata"]["namespace"]]
+                assert (
+                    all(name.startswith("otel-app-tls-") for name in rule["resourceNames"])
+                    if rule["resources"] == ["secrets"]
+                    else role["metadata"]["namespace"] in {"lms", "wishlist"}
+                    and rule["resourceNames"] == [role["metadata"]["namespace"]]
+                )
 
     def test_native_ingress_has_no_second_sampler_or_other_signal_owner(self) -> None:
         """The native ingress has no second sampler or other signal owner."""
@@ -83,7 +95,10 @@ class ApplicationCredentialTests(unittest.TestCase):
         assert set(config["service"]["pipelines"]) == {"traces"}
         assert "tail_sampling" not in config["processors"]
         assert config["exporters"]["otlp/global-sampler"]["endpoint"] == "10.250.0.1:44317"
-        assert config["exporters"]["otlp/global-sampler"]["sending_queue"]["queue_size"] == 64 * 1024 ** 2
+        assert (
+            config["exporters"]["otlp/global-sampler"]["sending_queue"]["queue_size"]
+            == 64 * 1024**2
+        )
         protocol = config["receivers"]["otlp"]["protocols"]
         assert set(protocol) == {"http"}
         assert protocol["http"]["endpoint"] == "10.250.0.3:44318"
@@ -96,8 +111,14 @@ class ApplicationCredentialTests(unittest.TestCase):
             (ROOT / "deploy/monitoring/otel/application-ingress.yaml").read_text()
         )
         gateway = yaml.safe_load((ROOT / "deploy/monitoring/otel/trace-gateway.yaml").read_text())
-        assert config["processors"]["transform/privacy"] == gateway["processors"]["transform/privacy"]
-        assert config["service"]["pipelines"]["traces"]["processors"] == ["memory_limiter", "transform/privacy", "batch"]
+        assert (
+            config["processors"]["transform/privacy"] == gateway["processors"]["transform/privacy"]
+        )
+        assert config["service"]["pipelines"]["traces"]["processors"] == [
+            "memory_limiter",
+            "transform/privacy",
+            "batch",
+        ]
 
     def test_backend_sdk_proof_requires_child_and_negative_content_test(self) -> None:
         """Backend SDK proof requires a child span and a negative content test."""

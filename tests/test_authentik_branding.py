@@ -231,7 +231,9 @@ class NatureBackgroundTests(unittest.TestCase):
             assert "location = /-/quiet-mono/v1/nature/" + variant in conf
             assert "return 302 /-/quiet-mono/v1/$nature_" + variant in conf
 
-    def test_scene_journey_uses_opaque_same_origin_next_not_new_request_id(self) -> None:
+    def test_scene_journey_uses_opaque_same_origin_next_not_new_request_id(
+        self,
+    ) -> None:
         """The scene chain carries a same-origin next hop, not new identifiers."""
         conf = load("branding_static").render(THEME)["items"][0]["data"]["nginx.conf"]
         assert "map $http_referer $nature_next" in conf

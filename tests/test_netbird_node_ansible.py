@@ -13,7 +13,13 @@ class NodeAnsibleTest(unittest.TestCase):
 
     def test_baseline_and_membership_playbooks_include_onboarding(self) -> None:
         """Require the node role in every baseline and membership playbook."""
-        for name in ["base.yml", "site.yml", "k3s-worker.yml", "k3s-ha.yml", "netbird-nodes.yml"]:
+        for name in [
+            "base.yml",
+            "site.yml",
+            "k3s-worker.yml",
+            "k3s-ha.yml",
+            "netbird-nodes.yml",
+        ]:
             plays = yaml.safe_load((ROOT / "ansible/playbooks" / name).read_text())
             assert any("netbird_node" in p.get("roles", []) for p in plays), name
 

@@ -85,11 +85,17 @@ class ReviewReuseTests(unittest.TestCase):
         m: PreparedModel = Model(Mock(), "fake")
         m.call = Mock(return_value=GOOD)
         saved: list[ProofProgress] = []
-        m.match(event or f.event(), issues, on_progress=lambda p: saved.append(copy.deepcopy(p)))
+        m.match(
+            event or f.event(),
+            issues,
+            on_progress=lambda p: saved.append(copy.deepcopy(p)),
+        )
         assert m.call.call_count == 6
         return m, saved[-1]
 
-    def test_four_jobs_exact_partitions_survive_updates_inserts_deletes_reordering(self) -> None:
+    def test_four_jobs_exact_partitions_survive_updates_inserts_deletes_reordering(
+        self,
+    ) -> None:
         """Verify partitions survive updates, inserts, deletes and reordering."""
         original = self.issues()
         for index in range(4):
@@ -174,7 +180,6 @@ class ReviewReuseTests(unittest.TestCase):
         m = Model(Mock(), "fake")
         saved = []
 
-
         def choose(_task, data, _schema, _deadline) -> dict[str, object]:
             return dict(GOOD, issue_number=data["open_issues"][0]["number"])
 
@@ -193,7 +198,6 @@ class ReviewReuseTests(unittest.TestCase):
         m = Model(Mock(), "fake")
         saved = []
         calls = [0]
-
 
         def choose(_task, data, _schema, _deadline) -> dict[str, object]:
             calls[0] += 1
@@ -234,7 +238,9 @@ class EarlyFenceTests(unittest.TestCase):
     setUp = f.EngineTests.setUp
     tearDown = f.EngineTests.tearDown
 
-    def test_twenty_safe_deferrals_zero_analysis_preserve_cache_and_budget(self) -> None:
+    def test_twenty_safe_deferrals_zero_analysis_preserve_cache_and_budget(
+        self,
+    ) -> None:
         """Verify safe deferrals preserve cache and budget at zero analysis."""
         key = self.store.enqueue(f.event())["job_id"]
         self.store.claim()
@@ -243,7 +249,12 @@ class EarlyFenceTests(unittest.TestCase):
             self.store.save(
                 key,
                 2,
-                {"match": {}, "match_progress_v3": proof, "open_signature": "old", "evidence": {}},
+                {
+                    "match": {},
+                    "match_progress_v3": proof,
+                    "open_signature": "old",
+                    "evidence": {},
+                },
             )
             self.github.open_signature.side_effect = None
             self.github.open_signature.return_value = "new"
@@ -341,7 +352,12 @@ class ChurnPublicationTests(unittest.TestCase):
                     "bundle": prepare_bundle(
                         event,
                         {},
-                        [{"name": "logs.json", "content": "fake " + str(bundle_count[0])}],
+                        [
+                            {
+                                "name": "logs.json",
+                                "content": "fake " + str(bundle_count[0]),
+                            }
+                        ],
                     )
                 }
 

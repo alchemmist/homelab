@@ -41,7 +41,16 @@ class SyncthingMonitorMigrationTests(unittest.TestCase):
                     1,
                     60,
                 ),
-                (2, "Other service", "https://example.com", "GET", '["200"]', "keep", 0, 120),
+                (
+                    2,
+                    "Other service",
+                    "https://example.com",
+                    "GET",
+                    '["200"]',
+                    "keep",
+                    0,
+                    120,
+                ),
             ],
         )
         connection.commit()

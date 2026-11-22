@@ -60,13 +60,19 @@ def github(path, method="GET", data=None, auth=True):
             app_id = Path("/github/github-app-id").read_text().strip()
             key = Path("/github/github-private-key").read_text()
             signed = jwt.encode(
-                {"iat": int(time.time()) - 30, "exp": int(time.time()) + 540, "iss": app_id},
+                {
+                    "iat": int(time.time()) - 30,
+                    "exp": int(time.time()) + 540,
+                    "iss": app_id,
+                },
                 key,
                 algorithm="RS256",
             )
             h = {"Authorization": "Bearer " + signed}
             r = SESSION.get(
-                f"https://api.github.com/repos/{REPO}/installation", headers=h, timeout=30
+                f"https://api.github.com/repos/{REPO}/installation",
+                headers=h,
+                timeout=30,
             )
             r.raise_for_status()
             installation = r.json()["id"]
@@ -154,8 +160,16 @@ def start_job(run, phase):
                         "readOnlyRootFilesystem": True,
                     },
                     "resources": {
-                        "requests": {"cpu": "250m", "memory": "1Gi", "ephemeral-storage": "2Gi"},
-                        "limits": {"cpu": "2", "memory": "5Gi", "ephemeral-storage": "9Gi"},
+                        "requests": {
+                            "cpu": "250m",
+                            "memory": "1Gi",
+                            "ephemeral-storage": "2Gi",
+                        },
+                        "limits": {
+                            "cpu": "2",
+                            "memory": "5Gi",
+                            "ephemeral-storage": "9Gi",
+                        },
                     },
                     "env": [
                         {"name": k, "value": v}
@@ -175,7 +189,10 @@ def start_job(run, phase):
                         {
                             "name": "LLM_KEY",
                             "valueFrom": {
-                                "secretKeyRef": {"name": "swe-mini-model", "key": "api-key"}
+                                "secretKeyRef": {
+                                    "name": "swe-mini-model",
+                                    "key": "api-key",
+                                }
                             },
                         }
                     ],
@@ -215,11 +232,15 @@ def publish(run, result, review):
     tree = []
     for item in changes:
         blob = github(
-            f"repos/{REPO}/git/blobs", "POST", {"content": item["content"], "encoding": "base64"}
+            f"repos/{REPO}/git/blobs",
+            "POST",
+            {"content": item["content"], "encoding": "base64"},
         )
         tree.append({"path": item["path"], "mode": "100644", "type": "blob", "sha": blob["sha"]})
     tree = github(
-        f"repos/{REPO}/git/trees", "POST", {"base_tree": base["tree"]["sha"], "tree": tree}
+        f"repos/{REPO}/git/trees",
+        "POST",
+        {"base_tree": base["tree"]["sha"], "tree": tree},
     )
     commit = github(
         f"repos/{REPO}/git/commits",
@@ -232,7 +253,9 @@ def publish(run, result, review):
     )
     try:
         github(
-            f"repos/{REPO}/git/refs", "POST", {"ref": "refs/heads/" + branch, "sha": commit["sha"]}
+            f"repos/{REPO}/git/refs",
+            "POST",
+            {"ref": "refs/heads/" + branch, "sha": commit["sha"]},
         )
     except requests.HTTPError as exc:
         response = exc.response
@@ -359,11 +382,13 @@ def tick() -> bool | None:
                 base = cast(
                     "dict[str, object]",
                     github(
-                        f"repos/{REPO}/contents/web/package.json?ref={run['revision']}", auth=True
+                        f"repos/{REPO}/contents/web/package.json?ref={run['revision']}",
+                        auth=True,
                     ),
                 )
                 validate_dependency_update(
-                    candidate, json.loads(base64.b64decode(cast("str", base["content"])))
+                    candidate,
+                    json.loads(base64.b64decode(cast("str", base["content"]))),
                 )
                 validate_dependency_update(candidate, json.loads(base64.b64decode(base["content"])))
         except (ValueError, KeyError, TypeError):

@@ -41,12 +41,15 @@ class HarborGitopsRuntimeTests(unittest.TestCase):
         # Trivy's connection config is deterministic, not a generated runtime key.
         self.assertEqual(secrets, {"harbor-trivy"})
 
-    def test_home_ingress_disables_request_body_deadline_preserving_arguments(self) -> None:
+    def test_home_ingress_disables_request_body_deadline_preserving_arguments(
+        self,
+    ) -> None:
         """Keep zero read timeouts arg-safe in the edge role."""
         role = (ROOT / "ansible/roles/home_ingress_ha/tasks/traefik.yml").read_text()
         for entrypoint in ("websecure", "web"):
             self.assertIn(
-                f"--entryPoints.{entrypoint}.transport.respondingTimeouts.readTimeout=0s", role
+                f"--entryPoints.{entrypoint}.transport.respondingTimeouts.readTimeout=0s",
+                role,
             )
         self.assertIn(".additionalArguments | default([])", role)
         self.assertIn("union([", role)

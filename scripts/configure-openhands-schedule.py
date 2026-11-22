@@ -5,6 +5,7 @@ Default lists the matching owned schedule only. --apply configures it INACTIVE.
 Uses the image-pinned installed SDK, not a fresh unpinned pip install each run.
 Does not alter other schedules; drift, duplicates and active runs block changes.
 """
+
 import argparse
 import json
 import subprocess
@@ -15,11 +16,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main():
     """Run the command-line entry point."""
-    p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--apply",action="store_true")
-    a=p.parse_args()
-    desired=json.loads((ROOT/"services/openhands/the-loop-demo/schedule.json").read_text())
-    code="""import json,sys,pathlib,urllib.request,importlib.metadata
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--apply", action="store_true")
+    a = p.parse_args()
+    desired = json.loads((ROOT / "services/openhands/the-loop-demo/schedule.json").read_text())
+    code = """import json,sys,pathlib,urllib.request,importlib.metadata
 request=json.load(sys.stdin);desired=request['desired'];key=pathlib.Path('/home/openhands/.openhands/agent-canvas/api-key.txt').read_text().strip()
 def api(path,body=None,method=None):
  r=urllib.request.Request('http://127.0.0.1:8000'+path,data=None if body is None else json.dumps(body).encode(),method=method,headers={'X-Session-API-Key':key,'Content-Type':'application/json'})
@@ -45,7 +46,24 @@ else:
 assert result['state']=='INACTIVE' and result['setup_script_path'] is None and result['entrypoint']=='python main.py'
 print(json.dumps({'id':result['id'],'state':result['state'],'trigger':result['trigger'],'model_calls_started':False}))
 """
-    subprocess.run(["kubectl","-n","openhands","exec","-i","openhands-0","--","python","-c",code],input=json.dumps({"desired":desired,"apply":a.apply}),text=True,check=True)
+    subprocess.run(
+        [
+            "kubectl",
+            "-n",
+            "openhands",
+            "exec",
+            "-i",
+            "openhands-0",
+            "--",
+            "python",
+            "-c",
+            code,
+        ],
+        input=json.dumps({"desired": desired, "apply": a.apply}),
+        text=True,
+        check=True,
+    )
 
 
-if __name__=="__main__":main()
+if __name__ == "__main__":
+    main()

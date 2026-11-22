@@ -1,4 +1,5 @@
 """Validate the OpenTelemetry host source canary configuration."""
+
 import argparse
 import hashlib
 import json
@@ -37,7 +38,10 @@ def run(directory):
     hostname = socket.gethostname()
     legacy_ip = request["legacyIPs"][hostname]
     exporter, probe = directory / "node_exporter", directory / "host-source-probe"
-    for path, expected in ((exporter, request["exporterSHA256"]), (probe, request["probeSHA256"])):
+    for path, expected in (
+        (exporter, request["exporterSHA256"]),
+        (probe, request["probeSHA256"]),
+    ):
         stat = path.lstat()
         require(
             not path.is_symlink()
@@ -131,7 +135,11 @@ def run(directory):
     finally:
         if launched:
             subprocess.run(
-                ["systemctl", "stop", unit], check=True, capture_output=True, text=True, timeout=30
+                ["systemctl", "stop", unit],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             fields = subprocess.check_output(
                 ["systemctl", "show", unit, "-p", "MainPID"], text=True, timeout=15

@@ -9,7 +9,7 @@ import ssl
 import sys
 import uuid
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import asyncpg
@@ -67,7 +67,7 @@ def cv(v, typ):
     if typ in ("timestamp", "timestamptz"):
         d = datetime.fromisoformat(v) if isinstance(v, str) else v
         if typ == "timestamptz":
-            return (d if d.tzinfo else d.replace(tzinfo=timezone.utc)).astimezone(timezone.utc)
+            return (d if d.tzinfo else d.replace(tzinfo=UTC)).astimezone(UTC)
         return d
     if typ == "bool":
         if v not in (0, 1):

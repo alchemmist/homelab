@@ -108,7 +108,16 @@ def _status_handoff(resource: _HandoffResource) -> _HandoffResource:
             )
             _project_field(
                 result,
-                ("spec", "template", "spec", "containers", 0, "readinessProbe", "httpGet", "path"),
+                (
+                    "spec",
+                    "template",
+                    "spec",
+                    "containers",
+                    0,
+                    "readinessProbe",
+                    "httpGet",
+                    "path",
+                ),
                 "/api/v1/config",
                 "/api/status-page/socrat",
             )
@@ -201,7 +210,9 @@ class OwnershipTests(unittest.TestCase):
                 assert key not in actual, "Multiple application owners: " + key
                 digest = hashlib.sha256(
                     json.dumps(
-                        migration_payload(resource), sort_keys=True, separators=(",", ":")
+                        migration_payload(resource),
+                        sort_keys=True,
+                        separators=(",", ":"),
                     ).encode()
                 ).hexdigest()
                 actual[key] = {"owner": owner, "sha256": digest}

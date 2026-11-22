@@ -86,7 +86,11 @@ class StaticVMPlacementTests(unittest.TestCase):
         for name in ["blog", "socrat-home"]:
             with self.subTest(app=name):
                 pod = self.render(
-                    name, "--set", "nodeAffinity=null", "--set", "podAntiAffinity.enabled=false"
+                    name,
+                    "--set",
+                    "nodeAffinity=null",
+                    "--set",
+                    "podAntiAffinity.enabled=false",
                 )["spec"]["template"]["spec"]
                 assert "affinity" not in pod
 

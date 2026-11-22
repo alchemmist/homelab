@@ -49,7 +49,10 @@ finally:
 job = {
     "apiVersion": "batch/v1",
     "kind": "Job",
-    "metadata": {"name": "netbird-dns-renderer-delta-" + a.node, "namespace": "identity"},
+    "metadata": {
+        "name": "netbird-dns-renderer-delta-" + a.node,
+        "namespace": "identity",
+    },
     "spec": {
         "backoffLimit": 0,
         "activeDeadlineSeconds": 120,

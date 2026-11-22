@@ -143,7 +143,12 @@ class TrafficLightLayoutTest(unittest.TestCase):
     def test_rps_and_n8n_share_a_shorter_graph_row(self):
         panel = panel_by_id(self.dashboard, 334)
         assert panel["gridPos"] == {"x": 0, "y": 14, "w": 6, "h": 4}
-        assert panel_by_id(self.dashboard, 920)["gridPos"] == {"x": 6, "y": 10, "w": 6, "h": 4}
+        assert panel_by_id(self.dashboard, 920)["gridPos"] == {
+            "x": 6,
+            "y": 10,
+            "w": 6,
+            "h": 4,
+        }
 
 
 class TrafficLightQueriesTest(unittest.TestCase):
@@ -160,7 +165,14 @@ class TrafficLightQueriesTest(unittest.TestCase):
         )
 
     def test_node_tiles_reference_each_node_with_health_priorities(self):
-        for node in ("socrat-0", "socrat-1", "socrat-2", "socrat-3", "socrat-4", "socrat-5"):
+        for node in (
+            "socrat-0",
+            "socrat-1",
+            "socrat-2",
+            "socrat-3",
+            "socrat-4",
+            "socrat-5",
+        ):
             expr = self.node_panel(node)["targets"][0]["expr"]
             assert f'node="{node}"' in expr
             assert 'condition="Ready",status="true"}' in expr
@@ -169,8 +181,21 @@ class TrafficLightQueriesTest(unittest.TestCase):
             assert "2 * (1 -" in expr
 
     def test_node_tiles_map_every_state_to_color_semantics(self):
-        colors = {"0": "#26783D", "1": "#A85D08", "2": "#B42332", "3": "#B42332", "-2": "#555555"}
-        for node in ("socrat-0", "socrat-1", "socrat-2", "socrat-3", "socrat-4", "socrat-5"):
+        colors = {
+            "0": "#26783D",
+            "1": "#A85D08",
+            "2": "#B42332",
+            "3": "#B42332",
+            "-2": "#555555",
+        }
+        for node in (
+            "socrat-0",
+            "socrat-1",
+            "socrat-2",
+            "socrat-3",
+            "socrat-4",
+            "socrat-5",
+        ):
             mappings = self.node_panel(node)["fieldConfig"]["defaults"]["mappings"][0]["options"]
             for value, color in colors.items():
                 assert value in mappings
@@ -290,14 +315,26 @@ class TrafficLightQueriesTest(unittest.TestCase):
 
     def test_platform_tiles_fill_the_gap_under_grafana(self):
         expected = {
-            335: ("n8n", "SocratServiceN8nUnavailable", {"h": 1, "w": 2, "x": 6, "y": 9}),
+            335: (
+                "n8n",
+                "SocratServiceN8nUnavailable",
+                {"h": 1, "w": 2, "x": 6, "y": 9},
+            ),
             336: (
                 "authentik",
                 "SocratServiceAuthentikUnavailable",
                 {"h": 2, "w": 2, "x": 4, "y": 7},
             ),
-            337: ("harbor", "SocratServiceHarborUnavailable", {"h": 1, "w": 2, "x": 0, "y": 11}),
-            338: ("argocd", "SocratServiceArgocdUnavailable", {"h": 2, "w": 2, "x": 2, "y": 9}),
+            337: (
+                "harbor",
+                "SocratServiceHarborUnavailable",
+                {"h": 1, "w": 2, "x": 0, "y": 11},
+            ),
+            338: (
+                "argocd",
+                "SocratServiceArgocdUnavailable",
+                {"h": 2, "w": 2, "x": 2, "y": 9},
+            ),
             339: (
                 "socrat-bot",
                 "SocratServiceSocratBotUnavailable",

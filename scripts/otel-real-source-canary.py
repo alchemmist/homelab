@@ -133,7 +133,14 @@ def cleanup_workspace(workspace):
         for kind in ["clusterrolebinding", "clusterrole", "serviceaccount"]:
             try:
                 objects = json.loads(
-                    kube("get", kind, "-l", "homelab.alchemmist.xyz/canary=" + name, "-o", "json")
+                    kube(
+                        "get",
+                        kind,
+                        "-l",
+                        "homelab.alchemmist.xyz/canary=" + name,
+                        "-o",
+                        "json",
+                    )
                 )["items"]
                 for obj in objects:
                     require(
@@ -348,7 +355,11 @@ def run(args):
         "apiVersion": "rbac.authorization.k8s.io/v1",
         "kind": "ClusterRoleBinding",
         "metadata": {"name": name, "labels": labels},
-        "roleRef": {"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": name},
+        "roleRef": {
+            "apiGroup": "rbac.authorization.k8s.io",
+            "kind": "ClusterRole",
+            "name": name,
+        },
         "subjects": [{"kind": "ServiceAccount", "name": name, "namespace": NAMESPACE}],
     }
     sa = {
@@ -387,7 +398,10 @@ def run(args):
                     ],
                     "users": [{"name": "canary", "user": {"token": token}}],
                     "contexts": [
-                        {"name": "canary", "context": {"cluster": "canary", "user": "canary"}}
+                        {
+                            "name": "canary",
+                            "context": {"cluster": "canary", "user": "canary"},
+                        }
                     ],
                     "current-context": "canary",
                 }
@@ -461,7 +475,13 @@ def run(args):
                     "--web.enable-otlp-receiver",
                 ],
             ),
-            ("collector", [str(args.binary), "--config=" + str(args.workspace / "collector.json")]),
+            (
+                "collector",
+                [
+                    str(args.binary),
+                    "--config=" + str(args.workspace / "collector.json"),
+                ],
+            ),
         ]
         for label, command in commands:
             log = (args.workspace / (label + ".log")).open("x")
@@ -509,9 +529,7 @@ def run(args):
         if any(rejected.values()):
             (args.workspace / "failure-summary.json").write_text(json.dumps(rejected))
             msg = "Source canary observed refused or dropped data; capacity is not accepted"
-            raise RuntimeError(
-                msg
-            )
+            raise RuntimeError(msg)
         cgroup = next(
             line[3:]
             for line in Path("/proc/self/cgroup").read_text().splitlines()
@@ -574,9 +592,7 @@ def main():
         print(json.dumps(run(args), indent=2))
     except (OSError, RuntimeError, subprocess.SubprocessError, ValueError):
         msg_0 = "Real-source canary failed; sensitive responses are not printed. Inspect the private root-owned run artifacts."
-        raise SystemExit(
-            msg_0
-        ) from None
+        raise SystemExit(msg_0) from None
 
 
 if __name__ == "__main__":
