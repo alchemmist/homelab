@@ -1,13 +1,13 @@
 """One direct DNS/TCP/TLS sample per resolved address. Sends no HTTP or bot data."""
 
 import json
-import sys
-from collections import deque
-from pathlib import Path
-import subprocess
 import socket
 import ssl
+import subprocess
+import sys
+from collections import deque
 from datetime import UTC, datetime
+from pathlib import Path
 from time import monotonic, sleep
 
 

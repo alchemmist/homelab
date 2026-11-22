@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5",
+  "graphDigest": "605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -33,7 +33,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run qg validate\nuv run python scripts/quality/contracts.py\nuv run python scripts/quality/strict_guard.py\nuv run pytest -q tests/test_quality_python_policy.py"
+        "run": "set -euo pipefail\nuv run qg validate\nuv run python scripts/quality/contracts.py\nuv run python scripts/quality/strict_guard.py\nuv run python -m scripts.quality.python_inputs scripts/quality/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select SIM300 \\\n    --ignore-noqa --output-format concise --\nuv run pytest -q tests/test_quality_python_policy.py"
       },
       "timeoutMinutes": 5,
       "title": "Graph integrity"
@@ -88,10 +88,10 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \\\n    --ignore-noqa --output-format concise --"
+        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \\\n    --ignore-noqa --output-format concise --"
       },
       "timeoutMinutes": 5,
-      "title": "Python script and test quotes (Q000)"
+      "title": "Python script and test quotes (Q000, D300)"
     },
     {
       "env": {},
@@ -115,10 +115,10 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs ansible/ deploy/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n    --ignore-noqa --output-format concise --"
+        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n    --ignore-noqa --output-format concise --\nuv run python -m scripts.quality.python_inputs scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select F401 \\\n    --ignore-noqa --output-format concise --"
       },
       "timeoutMinutes": 5,
-      "title": "Owned Ansible and deploy Python import order (I001)"
+      "title": "Python import order (I001) and unused script/test imports (F401)"
     },
     {
       "env": {},

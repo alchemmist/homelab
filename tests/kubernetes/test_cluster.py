@@ -2,8 +2,8 @@
 
 import importlib.util
 import json
-from pathlib import Path
 import subprocess
+from pathlib import Path
 from typing import Protocol, cast
 from urllib.parse import urlparse
 from uuid import uuid4

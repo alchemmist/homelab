@@ -1,7 +1,6 @@
 """Tests for SPI triage message delivery integration."""
 
 import json
-import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -9,8 +8,7 @@ from typing import Protocol
 from unittest.mock import Mock, patch
 
 import test_triage as fixture
-from core import Failure, Store
-from integrations import GitHub
+from core import Failure
 from telegram_delivery import Delivery
 from telegram_links import Links
 
@@ -47,23 +45,23 @@ class DeliveryIntegrationTests(unittest.TestCase):
 
     def setUp(self) -> None:
 
-        'Prepare the shared engine fixture state.'
+        """Prepare the shared engine fixture state."""
         fixture.EngineTests.setUp(self)
         self.links = Links(self.store, Mock(), guarded_protocol=True)
         self.engine.delivery = SimpleNamespace(links=self.links, signal=Mock())
         self.engine.write = True
 
     def tearDown(self) -> None:
-        'Tear down the shared engine fixture state.'
+        """Tear down the shared engine fixture state."""
         fixture.EngineTests.tearDown(self)
 
     def process(self, *a: object, **kw: object) -> str:
-        'Advance the engine through its fixture stages and return the key.'
+        """Advance the engine through its fixture stages and return the key."""
         key: str = fixture.EngineTests.process(self, *a, **kw)
         return key
 
     def test_new_issue_is_durably_linked_before_artifacts(self) -> None:
-        'Verify new issues are durably linked before artifacts publish.'
+        """Verify new issues are durably linked before artifacts publish."""
         self.github.request.return_value = {
             "number": 7,
             "id": 70,
@@ -77,7 +75,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         )
 
     def test_matched_issue_points_to_exact_primary_comment_not_root(self) -> None:
-        'Verify matched issues point at the exact primary comment.'
+        """Verify matched issues point at the exact primary comment."""
         self.model.match.return_value = {"candidates": [{"number": 7}]}
         self.model.analyze.return_value = fixture.report(7)
         url = "https://github.com/alchemmist/homelab/issues/7#issuecomment-777"
@@ -88,7 +86,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         assert self.github.request.call_count == 1
 
     def test_ambiguous_comment_reconciles_exact_url_without_second_write(self) -> None:
-        'Verify ambiguous comments reconcile without a second write.'
+        """Verify ambiguous comments reconcile without a second write."""
         key = self.process(through=3)
         self.github.request.side_effect = Failure("UPSTREAM_NETWORK_ERROR")
         with self.assertRaises(Failure):
@@ -110,7 +108,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         assert self.links.snapshot(self.store.get(key)["episode"])["url"] == url
 
     def test_save_primary_rolls_back_state_when_outbox_write_fails(self) -> None:
-        'Verify state rollback when the outbox write fails.'
+        """Verify state rollback when the outbox write fails."""
         key = self.process(through=3)
         before = self.store.get(key)["result"]
         self.links.record_primary_publication = Mock(side_effect=RuntimeError("db fault"))
@@ -130,7 +128,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         assert self.store.get(key)["result"] == before
 
     def test_orphan_resolved_is_analyzed_instead_of_dropped_when_links_required(self) -> None:
-        'Verify orphaned resolutions are analyzed, not dropped.'
+        """Verify orphaned resolutions are analyzed, not dropped."""
         self.github.request.return_value = {
             "number": 7,
             "id": 70,
@@ -141,7 +139,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         assert self.links.snapshot(self.store.get(key)["episode"])["revision"] == SECOND_REVISION
 
     def test_lost_receipt_callback_recovers_by_immutable_episode(self) -> None:
-        'Verify lost receipt callbacks recover via immutable episodes.'
+        """Verify lost receipt callbacks recover via immutable episodes."""
         delivery = Delivery(self.store, "test", enabled=True)
         e = fixture.event()
         episode = e["episode"]
@@ -194,7 +192,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
             assert build.return_value.open.call_args.kwargs["timeout"] == 30
 
     def test_new_recipient_receipt_requeues_applied_target(self) -> None:
-        'Verify a new recipient receipt requeues the applied target.'
+        """Verify a new recipient receipt requeues the applied target."""
         e = fixture.event()
         self.links.record_primary_publication(
             e["event_key"],
@@ -223,7 +221,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         assert self.links.snapshot(e["episode"])["state"] == "pending"
 
     def test_closed_issue_resolution_preserves_exact_existing_comment(self) -> None:
-        'Verify resolutions on closed issues preserve existing comments exactly.'
+        """Verify resolutions on closed issues preserve existing comments exactly."""
         self.model.match.return_value = {"candidates": [{"number": 7}]}
         self.model.analyze.return_value = fixture.report(7)
         url = "https://github.com/alchemmist/homelab/issues/7#issuecomment-777"
@@ -241,7 +239,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         assert row["revision"] == 1
 
     def test_discovery_failure_does_not_block_ready_link(self) -> None:
-        'Verify discovery failures cannot block the ready link.'
+        """Verify discovery failures cannot block the ready link."""
         d = Delivery(self.store, "test", enabled=True)
         e = fixture.event()
         other = fixture.event(start="2026-11-03T14:00:00Z")
@@ -280,7 +278,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
     def test_fallback_ingress_identity_matches_python_including_unicode_and_microseconds(
         self,
     ) -> None:
-        'Verify fallback ingress identity matches the python hashing.'
+        """Verify fallback ingress identity matches the python hashing."""
         import subprocess
 
         for start in [
@@ -317,7 +315,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
             assert value == {"event_key": event["event_key"], "episode": event["episode"]}
 
     def test_pre_migration_completed_job_backfills_only_trusted_reference(self) -> None:
-        'Verify pre-migration backfill only trusts known references.'
+        """Verify pre-migration backfill only trusts known references."""
         self.engine.delivery = None
         self.github.request.return_value = {"number": 7}
         key = self.process()
@@ -349,7 +347,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         assert self.store.get(key)["stage"] == COMPLETE_STAGE
 
     def historical_pair(self) -> tuple[DeliveryHandle, dict[str, object]]:
-        'Return a delivery and a historical firing event.'
+        """Return a delivery and a historical firing event."""
         d: DeliveryHandle = Delivery(self.store, "test", enabled=True)
         d.github = Mock()
         for status in ["firing", "resolved"]:
@@ -369,7 +367,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         return d, e
 
     def test_historical_resolved_failure_then_firing_then_resolved_converges(self) -> None:
-        'Verify the resolved-failure-resolved sequence converges.'
+        """Verify the resolved-failure-resolved sequence converges."""
         d, e = self.historical_pair()
 
         def reference(marker, issue) -> "dict[str, object]":
@@ -410,7 +408,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         assert not d.backfill()  # late firing cannot downgrade revision2
 
     def test_historical_resolved_becomes_complete_after_firing(self) -> None:
-        'Verify a historical resolution completes after one firing.'
+        """Verify a historical resolution completes after one firing."""
         d, e = self.historical_pair()
         resolved = fixture.event("resolved")
         with self.store.db() as c:
@@ -439,7 +437,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         assert d.links.snapshot(e["episode"])["revision"] == SECOND_REVISION
 
     def test_historical_resolved_without_publication_keeps_valid_firing(self) -> None:
-        'Verify unpublished historical resolutions keep the valid firing.'
+        """Verify unpublished historical resolutions keep the valid firing."""
         d, e = self.historical_pair()
         with self.store.db() as c:
             c.execute(

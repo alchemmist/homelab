@@ -460,10 +460,34 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     assert graph["manifests"]["needs"] == ["ownership"]
     assert graph["manifests"]["policy"] == policy
     assert graph["manifests"]["results"] == {"native": "reports/manifests.json"}
+    assert (
+        "uv run python -m scripts.quality.python_inputs scripts/quality/ |\n"
+        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select SIM300 \\\n"
+        "    --ignore-noqa --output-format concise --"
+    ) in graph["graph"]["run"]
     for node in first_layer:
         assert graph[node]["needs"] == ["graph"]
         assert graph[node]["policy"]["blocking"] is True
-    assert "scripts.quality.python_inputs ansible/ deploy/ |" in graph["deploy-i001"]["run"]
+    quotes = graph["scripts-q000"]
+    assert quotes["policy"] == policy
+    assert quotes["run"] == (
+        "set -euo pipefail\n"
+        "uv run python -m scripts.quality.python_inputs scripts/ tests/ |\n"
+        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \\\n"
+        "    --ignore-noqa --output-format concise --"
+    )
+    imports = graph["deploy-i001"]
+    assert imports["title"] == "Python import order (I001) and unused script/test imports (F401)"
+    assert imports["policy"] == policy
+    assert imports["run"] == (
+        "set -euo pipefail\n"
+        "uv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |\n"
+        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n"
+        "    --ignore-noqa --output-format concise --\n"
+        "uv run python -m scripts.quality.python_inputs scripts/ tests/ |\n"
+        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select F401 \\\n"
+        "    --ignore-noqa --output-format concise --"
+    )
     assert graph["ansible"]["needs"] == ["ownership"]
     assert graph["ansible"]["policy"]["blocking"] is True
     assert graph["yaml"]["profile"] == "default"
@@ -1181,8 +1205,11 @@ def test_existing_main_push_regression_cannot_be_deferred(omitted: str) -> None:
     """A complete classification is insufficient when it drops an existing gate."""
     complete = set(contracts.RETAINED_PUSH_TESTS)
     contracts.require_retained_push_tests(complete)
-    with pytest.raises(ValueError, match="push regression lost"):
-        contracts.require_retained_push_tests(complete - {omitted})
+    expanded = complete | {"tests/test_new_feature.py"}
+    contracts.require_retained_push_tests(expanded)
+    for scheduled in (complete, expanded):
+        with pytest.raises(ValueError, match="push regression lost"):
+            contracts.require_retained_push_tests(scheduled - {omitted})
 
 
 @pytest.mark.parametrize("record", [

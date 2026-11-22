@@ -59,6 +59,27 @@ def test_ruff_missing_docstrings_follow_module_scope(filename: str, expected: se
     assert {item["code"] for item in json.loads(result.stdout)} & DOC_RULES == expected
 
 
+def test_script_docstring_needs_triple_quotes_even_with_double_quote_character() -> None:
+    result = common.command(
+        [
+            common.ROOT / ".venv/bin/ruff",
+            "check",
+            "--config",
+            "quality/ruff.toml",
+            "--select",
+            "D300,Q002",
+            "--ignore-noqa",
+            "--output-format=json",
+            "--stdin-filename",
+            "scripts/example.py",
+            "-",
+        ],
+        stdin='"Existing module documentation."\n',
+        allowed=(1,),
+    )
+    assert [item["code"] for item in json.loads(result.stdout)] == ["D300"]
+
+
 @pytest.mark.parametrize(
     ("original", "replacement"),
     [
@@ -109,7 +130,15 @@ def test_suppression_blocks_owned_source(
     assert strict_guard.main() == 0
 
 
-@pytest.mark.parametrize("roots", [["scripts/", "tests/"], ["ansible/", "deploy/"]])
+@pytest.mark.parametrize(
+    "roots",
+    [
+        ["scripts/quality/"],
+        ["scripts/"],
+        ["scripts/", "tests/"],
+        ["ansible/", "deploy/", "scripts/", "tests/"],
+    ],
+)
 def test_python_inputs_module_emits_exact_nul_delimited_inventory(roots: list[str]) -> None:
     expected = [
         name
@@ -139,11 +168,27 @@ def test_python_inputs_use_owned_paths(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.mark.parametrize(
     ("names", "roots", "missing"),
     [
+        (
+            ["scripts/other.py", "scripts/quality/README.md"],
+            ["scripts/quality/"],
+            "scripts/quality/",
+        ),
+        (["tests/helper.py", "scripts/README.md"], ["scripts/"], "scripts/"),
         ([], ["scripts/", "tests/"], "scripts/"),
         (["scripts/a.py"], ["scripts/", "tests/"], "tests/"),
         (["tests/a.py"], ["scripts/", "tests/"], "scripts/"),
         (["deploy/a.py", "ansible/a.md"], ["ansible/", "deploy/"], "ansible/"),
         (["ansible/a.py", "deploy/a.md"], ["ansible/", "deploy/"], "deploy/"),
+        (
+            ["ansible/a.py", "deploy/a.py", "scripts/a.md"],
+            ["ansible/", "deploy/", "scripts/"],
+            "scripts/",
+        ),
+        (
+            ["ansible/a.py", "deploy/a.py", "scripts/a.py", "tests/a.md"],
+            ["ansible/", "deploy/", "scripts/", "tests/"],
+            "tests/",
+        ),
     ],
 )
 def test_python_inputs_reject_incomplete_inventory(

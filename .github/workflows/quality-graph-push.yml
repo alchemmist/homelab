@@ -27,6 +27,9 @@ jobs:
           uv run qg validate
           uv run python scripts/quality/contracts.py
           uv run python scripts/quality/strict_guard.py
+          uv run python -m scripts.quality.python_inputs scripts/quality/ |
+            xargs -0 -r uv run ruff check --config quality/ruff.toml --select SIM300 \
+              --ignore-noqa --output-format concise --
           uv run pytest -q tests/test_quality_python_policy.py
         name: Run Graph integrity
         id: quality-command
@@ -42,7 +45,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5
+          graph-digest: 605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -87,7 +90,7 @@ jobs:
           adapter: native
           report-path: reports/yaml.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5
+          graph-digest: 605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -109,7 +112,7 @@ jobs:
       - graph
     timeout-minutes: 5
   scripts-q000:
-    name: Python script and test quotes (Q000)
+    name: Python script and test quotes (Q000, D300)
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -122,27 +125,27 @@ jobs:
       - run: |-
           set -euo pipefail
           uv run python -m scripts.quality.python_inputs scripts/ tests/ |
-            xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \
+            xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \
               --ignore-noqa --output-format concise --
-        name: Run Python script and test quotes (Q000)
+        name: Run Python script and test quotes (Q000, D300)
         id: quality-command
         continue-on-error: true
-      - name: Collect Python script and test quotes (Q000) result
+      - name: Collect Python script and test quotes (Q000, D300) result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
           node-id: scripts-q000
-          title: Python script and test quotes (Q000)
+          title: Python script and test quotes (Q000, D300)
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5
+          graph-digest: 605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
-      - name: Upload Python script and test quotes (Q000) result
+      - name: Upload Python script and test quotes (Q000, D300) result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
@@ -150,7 +153,7 @@ jobs:
           path: ${{ runner.temp }}/quality-graph/scripts-q000.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce Python script and test quotes (Q000) result
+      - name: Enforce Python script and test quotes (Q000, D300) result
         if: always()
         shell: bash
         env:
@@ -160,7 +163,7 @@ jobs:
       - graph
     timeout-minutes: 5
   deploy-i001:
-    name: Owned Ansible and deploy Python import order (I001)
+    name: Python import order (I001) and unused script/test imports (F401)
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -172,28 +175,33 @@ jobs:
       - run: uv sync --locked
       - run: |-
           set -euo pipefail
-          uv run python -m scripts.quality.python_inputs ansible/ deploy/ |
+          uv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |
             xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \
               --ignore-noqa --output-format concise --
-        name: Run Owned Ansible and deploy Python import order (I001)
+          uv run python -m scripts.quality.python_inputs scripts/ tests/ |
+            xargs -0 -r uv run ruff check --config quality/ruff.toml --select F401 \
+              --ignore-noqa --output-format concise --
+        name: Run Python import order (I001) and unused script/test imports (F401)
         id: quality-command
         continue-on-error: true
-      - name: Collect Owned Ansible and deploy Python import order (I001) result
+      - name: Collect Python import order (I001) and unused script/test imports (F401)
+          result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
           node-id: deploy-i001
-          title: Owned Ansible and deploy Python import order (I001)
+          title: Python import order (I001) and unused script/test imports (F401)
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5
+          graph-digest: 605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
-      - name: Upload Owned Ansible and deploy Python import order (I001) result
+      - name: Upload Python import order (I001) and unused script/test imports (F401)
+          result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
@@ -201,7 +209,8 @@ jobs:
           path: ${{ runner.temp }}/quality-graph/deploy-i001.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce Owned Ansible and deploy Python import order (I001) result
+      - name: Enforce Python import order (I001) and unused script/test imports (F401)
+          result
         if: always()
         shell: bash
         env:
@@ -237,7 +246,7 @@ jobs:
           adapter: native
           report-path: reports/secrets.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5
+          graph-digest: 605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -287,7 +296,7 @@ jobs:
           adapter: native
           report-path: reports/javascript.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5
+          graph-digest: 605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -355,7 +364,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5
+          graph-digest: 605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -406,7 +415,7 @@ jobs:
           adapter: native
           report-path: reports/docker.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5
+          graph-digest: 605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -461,7 +470,7 @@ jobs:
           adapter: junit
           report-path: reports/tests-fast.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5
+          graph-digest: 605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -511,7 +520,7 @@ jobs:
           adapter: native
           report-path: reports/workflow.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5
+          graph-digest: 605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -562,7 +571,7 @@ jobs:
           adapter: native
           report-path: reports/shell.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5
+          graph-digest: 605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -610,7 +619,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5
+          graph-digest: 605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -662,7 +671,7 @@ jobs:
           adapter: native
           report-path: reports/manifests.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5
+          graph-digest: 605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -717,7 +726,7 @@ jobs:
           adapter: native
           report-path: reports/dependencies.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5
+          graph-digest: 605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -776,7 +785,7 @@ jobs:
           adapter: junit
           report-path: reports/tests-medium.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5
+          graph-digest: 605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -824,7 +833,7 @@ jobs:
           adapter: native
           report-path: reports/ansible.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5
+          graph-digest: 605aef4c370c5d2c3ba890db1f1f23f6c9cb73f4dfa7d46b05596e5ff0337c5e
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
