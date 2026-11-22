@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from tests.public_entry_contract import CHARTS, ROOT, render
+from tests.public_entry_contract import CHARTS, ROOT, assert_status_upstream, render
 
 PUBLIC_HANDOFF = "c6121e1975eb6218804a9be43d7c2a8e99584838"
 
@@ -38,23 +38,106 @@ class _DeploymentSpec(TypedDict):
     template: _PodTemplate
 
 
+class _ResourceMetadata(TypedDict):
+    """Identity and annotations on the transferred resource itself."""
+
+    name: str
+    namespace: str
+    annotations: NotRequired[dict[str, str]]
+
+
 class _HandoffResource(TypedDict):
     """Migrated resource shape surfaced by the application render."""
 
     kind: str
-    metadata: dict[str, str]
+    metadata: _ResourceMetadata
     data: NotRequired[dict[str, str]]
     spec: NotRequired[_DeploymentSpec]
+
+
+def _blob_id(data: bytes) -> str:
+    """Calculate the local historical blob identity; do not write or fetch Git objects."""
+    return subprocess.check_output(["git", "hash-object", "--stdin"], input=data).decode().strip()
+
+
+def _project_field(
+    document: object, path: tuple[str | int, ...], current: str, original: str
+) -> None:
+    """Only project the approved value at its exact location; all neighbors stay hashed."""
+    for key in path[:-1]:
+        if isinstance(key, int):
+            assert isinstance(document, list)
+            document = document[key]
+        else:
+            assert isinstance(document, dict)
+            document = document[key]
+    assert isinstance(document, dict)
+    assert document[path[-1]] == current, "Live status proxy boundary differs from its owner"
+    document[path[-1]] = original
+
+
+def _status_handoff(resource: _HandoffResource) -> _HandoffResource:
+    """Project only the Gatus compatibility fields that changed in the Kuma retirement."""
+    result = copy.deepcopy(resource)
+    identity = (resource["kind"], resource["metadata"]["name"])
+    if identity == ("Ingress", "kuma-admin-browser"):
+        _project_field(
+            result,
+            ("spec", "rules", 0, "http", "paths", 0, "backend", "service", "name"),
+            "public-web-kuma-proxy",
+            "uptime-kuma",
+        )
+    elif identity in {
+        ("ConfigMap", "public-web-kuma-policy"),
+        ("Deployment", "public-web-kuma-proxy"),
+    }:
+        current = (ROOT / "charts/uptime-kuma/files/kuma-policy.conf").read_bytes()
+        assert_status_upstream(current.decode())
+        original = (
+            ROOT / "tests/fixtures/public-entry-handoff-inputs/kuma-policy.conf.txt"
+        ).read_bytes()
+        assert _blob_id(original) == "40a9cac2fe30cf52ad89785f940c73cc49f5655c"
+        if resource["kind"] == "ConfigMap":
+            _project_field(result, ("data", "nginx.conf"), current.decode(), original.decode())
+        else:
+            _project_field(
+                result,
+                ("spec", "template", "metadata", "annotations", "checksum/config"),
+                hashlib.sha256(current).hexdigest(),
+                hashlib.sha256(original).hexdigest(),
+            )
+            _project_field(
+                result,
+                ("spec", "template", "spec", "containers", 0, "readinessProbe", "httpGet", "path"),
+                "/api/v1/config",
+                "/api/status-page/socrat",
+            )
+    return result
 
 
 def migration_payload(resource: _HandoffResource) -> _HandoffResource:
     """Keep immutable handoff hashes; supply later source payloads independently.
 
-    Only the two source-owned Grafana text inputs/checksum may differ. Validate
-    their entire live rendering before projecting the original reviewed inputs.
-    No fixture hashes or resource/ownership/security fields are refreshed.
+    Validate the Rancher recovery wave, Gatus transition and Grafana inputs before
+    projecting those fields back to the original reviewed handoff. All other
+    fields still participate unchanged in the immutable fixture comparison.
     """
     name = resource["metadata"]["name"]
+    if resource["metadata"]["namespace"] == "uptime-kuma":
+        return _status_handoff(resource)
+    if (resource["kind"], resource["metadata"]["namespace"], name) == (
+        "Deployment",
+        "cattle-system",
+        "public-web-rancher-proxy",
+    ):
+        # d43c0634: readiness depends on the backend, so both deploy in wave 0.
+        wave = "argocd.argoproj.io/sync-wave"
+        assert resource["metadata"].get("annotations", {}).get(wave) == "0", (
+            "Rancher proxy must reconcile with its backend"
+        )
+        result = copy.deepcopy(resource)
+        result["metadata"]["annotations"][wave] = "-1"
+        return result
     if name not in {"public-web-grafana-policy", "public-web-grafana-proxy"}:
         return resource
     base = "deploy/platform/grafana/public-entry/files/"
@@ -73,11 +156,7 @@ def migration_payload(resource: _HandoffResource) -> _HandoffResource:
         "traffic-light-inset.js": "27ec9fe426ee10f74d35bc7be55556a53e72e762",
     }
     for key, data in original.items():
-        # hash-object without -w is local identity calculation, not a write/fetch.
-        assert (
-            subprocess.check_output(["git", "hash-object", "--stdin"], input=data).decode().strip()
-            == pins[key]
-        )
+        assert _blob_id(data) == pins[key]
     result = copy.deepcopy(resource)
     if resource["kind"] == "ConfigMap":
         native = {
@@ -149,6 +228,15 @@ class OwnershipTests(unittest.TestCase):
             assert not any(s.get("path") == "charts/public-web-entry" for s in sources)
         litellm = yaml.safe_load((ROOT / "deploy/argocd/apps/litellm.yaml").read_text())
         assert litellm["spec"]["syncPolicy"]["automated"].get("enabled") is not False
+
+
+@pytest.mark.parametrize("wave", ["-1", "1"])
+def test_rancher_projection_rejects_incorrect_wave(wave: str) -> None:
+    """Earlier and later proxy scheduling must not be normalized away."""
+    deployment = next(d for d in render("rancher") if d["kind"] == "Deployment")
+    deployment["metadata"]["annotations"]["argocd.argoproj.io/sync-wave"] = wave
+    with pytest.raises(AssertionError, match="Rancher proxy must reconcile with its backend"):
+        migration_payload(deployment)
 
 
 @pytest.mark.parametrize("violation", ["payload", "checksum", "token", "image"])

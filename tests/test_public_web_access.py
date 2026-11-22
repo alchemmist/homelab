@@ -8,8 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.public_entry_contract import CHARTS, render
-from tests.public_entry_contract import values as entry_values
+from tests.public_entry_contract import CHARTS, chart_values, public_entry, render
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
@@ -136,24 +135,32 @@ def test_public_probe_reuses_migration_owned_addresses() -> None:
         c.addresses(["109.120.141.97", "109.120.141.97"])
 
 
+RANCHER_DENIAL = "Native Rancher admission is valid only for its exact reviewed backend"
+MCP_DENIAL = "Only the token-protected MCP endpoint may bypass interactive SSO"
+GRAFANA_DENIAL = "Native Grafana SSO requires the exact password-safe policy proxy"
+
+
 @pytest.mark.parametrize(
-    "owner,key,value",
+    ("owner", "key", "value", "denial"),
     [
-        ("rancher", "service", "unprotected-backend"),
-        ("rancher", "namespace", "identity"),
-        ("grafana-mcp", "port", 8080),
-        ("grafana-mcp", "path", "/"),
-        ("grafana", "service", "grafana"),
+        ("rancher", "service", "unprotected-backend", RANCHER_DENIAL),
+        ("rancher", "namespace", "identity", RANCHER_DENIAL),
+        ("grafana-mcp", "port", 8080, MCP_DENIAL),
+        ("grafana-mcp", "path", "/", MCP_DENIAL),
+        ("grafana", "service", "grafana", GRAFANA_DENIAL),
     ],
 )
-def test_chart_rejects_mislabeled_authorization(owner, key, value, tmp_path) -> None:
+def test_chart_rejects_mislabeled_authorization(owner, key, value, denial: str, tmp_path) -> None:
     import subprocess
 
     import yaml
 
-    values = copy.deepcopy(entry_values(owner))
-    values["routes"][0][key] = value
-    overrides = values if CHARTS[owner].startswith("deploy/") else {"publicEntry": values}
+    overrides = chart_values(owner)
+    routes = public_entry(overrides)["routes"]
+    assert isinstance(routes, list)
+    targets = [r for r in routes if r["name"] == owner]
+    assert len(targets) == 1, f"Missing or ambiguous reviewed {owner} route"
+    targets[0][key] = value
     p = tmp_path / "values.yaml"
     p.write_text(yaml.safe_dump(overrides))
     result = subprocess.run(
@@ -162,6 +169,7 @@ def test_chart_rejects_mislabeled_authorization(owner, key, value, tmp_path) -> 
         capture_output=True,
     )
     assert result.returncode != 0
+    assert denial in result.stderr
 
 
 def test_rancher_public_proxy_denies_local_password_without_changing_private_backend() -> None:
