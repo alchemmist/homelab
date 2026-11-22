@@ -1,7 +1,9 @@
+---
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata: {name: redis-bootstrap}
 spec: {selfSigned: {}}
+...
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -13,11 +15,13 @@ spec:
   duration: 43800h
   issuerRef: {name: redis-bootstrap, kind: Issuer}
   usages: [cert sign, crl sign]
+...
 ---
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata: {name: redis-common-ca}
 spec: {ca: {secretName: redis-common-ca}}
+...
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -27,3 +31,4 @@ spec:
   issuerRef: {name: redis-common-ca, kind: Issuer}
   dnsNames: [redis-common-haproxy.redis.svc.cluster.local]
   usages: [server auth, client auth, digital signature, key encipherment]
+...
