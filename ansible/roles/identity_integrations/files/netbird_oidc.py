@@ -52,7 +52,7 @@ GROUP_NAMES = (
 )
 # Admission/pilot groups may include observers; full WG administration MUST NOT.
 ADMIN_NETWORK_GROUP = "netbird-internal-admins"
-PROFILE_GROUP_NAMES = GROUP_NAMES + (ADMIN_NETWORK_GROUP,)
+PROFILE_GROUP_NAMES = (*GROUP_NAMES, ADMIN_NETWORK_GROUP)
 ADMISSION_GROUP = "netbird-pilot-login"
 UPSTREAM_SCOPES = ("openid", "profile", "email")
 OPENID_MANAGED = "goauthentik.io/providers/oauth2/scope-openid"
@@ -78,7 +78,7 @@ PILOT = (
 )
 
 
-def callback_from_issuer(issuer):
+def callback_from_issuer(issuer: object) -> str:
     """Match idp/dex Provider.GetRedirectURI from NetBird v0.82.0.
 
     Trim one trailing slash, append /oauth2 when the issuer does not already end
@@ -93,7 +93,7 @@ def callback_from_issuer(issuer):
     return issuer + "/callback"
 
 
-def validate_management_issuer(issuer):
+def validate_management_issuer(issuer: str) -> str:
     """Document the validate management issuer operation."""
     parsed = urllib.parse.urlsplit(issuer)
     host = parsed.hostname
@@ -114,7 +114,7 @@ def validate_management_issuer(issuer):
     return issuer
 
 
-def issuer_from_netbird_config(path):
+def issuer_from_netbird_config(path: str | Path) -> str:
     """Document the issuer from netbird config operation."""
     loaded = yaml.safe_load(Path(path).read_text())
     server = loaded.get("server") if isinstance(loaded, dict) else None
@@ -126,19 +126,20 @@ def issuer_from_netbird_config(path):
     return validate_management_issuer(issuer.strip())
 
 
-def profile_expression():
+def profile_expression() -> str:
     """Document the profile expression operation."""
     approved = ", ".join(repr(name) for name in PROFILE_GROUP_NAMES)
     return (
         "approved = (" + approved + ",)\n"
-        "names = sorted({group.name for group in request.user.ak_groups.all() if group.name in approved})\n"
+        "names = sorted({group.name for group in request.user.ak_groups.all() "
+        "if group.name in approved})\n"
         'return {"name": request.user.name, "preferred_username": request.user.username,\n'
         # Authentik's expression serializer trims boundary whitespace on save.
         ' "nickname": request.user.username, "groups": names}'
     )
 
 
-def authentik_issuer():
+def authentik_issuer() -> str:
     """Document the authentik issuer operation."""
     return "https://" + AUTHENTIK_HOST + "/application/o/" + APP_SLUG + "/"
 
@@ -180,14 +181,14 @@ def _private_read(path):
 class Authentik:
     """Authentik HTTP API client for OIDC provider setup."""
 
-    def __init__(self, base, token, get_only):
+    def __init__(self, base: str, token: str, get_only: bool) -> None:
         """Initialize the Authentik client."""
         self.base = base.rstrip("/")
         self.token = token
         self.get_only = get_only
 
     def __call__(self, method, path, payload=None):
-        """Perform an Authentik API call, enforcing GET-only when configured."""
+        """Refuse writes in GET-only mode before making the Authentik request."""
         if self.get_only and method != "GET":
             msg = "GET-only action refused an Authentik write"
             raise RuntimeError(msg)
@@ -625,7 +626,9 @@ def _application_fields():
         "name": APP_NAME,
         "slug": APP_SLUG,
         "meta_launch_url": "https://" + MANAGEMENT_FQDN + "/",
-        "meta_description": "NetBird pilot sign-in. Membership does not grant network access or Authentik admin.",
+        "meta_description": (
+            "NetBird pilot sign-in. Membership does not grant network access or Authentik admin."
+        ),
         "group": "Socrat",
         "policy_engine_mode": "any",
     }

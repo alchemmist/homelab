@@ -14,7 +14,7 @@ kube = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
 clients = {} if service == "monori" else json.loads((root / "oidc-clients.json").read_text())
 
 
-def private_save(path, data):
+def private_save(path: Path, data: object) -> None:
     """Document the private save operation."""
     if path.exists():
         return
@@ -23,7 +23,7 @@ def private_save(path, data):
         json.dump(data, f)
 
 
-def kubectl(args, body=None):
+def kubectl(args: list[str], body: object = None) -> str:
     """Document the kubectl operation."""
     result = subprocess.run(
         kube + args,
@@ -87,7 +87,9 @@ if service == "harbor":
             "-d",
             "registry",
             "-Atc",
-            "SELECT u.username FROM harbor_user u WHERE u.deleted=false AND u.username <> 'admin' AND NOT EXISTS (SELECT 1 FROM oidc_user o WHERE o.user_id=u.user_id);",
+            "SELECT u.username FROM harbor_user u WHERE u.deleted=false "
+            "AND u.username <> 'admin' AND NOT EXISTS "
+            "(SELECT 1 FROM oidc_user o WHERE o.user_id=u.user_id);",
         ]
     )
     if users.strip():
@@ -111,7 +113,6 @@ if service == "harbor":
         "oidc_admin_group": "homelab-owner",
         "oidc_verify_cert": True,
         "oidc_auto_onboard": True,
-        "project_creation_restriction": "adminonly",
     }
     secret = {
         "apiVersion": "v1",
@@ -217,7 +218,8 @@ elif service == "grafana":
         ]
     )
     print(
-        "Grafana OIDC button configured without removing local/anonymous access; browser validation pending"
+        "Grafana OIDC button configured without removing local/anonymous access; "
+        "browser validation pending"
     )
 elif service == "open-webui":
     accounts = json.loads((root / "account-mappings.json").read_text())
@@ -289,7 +291,8 @@ asyncio.run(main())"""
     )
     kubectl(["-n", "llm", "rollout", "status", "deployment/open-webui", "--timeout=600s"])
     print(
-        "Open WebUI native OIDC configured; exact UUID links preserve users/chats; no email-based merging"
+        "Open WebUI native OIDC configured; exact UUID links preserve users/chats; "
+        "no email-based merging"
     )
 elif service == "rancher":
     from observer_admission import authconfig_patch, retain_observer
@@ -432,7 +435,8 @@ elif service == "rancher":
         ]
     )
     print(
-        "Rancher native OIDC enabled; UUID-bound external identities mirror reviewed grants; local emergency identities preserved"
+        "Rancher native OIDC enabled; UUID-bound external identities mirror reviewed grants; "
+        "local emergency identities preserved"
     )
 elif service == "wiki":
     import secrets
@@ -510,7 +514,8 @@ elif service == "wiki":
                 ]
             )
     print(
-        "Wiki OIDC Secret reconciled; exact reviewed subjects, owner-only local fallback; no password reset"
+        "Wiki OIDC Secret reconciled; exact reviewed subjects, "
+        "owner-only local fallback; no password reset"
     )
 elif service == "monori":
     from monori_oidc import configure_monori
