@@ -17,11 +17,14 @@ ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
     "verify", ROOT / "scripts/lms-observability-verify.py"
 )
+if spec is None or spec.loader is None:
+    msg = "Cannot load the LMS observability helper"
+    raise ImportError(msg)
 helper = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(helper)
 
 
-def kube(*args) -> str:
+def kube(*args: str) -> str:
     r = subprocess.run(
         ["ssh", "-o", "BatchMode=yes", "socrat-0", shlex.join(["kubectl", *args])],
         capture_output=True,

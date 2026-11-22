@@ -22,12 +22,14 @@ READONLY = "acc10f26-5658-4ea1-9704-92bfebccaec2"
 NETBIRD = "a033c844-3d5b-41db-a7cc-697c1a7c0f4f"
 
 
-def require(ok, message):
+def require(ok: object, message: str) -> None:
+    """Stop the cutover with a RuntimeError if a precondition fails."""
     if not ok:
         raise RuntimeError(message)
 
 
 def plan(user, observer):
+    """Plan only the reviewed subject's observer addition and legacy read-only removal."""
     require(user["pk"] == 94 and user["uuid"] == UUID, "Initial subject identity mismatch")
     require(
         user["is_active"] is True and user["is_superuser"] is False, "Initial human status drift"
@@ -53,6 +55,7 @@ def plan(user, observer):
 
 
 def fingerprint(user, observer):
+    """Hash stable subject fields, the observer group, and the proposed membership delta."""
     stable = {
         k: user[k]
         for k in ["pk", "uuid", "is_active", "is_superuser", "groups", "password_change_date"]
@@ -66,7 +69,8 @@ def fingerprint(user, observer):
     ).hexdigest()
 
 
-def main():
+def main() -> None:
+    """Preview, apply, or finalize the initial cutover from private readback evidence."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--credentials", type=Path, required=True)
     parser.add_argument("--state", type=Path, required=True)

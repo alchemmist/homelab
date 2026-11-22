@@ -5,11 +5,13 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from http import HTTPStatus
 
 BASE_URL = os.environ.get("LLM_BASE_URL", "http://127.0.0.1:8000/v1").rstrip("/")
 API_KEY = os.environ.get("LLM_API_KEY", "")
 MODEL = os.environ.get("LLM_MODEL", "qwen3.8-27b")
 TIMEOUT = 180
+OLD_CONTEXT_LIMIT = 8192
 
 
 def require(condition, message):
@@ -65,7 +67,10 @@ def main():
             msg = "API accepted a request without its bearer key"
             raise ValueError(msg)
     except urllib.error.HTTPError as error:
-        require(error.code == 401, f"Expected unauthenticated HTTP 401, received {error.code}")
+        require(
+            error.code == HTTPStatus.UNAUTHORIZED,
+            f"Expected unauthenticated HTTP 401, received {error.code}",
+        )
     report("API authentication", started)
 
     started = time.monotonic()
@@ -107,9 +112,9 @@ def main():
         require(
             "text/event-stream" in response.headers.get("Content-Type", ""), "Response is not SSE"
         )
-        for line in response:
+        for raw_line in response:
             require(time.monotonic() - started < TIMEOUT, "Streaming exceeded time limit")
-            line = line.decode().strip()
+            line = raw_line.decode().strip()
             if not line.startswith("data:"):
                 continue
             data = line[5:].strip()
@@ -209,7 +214,7 @@ def main():
         )
         usage = result.get("usage") or {}
         require(
-            usage.get("prompt_tokens", 0) > 8192,
+            usage.get("prompt_tokens", 0) > OLD_CONTEXT_LIMIT,
             "Long-context check did not exceed the old 8K limit",
         )
         require(

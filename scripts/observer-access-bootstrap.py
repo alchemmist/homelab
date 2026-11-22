@@ -30,6 +30,7 @@ SPEC.loader.exec_module(planner)
 
 
 def private(path, directory=False, owner_uid=None):
+    """Reject symlinks, unexpected ownership or type, and group or other access."""
     expected_uid = os.geteuid() if owner_uid is None else owner_uid
     planner.require(
         not path.is_symlink()
@@ -41,7 +42,8 @@ def private(path, directory=False, owner_uid=None):
     )
 
 
-def readiness_directory(path):
+def readiness_directory(path: Path) -> None:
+    """Check the readiness directory, allowing its foundation owner when running as root."""
     # Foundation is deployed into the existing alchemmist-owned 0700 cache.
     # Keep strict caller ownership everywhere else; do not chown that directory.
     owner_uid = None
@@ -51,6 +53,7 @@ def readiness_directory(path):
 
 
 def validate_path(system, path):
+    """Reject traversal and paths outside the reviewed API prefixes for this system."""
     planner.require(
         isinstance(path, str)
         and path
@@ -82,6 +85,7 @@ def validate_path(system, path):
 
 
 def harbor_authorization(credentials):
+    """Pair the Harbor authorization header with its matching configuration read endpoint."""
     if "harborJobserviceSecret" in credentials:
         secret = credentials["harborJobserviceSecret"]
         planner.require(
@@ -110,7 +114,7 @@ class Client:
         """Initialize the observer API client."""
 
         class NoRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self, *_args, **_kwargs) -> None:
+            def redirect_request(self, *_args: object, **_kwargs: object) -> None:
                 return None
 
         context = ssl.create_default_context(cafile="/var/lib/rancher/k3s/server/tls/server-ca.crt")
@@ -211,6 +215,7 @@ class Client:
 
 
 def snapshot(client, policy):
+    """Read native RBAC, admission, and Harbor membership state for the planner."""
     kbase = "/apis/management.cattle.io/v3/"
     get = lambda path: client.call("kubernetes", "GET", kbase + path)
     globals_ = get("globalroles")["items"]
@@ -246,6 +251,7 @@ def snapshot(client, policy):
 
 
 def normalized(value):
+    """Remove volatile media URL fields recursively before hashing the snapshot."""
     if isinstance(value, dict):
         # Computed signed media URLs do not define group membership or access.
         return {k: normalized(v) for k, v in value.items() if k != "meta_icon_url"}
@@ -255,6 +261,7 @@ def normalized(value):
 
 
 def digest(state, policy, operations):
+    """Bind approval to the normalized snapshot, reviewed policy, and ordered operations."""
     return hashlib.sha256(
         json.dumps(
             {"snapshot": normalized(state), "policy": policy, "operations": operations},
@@ -264,13 +271,15 @@ def digest(state, policy, operations):
     ).hexdigest()
 
 
-def save(path, value):
+def save(path: Path, value: object) -> None:
+    """Write private JSON evidence without overwriting an existing file."""
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as stream:
         json.dump(value, stream)
 
 
-def main():
+def main() -> None:
+    """Audit native access or apply a freshly approved plan and verify convergence."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--credentials", required=True, type=Path)
     parser.add_argument("--state", type=Path, default=Path("/var/lib/homelab-observer-bootstrap"))

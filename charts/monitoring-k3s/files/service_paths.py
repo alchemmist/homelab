@@ -8,8 +8,10 @@ import socket
 import ssl
 import threading
 import time
+from collections.abc import Iterable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import override
 
 SA = Path("/var/run/secrets/kubernetes.io/serviceaccount")
 SLICE = "/apis/discovery.k8s.io/v1/namespaces/socrat-bot/endpointslices?labelSelector=kubernetes.io%2Fservice-name%3Dsocrat-bot"
@@ -17,7 +19,7 @@ SERVICE = "socrat-bot.socrat-bot.svc"
 TARGETS = ("10.250.0.1", "10.250.0.3", "10.250.0.41")
 
 
-def api(host, port, path):
+def api(host: str, port: int, path: str) -> tuple[int, bytes]:
     conn = http.client.HTTPSConnection(
         host,
         port,
@@ -36,12 +38,12 @@ def api(host, port, path):
         conn.close()
 
 
-def snapshot():
+def snapshot() -> tuple[list[tuple[str, str]], list[tuple[str, int]]]:
     status, raw = api("kubernetes.default.svc", 443, SLICE)
     if status != 200 or len(raw) > 262144:
         raise ValueError("discovery unavailable")
     items = json.loads(raw)["items"]
-    targets = set()
+    targets: set[tuple[str, int]] = set()
     for item in items:
         if item["addressType"] != "IPv4":
             continue
@@ -61,7 +63,7 @@ def snapshot():
     ), sorted(targets)
 
 
-def health(host, port):
+def health(host: str, port: int) -> str:
     conn = http.client.HTTPConnection(host, port, timeout=2)
     try:
         conn.request("GET", "/healthz")
@@ -74,7 +76,7 @@ def health(host, port):
         conn.close()
 
 
-def pair():
+def pair() -> str:
     for _ in range(2):
         version, targets = snapshot()
         if not targets:
@@ -100,7 +102,7 @@ def pair():
     return "changing"
 
 
-def control(host, path):
+def control(host: str, path: str) -> str:
     try:
         code, raw = api(host, 6443, path)
         if code in (401, 403):
@@ -120,16 +122,16 @@ def control(host, path):
         return "invalid_response"
 
 
-metrics = {}
+metrics: dict[str, str] = {}
 lock = threading.Lock()
 
 
-def observe(key, lines):
+def observe(key: str, lines: Iterable[str]) -> None:
     with lock:
         metrics[key] = "\n".join(lines)
 
 
-def service_loop():
+def service_loop() -> None:
     streak = 0
     while True:
         start = time.monotonic()
@@ -149,7 +151,7 @@ def service_loop():
         time.sleep(max(0, 15 - (time.monotonic() - start)))
 
 
-def control_loop(host):
+def control_loop(host: str) -> None:
     while True:
         start = time.monotonic()
         lines = []
@@ -166,7 +168,7 @@ def control_loop(host):
 
 
 class Handler(BaseHTTPRequestHandler):
-    def do_GET(self):
+    def do_GET(self) -> None:
         if self.path != "/metrics":
             self.send_error(404)
             return
@@ -177,7 +179,8 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def log_message(self, *args):
+    @override
+    def log_message(self, *args: object) -> None:
         pass
 
 

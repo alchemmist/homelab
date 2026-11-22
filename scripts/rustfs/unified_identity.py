@@ -277,7 +277,7 @@ def require_default_flows() -> None:
         )
 
 
-def authority(url):
+def authority(url: str) -> tuple[str, int]:
     """Execute authority."""
     parsed = urlsplit(url)
     if (
@@ -293,12 +293,12 @@ def authority(url):
     )
 
 
-def digest(value):
+def digest(value: object) -> str:
     """Execute digest."""
     return hashlib.sha256(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest()
 
 
-def run(action="plan", nonce=None):
+def run(action: str = "plan", nonce: str | None = None) -> None:
     """Execute run."""
     from authentik.core.models import Application, Group, User
     from authentik.outposts.models import Outpost
@@ -308,7 +308,7 @@ def run(action="plan", nonce=None):
     from django.db import transaction
 
     require_valid_action(action, nonce)
-    root = Path("/tmp/rustfs-private-migration-" + nonce)
+    root = Path(f"/tmp/rustfs-private-migration-{nonce}")
     journal = root / "metadata.json"
     ensure_journal_dir(root, action)
     with transaction.atomic():
@@ -349,7 +349,7 @@ def run(action="plan", nonce=None):
         groups = [Group.objects.get(name=name) for name in GROUPS]
         require_default_flows()
         original = sorted(outpost.providers.values_list("pk", flat=True))
-        settings = dict(
+        settings: dict[str, object] = dict(
             name=NAME,
             mode="forward_single",
             external_host=HOST,
@@ -361,7 +361,7 @@ def run(action="plan", nonce=None):
             **FLOWS,
         )
 
-        def state(provider, app):
+        def state(provider: ProviderLike, app: AppLike) -> dict[str, object]:
             return captured_state(
                 provider,
                 app,
