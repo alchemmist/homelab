@@ -1,10 +1,11 @@
+---
 fullnameOverride: redis-common
 replicas: 3  # Three Sentinel voters on three nodes; also provides a second async copy.
 hardAntiAffinity: true
 podDisruptionBudget: {minAvailable: 2}
 image:
   repository: docker.io/library/redis
-  tag: 7.4-alpine@sha256:52d1ea8a654b10f06af3ecda4e9dbcd035c7868b5c49ee7975de917f81de13db
+  tag: 7.4-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
 persistentVolume: {enabled: true, storageClass: redis-local-retain, size: 2Gi}
 auth: true
 existingSecret: redis-common-control
@@ -13,9 +14,9 @@ redis:
   port: 0
   tlsPort: 6379
   tlsReplication: true
-  authClients: 'no'
+  authClients: "no"
   config:
-    appendonly: 'yes'
+    appendonly: "yes"
     appendfsync: everysec
     maxmemory: 192mb
     maxmemory-policy: noeviction
@@ -30,7 +31,7 @@ sentinel:
   port: 0
   tlsPort: 26379
   tlsReplication: true
-  authClients: 'no'
+  authClients: "no"
   auth: true
   existingSecret: redis-common-control
   quorum: 2
@@ -54,6 +55,10 @@ haproxy:
   # Chart switch mounts the public CA. Our custom frontend passes TLS through.
   tls: {enabled: true, secretName: redis-common-public-ca, certMountPath: /trust, keyName: ca.crt}
   customConfig: |
+    {{- $verify := "check check-ssl verify required verifyhost" -}}
+    {{- $host := "redis-common-haproxy.redis.svc.cluster.local" -}}
+    {{- $ca := "ca-file /trust/ca.crt inter 1s fall 2 rise 1" -}}
+    {{- $check := printf "%s %s %s" $verify $host $ca -}}
     defaults
       mode tcp
       timeout connect 2s
@@ -78,13 +83,15 @@ haproxy:
       tcp-check send SENTINEL\ get-master-addr-by-name\ redis-common\r\n
       tcp-check expect string \r\nREPLACE_ANNOUNCE{{ $i }}\r\n
       {{- range $j := until 3 }}
-      server s{{ $j }} redis-common-announce-{{ $j }}:26379 check check-ssl verify required verifyhost redis-common-haproxy.redis.svc.cluster.local ca-file /trust/ca.crt inter 1s fall 2 rise 1
+      server s{{ $j }} redis-common-announce-{{ $j }}:26379 {{ $check }}
       {{- end }}
+    {{- $shutdown := "on-marked-down shutdown-sessions" }}
     backend primary{{ $i }}
       option tcp-check
       tcp-check send "AUTH ${AUTH}"\r\n
       tcp-check expect string +OK
       tcp-check send INFO\ replication\r\n
       tcp-check expect string role:master
-      server r{{ $i }} redis-common-announce-{{ $i }}:6379 check check-ssl verify required verifyhost redis-common-haproxy.redis.svc.cluster.local ca-file /trust/ca.crt inter 1s fall 2 rise 1 on-marked-down shutdown-sessions
+      server r{{ $i }} redis-common-announce-{{ $i }}:6379 {{ $check }} {{ $shutdown }}
     {{- end }}
+...

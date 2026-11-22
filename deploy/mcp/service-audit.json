@@ -179,6 +179,11 @@
       "upstream": "https://github.com/rancher/rancher-ai-mcp"
     },
     {
+      "application": "redis-common",
+      "decision": "not-connected",
+      "reason": "No project MCP access configured to Redis keys or credentials; database browser deployment does not change this boundary."
+    },
+    {
       "application": "remark42",
       "decision": "no-first-party-runtime-mcp-identified",
       "reason": "No suitable first-party operational MCP identified in upstream source/docs; do not install community wrappers."

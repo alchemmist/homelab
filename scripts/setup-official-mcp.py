@@ -72,7 +72,7 @@ def install_runtime(target: Path, *, offline: bool, archive: Path | None) -> Non
     for name in ("package.json", "package-lock.json"):
         shutil.copyfile(ROOT / "tools/official-mcp" / name, npm / name)
     subprocess.run(
-        [sys.executable, "-I", str(ROOT / "charts/openhands/files/pi-monori/patch_npm.py"), "argo"]
+        [sys.executable, "-I", str(ROOT / "tools/official-mcp/patch_npm.py"), "argo"]
         + (["--offline"] if offline else []),
         cwd=npm,
         check=True,
