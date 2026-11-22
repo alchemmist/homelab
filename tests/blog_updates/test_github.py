@@ -58,7 +58,10 @@ class WriterTests(unittest.TestCase):
         assert r["status"] == "created"
         writes = [c for c in g.calls if c[0] == "PUT"]
         assert [c[1] for c in writes] == ["contents/site/content/updates.md"]
-        assert cast("dict[str, object]", writes[0][2])["branch"] == "automation/blog-updates-" + "a" * 40
+        assert (
+            cast("dict[str, object]", writes[0][2])["branch"]
+            == "automation/blog-updates-" + "a" * 40
+        )
         assert not any("merge" in c[1] for c in g.calls)
 
     def test_no_change_no_branch(self) -> None:

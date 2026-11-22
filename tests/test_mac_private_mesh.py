@@ -61,7 +61,12 @@ def test_four_nodes_have_unique_exact_client_host_routes() -> None:
     ]
     assert len(peers) == 3
     assert len(routes) == len(set(routes)) == 4
-    assert set(routes) == {"10.250.0.1/32", "10.250.0.2/32", "10.250.0.3/32", "10.250.0.5/32"}
+    assert set(routes) == {
+        "10.250.0.1/32",
+        "10.250.0.2/32",
+        "10.250.0.3/32",
+        "10.250.0.5/32",
+    }
     assert "10.250.0.5/32" in _sequence(peers[0]["allowed_ips"])
     assert peers[0]["name"] == "socrat-0"
     assert "default" not in routes and "0.0.0.0/0" not in routes

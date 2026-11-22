@@ -60,7 +60,13 @@ def apply_missing(
 
 def kub(args, document=None):
     p = subprocess.run(
-        ["env", "K3S_CONFIG_FILE=/dev/null", "kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
+        [
+            "env",
+            "K3S_CONFIG_FILE=/dev/null",
+            "kubectl",
+            "--kubeconfig",
+            "/etc/rancher/k3s/k3s.yaml",
+        ]
         + args,
         input=None if document is None else json.dumps(document),
         text=True,
@@ -112,7 +118,12 @@ def main():
         apply_missing(missing, before, docs)
     print(
         json.dumps(
-            {"operations": len(missing), "apply": args.apply, "policy": NAME, "live_overwrites": 0}
+            {
+                "operations": len(missing),
+                "apply": args.apply,
+                "policy": NAME,
+                "live_overwrites": 0,
+            }
         )
     )
 

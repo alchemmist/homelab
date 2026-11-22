@@ -105,7 +105,10 @@ sys.exit(1 if s['apply_calls'] == 1 else 0)
                 env={**os.environ, "PRIVATE_WEB_TEST_STATE": str(state)},
             )
             assert result.returncode != 0
-            assert json.loads(state.read_text()) == {"apply_calls": 1, "rules": ["original"]}
+            assert json.loads(state.read_text()) == {
+                "apply_calls": 1,
+                "rules": ["original"],
+            }
             assert (directory / "backup.nft").exists()
             rules = (directory / "validated.nft").read_text()
             assert (

@@ -22,7 +22,11 @@ class OverviewCapacityTest(unittest.TestCase):
             p = panels[panel_id]
             assert p["type"] == "gauge"
             assert p["options"] == {
-                "reduceOptions": {"values": False, "calcs": ["lastNotNull"], "fields": ""},
+                "reduceOptions": {
+                    "values": False,
+                    "calcs": ["lastNotNull"],
+                    "fields": "",
+                },
                 "orientation": "auto",
                 "showThresholdLabels": False,
                 "showThresholdMarkers": True,

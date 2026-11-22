@@ -10,7 +10,16 @@ from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "charts/spi-triage/files"))
-from core import REPORT_SCHEMA, Failure, Store, clean, digest, normalize, render, validate
+from core import (
+    REPORT_SCHEMA,
+    Failure,
+    Store,
+    clean,
+    digest,
+    normalize,
+    render,
+    validate,
+)
 from integrations import Evidence, GitHub, Model, metric_summary
 from service import Engine
 
@@ -148,7 +157,15 @@ class CoreTests(unittest.TestCase):
     def test_redaction_precedes_model(self) -> None:
         """Verify secrets are redacted before the model runs."""
         secret = "ghp_" + "x" * 25
-        assert secret not in json.dumps(clean({"password": "private", "message": secret, "description": "token=private"}))
+        assert secret not in json.dumps(
+            clean(
+                {
+                    "password": "private",
+                    "message": secret,
+                    "description": "token=private",
+                }
+            )
+        )
         assert clean({"Authorization": "Bearer xyz"})["Authorization"] == "[REDACTED]"
 
     def test_english_contract(self) -> None:
@@ -194,7 +211,12 @@ class AdapterTests(unittest.TestCase):
         http = Mock()
         http.request.side_effect = [
             [
-                {"number": i, "title": "[SPI] Test", "state": "open", "updated_at": "first"}
+                {
+                    "number": i,
+                    "title": "[SPI] Test",
+                    "state": "open",
+                    "updated_at": "first",
+                }
                 for i in range(1, 21)
             ],
             [
@@ -249,7 +271,10 @@ class EvidenceTests(unittest.TestCase):
             "data": {
                 "resultType": "matrix",
                 "result": [
-                    {"metric": {"name": "example"}, "values": [[1, "0"], [2, "7"], [3, "0"]]}
+                    {
+                        "metric": {"name": "example"},
+                        "values": [[1, "0"], [2, "7"], [3, "0"]],
+                    }
                 ],
             }
         }
@@ -270,7 +295,6 @@ class EvidenceTests(unittest.TestCase):
         """Verify host profiles exclude raw trace attributes."""
         http = Mock()
 
-
         def request(_method, url, *_args, **_kwargs) -> dict[str, object]:
             if "/api/v1/query?" in url:
                 return {"data": {"result": [{"metric": {"nodename": "socrat-0"}}]}}
@@ -284,7 +308,10 @@ class EvidenceTests(unittest.TestCase):
                                         {
                                             "status": {"code": 2},
                                             "attributes": [
-                                                {"key": "password", "value": "do-not-publish"}
+                                                {
+                                                    "key": "password",
+                                                    "value": "do-not-publish",
+                                                }
                                             ],
                                         }
                                     ]

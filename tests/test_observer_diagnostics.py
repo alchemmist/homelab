@@ -41,7 +41,11 @@ def test_classify_without_exception_strings(error: BaseException, kind: str) -> 
 
 def test_http_status_never_leaks_url_headers_body() -> None:
     error = urllib.error.HTTPError(
-        "https://SECRET/", 403, "SECRET", {"Authorization": "SECRET"}, io.BytesIO(b"SECRET")
+        "https://SECRET/",
+        403,
+        "SECRET",
+        {"Authorization": "SECRET"},
+        io.BytesIO(b"SECRET"),
     )
     assert m.classify(error) == {"kind": "http_status", "http_status": 403}
 

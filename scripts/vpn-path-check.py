@@ -86,7 +86,9 @@ def check(url, vantage, family=4, control_address=None) -> "dict[str, object]":
             context.set_alpn_protocols(["http/1.1"])
             with context.wrap_socket(raw, server_hostname=host) as tls:
                 result.update(
-                    tls_verified=True, tls_version=tls.version(), alpn=tls.selected_alpn_protocol()
+                    tls_verified=True,
+                    tls_version=tls.version(),
+                    alpn=tls.selected_alpn_protocol(),
                 )
                 stage = "https_transfer"
                 request = (
@@ -106,7 +108,10 @@ def check(url, vantage, family=4, control_address=None) -> "dict[str, object]":
                         result.update(received_bytes=len(error.partial), complete=False)
                         raise
                     result["received_bytes"] = len(data)
-                    result["complete"] = len(data) <= MAX_BYTES and response.length in (None, 0)
+                    result["complete"] = len(data) <= MAX_BYTES and response.length in (
+                        None,
+                        0,
+                    )
                     result["complete_success_above_32k"] = bool(
                         result["complete"] and len(data) > 32768 and response.status == 200
                     )

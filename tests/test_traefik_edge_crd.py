@@ -59,7 +59,10 @@ class EdgeCrdTests(unittest.TestCase):
             if d["kind"] == "Middleware" and d["metadata"]["name"] == "traefik-edge-vpn-msk-only"
         )
         assert m["metadata"]["namespace"] == "argocd"
-        assert m["spec"]["ipAllowList"]["sourceRange"] == ["10.250.0.40/32", "127.0.0.1/32"]
+        assert m["spec"]["ipAllowList"]["sourceRange"] == [
+            "10.250.0.40/32",
+            "127.0.0.1/32",
+        ]
         assert "ipStrategy" not in m["spec"]["ipAllowList"]
         ingress = next(
             d
@@ -78,7 +81,10 @@ class EdgeCrdTests(unittest.TestCase):
             if d["kind"] == "Ingress" and d["metadata"]["name"] == "traefik-edge-vpn"
         )
         paths = ingress["spec"]["rules"][0]["http"]["paths"]
-        assert {p["backend"]["service"]["port"]["number"] for p in paths} == {18082, 12096}
+        assert {p["backend"]["service"]["port"]["number"] for p in paths} == {
+            18082,
+            12096,
+        }
         assert (
             "traefik.ingress.kubernetes.io/router.middlewares"
             not in ingress["metadata"]["annotations"]

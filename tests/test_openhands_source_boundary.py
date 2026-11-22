@@ -256,9 +256,7 @@ def _pilot_fixture() -> dict[str, object]:
     )
 
 
-def _assert_owner_canvas_extensions(
-    documents: list[dict[str, object]]
-) -> None:
+def _assert_owner_canvas_extensions(documents: list[dict[str, object]]) -> None:
     """Check the explicit owner canvas extensions without executing its source."""
     pod = _pod(documents)
     fixture = _pilot_fixture()
@@ -295,7 +293,9 @@ def _assert_owner_canvas_extensions(
     assert mounts[1:3] == overlay, "SDK overlay mount boundary changed"
     # Check sources and uniqueness: a second literal URL must not override the Secret.
     required = {
-        "AUTOMATION_DB_URL": {"valueFrom": {"secretKeyRef": {"name": "automations-postgres", "key": "url"}}},
+        "AUTOMATION_DB_URL": {
+            "valueFrom": {"secretKeyRef": {"name": "automations-postgres", "key": "url"}}
+        },
         "PGSSLROOTCERT": {"value": "/pg-ca/ca.crt"},
         "AUTOMATION_DB_POOL_SIZE": {"value": "3"},
         "AUTOMATION_DB_MAX_OVERFLOW": {"value": "1"},
@@ -329,7 +329,10 @@ def _assert_owner_publisher_extensions(documents: list[dict[str, object]]) -> No
     ], "Publisher credential mount changed"
     encoder = _mapping(_list(_get(pub, "initContainers"))[0])
     assert encoder["volumeMounts"] == [{"name": "encoder", "mountPath": "/encoder"}]
-    assert encoder["args"] == [_embedded("files/steward/install_ffmpeg.py"), "/encoder/ffmpeg"]
+    assert encoder["args"] == [
+        _embedded("files/steward/install_ffmpeg.py"),
+        "/encoder/ffmpeg",
+    ]
 
 
 def _assert_owner_oidc_extensions(documents: list[dict[str, object]]) -> None:
@@ -379,7 +382,12 @@ def _assert_owner_oidc_extensions(documents: list[dict[str, object]]) -> None:
     ingress = _named(documents, "Ingress", "openhands-oidc")
     assert ingress["spec"] == {
         "ingressClassName": "traefik",
-        "tls": [{"hosts": ["openhands.socrat.alchemmist.xyz"], "secretName": "openhands-oidc-tls"}],
+        "tls": [
+            {
+                "hosts": ["openhands.socrat.alchemmist.xyz"],
+                "secretName": "openhands-oidc-tls",
+            }
+        ],
         "rules": [
             {
                 "host": "openhands.socrat.alchemmist.xyz",
@@ -389,7 +397,10 @@ def _assert_owner_oidc_extensions(documents: list[dict[str, object]]) -> None:
                             "path": "/",
                             "pathType": "Prefix",
                             "backend": {
-                                "service": {"name": "openhands-oidc", "port": {"number": 4180}}
+                                "service": {
+                                    "name": "openhands-oidc",
+                                    "port": {"number": 4180},
+                                }
                             },
                         }
                     ]
@@ -415,9 +426,15 @@ def _assert_owner_backup_declarations(documents: list[dict[str, object]]) -> Non
     assert _get(backup_pod, "volumes") == [
         {
             "name": "source",
-            "persistentVolumeClaim": {"claimName": "data-openhands-0", "readOnly": True},
+            "persistentVolumeClaim": {
+                "claimName": "data-openhands-0",
+                "readOnly": True,
+            },
         },
-        {"name": "backup", "persistentVolumeClaim": {"claimName": "openhands-cold-backups"}},
+        {
+            "name": "backup",
+            "persistentVolumeClaim": {"claimName": "openhands-cold-backups"},
+        },
         {"name": "config", "configMap": {"name": "openhands-cold-backup-20261119"}},
         {"name": "tmp", "emptyDir": {"medium": "Memory", "sizeLimit": "128Mi"}},
     ], "Backup source authority changed"
@@ -428,7 +445,10 @@ def _assert_owner_backup_declarations(documents: list[dict[str, object]]) -> Non
         {"name": "config", "mountPath": "/config", "readOnly": True},
         {"name": "tmp", "mountPath": "/tmp"},
     ], "Backup source authority changed"
-    for name, size in [("openhands-cold-backups", "3Gi"), ("openhands-upgrade-backups", "1Gi")]:
+    for name, size in [
+        ("openhands-cold-backups", "3Gi"),
+        ("openhands-upgrade-backups", "1Gi"),
+    ]:
         claim = _named(documents, "PersistentVolumeClaim", name)
         assert _get(claim, "metadata", "annotations") == {
             "argocd.argoproj.io/sync-options": "Prune=false,Delete=false"
@@ -600,11 +620,14 @@ def test_database_connection_rejects_changed_source(
     documents = copy.deepcopy(rendered)
     owner = _one(documents, "StatefulSet")
     canvas = _mapping(_list(_pod(documents)["containers"])[0])
-    index, = [i for i, entry in enumerate(_list(canvas["env"])) if _get(entry, "name") == name]
-    documents[documents.index(owner)] = _mapping(_replace_path(
-        owner, ("spec", "template", "spec", "containers", 0, "env", index),
-        {"name": name, **replacement},
-    ))
+    (index,) = [i for i, entry in enumerate(_list(canvas["env"])) if _get(entry, "name") == name]
+    documents[documents.index(owner)] = _mapping(
+        _replace_path(
+            owner,
+            ("spec", "template", "spec", "containers", 0, "env", index),
+            {"name": name, **replacement},
+        )
+    )
     with pytest.raises(AssertionError, match=name):
         _assert_boundary(documents)
 
@@ -712,7 +735,12 @@ def _oidc_target(
         if violation == "oidc-pkce"
         else [*args, "--skip-auth-regex=.*"]
     )
-    return role, kind, ("spec", "template", "spec", "containers", 0, "args"), replacement
+    return (
+        role,
+        kind,
+        ("spec", "template", "spec", "containers", 0, "args"),
+        replacement,
+    )
 
 
 def _violation_target(
@@ -729,30 +757,72 @@ def _violation_target(
         "overlay-write": (
             "openhands",
             "StatefulSet",
-            ("spec", "template", "spec", "containers", 0, "volumeMounts", 1, "readOnly"),
+            (
+                "spec",
+                "template",
+                "spec",
+                "containers",
+                0,
+                "volumeMounts",
+                1,
+                "readOnly",
+            ),
             False,
         ),
         "database-ca-write": (
             "openhands",
             "StatefulSet",
-            ("spec", "template", "spec", "containers", 0, "volumeMounts", 0, "readOnly"),
+            (
+                "spec",
+                "template",
+                "spec",
+                "containers",
+                0,
+                "volumeMounts",
+                0,
+                "readOnly",
+            ),
             False,
         ),
         "publisher-write": (
             "monori-publisher",
             "Deployment",
-            ("spec", "template", "spec", "containers", 0, "volumeMounts", 3, "readOnly"),
+            (
+                "spec",
+                "template",
+                "spec",
+                "containers",
+                0,
+                "volumeMounts",
+                3,
+                "readOnly",
+            ),
             False,
         ),
-        "database-egress": ("automation-postgres-egress", "NetworkPolicy", ("spec", "egress"), [{}]),
-        "oidc-service-selector": ("openhands-oidc", "Service", ("spec", "selector", "app"), "wrong-workload"),
+        "database-egress": (
+            "automation-postgres-egress",
+            "NetworkPolicy",
+            ("spec", "egress"),
+            [{}],
+        ),
+        "oidc-service-selector": (
+            "openhands-oidc",
+            "Service",
+            ("spec", "selector", "app"),
+            "wrong-workload",
+        ),
         "publisher-token": (
             "monori-publisher",
             "Deployment",
             ("spec", "template", "spec", "automountServiceAccountToken"),
             True,
         ),
-        "redis-egress": ("openhands-oidc-sessions", "NetworkPolicy", ("spec", "egress"), [{}]),
+        "redis-egress": (
+            "openhands-oidc-sessions",
+            "NetworkPolicy",
+            ("spec", "egress"),
+            [{}],
+        ),
     }
     if violation in simple:
         return simple[violation]
@@ -760,9 +830,26 @@ def _violation_target(
         return _oidc_target(violation, documents)
     if violation.startswith("backup-"):
         path = (
-            ("spec", "template", "spec", "volumes", 0, "persistentVolumeClaim", "readOnly")
+            (
+                "spec",
+                "template",
+                "spec",
+                "volumes",
+                0,
+                "persistentVolumeClaim",
+                "readOnly",
+            )
             if violation == "backup-volume-write"
-            else ("spec", "template", "spec", "containers", 0, "volumeMounts", 0, "readOnly")
+            else (
+                "spec",
+                "template",
+                "spec",
+                "containers",
+                0,
+                "volumeMounts",
+                0,
+                "readOnly",
+            )
         )
         return "openhands-cold-backup-20261119", "Job", path, False
     if violation == "duplicate-identity":
@@ -810,7 +897,6 @@ def test_current_owner_extensions_reject_targeted_mutations(
     }.get(violation)
     with pytest.raises(AssertionError, match=message):
         _assert_boundary(documents)
-
 
 
 @pytest.fixture
@@ -948,7 +1034,8 @@ def test_handoff_retains_both_native_ci_success_variants(
 
 
 @pytest.mark.parametrize(
-    "connection", ["reviews", "comments", "reviewThreads", "commits", "checks", "thread-comments"]
+    "connection",
+    ["reviews", "comments", "reviewThreads", "commits", "checks", "thread-comments"],
 )
 @pytest.mark.parametrize(
     "metadata",

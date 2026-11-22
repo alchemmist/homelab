@@ -286,7 +286,8 @@ def run(
     context = ssl.create_default_context(cafile=str(tls / "ca.crt"))
     context.load_cert_chain(str(tls / "client.crt"), str(tls / "client.key"))
     request = urllib.request.Request(
-        "https://10.250.0.3:3200/api/traces/" + trace_id, headers={"Accept": "application/json"}
+        "https://10.250.0.3:3200/api/traces/" + trace_id,
+        headers={"Accept": "application/json"},
     )
     with urllib.request.urlopen(request, context=context, timeout=20) as response:
         body = response.read(8 * 1024**2 + 1)

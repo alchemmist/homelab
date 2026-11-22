@@ -73,7 +73,9 @@ def browser(url, data=None):
         ]:
             headers["X-authentik-CSRF"] = c.value
     req = urllib.request.Request(
-        url, headers=headers, data=json.dumps(data).encode() if data is not None else None
+        url,
+        headers=headers,
+        data=json.dumps(data).encode() if data is not None else None,
     )
     try:
         with opener.open(req, timeout=30) as r:
@@ -104,7 +106,11 @@ user = admin(
     },
 )
 try:
-    admin("POST", "core/users/" + str(user["pk"]) + "/set_password/", {"password": password})
+    admin(
+        "POST",
+        "core/users/" + str(user["pk"]) + "/set_password/",
+        {"password": password},
+    )
     status, headers, body = browser("https://wiki.socrat.alchemmist.xyz/api/auth/oidc/login")
     target = headers["Location"]
     for _step in range(30):

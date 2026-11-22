@@ -34,7 +34,11 @@ def kpatch(obj, path, changes):
     meta = obj["metadata"]
     patch = [
         {"op": "test", "path": "/metadata/uid", "value": meta["uid"]},
-        {"op": "test", "path": "/metadata/resourceVersion", "value": meta["resourceVersion"]},
+        {
+            "op": "test",
+            "path": "/metadata/resourceVersion",
+            "value": meta["resourceVersion"],
+        },
     ]
     for field, value in changes.items():
         patch.append({"op": "add", "path": "/" + field, "value": value})
@@ -153,7 +157,10 @@ def require_native_definitions_match(login, role, binding, definitions):
                     "Native object ownership drift",
                 )
             else:
-                require(actual.get(key) == value, "Native object specification drift: " + key)
+                require(
+                    actual.get(key) == value,
+                    "Native object specification drift: " + key,
+                )
 
 
 def _build(state, policy):
@@ -343,7 +350,10 @@ def _build(state, policy):
                 )
             )
     setting = state["rancherSessionSetting"]
-    require(setting["metadata"]["name"] == "auth-user-session-ttl-minutes", "Unexpected setting")
+    require(
+        setting["metadata"]["name"] == "auth-user-session-ttl-minutes",
+        "Unexpected setting",
+    )
     if (setting.get("value") or setting.get("default")) != "60":
         ops.append(
             kpatch(
@@ -394,7 +404,10 @@ def _build(state, policy):
         "Rancher authentication is not the reviewed restricted provider",
     )
     allowed = auth["allowedPrincipalIds"]
-    require(isinstance(allowed, list) and len(set(allowed)) == len(allowed), "Ambiguous admission")
+    require(
+        isinstance(allowed, list) and len(set(allowed)) == len(allowed),
+        "Ambiguous admission",
+    )
     if rancher["groupPrincipal"] not in allowed:
         ops.append(
             kpatch(
@@ -417,7 +430,10 @@ def _build(state, policy):
             and not gated.get("failure_result"),
             "Complex gated Harbor admission; stop for review",
         )
-        require(isinstance(gated.get("pk"), str) and gated["pk"], "Missing Harbor binding identity")
+        require(
+            isinstance(gated.get("pk"), str) and gated["pk"],
+            "Missing Harbor binding identity",
+        )
         ops.append(
             {
                 "system": "authentik",

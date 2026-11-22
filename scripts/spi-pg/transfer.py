@@ -36,13 +36,10 @@ def transfer(src, db):
     db.execute(Path(__file__).with_name("schema.sql").read_text())
     tabs = [
         r[0]
-        for r in src.execute(
-            "select name from sqlite_master where type='table' order by rowid"
-        )
+        for r in src.execute("select name from sqlite_master where type='table' order by rowid")
     ]
     assert len(tabs) == 19 and set(tabs) == {
-        r[0]
-        for r in db.execute("select tablename from pg_tables where schemaname='public'")
+        r[0] for r in db.execute("select tablename from pg_tables where schemaname='public'")
     }
     total = 0
     for t in tabs:
@@ -59,9 +56,7 @@ def transfer(src, db):
         expected = collections.Counter()
         source_rows = src.execute("select * from " + t)
         while batch := source_rows.fetchmany(8):
-            with db.cursor().copy(
-                sql.SQL("COPY {} ({}) FROM STDIN").format(table, columns)
-            ) as cp:
+            with db.cursor().copy(sql.SQL("COPY {} ({}) FROM STDIN").format(table, columns)) as cp:
                 for row in batch:
                     cp.write_row(row)
             expected.update(receipt(batch))

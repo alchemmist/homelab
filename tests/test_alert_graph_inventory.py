@@ -34,12 +34,13 @@ class AlertGraphInventoryTests(unittest.TestCase):
 
     def test_all_source_rules_have_real_panel_queries_and_priority(self) -> None:
         """Every source variant links to a real panel containing its exact condition."""
-        rows = json.loads((ROOT / "docs/monitoring/alert-graphs.inventory.json").read_text())
+        rows = json.loads((ROOT / "docs/observability/monitoring/alert-graphs.inventory.json").read_text())
         # Includes Service-path divergence and distinct absent/down API scrapes.
         expected_source_rule_count = 219
         assert sum(r["alert"] == "SocratPrAgentWebhookRedeliveryFailed" for r in rows) == 1
         assert {r["alert"] for r in rows if r["group"] == "redis-common"} == {
-            "SocratRedisCommonWriterUnavailable", "SocratRedisCommonRedundancyReduced",
+            "SocratRedisCommonWriterUnavailable",
+            "SocratRedisCommonRedundancyReduced",
         }
         assert [r["owner"] for r in rows if r["alert"] == "LMSWebUnavailable"] == ["lms"]
         assert any(r["alert"] == "ThanosWarmWorkshopDiskLow" for r in rows)
@@ -80,7 +81,7 @@ class AlertGraphInventoryTests(unittest.TestCase):
         if executable is None:
             message = "Native alert graph coverage requires Helm; no fallback"
             raise FileNotFoundError(message)
-        expected = json.loads((ROOT / "docs/monitoring/alert-graphs.inventory.json").read_text())
+        expected = json.loads((ROOT / "docs/observability/monitoring/alert-graphs.inventory.json").read_text())
         for owner in [*graphs.OWNERS, "rancher"]:
             app = yaml.safe_load((ROOT / "deploy/argocd/apps" / (owner + ".yaml")).read_text())
             if owner == "rancher":

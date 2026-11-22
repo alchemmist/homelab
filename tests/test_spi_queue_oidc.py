@@ -70,9 +70,11 @@ class NativeQueueChartTests(unittest.TestCase):
             "name": "oidc-client",
             "secret": {"secretName": "spi-queue-oidc", "defaultMode": 288},
         } in pod["volumes"]
-        assert {"name": "oidc-client", "mountPath": "/oidc-client", "readOnly": True} in pod[
-            "containers"
-        ][0]["volumeMounts"]
+        assert {
+            "name": "oidc-client",
+            "mountPath": "/oidc-client",
+            "readOnly": True,
+        } in pod["containers"][0]["volumeMounts"]
         assert not pod["automountServiceAccountToken"]
         for name in ("spi-triage",):
             assert "oidc-client" not in str(docs["Deployment", "automation", name])
@@ -104,10 +106,15 @@ class NativeQueueChartTests(unittest.TestCase):
         assert "0.0.0.0/0" not in text
         assert "9000" not in text
 
-    def test_catalog_has_exact_native_callback_groups_and_no_human_assignment(self) -> None:
+    def test_catalog_has_exact_native_callback_groups_and_no_human_assignment(
+        self,
+    ) -> None:
         catalog = json.loads((ROOT / "deploy/identity/spi-triage-oidc.json").read_text())
         assert catalog["provider"]["redirect_uris"] == [
-            {"matching_mode": "strict", "url": "https://spi.socrat.alchemmist.xyz/oauth/callback"}
+            {
+                "matching_mode": "strict",
+                "url": "https://spi.socrat.alchemmist.xyz/oauth/callback",
+            }
         ]
         assert catalog["provider"]["sub_mode"] == "user_uuid"
         assert catalog["provider"]["client_type"] == "confidential"

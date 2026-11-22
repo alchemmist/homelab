@@ -1,6 +1,6 @@
 # Strict quality continuation — operator contract
 
-This continuation supersedes the earlier accepted-debt quality ratchet as the final target. Work from the semantic 15-node DAG, not the old flat/sharded graph. Read AGENTS.md, docs/context/context.md and relevant ownership/native identity/storage/network runbooks before changes. Reference /Users/antonmoss/code/monori configurations read-only.
+This continuation supersedes the earlier accepted-debt quality ratchet as the final target. Work from the semantic 15-node DAG, not the old flat/sharded graph. Read AGENTS.md, docs/platform/system-overview.md and relevant ownership/native identity/storage/network runbooks before changes. Reference /Users/antonmoss/code/monori configurations read-only.
 
 ## Required outcome
 

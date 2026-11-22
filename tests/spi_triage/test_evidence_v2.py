@@ -78,7 +78,6 @@ class ArtifactTests(unittest.TestCase):
     def bundle(self, text: str = "diagnostic") -> Bundle:
         """Prepare a fresh evidence bundle with the given text."""
         result: Bundle = prepare_bundle(
-
             event(),
             {"window": {"start": 1, "end": 2}},
             [{"name": "logs.json", "content": text, "source": {"query": "test"}}],
@@ -181,7 +180,10 @@ class ArtifactTests(unittest.TestCase):
     def test_index_ambiguous_reconciles(self) -> None:
         """Verify ambiguous index uploads reconcile to one index."""
         b = self.bundle()
-        state = {"done": {p["marker"]: "url" for p in b["parts"]}, "index_pending": True}
+        state = {
+            "done": {p["marker"]: "url" for p in b["parts"]},
+            "index_pending": True,
+        }
         g = Mock()
         g.comments.return_value = [
             {
@@ -290,7 +292,12 @@ class TelemetryTests(unittest.TestCase):
     def test_links_absolute_decodable(self) -> None:
         """Verify generated links are absolute and round-trip decodable."""
         url = grafana_explore_url(
-            "https://grafana.socrat.alchemmist.xyz", "prometheus", 'up{job="x"}', 10, 20, "expr"
+            "https://grafana.socrat.alchemmist.xyz",
+            "prometheus",
+            'up{job="x"}',
+            10,
+            20,
+            "expr",
         )
         q = parse_qs(urlsplit(url).query)
         pane = json.loads(q["panes"][0])["spi"]
@@ -581,7 +588,9 @@ class EngineArtifactTests(unittest.TestCase):
             evidence = Mock()
             e = event()
             bundle = prepare_bundle(
-                e, {}, [{"name": "test.json", "content": {"observation": "real fixture"}}]
+                e,
+                {},
+                [{"name": "test.json", "content": {"observation": "real fixture"}}],
             )
             evidence.collect.return_value = {"bundle": bundle}
             engine = Engine(store, g, model, evidence, write=True)
@@ -704,7 +713,11 @@ class PrimaryReconciliationTests(unittest.TestCase):
         g.comments = Mock(return_value=[{"body": "marker", "user": {"type": "User"}}])
         assert g.reconcile("marker", 9) == 0
         g.comments.return_value = [
-            {"body": "marker", "user": {"type": "Bot"}, "performed_via_github_app": {"id": 5569869}}
+            {
+                "body": "marker",
+                "user": {"type": "Bot"},
+                "performed_via_github_app": {"id": 5569869},
+            }
         ]
         assert g.reconcile("marker", 9) == 9
 
@@ -770,7 +783,12 @@ class GrafanaLoginLinkTests(unittest.TestCase):
         from grafana_links import repair_markdown_links
 
         url = grafana_explore_url(
-            "https://grafana.socrat.alchemmist.xyz", "loki", '{pod="test"}', 10, 20, "expr"
+            "https://grafana.socrat.alchemmist.xyz",
+            "loki",
+            '{pod="test"}',
+            10,
+            20,
+            "expr",
         ).replace("&forceLogin=true", "")
         body = "[Logs](" + url + ")\n```json\n" + json.dumps({"original_url": url}) + "\n```"
         repaired = repair_markdown_links(body)

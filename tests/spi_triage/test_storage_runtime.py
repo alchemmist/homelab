@@ -31,7 +31,9 @@ class Runtime(unittest.TestCase):
 
             def opened(path, flags, *args) -> int:
                 return real_open(
-                    link if str(path) == "/s3-writer/credentials.json" else path, flags, *args
+                    link if str(path) == "/s3-writer/credentials.json" else path,
+                    flags,
+                    *args,
                 )
 
             for backend in ("legacy", "s3"):
@@ -69,6 +71,7 @@ class Runtime(unittest.TestCase):
 
     def test_serve_wires_engine_before_dispatch(self) -> None:
         """Verify serve wires the engine before dispatching."""
+
         class Stop(Exception):
             pass
 

@@ -164,9 +164,7 @@ def _require_retryable(row: dict[str, object], error: str) -> None:
         raise ValueError("unexpected state/stage/lease/error/intent")
 
 
-def _reviewed_selected_rows(
-    c: sqlite3.Connection, rows: list[dict[object, object]]
-) -> list[_Job]:
+def _reviewed_selected_rows(c: sqlite3.Connection, rows: list[dict[object, object]]) -> list[_Job]:
     """Validate the exact selected rows and their episode isolation."""
     selected = []
     for key, error in TARGETS.items():
@@ -285,7 +283,10 @@ def _verify_audit_state(
 
 
 def retry(
-    path: str | Path, authorization: _Authorization, execute: bool = False, manifest: object = None
+    path: str | Path,
+    authorization: _Authorization,
+    execute: bool = False,
+    manifest: object = None,
 ) -> dict[str, object]:
     """Verify state and re-queue the two reviewed dead jobs under immutable audit."""
     if os.environ.get("SPI_POSTGRES_URL"):
@@ -318,7 +319,11 @@ def retry(
         _verify_targets(c, rows, now)
         _verify_audit_state(c, expected_audit, audit_schema)
         c.commit()
-        return {"mode": "EXECUTED", "changed": 2, "authorization_hash": digest(authorization)}
+        return {
+            "mode": "EXECUTED",
+            "changed": 2,
+            "authorization_hash": digest(authorization),
+        }
     except BaseException:
         c.rollback()
         raise

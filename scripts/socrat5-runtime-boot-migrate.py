@@ -59,7 +59,10 @@ def main() -> None:
         }
         save(x)
         # Live pre-copy is an optimization, never represented as consistent backup.
-        run(["rsync", "-aHAXSx", "--numeric-ids", str(S) + "/", str(D) + "/"], allowed=(0, 24))
+        run(
+            ["rsync", "-aHAXSx", "--numeric-ids", str(S) + "/", str(D) + "/"],
+            allowed=(0, 24),
+        )
         x["phase"] = "precopy-complete-needs-new-boot"
         save(x)
     elif mode == "cold":
@@ -86,7 +89,16 @@ def main() -> None:
             save(x)
             # Full checksums compare unchanged files; rsync verifies each transferred file.
             # Delete only stale files in our own new staging tree, never source/PVCs.
-            run(["rsync", "-aHAXSxc", "--numeric-ids", "--delete", str(S) + "/", str(D) + "/"])
+            run(
+                [
+                    "rsync",
+                    "-aHAXSxc",
+                    "--numeric-ids",
+                    "--delete",
+                    str(S) + "/",
+                    str(D) + "/",
+                ]
+            )
             x["phase"] = "cold-verify"
             save(x)
         # Source is still cold. Check complete metadata/size tree after checksum sync;

@@ -103,7 +103,11 @@ def env_plan(d: Deployment) -> tuple[int, list[str], list[EnvVar]]:
     )
     require(
         lookup["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"]["value"]
-        in (legacy_role, previous_role, DESIRED["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"]),
+        in (
+            legacy_role,
+            previous_role,
+            DESIRED["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"],
+        ),
         "Unreviewed native role mapping; stop",
     )
     updates = [k for k, v in DESIRED.items() if k not in lookup or lookup[k].get("value") != v]
@@ -160,10 +164,20 @@ def main() -> None:
                     "value": env,
                 },
             ]
-            kube("patch", "deployment", DEPLOY, "--type=json", "--patch", json.dumps(patch))
+            kube(
+                "patch",
+                "deployment",
+                DEPLOY,
+                "--type=json",
+                "--patch",
+                json.dumps(patch),
+            )
             kube("rollout", "status", "deployment/" + DEPLOY, "--timeout=240s")
             after = json.loads(kube("get", "deployment", DEPLOY, "-o", "json"))
-            require(env_plan(after)[1] == [], "Precondition failed; stop and inspect privately")
+            require(
+                env_plan(after)[1] == [],
+                "Precondition failed; stop and inspect privately",
+            )
             # Exact pod-template invariants apart from those reviewed env entries.
             old = json.loads(json.dumps(d["spec"]["template"]))
             new = json.loads(json.dumps(after["spec"]["template"]))

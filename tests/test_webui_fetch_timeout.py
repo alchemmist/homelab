@@ -38,7 +38,6 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(GUARD.asyncio, "create_subprocess_exec", AsyncMock(side_effect=OSError)):
             assert "error" in await GUARD.bounded_fetch({"url": "https://example.com"})
 
-
     async def test_upstream_refusal_does_not_start_fetch(self) -> None:
         async def original(_form_data, _metadata, _event_caller, _call) -> object:
             return {"error": "Tool call was not approved"}
@@ -49,7 +48,12 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
                 {},
                 {"tools": {"fetch_url": {"type": "builtin"}}},
                 None,
-                {"function": {"name": "fetch_url", "arguments": '{"url":"https://example.com"}'}},
+                {
+                    "function": {
+                        "name": "fetch_url",
+                        "arguments": '{"url":"https://example.com"}',
+                    }
+                },
             )
             assert "not approved" in result["error"]
             fetch.assert_not_awaited()
@@ -88,7 +92,6 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_stop_kills_and_reaps_worker(self) -> None:
         await self.check_termination(cancel=True)
-
 
     async def test_only_builtin_fetch_is_intercepted(self) -> None:
         async def original(_form_data, metadata, _event_caller, call) -> object:

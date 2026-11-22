@@ -48,7 +48,9 @@ smoke_summary_count 3
 def query(port, context, expression='{__name__=~"smoke_.+|up"}'):
     parameters = urllib.parse.urlencode({"query": expression})
     with urllib.request.urlopen(
-        "https://127.0.0.1:" + str(port) + "/api/v1/query?" + parameters, context=context, timeout=5
+        "https://127.0.0.1:" + str(port) + "/api/v1/query?" + parameters,
+        context=context,
+        timeout=5,
     ) as response:
         document = json.load(response)
     if document.get("status") != "success":
@@ -64,9 +66,10 @@ def semantic_series_view(series):
     result = {}
     for key, value in series.items():
         attributes = dict(key)
-        numeric_label = {"smoke_duration_seconds_bucket": "le", "smoke_summary": "quantile"}.get(
-            str(attributes.get("__name__") or "")
-        )
+        numeric_label = {
+            "smoke_duration_seconds_bucket": "le",
+            "smoke_summary": "quantile",
+        }.get(str(attributes.get("__name__") or ""))
         if numeric_label in attributes:
             value_float = float(attributes[numeric_label])
             if math.isnan(value_float):
@@ -98,7 +101,12 @@ def promql_checks(context, reset):
         ("summary_quantile", 'sum(smoke_summary{quantile="0.5"})', None, 0.1),
         ("summary_count", "sum(smoke_summary_count)", None, 3),
         ("infinite_bucket", 'sum(smoke_duration_seconds_bucket{le="+Inf"})', None, 3),
-        ("numeric_bucket_selector", r'sum(smoke_duration_seconds_bucket{le=~"1(\\.0)?"})', None, 3),
+        (
+            "numeric_bucket_selector",
+            r'sum(smoke_duration_seconds_bucket{le=~"1(\\.0)?"})',
+            None,
+            3,
+        ),
     ]
     if reset:
         pairs.append(("counter_resets", "sum(resets(smoke_requests_total[1m]))", None, 1))
@@ -355,7 +363,10 @@ def run(args):
                                     {"labels": dict(key), "value": value}
                                     for key, value in data.items()
                                 ]
-                                for name, data in [("legacy", legacy), ("shadow", shadow)]
+                                for name, data in [
+                                    ("legacy", legacy),
+                                    ("shadow", shadow),
+                                ]
                             },
                             indent=2,
                         )
@@ -395,7 +406,9 @@ def run(args):
         "realSourceCompatibilityVerified": False,
         "phases": phases,
         "legacyVersion": subprocess.check_output(
-            [str(args.legacy_prometheus or args.prometheus), "--version"], text=True, timeout=10
+            [str(args.legacy_prometheus or args.prometheus), "--version"],
+            text=True,
+            timeout=10,
         ).splitlines()[0],
         "shadowVersion": subprocess.check_output(
             [str(args.prometheus), "--version"], text=True, timeout=10

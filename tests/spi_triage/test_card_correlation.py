@@ -36,7 +36,10 @@ class CorrelationTests(unittest.TestCase):
             },
             "receipt": {
                 "key": "Test/cluster",
-                "copies": [{"chat_id": 1, "message_id": 2}, {"chat_id": 3, "message_id": 4}],
+                "copies": [
+                    {"chat_id": 1, "message_id": 2},
+                    {"chat_id": 3, "message_id": 4},
+                ],
             },
         }
 
@@ -109,7 +112,10 @@ class CorrelationTests(unittest.TestCase):
                 [
                     {
                         "json": {
-                            "body": {"externalURL": "https://am.example", "alerts": [alert, alert]}
+                            "body": {
+                                "externalURL": "https://am.example",
+                                "alerts": [alert, alert],
+                            }
                         }
                     }
                 ]

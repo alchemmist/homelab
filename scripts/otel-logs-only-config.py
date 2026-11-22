@@ -48,7 +48,10 @@ def merge(live, desired):
                     narrow_selflog_exclude(candidate, result[section][name])
                 continue
             if name in shared:
-                require(candidate == live[section][name], "Shared component differs: " + name)
+                require(
+                    candidate == live[section][name],
+                    "Shared component differs: " + name,
+                )
                 continue
             if section == "exporters" and name in live[section]:
                 # Existing live endpoint/TLS is authoritative; enable backpressure only.
@@ -67,7 +70,10 @@ def merge(live, desired):
                     result[section][component] == live[section][component],
                     "Live component was mutated: " + component,
                 )
-    require(result.get("extensions") == live.get("extensions"), "Live extensions were mutated")
+    require(
+        result.get("extensions") == live.get("extensions"),
+        "Live extensions were mutated",
+    )
     return result
 
 

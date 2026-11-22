@@ -71,7 +71,13 @@ def public_certificate_identity(kube, namespace, application="litellm"):
     # kubectl emits only the public certificate field, never tls.key or the Secret.
     template = '{{printf "{\\"certificatePemBase64\\":%q}" (index .data "tls.crt")}}'
     selected = kube(
-        "-n", namespace, "get", "secret", leaf_name(application), "-o", "go-template=" + template
+        "-n",
+        namespace,
+        "get",
+        "secret",
+        leaf_name(application),
+        "-o",
+        "go-template=" + template,
     )
     data = base64.b64decode(selected["certificatePemBase64"], validate=True)
     if b"-----BEGIN CERTIFICATE-----" not in data or b"PRIVATE KEY" in data:
@@ -184,7 +190,8 @@ def run(output, application="litellm"):
         "New native revision must rotate both certificate and keypair",
     )
     progress.update(
-        renewedPublicKeySHA256=identity_after["publicKeySHA256"], clientKeypairRotationVerified=True
+        renewedPublicKeySHA256=identity_after["publicKeySHA256"],
+        clientKeypairRotationVerified=True,
     )
     progress.update(
         phase="await-named-mirror-job",

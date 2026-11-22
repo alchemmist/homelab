@@ -5,7 +5,8 @@ import unittest
 from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location(
-    "coverage_check", Path(__file__).resolve().parents[1] / "scripts/logging-coverage.py"
+    "coverage_check",
+    Path(__file__).resolve().parents[1] / "scripts/logging-coverage.py",
 )
 M = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(M)
@@ -24,7 +25,14 @@ class CoverageTests(unittest.TestCase):
         }
         sources = M.inventory(
             {"items": [pod]},
-            {"items": [{"kind": "Deployment", "metadata": {"namespace": "ns", "name": "zero"}}]},
+            {
+                "items": [
+                    {
+                        "kind": "Deployment",
+                        "metadata": {"namespace": "ns", "name": "zero"},
+                    }
+                ]
+            },
             [],
         )
         expected_sources = 4
@@ -71,7 +79,10 @@ class CoverageTests(unittest.TestCase):
         ):
             with self.assertRaises(ValueError):
                 M.validate(
-                    {"status": "success", "data": {"resultType": "vector", "result": [point]}}
+                    {
+                        "status": "success",
+                        "data": {"resultType": "vector", "result": [point]},
+                    }
                 )
         with self.assertRaises(ValueError):
             M.validate(
@@ -100,7 +111,12 @@ class CoverageTests(unittest.TestCase):
 
     def test_kubernetes_requires_host_and_all_source_identities(self) -> None:
         """Drop canonical verification when any required Kubernetes identity is absent."""
-        source = {"kind": "container", "namespace": "ns", "pod": "pod", "container": "app"}
+        source = {
+            "kind": "container",
+            "namespace": "ns",
+            "pod": "pod",
+            "container": "app",
+        }
         labels = {
             "host_name": "node",
             "k8s_namespace_name": "ns",
@@ -113,18 +129,26 @@ class CoverageTests(unittest.TestCase):
         assert M.assess([source], [good], [good])[0]["status"] == "verified"
         for key in labels:
             with self.subTest(missing=key):
-                incomplete = {"labels": {k: v for k, v in labels.items() if k != key}, "count": 1}
+                incomplete = {
+                    "labels": {k: v for k, v in labels.items() if k != key},
+                    "count": 1,
+                }
                 assert not M.canonical_identity(source, incomplete["labels"])
                 row = M.assess([source], [incomplete], [incomplete])[0]
                 assert row["status"] != "verified"
                 assert not row["canonical"]
-        incomplete = {"labels": {k: v for k, v in labels.items() if k != "host_name"}, "count": 1}
+        incomplete = {
+            "labels": {k: v for k, v in labels.items() if k != "host_name"},
+            "count": 1,
+        }
         row = M.assess([source], [good, incomplete], [good, incomplete])[0]
         assert row["status"] == "emits"
         assert not row["canonical"]
         assert row["legacyObserved"]
 
-    def test_host_inventory_does_not_infer_emission_from_installed_or_running(self) -> None:
+    def test_host_inventory_does_not_infer_emission_from_installed_or_running(
+        self,
+    ) -> None:
         """Record systemd units as present without treating service state as emission."""
         snapshots = [
             {
@@ -135,7 +159,11 @@ class CoverageTests(unittest.TestCase):
                         "state": "running",
                         "status": "enabled",
                     },
-                    "idle.service": {"source": "systemd", "state": "stopped", "status": "disabled"},
+                    "idle.service": {
+                        "source": "systemd",
+                        "state": "stopped",
+                        "status": "disabled",
+                    },
                     "oneshot.service": {
                         "source": "systemd",
                         "state": "stopped",

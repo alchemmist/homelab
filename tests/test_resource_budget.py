@@ -93,7 +93,11 @@ def profiles() -> list[_Profile]:
             "ownerPattern": "^app-.*$",
             "containers": {
                 "app": {
-                    "requests": {"cpu": "200m", "memory": "256Mi", "ephemeral-storage": "32Mi"},
+                    "requests": {
+                        "cpu": "200m",
+                        "memory": "256Mi",
+                        "ephemeral-storage": "32Mi",
+                    },
                     "removeCpuLimit": True,
                 }
             },
@@ -105,7 +109,13 @@ def nodes() -> list[dict[str, object]]:
     return [
         {
             "metadata": {"name": "node"},
-            "status": {"allocatable": {"cpu": "4", "memory": "2Gi", "ephemeral-storage": "10Gi"}},
+            "status": {
+                "allocatable": {
+                    "cpu": "4",
+                    "memory": "2Gi",
+                    "ephemeral-storage": "10Gi",
+                }
+            },
         }
     ]
 
@@ -203,7 +213,10 @@ class BudgetTests(unittest.TestCase):
     def test_profile_preserves_custom_resources_and_input(self) -> None:
         """Keep custom limit keys and leave the input pod unchanged."""
         value = pod()
-        value["spec"]["containers"][0]["resources"]["limits"] = {"cpu": "2", "nvidia.com/gpu": "1"}
+        value["spec"]["containers"][0]["resources"]["limits"] = {
+            "cpu": "2",
+            "nvidia.com/gpu": "1",
+        }
         original = copy.deepcopy(value)
         changed = BUDGET.proposed_pod(value, profiles())
         assert changed["spec"]["containers"][0]["resources"]["limits"] == {"nvidia.com/gpu": "1"}

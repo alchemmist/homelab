@@ -325,17 +325,22 @@ kube-prometheus-stack:
         - name: homelab-job-failures
           rules:
             - alert: KubeJobFailed
-              expr: "(kube_job_failed{job=\"kube-state-metrics\"} > 0)\nunless on(namespace, j\
-                ob_name)\nkube_job_owner{job=\"kube-state-metrics\",namespace=\"pr-agent\",o\
-                wner_kind=\"CronJob\",owner_name=\"pr-agent-webhook-redelivery\"}\nunless on\
-                (namespace, job_name)\n(\n  kube_job_owner{job=\"kube-state-metrics\",namesp\
-                ace=\"pr-agent\",owner_kind=\"CronJob\",owner_name=\"spi-github-broker\"}\n  a\
-                nd on(namespace, job_name) (kube_job_status_succeeded{job=\"kube-state-metri\
-                cs\",namespace=\"pr-agent\"} == 1)\n  and on(namespace, job_name) (\n    kub\
-                e_job_status_start_time{job=\"kube-state-metrics\",namespace=\"pr-agent\"}\n    < o\
-                n(namespace) group_left() max by(namespace) (\n      kube_cronjob_status_las\
-                t_successful_time{job=\"kube-state-metrics\",namespace=\"pr-agent\",cronjob=\
-                \"spi-github-broker\"}\n    )\n  )\n)\n"
+              expr: |
+                (kube_job_failed{job="kube-state-metrics"} > 0)
+                unless on(namespace, job_name)
+                kube_job_owner{job="kube-state-metrics",namespace="pr-agent",owner_kind="CronJob",owner_name="pr-agent-webhook-redelivery"}
+                unless on(namespace, job_name)
+                (
+                  kube_job_owner{job="kube-state-metrics",namespace="pr-agent",owner_kind="CronJob",owner_name="spi-github-broker"}
+                  and on(namespace, job_name)
+                  (kube_job_status_succeeded{job="kube-state-metrics",namespace="pr-agent"} == 1)
+                  and on(namespace, job_name) (
+                    kube_job_status_start_time{job="kube-state-metrics",namespace="pr-agent"}
+                    < on(namespace) group_left() max by(namespace) (
+                      kube_cronjob_status_last_successful_time{job="kube-state-metrics",namespace="pr-agent",cronjob="spi-github-broker"}
+                    )
+                  )
+                )
               for: 15m
               labels: {severity: warning}
               annotations:

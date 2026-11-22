@@ -41,7 +41,17 @@ def need(ok, msg):
 def get(kind, name):
     """Execute get."""
     r = subprocess.run(
-        ["kubectl", "-n", "identity", "get", kind, name, "--ignore-not-found", "-o", "json"],
+        [
+            "kubectl",
+            "-n",
+            "identity",
+            "get",
+            kind,
+            name,
+            "--ignore-not-found",
+            "-o",
+            "json",
+        ],
         capture_output=True,
         check=True,
     )
@@ -63,7 +73,10 @@ def inspect():
                     "Ingress ownership drift",
                 )
             if kind == "certificate":
-                need(o["spec"]["dnsNames"] == ["tv.alchemmist.xyz"], "Certificate scope drift")
+                need(
+                    o["spec"]["dnsNames"] == ["tv.alchemmist.xyz"],
+                    "Certificate scope drift",
+                )
             if kind == "secret":
                 need(
                     o["metadata"]["annotations"].get("cert-manager.io/alt-names")
@@ -86,7 +99,10 @@ def main():
     need(ROOT.stat().st_uid == 0 and not ROOT.stat().st_mode & 0o077, "Unsafe state")
     with (ROOT / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        need(not (ROOT / "uncertain.json").exists(), "Uncertain deletion; inspect privately")
+        need(
+            not (ROOT / "uncertain.json").exists(),
+            "Uncertain deletion; inspect privately",
+        )
         objects = inspect()
         h = hashlib.sha256(json.dumps(objects, sort_keys=True).encode()).hexdigest()
         if a.apply and objects:
@@ -118,14 +134,21 @@ def main():
                     "Scoped delete failed; inspect privately",
                 )
             remaining = inspect()
-            need(not any(o["kind"] == "Secret" for o in remaining), "Secret deletion not confirmed")
+            need(
+                not any(o["kind"] == "Secret" for o in remaining),
+                "Secret deletion not confirmed",
+            )
             (ROOT / "after.json").write_text(
                 json.dumps({"plan_hash": h, "delete_requests_completed": True})
             )
             (ROOT / "uncertain.json").unlink()
         print(
             json.dumps(
-                {"operations": len(objects), "plan_hash": h, "applied": bool(a.apply and objects)}
+                {
+                    "operations": len(objects),
+                    "plan_hash": h,
+                    "applied": bool(a.apply and objects),
+                }
             )
         )
 

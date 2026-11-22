@@ -96,6 +96,7 @@ def owned(doc, text=""):
 
 def normalize(doc):
     """Perform the normalize operation."""
+
     def clean(x) -> object:
         if isinstance(x, list):
             return [clean(v) for v in x]
@@ -154,7 +155,11 @@ def main():
             )
     print(
         json.dumps(
-            {"operations": int(needed), "changed": bool(needed and args.apply), "table": TABLE}
+            {
+                "operations": int(needed),
+                "changed": bool(needed and args.apply),
+                "table": TABLE,
+            }
         )
     )
 

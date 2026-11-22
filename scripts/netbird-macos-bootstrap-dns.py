@@ -50,7 +50,10 @@ def apply() -> None:
             fd = os.open(backup / (host + ".before"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             with os.fdopen(fd, "wb") as f:
                 f.write(old)
-            result[host] = {"preexisting": True, "before_sha256": hashlib.sha256(old).hexdigest()}
+            result[host] = {
+                "preexisting": True,
+                "before_sha256": hashlib.sha256(old).hexdigest(),
+            }
         else:
             result[host] = {"preexisting": False}
         fd, tmp = tempfile.mkstemp(prefix=".netbird-bootstrap-", dir=folder)

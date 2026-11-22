@@ -111,7 +111,8 @@ def validate(c):
     }
     require(isinstance(c, dict) and set(c) == expected, "unexpected/missing input keys")
     require(
-        type(c["schema_version"]) is int and c["schema_version"] == 1, "unsupported schema_version"
+        type(c["schema_version"]) is int and c["schema_version"] == 1,
+        "unsupported schema_version",
     )
     require(hostname(c["management_fqdn"]), "management_fqdn: approved public FQDN required")
     for key in ["management_node", "tls_secret_name", "storage_class", "ingress_class"]:
@@ -150,7 +151,10 @@ def validate(c):
         "authentik_issuer: exact HTTPS application issuer required",
     )
     require(text(c["oidc_client_id"]), "oidc_client_id required (not a secret)")
-    require(text(c["login_group"]) and c["login_group"] != "All", "dedicated login_group required")
+    require(
+        text(c["login_group"]) and c["login_group"] != "All",
+        "dedicated login_group required",
+    )
     require(
         isinstance(c["review"], dict) and set(c["review"]) == REVIEWS,
         "review gates must match the compiler schema",
@@ -166,7 +170,10 @@ def validate(c):
         "exactly one SSH routing peer; a second peer would claim route HA",
     )
     for p in peers:
-        require(set(p) == {"name", "host", "failure_domain", "metric"}, "routing peer keys invalid")
+        require(
+            set(p) == {"name", "host", "failure_domain", "metric"},
+            "routing peer keys invalid",
+        )
         require(identifier(p["name"]), "routing peer name required")
         require(
             hostname(p["host"]) or re.fullmatch(r"socrat-[0-3]", p["host"]) is not None,
@@ -178,10 +185,19 @@ def validate(c):
                 "existing-node router mode requires explicit review",
             )
         require(text(p["failure_domain"]), "routing peer failure_domain required")
-        require(type(p["metric"]) is int and 1 <= p["metric"] <= 9999, "router metric invalid")
+        require(
+            type(p["metric"]) is int and 1 <= p["metric"] <= 9999,
+            "router metric invalid",
+        )
     resources = c["resources"]
-    require(isinstance(resources, list) and bool(resources), "explicit resource allowlist required")
-    require(len({r["name"] for r in resources}) == len(resources), "duplicate resource names")
+    require(
+        isinstance(resources, list) and bool(resources),
+        "explicit resource allowlist required",
+    )
+    require(
+        len({r["name"] for r in resources}) == len(resources),
+        "duplicate resource names",
+    )
     seen = set()
     for r in resources:
         require(
@@ -212,13 +228,22 @@ def validate(c):
             and len(set(r["ports"])) == len(r["ports"]),
             "explicit unique TCP ports required",
         )
-        require(r["kind"] != "ssh" or r["ports"] == [2222], "existing SSH must stay TCP 2222")
-        require(r["kind"] != "web" or r["ports"] == [443], "web pilot permits TLS TCP 443 only")
+        require(
+            r["kind"] != "ssh" or r["ports"] == [2222],
+            "existing SSH must stay TCP 2222",
+        )
+        require(
+            r["kind"] != "web" or r["ports"] == [443],
+            "web pilot permits TLS TCP 443 only",
+        )
         require(
             text(r["source_group"]) and r["source_group"] != "All",
             "dedicated source_group required",
         )
-        require(r["kind"] != "web" or hostname(r["dns_name"]), "web dns_name required for TLS/SNI")
+        require(
+            r["kind"] != "web" or hostname(r["dns_name"]),
+            "web dns_name required for TLS/SNI",
+        )
         require(
             r["kind"] != "ssh" or r["dns_name"] is None or hostname(r["dns_name"]),
             "SSH DNS invalid",
@@ -238,7 +263,10 @@ def image(name):
 def witness_ready(path):
     """Proof that Dex already has an external connector. localAuthDisabled fails closed without one."""
     data = json.loads(path.read_text())
-    require(set(data) == {"external_connectors"}, "witness must contain only external_connectors")
+    require(
+        set(data) == {"external_connectors"},
+        "witness must contain only external_connectors",
+    )
     require(
         type(data["external_connectors"]) is int and data["external_connectors"] >= 1,
         "external IdP connector required before local authentication can be disabled",
@@ -319,7 +347,10 @@ def account_settings(c):
 
 def port_forward_sources(cidrs):
     """Node and CNI-bridge addresses that may open a port-forward. Not pod or Service CIDRs."""
-    require(isinstance(cidrs, list) and 1 <= len(cidrs) <= 8, "port-forward sources required")
+    require(
+        isinstance(cidrs, list) and 1 <= len(cidrs) <= 8,
+        "port-forward sources required",
+    )
     cleaned = []
     for cidr in cidrs:
         network = ipaddress.ip_network(cidr, strict=True)
@@ -441,7 +472,10 @@ def manifests(c, publication="internal", port_forward_cidrs=None):
                     {"name": "data", "mountPath": "/var/lib/netbird"},
                 ],
                 readinessProbe={
-                    "httpGet": {"path": "/oauth2/.well-known/openid-configuration", "port": 80},
+                    "httpGet": {
+                        "path": "/oauth2/.well-known/openid-configuration",
+                        "port": 80,
+                    },
                     "initialDelaySeconds": 5,
                     "periodSeconds": 10,
                 },
@@ -484,7 +518,10 @@ def manifests(c, publication="internal", port_forward_cidrs=None):
                     "replicas": 1,
                     "strategy": {"type": "Recreate"},
                     "selector": {"matchLabels": {"app": "netbird-" + name}},
-                    "template": {"metadata": {"labels": {"app": "netbird-" + name}}, "spec": pod},
+                    "template": {
+                        "metadata": {"labels": {"app": "netbird-" + name}},
+                        "spec": pod,
+                    },
                 },
             )
         )
@@ -553,8 +590,14 @@ def forwarder_files(c):
     dashboard = "dashboard." + NS + ".svc.cluster.local:80"
     static = {
         "entryPoints": {
-            "web": {"address": ":8080", "transport": {"respondingTimeouts": {"readTimeout": "0s"}}},
-            "h2c": {"address": ":8082", "transport": {"respondingTimeouts": {"readTimeout": "0s"}}},
+            "web": {
+                "address": ":8080",
+                "transport": {"respondingTimeouts": {"readTimeout": "0s"}},
+            },
+            "h2c": {
+                "address": ":8082",
+                "transport": {"respondingTimeouts": {"readTimeout": "0s"}},
+            },
             "ping": {"address": ":8081"},
         },
         "providers": {"file": {"filename": "/etc/traefik/dynamic.yaml"}},
@@ -576,7 +619,10 @@ def forwarder_files(c):
             "middlewares": {
                 "deny-unclaimed-setup": {"ipAllowList": {"sourceRange": ["127.0.0.1/32"]}}
             },
-            "serversTransports": {"http1": {"disableHTTP2": True}, "h2c": {"disableHTTP2": False}},
+            "serversTransports": {
+                "http1": {"disableHTTP2": True},
+                "h2c": {"disableHTTP2": False},
+            },
             "services": {
                 "management": {
                     "loadBalancer": {
@@ -726,7 +772,10 @@ def edge_manifests(c):
     grpc_service = obj_edge(
         "Service",
         "edge-forwarder-grpc",
-        spec={"selector": labels, "ports": [{"name": "h2c", "port": 8082, "targetPort": "h2c"}]},
+        spec={
+            "selector": labels,
+            "ports": [{"name": "h2c", "port": 8082, "targetPort": "h2c"}],
+        },
     )
     grpc_service["metadata"]["annotations"] = {
         "traefik.ingress.kubernetes.io/service.serversscheme": "h2c"
@@ -735,7 +784,12 @@ def edge_manifests(c):
     # WebSocket and REST stay on HTTP/1.1. Native gRPC is a separate higher-priority h2c ingress.
     docs.append(
         ingress(
-            c, "netbird-http", ["/ws-proxy/", "/relay", "/api/", "/oauth2/", "/"], 8080, None, "10"
+            c,
+            "netbird-http",
+            ["/ws-proxy/", "/relay", "/api/", "/oauth2/", "/"],
+            8080,
+            None,
+            "10",
         )
     )
     docs.append(ingress(c, "netbird-grpc", list(GRPC_PREFIXES), 8082, "h2c", "200"))
@@ -777,7 +831,12 @@ def ingress(c, name, paths, port, scheme, priority):
                             {
                                 "path": path,
                                 "pathType": "Prefix",
-                                "backend": {"service": {"name": backend, "port": {"number": port}}},
+                                "backend": {
+                                    "service": {
+                                        "name": backend,
+                                        "port": {"number": port},
+                                    }
+                                },
                             }
                             for path in paths
                         ]
@@ -792,8 +851,14 @@ def ingress(c, name, paths, port, scheme, priority):
 
 def validate_internal(c):
     """First-stage inputs. DNS, STUN, and Ingress reviews belong to edge publication."""
-    require(isinstance(c, dict) and c.get("schema_version") == 1, "unsupported schema_version")
-    require(hostname(c.get("management_fqdn")), "management_fqdn: approved public FQDN required")
+    require(
+        isinstance(c, dict) and c.get("schema_version") == 1,
+        "unsupported schema_version",
+    )
+    require(
+        hostname(c.get("management_fqdn")),
+        "management_fqdn: approved public FQDN required",
+    )
     for key in ["management_node", "storage_class"]:
         require(identifier(c.get(key)), key + ": reviewed Kubernetes identifier required")
     reviews = c.get("review")
@@ -805,8 +870,14 @@ def validate_internal(c):
 
 def validate_control_plane(c):
     """Edge publication inputs. Router placement and resource grants are not required."""
-    require(isinstance(c, dict) and c.get("schema_version") == 1, "unsupported schema_version")
-    require(hostname(c.get("management_fqdn")), "management_fqdn: approved public FQDN required")
+    require(
+        isinstance(c, dict) and c.get("schema_version") == 1,
+        "unsupported schema_version",
+    )
+    require(
+        hostname(c.get("management_fqdn")),
+        "management_fqdn: approved public FQDN required",
+    )
     for key in ["management_node", "tls_secret_name", "storage_class", "ingress_class"]:
         require(identifier(c.get(key)), key + ": reviewed Kubernetes identifier required")
     require(
@@ -841,7 +912,10 @@ def router_compose(c, peer):
                 },
                 "volumes": ["netbird-state:/etc/netbird"],
                 "secrets": ["setup_key"],
-                "logging": {"driver": "json-file", "options": {"max-size": "10m", "max-file": "2"}},
+                "logging": {
+                    "driver": "json-file",
+                    "options": {"max-size": "10m", "max-file": "2"},
+                },
             }
         },
         "volumes": {"netbird-state": {}},
@@ -868,7 +942,10 @@ def access_requests(c, bindings, snapshot):
         "binding keys invalid",
     )
     groups = sorted({r["source_group"] for r in c["resources"]})
-    require(set(bindings["source_groups"]) == set(groups), "exact source group bindings required")
+    require(
+        set(bindings["source_groups"]) == set(groups),
+        "exact source group bindings required",
+    )
     require(
         set(bindings["resource_groups"]) == {r["name"] for r in c["resources"]},
         "exact resource group bindings required",
@@ -934,7 +1011,8 @@ def access_requests(c, bindings, snapshot):
     for peer in c["routing_peers"]:
         found = [p for p in snapshot["peers"] if p["id"] == bindings["peer_ids"][peer["name"]]]
         require(
-            len(found) == 1 and found[0]["name"] == peer["name"], "routing peer ID/name mismatch"
+            len(found) == 1 and found[0]["name"] == peer["name"],
+            "routing peer ID/name mismatch",
         )
     network = "/api/networks/" + bindings["network_id"]
     requests = []
@@ -1022,7 +1100,11 @@ def render(c, out):
     dump(out / "account-settings.merge.json", account_settings(c))
     dump(
         out / "access-intent.json",
-        {"network": "netbird-pilot", "routers": c["routing_peers"], "resources": c["resources"]},
+        {
+            "network": "netbird-pilot",
+            "routers": c["routing_peers"],
+            "resources": c["resources"],
+        },
     )
     dump(
         out / "oidc-public.json",
@@ -1150,7 +1232,12 @@ def main():
                 decoded = b""
             require(len(decoded) == 32, key + ": base64-encoded 32 random bytes required")
         require(len(set(secrets.values())) == 3, "runtime secrets must be distinct")
-        dump(a.out, server_config(c, secrets, a.auth_mode), yaml_format=True, private=True)
+        dump(
+            a.out,
+            server_config(c, secrets, a.auth_mode),
+            yaml_format=True,
+            private=True,
+        )
     else:
         require(
             a.bindings is not None and a.snapshot is not None,
@@ -1159,7 +1246,9 @@ def main():
         dump(
             a.out,
             access_requests(
-                c, json.loads(a.bindings.read_text()), json.loads(a.snapshot.read_text())
+                c,
+                json.loads(a.bindings.read_text()),
+                json.loads(a.snapshot.read_text()),
             ),
         )
     print("Local files written; nothing applied")

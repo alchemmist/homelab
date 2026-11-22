@@ -17,18 +17,22 @@ kube-prometheus-stack:
                   / rule
                   evaluations","dashboard_uid":"alerts-32fe12c750259f22","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}
                 summary: Job failed to complete.
-              expr: "(kube_job_failed{job=\"kube-state-metrics\"} > 0)\nunless on(namespace,\
-                \ job_name)\nkube_job_owner{job=\"kube-state-metrics\",namespace=\"\
-                pr-agent\",owner_kind=\"CronJob\",owner_name=\"pr-agent-webhook-redelivery\"\
-                }\nunless on(namespace, job_name)\n(\n  kube_job_owner{job=\"kube-state-metrics\"\
-                ,namespace=\"pr-agent\",owner_kind=\"CronJob\",owner_name=\"spi-github-broker\"\
-                }\n  and on(namespace, job_name) (kube_job_status_succeeded{job=\"\
-                kube-state-metrics\",namespace=\"pr-agent\"} == 1)\n  and on(namespace,\
-                \ job_name) (\n    kube_job_status_start_time{job=\"kube-state-metrics\"\
-                ,namespace=\"pr-agent\"}\n    < on(namespace) group_left() max by(namespace)\
-                \ (\n      kube_cronjob_status_last_successful_time{job=\"kube-state-metrics\"\
-                ,namespace=\"pr-agent\",cronjob=\"spi-github-broker\"}\n    )\n  )\n\
-                )\n"
+              expr: |
+                (kube_job_failed{job="kube-state-metrics"} > 0)
+                unless on(namespace, job_name)
+                kube_job_owner{job="kube-state-metrics",namespace="pr-agent",owner_kind="CronJob",owner_name="pr-agent-webhook-redelivery"}
+                unless on(namespace, job_name)
+                (
+                  kube_job_owner{job="kube-state-metrics",namespace="pr-agent",owner_kind="CronJob",owner_name="spi-github-broker"}
+                  and on(namespace, job_name)
+                  (kube_job_status_succeeded{job="kube-state-metrics",namespace="pr-agent"} == 1)
+                  and on(namespace, job_name) (
+                    kube_job_status_start_time{job="kube-state-metrics",namespace="pr-agent"}
+                    < on(namespace) group_left() max by(namespace) (
+                      kube_cronjob_status_last_successful_time{job="kube-state-metrics",namespace="pr-agent",cronjob="spi-github-broker"}
+                    )
+                  )
+                )
               for: 15m
               labels:
                 severity: warning
@@ -43,16 +47,17 @@ kube-prometheus-stack:
                   / rule
                   evaluations","dashboard_uid":"alerts-32fe12c750259f22","panel_id":4,"variables":{},"before_seconds":7200,"after_seconds":300}]}
                 summary: Webhook redelivery failed without a later successful run.
-              expr: "((kube_job_failed{job=\"kube-state-metrics\",namespace=\"pr-agent\"\
-                } > 0)\nand on(namespace, job_name)\nkube_job_owner{job=\"kube-state-metrics\"\
-                ,namespace=\"pr-agent\",owner_kind=\"CronJob\",owner_name=\"pr-agent-webhook-redeli\
-                very\"\
-                })\nunless on(namespace, job_name)\n(kube_job_status_start_time{job=\"\
-                kube-state-metrics\",namespace=\"pr-agent\"}\n< on(namespace) group_left()\n\
-                max by(namespace) (\n  kube_cronjob_status_last_successful_time{job=\"\
-                kube-state-metrics\",\n    namespace=\"pr-agent\",cronjob=\"pr-agent-webhook-redeli\
-                very\"\
-                }\n))\n"
+              expr: |
+                ((kube_job_failed{job="kube-state-metrics",namespace="pr-agent"} > 0)
+                and on(namespace, job_name)
+                kube_job_owner{job="kube-state-metrics",namespace="pr-agent",owner_kind="CronJob",owner_name="pr-agent-webhook-redelivery"})
+                unless on(namespace, job_name)
+                (kube_job_status_start_time{job="kube-state-metrics",namespace="pr-agent"}
+                < on(namespace) group_left()
+                max by(namespace) (
+                  kube_cronjob_status_last_successful_time{job="kube-state-metrics",
+                    namespace="pr-agent",cronjob="pr-agent-webhook-redelivery"}
+                ))
               labels:
                 severity: warning
     homelab-memory-overcommit:
@@ -73,9 +78,9 @@ kube-prometheus-stack:
                   / rule
                   evaluations","dashboard_uid":"alerts-21116c7cdd670d44","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}
                 summary: Cluster memory requests exceed total allocatable memory.
-              expr: "sum(namespace_memory:kube_pod_container_resource_requests:sum{})\n\
-                - sum(kube_node_status_allocatable{job=\"kube-state-metrics\",resource=\"\
-                memory\"}) > 0\n"
+              expr: |
+                sum(namespace_memory:kube_pod_container_resource_requests:sum{})
+                - sum(kube_node_status_allocatable{job="kube-state-metrics",resource="memory"}) > 0
               for: 10m
               labels:
                 severity: warning

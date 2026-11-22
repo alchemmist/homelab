@@ -188,13 +188,23 @@ def inventory():
             rules += _rule_entries(resource, owner, resource["metadata"]["name"])
     observer = ROOT / "deploy/platform/rancher/public-entry"
     rendered = subprocess.check_output(
-        ["helm", "template", "rancher-public-entry", str(observer), "--namespace", "cattle-system"],
+        [
+            "helm",
+            "template",
+            "rancher-public-entry",
+            str(observer),
+            "--namespace",
+            "cattle-system",
+        ],
         text=True,
     )
     for resource in yaml.safe_load_all(rendered):
         if isinstance(resource, dict) and resource.get("kind") == "PrometheusRule":
             rules += _rule_entries(resource, "rancher", resource["metadata"]["name"])
-    for path in [ROOT / "docs/n8n/spi/alerts.json", ROOT / "docs/n8n/yandex-session-alerts.json"]:
+    for path in [
+        ROOT / "docs/n8n/spi/alerts.json",
+        ROOT / "docs/n8n/yandex-session-alerts.json",
+    ]:
         for rule in json.loads(path.read_text())["rules"]:
             rules.append(_grafana_entry(path, rule))
     return rules
@@ -302,7 +312,11 @@ def build(rules, panel_ids=None):
             "gridPos": {"x": 0, "y": (base - 1) * 8, "w": 24, "h": 8},
             "fieldConfig": {
                 "defaults": {
-                    "custom": {"drawStyle": "line", "showPoints": "never", "spanNulls": False},
+                    "custom": {
+                        "drawStyle": "line",
+                        "showPoints": "never",
+                        "spanNulls": False,
+                    },
                     "thresholds": {
                         "mode": "absolute",
                         "steps": [{"color": "green", "value": None}]
@@ -452,12 +466,6 @@ def _graph_scalar(dumper: _GraphValuesDumper, value: str) -> yaml.ScalarNode:
     style = None
     if "\n" in value:
         style = "|"
-        # Literal blocks only break on real newlines, so a physical PromQL line
-        # longer than the yamllint budget would emit an unfixable long line.
-        # Fall back to double-quoted style: the emitter folds at spaces with a
-        # line-continuation and reparses to the identical string.
-        if any(len(line) > _LONG_SCALAR_LENGTH for line in value.split("\n")):
-            style = '"'
     elif len(value) > _LONG_SCALAR_LENGTH:
         style = ">"
     return dumper.represent_scalar("tag:yaml.org,2002:str", value, style=style)
@@ -466,58 +474,15 @@ def _graph_scalar(dumper: _GraphValuesDumper, value: str) -> yaml.ScalarNode:
 _GraphValuesDumper.add_representer(str, _graph_scalar)
 
 
-def _fold_long_quoted_lines(text: str, limit: int = _YAML_LINE_WIDTH) -> str:
-    """Break overlong double-quoted lines with escaped continuations.
-
-    PyYAML only folds double-quoted scalars on spaces. Spaced-out PromQL
-    selectors wrap fine, but brace selectors with no space cannot fold, so a
-    line can still exceed the lint budget. A backslash at end of line is an
-    escaped break that adds nothing to the parsed string; splitting between
-    two non-space characters (never inside a two-character escape) is lossless.
-    """
-    key_opens_scalar = re.compile(r"^\s*(?:- )?[\w-]+: \"")
-    ends_with_close = re.compile(r'(?<!\\)"$')
-
-    def split_safely(line: str) -> str | None:
-        indent_text = " " * (len(line) - len(line.lstrip(" ")))
-        trimmed = line.rstrip()
-        cut = limit - 2
-        while cut > len(indent_text) and (
-            trimmed[cut] == " " or trimmed[cut] == "\\" or trimmed[cut + 1] in (" ", "\\")
-        ):
-            cut -= 1
-        if cut <= len(indent_text):
-            return None
-        return trimmed[: cut + 1] + "\\" + "\n" + indent_text + trimmed[cut + 1 :]
-
-    out: list[str] = []
-    in_dq = False
-    for line in text.split("\n"):
-        starts_dq = in_dq or key_opens_scalar.match(line) is not None
-        remainder: str | None = line
-        if starts_dq:
-            while len(remainder) > limit:
-                folded = split_safely(remainder)
-                if folded is None:
-                    break
-                head, _, remainder = folded.partition("\n")
-                out.append(head)
-            closing = remainder is not None and ends_with_close.search(remainder) is not None
-            if in_dq and closing:
-                in_dq = False
-            elif not in_dq and not closing:
-                in_dq = True
-        if remainder is not None:
-            out.append(remainder)
-    return "\n".join(out)
-
-
 def _dump_graph_values(value: dict[str, object]) -> str:
     """Serialize generated values deterministically without changing scalar content."""
-    dumped = yaml.dump(
-        value, Dumper=_GraphValuesDumper, sort_keys=True, explicit_start=True, explicit_end=True
+    return yaml.dump(
+        value,
+        Dumper=_GraphValuesDumper,
+        sort_keys=True,
+        explicit_start=True,
+        explicit_end=True,
     )
-    return _fold_long_quoted_lines(dumped)
 
 
 def outputs(rules):
@@ -532,14 +497,17 @@ def outputs(rules):
         result[ROOT / "charts/monitoring-k3s/alert-dashboards" / f"{uid}.json"] = (
             json.dumps(dashboard, indent=2) + "\n"
         )
-    result[ROOT / "docs/monitoring/alert-graphs.inventory.json"] = json.dumps(rows, indent=2) + "\n"
+    result[ROOT / "docs/observability/monitoring/alert-graphs.inventory.json"] = json.dumps(rows, indent=2) + "\n"
     policy = {
         uid + ":" + str(panel["id"]): []
         for uid, dashboard in dashboards.items()
         for panel in dashboard["panels"]
     }
     result[ROOT / "charts/grafana/alert-graphs.policy.values.yaml"] = yaml.safe_dump(
-        {"alertGraphs": {"panels": policy}}, sort_keys=True, explicit_start=True, explicit_end=True
+        {"alertGraphs": {"panels": policy}},
+        sort_keys=True,
+        explicit_start=True,
+        explicit_end=True,
     )
     for owner, mapping in mappings.items():
         if owner == "grafana-managed":

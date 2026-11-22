@@ -37,7 +37,8 @@ status_page_id = cur.execute("select id from status_page where slug=?", (STATUS_
 ]
 for group_name, monitors in SERVICES.items():
     group_id = cur.execute(
-        "select id from `group` where name=? and status_page_id=?", (group_name, status_page_id)
+        "select id from `group` where name=? and status_page_id=?",
+        (group_name, status_page_id),
     ).fetchone()[0]
     for index, (name, url) in enumerate(monitors, 1):
         row = cur.execute("select id from monitor where name=?", (name,)).fetchone()
@@ -51,7 +52,21 @@ for group_name, monitors in SERVICES.items():
             cur.execute(
                 """insert into monitor(name,active,user_id,interval,retry_interval,maxretries,url,type,weight,maxredirects,accepted_statuscodes_json,method,timeout)
                 values(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (name, 1, 1, 60, 30, 2, url, "http", 100 + index, 5, '["200"]', "GET", 30),
+                (
+                    name,
+                    1,
+                    1,
+                    60,
+                    30,
+                    2,
+                    url,
+                    "http",
+                    100 + index,
+                    5,
+                    '["200"]',
+                    "GET",
+                    30,
+                ),
             )
             monitor_id = cur.lastrowid
         cur.execute("delete from monitor_group where monitor_id=?", (monitor_id,))
@@ -60,5 +75,8 @@ for group_name, monitors in SERVICES.items():
             (monitor_id, group_id, index + 20),
         )
 con.commit()
-print("updated catalog:", ", ".join(name for values in SERVICES.values() for name, _ in values))
+print(
+    "updated catalog:",
+    ", ".join(name for values in SERVICES.values() for name, _ in values),
+)
 con.close()

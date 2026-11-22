@@ -21,13 +21,10 @@ def reconcile(src, db, apply):
     )
     tabs = [
         r[0]
-        for r in src.execute(
-            "select name from sqlite_master where type='table' order by rowid"
-        )
+        for r in src.execute("select name from sqlite_master where type='table' order by rowid")
     ]
     assert len(tabs) == 19 and set(tabs) == {
-        r[0]
-        for r in db.execute("select tablename from pg_tables where schemaname='public'")
+        r[0] for r in db.execute("select tablename from pg_tables where schemaname='public'")
     }
     db.execute("select pg_advisory_xact_lock(1397770578)")
     # Handoff has a different lock during the bulk import; the final activation is a separate short transaction.
@@ -52,9 +49,7 @@ def reconcile(src, db, apply):
             else sql.Identifier(n)
             for n, typ in zip(names, types)
         )
-        query = sql.SQL("select {},{} from {}").format(
-            join(keys), pgsig, sql.Identifier(t)
-        )
+        query = sql.SQL("select {},{} from {}").format(join(keys), pgsig, sql.Identifier(t))
 
         def pgmap():
             with db.cursor(name="checked_rows") as c:
@@ -87,9 +82,7 @@ def reconcile(src, db, apply):
         for row in src.execute("select * from " + t):
             key = tuple(row[names.index(n)] for n in keys)
             sig = tuple(
-                hashlib.sha256(v.encode()).digest()
-                if typ == "TEXT" and v is not None
-                else v
+                hashlib.sha256(v.encode()).digest() if typ == "TEXT" and v is not None else v
                 for typ, v in zip(types, row)
             )
             expected[key] = sig
@@ -104,9 +97,9 @@ def reconcile(src, db, apply):
             with db.cursor() as writer:
                 writer.executemany(up, pending)
         extras = old.keys() - expected.keys()
-        delete = sql.SQL("delete from {} where ").format(sql.Identifier(t)) + sql.SQL(
-            " AND "
-        ).join(sql.SQL("{}=%s").format(sql.Identifier(n)) for n in keys)
+        delete = sql.SQL("delete from {} where ").format(sql.Identifier(t)) + sql.SQL(" AND ").join(
+            sql.SQL("{}=%s").format(sql.Identifier(n)) for n in keys
+        )
         todo.append((query, len(keys), expected, delete, extras))
         total += len(expected)
     for _, _, _, q, extra in reversed(todo):
@@ -152,9 +145,7 @@ if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as tmp, psycopg.connect(u) as db:
         assert db.execute("select live from handoff.mode").fetchone() == (False,)
         if mode == "seed":
-            assert not db.execute(
-                "select from pg_tables where schemaname='public'"
-            ).fetchone()
+            assert not db.execute("select from pg_tables where schemaname='public'").fetchone()
             db.execute(Path(__file__).with_name("schema.sql").read_text())
             p = Path("/src/.spi-pg-rehearsal.sqlite")
         else:

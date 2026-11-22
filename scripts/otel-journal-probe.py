@@ -11,7 +11,14 @@ MAX_BYTES = 16 * 1024 * 1024
 
 def collect():
     process = subprocess.Popen(
-        ["journalctl", "--system", "--since=-10min", "--output=json", "--no-pager", "--quiet"],
+        [
+            "journalctl",
+            "--system",
+            "--since=-10min",
+            "--output=json",
+            "--no-pager",
+            "--quiet",
+        ],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
     )

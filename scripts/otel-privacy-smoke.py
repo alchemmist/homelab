@@ -97,7 +97,10 @@ def run(binary, config, tls, workspace):
             "timeUnixNano": str(now - 2000000000),
             "body": {"stringValue": "HISTORICAL_DO_NOT_IMPORT"},
         },
-        {"timeUnixNano": "0", "body": {"stringValue": "UNKNOWN_TIMESTAMP_DO_NOT_IMPORT"}},
+        {
+            "timeUnixNano": "0",
+            "body": {"stringValue": "UNKNOWN_TIMESTAMP_DO_NOT_IMPORT"},
+        },
         {
             "timeUnixNano": str(now),
             "body": {
@@ -109,8 +112,14 @@ def run(binary, config, tls, workspace):
             "body": {
                 "kvlistValue": {
                     "values": [
-                        {"key": "password", "value": {"stringValue": "FIXTURE_MAP_SECRET"}},
-                        {"key": "text", "value": {"stringValue": "structured-sentinel"}},
+                        {
+                            "key": "password",
+                            "value": {"stringValue": "FIXTURE_MAP_SECRET"},
+                        },
+                        {
+                            "key": "text",
+                            "value": {"stringValue": "structured-sentinel"},
+                        },
                     ]
                 }
             },
@@ -119,7 +128,10 @@ def run(binary, config, tls, workspace):
             "timeUnixNano": str(now),
             "body": {"stringValue": '{"password":"FIXTURE_JSON_SECRET","text":"json-sentinel"}'},
             "attributes": [
-                {"key": "authorization", "value": {"stringValue": "FIXTURE_ATTRIBUTE_SECRET"}}
+                {
+                    "key": "authorization",
+                    "value": {"stringValue": "FIXTURE_ATTRIBUTE_SECRET"},
+                }
             ],
         },
     ]
@@ -132,7 +144,10 @@ def run(binary, config, tls, workspace):
                             "key": "service.name",
                             "value": {"stringValue": "synthetic-privacy-smoke"},
                         },
-                        {"key": "secret", "value": {"stringValue": "FIXTURE_RESOURCE_SECRET"}},
+                        {
+                            "key": "secret",
+                            "value": {"stringValue": "FIXTURE_RESOURCE_SECRET"},
+                        },
                     ]
                 },
                 "scopeLogs": [{"logRecords": records}],

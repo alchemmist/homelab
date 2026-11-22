@@ -1,139 +1,30 @@
-# Home Lab Quality Graph
+# Quality Graph in Socrat
 
-## PR182: CI enablement and reviewed refactoring
+**[Quality Graph → quality-graph.xyz](https://quality-graph.xyz/)** is the upstream reference. This page describes our graph: what it checks, where the results appear and which file to change.
 
-The operator changed the integration scope: PR182 sets up CI and integrates reviewed refactoring; eliminating every pre-existing source finding is follow-up work based on main. Red source checks are visible and do not become accepted baselines or approvals. An owner may separately decide to merge red CI; this is not an instruction to bypass protection, weaken tests or claim strict green. See [integration checklist](ci-enablement.md), [enforcement policy](strict-policy.md) and [historical evidence](strict-status.md).
+## What runs here
 
-`Makefile` owns the recipes: run `make <node>` locally to execute the same check as its PR job. `qg.yaml` owns CI profiles, dependencies and result publication. Generate workflows and `.quality-graph/manifest.json` only through the pinned owning compiler (`make graph-generate`); never hand-edit generated YAML. `make graph-validate` verifies freshness, not source cleanliness. The CLI, core and GitHub provider are released packages pinned in the project `uv.lock`, not vendored sources. Generation is in memory: the manifest lives under `.quality-graph/`; the executable workflows must remain in `.github/workflows/` for GitHub Actions. The Make targets use the upstream compiler and apply the repository YAML style before checking exact output freshness.
+Our [graph declaration](../../qg.yaml) defines 17 blocking nodes. Read `needs` as a prerequisite, not a suggested order:
 
-## Active CI scope
-
-CI runs `graph` (including the blocking strict configuration and suppression guard
-and a SIM300 check for constant-first comparisons in tracked, owned Python under `ci/quality/`),
-followed by `python-scopes`, `yaml`, `scripts-q000`, `deploy-i001`, `secrets`, `javascript`, `ownership`, `docker`, `workflow`,
-`tests-fast`, `shell` and `rustfs-return-types`. The latter blocks missing public return annotations (Ruff
-`ANN201`) in `services/rustfs_gateway/`; the full Python check remains available locally.
-`yaml` runs the full YAML check, including generated workflows, and collects `reports/yaml.json`.
-`scripts-q000` checks inline quotes (Q000) and triple double quotes on existing docstrings
-(D300) in every tracked, owned `.py` file under `ci/`, `scripts/` and `tests/`, not just changed
-files. It does not require new docstrings. Q002 checks the configured quote character,
-not triple quoting; it remains part of the full local Ruff policy, not this gate.
-`deploy-i001` checks import order (I001) in tracked, owned Python under
-`ansible/`, `deploy/`, `ci/`, `scripts/` and `tests/`. The same job checks unused imports
-(F401) under `ci/`, `scripts/` and `tests/`, using a separate tracked, owned inventory
-that fails if either root is empty. Neither gate covers all owned Python.
-Ownership runs six offline checks plus their regression suites; the Ansible
-entrypoint scan covers both `.yml` and `.yaml`.
-`manifests` runs the full offline chart check after `ownership`.
-`tests-medium` runs the complete loopback-isolated integration suite after `ownership`.
-Blocking `ansible` (Playbook safety) also runs after `ownership`, using locked parser collections.
-The blocking `dependencies` audit runs in CI after `ownership`.
-
-Local-only checks are listed in [`ci/quality/local-checks.json`](../../ci/quality/local-checks.json)
-with their Make target names. `make check` runs both the CI and local-only checks. Restore a
-check to `qg.yaml` and remove its local-only entry once it is verified green.
-
-### Adding a blocking Python scope
-
-Add a distinct `ci/quality/python-scopes/*.json` file; no workflow or runner edit is needed.
-For example, the initial scope is `{"include":["tests/test_quality*.py"],"rules":["SIM117"]}`.
-Patterns are case-sensitive POSIX globs anchored at the repository root: `*` does not
-cross `/`; `**/` matches zero or more directories. Each pattern must match at least
-one tracked, owned `.py` file (the same vendor/frozen provenance checks as the full
-Python gate apply). Each rule must be a full, active ID in the locked Ruff catalog,
-not a prefix. Every file/rule pair from every scope is checked, irrespective of inline
-or per-file ignores. `make python-scopes` runs the same read-only check locally.
-
-## Historical 15-node DAG (before PR #454)
-
-```mermaid
-flowchart TD
-    G[Graph integrity] --> P[Python correctness]
-    G --> Y[YAML structure]
-    G --> S[Shell safety]
-    G --> W[Delivery security]
-    G --> C[Credential hygiene]
-    G --> D[Container recipes]
-    G --> J[JavaScript syntax]
-    G --> U[Unit tests]
-    P & Y & S & W & C & D & J & U --> O[Ownership contracts]
-    O --> M[Manifest validation]
-    O --> A[Playbook safety]
-    O --> I[Integration tests]
-    O --> V[Dependency audit]
-    M & A & I & V --> K[Cluster lifecycle]
-```
-
-Independent fast nodes collect failures together. Ownership is a real source-contract gate. Integration, manifests, Ansible and dependencies run after it; the disposable cluster runs after the middle stage. Downstream skipped jobs are **not passed**. There is no always-success path, approval escape, cap bypass or artificial shard. Do not infer hosted downstream coverage from separately running local checks.
-
-## Enforcement and owning files
-
-| Surface | Actual enforced checks | Owner |
+| Prerequisite | Nodes | What they check |
 | --- | --- | --- |
-| Python | Ruff ALL, mandatory formatter, strict mypy plus additional error codes, owned-file/syntax coverage | `ci/quality/ruff.toml`, `ci/quality/mypy.ini`, `ci/quality/check_python.py` |
-| YAML | strict yamllint, duplicate keys, tags/typing/quotes, framing, comments, length and whitespace | `ci/quality/yamllint.yaml` |
-| Shell | ShellCheck `--enable=all`; supported workflow shell bodies also checked | `ci/quality/check_shell.py` |
-| Delivery | actionlint; zizmor auditor, including generated workflows | `ci/quality/check_workflow.py` |
-| Credentials | Gitleaks; immutable exact reviewed false positives; context drift remains blocking | `ci/quality/secret-false-positives.json`, `ci/quality/strict-policy.json` |
-| Containers | Hadolint at style threshold; inline/global ignore pragmas disabled; owned Dockerfile and Containerfile names (plain, prefix or suffix, case-insensitive) | `ci/quality/hadolint.yaml`, `ci/quality/check_docker.py` |
-| JavaScript | Node syntax checks; actual Node/PromQL/parser regression fixtures in reviewed suites | `ci/quality/check_javascript.py`, `ci/quality/test-suites.json` |
-| Ansible | offline strict ansible-lint, parser floor plus enumerated non-conflicting rules | `ci/quality/ansible-lint.yaml` |
-| Kubernetes | Helm rendering, local checksum-locked schema validation, default plus additional kube-linter checks and source contracts | `ci/quality/charts.py`, `ci/quality/kube-linter.yaml`, `ci/quality/schemas.lock.json` |
-| Dependencies | Python requirement/hash validation and pip-audit; exact npm lock/manifest integrity and TLS OSV auditing; unsupported locks block | `ci/quality/check_dependencies.py` |
-| Architecture | mesh/inventory, native issuer transport, deployment/source/vendor ownership and operational entrypoint contracts | `deploy/contracts/`, `ci/check_*`, `ci/quality/boundaries.py` |
-| Test coverage | explicit disjoint test inventory, offline fast/medium suites, real disposable Kind suite | `ci/quality/test-suites.json`, `ci/quality/tests.py`, `tests/kubernetes/` |
+| None | `graph` | Generated workflows and manifest match their sources; repository contracts, strict policy and selected Python checks pass. |
+| `graph` | `yaml`, `javascript`, `shell`, `workflow`, `docker`, `secrets` | YAML structure, JavaScript syntax, shell scripts, GitHub Actions security, container recipes and credential findings. |
+| `graph` | `python-scopes`, `scripts-q000`, `deploy-i001`, `rustfs-return-types` | Selected Ruff rules on specific paths: declared scopes, quotes and docstrings, import order and unused imports, and public return types in the RustFS gateway. This is not the full Python audit. |
+| `graph` | `image-cves`, `tests-fast`, `ownership` | Trivy scans [selected deployed images](../../ci/quality/image_cves.py), the fast suite exercises repository code, and ownership checks verify infrastructure contracts, source pointers, operational entrypoints, vendor boundaries and alert definitions. |
+| `ownership` | `ansible`, `dependencies`, `tests-medium` | Playbook safety, dependency audits and integration tests. These three wait for `ownership`, not for every sibling of `ownership`. |
 
-`ci/quality/rules.json` and `ci/quality/debt/` are historical catalogs/receipts, not current enforcement or acceptance. Tool/collection/schema locks live under `ci/quality/`. Root project defaults are not interchangeable with the owning quality formatter config.
+The full `python`, `manifests` and `tests-cluster` checks are [outside this graph](../../ci/quality/local-checks.json). `make check` includes them. A green PR graph does not certify a Kind run, a production rollout or checks that were skipped.
 
-## Exceptions: small, explicit, not a debt waiver
+## From declaration to PR result
 
-- Ruff globally ignores only D203/D213/ISC001/COM812. Behavior-named pytest functions and unittest methods do not need redundant docstrings in [reviewed test module scopes](strict-policy.md#python). This does not exempt module/class documentation or production code. The existing `tests/` assertion exception (S101) is unchanged.
-- YAML key-ordering conflicts with semantic Ansible task ordering. Compatible implicit-null and quoted-string checks are enabled. Cross-schema truthy key handling preserves GitHub `on`.
-- Installed Ansible/Kubernetes optional rules are either enabled or have precise applicability/architecture reasons in `strict-policy.md` and `strict-policy.json`; replica/scheduler/single-writer identities are not rewritten to satisfy arbitrary optional rules.
-- Hadolint's single DL3064 false-positive exception binds one exact public ENV line. Reviewed non-secret contexts are immutable and exact, not secret waivers. Drift fails.
-- Vendor boundaries are centrally declared. Generated workflows are still scanned and have no finding waiver. Inline suppressions remain forbidden and checked.
+1. **Define** nodes, runner profiles, prerequisites, policies and report paths in [`qg.yaml`](../../qg.yaml). Each node invokes `make <node>`; its recipe lives in the [Makefile](../../Makefile). The check implementations, tool locks and lint policies live in [`ci/`](../../ci/README.md).
+2. **Generate** with `make graph-generate`. Our adapter uses the compiler pinned in [`uv.lock`](../../uv.lock) and applies repository YAML formatting. Commit the resulting [manifest](../../.quality-graph/manifest.json) and generated workflows; do not edit them by hand.
+3. **Execute** on [pull requests](../../.github/workflows/quality-graph.yml) and [pushes to `main`](../../.github/workflows/quality-graph-push.yml). For a failure, open the named job: `image-cves` writes findings to its log, while nodes with declared outputs also produce native JSON or JUnit reports.
+4. **Publish** separately. The [publisher workflow](../../.github/workflows/quality-graph-publish.yml) reconciles results on a schedule or by manual dispatch from the default branch. It updates the aggregate check and dashboard for the verified PR head. If the dashboard lags, distinguish the execution run from the publisher run before rerunning a check.
 
-This is strict configuration for the adopted tools, **not a claim that every conceivable checker is installed**. ESLint/Prettier execution, separate Bandit/Vulture runs and broader mutation coverage are not enabled; do not count them as passes. Those are explicit coverage/tool-lock follow-ups, not hidden successful nodes.
+## Where to start
 
-## Test inventory and safety
-
-pytest is the single runner, including unittest classes. All test modules under `tests/` and `experiments/` must be explicitly scheduled or named with a reason in `notScheduled`; unknown/stale/overlapping entries fail Graph integrity. No global pytest discovery of operational or autonomous experiments is authorized. The remaining `notScheduled` entries are explicit coverage gaps, not passed tests. Run `uv run python -m ci.quality.contracts` for current counts.
-
-Newly reviewed pure helper/publisher-negative/dashboard tests join fast; source-only Helm upgrade assertions join medium and do not execute Jobs or backups. Two newly synchronized owner tests import provisioning/validation entrypoints and remain explicitly unexecuted pending bounded isolation review. No previously scheduled module was removed.
-
-Linux fast/medium use loopback-only network namespaces and stripped cloud/SSH/operator-kubeconfig variables. This prevents accidents, not hostile-code execution. Kind uses locked binaries, a UUID cluster, a private loopback kubeconfig, no production data/credentials and exact cleanup; never docker prune. It exercises actual scheduling, Service HTTP, scale, invalid Deployment rejection, RBAC and local PV Retain. It is not K3s/SSO/backup/runtime acceptance. Historical hosted Kind success is not current-head hosted green.
-
-## Failure and report semantics
-
-Findings, incomplete audit coverage, adapter failures and absent/oversized native artifacts all remain failures. In particular, a failed envelope with an empty finding list is **not clean**. Native Python reports previously exceeded the unchanged 10 MiB admission limit. The generated publisher is audited like every other workflow; a clean Delivery security result does not establish that the scheduled publisher reconciled the PR. Do not truncate/shard reports or refresh approvals to hide them.
-
-Private complete audit evidence is outside Git at `~/Library/Application Support/homelab/quality-strict/` (directories0700/files0600). `strict_report.py` returns1 when findings remain; configurationReady/snapshotStable must also be checked. Old receipts describing exit0-with-findings are historical behavior, not the current contract. A current audit binds an exact clean source head; dirty/in-progress merge evidence is not exact-head acceptance.
-
-## Reproduce
-
-```sh
-uv sync --locked
-make graph-validate
-uv run python -m ci.quality.contracts
-uv run python -m ci.quality.strict_guard
-uv run python -m ci.quality.check_python
-uv run python -m ci.quality.check_yaml
-uv run python -m ci.quality.tests fast
-uv run python -m ci.quality.tests medium
-```
-
-The medium suite needs full Git history for the pinned before/handoff and later owner-cutover renders (CI uses `fetch-depth: 0`). A shallow clone is not sufficient. Preload the [pinned nginx parser](../nginx-access-logging.md) before isolating the suite.
-
-Actual Linux jobs add `--isolate-network` to fast/medium. Install only required pinned binaries via `ci/quality/install_tools.py` and parsing collections via `ci/quality/install_collections.py`; do not substitute system versions silently. Use `.venv/bin:.quality-tools/bin` in scoped PATH and `KUBECONFIG=/dev/null` for offline checks. Cluster testing requires an explicitly reviewed disposable Docker/Kind environment; it is not implicitly run by these offline commands.
-
-Publication uses the private fail-closed draft publisher: fresh main/remote ancestry, stable clean head, complete audit metadata, verified open draft and one non-force push. Any refusal means no separate push. PR metadata must identify actual published head and real results. No main merge, admin bypass, production execution, backup/identity/model/worker/provider operation is performed by CI/refactoring preparation.
-
-### Container image CVEs
-
-`make image-cves` scans the linux/amd64 Grafana MCP and NetBird dashboard images
-by digest from their deployment values. Install the pinned CLI locally with
-`uv run python -m ci.quality.install_tools --tools trivy`. The scanner needs
-network access to public registries and its vulnerability database; no Harbor
-credentials are supplied. HIGH and CRITICAL findings appear in the job log.
-A CRITICAL finding with a fixed version, or a scanner error, fails the job.
-Private images and other containers are not covered by this initial inventory.
+- **Reproduce one job:** `uv sync --locked`, then `make <node>` (for example, `make ownership`). Check that node's `profile` in `qg.yaml` for its tools, history depth and runner requirements. The medium suite needs full Git history; the fast and medium CI suites use Linux network isolation.
+- **Change a gate:** edit its owning recipe or policy. For a new scoped Python rule, add a [scope declaration](../../ci/quality/python-scopes/) and run `make python-scopes`. If the graph declaration changed, run `make graph-generate` and `make graph-validate`. Validation checks generated-file freshness, not whether the underlying checks pass.
+- **Investigate a policy or exception:** read the [enforcement policy](strict-policy.md). For earlier integration decisions and results, use the [CI enablement record](ci-enablement.md) or [historical evidence](strict-status.md), not those records' old node lists.

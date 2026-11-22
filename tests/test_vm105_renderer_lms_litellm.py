@@ -48,7 +48,9 @@ def render(chart, values, release, ns):
 class MigrationTests(unittest.TestCase):
     """Tests for MigrationTests."""
 
-    def test_renderer_retry_after_transport_repair_preserves_grafana_and_adapter_placement(self):
+    def test_renderer_retry_after_transport_repair_preserves_grafana_and_adapter_placement(
+        self,
+    ):
         v = load("charts/grafana/alert-graphs.runtime.values.yaml")
         assert v["grafana"]["imageRenderer"]["nodeSelector"] == {
             "kubernetes.io/hostname": "socrat-5"
@@ -73,18 +75,36 @@ class MigrationTests(unittest.TestCase):
         s = d["spec"]["template"]["spec"]
         assert s["affinity"]["nodeAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"][
             "nodeSelectorTerms"
-        ][0]["matchExpressions"][0]["values"] == ["socrat-5", "socrat-0", "socrat-1"]
-        preference = s["affinity"]["nodeAffinity"]["preferredDuringSchedulingIgnoredDuringExecution"]
-        assert preference == [{"weight": 100, "preference": {"matchExpressions": [
-            {"key": "kubernetes.io/hostname", "operator": "In", "values": ["socrat-5"]}
-        ]}}]
+        ][0]["matchExpressions"][0]["values"] == [
+            "socrat-5",
+            "socrat-0",
+            "socrat-1",
+        ]
+        preference = s["affinity"]["nodeAffinity"][
+            "preferredDuringSchedulingIgnoredDuringExecution"
+        ]
+        assert preference == [
+            {
+                "weight": 100,
+                "preference": {
+                    "matchExpressions": [
+                        {
+                            "key": "kubernetes.io/hostname",
+                            "operator": "In",
+                            "values": ["socrat-5"],
+                        }
+                    ]
+                },
+            }
+        ]
         assert s["hostAliases"] == [
             {"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}
         ]
         assert not any("persistentVolumeClaim" in x for x in s["volumes"])
         env = {e["name"]: e for e in s["containers"][0]["env"]}
         assert env["LMS_DATABASE_URL"]["valueFrom"]["secretKeyRef"] == {
-            "name": "lms-pg-common", "key": "LMS_DATABASE_URL",
+            "name": "lms-pg-common",
+            "key": "LMS_DATABASE_URL",
         }
         assert (
             env["LMS_OIDC_CLIENT_SECRET"]["valueFrom"]["secretKeyRef"]["name"]
@@ -110,7 +130,9 @@ class MigrationTests(unittest.TestCase):
                 s = s[s.index(b"{{- if .Values.migrationJob.enabled }}") :]
             assert hashlib.sha256(s).hexdigest() == digest, name
 
-    def test_litellm_only_deployment_changes_no_migration_job_or_config_or_secrets(self):
+    def test_litellm_only_deployment_changes_no_migration_job_or_config_or_secrets(
+        self,
+    ):
         v = load("deploy/platform/litellm/values.yaml")
         after = render("charts/litellm", v, "litellm", "llm")
         old = dict(v)
@@ -144,7 +166,8 @@ class MigrationTests(unittest.TestCase):
             render("charts/litellm", broken, "litellm", "llm")
         assert v["envVars"]["DISABLE_SCHEMA_UPDATE"].lower() == "true"
         assert re.search(
-            r"^eb6e7f61e4fa0fa1425461e4e92145c8eab73bef@sha256:[a-f0-9]{64}$", v["image"]["tag"]
+            r"^eb6e7f61e4fa0fa1425461e4e92145c8eab73bef@sha256:[a-f0-9]{64}$",
+            v["image"]["tag"],
         )
         assert v["masterkeySecretName"] == "litellm-env"
 

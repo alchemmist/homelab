@@ -63,7 +63,8 @@ def fixtures() -> dict[str, object]:
             "running init CPU quota requires CFS telemetry",
             {
                 quota.replace(
-                    "kube_pod_container_resource_limits", "kube_pod_init_container_resource_limits"
+                    "kube_pod_container_resource_limits",
+                    "kube_pod_init_container_resource_limits",
                 ): "2x12",
                 'kube_pod_init_container_status_running{job="kube-state-metrics",namespace="app",pod="app-1",container="app"}': "1x12",
             },
@@ -73,14 +74,19 @@ def fixtures() -> dict[str, object]:
             "finished init CPU quota does not prevent not applicable",
             {
                 quota.replace(
-                    "kube_pod_container_resource_limits", "kube_pod_init_container_resource_limits"
+                    "kube_pod_container_resource_limits",
+                    "kube_pod_init_container_resource_limits",
                 ): "2x12",
                 'kube_pod_init_container_status_running{job="kube-state-metrics",namespace="app",pod="app-1",container="app"}': "0x12",
             },
             -1,
         ),
         ("zero CPU quota is not applicable", {quota: "0x12"}, -1),
-        ("lingering CFS counters do not make unlimited containers clear", {periods: "0+10x12"}, -1),
+        (
+            "lingering CFS counters do not make unlimited containers clear",
+            {periods: "0+10x12"},
+            -1,
+        ),
         ("quota and CFS counters are clear", {quota: "2x12", periods: "0+10x12"}, 0),
         ("quota without CFS telemetry is unknown", {quota: "2x12"}, None),
         ("failed cAdvisor is unknown", {source: "0x12"}, None),

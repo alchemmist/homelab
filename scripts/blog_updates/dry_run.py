@@ -26,7 +26,8 @@ def gh_compare(path: str) -> Comparison:
 compare = gh_compare(f"repos/{REPO}/compare/{a.before}...{a.after}")
 # Local git reads the committed snapshot, never uncommitted working-tree changes.
 updates = subprocess.check_output(
-    ["git", "-C", str(Path.home() / "code/blog"), "show", f"{a.after}:{UPDATES}"], text=True
+    ["git", "-C", str(Path.home() / "code/blog"), "show", f"{a.after}:{UPDATES}"],
+    text=True,
 )
 context = prepare(compare, updates)
 if context is None:

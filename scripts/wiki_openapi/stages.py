@@ -159,7 +159,8 @@ def stage(
         'Never invent numbers. Return JSON {"close": [numbers]}.'
     )
     decision = call_model(
-        prompt, {"survivor": keep, "status": payload.get("status"), "candidates": candidates}
+        prompt,
+        {"survivor": keep, "status": payload.get("status"), "candidates": candidates},
     )
     closed = []
     for number in select_closable(decision, candidates, keep):

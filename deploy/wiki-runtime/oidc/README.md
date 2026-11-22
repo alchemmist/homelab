@@ -3,7 +3,7 @@
 **Historical overlay, superseded 2026-11-07.** The active runtime uses upstream
 `f52cf2a` with the small groups-scope preservation layer in `../upstream`. This
 recipe and old image are retained for provenance/rollback; do not apply these
-0.4.1 source edits to the new runtime. See `docs/wiki-upgrade-20261107.md`.
+0.4.1 source edits to the new runtime. See `docs/records/handoffs/wiki-upgrade-20261107.md`.
 
 Live on 2026-11-01. This is a narrow patch over upstream hugo-docs **0.4.1**,
 not a claim that the unmodified release supports OIDC. Original source SHA-256:

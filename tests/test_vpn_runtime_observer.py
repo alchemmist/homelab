@@ -44,7 +44,9 @@ def test_backend_requires_native_both_units_and_server_ownership() -> None:
     assert m.classify(p, {"mode": "fallback"}, True, [True, True], True) == -1
 
 
-def test_socket_observation_does_not_call_established_sessions_off(tmp_path: Path) -> None:
+def test_socket_observation_does_not_call_established_sessions_off(
+    tmp_path: Path,
+) -> None:
     """Test behavior for test_socket_observation_does_not_call_established_sessions_off."""
     net = tmp_path / "net"
     net.mkdir()
@@ -94,7 +96,9 @@ def test_observer_has_no_recovery_or_mutating_command() -> None:
         assert forbidden not in s
 
 
-def test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock(tmp_path: Path) -> None:
+def test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock(
+    tmp_path: Path,
+) -> None:
     """Test behavior for test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock."""
     from types import SimpleNamespace
 
@@ -106,8 +110,7 @@ def test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock(tmp_
         (net / name).write_text("header\n")
     (net / "tcp").write_text("header\n0: 00000000:01BB 00000000:0000 0A\n")
 
-
-    def run(args: list[str], _timeout = 30) -> object:
+    def run(args: list[str], _timeout=30) -> object:
         assert args[:2] == ["systemctl", "show"]
         return SimpleNamespace(
             returncode=0,

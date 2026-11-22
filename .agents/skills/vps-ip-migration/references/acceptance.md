@@ -1,55 +1,50 @@
-# Acceptance ledger — заполнить для каждого переезда
+# Acceptance ledger: complete for every migration
 
-Не отмечать «passed» по наличию config. Значения: **passed / failed / unknown /
-not applicable (reason)**. Записывать UTC/time window и vantage. Если обязательный
-пункт unknown, общий статус — **не завершено**, либо явно ограниченный server-only.
-Evidence приватная, только sanitized summary в Git.
+For each row, record **passed / failed / unknown / not applicable (reason)**, the UTC time window and the observation point. Configuration alone is not a pass. If a required result is unknown, report the migration as incomplete or explicitly limit the claim to server-side work. Keep evidence private; commit only a sanitized summary.
 
-| Проверка | Обязательный результат / evidence |
+| Check | Required result or evidence |
 |---|---|
-| Provider assignment/persistence | NEW назначен VPS; source route работает; persistent network owner известен |
-| Management | Приватный доступ сохранён; новый direct SSH проверен с прежним pinned host key |
-| Repository | reviewed allowlist diff, targeted tests, обычный commit/push, remote revision verified |
-| Host phase | audit всех 4 узлов; reviewed apply; private preimages/receipt; нет partial failure |
-| Native services | Knot/TCP transport/guard active; новый bind; только ожидаемые restarts |
-| Mesh | persistent + runtime endpoint нового VPS; свежие handshakes между нужными peers; no interface/key replacement |
-| Control plane/storage | nodes Ready; прежние identities/volumes; etcd и DB не пересозданы |
-| Primary 3x-ui | exact hosts.address changes only; private consistent backup; quick_check; credentials/IDs invariant |
-| Retained legacy | адрес обновлён, БД проверена; dormant runtime **не запущен** |
-| Panel lifecycle | только точный x-ui pod; Ready; повторный subscription/tunnel test после последнего reload |
-| Plain subscriptions | все enabled; decoding/base64/vmess; count OLD=0; NEW/other классифицированы; ошибки=0 |
-| JSON subscriptions | все enabled; valid JSON; OLD=0; no user identifiers/body in evidence |
-| VPN from HOME | authenticated tunnel literal NEW (не hostname или self-hairpin), neutral HTTPS + Telegram + ChatGPT |
-| VPN from PHONE | выбранный пользовательский профиль обновлён; Wi-Fi/mobile проверены пользователем или явный pending |
-| Other VPN protocols | используемые Reality/VLESS/WG/Amnezia протоколы реально проверены, либо каждый явно unknown |
-| Public HTTPS | оба входа, корректный TLS/SNI, актуальные health/login semantics; backend reachability |
-| Both child authorities | UDP/TCP 53 NEW bind; NS + SOA + A, действующий serial/TTL; OLD не публикуется |
-| Registrar | сохранены прежние NS names и IP ns1; только ns2 → NEW; подтверждение кабинета |
-| Parent glue | прямые ответы минимум двух `.xyz` authoritative возвращают NEW (не только child A) |
-| Recursive DNS | Google/Cloudflare DoH observed values, TTL/cache lag отдельно от registrar publication |
-| Kube live audit | functional specs/ConfigMap/Secret address fields reviewed; no unexplained OLD reference |
-| Native Collector target | один owned blackbox target NEW; остальные jobs/collector.yaml preserved |
-| Collector activation | fresh UID/ID/image/config/binary receipts; same pod; neighbors IDs/restarts unchanged |
-| Telemetry gate | duration, log/metric sent deltas, refused/failed/enqueue deltas, queue samples/drain, freshness |
-| Availability alert | NEW instance probe_success=1; old alert naturally resolved, no silencing/series deletion |
-| Loki/Tempo | прежние owners/routes/mTLS/data; ingestion/readiness не сломаны изменением сети |
-| NetBird | STUN bind + advertised URI NEW; exact secret change; server reload + Ready; external UDP test |
-| Relay privacy | source semantics validated without printing raw client IP; no open unauthenticated TURN |
-| Bot webhook | Telegram API sees NEW, queue/error timestamps understood; fresh delivery tested или отдельно unknown |
-| NetworkPolicies | RustFS auth/gateway and NetBird policy IP updated in правильных namespace; no broader exposure |
-| Local clients | generated Mac profile **и imported profile** distinguished; SSH aliases pinned; phone action explained |
-| GitOps state | нужные revisions применены; remaining unrelated OutOfSync описан, no blanket prune |
-| Cleanup | bounded probe processes stopped; temporary pods/Secrets/bundles absent; permanent backups kept |
+| Provider assignment and persistence | NEW is assigned to the VPS; source routing works; the owner of persistent network configuration is known. |
+| Management | Private access remains available; direct SSH to NEW was verified using the existing pinned host key. |
+| Repository | Allowlisted diff reviewed, targeted tests run, normal commit and push completed, remote revision verified. |
+| Host phase | All four nodes audited; apply reviewed; private preimages and receipt retained; no partial failure. |
+| Native services | Knot, TCP transport and guard in their expected active states; new binding; expected restarts only. |
+| Mesh | Persistent and runtime endpoints point to NEW; required peers have fresh handshakes; no interface or key replacement. |
+| Control plane and storage | Nodes Ready; identities and volumes preserved; neither etcd nor databases recreated. |
+| Primary 3x-ui | Only intended `hosts.address` changes; consistent private backup; `quick_check` passes; credentials and IDs unchanged. |
+| Retained legacy | Record whether the address was updated and database verified; dormant runtime **not started**. Do not automatically rewrite a historical database. |
+| Panel lifecycle | Only the identified x-ui pod affected; Ready; subscriptions and tunnel retested after the last reload. |
+| Plain subscriptions | All enabled subscriptions decoded, including base64/vmess; OLD count zero; NEW and other destinations classified; no errors. |
+| JSON subscriptions | All enabled subscriptions return valid JSON; OLD count zero; no user identifiers or response bodies in evidence. |
+| VPN from HOME | Authenticated tunnel to literal NEW, not a hostname or VPS hairpin; neutral HTTPS, Telegram and ChatGPT tested. |
+| VPN from PHONE | Selected user profile refreshed; user verified Wi-Fi and mobile or explicitly recorded as pending. |
+| Other VPN protocols | Each in-use Reality/VLESS/WG/Amnezia protocol actually tested or individually marked unknown. |
+| Public HTTPS | Both entry points; correct TLS/SNI, expected health or login behavior, and backend reachability. |
+| Both child authorities | NEW listens on UDP/TCP 53; NS, SOA and A records, serial and TTL checked; OLD no longer published. |
+| Registrar | NS names and ns1 IP preserved; only ns2 changed to NEW; registrar confirmation observed. |
+| Parent glue | Direct replies from at least two authoritative `.xyz` servers return NEW, not merely a child A record. |
+| Recursive DNS | Record Google/Cloudflare DoH observations and TTL; distinguish cache lag from registrar publication. |
+| Live Kubernetes audit | Functional specs and address fields in ConfigMaps and Secrets reviewed; no unexplained OLD reference. |
+| Native Collector target | One owned blackbox target uses NEW; all other jobs and `collector.yaml` preserved. |
+| Collector activation | Fresh UID, container ID, image, config and binary receipts; same pod; adjacent container IDs and restart counts unchanged. |
+| Telemetry | Duration, log/metric sent deltas, refused/failed/enqueue deltas, queue samples and drain, data freshness. |
+| Availability alert | Fresh NEW instance has `probe_success=1`; old alert resolved naturally without silencing or deleting series. |
+| Loki/Tempo | Owners, routes, mTLS and data preserved; network change did not break ingestion or readiness. |
+| NetBird | STUN bind and advertised URI use NEW; targeted Secret change; server reload and Ready; external UDP test. |
+| Relay privacy | Source address behavior verified without printing raw client IPs; no open unauthenticated TURN relay. |
+| Bot webhook | Telegram API reports NEW; pending count and error times understood; fresh delivery tested or explicitly unknown. |
+| NetworkPolicies | RustFS auth/gateway and NetBird policy addresses updated in the correct namespaces without broadening access. |
+| Local clients | Distinguish generated and **imported** Mac profiles; SSH aliases pinned; phone action explained. |
+| GitOps state | Required revisions applied; unrelated OutOfSync documented; no blanket prune. |
+| Cleanup | Bounded probe processes stopped; temporary pods, Secrets and bundles absent; permanent backups kept. |
 
-## Остановиться, а не продолжать
+## Stop conditions
 
-- Утерян последний доступ; новый IP ещё не назначен; identity отличается.
-- Неожиданный source/schema/owner или неизвестный affected inactive unit.
-- SQLite invariant/quick_check failed; нет защищённой согласованной preimage.
-- Container/image/config/binary pin mismatch; Collector neighbor перезапустился.
-- Receiver/exporter failures растут, queues не дренируются, метрики/логи устарели.
-- Секрет попал в stdout/Git: прекратить публикацию, сообщить оператору, отдельное
-  решение о remediation/rotation; не делать вид, что редактирование лога всё исправило.
-- Parent glue OLD после сохранения: pending registrar, не «готово» и не recursive cache.
-- После apply ошибка: читать receipt/preimages, устанавливать actual state,
-  не повторять importer/deployer и не откатывать живую БД целиком.
+- The last access path is lost, NEW is not assigned, or an identity differs.
+- An unexpected source, schema, owner or affected inactive unit is found.
+- A SQLite invariant or `quick_check` fails, or no protected, consistent preimage exists.
+- A container, image, config or binary pin differs, or a neighboring Collector container restarts.
+- Receiver/exporter failures grow, queues do not drain, or metrics or logs are stale.
+- A secret reaches stdout or Git. Stop publication, notify the operator and obtain a separate remediation or rotation decision. Editing the log is not remediation.
+- Parent glue still returns OLD after saving: registration is pending, not complete or merely a recursive cache issue.
+- Apply fails: inspect receipts and preimages and establish actual state. Do not rerun the importer/deployer or roll back an entire live database.

@@ -66,7 +66,11 @@ def patch(before, data):
 def kubectl(*args: str, payload: str | None = None):
     """Run k3s kubectl once and decode its JSON response, failing on a nonzero exit."""
     r = subprocess.run(
-        ["k3s", "kubectl", *args], input=payload, capture_output=True, text=True, timeout=30
+        ["k3s", "kubectl", *args],
+        input=payload,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     if r.returncode:
         raise RuntimeError("Kubernetes operation failed; inspect private state, no blind retry")
@@ -144,7 +148,10 @@ def main() -> None:
     save("plan.json", plan)
     save("service-before.json", service)
     if data != before["data"]:
-        save("uncertain.json", {"state": "write-about-to-start", "approval_sha256": digest})
+        save(
+            "uncertain.json",
+            {"state": "write-about-to-start", "approval_sha256": digest},
+        )
         result = kubectl(
             "-n",
             "kube-system",

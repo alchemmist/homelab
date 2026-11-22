@@ -35,7 +35,11 @@ class Kube(Protocol):
     """Callable running `kubectl`, mirroring a types.SimpleNamespace-style wrapper."""
 
     def __call__(
-        self, *args: str, data: str | None = None, check: bool = True, timeout: int = 180
+        self,
+        *args: str,
+        data: str | None = None,
+        check: bool = True,
+        timeout: int = 180,
     ) -> subprocess.CompletedProcess[str]:
         """Invoke kubectl with the given arguments."""
         ...
@@ -99,7 +103,10 @@ def cluster(tmp_path_factory):
         yield name, config, context, kube
     finally:
         # Only this fixture's exact UUID-named cluster is ever removed.
-        run(["kind", "delete", "cluster", "--name", name, "--kubeconfig", str(config)], timeout=120)
+        run(
+            ["kind", "delete", "cluster", "--name", name, "--kubeconfig", str(config)],
+            timeout=120,
+        )
 
 
 def test_release_reconciles_and_serves_http(cluster):
@@ -148,7 +155,14 @@ def test_apiserver_rejects_invalid_rendered_replica_count(cluster):
     """Run test apiserver rejects invalid rendered replica count."""
     *_, kube = cluster
     rendered = run(
-        ["helm", "template", "cats", str(ROOT / "charts/cats"), "--set", "replicaCount=-1"]
+        [
+            "helm",
+            "template",
+            "cats",
+            str(ROOT / "charts/cats"),
+            "--set",
+            "replicaCount=-1",
+        ]
     ).stdout
     dep = next(d for d in yaml.safe_load_all(rendered) if d and d["kind"] == "Deployment")
     result = kube("apply", "--dry-run=server", "-f", "-", data=json.dumps(dep), check=False)
@@ -167,7 +181,10 @@ def test_application_reader_is_enforced_by_real_rbac(cluster):
     kube("create", "namespace", pki.NS)
     objects = [d for d in pki.resources() if d["kind"] in {"ServiceAccount", "Role", "RoleBinding"}]
     kube(
-        "apply", "-f", "-", data=json.dumps({"apiVersion": "v1", "kind": "List", "items": objects})
+        "apply",
+        "-f",
+        "-",
+        data=json.dumps({"apiVersion": "v1", "kind": "List", "items": objects}),
     )
     principal = f"system:serviceaccount:{pki.NS}:{pki.SA}"
     for verb, resource, allowed in [
@@ -176,7 +193,17 @@ def test_application_reader_is_enforced_by_real_rbac(cluster):
         ("list", "secrets", False),
         ("update", "secret/otel-app-tls-litellm", False),
     ]:
-        result = kube("--as", principal, "-n", pki.NS, "auth", "can-i", verb, resource, check=False)
+        result = kube(
+            "--as",
+            principal,
+            "-n",
+            pki.NS,
+            "auth",
+            "can-i",
+            verb,
+            resource,
+            check=False,
+        )
         assert result.returncode in {0, 1}, result.stderr
         assert (result.stdout.strip() == "yes") is allowed
         assert result.returncode == (0 if allowed else 1)
@@ -187,7 +214,16 @@ def test_local_pv_retains_identity_after_claim_deletion(cluster):
     name, _, _, kube = cluster
     ns = "storage-contract"
     kube("create", "namespace", ns)
-    run(["docker", "exec", name + "-control-plane", "mkdir", "-p", "/var/local/qg-retain"])
+    run(
+        [
+            "docker",
+            "exec",
+            name + "-control-plane",
+            "mkdir",
+            "-p",
+            "/var/local/qg-retain",
+        ]
+    )
     pv = {
         "apiVersion": "v1",
         "kind": "PersistentVolume",
@@ -233,10 +269,22 @@ def test_local_pv_retains_identity_after_claim_deletion(cluster):
         "-",
         data=json.dumps({"apiVersion": "v1", "kind": "List", "items": [pv, pvc]}),
     )
-    kube("-n", ns, "wait", "pvc/data", "--for=jsonpath={.status.phase}=Bound", "--timeout=45s")
+    kube(
+        "-n",
+        ns,
+        "wait",
+        "pvc/data",
+        "--for=jsonpath={.status.phase}=Bound",
+        "--timeout=45s",
+    )
     before = json.loads(kube("get", "pv", "qg-retain", "-o", "json").stdout)
     kube("-n", ns, "delete", "pvc", "data", "--wait=true")
-    kube("wait", "pv/qg-retain", "--for=jsonpath={.status.phase}=Released", "--timeout=45s")
+    kube(
+        "wait",
+        "pv/qg-retain",
+        "--for=jsonpath={.status.phase}=Released",
+        "--timeout=45s",
+    )
     after = json.loads(kube("get", "pv", "qg-retain", "-o", "json").stdout)
     assert before["metadata"]["uid"] == after["metadata"]["uid"]
     assert after["spec"]["persistentVolumeReclaimPolicy"] == "Retain"

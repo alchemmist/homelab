@@ -338,7 +338,8 @@ class RolloutTests(unittest.TestCase):
         client.evict.return_value = SimpleNamespace(returncode=0)
         with (
             patch.object(ROLLOUT.time, "monotonic", side_effect=[0, 0, 0, 11]),
-            patch.object(ROLLOUT.time, "sleep"),self.assertRaisesRegex(TimeoutError, "Replacement")
+            patch.object(ROLLOUT.time, "sleep"),
+            self.assertRaisesRegex(TimeoutError, "Replacement"),
         ):
             ROLLOUT.reconcile_one(client, old, 10, 0.01, [profile()])
 
@@ -564,7 +565,8 @@ class RolloutTests(unittest.TestCase):
         client.evict.return_value = SimpleNamespace(returncode=0)
         with (
             patch.object(ROLLOUT.time, "monotonic", side_effect=[0, 0, 0, 11]),
-            patch.object(ROLLOUT.time, "sleep"),self.assertRaisesRegex(TimeoutError, "Replacement")
+            patch.object(ROLLOUT.time, "sleep"),
+            self.assertRaisesRegex(TimeoutError, "Replacement"),
         ):
             ROLLOUT.reconcile_one(client, old, 10, 0.01)
 
@@ -576,7 +578,8 @@ class RolloutTests(unittest.TestCase):
         client.evict.return_value = SimpleNamespace(returncode=0)
         with (
             patch.object(ROLLOUT.time, "monotonic", side_effect=[0, 0, 0, 11]),
-            patch.object(ROLLOUT.time, "sleep"),self.assertRaisesRegex(TimeoutError, "Replacement")
+            patch.object(ROLLOUT.time, "sleep"),
+            self.assertRaisesRegex(TimeoutError, "Replacement"),
         ):
             ROLLOUT.reconcile_one(client, old, 10, 0.01)
 

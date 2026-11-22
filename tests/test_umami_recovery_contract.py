@@ -25,7 +25,15 @@ def test_umami_image_is_immutable_and_secret_external() -> None:
 def test_offline_render_references_but_never_replaces_credentials() -> None:
     """Require rendered resources to reference credentials without embedding them."""
     rendered = subprocess.check_output(
-        ["helm", "template", "umami", str(ROOT / "charts/umami"), "--namespace", "umami"], text=True
+        [
+            "helm",
+            "template",
+            "umami",
+            str(ROOT / "charts/umami"),
+            "--namespace",
+            "umami",
+        ],
+        text=True,
     )
     resources = [x for x in yaml.safe_load_all(rendered) if x]
     assert not any(x["kind"] == "Secret" for x in resources)

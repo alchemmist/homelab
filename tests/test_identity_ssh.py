@@ -247,7 +247,6 @@ class BindingTests(unittest.TestCase):
         """Skip the IdP for disabled and removed hosts."""
         p = policy("disabled", hosts=["socrat-1"], revoked=["socrat-2"])
 
-
         def unavailable(_ident) -> None:
             """Refuse any IdP lookup for the revocation path."""
             refusal = "Must not call IdP for revocation"
@@ -383,7 +382,6 @@ class ApiTests(unittest.TestCase):
         """Pin GET, UUID queries, TLS verification, and redirect refusal."""
         api = self.api()
         seen: list[urllib.request.Request] = []
-
 
         def opened(req: urllib.request.Request, timeout: int) -> io.BytesIO:
             """Record one opener request and return the scheduled page."""

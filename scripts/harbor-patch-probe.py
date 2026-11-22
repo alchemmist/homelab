@@ -23,7 +23,7 @@ def upload_path(location):
     u = urlsplit(urljoin(f"https://{HOST}{PREFIX}", location or ""))
     if (u.scheme, u.netloc) != ("https", HOST) or not u.path.startswith(PREFIX):
         raise ValueError("Unexpected registry upload origin")
-    suffix = u.path[len(PREFIX):]
+    suffix = u.path[len(PREFIX) :]
     if not suffix or any(c not in "0123456789abcdef-" for c in suffix.lower()):
         raise ValueError("Unexpected registry upload ID")
     return u.path + ("?" + u.query if u.query else "")
@@ -42,7 +42,12 @@ def main():
             conn.sock = ctx.wrap_socket(raw, server_hostname=HOST)
             try:
                 start = time.monotonic()
-                conn.request(method, path, body, {"Authorization": auth, "Content-Type": "application/octet-stream"})
+                conn.request(
+                    method,
+                    path,
+                    body,
+                    {"Authorization": auth, "Content-Type": "application/octet-stream"},
+                )
                 r = conn.getresponse()
                 data = r.read(65537)
                 if len(data) > 65536:
@@ -51,7 +56,9 @@ def main():
             finally:
                 conn.close()
 
-    basic = base64.b64encode((os.environ["HARBOR_TEST_USER"] + ":" + os.environ["HARBOR_TEST_PASSWORD"]).encode()).decode()
+    basic = base64.b64encode(
+        (os.environ["HARBOR_TEST_USER"] + ":" + os.environ["HARBOR_TEST_PASSWORD"]).encode()
+    ).decode()
     q = urlencode({"service": "harbor-registry", "scope": f"repository:{REPO}:pull,push"})
     status, _, payload, _ = request("GET", "/service/token?" + q, "Basic " + basic)
     if status != 200:
@@ -70,9 +77,18 @@ def main():
         if urlsplit(next_path).path != urlsplit(path).path:
             raise ValueError("Registry changed the upload session ID")
         path = next_path
-        if headers.get("Range") != f"0-{len(layer)-1}":
+        if headers.get("Range") != f"0-{len(layer) - 1}":
             raise ValueError("Registry did not acknowledge the entire payload")
-        print(json.dumps({"address": str(args.address), "bytes": len(layer), "patch_seconds": elapsed, "KiB_per_second": len(layer) / 1024 / elapsed}))
+        print(
+            json.dumps(
+                {
+                    "address": str(args.address),
+                    "bytes": len(layer),
+                    "patch_seconds": elapsed,
+                    "KiB_per_second": len(layer) / 1024 / elapsed,
+                }
+            )
+        )
     finally:
         status, _, _, _ = request("DELETE", path, auth)
         if status != 204:

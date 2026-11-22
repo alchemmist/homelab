@@ -17,7 +17,8 @@ class Foundation(unittest.TestCase):
 
     def render(self, *args):
         return subprocess.check_output(
-            ["helm", "template", "rustfs", str(ROOT / "charts/rustfs"), *args], text=True
+            ["helm", "template", "rustfs", str(ROOT / "charts/rustfs"), *args],
+            text=True,
         )
 
     def test_default_is_off(self):

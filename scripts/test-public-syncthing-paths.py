@@ -33,7 +33,12 @@ def main() -> None:
         raise RuntimeError("Ambiguous policy pod")
     pod = pods[0]["metadata"]["name"]
     config = k("exec", pod, "--", "cat", "/etc/nginx/nginx.conf")
-    for marker in ["pid /tmp/nginx.pid;", "listen 8080;", "listen 8081;", "/etc/nginx/basic/users"]:
+    for marker in [
+        "pid /tmp/nginx.pid;",
+        "listen 8080;",
+        "listen 8081;",
+        "/etc/nginx/basic/users",
+    ]:
         if marker not in config:
             raise RuntimeError("Unexpected policy configuration")
     test = (
@@ -75,7 +80,10 @@ def main() -> None:
     script += "grep -q OK /tmp/nginx-acceptance.health\n"
     script += 'printf "Legacy /sync/ HTML and native health through prefix rewrite: passed\\n"\n'
     subprocess.run(
-        ["kubectl", "-n", NS, "exec", "-i", pod, "--", "sh"], input=script, text=True, check=True
+        ["kubectl", "-n", NS, "exec", "-i", pod, "--", "sh"],
+        input=script,
+        text=True,
+        check=True,
     )
     after = json.loads(k("get", "secret", "syncthing-basic-auth", "-o", "json"))["data"]
     if old != after:

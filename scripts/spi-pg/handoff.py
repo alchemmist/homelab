@@ -44,19 +44,14 @@ def admit(path, data):
             if not isinstance(alerts, list) or not 0 < len(alerts) <= 200:
                 raise Failure("INVALID_ALERT_GROUP")
             events = [
-                normalize(
-                    {"source": data.get("externalURL", "socrat-alerts"), "alert": a}
-                )
+                normalize({"source": data.get("externalURL", "socrat-alerts"), "alert": a})
                 for a in alerts
             ]
             for e in events:
                 Store._enqueue(None, c, e, now)
             return {
                 "accepted": len(events),
-                "events": [
-                    {"event_key": e["event_key"], "episode": e["episode"]}
-                    for e in events
-                ],
+                "events": [{"event_key": e["event_key"], "episode": e["episode"]} for e in events],
             }
         r = record_receipt(st, data)
         v = data.get("receipt")
@@ -74,9 +69,7 @@ def admit(path, data):
 def activate():
     with txn() as d:
         assert d.execute("SELECT live FROM handoff.mode").fetchone()["live"] is False
-        assert d.execute("SELECT EXISTS(SELECT FROM public.jobs) ready").fetchone()[
-            "ready"
-        ]
+        assert d.execute("SELECT EXISTS(SELECT FROM public.jobs) ready").fetchone()["ready"]
         d.execute(
             """INSERT INTO public.jobs SELECT * FROM handoff.jobs ON CONFLICT(id) DO UPDATE SET deliveries=public.jobs.deliveries+excluded.deliveries,updated=greatest(public.jobs.updated,excluded.updated)"""
         )
@@ -94,9 +87,7 @@ def activate():
             "merged admissions:",
             d.execute("SELECT count(*) n FROM handoff.jobs").fetchone()["n"],
             "receipt events:",
-            d.execute(
-                "SELECT count(*) n FROM handoff.telegram_receipt_events"
-            ).fetchone()["n"],
+            d.execute("SELECT count(*) n FROM handoff.telegram_receipt_events").fetchone()["n"],
         )
         d.execute("UPDATE handoff.mode SET live=true")
 
@@ -139,9 +130,7 @@ class Handler(BaseHTTPRequestHandler):
                 headers=headers,
             )
             r = conn.getresponse()
-            self.output(
-                r.status, r.read(), r.getheader("Content-Type", "application/json")
-            )
+            self.output(r.status, r.read(), r.getheader("Content-Type", "application/json"))
         except OSError:
             self.output(503, {"code": "WORKER_MAINTENANCE"})
         finally:

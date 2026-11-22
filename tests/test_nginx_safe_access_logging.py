@@ -94,7 +94,9 @@ class SafeNginxLoggingTests(unittest.TestCase):
                         configs.append(entry)
             for config in configs:
                 block_match = re.search(
-                    r"map \$status.*?access_log /dev/stdout safe_json;", config, re.DOTALL
+                    r"map \$status.*?access_log /dev/stdout safe_json;",
+                    config,
+                    re.DOTALL,
                 )
                 assert block_match is not None
                 block = block_match.group()
@@ -138,4 +140,6 @@ class SafeNginxLoggingTests(unittest.TestCase):
         pod = deployment["spec"]["template"]
         assert "checksum/access-logging" in pod["metadata"]["annotations"]
         assert pod["spec"]["volumes"][0]["name"] == "access-logging"
-        assert "/etc/nginx/conf.d/00-access-logging.conf" in [m["mountPath"] for m in pod["spec"]["containers"][0]["volumeMounts"]]
+        assert "/etc/nginx/conf.d/00-access-logging.conf" in [
+            m["mountPath"] for m in pod["spec"]["containers"][0]["volumeMounts"]
+        ]

@@ -133,16 +133,16 @@ class CurrentDocumentation(unittest.TestCase):
         claim = yaml.safe_load((ROOT / "deploy/wiki-runtime/values.yaml").read_text())[
             "persistence"
         ]["existingClaim"]
-        for name in ["wiki/README.md", "docs/wiki.md"]:
+        for name in ["wiki/README.md", "docs/applications/wiki/README.md"]:
             assert "`" + claim + "`" in (ROOT / name).read_text()
 
     def test_current_context_is_bounded_and_history_separate(self) -> None:
         """Current context is bounded and history separate."""
-        text = (ROOT / "docs/context/context.md").read_text()
+        text = (ROOT / "docs/platform/system-overview.md").read_text()
         context_line_budget = 160
         assert len(text.splitlines()) < context_line_budget
-        assert "context-history-20261116.md" in text
-        assert (ROOT / "docs/context/context-history-20261116.md").is_file()
+        assert "cluster-chronology-20261116.md" in text
+        assert (ROOT / "docs/records/handoffs/cluster-chronology-20261116.md").is_file()
 
 
 class GrafanaStorage(unittest.TestCase):
@@ -185,7 +185,11 @@ class GrafanaStorage(unittest.TestCase):
         assert o["env"]["GF_DATABASE_CA_CERT_PATH"] == expected["PGSSLROOTCERT"]
         assert o["envValueFrom"]["GF_DATABASE_PASSWORD"] == password
         assert guard["volumeMounts"] == [
-            {"name": "pg-common-ca", "mountPath": "/etc/grafana/pg-ca", "readOnly": True}
+            {
+                "name": "pg-common-ca",
+                "mountPath": "/etc/grafana/pg-ca",
+                "readOnly": True,
+            }
         ]
         assert guard["securityContext"]["runAsNonRoot"]
         docs = list(

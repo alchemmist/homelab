@@ -141,13 +141,19 @@ class AppAccessTests(unittest.TestCase):
             for name in ("openid", "profile", "email")
         ]
         scopes += [
-            {"pk": "other-app", "scope_name": "profile", "name": "homelab-app-other-profile"}
+            {
+                "pk": "other-app",
+                "scope_name": "profile",
+                "name": "homelab-app-other-profile",
+            }
         ]
         assert standard_scope_ids(scopes) == ["openid", "profile", "email"]
         with self.assertRaises(RuntimeError):
             standard_scope_ids(scopes + [scopes[0]])
 
-    def test_new_registered_app_generates_group_without_hardcoded_allowlist(self) -> None:
+    def test_new_registered_app_generates_group_without_hardcoded_allowlist(
+        self,
+    ) -> None:
         """A discovered app plans a group and binding without an allowlist."""
         state, catalog = fixture()
         operations = access.build_plan(state, catalog)["operations"]
@@ -230,7 +236,10 @@ class AppAccessTests(unittest.TestCase):
             "def mapping():\n" + "\n".join("    " + line for line in expression.splitlines()),
             namespace,
         )
-        assert namespace["mapping"]()["groups"] == ["app-example-user", "legacy-example-user"]
+        assert namespace["mapping"]()["groups"] == [
+            "app-example-user",
+            "legacy-example-user",
+        ]
         assert [g.name for g in groups] == ["app-example-user"]
         assert "homelab-owner" not in namespace["mapping"]()["groups"]
         with self.assertRaises(RuntimeError):

@@ -170,7 +170,10 @@ class FailoverTests(unittest.TestCase):
         self.watchdog.running.remove(MODULE.NATIVE_UNITS[-1])
         self.watchdog.events.clear()
         self.watchdog.tick()
-        assert self.watchdog.events == ["fence", ("systemctl", "start", MODULE.NATIVE_UNITS[-1])]
+        assert self.watchdog.events == [
+            "fence",
+            ("systemctl", "start", MODULE.NATIVE_UNITS[-1]),
+        ]
 
     def test_partial_activation_refuses_inactive_unit_port_conflict(self):
         self.watchdog.activate()
@@ -220,7 +223,8 @@ class FailoverTests(unittest.TestCase):
             mock.patch.object(MODULE.os, "close"),
             mock.patch.object(
                 MODULE.Path, "read_text", return_value="0::/system.slice/ssh.service"
-            ),self.assertRaises(RuntimeError)
+            ),
+            self.assertRaises(RuntimeError),
         ):
             self.watchdog.terminate(123, MODULE.signal.SIGTERM)
         send.assert_not_called()
@@ -481,7 +485,10 @@ class ServiceIdentityContractTests(unittest.TestCase):
             (root / "ansible/roles/vpn_failover/defaults/main.yml").read_text()
         )
         assert defaults["vpn_failover_k3s_unit"] == "k3s.service"
-        assert set(defaults["vpn_failover_fenced_units"]) == {"k3s.service", "k3s-agent.service"}
+        assert set(defaults["vpn_failover_fenced_units"]) == {
+            "k3s.service",
+            "k3s-agent.service",
+        }
 
 
 if __name__ == "__main__":

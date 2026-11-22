@@ -55,7 +55,9 @@ class RepairTests(unittest.TestCase):
             try:
                 with (
                     patch.object(
-                        store, "reserve_llm", side_effect=[1, Failure("LLM_ADMISSION_DEFERRED", 61)]
+                        store,
+                        "reserve_llm",
+                        side_effect=[1, Failure("LLM_ADMISSION_DEFERRED", 61)],
                     ),
                     patch.object(store, "finish_llm"),
                 ):

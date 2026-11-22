@@ -37,7 +37,9 @@ class ResolvedInventory(TypedDict):
 class InventoryStructureTests(unittest.TestCase):
     """Check the main inventory's structure and connection settings."""
 
-    def test_main_inventory_contains_every_node_and_only_connection_settings(self) -> None:
+    def test_main_inventory_contains_every_node_and_only_connection_settings(
+        self,
+    ) -> None:
         """Map every node with connection-only settings once."""
         inventory = yaml.safe_load((ANSIBLE / "inventory/hosts.yml").read_text())
         hosts = inventory["all"]["children"]["Socrat"]["hosts"]
@@ -63,7 +65,9 @@ class InventoryStructureTests(unittest.TestCase):
             self.assertIn("ProxyJump=none", hosts[name]["ansible_ssh_common_args"])
             self.assertIn("HostKeyAlias=", hosts[name]["ansible_ssh_common_args"])
 
-    def test_default_sources_are_explicit_not_the_whole_inventory_directory(self) -> None:
+    def test_default_sources_are_explicit_not_the_whole_inventory_directory(
+        self,
+    ) -> None:
         """List both inventory sources explicitly in ansible.cfg."""
         config = configparser.ConfigParser()
         config.read(ANSIBLE / "ansible.cfg")
@@ -113,7 +117,10 @@ class ResolvedInventoryTests(unittest.TestCase):
                 "socrat-1": ("192.168.0.24", 2222),
                 "socrat-2": ("109.120.141.60", 22),
             },
-            "lan": {"socrat-0": ("192.168.0.23", 2222), "socrat-1": ("192.168.0.24", 2222)},
+            "lan": {
+                "socrat-0": ("192.168.0.23", 2222),
+                "socrat-1": ("192.168.0.24", 2222),
+            },
         }.items():
             with self.subTest(overlay=overlay):
                 data = self.inventory("hosts", overlay)
