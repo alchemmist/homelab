@@ -1,5 +1,4 @@
 ---
-wireguard_admin_interface_name: wg-socrat-admin
 wireguard_admin_profile_name: wg-socrat-admin.conf
 wireguard_admin_address: 10.250.0.4/32
 wireguard_admin_keepalive: 25

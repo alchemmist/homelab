@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 
-from scripts.quality.common import command
+from ci.quality.common import command
 
 
 def test_socrat4_steal() -> None:

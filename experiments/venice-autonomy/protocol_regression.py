@@ -61,7 +61,8 @@ def resolve_python(explicit: Path | None) -> Path:
 
 def git_show(repo: Path, rev_path: str) -> bytes:
     if rev_path.startswith("-") or ".." in rev_path.split(":", 1)[-1]:
-        raise ValueError(f"refused path {rev_path}")
+        msg = f"refused path {rev_path}"
+        raise ValueError(msg)
     completed = subprocess.run(
         ["git", "-C", str(repo), "show", "--no-textconv", rev_path],
         check=True,
@@ -436,7 +437,8 @@ def pinned_base_digest(dockerfile: Path) -> str:
             image = line.split()[1]
             marker = "@sha256:"
             if marker not in image or not image.startswith(BASE_IMAGE + marker):
-                raise ValueError(f"worker base is not a pinned {BASE_IMAGE} digest")
+                msg = f"worker base is not a pinned {BASE_IMAGE} digest"
+                raise ValueError(msg)
             return image.split("@", 1)[1]
     msg = "worker Dockerfile has no FROM"
     raise ValueError(msg)
@@ -447,7 +449,8 @@ def verify_pinned_base(docker: str, dockerfile: Path) -> dict:
     completed = docker_run(docker, ["manifest", "inspect", BASE_IMAGE], check=False, text=True)
     if completed.returncode != 0:
         detail = (completed.stderr or completed.stdout or "").strip()
-        raise RuntimeError(f"docker manifest inspect {BASE_IMAGE} failed: {detail}")
+        msg = f"docker manifest inspect {BASE_IMAGE} failed: {detail}"
+        raise RuntimeError(msg)
     document = json.loads(completed.stdout)
     matches = []
     for item in document.get("manifests", []):
@@ -455,9 +458,8 @@ def verify_pinned_base(docker: str, dockerfile: Path) -> dict:
         if digest == pinned:
             matches.append(item.get("platform"))
     if not matches:
-        raise RuntimeError(
-            f"pinned digest {pinned} is absent from registry manifest for {BASE_IMAGE}"
-        )
+        msg = f"pinned digest {pinned} is absent from registry manifest for {BASE_IMAGE}"
+        raise RuntimeError(msg)
     return {
         "base_image": BASE_IMAGE,
         "pinned_digest": pinned,
@@ -488,7 +490,8 @@ def copy_into(docker: str, container: str, dest: str, files: list[tuple[str, byt
     )
     if completed.returncode != 0:
         detail = completed.stderr.decode("utf-8", errors="replace").strip()
-        raise RuntimeError(f"docker cp into {dest} failed: {detail}")
+        msg = f"docker cp into {dest} failed: {detail}"
+        raise RuntimeError(msg)
 
 
 def container_limits() -> list[str]:
@@ -562,7 +565,8 @@ def run_container(
     )
     if create.returncode != 0:
         detail = (create.stderr or create.stdout or "").strip()
-        raise RuntimeError(f"docker create failed: {detail}")
+        msg = f"docker create failed: {detail}"
+        raise RuntimeError(msg)
     try:
         for dest, files in copies:
             copy_into(docker, name, dest, files)
@@ -593,7 +597,8 @@ def candidate_files(candidate: Path) -> list[tuple[str, bytes]]:
     for name in WHITELIST:
         path = candidate / name
         if not path.is_file():
-            raise ValueError(f"candidate is missing {name}")
+            msg = f"candidate is missing {name}"
+            raise ValueError(msg)
         files.append((name, path.read_bytes()))
     return files
 
@@ -679,7 +684,8 @@ def image_facts(docker: str, image: str) -> dict:
     )
     if ran.returncode != 0:
         detail = (ran.stderr or ran.stdout or "").strip()
-        raise RuntimeError(f"image probe failed: {detail}")
+        msg = f"image probe failed: {detail}"
+        raise RuntimeError(msg)
     version, imports, baked_main, pip_present, baked_grader = ran.stdout.splitlines()
     if baked_main != "False" or baked_grader != "False" or pip_present != "False":
         msg = "image contains a solution, grader, or pip"

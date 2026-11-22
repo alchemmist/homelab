@@ -38,7 +38,7 @@ def test_exact_addition_and_idempotent_delta() -> None:
         lines = zone.render(123, home, vps).splitlines()
         assert all(lines.count(x) == 1 for x in guard.ADDED)
         for name in zone.FAILOVER:
-            assert f"{name} IN A 91.189.82.238" not in lines
+            assert (f"{name} IN A 91.189.82.238" in lines) == (name == "monori")
 
 
 def test_guard_rejects_unrelated_records_and_missing_ns3() -> None:

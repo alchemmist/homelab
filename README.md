@@ -6,11 +6,10 @@ Ansible manages the common host baseline: persistent SSH access, hostnames, shar
 
 ## Local CI checks
 
-Run `make help` to list Quality Graph nodes, `make python` (or `make tests-fast`)
-for one node, and `make check` to attempt every node and return failure if any
-fails. `make check` includes the deferred checks from `quality/local-checks.json`;
-`make check-all` is an alias. Active targets execute the commands from the generated graph manifest;
-individual targets do not run upstream nodes or GitHub Actions setup steps.
+Run `make` (or `make check`) to run all checks, stopping at the first failure. Use `make -k check` to continue after failures.
+This includes the local-only checks from `quality/local-checks.json`.
+Run `make python` or `make tests-fast` for a single check. PR jobs call
+the same Make targets. Individual targets do not run upstream nodes or GitHub Actions setup steps.
 
 Install Make, jq, Bash, uv, Helm 3.19.0 and Node 24.11.1, then run
 `make setup` for locked Python dependencies, standalone tools and Ansible

@@ -2,6 +2,7 @@
 ---
 name: Quality Graph Publisher
 'on':
+  workflow_dispatch: {}
   schedule:
     - cron: 3-58/5 * * * *
   issue_comment:
@@ -10,7 +11,9 @@ permissions: {}
 jobs:
   publish:
     name: Reconcile Quality Graph
-    if: github.event_name == 'schedule'
+    if: >-
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     concurrency:
       group: quality-graph-reconcile
       cancel-in-progress: false
@@ -23,7 +26,7 @@ jobs:
       pull-requests: write  # Create and update the dashboard and apply labels on PRs.
     steps:
       - name: Reconcile trusted Quality Graph state
-        uses: alchemmist/quality-graph@a08603fcb44e9e22813b497ed391addf68797ce3
+        uses: alchemmist/quality-graph@f5cef503eaf0734b9c9a0c6f88ee8206b2a6235d
         with:
           operation: reconcile
   command:
@@ -40,7 +43,7 @@ jobs:
       pull-requests: write  # Write command feedback and the approval ledger on PRs.
     steps:
       - name: Handle trusted Quality Graph command
-        uses: alchemmist/quality-graph@a08603fcb44e9e22813b497ed391addf68797ce3
+        uses: alchemmist/quality-graph@f5cef503eaf0734b9c9a0c6f88ee8206b2a6235d
         with:
           operation: scheduled-command
 ...

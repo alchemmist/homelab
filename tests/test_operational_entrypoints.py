@@ -43,7 +43,7 @@ class _RefusalPlay(TypedDict):
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "entrypoints", ROOT / "scripts/check_operational_entrypoints.py"
+    "entrypoints", ROOT / "ci/check_operational_entrypoints.py"
 )
 assert spec is not None
 assert spec.loader is not None

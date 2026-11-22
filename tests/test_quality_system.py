@@ -18,20 +18,18 @@ from unittest.mock import patch
 import pytest
 from jsonschema import Draft4Validator
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts/quality"))
-import common
-import contracts
-import lint
-from common import command, failure, finding, report, unique
-from strict_report import (
+from ci.quality import charts, common, contracts
+from ci.quality import lint_support as lint
+from ci.quality.common import command, failure, finding, report, unique
+from ci.quality.strict_report import (
     audit_exit_code,
     create_evidence_directory,
     snapshot_is_stable,
     write_private,
 )
 
-import charts
+ROOT = Path(__file__).resolve().parents[1]
+
 
 
 @pytest.mark.parametrize(
@@ -82,7 +80,7 @@ def test_escaping_finding_rejected() -> None:
 
 def test_workflow_noqa_requires_a_python_comment() -> None:
     """Keep heredocs, prose and quoted strings distinct from actual Python waivers."""
-    from lint import python_directive_lines
+    from ci.quality.check_workflow import python_directive_lines
 
     marker = "# " + "noqa"
     source = f'''\
@@ -143,7 +141,7 @@ def test_native_command_preserves_checked_capture_and_explicit_test_directory(
     """Test-directory support must retain the existing bounded checked transport."""
     result = subprocess.CompletedProcess(["native-fixture"], 0, stdout="", stderr="")
     selected = tmp_path if explicit_cwd else None
-    with patch("common.subprocess.run", return_value=result) as run:
+    with patch("ci.quality.common.subprocess.run", return_value=result) as run:
         assert command(["native-fixture"], cwd=selected) is result
     expected_timeout = 120
     assert run.call_args.args == (["native-fixture"],)
@@ -162,7 +160,7 @@ def test_native_command_test_directory_does_not_accept_failed_processes(tmp_path
     payload = "private-native-fixture-payload"
     result = subprocess.CompletedProcess(["native-fixture"], 1, stdout=payload, stderr=payload)
     with (
-        patch("common.subprocess.run", return_value=result) as run,
+        patch("ci.quality.common.subprocess.run", return_value=result) as run,
         pytest.raises(RuntimeError, match="no fallback") as error,
     ):
         command(["native-fixture"], cwd=tmp_path)
@@ -172,7 +170,7 @@ def test_native_command_test_directory_does_not_accept_failed_processes(tmp_path
 
 def test_new_findings_fail_and_resolved_debt_does_not_hide_them(tmp_path) -> None:
     f = finding("RULE", "tests/test_quality_system.py", 1, "message", "new context")
-    with patch("common.ROOT", tmp_path):
+    with patch("ci.quality.common.ROOT", tmp_path):
         assert report("test", [f], 1, tmp_path / "out.json")
         assert json.loads((tmp_path / "out.json").read_text())["failureKind"] == "quality"
 
@@ -197,7 +195,7 @@ def test_recorded_debt_identity_cannot_mark_a_finding_passed(tmp_path) -> None:
             }
         )
     )
-    with patch("common.ROOT", tmp_path):
+    with patch("ci.quality.common.ROOT", tmp_path):
         assert report("python", [f], 1, tmp_path / "out.json")
         payload = json.loads((tmp_path / "out.json").read_text())
         assert payload["status"] == "failed"
@@ -210,13 +208,12 @@ def test_unmarked_debt_file_cannot_act_as_a_baseline(tmp_path) -> None:
     (debt / "python.json").write_text(
         json.dumps({"version": 1, "reason": "x" * 20, "findings": []})
     )
-    with patch("common.ROOT", tmp_path):
-        with pytest.raises(ValueError, match="non-accepting"):
-            report("python", [], 1, tmp_path / "out.json")
+    with patch("ci.quality.common.ROOT", tmp_path), pytest.raises(ValueError, match="non-accepting"):
+        report("python", [], 1, tmp_path / "out.json")
 
 
 def test_suppression_guard_matches_markers_and_not_its_own_source() -> None:
-    import strict_guard
+    from ci.quality import strict_guard
 
     assert strict_guard.line_is_suppression("value  # " + "noqa: S101")
     assert strict_guard.line_is_suppression("shellcheck " + "disable=SC2086")
@@ -295,7 +292,7 @@ def test_scalar_equals_is_valid_kubernetes_yaml() -> None:
 
 
 def test_installer_rejects_escaping_binary_name(tmp_path) -> None:
-    import install_tools
+    from ci.quality import install_tools
 
     with pytest.raises(ValueError):
         install_tools.install({"name": "../escape"}, tmp_path)
@@ -303,7 +300,8 @@ def test_installer_rejects_escaping_binary_name(tmp_path) -> None:
 
 def test_native_producer_payload_matches_released_quality_graph_schema(tmp_path) -> None:
     import jsonschema
-    from common import command
+
+    from ci.quality.common import command
 
     output = tmp_path / "producer.json"
     report("fixture", [], 1, output)
@@ -339,7 +337,7 @@ def test_network_namespace_preserves_locked_tool_path(
     from types import SimpleNamespace
 
     spec = importlib.util.spec_from_file_location(
-        "quality_test_runner", ROOT / "scripts/quality/tests.py"
+        "quality_test_runner", ROOT / "ci/quality/tests.py"
     )
     runner = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(runner)
@@ -392,7 +390,7 @@ def test_image_digest_must_be_real_sha256_shape(image) -> None:
 def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatch) -> None:
     from types import SimpleNamespace
 
-    import lint
+    from ci.quality import check_dependencies as lint
 
     calls = []
     item = {"name": "fixture", "version": "1", "vulns": [{"id": "CVE-2026-1234"}]}
@@ -404,8 +402,8 @@ def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatc
     monkeypatch.setattr(lint, "command", run)
     # This original unit exercises the installed environment; separate regressions
     # require complete service-lock coverage and reject unsupported ecosystems.
-    monkeypatch.setattr(lint, "tracked", lambda: ["uv.lock"])
-    findings, _ = lint.check("dependencies")
+
+    findings, _ = lint.check_dependencies(["uv.lock"])
     assert len(findings) == 1
     assert "--no-deps" not in calls[0]
     assert "--disable-pip" not in calls[0]
@@ -415,7 +413,7 @@ def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatc
 
 
 def test_nonsecret_tokenizer_exception_cannot_hide_other_values(tmp_path, monkeypatch) -> None:
-    import lint
+    from ci.quality import check_docker as lint
 
     p = tmp_path / "services/spi-tokenizer/Dockerfile"
     p.parent.mkdir(parents=True)
@@ -434,6 +432,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     assert len({n["title"] for n in graph.values()}) == len(graph)
     first_layer = {
         "yaml",
+        "python-scopes",
         "scripts-q000",
         "deploy-i001",
         "javascript",
@@ -450,43 +449,38 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     assert graph["dependencies"]["policy"]["blocking"] is True
     assert graph["tests-medium"]["needs"] == ["ownership"]
     assert graph["tests-medium"]["policy"]["blocking"] is True
-    assert graph["tests-medium"]["run"] == "uv run python scripts/quality/tests.py medium --isolate-network"
+    makefile = (ROOT / "Makefile").read_text()
+    for name, node in graph.items():
+        assert node["run"] == f"make {name}"
+        assert f"\n{name}:\n\t" in makefile
+    def recipe(name: str) -> str:
+        return " ".join(makefile.split(f"\n{name}:\n", 1)[1].split("\n\n", 1)[0].replace("\\\n", " ").split())
+
     policy = graph["graph"]["policy"]
-    assert policy["blocking"] is True
-    assert policy["approvals"] == {"files": False, "findings": False, "node": False}
-    assert "uv run python scripts/quality/strict_guard.py" in graph["graph"]["run"].splitlines()
-    assert (
-        "uv run python -m scripts.quality.python_inputs scripts/quality/ |\n"
-        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select SIM300 \\\n"
-        "    --ignore-noqa --output-format concise --"
-    ) in graph["graph"]["run"]
-    for node in first_layer:
-        assert graph[node]["needs"] == ["graph"]
-        assert graph[node]["policy"]["blocking"] is True
-    quotes = graph["scripts-q000"]
-    assert quotes["policy"] == policy
-    assert quotes["run"] == (
-        "set -euo pipefail\n"
-        "uv run python -m scripts.quality.python_inputs scripts/ tests/ |\n"
-        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \\\n"
-        "    --ignore-noqa --output-format concise --"
-    )
-    imports = graph["deploy-i001"]
-    assert imports["title"] == "Python import order (I001) and unused script/test imports (F401)"
-    assert imports["policy"] == policy
-    assert imports["run"] == (
-        "set -euo pipefail\n"
-        "uv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |\n"
-        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n"
-        "    --ignore-noqa --output-format concise --\n"
-        "uv run python -m scripts.quality.python_inputs scripts/ tests/ |\n"
-        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select F401 \\\n"
-        "    --ignore-noqa --output-format concise --"
-    )
+    assert policy == {"blocking": True, "approvals": {"files": False, "findings": False, "node": False}}
+    for name in first_layer:
+        assert graph[name]["needs"] == ["graph"]
+        assert graph[name]["policy"] == policy
+    assert "uv run python -m ci.quality.strict_guard" in recipe("graph")
+    assert recipe("python-scopes") == "uv run --locked python -m ci.quality.python_scopes"
+    for target, roots, codes in (
+        ("graph", "ci/quality/", "SIM300"),
+        ("scripts-q000", "ci/ scripts/ tests/", "Q000,D300"),
+        ("deploy-i001", "ansible/ deploy/ ci/ scripts/ tests/", "I001"),
+        ("deploy-i001", "ci/ scripts/ tests/", "F401"),
+        ("rustfs-return-types", "services/rustfs_gateway/", "ANN201"),
+    ):
+        name = "check_" + codes.lower().replace(",", "_")
+        assert f"uv run python -m ci.quality.{name}" in recipe(target)
+        module = importlib.import_module(f"ci.quality.{name}")
+        with patch.object(module, "run", return_value=1) as run:
+            assert module.main() == 1
+        run.assert_called_once_with(codes, roots.split())
+    assert recipe("tests-medium") == "uv run python -m ci.quality.tests medium --isolate-network"
     assert graph["ansible"]["needs"] == ["ownership"]
     assert graph["ansible"]["policy"]["blocking"] is True
     assert graph["yaml"]["profile"] == "default"
-    assert graph["yaml"]["run"] == "uv run python scripts/quality/lint.py yaml"
+    assert recipe("yaml") == "uv run python -m ci.quality.check_yaml"
     assert graph["yaml"]["results"] == {"native": "reports/yaml.json"}
     assert graph["yaml"]["policy"] == {
         "blocking": True,
@@ -525,14 +519,17 @@ def test_shell_policy_finds_extensionless_scripts_and_inline_steps(
         return subprocess.CompletedProcess(argv, 1, stdout=json.dumps(rows))
 
     monkeypatch.setattr(lint, "command", shellcheck)
-    findings, checked = lint.check_shell([*shell_files, workflow])
+    from ci.quality import check_shell
+    monkeypatch.setattr(check_shell, "ROOT", tmp_path)
+    monkeypatch.setattr(check_shell, "command", shellcheck)
+    findings, checked = check_shell.check_shell([*shell_files, workflow])
     assert checked == len(shell_files)
     assert [row["location"]["path"] for row in findings] == [*shell_files, workflow]
     assert all(row["ruleId"] == "SC2086" for row in findings)
 
 
 def _load_checker(name):
-    path = ROOT / "scripts" / name
+    path = ROOT / "ci" / name
     spec = importlib.util.spec_from_file_location(name.removesuffix(".py"), path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -570,7 +567,7 @@ def _copy_rels(tmp_path, names):
 
 def test_new_issuer_alias_is_invisible_to_the_registered_list(tmp_path) -> None:
     """A new alias must fail even when every previously registered consumer still matches."""
-    import boundaries
+    from ci.quality import boundaries
 
     infra = _load_checker("check_infrastructure_contracts.py")
     _copy_rels(tmp_path, _infra_files())
@@ -818,8 +815,8 @@ def test_vendor_byte_drift_fails(tmp_path) -> None:
 
 def test_mypy_syntax_error_does_not_hide_another_file(tmp_path, monkeypatch) -> None:
     """A syntax fatal must not erase type findings from the other owned file."""
-    import common
-    import lint
+    from ci.quality import check_python as lint
+    from ci.quality import common
 
     common.use_project_tools()
     (tmp_path / "quality").mkdir()
@@ -841,7 +838,7 @@ def test_mypy_syntax_error_does_not_hide_another_file(tmp_path, monkeypatch) -> 
 
 def test_generated_publisher_findings_are_not_waived(tmp_path) -> None:
     """Auditor findings on the generated publisher stay visible and untrusted."""
-    from common import command, use_project_tools
+    from ci.quality.common import command, use_project_tools
 
     use_project_tools()
     policy = json.loads((ROOT / "quality/strict-policy.json").read_text())["generatedWorkflows"]
@@ -876,7 +873,7 @@ jobs:
     data = json.loads(process.stdout)
     rules = {item["ruleId"] for run in data["runs"] for item in run.get("results", [])}
     assert set(policy["zizmor"]) <= rules
-    lint_text = (ROOT / "scripts/quality/lint.py").read_text()
+    lint_text = (ROOT / "ci/quality/check_workflow.py").read_text()
     assert "quality-graph-publish" not in lint_text
     for rule in policy["zizmor"]:
         assert rule not in lint_text
@@ -884,7 +881,7 @@ jobs:
 
 def test_new_suppression_marker_is_reported(tmp_path, monkeypatch) -> None:
     """A newly added suppression marker is a finding, not configuration success."""
-    import strict_guard
+    from ci.quality import strict_guard
 
     marker = strict_guard.marker("# ", "no", "qa: ANN001")
     (tmp_path / "owned.py").write_text("value = 1  " + marker + "\n")
@@ -894,7 +891,7 @@ def test_new_suppression_marker_is_reported(tmp_path, monkeypatch) -> None:
 
 def test_strict_configuration_contract_holds() -> None:
     """The live policy, generated publisher surface, and tool pins still match."""
-    import strict_guard
+    from ci.quality import strict_guard
 
     strict_guard.verify_configuration()
 
@@ -915,7 +912,7 @@ def _frozen_fixture(root: Path) -> Path:
 
 def test_frozen_scope_excludes_exact_existing_files_not_new_neighbours(tmp_path: Path) -> None:
     """A new neighbouring file remains owned; no whole-directory exemption exists."""
-    import common
+    from ci.quality import common
 
     root = _frozen_fixture(tmp_path)
     neighbour = "charts/spi-triage/files/new_owned.py"
@@ -934,7 +931,7 @@ def test_frozen_provenance_mutations_fail_before_ownership_exclusion(
     tmp_path: Path, mutation: str
 ) -> None:
     """Never make drift disappear from lint by calling it third-party source."""
-    import common
+    from ci.quality import common
 
     root = _frozen_fixture(tmp_path)
     record = json.loads((root / "quality/strict-policy.json").read_text())["frozenCompatibility"]
@@ -962,7 +959,7 @@ def test_frozen_provenance_mutations_fail_before_ownership_exclusion(
 
 def test_frozen_path_escape_rejected_even_with_updated_fixture_digest(tmp_path: Path) -> None:
     """A reviewed manifest digest is not permission to escape the owned tree."""
-    import common
+    from ci.quality import common
 
     root = _frozen_fixture(tmp_path)
     policy_path = root / "quality/strict-policy.json"
@@ -1110,7 +1107,7 @@ def test_full_audit_preserves_tool_failures_and_unstable_snapshot_as_incomplete(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str, caplog: pytest.LogCaptureFixture
 ) -> None:
     """Use isolated fake collectors, never actual hosts, credentials or lint runs."""
-    module = sys.modules["strict_report"]
+    module = sys.modules["ci.quality.strict_report"]
     root = tmp_path / "repo"
     root.mkdir()
     base = tmp_path / "private"

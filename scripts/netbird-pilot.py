@@ -44,7 +44,6 @@ NS = "netbird-pilot"
 EDGE = "netbird-edge"
 # v0.82.0 combined handler: native gRPC is HTTP/2; clients also use exact WebSocket paths.
 GRPC_PREFIXES = ("/management.ManagementService/", "/signalexchange.SignalExchange/")
-WS_PATHS = ("/ws-proxy/management", "/ws-proxy/signal", "/relay")
 # Setup/public invite acceptance/local authentication stay blocked at the edge.
 # The exact authenticated GET invite list is dashboard metadata, not signup.
 DENY_PREFIXES = (

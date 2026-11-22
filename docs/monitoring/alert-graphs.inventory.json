@@ -1551,6 +1551,68 @@
   },
   {
     "owner": "monitoring-k3s",
+    "resource": "socrat-redis-common",
+    "group": "redis-common",
+    "alert": "SocratRedisCommonRedundancyReduced",
+    "expr": "(max(kube_statefulset_status_replicas_ready{namespace=\"redis\",statefulset=\"redis-common-server\"}) or vector(0)) < 3",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratRedisCommonRedundancyReduced",
+          "dashboard_uid": "alerts-e1ea8bfeb00b8e93",
+          "panel_id": 1,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratRedisCommonRedundancyReduced / rule evaluations",
+          "dashboard_uid": "alerts-e1ea8bfeb00b8e93",
+          "panel_id": 2,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "socrat-redis-common",
+    "group": "redis-common",
+    "alert": "SocratRedisCommonWriterUnavailable",
+    "expr": "(max(kube_deployment_status_replicas_available{namespace=\"redis\",deployment=\"redis-common-write-probe\"}) or vector(0)) < 1",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratRedisCommonWriterUnavailable",
+          "dashboard_uid": "alerts-e1ea8bfeb00b8e93",
+          "panel_id": 3,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratRedisCommonWriterUnavailable / rule evaluations",
+          "dashboard_uid": "alerts-e1ea8bfeb00b8e93",
+          "panel_id": 4,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
     "resource": "socrat-storage",
     "group": "socrat.storage",
     "alert": "SocratRequiredHddMountUnobserved",

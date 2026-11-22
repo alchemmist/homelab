@@ -9,7 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from scripts.quality.common import command
+from ci.quality.common import command
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("alert_graphs", ROOT / "scripts/alert_graphs.py")
@@ -36,7 +36,11 @@ class AlertGraphInventoryTests(unittest.TestCase):
         """Every source variant links to a real panel containing its exact condition."""
         rows = json.loads((ROOT / "docs/monitoring/alert-graphs.inventory.json").read_text())
         # Includes Service-path divergence and distinct absent/down API scrapes.
-        expected_source_rule_count = 216
+        expected_source_rule_count = 218
+        assert {r["alert"] for r in rows if r["group"] == "redis-common"} == {
+            "SocratRedisCommonWriterUnavailable", "SocratRedisCommonRedundancyReduced",
+        }
+        assert sum(row["alert"] == "LMSWebUnavailable" for row in rows) == 1
         assert any(r["alert"] == "ThanosWarmWorkshopDiskLow" for r in rows)
         assert len(rows) == expected_source_rule_count
         expected_graph_spec_version = 1
@@ -64,7 +68,7 @@ class AlertGraphInventoryTests(unittest.TestCase):
     def test_generated_files_are_current(self) -> None:
         """Canonical generation must agree with every checked-in diagnostic output."""
         run = command(
-            [sys.executable, "scripts/alert_graphs.py", "--check"],
+            [sys.executable, "-m", "ci.check_alert_graphs"],
             allowed=(0, 1),
         )
         assert run.returncode == 0, run.stderr + run.stdout

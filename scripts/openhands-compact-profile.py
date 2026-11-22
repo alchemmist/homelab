@@ -11,7 +11,7 @@ def api(path,body=None,method=None):
     req=urllib.request.Request("http://127.0.0.1:8000/api/"+path,headers={"X-Session-API-Key":key,"Content-Type":"application/json"},data=None if body is None else json.dumps(body).encode(),method=method)
     with urllib.request.urlopen(req,timeout=30) as r:return json.load(r)
 name="socrat-compact-code"
-profile={"agent_kind":"openhands","llm_profile_ref":"v-deepseek-uc","tools":[{"name":"terminal"},{"name":"file_editor"}],"mcp_server_refs":[],"secret_refs":[],"integration_refs":[],"public_skills":[],"condenser":{"enabled":True,"max_size":32,"max_tokens":9000,"keep_first":1},"system_message_suffix":"Keep tool output short. For Monori issue 509 read /home/openhands/workspace/MONORI_PUBLISHER.md. Do not request tokens or merge. Keep progress in workspace files."}
+profile={"agent_kind":"openhands","llm_profile_ref":"v-deepseek-uc","tools":[{"name":"terminal"},{"name":"file_editor"}],"mcp_server_refs":[],"secret_refs":[],"integration_refs":[],"public_skills":[],"condenser":{"enabled":True,"max_size":32,"max_tokens":9000,"keep_first":1},"system_message_suffix":"Keep tool output short. Do not request tokens or merge. Keep progress in workspace files."}
 if __name__=="__main__":
     assert any(p["name"]==profile["llm_profile_ref"] for p in api("profiles")["profiles"])
     profiles=api("agent-profiles")["profiles"]

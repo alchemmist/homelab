@@ -7,15 +7,13 @@ import importlib
 import json
 import os
 import stat
-import sys
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts/quality"))
-common = importlib.import_module("common")
-strict_report = importlib.import_module("strict_report")
+common = importlib.import_module("ci.quality.common")
+strict_report = importlib.import_module("ci.quality.strict_report")
 
 _FROZEN_FILE_COUNT = 17
 _REVIEWED_NONSECRET_COUNT = 51

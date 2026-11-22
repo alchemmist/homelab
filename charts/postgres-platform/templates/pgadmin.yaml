@@ -1,0 +1,165 @@
+{{- if .Values.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgadmin-config-browser-v2
+data:
+  config_local.py: |
+    import os
+    AUTHENTICATION_SOURCES = ['oauth2']
+    OAUTH2_AUTO_LOGIN = True
+    OAUTH2_CONFIG = [{
+        'OAUTH2_NAME': 'authentik', 'OAUTH2_DISPLAY_NAME': 'Authentik',
+        'OAUTH2_CLIENT_ID': 'socrat-pgadmin',
+        'OAUTH2_CLIENT_SECRET': os.environ['OIDC_SECRET'],
+        'OAUTH2_SERVER_METADATA_URL': 'https://auth.socrat.alchemmist.xyz/application/o/pgadmin/.well-known/openid-configuration',
+        'OAUTH2_API_BASE_URL': 'https://auth.socrat.alchemmist.xyz/application/o/',
+        'OAUTH2_USERINFO_ENDPOINT': 'userinfo/', 'OAUTH2_SCOPE': 'openid email profile groups',
+        'OAUTH2_USERNAME_CLAIM': 'email', 'OAUTH2_ADDITIONAL_CLAIMS': {'groups': ['homelab-owner']},
+    }]
+    ALLOW_SAVE_PASSWORD = False
+    MASTER_PASSWORD_REQUIRED = False
+    ALLOW_SAVE_TUNNEL_PASSWORD = False
+    SHARED_STORAGE = [{'name': 'CNPG', 'path': '/cnpg', 'restricted_access': True}]
+    SERVER_PASSEXEC_COMMANDS = {'cluster-browser': ['/venv/bin/python', '/browser-helper/password.py']}
+    SESSION_COOKIE_SECURE = True
+  password.py: |
+    import os
+    import sys
+    from pathlib import Path
+
+    env = os.environ
+    targets = {f'pg-{t}-rw.postgres.svc.cluster.local': t for t in ('common', 'critical', 'internal')}
+    tier = targets.get(env.get('PGADMIN_PASSEXEC_HOST'))
+    if (not tier or env.get('PGADMIN_PASSEXEC_AUTH_SOURCE') != 'oauth2'
+            or env.get('PGADMIN_PASSEXEC_USERNAME') != 'pgadmin_browser'
+            or env.get('PGADMIN_PASSEXEC_PORT') != '5432'):
+        sys.exit(1)
+    sys.stdout.write(Path('/browser-auth', tier).read_text())
+  servers.json: |
+    {"Servers":{
+    {{- range $i,$tier := list "common" "critical" "internal" }}
+      {{ if $i }},{{ end }}"{{ add $i 1 }}":{"Name":"pg-{{ $tier }}","Group":"Socrat","Host":"pg-{{ $tier }}-rw.postgres.svc.cluster.local","Port":5432,"MaintenanceDB":"postgres","Username":"pgadmin_browser","SharedUsername":"pgadmin_browser","PasswordExecCommand":"cluster-browser","Shared":true,"ConnectionParameters":{"sslmode":"verify-full","connect_timeout":5,"sslrootcert":"CNPG:/{{ $tier }}.crt"}}
+    {{- end }}
+    }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pgadmin-state
+spec:
+  storageClassName: local-ssd
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 1Gi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgadmin
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: pgadmin}}
+  template:
+    metadata: {labels: {app: pgadmin}}
+    spec:
+      automountServiceAccountToken: false
+      hostAliases: [{ip: 10.43.218.222, hostnames: [auth.socrat.alchemmist.xyz]}]
+      securityContext: {runAsUser: 5050, runAsGroup: 5050, fsGroup: 5050, seccompProfile: {type: RuntimeDefault}}
+      # SharedServer rows deliberately omit the owner's sslrootcert. libpq then
+      # needs its default trust file even when the server uses verify-full.
+      initContainers:
+        - name: build-cnpg-trust
+          image: dpage/pgadmin4:9.19@sha256:3591b3d02910dcd817dec6fcaa681c278ba6966945283dd0ea0042731c330c83
+          command: [/bin/sh, -ec]
+          args: ['umask 022; for tier in common critical internal; do cat /cnpg/$tier.crt; echo; done > /trust/root.crt; test -s /trust/root.crt']
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          resources: {requests: {cpu: 5m, memory: 16Mi}, limits: {memory: 64Mi}}
+          volumeMounts:
+            - {name: cas, mountPath: /cnpg, readOnly: true}
+            - {name: browser-trust, mountPath: /trust}
+      containers:
+        - name: pgadmin
+          image: dpage/pgadmin4:9.19@sha256:3591b3d02910dcd817dec6fcaa681c278ba6966945283dd0ea0042731c330c83
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          ports: [{name: http, containerPort: 5050}]
+          readinessProbe: {httpGet: {path: /misc/ping, port: http}}
+          resources: {requests: {cpu: 50m, memory: 192Mi}, limits: {memory: 768Mi}}
+          env:
+            - {name: PGADMIN_REPLACE_SERVERS_ON_STARTUP, value: "True"}
+            - {name: PGADMIN_LISTEN_PORT, value: "5050"}
+            - {name: PGADMIN_DISABLE_POSTFIX, value: "1"}
+            - {name: PGADMIN_DEFAULT_EMAIL, value: pgadmin-bootstrap@alchemmist.xyz}
+            - {name: PGADMIN_DEFAULT_PASSWORD, valueFrom: {secretKeyRef: {name: pgadmin-bootstrap, key: password}}}
+            - {name: OIDC_SECRET, valueFrom: {secretKeyRef: {name: pgadmin-oidc, key: client-secret}}}
+          volumeMounts:
+            - {name: state, mountPath: /var/lib/pgadmin}
+            - {name: config, mountPath: /pgadmin4/config_local.py, subPath: config_local.py, readOnly: true}
+            - {name: config, mountPath: /pgadmin4/servers.json, subPath: servers.json, readOnly: true}
+            - {name: config, mountPath: /browser-helper/password.py, subPath: password.py, readOnly: true}
+            - {name: browser-auth, mountPath: /browser-auth, readOnly: true}
+            - {name: cas, mountPath: /cnpg, readOnly: true}
+            - {name: browser-trust, mountPath: /home/pgadmin/.postgresql, readOnly: true}
+      volumes:
+        - {name: browser-trust, emptyDir: {}}
+        - {name: state, persistentVolumeClaim: {claimName: pgadmin-state}}
+        - {name: config, configMap: {name: pgadmin-config-browser-v2}}
+        - name: browser-auth
+          projected:
+            defaultMode: 0440
+            sources:
+            {{- range $tier := list "common" "critical" "internal" }}
+              - secret: {name: pgadmin-browser-{{ $tier }}, items: [{key: password, path: {{ $tier }}}]}
+            {{- end }}
+        - name: cas
+          projected:
+            sources:
+            {{- range $tier := list "common" "critical" "internal" }}
+              - secret: {name: pg-{{ $tier }}-ca, items: [{key: ca.crt, path: {{ $tier }}.crt}]}
+            {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: pgadmin}
+spec: {selector: {app: pgadmin}, ports: [{name: http, port: 80, targetPort: http}]}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: pgadmin-web}
+spec:
+  podSelector: {matchLabels: {app: pgadmin}}
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
+      ports: [{port: 5050}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: pgadmin-database-access}
+spec:
+  podSelector: {matchExpressions: [{key: cnpg.io/cluster, operator: In, values: [pg-common, pg-critical, pg-internal]}]}
+  ingress:
+    - from: [{podSelector: {matchLabels: {app: pgadmin}}}]
+      ports: [{port: 5432}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pgadmin
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-http01
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls: [{hosts: [pg.socrat.alchemmist.xyz], secretName: pgadmin-tls}]
+  rules:
+    - host: pg.socrat.alchemmist.xyz
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: {service: {name: pgadmin, port: {number: 80}}}
+{{- end }}

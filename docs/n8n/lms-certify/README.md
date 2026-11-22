@@ -1,9 +1,9 @@
 # Graph-owned certification pilot
 
 Import `workflow.json` **inactive**. It replaces, not wraps, the legacy
-`One certify step` workflow. `python3 scripts/n8n/provision_lms_certify.py` creates the inactive draft
+`One certify step` workflow. `python3 -m scripts.n8n.lms_certify.provision_lms_certify` creates the inactive draft
 and refuses to overwrite an existing pilot. Regenerate the JSON with
-`python3 scripts/n8n/build_lms_certify.py`.
+`python3 -m scripts.n8n.lms_certify.build_lms_certify`.
 
 Pilot: imported `basics/conditionals/echo-0`, empty canonical test suite. The
 checkpoint starts without either test cases or a solution. The example in the
@@ -32,13 +32,15 @@ Before activation verify the target cluster's metric labels and freshness,
 connectivity and credential bindings with a real isolated smoke run, then
 exercise repair and coverage branches before treating the pilot as certified.
 
-Cluster pilot: `deploy_lms_certify_pilot.py` provisions the private services
-and binds credentials without activating the workflow. It assumes the sandbox
-image `lms-certification-sandbox:pilot` was built ahead of time from
-`runner/sandbox.Dockerfile` in the rootless daemon on `socrat-1`. The pilot
-uses its own persistent Postgres instance (not the LMS or n8n database).
-The current provisioning uses the dedicated instance's bootstrap role; replace
-it with the narrower role above before expanding beyond the pilot.
+Operator tools live in `scripts/n8n/lms_certify/`. Run them from the repository
+root as Python modules. Validate the committed graph offline with
+`node tests/n8n/check_lms_certify_graph.cjs`.
+
+The old `deploy_lms_certify_pilot.py` bootstrapped both the sandbox runner and a
+standalone database. **Do not use it for the current deployment.** Certification
+uses the `certification` database on `pg-common`; see the [migration receipts](../../postgres-platform.md).
+The legacy script is not a restore procedure. The runner it deployed came from
+the neighbouring LMS repository, not `services/lms-certify/server.py` here.
 
 ## Reviewed queue rollout (2026-11-19)
 
@@ -139,7 +141,7 @@ semantic proof. A separate reviewer model is not wired here. A finite backlog
 may eventually exhaust; diagnosis and verified completions are distinct.
 
 Apply `upgrade-differential.sql` on an existing DB before activating. Use
-`status.sql` against the private pilot database to report state without leaking
+`status.sql` against the certification database to report state without leaking
 artifacts. Metrics busy/missing/stale continue to block inference. Existing
 certificates are not relabeled. For API maintenance if the configured VPN
 address is unavailable, use the verified TLS hostname's resolved address via

@@ -3,10 +3,12 @@
 
 import argparse
 import socket
+import subprocess
 from pathlib import Path
 
 HOME = "109.173.40.247"
 VPS = "109.120.141.60"
+MOSCOW = "91.189.82.238"
 TTL = 60
 
 # Names that currently publish both public entrances and can follow health.
@@ -54,6 +56,7 @@ FAILOVER = [
 
 # Names that have a single published address and must not move.
 STATIC_A = {
+    "pg.socrat": [HOME],
     "vpn": ["91.189.82.238"],
     "netbird-relay-vps.socrat": [VPS],
     "devsyringe": [HOME],
@@ -83,7 +86,27 @@ def healthy_addresses(home_up, vps_up):
     return chosen
 
 
-def render(serial, home_up, vps_up):
+def monori_addresses(home_ok, moscow_ok):
+    """Never publish the regionally blocked NL entrance, including on probe failure."""
+    return [ip for ip, ok in ((HOME, home_ok), (MOSCOW, moscow_ok)) if ok] or [HOME, MOSCOW]
+
+
+def monori_https(address, port, timeout):
+    """Bound the entire verified HTTPS exchange, including slow response headers."""
+    host = "monori.alchemmist.xyz"
+    try:
+        result = subprocess.run(
+            ["curl", "--disable", "--noproxy", "*", "--silent", "--max-time", str(timeout),
+             "--resolve", f"{host}:{port}:{address}", "--output", "/dev/null",
+             "--write-out", "%{http_code}", f"https://{host}:{port}/"],
+            capture_output=True, text=True, timeout=timeout + 0.5, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0 and result.stdout == "200"
+
+
+def render(serial, home_up, vps_up, *, monori_health=None):
     """Execute render."""
     addresses = healthy_addresses(home_up, vps_up)
     lines = [
@@ -101,7 +124,11 @@ def render(serial, home_up, vps_up):
     for value in TXT:
         lines.append('@ IN TXT "%s"' % value)
     for name in FAILOVER:
-        for address in addresses:
+        # Preserve the existing production LMS/OIDC primary/standby policy.
+        selected = [HOME] if home_up and name in {"lms", "auth.socrat"} else addresses
+        if name == "monori":
+            selected = monori_addresses(*(monori_health if monori_health is not None else (home_up, True)))
+        for address in selected:
             lines.append("%s IN A %s" % (name, address))
     for name in sorted(STATIC_A):
         for address in STATIC_A[name]:
@@ -130,6 +157,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--home-target", default=HOME)
     parser.add_argument("--vps-target", default=VPS)
+    parser.add_argument("--assume-moscow", choices=("probe", "up", "down"), default="probe")
     parser.add_argument("--port", type=int, default=443)
     parser.add_argument("--timeout", type=float, default=3)
     parser.add_argument("--assume-home", choices=("probe", "up", "down"), default="probe")
@@ -149,7 +177,15 @@ def main():
         if args.assume_vps == "down"
         else probe(args.vps_target, args.port, args.timeout)
     )
-    text = render(args.serial, home_up, vps_up)
+    # Explicit assume flags keep offline acceptance deterministic.
+    def checked(mode, up, target):
+        return up and (mode != "probe" or monori_https(target, args.port, args.timeout))
+
+    monori_health = (
+        checked(args.assume_home, home_up, args.home_target),
+        checked(args.assume_moscow, args.assume_moscow != "down", MOSCOW),
+    )
+    text = render(args.serial, home_up, vps_up, monori_health=monori_health)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     previous = args.output.read_text() if args.output.exists() else ""
     if previous != text:

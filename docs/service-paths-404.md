@@ -96,3 +96,16 @@ the last approved job, then explicitly migrate the known old configuration. Do
 not let an older bundle overwrite administrator changes. At deployment verify
 both headless DNS entries and the Service ClusterIP used by the narrow pre-DNAT
 policy, especially after Service recreation.
+
+### Bot button latency (2026-11-22)
+
+The bot now prefers the `pg-common` writer's node, using normal pod networking.
+Only the bot pod maps `api.telegram.org` to `socrat-telegram-relay` (reserved
+ClusterIP `10.43.0.213`). The relay on `socrat-2` forwards TCP to the fixed
+public Telegram endpoint. TLS terminates at Telegram, not at the relay. The
+control pod still measures its original direct path; the bot sidecar measures
+its effective path. When checking latency, correlate `received` and
+`pressed_edit_accepted` by callback operation; neither is a client-side timer.
+For rollback, set `telegramRelay.routeBot: false` in `deploy/socrat-bot/values.yaml`:
+this restores the original hostNetwork placement and direct Telegram DNS. Leave
+the private relay deployed until the bot rollback is healthy. No DB move needed.

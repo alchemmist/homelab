@@ -15,7 +15,7 @@ production-операции. Датированные результаты не 
   `ansible/inventory/group_vars/Socrat/cluster.yml` → `wg_socrat_nodes`.
 - Общий issuer transport и его потребители:
   `deploy/contracts/infrastructure.json`; offline check/generation:
-  `scripts/check_infrastructure_contracts.py` (default check, `--write` только Git).
+  `ci/check_infrastructure_contracts.py` (default check, `--write` только Git).
 - Argo CD: canonical `deploy/platform/argo-cd/values.yaml`. Старый путь
   `deploy/argocd/values.yaml` — compatibility symlink, не отдельная конфигурация.
   `ansible/playbooks/argocd.yml` — только явно разрешённая установка в пустое
@@ -29,6 +29,7 @@ production-операции. Датированные результаты не 
   [Management handoff](../docs/vm105-management-20261116.md): native SSO, UID/spec,
   users/roles проверены; промежуточный login incident явно сохранён.
 - PostgreSQL: семь production-БД в `pg-common` и `pg-critical`; размещение primary смотреть в CNPG, не в старых handoff. [Runbook, CA и удержание источников](../docs/postgres-platform.md).
+- [redis-common](redis-common.md): LiteLLM использует общий TLS Redis для координации, не для кэша ответов. Основная БД остаётся в `pg-common`; при потере Redis глобальные лимиты не гарантированы.
 - `socrat-0`: компоненты Argo CD, RustFS и vLLM/GPU; Umami и LiteLLM используют `pg-common-rw`, а не локальные standalone PostgreSQL.
 - `socrat-5`: Grafana и Grafana MCP, приняты после холодного переноса.
   [Grafana handoff](../docs/vm105-grafana-20261116.md): exact image digests,

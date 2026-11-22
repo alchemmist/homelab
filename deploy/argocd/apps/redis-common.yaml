@@ -1,0 +1,21 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: redis-common, namespace: argocd}
+spec:
+  project: default
+  sources:
+    - repoURL: https://dandydeveloper.github.io/charts
+      chart: redis-ha
+      targetRevision: 4.39.0
+      helm:
+        releaseName: redis-common
+        valueFiles: [$values/deploy/platform/redis-common/values.yaml]
+    - repoURL: https://github.com/alchemmist/homelab.git
+      targetRevision: main
+      ref: values
+      path: deploy/platform/redis-common/resources
+  destination: {server: https://kubernetes.default.svc, namespace: redis}
+  # First rollout is gated on secrets/CA and available space on three nodes.
+  syncPolicy: {syncOptions: [CreateNamespace=true]}
+...

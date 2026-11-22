@@ -53,7 +53,7 @@ def test_staging_does_not_publish_moscow_web_records() -> None:
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         text = zone.render(123, home, vps)
         for name in zone.FAILOVER:
-            assert f"{name} IN A 91.189.82.238" not in text
+            assert (f"{name} IN A 91.189.82.238" in text.splitlines()) == (name == "monori")
         assert "vpn IN A 91.189.82.238" in text
 
 

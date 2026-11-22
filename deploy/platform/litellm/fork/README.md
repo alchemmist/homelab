@@ -20,3 +20,5 @@ budgets on virtual keys. Group labels `socrat-group-local` and `socrat-group-ext
 are static `model_info.access_groups`, without wildcard routes. No virtual keys are
 updated on release. Current local/subscription model prices are zero: a dollar cap
 cannot limit token usage on zero-priced routes. Do not invent token prices.
+
+`revoke-coordination.patch` records the released post-delete cache eviction fix. `build-revocation.sh` layers the checksum-verified module from fork `eb6e7f61` over the previous immutable image. Supply `FORK_CHECKOUT` (absolute checkout path) and the existing scoped push robot Docker config. The [platform receipt](../../../../docs/redis-platform.md) records the image-only acceptance and deployment; no overlay is used in production.

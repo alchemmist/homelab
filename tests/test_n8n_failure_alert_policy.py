@@ -12,7 +12,7 @@ from typing import override
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "failure_policy", ROOT / "scripts/n8n/check_failure_alerts.py"
+    "failure_policy", ROOT / "ci/check_failure_alerts.py"
 )
 policy = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(policy)

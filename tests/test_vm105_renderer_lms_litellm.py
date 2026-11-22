@@ -63,6 +63,7 @@ class MigrationTests(unittest.TestCase):
         d = docs[("Deployment", "lms")]
         old = dict(v)
         old["webNodes"] = ["socrat-0", "socrat-1", "socrat-3"]
+        old.pop("preferredWebNode", None)
         old["hostAliases"] = []
         baseline = render("charts/lms", old, "lms", "lms")
         assert [k for k in docs if docs[k] != baseline[k]] == [("Deployment", "lms")]
@@ -71,7 +72,11 @@ class MigrationTests(unittest.TestCase):
         s = d["spec"]["template"]["spec"]
         assert s["affinity"]["nodeAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"][
             "nodeSelectorTerms"
-        ][0]["matchExpressions"][0]["values"] == ["socrat-5"]
+        ][0]["matchExpressions"][0]["values"] == ["socrat-5", "socrat-0", "socrat-1"]
+        preference = s["affinity"]["nodeAffinity"]["preferredDuringSchedulingIgnoredDuringExecution"]
+        assert preference == [{"weight": 100, "preference": {"matchExpressions": [
+            {"key": "kubernetes.io/hostname", "operator": "In", "values": ["socrat-5"]}
+        ]}}]
         assert s["hostAliases"] == [
             {"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}
         ]
@@ -133,7 +138,7 @@ class MigrationTests(unittest.TestCase):
             render("charts/litellm", broken, "litellm", "llm")
         assert v["envVars"]["DISABLE_SCHEMA_UPDATE"].lower() == "true"
         assert re.search(
-            r"^a691e23abfac6dd0f2b69f9f5b4f714241f39ac4@sha256:[a-f0-9]{64}$", v["image"]["tag"]
+            r"^eb6e7f61e4fa0fa1425461e4e92145c8eab73bef@sha256:[a-f0-9]{64}$", v["image"]["tag"]
         )
         assert v["masterkeySecretName"] == "litellm-env"
 

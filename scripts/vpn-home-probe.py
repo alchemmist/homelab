@@ -27,7 +27,11 @@ def exclusive(path, value):
 
 def network(endpoint="91.189.82.238"):
     r = subprocess.run(
-        ["ip", "-j", "route", "get", endpoint], capture_output=True, text=True, timeout=10
+        ["ip", "-j", "route", "get", endpoint],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
     if r.returncode:
         raise ValueError("Route read failed")
@@ -35,7 +39,7 @@ def network(endpoint="91.189.82.238"):
     if len(rows) != 1 or rows[0].get("dev") != "eno1" or rows[0].get("gateway") != "192.168.0.1":
         raise ValueError("Not approved home WAN route")
     main = subprocess.run(
-        ["ip", "-j", "route", "show", "table", "main"], capture_output=True, timeout=10
+        ["ip", "-j", "route", "show", "table", "main"], check=False, capture_output=True, timeout=10
     )
     if main.returncode:
         raise ValueError("Route snapshot failed")
@@ -149,6 +153,7 @@ def require_nl_egress(port: int) -> None:
             "socks5h://127.0.0.1:" + str(port),
             "https://api4.ipify.org",
         ],
+        check=False,
         capture_output=True,
         text=True,
         timeout=25,
@@ -179,6 +184,7 @@ def transfer_and_verify(state: Path, label: str, port: int) -> dict[str, object]
     ]
     r = subprocess.run(
         args,
+        check=False,
         capture_output=True,
         text=True,
         timeout=35,

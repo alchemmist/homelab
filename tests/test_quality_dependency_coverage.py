@@ -13,14 +13,12 @@ import pytest
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
-from scripts.quality import common
+from ci.quality import common
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-with patch.dict(sys.modules, {"common": common}):
-    from scripts.quality import lint
-
+from ci.quality import check_dependencies as lint
 
 _LOCAL_AUDIT = ["pip-audit", "--local", "--strict", "--format", "json"]
 

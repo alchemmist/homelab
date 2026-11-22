@@ -5,6 +5,7 @@ import shlex
 import subprocess
 import time
 import urllib.parse
+from http import HTTPStatus
 from pathlib import Path
 
 NAMESPACE = "cattle-monitoring-system"
@@ -14,6 +15,7 @@ PROMETHEUS_SERVICE = "kube-prometheus-stack-prometheus:9090"
 def kubectl(host, *args):
     result = subprocess.run(
         ["ssh", "-o", "BatchMode=yes", host, shlex.join(["kubectl", *args])],
+        check=False,
         capture_output=True,
         text=True,
         timeout=60,
@@ -87,6 +89,7 @@ def remote_http_status(
     command.append(url)
     result = subprocess.run(
         ["ssh", "-o", "BatchMode=yes", host, shlex.join(command)],
+        check=False,
         capture_output=True,
         text=True,
         timeout=45,
@@ -193,7 +196,11 @@ def _check_storage(host: str) -> dict[str, str]:
     """Verify the monitoring PVCs and their local-path node pinning."""
     pvcs = kubectl(host, "-n", NAMESPACE, "get", "pvc", "-o", "json")["items"]
     pvc_uids = {pvc["metadata"]["name"]: pvc["metadata"]["uid"] for pvc in pvcs}
-    require(len(pvcs) >= 3, "Prometheus, Grafana and Alertmanager persistent claims exist")
+    minimum_pvc_count = 3
+    require(
+        len(pvcs) >= minimum_pvc_count,
+        "Prometheus, Grafana and Alertmanager persistent claims exist",
+    )
     volumes = {
         volume["metadata"]["name"]: volume
         for volume in kubectl(host, "get", "pv", "-o", "json")["items"]
@@ -259,7 +266,10 @@ def _check_overview_dashboard(host: str) -> None:
         dashboard.get("dashboard", {}).get("title") == "Overview",
         "Overview dashboard provisioned in Grafana",
     )
-    health = next(panel for panel in dashboard["dashboard"]["panels"] if panel["id"] == 5)
+    health_panel_id = 5
+    health = next(
+        panel for panel in dashboard["dashboard"]["panels"] if panel["id"] == health_panel_id
+    )
     require(
         health["type"] == "stat"
         and "ALERTS{" in health["targets"][0]["expr"]
@@ -338,14 +348,15 @@ def _check_catalog(host: str) -> None:
         },
         "Only the seven primary dashboards appear at the root",
     )
+    expected_embedded_count = 12
     embedded = [item for item in dashboards if item.get("folderTitle") == "Rancher"]
     require(
-        len(embedded) == 12
+        len(embedded) == expected_embedded_count
         and all(not item["title"].startswith(("[Rancher] ", "Rancher / ")) for item in embedded),
         "Embedded Rancher dashboards are grouped without title prefixes",
     )
     require(
-        len(dashboards) == 19
+        len(dashboards) == len(primary) + expected_embedded_count
         and all(
             not item.get("folderUid") or item.get("folderTitle") == "Rancher" for item in dashboards
         ),
@@ -397,7 +408,7 @@ def _check_public_absence(args: argparse.Namespace) -> None:
         remote_http_status(
             args.ssh_host, url, args.grafana_private_address, interface=args.grafana_private_source
         )
-        == 200,
+        == HTTPStatus.OK,
         "WireGuard Grafana API works without credentials",
     )
     hostname = urllib.parse.urlsplit(args.grafana_url).hostname
@@ -421,7 +432,7 @@ def _check_public_absence(args: argparse.Namespace) -> None:
     print("PASS: no permanent public Grafana Ingress exists")
     require(
         remote_http_status(args.ssh_host, url, args.grafana_public_address, public_absence=True)
-        == 404,
+        == HTTPStatus.NOT_FOUND,
         "home LAN public address has no Grafana route",
     )
     for forwarded_for in [None, "10.250.0.4", "192.168.0.24"]:
@@ -433,7 +444,7 @@ def _check_public_absence(args: argparse.Namespace) -> None:
                 forwarded_for=forwarded_for,
                 public_absence=True,
             )
-            == 404,
+            == HTTPStatus.NOT_FOUND,
             "external public address has no Grafana route"
             + (f" with spoofed X-Forwarded-For: {forwarded_for}" if forwarded_for else ""),
         )

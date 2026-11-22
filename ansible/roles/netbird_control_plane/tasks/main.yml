@@ -19,7 +19,6 @@
       - "{{ netbird_inputs }}"
   args:
     chdir: "{{ netbird_repo_root }}"
-  register: netbird_check
   changed_when: false
   when: netbird_action == 'check'
 

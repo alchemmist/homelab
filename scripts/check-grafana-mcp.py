@@ -7,6 +7,7 @@ import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
+from http import HTTPStatus
 
 URL = "https://grafana-mcp.socrat.alchemmist.xyz/mcp"
 
@@ -91,7 +92,7 @@ def _rejection_checks(client: Client, url: str) -> None:
         try:
             client.opener.open(urllib.request.Request(url, headers=headers), timeout=15)
         except urllib.error.HTTPError as error:
-            if error.code != 401:
+            if error.code != HTTPStatus.UNAUTHORIZED:
                 message = "Unexpected unauthenticated response"
                 raise RuntimeError(message) from None
         else:

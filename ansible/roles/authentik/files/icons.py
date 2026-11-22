@@ -39,7 +39,7 @@ base = "https://auth.socrat.alchemmist.xyz/api/v3/"
 
 
 def api(method, path, payload=None):
-    """Api."""
+    """Call the Authentik API and decode its response when a body is present."""
     req = urllib.request.Request(
         base + path,
         method=method,
@@ -138,7 +138,7 @@ for filename, source in json.loads((assets / "sources.json").read_text())["files
         plan.append((filename, content, digest, name, targets))
 
 run_id = (
-    datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%SZ")
     + "-"
     + uuid.uuid4().hex[:8]
 )

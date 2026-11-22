@@ -1,10 +1,12 @@
 """Prepare high-availability failover credentials for the LMS deployment."""
+from __future__ import annotations
+
 import json
 import secrets
 import subprocess
 
 
-def kube(*args, document=None) -> dict[str, object]:
+def kube(*args: str, document: dict[str, object] | None = None) -> dict[str, object]:
     r = subprocess.run(
         ["kubectl", *args],
         input=json.dumps(document) if document else None,
@@ -20,7 +22,7 @@ existing = subprocess.run(
     ["kubectl", "-n", "lms", "get", "secret", "lms-ha-app", "-o", "name"], capture_output=True
 )
 if existing.returncode:
-    obj = {
+    obj: dict[str, object] = {
         "apiVersion": "v1",
         "kind": "Secret",
         "metadata": {"name": "lms-ha-app", "namespace": "lms"},

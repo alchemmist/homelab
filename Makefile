@@ -1,42 +1,97 @@
-.DEFAULT_GOAL := help
-
-MANIFEST := .quality-graph/manifest.json
-NODES := $(shell jq -er '.nodes[].id' $(MANIFEST))
-LOCAL_CHECKS := quality/local-checks.json
-LOCAL_NODES := $(shell jq -er 'keys[]' $(LOCAL_CHECKS))
-ifeq ($(strip $(NODES)),)
-$(error Cannot list Quality Graph nodes; install jq and check $(MANIFEST))
-endif
-ifeq ($(strip $(LOCAL_NODES)),)
-$(error Cannot list local checks; install jq and check $(LOCAL_CHECKS))
-endif
-
 export PATH := $(CURDIR)/.quality-tools/bin:$(PATH)
 export UV_LOCKED := 1
-# Imports during local checks must not add bytecode to vendored Helm charts.
 export PYTHONDONTWRITEBYTECODE := 1
 
-.PHONY: setup help check check-all $(NODES) $(LOCAL_NODES)
+check: graph ownership yaml python-scopes scripts-q000 deploy-i001 rustfs-return-types \
+       javascript workflow shell docker ansible secrets dependencies tests-fast tests-medium \
+       python manifests tests-cluster
+
 setup:
 	uv sync --locked
-	uv run python scripts/quality/install_tools.py
-	uv run python scripts/quality/install_collections.py
+	uv run python -m ci.quality.install_tools
+	uv run python -m ci.quality.install_collections
 
-help:
-	@echo 'make check runs all local and CI checks; make <node> runs one. Active CI checks:'
-	@jq -r '.nodes[] | "  \(.id)\t\(.title)"' $(MANIFEST)
+graph:
+	uv run qg validate
+	uv run python -m ci.quality.contracts
+	uv run python -m ci.quality.strict_guard
+	uv run python -m ci.quality.check_sim300
+	uv run pytest -q tests/test_quality_python_policy.py
 
-	@echo 'Local only (included in make check): $(LOCAL_NODES)'
+ownership:
+	uv run python -m ci.check_infrastructure_contracts
+	uv run python -m ci.check_source_pointers
+	uv run python -m ci.check_operational_entrypoints
+	uv run python -m ci.check_vendor_contracts
+	uv run python -m ci.check_alert_graphs
+	uv run python -m ci.check_failure_alerts
+	uv run python -m pytest -q \
+	  tests/test_alert_graph_inventory.py \
+	  tests/test_alert_graph_panel_ids.py \
+	  tests/test_alert_graphs_chart.py \
+	  tests/test_infrastructure_contracts.py \
+	  tests/test_n8n_failure_alert_policy.py \
+	  tests/test_n8n_failure_alerts.py \
+	  tests/test_operational_entrypoints.py \
+	  tests/test_source_pointers.py \
+	  tests/test_vendor_contracts.py
 
-$(LOCAL_NODES):
-	@cmd=$$(jq -er --arg id '$@' '.[$$id].run' $(LOCAL_CHECKS)) && printf '\n[%s]\n' '$@' && bash -eo pipefail -c "$$cmd"
+yaml:
+	uv run python -m ci.quality.check_yaml
 
-check-all: check
+python-scopes:
+	uv run --locked python -m ci.quality.python_scopes
 
-# Keep going so an early lint failure does not hide the other local results.
-check:
-	$(MAKE) -k $(NODES) $(LOCAL_NODES)
+scripts-q000:
+	uv run python -m ci.quality.check_q000_d300
 
-$(NODES):
-	@cmd=$$(jq -er --arg id '$@' '.nodes[] | select(.id == $$id) | .step.run' $(MANIFEST)) && \
-		printf '\n[%s]\n%s\n' '$@' "$$cmd" && bash -eo pipefail -c "$$cmd"
+deploy-i001:
+	uv run python -m ci.quality.check_i001
+	uv run python -m ci.quality.check_f401
+
+rustfs-return-types:
+	uv run python -m ci.quality.check_ann201
+
+javascript:
+	uv run python -m ci.quality.check_javascript
+
+workflow:
+	uv run python -m ci.quality.check_workflow
+
+shell:
+	uv run python -m ci.quality.check_shell
+
+docker:
+	uv run pytest -q tests/test_quality_experiment_admission.py -k docker
+	uv run python -m ci.quality.check_docker
+
+ansible:
+	uv run python -m ci.quality.check_ansible
+
+secrets:
+	uv run python -m ci.quality.check_secrets
+
+dependencies:
+	uv run pytest -q tests/test_quality_dependency_coverage.py \
+	  tests/test_quality_p56_56_node_lock.py
+	uv run python -m ci.quality.check_dependencies
+	uv run python -m ci.quality.npm_smoke
+
+tests-fast:
+	uv run python -m ci.quality.tests fast --isolate-network
+
+tests-medium:
+	uv run python -m ci.quality.tests medium --isolate-network
+
+python:
+	uv run python -m ci.quality.check_python
+
+manifests:
+	uv run python -m ci.quality.charts
+
+tests-cluster:
+	uv run python -m ci.quality.tests cluster
+
+.PHONY: check setup graph ownership yaml python-scopes scripts-q000 deploy-i001 \
+        rustfs-return-types javascript workflow shell docker ansible secrets dependencies \
+        tests-fast tests-medium python manifests tests-cluster

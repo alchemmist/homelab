@@ -1,0 +1,1 @@
+{"include":["scripts/identity-*.py"],"rules":["B007","PLW1510","RUF005"]}

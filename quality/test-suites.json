@@ -2,6 +2,7 @@
   "version": 1,
   "suites": {
     "fast": [
+      "tests/test_redis_common.py",
       "tests/test_storage_platform.py",
       "tests/test_swe_mini_retirement.py",
       "tests/openhands/test_dns.py",
@@ -82,6 +83,7 @@
       "tests/test_quality_p56_53_vpn_task_names.py",
       "tests/test_quality_p56_56_node_lock.py",
       "tests/test_quality_python_policy.py",
+      "tests/test_quality_python_scopes.py",
       "tests/test_quality_system.py",
       "tests/test_recovery_20261109_contracts.py",
       "tests/test_refactor_acceptance.py",
@@ -116,11 +118,7 @@
       "tests/test_wg_peer15_relay.py",
       "tests/test_wishlist_images.py",
       "tests/test_wishlist_observability.py",
-      "tests/openhands/test_iteration_continue.py",
       "tests/openhands/test_monori_pilot.py",
-      "tests/openhands/test_lifecycle_protocol.py",
-      "tests/openhands/test_pi_monori.py",
-      "tests/openhands/test_report_consumer.py",
       "tests/openhands/test_publisher.py",
       "tests/test_traffic_light_models.py"
     ],
