@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "52d171ee219ec5a4d5ad6adf5c6a0c13edbcbd6aeed8a9e46e51402ab1f63d45",
+  "graphDigest": "65d2396e020afc5064d0d1883c0378b864ec7a397f8cf4b248412ee514c94137",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -181,6 +181,33 @@
       },
       "timeoutMinutes": 5,
       "title": "Delivery security"
+    },
+    {
+      "env": {},
+      "id": "rustfs-return-types",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "uv run ruff check --config quality/ruff.toml --select ANN201 --ignore-noqa services/rustfs_gateway"
+      },
+      "timeoutMinutes": 5,
+      "title": "RustFS gateway public return types"
     },
     {
       "env": {},
