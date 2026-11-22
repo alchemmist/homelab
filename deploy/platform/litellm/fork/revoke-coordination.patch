@@ -1,0 +1,31 @@
+--- a/litellm/proxy/management_endpoints/key_management_endpoints.py
++++ b/litellm/proxy/management_endpoints/key_management_endpoints.py
+@@ -4998,7 +4998,7 @@
+                 - List of keys being deleted, this contains information about the key_alias, token, and user_id being deleted,
+                 this is passed down to the KeyManagementEventHooks to delete the keys from the secret manager and handle audit logs
+     """
+-    from litellm.proxy.proxy_server import prisma_client
++    from litellm.proxy.proxy_server import prisma_client, proxy_logging_obj
+ 
+     failed_tokens: list = []
+     try:
+@@ -5082,11 +5082,14 @@
+         verbose_proxy_logger.debug(traceback.format_exc())
+         raise e
+ 
+-    for key in tokens:
+-        user_api_key_cache.delete_cache(key)
+-        # remove hash token from cache
+-        hashed_token = hash_token(cast(str, key))
+-        user_api_key_cache.delete_cache(hashed_token)
++    # Publish only the stored digests, never caller-supplied credentials.
++    for deleted_key in authorized_keys:
++        if deleted_key.token is not None:
++            await _delete_cache_key_object(
++                hashed_token=deleted_key.token,
++                user_api_key_cache=user_api_key_cache,
++                proxy_logging_obj=proxy_logging_obj,
++            )
+ 
+     # After credential invalidation, so a failure here can never keep a deleted key alive.
+     for deleted_key in authorized_keys:

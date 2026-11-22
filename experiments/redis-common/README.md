@@ -22,3 +22,18 @@ The second result is an observed **fail-open window** on this pinned build. Do n
 `bash experiments/redis-common/check.sh failover` additionally requires Helm and Python with PyYAML (`PYTHON` can override `../../.venv/bin/python`). It renders chart 4.39.0 with the platform values, runs three Redis+Sentinel pairs and HAProxy, then stops the container hosting the primary and its voter. It uses Docker IPs in place of Kubernetes announce Services. No manual promotion or changes to client config are performed. `REDIS_HA_CHART` may point to a local copy of the pinned chart.
 
 Observed once: workers returned **200/429 before and after promotion** on fresh one-RPM keys, without restarting either proxy. A pre-failure witness key survived. The writer accepted a new SET 14 s after the old container stopped (not a production RTO). This checks server configs, quorum routing and client reconnect, **not** Kubernetes scheduling, loss of a physical node, every in-flight counter, or a spend guarantee.
+
+## In-cluster LiteLLM acceptance — 2026-11-22 (no production cutover)
+
+Two isolated single-worker proxies on loopback ports 4000/4001, ephemeral PostgreSQL on loopback, a mock model with **synthetic** nonzero token prices. The canary pod could reach only DNS and the actual redis-common TLS gateway. No production LiteLLM secret, DB, model endpoint, or paid inference. A temporary named Redis user was restricted to the run's key/channel prefix; neither control credentials nor the CA private key went into `llm`. No response cache or shared auth-object cache was enabled.
+
+| Check | Production digest `21245d86…` | Same digest + candidate revocation fix |
+|---|---|---|
+| One RPM, first call on A / second on B | 200 / 429 | 200 / 429 |
+| First synthetic completion and next request over key budget | 200 / 422 (budget error) | 200 / 422 (budget error) |
+| Peer drops its cached key after committed deletion | Did not meet the short convergence gate | 401 on second observation |
+| Wrong CA and wrong hostname | Not run in that acceptance pass | Both rejected |
+
+The first completion can itself exceed a small budget. This is evidence of **subsequent enforcement**, not preauthorization or a hard spend ceiling. Zero-priced production routes remain zero-priced. Canary user, secret, policy grants, config map, pod and temporary database removed. No real keys were revoked.
+
+`canary-requests.py` is the assertion payload for this isolated loopback fixture, not a production smoke test. The final pass mounted only the patched module from the pinned image; it was **not** acceptance of a newly published image. [Candidate fix](../../deploy/platform/litellm/fork/revoke-coordination.patch) reuses LiteLLM's existing cross-worker cache eviction for stored token digests; it does not publish raw credentials or enable shared auth-object caching. Build the fix into the owned fork, repeat acceptance on its immutable digest without an overlay, and finish monitoring before switching the production consumer. Do not mount a code ConfigMap in the production proxy.
