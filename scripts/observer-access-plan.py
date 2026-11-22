@@ -16,18 +16,21 @@ READ = {"get", "list", "watch"}
 OWNER = "observer-v1"
 
 
-def require(value, message):
+def require(value: object, message: str) -> None:
+    """Raise ValueError when a planner precondition fails."""
     if not value:
         raise ValueError(message)
 
 
 def exact(rows, key, value):
+    """Return the sole row matching the requested field; reject missing or ambiguous matches."""
     result = [row for row in rows if row.get(key) == value]
     require(len(result) == 1, "Missing/ambiguous reviewed object: " + value)
     return result[0]
 
 
 def kpatch(obj, path, changes):
+    """Build a JSON Patch guarded by the observed UID and resource version."""
     meta = obj["metadata"]
     patch = [
         {"op": "test", "path": "/metadata/uid", "value": meta["uid"]},
@@ -39,6 +42,7 @@ def kpatch(obj, path, changes):
 
 
 def build(state, policy):
+    """Plan native configuration changes, rejecting malformed state or unreviewed policy."""
     require(
         isinstance(state, dict) and isinstance(policy, dict),
         "Observer state and policy must be objects",
@@ -427,7 +431,8 @@ def _build(state, policy):
     return ops
 
 
-def main():
+def main() -> None:
+    """Print proposed operations and their approval hash from a private snapshot."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--snapshot", required=True, type=Path)
     parser.add_argument(

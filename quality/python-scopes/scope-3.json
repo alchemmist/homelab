@@ -1,0 +1,4 @@
+{
+  "include": ["scripts/vpn-*.py"],
+  "rules": ["PLW1510"]
+}

@@ -8,11 +8,11 @@ The equivalent rule is maintained in otel-production-grafana.py for rebuilds.
 import base64
 import json
 import subprocess
-from typing import cast
+from typing import NotRequired, TypedDict
 
 NAMESPACE = "cattle-monitoring-system"
 SECRET = "otel-grafana-datasources"
-FIELD = {
+FIELD: dict[str, object] = {
     "name": "TraceID",
     "matcherRegex": "trace_id=([0-9a-f]{32})",
     "datasourceUid": "tempo",
@@ -20,12 +20,25 @@ FIELD = {
 }
 
 
-def configure(document) -> dict[str, object]:
+class _LokiData(TypedDict, total=False):
+    derivedFields: list[dict[str, object]]
+
+
+class _Datasource(TypedDict):
+    uid: str
+    jsonData: NotRequired[_LokiData]
+
+
+class _Provisioning(TypedDict):
+    datasources: list[_Datasource]
+
+
+def configure(document: _Provisioning) -> _Provisioning:
     loki = next(source for source in document["datasources"] if source["uid"] == "loki")
     data = loki.setdefault("jsonData", {})
     fields = [field for field in data.get("derivedFields", []) if field.get("name") != "TraceID"]
     data["derivedFields"] = fields + [FIELD]
-    return cast("dict[str, object]", document)
+    return document
 
 
 def run() -> None:
@@ -36,7 +49,7 @@ def run() -> None:
         check=True,
     )
     secret = json.loads(result.stdout)
-    content = json.loads(base64.b64decode(secret["data"]["otel-datasources.yaml"]))
+    content: _Provisioning = json.loads(base64.b64decode(secret["data"]["otel-datasources.yaml"]))
     encoded = base64.b64encode(json.dumps(configure(content)).encode()).decode()
     patch = json.dumps({"data": {"otel-datasources.yaml": encoded}})
     result = subprocess.run(
