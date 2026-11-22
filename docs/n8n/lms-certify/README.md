@@ -36,11 +36,10 @@ Operator tools live in `scripts/n8n/lms_certify/`. Run them from the repository
 root as Python modules. Validate the committed graph offline with
 `node tests/n8n/check_lms_certify_graph.cjs`.
 
-The old `deploy_lms_certify_pilot.py` bootstrapped both the sandbox runner and a
-standalone database. **Do not use it for the current deployment.** Certification
-uses the `certification` database on `pg-common`; see the [migration receipts](../../postgres-platform.md).
-The legacy script is not a restore procedure. The runner it deployed came from
-the neighbouring LMS repository, not `services/lms-certify/server.py` here.
+The [runner-only deployment description](../../../deploy/lms-certify/runner/README.md)
+replaces the retired combined pilot installer. It renders offline and does not
+create a database or bind credentials. The workflow stores certification state
+in `pg-common`; see the [migration receipts](../../postgres-platform.md).
 
 ## Reviewed queue rollout (2026-11-19)
 
