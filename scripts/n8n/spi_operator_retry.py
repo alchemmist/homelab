@@ -11,6 +11,8 @@ import json
 import re
 import sqlite3
 import time
+from pathlib import Path
+from typing import TypedDict, cast
 
 TARGETS = {
     "08ba1f0938dd3bf6d8a03b9383b5d852255bbd16fa6c24ba6ece198c0a503af9": "LLM_CONTEXT_METADATA_TOO_LARGE",
@@ -20,22 +22,44 @@ NONCE = "spi-two-target-retry-08ba-998b-20261107-v1"
 AUDIT = "operator_retry_audit"
 
 
-def packed(x):
+_Job = dict[str, object]
+_AuditEntry = tuple[str, str, str, str, float, str, str, str, str]
+
+
+class _TargetManifest(TypedDict):
+    """Row evidence consumed after checking the manifest digest."""
+
+    rows: list[_Job]
+
+
+class _Authorization(TypedDict, total=False):
+    """Fields consulted when checking a recorded authorization."""
+
+    authorization_text: str
+    nonce: str
+    job_ids: list[str]
+    reason: str
+    recorded_at: str
+    supervisor_run_id: str
+    target_manifest_digest: str
+
+
+def packed(x: object) -> str:
     """Serialize a value to a canonical, stable JSON encoding."""
     return json.dumps(x, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
 
-def digest(x):
+def digest(x: object) -> str:
     """Return the SHA-256 hex digest of the canonical JSON encoding of x."""
     return hashlib.sha256(packed(x).encode()).hexdigest()
 
 
-def quoted(name):
+def quoted(name: str) -> str:
     """Quote an identifier for embedding into SQLite SQL."""
     return '"' + name.replace('"', '""') + '"'
 
 
-def ordered_table_scan(c, name):
+def ordered_table_scan(c: sqlite3.Connection, name: str) -> sqlite3.Cursor:
     """Transaction-local physical order, not a VACUUM-independent logical hash.
 
     Never sort complete rows: require the native rowid/primary btree order and
@@ -68,7 +92,9 @@ def ordered_table_scan(c, name):
     return c.execute(sql)
 
 
-def table_hashes(c, original_jobs=None):
+def table_hashes(
+    c: sqlite3.Connection, original_jobs: dict[str, _Job] | None = None
+) -> dict[str, str]:
     """Hash every non-audit table row-by-row in stable btree order."""
     result = {}
     for (name,) in c.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"):
@@ -88,7 +114,7 @@ def table_hashes(c, original_jobs=None):
     return result
 
 
-def manifest_digest(manifest):
+def manifest_digest(manifest: object) -> str:
     """Validate the reviewed target manifest and return its canonical digest."""
     if (
         not isinstance(manifest, dict)
@@ -108,7 +134,7 @@ def manifest_digest(manifest):
     return digest(manifest)
 
 
-def authorize(a):
+def authorize(a: _Authorization) -> None:
     """Validate the recorded operator authorization against the expected nonce and reasons."""
     if (
         a.get("authorization_text") != "Да, все рзрешаю"
@@ -137,7 +163,7 @@ def _require_retryable(row: dict[str, object], error: str) -> None:
         raise ValueError("unexpected state/stage/lease/error/intent")
 
 
-def _reviewed_selected_rows(c: sqlite3.Connection, rows: list[dict[str, object]]) -> list[dict]:
+def _reviewed_selected_rows(c: sqlite3.Connection, rows: list[_Job]) -> list[_Job]:
     """Validate the exact selected rows and their episode isolation."""
     selected = []
     for key, error in TARGETS.items():
@@ -167,7 +193,7 @@ def _require_fresh_audit(c: sqlite3.Connection) -> None:
             raise ValueError("authorization nonce already consumed")
 
 
-def _prepare_audit(c: sqlite3.Connection) -> tuple[list[object], list[tuple]]:
+def _prepare_audit(c: sqlite3.Connection) -> tuple[list[object], list[_AuditEntry]]:
     """Create the immutable audit table/triggers and snapshot the prior state."""
     c.execute(
         "CREATE TABLE IF NOT EXISTS operator_retry_audit (nonce TEXT NOT NULL, job_id TEXT NOT NULL, authorization_hash TEXT NOT NULL, pre_row_hash TEXT NOT NULL, executed_at REAL NOT NULL, reason TEXT NOT NULL, explicit_change TEXT NOT NULL, manifest_digest TEXT NOT NULL, post_row_hash TEXT NOT NULL, PRIMARY KEY(nonce,job_id))"
@@ -199,10 +225,10 @@ def _prepare_audit(c: sqlite3.Connection) -> tuple[list[object], list[tuple]]:
 
 def _mutate_reviewed_rows(
     c: sqlite3.Connection,
-    rows: list[dict],
-    authorization: dict[str, object],
-    bound: object,
-    expected_audit: list[tuple],
+    rows: list[_Job],
+    authorization: _Authorization,
+    bound: str,
+    expected_audit: list[_AuditEntry],
 ) -> float:
     """Apply the retry UPDATE and audit INSERT for each reviewed row."""
     now = time.time()
@@ -212,9 +238,9 @@ def _mutate_reviewed_rows(
             "UPDATE jobs SET state=?,available=?,updated=? WHERE id=?",
             ("retry", now, now, row["id"]),
         )
-        entry = (
+        entry: _AuditEntry = (
             NONCE,
-            row["id"],
+            cast("str", row["id"]),
             digest(authorization),
             digest(row),
             now,
@@ -231,7 +257,7 @@ def _mutate_reviewed_rows(
     return now
 
 
-def _verify_targets(c: sqlite3.Connection, rows: list[dict], now: float) -> None:
+def _verify_targets(c: sqlite3.Connection, rows: list[_Job], now: float) -> None:
     """Confirm only the two reviewed rows now hold the retry state."""
     expected = {r["id"]: dict(r, state="retry", available=now, updated=now) for r in rows}
     for key, row in expected.items():
@@ -240,7 +266,7 @@ def _verify_targets(c: sqlite3.Connection, rows: list[dict], now: float) -> None
 
 
 def _verify_audit_state(
-    c: sqlite3.Connection, expected_audit: list[tuple], audit_schema: list[object]
+    c: sqlite3.Connection, expected_audit: list[_AuditEntry], audit_schema: list[object]
 ) -> None:
     """Confirm the audit content and schema changed exactly as authorized."""
     actual_audit = [
@@ -255,7 +281,9 @@ def _verify_audit_state(
         raise ValueError("audit content/schema mismatch")
 
 
-def retry(path, authorization, execute=False, manifest=None):
+def retry(
+    path: str | Path, authorization: _Authorization, execute: bool = False, manifest: object = None
+) -> dict[str, object]:
     """Verify state and re-queue the two reviewed dead jobs under immutable audit."""
     authorize(authorization)
     bound = manifest_digest(manifest)
@@ -266,7 +294,8 @@ def retry(path, authorization, execute=False, manifest=None):
     try:
         c.execute("BEGIN IMMEDIATE")
         before = table_hashes(c)
-        rows = _reviewed_selected_rows(c, manifest["rows"])
+        # manifest_digest checked the rows and their exact IDs before opening the database.
+        rows = _reviewed_selected_rows(c, cast("_TargetManifest", manifest)["rows"])
         _require_fresh_audit(c)
         if not execute:
             c.rollback()
@@ -280,7 +309,7 @@ def retry(path, authorization, execute=False, manifest=None):
         # Normalize only the two already-verified selected rows while hashing;
         # no compensating UPDATEs or history rewrites are performed.
         now = _mutate_reviewed_rows(c, rows, authorization, bound, expected_audit)
-        if table_hashes(c, {r["id"]: r for r in rows}) != before:
+        if table_hashes(c, {cast("str", r["id"]): r for r in rows}) != before:
             raise ValueError("non-authorized row/table mutation")
         _verify_targets(c, rows, now)
         _verify_audit_state(c, expected_audit, audit_schema)
@@ -293,7 +322,7 @@ def retry(path, authorization, execute=False, manifest=None):
         c.close()
 
 
-def main():
+def main() -> None:
     """Parse CLI arguments and run the dry-run or executed retry."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--database", required=True)
