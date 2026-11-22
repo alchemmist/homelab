@@ -104,14 +104,14 @@ def test_rustfs_names_additive_without_changes_to_existing_records() -> None:
         # Monori alone has a separately tested primary/standby publication policy.
         historical = prior["render"](123, home, vps).splitlines()
         assert [x for x in new if x.startswith("monori IN A ")] == [
-            "monori IN A " + ip for ip in zone.monori_addresses(home, vps)
+            "monori IN A " + ip for ip in zone.monori_addresses(home, True)
         ]
         assert [
             line
             for line in new
-            if not line.startswith((*names, "monori IN A "))
+            if not line.startswith((*names, "monori IN A ", "lms IN A ", "auth.socrat IN A "))
             and line not in ("@ IN NS ns3.alchemmist.xyz.", "ns3 IN A 91.189.82.238")
-        ] == [x for x in historical if not x.startswith("monori IN A ")]
+        ] == [x for x in historical if not x.startswith(("monori IN A ", "lms IN A ", "auth.socrat IN A "))]
         for name in ("rustfs.socrat", "spi-evidence.socrat"):
             for address in zone.healthy_addresses(home, vps):
                 assert new.count(f"{name} IN A {address}") == 1
@@ -144,12 +144,12 @@ def test_vpn_has_only_moscow_even_when_original_entrances_fail() -> None:
         assert "ns2 IN A 109.120.141.60" in lines
 
 
-@pytest.mark.parametrize("home,vps,ips", [(True, True, [zone.HOME]), (True, False, [zone.HOME]),
-    (False, True, [zone.VPS]), (False, False, [zone.HOME, zone.VPS])])
-def test_monori_https_selection_is_scoped(home, vps, ips):
-    lines = zone.render(123, True, True, monori_health=(home, vps)).splitlines()
+@pytest.mark.parametrize("home,moscow,ips", [(True, True, [zone.HOME, zone.MOSCOW]), (True, False, [zone.HOME]),
+    (False, True, [zone.MOSCOW]), (False, False, [zone.HOME, zone.MOSCOW])])
+def test_monori_https_selection_is_scoped(home, moscow, ips):
+    lines = zone.render(123, True, True, monori_health=(home, moscow)).splitlines()
     assert [x for x in lines if x.startswith("monori IN A ")] == ["monori IN A " + ip for ip in ips]
-    assert [x for x in lines if x.startswith("lms IN A ")] == ["lms IN A " + ip for ip in (zone.HOME, zone.VPS)]
+    assert [x for x in lines if x.startswith("lms IN A ")] == ["lms IN A " + zone.HOME]
 
 
 @pytest.mark.parametrize("rc,status,healthy", [(0, "200", True), (0, "503", False), (60, "000", False)])
@@ -166,3 +166,13 @@ def test_monori_https_requires_verified_exchange(monkeypatch, rc, status, health
 
     monkeypatch.setattr(zone.subprocess, "run", run)
     assert zone.monori_https("127.0.0.1", 8443, 3) is healthy
+
+
+@pytest.mark.parametrize("home,vps", [(True, True), (True, False), (False, True), (False, False)])
+def test_existing_production_oidc_pair_preserved(home, vps):
+    lines = zone.render(123, home, vps).splitlines()
+    for name in ("lms", "auth.socrat"):
+        prefix = name + " IN A "
+        assert [x for x in lines if x.startswith(prefix)] == [
+            prefix + ip for ip in ([zone.HOME] if home else zone.healthy_addresses(home, vps))
+        ]

@@ -1,0 +1,7 @@
+# Monori public entrances
+
+Monori publishes HOME (109.173.40.247) and Moscow (91.189.82.238) for ordinary recursive resolvers worldwide, not NL (109.120.141.60). Resolver IP is not client country; no ECS disclosure or client override is required. With both entrances healthy both are published. A single successful verified HTTPS check selects only that entrance; two failed checks preserve both last-resort addresses, never NL. TTL is 60 seconds; cached answers may outlive a refresh. Other web names, the three authorities and VPN transport are separate policies.
+
+Each of four independent writers checks the HOME target and the public Moscow address with the Monori SNI, certificate validation and HTTP GET /. Moscow currently relays HTTPS to the NL edge over the private path; this works around public NL reachability but is not independence from NL infrastructure. The ingress then routes to the Monori Service. No user location, credentials or writes are needed for acceptance.
+
+Before a serial roll: preserve the live LMS/OIDC home preference, compare every non-Monori record at fixed serial in all health combinations against the installed renderer on every writer, and verify both entrance probes. Replace only an exact approved renderer preimage atomically, refresh the existing zone without restarting Knot, and check local authoritative data and the public delegated nameservers. Retain the previous renderer for rollback. Test normal resolution and each IP with validated TLS.
