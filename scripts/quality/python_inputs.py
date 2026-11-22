@@ -24,6 +24,10 @@ def python_inputs(roots: list[str]) -> list[str]:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("roots", nargs="+", choices=("ansible/", "deploy/", "scripts/", "tests/"))
+    parser.add_argument(
+        "roots",
+        nargs="+",
+        choices=("ansible/", "deploy/", "scripts/", "scripts/quality/", "tests/"),
+    )
     for path in python_inputs(parser.parse_args().roots):
         sys.stdout.buffer.write(os.fsencode(path) + b"\0")

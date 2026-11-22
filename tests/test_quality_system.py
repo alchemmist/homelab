@@ -455,6 +455,11 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     assert policy["blocking"] is True
     assert policy["approvals"] == {"files": False, "findings": False, "node": False}
     assert "uv run python scripts/quality/strict_guard.py" in graph["graph"]["run"].splitlines()
+    assert (
+        "uv run python -m scripts.quality.python_inputs scripts/quality/ |\n"
+        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select SIM300 \\\n"
+        "    --ignore-noqa --output-format concise --"
+    ) in graph["graph"]["run"]
     for node in first_layer:
         assert graph[node]["needs"] == ["graph"]
         assert graph[node]["policy"]["blocking"] is True
@@ -1195,5 +1200,8 @@ def test_existing_main_push_regression_cannot_be_deferred(omitted: str) -> None:
     """A complete classification is insufficient when it drops an existing gate."""
     complete = set(contracts.RETAINED_PUSH_TESTS)
     contracts.require_retained_push_tests(complete)
-    with pytest.raises(ValueError, match="push regression lost"):
-        contracts.require_retained_push_tests(complete - {omitted})
+    expanded = complete | {"tests/test_new_feature.py"}
+    contracts.require_retained_push_tests(expanded)
+    for scheduled in (complete, expanded):
+        with pytest.raises(ValueError, match="push regression lost"):
+            contracts.require_retained_push_tests(scheduled - {omitted})

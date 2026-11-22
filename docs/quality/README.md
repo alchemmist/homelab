@@ -8,7 +8,8 @@ The operator changed the integration scope: PR182 sets up CI and integrates revi
 
 ## Active CI scope
 
-CI runs `graph` (including the blocking strict configuration and suppression guard),
+CI runs `graph` (including the blocking strict configuration and suppression guard
+and a SIM300 check for constant-first comparisons in tracked, owned Python under `scripts/quality/`),
 followed by `yaml`, `scripts-q000`, `deploy-i001`, `secrets`, `javascript`, `ownership`, `docker`, `workflow`,
 `tests-fast`, `shell` and `rustfs-return-types`. The latter blocks missing public return annotations (Ruff
 `ANN201`) in `services/rustfs_gateway/`; the full Python check remains available locally.
