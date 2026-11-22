@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "65d2396e020afc5064d0d1883c0378b864ec7a397f8cf4b248412ee514c94137",
+  "graphDigest": "0430a6c125d2fefeba0b05e20a477d1b0bd7c1084dc99c08c5f83a2f5d358901",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -37,6 +37,33 @@
       },
       "timeoutMinutes": 5,
       "title": "Graph integrity"
+    },
+    {
+      "env": {},
+      "id": "scripts-q000",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "set -euo pipefail\ngit ls-files --error-unmatch -z -- ':(top,glob)scripts/**/*.py' |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 --ignore-noqa --output-format concise --"
+      },
+      "timeoutMinutes": 5,
+      "title": "Python script quotes (Q000)"
     },
     {
       "env": {},
