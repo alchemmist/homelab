@@ -136,6 +136,7 @@
       "tests/test_browser_test_runner.py",
       "tests/test_cats_image.py",
       "tests/test_control_plane_safety_rules.py",
+      "tests/test_x_ui_manifest.py",
       "tests/test_harbor_gitops_runtime.py",
       "tests/test_identity.py",
       "tests/test_identity_ssh.py",
