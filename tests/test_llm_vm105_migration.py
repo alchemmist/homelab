@@ -273,6 +273,19 @@ class FourAppMigrationTests(unittest.TestCase):
         assert policy["ingress"][0]["from"] == [{"podSelector": {"matchLabels": {"app": "open-webui"}}}]
         assert cast("ServiceDoc", obj(docs, "Service", "open-terminal"))["spec"]["type"] == "ClusterIP"
 
+    def test_terminal_ingress_peer_matches_the_separate_webui_release(self) -> None:
+        """Prove the terminal policy peer is emitted by the independently rendered WebUI chart."""
+        terminal = render("open-terminal")
+        webui = render("open-webui")
+        peer = cast("PolicyDoc", obj(terminal, "NetworkPolicy", "open-terminal-isolation"))["spec"]["ingress"][0]["from"][0]["podSelector"]["matchLabels"]
+        webui_pod = cast("DeploymentDoc", obj(webui, "Deployment", "open-webui"))["spec"]["template"]["spec"]
+        assert peer
+        assert webui_pod["nodeSelector"] == {"kubernetes.io/hostname": "socrat-5"}
+        rendered_labels = cast("dict[str, object]", cast("object", obj(webui, "Deployment", "open-webui"))["spec"]["template"]["metadata"]["labels"])
+        assert all(rendered_labels.get(key) == value for key, value in peer.items())
+        selector = cast("dict[str, object]", cast("object", obj(webui, "Deployment", "open-webui"))["spec"]["selector"]["matchLabels"])
+        assert all(selector.get(key) == value for key, value in peer.items())
+
     def test_idp_internal_tls_route_is_scoped_to_webui_pod(self) -> None:
         """Route the Authentik TLS name only inside the open-webui pod."""
         docs = render("open-webui")
