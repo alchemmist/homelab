@@ -1227,3 +1227,76 @@ def test_locked_library_uses_real_consumer_and_broken_helper_fails(tmp_path: Pat
     names = parent / "charts/common/templates/_names.tpl"
     names.write_text(names.read_text().replace("common.names.fullname", "missing.fullname"))
     assert charts.render(target) is None
+
+
+@pytest.fixture(scope="module")
+def rancher_release() -> list[dict]:
+    """Render both local Helm sources using the Application's actual overrides."""
+    documents = []
+    for target in charts.argocd_targets()[0]:
+        if target["source"] == "deploy/argocd/apps/rancher.yaml":
+            assert target["namespace"] == "cattle-system"
+            rendered = charts.render(target)
+            assert rendered, target["id"]
+            documents.extend(rendered)
+    return documents
+
+
+def test_rancher_server_and_hook_bindings(rancher_release: list[dict]) -> None:
+    """Follow each workload to its account and cluster binding, not just a role name."""
+    objects = {(d["kind"], d["metadata"]["name"]): d for d in rancher_release}
+    for kind, account in (
+        ("Deployment", "rancher"),
+        ("Job", "rancher-pre-upgrade"),
+        ("Job", "rancher-post-delete"),
+    ):
+        workload = objects[kind, account]
+        assert workload["spec"]["template"]["spec"]["serviceAccountName"] == account
+        sa = objects["ServiceAccount", account]
+        for obj in (workload, sa):
+            assert obj["metadata"].get("namespace", "cattle-system") == "cattle-system"
+        binding = objects["ClusterRoleBinding", account]
+        assert binding["subjects"] == [
+            {"kind": "ServiceAccount", "name": account, "namespace": "cattle-system"}
+        ]
+        ref = binding["roleRef"]
+        assert ref["apiGroup"] == "rbac.authorization.k8s.io" and ref["kind"] == "ClusterRole"
+        if kind == "Job":
+            assert ref["name"] == account
+            assert ("ClusterRole", account) in objects
+        elif ref["name"] != "cluster-admin":
+            # A replacement must at least support reconcileGlobalRole's label-
+            # selected cluster-wide list. This is necessary, not sufficient.
+            assert any(
+                "rbac.authorization.k8s.io" in rule.get("apiGroups", [])
+                and "clusterroles" in rule.get("resources", [])
+                and "list" in rule["verbs"]
+                and not rule.get("resourceNames")
+                for rule in objects["ClusterRole", ref["name"]]["rules"]
+            )
+    # The pre-upgrade RKE1 inventory lists management clusters. This small
+    # role is not the permission contract for the long-running server.
+    assert objects["ClusterRole", "rancher-pre-upgrade"]["rules"] == [
+        {"apiGroups": ["management.cattle.io"], "resources": ["clusters"], "verbs": ["get", "list"]}
+    ]
+
+
+def test_rancher_admin_grant_does_not_spread(rancher_release: list[dict]) -> None:
+    """No hook, observer, group or other subject may inherit the server's grant."""
+    observer = next(
+        d for d in rancher_release
+        if d["kind"] == "CronJob" and d["metadata"]["name"] == "observer-membership"
+    )
+    pod = observer["spec"]["jobTemplate"]["spec"]["template"]["spec"]
+    assert pod["serviceAccountName"] == "observer-membership"
+    for doc in rancher_release:
+        if doc["kind"] not in {"RoleBinding", "ClusterRoleBinding"}:
+            continue
+        if doc["roleRef"]["name"] == "cluster-admin":
+            assert (doc["kind"], doc["metadata"]["name"]) == ("ClusterRoleBinding", "rancher")
+            assert doc["subjects"] == [
+                {"kind": "ServiceAccount", "name": "rancher", "namespace": "cattle-system"}
+            ]
+            # The regression must not depend on retaining this binding, but
+            # while present the manifest gate must continue reporting it.
+            assert "cluster-admin-binding" in {rule for rule, _ in charts.policies(doc)}
