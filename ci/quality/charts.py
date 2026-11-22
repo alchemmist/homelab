@@ -309,9 +309,9 @@ def policies(resource):
 
 
 RELEASE_PEERS = {
-    "monitoring-k3s-0": ("grafana-mcp-0", "Deployment", "grafana-mcp"),
-    "litellm-2": ("litellm-0", "Service", "litellm"),
-    "rustfs-0": ("authentik-0", "Service", "authentik-server"),
+    "monitoring-k3s-0": ("grafana-mcp-0", [("Deployment", "grafana-mcp")]),
+    "litellm-2": ("litellm-0", [("Service", "litellm"), ("Deployment", "litellm")]),
+    "rustfs-0": ("authentik-0", [("Service", "authentik-server"), ("Deployment", "authentik-server")]),
 }
 
 
@@ -439,7 +439,7 @@ def release_peer_objects(target, selected, renders):
     link = RELEASE_PEERS.get(target["id"])
     if not link:
         return []
-    peer_id, kind, name = link
+    peer_id, wanted = link
     peer = next((t for t in selected if t["id"] == peer_id), None)
     if peer is None:
         # A missing declared peer is a configuration error, not a silent skip.
@@ -447,10 +447,12 @@ def release_peer_objects(target, selected, renders):
         raise ValueError(message)
     if peer_id not in renders:
         renders[peer_id] = render(peer)
+    # The Service and the pods behind it: existence providers are full objects,
+    # not synthetic stubs, and stay attributed to their own release.
     return [
         doc
         for doc in renders[peer_id] or []
-        if doc["kind"] == kind and doc["metadata"]["name"] == name
+        if (doc["kind"], doc["metadata"]["name"]) in set(wanted)
     ]
 
 
