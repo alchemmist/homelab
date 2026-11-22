@@ -265,6 +265,15 @@ def policies(resource):
     return errors
 
 
+def authentik_accounts():
+    """Use the same namespace-scoped account documents applied by the Ansible role."""
+    path = ROOT / "deploy/authentik/foundation.yaml"
+    return [
+        doc for doc in yaml.load_all(path.read_text(), Loader=ManifestLoader)
+        if doc and doc["kind"] == "ServiceAccount"
+    ]
+
+
 def kube_lint(target, resources, peers=()):
     """Execute kube_lint."""
     def key(doc):
@@ -463,6 +472,11 @@ def check(*, validate=True):
             if peer["id"] not in renders:
                 renders[peer["id"]] = render(peer)
             peers = [doc for doc in renders[peer["id"]] or [] if doc["kind"] == "Deployment"]
+        if target["id"] == "authentik-0":
+            peers = authentik_accounts()
+            # Do not discard the foundation accounts' own lint diagnostics.
+            foundation = {"id": "authentik-foundation", "source": "deploy/authentik/foundation.yaml"}
+            findings.extend(kube_lint(foundation, peers) if peers else [])
         findings.extend(kube_lint(target, resources, peers))
         seen = set()
         for resource in resources:
