@@ -37,7 +37,10 @@ def probe(address, timeout=6, grpc_module=None):
     channel = grpc.secure_channel(
         address + ":443",
         grpc.ssl_channel_credentials(),
-        options=(("grpc.ssl_target_name_override", HOST), ("grpc.default_authority", HOST)),
+        options=(
+            ("grpc.ssl_target_name_override", HOST),
+            ("grpc.default_authority", HOST),
+        ),
     )
     call = None
     start = time.monotonic()

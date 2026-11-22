@@ -174,7 +174,11 @@ class Ownership(unittest.TestCase):
 
     def test_unavailable_or_extra_deployment_replicas_rejected(self) -> None:
         """Verify unavailable or extra deployment replicas rejected."""
-        for field, value in [("availableReplicas", 0), ("replicas", 2), ("unavailableReplicas", 1)]:
+        for field, value in [
+            ("availableReplicas", 0),
+            ("replicas", 2),
+            ("unavailableReplicas", 1),
+        ]:
             with self.subTest(field=field):
                 d, _r, p = fixture()
                 d["status"][field] = value

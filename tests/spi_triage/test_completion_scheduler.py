@@ -28,7 +28,13 @@ class CompletionSchedulerTests(unittest.TestCase):
         with self.s.db() as c:
             c.execute(
                 "UPDATE jobs SET stage=?,state=?,available=?,error=? WHERE id=?",
-                (stage, state, self.now if available is None else available, error, key),
+                (
+                    stage,
+                    state,
+                    self.now if available is None else available,
+                    error,
+                    key,
+                ),
             )
 
     def test_competition_expiry_jitter_publication_and_resume(self) -> None:
@@ -47,7 +53,11 @@ class CompletionSchedulerTests(unittest.TestCase):
         self.add("older-match")
         e = f.event()
         key = self.s.enqueue(e)["job_id"]
-        result = {"match": {"candidates": []}, "evidence": {}, "open_signature": digest([])}
+        result = {
+            "match": {"candidates": []},
+            "evidence": {},
+            "open_signature": digest([]),
+        }
         self.s.save(key, 2, result, state="retry")
         reservation = self.s.reserve_llm(29929)
         self.s.finish_llm(reservation)

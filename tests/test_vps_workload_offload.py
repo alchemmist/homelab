@@ -20,7 +20,10 @@ class VPSWorkloadOffloadTests(unittest.TestCase):
         assert by_owner["img-proxy", r"^img\-proxy-[a-z0-9]+$"]["nodeSelector"] == {
             "kubernetes.io/hostname": "socrat-2"
         }
-        for owner in (r"^metrics\-server-[a-z0-9]+$", r"^local\-path\-provisioner-[a-z0-9]+$"):
+        for owner in (
+            r"^metrics\-server-[a-z0-9]+$",
+            r"^local\-path\-provisioner-[a-z0-9]+$",
+        ):
             assert "kubernetes.io/hostname" not in by_owner["kube-system", owner].get(
                 "nodeSelector", {}
             )

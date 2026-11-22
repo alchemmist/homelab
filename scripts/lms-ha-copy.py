@@ -58,7 +58,11 @@ def _copy_job_document(name: str, *, rehearsal: bool) -> dict[str, object]:
                 "spec": {
                     "restartPolicy": "Never",
                     "automountServiceAccountToken": False,
-                    "securityContext": {"runAsUser": 999, "runAsGroup": 999, "fsGroup": 999},
+                    "securityContext": {
+                        "runAsUser": 999,
+                        "runAsGroup": 999,
+                        "fsGroup": 999,
+                    },
                     "containers": [
                         {
                             "name": "copy",
@@ -77,7 +81,10 @@ def _copy_job_document(name: str, *, rehearsal: bool) -> dict[str, object]:
                                 {
                                     "name": "TARGET_PASSWORD",
                                     "valueFrom": {
-                                        "secretKeyRef": {"name": "lms-ha-app", "key": "password"}
+                                        "secretKeyRef": {
+                                            "name": "lms-ha-app",
+                                            "key": "password",
+                                        }
                                     },
                                 },
                                 {"name": "BACKUP_ID", "value": name},
@@ -97,7 +104,11 @@ def _copy_job_document(name: str, *, rehearsal: bool) -> dict[str, object]:
                             },
                             "volumeMounts": [
                                 {"name": "backups", "mountPath": "/backups"},
-                                {"name": "ca", "mountPath": "/etc/postgres-ca", "readOnly": True},
+                                {
+                                    "name": "ca",
+                                    "mountPath": "/etc/postgres-ca",
+                                    "readOnly": True,
+                                },
                                 {"name": "tmp", "mountPath": "/tmp"},
                                 {
                                     "name": "backup-key",
@@ -119,10 +130,16 @@ def _copy_job_document(name: str, *, rehearsal: bool) -> dict[str, object]:
                                 "items": [{"key": "ca.crt", "path": "ca.crt"}],
                             },
                         },
-                        {"name": "tmp", "emptyDir": {"medium": "Memory", "sizeLimit": "128Mi"}},
+                        {
+                            "name": "tmp",
+                            "emptyDir": {"medium": "Memory", "sizeLimit": "128Mi"},
+                        },
                         {
                             "name": "backup-key",
-                            "secret": {"secretName": "lms-backup-key", "defaultMode": 288},
+                            "secret": {
+                                "secretName": "lms-backup-key",
+                                "defaultMode": 288,
+                            },
                         },
                     ],
                 },
@@ -173,7 +190,16 @@ def run(args: argparse.Namespace) -> None:
     if not args.rehearsal:
         dep = json.loads(kube("-n", "lms", "get", "deployment", "lms", "-o", "json"))
         pods = json.loads(
-            kube("-n", "lms", "get", "pods", "-l", "app.kubernetes.io/name=lms", "-o", "json")
+            kube(
+                "-n",
+                "lms",
+                "get",
+                "pods",
+                "-l",
+                "app.kubernetes.io/name=lms",
+                "-o",
+                "json",
+            )
         )
         if dep["spec"]["replicas"] != 0 or pods["items"]:
             raise ValueError("Refusing final restore: LMS is not fully stopped")

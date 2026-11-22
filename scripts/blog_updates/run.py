@@ -38,11 +38,17 @@ def run(
                 "response_format": {"type": "json_object"},
                 "messages": [
                     {"role": "system", "content": prompt},
-                    {"role": "user", "content": json.dumps(context, ensure_ascii=False)},
+                    {
+                        "role": "user",
+                        "content": json.dumps(context, ensure_ascii=False),
+                    },
                 ],
             }
         ).encode(),
-        headers={"Authorization": "Bearer " + llm_key, "Content-Type": "application/json"},
+        headers={
+            "Authorization": "Bearer " + llm_key,
+            "Content-Type": "application/json",
+        },
     )
     with urllib.request.urlopen(req, timeout=240) as response:
         answer = json.load(response)

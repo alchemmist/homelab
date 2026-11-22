@@ -40,10 +40,19 @@ def state() -> dict[str, object]:
             }
         ],
         "bindings": [
-            {"target": "native", "group": "reader", "enabled": True, "failure_result": False}
+            {
+                "target": "native",
+                "group": "reader",
+                "enabled": True,
+                "failure_result": False,
+            }
         ],
         "outposts": [
-            {"pk": "embedded", "managed": "goauthentik.io/outposts/embedded", "providers": [99]}
+            {
+                "pk": "embedded",
+                "managed": "goauthentik.io/outposts/embedded",
+                "providers": [99],
+            }
         ],
     }
 
@@ -128,7 +137,10 @@ def test_public_probe_reuses_migration_owned_addresses() -> None:
     c = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(c)
     assert len(c.addresses()) == 2
-    assert c.addresses(["109.173.40.247", "109.120.141.97"]) == ["109.173.40.247", "109.120.141.97"]
+    assert c.addresses(["109.173.40.247", "109.120.141.97"]) == [
+        "109.173.40.247",
+        "109.120.141.97",
+    ]
     with pytest.raises(ValueError):
         c.addresses(["10.250.0.1", "109.120.141.97"])
     with pytest.raises(ValueError):

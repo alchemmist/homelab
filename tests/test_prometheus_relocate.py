@@ -57,7 +57,12 @@ class RelocateTests(unittest.TestCase):
     def test_same_node_proceeds_without_the_flag(self) -> None:
         """Same node proceeds without the flag."""
         decision = RELOCATE.evaluate(
-            {"desired": "socrat-0", "relocate": False, "pods": [pod("socrat-0")], "volumes": []}
+            {
+                "desired": "socrat-0",
+                "relocate": False,
+                "pods": [pod("socrat-0")],
+                "volumes": [],
+            }
         )
         assert decision["action"] == "proceed"
 
@@ -102,7 +107,12 @@ class ScrapeGuardTests(unittest.TestCase):
         """Five second scrape and eight gib limit pass."""
         document = {
             "items": [
-                {"spec": {"scrapeInterval": "5s", "resources": {"limits": {"memory": "8Gi"}}}}
+                {
+                    "spec": {
+                        "scrapeInterval": "5s",
+                        "resources": {"limits": {"memory": "8Gi"}},
+                    }
+                }
             ]
         }
         assert GUARD.problems(document) == []
@@ -111,7 +121,12 @@ class ScrapeGuardTests(unittest.TestCase):
         """Old prometheus is rejected."""
         document = {
             "items": [
-                {"spec": {"scrapeInterval": "30s", "resources": {"limits": {"memory": "3Gi"}}}}
+                {
+                    "spec": {
+                        "scrapeInterval": "30s",
+                        "resources": {"limits": {"memory": "3Gi"}},
+                    }
+                }
             ]
         }
         assert len(GUARD.problems(document)) == 2
@@ -134,7 +149,12 @@ class EffectiveMemoryGuardTests(unittest.TestCase):
         """Build spec and runtime limit documents."""
         cr: dict[str, object] = {
             "items": [
-                {"spec": {"scrapeInterval": "5s", "resources": {"limits": {"memory": "8Gi"}}}}
+                {
+                    "spec": {
+                        "scrapeInterval": "5s",
+                        "resources": {"limits": {"memory": "8Gi"}},
+                    }
+                }
             ]
         }
         pods: dict[str, object] = {
@@ -142,7 +162,10 @@ class EffectiveMemoryGuardTests(unittest.TestCase):
                 {
                     "spec": {
                         "containers": [
-                            {"name": "prometheus", "resources": {"limits": {"memory": spec_limit}}}
+                            {
+                                "name": "prometheus",
+                                "resources": {"limits": {"memory": spec_limit}},
+                            }
                         ]
                     },
                     "status": {

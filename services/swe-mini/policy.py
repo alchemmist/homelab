@@ -35,7 +35,10 @@ def validate_changes(changes):
             ("server/app/", "server/tests/", "web/src/", "web/tests/", "common/")
         ):
             raise ValueError("Path outside publication allowlist: " + path)
-        if any(part.startswith(".") for part in p.parts) or p.name in {"AGENTS.md", "CLAUDE.md"}:
+        if any(part.startswith(".") for part in p.parts) or p.name in {
+            "AGENTS.md",
+            "CLAUDE.md",
+        }:
             raise ValueError("Protected path")
         if item.get("mode", "100644") != "100644":
             raise ValueError("Only regular non-executable files")

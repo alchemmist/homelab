@@ -14,7 +14,9 @@ NATIVE_STAGE_URL_COUNT = 5
 class SpiServiceVipTests(unittest.TestCase):
     """Require the fixed SPI Service VIP on values, the chart, and n8n stages."""
 
-    def test_existing_service_vip_is_declared_and_rendered_only_on_service(self) -> None:
+    def test_existing_service_vip_is_declared_and_rendered_only_on_service(
+        self,
+    ) -> None:
         """Require the VIP in values and only in the Service half of the worker chart."""
         values = (ROOT / "deploy/spi-triage/values.yaml").read_text()
         assert re.search(r"(?m)^serviceClusterIP: 10\.43\.194\.185 ", values)

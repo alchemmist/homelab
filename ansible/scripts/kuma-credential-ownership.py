@@ -37,7 +37,10 @@ def main():
     root = Path("/var/lib/homelab-kuma-credential-ownership")
     require(not root.is_symlink(), "Unsafe state path")
     root.mkdir(mode=0o700, exist_ok=True)
-    require(root.stat().st_uid == 0 and not root.stat().st_mode & 0o077, "Unsafe state ownership")
+    require(
+        root.stat().st_uid == 0 and not root.stat().st_mode & 0o077,
+        "Unsafe state ownership",
+    )
     with (root / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         require(not (root / "uncertain.json").exists(), "Uncertain prior write")
@@ -61,7 +64,10 @@ def main():
             return
         require(ann.get("argocd.argoproj.io/tracking-id") == TRACK, "Foreign tracking owner")
         app = get("applications.argoproj.io", "uptime-kuma", "argocd")
-        require(app["spec"]["syncPolicy"]["automated"]["prune"] is False, "Never prune credentials")
+        require(
+            app["spec"]["syncPolicy"]["automated"]["prune"] is False,
+            "Never prune credentials",
+        )
         resource = next(
             r for r in app["status"]["resources"] if r["kind"] == "Secret" and r["name"] == NAME
         )
@@ -89,7 +95,10 @@ def main():
                     "path": "/metadata/resourceVersion",
                     "value": meta["resourceVersion"],
                 },
-                {"op": "remove", "path": "/metadata/annotations/argocd.argoproj.io~1tracking-id"},
+                {
+                    "op": "remove",
+                    "path": "/metadata/annotations/argocd.argoproj.io~1tracking-id",
+                },
                 {
                     "op": "add",
                     "path": "/metadata/annotations/helm.sh~1resource-policy",

@@ -109,7 +109,10 @@ def llm(role, prompt):
         "temperature": 0,
         "max_tokens": 1600,
         "messages": [
-            {"role": "system", "content": "Reply with one JSON object only. No markdown."},
+            {
+                "role": "system",
+                "content": "Reply with one JSON object only. No markdown.",
+            },
             {"role": "user", "content": prompt},
         ],
     }
@@ -159,7 +162,10 @@ def others_waiting():
 def open_task(queue, state):
     for item in queue:
         record = state["tasks"].get(item["id"], {})
-        if record.get("loop") == "v2" and record.get("phase") in {"certified", "needs_review"}:
+        if record.get("loop") == "v2" and record.get("phase") in {
+            "certified",
+            "needs_review",
+        }:
             continue
         return item
     return None

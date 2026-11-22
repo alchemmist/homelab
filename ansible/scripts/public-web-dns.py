@@ -61,7 +61,10 @@ def main():
             and not path.stat().st_mode & 0o022,
             "Unsafe renderer",
         )
-    require(ROOT.stat().st_uid == 0 and not ROOT.stat().st_mode & 0o077, "Unsafe state directory")
+    require(
+        ROOT.stat().st_uid == 0 and not ROOT.stat().st_mode & 0o077,
+        "Unsafe state directory",
+    )
     with (ROOT / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         require(not (ROOT / "uncertain.json").exists(), "Uncertain prior write; stop")
@@ -93,7 +96,13 @@ def main():
                 capture_output=True,
             )
             result = subprocess.check_output(
-                ["knotc", "zone-read", "alchemmist.xyz", "kuma.socrat.alchemmist.xyz.", "A"],
+                [
+                    "knotc",
+                    "zone-read",
+                    "alchemmist.xyz",
+                    "kuma.socrat.alchemmist.xyz.",
+                    "A",
+                ],
                 text=True,
             )
             require(

@@ -85,9 +85,7 @@ def test_prometheus_rules(tmp_path):
     docs = list(yaml.safe_load_all(rendered))
     groups = next(d["spec"] for d in docs if d["kind"] == "PrometheusRule")
     (tmp_path / "rules.yml").write_text(yaml.safe_dump(groups))
-    subprocess.run(
-        ["promtool", "check", "rules", "rules.yml"], cwd=tmp_path, check=True
-    )
+    subprocess.run(["promtool", "check", "rules", "rules.yml"], cwd=tmp_path, check=True)
     series = [
         {"series": f'up{{job="apiserver",instance="10.250.0.{ip}:6443"}}', "values": v}
         for ip, v in [(1, "1+0x6"), (3, "0+0x6")]
@@ -108,9 +106,7 @@ def test_prometheus_rules(tmp_path):
                     "exp_labels": {"severity": "warning", **labels},
                     "exp_annotations": annotations
                     or next(
-                        r["annotations"]
-                        for r in groups["groups"][0]["rules"]
-                        if r["alert"] == name
+                        r["annotations"] for r in groups["groups"][0]["rules"] if r["alert"] == name
                     ),
                 }
             ],
@@ -146,9 +142,7 @@ def test_prometheus_rules(tmp_path):
 def test_native_scrape_uses_two_independent_targets():
     import runpy
 
-    refresh = runpy.run_path(str(ROOT / "scripts/otel-scrape-config.py"))[
-        "add_service_path_scrape"
-    ]
+    refresh = runpy.run_path(str(ROOT / "scripts/otel-scrape-config.py"))["add_service_path_scrape"]
     initial = {"scrape_configs": [{"job_name": "unrelated"}]}
     new = refresh(initial)
     assert new == refresh(new)

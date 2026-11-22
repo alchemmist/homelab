@@ -255,10 +255,15 @@ class RuntimeTests(unittest.TestCase):
         assert "k3s.service" not in M.required_services(changes)
 
     def test_reviewed_restarting_transport_and_dormant_guard(self) -> None:
-        services = ["wireguard-tcp-transport.service", "wireguard-tcp-transport-guard.service"]
+        services = [
+            "wireguard-tcp-transport.service",
+            "wireguard-tcp-transport-guard.service",
+        ]
         states = dict(zip(services, ["activating", "inactive"], strict=True))
         with patch.object(
-            M, "run", side_effect=lambda a: "auto-restart" if "SubState" in a else states[a[2]]
+            M,
+            "run",
+            side_effect=lambda a: "auto-restart" if "SubState" in a else states[a[2]],
         ):
             with self.assertRaises(M.MigrationError):
                 M.service_plan(services)

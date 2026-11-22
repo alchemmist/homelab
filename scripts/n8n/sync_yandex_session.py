@@ -15,9 +15,16 @@ def main() -> None:
     if len(matches) > 1 or (matches and matches[0]["active"]):
         raise RuntimeError("Ambiguous or active maintenance workflow; refusing to modify")
     result = api(
-        "PUT" if matches else "POST", "workflows/" + matches[0]["id"] if matches else "workflows", w
+        "PUT" if matches else "POST",
+        "workflows/" + matches[0]["id"] if matches else "workflows",
+        w,
     )
-    print("Session maintenance workflow:", result["id"], "active:", result.get("active", False))
+    print(
+        "Session maintenance workflow:",
+        result["id"],
+        "active:",
+        result.get("active", False),
+    )
 
 
 if __name__ == "__main__":

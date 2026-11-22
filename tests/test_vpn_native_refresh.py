@@ -32,7 +32,14 @@ def test_promotion_preserves_old_image_and_never_manages_services() -> None:
     assert "assert not RECEIPT.exists()" in s
     assert "os.fsync" in s
     assert s.count("os.open(RECEIPT.parent,os.O_DIRECTORY)") == RECEIPT_PARENT_DIRECTORY_OPENS
-    for forbidden in ["'stop'", "'start'", "'restart'", "'tick'", "'activate'", "'failback'"]:
+    for forbidden in [
+        "'stop'",
+        "'start'",
+        "'restart'",
+        "'tick'",
+        "'activate'",
+        "'failback'",
+    ]:
         assert forbidden not in s
 
 

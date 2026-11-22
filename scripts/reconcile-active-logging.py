@@ -16,7 +16,8 @@ p.add_argument("--metadata", required=True)
 p.add_argument("--host-prefix", required=True)
 p.add_argument("--output", required=True)
 p.add_argument(
-    "--source-counts", help="Metadata-only aligned stdout counts; bodies must not be persisted"
+    "--source-counts",
+    help="Metadata-only aligned stdout counts; bodies must not be persisted",
 )
 a = p.parse_args()
 spec = importlib.util.spec_from_file_location(

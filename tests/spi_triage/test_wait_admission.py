@@ -87,7 +87,8 @@ class OwnerAdmissionTests(unittest.TestCase):
         with concurrent.futures.ThreadPoolExecutor(2) as pool:
             results = list(
                 pool.map(
-                    lambda execution: self.engine.claim(self.identity(execution)), ["101", "102"]
+                    lambda execution: self.engine.claim(self.identity(execution)),
+                    ["101", "102"],
                 )
             )
         assert [r["status"] for r in results] == ["empty", "empty"]
@@ -108,7 +109,8 @@ class OwnerAdmissionTests(unittest.TestCase):
         self.now += 1
         with self.store.db() as c:
             c.execute(
-                "UPDATE jobs SET state='processing',lease=0,updated=? WHERE id=?", (self.now, key)
+                "UPDATE jobs SET state='processing',lease=0,updated=? WHERE id=?",
+                (self.now, key),
             )
         self.store.owners.bind(key, "101", "durable-v1", "match", self.now)
         with self.store.db() as c:

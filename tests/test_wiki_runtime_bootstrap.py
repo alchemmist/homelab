@@ -6,7 +6,8 @@ from pathlib import Path
 from unittest.mock import Mock
 
 SPEC = importlib.util.spec_from_file_location(
-    "bootstrap", Path(__file__).resolve().parents[1] / "ansible/scripts/bootstrap-wiki-runtime.py"
+    "bootstrap",
+    Path(__file__).resolve().parents[1] / "ansible/scripts/bootstrap-wiki-runtime.py",
 )
 BOOTSTRAP = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BOOTSTRAP)
@@ -61,7 +62,9 @@ class BootstrapTests(unittest.TestCase):
             item = call.args[0]
             kind = item["kind"].lower()
             self.resources[
-                kind, item["metadata"]["name"], item["metadata"].get("namespace", "wiki")
+                kind,
+                item["metadata"]["name"],
+                item["metadata"].get("namespace", "wiki"),
             ] = item
         original = self.resources["secret", "wiki-runtime-bootstrap", "wiki"]["data"]["token"]
         self.kube.create.reset_mock()

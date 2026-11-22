@@ -39,7 +39,10 @@ with sync_playwright() as p:
             responses = []
             errors = []
             page.on(
-                "response", lambda r, responses=responses: responses.append(r) if "/-/quiet-mono/v1/" in r.url else None
+                "response",
+                lambda r, responses=responses: (
+                    responses.append(r) if "/-/quiet-mono/v1/" in r.url else None
+                ),
             )
             page.on("pageerror", lambda e, errors=errors: errors.append(True))
             page.goto(BASE + "/if/flow/default-authentication-flow/")

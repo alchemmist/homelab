@@ -104,7 +104,11 @@ def main():
     before_stat = Path("/swap.img").stat()
     fstab = Path("/etc/fstab").read_text()
     validate(
-        yaml.safe_load(raw), others, Path("/proc/swaps").read_text(), fstab, before_stat.st_size
+        yaml.safe_load(raw),
+        others,
+        Path("/proc/swaps").read_text(),
+        fstab,
+        before_stat.st_size,
     )
     before = {
         "base_sha256": hashlib.sha256(raw.encode()).hexdigest(),
@@ -124,7 +128,11 @@ def main():
     os.chmod(RECEIPT, 0o700)
     atomic(RECEIPT / "before.json", json.dumps(before, indent=2), 0o600)
     atomic(RECEIPT / "provider-cloud.cfg.private", raw, 0o600)
-    atomic(RECEIPT / "intent.json", json.dumps({"override": str(DEST), "content": OVERRIDE}), 0o600)
+    atomic(
+        RECEIPT / "intent.json",
+        json.dumps({"override": str(DEST), "content": OVERRIDE}),
+        0o600,
+    )
     atomic(DEST, OVERRIDE, 0o644)
     # Validate only the corrected module. No networking, user/password, SSH or final stages.
     result = subprocess.run(
@@ -134,7 +142,8 @@ def main():
     )
     atomic(RECEIPT / "module.private.log", result.stdout + result.stderr, 0o600)
     require(
-        result.returncode == 0, "Corrected module failed; inspect private receipt; states not reset"
+        result.returncode == 0,
+        "Corrected module failed; inspect private receipt; states not reset",
     )
     after = Path("/swap.img").stat()
     require(
@@ -148,7 +157,14 @@ def main():
     )
     require("/swap.img" in Path("/proc/swaps").read_text(), "Swap no longer active")
     # Reset only stale service failed flags after source repair and successful module check.
-    command(["systemctl", "reset-failed", "cloud-init-main.service", "cloud-init-network.service"])
+    command(
+        [
+            "systemctl",
+            "reset-failed",
+            "cloud-init-main.service",
+            "cloud-init-network.service",
+        ]
+    )
     for unit in ["cloud-init-main.service", "cloud-init-network.service"]:
         require(
             command(["systemctl", "show", unit, "-p", "ActiveState", "--value"]).strip()

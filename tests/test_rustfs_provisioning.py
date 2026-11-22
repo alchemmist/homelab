@@ -222,7 +222,11 @@ class Provisioning(unittest.TestCase):
             {"pk": "cert", "name": "authentik Self-signed Certificate"}
         ]
         tables["propertymappings/provider/scope/"] = [
-            {"pk": n, "scope_name": n, "managed": "goauthentik.io/providers/oauth2/scope-" + n}
+            {
+                "pk": n,
+                "scope_name": n,
+                "managed": "goauthentik.io/providers/oauth2/scope-" + n,
+            }
             for n in ("openid", "profile", "email")
         ]
         tables["propertymappings/provider/scope/"].append(
@@ -259,7 +263,11 @@ class Provisioning(unittest.TestCase):
                         slug = path.split("/")[-2]
                         if detail_error[0]:
                             raise urllib.error.HTTPError(
-                                request.full_url, detail_error[0], "refused", {}, io.BytesIO()
+                                request.full_url,
+                                detail_error[0],
+                                "refused",
+                                {},
+                                io.BytesIO(),
                             )
                         matches = [x for x in tables["core/applications/"] if x["slug"] == slug]
                         if matches:
@@ -360,7 +368,10 @@ class Provisioning(unittest.TestCase):
         expression = module("provision_identity").EXPRESSION
 
         def claim(
-            pk=5, uuid="9e33877a-3eaa-4541-98eb-8cdc10088ef6", username="alchemmist", member=False
+            pk=5,
+            uuid="9e33877a-3eaa-4541-98eb-8cdc10088ef6",
+            username="alchemmist",
+            member=False,
         ):
             user = SimpleNamespace(pk=pk, uuid=uuid, username=username)
             return eval(
@@ -386,6 +397,10 @@ class Provisioning(unittest.TestCase):
         }
         custom = {"pk": "netbird", "scope_name": "profile", "managed": None}
         assert m.builtin_scope([official, custom], "profile") == "official"
-        for rows in ([custom], [official, dict(official)], [dict(official, scope_name="groups")]):
+        for rows in (
+            [custom],
+            [official, dict(official)],
+            [dict(official, scope_name="groups")],
+        ):
             with self.assertRaises(ValueError):
                 m.builtin_scope(rows, "profile")

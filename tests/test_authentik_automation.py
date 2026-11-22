@@ -146,7 +146,10 @@ class AutomationTests(unittest.TestCase):
         """A check-only migration performs no API calls or file writes."""
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
-            with patch.object(a, "api") as api, contextlib.redirect_stdout(io.StringIO()):
+            with (
+                patch.object(a, "api") as api,
+                contextlib.redirect_stdout(io.StringIO()),
+            ):
                 a.migrate(p, "check")
             api.assert_not_called()
             assert not (p / "automation-api.json").exists()
@@ -176,7 +179,10 @@ class AutomationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
-            with patch.object(a, "api", fake), contextlib.redirect_stdout(io.StringIO()):
+            with (
+                patch.object(a, "api", fake),
+                contextlib.redirect_stdout(io.StringIO()),
+            ):
                 a.migrate(p, "apply")
             a.save(p / "credentials.json", {"AUTHENTIK_BOOTSTRAP_TOKEN": "other"})
             with patch.object(a, "api", fake), self.assertRaises(RuntimeError):
@@ -196,7 +202,10 @@ class AutomationTests(unittest.TestCase):
         """Post-migration manifests exclude bootstrap token and password."""
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
-            a.save(p / "automation-api.json", {"status": "active", "token": "unit-old-token"})
+            a.save(
+                p / "automation-api.json",
+                {"status": "active", "token": "unit-old-token"},
+            )
             manifest = self.bootstrap(p)["stringData"]
             assert "AUTHENTIK_BOOTSTRAP_TOKEN" not in manifest
             assert "AUTHENTIK_BOOTSTRAP_PASSWORD" not in manifest
@@ -241,7 +250,10 @@ class AutomationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
-            with patch.object(a, "api", fake), contextlib.redirect_stdout(io.StringIO()):
+            with (
+                patch.object(a, "api", fake),
+                contextlib.redirect_stdout(io.StringIO()),
+            ):
                 a.migrate(p, "apply")
             with (
                 patch.object(a, "api", fake),
@@ -292,7 +304,11 @@ class AutomationTests(unittest.TestCase):
             fake = Fake()
             self.ready_retirement(p, fake)
             fake.users.append(
-                {"pk": 4, "username": "akadmin", "uuid": "fc86d87d-3a72-4cfb-8ba1-aa6bf6b017e7"}
+                {
+                    "pk": 4,
+                    "username": "akadmin",
+                    "uuid": "fc86d87d-3a72-4cfb-8ba1-aa6bf6b017e7",
+                }
             )
             fake.tokens.append({"identifier": "authentik-bootstrap-token", "user": 4})
             with (

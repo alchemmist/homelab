@@ -42,7 +42,15 @@ def bind(api, before, target) -> dict[str, object]:
     # Fresh compare immediately before mutation; API has no documented CAS.
     """Atomically set the errorWorkflow setting after a fresh compare-and-verify cycle."""
     fresh: dict[str, object] = api("GET", "workflows/" + before["id"])
-    for k in ("name", "nodes", "connections", "settings", "active", "versionId", "activeVersionId"):
+    for k in (
+        "name",
+        "nodes",
+        "connections",
+        "settings",
+        "active",
+        "versionId",
+        "activeVersionId",
+    ):
         if fresh.get(k) != before.get(k):
             raise RuntimeError("Concurrent workflow change; stop")
     guard(fresh, target)
@@ -55,7 +63,11 @@ def bind(api, before, target) -> dict[str, object]:
     if before["active"] and result.get("activeVersionId") != result["versionId"]:
         # Reload timer/webhook registration with the identical graph and new settings.
         # No deactivate call, no manual execution; preserve existing active state.
-        api("POST", "workflows/" + before["id"] + "/activate", {"versionId": result["versionId"]})
+        api(
+            "POST",
+            "workflows/" + before["id"] + "/activate",
+            {"versionId": result["versionId"]},
+        )
     after = api("GET", "workflows/" + before["id"])
     check(before, after, target)
     if before["active"] and after["activeVersionId"] != result["versionId"]:

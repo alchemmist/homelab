@@ -136,7 +136,9 @@ class ServiceSafetyTests(unittest.TestCase):
                     right.shutdown(socket.SHUT_WR)
                 with left.makefile("rb") as stream:
                     handler = SimpleNamespace(
-                        headers={"Content-Length": length}, connection=left, rfile=stream
+                        headers={"Content-Length": length},
+                        connection=left,
+                        rfile=stream,
                     )
                     with self.assertRaises(Failure) as caught:
                         read_request_body(handler, timeout=0.03)
@@ -190,7 +192,8 @@ class DispatchTransportTests(unittest.TestCase):
             patch(
                 "dispatcher.threading.Timer",
                 side_effect=lambda seconds, callback: real_timer(0.02, callback),
-            ),self.assertRaises(http.client.RemoteDisconnected)
+            ),
+            self.assertRaises(http.client.RemoteDisconnected),
         ):
             Dispatcher(None, "unused")._post()
         assert connection.closed

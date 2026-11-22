@@ -52,7 +52,14 @@ class PeerParsingTests(unittest.TestCase):
 
     def test_private_ranges_are_filtered(self) -> None:
         """Private ranges are recognized and filtered."""
-        for host in ("10.250.0.1", "192.168.0.23", "127.0.0.1", "172.17.0.2", "fe80::1", "::1"):
+        for host in (
+            "10.250.0.1",
+            "192.168.0.23",
+            "127.0.0.1",
+            "172.17.0.2",
+            "fe80::1",
+            "::1",
+        ):
             assert MODULE.is_private(host), host
         for host in ("109.173.40.247", "109.120.141.60", "91.78.10.210", "172.32.0.1"):
             assert not MODULE.is_private(host), host
@@ -77,17 +84,28 @@ class StreamCountTests(unittest.TestCase):
     def test_no_streams_is_zero(self) -> None:
         """No matching streams yields a zero count."""
         with patch.object(
-            MODULE.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, stdout="")
+            MODULE.subprocess,
+            "run",
+            return_value=subprocess.CompletedProcess([], 0, stdout=""),
         ):
             assert MODULE.observe_streams([32087]) == 0
 
     def test_all_ports_are_passed_to_ss_filter(self) -> None:
         """All observed ports are passed to the ss filter."""
         with patch.object(
-            MODULE.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, stdout="")
+            MODULE.subprocess,
+            "run",
+            return_value=subprocess.CompletedProcess([], 0, stdout=""),
         ) as run:
             MODULE.observe_streams([32087, 32053])
-        assert run.call_args[0][0][:6] == ["ss", "-H", "-t", "state", "established", "( sport = :32087 or sport = :32053 )"]
+        assert run.call_args[0][0][:6] == [
+            "ss",
+            "-H",
+            "-t",
+            "state",
+            "established",
+            "( sport = :32087 or sport = :32053 )",
+        ]
 
 
 class XrayCountersTests(unittest.TestCase):
@@ -96,7 +114,10 @@ class XrayCountersTests(unittest.TestCase):
     def test_counters_sums_uplink_and_downlink_per_email(self) -> None:
         """Counters sum uplink and downlink per email."""
         payload = counters_payload(
-            {"mom": {"downlink": 100, "uplink": 5}, "tim": {"downlink": 7, "uplink": 50}}
+            {
+                "mom": {"downlink": 100, "uplink": 5},
+                "tim": {"downlink": 7, "uplink": 50},
+            }
         )
         with patch.object(MODULE.urllib.request, "urlopen", return_value=payload) as urlopen:
             counters = MODULE.read_xray_user_counters("http://x/debug/vars", HTTP_TIMEOUT)
@@ -182,7 +203,12 @@ class CollectorTests(unittest.TestCase):
         connection.execute("create table inbounds (settings text)")
         docs = [
             json.dumps(
-                {"clients": [{"email": "a@x", "enable": True}, {"email": "dup@x", "enable": True}]}
+                {
+                    "clients": [
+                        {"email": "a@x", "enable": True},
+                        {"email": "dup@x", "enable": True},
+                    ]
+                }
             ),
             json.dumps(
                 {

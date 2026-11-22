@@ -26,7 +26,9 @@ class IsolationTests(unittest.TestCase):
         self.source.mkdir(parents=True)
         (self.home / ".config").mkdir()
 
-    def test_directory_and_nested_file_links_materialize_without_source_changes(self) -> None:
+    def test_directory_and_nested_file_links_materialize_without_source_changes(
+        self,
+    ) -> None:
         """Copy linked config into the home and leave the dotfiles source untouched."""
         source = self.source / "hypr"
         source.mkdir()

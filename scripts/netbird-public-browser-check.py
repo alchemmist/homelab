@@ -30,7 +30,9 @@ async def main():
             ),
         )
         await page.goto(
-            "https://netbird.socrat.alchemmist.xyz/", wait_until="networkidle", timeout=45000
+            "https://netbird.socrat.alchemmist.xyz/",
+            wait_until="networkidle",
+            timeout=45000,
         )
         await page.wait_for_timeout(5000)
         parts = urllib.parse.urlsplit(page.url)

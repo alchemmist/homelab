@@ -59,7 +59,9 @@ SPEC.loader.exec_module(DESCRIPTIONS)
 class DashboardDescriptionsTest(unittest.TestCase):
     """Description enrichment cannot silently alter the owning alert or query."""
 
-    def test_pending_readiness_description_uses_the_actual_confirmation_period(self) -> None:
+    def test_pending_readiness_description_uses_the_actual_confirmation_period(
+        self,
+    ) -> None:
         """Readiness text reflects the actual pending interval, not a stale duration."""
         rule: _AlertRule = {
             "alert": "KubePodNotReady",
@@ -104,7 +106,10 @@ class DashboardDescriptionsTest(unittest.TestCase):
 
     def test_new_panel_without_description_blocks_rendering(self) -> None:
         """Unmapped query panels fail with the exact dashboard and panel identity."""
-        dashboard: _Dashboard = {"uid": "example", "panels": [{"id": 2, "type": "stat"}]}
+        dashboard: _Dashboard = {
+            "uid": "example",
+            "panels": [{"id": 2, "type": "stat"}],
+        }
         with pytest.raises(ValueError, match="example, panel 2"):
             DESCRIPTIONS.apply_descriptions(dashboard, {"example": {}})
 
@@ -123,7 +128,10 @@ class DashboardDescriptionsTest(unittest.TestCase):
         DESCRIPTIONS.apply_descriptions(
             dashboard, {"6be0s85Mk": {"4": "HTTP request duration in seconds."}}
         )
-        assert dashboard["panels"][0]["fieldConfig"]["defaults"] == {"unit": "s", "min": 0}
+        assert dashboard["panels"][0]["fieldConfig"]["defaults"] == {
+            "unit": "s",
+            "min": 0,
+        }
 
 
 if __name__ == "__main__":

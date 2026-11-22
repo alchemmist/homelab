@@ -1,4 +1,5 @@
 """Check Prometheus scrape targets and alert rules via kubectl on a remote host."""
+
 import argparse
 import json
 import shlex
@@ -60,7 +61,12 @@ def target_summary(targets):
 
 
 def remote_http_status(
-    host, url, resolve_address=None, forwarded_for=None, interface=None, public_absence=False
+    host,
+    url,
+    resolve_address=None,
+    forwarded_for=None,
+    interface=None,
+    public_absence=False,
 ):
     command = [
         "curl",
@@ -81,7 +87,10 @@ def remote_http_status(
         command += ["--output", "/dev/null"]
     if resolve_address:
         parsed = urllib.parse.urlsplit(url)
-        command += ["--resolve", f"{parsed.hostname}:{parsed.port or 443}:{resolve_address}"]
+        command += [
+            "--resolve",
+            f"{parsed.hostname}:{parsed.port or 443}:{resolve_address}",
+        ]
     if interface:
         command += ["--interface", interface]
     if forwarded_for:
@@ -113,7 +122,11 @@ def _check_nodes(host: str) -> tuple[set[object], dict[str, str], int, int]:
     for node in nodes:
         name = node["metadata"]["name"]
         address = next(
-            (a["address"] for a in node["status"].get("addresses", []) if a["type"] == "InternalIP"),
+            (
+                a["address"]
+                for a in node["status"].get("addresses", [])
+                if a["type"] == "InternalIP"
+            ),
             None,
         )
         require(address is not None, f"node {name} has an InternalIP")
@@ -157,7 +170,8 @@ def _check_targets(host: str, wait_seconds: int) -> None:
         if target.get("health") != "up"
     ]
     require(
-        not failures, "all active targets UP" + (": " + json.dumps(failures) if failures else "")
+        not failures,
+        "all active targets UP" + (": " + json.dumps(failures) if failures else ""),
     )
 
 
@@ -406,7 +420,10 @@ def _check_public_absence(args: argparse.Namespace) -> None:
     url = args.grafana_url.rstrip("/") + "/api/search"
     require(
         remote_http_status(
-            args.ssh_host, url, args.grafana_private_address, interface=args.grafana_private_source
+            args.ssh_host,
+            url,
+            args.grafana_private_address,
+            interface=args.grafana_private_source,
         )
         == HTTPStatus.OK,
         "WireGuard Grafana API works without credentials",
@@ -473,7 +490,10 @@ def _persist_snapshots(host: str, args: argparse.Namespace, pvc_uids: dict[str, 
         "pvc_uids": pvc_uids,
     }
     if args.snapshot:
-        require(bool(snapshot["samples"]), "historical samples available for persistence baseline")
+        require(
+            bool(snapshot["samples"]),
+            "historical samples available for persistence baseline",
+        )
         args.snapshot.write_text(json.dumps(snapshot, indent=2) + "\n")
         print("Persistence baseline saved:", args.snapshot)
     if args.compare:
@@ -483,7 +503,8 @@ def _persist_snapshots(host: str, args: argparse.Namespace, pvc_uids: dict[str, 
             "PVC identities unchanged after controlled restart",
         )
         saved = sorted(
-            baseline["samples"], key=lambda item: json.dumps(item["metric"], sort_keys=True)
+            baseline["samples"],
+            key=lambda item: json.dumps(item["metric"], sort_keys=True),
         )
         current = sorted(
             query(host, "node_uname_info", baseline["timestamp"]),

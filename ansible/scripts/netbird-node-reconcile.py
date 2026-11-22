@@ -64,7 +64,8 @@ def validate_config(c):
         ips.append(str(ip))
     require(len(ips) == len(set(ips)), "duplicate WG addresses")
     require(
-        isinstance(c.get("reserved_addresses"), list), "reserved client address inventory required"
+        isinstance(c.get("reserved_addresses"), list),
+        "reserved client address inventory required",
     )
     reserved = {str(ipaddress.ip_address(v)) for v in c["reserved_addresses"]}
     require(not set(ips) & reserved, "node address collides with a human/device WG client")
@@ -164,10 +165,16 @@ def manifests(host, image, enrollment=False, kernel_only=False):
                         ],
                         "containers": [container],
                         "volumes": [
-                            {"name": "state", "persistentVolumeClaim": {"claimName": name}},
+                            {
+                                "name": "state",
+                                "persistentVolumeClaim": {"claimName": name},
+                            },
                             {
                                 "name": "tun",
-                                "hostPath": {"path": "/dev/net/tun", "type": "CharDevice"},
+                                "hostPath": {
+                                    "path": "/dev/net/tun",
+                                    "type": "CharDevice",
+                                },
                             },
                         ],
                     },
@@ -443,9 +450,25 @@ class Runtime:
             },
         )
         self.kub(
-            ["-n", NS, "wait", "--for=delete", "pod/" + pod["metadata"]["name"], "--timeout=90s"]
+            [
+                "-n",
+                NS,
+                "wait",
+                "--for=delete",
+                "pod/" + pod["metadata"]["name"],
+                "--timeout=90s",
+            ]
         )
-        self.kub(["-n", NS, "rollout", "status", "deployment/machine-" + host, "--timeout=120s"])
+        self.kub(
+            [
+                "-n",
+                NS,
+                "rollout",
+                "status",
+                "deployment/machine-" + host,
+                "--timeout=120s",
+            ]
+        )
         self.kub(
             [
                 "-n",
@@ -543,7 +566,11 @@ class Runtime:
             )
             peer, status = self.peer_for_status(host)
         finally:
-            self.state["cleanup"] = {"setup_key_id": key["id"], "node": host, "revoked": False}
+            self.state["cleanup"] = {
+                "setup_key_id": key["id"],
+                "node": host,
+                "revoked": False,
+            }
             self.save()
             retired = self.api(
                 "PUT", "setup-keys/" + key["id"], {"revoked": True, "auto_groups": []}
@@ -554,7 +581,8 @@ class Runtime:
         self.restart_without_key(host, deployment)
         again, second = self.peer_for_status(host)
         require(
-            peer["id"] == again["id"] and status == second, "identity changed on key-free restart"
+            peer["id"] == again["id"] and status == second,
+            "identity changed on key-free restart",
         )
         require(
             self.get("deployment", "machine-" + host)["metadata"]["uid"]
@@ -616,7 +644,8 @@ class Runtime:
             "group_id": self.group["id"],
         }
         require(
-            self.state.get("scope", binding) == binding, "cluster/account/scope binding changed"
+            self.state.get("scope", binding) == binding,
+            "cluster/account/scope binding changed",
         )
         self.state["scope"] = binding
         policies = self.api("GET", "policies")
@@ -652,7 +681,10 @@ class Runtime:
             )
         )
         require(value["daemonStatus"] == "Connected", "agent not connected")
-        return {"ip": str(ipaddress.ip_interface(value["netbirdIp"]).ip), "key": value["publicKey"]}
+        return {
+            "ip": str(ipaddress.ip_interface(value["netbirdIp"]).ip),
+            "key": value["publicKey"],
+        }
 
     def peer_for_status(self, host):
         """Return the peer record matching the host's enrolled IP."""
@@ -672,7 +704,9 @@ class Runtime:
     def verify_deployment(self, host, d):
         """Verify the deployment manifest matches the expected rendering."""
         expected = manifests(
-            host, self.config["image"], kernel_only=host in self.config.get("kernel_only_nodes", [])
+            host,
+            self.config["image"],
+            kernel_only=host in self.config.get("kernel_only_nodes", []),
         )[1]
         spec = d["spec"]["template"]["spec"]
         want = expected["spec"]["template"]["spec"]
@@ -847,9 +881,10 @@ class Runtime:
         """Ping every Ready inventory node when this peer is not yet admitted."""
         nodes = cast(
             "list[object]",
-            cast("dict[str, object]", json.loads(self.kub(["get", "nodes", "-o", "json"])))[
-                "items"
-            ],
+            cast(
+                "dict[str, object]",
+                json.loads(self.kub(["get", "nodes", "-o", "json"])),
+            )["items"],
         )
         # Only Ready targets are required: an offline node is not mistaken for a broken mesh.
         ready = {
@@ -1020,12 +1055,16 @@ class Runtime:
                 self.write(
                     "POST",
                     "policies",
-                    policy_body(self.admin["id"], cast("dict[str, object]", review.resource)["id"]),
+                    policy_body(
+                        self.admin["id"],
+                        cast("dict[str, object]", review.resource)["id"],
+                    ),
                 )
             ]
-        cast("dict[str, object]", cast("dict[str, object]", self.state).setdefault("grants", {}))[
-            cast("str", inputs.host)
-        ] = {
+        cast(
+            "dict[str, object]",
+            cast("dict[str, object]", self.state).setdefault("grants", {}),
+        )[cast("str", inputs.host)] = {
             "resource_id": cast("dict[str, object]", review.resource)["id"],
             "policy_id": cast("dict[str, object]", cast("list[object]", matching)[0])["id"],
         }
@@ -1048,11 +1087,19 @@ class Runtime:
             )
             existing = self._existing_peer(inputs, d, pvc)
             if existing is None:
-                return {"changed": False, "status": "would-enroll-and-authorize", "node": host}
+                return {
+                    "changed": False,
+                    "status": "would-enroll-and-authorize",
+                    "node": host,
+                }
             p, status = existing
         else:
             self._require_lost_storage_absent(inputs)
-            return {"changed": False, "status": "awaiting-argocd-workloads", "node": host}
+            return {
+                "changed": False,
+                "status": "awaiting-argocd-workloads",
+                "node": host,
+            }
         binding = self._binding(inputs, d, pvc, p, status)
         self._require_bound_identity(inputs, binding, p)
         self._require_local_address(inputs.host, inputs.address)

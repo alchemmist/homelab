@@ -50,7 +50,9 @@ def run(boot=False) -> None:
         assert not ROOT.exists(), "Existing apply state; inspect, never replay"
         assert (
             subprocess.run(
-                ["nft", "list", "table", "inet", TABLE], check=False, capture_output=True
+                ["nft", "list", "table", "inet", TABLE],
+                check=False,
+                capture_output=True,
             ).returncode
             != 0
         )

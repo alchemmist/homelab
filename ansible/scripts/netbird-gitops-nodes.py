@@ -44,7 +44,8 @@ def desired(values, inventory, image) -> list[str]:
         reserved.update(v["address"] for v in variables["wg_socrat_admin_clients"].values())
         enabled = variables.get("netbird_node_enabled", True)
         node.require(
-            isinstance(enabled, bool), "netbird_node_enabled must be an explicit YAML boolean"
+            isinstance(enabled, bool),
+            "netbird_node_enabled must be an explicit YAML boolean",
         )
         if enabled:
             addresses[host] = variables["wg_socrat_nodes"][host]["address"]
@@ -56,7 +57,8 @@ def desired(values, inventory, image) -> list[str]:
     for host, address in sorted(addresses.items()):
         old = values["nodes"].get(host)
         node.require(
-            old is None or old == address, "bound node address change requires explicit retirement"
+            old is None or old == address,
+            "bound node address change requires explicit retirement",
         )
         expected_keys = {
             ("PersistentVolumeClaim", node.NS, "machine-" + host),
@@ -66,11 +68,16 @@ def desired(values, inventory, image) -> list[str]:
             (r["kind"], r["metadata"].get("namespace"), r["metadata"]["name"]) for r in resources
         } & expected_keys
         if old is not None:
-            node.require(found == expected_keys, "partial Git identity resources; no silent repair")
+            node.require(
+                found == expected_keys,
+                "partial Git identity resources; no silent repair",
+            )
             continue
         node.require(not found, "unbound existing Git resources; explicit review required")
         docs = node.manifests(
-            host, image, kernel_only=hostvars[host].get("netbird_kernel_wireguard_only", False)
+            host,
+            image,
+            kernel_only=hostvars[host].get("netbird_kernel_wireguard_only", False),
         )
         docs[0]["metadata"]["annotations"] = {
             "argocd.argoproj.io/sync-options": "Prune=false,Delete=false"
@@ -87,10 +94,14 @@ def main() -> int:
     p.add_argument("--check", action="store_true")
     args = p.parse_args()
     run = subprocess.run(
-        ["ansible-inventory", "--list"], cwd=ROOT / "ansible", capture_output=True, timeout=30
+        ["ansible-inventory", "--list"],
+        cwd=ROOT / "ansible",
+        capture_output=True,
+        timeout=30,
     )
     node.require(
-        run.returncode == 0, "inventory render failed; inspect locally without dumping hostvars"
+        run.returncode == 0,
+        "inventory render failed; inspect locally without dumping hostvars",
     )
     inventory = json.loads(run.stdout)
     path = ROOT / "deploy/netbird/values.yaml"
@@ -120,8 +131,16 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (ValueError, KeyError, TypeError, RuntimeError, OSError, subprocess.SubprocessError):
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        RuntimeError,
+        OSError,
+        subprocess.SubprocessError,
+    ):
         print(
-            "Blocked: inspect inventory/bindings; no cluster writes were attempted", file=sys.stderr
+            "Blocked: inspect inventory/bindings; no cluster writes were attempted",
+            file=sys.stderr,
         )
         sys.exit(2)

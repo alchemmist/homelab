@@ -45,7 +45,9 @@ class GPUCollectorTests(unittest.TestCase):
             output = Path(directory) / "nvidia.prom"
             output.write_text(COLLECTOR.parse_metrics(ROW))
             with patch.object(
-                COLLECTOR.subprocess, "run", side_effect=subprocess.TimeoutExpired("nvidia-smi", 20)
+                COLLECTOR.subprocess,
+                "run",
+                side_effect=subprocess.TimeoutExpired("nvidia-smi", 20),
             ):
                 assert COLLECTOR.collect("nvidia-smi", output) == 0
             assert "temperature" not in output.read_text()

@@ -59,7 +59,9 @@ class AnimationTests(unittest.TestCase):
     def test_resize_stops_before_cursor_repositioning(self) -> None:
         out = io.StringIO()
         with patch.object(
-            ANIMATION.shutil, "get_terminal_size", return_value=os.terminal_size((40, 12))
+            ANIMATION.shutil,
+            "get_terminal_size",
+            return_value=os.terminal_size((40, 12)),
         ):
             assert ANIMATION.play(
                 self.initial, self.final, self.sample, self.colors, self.geometry, out

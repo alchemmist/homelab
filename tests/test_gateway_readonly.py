@@ -164,7 +164,10 @@ class GatewayReadonly(unittest.TestCase):
         objects: dict[tuple[str, str], _ClusterObject] = {
             ("application", "litellm"): {
                 "spec": {
-                    "destination": {"namespace": "llm", "server": "https://kubernetes.default.svc"},
+                    "destination": {
+                        "namespace": "llm",
+                        "server": "https://kubernetes.default.svc",
+                    },
                     "sources": [
                         {
                             "repoURL": "https://github.com/alchemmist/homelab.git",
@@ -229,7 +232,9 @@ class GatewayReadonly(unittest.TestCase):
 
         return args, objects, commands, requests, runner, opener
 
-    def test_deferred_read_fault_callbacks_retain_their_own_logs_and_fault_points(self) -> None:
+    def test_deferred_read_fault_callbacks_retain_their_own_logs_and_fault_points(
+        self,
+    ) -> None:
         """Callbacks invoked after loop completion must not share the last fixture."""
         callbacks: list[tuple[list[list[str]], int, _Runner]] = []
         for fail_at in (1, 2):
@@ -243,7 +248,9 @@ class GatewayReadonly(unittest.TestCase):
             assert len(commands) == fail_at
         assert callbacks[0][0] is not callbacks[1][0]
 
-    def test_deferred_http_fault_callbacks_retain_their_own_endpoint_and_status(self) -> None:
+    def test_deferred_http_fault_callbacks_retain_their_own_endpoint_and_status(
+        self,
+    ) -> None:
         """Deferred endpoint faults preserve both earlier overrides and the fallback."""
         _args, _objects, _commands, _requests, _runner, opener = self.fixture()
         faults = (("/key/info", 302), ("/v1/models", 200))
@@ -313,7 +320,11 @@ class GatewayReadonly(unittest.TestCase):
 
     def test_api_acl_or_redirect_mismatch_never_triggers_repair(self) -> None:
         """Verify api acl or redirect mismatch never triggers repair."""
-        for path, status in [("/key/info", 302), ("/metrics", 200), ("/v1/models", 200)]:
+        for path, status in [
+            ("/key/info", 302),
+            ("/metrics", 200),
+            ("/v1/models", 200),
+        ]:
             with self.subTest(path=path):
                 args, _objects, commands, _requests, runner, opener = self.fixture()
 
@@ -343,7 +354,9 @@ class GatewayReadonly(unittest.TestCase):
             is None
         )
 
-    def test_public_or_loopback_service_address_never_receives_credentials(self) -> None:
+    def test_public_or_loopback_service_address_never_receives_credentials(
+        self,
+    ) -> None:
         """Verify public or loopback service address never receives credentials."""
         for address in ["127.0.0.1", "0.0.0.0", "8.8.8.8"]:
             with self.subTest(address=address):
@@ -373,7 +386,9 @@ class GatewayReadonly(unittest.TestCase):
         with (
             patch("sys.argv", argv),
             patch.object(
-                g, "verify", side_effect=RuntimeError("http://fixture/key/info?key=private-fixture")
+                g,
+                "verify",
+                side_effect=RuntimeError("http://fixture/key/info?key=private-fixture"),
             ),
             pytest.raises(SystemExit) as error,
         ):

@@ -141,7 +141,13 @@ def apply(client, operation, state):
             "authentik",
             "POST",
             "core/groups/",
-            {"name": CHAT, "is_superuser": False, "roles": [], "parents": [], "attributes": {}},
+            {
+                "name": CHAT,
+                "is_superuser": False,
+                "roles": [],
+                "parents": [],
+                "attributes": {},
+            },
         )
         return
     # Generated group UUIDs are resolved from the native API, never guessed or
@@ -160,7 +166,10 @@ def apply(client, operation, state):
             "Subject changed before grant",
         )
         client.call(
-            "authentik", "POST", "core/groups/" + group["pk"] + "/add_user/", {"pk": user["pk"]}
+            "authentik",
+            "POST",
+            "core/groups/" + group["pk"] + "/add_user/",
+            {"pk": user["pk"]},
         )
     elif action == "admit-chat-group":
         client.call(
@@ -232,7 +241,8 @@ def main() -> None:
     bootstrap.private(args.credentials.parent, directory=True)
     bootstrap.private(args.credentials)
     require(
-        args.state.is_absolute() and not args.state.is_symlink(), "Private absolute state required"
+        args.state.is_absolute() and not args.state.is_symlink(),
+        "Private absolute state required",
     )
     args.state.mkdir(mode=0o700, parents=True, exist_ok=True)
     bootstrap.private(args.state, directory=True)
@@ -278,7 +288,11 @@ def main() -> None:
         (args.state / "uncertain.json").unlink()
         print(
             json.dumps(
-                {"applied": True, "operations": len(operations), "future_per_user_sync": False}
+                {
+                    "applied": True,
+                    "operations": len(operations),
+                    "future_per_user_sync": False,
+                }
             )
         )
 

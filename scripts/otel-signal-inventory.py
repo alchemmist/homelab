@@ -128,10 +128,10 @@ def privileged_journals(directory, now=None):
             or report.get("rawLogBodiesPersisted") is not False
             or report.get("productionModified") is not False
         ):
-            msg_0 = "Journal evidence does not establish a complete privileged read-only measurement"
-            raise ValueError(
-                msg_0
+            msg_0 = (
+                "Journal evidence does not establish a complete privileged read-only measurement"
             )
+            raise ValueError(msg_0)
         reports[node] = {
             "systemJournalAccessVerified": True,
             "rootAccessVerified": True,
@@ -246,7 +246,13 @@ def main():
             )
         )
         return 0
-    except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError) as error:
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        RuntimeError,
+        subprocess.SubprocessError,
+    ) as error:
         print(str(error), file=sys.stderr)
         return 1
 

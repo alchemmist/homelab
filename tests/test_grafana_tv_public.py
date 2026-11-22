@@ -55,7 +55,10 @@ vm.runInNewContext(fs.readFileSync(process.argv[2],'utf8'),context);
 console.log(JSON.stringify({css:styles['socrat-tv-inset']?.textContent||'',calls}));
 """
     r = subprocess.run(
-        ["node", "-e", script, mode, str(JS)], check=True, capture_output=True, text=True
+        ["node", "-e", script, mode, str(JS)],
+        check=True,
+        capture_output=True,
+        text=True,
     )
     result = json.loads(r.stdout)
     if mode in ["unrelated", "not_opted_in"]:
@@ -127,9 +130,19 @@ def test_no_dedicated_tv_alias_or_internal_vpn_in_helpers() -> None:
 @pytest.mark.skipif(not shutil.which("node"), reason="Node is needed for JS runtime contract")
 @pytest.mark.parametrize(
     "mode",
-    ["public", "normal", "auth_kiosk", "wrong_uid", "horizontal", "missing_fill", "duplicate_name"],
+    [
+        "public",
+        "normal",
+        "auth_kiosk",
+        "wrong_uid",
+        "horizontal",
+        "missing_fill",
+        "duplicate_name",
+    ],
 )
-def test_compact_argo_is_guarded_public_tv_only_and_preserves_native_data(mode: str) -> None:
+def test_compact_argo_is_guarded_public_tv_only_and_preserves_native_data(
+    mode: str,
+) -> None:
     """Keep argo compaction public-only and preserve native panel data."""
     script = r"""
 const fs=require('fs'),vm=require('vm'),mode=process.argv[1],styles={};
@@ -153,7 +166,10 @@ vm.runInNewContext(fs.readFileSync(process.argv[2],'utf8'),context);
 console.log(JSON.stringify({css:styles['socrat-tv-inset']?.textContent||'',marked:row.classes.has('socrat-tv-argo-row'),fills:fills.map(n=>n.style),saved:model.panels[0].gridPos}));
 """
     r = subprocess.run(
-        ["node", "-e", script, mode, str(JS)], check=True, capture_output=True, text=True
+        ["node", "-e", script, mode, str(JS)],
+        check=True,
+        capture_output=True,
+        text=True,
     )
     result = json.loads(r.stdout)
     assert result["marked"] == (mode == "public")

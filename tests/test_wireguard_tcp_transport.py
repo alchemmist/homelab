@@ -44,7 +44,9 @@ class TransportTests(unittest.TestCase):
     def test_saveconfig_fails_closed(self):
         with self.assertRaises(ValueError):
             ENDPOINT.update_config(
-                CONFIG.replace("[Interface]", "[Interface]\nSaveConfig = true"), "first", ""
+                CONFIG.replace("[Interface]", "[Interface]\nSaveConfig = true"),
+                "first",
+                "",
             )
 
     def test_three_failures_restart_and_cooldown(self):

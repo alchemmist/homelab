@@ -249,7 +249,15 @@ def main() -> None:
             for container in containers:
                 execute(container, "useradd", "-m", "direct_priv_fixture")
             run(
-                ["docker", "exec", "-i", containers[0], "sh", "-c", "cat > /etc/sudoers.d/fixture"],
+                [
+                    "docker",
+                    "exec",
+                    "-i",
+                    containers[0],
+                    "sh",
+                    "-c",
+                    "cat > /etc/sudoers.d/fixture",
+                ],
                 input="direct_priv_fixture ALL=(root) NOPASSWD: /usr/bin/true\n",
             )
             play(expected=2, name="direct_priv_fixture")
@@ -270,7 +278,13 @@ def main() -> None:
             for container in containers:
                 execute(container, "useradd", "-m", "link_fixture")
             execute(containers[0], "mkdir", "/tmp/ssh-path-sentinel")
-            execute(containers[0], "ln", "-s", "/tmp/ssh-path-sentinel", "/home/link_fixture/.ssh")
+            execute(
+                containers[0],
+                "ln",
+                "-s",
+                "/tmp/ssh-path-sentinel",
+                "/home/link_fixture/.ssh",
+            )
             play(expected=2, name="link_fixture")
             for container in containers:
                 p = subprocess.run(

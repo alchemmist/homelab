@@ -80,7 +80,10 @@ class XuiWorkloadTests(unittest.TestCase):
                 ports = {port["name"]: port["containerPort"] for port in container["ports"]}
                 names.extend(ports)
                 assert set(ports.values()) == {panel, subscription, trojan}
-                for probe, endpoint in [("startupProbe", panel), ("readinessProbe", trojan)]:
+                for probe, endpoint in [
+                    ("startupProbe", panel),
+                    ("readinessProbe", trojan),
+                ]:
                     socket = container[probe]["tcpSocket"]
                     assert socket["host"] == host
                     assert ports[socket["port"]] == endpoint

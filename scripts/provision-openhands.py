@@ -19,7 +19,17 @@ from pathlib import Path
 
 def kube_secret(ns, name):
     raw = subprocess.check_output(
-        ["kubectl", "-n", ns, "get", "secret", name, "-o", "json", "--ignore-not-found"],
+        [
+            "kubectl",
+            "-n",
+            ns,
+            "get",
+            "secret",
+            name,
+            "-o",
+            "json",
+            "--ignore-not-found",
+        ],
         stderr=subprocess.DEVNULL,
     )
     return json.loads(raw) if raw.strip() else None
@@ -58,7 +68,8 @@ def stop_forward(forward) -> None:
 def monori_secret_current(current) -> bool:
     """Return True if the secret already holds the openhands-monori key alias."""
     return bool(
-        current and current["metadata"].get("annotations", {}).get("homelab/key-alias")
+        current
+        and current["metadata"].get("annotations", {}).get("homelab/key-alias")
         == "openhands-monori"
     )
 
@@ -145,17 +156,23 @@ def main():
     )
     wait_forward(port)
     try:
-        headers = {"Authorization": "Bearer " + master, "Content-Type": "application/json"}
-        info = json.load(
-            urllib.request.urlopen(
-                urllib.request.Request(
-                    f"http://127.0.0.1:{port}/key/info?key=" + urllib.parse.quote(key),
-                    headers=headers,
-                    method="GET",
-                ),
-                timeout=30,
-            )
-        ).get("info") or {}
+        headers = {
+            "Authorization": "Bearer " + master,
+            "Content-Type": "application/json",
+        }
+        info = (
+            json.load(
+                urllib.request.urlopen(
+                    urllib.request.Request(
+                        f"http://127.0.0.1:{port}/key/info?key=" + urllib.parse.quote(key),
+                        headers=headers,
+                        method="GET",
+                    ),
+                    timeout=30,
+                )
+            ).get("info")
+            or {}
+        )
         live_parallel = int(info.get("max_parallel_requests") or 0)
         parallel = max(live_parallel, 3)
         models = ["v-deepseek-uc", "qwen3.8-27b"]
@@ -233,7 +250,18 @@ api('/api/agent-profiles/'+p['id']+'/activate',{})
 d=api('/api/settings');print('Native agent profile active:',name,'key_set:',d['llm_api_key_is_set'])
 """
     subprocess.run(
-        ["kubectl", "-n", "openhands", "exec", "-i", "openhands-0", "--", "python", "-c", code],
+        [
+            "kubectl",
+            "-n",
+            "openhands",
+            "exec",
+            "-i",
+            "openhands-0",
+            "--",
+            "python",
+            "-c",
+            code,
+        ],
         input=json.dumps(settings),
         text=True,
         check=True,
@@ -257,7 +285,9 @@ d=api('/api/settings');print('Native agent profile active:',name,'key_set:',d['l
         ]
     )
     fd = os.open(
-        private / "session-key", os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600
+        private / "session-key",
+        os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW,
+        0o600,
     )
     with os.fdopen(fd, "wb") as stream:
         os.fchmod(stream.fileno(), 0o600)

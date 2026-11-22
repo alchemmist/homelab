@@ -58,7 +58,10 @@ def run():
         observe_loader(*args, **kwargs)
 
     ssl.SSLContext.load_cert_chain = wrapped_loader
-    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+    with (
+        contextlib.redirect_stdout(io.StringIO()),
+        contextlib.redirect_stderr(io.StringIO()),
+    ):
         import litellm
         from litellm.integrations.opentelemetry import OpenTelemetry
         from opentelemetry import trace
@@ -120,7 +123,13 @@ def run():
         old = certificate_hash()
         completion()
         require(old in loaded, "Initial native SDK handshake did not load the mounted leaf")
-        record({"phase": "await-new-projected-leaf", "oldCertificateSHA256": old, "traces": traces})
+        record(
+            {
+                "phase": "await-new-projected-leaf",
+                "oldCertificateSHA256": old,
+                "traces": traces,
+            }
+        )
         deadline = time.monotonic() + 300
         while time.monotonic() < deadline:
             new = certificate_hash()

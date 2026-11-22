@@ -75,7 +75,10 @@ def test_scopes_check_union_without_widening(
         ('{"include":["../*.py"],"rules":["F401"]}', "repository-relative"),
         ('{"include":["/*.py"],"rules":["F401"]}', "repository-relative"),
         ('{"include":["*.py"],"rules":[],"rules":["F401"]}', "Duplicate JSON"),
-        ('{"include":["*.py"],"exclude":[],"rules":["F401"]}', "exactly include and rules"),
+        (
+            '{"include":["*.py"],"exclude":[],"rules":["F401"]}',
+            "exactly include and rules",
+        ),
     ],
 )
 def test_scope_rejects_bad_contract(registry: Path, raw: str | None, error: str) -> None:

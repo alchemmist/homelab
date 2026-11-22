@@ -37,12 +37,18 @@ def main() -> None:
     objects = []
     for role in ("root", "reader", "writer"):
         # Writer is held separately for later SPI activation; never mount now.
-        values = {"access-key": storage[role]["access"], "secret-key": storage[role]["secret"]}
+        values = {
+            "access-key": storage[role]["access"],
+            "secret-key": storage[role]["secret"],
+        }
         objects.append(("rustfs-" + role, values))
     objects.append(
         (
             "rustfs-oidc",
-            {"client-id": client["client_id"], "client-secret": client["client_secret"]},
+            {
+                "client-id": client["client_id"],
+                "client-secret": client["client_secret"],
+            },
         )
     )
     for name, values in objects:

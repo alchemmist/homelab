@@ -25,7 +25,10 @@ def need(ok, message: object) -> None:
 def k(*args, input=None) -> str:
     """Perform the k operation."""
     return subprocess.check_output(
-        ["kubectl", "-n", "uptime-kuma", *args], input=input, text=True, stderr=subprocess.DEVNULL
+        ["kubectl", "-n", "uptime-kuma", *args],
+        input=input,
+        text=True,
+        stderr=subprocess.DEVNULL,
     )
 
 
@@ -52,10 +55,16 @@ def main() -> None:
     os.umask(0o077)
     need(not STATE.is_symlink(), "Unsafe state path")
     STATE.mkdir(mode=0o700, exist_ok=True)
-    need(STATE.stat().st_uid == 0 and not STATE.stat().st_mode & 0o077, "Unsafe state ownership")
+    need(
+        STATE.stat().st_uid == 0 and not STATE.stat().st_mode & 0o077,
+        "Unsafe state ownership",
+    )
     with (STATE / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        need(not (STATE / "uncertain.json").exists(), "Uncertain prior write; inspect privately")
+        need(
+            not (STATE / "uncertain.json").exists(),
+            "Uncertain prior write; inspect privately",
+        )
         candidate = STATE / "candidate.json"
         if not candidate.exists():
             candidate.write_text(json.dumps({"password": secrets.token_hex(24)}))
@@ -84,7 +93,12 @@ def main() -> None:
         )
         exists = sql("SELECT COUNT(*) FROM mysql.user WHERE User='" + USER + "';") == "1"
         root_password = k(
-            "exec", "deploy/uptime-kuma-db", "--", "sh", "-c", 'printf %s "$MARIADB_ROOT_PASSWORD"'
+            "exec",
+            "deploy/uptime-kuma-db",
+            "--",
+            "sh",
+            "-c",
+            'printf %s "$MARIADB_ROOT_PASSWORD"',
         )
         desired = {
             "password": base64.b64encode(password.encode()).decode(),
@@ -122,7 +136,11 @@ def main() -> None:
             )
             print(
                 json.dumps(
-                    {"operations": 0, "applied": False, "existing_db_passwords_unchanged": True}
+                    {
+                        "operations": 0,
+                        "applied": False,
+                        "existing_db_passwords_unchanged": True,
+                    }
                 )
             )
             return
@@ -155,7 +173,11 @@ def main() -> None:
             )
             patch = [
                 {"op": "test", "path": "/metadata/uid", "value": context["secret_uid"]},
-                {"op": "test", "path": "/metadata/resourceVersion", "value": context["secret_rv"]},
+                {
+                    "op": "test",
+                    "path": "/metadata/resourceVersion",
+                    "value": context["secret_rv"],
+                },
                 {"op": "replace", "path": "/data", "value": desired},
             ]
             k(

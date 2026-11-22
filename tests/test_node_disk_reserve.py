@@ -126,7 +126,11 @@ class ServiceSelectionTests(unittest.TestCase):
                                 "--quiet",
                                 expected,
                             ]
-                        assert run.call_args_list[0].args[0] == ["systemctl", "restart", expected]
+                        assert run.call_args_list[0].args[0] == [
+                            "systemctl",
+                            "restart",
+                            expected,
+                        ]
 
 
 if __name__ == "__main__":

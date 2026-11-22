@@ -20,7 +20,9 @@ class SnapshotOwnerRestartTests(unittest.TestCase):
         result: dict[str, object] = self.engine.run_v1("collect", data)
         return result
 
-    def test_early_snapshot_change_rewinds_same_execution_without_paid_analysis(self) -> None:
+    def test_early_snapshot_change_rewinds_same_execution_without_paid_analysis(
+        self,
+    ) -> None:
         """Verify early snapshot changes rewind without paid analysis."""
         sent = self.to_analyze()
         deadline = sent["deadline"]
@@ -49,7 +51,9 @@ class SnapshotOwnerRestartTests(unittest.TestCase):
         assert ready["status"] == "complete"
         assert self.github.request.call_count == 1
 
-    def test_expensive_snapshot_churn_keeps_original_two_replacement_limit(self) -> None:
+    def test_expensive_snapshot_churn_keeps_original_two_replacement_limit(
+        self,
+    ) -> None:
         """Verify snapshot churn keeps the two-replacement limit."""
         data = self.data
         deadline = data["deadline"]
@@ -75,7 +79,8 @@ class SnapshotOwnerRestartTests(unittest.TestCase):
         with self.store.db() as c:
             assert (
                 c.execute(
-                    "SELECT replacements FROM snapshot_budget WHERE job_id=?", (self.key,)
+                    "SELECT replacements FROM snapshot_budget WHERE job_id=?",
+                    (self.key,),
                 ).fetchone()[0]
                 == replacement_limit
             )
@@ -90,7 +95,8 @@ class SnapshotOwnerRestartTests(unittest.TestCase):
             )
             before_owner = tuple(
                 c.execute(
-                    "SELECT stage,fence,phase FROM workflow_wait_owner WHERE job_id=?", (self.key,)
+                    "SELECT stage,fence,phase FROM workflow_wait_owner WHERE job_id=?",
+                    (self.key,),
                 ).fetchone()
             )
         # Direct transaction exercise; do not run generic fail() after the injected fault.
@@ -100,9 +106,14 @@ class SnapshotOwnerRestartTests(unittest.TestCase):
         OWNER_CONTEXT.binding = (self.key, owner["fence"])
         try:
             job = self.store.get(self.key)
-            with patch.object(
-                self.store.owners, "snapshot_replaced", side_effect=RuntimeError("local fixture")
-            ), self.assertRaises(RuntimeError):
+            with (
+                patch.object(
+                    self.store.owners,
+                    "snapshot_replaced",
+                    side_effect=RuntimeError("local fixture"),
+                ),
+                self.assertRaises(RuntimeError),
+            ):
                 self.store.replace_snapshot(self.key, job, {}, False)
         finally:
             del OWNER_CONTEXT.binding
@@ -116,7 +127,8 @@ class SnapshotOwnerRestartTests(unittest.TestCase):
                 == before_job
             )
             row = c.execute(
-                "SELECT stage,fence,phase FROM workflow_wait_owner WHERE job_id=?", (self.key,)
+                "SELECT stage,fence,phase FROM workflow_wait_owner WHERE job_id=?",
+                (self.key,),
             ).fetchone()
             assert (row["stage"], row["fence"]) == before_owner[:2]
             assert row["phase"] == "running"

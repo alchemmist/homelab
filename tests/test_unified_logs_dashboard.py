@@ -26,7 +26,12 @@ class UnifiedLogsDashboardTest(unittest.TestCase):
     def test_selectors_and_queries(self) -> None:
         """Require complete selectors, Loki queries, and top-aligned panels."""
         variables = self.dashboard["templating"]["list"]
-        assert [v["name"] for v in variables] == ["service", "namespace", "node", "severity"]
+        assert [v["name"] for v in variables] == [
+            "service",
+            "namespace",
+            "node",
+            "severity",
+        ]
         for variable in variables:
             assert variable["multi"]
             assert variable["allValue"] == (".+" if variable["name"] == "service" else ".*")

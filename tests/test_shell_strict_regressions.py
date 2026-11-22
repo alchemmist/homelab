@@ -445,7 +445,8 @@ def test_build_local_clears_cdpath_and_keeps_the_usage_guard(tmp_path: Path) -> 
             'bare=$(CDPATH= cd -- "$1" && pwd)\n'
             "empty=$(CDPATH='' cd -- \"$1\" && pwd)\n"
             'printf \'%s\\n%s\\n\' "$bare" "$empty"\n',
-            "bash", str(tmp_path),
+            "bash",
+            str(tmp_path),
         ],
     )
     assert result.returncode == SUCCESS_EXIT

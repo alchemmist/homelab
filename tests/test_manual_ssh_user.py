@@ -26,7 +26,8 @@ class ManualSSHTests(unittest.TestCase):
         cls.temp = tempfile.TemporaryDirectory(prefix="manual-ssh-test-")
         cls.key = Path(cls.temp.name) / "fixture"
         subprocess.run(
-            ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(cls.key)], check=True
+            ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(cls.key)],
+            check=True,
         )
         cls.public = cls.key.with_suffix(".pub").read_text()
 
@@ -41,7 +42,9 @@ class ManualSSHTests(unittest.TestCase):
         assert result["public_key"] == " ".join(self.public.split()[:2])
         assert result["fingerprint"].startswith("SHA256:")
 
-    def test_private_key_options_certificates_multiline_and_controls_are_rejected(self) -> None:
+    def test_private_key_options_certificates_multiline_and_controls_are_rejected(
+        self,
+    ) -> None:
         """Private keys, options, duplicates and certificates are rejected."""
         for bad in [
             self.key.read_text(),
@@ -58,7 +61,9 @@ class ManualSSHTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             check.validate("guest", "ssh-ed25519 AAAA")
 
-    def test_protected_and_injectable_names_are_rejected_before_parsing_key(self) -> None:
+    def test_protected_and_injectable_names_are_rejected_before_parsing_key(
+        self,
+    ) -> None:
         """Protected or injectable usernames never reach the key parser."""
         with patch.object(check, "fingerprint") as parser:
             for name in [
@@ -86,7 +91,9 @@ class ManualSSHTests(unittest.TestCase):
         assert not play["gather_facts"]
         assert play["roles"] == ["ssh_user"]
 
-    def test_additive_keys_not_exact_replacement_and_no_existing_group_stripping(self) -> None:
+    def test_additive_keys_not_exact_replacement_and_no_existing_group_stripping(
+        self,
+    ) -> None:
         """Keys are additive and existing groups and shells are preserved."""
         tasks = yaml.safe_load((ROOT / "ansible/roles/ssh_user/tasks/main.yml").read_text())
         key = next(t for t in tasks if "ansible.posix.authorized_key" in t)
@@ -124,7 +131,13 @@ class ManualSSHTests(unittest.TestCase):
                 "all:\n  children:\n    Socrat:\n      hosts:\n        fixture:\n          ansible_connection: local\n          ansible_become: false\n"
             )
             p = subprocess.run(
-                ["ansible-playbook", "-i", str(path), "playbooks/ssh-user.yml", "--check"],
+                [
+                    "ansible-playbook",
+                    "-i",
+                    str(path),
+                    "playbooks/ssh-user.yml",
+                    "--check",
+                ],
                 cwd=ROOT / "ansible",
                 capture_output=True,
                 text=True,

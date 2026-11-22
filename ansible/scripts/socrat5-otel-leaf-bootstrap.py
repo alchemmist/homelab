@@ -54,7 +54,11 @@ def main() -> None:
                 "duration": "2160h",
                 "renewBefore": "720h",
                 "issuerRef": {"name": "otel-ca", "kind": "Issuer"},
-                "privateKey": {"algorithm": "ECDSA", "size": 256, "rotationPolicy": "Always"},
+                "privateKey": {
+                    "algorithm": "ECDSA",
+                    "size": 256,
+                    "rotationPolicy": "Always",
+                },
                 "usages": ["digital signature", "server auth", "client auth"],
                 "ipAddresses": ["10.250.0.41"],
             },
@@ -83,13 +87,24 @@ def main() -> None:
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "RoleBinding",
             "metadata": meta(SA),
-            "roleRef": {"apiGroup": "rbac.authorization.k8s.io", "kind": "Role", "name": SA},
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": SA,
+            },
             "subjects": [{"kind": "ServiceAccount", "name": SA, "namespace": NS}],
         },
     ]
     (root / "objects.json").write_text(json.dumps(docs))
     k("create", "-f", "-", document={"apiVersion": "v1", "kind": "List", "items": docs})
-    k("-n", NS, "wait", "--for=condition=Ready", "certificate/" + LEAF, "--timeout=120s")
+    k(
+        "-n",
+        NS,
+        "wait",
+        "--for=condition=Ready",
+        "certificate/" + LEAF,
+        "--timeout=120s",
+    )
     creds = root / NODE
     creds.mkdir(mode=0o700)
     token = json.loads(k("-n", NS, "create", "token", SA, "--duration=24h", "-o", "json"))["status"]

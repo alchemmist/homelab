@@ -53,7 +53,10 @@ def main() -> None:
         url = origin + path
         headers = g.sign(method, url, c[role]["access"], c[role]["secret"], payload=payload)
         req = urllib.request.Request(
-            url, method=method, headers=headers, data=payload if method == "PUT" else None
+            url,
+            method=method,
+            headers=headers,
+            data=payload if method == "PUT" else None,
         )
         try:
             with http.open(req, timeout=15) as response:

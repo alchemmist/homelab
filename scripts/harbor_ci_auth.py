@@ -27,10 +27,14 @@ def configure(repository):
         raise ValueError("INVALID_CREDENTIAL_CONFIGURATION")
     auth = base64.b64encode((username + ":" + password).encode()).decode()
     query = urllib.parse.urlencode(
-        {"service": "harbor-registry", "scope": "repository:" + repository + ":pull,push"}
+        {
+            "service": "harbor-registry",
+            "scope": "repository:" + repository + ":pull,push",
+        }
     )
     request = urllib.request.Request(
-        "https://" + HOST + "/service/token?" + query, headers={"Authorization": "Basic " + auth}
+        "https://" + HOST + "/service/token?" + query,
+        headers={"Authorization": "Basic " + auth},
     )
 
     # Normal DNS, native robot auth and certificate verification. No redirects
@@ -77,7 +81,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
     try:
         configure(args.repository)
-    except (ValueError, KeyError, TypeError, RuntimeError, OSError, http.client.HTTPException) as error:
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        RuntimeError,
+        OSError,
+        http.client.HTTPException,
+    ) as error:
         # No URLs, HTTP bodies, credential material or token text in tracebacks.
         print("Harbor authentication preflight failed: " + type(error).__name__)
         raise SystemExit(1) from None

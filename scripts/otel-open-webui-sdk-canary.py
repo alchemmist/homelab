@@ -119,7 +119,11 @@ def statuses_ok(traces: list[dict[str, object]]) -> bool:
 
 
 def await_renewal(
-    renewal: object, before_hash: str, first: object, loaded: list[str], traces: list[object]
+    renewal: object,
+    before_hash: str,
+    first: object,
+    loaded: list[str],
+    traces: list[object],
 ) -> str:
     """Prove initial leaf load, wait for renewal, and report the new hash."""
     if renewal:
@@ -161,7 +165,10 @@ def run():
             observe_loader(*args, **kwargs)
 
         ssl.SSLContext.load_cert_chain = wrapped_loader
-    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+    with (
+        contextlib.redirect_stdout(io.StringIO()),
+        contextlib.redirect_stderr(io.StringIO()),
+    ):
         ensure_profile_mode()
         import httpx
         from fastapi import FastAPI, HTTPException, Request
@@ -254,7 +261,11 @@ def run():
                         status = response.status_code
                 finally:
                     detach(token)
-            return {"traceId": trace_id, "parentSpanId": parent_id, "httpStatus": status}
+            return {
+                "traceId": trace_id,
+                "parentSpanId": parent_id,
+                "httpStatus": status,
+            }
 
         before_hash = certificate_hash()
         first = emit_request()
@@ -266,7 +277,11 @@ def run():
         after_hash = await_renewal(renewal, before_hash, first, loaded, traces)
         if renewal:
             traces.append(emit_request())
-        trace_id, parent_id, status = first["traceId"], first["parentSpanId"], first["httpStatus"]
+        trace_id, parent_id, status = (
+            first["traceId"],
+            first["parentSpanId"],
+            first["httpStatus"],
+        )
         flushed = provider.force_flush(timeout_millis=10000)
         provider.shutdown()
         backend.shutdown()

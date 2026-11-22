@@ -63,7 +63,11 @@ class ContextAccountingTests(unittest.TestCase):
             assert m.reservation(m.payload(task, data, schema)) <= 30000
             assert data["alert"]["description"]["truncated"]
             seen.extend(x["number"] for x in data["open_issues"])
-            return {"issue_number": 0, "reason": "No same problem.", "confidence": "low"}
+            return {
+                "issue_number": 0,
+                "reason": "No same problem.",
+                "confidence": "low",
+            }
 
         m.call = call
         m.match(event, [{"number": i, "body": "x" * 6000} for i in range(120)])
@@ -102,7 +106,11 @@ class ContextAccountingTests(unittest.TestCase):
         with self.assertRaises(Stop):
             m.analyze(event, match, evidence)
         assert (event, match, evidence) == original
-        assert [x["number"] for x in captured["preliminary_match"]["candidates"]] == [0, 1, 2]
+        assert [x["number"] for x in captured["preliminary_match"]["candidates"]] == [
+            0,
+            1,
+            2,
+        ]
         assert captured["preliminary_match"]["reviewed_numbers"] == list(range(120))
         assert captured["evidence"]["artifact_context"]["index"][0]["id"] == "E001"
         assert captured["alert"]["description"]["truncated"]
@@ -149,5 +157,7 @@ class ContextAccountingTests(unittest.TestCase):
         with self.assertRaises(Stop):
             m.analyze(f.event(), match, evidence)
         assert (match, evidence) == original
-        assert [c["number"] for c in captured["preliminary_match"]["candidates"]] == list(range(120))
+        assert [c["number"] for c in captured["preliminary_match"]["candidates"]] == list(
+            range(120)
+        )
         assert captured["evidence"]["artifact_context"]["index"][0]["id"] == "E001"

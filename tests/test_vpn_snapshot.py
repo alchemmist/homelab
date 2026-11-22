@@ -47,7 +47,11 @@ class SubscriptionTests(unittest.TestCase):
 
     def test_empty_and_invalid_payloads_fail(self) -> None:
         """Reject empty and non-subscription payloads."""
-        for value in (b"", b"<html>not a subscription</html>", base64.b64encode(b"invalid")):
+        for value in (
+            b"",
+            b"<html>not a subscription</html>",
+            base64.b64encode(b"invalid"),
+        ):
             with self.assertRaises(ValueError):
                 VPN.normalize_subscription(value)
 
@@ -55,7 +59,9 @@ class SubscriptionTests(unittest.TestCase):
 class ConfigurationTests(unittest.TestCase):
     """SQLite configuration snapshot contracts for the offline VPN verifier."""
 
-    def test_traffic_changes_ignored_but_quota_and_password_changes_detected(self) -> None:
+    def test_traffic_changes_ignored_but_quota_and_password_changes_detected(
+        self,
+    ) -> None:
         """Ignore traffic counters while detecting quota and password changes."""
         with sqlite3.connect(":memory:") as connection:
             for table in VPN.TABLES:
