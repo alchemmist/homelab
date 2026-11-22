@@ -8,6 +8,7 @@ from pathlib import Path
 
 HOME = "109.173.40.247"
 VPS = "109.120.141.60"
+MOSCOW = "91.189.82.238"
 TTL = 60
 
 # Names that currently publish both public entrances and can follow health.
@@ -84,9 +85,9 @@ def healthy_addresses(home_up, vps_up):
     return chosen
 
 
-def monori_addresses(home_ok, vps_ok):
-    """Prefer HOME; keep both last-resort addresses when neither path is verified."""
-    return [HOME] if home_ok else [VPS] if vps_ok else [HOME, VPS]
+def monori_addresses(home_ok, moscow_ok):
+    """Never publish the regionally blocked NL entrance, including on probe failure."""
+    return [ip for ip, ok in ((HOME, home_ok), (MOSCOW, moscow_ok)) if ok] or [HOME, MOSCOW]
 
 
 def monori_https(address, port, timeout):
@@ -122,9 +123,10 @@ def render(serial, home_up, vps_up, *, monori_health=None):
     for value in TXT:
         lines.append('@ IN TXT "%s"' % value)
     for name in FAILOVER:
-        selected = addresses
+        # Preserve the existing production LMS/OIDC primary/standby policy.
+        selected = [HOME] if home_up and name in {"lms", "auth.socrat"} else addresses
         if name == "monori":
-            selected = monori_addresses(*(monori_health or (home_up, vps_up)))
+            selected = monori_addresses(*(monori_health if monori_health is not None else (home_up, True)))
         for address in selected:
             lines.append("%s IN A %s" % (name, address))
     for name in sorted(STATIC_A):
@@ -154,6 +156,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--home-target", default=HOME)
     parser.add_argument("--vps-target", default=VPS)
+    parser.add_argument("--assume-moscow", choices=("probe", "up", "down"), default="probe")
     parser.add_argument("--port", type=int, default=443)
     parser.add_argument("--timeout", type=float, default=3)
     parser.add_argument("--assume-home", choices=("probe", "up", "down"), default="probe")
@@ -179,7 +182,7 @@ def main():
 
     monori_health = (
         checked(args.assume_home, home_up, args.home_target),
-        checked(args.assume_vps, vps_up, args.vps_target),
+        checked(args.assume_moscow, args.assume_moscow != "down", MOSCOW),
     )
     text = render(args.serial, home_up, vps_up, monori_health=monori_health)
     args.output.parent.mkdir(parents=True, exist_ok=True)
