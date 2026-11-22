@@ -98,6 +98,35 @@ change, source-scraper change, duplicate scrape path or new HA/DR acceptance is
 implied. This does not rerun browser MFA/onboarding or every-producer telemetry
 validation; those systems' configurations were not changed by the handoff.
 
+## Offline dangling-resource findings (PR #494)
+
+The chart-level kube-linter findings for the `alertmanager` and `prometheus`
+Applications cannot safely be cleared by changing selectors, adding duplicate
+Services/workloads, or weakening the static gate. These charts intentionally render
+operator custom resources and their Services separately from the operator-created
+StatefulSets/Pods. In particular, `alertmanager` renders Service
+`kube-prometheus-stack-alertmanager` whose selector targets the Alertmanager CR's
+operator-created Pods; `prometheus` renders `kube-prometheus-stack-prometheus` and
+`kube-prometheus-stack-thanos-discovery` Services targeting the Prometheus CR's
+operator-created Pods. The Prometheus chart also emits the CoreDNS Service targeting
+`k8s-app=kube-dns`, which is an external cluster service, not a workload owned by
+this chart. The standalone renders therefore do not contain all valid Service
+backends.
+
+The PR's remaining findings for these owners are one `dangling-service` for
+`alertmanager`, and three `dangling-service` plus two `dangling-servicemonitor`
+findings for `prometheus`. No safe source-only selector or endpoint change is
+justified by those reports. To resolve them, first add/execute an offline composed
+inventory that includes each Service's actual owner (including operator-generated
+workload label contracts and external cluster Services) and verifies the two
+ServiceMonitor targets against their real Service owners; prove both a matching
+positive and a deliberately mismatching negative case. Then decide whether to
+teach a scoped owner-aware check to consume that evidence. Until then the actual
+runtime endpoint/readiness and ServiceMonitor relationships remain unverified by
+this isolated chart render. Do not create a duplicate Prometheus/Alertmanager
+workload, broaden monitor selectors, or remove core scrape targets to satisfy the
+single-chart lint result.
+
 
 ## Retirement closeout
 
