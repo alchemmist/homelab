@@ -4,8 +4,8 @@
     {
       "path": "charts/rancher",
       "basis": "reviewed-git-baseline",
-      "reviewedCommit": "5e7f2f8ce946ad428dec8a079ced2b1803d80222",
-      "provenanceNote": "Original package hashes and reversible local hostAliases patch verified separately by test_vm105_management.py. This inventory also detects extra files not listed in the upstream manifest.",
+      "reviewedCommit": "74748a98ed18b5ce48c58498ea95e7bb20f8a4dd",
+      "provenanceNote": "Reviewed local namespace declarations added to the existing vendored chart templates; original upstream checksums and reversible hostAliases patch remain separately verified by test_vm105_management.py. No upstream provenance claim.",
       "files": {
         ".helmignore": "11d5bbdbcdf1fa5aff71bba2bd6f088fb00d00ff9927db0bb482d0b1e10fc578",
         "Chart.yaml": "a73eb5ab9fcfdf52e18c2ac37c4ea4bf87fec772d04e309c4363bfbadee935f1",
@@ -18,8 +18,8 @@
         "templates/_errors.tpl": "4c63712aa1df683441963d70cb8dfec21bc024c16009ff140a6bd652e91f0fb7",
         "templates/_helpers.tpl": "da660f2862c35d9fc12d4dba3cadc56bd57df35e8d8a0cd498a07be265d7c5e3",
         "templates/clusterRoleBinding.yaml": "0b0fcdcc9a3f562470b6f03b705f5b1e0eac9648646c4a65fcdc2d3fdd1626c6",
-        "templates/configMap.yaml": "d83bab79eeab6d24afe7dbc1f77b263e0c9d76cd8d70d70633b53a47f520642e",
-        "templates/deployment.yaml": "6793aca15779fe1b6d53b67e504f8c12da0f7a89b5ec6e5c5c33abaf0b7c6e47",
+        "templates/configMap.yaml": "1e12c719092e1b483442cfaa798b4c79c515952e755bd0604bc1b02eb5ae5459",
+        "templates/deployment.yaml": "3b64b3ab9e0608354b48d1625958a511030f5cef4798691c3043b76ade1051d3",
         "templates/extra-manifests.yaml": "825c39436fc226becc5879a786743b7ac0b0d101c0caf9911e5416c4bdad1876",
         "templates/ingate/_helpers.tpl": "53aad1390e14d52e2f0e57a3eea045921a7ca3b1d0353ecf5dc5cf1bf15b6445",
         "templates/ingate/gateway-cert.yaml": "37d17d96f6218c9c034867684cab90fe8d27a14d407e9c0ab76940d0e86da344",
@@ -40,10 +40,10 @@
         "templates/pre-upgrade-hook-job.yaml": "03b8ff789ba754e94ad23f8682c6ecac6427066f6c6c1a3578efedc1b06d3893",
         "templates/pre-upgrade-hook-service-account.yaml": "2eb9299575461a905015fd5ca33bcb7766cdd4a0233ed05073467ecc0c8a95a5",
         "templates/priorityClass.yaml": "95d49f9dc882222220803a221c5f7f35d520de362882c4b3d19d270e179ae524",
-        "templates/pvc.yaml": "43b69c715f974a7a3a84e1e51e3659fbfc04bd378fff250ab39510e9f44937a6",
+        "templates/pvc.yaml": "3a3f6514a7c6ae857e92fe48b162bec3203456143e04d69d1928605d8d81e3c4",
         "templates/secret.yaml": "93aa74be1fee667b7cc3cc75cfbc7718c96fb40b24f75cfd5d9b69f62d6f47b7",
-        "templates/service.yaml": "5741f0a6be7dd140a217632eb889afd71480073c28bb2decd1c01417429cede7",
-        "templates/serviceAccount.yaml": "94b09aa1006de205090d1cc0e2995f157983012212172452277ecdbe08732ee2",
+        "templates/service.yaml": "1514b552322becf6b146f42ed07096be50d9f3820d4f52b9a934a975062688c7",
+        "templates/serviceAccount.yaml": "f54214adf135e02a22bcbfe2177ae65423faff5f00ab731e0bb7492eba3a3026",
         "values.schema.json": "0f21619410d775e299ab296b177e80e75b651d69584a7fcb3ffddf828c8ef88c",
         "values.yaml": "04f5f1eab554ff28eda2d916992e6c4591b789362c5bc7d1e94b44a19920a494"
       }

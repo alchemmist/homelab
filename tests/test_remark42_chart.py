@@ -6,7 +6,6 @@ from pathlib import Path
 
 import yaml
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -14,7 +13,14 @@ class Remark42ChartRenderTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         rendered = subprocess.run(
-            ["helm", "template", "remark42", str(ROOT / "charts/remark42"), "--namespace", "remark42"],
+            [
+                "helm",
+                "template",
+                "remark42",
+                str(ROOT / "charts/remark42"),
+                "--namespace",
+                "remark42",
+            ],
             check=True,
             capture_output=True,
             text=True,
@@ -36,9 +42,15 @@ class Remark42ChartRenderTests(unittest.TestCase):
         deployment = next(obj for obj in self.objects if obj["kind"] == "Deployment")
         pod = deployment["spec"]["template"]["spec"]
         container = pod["containers"][0]
-        self.assertEqual(pod["volumes"][0]["hostPath"], {"path": "/srv/remark42", "type": "Directory"})
         self.assertEqual(
-            [(mount["mountPath"], mount["subPath"]) for mount in container["volumeMounts"]],
+            pod["volumes"][0]["hostPath"],
+            {"path": "/srv/remark42", "type": "Directory"},
+        )
+        self.assertEqual(
+            [
+                (mount["mountPath"], mount["subPath"])
+                for mount in container["volumeMounts"]
+            ],
             [("/srv/var", "data"), ("/srv/web/remark.css", "remark42/custom.css")],
         )
         service = next(obj for obj in self.objects if obj["kind"] == "Service")

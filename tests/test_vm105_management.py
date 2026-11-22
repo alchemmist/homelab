@@ -17,6 +17,14 @@ INSERT = (
 SUFFIX = (
     "\n# Scoped native issuer route; empty keeps upstream default rendering.\nhostAliases: []\n"
 )
+NAMESPACE_PATCHES = {
+    "templates/configMap.yaml": 1,
+    "templates/deployment.yaml": 1,
+    "templates/pvc.yaml": 1,
+    "templates/service.yaml": 2,
+    "templates/serviceAccount.yaml": 1,
+}
+NAMESPACE_LINE = "  namespace: {{ .Release.Namespace }}\n"
 
 
 class ManagementMove(unittest.TestCase):
@@ -63,6 +71,10 @@ class ManagementMove(unittest.TestCase):
             elif name == "values.yaml":
                 assert data.decode().endswith(SUFFIX)
                 data = data[: -len(SUFFIX.encode())]
+            if name in NAMESPACE_PATCHES:
+                text = data.decode()
+                self.assertEqual(text.count(NAMESPACE_LINE), NAMESPACE_PATCHES[name], name)
+                data = text.replace(NAMESPACE_LINE, "").encode()
             assert hashlib.sha256(data).hexdigest() == digest, name
             p = target / name
             p.parent.mkdir(parents=True, exist_ok=True)
@@ -74,14 +86,14 @@ class ManagementMove(unittest.TestCase):
             self.upstream(Path(d))
 
     @unittest.skipUnless(shutil.which("helm"), "helm needed for render equivalence")
-    def test_empty_alias_defaults_byte_identical_to_upstream(self) -> None:
-        """Show empty host alias defaults render the same bytes as upstream."""
+    def test_empty_alias_defaults_render_equivalent_to_upstream(self) -> None:
+        """Show local namespace and host-alias patches preserve rendered resources."""
         with tempfile.TemporaryDirectory() as d:
             self.upstream(Path(d))
 
-            def render(path: str | Path) -> bytes:
-                """Render one local chart with the pinned Helm template arguments."""
-                return subprocess.check_output(
+            def render(path: str | Path) -> list[dict[str, object]]:
+                """Render one chart and normalize Helm's implicit release namespace."""
+                output = subprocess.check_output(
                     [
                         "helm",
                         "template",
@@ -91,8 +103,14 @@ class ManagementMove(unittest.TestCase):
                         "cattle-system",
                         "--kube-version",
                         "1.36.5",
-                    ]
+                    ],
+                    text=True,
                 )
+                documents = [doc for doc in yaml.safe_load_all(output) if doc]
+                for document in documents:
+                    metadata = document["metadata"]
+                    metadata.setdefault("namespace", "cattle-system")
+                return documents
 
             assert render(d) == render(ROOT / "charts/rancher")
 
