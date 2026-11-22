@@ -18,6 +18,6 @@
           Preserve existing keys, native identity, authoritative data and schema
           guards. For new installation/recovery review current prerequisites
           separately; do not re-enable migration Jobs or run this historical
-          initializer to update models. See docs/vm105-lms-litellm-renderer-20261116.md.
+          initializer to update models. See docs/applications/ai/litellm.md.
       tags: [always]
 ...

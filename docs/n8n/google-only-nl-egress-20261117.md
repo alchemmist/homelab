@@ -2,7 +2,7 @@
 > was replaced by native 3x-ui client `svc-n8n-google` and an official Xray-core
 > sidecar in5b722c5c. Its dedicated SSH access and unused Secrets were revoked.
 > Do not copy this historical mechanism. Current standard:
-> [VPN-as-service](../service-vpn-egress.md). Preserve this report as
+> [VPN-as-service](../network/vpn-egress/service-vpn-egress.md). Preserve this report as
 > history, not deployment instructions. Venice remains separately pending.
 
 # Google-only NL egress —17November2026

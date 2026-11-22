@@ -51,7 +51,7 @@ applicationIAM:
   removalFromManifest: not-revocation-use-explicit-disabled
   owner: protected-no-state-or-membership-change-by-lifecycle
   apply: explicit-plan-sha256-no-scheduled-apply
-  controllerBoundary: docs/identity/application-iam.md
+  controllerBoundary: docs/auth/applications/application-iam.md
   revocation: idp-disable-is-not-native-session-or-api-key-revocation
 network:
   mode: existing-wireguard-direct-peers

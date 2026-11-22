@@ -1,95 +1,52 @@
 ---
 name: vps-ip-migration
-description: "Смена публичного IPv4 VPS socrat-2 в homelab: обязательный Ansible playbook для детерминированной host/source-фазы, безопасные ситуационные действия с DNS glue, 3x-ui, WireGuard, Collector, NetBird, GitOps и проверка реальной доставки. Использовать при замене IP провайдером, плановом переносе или восстановлении после недоступности адреса."
+description: "Migrate the public IPv4 address of socrat-2 after provider reassignment, a planned move or loss of reachability. Use the required Ansible host/source phase, then verify DNS glue, 3x-ui, WireGuard, the Collector, NetBird, GitOps and actual client delivery."
 ---
 
-# Переезд socrat-2 на новый публичный IPv4
+# Move socrat-2 to a new public IPv4 address
 
-## Назначение и обязательная граница
+## Scope and responsibilities
 
-Используй **`ansible/playbooks/vps-ip-migration.yml`**, а не цепочку несохранённых
-`sed`/SQL/SSH-команд. Playbook — воспроизводимая основа, **не автоматическое
-подтверждение завершения всего переезда**. Этот skill обязателен до и после него.
+Use **`ansible/playbooks/vps-ip-migration.yml`**, not a sequence of unrecorded `sed`, SQL or SSH commands. The playbook is the reproducible host phase; **its success does not certify the migration**. Use this skill before and after running it.
 
-Автоматизация: [`ansible/scripts/vps-ip-migration.py`](../../../ansible/scripts/vps-ip-migration.py)
-(пути ниже всегда от корня репозитория). Инвентарь, владельцы и реальные грабли
-предыдущего переезда: `docs/vps-ip-migration-20261105.md`.
+Automation: [`ansible/scripts/vps-ip-migration.py`](../../../ansible/scripts/vps-ip-migration.py). Unless noted otherwise, paths are relative to the repository root. For the previous migration's inventory, owners and observed failures, see `docs/records/handoffs/vps-ip-migration-20261105.md`.
 
-- **Playbook:** явные old/new IPv4, все четыре preflight, allowlist исходников,
-  приватные preimages, точечные host-файлы, endpoints WireGuard без перезапуска
-  интерфейса, native Knot/TCP transport/guard; SQLite только read-only audit/online backup,
-  изменения `hosts.address` — отдельной фазой через native API.
-- **Skill:** выбор маршрута доступа, анализ отказов и новых владельцев,
-  согласование перерывов, registrar, Kubernetes/GitOps, секреты, Collector,
-  реальный внешний VPN-тест, подписки, клиентские профили и критерии приёмки.
-- Список ниже — обязательный checklist, не разрешение игнорировать новые
-  зависимости. Если schema/identity/ownership изменились, остановись и исследуй.
+- **Playbook:** requires explicit OLD and NEW IPv4 addresses and preflight on all four nodes. It manages allowlisted source files, private preimages, targeted host files, WireGuard endpoints without an interface restart, and native Knot, TCP transport and guard configuration. SQLite operations are limited to read-only audit and online backup. Updating `hosts.address` is a separate native API phase.
+- **Operator:** choose the access path, investigate failures and ownership changes, agree downtime, handle the registrar, GitOps, Kubernetes, Secrets and Collector, and verify external VPN delivery, subscriptions and client profiles.
+- This checklist is a minimum, not permission to ignore a new dependency. Stop and investigate if schema, identity or ownership has changed.
 
-## 0. Разрешение, изоляция, доступ
+## 0. Authorization, isolation and access
 
-1. Получи точные старый и новый адреса от оператора/провайдера. Не угадывай их
-   по DNS: DNS может быть split, кешированным или перехваченным. Не объявляй
-   ТСПУ доказанным только по тайм-ауту или ответу поддержки.
-2. Уточни, адрес уже назначен или только запланирован, сохраняется ли старый IP,
-   разрешены ли короткие перерывы VPN/NetBird, нужен ли экстренный backup.
-   Сама замена IP не означает переустановку ОС или необходимость обновить все ПО.
-3. Проверь `git status`, прочитай действующие project instructions. При грязном
-   исходном checkout отдельный worktree допустим только с разрешения оператора;
-   если дополнительные checkout запрещены, работай точечно в согласованном checkout. Не stash,
-   reset, force-push и не перезаписывай чужие изменения. Один writer/worktree.
-4. Проверь приватный доступ `10.250.0.2` и независимый путь SSH/консоль
-   провайдера. Не переключай единственный работающий путь до проверки нового.
-   Сохрани pinned host key: замена IP не основание отключать StrictHostKeyChecking.
-5. Проверь новый адрес на интерфейсе, исходящий маршрут, доступность DNS/HTTPS
-   наружу. Gateway может оставаться из старого префикса по схеме провайдера:
-   **не вычисляй новый gateway по адресу** и не переписывай маршрут наугад.
-   Проверь, сохранено ли назначение адреса после reboot; без необходимости не reboot.
-6. Пароли только из существующего private controller/Ansible Vault. Никогда не
-   печатай secret YAML, токены, subscription URL/QR, SQL dump, ключи и raw логи
-   пользователей. Evidence — counts, hashes, адреса инфраструктуры, HTTP codes.
+1. Obtain OLD and NEW from the operator or provider. Do not infer them from DNS: answers can be split, cached or intercepted. Neither a timeout nor a support reply proves TSPU filtering.
+2. Confirm whether NEW is assigned or scheduled, whether OLD remains usable, whether short VPN/NetBird interruptions are approved and whether an emergency backup is needed. An IP change does not imply reinstalling the OS or upgrading all software.
+3. Read current project instructions and check `git status`. If the checkout is dirty, obtain permission before adding a worktree. If extra checkouts are prohibited, make targeted changes in the agreed checkout. Use one writer per worktree; do not stash, reset, force-push or overwrite others' work.
+4. Verify private access via `10.250.0.2` and an independent SSH path or provider console. Do not switch the only working path before testing the replacement. Preserve the pinned host key and `StrictHostKeyChecking`.
+5. Verify NEW on the interface, the outbound source route and external DNS/HTTPS. The provider may retain a gateway from the old prefix. **Do not derive the gateway from NEW** or guess a replacement route. Verify persistent address assignment without an unnecessary reboot.
+6. Obtain passwords only from the existing private controller or Ansible Vault. Never print secret YAML, tokens, subscription URLs or QR codes, SQL dumps, keys or raw user logs. Use counts, hashes, infrastructure addresses and HTTP status codes as evidence.
 
-## 1. До изменений — данные и полная инвентаризация
+## 1. Inventory and backups before changes
 
-- Backup вне VPS важнее ещё одной копии на нём. Уточни, что уже завершено и
-  проверено; `.partial` не backup. Не удаляй готовые экстренные архивы после
-  восстановления доступа. Preimages playbook **не заменяют backup сервера**.
-- Для SQLite — online backup API + quick_check. Для PostgreSQL — pg_dump(all),
-  для embedded etcd — штатный k3s etcd-snapshot. Файловый tar работающей БД не
-  гарантирует согласованность; запись файла/хеш не доказывает восстановимость.
-- Найди старый IP в актуальных исходниках, live specs, ConfigMaps/Secrets,
-  native configs и профилях. Читай секреты приватно; выводи только пути/счётчики.
-  Не заменяй адрес массово в Git history, старых receipts, backup и manifests
-  исторического доказательства. Новые активные файлы добавь в allowlist после review.
-- Инвентаризируй mounts: `tar --one-file-system` не копирует другие файловые
-  системы и виртуальные mount views. Установи, где действительно лежат данные.
-- Проверяй **все таблицы 3x-ui**, не только settings/inbounds. В прошлом адреса
-  оказались в `hosts.address`. Нельзя заменять строки в бинарном `.db` файле!
-- Запиши baseline: Ready/nodes, pod UID/container IDs/restart counts, identities
-  backend/DB, native services, resource ownership, исходные alert states.
-  Существующий OutOfSync не повод делать общий sync/prune.
+- Prioritize a backup outside the VPS over another on-host copy. Establish what has completed and been verified; a `.partial` file is not a backup. Retain completed emergency archives after access returns. Playbook preimages do **not** replace a server backup.
+- Use the online backup API and `quick_check` for SQLite, pg_dump/pg_dumpall for PostgreSQL and the native k3s etcd snapshot for embedded etcd. A tar of a running database is not necessarily consistent. A file or checksum is not a restore test.
+- Find OLD in active sources, live specs, ConfigMaps, Secrets, native configuration and profiles. Inspect secrets privately and report only paths and counts. Do not bulk-replace OLD in Git history, historical manifests, receipts or backups. Review new active files before adding them to the allowlist.
+- Inventory mounts and locate the actual data. `tar --one-file-system` omits other filesystems and virtual mount views.
+- Inspect **all 3x-ui tables**, not only settings and inbounds. Previous addresses appeared in `hosts.address`. Never replace strings in a binary `.db` file.
+- Record baseline node readiness, pod UIDs, container IDs and restart counts, backend and database identities, native services, resource ownership and alert states. Existing OutOfSync is not permission for blanket sync or prune.
 
-## 2. Обязательная детерминированная фаза через Ansible
+## 2. Required Ansible phase
 
-Перед запуском прочитай playbook, defaults роли и helper. Они deliberately
-не устанавливают пакеты, не меняют ключи, не deploy-ят все charts и не делают
-автоматический Git commit.
-
-Создай **вне Git** файл параметров, mode 0600:
+Read the playbook, role defaults and helper first. They deliberately do not install packages, change keys, deploy all charts or create a Git commit. Create a mode `0600` parameter file **outside Git**:
 
 ```yaml
 vps_ip_migration_old_ip: "<OLD_PUBLIC_IPV4>"
 vps_ip_migration_new_ip: "<NEW_PUBLIC_IPV4>"
 vps_ip_migration_apply: false
-# Источник истины — согласованный checkout; чужой dirty diff не включать.
-# Defaults backup roots: root-owned /var/backups/... на узлах,
-# private ~/Library/Application Support/homelab/vps-ip-migration на контроллере.
+# Source of truth: the approved checkout, excluding unrelated dirty changes.
+# Default backup roots: root-owned /var/backups/... on the nodes;
+# private ~/Library/Application Support/homelab/vps-ip-migration on the controller.
 ```
 
-Проверь routing inventory. Если старое DNS-имя уже недоступно, добавь отдельный
-private override inventory с существующими SSH aliases/проверенными адресами.
-Не меняй глобально SSH/credentials, не используй `--limit`, чтобы обойти preflight.
-В inventory все четыре узла должны быть доступны. У стандартного запуска сначала
-идёт только audit. Ansible `--check` тоже не применяет миграцию.
+Check inventory routing. If the old DNS name is unavailable, add a separate private override inventory using existing SSH aliases or verified addresses. Do not change global SSH settings or credentials or use `--limit` to skip preflight. All four nodes must be reachable. The default run audits only; Ansible `--check` does not apply the migration either.
 
 ```sh
 cd /path/to/approved-homelab/ansible
@@ -100,227 +57,101 @@ ANSIBLE_NOCOLOR=1 ANSIBLE_SSH_EXECUTABLE=/usr/bin/ssh \
   -e @"$CROOT/become.yml" -e @/private/path/ip-migration.yml
 ```
 
-Перед запуском проверь effective HostName/ProxyJump через `/usr/bin/ssh -G`
-и настоящий источник соединения. Старый `$CROOT/bin/ssh` может незаметно
-подменять приватный alias публичным IP/ProxyJump: не считать его private-only
-и не использовать без отдельного review. Прямой новый IP — только если
-оператор явно разрешил этот путь, с существующим pinned host key.
+Before running, check the effective HostName and ProxyJump with `/usr/bin/ssh -G` and verify the actual connection source. An old `$CROOT/bin/ssh` wrapper may silently replace a private alias with a public IP or ProxyJump. Do not treat it as private-only or use it without separate review. Use direct SSH to NEW only with explicit operator approval and the existing pinned host key.
 
-Если требуется override, добавь второй `-i /private/path/access-override.yml`.
-Проверь план каждого узла и source diff. Адрес должен уже быть назначен VPS;
-если ещё нет, playbook остановится, а не начнёт публиковать неработающий IP.
-
-Только после review и разрешения на native service restarts:
+If required, add a second `-i /private/path/access-override.yml`. Review each node's plan and the source diff. NEW must already be assigned to the VPS; otherwise the playbook stops rather than publishing an unusable IP. Only after review and approval for native service restarts, add these arguments to the same invocation:
 
 ```sh
-# Тот же запуск/инвентарь/секреты, плюс:
 -e vps_ip_migration_apply=true \
 -e vps_ip_migration_allow_service_restarts=true
 ```
 
-Порядок: preflight всех → source → VPS → socrat-0/1/3 serially.
-В default audit ничего не переписывается; remote Ansible temp scripts — не backup.
+Order: preflight all nodes, update source, update the VPS, then process `socrat-0/1/3` serially. Default audit rewrites nothing; temporary remote Ansible scripts are not backups.
 
-### Что делает host phase
+### Host phase boundaries
 
-- Installed DNS renderer/refresh; на VPS также Knot listener, `/etc/hosts`,
-  WireGuard installer params и retained installer metadata.
-- Persistent `wg-socrat.conf`; runtime меняет **только endpoint соответствующего
-  peer**, не `wg-quick down/up` и не private/public keys, AllowedIPs или весь mesh.
-- TCP transport server/client config; guard добавляет новую узкую owned rule
-  прежде удаления её точного старого аналога. **Нет flush firewall**.
-- Только затронутые **уже активные** native units: Knot, TCP transport, guard.
-  Не запускает неожиданно dormant native fallback/legacy VPN.
-- На VPS read-only schema/integrity audit и согласованные online preimages SQLite.
-  Production SQL writes запрещены. `native_api_address_migration_pending` требует
-  отдельного fresh-preimage/CAS native API изменения только hosts.address с
-  сохранением IDs, ключей, клиентов, лимитов и всех остальных полей. Retained
-  legacy DB историческая: не переписывать её автоматически.
-- Неактивный guard можно сохранить неактивным только после явного per-host review
-  `vps_ip_migration_reviewed_service_states`. Известный transport в activating/
-  auto-restart допускает целевой restart после review текущего state. Drift и
-  неизвестные состояния останавливают audit/apply. K3s этот playbook не запускает.
-- JSON receipts без чувствительных строк. `native_api_address_migration_pending`
-  означает следующую API-фазу, **не выполненный reload/restart Kubernetes**.
+- Updates the installed DNS renderer/refresh configuration and, on the VPS, the Knot listener, `/etc/hosts`, WireGuard installer parameters and retained installer metadata.
+- Updates persistent `wg-socrat.conf`. At runtime, changes **only the relevant peer endpoint**: no `wg-quick down/up`, key changes, AllowedIPs changes or mesh replacement.
+- Updates TCP transport server/client configuration. The guard adds its narrowly scoped new rule before removing the exact old rule. **Never flush the firewall.**
+- Acts only on affected, already active native Knot, TCP transport and guard units. It does not start dormant native fallback or legacy VPN services.
+- Audits VPS SQLite schema and integrity read-only and takes consistent online preimages. No production SQL writes. `native_api_address_migration_pending` requires a separate native API change with a fresh preimage and compare-and-swap (CAS), limited to `hosts.address`. Preserve IDs, keys, clients, limits and every other field. Do not automatically rewrite the historical legacy database.
+- Leave an inactive guard inactive only after explicit per-host review in `vps_ip_migration_reviewed_service_states`. A known transport in activating/auto-restart may receive a targeted restart after review of its current state. Drift or unknown states stop audit/apply. This playbook does not start k3s.
+- JSON receipts omit sensitive strings. `native_api_address_migration_pending` identifies outstanding API work; it does **not** mean a Kubernetes reload or restart occurred.
 
-### Ошибка / повторный запуск
+### Failure and retry
 
-При любой ошибке остановись. Preimages и receipt остаются приватными. Нет
-автоматического rollback на уже заблокированный IP. Частичный запуск с receipt
-`applying`/`partial-failure-stop-and-investigate` запрещает слепой rerun.
+Stop on any error. Keep preimages and receipts private. There is no automatic rollback to a blocked IP. A receipt marked `applying` or `partial-failure-stop-and-investigate` prohibits a blind retry.
 
-Проверь фактическое состояние каждого затронутого файла, DB, runtime endpoint и
-service. Приватно зафиксируй восстановление/доведение до согласованного состояния.
-Только после явного решения и evidence пометь именно этот receipt как
-`manually-reconciled`, сохранив исходный receipt отдельной копией. Снова audit.
-Это не способ скрыть ошибку; source/host partial changes могут требовать ручного
-доведения. Не откатывай живые данные целиком, не теряй новые записи/traffic counters.
-Успешный повторный apply должен быть no-op, но **no-op не доказывает приёмку**.
-Проверь прошлые receipts: необходимость reload могла остаться после предыдущего apply.
+Inspect each affected file, database, runtime endpoint and service. Privately document recovery or reconciliation to the agreed state. Only after an explicit decision backed by evidence, mark that specific receipt `manually-reconciled`, preserving a separate copy of the original. Audit again. Do not conceal partial source or host changes, restore whole live datasets over new writes, or lose traffic counters. A repeated successful apply should be a no-op, but a no-op is not acceptance. Check earlier receipts for a still-pending reload.
 
-## 3. Source review, GitOps и остальные live владельцы
+## 3. Review source, GitOps and other runtime owners
 
-После source phase проверь diff: актуальные inventory/direct address,
-WireGuard/TCP defaults, public DNS, Traefik edge, blackbox target, Bot webhook,
-NetBird/STUN и auth egress RustFS. Не меняй образы/базы/ownership заодно.
+Inspect the source diff for active inventory and direct addresses, WireGuard/TCP defaults, public DNS, Traefik edge, blackbox target, bot webhook, NetBird/STUN and RustFS authentication egress. Do not change images, databases or ownership incidentally.
 
-- Прогони targeted tests и Helm render. Не называй весь suite зелёным, если
-  проверялась только выборка. Сравни существующие failures с baseline;
-  не ослабляй тесты/алерты для получения зелёного статуса.
-- Коммить только свои файлы, fetch/rebase свежего main, обычный push.
-  При одобренном HTTPS helper используй command-scoped
-  `git -c credential.helper='!gh auth git-credential' ...`; не меняй глобальные
-  remotes/credentials и не force-push. При ошибке push сначала проверь remote tip.
-- Hard refresh только нужных Argo apps. Сверь effective values/parameters,
-  revision и rollout — commit на GitHub не равен применению.
-- NetworkPolicies должны попасть в **правильные namespace**. Рендери с
-  `helm template ... --namespace rustfs`; отдельно проверь identity gateway.
-  Никогда не apply разноимённые namespaces вслепую под одним `-n`.
-- Live spec audit: Services/externalIPs, Deployments/args/env, NetworkPolicies,
-  StatefulSets/DaemonSets/Ingresses. Не переписывай generated status/IP и
-  Rancher publicEndpoints как постоянный source of truth (там бывает pod name).
-- ConfigMap/Secret audit: значения приватно, отчёт только namespace/name/key/count.
-  Замена одного поля — JSON patch с resourceVersion/precondition, не полный dump
-  конфигурации в терминал. Сохрани private preimage. Не обновляй все Secret подряд.
+- Run targeted tests and Helm renders. Report their scope, compare existing failures against the baseline and do not weaken tests or alerts to obtain a pass.
+- Commit only your files, fetch and rebase on current main, then push normally. If an HTTPS helper is approved, use command-scoped `git -c credential.helper='!gh auth git-credential' ...`; never change global remotes or credentials or force-push. On push error, inspect the remote tip first.
+- Hard-refresh only the relevant Argo applications. Check effective values, parameters, revision and rollout. A GitHub commit is not evidence of deployment.
+- Render NetworkPolicies for the correct namespace, e.g. `helm template ... --namespace rustfs`. Check the identity gateway separately. Never blindly apply resources for distinct namespaces under one `-n`.
+- Audit Services/externalIPs, Deployment arguments and environment, NetworkPolicies, StatefulSets, DaemonSets and Ingresses. Do not rewrite generated status/IP or treat Rancher publicEndpoints as persistent source; it can contain a pod name.
+- Inspect ConfigMap/Secret values privately; report only namespace, name, key and count. For a single field, retain a private preimage and use a targeted JSON patch with a resourceVersion precondition. Do not print full configuration or update all Secrets indiscriminately.
 
-### 3x-ui и подписки — обязательная проверка после host phase
+### 3x-ui and subscriptions after the host phase
 
-1. Playbook сохраняет согласованный backup; native API writer требует ещё свежий
-   preimage, CAS и собственную проверку инвариантов непосредственно перед записью. Если helper/schema
-   не соответствуют текущей панели, не обходи его assert — изучи новую схему/API.
-2. После native API изменения `hosts.address` проверь необходимость reload;
-   не перезапускай native fallback как Kubernetes pod. В Kubernetes при необходимости
-   согласуй короткий разрыв и пересоздай **только
-   один точно идентифицированный pod x-ui** под действующим Deployment. Проверить
-   namespace, UID, image и hostPath до действия; дождаться Ready. Не рестартуй VPS,
-   k3s, Postgres, Collector и не запускай параллельного writer этой SQLite.
-3. Проверь все enabled plain **и JSON** subscriptions, не публикуя subId/URL/body.
-   Декодируй base64 и vmess; проверяй actual destination, а не только raw substring.
-   Посчитай subscriptions/links, OLD/NEW/other и ошибки. Other destinations
-   классифицируй: это могут быть сохранённые домены, а не ошибка.
-4. Ключи/пароли/IDs/ports неизменны. Успешный SQL update или restart **не доказывает**
-   обновление выдаваемых ссылок. Сверь результат до/после, quick_check и инварианты.
+1. The playbook retains a consistent backup. The native writer additionally requires a fresh preimage, CAS and its own invariant checks immediately before writing. If the helper no longer matches the panel schema, investigate the supported API; do not bypass assertions.
+2. After changing `hosts.address` through the native API, determine whether a reload is needed. Do not confuse native fallback with the Kubernetes pod. If necessary, agree a short interruption and recreate only the identified x-ui pod under the current Deployment. Verify namespace, UID, image and hostPath first; wait for Ready. Do not restart the VPS, k3s, PostgreSQL or Collector, or run a concurrent SQLite writer.
+3. Check every enabled plain **and JSON** subscription without exposing subId, URL or body. Decode base64 and vmess; inspect actual destinations, not raw substrings. Count subscriptions, links, OLD/NEW/other destinations and errors. Classify other destinations: a retained domain can be legitimate.
+4. Keys, passwords, IDs and ports must not change. A successful database update or restart does not prove the served links changed. Compare before/after results, `quick_check` and invariants.
 
-### Native Collector — отдельный владелец метрик
+### Native Collector: a separate owner for metrics
 
-ServiceMonitor/Helm chart не перенастраивает автоматически уже сохранённый
-`otel-cluster-config.data.scrape.yaml`. Prometheus — OTLP storage/evaluation,
-**не возвращай ему scraping**.
+A ServiceMonitor or Helm change does not reconfigure the saved `otel-cluster-config.data.scrape.yaml`. Prometheus owns OTLP storage and evaluation; **do not move scraping back to Prometheus**.
 
-- Найди ровно VPS blackbox job по job ownership + `service_id=edge-vps`, не номеру
-  `.../26` и не общему replace всего YAML. `scripts/otel-scrape-config.py` и
-  `otel-production-cluster.py` уже нормализуют captured bundle по chart target.
-- Сохрани private CM preimage; меняется только target, все остальные jobs и
-  `collector.yaml` byte-for-byte прежние. Валидируй pinned Collector candidate.
-- CM projection должна реально обновиться. Для activation используй существующий
-  `ansible/playbooks/otel-cluster-logs-activate.yml` с **свежими** pod UID,
-  exact running container ID, actual imageRef, config/scrape SHA256. Проверь full
-  binary SHA; read playbook, не выдумывай значения из старого receipt.
-- **Нельзя** restart shared pod/StatefulSet: Prometheus/Thanos/reloader не должны
-  менять IDs/restart counts. Только точный Collector container lifecycle.
-- До/после — receiver refused/failed, exporter failed/enqueue, queue/drain,
-  sent metric/log deltas, readiness и age. Краткий scrape gap сообщи честно.
-- Старый failing series может жить до lookback expiry. Не удаляй series и не
-  отключай alert. Дождись `probe_success=1` именно с NEW instance и снятия alert.
-- **Обязательный closeout gate:** свежий `probe_success{service_id="edge-vps"}`
-  должен иметь NEW instance; проверь точное live-выражение панели906 dashboard
-  `socrat-traffic-light`: значение0=OK. Source/ServiceMonitor/Argo Synced этого
-  не доказывают. Зафиксируй этот gate явно, не оставляй Collector неопределённым
-  follow-up после объявления переезда завершённым.
+- Identify the single VPS blackbox job by ownership and `service_id=edge-vps`, not a position such as `.../26` or a whole-YAML replacement. `scripts/otel-scrape-config.py` and `otel-production-cluster.py` already normalize the captured bundle against the chart target.
+- Retain a private ConfigMap preimage. Change only the target; keep every other job and `collector.yaml` byte-for-byte identical. Validate the candidate with the pinned Collector.
+- Verify the ConfigMap projection actually updated. Activate through `ansible/playbooks/otel-cluster-logs-activate.yml` with a fresh pod UID, exact running container ID, actual imageRef and config/scrape SHA256. Verify the full binary hash. Read the playbook; do not reuse values from an old receipt.
+- Do not restart the shared pod or StatefulSet. Target only the Collector container lifecycle. Prometheus, Thanos and reloader container IDs and restart counts must not change.
+- Compare before/after receiver refused/failed, exporter failed/enqueue, queue levels and drain, sent metric/log deltas, readiness and sample age. Report any short scrape gap.
+- OLD series can remain until lookback expiry. Do not delete them or disable the alert. Wait for `probe_success=1` on NEW and for the alert to clear.
+- **Required closeout:** a fresh `probe_success{service_id="edge-vps"}` must identify NEW. Check the exact live expression on panel 906 of `socrat-traffic-light`: 0 means OK. Source, ServiceMonitor and Argo Synced do not establish that result. Record it explicitly before declaring completion.
 
-### NetBird и Telegram
+### NetBird and Telegram
 
-- NetBird STUN binding и advertised URI — разные настройки. STUN-only listener
-  идёт через GitOps; URI может лежать в private `netbird-runtime` Secret. Меняй
-  только нужное поле, остальные bytes/credentials сохраняй. Secret projection
-  не означает, что сервер перечитал конфиг; отдельный точечный reload/one-pod
-  recreate с Ready gate. Не ротируй setup keys и не меняй policy при смене IP.
-- Реальный UDP Binding снаружи: transaction ID и XOR-MAPPED валидны; никакого
-  случайного source-SNAT. TURN Allocate не должен создавать открытый relay.
-  Source IP пользователя не печатай. Reachability STUN ≠ приёмка всего NetBird.
-- Bot chart webhookIP обновляется через GitOps. `getWebhookInfo` вызывай из сети,
-  где Telegram API доступен, токен только в памяти/private process input.
-  Выведи только configured IP, pending count, timestamp/класс ошибки.
-  Исторический last_error не равен новой ошибке. Пустая очередь не доказывает
-  успешную доставку нового сообщения. Не используй drop_pending_updates.
+- The NetBird STUN binding and advertised URI are separate settings. The STUN-only listener is GitOps-managed; the URI may be in the private `netbird-runtime` Secret. Change only that field and preserve other bytes and credentials. Secret projection does not prove the server reloaded. Use a separately scoped reload or single-pod recreation with a Ready gate. Do not rotate setup keys or change policy for an IP migration.
+- Test an actual external UDP Binding: validate the transaction ID and XOR-MAPPED address, and verify the source was not unexpectedly SNATed. TURN Allocate must not create an open relay. Do not print user source IPs. STUN reachability is not full NetBird acceptance.
+- Update bot chart webhookIP through GitOps. Call `getWebhookInfo` from a network that can reach Telegram, keeping the token in memory or private process input. Report only configured IP, pending count and error time/class. A historical last_error is not a new failure; an empty queue does not prove fresh delivery. Do not use drop_pending_updates.
 
-## 4. Registrar: A-запись не равна glue
+## 4. Registrar: a child A record is not parent glue
 
-У `.xyz` делегация на `ns1.alchemmist.xyz` (дом) и `ns2.alchemmist.xyz` (VPS).
-Новая запись внутри Knot не обновляет glue родителя.
+The recorded `.xyz` delegation uses `ns1.alchemmist.xyz` (home) and `ns2.alchemmist.xyz` (VPS). A new record inside Knot does not update parent glue.
 
-1. Проверь текущий registrar и делегацию, не полагайся на историческое описание.
-2. В существующей авторизованной сессии REG.RU: домен `alchemmist.xyz` →
-   DNS-серверы → свой список. **Имена NS неизменны**, IP ns1 неизменен,
-   меняется только IP ns2. Не переключай на DNS регистратора и не разделегируй домен.
-3. Перед submit сверь обе пары имя/IP; сохрани, проверь подтверждение кабинета.
-   Если нужен login/MFA, передай управление пользователю; не проси пароль в чат.
-4. Проверь непосредственно минимум два authoritative сервера родителя `.xyz`
-   (`dig @x.nic.xyz ... NS +norecurse`, `@y.nic.xyz`), включая ADDITIONAL glue.
-   Убедись, что отвечают именно родители, а не DNS interceptor; используй
-   независимую сеть при сомнении. Google/Cloudflare DoH — дополнительная проверка,
-   но ответ дочерней A-записи сам по себе **не доказывает обновление glue**.
-5. Пока parent отдаёт OLD — registrar принял, публикация pending. Не говори
-   «просто кеш», если прямой authoritative ответ ещё старый. После NEW у parent
-   recursive кеши могут держать старый ответ до TTL. Запиши observed TTL/time,
-   не обещай мгновенную глобальную сходимость.
+1. Verify the current registrar and delegation rather than assuming the historical setup still applies.
+2. In the existing authorized REG.RU session, open `alchemmist.xyz`, DNS servers, custom list. Preserve both NS names and the ns1 IP. Change **only** the ns2 IP. Do not switch to registrar DNS or remove the delegation.
+3. Compare both name/IP pairs before submitting. Save and verify confirmation in the account. Hand control to the user for login or MFA; never request a password in chat.
+4. Query at least two authoritative `.xyz` servers directly (`dig @x.nic.xyz ... NS +norecurse` and `@y.nic.xyz`); inspect ADDITIONAL glue. Verify the parent servers actually answered rather than a DNS interceptor. Use an independent network if uncertain. Google/Cloudflare DoH is supplementary; a child A answer does **not** prove a glue update.
+5. If the parent still serves OLD, the registrar accepted the request but publication is pending. Do not blame recursive caches for an old authoritative answer. Once the parent serves NEW, recursive caches may retain OLD until TTL expiry. Record observed TTL and time; do not promise immediate global convergence.
 
-## 5. Приёмка из правильных точек
+## 5. Acceptance from the right observation points
 
-Используй checklist в `references/acceptance.md`; при отклонениях —
-`references/troubleshooting.md`. Выполни его, а не только
-перечисли настроенные компоненты. Никакого «готово», если обязательные пункты
-остались unknown; разделяй server complete, propagation pending и client action.
+Complete the [acceptance ledger](references/acceptance.md); consult [troubleshooting](references/troubleshooting.md) for deviations. Test actual behavior, not just the list of configured components. If a required result is unknown, do not report completion. Distinguish server-side completion, propagation pending and client action required.
 
-Команды/выбор актуальных profiles могут требовать ситуационного анализа, но
-минимальные свойства неизменны:
+Select current commands and profiles for the situation, but always verify these properties:
 
-- TCP/TLS из домашней/мобильной/независимой сети, а не только self-hairpin VPS.
-- `scripts/check-public-ingress.py --check-dns`: TLS не отключать; login redirect
-  валидировать по status/target, не засчитывать любой 302 как здоровье backend.
-- Реальный authenticated VPN client **вне VPS**, literal NEW endpoint,
-  корректный TLS SNI/WS path и HTTPS-запросы к нейтральной цели, Telegram, ChatGPT.
-  После последнего reload повтори. Результат одного профиля не означает все
-  Reality/VLESS/WireGuard/AmneziaWG профили: протестируй используемые протоколы
-  или явно запиши непроверенные. Не рассылай traffic по чужим credentials.
-- Temporary probes: private config, bounded timeout, конкретный процесс/PID,
-  без raw body/log. Удалить pod/Secret/temp bundle, подтвердить отсутствие;
-  permanent backups/preimages не удалять. Не kill чужие браузеры/процессы.
-- Перечитай CROOT/локальный SSH alias, generated Mac WireGuard profile и
-  **реально импортированный (imported)** профиль. File update ≠ GUI profile update.
-- Попроси пользователя обновить subscription на телефоне и reconnect. Статически
-  импортированные IP не меняются удалённо; не заставляй менять ключи/QR без причины.
-- Не объявляй предотвращение будущей блокировки частью этого skill. Это отдельная
-  задача; новый IP тоже может стать недоступен.
+- Test TCP/TLS from home, mobile and independent networks, not only a VPS self-hairpin.
+- Use `scripts/check-public-ingress.py --check-dns` with TLS verification enabled. Validate login redirects by status and target; an arbitrary 302 is not backend health.
+- Use an authenticated VPN client **outside the VPS**, literal NEW, correct TLS SNI and WebSocket path, and HTTPS requests to a neutral destination, Telegram and ChatGPT. Repeat after the final reload. One profile does not certify every Reality/VLESS/WireGuard/AmneziaWG profile. Test protocols in use or record each as unverified. Do not generate traffic with another person's credentials.
+- Use a private temporary probe configuration, bounded timeout and specific process/PID. Do not log raw bodies. Delete temporary pods, Secrets and bundles and confirm absence. Keep permanent backups and preimages. Never kill unrelated browsers or processes.
+- Recheck CROOT, the local SSH alias, the generated Mac WireGuard profile and the **actually imported** profile. Updating a file does not update a GUI profile.
+- Ask the user to refresh the phone subscription and reconnect. A statically imported IP does not update remotely; do not require new keys or QR codes unnecessarily.
+- Preventing future blocking is outside this skill. NEW can also become unreachable.
 
-## Итоговый отчёт
+## Final report
 
-OLD → NEW, commit/revision, что applied и delivered, actual тесты и vantage,
-остаточные OutOfSync/unknown, parent glue, client actions, краткие перерывы,
-сохранённые backup/preimage locations (без содержимого). Отдельно сообщи failures
-и исправления. Не обещай бесконечную надёжность по короткому успешному тесту.
+Record OLD → NEW, commit/revision, what was applied versus actually delivered, tests and observation points, remaining OutOfSync or unknown states, parent glue, client actions, brief interruptions and retained backup/preimage locations (not contents). Report failures and fixes separately. A short successful test is not an indefinite reliability guarantee.
 
 ### Native host-address writer (3x-ui 3.11.0)
 
-`scripts/vps-panel-host-migrate.py --state /private/vpn83-... --old-ip OLD --new-ip NEW`
-делает read-only preview. Apply требует ровно его `--approve-sha256` и `--apply`.
-Для hosts/update нужен временный worker scope admin; обычные sessions остаются
-node-sync. Каждый session использует уникальные имена, worker TTL 20 минут,
-cleanup TTL 30 минут, online preimage и cleanup без ротации существующих токенов.
-Не выдавать постоянный admin и не использовать человеческую авторизацию.
+`scripts/vps-panel-host-migrate.py --state /private/vpn83-... --old-ip OLD --new-ip NEW` produces a read-only preview. Apply requires that preview's exact `--approve-sha256` and `--apply`. The hosts/update operation needs a temporary worker with admin scope; ordinary sessions remain node-sync. Use unique names per session, 20-minute worker TTL, 30-minute cleanup TTL, an online preimage and cleanup without rotating existing tokens. Do not grant permanent admin or use human authorization.
 
-Native DTO roundtrip обновляет host updated_at и кодирует nullable bool false
-как 0; пустой snis при единственном sni становится явным одноэлементным pool.
-Writer разрешает только эти проверенные семантически эквивалентные codec-эффекты
-и свежий native timestamp **только адресно изменённых строк**. Не игнорирует
-реальное изменение SNI/pool/flags, IDs, клиентов, лимитов или других таблиц.
-При незнакомом diff останавливается с uncertain receipt: сначала readback и
-сравнение с upstream, исходный вызов не повторять. После reconciliation новый
-preview нужен только для всё ещё OLD строк, с новым state и новой approval.
+The native DTO round trip updates host `updated_at`, encodes nullable Boolean false as 0, and expands empty `snis` with a single `sni` into an explicit one-element pool. The writer permits only those verified, semantically equivalent codec effects and a fresh native timestamp **only on rows whose address changed**. Changes to actual SNI, pools, flags, IDs, clients, limits or other tables are not ignored. An unfamiliar diff produces an uncertain receipt. Read back and compare with upstream before doing anything else; do not repeat the original call. After reconciliation, preview only remaining OLD rows with fresh state and new approval.
 
-Успешный API update не доказывает доставку. Проверить URI и JSON для всех
-сохранившихся идентичностей: backend и публичный TLS-вход должны совпасть,
-OLD отсутствует, NEW присутствует. Host-only update не требует слепого restart.
-External acceptance обеих схем — через literal NEW с сохранёнными TLS SNI/Host;
-у Trojan hostname-only тест может незаметно уйти на другой VPS/HOME. Не менять
-глобальные маршруты/DNS/прокси и Mac WireGuard для per-process probe.
+API success does not prove delivery. Verify URI and JSON for all retained identities: backend and public TLS entry point must agree; OLD must be absent and NEW present. A host-only update does not justify a blind restart. Test both schemes externally against literal NEW while preserving TLS SNI/Host. A hostname-only Trojan test can silently reach a different VPS or HOME. Do not change global routes, DNS, proxies or Mac WireGuard for a per-process probe.

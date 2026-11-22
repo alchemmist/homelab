@@ -24,7 +24,8 @@ kube-prometheus-stack:
                 unless on(namespace, job_name)
                 (
                   kube_job_owner{job="kube-state-metrics",namespace="pr-agent",owner_kind="CronJob",owner_name="spi-github-broker"}
-                  and on(namespace, job_name) (kube_job_status_succeeded{job="kube-state-metrics",namespace="pr-agent"} == 1)
+                  and on(namespace, job_name)
+                  (kube_job_status_succeeded{job="kube-state-metrics",namespace="pr-agent"} == 1)
                   and on(namespace, job_name) (
                     kube_job_status_start_time{job="kube-state-metrics",namespace="pr-agent"}
                     < on(namespace) group_left() max by(namespace) (

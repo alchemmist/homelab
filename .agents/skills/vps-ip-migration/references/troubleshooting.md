@@ -1,115 +1,59 @@
-# Ситуационная диагностика: не превращать гипотезу в автоматическую правку
+# Troubleshooting: verify a hypothesis before changing anything
 
-Все команды выполняются по существующему приватному доступу. Сначала read-only,
-потом решение и минимальная правка у правильного владельца. Не публиковать raw
-журналы соединений, request bodies, usernames, credentials и IP пользователей.
-Короткое окно/агрегированные counts предпочтительнее полного `kubectl logs`.
+Use existing private access. Start read-only, identify the owner and make the smallest justified change. Do not publish raw connection logs, request bodies, usernames, credentials or user IPs. Prefer short observation windows and aggregate counts over a full `kubectl logs` dump.
 
-## 1. NEW не отвечает снаружи
+## 1. NEW is unreachable externally
 
-- Сверь фактическое назначение IP на VPS, route/source, listener (`ss`) и
-  источник persistent network configuration. Если адрес не назначен — это
-  provider stage, не ошибка приложения. Не угадывай gateway и netmask.
-- Сравни TCP из home/mobile/независимых сетей и с самого VPS. Self-hairpin
-  проверяет процесс, но не внешний вход. Ping проверяет другой протокол.
-- Короткий bounded capture на external interface: счётчики входящих SYN и
-  исходящих SYN-ACK, без payload/вывода raw client addresses. SYN не дошёл —
-  исследуй upstream/path; дошёл, нет ответа — local firewall/listener/routing.
-  SYN-ACK ушёл без ACK — возможен обратный путь; это ещё не доказательство ТСПУ.
-- Смотри counters точных правил nft/iptables, kube-proxy и policy owners.
-  `ufw inactive` не означает отсутствие nft/iptables. Не flush, не accept-all.
-- Если доступ различается по сетям, записать региональный/path-specific отказ.
-  Смена порта — отдельный согласованный тест, сервер тоже должен его слушать.
+- Verify actual address assignment, source route, listener (`ss`) and the owner of persistent network configuration. An unassigned address is a provider issue, not an application failure. Do not guess the gateway or netmask.
+- Compare TCP connectivity from home, mobile, an independent network and the VPS itself. A hairpin tests the process, not external ingress; ping tests a different protocol.
+- Use a short, bounded capture on the external interface. Count inbound SYN and outbound SYN-ACK packets without collecting payloads or printing client addresses. No inbound SYN suggests an upstream/path issue; SYN without a reply warrants checking the local firewall, listener and routes. SYN-ACK without ACK can indicate a return-path problem; it does not prove provider filtering.
+- Check counters on the specific nftables/iptables rules, kube-proxy and policy owners. `ufw inactive` does not mean no firewall rules exist. Do not flush rules or allow all traffic.
+- If results vary by network, record the regional or path-specific failure. Changing ports is a separate, approved test; the server must also listen on the test port.
 
-## 2. TLS устанавливается, HTTPS затем зависает
+## 2. TLS connects but HTTPS stalls
 
-- Это не TCP-блокировка IP. Сверь ingress route, Service/EndpointSlice, backend
-  Ready и прямой внутренний запрос. Доступен ли backend site по mesh?
-- Проверяй runtime + persistent WireGuard endpoints, handshake ages и counters
-  обеих сторон. После смены IP один node может работать через ещё живой канал,
-  а worker с приложением — обращаться к OLD.
-- Проверь TCP transport bind на VPS и destination на client, guard counters,
-  затем только relevant backend route. Не restart весь Kubernetes для mesh.
-- При проблемах только с большими ответами исследуй MTU/MSS и retransmits;
-  не меняй MTU всех узлов по одному timeout без подтверждения.
+- TCP reached the address. Check the ingress route, Service, EndpointSlice, backend readiness and a direct internal request. Is the backend reachable over the mesh?
+- Compare persistent and runtime WireGuard endpoints, handshake ages and counters on both sides. One node may still have a working channel while the application worker uses OLD.
+- Check the VPS TCP transport bind, the client destination, guard counters and the relevant backend route. Do not restart Kubernetes to diagnose a mesh problem.
+- If only large responses stall, investigate MTU/MSS and retransmissions. Do not change MTU across all nodes based on one timeout.
 
-## 3. DNS ведёт не туда / разные резолверы дают разные ответы
+## 3. DNS points to the wrong address or resolvers disagree
 
-- Отдельно сравни `/etc/hosts`/getent, configured resolver, оба child authorities,
-  parent glue, Google/Cloudflare DoH. У getent может быть локальный override.
-- Обычный `dig @8.8.8.8` из home может перехватываться. Флаг aa/необычный TTL
-  и несогласованность с DoH — повод проверить другой vantage, не «пропагацию».
-- Самостоятельный health-based renderer на двух сторонах при partition может
-  публиковать разные A. Выясни, какой probe и почему failed; это не повод
-  механически закрепить домашний IP всем именам, особенно non-HTTP transports.
-- Child A NEW при parent glue OLD — незавершённая registrar stage. Parent NEW
-  при recursive OLD — уже кеш; зафиксируй TTL. Не отключать второй NS наугад.
+- Compare `/etc/hosts` and `getent`, the configured resolver, both child authorities, parent glue and Google/Cloudflare DoH separately. `getent` may use a local override.
+- A home-network `dig @8.8.8.8` can be intercepted. An unexpected `aa` flag or TTL and disagreement with DoH warrant another observation point, not an assumption of propagation delay.
+- During a partition, independent health-based renderers may publish different A records. Identify which probe failed and why. Do not pin every name to the home IP, especially for non-HTTP transports.
+- Child A = NEW and parent glue = OLD means the registrar stage is incomplete. Parent = NEW and recursive = OLD indicates caching; record the TTL. Do not disable the second nameserver on a guess.
 
-## 4. VPN-клиент «подключён», но трафика нет
+## 4. The VPN client says connected but passes no traffic
 
-- Статус приложения не доказывает tunnel delivery. Проверь выбранный профиль,
-  literal destination после refresh, protocol/port, SNI/WS path и срок/лимит
-  конкретного клиента, не раскрывая identifiers/credential в отчёте.
-- Сравни другой сайт, Wi-Fi/mobile и Global vs rules режим. Это диагностический
-  тест, не разрешение менять политику клиента постоянно без пользователя.
-- Отдельно проверь VPS egress и authenticated external tunnel. Работает только
-  egress — ещё не исправен tunnel. Работает один Trojan — не доказан VLESS/WG.
-- Подписки OLD после host apply: все таблицы current DB, `hosts.address`, источники
-  share address/host mappings и actual path mounted DB. Одна только строка
-  settings/inbounds не покрывает hosts. Не делать второй restart вслепую.
-- После SQL address migration проверь exact invariants, потом точный panel reload
-  и полную выдачу plain/JSON. Если NEW только в файле, а клиент старый — refresh
-  subscription или ручной endpoint, не перевыпуск всех credentials.
+- Check the selected profile, literal destination after refresh, protocol, port, SNI, WebSocket path and the specific client's expiry and quota. Do not include identifiers or credentials in the report.
+- Compare another site, Wi-Fi versus mobile and Global versus rules mode. These are diagnostic tests, not permission to change the user's policy permanently.
+- Test VPS egress and an authenticated external tunnel separately. Working egress does not prove tunnel delivery. One working Trojan profile does not verify VLESS or WireGuard.
+- If subscriptions still advertise OLD, inspect all tables in the active database, `hosts.address`, share-address and host-mapping sources, and the actual mounted database path. Looking only at settings and inbounds misses hosts. Do not restart the panel a second time on a guess.
+- After the address migration, verify exact database invariants, determine whether the specific panel needs a reload, then check all plain and JSON subscriptions. If the file has NEW but the client still uses OLD, refresh the subscription or correct the manual endpoint; do not reissue everyone's credentials.
 
-## 5. Сайт открывается, но вход/бот/объектное хранилище ломается
+## 5. The site opens but sign-in, the bot or object storage fails
 
-- HTTP 200 может быть только login page. Сверь ожидаемый auth redirect host/path,
-  затем доступ приложения к Authentik/token endpoint и policy egress.
-- У RustFS отдельные NetworkPolicies storage и identity gateway. Старый /32 в
-  одной из них может ломать callback, даже когда публичная страница доступна.
-- Telegram webhook URL и pinned IP — разные вещи. `getWebhookInfo` с VPS,
-  pending count, age последнего error; запрос с home может сам блокироваться.
-  Не повторять публикацию/операцию с побочным эффектом ради health check.
-- NetBird advertised URI может оставаться OLD в Secret, хотя listener новый.
-  Перечитай effective config и lifecycle, не меняй node identities/ACL.
+- HTTP 200 may be only a login page. Verify the expected authentication redirect host and path, then check the application's access to Authentik, the token endpoint and policy egress.
+- RustFS storage and the identity gateway have separate NetworkPolicies. A stale `/32` in either can break callbacks while the public page remains reachable.
+- A Telegram webhook URL and its pinned IP are separate. Check `getWebhookInfo` from the VPS, pending count and age of the last error. The home network may block the API request itself. Do not repeat publication or a side-effecting operation as a health probe.
+- The NetBird listener may use NEW while the Secret still advertises OLD. Inspect effective configuration and reload state; do not change node identities or ACLs.
 
-## 6. Красный светофор при работающем новом входе
+## 6. The dashboard stays red although NEW works
 
-- Проверяй instance у свежего `probe_success`, job owner и age sample. Старый
-  target в saved Collector bundle не меняется от одного ServiceMonitor.
-- Если NEW=1, но firing OLD остаётся — проверь last sample/rule evaluation и
-  lookback expiry. Не удалять старую серию ради цвета. Не выдавать stale data
-  за успешную текущую проверку.
-- Collector failures/queue growth — stop gate. Сравни delta по exporter/pipeline,
-  а не только суммарную queue (сайзер может быть bytes vs requests). Ресурсный
-  отказ и синтаксическая transform ошибка — разные причины; память не повышать
-  без evidence. Исследовать безопасные классы ошибок, не raw bodies.
+- Check the instance on a fresh `probe_success` sample, the job owner and sample age. Changing a ServiceMonitor alone does not update a target in the saved Collector bundle.
+- If NEW reports 1 but OLD is still firing, check the last sample, rule evaluation and lookback expiry. Do not delete a series to turn the panel green or treat stale data as a current pass.
+- Collector failures or growing queues are stop conditions. Compare deltas per exporter and pipeline, not just the aggregate queue: its unit may be bytes or requests. Distinguish resource exhaustion from a transform syntax error. Do not increase memory without evidence. Inspect sanitized error classes, not raw bodies.
 
-## 7. Ошибка playbook / schema drift
+## 7. The playbook fails or the schema has drifted
 
-- Сохрани stdout counts + private receipt; **не повторять apply автоматически**.
-  Определи, какие source/files/DB уже изменены и какие native units не перечитаны.
-- Не исправлять unknown schema общим SQL replace всех TEXT колонок. Найти
-  поддерживаемый owner/API или обновить allowlist/инварианты отдельным review.
-- Не восстанавливать старую целую БД поверх новых live данных. Preimage нужна
-  для сравнения/точечного recovery, а не разрешение терять новые записи.
-- После ручного восстановления сохранить evidence и исходный receipt, явно
-  отметить согласованное состояние и только затем снова audit.
+- Keep stdout counts and the private receipt. **Do not retry apply automatically.** Determine which sources, files and databases changed and which native units have not reloaded.
+- Do not repair an unknown schema with SQL replacement across all TEXT columns. Identify the supported owner or API, or separately review changes to the allowlist and invariants.
+- Never restore an old database wholesale over new live data. A preimage supports comparison or targeted recovery, not loss of later writes.
+- After manual recovery, retain evidence and the original receipt, explicitly record the reconciled state and only then audit again.
 
-## 8. SSH alias не работает после переезда
+## 8. An SSH alias fails after migration
 
-Обычные `socrat-N` должны подключаться к private mesh IP, без `ProxyJump` и
-публичного SSH. Не выдавать переключение alias на домашний IP/VPS public за
-исправление внутренней сети. Recovery alias допускается только как временный
-канал управления во время диагностики.
+Normal `socrat-N` aliases must use private mesh IPs, without `ProxyJump` or public SSH. Redirecting an alias to the home IP or public VPS does not repair the internal network. A recovery alias is only a temporary management path during diagnosis.
 
-Сверить `ssh -G`, host routes Mac, активный **импортированный** WireGuard profile,
-актуальность VPS endpoint и покрытие worker `10.250.0.5/32`. Проверить обратный
-peer route и узкий forwarding ACL. Исправлять VPN под source ownership, не
-создавать ещё один SSH bastion. Подробности и критерии:
-`docs/netbird-tunnelblick-coexistence.md` (основной NetBird) и
-`docs/mac-private-ssh.md` (резервный standalone WireGuard). Проверить фактический
-интерфейс выбранного транспорта, не засчитывать работу через другой VPN.
-Для NetBird ожидаема существующая masquerade routing-peer; source `.4` относится
-только к standalone WireGuard и не является критерием NetBird. Tunnelblick не
-отключать: NetBird не управляет DNS и принимает только четыре выбранных `/32`.
+Check `ssh -G`, Mac host routes, the active **imported** WireGuard profile, the VPS endpoint and coverage of worker `10.250.0.5/32`. Verify the reverse peer route and narrowly scoped forwarding ACL. Fix the VPN at its source of truth; do not create another SSH bastion. See `docs/network/netbird/clients/netbird-tunnelblick-coexistence.md` for primary NetBird access and `docs/auth/host-access/mac-private-ssh.md` for standalone WireGuard recovery. Verify the interface of the selected transport; a different VPN working is not a pass. NetBird uses the existing masquerading routing peer. Source `.4` applies only to standalone WireGuard, not NetBird acceptance. Keep Tunnelblick running: NetBird does not manage DNS and accepts only the four selected `/32` routes.
