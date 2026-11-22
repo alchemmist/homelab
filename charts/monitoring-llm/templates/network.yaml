@@ -16,7 +16,8 @@ spec:
               kubernetes.io/metadata.name: {{ $.Values.prometheusNamespace }}
           podSelector:
             matchLabels:
-              prometheus: {{ $.Values.prometheusRelease }}-prometheus
+              app.kubernetes.io/name: prometheus
+              operator.prometheus.io/name: {{ $.Values.prometheusRelease }}-prometheus
       ports:
         - protocol: TCP
           port: {{ $target.port }}

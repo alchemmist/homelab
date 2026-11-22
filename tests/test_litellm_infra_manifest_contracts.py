@@ -65,9 +65,17 @@ def test_gateway_and_monitoring_policies_select_real_cross_release_workloads() -
         monitor_peer["namespaceSelector"]["matchLabels"]["kubernetes.io/metadata.name"]
         == "cattle-monitoring-system"
     )
-    assert monitor_peer["podSelector"]["matchLabels"] == {
-        "prometheus": "kube-prometheus-stack-prometheus"
-    }
+    prometheus = render(
+        "kube-prometheus-stack",
+        "charts/prometheus",
+        "charts/prometheus/alert-graphs.values.yaml",
+    )
+    prometheus_service = next(
+        obj for obj in prometheus
+        if obj.get("kind") == "Service"
+        and obj["metadata"]["name"] == "kube-prometheus-stack-prometheus"
+    )
+    assert monitor_peer["podSelector"]["matchLabels"] == prometheus_service["spec"]["selector"]
 
 
 def test_branding_runtime_probes_and_read_only_contract_render() -> None:

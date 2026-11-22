@@ -15,7 +15,7 @@ spec:
       ports: [{port: 5432}, {port: 8000}]
     - from:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: cattle-monitoring-system}}
-          podSelector: {matchLabels: {prometheus: kube-prometheus-stack-prometheus}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: prometheus, operator.prometheus.io/name: kube-prometheus-stack-prometheus}}
       ports: [{port: 9187}]
     {{- if or (eq $tier "critical") (eq $tier "common") }}
     - from:
