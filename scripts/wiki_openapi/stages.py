@@ -5,7 +5,7 @@ import os
 import subprocess
 import tempfile
 import urllib.request
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Protocol
 
@@ -16,7 +16,7 @@ from github import BotRepo, Homelab
 class PageBot(Protocol):
     """Bot repo reads used by a stage. Test doubles only need these methods."""
 
-    def files(self, before: object, after: object) -> object:
+    def files(self, before: object, after: object) -> Iterable[object] | None:
         """Return compare or commit file entries."""
         ...
 
@@ -36,7 +36,7 @@ class WikiRepo(Protocol):
         """List older automation pull requests."""
         ...
 
-    def close(self, number: object, survivor: object) -> object:
+    def close(self, number: int, survivor: object) -> None:
         """Close one pull request as superseded."""
         ...
 
@@ -45,7 +45,7 @@ class WikiRepo(Protocol):
         ...
 
 
-def model(system: str, data: object):
+def model(system: str, data: object) -> object:
     request = urllib.request.Request(
         "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
         data=json.dumps(
@@ -84,7 +84,7 @@ def model(system: str, data: object):
         return json.loads(json.load(response)["choices"][0]["message"]["content"])
 
 
-def render_page(after: object, bot: PageBot):
+def render_page(after: object, bot: PageBot) -> str:
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         (root / "openapi.yaml").write_text(bot.text(after, "openapi.yaml"))
@@ -119,7 +119,7 @@ def stage(
     call_model: Callable[[str, object], object] | None = None,
     *,
     write: bool = False,
-):
+) -> list[Mapping[str, object]]:
     bot = bot or BotRepo()
     if name == "check":
         event = payload.get("body", payload)
