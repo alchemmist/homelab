@@ -131,7 +131,7 @@ def test_suppression_blocks_owned_source(
 
 
 @pytest.mark.parametrize(
-    "roots", [["scripts/", "tests/"], ["ansible/", "deploy/", "scripts/", "tests/"]]
+    "roots", [["scripts/"], ["scripts/", "tests/"], ["ansible/", "deploy/", "scripts/", "tests/"]]
 )
 def test_python_inputs_module_emits_exact_nul_delimited_inventory(roots: list[str]) -> None:
     expected = [
@@ -162,6 +162,7 @@ def test_python_inputs_use_owned_paths(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.mark.parametrize(
     ("names", "roots", "missing"),
     [
+        (["tests/helper.py", "scripts/README.md"], ["scripts/"], "scripts/"),
         ([], ["scripts/", "tests/"], "scripts/"),
         (["scripts/a.py"], ["scripts/", "tests/"], "tests/"),
         (["tests/a.py"], ["scripts/", "tests/"], "scripts/"),

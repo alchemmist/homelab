@@ -466,9 +466,17 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \\\n"
         "    --ignore-noqa --output-format concise --"
     )
-    i001 = graph["deploy-i001"]
-    assert i001["policy"] == policy
-    assert "scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |" in i001["run"]
+    imports = graph["deploy-i001"]
+    assert imports["policy"] == policy
+    assert imports["run"] == (
+        "set -euo pipefail\n"
+        "uv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |\n"
+        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n"
+        "    --ignore-noqa --output-format concise --\n"
+        "uv run python -m scripts.quality.python_inputs scripts/ |\n"
+        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select F401 \\\n"
+        "    --ignore-noqa --output-format concise --"
+    )
     assert graph["ansible"]["needs"] == ["ownership"]
     assert graph["ansible"]["policy"]["blocking"] is True
     assert graph["yaml"]["profile"] == "default"

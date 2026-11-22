@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 """Owner-authorized node5 runtime copy. Runs cold only on a different boot ID."""
 
-import datetime
 import json
 import os
 import pathlib
