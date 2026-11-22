@@ -453,6 +453,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     for node in first_layer:
         assert graph[node]["needs"] == ["graph"]
         assert graph[node]["policy"]["blocking"] is True
+    assert "scripts.quality.python_inputs ansible/ deploy/ |" in graph["deploy-i001"]["run"]
     assert graph["yaml"]["profile"] == "default"
     assert graph["yaml"]["run"] == "uv run python scripts/quality/lint.py yaml"
     assert graph["yaml"]["results"] == {"native": "reports/yaml.json"}
