@@ -207,7 +207,7 @@
     "trusted": false,
     "waiver": false,
     "publisher": ".github/workflows/quality-graph-publish.yml",
-    "compiler": "quality-graph-github a08603fcb44e9e22813b497ed391addf68797ce3 scheduled-publisher.yml.in",
+    "compiler": "quality-graph-github 95762edd93bb3bfeb459f787c8fc71ef7154916c scheduled-publisher.yaml.in",
     "triggers": {
       "schedule": [
         {
@@ -228,13 +228,13 @@
         "checks": "write",
         "contents": "read",
         "issues": "write",
-        "pull-requests": "read"
+        "pull-requests": "write"
       },
       "command": {
         "actions": "write",
         "contents": "read",
         "issues": "write",
-        "pull-requests": "read"
+        "pull-requests": "write"
       }
     },
     "zizmor": [
