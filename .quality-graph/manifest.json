@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "f968f8b5a06fce5fe2dbbc8244bafb5af01d8168faba8055f3128e039b26f19a",
+  "graphDigest": "fffdeb8519d68bbc8c16b3d2d5209eaa42d4f0e910bc28fca9d79fb6231a0239",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -115,10 +115,10 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs deploy/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n    --ignore-noqa --output-format concise --"
+        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs ansible/ deploy/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n    --ignore-noqa --output-format concise --"
       },
       "timeoutMinutes": 5,
-      "title": "Owned deploy Python import order (I001)"
+      "title": "Owned Ansible and deploy Python import order (I001)"
     },
     {
       "env": {},
