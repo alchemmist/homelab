@@ -16,7 +16,7 @@
           changes there; use rancher-placement.yml only for its documented targeted
           refresh/verification. Do not run upstream Helm upgrade, reset bootstrap
           credentials, or restore stale PVCs. For a new installation or recovery,
-          review docs/vm105-management-20261116.md and the current prerequisites
+          review docs/platform/rancher-private-access.md and the current prerequisites
           separately; this refusal is not an automated empty-cluster restore.
       tags: [always]
 ...

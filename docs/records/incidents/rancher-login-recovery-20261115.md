@@ -2,7 +2,7 @@
 
 > Historical15Nov recovery: placement below is superseded by the accepted
 >16Nov return to5 with verified native issuer routing. See
-> [current management handoff](../handoffs/vm105-management-20261116.md).
+> [current management handoff](../../../archive/vm105/vm105-management-20261116.md).
 
 ## Historical recovery result
 

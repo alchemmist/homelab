@@ -29,7 +29,7 @@ no owner callback impersonated.41staticSecrets exact,58identity objects same
 UID/body/count, full OIDC AuthConfig unchanged. Dynamic serving-cert leaf alone
 updated Pod SANs: same private key/CA trust, original-root verify passed.8tests
 pass; diagnostic removed. Full incident/rollback/receipts/RAM caveats:
-`docs/records/handoffs/vm105-management-20261116.md`; this supersedes Rancher-on1 recovery below.
+`archive/vm105/vm105-management-20261116.md`; this supersedes Rancher-on1 recovery below.
 
 RAM: relocated baseline consumers1428Mi(controller)+1313Mi(Rancher);14:31node0
 18457Mi58%,1 7817Mi51%,5 7197Mi18%. Host net reductions526/927Mi versus prior
@@ -88,7 +88,7 @@ publication, inference, bank sync, account/MFA or workflow test. Human callback/
 editor/account acceptance remains owner-led, SDK config is not server-child
 trace proof. VM full backup/independent restore/cold boot still outstanding;
 relay0 non-HA dependence unchanged. [Full handoff, hashes, incidents and
-rollback](../records/handoffs/vm105-stateful-20261116.md).
+rollback](../../archive/vm105/vm105-stateful-20261116.md).
 
 ## Four additional stateless moves —16Nov, CURRENT
 
@@ -122,7 +122,7 @@ no personal account/data/import/sync touched.3unique-label preflight Pods gone.
 expects OIDC disabled even though baseline/live already enabled. Reproduced on
 clean d11079aa, not hidden by changing auth. Relay0 dependency and all previous
 DR/telemetry caveats remain. Exact receipts, pause/rollback details:
-[four-app handoff](../records/handoffs/vm105-four-stateless-20261116.md).
+[four-app handoff](../../archive/vm105/vm105-four-stateless-20261116.md).
 
 ## Application retry after transport repair —16Nov, CURRENT
 
@@ -147,7 +147,7 @@ probe400/export success; Tempo probe root seen but actual LiteLLM server child
 NOT independently verified. Do not equate preserved env with full SDK proof;
 no real/paid inference generated. No new test Pods/keys or network changes.
 Current authority, exact receipts, caveats and rollback:
-[application retry handoff](../records/handoffs/vm105-app-retry-20261116.md).
+[application retry handoff](../../archive/vm105/vm105-app-retry-20261116.md).
 
 ##1↔5 transport mitigation —16Nov, CURRENT
 
@@ -263,7 +263,7 @@ handling. Explicit original DISABLE_SCHEMA_UPDATE=true retained; zero newly appl
 or unfinished Prisma migrations during handoff; latest Argo operation had no Job.
 Main Ansible now uses canonical platform values/local chart; legacy monitoring
 OCI upgrade refuses to undo Git-owned configuration. Full browser/API/SQL receipts,
-rollback chronology and limits: [handoff](../records/handoffs/vm105-lms-litellm-renderer-20261116.md).
+rollback chronology and limits: [handoff](../../archive/vm105/vm105-lms-litellm-renderer-20261116.md).
 All five probes removed, no forced production delete/blanket sync or unrelated
 monitoring edits. Earlier four-app5 data authority and Rancher1 recovery unchanged.
 
@@ -314,7 +314,7 @@ backup. One-off artifact-only transfer key/receiver/private file removed. Own he
 cleaned. Main WebUI/Terminal downtime~20:34–21:34MSK due transport; OIDC rollout21:51.
 VM regular backup/cold-boot/full restore still unproven; legacy node0 WebUI upgrade
 playbook fails closed and needs VM-aware backup adaptation before use.
-[Acceptance/backups/rollback](../records/handoffs/llm-apps-vm105-20261115.md).
+[Acceptance/backups/rollback](../../archive/vm105/llm-apps-vm105-20261115.md).
 
 ## Browser authentication audit —15Nov2026, CURRENT
 
@@ -342,7 +342,7 @@ rolled out, Argo Synced/Healthy, four Ready/restart0 Pods, no blog/home Pods on2
 Individual Pod HTML + two Ready endpoints each verified. Repeated public HTTPS
 roots200 (blog/www/home), home favicon/wallpaper/font200. Images/Secrets/routes/
 content unchanged; no DB/PVC transfer, VPN/etcd/other apps untouched. Source
-019276cd +9a931d46. [Acceptance/rollback](../records/handoffs/static-apps-vm105-20261115.md).
+019276cd +9a931d46. [Acceptance/rollback](../../archive/vm105/static-apps-vm105-20261115.md).
 
 ## External password self-service — CURRENT
 
@@ -404,13 +404,13 @@ integrity/key checked to ORIGINAL n8n-socrat5 PV/PVC on VM, actual data on2TiB
 10credentials/1user/6active preserved, key/Secret/PV/PVC identities unchanged.
 VM105 n8n DB NOW AUTHORITATIVE with new writes; retained node1 dataset is stale,
 never blindly restart it. New online backup from5 to3 independently verified.
-[Application handoff/current rollback boundary](../records/handoffs/socrat5-app-handoff-20261115.md).
+[Application handoff/current rollback boundary](../../archive/vm105/socrat5-app-handoff-20261115.md).
 CT104 was already ABSENT on re-entry (not deleted by this assistant); cold backup
 retained/verified. Proxmox onboot1/agent1 set; full VM stop/start to instantiate
 agent channel and reboot acceptance still PENDING approval. Regular VM backup
 coverage not verified; NFS Pod/PVC acceptance PASSED. Temporary restricted root migration
 keys expire16/17Nov; remove after acceptance. Do not restore104 alongside105.
-[Runtime evidence, boundaries and remaining gates](../records/handoffs/socrat5-vm-worker-20261115.md).
+[Runtime evidence, boundaries and remaining gates](../../archive/vm105/socrat5-vm-worker-20261115.md).
 Earlier paused/CT-active/node5-offline notes are historical, not current state.
 
 ## Per-app B2C groups — CURRENT
@@ -464,7 +464,7 @@ independent archive/DB integrity and sourceNode1 verified on3.6tests+Helm lint
 passed. No manual workflow execution, SQL reset, browser login or every-credential
 operation claimed. CT104 stopped/onboot0, node5 cordoned, VM activation not done;
 final cold-payload transfer completion still UNKNOWN due RuDesktop daily limit.
-[Recovery proof and resume gates](../records/handoffs/socrat5-vm-migration-20261114.md).
+[Recovery proof and resume gates](../../archive/vm105/socrat5-vm-migration-20261114.md).
 
 ## socrat-5 CT104 → VM105 cutover PAUSED — 14Nov2026; n8n paragraph superseded above
 
@@ -477,7 +477,7 @@ PR Agent restored via GitOps to socrat-1, Running/Ready1, public HTTP200. n8n st
 at replicas0: latest accessible off-host backup is 14Nov00:15UTC, approximately
 12h before shutdown; owner acceptance REQUIRED before stale-data restoration.
 No PV/PVC/Node deletion, n8n Secret change, mesh reenrollment or global pruning.
-[Cutover checkpoint and recovery gates](../records/handoffs/socrat5-vm-migration-20261114.md).
+[Cutover checkpoint and recovery gates](../../archive/vm105/socrat5-vm-migration-20261114.md).
 
 ## Moscow repair APPLIED and K3S restored —13Nov2026, CURRENT
 

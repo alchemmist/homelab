@@ -123,11 +123,11 @@ credential и read-only режимом клиента, а не разрешен�
 не скачивался. Это не текущий способ сопровождения и не fallback при ошибке
 Application. Сопровождение аккаунта/RBAC — через canonical Git source; native
 OIDC и существующие credentials сохраняются. Принятая приёмка Argo после переноса
-описана в [management handoff](../records/handoffs/vm105-management-20261116.md).
+описана в [management handoff](../../archive/vm105/vm105-management-20261116.md).
 
 ## Как устроен Argo CD
 
-Argo CD размещён раздельно: application-controller на `socrat-5`, остальные компоненты на `socrat-0`. UI: `https://argocd.socrat.alchemmist.xyz`, native Authentik OIDC. Canonical values: `deploy/platform/argo-cd/values.yaml`; старый путь — compatibility symlink. `ansible/playbooks/argocd.yml` допускает только явный empty-cluster bootstrap и отказывает при существующих workloads. Текущий контракт: [context](../context/context.md), приёмка: [management handoff](../records/handoffs/vm105-management-20261116.md).
+Argo CD размещён раздельно: application-controller на `socrat-5`, остальные компоненты на `socrat-0`. UI: `https://argocd.socrat.alchemmist.xyz`, native Authentik OIDC. Canonical values: `deploy/platform/argo-cd/values.yaml`; старый путь — compatibility symlink. `ansible/playbooks/argocd.yml` допускает только явный empty-cluster bootstrap и отказывает при существующих workloads. Текущий контракт: [context](../context/context.md), приёмка: [management handoff](../../archive/vm105/vm105-management-20261116.md).
 
 Базовая схема и NetBird:
 

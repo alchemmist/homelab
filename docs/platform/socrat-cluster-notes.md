@@ -146,7 +146,7 @@ Rancher:
 https://rancher.socrat.alchemmist.xyz
 ```
 
-Rancher placement was superseded on16November2026: one replica on `socrat-5`, preferred anti-affinity for rolling replacement, not HA. `ansible/playbooks/rancher-placement.yml` refreshes/verifies the Git-owned deployment; the old two-home-replica layout is historical. See [accepted management handoff](../records/handoffs/vm105-management-20261116.md). Both home nodes now run Kubernetes API servers, backed by three etcd voters including the VPS. Home ingress redundancy requires the VIP and router cutover described in [the HA runbook](k3s-ha.md).
+Rancher placement was superseded on16November2026: one replica on `socrat-5`, preferred anti-affinity for rolling replacement, not HA. `ansible/playbooks/rancher-placement.yml` refreshes/verifies the Git-owned deployment; the old two-home-replica layout is historical. See [accepted management handoff](../../archive/vm105/vm105-management-20261116.md). Both home nodes now run Kubernetes API servers, backed by three etcd voters including the VPS. Home ingress redundancy requires the VIP and router cutover described in [the HA runbook](k3s-ha.md).
 
 Uptime Kuma / status:
 

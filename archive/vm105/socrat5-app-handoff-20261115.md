@@ -3,7 +3,7 @@
 > **22:29MSK15Nov UPDATE:** Rancher alone returned to **socrat-1**, one non-HA
 > replica, to restore native OIDC. Earlier Rancher-on5 acceptance was incomplete
 > (health/API checks did not exercise login). Other accepted node5 workloads stay.
-> [Recovery evidence](../incidents/rancher-login-recovery-20261115.md).
+> [Recovery evidence](../../docs/records/incidents/rancher-login-recovery-20261115.md).
 
 ## CURRENT authority and placement
 
