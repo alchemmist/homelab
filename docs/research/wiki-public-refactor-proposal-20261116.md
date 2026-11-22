@@ -6,7 +6,7 @@ S3-storage page does not. Thus the documentation discrepancy is also present in
 published content, not merely a Git search result.
 
 This session has no exposed native Wiki MCP connection/write-scoped personal
-access token. `docs/applications/wiki.md` specifies native `/mcp`, per-user PAT and effective
+access token. `docs/applications/wiki/README.md` specifies native `/mcp`, per-user PAT and effective
 account-role enforcement. Browser cookies and bootstrap credentials are not MCP
 credentials; do not extract/borrow them or create a shared admin identity to
 finish a documentation task. Configure the normal authorized connection through

@@ -169,7 +169,7 @@ Public traffic-light — единственный явный share, не anonymo
 Headerless TV geometry обновлена в `832e341`; прежние hard-coded panel positions
 из октябрьских заметок не текущая layout specification. Источники — dashboard JSON,
 `deploy/platform/grafana/public-entry/files/traffic-light-inset.js` и
-[TV design](../applications/traffic-light-tv-design.md), а не инъекция JS в Fully.
+[TV design](../applications/android-tv/traffic-light-tv-design.md), а не инъекция JS в Fully.
 Последующая documented приёмка (`29f41d9`): dashboard `832e341`, kiosk parity
 `757dc18`, четыре real-browser случая (public/authenticated kiosk ×1920×1080/1440×900),
 40 targeted tests и24 public access checks. Это evidence другой выполненной
@@ -180,8 +180,8 @@ Grafana MCP — public verified-TLS endpoint с отдельным bearer и Vie
 native identity. Secret нельзя коммитить/печатать; browser MFA не подходит machine
 API. Для чтения использовать MCP/API, браузер — для визуального acceptance.
 
-[Деплой](../platform/cluster-deploy.md) · [сеть](../network/network-access.md) · [TV](../applications/android-tv.md) ·
-[SPI](../applications/spi-incident-triage.md) · [n8n](../n8n/n8n-workflows.md).
+[Деплой](../platform/cluster-deploy.md) · [сеть](../network/network-access.md) · [TV](../applications/android-tv/README.md) ·
+[SPI](../applications/spi/spi-incident-triage.md) · [n8n](../n8n/n8n-workflows.md).
 
 
 ## Отдельные инциденты, замеченные при закрытии split

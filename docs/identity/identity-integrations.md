@@ -224,7 +224,7 @@ nginx forward-auth3x-ui на n8n proxy-mode без воспроизведени�
 
 `deploy/public-web/services.json` хранит admission allowlist; публичные Ingress/proxy принадлежат соответствующим Argo Applications (локальные чарты либо `deploy/platform/<app>/public-entry` в той же Application), отдельный `public-web-entry` удалён; не смешивать их с foundation registry. Search admission owner/`netbird-internal-admins`; app authorization за aliases остаётся native, machine APIs не переводятся на browser redirect. Rancher публичен с native OIDC/ролями и policy proxy против local-password mutations; agents/bearer/WebSockets/private recovery сохранены. Grafana MCP — public verified TLS + отдельный read-only bearer, не human MFA gate.
 
-На node0 `/sync/` — personal MFA owner/`syncthing-web-admins`, затем неизменённый исходный BasicAuth, prefix снимается. Node1 отвечает 410 gateway-only: новую device/identity ради GUI не создавали. Existing BasicAuth, sync process/config/data не менялись. Реальный owner Basic login остаётся отдельной опциональной приёмкой. [Подробности публичного closeout](../applications/public-web-migration.md).
+На node0 `/sync/` — personal MFA owner/`syncthing-web-admins`, затем неизменённый исходный BasicAuth, prefix снимается. Node1 отвечает 410 gateway-only: новую device/identity ради GUI не создавали. Existing BasicAuth, sync process/config/data не менялись. Реальный owner Basic login остаётся отдельной опциональной приёмкой. [Подробности публичного closeout](../applications/public-web/public-web-migration.md).
 
 ## 10. Как подключить новый сервис: безопасный порядок
 

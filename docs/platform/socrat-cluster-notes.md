@@ -241,7 +241,7 @@ https://1.socrat.alchemmist.xyz/sync/ -> socrat-1 local Syncthing
 https://2.socrat.alchemmist.xyz/sync/ -> socrat-2 local Syncthing
 ```
 
-These interfaces are private to the WireGuard mesh and retain the existing BasicAuth credentials. Public `sync-*` ingresses are removed. A node-local nginx sidecar proxies to loopback; Ansible owns narrowly scoped WireGuard HTTPS routing. See [the private UI runbook](../applications/syncthing-private-ui.md) for deployment, certificate renewal and recovery. Device identities and folder pause states were retained during migration.
+These interfaces are private to the WireGuard mesh and retain the existing BasicAuth credentials. Public `sync-*` ingresses are removed. A node-local nginx sidecar proxies to loopback; Ansible owns narrowly scoped WireGuard HTTPS routing. See [the private UI runbook](../applications/syncthing/syncthing-private-ui.md) for deployment, certificate renewal and recovery. Device identities and folder pause states were retained during migration.
 
 ### Syncthing philosophy
 

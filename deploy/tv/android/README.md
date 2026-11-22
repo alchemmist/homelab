@@ -21,7 +21,7 @@ cd ansible
 ansible-playbook playbooks/tv-admin.yml --ask-become-pass
 ```
 
-The playbook installs the homelab helper APKs, grants their required Android permissions, and removes Happ. Fully Kiosk, tvQuickActions, WireGuard and its VPN profiles remain external/manual setup. The TV now has only `alchemmist-tv` for the global full-tunnel route used by YouTube; the internal profile is retired. The private `tv.conf` key is imported into WireGuard on the TV and is deliberately not checked in. tvQuickActions stores button assignments in its private app data; the playbook does not rewrite them. The current assignments and the manual recovery steps are documented in [`../../../docs/applications/android-tv.md`](../../../docs/applications/android-tv.md).
+The playbook installs the homelab helper APKs, grants their required Android permissions, and removes Happ. Fully Kiosk, tvQuickActions, WireGuard and its VPN profiles remain external/manual setup. The TV now has only `alchemmist-tv` for the global full-tunnel route used by YouTube; the internal profile is retired. The private `tv.conf` key is imported into WireGuard on the TV and is deliberately not checked in. tvQuickActions stores button assignments in its private app data; the playbook does not rewrite them. The current assignments and the manual recovery steps are documented in [`../../../docs/applications/android-tv/README.md`](../../../docs/applications/android-tv/README.md).
 
 ## Public Grafana / on-demand YouTube (2026-11-06)
 

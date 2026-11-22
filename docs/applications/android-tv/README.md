@@ -103,9 +103,9 @@ Retirement closeout: all four node peer audits report operations=0 (three existi
 
 ## Гостиная: телевизор как монитор и светофор Grafana
 
-Срез на **6 ноября 2026** (пульт/холодное включение проверялись пользователем 22 октября). Памятка, как устроен Xiaomi в гостиной и что переживает выключение питания. Операционная инструкция на английском — `docs/applications/android-tv.md`. Плейбук — `ansible/playbooks/tv-admin.yml`. Это не замена live-проверке: адрес по DHCP может смениться.
+Срез на **6 ноября 2026** (пульт/холодное включение проверялись пользователем 22 октября). Памятка, как устроен Xiaomi в гостиной и что переживает выключение питания. Операционная инструкция на английском — `docs/applications/android-tv/README.md`. Плейбук — `ansible/playbooks/tv-admin.yml`. Это не замена live-проверке: адрес по DHCP может смениться.
 
-Общий итог VPS/DNS/NetBird/Mac/public access: [network-access.md](../network/network-access.md). Этот TV setup — окончательный вариант после удаления временного TV домена и внутреннего WG, не промежуточная публикация.
+Общий итог VPS/DNS/NetBird/Mac/public access: [network-access.md](../../network/network-access.md). Этот TV setup — окончательный вариант после удаления временного TV домена и внутреннего WG, не промежуточная публикация.
 
 ## Зачем он нужен
 
@@ -257,7 +257,7 @@ ansible-playbook playbooks/tv-admin.yml --ask-become-pass
 до трёх активных critical/warning проблем. Текущий VPN Stat со sparkline сохранён.
 Argo CD подтвердил Synced / Healthy. Публичный URL открыт и визуально проверен
 в Chromium 1920×1080; это не проверка физического ТВ с масштабом Fully. Детали:
-`docs/applications/traffic-light-tv-design.md`. Прямой patch ConfigMap откатывает Argo CD;
+`docs/applications/android-tv/traffic-light-tv-design.md`. Прямой patch ConfigMap откатывает Argo CD;
 публиковать нужно через Git. Доступ к публичному URL не требует WireGuard.
 
 ## Актуальная раскладка после визуальной правки 7 ноября
@@ -282,7 +282,7 @@ Shared scene по-прежнему использует compacted layout, authen
 55 панелей, одинаковая pixel-высота CPU/Memory/Disk (531 / 441 px), общая нижняя
 граница Disk/VPN, без пересечений и обрезания Stat. Скрипт:
 `scripts/check-traffic-light-tv-layout.cjs`; URL и session state передаются приватными
-файлами, не коммитятся. Детали и ограничения — `docs/applications/traffic-light-tv-design.md`.
+файлами, не коммитятся. Детали и ограничения — `docs/applications/android-tv/traffic-light-tv-design.md`.
 
 ## Владение dashboard и свежая раскладка — 7 ноября 2026
 
@@ -290,7 +290,7 @@ Shared scene по-прежнему использует compacted layout, authen
 `deploy/platform/grafana/public-entry`, не прежнему kube-prometheus-stack app.
 Headerless/full-height disk layout изменён в `832e341`; canonical share URL,
 Fully55%/font75%, empty injectJsCode и отдельный YouTube VPN не менять по старым
-координатам панелей. [Monitoring ownership](../monitoring/observability-current.md). Source update
+координатам панелей. [Monitoring ownership](../../monitoring/observability-current.md). Source update
 и проверка Argo не заменяют физический remote/cold-boot тест.
 
 ## Полоска Argo и обновление раскладки — 11 ноября 2026

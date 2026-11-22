@@ -2,7 +2,7 @@
 
 > Current infrastructure context (7 November): [NetBird](../network/network-access.md),
 > [native identities](../identity/identity-current-state.md), [release/Argo](cluster-deploy.md).
-> The latest SPI target receipt is [actual deployment / partial acceptance](../applications/spi-incident-triage.md#actual-activation-and-partial-acceptance--7-november-2026):
+> The latest SPI target receipt is [actual deployment / partial acceptance](../applications/spi/spi-incident-triage.md#actual-activation-and-partial-acceptance--7-november-2026):
 > two of three original cards verified, one blocked; no new retry authorization.
 > Older OFF/pending/push-blocked checkpoints below do not supersede that receipt.
 > This wiki refresh sends no messages, retries no jobs and changes no workflow.
@@ -57,7 +57,7 @@ All generated `[SPI]` titles, descriptions and comments MUST be English. SPI wri
 are enabled after acceptance; the unrelated blog remains write-disabled.
 
 Architecture, limits, exact IDs, real issue/comment evidence and recovery:
-[spi-incident-triage.md](../applications/spi-incident-triage.md). This GitHub-token broker is distinct
+[spi-incident-triage.md](../applications/spi/spi-incident-triage.md). This GitHub-token broker is distinct
 from the removed Telegram sudo-broker. SPI does not upgrade panels and does not exec sudo.
 
 
@@ -102,7 +102,7 @@ Historical event-dispatch staging checklists above are superseded by deployed,
 enabled event dispatch; their individual acceptance scenarios are not all claimed
 verified. Telegram SPI-link delivery is a separate feature and remains OFF in the
 last verified runtime. Full implementation and acceptance status:
-`docs/applications/spi-incident-triage.md`, “Verified status — 2026-11-04”.
+`docs/applications/spi/spi-incident-triage.md`, “Verified status — 2026-11-04”.
 
 Native bot implementation `fe67913` and live schema `0009_spi_desired_revision`
 provide immutable `/spi/<episode>` keys, firing/resolved monotonicity, shared
@@ -248,7 +248,7 @@ Telegram messages were changed during the pending release verification.
 ### Current SPI original-card acceptance — 2026-11-04 10:49 UTC
 
 Links now ENABLED in production; this supersedes the historical disabled/push
-blocker above. Full evidence: `docs/applications/spi-incident-triage.md`, current acceptance.
+blocker above. Full evidence: `docs/applications/spi/spi-incident-triage.md`, current acceptance.
 Real SPI26 firing root link revision1 and its exact primary resolved comment
 https://github.com/alchemmist/homelab/issues/26#issuecomment-6628732862 revision2
 were acknowledged on BOTH original copies. Same copy IDs, generation1, resolved

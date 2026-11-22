@@ -2,7 +2,7 @@
 
 The runtime serves public reading and locally authenticated editing on `wiki.socrat.alchemmist.xyz`. Users can sign in at `/login` from the internet or the administrative WireGuard network. Authorization comes from reader/editor/administrator accounts, not network membership. OIDC is not configured.
 
-Production public ingress and both private virtual hosts have switched to the shared runtime. Local administrator login/logout over HTTPS was verified through public `109.173.40.247` and private `10.250.0.1` addresses. See [the migration runbook](../applications/wiki-runtime-migration.md) for data preservation and rollback.
+Production public ingress and both private virtual hosts have switched to the shared runtime. Local administrator login/logout over HTTPS was verified through public `109.173.40.247` and private `10.250.0.1` addresses. See [the migration runbook](../applications/wiki/wiki-runtime-migration.md) for data preservation and rollback.
 
 ## Gateway cutover
 

@@ -30,6 +30,6 @@ Verify trusted HTTPS over WG, rejection without a token and with an incorrect to
 
 ## Wiki publication
 
-The deployed wiki uses the shared `hugo-docs` runtime. Accepted local publications and its persistent data are authoritative; Git is synchronized in the background. Follow `docs/applications/wiki.md` and inspect the live page after publishing. Do not overwrite `/data/repository`, force-reset it to GitHub, or restart the wiki to bypass pending publications. A committed Markdown file alone is not proof that the live page has been published.
+The deployed wiki uses the shared `hugo-docs` runtime. Accepted local publications and its persistent data are authoritative; Git is synchronized in the background. Follow `docs/applications/wiki/README.md` and inspect the live page after publishing. Do not overwrite `/data/repository`, force-reset it to GitHub, or restart the wiki to bypass pending publications. A committed Markdown file alone is not proof that the live page has been published.
 
 The normal synchronization worker fetches the remote branch approximately every 30 seconds. After processing its pending local publications without conflicts, it imports the content prefix, validates and renders it, and atomically publishes the resulting snapshot. Push the new page through the normal Git workflow, then verify the live URL. If publication is delayed, inspect the runtime synchronization status and logs rather than bypassing the worker.

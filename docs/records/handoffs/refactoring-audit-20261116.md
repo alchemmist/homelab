@@ -72,7 +72,7 @@ BACK/TARGET, `scripts/wg-peer15-endpoint.py:17` отдельно хранит en
 - `docs/README.md:42` по-прежнему называет SPI runtime migration pending.
 - `ansible/inventory/host_vars/socrat-5.yml:3` утверждает, что приложения остаются
   на `socrat-1`; это устаревший комментарий, не значение настройки.
-- `wiki/README.md:15` и `docs/applications/wiki.md:15` называют действующим claim
+- `wiki/README.md:15` и `docs/applications/wiki/README.md:15` называют действующим claim
   `wiki-runtime-data`, тогда как `deploy/wiki-runtime/values.yaml` указывает
   `wiki-runtime-socrat5`.
 - `docs/platform/cluster-deploy.md:114` не отражает разделённое размещение Argo CD и

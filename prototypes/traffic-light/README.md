@@ -332,7 +332,7 @@ with1hNativeStat sparklines; realcAdvisor counters, notS3objects/OCIcounts. Comp
 freshcurrentPodcoverage and latestNoTelemetry sentinel; last reducer. HTTP0 only
 fromfreshobservedcounter, missingbackendnothealthy. No nativeHarbor/RustFS business
 scrape enabled/no workloads restarted. Currentsemantics/physicalacceptance and
-safety details in docs/applications/android-tv.md#current-service-diverse-layout--owner-correction11november2026.
+safety details in docs/applications/android-tv/README.md#current-service-diverse-layout--owner-correction11november2026.
 60focusedtests; scopedHelmONLYTrafficLightCM, sizeguardretained. FinalactualTVPNG
 /tmp/tv-services-final-fit.png afterdebugcleanup/restart inspected;4RX/TX labels,
 units/backups fit,49Argo runs counted, purple/teal pixels confirmed. No newblue.

@@ -96,7 +96,7 @@ long-term reliability promise. Historical15Nov/12Nov failures below retained.
 [Доказательства и границы](google-calendar-auth-20261115.md).
 
 Контракт для агентов и оператора. Актуализировано: **3 ноября 2026**.
-Связанный документ: [архитектура автоматизаций умного дома](../applications/smart-home-automation.md).
+Связанный документ: [архитектура автоматизаций умного дома](../applications/smart-home/smart-home-automation.md).
 
 ## Автоматическая привязка новых JSON-шаблонов — offline policy
 
@@ -210,7 +210,7 @@ X-token тоже может быть отозван. Тогда `X_TOKEN_REJECTE
 
 ## SPI: автоматический разбор инцидентов
 
-Новый контракт и эксплуатация: [SPI incident triage](../applications/spi-incident-triage.md).
+Новый контракт и эксплуатация: [SPI incident triage](../applications/spi/spi-incident-triage.md).
 **Все генерируемые заголовки `[SPI]`, описания и комментарии GitHub — на английском.**
 Старые пользовательские issues не переименовывать. Модель сравнивает только открытые
 SPI; технические повторы webhook не являются новыми инцидентами.

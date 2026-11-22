@@ -180,7 +180,7 @@ Kuma public Socket.IO и неизвестные admin APIs закрыты; ст�
 
 Syncthing BasicAuth bytes, process/device identity, keys, config и synchronization не менялись/не перезапускались. Реальный owner Basic login — отдельная опциональная приёмка; пароль не заимствовался и не сбрасывался.
 
-Основные источники: `deploy/public-web/services.json`, `publicEntry` в локальных чартах и `deploy/platform/<app>/public-entry` в существующих Argo Applications, `scripts/public-web-access.py`, `ansible/playbooks/public-web-access.yml`, [публичные входы](../applications/public-web-migration.md). Audit/create-only, drift refusal, outpost preservation, private receipts. Authentik policy denial может быть HTML с HTTP 200: оценивать фактический denial, не требовать фиктивный transport 403.
+Основные источники: `deploy/public-web/services.json`, `publicEntry` в локальных чартах и `deploy/platform/<app>/public-entry` в существующих Argo Applications, `scripts/public-web-access.py`, `ansible/playbooks/public-web-access.yml`, [публичные входы](../applications/public-web/public-web-migration.md). Audit/create-only, drift refusal, outpost preservation, private receipts. Authentik policy denial может быть HTML с HTTP 200: оценивать фактический denial, не требовать фиктивный transport 403.
 
 ### Владение public ingress после миграции 2026-11-07
 
@@ -234,7 +234,7 @@ URL Fully — canonical `grafana.socrat.alchemmist.xyz/public-dashboards/<access
 
 Проверены реальный TV screenshot с живыми данными, YouTube foreground с **одной настоящей VALIDATED VPN network** и последующий Fully без VPN. `NOT_VPN` в Wi-Fi capabilities не считать активным VPN. Физический пульт/холодное включение повторно не проверялись.
 
-Процедуры: [TV](../applications/android-tv.md), [операционный runbook](../applications/android-tv.md), `tv-public-dashboard.yml` (только URL), `retire-tv-internal-wireguard.yml`, maintenance `retire-tv-alias`, `grafana-tv-dns.yml` (теперь только retirement). Не удалять данные WireGuard app целиком: там сохранён YouTube-профиль. Private historical backups не уничтожать.
+Процедуры: [TV](../applications/android-tv/README.md), [операционный runbook](../applications/android-tv/README.md), `tv-public-dashboard.yml` (только URL), `retire-tv-internal-wireguard.yml`, maintenance `retire-tv-alias`, `grafana-tv-dns.yml` (теперь только retirement). Не удалять данные WireGuard app целиком: там сохранён YouTube-профиль. Private historical backups не уничтожать.
 
 ## 9. Что доказано и что ещё отдельно
 

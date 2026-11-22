@@ -31,16 +31,16 @@ The [public wiki](../wiki/README.md) has a separate audience and publication pro
 | Optional SSH-key integration (disabled) | [UUID and key assignments](identity/identity-ssh-keys.md) |
 | Theme, native UI and recovery | [Frontend](identity/identity-frontend.md), [backup and recovery](identity/identity-recovery.md) |
 | Registry, robot accounts and scoped push/pull | [Harbor](platform/harbor.md) |
-| Wiki runtime and content | [Lifecycle](applications/wiki-process-lifecycle.md), [upgrade](records/handoffs/wiki-upgrade-20261107.md), [public onboarding source](../wiki/README.md) |
+| Wiki runtime and content | [Lifecycle](applications/wiki/wiki-process-lifecycle.md), [upgrade](records/handoffs/wiki-upgrade-20261107.md), [public onboarding source](../wiki/README.md) |
 | Per-node metric collection and retention | [OTel to Prometheus to Thanos: raw data, five-minute and hourly resolution, and deletion limits](monitoring/observability-current.md#метрики-сбор-прореживание-и-перенос-между-нодами--21-ноября-2026) |
 | Logs, metrics, traces and profiles | [Current observability](monitoring/observability-current.md), [monitoring](monitoring/monitoring.md) |
-| Incidents, notifications and workflow integration | [Socrat bot](platform/socrat-bot.md), [SPI frontend, backend and operations](applications/spi-incident-triage.md) (see current context for placement), [n8n](n8n/n8n-workflows.md) |
-| TV dashboard, targeted Argo CSS and dedicated YouTube VPN | [Android TV](applications/android-tv.md), [maintaining the TV stylesheet](applications/android-tv.md#сопровождение-кастомного-tv-css-для-argo) |
+| Incidents, notifications and workflow integration | [Socrat bot](platform/socrat-bot.md), [SPI frontend, backend and operations](applications/spi/spi-incident-triage.md) (see current context for placement), [n8n](n8n/n8n-workflows.md) |
+| TV dashboard, targeted Argo CSS and dedicated YouTube VPN | [Android TV](applications/android-tv/README.md), [maintaining the TV stylesheet](applications/android-tv/README.md#сопровождение-кастомного-tv-css-для-argo) |
 | LMS and local generators | [LMS](applications/ai/lms.md), [local generation](applications/ai/lms-generation.md) |
 | SWE Mini retirement | [Removal scope and verification](applications/ai/swe-mini.md) |
 | OpenHands Canvas (installed; public sign-in and the full PR lifecycle not yet accepted) | [Verified behavior and blockers](applications/ai/openhands.md) |
 | Venice browser bridge, Google session and LiteLLM model | [Current state and limitations](applications/ai/venice-api.md) |
 | Dedicated DeepSeek web-session bridge, LiteLLM `o-deepseek` and rate limits to avoid a ban | [Status and limitations](applications/ai/deeperseeker.md) |
-| Other subsystems | [RustFS](data/object-storage/rustfs-foundation.md), [smart home](applications/smart-home-automation.md), [inference reliability](applications/ai/inference-client-reliability.md) |
+| Other subsystems | [RustFS](data/object-storage/rustfs-foundation.md), [smart home](applications/smart-home/smart-home-automation.md), [inference reliability](applications/ai/inference-client-reliability.md) |
 
 [Official MCP connections for agents](platform/official-mcp.md): project settings, service inventory, read-only scope and known blockers.

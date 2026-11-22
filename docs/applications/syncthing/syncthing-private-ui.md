@@ -4,7 +4,7 @@
 > public DNS/TLS, personal MFA/scoped admission, and retained BasicAuth. Node1's
 > public GUI address explicitly returns gateway-only410; it is not a second
 > enrolled device. No synchronization process/configuration was changed for this
-> publication. See [public web migration](public-web-migration.md). The private
+> publication. See [public web migration](../public-web/public-web-migration.md). The private
 > DNS/gateway instructions below are legacy/recovery, not normal client setup.
 
 

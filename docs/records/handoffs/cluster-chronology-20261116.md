@@ -645,7 +645,7 @@ padding3CSSpx, gap2CSSpx, flex redistribution. Ручныеw12/h1 сохране
 подтверждены реальным screenshot и WebView-замерами. Обычный ноутбук/другие панели/
 Fully55%/font75% не менялись; не возвращать прежнее растягиваниеw24/h2. MoscowIP928
 добавлен справа и работает по свежему TCP443 probe91.189.82.238. Код, scoped Helm,
-приёмка и границы: [TV-CSS и сопровождение](../../applications/android-tv.md#сопровождение-кастомного-tv-css-для-argo).
+приёмка и границы: [TV-CSS и сопровождение](../../applications/android-tv/README.md#сопровождение-кастомного-tv-css-для-argo).
 Это исключение из старого «без CSS» только для одной панели, не глобальное разрешение.
 
 ## SSH management policy — owner override 2026-11-10
@@ -892,7 +892,7 @@ queue counts или browser acceptance по CI/рендеру. Owner отмен�
 для этого выноса/релизов, но не разрешал удалять архивы, убивать paid work или
 сбрасывать budgets/leases. Нужен естественный drain и protected production review,
 не новый backup blocker. Полные границы/проверки/следующие шаги:
-[SPI](../../applications/spi-incident-triage.md#current-source-extraction--9-november-2026).
+[SPI](../../applications/spi/spi-incident-triage.md#current-source-extraction--9-november-2026).
 
 ## Деплой и источники
 
@@ -956,14 +956,14 @@ Grafana MCP/API, браузер — для визуальной проверки
 
 SPI triage использует durable queue, read-only evidence и scoped GitHub App;
 не получает права автоматически чинить инфраструктуру или закрывать инциденты.
-[Бот](../../platform/socrat-bot.md), [SPI](../../applications/spi-incident-triage.md), [n8n](../../n8n/n8n-workflows.md).
+[Бот](../../platform/socrat-bot.md), [SPI](../../applications/spi/spi-incident-triage.md), [n8n](../../n8n/n8n-workflows.md).
 Ручная эскалация20→10 не равна смене severity и не обещает SLA.
 
 TV использует public traffic-light URL канонического Grafana, без внутреннего VPN.
 Профиль `xiaomi-tv`/peer отозван; `alchemmist-tv` для YouTube сохранён отдельно.
 Не стирать app data WireGuard. Fully55%/font75%, injectJsCode пуст; актуальный
 TV layout в Git, старые panel coordinates не повторять. Физический пульт/cold boot
-не считать повторно проверенными по одному screenshot: [TV](../../applications/android-tv.md).
+не считать повторно проверенными по одному screenshot: [TV](../../applications/android-tv/README.md).
 
 ## Безопасный порядок работы
 
@@ -1205,7 +1205,7 @@ compactpinkAIqueue+TTFTp95/15m, LMS/n8nbackupages (HTTPworst3removed by owner).
 unchanged. ActualfinalTVfit checked afterdebugfalse cleanup/Fully-onlyrestart;
 49Argo fills physicallycounted. No nativeRustFS/Harbor business scrape: networkbytes
 are NOT object/pullpush counts; no exporter/backend/CSS changes. Fullsemantics,
-currentpositions and60focusedtest acceptance: docs/applications/android-tv.md latestsection.
+currentpositions and60focusedtest acceptance: docs/applications/android-tv/README.md latestsection.
 
 LatestTV cascadefooter11November supersedes the two-wide-backup arrangement:
 934/935 noww2,h2 atx12/14,y18;936x16,w8,h2 addsfour goldfigures (cascadeJobage,

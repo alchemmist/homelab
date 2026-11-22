@@ -11,6 +11,6 @@
 | Argo CD, Rancher, Harbor, k3s | [Deployment](platform/cluster-deploy.md); [node and storage runbooks](platform/) |
 | Grafana, Thanos, Prometheus, Loki | [Monitoring](monitoring/observability-current.md); [log operations](logging/operator-guide.md) |
 | RustFS | [Foundation](data/object-storage/rustfs-foundation.md); [verification records](rustfs/) |
-| n8n, SPI | [Workflow operations](n8n/n8n-workflows.md); [incident triage](applications/spi-incident-triage.md) |
+| n8n, SPI | [Workflow operations](n8n/n8n-workflows.md); [incident triage](applications/spi/spi-incident-triage.md) |
 | LiteLLM, Open WebUI, LMS | [AI application guides](applications/ai/) |
 | Other applications | [Application guides](applications/); [topic notes](README.md#runbooks-by-task) |

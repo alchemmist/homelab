@@ -257,7 +257,7 @@ DaemonSet при текущем Deployment); полный repository suite не 
 
 Коммиты: disarm `41e10a2`, перенос `7ae691a`, временная пауза LiteLLM `4e2c72e`,
 окончательное удаление/возврат auto-sync **`e7fe891`**. Подробности:
-[операционная миграция](../applications/public-web-migration.md),
+[операционная миграция](../applications/public-web/public-web-migration.md),
 [доступ и авторизация](../network/network-access.md). Старый aggregate chart не возвращать
 при откате одного приложения; менять только источник его действующего владельца.
 
@@ -381,4 +381,4 @@ publishing. Activation, two namespace pull Secrets and live/browser proof remain
 pending approved private cluster/Harbor reachability. On activation all three roles
 use the same image digest with no ConfigMap shadowing. Do not manually seed image
 versions, start a second backend/PVC, restore budgets or call the migration done.
-See [authoritative SPI checkpoint](../applications/spi-incident-triage.md#current-source-extraction--9-november-2026).
+See [authoritative SPI checkpoint](../applications/spi/spi-incident-triage.md#current-source-extraction--9-november-2026).

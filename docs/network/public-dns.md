@@ -81,7 +81,7 @@ Owned Mac `/etc/resolver` overrides и wiki restorer lifecycle сняты, гл�
 
 Кэш не узнаёт об отказе до expiry и может держать запись дольше TTL. Уже открытые соединения не переезжают, клиент не обязан повторять DNS после TCP timeout. Public IP failover не копирует PVC/SQLite/MariaDB/GPU и не делает Authentik/management HA. Traefik Edge может использовать последние маршруты без кворума только пока живы процесс, сеть и backend pods. Потерянный backend/storage DNS не восстанавливает.
 
-Источники: [public ingress](public-ingress.md), [VPS migration](../records/handoffs/vps-ip-migration-20261105.md), [public-web closeout](../applications/public-web-migration.md), `docs/network/router-static-mappings.md`.
+Источники: [public ingress](public-ingress.md), [VPS migration](../records/handoffs/vps-ip-migration-20261105.md), [public-web closeout](../applications/public-web/public-web-migration.md), `docs/network/router-static-mappings.md`.
 
 
 ##2026-11-08: partial-network failure / phase1 observation
