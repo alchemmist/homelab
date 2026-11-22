@@ -5,7 +5,7 @@
 Build the two APKs with:
 
 ```sh
-./android/build.sh
+./deploy/tv/android/build.sh
 ```
 
 The script downloads pinned Apktool 2.11.1 and uber-apk-signer 1.3.0 into the user cache, verifies both tool hashes, builds and signs the APKs, and checks that the signature matches the debug certificate currently installed on the TV. The checked-in build state makes an unchanged second run a no-op, avoiding APK signature timestamp churn. A fresh signed build can differ byte-for-byte because the APK signing data is not deterministic, but its signing certificate remains stable. `APKTOOL_JAR`, `UBER_APK_SIGNER_JAR`, and `ANDROID_TOOL_CACHE` can override the defaults.
