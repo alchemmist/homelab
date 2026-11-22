@@ -47,7 +47,15 @@ print(json.dumps({'users':users,'passwordlessPrivilege':sudo,
 def remote(host, command):
     """Perform the remote operation."""
     return subprocess.check_output(
-        ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", *HOSTS[host], command],
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=10",
+            *HOSTS[host],
+            command,
+        ],
         text=True,
         timeout=90,
     )

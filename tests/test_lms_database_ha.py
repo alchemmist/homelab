@@ -14,7 +14,8 @@ def rendered(chart, *args) -> list[dict[str, object]]:
         d
         for d in yaml.safe_load_all(
             subprocess.check_output(
-                ["helm", "template", chart, str(ROOT / "charts" / chart), *args], text=True
+                ["helm", "template", chart, str(ROOT / "charts" / chart), *args],
+                text=True,
             )
         )
         if d
@@ -93,7 +94,10 @@ def test_backups_are_encrypted_and_not_shared_plaintext_files() -> None:
     spec = _mapping_path(cron, "spec", "jobTemplate", "spec", "template", "spec")
     assert spec["automountServiceAccountToken"] is False
     affinity = _mapping_path(
-        spec, "affinity", "nodeAffinity", "requiredDuringSchedulingIgnoredDuringExecution"
+        spec,
+        "affinity",
+        "nodeAffinity",
+        "requiredDuringSchedulingIgnoredDuringExecution",
     )
     terms = _documents(affinity["nodeSelectorTerms"])
     expressions = _documents(terms[0]["matchExpressions"])
@@ -146,7 +150,13 @@ def test_database_is_a_source_of_the_lms_application() -> None:
         rule
         for rule in app["spec"]["ignoreDifferences"]
         if rule.get("kind")
-        in {"Cluster", "CronJob", "PersistentVolumeClaim", "PrometheusRule", "StorageClass"}
+        in {
+            "Cluster",
+            "CronJob",
+            "PersistentVolumeClaim",
+            "PrometheusRule",
+            "StorageClass",
+        }
     ]
     assert ignored == []
     values = yaml.safe_load((ROOT / "deploy/lms/values.yaml").read_text())
@@ -171,17 +181,9 @@ def test_database_is_a_source_of_the_lms_application() -> None:
         cluster_spec["imageName"]
         == "ghcr.io/cloudnative-pg/postgresql:17.11-system-trixie@sha256:03a1c6a62b27e8ad31cae5c085131b5ac706b09403d6fcb6c58d16c8daa257cd"
     )
-    assert (
-        cluster_meta["argocd.argoproj.io/compare-options"]
-        == "ServerSideDiff=true"
-    )
-    assert (
-        cluster_meta["argocd.argoproj.io/sync-options"]
-        == "ServerSideApply=true"
-    )
-    cron = next(
-        d for d in docs if d["kind"] == "CronJob" and _name(d) == "lms-database-backup"
-    )
+    assert cluster_meta["argocd.argoproj.io/compare-options"] == "ServerSideDiff=true"
+    assert cluster_meta["argocd.argoproj.io/sync-options"] == "ServerSideApply=true"
+    cron = next(d for d in docs if d["kind"] == "CronJob" and _name(d) == "lms-database-backup")
     cron_spec = _mapping(cron["spec"])
     assert cron_spec["schedule"] == "0 */6 * * *"
     cron_pod = _mapping_path(cron, "spec", "jobTemplate", "spec", "template", "spec")
@@ -217,15 +219,9 @@ def test_production_web_does_not_depend_on_legacy_nfs_and_legacy_db_is_stopped()
     docs = rendered("lms", "-f", str(ROOT / "deploy/lms/values.yaml"))
     web = next(d for d in docs if d["kind"] == "Deployment" and _name(d) == "lms")
     web_pod = _mapping_path(web, "spec", "template", "spec")
-    assert not any(
-        "persistentVolumeClaim" in volume for volume in _documents(web_pod["volumes"])
-    )
-    assert any(
-        d["kind"] == "PersistentVolumeClaim" and _name(d) == "lms-data" for d in docs
-    )
-    old = next(
-        d for d in docs if d["kind"] == "Deployment" and _name(d) == "lms-postgres"
-    )
+    assert not any("persistentVolumeClaim" in volume for volume in _documents(web_pod["volumes"]))
+    assert any(d["kind"] == "PersistentVolumeClaim" and _name(d) == "lms-data" for d in docs)
+    old = next(d for d in docs if d["kind"] == "Deployment" and _name(d) == "lms-postgres")
     assert _mapping(old["spec"])["replicas"] == 1
 
 
@@ -242,9 +238,15 @@ def test_operator_canary_avoids_stale_ready_pod_on_unreachable_node() -> None:
 
     def pod(name, node, deleting=False) -> dict[str, object]:
         return {
-            "metadata": {"name": name, **({"deletionTimestamp": "now"} if deleting else {})},
+            "metadata": {
+                "name": name,
+                **({"deletionTimestamp": "now"} if deleting else {}),
+            },
             "spec": {"nodeName": node},
-            "status": {"phase": "Running", "conditions": [{"type": "Ready", "status": "True"}]},
+            "status": {
+                "phase": "Running",
+                "conditions": [{"type": "Ready", "status": "True"}],
+            },
         }
 
     nodes = {
@@ -289,7 +291,9 @@ def test_remote_canary_programs_are_valid_python_including_finally_cleanup() -> 
             ast.parse(program)
 
 
-def test_copy_refuses_live_ha_or_unknown_endpoint_before_creating_job(monkeypatch) -> None:
+def test_copy_refuses_live_ha_or_unknown_endpoint_before_creating_job(
+    monkeypatch,
+) -> None:
     import base64
     import importlib.util
     from types import SimpleNamespace
@@ -310,7 +314,6 @@ def test_copy_refuses_live_ha_or_unknown_endpoint_before_creating_job(monkeypatc
         {"LMS_DATABASE_URL": base64.b64encode(b"").decode()},
     ]:
         calls = []
-
 
         def kube(*args, data=data, calls=calls, **_kwargs) -> str:
             calls.append(args)

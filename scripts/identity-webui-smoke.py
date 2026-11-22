@@ -73,7 +73,9 @@ def browser(url, data=None):
         ]:
             headers["X-authentik-CSRF"] = c.value
     req = urllib.request.Request(
-        url, headers=headers, data=json.dumps(data).encode() if data is not None else None
+        url,
+        headers=headers,
+        data=json.dumps(data).encode() if data is not None else None,
     )
     try:
         with opener.open(req, timeout=30) as r:
@@ -81,8 +83,6 @@ def browser(url, data=None):
     except urllib.error.HTTPError as e:
         if e.code in [301, 302, 303, 307]:
             e.headers.replace_header("Location", urllib.parse.urljoin(url, e.headers["Location"]))
-            loc = urllib.parse.urlparse(e.headers["Location"])
-            q = urllib.parse.parse_qs(loc.query)
             return e.code, e.headers, b""
         raise RuntimeError(
             "Browser request failed with HTTP "
@@ -111,7 +111,11 @@ user = admin(
     },
 )
 try:
-    admin("POST", "core/users/" + str(user["pk"]) + "/set_password/", {"password": password})
+    admin(
+        "POST",
+        "core/users/" + str(user["pk"]) + "/set_password/",
+        {"password": password},
+    )
     import subprocess
 
     fixture = {

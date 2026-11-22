@@ -10,7 +10,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "vendor_contracts", ROOT / "scripts/check_vendor_contracts.py"
+    "vendor_contracts", ROOT / "ci/check_vendor_contracts.py"
 )
 assert spec is not None
 assert spec.loader is not None

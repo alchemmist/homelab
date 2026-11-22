@@ -22,7 +22,12 @@ class SignalInventoryTests(unittest.TestCase):
         pods = {
             "windowSeconds": 600,
             "sources": [
-                {"measurementAvailable": True, "bytes": 1200, "lines": 10, "truncated": False}
+                {
+                    "measurementAvailable": True,
+                    "bytes": 1200,
+                    "lines": 10,
+                    "truncated": False,
+                }
             ],
         }
         journals = {
@@ -43,7 +48,12 @@ class SignalInventoryTests(unittest.TestCase):
         pods = {
             "windowSeconds": 600,
             "sources": [
-                {"measurementAvailable": True, "bytes": 1048576, "lines": 10, "truncated": True},
+                {
+                    "measurementAvailable": True,
+                    "bytes": 1048576,
+                    "lines": 10,
+                    "truncated": True,
+                },
                 {"measurementAvailable": False, "reason": "api-unavailable"},
             ],
         }
@@ -146,7 +156,9 @@ class PrivilegedJournalTests(unittest.TestCase):
 
 
 class ActiveLogSourceTests(unittest.TestCase):
-    def test_historical_unavailable_sources_are_not_hidden_by_active_counts(self) -> None:
+    def test_historical_unavailable_sources_are_not_hidden_by_active_counts(
+        self,
+    ) -> None:
         """Historical unavailable sources are not hidden by active counts."""
         data = {
             "windowSeconds": 600,
@@ -181,4 +193,6 @@ class ActiveLogSourceTests(unittest.TestCase):
                 {"measurementAvailable": False},
             ],
         ]:
-            assert not SIGNALS.summarize({"windowSeconds": 600, "sources": sources}, {})["activeLogAPIsReadable"]
+            assert not SIGNALS.summarize({"windowSeconds": 600, "sources": sources}, {})[
+                "activeLogAPIsReadable"
+            ]

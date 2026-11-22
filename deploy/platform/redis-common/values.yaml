@@ -1,0 +1,98 @@
+---
+fullnameOverride: redis-common
+replicas: 3  # Three Sentinel voters on three nodes; also provides a second async copy.
+hardAntiAffinity: true
+podDisruptionBudget: {minAvailable: 2}
+image:
+  repository: docker.io/library/redis
+  tag: 7.4-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
+persistentVolume: {enabled: true, storageClass: redis-local-retain, size: 2Gi}
+auth: true
+existingSecret: redis-common-control
+redis:
+  masterGroupName: redis-common
+  port: 0
+  tlsPort: 6379
+  tlsReplication: true
+  authClients: "no"
+  config:
+    appendonly: "yes"
+    appendfsync: everysec
+    maxmemory: 192mb
+    maxmemory-policy: noeviction
+    min-replicas-to-write: 1
+    include: /users/client.conf
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {memory: 512Mi}
+  extraVolumeMounts: [{name: users, mountPath: /users, readOnly: true}]
+extraVolumes: [{name: users, secret: {secretName: redis-common-users}}]
+sentinel:
+  port: 0
+  tlsPort: 26379
+  tlsReplication: true
+  authClients: "no"
+  auth: true
+  existingSecret: redis-common-control
+  quorum: 2
+  resources:
+    requests: {cpu: 25m, memory: 32Mi}
+    limits: {memory: 96Mi}
+tls: {secretName: redis-common-tls, certFile: tls.crt, keyFile: tls.key, caCertFile: ca.crt}
+networkPolicy: {enabled: true}
+haproxy:
+  enabled: true
+  replicas: 2
+  podDisruptionBudget: {minAvailable: 1}
+  image:
+    repository: docker.io/library/haproxy
+    tag: 3.2-alpine@sha256:7816a9801a6846b912bc37e48529808e2fa87c3c47992441940f68e393ebcfeb
+  serviceAccount: {automountToken: false}
+  resources:
+    # Both TLS proxies normally use ~84Mi; the previous 96Mi cap caused OOM kills.
+    requests: {cpu: 25m, memory: 96Mi}
+    limits: {memory: 192Mi}
+  networkPolicy: {enabled: true}  # No application ingress until consumer cutover.
+  # Chart switch mounts the public CA. Our custom frontend passes TLS through.
+  tls: {enabled: true, secretName: redis-common-public-ca, certMountPath: /trust, keyName: ca.crt}
+  customConfig: |
+    {{- $verify := "check check-ssl verify required verifyhost" -}}
+    {{- $host := "redis-common-haproxy.redis.svc.cluster.local" -}}
+    {{- $ca := "ca-file /trust/ca.crt inter 1s fall 2 rise 1" -}}
+    {{- $check := printf "%s %s %s" $verify $host $ca -}}
+    defaults
+      mode tcp
+      timeout connect 2s
+      timeout client 5m
+      timeout server 5m
+      timeout check 2s
+    listen health
+      bind :8888
+      mode http
+      monitor-uri /healthz
+    frontend writer
+      bind :6379
+      {{- range $i := until 3 }}
+      use_backend primary{{ $i }} if { nbsrv(votes{{ $i }}) ge 2 } { nbsrv(primary{{ $i }}) gt 0 }
+      {{- end }}
+    # No default target: fail closed without two matching Sentinel votes.
+    {{- range $i := until 3 }}
+    backend votes{{ $i }}
+      option tcp-check
+      tcp-check send "AUTH ${SENTINELAUTH}"\r\n
+      tcp-check expect string +OK
+      tcp-check send SENTINEL\ get-master-addr-by-name\ redis-common\r\n
+      tcp-check expect string \r\nREPLACE_ANNOUNCE{{ $i }}\r\n
+      {{- range $j := until 3 }}
+      server s{{ $j }} redis-common-announce-{{ $j }}:26379 {{ $check }}
+      {{- end }}
+    {{- $shutdown := "on-marked-down shutdown-sessions" }}
+    backend primary{{ $i }}
+      option tcp-check
+      tcp-check send "AUTH ${AUTH}"\r\n
+      tcp-check expect string +OK
+      tcp-check send INFO\ replication\r\n
+      tcp-check expect string role:master
+      server r{{ $i }} redis-common-announce-{{ $i }}:6379 {{ $check }} {{ $shutdown }}
+    {{- end }}
+...

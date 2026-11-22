@@ -35,6 +35,7 @@ class DeliveryHandle(Protocol):
         """Ingest one delivery receipt event."""
         ...
 
+
 # After backfill an episode settles on its second revision and fourth stage.
 SECOND_REVISION = 2
 COMPLETE_STAGE = 4
@@ -44,7 +45,6 @@ class DeliveryIntegrationTests(unittest.TestCase):
     """Tests for end-to-end SPI delivery integration."""
 
     def setUp(self) -> None:
-
         """Prepare the shared engine fixture state."""
         fixture.EngineTests.setUp(self)
         self.links = Links(self.store, Mock(), guarded_protocol=True)
@@ -127,7 +127,9 @@ class DeliveryIntegrationTests(unittest.TestCase):
             )
         assert self.store.get(key)["result"] == before
 
-    def test_orphan_resolved_is_analyzed_instead_of_dropped_when_links_required(self) -> None:
+    def test_orphan_resolved_is_analyzed_instead_of_dropped_when_links_required(
+        self,
+    ) -> None:
         """Verify orphaned resolutions are analyzed, not dropped."""
         self.github.request.return_value = {
             "number": 7,
@@ -267,7 +269,11 @@ class DeliveryIntegrationTests(unittest.TestCase):
         d.links.request = Mock(
             return_value=(
                 200,
-                {"key": key, "updated": [{"chat_id": 1, "message_id": 2}], "pending": []},
+                {
+                    "key": key,
+                    "updated": [{"chat_id": 1, "message_id": 2}],
+                    "pending": [],
+                },
             )
         )
         # Missing receipt backs off independently; ready episode is then eligible.
@@ -312,7 +318,10 @@ class DeliveryIntegrationTests(unittest.TestCase):
                 )
             )
             event = fixture.normalize({"source": "test", "alert": raw})
-            assert value == {"event_key": event["event_key"], "episode": event["episode"]}
+            assert value == {
+                "event_key": event["event_key"],
+                "episode": event["episode"],
+            }
 
     def test_pre_migration_completed_job_backfills_only_trusted_reference(self) -> None:
         """Verify pre-migration backfill only trusts known references."""
@@ -366,7 +375,9 @@ class DeliveryIntegrationTests(unittest.TestCase):
         )
         return d, e
 
-    def test_historical_resolved_failure_then_firing_then_resolved_converges(self) -> None:
+    def test_historical_resolved_failure_then_firing_then_resolved_converges(
+        self,
+    ) -> None:
         """Verify the resolved-failure-resolved sequence converges."""
         d, e = self.historical_pair()
 

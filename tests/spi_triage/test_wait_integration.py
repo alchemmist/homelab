@@ -145,7 +145,8 @@ class IntegrationTests(unittest.TestCase):
         key = self.store.enqueue(f.event(start="2026-11-03T14:00:00Z"))["job_id"]
         with self.store.db() as c:
             c.execute(
-                "UPDATE jobs SET state='processing',lease=0,updated=? WHERE id=?", (self.now, key)
+                "UPDATE jobs SET state='processing',lease=0,updated=? WHERE id=?",
+                (self.now, key),
             )
         self.store.owners.bind(key, "4000", "durable-v1", "match", self.now)
         with self.store.db() as c:
@@ -191,14 +192,18 @@ class IntegrationTests(unittest.TestCase):
         self.model.analyze.side_effect = Failure("LLM_ADMISSION_DEFERRED", 180)
         a = self.engine.run_v1("analyze", a)
         with self.store.db() as c:
-            assert self.store._owned_priority_until(c, 0, self.now) == 0  # Far future is not a reservation.
+            assert (
+                self.store._owned_priority_until(c, 0, self.now) == 0
+            )  # Far future is not a reservation.
             assert self.store._owned_priority_until(c, 0, a["due_at"]) > a["due_at"]
             c.execute(
-                "update workflow_wait_owner set revision='foreign' where job_id=?", (self.key,)
+                "update workflow_wait_owner set revision='foreign' where job_id=?",
+                (self.key,),
             )
             assert self.store._owned_priority_until(c, 0, a["due_at"]) == 0
             c.execute(
-                "update workflow_wait_owner set revision='durable-v1' where job_id=?", (self.key,)
+                "update workflow_wait_owner set revision='durable-v1' where job_id=?",
+                (self.key,),
             )
             c.execute("update jobs set stage=1 where id=?", (self.key,))
             assert self.store._owned_priority_until(c, 0, a["due_at"]) == 0
@@ -297,13 +302,13 @@ class IntegrationTests(unittest.TestCase):
         with concurrent.futures.ThreadPoolExecutor(2) as pool:
             results = list(
                 pool.map(
-                    lambda _: self.store.owners.claim("1234", "durable-v1", self.now), range(2)
+                    lambda _: self.store.owners.claim("1234", "durable-v1", self.now),
+                    range(2),
                 )
             )
         assert results[0] == results[1]
         entered = threading.Event()
         release = threading.Event()
-
 
         def model(*_args, **_kwargs) -> dict[str, object]:
             entered.set()
@@ -357,7 +362,6 @@ class ModelTimerTests(unittest.TestCase):
             http = Mock()
             model = Model(http, "fake", store=store)
             now = time.time()
-
 
             def request(*_args, **kwargs) -> dict[str, object]:
                 assert kwargs["timeout"] > 1700

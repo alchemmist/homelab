@@ -63,14 +63,8 @@ oidc:
   sessionImage:
     docker.io/library/redis:8.2-alpine@sha256:da23c2478319ceb4903857d77a2fd7aa5137d9e9d4c8165dafbacedac6403e95
 
-# Issue #509: trusted GitHub writer, no credentials in Canvas.
+# QA-only publisher. Mutation reports and issue-509 writes are retired.
 monoriPublisher: true
-
-# Continue only MaxIterationsReached for the owner's Monori mutation task.
-# Set to an empty string to disarm. No other chat or error is retried.
-continueIterationChat: ""
-
-continueQaChat: ""
 
 # Owner explicitly requested no iteration-count stop for main agents, task workers or goals.
 unlimitedIterations: true
@@ -80,11 +74,4 @@ automationPostgres: true
 automationPostgresAccess: true
 coldBackup20261119: true
 retireFailedBackup: true
-workerRegistries:
-  mutation: 75ad056ce4354c2e86fd12f8e1f4f6fe
-  qa: e74a67536db4498196f4a961070bf471
-
-publisherProofTicket: true
-
-piMonori: true
 ...

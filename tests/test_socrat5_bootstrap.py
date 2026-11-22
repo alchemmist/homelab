@@ -59,7 +59,7 @@ class BootstrapTests(unittest.TestCase):
 
     def test_guard_is_pre_dnat_and_source_scoped(self) -> None:
         """Keep the guard inserted before DNAT and scoped to the testing-class source."""
-        s = (ROOT / "scripts/testing-class-wg-guard.sh").read_text()
+        s = (ROOT / "ansible/scripts/testing-class-wg-guard.sh").read_text()
         assert "-t mangle -I PREROUTING 1 -i wg-socrat -s 10.250.0.41/32" in s
         assert "--sport 22 -m conntrack --ctstate ESTABLISHED" in s
         assert "-d 10.250.0.40/32" in s

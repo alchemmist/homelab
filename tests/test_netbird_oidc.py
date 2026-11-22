@@ -188,7 +188,10 @@ class FakeAuthentik(threading.Thread):
         ]
         self.flows = [
             {"pk": "auth-flow", "slug": "default-authentication-flow"},
-            {"pk": "consent-flow", "slug": "default-provider-authorization-explicit-consent"},
+            {
+                "pk": "consent-flow",
+                "slug": "default-provider-authorization-explicit-consent",
+            },
             {"pk": "invalidation-flow", "slug": "default-provider-invalidation-flow"},
         ]
         self.certificates = [{"pk": "cert-pk", "name": oidc.CERT_NAME}]
@@ -440,7 +443,10 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert oidc.callback_from_issuer(ISSUER) == CALLBACK
         assert oidc.callback_from_issuer(ISSUER + "/") == CALLBACK
         assert oidc.callback_from_issuer("https://netbird.socrat.alchemmist.xyz") == CALLBACK
-        assert oidc.callback_from_issuer("https://netbird.socrat.alchemmist.xyz/oauth2//") == "https://netbird.socrat.alchemmist.xyz/oauth2//oauth2/callback"
+        assert (
+            oidc.callback_from_issuer("https://netbird.socrat.alchemmist.xyz/oauth2//")
+            == "https://netbird.socrat.alchemmist.xyz/oauth2//oauth2/callback"
+        )
         with self.assertRaises(RuntimeError):
             oidc.validate_management_issuer("https://example.com/oauth2")
         with self.assertRaises(RuntimeError):
@@ -455,7 +461,9 @@ class NetBirdOIDCTests(unittest.TestCase):
     def test_profile_expression_is_allowlisted_and_not_a_groups_scope(self) -> None:
         """The profile expression is allowlisted, not a groups scope."""
         expression = oidc.profile_expression()
-        assert expression == expression.strip(), "Expression must survive Authentik serializer round-trip"
+        assert expression == expression.strip(), (
+            "Expression must survive Authentik serializer round-trip"
+        )
         assert "request.user.ak_groups.all()" in expression
         assert "request.user.groups.all()" not in expression
         assert "request.user.email" not in expression
@@ -490,7 +498,10 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert not present["dashboard_groups_scope_sufficient"]
         assert present["sub_mode"] == "user_uuid"
         assert present["sha256"] == self.plan()["sha256"]
-        assert any(call[1] == "/api/v3/core/applications/" and "superuser_full_list=true" in call[2] for call in self.fake.calls)
+        assert any(
+            call[1] == "/api/v3/core/applications/" and "superuser_full_list=true" in call[2]
+            for call in self.fake.calls
+        )
 
     def test_apply_requires_digest_and_keeps_secret_runtime_only(self) -> None:
         """Apply requires a digest and keeps the secret runtime-only."""
@@ -506,7 +517,11 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert code == 1
         assert self.fake.writes() == []
         code, out, err = self.run_tool(
-            "apply", "--approve-sha256", approved["sha256"], "--netbird-config", str(self.config)
+            "apply",
+            "--approve-sha256",
+            approved["sha256"],
+            "--netbird-config",
+            str(self.config),
         )
         assert code == 0, err
         assert "relay-secret-must-not-leak" not in out + err
@@ -518,7 +533,9 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert (self.root / oidc.JOURNAL_NAME).stat().st_mode & 511 == 384
         journal = json.loads((self.root / oidc.JOURNAL_NAME).read_text())
         assert journal["client_secret_sha256"] == hashlib.sha256(secret.encode()).hexdigest()
-        assert journal["pilot_users"]["alchemmist"]["uuid"] == "9e33877a-3eaa-4541-98eb-8cdc10088ef6"
+        assert (
+            journal["pilot_users"]["alchemmist"]["uuid"] == "9e33877a-3eaa-4541-98eb-8cdc10088ef6"
+        )
         assert journal["pilot_users"]["antropophag"]["pk"] == 6
         assert set(journal["groups"]) == set(oidc.GROUP_NAMES)
         for recorded in journal["groups"].values():
@@ -527,12 +544,25 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert isinstance(journal["provider_pk"], int)
         assert isinstance(journal["application_pk"], str)
         assert journal["callback"] == CALLBACK
-        assert journal["marker"] == _mapping(_mapping(self.fake.groups[-1])["attributes"])[oidc.MARKER_ATTRIBUTE]
+        assert (
+            journal["marker"]
+            == _mapping(_mapping(self.fake.groups[-1])["attributes"])[oidc.MARKER_ATTRIBUTE]
+        )
         provider = next(item for item in self.fake.providers if item["name"] == oidc.PROVIDER_NAME)
         assert provider["sub_mode"] == "user_uuid"
         assert provider["include_claims_in_id_token"]
-        assert provider["redirect_uris"] == [{"matching_mode": "strict", "url": CALLBACK, "redirect_uri_type": "authorization"}]
-        assert provider["property_mappings"] == ["openid-pk", "email-pk", journal["mapping_pk"]]
+        assert provider["redirect_uris"] == [
+            {
+                "matching_mode": "strict",
+                "url": CALLBACK,
+                "redirect_uri_type": "authorization",
+            }
+        ]
+        assert provider["property_mappings"] == [
+            "openid-pk",
+            "email-pk",
+            journal["mapping_pk"],
+        ]
         assert "profile-pk" not in _sequence(provider["property_mappings"])
         assert "groups-pk" not in _sequence(provider["property_mappings"])
         assert "password" not in _sequence(provider["grant_types"])
@@ -567,7 +597,11 @@ class NetBirdOIDCTests(unittest.TestCase):
         again = self.plan()
         before = len(self.fake.writes())
         code, out, err = self.run_tool(
-            "apply", "--approve-sha256", again["sha256"], "--netbird-config", str(self.config)
+            "apply",
+            "--approve-sha256",
+            again["sha256"],
+            "--netbird-config",
+            str(self.config),
         )
         assert code == 0, err
         assert len(self.fake.writes()) == before
@@ -591,7 +625,11 @@ class NetBirdOIDCTests(unittest.TestCase):
         plan = json.loads(out)
         assert any("adopt" in _string(item) for item in _sequence(plan["blockers"]))
         code, out, err = self.run_tool(
-            "apply", "--approve-sha256", plan["sha256"], "--netbird-config", str(self.config)
+            "apply",
+            "--approve-sha256",
+            plan["sha256"],
+            "--netbird-config",
+            str(self.config),
         )
         assert code == 1
         assert self.fake.writes() == []
@@ -601,7 +639,11 @@ class NetBirdOIDCTests(unittest.TestCase):
         self.fake.fail_provider = True
         approved = self.plan()
         code, out, err = self.run_tool(
-            "apply", "--approve-sha256", approved["sha256"], "--netbird-config", str(self.config)
+            "apply",
+            "--approve-sha256",
+            approved["sha256"],
+            "--netbird-config",
+            str(self.config),
         )
         assert code == 1, out
         assert sum(1 for call in self.fake.writes() if call[1] == "/api/v3/core/groups/") == 3
@@ -610,7 +652,11 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert "provider_pk" not in journal
         retry = self.plan()
         code, out, err = self.run_tool(
-            "apply", "--approve-sha256", retry["sha256"], "--netbird-config", str(self.config)
+            "apply",
+            "--approve-sha256",
+            retry["sha256"],
+            "--netbird-config",
+            str(self.config),
         )
         assert code == 0, err
         assert sum(1 for call in self.fake.writes() if call[1] == "/api/v3/core/groups/") == 3
@@ -643,8 +689,14 @@ class NetBirdOIDCTests(unittest.TestCase):
                 "marker": "marker-1",
                 "groups": {oidc.ADMISSION_GROUP: {"pk": "owned-group", "num_pk": 9}},
                 "pilot_users": {
-                    "alchemmist": {"pk": 5, "uuid": "9e33877a-3eaa-4541-98eb-8cdc10088ef6"},
-                    "antropophag": {"pk": 6, "uuid": "6015c85b-82e9-49ce-a4e3-0270c676e26d"},
+                    "alchemmist": {
+                        "pk": 5,
+                        "uuid": "9e33877a-3eaa-4541-98eb-8cdc10088ef6",
+                    },
+                    "antropophag": {
+                        "pk": 6,
+                        "uuid": "6015c85b-82e9-49ce-a4e3-0270c676e26d",
+                    },
                 },
             },
         )
@@ -653,7 +705,11 @@ class NetBirdOIDCTests(unittest.TestCase):
         plan = json.loads(out)
         assert any("outside the owner and Tim pilot" in item for item in plan["blockers"])
         code, out, err = self.run_tool(
-            "apply", "--approve-sha256", plan["sha256"], "--netbird-config", str(self.config)
+            "apply",
+            "--approve-sha256",
+            plan["sha256"],
+            "--netbird-config",
+            str(self.config),
         )
         assert code == 1
         assert self.fake.writes() == []
@@ -663,11 +719,18 @@ class NetBirdOIDCTests(unittest.TestCase):
         self.fake.drop_legacy_on_add = True
         approved = self.plan()
         code, out, err = self.run_tool(
-            "apply", "--approve-sha256", approved["sha256"], "--netbird-config", str(self.config)
+            "apply",
+            "--approve-sha256",
+            approved["sha256"],
+            "--netbird-config",
+            str(self.config),
         )
         assert code == 1
         assert "Reviewed legacy group membership is missing" in err
-        assert not any(call[1].startswith("/api/v3/core/users/") and call[0] != "GET" for call in self.fake.calls)
+        assert not any(
+            call[1].startswith("/api/v3/core/users/") and call[0] != "GET"
+            for call in self.fake.calls
+        )
 
     def test_journal_symlink_is_not_followed(self) -> None:
         """A journal symlink is never followed."""
@@ -676,14 +739,20 @@ class NetBirdOIDCTests(unittest.TestCase):
         outside.write_text('{"client_secret": "nope"}\n')
         (self.root / oidc.JOURNAL_NAME).symlink_to(outside)
         code, out, err = self.run_tool(
-            "apply", "--approve-sha256", approved["sha256"], "--netbird-config", str(self.config)
+            "apply",
+            "--approve-sha256",
+            approved["sha256"],
+            "--netbird-config",
+            str(self.config),
         )
         assert code == 1
         assert "symlink" in err
         assert self.fake.writes() == []
         assert outside.read_text() == '{"client_secret": "nope"}\n'
 
-    def test_markerless_nonempty_journal_is_not_replaced_or_used_to_mint_a_secret(self) -> None:
+    def test_markerless_nonempty_journal_is_not_replaced_or_used_to_mint_a_secret(
+        self,
+    ) -> None:
         """A markerless journal is never replaced or used to mint a secret."""
         approved = self.plan()
         write_json(
@@ -695,7 +764,11 @@ class NetBirdOIDCTests(unittest.TestCase):
         )
         before = (self.root / oidc.JOURNAL_NAME).read_text()
         code, out, err = self.run_tool(
-            "apply", "--approve-sha256", approved["sha256"], "--netbird-config", str(self.config)
+            "apply",
+            "--approve-sha256",
+            approved["sha256"],
+            "--netbird-config",
+            str(self.config),
         )
         assert code == 1
         assert "markerless journal" in err
@@ -718,7 +791,16 @@ class NetBirdOIDCTests(unittest.TestCase):
         env = dict(os.environ)
         env["GOTOOLCHAIN"] = "go1.26.10"
         completed = subprocess.run(
-            ["go", "test", "./idp/dex/", "-count=1", "-timeout", "180s", "-run", "TestHomelab"],
+            [
+                "go",
+                "test",
+                "./idp/dex/",
+                "-count=1",
+                "-timeout",
+                "180s",
+                "-run",
+                "TestHomelab",
+            ],
             cwd=repo,
             env=env,
             text=True,

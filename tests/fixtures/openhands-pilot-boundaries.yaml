@@ -4,33 +4,7 @@
 canvasVolumes:
   - {name: pg-ca, configMap: {name: pg-common-ca}}
   - {name: sdk-iteration-policy, emptyDir: {sizeLimit: 2Mi}}
-deployments:
-  pi-monori-judge:
-    volumes:
-      - &work {name: work, emptyDir: {sizeLimit: 3Gi}}
-      - &temp {name: temp, emptyDir: {sizeLimit: 384Mi}}
-    mounts:
-      sandbox: [&scratch {name: work, mountPath: /scratch}, &tmp {name: temp, mountPath: /tmp}]
-  pi-monori-author:
-    volumes:
-      - *work
-      - *temp
-      - {name: pi, emptyDir: {sizeLimit: 512Mi}}
-      - {name: code, configMap: {name: pi-monori-code}}
-      - {name: model, secret: {secretName: openhands-model, defaultMode: 288}}
-    mounts:
-      install-pi:
-        - {name: pi, mountPath: /opt/pi}
-        - &code {name: code, mountPath: /code, readOnly: true}
-        - *tmp
-      sandbox: [*scratch, *tmp, {name: pi, mountPath: /opt/pi, readOnly: true}, *code]
-      relay: [*code, {name: model, mountPath: /model, readOnly: true}]
 policies:
-  pi-monori-judge-offline:
-    podSelector: {matchLabels: {app: pi-monori-judge}}
-    policyTypes: [Ingress, Egress]
-    ingress: []
-    egress: []
   automation-postgres-egress:
     podSelector:
       matchExpressions:

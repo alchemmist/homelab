@@ -61,7 +61,8 @@ class HardeningTests(unittest.TestCase):
             }
         )
         con.execute(
-            "INSERT INTO inbounds VALUES(1,32053,'vless',1,?,?,0,0,0)", (stream, '{"clients":[]}')
+            "INSERT INTO inbounds VALUES(1,32053,'vless',1,?,?,0,0,0)",
+            (stream, '{"clients":[]}'),
         )
         con.commit()
         return con
@@ -186,7 +187,13 @@ class HardeningTests(unittest.TestCase):
     def test_unowned_table_refused(self) -> None:
         payload = {
             "nftables": [
-                {"table": {"family": "inet", "name": audit.TABLE, "comment": "someone else"}}
+                {
+                    "table": {
+                        "family": "inet",
+                        "name": audit.TABLE,
+                        "comment": "someone else",
+                    }
+                }
             ]
         }
         with patch.object(audit, "run", return_value=json.dumps(payload)):
@@ -284,7 +291,9 @@ class PathCheckTests(unittest.TestCase):
         probe = load("path_check_address", "vpn-path-check.py")
         with self.assertRaises(ValueError):
             probe.check(
-                "https://wiki.socrat.alchemmist.xyz/", "control", control_address="192.0.2.1"
+                "https://wiki.socrat.alchemmist.xyz/",
+                "control",
+                control_address="192.0.2.1",
             )
         with self.assertRaises(ValueError):
             probe.check(
@@ -321,7 +330,13 @@ class PathCheckTests(unittest.TestCase):
             tls.selected_alpn_protocol.return_value = "http/1.1"
             ctx = MagicMock()
             ctx.wrap_socket.return_value.__enter__.return_value = tls
-            address = (probe.socket.AF_INET, probe.socket.SOCK_STREAM, 6, "", ("192.0.2.1", 443))
+            address = (
+                probe.socket.AF_INET,
+                probe.socket.SOCK_STREAM,
+                6,
+                "",
+                ("192.0.2.1", 443),
+            )
             with (
                 patch.object(probe.socket, "getaddrinfo", return_value=[address]),
                 patch.object(probe.socket, "socket"),

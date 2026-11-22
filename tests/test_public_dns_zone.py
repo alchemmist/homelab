@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "public_dns_zone.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "ansible/scripts" / "public_dns_zone.py"
 spec = importlib.util.spec_from_file_location("public_dns_zone", SCRIPT)
 zone = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(zone)
@@ -59,9 +59,16 @@ def _reviewed_openhands_addition(lines: list[str], addresses: list[str]) -> list
 
 @pytest.mark.parametrize(
     "records",
-    [[], ["192.0.2.1"], ["192.0.2.1", "203.0.113.1"], ["192.0.2.1", "192.0.2.2", "192.0.2.2"]],
+    [
+        [],
+        ["192.0.2.1"],
+        ["192.0.2.1", "203.0.113.1"],
+        ["192.0.2.1", "192.0.2.2", "192.0.2.2"],
+    ],
 )
-def test_reviewed_addition_refuses_missing_wrong_or_duplicate_records(records: list[str]) -> None:
+def test_reviewed_addition_refuses_missing_wrong_or_duplicate_records(
+    records: list[str],
+) -> None:
     """The new name cannot be excluded from history until its exact full delta passes."""
     lines = ["openhands.socrat IN A " + address for address in records]
     with pytest.raises(AssertionError):
@@ -87,6 +94,12 @@ def test_rustfs_names_additive_without_changes_to_existing_records() -> None:
         new = zone.render(123, home, vps).splitlines()
         # Require the exact reviewed new records before the unchanged historical comparison.
         new = _reviewed_openhands_addition(new, zone.healthy_addresses(home, vps))
+        redis_prefix = "redis.socrat IN A "
+        assert [r for r in new if r.startswith(redis_prefix)] == [redis_prefix + zone.HOME]
+        new = [r for r in new if not r.startswith(redis_prefix)]
+        prefix = "pg.socrat IN A "
+        assert [r for r in new if r.startswith(prefix)] == [prefix + zone.HOME]
+        new = [r for r in new if not r.startswith(prefix)]
         # Independently approved concurrent SPI DNS addition is also historical-fixture scope.
         names = (
             "rustfs.socrat IN A ",
@@ -98,12 +111,21 @@ def test_rustfs_names_additive_without_changes_to_existing_records() -> None:
             "venice.socrat IN A ",
             "password.socrat IN A ",
         )
+        # Monori alone has a separately tested primary/standby publication policy.
+        historical = prior["render"](123, home, vps).splitlines()
+        assert [x for x in new if x.startswith("monori IN A ")] == [
+            "monori IN A " + ip for ip in zone.monori_addresses(home, True)
+        ]
         assert [
             line
             for line in new
-            if not line.startswith(names)
+            if not line.startswith((*names, "monori IN A ", "lms IN A ", "auth.socrat IN A "))
             and line not in ("@ IN NS ns3.alchemmist.xyz.", "ns3 IN A 91.189.82.238")
-        ] == prior["render"](123, home, vps).splitlines()
+        ] == [
+            x
+            for x in historical
+            if not x.startswith(("monori IN A ", "lms IN A ", "auth.socrat IN A "))
+        ]
         for name in ("rustfs.socrat", "spi-evidence.socrat"):
             for address in zone.healthy_addresses(home, vps):
                 assert new.count(f"{name} IN A {address}") == 1
@@ -134,3 +156,46 @@ def test_vpn_has_only_moscow_even_when_original_entrances_fail() -> None:
         ]
         assert "ns1 IN A 109.173.40.247" in lines
         assert "ns2 IN A 109.120.141.60" in lines
+
+
+@pytest.mark.parametrize(
+    "home,moscow,ips",
+    [
+        (True, True, [zone.HOME, zone.MOSCOW]),
+        (True, False, [zone.HOME]),
+        (False, True, [zone.MOSCOW]),
+        (False, False, [zone.HOME, zone.MOSCOW]),
+    ],
+)
+def test_monori_https_selection_is_scoped(home, moscow, ips):
+    lines = zone.render(123, True, True, monori_health=(home, moscow)).splitlines()
+    assert [x for x in lines if x.startswith("monori IN A ")] == ["monori IN A " + ip for ip in ips]
+    assert [x for x in lines if x.startswith("lms IN A ")] == ["lms IN A " + zone.HOME]
+
+
+@pytest.mark.parametrize(
+    "rc,status,healthy", [(0, "200", True), (0, "503", False), (60, "000", False)]
+)
+def test_monori_https_requires_verified_exchange(monkeypatch, rc, status, healthy):
+    import subprocess
+
+    def run(argv, **kwargs):
+        assert argv[argv.index("--resolve") + 1] == "monori.alchemmist.xyz:8443:127.0.0.1"
+        assert argv[-1] == "https://monori.alchemmist.xyz:8443/"
+        assert argv[argv.index("--max-time") + 1] == "3"
+        assert "--insecure" not in argv and "-k" not in argv
+        assert kwargs["timeout"] == 3.5
+        return subprocess.CompletedProcess(argv, rc, stdout=status)
+
+    monkeypatch.setattr(zone.subprocess, "run", run)
+    assert zone.monori_https("127.0.0.1", 8443, 3) is healthy
+
+
+@pytest.mark.parametrize("home,vps", [(True, True), (True, False), (False, True), (False, False)])
+def test_existing_production_oidc_pair_preserved(home, vps):
+    lines = zone.render(123, home, vps).splitlines()
+    for name in ("lms", "auth.socrat"):
+        prefix = name + " IN A "
+        assert [x for x in lines if x.startswith(prefix)] == [
+            prefix + ip for ip in ([zone.HOME] if home else zone.healthy_addresses(home, vps))
+        ]

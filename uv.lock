@@ -582,7 +582,7 @@ dev = [
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "quality-graph-cli", specifier = "==0.2.4" },
     { name = "quality-graph-core", specifier = "==0.2.4" },
-    { name = "quality-graph-github", directory = "tools/quality-graph-github" },
+    { name = "quality-graph-github", specifier = "==0.2.4" },
     { name = "ruff", specifier = "==0.15.12" },
     { name = "types-pyyaml", specifier = "==6.0.12.20261113" },
     { name = "yamllint", specifier = "==1.38.0" },
@@ -1316,20 +1316,16 @@ wheels = [
 [[package]]
 name = "quality-graph-github"
 version = "0.2.4"
-source = { directory = "tools/quality-graph-github" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "jinja2" },
     { name = "pyyaml" },
     { name = "quality-graph-core" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "jinja2", specifier = ">=3.1.6" },
-    { name = "pyyaml", specifier = ">=6.0.2" },
-    { name = "quality-graph-core", specifier = "==0.2.4" },
+sdist = { url = "https://files.pythonhosted.org/packages/4d/a7/bba0cf837c74a1329f2e705801379c9da545de7f0edc53b1fdceb54a36a5/quality_graph_github-0.2.4.tar.gz", hash = "sha256:3d59c23863cda19f8c6dbb4bdfd304af251072f7d3bd75958a0cef4cba83fb84", size = 40355, upload-time = "2026-11-22T13:24:02.541Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/49/bd/dab0d649032f2363129d3db37150838eb54850874165975ac578cc7d93ef/quality_graph_github-0.2.4-py3-none-any.whl", hash = "sha256:efc7e4c41a047579791a84aeae5c810ed30619ca111d317092f257e6662c68ae", size = 51972, upload-time = "2026-11-22T13:24:01.472Z" },
 ]
 
 [[package]]

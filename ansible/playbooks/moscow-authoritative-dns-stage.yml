@@ -56,7 +56,7 @@
 
     - name: Compute the local renderer digest
       ansible.builtin.stat:
-        path: "{{ playbook_dir }}/../../scripts/public_dns_zone.py"
+        path: "{{ playbook_dir }}/../scripts/public_dns_zone.py"
         checksum_algorithm: sha256
       delegate_to: localhost
       register: moscow_dns_renderer

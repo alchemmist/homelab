@@ -10,7 +10,7 @@ import unittest
 from contextlib import closing
 from pathlib import Path
 
-from scripts.quality.common import command
+from ci.quality.common import command
 
 spec = importlib.util.spec_from_file_location(
     "retry", Path(__file__).resolve().parents[1] / "scripts/n8n/spi_operator_retry.py"
@@ -57,7 +57,8 @@ def _linux_sort_reproduction() -> None:
         with closing(sqlite3.connect(database)) as db:
             db.execute("CREATE TABLE payload(sort_key INTEGER, body TEXT)")
             db.executemany(
-                "INSERT INTO payload VALUES(?, ?)", ((i, "x" * 4096) for i in range(14000, 0, -1))
+                "INSERT INTO payload VALUES(?, ?)",
+                ((i, "x" * 4096) for i in range(14000, 0, -1)),
             )
             db.commit()
         database.chmod(0o400)

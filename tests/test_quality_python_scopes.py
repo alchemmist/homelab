@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from scripts.quality import common, python_scopes
+from ci.quality import common, python_scopes
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -15,10 +15,10 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def registry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    config = (common.ROOT / "quality/ruff.toml").read_bytes()
-    directory = tmp_path / "quality/python-scopes"
+    config = (common.ROOT / "ci/quality/ruff.toml").read_bytes()
+    directory = tmp_path / "ci/quality/python-scopes"
     directory.mkdir(parents=True)
-    (tmp_path / "quality/ruff.toml").write_bytes(config)
+    (tmp_path / "ci/quality/ruff.toml").write_bytes(config)
     monkeypatch.setattr(common, "ROOT", tmp_path)
     monkeypatch.setattr(common, "vendor_prefixes", lambda: ("tests/vendor/",))
     monkeypatch.setattr(common, "frozen_source_files", lambda: {"tests/frozen.py"})
@@ -75,7 +75,10 @@ def test_scopes_check_union_without_widening(
         ('{"include":["../*.py"],"rules":["F401"]}', "repository-relative"),
         ('{"include":["/*.py"],"rules":["F401"]}', "repository-relative"),
         ('{"include":["*.py"],"rules":[],"rules":["F401"]}', "Duplicate JSON"),
-        ('{"include":["*.py"],"exclude":[],"rules":["F401"]}', "exactly include and rules"),
+        (
+            '{"include":["*.py"],"exclude":[],"rules":["F401"]}',
+            "exactly include and rules",
+        ),
     ],
 )
 def test_scope_rejects_bad_contract(registry: Path, raw: str | None, error: str) -> None:

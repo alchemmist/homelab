@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import subprocess
 import types
 from pathlib import Path
 
@@ -19,9 +20,9 @@ def module(name: str) -> types.ModuleType:
     return m
 
 
-def test_real_project_config_has_no_inline_credentials_and_blocks_pending_clients() -> None:
+def test_optional_pi_example_has_no_inline_credentials_and_blocks_pending_clients() -> None:
     """Require disabled pending clients and command-backed credential headers."""
-    config = json.loads((ROOT / ".pi/mcp.json").read_text())["mcpServers"]
+    config = json.loads((ROOT / "deploy/mcp/examples/pi-mcp.json").read_text())["mcpServers"]
     assert set(config) == {
         "socrat-grafana",
         "argocd",
@@ -41,7 +42,29 @@ def test_real_project_config_has_no_inline_credentials_and_blocks_pending_client
         for value in c.get("headers", {}).values():
             assert value.startswith("!python3 scripts/mcp-credential.py ")
     assert config["socrat-grafana"]["url"].endswith("/mcp")
-    assert "/.pi/mcp.json" not in (ROOT / ".gitignore").read_text().splitlines()
+    assert "/.pi/" in (ROOT / ".gitignore").read_text().splitlines()
+
+
+def test_pi_opt_in_only_writes_ignored_private_config(tmp_path: Path) -> None:
+    """No network, credentials, global Pi config, or project trust is needed for this test."""
+    setup = module("setup-official-mcp")
+    project = tmp_path / "checkout"
+    subprocess.run(["git", "init", "-q", str(project)], check=True)
+    runtime = tmp_path / "runtime"
+    private = tmp_path / "private"
+    with pytest.raises(ValueError, match="unignored"):
+        setup.configure_project_files(project, target=runtime, folder=private)
+    assert not (project / ".pi").exists()
+    (project / ".gitignore").write_text("/.pi/\n")
+    setup.configure_project_files(project, target=runtime, folder=private)
+    local = project / ".pi/mcp.json"
+    servers = json.loads(local.read_text())["mcpServers"]
+    assert servers["argocd"]["args"][0] == str(runtime / "bin/run-official-mcp.py")
+    assert servers["n8n"]["enabled"] is False
+    assert local.stat().st_mode & 0o777 == 0o600
+    subprocess.run(["git", "-C", str(project), "add", "-f", ".pi/mcp.json"], check=True)
+    with pytest.raises(ValueError, match="tracked"):
+        setup.configure_project_files(project, target=runtime, folder=private)
 
 
 def test_all_current_applications_are_audited_with_reason() -> None:
@@ -100,13 +123,13 @@ def test_secret_reader_rejects_symlink_and_unsafe_mode(tmp_path) -> None:
 
 def test_package_lock_and_release_checksums_are_pinned() -> None:
     """Require pinned package versions and 64-character release checksums."""
-    p = json.loads((ROOT / "tools/official-mcp/package.json").read_text())
+    p = json.loads((ROOT / "deploy/mcp/clients/package.json").read_text())
     assert p["dependencies"] == {
         "@umami/mcp": "0.2.0",
         "argocd-mcp": "file:argocd-mcp-0.9.0-homelab.tar",
         "zod": "4.6.7",
     }
-    lock = json.loads((ROOT / "tools/official-mcp/package-lock.json").read_text())
+    lock = json.loads((ROOT / "deploy/mcp/clients/package-lock.json").read_text())
     assert lock["packages"][""]["dependencies"] == p["dependencies"]
     assert all(
         v.get("integrity") for k, v in lock["packages"].items() if k.startswith("node_modules/")

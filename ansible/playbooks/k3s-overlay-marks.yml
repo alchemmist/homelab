@@ -19,7 +19,7 @@
         executable: /bin/bash
     - name: Audit ownership and kernel-validate the proposed atomic transaction
       ansible.builtin.script:
-        cmd: "{{ playbook_dir }}/../../scripts/k3s-overlay-marks.py"
+        cmd: "{{ playbook_dir }}/../scripts/k3s-overlay-marks.py"
         executable: python3
       changed_when: false
       check_mode: false

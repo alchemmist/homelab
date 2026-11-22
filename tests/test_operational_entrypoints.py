@@ -43,7 +43,7 @@ class _RefusalPlay(TypedDict):
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "entrypoints", ROOT / "scripts/check_operational_entrypoints.py"
+    "entrypoints", ROOT / "ci/check_operational_entrypoints.py"
 )
 assert spec is not None
 assert spec.loader is not None
@@ -92,7 +92,9 @@ class OperationalEntrypoints(unittest.TestCase):
         for suffix in ("yml", "yaml"):
             with self.subTest(suffix=suffix), tempfile.TemporaryDirectory() as d:
                 root, _c = self.fixture(d)
-                (root / f"ansible/other.{suffix}").write_text("command: helm install other ./chart\n")
+                (root / f"ansible/other.{suffix}").write_text(
+                    "command: helm install other ./chart\n"
+                )
                 with pytest.raises(ValueError, match="Unclassified"):
                     entrypoints.check(root)
 
@@ -209,7 +211,7 @@ def _assert_retired_grafana_source(source: str) -> None:
     assert isinstance(call.args[0].value, str)
     text = call.args[0].value
     assert text.startswith("Retired:")
-    assert "docs/identity/app-access-groups.md" in text
+    assert "docs/auth/applications/app-access-groups.md" in text
     assert "ansible/roles/authentik/files/reconcile_app_access.py" in text
     assert "ansible/roles/identity_app_access/" in text
     assert isinstance(result, ast.Return)
@@ -227,7 +229,7 @@ def test_retired_grafana_admission_never_forwards_or_reads_credentials(
     args: list[str], capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Import only the structurally bounded refusal; no identity helper is loaded."""
-    path = ROOT / "scripts/grafana-app-admission.py"
+    path = ROOT / "ansible/scripts/grafana-app-admission.py"
     _assert_retired_grafana_source(path.read_text())
     spec = importlib.util.spec_from_file_location("retired_grafana_admission", path)
     assert spec is not None
@@ -245,7 +247,7 @@ def test_retired_grafana_admission_never_forwards_or_reads_credentials(
 @pytest.mark.parametrize("mutation", ["import", "open", "forward", "success"])
 def test_retired_grafana_admission_effect_mutations_are_rejected(mutation: str) -> None:
     """The guard rejects capability imports, file access, forwarding and success."""
-    source = (ROOT / "scripts/grafana-app-admission.py").read_text()
+    source = (ROOT / "ansible/scripts/grafana-app-admission.py").read_text()
     _assert_retired_grafana_source(source)
     if mutation == "import":
         changed = source + "\nimport os\n"

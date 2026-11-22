@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE_DB_MODE = 0o640
 PREIMAGE_FILE_MODE = 0o600
 BACKUP_DIR_MODE = 0o700
-SPEC = importlib.util.spec_from_file_location("vps_migration", ROOT / "scripts/vps-ip-migration.py")
+SPEC = importlib.util.spec_from_file_location("vps_migration", ROOT / "ansible/scripts/vps-ip-migration.py")
 M = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(M)
 OLD, NEW = "1.1.1.1", "8.8.8.8"
@@ -62,7 +62,7 @@ class RepositoryTests(unittest.TestCase):
             p = self.repo / name
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text("endpoint " + OLD + ":443\n")
-        (self.repo / "scripts/public_dns_zone.py").write_text(
+        (self.repo / "ansible/scripts/public_dns_zone.py").write_text(
             'HOME = "9.9.9.9"\nVPS = "' + OLD + '"\n'
         )
         self.backup = self.base / "private-backups"
@@ -121,7 +121,7 @@ class RepositoryTests(unittest.TestCase):
             M.repository(self.repo, OLD, NEW, True, self.repo / "private")
 
     def test_third_address_anchor_fails_closed(self) -> None:
-        (self.repo / "scripts/public_dns_zone.py").write_text('VPS = "9.9.9.9"\n')
+        (self.repo / "ansible/scripts/public_dns_zone.py").write_text('VPS = "9.9.9.9"\n')
         with self.assertRaises(M.MigrationError):
             M.repository(self.repo, OLD, NEW)
 
@@ -255,10 +255,15 @@ class RuntimeTests(unittest.TestCase):
         assert "k3s.service" not in M.required_services(changes)
 
     def test_reviewed_restarting_transport_and_dormant_guard(self) -> None:
-        services = ["wireguard-tcp-transport.service", "wireguard-tcp-transport-guard.service"]
+        services = [
+            "wireguard-tcp-transport.service",
+            "wireguard-tcp-transport-guard.service",
+        ]
         states = dict(zip(services, ["activating", "inactive"], strict=True))
         with patch.object(
-            M, "run", side_effect=lambda a: "auto-restart" if "SubState" in a else states[a[2]]
+            M,
+            "run",
+            side_effect=lambda a: "auto-restart" if "SubState" in a else states[a[2]],
         ):
             with self.assertRaises(M.MigrationError):
                 M.service_plan(services)

@@ -1,4 +1,0 @@
-{
-  "include": ["services/pi-monori/*.py"],
-  "rules": ["E701", "E702"]
-}

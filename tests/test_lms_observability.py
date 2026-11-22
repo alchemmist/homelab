@@ -58,10 +58,7 @@ def test_live_values_enable_mtls_without_secret_contents() -> None:
     docs = render("-f", str(ROOT / "deploy/lms/values.yaml"))
     dep = next(x for x in docs if x and x["kind"] == "Deployment" and _name(x) == "lms")
     pod = _mapping_path(dep, "spec", "template", "spec")
-    env = {
-        e["name"]: e.get("value")
-        for e in _documents(_documents(pod["containers"])[0]["env"])
-    }
+    env = {e["name"]: e.get("value") for e in _documents(_documents(pod["containers"])[0]["env"])}
     assert env["LMS_TRACING_ENABLED"] == "1"
     assert env["LMS_TRACE_SAMPLE_RATIO"] == "1"
     assert env["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] == "https://10.250.0.3:44318/v1/traces"
@@ -128,7 +125,10 @@ def test_renewal_scope_is_only_lms_leaf_and_lms_deployment() -> None:
     exec(compile(source, "mirror.py", "exec"), mod.__dict__)
     mod.validate_destination(
         {
-            "application": "lms", "namespace": "lms", "secret": "otel-app-tls-lms", "reloadDeployments": ["lms"]
+            "application": "lms",
+            "namespace": "lms",
+            "secret": "otel-app-tls-lms",
+            "reloadDeployments": ["lms"],
         }
     )
     cm = next(d for d in docs if d["kind"] == "ConfigMap")
@@ -159,7 +159,10 @@ def test_correlations_preserve_credentials_and_survive_refresh() -> None:
         "datasources": [
             {
                 "uid": "loki",
-                "jsonData": {"tlsAuth": True, "derivedFields": [{"name": "Other", "url": "other"}]},
+                "jsonData": {
+                    "tlsAuth": True,
+                    "derivedFields": [{"name": "Other", "url": "other"}],
+                },
                 "secureJsonData": {"tlsClientKey": "synthetic-private-key"},
             },
             {"uid": "tempo", "jsonData": {"tracesToLogsV2": {"datasourceUid": "loki"}}},
@@ -173,8 +176,8 @@ def test_correlations_preserve_credentials_and_survive_refresh() -> None:
     assert fields[-1]["url"] == "$${__value.raw}"
     mod.configure(document)
     assert len(result["datasources"][0]["jsonData"]["derivedFields"]) == 2
-    for script in ["otel-host-credentials.py", "otel-production-grafana.py"]:
-        source = (ROOT / "scripts" / script).read_text()
+    for script in ["ansible/scripts/otel-host-credentials.py", "scripts/otel-production-grafana.py"]:
+        source = (ROOT / script).read_text()
         assert "trace_id=([0-9a-f]{32})" in source
         assert "$${__value.raw}" in source
 
@@ -182,7 +185,10 @@ def test_correlations_preserve_credentials_and_survive_refresh() -> None:
 def test_dashboard_pins_existing_datasources_without_redundant_selectors() -> None:
     dashboard = json.loads((ROOT / "charts/lms/files/lms-performance.json").read_text())
     assert [variable["name"] for variable in dashboard["templating"]["list"]] == ["trace_id"]
-    assert dashboard["templating"]["list"][0]["datasource"] == {"type": "tempo", "uid": "tempo"}
+    assert dashboard["templating"]["list"][0]["datasource"] == {
+        "type": "tempo",
+        "uid": "tempo",
+    }
     for panel in dashboard["panels"]:
         if "datasource" in panel:
             expected = "loki" if panel["type"] == "logs" else "tempo"
@@ -228,6 +234,14 @@ def test_hibernated_database_alerts_do_not_page_for_production_lms() -> None:
         return {r["alert"] for r in _documents(groups[0]["rules"])}
 
     assert rules() == {"LMSWebUnavailable"}
-    assert rules("--set", "lms-database-ha.hibernate=false") == {
-        "LMSWebUnavailable", "LMSDatabaseQuorumAtRisk", "LMSDatabaseRedundancyDegraded", "LMSDatabaseBackupOverdue"
+    assert rules(
+        "--set",
+        "database.ha.resources=true",
+        "--set",
+        "lms-database-ha.hibernate=false",
+    ) == {
+        "LMSWebUnavailable",
+        "LMSDatabaseQuorumAtRisk",
+        "LMSDatabaseRedundancyDegraded",
+        "LMSDatabaseBackupOverdue",
     }

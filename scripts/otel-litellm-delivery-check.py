@@ -32,7 +32,10 @@ def run(pod, application="litellm"):
     metrics = get(
         "http://10.43.147.125:9090/api/v1/query?"
         + urllib.parse.urlencode(
-            {"query": 'up{namespace="llm",pod="' + pod + '"}', "partial_response": "false"}
+            {
+                "query": 'up{namespace="llm",pod="' + pod + '"}',
+                "partial_response": "false",
+            }
         )
     )
     logs = get(

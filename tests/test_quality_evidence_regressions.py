@@ -7,24 +7,22 @@ import importlib
 import json
 import os
 import stat
-import sys
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts/quality"))
-common = importlib.import_module("common")
-strict_report = importlib.import_module("strict_report")
+common = importlib.import_module("ci.quality.common")
+strict_report = importlib.import_module("ci.quality.strict_report")
 
 _FROZEN_FILE_COUNT = 17
-_REVIEWED_NONSECRET_COUNT = 51
+_REVIEWED_NONSECRET_COUNT = 50
 _GIT_SHA1_LENGTH = 40
 _GIT_SHA256_LENGTH = 64
 _PRIVATE_DIRECTORY_MODE = 0o700
 _PRIVATE_FILE_MODE = 0o600
 _REPORT_NOTES = (
-    "Full-tree check. Historical quality/debt files do not decide success "
+    "Full-tree check. Historical ci/quality/debt files do not decide success "
     "and cannot be regenerated. Reviewed secret false positives are exact "
     "id/path/rule matches only."
 )
@@ -105,7 +103,7 @@ def test_command_failure_keeps_the_exit_summary() -> None:
 def test_reviewed_nonsecret_ids_round_trip_and_path_drift_blocks() -> None:
     """Match reviewed non-secrets only on the exact suffixed id, path, and rule."""
     index = common.reviewed_secret_index()
-    raw = json.loads((ROOT / "quality/secret-false-positives.json").read_text())
+    raw = json.loads((ROOT / "ci/quality/secret-false-positives.json").read_text())
     assert len(raw["findings"]) == len(index) == _REVIEWED_NONSECRET_COUNT
     counts: dict[str, int] = {}
     synthetic = []
@@ -149,10 +147,10 @@ def test_duplicate_reviewed_identity_is_rejected(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Reject a repeated reviewed identity instead of collapsing the match."""
-    source = json.loads((ROOT / "quality/secret-false-positives.json").read_text())
+    source = json.loads((ROOT / "ci/quality/secret-false-positives.json").read_text())
     source["findings"] = [source["findings"][0], dict(source["findings"][0])]
     root = tmp_path / "repo"
-    target = root / "quality/secret-false-positives.json"
+    target = root / "ci/quality/secret-false-positives.json"
     target.parent.mkdir(parents=True)
     target.write_text(json.dumps(source))
     monkeypatch.setattr(common, "ROOT", root)
@@ -170,7 +168,7 @@ def test_baseline_regeneration_stays_forbidden(tmp_path: Path) -> None:
 
 def test_frozen_provenance_is_the_exact_reviewed_file_set() -> None:
     """Check all 17 digests without exempting locally patched modules from lint."""
-    policy = json.loads((ROOT / "quality/strict-policy.json").read_text())
+    policy = json.loads((ROOT / "ci/quality/strict-policy.json").read_text())
     record = policy["frozenCompatibility"]
     manifest = json.loads((ROOT / record["manifest"]).read_text())
     expected = {record["directory"] + "/" + name for name in manifest["backend_sha256"]}

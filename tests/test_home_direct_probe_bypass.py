@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("egress", ROOT / "scripts/vpn-home-transit-egress.py")
+spec = importlib.util.spec_from_file_location("egress", ROOT / "ansible/scripts/vpn-home-transit-egress.py")
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
@@ -29,7 +29,7 @@ def test_only_home0_local_probe_uid_tcp443_is_exempt() -> None:
 
 def test_cas_migration_preserves_receipts_and_rejects_unreviewed_drift() -> None:
     """Require the migration source to keep its receipt checks and refuse flush."""
-    source = (ROOT / "scripts/vpn-home-transit-egress.py").read_text()
+    source = (ROOT / "ansible/scripts/vpn-home-transit-egress.py").read_text()
     assert "assert without == before" in source
     assert "assert not receipt.exists()" in source
     assert "assert output_rules[0]['comment']" in source

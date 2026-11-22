@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "runtime_observer", ROOT / "scripts/vpn-runtime-observer.py"
+    "runtime_observer", ROOT / "ansible/scripts/vpn-runtime-observer.py"
 )
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
@@ -44,7 +44,9 @@ def test_backend_requires_native_both_units_and_server_ownership() -> None:
     assert m.classify(p, {"mode": "fallback"}, True, [True, True], True) == -1
 
 
-def test_socket_observation_does_not_call_established_sessions_off(tmp_path: Path) -> None:
+def test_socket_observation_does_not_call_established_sessions_off(
+    tmp_path: Path,
+) -> None:
     """Test behavior for test_socket_observation_does_not_call_established_sessions_off."""
     net = tmp_path / "net"
     net.mkdir()
@@ -79,7 +81,7 @@ def test_export_is_atomic_numeric_no_accounts_or_paths(tmp_path: Path) -> None:
 
 def test_observer_has_no_recovery_or_mutating_command() -> None:
     """Test behavior for test_observer_has_no_recovery_or_mutating_command."""
-    s = (ROOT / "scripts/vpn-runtime-observer.py").read_text()
+    s = (ROOT / "ansible/scripts/vpn-runtime-observer.py").read_text()
     for forbidden in [
         "'tick'",
         "'activate'",
@@ -94,7 +96,9 @@ def test_observer_has_no_recovery_or_mutating_command() -> None:
         assert forbidden not in s
 
 
-def test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock(tmp_path: Path) -> None:
+def test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock(
+    tmp_path: Path,
+) -> None:
     """Test behavior for test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock."""
     from types import SimpleNamespace
 
@@ -106,8 +110,7 @@ def test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock(tmp_
         (net / name).write_text("header\n")
     (net / "tcp").write_text("header\n0: 00000000:01BB 00000000:0000 0A\n")
 
-
-    def run(args: list[str], _timeout = 30) -> object:
+    def run(args: list[str], _timeout=30) -> object:
         assert args[:2] == ["systemctl", "show"]
         return SimpleNamespace(
             returncode=0,

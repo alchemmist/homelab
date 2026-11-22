@@ -61,7 +61,11 @@ class LogDeliveryMatrixTests(unittest.TestCase):
                 )
         with self.assertRaises(ValueError):
             helper.select_counts(
-                {"status": "success", "warnings": ["partial"], "data": {"resultType": "vector"}}
+                {
+                    "status": "success",
+                    "warnings": ["partial"],
+                    "data": {"resultType": "vector"},
+                }
             )
 
     def test_unexpected_body_or_attribute_label_rejected(self) -> None:

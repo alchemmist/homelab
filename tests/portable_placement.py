@@ -7,7 +7,11 @@ def home_affinity() -> dict[str, object]:
     def term(*nodes: str) -> dict[str, object]:
         return {
             "matchExpressions": [
-                {"key": "kubernetes.io/hostname", "operator": "In", "values": list(nodes)}
+                {
+                    "key": "kubernetes.io/hostname",
+                    "operator": "In",
+                    "values": list(nodes),
+                }
             ]
         }
 

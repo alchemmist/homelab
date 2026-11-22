@@ -47,7 +47,6 @@
     name: syncthing.service
     enabled: false
     state: stopped
-  register: syncthing_system_service
   failed_when: false
 
 - name: Stop legacy templated Syncthing service for homelab user if present
@@ -55,7 +54,6 @@
     name: syncthing@{{ homelab_user }}.service
     enabled: false
     state: stopped
-  register: syncthing_templated_service
   failed_when: false
 
 - name: Kill leftover legacy Syncthing processes owned by homelab user

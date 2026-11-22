@@ -131,7 +131,8 @@ def summarize(objects):
         "configurationIsNotDeliveryEvidence": True,
         "sources": records,
         "podIncarnations": sorted(
-            incarnations, key=lambda row: (row["namespace"], row["pod"], row["container"])
+            incarnations,
+            key=lambda row: (row["namespace"], row["pod"], row["container"]),
         ),
     }
 

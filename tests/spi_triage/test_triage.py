@@ -10,7 +10,16 @@ from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "charts/spi-triage/files"))
-from core import REPORT_SCHEMA, Failure, Store, clean, digest, normalize, render, validate
+from core import (
+    REPORT_SCHEMA,
+    Failure,
+    Store,
+    clean,
+    digest,
+    normalize,
+    render,
+    validate,
+)
 from integrations import Evidence, GitHub, Model, metric_summary
 from service import Engine
 
@@ -148,7 +157,15 @@ class CoreTests(unittest.TestCase):
     def test_redaction_precedes_model(self) -> None:
         """Verify secrets are redacted before the model runs."""
         secret = "ghp_" + "x" * 25
-        assert secret not in json.dumps(clean({"password": "private", "message": secret, "description": "token=private"}))
+        assert secret not in json.dumps(
+            clean(
+                {
+                    "password": "private",
+                    "message": secret,
+                    "description": "token=private",
+                }
+            )
+        )
         assert clean({"Authorization": "Bearer xyz"})["Authorization"] == "[REDACTED]"
 
     def test_english_contract(self) -> None:
@@ -194,7 +211,12 @@ class AdapterTests(unittest.TestCase):
         http = Mock()
         http.request.side_effect = [
             [
-                {"number": i, "title": "[SPI] Test", "state": "open", "updated_at": "first"}
+                {
+                    "number": i,
+                    "title": "[SPI] Test",
+                    "state": "open",
+                    "updated_at": "first",
+                }
                 for i in range(1, 21)
             ],
             [
@@ -249,7 +271,10 @@ class EvidenceTests(unittest.TestCase):
             "data": {
                 "resultType": "matrix",
                 "result": [
-                    {"metric": {"name": "example"}, "values": [[1, "0"], [2, "7"], [3, "0"]]}
+                    {
+                        "metric": {"name": "example"},
+                        "values": [[1, "0"], [2, "7"], [3, "0"]],
+                    }
                 ],
             }
         }
@@ -270,7 +295,6 @@ class EvidenceTests(unittest.TestCase):
         """Verify host profiles exclude raw trace attributes."""
         http = Mock()
 
-
         def request(_method, url, *_args, **_kwargs) -> dict[str, object]:
             if "/api/v1/query?" in url:
                 return {"data": {"result": [{"metric": {"nodename": "socrat-0"}}]}}
@@ -284,7 +308,10 @@ class EvidenceTests(unittest.TestCase):
                                         {
                                             "status": {"code": 2},
                                             "attributes": [
-                                                {"key": "password", "value": "do-not-publish"}
+                                                {
+                                                    "key": "password",
+                                                    "value": "do-not-publish",
+                                                }
                                             ],
                                         }
                                     ]
@@ -379,7 +406,7 @@ class EngineTests(unittest.TestCase):
         self.engine.write = True
         self.model.match.return_value = {"candidates": [{"number": 7}]}
         self.model.analyze.return_value = report(7)
-        key = self.process()
+        self.process()
         assert self.github.request.call_args.args[1] == "/issues/7/comments"
 
     def test_ambiguous_write_is_reconciled_not_repeated(self) -> None:
@@ -426,7 +453,7 @@ class EngineTests(unittest.TestCase):
     def test_resolved_does_not_create_issue(self) -> None:
         """Verify resolutions never create new issues."""
         self.engine.write = True
-        key = self.process(event("resolved"))
+        self.process(event("resolved"))
         self.github.request.assert_not_called()
         self.model.match.assert_not_called()
 
@@ -434,7 +461,7 @@ class EngineTests(unittest.TestCase):
         """Verify resolutions comment but never close issues."""
         self.engine.write = True
         self.github.request.return_value = {"number": 7}
-        first = self.process()
+        self.process()
         self.github.reset_mock()
         self.github.request.return_value = {"state": "open"}
         self.process(event("resolved"))

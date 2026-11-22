@@ -131,7 +131,12 @@ def manifests() -> list[dict[str, object]]:
                     {
                         "from": [
                             {"ipBlock": {"cidr": ip + "/32"}}
-                            for ip in ["109.120.141.60", "10.250.0.2", "10.42.0.0", "10.42.0.1"]
+                            for ip in [
+                                "109.120.141.60",
+                                "10.250.0.2",
+                                "10.42.0.0",
+                                "10.42.0.1",
+                            ]
                         ],
                         "ports": [{"protocol": "TCP", "port": 33080}],
                     }
@@ -171,7 +176,10 @@ def manifests() -> list[dict[str, object]]:
                                     "path": "/relay",
                                     "pathType": "Exact",
                                     "backend": {
-                                        "service": {"name": NAME, "port": {"number": 33080}}
+                                        "service": {
+                                            "name": NAME,
+                                            "port": {"number": 33080},
+                                        }
                                     },
                                 }
                             ]
@@ -214,9 +222,10 @@ def home_manifests() -> list[dict[str, object]]:
         if env["name"] == "NB_EXPOSED_ADDRESS":
             env["value"] = HOME_URI
         if env["name"] == "NB_AUTH_SECRET":
-            cast("dict[str, object]", cast("dict[str, object]", env["valueFrom"])["secretKeyRef"])[
-                "name"
-            ] = name + "-auth"
+            cast(
+                "dict[str, object]",
+                cast("dict[str, object]", env["valueFrom"])["secretKeyRef"],
+            )["name"] = name + "-auth"
     cast("dict[str, object]", service["spec"])["selector"] = labels
     policy_spec = cast("dict[str, object]", policy["spec"])
     cast("dict[str, object]", policy_spec["podSelector"])["matchLabels"] = labels

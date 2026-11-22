@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -40,7 +41,9 @@ class PrivateDnsRoleTests(unittest.TestCase):
             "/etc/systemd/system/{{ homelab_private_dns_unit_name }}"
         )
 
-    def test_dnsmasq_is_bound_to_wireguard_address_and_has_explicit_upstreams(self) -> None:
+    def test_dnsmasq_is_bound_to_wireguard_address_and_has_explicit_upstreams(
+        self,
+    ) -> None:
         """Dnsmasq is bound to wireguard address and has explicit upstreams."""
         assert "listen-address={{ homelab_private_dns_listen_address }}" in self.config
         assert "bind-dynamic" in self.config
@@ -71,7 +74,9 @@ class PrivateDnsRoleTests(unittest.TestCase):
 
     def test_records_are_rendered_as_explicit_addresses(self) -> None:
         """Records are rendered as explicit addresses."""
-        assert re.search(r"host-record=\{\{ record\.name \}\},\{\{ record\.address \}\}", self.config)
+        assert re.search(
+            r"host-record=\{\{ record\.name \}\},\{\{ record\.address \}\}", self.config
+        )
         assert "local=/{{ record.name }}/" in self.config
         assert "address=/{{ record.name }}/{{ record.address }}" not in self.config
         assert "homelab_private_dns_records | sort(attribute='name')" in self.config

@@ -35,7 +35,10 @@ class WorkerAdmissionSafetyTests(unittest.TestCase):
                             "gather_facts": False,
                             "vars": {
                                 "k3s_worker_name": hostname,
-                                "ansible_facts": {"os_family": os_family, "architecture": "x86_64"},
+                                "ansible_facts": {
+                                    "os_family": os_family,
+                                    "architecture": "x86_64",
+                                },
                                 "wg_socrat_nodes": {hostname: {"address": address}},
                             },
                             "roles": [str(ROOT / "ansible/roles/k3s_worker")],
@@ -60,7 +63,9 @@ class WorkerAdmissionSafetyTests(unittest.TestCase):
             self.assertIn("Assertion failed", output)
             self.assertNotIn("Inspect existing server datastore", output)
 
-    def test_existing_control_planes_remain_rejected_when_worker_name_is_overridden(self) -> None:
+    def test_existing_control_planes_remain_rejected_when_worker_name_is_overridden(
+        self,
+    ) -> None:
         """Reject every control-plane host name even when the worker is renamed."""
         for hostname in ["socrat-0", "socrat-1", "socrat-2"]:
             with self.subTest(hostname=hostname):
@@ -70,7 +75,9 @@ class WorkerAdmissionSafetyTests(unittest.TestCase):
         """Reject a non-Debian host before any package task runs."""
         self.assert_rejected_before_host_changes("socrat-3", os_family="Archlinux")
 
-    def test_management_address_mismatch_is_rejected_before_network_operations(self) -> None:
+    def test_management_address_mismatch_is_rejected_before_network_operations(
+        self,
+    ) -> None:
         """Reject a worker whose address misses the registered mesh entry."""
         self.assert_rejected_before_host_changes("socrat-3", address="10.250.0.4")
 

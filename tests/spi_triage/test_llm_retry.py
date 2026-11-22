@@ -43,7 +43,13 @@ class DurableRetryTests(unittest.TestCase):
     def test_permanent_and_ambiguous_errors_still_stop(self) -> None:
         """Verify permanent and ambiguous errors still stop retrying."""
         for index, code in enumerate(
-            ["HTTP_429", "LLM_HTTP_400", "LLM_HTTP_401", "LLM_HTTP_403", "WRITE_NEEDS_REVIEW"]
+            [
+                "HTTP_429",
+                "LLM_HTTP_400",
+                "LLM_HTTP_401",
+                "LLM_HTTP_403",
+                "WRITE_NEEDS_REVIEW",
+            ]
         ):
             key = self.store.enqueue(f.event(start="2026-11-03T13:00:%02dZ" % index))["job_id"]
             with self.store.db() as c:
@@ -109,7 +115,12 @@ class ModelRetryTests(unittest.TestCase):
         """Verify retry hints in seconds and HTTP-date forms."""
         from email.utils import formatdate
 
-        for value in ["120", formatdate(time.time() + 180, usegmt=True), "invalid", "NaN"]:
+        for value in [
+            "120",
+            formatdate(time.time() + 180, usegmt=True),
+            "invalid",
+            "NaN",
+        ]:
             h = HTTP()
             h.opener = Mock()
             h.opener.open.side_effect = urllib.error.HTTPError(
@@ -133,7 +144,9 @@ class ModelRetryTests(unittest.TestCase):
         saved = []
         with self.assertRaises(Failure):
             m.match(
-                f.event(), issues, on_progress=lambda p: saved.append(json.loads(json.dumps(p)))
+                f.event(),
+                issues,
+                on_progress=lambda p: saved.append(json.loads(json.dumps(p))),
             )
         assert len(saved[-1]["reviews"]) == 1
         m.call = Mock(return_value=good)
@@ -154,6 +167,7 @@ class EngineCheckpointTests(unittest.TestCase):
 
     def test_partial_matching_checkpoint_saved_before_busy_failure(self) -> None:
         """Verify partial match checkpoints save before busy failures."""
+
         def matching(event, issues, progress=None, on_progress=None) -> None:
             on_progress({"signature": "test", "decisions": []})
             raise Failure("LLM_HTTP_429")

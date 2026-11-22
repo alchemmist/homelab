@@ -12,7 +12,7 @@
       ansible.builtin.command:
         argv:
           - python3
-          - "{{ playbook_dir }}/../../scripts/otel-litellm-sdk-rollout.py"
+          - "{{ playbook_dir }}/../scripts/otel-litellm-sdk-rollout.py"
           - --apply
           - --output
           - >-

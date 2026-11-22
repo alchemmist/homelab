@@ -31,7 +31,7 @@
       failed_when: false
     - name: Install fixed-address no-key relay
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../scripts/wg-peer15-relay.py"
+        src: "{{ playbook_dir }}/../scripts/wg-peer15-relay.py"
         dest: /usr/local/libexec/homelab-wg-peer15-relay.py
         owner: root
         group: root

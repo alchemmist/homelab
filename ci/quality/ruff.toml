@@ -1,0 +1,13 @@
+target-version = "py313"
+line-length = 100
+
+[lint]
+select = ["ALL"]
+# Unsatisfiable rule pairs. Documented in docs/quality/strict-policy.md.
+ignore = ["D203", "D213", "ISC001", "COM812"]
+
+[lint.per-file-ignores]
+# Behavior names document pytest functions and unittest methods in test modules.
+"tests/**/test_*.py" = ["D102", "D103"]
+# Pytest rewrites assertions in the tests tree (unchanged assertion policy).
+"**/tests/**" = ["S101"]

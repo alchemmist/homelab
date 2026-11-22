@@ -32,7 +32,10 @@ class InternalNetworkTests(unittest.TestCase):
         assert set(net.NETWORKS) == {"socrat-0"}
         with self.assertRaises(ValueError):
             net.resource_body("socrat-0", "10.250.0.1/32")
-        assert net.resource_body("socrat-0", "10.250.0.1/32", local_input_authorized=True)["name"] == "wg-socrat-0"
+        assert (
+            net.resource_body("socrat-0", "10.250.0.1/32", local_input_authorized=True)["name"]
+            == "wg-socrat-0"
+        )
         with self.assertRaises(ValueError):
             net.resource_body("socrat-2", "10.250.0.2/32")
         rule = net.gateway_input_policy("real-admin-jwt", "exact-gateway-api")["rules"][0]
@@ -47,7 +50,9 @@ class InternalNetworkTests(unittest.TestCase):
     def test_clients_do_not_import_routes_but_serve_explicit_networks(self) -> None:
         """Clients import no routes but serve the explicit networks."""
         docs = net.peers()
-        assert [o["metadata"]["name"] for o in docs if o["kind"] == "Deployment"] == ["machine-socrat-0"]
+        assert [o["metadata"]["name"] for o in docs if o["kind"] == "Deployment"] == [
+            "machine-socrat-0"
+        ]
         for obj in docs:
             if obj["kind"] != "Deployment":
                 continue
@@ -73,7 +78,10 @@ class InternalNetworkTests(unittest.TestCase):
         ]:
             with self.assertRaises(ValueError):
                 net.genuine_admin_group(groups)
-        assert net.genuine_admin_group([{"name": net.ADMIN_GROUP, "issued": "jwt", "id": "real"}]) == "real"
+        assert (
+            net.genuine_admin_group([{"name": net.ADMIN_GROUP, "issued": "jwt", "id": "real"}])
+            == "real"
+        )
         rule = net.policy_body("real", "resource")["rules"][0]
         assert rule["sources"] == ["real"]
         assert rule["destinationResource"] == {"id": "resource", "type": "host"}
@@ -86,7 +94,9 @@ class InternalNetworkTests(unittest.TestCase):
         assert net.ADMIN_GROUP in oidc.PROFILE_GROUP_NAMES
         assert net.ADMIN_GROUP in oidc.profile_expression()
 
-    def test_owner_handover_accepts_only_one_exact_owner_device_explicitly(self) -> None:
+    def test_owner_handover_accepts_only_one_exact_owner_device_explicitly(
+        self,
+    ) -> None:
         """Owner handover accepts only one exact owner device, explicitly."""
         p = {
             "id": "mac",

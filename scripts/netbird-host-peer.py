@@ -203,10 +203,16 @@ def peer(host, *, admin_mesh=False) -> list[dict[str, object]]:
                             }
                         ],
                         "volumes": [
-                            {"name": "state", "persistentVolumeClaim": {"claimName": name}},
+                            {
+                                "name": "state",
+                                "persistentVolumeClaim": {"claimName": name},
+                            },
                             {
                                 "name": "tun",
-                                "hostPath": {"path": "/dev/net/tun", "type": "CharDevice"},
+                                "hostPath": {
+                                    "path": "/dev/net/tun",
+                                    "type": "CharDevice",
+                                },
                             },
                         ],
                     },
@@ -326,13 +332,20 @@ def frontend(host, address) -> list[dict[str, object]]:
                                         "mountPath": "/etc/traefik",
                                         "readOnly": True,
                                     },
-                                    {"name": "tls", "mountPath": "/tls", "readOnly": True},
+                                    {
+                                        "name": "tls",
+                                        "mountPath": "/tls",
+                                        "readOnly": True,
+                                    },
                                 ],
                             }
                         ],
                         "volumes": [
                             {"name": "config", "configMap": {"name": name}},
-                            {"name": "tls", "secret": {"secretName": "grafana-frontend-tls"}},
+                            {
+                                "name": "tls",
+                                "secret": {"secretName": "grafana-frontend-tls"},
+                            },
                         ],
                     },
                 },

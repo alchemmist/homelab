@@ -1,4 +1,0 @@
-{
-  "include": ["scripts/otel-*.py"],
-  "rules": ["PLR6201"]
-}

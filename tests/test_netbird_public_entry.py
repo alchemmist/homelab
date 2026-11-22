@@ -45,7 +45,12 @@ class PublicEntryTests(unittest.TestCase):
         assert "http2" not in static["entryPoints"]["h2c"]
         dynamic = yaml.safe_load(cm["data"]["dynamic.yaml"])
         deny = dynamic["http"]["routers"]["deny-setup"]["rule"]
-        for path in ["/api/setup", "/api/users/invites", "/oauth2/auth/local", "/oauth2/signup"]:
+        for path in [
+            "/api/setup",
+            "/api/users/invites",
+            "/oauth2/auth/local",
+            "/oauth2/signup",
+        ]:
             assert path in deny
         assert "Path(`/api/setup`)" in deny
         assert "PathPrefix(`/api/setup/`)" in deny

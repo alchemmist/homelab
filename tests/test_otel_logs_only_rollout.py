@@ -8,7 +8,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("merge", ROOT / "scripts/otel-logs-only-config.py")
+spec = importlib.util.spec_from_file_location("merge", ROOT / "ansible/scripts/otel-logs-only-config.py")
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
@@ -68,7 +68,7 @@ class ScopedRolloutTests(unittest.TestCase):
     def test_pinned_counter_names_and_ambiguity(self) -> None:
         """Verify one counter suffix is totaled and both suffixes together fail closed."""
         spec = importlib.util.spec_from_file_location(
-            "gate", ROOT / "scripts/otel-logs-rollout-gate.py"
+            "gate", ROOT / "ansible/scripts/otel-logs-rollout-gate.py"
         )
         gate = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(gate)

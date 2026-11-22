@@ -1,0 +1,120 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lms-certification-runner
+  namespace: automation
+data:
+  launch.py: "import uvicorn\n\
+    from runner.app import create_app\n\
+    from runner.engine import DockerEngine\n\
+    app=create_app(catalog={},engine=DockerEngine(\"lms-certification-sandbox:pilot\",\
+    owner=\"certification-pilot\"))\n\
+    uvicorn.run(app,host=\"0.0.0.0\",port=9000,access_log=False)\n"
+...
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lms-certification-runner
+  namespace: automation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lms-certification-runner
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: lms-certification-runner
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - command:
+            - sh
+            - -ec
+            - python -m venv /tmp/venv && /tmp/venv/bin/pip -q install --no-cache-dir
+              -r /app/runner/requirements.txt && cd /app && exec /tmp/venv/bin/python
+              -m runner.launch
+          env:
+            - name: LMS_RUNNER_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: JUDGE
+                  name: lms-certification-pilot
+            - name: LMS_CERTIFICATION_RUNNER_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: RUNNER
+                  name: lms-certification-pilot
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: HOME
+              value: /tmp
+          image: python:3.12-slim
+          name: runner
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 9000
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsGroup: 1000
+            runAsUser: 1000
+          volumeMounts:
+            - mountPath: /app/runner
+              name: code
+              readOnly: true
+            - mountPath: /var/run/docker.sock
+              name: docker
+              readOnly: true
+      nodeSelector:
+        kubernetes.io/hostname: socrat-1
+      volumes:
+        - configMap:
+            name: lms-certification-runner
+          name: code
+        - hostPath:
+            path: /run/user/1000/docker.sock
+            type: Socket
+          name: docker
+...
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lms-certification-runner
+  namespace: automation
+spec:
+  ports:
+    - port: 9000
+      targetPort: 9000
+  selector:
+    app: lms-certification-runner
+...
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: lms-certification-runner
+  namespace: automation
+spec:
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: n8n
+      ports:
+        - port: 9000
+          protocol: TCP
+  podSelector:
+    matchLabels:
+      app: lms-certification-runner
+  policyTypes:
+    - Ingress
+...

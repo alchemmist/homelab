@@ -40,7 +40,7 @@ def runtime_module() -> types.ModuleType:
     import importlib.util
 
     s = importlib.util.spec_from_file_location(
-        "retire", ROOT / "scripts/moscow-retire-worker-runtime.py"
+        "retire", ROOT / "ansible/scripts/moscow-retire-worker-runtime.py"
     )
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
@@ -64,7 +64,9 @@ def test_runtime_refuses_unknown_workloads_and_pvc() -> None:
         "items": [
             pod("vpn-transit", "vpn-transit-a", "a"),
             pod(
-                "cattle-monitoring-system", "kube-prometheus-stack-prometheus-node-exporter-b", "b"
+                "cattle-monitoring-system",
+                "kube-prometheus-stack-prometheus-node-exporter-b",
+                "b",
             ),
         ]
     }

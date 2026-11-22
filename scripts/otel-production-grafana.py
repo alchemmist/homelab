@@ -30,7 +30,14 @@ cert = b.resource(
     },
 )
 b.kube("apply", "-f", "-", "-o", "json", document=cert)
-b.kube("-n", ns, "wait", "--for=condition=Ready", "certificate/otel-tls-grafana", "--timeout=90s")
+b.kube(
+    "-n",
+    ns,
+    "wait",
+    "--for=condition=Ready",
+    "certificate/otel-tls-grafana",
+    "--timeout=90s",
+)
 leaf = b.kube("-n", ns, "get", "secret", "otel-tls-grafana", "-o", "json")["data"]
 secure = {
     name: base64.b64decode(leaf[key]).decode()
@@ -49,7 +56,11 @@ sources = [
         "url": "https://10.250.0.3:" + str(port),
         "isDefault": False,
         "editable": False,
-        "jsonData": {"tlsAuth": True, "tlsAuthWithCACert": True, "tlsSkipVerify": False},
+        "jsonData": {
+            "tlsAuth": True,
+            "tlsAuthWithCACert": True,
+            "tlsSkipVerify": False,
+        },
         "secureJsonData": secure,
     }
     for name, port in [("Loki", 3100), ("Tempo", 3200)]

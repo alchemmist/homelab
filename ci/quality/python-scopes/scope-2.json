@@ -1,0 +1,4 @@
+{
+  "include": ["scripts/netbird-*.py", "ansible/scripts/netbird-*.py"],
+  "rules": ["E701", "E702", "F841"]
+}

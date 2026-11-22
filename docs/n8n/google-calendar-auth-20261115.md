@@ -75,4 +75,4 @@ Do not claim repaired based on Pod health or successful unauthenticated HEAD.
 
 Workflow activities/graphs/credentials/SQL/history, failure handler and alerts
 were not modified or muted. googleDnsEnabled remains false. Interactive Google
-consent is explicitly a user action under llm-wiki/n8n-workflows.md.
+consent is explicitly a user action under docs/n8n/n8n-workflows.md.

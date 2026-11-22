@@ -162,42 +162,6 @@ spec:
             {{- end }}
           {{- end }}
           {{- end }}
-        {{- if .Values.continueIterationChat }}
-        - name: iteration-continuation
-          image: {{ include "agent-canvas.image" . }}
-          command: [python, -IBu, -c]
-          args:
-            - |
-{{ .Files.Get "files/continue_iterations.py" | indent 14 }}
-          env:
-            - name: CONVERSATION_ID
-              value: {{ .Values.continueIterationChat | quote }}
-            {{- with .Values.continueQaChat }}
-            - name: QA_CONVERSATION_ID
-              value: {{ . | quote }}
-            {{- end }}
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities: {drop: [ALL]}
-          resources:
-            requests: {cpu: 10m, memory: 24Mi}
-            limits: {cpu: 100m, memory: 96Mi}
-          volumeMounts:
-            - name: {{ include "agent-canvas.pvcClaimName" . }}
-              mountPath: /wait-state
-              subPath: iteration-wait-state
-            - name: {{ include "agent-canvas.pvcClaimName" . }}
-              mountPath: /session-key
-              subPath: openhands/agent-canvas/api-key.txt
-              readOnly: true
-            {{- range $mount, $dir := .Values.workerRegistries }}
-            - name: {{ include "agent-canvas.pvcClaimName" $ }}
-              mountPath: /{{ $mount }}-registry
-              subPath: openhands/agent-canvas/workspaces/{{ $dir }}/.worker-registry
-              readOnly: true
-            {{- end }}
-        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

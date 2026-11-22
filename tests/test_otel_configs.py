@@ -73,7 +73,12 @@ class ObservabilityConfigTests(unittest.TestCase):
                 assert "${env:OTEL_BIND_IP}" in _text(listener["endpoint"])
                 tls = _mapping(listener["tls"])
                 assert {"cert_file", "key_file", "client_ca_file"} <= set(tls)
-                assert set(tls) <= {"cert_file", "key_file", "client_ca_file", "reload_interval"}
+                assert set(tls) <= {
+                    "cert_file",
+                    "key_file",
+                    "client_ca_file",
+                    "reload_interval",
+                }
                 if "reload_interval" in tls:
                     assert tls["reload_interval"] == "1m"
 
@@ -86,7 +91,10 @@ class ObservabilityConfigTests(unittest.TestCase):
         tasks = {task["name"]: task for task in play["tasks"]}
         unit = tasks["Install native tail sampling gateway"]["ansible.builtin.copy"]["content"]
         assert "Environment=OTEL_TEMPO_ENDPOINT={{ trace_gateway_service.stdout }}:4317" in unit
-        assert "--set=exporters.otlp/tempo.tls.server_name_override=" "otel-tempo.cattle-monitoring-system.svc.cluster.local" in unit
+        assert (
+            "--set=exporters.otlp/tempo.tls.server_name_override="
+            "otel-tempo.cattle-monitoring-system.svc.cluster.local" in unit
+        )
         for source in (
             "charts/prometheus/values.yaml",
             "deploy/monitoring/otel-production-values.yaml",
@@ -107,7 +115,10 @@ class ObservabilityConfigTests(unittest.TestCase):
         assert tempo["block_retention"] == "168h"
         for name in ["loki", "tempo"]:
             server = _mapping(config(name)["server"])
-            assert _mapping(server["http_tls_config"])["client_auth_type"] == "RequireAndVerifyClientCert"
+            assert (
+                _mapping(server["http_tls_config"])["client_auth_type"]
+                == "RequireAndVerifyClientCert"
+            )
 
     def test_sampling_contract_includes_both_http_conventions(self) -> None:
         """Require tail sampling to match both HTTP status conventions."""
@@ -127,4 +138,8 @@ class ObservabilityConfigTests(unittest.TestCase):
             ("http-5xx", "http.response.status_code"),
             ("legacy-http-5xx", "http.status_code"),
         ]:
-            assert policies[name]["numeric_attribute"] == {"key": key, "min_value": 500, "max_value": 599}
+            assert policies[name]["numeric_attribute"] == {
+                "key": key,
+                "min_value": 500,
+                "max_value": 599,
+            }

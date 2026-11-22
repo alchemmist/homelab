@@ -67,7 +67,7 @@ class _PointerConfig(TypedDict):
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "source_pointers", ROOT / "scripts/check_source_pointers.py"
+    "source_pointers", ROOT / "ci/check_source_pointers.py"
 )
 assert spec is not None
 assert spec.loader is not None
@@ -89,10 +89,14 @@ class SourcePointers(unittest.TestCase):
         """Create local Argo sources, a values binding and its current documentation."""
         root = Path(directory)
         self.write(
-            root, "charts/api/Chart.yaml", {"apiVersion": "v2", "name": "api", "version": "1.0.0"}
+            root,
+            "charts/api/Chart.yaml",
+            {"apiVersion": "v2", "name": "api", "version": "1.0.0"},
         )
         self.write(
-            root, "charts/api/values.yaml", {"persistence": {"existingClaim": "claim-current"}}
+            root,
+            "charts/api/values.yaml",
+            {"persistence": {"existingClaim": "claim-current"}},
         )
         self.write(root, "deploy/api.yaml", {"extra": "value"})
         app: _Application = {
@@ -194,7 +198,12 @@ class SourcePointers(unittest.TestCase):
                         "targetRevision": "1.0.0",
                         "helm": {"valueFiles": ["$values/deploy/api.yaml"]},
                     },
-                    {"repoURL": REPO, "targetRevision": "main", "ref": "values", "path": "docs"},
+                    {
+                        "repoURL": REPO,
+                        "targetRevision": "main",
+                        "ref": "values",
+                        "path": "docs",
+                    },
                 ]
             }
             self.write(root, "deploy/argocd/apps/api.yaml", app)
@@ -217,7 +226,10 @@ class SourcePointers(unittest.TestCase):
 
     def test_values_symlink_escape_rejected(self) -> None:
         """Verify values symlink escape rejected."""
-        with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as outside:
+        with (
+            tempfile.TemporaryDirectory() as d,
+            tempfile.TemporaryDirectory() as outside,
+        ):
             root, _app, _c = self.fixture(d)
             for name in ["deploy/api.yaml", "charts/api/Chart.yaml"]:
                 with self.subTest(name=name):

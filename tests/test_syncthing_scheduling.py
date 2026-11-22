@@ -39,7 +39,14 @@ class SyncthingSchedulingTests(unittest.TestCase):
                 )
             )
             return subprocess.run(
-                [HELM, "template", "syncthing", str(ROOT / "charts/syncthing"), "-f", str(values)],
+                [
+                    HELM,
+                    "template",
+                    "syncthing",
+                    str(ROOT / "charts/syncthing"),
+                    "-f",
+                    str(values),
+                ],
                 capture_output=True,
                 text=True,
                 timeout=30,
@@ -94,7 +101,12 @@ class SyncthingSchedulingTests(unittest.TestCase):
     def test_explicit_node_selector_remains_an_additional_constraint(self) -> None:
         """Keep an explicit node selector beside the required node affinity."""
         resources = self.resources(
-            {"nodeSelector": {"homelab.io/storage": "true", "kubernetes.io/hostname": "socrat-0"}}
+            {
+                "nodeSelector": {
+                    "homelab.io/storage": "true",
+                    "kubernetes.io/hostname": "socrat-0",
+                }
+            }
         )
         pod = next(
             item

@@ -1,0 +1,104 @@
+{{- if and .Values.enabled .Values.browserRoutes.enabled .Values.browserRoutes.unifiedOrigin }}
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: rustfs-public-reader, namespace: identity}
+data:
+  nginx.conf: |
+{{ .Files.Get "files/public-reader.conf" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: rustfs-public-reader, namespace: identity}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: rustfs-public-reader}}
+  template:
+    metadata:
+      labels: {app: rustfs-public-reader}
+      annotations:
+        checksum/config: {{ .Files.Get "files/public-reader.conf" | sha256sum }}
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector: {matchLabels: {app: rustfs-public-reader}}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: http
+          image: docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311
+          command: [nginx, '-g', 'daemon off;']
+          ports: [{name: http, containerPort: 8080}]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 250m, memory: 64Mi}
+          readinessProbe: {tcpSocket: {port: http}, periodSeconds: 5}
+          volumeMounts:
+            - {name: config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: config
+          configMap: {name: rustfs-public-reader}
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: rustfs-public-reader, namespace: identity}
+spec:
+  selector: {app: rustfs-public-reader}
+  ports: [{name: http, port: 80, targetPort: http}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: rustfs-public-reader, namespace: identity}
+spec:
+  podSelector: {matchLabels: {app: rustfs-public-reader}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
+        - ipBlock: {cidr: 10.250.0.2/32} # NL host-network Traefik
+        - ipBlock: {cidr: 10.42.0.0/32} # socrat-2 flannel.1 source to remote pods
+      ports: [{port: 8080, protocol: TCP}]
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: rustfs}}
+          podSelector: {matchLabels: {app: rustfs}}
+      ports: [{port: 9000, protocol: TCP}]
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rustfs-public-reader
+  namespace: identity
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: 'true'
+    traefik.ingress.kubernetes.io/router.priority: '155'
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: rustfs.socrat.alchemmist.xyz
+      http:
+        paths:
+          - path: /public/
+            pathType: Prefix
+            backend:
+              service: {name: rustfs-public-reader, port: {number: 80}}
+{{- end }}

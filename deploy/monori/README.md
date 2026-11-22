@@ -41,3 +41,12 @@ an empty list blocks everyone. Disabling OIDC alone does not enable passwords.
 This migration does not create a backup or support a schema downgrade. Without a separately verified backup there is no assured restore point. Before syncing, provision the `monori-pg-migrator` Secret (`DATABASE_URL`) in namespace `monori` using the schema owner with verified TLS. Never put the credential in Git or grant the app/console schema ownership. Ensure the pinned backend contains `/app/server/postgres/0022_refunds.sql`. The transactional PreSync hook accepts 0021/0022 only. Use a full Argo application sync (selective sync skips hooks); inspect a failed Job before retry. Do not downgrade production data as an image rollback.
 
 `monori_owner` is a NOLOGIN role. Provision a dedicated login authorized to `SET ROLE monori_owner`, not a database superuser. The Job uses the `maintenance: monori-schema` ingress peer on pg-common, distinct from the backend Service selector. Confirm the postgres-platform policy has synced before retrying a blocked PreSync.
+
+For later releases the pinned backend image carries `/app/server/postgres/revision`
+(four digits; absent on the original 0022 image). PreSync applies one numbered SQL
+file per missing revision from the same image. Each file must advance `alembic_version`
+by exactly one. Optional `grants/NNNN.sql` files reconcile version-specific runtime
+grants on replay. The transaction rolls back on any failure. The backend init check
+uses the same target. A target older than the database is rejected, not downgraded.
+
+Before the stateful Sync rollout, the `monori-sync-image-cache` PreSync Job pulls the exact Sync image on the Sync node. It runs no application code and mounts no data. A failed or slow pull holds the full Argo sync before the existing single writer is stopped; do not bypass hooks with a selective Deployment sync.

@@ -12,7 +12,9 @@ def rendered_policy() -> str:
     return config["data"]["nginx.conf"]
 
 
-def test_public_read_only_status_and_legacy_https_redirect(rendered_policy: str) -> None:
+def test_public_read_only_status_and_legacy_https_redirect(
+    rendered_policy: str,
+) -> None:
     """The only proxy pass is inside the allowlist; socket, push and admin paths default to 404."""
     assert_read_only_status_policy(rendered_policy)
 
@@ -20,7 +22,10 @@ def test_public_read_only_status_and_legacy_https_redirect(rendered_policy: str)
 @pytest.mark.parametrize(
     ("old", "new"),
     [
-        ("upstream kuma {", "upstream kuma { server dummy.invalid:80; }\nupstream unused {"),
+        (
+            "upstream kuma {",
+            "upstream kuma { server dummy.invalid:80; }\nupstream unused {",
+        ),
         ("gatus.uptime-kuma.svc.cluster.local:80", "dummy.invalid:80"),
         ("^(GET|HEAD)$", "^(GET|HEAD|POST)$"),
         ("endpoints/|suites/|favicon", "socket.io|endpoints/|suites/|favicon"),

@@ -77,7 +77,11 @@ def audit_expression(expression):
                     "otlpCandidate": canonical,
                 }
             )
-    return {"selectorCount": selectors, "dynamicSelectorCount": dynamic, "findings": findings}
+    return {
+        "selectorCount": selectors,
+        "dynamicSelectorCount": dynamic,
+        "findings": findings,
+    }
 
 
 def expressions(value, path=()):

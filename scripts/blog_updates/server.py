@@ -29,7 +29,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         """Dispatch an authenticated worker action (validate/generate/create-pr)."""
-        if self.path not in ("/validate", "/generate", "/create-pr") or not hmac.compare_digest(
+        if self.path not in (
+            "/validate",
+            "/generate",
+            "/create-pr",
+        ) or not hmac.compare_digest(
             self.headers.get("X-Worker-Token", ""), os.environ["WORKER_TOKEN"]
         ):
             self.send_response(403)
@@ -45,7 +49,9 @@ class Handler(BaseHTTPRequestHandler):
             event = json.loads(self.rfile.read(length))
             with EXECUTION_LOCK:
                 result = stage(
-                    self.path[1:], event, write=os.environ.get("WRITE_ENABLED") == "true"
+                    self.path[1:],
+                    event,
+                    write=os.environ.get("WRITE_ENABLED") == "true",
                 )
             self.send_response(200)
         except (ValueError, KeyError, TypeError, RuntimeError, OSError) as exc:

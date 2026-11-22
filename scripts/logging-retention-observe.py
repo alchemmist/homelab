@@ -34,7 +34,8 @@ def sample(base) -> dict[str, object]:
     }
     for name, query in QUERIES.items():
         with urlopen(
-            base.rstrip("/") + "/api/v1/query?" + urlencode({"query": query}), timeout=10
+            base.rstrip("/") + "/api/v1/query?" + urlencode({"query": query}),
+            timeout=10,
         ) as response:
             value = json.load(response)
         if value.get("status") != "success":
@@ -57,7 +58,13 @@ def main() -> None:
         while True:
             try:
                 row = sample(args.prometheus)
-            except (OSError, ValueError, KeyError, TypeError, http.client.HTTPException) as error:
+            except (
+                OSError,
+                ValueError,
+                KeyError,
+                TypeError,
+                http.client.HTTPException,
+            ) as error:
                 row = {
                     "observedAtUnix": time.time(),
                     "errorType": type(error).__name__,

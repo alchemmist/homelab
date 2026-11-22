@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TypedDict
 
 spec = importlib.util.spec_from_file_location(
-    "otel_capacity", Path(__file__).parents[1] / "scripts/otel-capacity-placement.py"
+    "otel_capacity", Path(__file__).parents[1] / "ansible/scripts/otel-capacity-placement.py"
 )
 capacity = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(capacity)
@@ -82,7 +82,10 @@ class CapacityPlacementTests(unittest.TestCase):
         patch, undo = capacity.placement(doc)
         assert doc == before
         assert patch["metadata"]["resourceVersion"] == "123"
-        assert patch["spec"]["strategy"]["rollingUpdate"] == {"maxSurge": 1, "maxUnavailable": 0}
+        assert patch["spec"]["strategy"]["rollingUpdate"] == {
+            "maxSurge": 1,
+            "maxUnavailable": 0,
+        }
         assert set(patch["spec"]["template"]["spec"]) == {"affinity"}
         assert "replicas" not in patch["spec"]
         assert undo["uid"] == "controller-uid"

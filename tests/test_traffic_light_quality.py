@@ -68,7 +68,10 @@ class QualityPanelsTest(unittest.TestCase):
         )
 
     def test_manual_return_to_legacy_width_is_also_authoritative(self):
-        grids = {931: {"x": 12, "y": 10, "w": 4, "h": 3}, 932: {"x": 12, "y": 13, "w": 4, "h": 3}}
+        grids = {
+            931: {"x": 12, "y": 10, "w": 4, "h": 3},
+            932: {"x": 12, "y": 13, "w": 4, "h": 3},
+        }
         for p in self.d["panels"]:
             if p["id"] in grids:
                 p["gridPos"] = grids[p["id"]]
@@ -122,7 +125,13 @@ class QualityPanelsTest(unittest.TestCase):
         assert len(p["targets"]) == AI_BLOCK_TARGET_COUNT
         queue, latency = [t["expr"] for t in p["targets"]]
         assert "num_requests_waiting" in queue
-        for token in ["histogram_quantile(0.95", "[15m]", ">=20", "vector(-1)", "< +Inf"]:
+        for token in [
+            "histogram_quantile(0.95",
+            "[15m]",
+            ">=20",
+            "vector(-1)",
+            "< +Inf",
+        ]:
             assert token in latency
         for expr in [queue, latency]:
             assert "timestamp(" in expr

@@ -22,7 +22,8 @@ class EngineStorageTests(unittest.TestCase):
     def setUp(self) -> None:
         """Set up the engine with a patched S3 origin."""
         origin = patch.dict(
-            "os.environ", {"SPI_EVIDENCE_PUBLIC_ORIGIN": "https://rustfs.socrat.alchemmist.xyz"}
+            "os.environ",
+            {"SPI_EVIDENCE_PUBLIC_ORIGIN": "https://rustfs.socrat.alchemmist.xyz"},
         )
         origin.start()
         self.addCleanup(origin.stop)
@@ -47,7 +48,13 @@ class EngineStorageTests(unittest.TestCase):
         self.s = Mock()
         self.s.ensure_object.side_effect = self.verify
         self.engine = Engine(
-            self.store, self.g, Mock(), Mock(), write=True, storage=self.s, storage_backend="s3"
+            self.store,
+            self.g,
+            Mock(),
+            Mock(),
+            write=True,
+            storage=self.s,
+            storage_backend="s3",
         )
 
     def verify(self, key: str, raw: bytes) -> dict[str, object]:
@@ -71,7 +78,8 @@ class EngineStorageTests(unittest.TestCase):
         gateway = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(gateway)
         urls = re.findall(
-            r"\]\((https://(?:rustfs|spi-evidence)\.socrat\.alchemmist\.xyz/[^\s)]+)\)", body
+            r"\]\((https://(?:rustfs|spi-evidence)\.socrat\.alchemmist\.xyz/[^\s)]+)\)",
+            body,
         )
         assert len(urls) == len(objects)
         for url, (key, raw) in zip(urls, objects, strict=True):
@@ -154,7 +162,9 @@ class EngineStorageTests(unittest.TestCase):
         self.engine.run("publish", self.key)
         assert self.g.request.call_count == 1
 
-    def test_postupload_invalidation_keeps_original_audit_not_new_bundle_binding(self) -> None:
+    def test_postupload_invalidation_keeps_original_audit_not_new_bundle_binding(
+        self,
+    ) -> None:
         """Verify post-upload invalidation keeps the original audit binding."""
         import copy
 
@@ -215,7 +225,10 @@ class EngineStorageTests(unittest.TestCase):
                     open_signature=digest([]),
                 )
                 self.store.save(self.key, 3, r, state="processing")
-            self.g.snapshot.side_effect = [[], [{"number": 3, "updated_at": str(cycle)}]]
+            self.g.snapshot.side_effect = [
+                [],
+                [{"number": 3, "updated_at": str(cycle)}],
+            ]
             with self.assertRaises(Failure):
                 self.engine.run("publish", self.key)
         final = self.store.get(self.key)
@@ -224,7 +237,10 @@ class EngineStorageTests(unittest.TestCase):
         assert len(final["result"]["snapshot_audit"]) == 2
         assert final["result"]["snapshot_audit"][0]["evidence"]["bundle"] == original
         assert "report" in final["result"]
-        assert final["result"]["storage_publication"]["binding"] == final["result"]["storage_publication"]["verified"]
+        assert (
+            final["result"]["storage_publication"]["binding"]
+            == final["result"]["storage_publication"]["verified"]
+        )
         assert self.s.ensure_object.call_count == 6
         self.g.request.assert_not_called()
 
@@ -238,7 +254,12 @@ class EngineStorageTests(unittest.TestCase):
             "bundle": prepare_bundle(
                 event,
                 {},
-                [{"name": "logs.json", "content": str(self.engine.evidence.collect.call_count)}],
+                [
+                    {
+                        "name": "logs.json",
+                        "content": str(self.engine.evidence.collect.call_count),
+                    }
+                ],
             )
         }
         for cycle in range(20):
@@ -252,7 +273,10 @@ class EngineStorageTests(unittest.TestCase):
             self.g.snapshot.return_value = []
             for stage in ("match", "collect", "analyze"):
                 self.engine.run(stage, self.key)
-            self.g.snapshot.side_effect = [[], [{"number": 3, "updated_at": str(cycle)}]]
+            self.g.snapshot.side_effect = [
+                [],
+                [{"number": 3, "updated_at": str(cycle)}],
+            ]
             with self.assertRaises(Failure):
                 self.engine.run("publish", self.key)
         assert self.engine.model.analyze.call_count == 3
@@ -338,7 +362,14 @@ class EngineStorageTests(unittest.TestCase):
             self.engine.run("publish", self.key)
         self.g.request.assert_not_called()
         assert self.store.get(self.key)["result"]["publication_backend"] == "s3"
-        assert self.store.get(self.key)["result"]["snapshot_audit"][0]["storage_publication"]["binding"] == self.store.get(self.key)["result"]["snapshot_audit"][0]["storage_publication"]["verified"]
+        assert (
+            self.store.get(self.key)["result"]["snapshot_audit"][0]["storage_publication"][
+                "binding"
+            ]
+            == self.store.get(self.key)["result"]["snapshot_audit"][0]["storage_publication"][
+                "verified"
+            ]
+        )
 
     def test_checkpoint_tampering_rejected(self) -> None:
         """Verify tampered checkpoints are rejected."""
@@ -440,7 +471,10 @@ class EngineStorageTests(unittest.TestCase):
                         "user": {"type": "Bot"},
                         "performed_via_github_app": {"id": 5569869},
                     }
-                    for marker in [self.bundle["parts"][0]["marker"], index_marker(self.bundle)]
+                    for marker in [
+                        self.bundle["parts"][0]["marker"],
+                        index_marker(self.bundle),
+                    ]
                 ]
 
                 def checkpoint(*args, **kwargs) -> None:
@@ -559,7 +593,9 @@ class EngineStorageTests(unittest.TestCase):
 
         values = list(stored.values())
         assert values[0] == encoded(self.bundle["manifest"]).encode("ascii")
-        assert values[1] == "".join(p["text"] for p in self.bundle["parts"] if p["id"] == "E001").encode("ascii")
+        assert values[1] == "".join(
+            p["text"] for p in self.bundle["parts"] if p["id"] == "E001"
+        ).encode("ascii")
 
     def test_patient_engine_failures_then_github_recovery(self) -> None:
         """Verify patient engine failures recover through GitHub."""

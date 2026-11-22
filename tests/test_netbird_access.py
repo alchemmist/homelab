@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("netbird_access", ROOT / "scripts/netbird-access.py")
+spec = importlib.util.spec_from_file_location("netbird_access", ROOT / "ansible/scripts/netbird-access.py")
 M = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(M)
 
@@ -47,7 +47,10 @@ def snapshot() -> dict[str, object]:
                     "jwt_groups_claim_name": "groups",
                     "jwt_allow_groups": [M.LEGACY_LOGIN],
                     "peer_login_expiration": 28800,
-                    "extra": {"user_approval_required": True, "peer_approval_enabled": False},
+                    "extra": {
+                        "user_approval_required": True,
+                        "peer_approval_enabled": False,
+                    },
                 },
             }
         ],
@@ -119,26 +122,32 @@ class AdmissionTests(unittest.TestCase):
         plan = M.reconcile_plan(s)
         assert s == before
         assert len(plan) == 4
-        assert plan[0]["body"]["property_mappings"] == ["openid", "email", "profile", "groups"]
+        assert plan[0]["body"]["property_mappings"] == [
+            "openid",
+            "email",
+            "profile",
+            "groups",
+        ]
         account = next(p for p in plan if p["purpose"] == "trusted-group-sso-admission")
         assert account["body"]["settings"]["peer_login_expiration"] == 28800
-        assert account["body"]["settings"]["jwt_allow_groups"] == [M.LEGACY_LOGIN, M.ADMIN]
+        assert account["body"]["settings"]["jwt_allow_groups"] == [
+            M.LEGACY_LOGIN,
+            M.ADMIN,
+        ]
         dns = next(p for p in plan if p["purpose"] == "server-side-dns-management-off")
         assert dns["body"]["disabled_management_groups"] == ["all"]
 
     def test_reconcile_noop_after_expected_readback(self) -> None:
         """Reconcile is a no-op after the expected readback."""
         s = snapshot()
-        _sequence(
-            _mapping(_documents(s["ak_providers"])[0])["property_mappings"]
-        ).append("groups")
+        _sequence(_mapping(_documents(s["ak_providers"])[0])["property_mappings"]).append("groups")
         _documents(s["ak_bindings"]).append({"group": "admins", "enabled": True, "order": 1})
         _sequence(
             _mapping(_mapping(_documents(s["nb_accounts"])[0])["settings"])["jwt_allow_groups"]
         ).append(M.ADMIN)
-        _mapping(
-            _mapping(_mapping(_documents(s["nb_accounts"])[0])["settings"])["extra"]
-        )["user_approval_required"] = False
+        _mapping(_mapping(_mapping(_documents(s["nb_accounts"])[0])["settings"])["extra"])[
+            "user_approval_required"
+        ] = False
         _mapping(s["nb_dns"])["disabled_management_groups"] = ["all"]
         assert M.reconcile_plan(s) == []
 
@@ -151,7 +160,9 @@ class AdmissionTests(unittest.TestCase):
         assert plan[0]["body"]["expression"] == M.EXPRESSION
         assert plan[1]["body"]["property_mappings"][-1] == "$profile_mapping"
 
-    def test_auto_admission_remains_group_restricted_and_preserves_peer_policy(self) -> None:
+    def test_auto_admission_remains_group_restricted_and_preserves_peer_policy(
+        self,
+    ) -> None:
         """Auto admission stays group-restricted and preserves peer policy."""
         s = snapshot()
         plan = M.reconcile_plan(s)
@@ -220,7 +231,9 @@ class AdmissionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 M.reconcile_plan(s)
 
-    def test_membership_action_never_replaces_other_groups_or_grants_superuser(self) -> None:
+    def test_membership_action_never_replaces_other_groups_or_grants_superuser(
+        self,
+    ) -> None:
         """Membership actions never replace groups or grant superuser."""
         s = snapshot()
         plan = M.membership_plan(s, "new-admin", "exact-reviewed-uuid")
@@ -257,7 +270,10 @@ class AdmissionTests(unittest.TestCase):
         assert M.membership_plan(s, "new-admin", "exact-reviewed-uuid", True) == []
         _sequence(_mapping(_documents(s["ak_groups"])[0])["users"]).append(2)
         assert M.membership_plan(s, "new-admin", "exact-reviewed-uuid") == []
-        assert "remove_user" in M.membership_plan(s, "new-admin", "exact-reviewed-uuid", True)[0]["path"]
+        assert (
+            "remove_user"
+            in M.membership_plan(s, "new-admin", "exact-reviewed-uuid", True)[0]["path"]
+        )
 
     def test_prior_uncertain_receipt_blocks_rerun(self) -> None:
         """A prior uncertain receipt blocks reruns."""
@@ -306,7 +322,9 @@ class AdmissionTests(unittest.TestCase):
         _sequence(_mapping(_documents(s["ak_groups"])[0])["users"]).append(2)
         return s
 
-    def test_offboarding_blocks_login_and_retires_only_exact_subject_devices(self) -> None:
+    def test_offboarding_blocks_login_and_retires_only_exact_subject_devices(
+        self,
+    ) -> None:
         """Offboarding blocks login and retires only exact subject devices."""
         s = self.offboard_state()
         plan = M.offboard_plan(s, "new-admin", "exact-reviewed-uuid")

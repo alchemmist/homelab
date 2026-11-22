@@ -27,7 +27,6 @@
       cp -a /etc/systemd/system/k3s-agent.service.d "$backup/"
     fi
     printf '%s\n' "$backup"
-  register: k3s_ha_agent_backup
   when: not k3s_ha_member_mode.stat.exists
   changed_when: true
 

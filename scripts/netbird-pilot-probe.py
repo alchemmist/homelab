@@ -86,7 +86,9 @@ def main():
     p.add_argument("--inputs", required=True, type=Path)
     p.add_argument("--expect", choices=["allow", "deny"], required=True)
     p.add_argument(
-        "--phase", required=True, help="e.g. baseline, router-a-down, router-b-down, revoked"
+        "--phase",
+        required=True,
+        help="e.g. baseline, router-a-down, router-b-down, revoked",
     )
     p.add_argument("--attempts", type=int, default=1)
     p.add_argument("--interval", type=float, default=2)
@@ -95,7 +97,8 @@ def main():
     a = p.parse_args()
     c = nb.validate(json.loads(a.inputs.read_text()))
     nb.require(
-        1 <= a.attempts <= 30 and 0 <= a.interval <= 60, "bounded attempts/interval required"
+        1 <= a.attempts <= 30 and 0 <= a.interval <= 60,
+        "bounded attempts/interval required",
     )
     negative = None
     if a.negative_ip is not None or a.negative_port is not None:
@@ -117,7 +120,10 @@ def main():
     results = run(c, a.expect, a.phase, a.attempts, a.interval, negative)
     print(
         json.dumps(
-            {"note": "Probe results only; see runbook for acceptance controls", "results": results},
+            {
+                "note": "Probe results only; see runbook for acceptance controls",
+                "results": results,
+            },
             indent=2,
         )
     )

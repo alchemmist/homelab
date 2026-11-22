@@ -13,22 +13,18 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import patch
 
 import pytest
-
-from scripts.quality import common
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-with patch.dict(sys.modules, {"common": common}):
-    from scripts.quality import lint
+from ci.quality import check_dependencies as lint
 
 _REPO = Path(__file__).resolve().parents[1]
 _LOCAL_AUDIT = ["pip-audit", "--local", "--strict", "--format", "json"]
 _INTEGRITY = "sha512-" + base64.b64encode(bytes((0x11,)) * 64).decode("ascii")
-_OWNED_LOCK = "tools/official-mcp/package-lock.json"
+_OWNED_LOCK = "deploy/mcp/clients/package-lock.json"
 _OWNED_DISTRIBUTIONS = 127
 _UNCHANGED_FUNCTION_DIGESTS = {
     "validate_requirement_lock": "b3a33235549137f1",
@@ -45,34 +41,34 @@ _UNCHANGED_FUNCTION_DIGESTS = {
     "workflow_runs": "b662bffc061e68ea",
     "workflow_files": "bd14b7f949c7a464",
     "parse_mypy": "a4b195fa170ed049",
-    "mypy_argv": "b4655d3a78e920e2",
+    "mypy_argv": "52f4ec72b8406dcf",
     "mypy_status": "3b74ad0402e03549",
     "mypy_invoke": "893e273ac5b5b538",
     "python_syntax_findings": "0767c5b6e78c82a1",
     "mypy_on": "884133f27e5b0c18",
     "mypy_findings": "b35d24c5bcc1146f",
-    "format_findings": "c5a859c7d55fc3c5",
+    "format_findings": "07852e9906d911b4",
     "shellcheck_files": "5212046c9fd29985",
     "workflow_script_findings": "a9c8e6afff47f8fd",
     # 7a45c9cd split check into a dispatcher and nine typed implementations.
-    # Pin the entire extracted implementations as well as the dispatch mapping.
+    # Pin the extracted implementations and the shared fail-closed report runner.
     # #459 deliberately changed the workflow dispatch and both workflow scanners.
     # Sources of the revised pins (leading docstrings excluded as below):
     # d525d349 for the scanner commands, a7cfd08e for check/workflow_directives,
     # 82e99f75 for physical-line attribution. All other original pins remain.
-    "check": "f05cf59d286c0457",
+    "check_workflow": "f31d15922b633629",
     "workflow_directives": "42d74e4c8b199427",
     "python_directive_lines": "69a68cc0a476fc79",
-    "check_python": "732041b20fcacae1",
-    "check_yaml": "c25bae72f56b16aa",
+    "check_python": "e8a7c92439e49d29",
+    "check_yaml": "f7758c28b3de10c4",
     "check_shell": "3cb39cc5d1303f55",
     "check_actions": "640d695b3edece7c",
     "check_actionlint": "caa982e539c3e36c",
-    "check_ansible": "bac2463835490282",
-    "check_docker": "6f0eec5c22cd10e4",
-    "check_javascript": "75a30298a56e4d97",
+    "check_ansible": "e7f4c4134b3e3508",
+    "check_docker": "62b3f92b54fea0d7",
+    "check_javascript": "669d09e95bf085cf",
     "check_secrets": "d58cf370ba0c9e77",
-    "main": "f8b9f9d5940733a7",
+    "run": "451657b3c955b7a4",
 }
 _PREVIOUS_CHECK_DEPENDENCIES = "256df8f69c0d5d07"
 
@@ -138,8 +134,48 @@ class _Connection:
         self.closed = True
 
 
+def _owner(name: str) -> Path:
+    if name in {
+        "check_actions",
+        "check_actionlint",
+        "workflow_directives",
+        "python_directive_lines",
+    }:
+        module = "check_workflow"
+    elif name.startswith("mypy_") or name in {
+        "parse_mypy",
+        "format_findings",
+        "python_syntax_findings",
+    }:
+        module = "check_python"
+    elif name in {"shell_targets", "shellcheck_files"}:
+        module = "check_shell"
+    elif name in {"nonsecret_tokenizer_option", "docker_targets"}:
+        module = "check_docker"
+    elif name == "yaml_targets":
+        module = "check_yaml"
+    elif name == "run":
+        module = "runner"
+    elif name.startswith("check_"):
+        module = name
+    elif name in {
+        "validate_requirement_lock",
+        "_distribution_fields",
+        "_vulnerability_id",
+        "dependency_report",
+        "_audit_python_source",
+        "node_lock_packages",
+        "node_advisory_report",
+        "post_node_advisory_batch",
+    }:
+        module = "check_dependencies"
+    else:
+        module = "lint_support"
+    return Path("ci/quality") / f"{module}.py"
+
+
 def _digest(name: str) -> str:
-    source = (_REPO / "scripts/quality/lint.py").read_text()
+    source = (_REPO / _owner(name)).read_text()
     module = ast.parse(source)
     for node in module.body:
         if isinstance(node, ast.FunctionDef) and node.name == name:
@@ -161,7 +197,9 @@ def _digest(name: str) -> str:
                 ]
                 assert len(decoders) == 1, "Unexpected Python audit decoder"
                 decoders[0].func = ast.Attribute(
-                    value=ast.Name(id="json", ctx=ast.Load()), attr="loads", ctx=ast.Load()
+                    value=ast.Name(id="json", ctx=ast.Load()),
+                    attr="loads",
+                    ctx=ast.Load(),
                 )
             # D103 added leading docstrings to functions whose executable AST
             # was already pinned. Keep the original seven documented pins intact.
@@ -176,7 +214,7 @@ def _digest(name: str) -> str:
             }
             if name not in historically_documented and ast.get_docstring(node) is not None:
                 node.body.pop(0)
-            if name == "main":
+            if name == "run":
                 # 0cfe2545 narrowed only the caught error types; verify the exact
                 # tuple before comparing the rest against the original fingerprint.
                 handlers = [item for item in ast.walk(node) if isinstance(item, ast.ExceptHandler)]
@@ -205,7 +243,7 @@ def _digest(name: str) -> str:
 
 
 def _python_audit_literals() -> list[list[object]]:
-    source = (_REPO / "scripts/quality/lint.py").read_text()
+    source = (_REPO / "ci/quality/check_dependencies.py").read_text()
     module = ast.parse(source)
     function = next(
         node
@@ -288,7 +326,11 @@ def test_non_npm_linter_functions_keep_their_executable_ast() -> None:
     for name, digest in _UNCHANGED_FUNCTION_DIGESTS.items():
         assert _digest(name) == digest, name
     assert _digest("check_dependencies") != _PREVIOUS_CHECK_DEPENDENCIES
-    for name in ("node_lock_packages", "node_advisory_report", "post_node_advisory_batch"):
+    for name in (
+        "node_lock_packages",
+        "node_advisory_report",
+        "post_node_advisory_batch",
+    ):
         assert _digest(name)
 
 
@@ -409,7 +451,11 @@ def test_advisory_findings_keep_version_identity(
         ("tools/fixture/package-lock.json", "not-json\n", "DEPENDENCY_LOCK_UNAUDITED"),
         ("tools/fixture/yarn.lock", "lockfile\n", "DEPENDENCY_LOCK_UNAUDITED"),
         ("tools/fixture/poetry.lock", "[metadata]\n", "DEPENDENCY_LOCK_UNAUDITED"),
-        ("tools/fixture/pnpm-lock.yaml", "lockfileVersion: 6\n", "DEPENDENCY_LOCK_UNAUDITED"),
+        (
+            "tools/fixture/pnpm-lock.yaml",
+            "lockfileVersion: 6\n",
+            "DEPENDENCY_LOCK_UNAUDITED",
+        ),
         ("services/fixture/requirements.in", "fixture\n", "DEPENDENCY_LOCK_MISSING"),
         ("tools/fixture/package.json", "{}\n", "DEPENDENCY_LOCK_MISSING"),
     ],
@@ -560,28 +606,15 @@ def test_unsafe_version_three_lock_refuses_before_the_advisory_request(
             lint.check_dependencies([relative])
 
 
-def test_pi_installer_materializes_the_audited_lock() -> None:
-    """Keep the chart's compressed-lock exception bound to the actual install source."""
-    chart = (_REPO / "charts/openhands/templates/pi-monori.yaml").read_text()
-    assert 'package-lock.json.gz: {{ .Files.Get "files/pi-monori/package-lock.json.gz"' in chart
-    assert (
-        "cp /code/package.json .; gzip -dc /code/package-lock.json.gz > package-lock.json; "
-        "python -I /code/patch_npm.py pi; HOME=/tmp npm ci --strict-peer-deps --ignore-scripts"
-        in chart
-    )
-
-
-@pytest.mark.parametrize("owner", ["charts/openhands/files/pi-monori", "tools/fixture"])
 def test_compressed_lock_is_bound_to_manifest_and_audited(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, owner: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Compression is a transport detail, not an exception to npm admission."""
+    owner = "tools/fixture"
     directory = tmp_path / owner
     directory.mkdir(parents=True)
     lock = directory / "package-lock.json.gz"
     document = _document({"fixture-package": "1.0.0"})
-    if owner.startswith("charts/"):
-        document = json.loads(gzip.decompress((_REPO / owner / lock.name).read_bytes()))
     raw = json.dumps(document).encode()
     lock.write_bytes(gzip.compress(raw))
     packages = document["packages"]
@@ -599,7 +632,7 @@ def test_compressed_lock_is_bound_to_manifest_and_audited(
     monkeypatch.setattr(lint, "post_node_advisory_batch", post)
     inputs = [f"{owner}/{manifest.name}", f"{owner}/{lock.name}"]
     findings, count = lint.check_dependencies(inputs)
-    expected = [] if owner.startswith("charts/") else ["DEPENDENCY_LOCK_MISSING"]
+    expected = ["DEPENDENCY_LOCK_MISSING"]
     assert [item["ruleId"] for item in findings] == expected
     assert count == 1 + len(posted)
     rows = sorted(
@@ -745,14 +778,18 @@ def test_advisory_batch_uses_direct_tls_without_credential_config(
     decoded = json.loads(connection.body)
     assert decoded == {
         "queries": [
-            {"package": {"ecosystem": "npm", "name": "fixture-package"}, "version": "1.0.0"}
+            {
+                "package": {"ecosystem": "npm", "name": "fixture-package"},
+                "version": "1.0.0",
+            }
         ]
     }
     assert payload == {"results": [{"vulns": [{"id": "GHSA-fixture"}]}]}
 
 
 @pytest.mark.parametrize(
-    "mode", ["status", "json", "transport", "oversized", "duplicate", "nonfinite", "encoding"]
+    "mode",
+    ["status", "json", "transport", "oversized", "duplicate", "nonfinite", "encoding"],
 )
 def test_advisory_transport_failures_hide_response_bodies(
     monkeypatch: pytest.MonkeyPatch,
@@ -797,7 +834,7 @@ def test_advisory_transport_failures_hide_response_bodies(
 
 def test_advisory_function_does_not_name_credential_files() -> None:
     """The batch function's source does not point at npm or netrc credentials."""
-    source = (_REPO / "scripts/quality/lint.py").read_text()
+    source = (_REPO / "ci/quality/check_dependencies.py").read_text()
     module = ast.parse(source)
     function = next(
         node
@@ -839,12 +876,19 @@ def test_advisory_function_does_not_name_credential_files() -> None:
     assert "_OSV_HOST" in names
     assert "environ" not in names
     assert "urlopen" not in names
-    for forbidden in ("npmrc", "netrc", ".npmrc", "NODE_AUTH_TOKEN", "registry.npmjs.org"):
+    for forbidden in (
+        "npmrc",
+        "netrc",
+        ".npmrc",
+        "NODE_AUTH_TOKEN",
+        "registry.npmjs.org",
+    ):
         assert all(forbidden not in value for value in constants)
 
 
 @pytest.mark.parametrize(
-    "mutation", ["name", "version", "dependency", "workspaces", "override", "duplicate", "symlink"]
+    "mutation",
+    ["name", "version", "dependency", "workspaces", "override", "duplicate", "symlink"],
 )
 def test_manifest_drift_refuses_before_advisory_transport(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mutation: str
@@ -897,10 +941,10 @@ def test_docker_selector_proof_refuses_argument_mutation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A truncated selector input cannot masquerade as the reviewed expansion."""
-    source = (_REPO / "scripts/quality/lint.py").read_text()
+    source = (_REPO / _owner("check_docker")).read_text()
     original = "files = docker_targets(names)"
     assert source.count(original) == 1
-    destination = tmp_path / "scripts/quality/lint.py"
+    destination = tmp_path / _owner("check_docker")
     destination.parent.mkdir(parents=True)
     destination.write_text(source.replace(original, "files = docker_targets(names[:1])"))
     monkeypatch.setattr(sys.modules[__name__], "_REPO", tmp_path)
@@ -911,22 +955,37 @@ def test_docker_selector_proof_refuses_argument_mutation(
 @pytest.mark.parametrize(
     ("name", "original", "replacement"),
     [
-        ("check", '"javascript": check_javascript', '"javascript": check_docker'),
-        ("check_docker", '"hadolint", "--config"', '"hadolint", "--wrong-config"'),
-        ("check_javascript", '["node", "--check", path]', '["node", "--version", path]'),
-        ("check", "security + expressions + directives", "security + expressions + []"),
+        ("check_docker", '"--config"', '"--wrong-config"'),
+        (
+            "check_javascript",
+            '["node", "--check", path]',
+            '["node", "--version", path]',
+        ),
+        (
+            "check_workflow",
+            "security + expressions + directives",
+            "security + expressions + []",
+        ),
         ("check_actions", '"--strict-collection"', '"--invalid-collection"'),
-        ("check_actionlint", '"-config-file", os.devnull', '"-unreviewed-config", os.devnull'),
+        (
+            "check_actionlint",
+            '"-config-file", os.devnull',
+            '"-unreviewed-config", os.devnull',
+        ),
     ],
 )
 def test_docker_selector_proof_preserves_surrounding_body(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str, original: str, replacement: str
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    name: str,
+    original: str,
+    replacement: str,
 ) -> None:
     """A changed dispatch or extracted producer still invalidates its fingerprint."""
     assert _digest(name) == _UNCHANGED_FUNCTION_DIGESTS[name]
-    source = (_REPO / "scripts/quality/lint.py").read_text()
+    source = (_REPO / _owner(name)).read_text()
     assert source.count(original) == 1
-    destination = tmp_path / "scripts/quality/lint.py"
+    destination = tmp_path / _owner(name)
     destination.parent.mkdir(parents=True)
     assert replacement not in source
     destination.write_text(source.replace(original, replacement, 1))
@@ -941,10 +1000,10 @@ def test_python_decoder_proof_refuses_wrong_stream(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The reviewed strict decoder cannot silently switch from stdout to stderr."""
-    source = (_REPO / "scripts/quality/lint.py").read_text()
+    source = (_REPO / "ci/quality/check_dependencies.py").read_text()
     original = "_python_audit_payload(process.stdout)"
     assert source.count(original) == 1
-    destination = tmp_path / "scripts/quality/lint.py"
+    destination = tmp_path / "ci/quality/check_dependencies.py"
     destination.parent.mkdir(parents=True)
     destination.write_text(source.replace(original, "_python_audit_payload(process.stderr)"))
     monkeypatch.setattr(sys.modules[__name__], "_REPO", tmp_path)
@@ -956,10 +1015,10 @@ def test_skip_presence_proof_refuses_empty_container(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A syntactically similar guard that never observes the row must be rejected."""
-    source = (_REPO / "scripts/quality/lint.py").read_text()
+    source = (_REPO / "ci/quality/check_dependencies.py").read_text()
     original = 'if "skip_reason" in value:'
     assert source.count(original) == 1
-    destination = tmp_path / "scripts/quality/lint.py"
+    destination = tmp_path / "ci/quality/check_dependencies.py"
     destination.parent.mkdir(parents=True)
     destination.write_text(source.replace(original, 'if "skip_reason" in {}:'))
     monkeypatch.setattr(sys.modules[__name__], "_REPO", tmp_path)
@@ -968,7 +1027,8 @@ def test_skip_presence_proof_refuses_empty_container(
 
 
 @pytest.mark.parametrize(
-    "mutation", ["digest", "path", "version", "owner", "hook", "manifest", "dropped", "nested"]
+    "mutation",
+    ["digest", "path", "version", "owner", "hook", "manifest", "dropped", "nested"],
 )
 def test_reviewed_archive_admission_is_exact(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mutation: str

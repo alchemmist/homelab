@@ -153,13 +153,23 @@ class MigrationPreflightTests(unittest.TestCase):
         policy, inventory = fixtures()
         zero = policy["nodes"]["socrat-0"]["components"]
         one = policy["nodes"]["socrat-1"]["components"]
-        assert zero == {"agent": 256 * 1024 ** 2, "clusterCollector": GIB, "traceGateway": GIB, "hostNodeExporter": 64 * 1024 ** 2}
-        assert one == {"agent": 256 * 1024 ** 2, "loki": 2 * GIB, "tempo": 2 * GIB, "hostNodeExporter": 64 * 1024 ** 2}
+        assert zero == {
+            "agent": 256 * 1024**2,
+            "clusterCollector": GIB,
+            "traceGateway": GIB,
+            "hostNodeExporter": 64 * 1024**2,
+        }
+        assert one == {
+            "agent": 256 * 1024**2,
+            "loki": 2 * GIB,
+            "tempo": 2 * GIB,
+            "hostNodeExporter": 64 * 1024**2,
+        }
         inventory["nodes"]["socrat-1"]["memoryAvailableBytes"] = 5 * GIB
         result = PREFLIGHT.evaluate(policy, inventory, now=1000)
         assert result["readyForCutover"]
-        assert result["capacity"]["socrat-0"]["memoryRequiredBytes"] == 2880 * 1024 ** 2
-        assert result["capacity"]["socrat-1"]["memoryRequiredBytes"] == 4928 * 1024 ** 2
+        assert result["capacity"]["socrat-0"]["memoryRequiredBytes"] == 2880 * 1024**2
+        assert result["capacity"]["socrat-1"]["memoryRequiredBytes"] == 4928 * 1024**2
 
     def test_relocated_collectors_still_require_memory_on_socrat_0(self) -> None:
         """Relocated collectors still require memory on socrat 0."""
@@ -170,7 +180,11 @@ class MigrationPreflightTests(unittest.TestCase):
 
     def test_stale_future_and_hostname_mismatch_fail(self) -> None:
         """Stale future and hostname mismatch fail."""
-        for updates in ({"observedAt": 1}, {"observedAt": 2000}, {"hostname": "unexpected"}):
+        for updates in (
+            {"observedAt": 1},
+            {"observedAt": 2000},
+            {"hostname": "unexpected"},
+        ):
             policy, inventory = fixtures()
             inventory["nodes"]["socrat-0"].update(updates)
             assert not PREFLIGHT.evaluate(policy, inventory, now=1000)["readyForCutover"]
@@ -223,7 +237,10 @@ class MigrationPreflightTests(unittest.TestCase):
             "metadata": {"namespace": "monitoring", "name": "test"},
             "spec": {
                 "endpoints": [
-                    {"interval": "5s", "authorization": {"credentials": {"name": "private-token"}}}
+                    {
+                        "interval": "5s",
+                        "authorization": {"credentials": {"name": "private-token"}},
+                    }
                 ]
             },
         }

@@ -48,7 +48,7 @@ profiles:
     extends: default
     timeout-minutes: 5
     setup:
-      - run: uv run python scripts/quality/install_tools.py --tools hadolint
+      - run: uv run python -m ci.quality.install_tools --tools hadolint
   quality-javascript:
     extends: default
     setup:
@@ -59,69 +59,75 @@ profiles:
     extends: quality-helm
     timeout-minutes: 15
     setup:
-      - run: uv run python scripts/quality/install_tools.py --tools kind kubectl
+      - run: uv run python -m ci.quality.install_tools --tools kind kubectl
   quality-shell:
     extends: default
     setup:
-      - run: uv run python scripts/quality/install_tools.py --tools shellcheck
+      - run: uv run python -m ci.quality.install_tools --tools shellcheck
       - run: .quality-tools/bin/shellcheck --version
   quality-delivery:
     extends: default
     setup:
-      - run: uv run python scripts/quality/install_tools.py --tools actionlint shellcheck
+      - run: uv run python -m ci.quality.install_tools --tools actionlint shellcheck
   quality-secrets:
     extends: default
     setup:
-      - run: uv run python scripts/quality/install_tools.py --tools gitleaks
+      - run: uv run python -m ci.quality.install_tools --tools gitleaks
+  quality-images:
+    extends: default
+    timeout-minutes: 15
+    setup:
+      - run: uv run python -m ci.quality.install_tools --tools trivy
   quality-manifests:
     extends: quality-helm
     setup:
-      - run: uv run python scripts/quality/install_tools.py --tools kubeconform kube-linter
+      - run: uv run python -m ci.quality.install_tools --tools kubeconform kube-linter
   quality-ansible:
     extends: default
     setup:
-      - run: uv run python scripts/quality/install_collections.py
+      - run: uv run python -m ci.quality.install_collections
   quality-fast:
     extends: quality-helm
     setup:
       - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
         with:
           node-version: 24.11.1
-      - run: uv run python scripts/quality/install_tools.py --tools hadolint
+      - run: uv run python -m ci.quality.install_tools --tools hadolint
   quality-integration:
     extends: quality-helm
     setup:
       - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
         with:
           node-version: 24.11.1
-      - run: uv run python scripts/quality/install_tools.py --tools promtool
+      - run: uv run python -m ci.quality.install_tools --tools promtool
       - run: |
           set -euo pipefail
-          read -r image < quality/nginx-syntax-image.txt
+          read -r image < ci/quality/nginx-syntax-image.txt
           docker pull "${image}"
 nodes:
   graph:
     title: Graph integrity
     profile: default
-    run: |-
-      set -euo pipefail
-      uv run qg validate
-      uv run python scripts/quality/contracts.py
-      uv run python scripts/quality/strict_guard.py
-      uv run python -m scripts.quality.python_inputs scripts/quality/ |
-        xargs -0 -r uv run ruff check --config quality/ruff.toml --select SIM300 \
-          --ignore-noqa --output-format concise --
-      uv run pytest -q tests/test_quality_python_policy.py
+    run: make graph
     policy: &id001
       blocking: true
       approvals:
         findings: false
         files: false
         node: false
+  docs-language:
+    title: Documentation language
+    profile: default
+    run: make docs-language
+    policy: *id001
+    needs:
+      - graph
+    results:
+      native: reports/docs-language.json
   yaml:
     title: YAML structure
     profile: default
-    run: uv run python scripts/quality/lint.py yaml
+    run: make yaml
     policy: *id001
     needs:
       - graph
@@ -133,36 +139,25 @@ nodes:
     needs:
       - graph
     policy: *id001
-    run: uv run --locked python -m scripts.quality.python_scopes
+    run: make python-scopes
   scripts-q000:
-    title: Python script and test quotes (Q000, D300)
+    title: Python CI, script and test quotes (Q000, D300)
     profile: default
     needs:
       - graph
     policy: *id001
-    run: |-
-      set -euo pipefail
-      uv run python -m scripts.quality.python_inputs scripts/ tests/ |
-        xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \
-          --ignore-noqa --output-format concise --
+    run: make scripts-q000
   deploy-i001:
-    title: Python import order (I001) and unused script/test imports (F401)
+    title: Python import order (I001) and unused CI/script/test imports (F401)
     profile: default
     needs:
       - graph
     policy: *id001
-    run: |-
-      set -euo pipefail
-      uv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |
-        xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \
-          --ignore-noqa --output-format concise --
-      uv run python -m scripts.quality.python_inputs scripts/ tests/ |
-        xargs -0 -r uv run ruff check --config quality/ruff.toml --select F401 \
-          --ignore-noqa --output-format concise --
+    run: make deploy-i001
   secrets:
     title: Credential hygiene
     profile: quality-secrets
-    run: uv run python scripts/quality/lint.py secrets
+    run: make secrets
     policy: *id001
     needs:
       - graph
@@ -171,7 +166,7 @@ nodes:
   javascript:
     title: JavaScript syntax
     profile: quality-javascript
-    run: uv run python scripts/quality/lint.py javascript
+    run: make javascript
     policy: *id001
     needs:
       - graph
@@ -183,43 +178,30 @@ nodes:
     needs:
       - graph
     policy: *id001
-    run: |-
-      set -euo pipefail
-      uv run python scripts/check_infrastructure_contracts.py
-      uv run python scripts/check_source_pointers.py
-      uv run python scripts/check_operational_entrypoints.py
-      uv run python scripts/check_vendor_contracts.py
-      uv run python scripts/alert_graphs.py --check
-      uv run python scripts/n8n/check_failure_alerts.py
-      uv run python -m pytest -q \
-        tests/test_alert_graph_inventory.py \
-        tests/test_alert_graph_panel_ids.py \
-        tests/test_alert_graphs_chart.py \
-        tests/test_infrastructure_contracts.py \
-        tests/test_n8n_failure_alert_policy.py \
-        tests/test_n8n_failure_alerts.py \
-        tests/test_operational_entrypoints.py \
-        tests/test_source_pointers.py \
-        tests/test_vendor_contracts.py
+    run: make ownership
   docker:
     title: Container recipes
     profile: quality-docker
     needs:
       - graph
     policy: *id001
-    run: |
-      set -euo pipefail
-      uv run pytest -q tests/test_quality_experiment_admission.py -k docker
-      uv run python scripts/quality/lint.py docker
+    run: make docker
     results:
       native: reports/docker.json
+  image-cves:
+    title: Deployed image vulnerabilities
+    profile: quality-images
+    needs:
+      - graph
+    policy: *id001
+    run: make image-cves
   tests-fast:
     title: Unit tests
     profile: quality-fast
     needs:
       - graph
     policy: *id001
-    run: uv run python scripts/quality/tests.py fast --isolate-network
+    run: make tests-fast
     results:
       junit: reports/tests-fast.xml
   workflow:
@@ -228,7 +210,7 @@ nodes:
     needs:
       - graph
     policy: *id001
-    run: uv run python scripts/quality/lint.py workflow
+    run: make workflow
     env:
       GH_TOKEN: ${{ github.token }}
     results:
@@ -239,7 +221,7 @@ nodes:
     needs:
       - graph
     policy: *id001
-    run: uv run python scripts/quality/lint.py shell
+    run: make shell
     results:
       native: reports/shell.json
   rustfs-return-types:
@@ -248,27 +230,20 @@ nodes:
     needs:
       - graph
     policy: *id001
-    run: >-
-      uv run ruff check --config quality/ruff.toml --select ANN201 --ignore-noqa
-      services/rustfs_gateway
+    run: make rustfs-return-types
   dependencies:
     title: Dependency audit
     profile: quality-javascript
     needs:
       - ownership
     policy: *id001
-    run: |
-      set -euo pipefail
-      uv run pytest -q tests/test_quality_dependency_coverage.py \
-        tests/test_quality_p56_56_node_lock.py
-      uv run python scripts/quality/lint.py dependencies
-      uv run python scripts/quality/npm_smoke.py
+    run: make dependencies
     results:
       native: reports/dependencies.json
   tests-medium:
     title: Integration tests
     profile: quality-integration
-    run: uv run python scripts/quality/tests.py medium --isolate-network
+    run: make tests-medium
     policy: *id001
     needs:
       - ownership
@@ -277,7 +252,7 @@ nodes:
   ansible:
     title: Playbook safety
     profile: quality-ansible
-    run: uv run python scripts/quality/lint.py ansible
+    run: make ansible
     policy: *id001
     needs:
       - ownership

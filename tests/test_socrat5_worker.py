@@ -79,7 +79,10 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
         """Keep only the existing advertised home peer routes."""
         host = yaml.safe_load((ROOT / "ansible/inventory/host_vars/socrat-5.yml").read_text())
         assert host["wg_socrat_extra_allowed_peer_ips"] == {
-            "socrat-5": {"socrat-0": ["192.168.0.23/32"], "socrat-1": ["192.168.0.24/32"]}
+            "socrat-5": {
+                "socrat-0": ["192.168.0.23/32"],
+                "socrat-1": ["192.168.0.24/32"],
+            }
         }
 
     def test_only_worker5_nl_endpoint_changes_to_existing_relay(self) -> None:
@@ -115,7 +118,10 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
         """Keep password tasks private and leave SSH policy untouched."""
         play = yaml.safe_load((ROOT / "ansible/playbooks/socrat-5-headless.yml").read_text())[0]
         users = [t for t in play["pre_tasks"] if "ansible.builtin.user" in t]
-        assert {t["ansible.builtin.user"]["name"] for t in users} == {"alchemmist", "root"}
+        assert {t["ansible.builtin.user"]["name"] for t in users} == {
+            "alchemmist",
+            "root",
+        }
         assert all(t["no_log"] for t in users)
         assert all("password" in t["ansible.builtin.user"] for t in users)
         assert "sshd_config" not in str(users)
@@ -134,7 +140,7 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
 
     def test_real_blockers_documented(self) -> None:
         """Keep the recorded native-worker blockers visible."""
-        text = (ROOT / "docs/socrat-5-worker-20261110.md").read_text()
+        text = (ROOT / "docs/records/handoffs/socrat-5-worker-20261110.md").read_text()
         assert "Negative NetworkPolicy acceptance failed" in text
         assert "NFS mount denied" in text
         assert "Owner-approved no-NFS profile" in text

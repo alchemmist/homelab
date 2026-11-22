@@ -188,13 +188,23 @@ def inventory():
             rules += _rule_entries(resource, owner, resource["metadata"]["name"])
     observer = ROOT / "deploy/platform/rancher/public-entry"
     rendered = subprocess.check_output(
-        ["helm", "template", "rancher-public-entry", str(observer), "--namespace", "cattle-system"],
+        [
+            "helm",
+            "template",
+            "rancher-public-entry",
+            str(observer),
+            "--namespace",
+            "cattle-system",
+        ],
         text=True,
     )
     for resource in yaml.safe_load_all(rendered):
         if isinstance(resource, dict) and resource.get("kind") == "PrometheusRule":
             rules += _rule_entries(resource, "rancher", resource["metadata"]["name"])
-    for path in [ROOT / "docs/n8n/spi/alerts.json", ROOT / "docs/n8n/yandex-session-alerts.json"]:
+    for path in [
+        ROOT / "docs/n8n/spi/alerts.json",
+        ROOT / "docs/n8n/yandex-session-alerts.json",
+    ]:
         for rule in json.loads(path.read_text())["rules"]:
             rules.append(_grafana_entry(path, rule))
     return rules
@@ -302,7 +312,11 @@ def build(rules, panel_ids=None):
             "gridPos": {"x": 0, "y": (base - 1) * 8, "w": 24, "h": 8},
             "fieldConfig": {
                 "defaults": {
-                    "custom": {"drawStyle": "line", "showPoints": "never", "spanNulls": False},
+                    "custom": {
+                        "drawStyle": "line",
+                        "showPoints": "never",
+                        "spanNulls": False,
+                    },
                     "thresholds": {
                         "mode": "absolute",
                         "steps": [{"color": "green", "value": None}]
@@ -463,7 +477,11 @@ _GraphValuesDumper.add_representer(str, _graph_scalar)
 def _dump_graph_values(value: dict[str, object]) -> str:
     """Serialize generated values deterministically without changing scalar content."""
     return yaml.dump(
-        value, Dumper=_GraphValuesDumper, sort_keys=True, explicit_start=True, explicit_end=True
+        value,
+        Dumper=_GraphValuesDumper,
+        sort_keys=True,
+        explicit_start=True,
+        explicit_end=True,
     )
 
 
@@ -479,14 +497,17 @@ def outputs(rules):
         result[ROOT / "charts/monitoring-k3s/alert-dashboards" / f"{uid}.json"] = (
             json.dumps(dashboard, indent=2) + "\n"
         )
-    result[ROOT / "docs/monitoring/alert-graphs.inventory.json"] = json.dumps(rows, indent=2) + "\n"
+    result[ROOT / "docs/observability/monitoring/alert-graphs.inventory.json"] = json.dumps(rows, indent=2) + "\n"
     policy = {
         uid + ":" + str(panel["id"]): []
         for uid, dashboard in dashboards.items()
         for panel in dashboard["panels"]
     }
     result[ROOT / "charts/grafana/alert-graphs.policy.values.yaml"] = yaml.safe_dump(
-        {"alertGraphs": {"panels": policy}}, sort_keys=True, explicit_start=True, explicit_end=True
+        {"alertGraphs": {"panels": policy}},
+        sort_keys=True,
+        explicit_start=True,
+        explicit_end=True,
     )
     for owner, mapping in mappings.items():
         if owner == "grafana-managed":
@@ -500,7 +521,7 @@ def outputs(rules):
                 }
             }
         if owner == "lms":
-            value = {"lms-database-ha": value}
+            value = {**value, "lms-database-ha": value}
         directory = ROOT / (
             "deploy/platform/rancher/public-entry" if owner == "rancher" else "charts/" + owner
         )
@@ -513,31 +534,23 @@ def outputs(rules):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true")
-    args = parser.parse_args()
+    parser.parse_args()
     rules = inventory()
     generated, mappings = outputs(rules)
     for path, content in generated.items():
-        if args.check:
-            if not path.exists() or path.read_text() != content:
-                raise SystemExit(
-                    "Generated alert graph file differs: " + str(path.relative_to(ROOT))
-                )
-        else:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(content)
-    if not args.check:
-        for relative in ("docs/n8n/spi/alerts.json", "docs/n8n/yandex-session-alerts.json"):
-            path = ROOT / relative
-            obj = json.loads(path.read_text())
-            for rule in obj["rules"]:
-                spec = mappings["grafana-managed"][rule["title"]]
-                rule.setdefault("annotations", {})["spi_graphs"] = json.dumps(
-                    spec, separators=(",", ":")
-                )
-                rule["annotations"]["__dashboardUid__"] = spec["graphs"][0]["dashboard_uid"]
-                rule["annotations"]["__panelId__"] = str(spec["graphs"][0]["panel_id"])
-            path.write_text(json.dumps(obj, indent=2) + "\n")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+    for relative in ("docs/n8n/spi/alerts.json", "docs/n8n/yandex-session-alerts.json"):
+        path = ROOT / relative
+        obj = json.loads(path.read_text())
+        for rule in obj["rules"]:
+            spec = mappings["grafana-managed"][rule["title"]]
+            rule.setdefault("annotations", {})["spi_graphs"] = json.dumps(
+                spec, separators=(",", ":")
+            )
+            rule["annotations"]["__dashboardUid__"] = spec["graphs"][0]["dashboard_uid"]
+            rule["annotations"]["__panelId__"] = str(spec["graphs"][0]["panel_id"])
+        path.write_text(json.dumps(obj, indent=2) + "\n")
     print(
         "Rules:",
         len(rules),

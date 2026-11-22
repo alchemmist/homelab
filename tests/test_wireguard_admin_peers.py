@@ -85,7 +85,9 @@ class WireGuardTemplateTests(unittest.TestCase):
         assert "# macbook\nPublicKey = mac-key\nAllowedIPs = 10.250.0.4/32" in config
         assert "Endpoint =" not in config.split("# macbook", 1)[1].split("[Peer]", 1)[0]
 
-    def test_local_peer_endpoint_override_can_omit_unreachable_lan_endpoint(self) -> None:
+    def test_local_peer_endpoint_override_can_omit_unreachable_lan_endpoint(
+        self,
+    ) -> None:
         config = self.render("socrat-2", peer_endpoints={"socrat-2": {"socrat-1": ""}})
         peer = config.split("# socrat-1", 1)[1].split("[Peer]", 1)[0]
         assert "Endpoint =" not in peer

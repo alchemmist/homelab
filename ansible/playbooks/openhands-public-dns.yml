@@ -12,12 +12,12 @@
         mode: "0700"
     - name: Install the OpenHands public DNS plan and apply tool
       ansible.builtin.copy:
-        src: ../../scripts/openhands-public-dns.py
+        src: ../scripts/openhands-public-dns.py
         dest: /usr/local/sbin/homelab-openhands-public-dns
         mode: "0700"
     - name: Stage the proposed zone renderer for OpenHands public DNS
       ansible.builtin.copy:
-        src: ../../scripts/public_dns_zone.py
+        src: ../scripts/public_dns_zone.py
         dest: /var/lib/homelab-openhands-public-dns/proposed.py
         mode: "0700"
     - name: Compute the OpenHands public DNS plan

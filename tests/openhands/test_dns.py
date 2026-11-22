@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
-    "openhands_dns", ROOT / "scripts/openhands-public-dns.py"
+    "openhands_dns", ROOT / "ansible/scripts/openhands-public-dns.py"
 )
 guard = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(guard)
@@ -25,7 +25,7 @@ class DNSDelta(unittest.TestCase):
 
     def setUp(self) -> None:
         """Load the rendered DNS zone sources."""
-        self.source = (ROOT / "scripts/public_dns_zone.py").read_text()
+        self.source = (ROOT / "ansible/scripts/public_dns_zone.py").read_text()
         self.before = self.source.replace('    "openhands.socrat",\n', "")
 
     def test_exact_addition_all_health_states(self) -> None:

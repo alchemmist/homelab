@@ -12,7 +12,7 @@
     phase: >-
       {{ moscow_watchdog_repair_phase | default("preflight") }}
     stage: /var/lib/homelab-recovery/20261113-moscow-watchdog-staging
-    source: "{{ playbook_dir }}/../../scripts/vpn-transit-failover.py"
+    source: "{{ playbook_dir }}/../scripts/vpn-transit-failover.py"
     new_sha: >-
       {{ lookup("file", source, rstrip=False) | hash("sha256") }}
   tasks:
@@ -99,7 +99,7 @@
             mode: "0700"
         - name: Copy the reviewed repair helpers into staging
           ansible.builtin.copy:
-            src: "{{ playbook_dir }}/../../scripts/{{ item }}.py"
+            src: "{{ playbook_dir }}/../scripts/{{ item }}.py"
             dest: "{{ stage }}/{{ item }}.py"
             mode: "0700"
           loop: [moscow-api-routes-repair, moscow-watchdog-upgrade, vpn-transit-failover]

@@ -71,7 +71,7 @@ class VeniceLiteLLMIntegrationTests(unittest.TestCase):
         """Keep the image tag and leave migration and synthetic billing off."""
         assert not self.values["migrationJob"]["enabled"]
         assert re.search(
-            r"^a691e23abfac6dd0f2b69f9f5b4f714241f39ac4@sha256:[a-f0-9]{64}$",
+            r"^eb6e7f61e4fa0fa1425461e4e92145c8eab73bef@sha256:[a-f0-9]{64}$",
             self.values["image"]["tag"],
         )
         info = self.models["v-deepseek-uc"]["model_info"]

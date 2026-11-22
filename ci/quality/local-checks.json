@@ -1,0 +1,23 @@
+{
+  "python": {
+    "title": "Python correctness",
+    "run": "make python",
+    "results": {
+      "native": "reports/python.json"
+    }
+  },
+  "manifests": {
+    "title": "Manifest validation",
+    "run": "make manifests",
+    "results": {
+      "native": "reports/manifests.json"
+    }
+  },
+  "tests-cluster": {
+    "title": "Cluster lifecycle",
+    "run": "make tests-cluster",
+    "results": {
+      "junit": "reports/tests-cluster.xml"
+    }
+  }
+}

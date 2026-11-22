@@ -1,8 +1,8 @@
 {
   ".helmignore": "11d5bbdbcdf1fa5aff71bba2bd6f088fb00d00ff9927db0bb482d0b1e10fc578",
-  "Chart.yaml": "a73eb5ab9fcfdf52e18c2ac37c4ea4bf87fec772d04e309c4363bfbadee935f1",
+  "Chart.yaml": "d4b4c2b88ba19eccb7223542e2deb1c50eb6daeb489e95a053218c47ef474e28",
   "README.md": "851f36fe4788781d1dce203d263cdfdcb25f1ba9d1eea3123c16cf095b774190",
-  "scripts/post-delete-hook.sh": "688072a2c34b0c748b352ac28b01dd229bc3284fcb32cddbe65136aef78581d1",
+  "scripts/post-delete-hook.sh": "22fe05a8139892fcdff034ca85a7af3a435c4d1ac1df43ce40d7fc5c487a8ef5",
   "scripts/pre-upgrade-hook.sh": "726ee75424e0afbe53e1cf28a69c531d54834e5e5e93cb474a6b38a729fa03cc",
   "templates/NOTES.txt": "291b285336579047bc868524c9c9cd3aad4efa4f354c4f7eb62409af8700444a",
   "templates/_errors.tpl": "4c63712aa1df683441963d70cb8dfec21bc024c16009ff140a6bd652e91f0fb7",
@@ -20,7 +20,7 @@
   "templates/ingate/issuer-letsEncrypt.yaml": "177e514cefc6b5e459d26a0d563b4a6352c450c02fa36ea9034fc1fa778b608f",
   "templates/ingate/issuer-rancher.yaml": "a8a1c376510f46d2714757f1e8ee61fa1c056b473e572f5fa63804cc4ca7d759",
   "templates/post-delete-hook-cluster-role-binding.yaml": "282e3e800c627b6a2620feefdbeb4e65bb9d30860742e871b293f93dd9c89731",
-  "templates/post-delete-hook-cluster-role.yaml": "12001109ef40212c2632198aa562e6da4ee342d03063e727bb84c63b9e0ac34e",
+  "templates/post-delete-hook-cluster-role.yaml": "3eec506ee45d7bb6b205f3015809c53211419533798b40b09da064f9175922ec",
   "templates/post-delete-hook-config-map.yaml": "14e59ceba5f06d4dd02771cc42606c420af658144efbbf41dc6a1cd42766eadd",
   "templates/post-delete-hook-job.yaml": "fad8db27e38de62538cb208c54540d5ee387b7f1c6a921a2ab26ac0934490cf5",
   "templates/post-delete-hook-service-account.yaml": "e753bf054f014022169f79cea379c204e79bc29dbfaa8d87d216ab3edf74095b",
@@ -35,5 +35,5 @@
   "templates/service.yaml": "5741f0a6be7dd140a217632eb889afd71480073c28bb2decd1c01417429cede7",
   "templates/serviceAccount.yaml": "94b09aa1006de205090d1cc0e2995f157983012212172452277ecdbe08732ee2",
   "values.schema.json": "0f21619410d775e299ab296b177e80e75b651d69584a7fcb3ffddf828c8ef88c",
-  "values.yaml": "77e091c845c13cb11e3c0e68a48b5ad21d2d1c325fda5c79e46b0b4898c8415f"
+  "values.yaml": "9963a85a7273b550eee235511b109d3e7dc10c91087647419c404fc0a1442c7a"
 }

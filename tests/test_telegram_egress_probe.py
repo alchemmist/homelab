@@ -41,16 +41,13 @@ def test_tcp_and_tls_are_distinct():
 
 
 def test_malformed_resolver_output():
-    with patch(
-        "subprocess.run", return_value=subprocess.CompletedProcess([], 0, stdout=b"[")
-    ):
+    with patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, stdout=b"[")):
         assert list(samples("example.com", None))[0]["stage"] == "dns"
 
 
 def test_each_distinct_address_is_sampled():
     targets = [
-        (socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, 443))
-        for ip in ("192.0.2.1", "192.0.2.2")
+        (socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, 443)) for ip in ("192.0.2.1", "192.0.2.2")
     ]
     with (
         patch.dict(samples.__globals__, {"resolve": lambda host: targets}),
@@ -94,7 +91,18 @@ def test_periodic_chart_isolated_and_bounded():
         assert spec["automountServiceAccountToken"] is False
         volume = next(v for v in spec["volumes"] if v["name"] == "probe-samples")
         assert volume["emptyDir"] == {"medium": "Memory", "sizeLimit": "4Mi"}
-    assert specs["socrat-bot"]["nodeSelector"]["kubernetes.io/hostname"] == "socrat-2"
+    bot = specs["socrat-bot"]
+    assert not bot.get("hostNetwork")
+    assert bot["hostAliases"] == [{"ip": "10.43.0.213", "hostnames": ["api.telegram.org"]}]
+    term = bot["affinity"]["podAffinity"]["preferredDuringSchedulingIgnoredDuringExecution"][0][
+        "podAffinityTerm"
+    ]
+    assert term["namespaces"] == ["postgres"]
+    assert term["labelSelector"]["matchLabels"]["cnpg.io/instanceRole"] == "primary"
+    relay = specs["socrat-telegram-relay"]
+    assert relay["nodeSelector"]["kubernetes.io/hostname"] == "socrat-2"
+    assert not relay["automountServiceAccountToken"]
+    assert all("env" not in c and "envFrom" not in c for c in relay["containers"])
     assert (
         specs["socrat-telegram-path-control"]["nodeSelector"]["kubernetes.io/hostname"]
         == "socrat-3"

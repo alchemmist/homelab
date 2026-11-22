@@ -1,0 +1,49 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redisinsight-data
+  annotations: {argocd.argoproj.io/sync-options: "Prune=false,Delete=false"}
+spec:
+  storageClassName: local-ssd
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 2Gi}}
+...
+---
+apiVersion: v1
+kind: Service
+metadata: {name: redisinsight}
+spec:
+  selector: {app: redisinsight}
+  ports: [{name: http, port: 4180, targetPort: proxy}]
+...
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: redisinsight-tls}
+spec:
+  secretName: redisinsight-tls
+  dnsNames: [redis.socrat.alchemmist.xyz]
+  issuerRef: {name: letsencrypt-http01, kind: ClusterIssuer}
+...
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: redisinsight
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.observability.accesslogs: "false"
+    traefik.ingress.kubernetes.io/router.observability.tracing: "false"
+spec:
+  ingressClassName: traefik
+  tls: [{hosts: [redis.socrat.alchemmist.xyz], secretName: redisinsight-tls}]
+  rules:
+    - host: redis.socrat.alchemmist.xyz
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: {service: {name: redisinsight, port: {number: 4180}}}
+...

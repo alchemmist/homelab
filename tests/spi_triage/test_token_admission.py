@@ -11,7 +11,11 @@ import test_triage as f
 from core import MATCH_SCHEMA, REPORT_SCHEMA, Failure, Store
 from integrations import Model
 
-GOOD = {"issue_number": 0, "reason": "Distinct cause; no supporting overlap.", "confidence": "low"}
+GOOD = {
+    "issue_number": 0,
+    "reason": "Distinct cause; no supporting overlap.",
+    "confidence": "low",
+}
 
 
 class AdmissionTests(unittest.TestCase):
@@ -80,7 +84,12 @@ class AdmissionTests(unittest.TestCase):
             assert m.reservation(body) < len(json.dumps(body).encode()) + 2048 + output
             assert m.reservation(body) > len(body["messages"][1]["content"])
         with self.assertRaises(Failure) as e:
-            m.call("test", {"huge": ["x" * 12000] * 5}, REPORT_SCHEMA, time.monotonic() + 20)
+            m.call(
+                "test",
+                {"huge": ["x" * 12000] * 5},
+                REPORT_SCHEMA,
+                time.monotonic() + 20,
+            )
         assert e.exception.code == "LLM_REQUEST_TOO_LARGE"
         m.http.request.assert_not_called()
 
@@ -91,7 +100,9 @@ class AdmissionTests(unittest.TestCase):
         h = Mock()
         h.request.return_value = {"choices": [{"message": {"content": json.dumps(GOOD)}}]}
         m = Model(h, "fake", store=self.store)
-        assert m.call("test", {"huge": ["x" * 12000] * 5}, MATCH_SCHEMA, time.monotonic() + 20) == GOOD
+        assert (
+            m.call("test", {"huge": ["x" * 12000] * 5}, MATCH_SCHEMA, time.monotonic() + 20) == GOOD
+        )
         h.request.assert_called_once()
         h.reset_mock()
         import random
@@ -125,13 +136,18 @@ class AdmissionTests(unittest.TestCase):
             s.finish_llm(r, actual=1, now=now + 1)
             s = Store(s.path)
         with s.db() as db:
-            assert [r[0] for r in db.execute("select tokens from llm_admission order by id")] == costs
+            assert [
+                r[0] for r in db.execute("select tokens from llm_admission order by id")
+            ] == costs
         with self.assertRaises(Failure):
             s.reserve_llm(1, now=161.999)
         r = s.reserve_llm(costs[0], now=162)
         s.finish_llm(r, actual=30000, now=163)
         with Store(s.path).db() as db:
-            assert db.execute("select tokens from llm_admission where id=?", (r,)).fetchone()[0] == 30000
+            assert (
+                db.execute("select tokens from llm_admission where id=?", (r,)).fetchone()[0]
+                == 30000
+            )
         with self.assertRaises(Failure):
             Store(s.path).reserve_llm(1, now=223.999)
         Store(s.path).reserve_llm(1, now=224)
@@ -161,7 +177,6 @@ class AdmissionTests(unittest.TestCase):
         m = Model(Mock(), "fake", store=self.store)
         seen = []
         saved = []
-
 
         def call(task, data, schema, _deadline) -> dict[str, object]:
             assert m.reservation(m.payload(task, data, schema)) <= 30000
@@ -210,7 +225,6 @@ class AdmissionTests(unittest.TestCase):
         saved = []
         calls = []
 
-
         def choose(task, data, schema, _deadline) -> dict[str, object]:
             assert m.reservation(m.payload(task, data, schema)) <= 30000
             ids = [x["number"] for x in data["open_issues"]]
@@ -225,9 +239,11 @@ class AdmissionTests(unittest.TestCase):
         with self.assertRaises(Failure):
             m.match(f.event(), issues, on_progress=saved.append)
         assert "selection" in saved[-1]
-        completed = len(calls)
         m.call = Mock(
-            side_effect=lambda t, d, s, dl: {**GOOD, "issue_number": d["open_issues"][0]["number"]}
+            side_effect=lambda t, d, s, dl: {
+                **GOOD,
+                "issue_number": d["open_issues"][0]["number"],
+            }
         )
         result = m.match(f.event(), issues, progress=saved[-1])
         assert result["reviewed_numbers"] == list(range(1, 31))
@@ -269,7 +285,11 @@ class AdmissionTests(unittest.TestCase):
         with self.assertRaises(Failure) as e:
             h.request("POST", "http://internal")
         assert e.exception.retry_after == 60
-        assert e.exception.rate_metadata == {"tokens_remaining": 4155.0, "tokens_reset": 60.0, "retry_after": 60}
+        assert e.exception.rate_metadata == {
+            "tokens_remaining": 4155.0,
+            "tokens_reset": 60.0,
+            "retry_after": 60,
+        }
         key = self.store.enqueue(f.event())["job_id"]
         self.store.fail(
             key,

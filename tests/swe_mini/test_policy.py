@@ -18,7 +18,11 @@ class PublicationPolicy(unittest.TestCase):
 
     def item(self, path="server/app/test.py", mode="100644", content=b"hello\n") -> dict[str, str]:
         """Return a change item with sensible defaults for assertions."""
-        return {"path": path, "mode": mode, "content": base64.b64encode(content).decode()}
+        return {
+            "path": path,
+            "mode": mode,
+            "content": base64.b64encode(content).decode(),
+        }
 
     def test_safe_patch(self) -> None:
         """Accept a single conventional source file change."""
@@ -45,14 +49,20 @@ class PublicationPolicy(unittest.TestCase):
 
     def test_dependency_repair_boundary(self) -> None:
         """Permit version bumps but reject script or package-list changes."""
-        original = {"scripts": {"build": "vite build"}, "dependencies": {"@mantine/core": "^9.5.2"}}
+        original = {
+            "scripts": {"build": "vite build"},
+            "dependencies": {"@mantine/core": "^9.5.2"},
+        }
         updated = json.loads(json.dumps(original))
         updated["dependencies"]["@mantine/core"] = "^9.6.0"
 
         def changes() -> list[dict[str, str]]:
             return [
                 self.item("web/package.json", content=json.dumps(updated).encode()),
-                self.item("web/package-lock.json", content=b'{"lockfileVersion":3,"packages":{}}'),
+                self.item(
+                    "web/package-lock.json",
+                    content=b'{"lockfileVersion":3,"packages":{}}',
+                ),
             ]
 
         p.validate_dependency_update(p.validate_changes(changes()), original)

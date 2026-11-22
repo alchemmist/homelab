@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "a073d540792435e8059d69005ba91ddda2654bb0fd87dad8e2be71f267d740e3",
+  "graphDigest": "f14cf98a7e862b2f048651fb21826cd50bf18929a78f15b8eb6e079647ee7de1",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -33,10 +33,38 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run qg validate\nuv run python scripts/quality/contracts.py\nuv run python scripts/quality/strict_guard.py\nuv run python -m scripts.quality.python_inputs scripts/quality/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select SIM300 \\\n    --ignore-noqa --output-format concise --\nuv run pytest -q tests/test_quality_python_policy.py"
+        "run": "make graph"
       },
       "timeoutMinutes": 5,
       "title": "Graph integrity"
+    },
+    {
+      "env": {},
+      "id": "docs-language",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "native",
+        "path": "reports/docs-language.json"
+      },
+      "step": {
+        "run": "make docs-language"
+      },
+      "timeoutMinutes": 5,
+      "title": "Documentation language"
     },
     {
       "env": {},
@@ -61,7 +89,7 @@
         "path": "reports/yaml.json"
       },
       "step": {
-        "run": "uv run python scripts/quality/lint.py yaml"
+        "run": "make yaml"
       },
       "timeoutMinutes": 5,
       "title": "YAML structure"
@@ -88,7 +116,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "uv run --locked python -m scripts.quality.python_scopes"
+        "run": "make python-scopes"
       },
       "timeoutMinutes": 5,
       "title": "Scoped Python rules"
@@ -115,10 +143,10 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \\\n    --ignore-noqa --output-format concise --"
+        "run": "make scripts-q000"
       },
       "timeoutMinutes": 5,
-      "title": "Python script and test quotes (Q000, D300)"
+      "title": "Python CI, script and test quotes (Q000, D300)"
     },
     {
       "env": {},
@@ -142,10 +170,10 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n    --ignore-noqa --output-format concise --\nuv run python -m scripts.quality.python_inputs scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select F401 \\\n    --ignore-noqa --output-format concise --"
+        "run": "make deploy-i001"
       },
       "timeoutMinutes": 5,
-      "title": "Python import order (I001) and unused script/test imports (F401)"
+      "title": "Python import order (I001) and unused CI/script/test imports (F401)"
     },
     {
       "env": {},
@@ -170,7 +198,7 @@
         "path": "reports/secrets.json"
       },
       "step": {
-        "run": "uv run python scripts/quality/lint.py secrets"
+        "run": "make secrets"
       },
       "timeoutMinutes": 5,
       "title": "Credential hygiene"
@@ -198,7 +226,7 @@
         "path": "reports/javascript.json"
       },
       "step": {
-        "run": "uv run python scripts/quality/lint.py javascript"
+        "run": "make javascript"
       },
       "timeoutMinutes": 5,
       "title": "JavaScript syntax"
@@ -225,7 +253,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run python scripts/check_infrastructure_contracts.py\nuv run python scripts/check_source_pointers.py\nuv run python scripts/check_operational_entrypoints.py\nuv run python scripts/check_vendor_contracts.py\nuv run python scripts/alert_graphs.py --check\nuv run python scripts/n8n/check_failure_alerts.py\nuv run python -m pytest -q \\\n  tests/test_alert_graph_inventory.py \\\n  tests/test_alert_graph_panel_ids.py \\\n  tests/test_alert_graphs_chart.py \\\n  tests/test_infrastructure_contracts.py \\\n  tests/test_n8n_failure_alert_policy.py \\\n  tests/test_n8n_failure_alerts.py \\\n  tests/test_operational_entrypoints.py \\\n  tests/test_source_pointers.py \\\n  tests/test_vendor_contracts.py"
+        "run": "make ownership"
       },
       "timeoutMinutes": 10,
       "title": "Ownership contracts"
@@ -253,10 +281,37 @@
         "path": "reports/docker.json"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run pytest -q tests/test_quality_experiment_admission.py -k docker\nuv run python scripts/quality/lint.py docker\n"
+        "run": "make docker"
       },
       "timeoutMinutes": 5,
       "title": "Container recipes"
+    },
+    {
+      "env": {},
+      "id": "image-cves",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-images",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "make image-cves"
+      },
+      "timeoutMinutes": 15,
+      "title": "Deployed image vulnerabilities"
     },
     {
       "env": {},
@@ -281,7 +336,7 @@
         "path": "reports/tests-fast.xml"
       },
       "step": {
-        "run": "uv run python scripts/quality/tests.py fast --isolate-network"
+        "run": "make tests-fast"
       },
       "timeoutMinutes": 10,
       "title": "Unit tests"
@@ -314,7 +369,7 @@
         "env": {
           "GH_TOKEN": "${{ github.token }}"
         },
-        "run": "uv run python scripts/quality/lint.py workflow"
+        "run": "make workflow"
       },
       "timeoutMinutes": 5,
       "title": "Delivery security"
@@ -342,7 +397,7 @@
         "path": "reports/shell.json"
       },
       "step": {
-        "run": "uv run python scripts/quality/lint.py shell"
+        "run": "make shell"
       },
       "timeoutMinutes": 5,
       "title": "Shell safety"
@@ -369,7 +424,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "uv run ruff check --config quality/ruff.toml --select ANN201 --ignore-noqa services/rustfs_gateway"
+        "run": "make rustfs-return-types"
       },
       "timeoutMinutes": 5,
       "title": "RustFS gateway public return types"
@@ -397,7 +452,7 @@
         "path": "reports/dependencies.json"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run pytest -q tests/test_quality_dependency_coverage.py \\\n  tests/test_quality_p56_56_node_lock.py\nuv run python scripts/quality/lint.py dependencies\nuv run python scripts/quality/npm_smoke.py\n"
+        "run": "make dependencies"
       },
       "timeoutMinutes": 5,
       "title": "Dependency audit"
@@ -425,7 +480,7 @@
         "path": "reports/tests-medium.xml"
       },
       "step": {
-        "run": "uv run python scripts/quality/tests.py medium --isolate-network"
+        "run": "make tests-medium"
       },
       "timeoutMinutes": 10,
       "title": "Integration tests"
@@ -453,7 +508,7 @@
         "path": "reports/ansible.json"
       },
       "step": {
-        "run": "uv run python scripts/quality/lint.py ansible"
+        "run": "make ansible"
       },
       "timeoutMinutes": 5,
       "title": "Playbook safety"
@@ -533,7 +588,7 @@
           "run": "uv sync --locked"
         },
         {
-          "run": "uv run python scripts/quality/install_collections.py"
+          "run": "uv run python -m ci.quality.install_collections"
         }
       ],
       "timeoutMinutes": 5
@@ -566,7 +621,7 @@
           }
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools kind kubectl"
+          "run": "uv run python -m ci.quality.install_tools --tools kind kubectl"
         }
       ],
       "timeoutMinutes": 15
@@ -592,7 +647,7 @@
           "run": "uv sync --locked"
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools actionlint shellcheck"
+          "run": "uv run python -m ci.quality.install_tools --tools actionlint shellcheck"
         }
       ],
       "timeoutMinutes": 5
@@ -618,7 +673,7 @@
           "run": "uv sync --locked"
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools hadolint"
+          "run": "uv run python -m ci.quality.install_tools --tools hadolint"
         }
       ],
       "timeoutMinutes": 5
@@ -657,7 +712,7 @@
           }
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools hadolint"
+          "run": "uv run python -m ci.quality.install_tools --tools hadolint"
         }
       ],
       "timeoutMinutes": 10
@@ -691,6 +746,32 @@
         }
       ],
       "timeoutMinutes": 10
+    },
+    "quality-images": {
+      "env": {},
+      "permissions": {
+        "contents": "read"
+      },
+      "runner": "ubuntu-24.04",
+      "services": {},
+      "setup": [
+        {
+          "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "with": {
+            "persist-credentials": "false"
+          }
+        },
+        {
+          "uses": "astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78"
+        },
+        {
+          "run": "uv sync --locked"
+        },
+        {
+          "run": "uv run python -m ci.quality.install_tools --tools trivy"
+        }
+      ],
+      "timeoutMinutes": 15
     },
     "quality-integration": {
       "env": {},
@@ -726,10 +807,10 @@
           }
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools promtool"
+          "run": "uv run python -m ci.quality.install_tools --tools promtool"
         },
         {
-          "run": "set -euo pipefail\nread -r image < quality/nginx-syntax-image.txt\ndocker pull \"${image}\"\n"
+          "run": "set -euo pipefail\nread -r image < ci/quality/nginx-syntax-image.txt\ndocker pull \"${image}\"\n"
         }
       ],
       "timeoutMinutes": 10
@@ -791,7 +872,7 @@
           }
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools kubeconform kube-linter"
+          "run": "uv run python -m ci.quality.install_tools --tools kubeconform kube-linter"
         }
       ],
       "timeoutMinutes": 10
@@ -817,7 +898,7 @@
           "run": "uv sync --locked"
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools gitleaks"
+          "run": "uv run python -m ci.quality.install_tools --tools gitleaks"
         }
       ],
       "timeoutMinutes": 5
@@ -843,7 +924,7 @@
           "run": "uv sync --locked"
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools shellcheck"
+          "run": "uv run python -m ci.quality.install_tools --tools shellcheck"
         },
         {
           "run": ".quality-tools/bin/shellcheck --version"

@@ -287,7 +287,12 @@ def apply(state: Path, session_hash: str, config_hash: str) -> dict[str, object]
                 raise ValueError("API/DB drift")
         h.save(
             s.state / "subscription-write-uncertain.json",
-            {"field": "excludeFromSub", "inbound_id": legacy["id"], "old": False, "new": True},
+            {
+                "field": "excludeFromSub",
+                "inbound_id": legacy["id"],
+                "old": False,
+                "new": True,
+            },
         )
         s.call("POST", "/inbounds/update/" + str(legacy["id"]), dto)
         current = target.configuration(s.database)

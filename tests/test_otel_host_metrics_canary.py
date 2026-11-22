@@ -10,7 +10,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "host_metrics_canary", ROOT / "scripts/otel-host-metrics-canary.py"
+    "host_metrics_canary", ROOT / "ansible/scripts/otel-host-metrics-canary.py"
 )
 canary = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(canary)
@@ -116,7 +116,7 @@ class HostMetricsCanaryTests(unittest.TestCase):
 
     def test_outage_proof_uses_raw_range_vector_not_query_range_lookback(self) -> None:
         """The outage proof uses a raw range vector, not query-range lookback."""
-        text = (ROOT / "scripts/otel-host-metrics-canary.py").read_text()
+        text = (ROOT / "ansible/scripts/otel-host-metrics-canary.py").read_text()
         assert "query(root, 'up[10m]')" in text
         assert "stops < float(timestamp) < restart" in text
         assert "RuntimeMaxSec=900" in text

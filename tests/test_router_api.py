@@ -106,7 +106,11 @@ class SimulatedRouter(ROUTER.Router):
                 raise AssertionError("Port range unexpectedly changed")
             self.rows.append(
                 forward(
-                    data["ip"], data["fromPort"], data["externalFromPort"], "TCP", data["comment"]
+                    data["ip"],
+                    data["fromPort"],
+                    data["externalFromPort"],
+                    "TCP",
+                    data["comment"],
                 )
             )
         else:
@@ -133,7 +137,12 @@ class RouterApiTests(unittest.TestCase):
     def apply(self, router) -> dict[str, object]:
         """Run the apply flow for the router."""
         return self.run_main(
-            router, "--apply", "--expected-old", "192.168.0.23", "--destination", "192.168.0.250"
+            router,
+            "--apply",
+            "--expected-old",
+            "192.168.0.23",
+            "--destination",
+            "192.168.0.250",
         )
 
     def test_only_web_forwards_move_and_seven_unrelated_forwards_survive(self) -> None:
@@ -162,7 +171,9 @@ class RouterApiTests(unittest.TestCase):
         assert ROUTER.canonical(router.rows) == ROUTER.canonical(original)
         assert router.failed
 
-    def test_concurrent_unrelated_insert_with_shifted_selectors_refuses_mutation(self) -> None:
+    def test_concurrent_unrelated_insert_with_shifted_selectors_refuses_mutation(
+        self,
+    ) -> None:
         """Concurrent unrelated insert with shifted selectors refuses mutation."""
         router = SimulatedRouter()
         expected = router.forwards()
@@ -176,7 +187,9 @@ class RouterApiTests(unittest.TestCase):
         assert router.mutations == []
         assert router.rows == current
 
-    def test_reordered_unchanged_table_uses_fresh_selector_instead_of_stale_index(self) -> None:
+    def test_reordered_unchanged_table_uses_fresh_selector_instead_of_stale_index(
+        self,
+    ) -> None:
         """Reordered unchanged table uses fresh selector instead of stale index."""
         router = SimulatedRouter()
         expected = router.forwards()
@@ -189,7 +202,9 @@ class RouterApiTests(unittest.TestCase):
         assert [row["external_port"] for row in changed] == ["80"]
         assert len(router.rows) == expected_row_count
 
-    def test_unexpected_https_target_refuses_entire_operation_before_http_change(self) -> None:
+    def test_unexpected_https_target_refuses_entire_operation_before_http_change(
+        self,
+    ) -> None:
         """Unexpected https target refuses entire operation before http change."""
         router = SimulatedRouter()
         router.rows[1]["ip"] = "192.168.0.99"
@@ -197,7 +212,9 @@ class RouterApiTests(unittest.TestCase):
             self.apply(router)
         assert router.mutations == []
 
-    def test_already_targeted_router_rejects_stale_expected_old_without_mutation(self) -> None:
+    def test_already_targeted_router_rejects_stale_expected_old_without_mutation(
+        self,
+    ) -> None:
         """Already targeted router rejects stale expected old without mutation."""
         router = SimulatedRouter()
         for row in router.rows[:2]:
@@ -259,7 +276,9 @@ class RouterApiTests(unittest.TestCase):
         moved = [row for row in router.rows if row["ip"] == "192.168.0.250"]
         assert sorted(row["external_port"] for row in moved) == ["443", "80"]
 
-    def test_lost_delete_response_with_unexpected_state_does_not_blindly_restore(self) -> None:
+    def test_lost_delete_response_with_unexpected_state_does_not_blindly_restore(
+        self,
+    ) -> None:
         """Lost delete response with unexpected state does not blindly restore."""
         router = SimulatedRouter()
         request = router.request

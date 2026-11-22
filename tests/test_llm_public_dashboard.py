@@ -59,7 +59,8 @@ def _sharing_contract(source: str) -> None:
     assert guard.returns is None or isinstance(guard.returns, (ast.Name, ast.Constant))
     guard.returns = None
     _same_statement(
-        module.body, "def need(ok, msg):\n    if not ok:\n        raise RuntimeError(msg)"
+        module.body,
+        "def need(ok, msg):\n    if not ok:\n        raise RuntimeError(msg)",
     )
     locks = [n for n in mains[0].body if isinstance(n, ast.With)]
     assert len(locks) == 1
@@ -67,7 +68,8 @@ def _sharing_contract(source: str) -> None:
     locked = _same_statement(body, "fcntl.flock(lock, fcntl.LOCK_EX)")
     settings = _same_statement(body, 'code, settings = api("GET", "/api/admin/settings")')
     section = _same_statement(
-        body, 'anonymous = cast("dict[str, object]", settings.get("auth.anonymous", {}))'
+        body,
+        'anonymous = cast("dict[str, object]", settings.get("auth.anonymous", {}))',
     )
     anonymous = _same_statement(
         body,
@@ -102,7 +104,11 @@ def _sharing_contract(source: str) -> None:
     assert apply.body[0] is approval
     assert apply.body.index(approval) < apply.body.index(post)
     assert body.index(locked) < body.index(settings)
-    assert body[body.index(settings) : body.index(anonymous) + 1] == [settings, section, anonymous]
+    assert body[body.index(settings) : body.index(anonymous) + 1] == [
+        settings,
+        section,
+        anonymous,
+    ]
     assert body.index(anonymous) < body.index(content) < body.index(desired) < body.index(apply)
     writes = [
         n

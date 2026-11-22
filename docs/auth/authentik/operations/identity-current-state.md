@@ -1,0 +1,141 @@
+# Identity: текущий статус и первый вход
+
+> **PostgreSQL (2026-11-20):** Рабочая БД Authentik — `pg-critical/authentik`, endpoint `pg-critical-rw`; не путать с остановленным authentik-postgres. [Эксплуатация и CA](../../../data/postgresql/postgres-platform.md).
+
+> **Live auth audit15Nov:** [actual browser/API boundaries](../../../records/handoffs/browser-auth-audit.md).
+> Current public Kuma Admin/Syncthing/Search routes do not have the previously
+> described Authentik MFA gate. Native service login is not Authentik SSO. Native
+> OIDC apps may serve public HTML but deny private APIs. No auth changes applied.
+
+**External пароль:** [страница смены пароля](password-self-service.md) —
+https://auth.socrat.alchemmist.xyz/change-password; `/if/user/` для External закрыт.
+
+> **Текущий B2C контракт:** [отдельные app-группы и native роли](../../applications/application-access.md).
+> Восемь включённых ролей для LiteLLM, Open WebUI, Grafana, Wiki и LMS;
+> остальные reserved группы не означают допуск. Internal/External не является
+> app permission. Старые owner-only/подготовительные срезы ниже — история;
+> browser E2E и мгновенный отзыв всех сессий/ключей не заявлены.
+
+## Текущее дополнение — observer принят 8 ноября
+
+`homelab-observer` даёт нативный viewer-доступ к **Rancher, Grafana, Wiki, Argo CD**.
+Danila уже добавлен в эту группу; `authentik Read-only` удалена, согласованный
+`netbird-internal-admins` сохранён. Пароль/MFA не менялись, вход за человека не
+выполнялся, персональные native users/roles не provisionились. Следующее обычное
+подключение — IdP group add и native SSO/JIT, не повтор one-time cutover script.
+
+Проверены allow/deny, старые browser/API/MCP credentials, новый вход после удаления
+группы и автоматический remove/re-add native кеша. Прежние owner/editor/direct
+права аддитивны. **Harbor observer не поддержан:** admission и три Guest grants
+закрыты после реального CLI revocation failure; отдельная задача #134. Не открывать
+его по наличию старого bootstrap receipt. Подробности: [native observer](../../roles/observer/native-observer.md),
+[приёмка](../../../records/handoffs/observer-acceptance-20261108.md), [runbook](../../roles/observer/observer-profile.md).
+
+## Исторический срез — 7 ноября, снятие общих внешних auth gates
+
+Ниже зафиксирована приёмка того этапа, не текущее обещание anonymous SPI evidence
+или нулевого числа Proxy Providers. Позднее RustFS получил отдельную private
+single-domain защиту: [live edge](../../../rustfs/private-single-domain-live.md).
+Её не отменять при работе с observer, которому RustFS не выдавался.
+
+Удалены11 obsolete Authentik Applications (включая старую Kuma bookmark-карточку)
+и10 Proxy Providers; outpost assignments сняты.10 native OIDC Applications,
+их UUID/client credentials/callbacks/policy bindings сохранены. n8n,3x-ui, Kuma
+и Syncthing используют собственный login; SearXNG и опубликованные SPI artifacts
+публичны без Authentik и NetBird. Reader допускает только GET/HEAD, проверяет
+manifest/hash и выдаёт безопасные типы inline. [Контракт и границы](../../applications/native-browser-auth.md).
+
+Повторная приёмка после восстановления socrat-2: **82/82** публичных проверок
+на HOME и VPS, обычная проверка TLS без отключения верификации. Все4 ноды Ready;
+socrat-2 Ready с17:55:34UTC7 ноября. Все8 затронутых Argo apps Synced/Healthy.
+Старые xui gateway Application/Deployment/Service/ConfigMap и Pod отсутствуют;
+force-delete не потребовался.10 native OIDC регистраций/providers/bindings и
+сохранённые поля иконок не изменились; Proxy Providers0. Опубликованный artifact
+проверен через оба входа: anonymous GET/HEAD/206, manifest/SHA-256, inline,
+PUT/POST/PATCH/DELETE405. [Приёмка](../../applications/native-browser-auth.md#recovered-vps-final-acceptance).
+Это протокольная приёмка, не новая проверка входа от имени каждого человека.
+
+
+Актуализировано **7 ноября 2026**; источники:
+`deploy/identity/{account-mappings.json,lifecycle.json,browser-auth-policy.json}`,
+`docs/records/handoffs/user-recreation-20261107.md` и read-only проверка IdP.
+Это состояние, не автоматический reconciler паролей или выдача новых прав.
+
+## Личные identities
+
+| Человек | Логин Authentik | Состояние |
+| --- | --- | --- |
+| Владелец | `alchemmist` | Защищённый owner, личный MFA, единственный human в `homelab-owner` |
+| Tim | `antropophag` | Active/internal, nonsuperuser; на проверке 7 ноября пароль не задан и `last_login=null` |
+| Danila | Существующий immutable subject сохранён | С 8 ноября observer в четырёх сервисах; IdP Read-only снята, NetBird сохранён; реальный первый SSO не impersonated |
+
+UUID Tim: `6015c85b-82e9-49ce-a4e3-0270c676e26d`. Старую identity удалили штатно
+после явного запроса владельца. Затем изменили **только username** с `tim` на
+`antropophag`, без нового UUID, смены email, групп или provider subject.
+Display name Tim и Linux account `tim` остаются отдельными именами.
+
+Группы: `homelab-observer`, `netbird-pilot-login`, `netbird-pilot-grafana`,
+`netbird-pilot-ssh-socrat-2`; `netbird-internal-admins` не выдана.
+Имена pilot-групп сохранены как реальные protocol/policy identifiers, а не
+предложение переименовать текущую сеть или расширить доступ.
+
+## Пароль и MFA: без выдуманной автоактивации
+
+**Native Create user не означает, что человек сможет войти без пароля или сам
+увидит установку пароля на первом входе.** Для `antropophag` пароль пока не задан;
+MFA сама по себе не является способом начать первый вход.
+
+Штатное действие администратора: **Directory → Users → antropophag → Set password**,
+с приватной передачей credential и отдельной согласованной процедурой его смены.
+Не называть административно заданный пароль «лично установленным пользователем»
+и не обещать forced password change, пока реальный flow не настроен и не проверен.
+
+Самостоятельная установка через штатные invitation/enrollment/recovery Authentik
+требует отдельной настройки соответствующего flow и доставки. SMTP/Brand recovery
+сейчас не настроены; приглашение не отправлено. Добавленный ранее отдельный
+`homelab-existing-human-activation-v1` удалён вместе с owned stage/policy, токен
+отозван, delivery file убран. Не воскрешать его и не выдавать старую ссылку.
+Пароль и MFA за человека не устанавливать ради теста.
+
+Активный private bootstrap journal — `antropophag-login.json`, `initialized=true`,
+без plaintext password. Исторические `tim-login.json`/backups не источник действующего
+credential. Не сбрасывать marker и не запускать старый initializer/app smoke ради
+«восстановления» пароля. Реальный первый пароль/MFA/login всё ещё не принят человеком.
+
+## Native app identities и исключения
+
+- **Grafana:** сохранены native user2/UID и Viewer, обновлён exact
+  `hashed_user_id` subject при пересоздании; последующее переименование username
+  этот subject не меняет. Нельзя заменять его UUID/email или включать email merge.
+- **WebUI:** сохранены native user и шесть чатов, роль user; OAuth subject — новый
+  UUID. Active auth row нужна для OAuth; старый local password заменён discarded
+  random credential, прежний session stamp отозван. Это не защита от всех будущих
+  self-service password routes: reviewed policy не равна постоянному enforcement.
+- **Wiki:** тот же native editor и reviewed UUID mapping; local recovery только owner.
+  При смене subject обновили две map entries существующего Secret и выполнили один
+  scoped Wiki rollout, без смены PVC/image/аккаунтов.
+- **Rancher:** immutable principal не обходили. Текущий native SSO user
+  `u-authentik-tim-v2`; у него ровно прежние reviewed user-base/cluster-member grants.
+  Старые `u-authentik-tim` и legacy local `u-22wv2` отключены, история сохранена.
+  Override IDs/prefix в account mapping нужны для безопасного следующего reconcile;
+  переименование IdP login не требует переименовывать эти Rancher resources.
+- **Umami3.4.1:** native OIDC отсутствует; доступ этого человека **suspended**,
+  существующие analytics/team/sites сохранены. Не очищать `deleted_at` и не вызывать
+  delete-user API. Работающий доступ — после issue#85, не после MFA gateway + password.
+- Другие apps: admission и native permissions независимо; появление плитки не
+  означает выдачу admin/project rights или создание пользователя в каждом сервисе.
+
+SSH keys/Linux sudo, NetBird device policies и WireGuard recovery не менялись при
+browser identity cutover. Сброс IdP не является отзывом native app sessions/API keys.
+Owner recovery, robots, machine API keys и emergency identities не подменять.
+
+## Аватары
+
+У owner и `antropophag` API возвращал Gravatar URL; собственного avatar attribute нет.
+Это штатный выбор avatar modes tenant: ссылка по хешу email, не загрузка нами фото
+и не доказательство входа через Google. Тот же email после пересоздания объясняет
+тот же аватар. Браузер обращается к внешнему Gravatar; локальные initials — отдельная
+возможная настройка, **её в этой задаче не применяли**.
+
+Процедуры: [операции](identity-operations.md), [интеграции](../integrations/identity-integrations.md),
+[NetBird](../../../network/netbird/README.md), [SSH](../../host-access/ssh-user.md), [recovery](identity-recovery.md).

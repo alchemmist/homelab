@@ -1,10 +1,23 @@
 # Homelab agent entrypoint
 
-Read `llm-wiki/context.md` first; use `llm-wiki/README.md` for topic runbooks.
+Start at `docs/README.md`. For a named service or alert, follow its direct route;
+read `docs/platform/system-overview.md` only for a system overview. Before operational work,
+check `docs/platform/operational-boundaries.md` and the relevant runbook.
+
+## Language
+
+Use English for all project content you commit to this repository or publish on GitHub, regardless of the language of the original request.
+
+- **Git and tracked files:** Write commit subjects and bodies, branch and tag names, documentation, code comments, and all other project-authored text in English.
+- **GitHub:** Write pull request and issue titles and descriptions, comments, reviews, review replies, discussions, status updates, labels, and release notes in English.
+
+## Pull requests
+
+Use the [ready-to-merge skill](.agents/skills/ready-to-merge/SKILL.md) when opening a PR or addressing review feedback.
 
 ## MCP
 
-Tracked project settings are `.pi/mcp.json`. Read `docs/official-mcp.md` and
+No particular agent or MCP client is required. For optional connections, read `docs/platform/agent-access/official-mcp.md` and
 `deploy/mcp/service-audit.json` for scope, installation, coverage and blocked items.
 Only a trusted project loads its commands. Never execute a credential helper to
 show its output: it writes a token into the MCP client's private pipe.

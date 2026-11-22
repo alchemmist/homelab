@@ -46,6 +46,7 @@ def module() -> ModuleType:
 
 def document() -> dict[str, list[_ResourceSpan]]:
     """Test behavior for document."""
+
     def resource(service, span) -> _ResourceSpan:
         """Build a resource span for the requested service."""
         return {

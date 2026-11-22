@@ -42,7 +42,7 @@
         group: root
         mode: "0600"
       loop:
-        - source: "{{ playbook_dir }}/../../scripts/otel-host-metrics-canary.py"
+        - source: "{{ playbook_dir }}/../scripts/otel-host-metrics-canary.py"
           target: canary.py
         - source: "{{ otel_host_metrics_artifacts }}/request.json"
           target: request.json

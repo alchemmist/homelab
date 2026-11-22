@@ -34,7 +34,6 @@
     state: present
     update_cache: true
     cache_valid_time: 3600
-  register: homelab_wireless_packages
 
 - name: Reserve Wi-Fi DHCP for NetworkManager
   ansible.builtin.lineinfile:
@@ -49,7 +48,6 @@
     content: >
       options rtl8723ae ips=0 fwlps=0 swlps=0 msi={{ homelab_wifi_msi | bool | ternary('1', '0') }}
     mode: "0644"
-  register: homelab_realtek_options
 
 - name: Check the active wireless power settings
   ansible.builtin.command: >-

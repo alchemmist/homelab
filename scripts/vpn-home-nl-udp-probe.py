@@ -34,11 +34,15 @@ def server(timeout=40) -> "dict[str, object]":
             s.settimeout(max(0.01, deadline - time.monotonic()))
             try:
                 data, peer = s.recvfrom(128)
-            except socket.timeout:
+            except TimeoutError:
                 break
             if valid(data, peer):
                 s.sendto(data, peer)
-                return {"received_home_datagram": True, "bytes": len(data), "port": PORT}
+                return {
+                    "received_home_datagram": True,
+                    "bytes": len(data),
+                    "port": PORT,
+                }
     raise TimeoutError("No valid HOME datagram in bounded window")
 
 
@@ -53,7 +57,7 @@ def client() -> "dict[str, object]":
             s.send(payload)
             try:
                 reply = s.recv(128)
-            except socket.timeout:
+            except TimeoutError:
                 continue
             if reply == payload:
                 return {

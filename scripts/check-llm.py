@@ -1,4 +1,5 @@
 """Smoke-check an OpenAI-compatible LLM inference endpoint."""
+
 import json
 import os
 import sys
@@ -76,7 +77,10 @@ def main():
     started = time.monotonic()
     with request("models") as response:
         models = json.load(response)
-    require(MODEL in {item["id"] for item in models.get("data", [])}, "Requested model is missing")
+    require(
+        MODEL in {item["id"] for item in models.get("data", [])},
+        "Requested model is missing",
+    )
     report("model listing", started)
 
     started = time.monotonic()
@@ -110,7 +114,8 @@ def main():
     }
     with request("chat/completions", payload) as response:
         require(
-            "text/event-stream" in response.headers.get("Content-Type", ""), "Response is not SSE"
+            "text/event-stream" in response.headers.get("Content-Type", ""),
+            "Response is not SSE",
         )
         for raw_line in response:
             require(time.monotonic() - started < TIMEOUT, "Streaming exceeded time limit")
@@ -125,7 +130,10 @@ def main():
             require("error" not in event, "Streaming response contains an error")
             usage = event.get("usage") or usage
             for choice in event.get("choices", []):
-                require(choice.get("finish_reason") != "length", "Streaming response was truncated")
+                require(
+                    choice.get("finish_reason") != "length",
+                    "Streaming response was truncated",
+                )
                 content += choice.get("delta", {}).get("content") or ""
     require(done and bool(content.strip()), "Streaming lacked content or [DONE]")
     report("SSE streaming", started, usage)
@@ -165,7 +173,10 @@ def main():
         "Expected one automatic tool call",
     )
     call = calls[0]
-    require(bool(call.get("id")) and call.get("type") == "function", "Invalid tool call envelope")
+    require(
+        bool(call.get("id")) and call.get("type") == "function",
+        "Invalid tool call envelope",
+    )
     require(call["function"]["name"] == "get_weather", "Unexpected tool name")
     arguments = json.loads(call["function"]["arguments"])
     require(arguments == {"city": "Moscow"}, "Unexpected weather tool arguments")

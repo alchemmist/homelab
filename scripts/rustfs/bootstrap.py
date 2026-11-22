@@ -238,7 +238,15 @@ def attach_spi_users(
         # Attach only our journaled users; safe to resume after interrupted creation.
         info = mc("admin", "user", "info", "store", accesses[role])[0]
         if not info.get("policyName"):
-            mc("admin", "policy", "attach", "store", "spi-" + role, "--user", accesses[role])
+            mc(
+                "admin",
+                "policy",
+                "attach",
+                "store",
+                "spi-" + role,
+                "--user",
+                accesses[role],
+            )
 
 
 def main() -> None:

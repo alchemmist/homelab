@@ -129,6 +129,23 @@ def software_update_extension(document) -> None:
                                     },
                                 }
                             ],
+                        },
+                        {
+                            "job_name": "socrat-actionable-alerts",
+                            "metrics_path": "/actionable-alerts",
+                            "scrape_interval": "30s",
+                            "scrape_timeout": "8s",
+                            "static_configs": [
+                                {
+                                    "targets": [
+                                        "monitoring-update-watch.cattle-monitoring-system.svc.cluster.local:8080"
+                                    ],
+                                    "labels": {
+                                        "namespace": "cattle-monitoring-system",
+                                        "service": "monitoring-update-watch",
+                                    },
+                                }
+                            ],
                         }
                     ]
                 }
@@ -146,6 +163,31 @@ def migration_payload(document) -> dict[str, object]:
     """Check declared runtime overrides before comparing the unchanged handoff payload."""
     kind = document["kind"]
     name = document["metadata"]["name"]
+    if (kind, name) == ("PrometheusRule", "kube-prometheus-stack-node-exporter"):
+        result = copy.deepcopy(document)
+        group, = result["spec"]["groups"]
+        assert not any(rule.get("alert") == "NodeSystemSaturation" for rule in group["rules"])
+        # Restore the one replaced upstream rule for comparison with the frozen handoff.
+        group["rules"].insert(17, json.loads((ROOT / "tests/fixtures/upstream-node-saturation.json").read_text()))
+        return result
+    if (kind, name) == ("PrometheusRule", "kube-prometheus-stack-kubernetes-apps"):
+        # Undo just the retired upstream rule for comparison to the frozen handoff.
+        result = copy.deepcopy(document)
+        group, = result["spec"]["groups"]
+        assert group["name"] == "kubernetes-apps"
+        assert not any(rule.get("alert") == "KubeJobFailed" for rule in group["rules"])
+        group["rules"].insert(13, {
+            "alert": "KubeJobFailed",
+            "expr": 'kube_job_failed{job="kube-state-metrics", namespace=~".*"}  > 0',
+            "for": "15m", "labels": {"severity": "warning"},
+            "annotations": {
+                "description": "Job {{ $labels.namespace }}/{{ $labels.job_name }} failed to complete. "
+                "Removing failed job after investigation should clear this alert on cluster {{ $labels.cluster }}.",
+                "runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubejobfailed",
+                "summary": "Job failed to complete.",
+            },
+        })
+        return result
     if kind not in {"Prometheus", "Alertmanager", "Deployment"} and (kind, name) != (
         "ServiceMonitor",
         "kube-prometheus-stack-apiserver",
@@ -248,7 +290,7 @@ def migration_payload(document) -> dict[str, object]:
     }
     assert spec.pop("podMetadata") == {
         "annotations": {
-            "homelab.alchemmist.xyz/software-update-scrape-version": "1",
+            "homelab.alchemmist.xyz/software-update-scrape-version": "2",
             "homelab.alchemmist.xyz/otel-config-sha256": "db9921b7fe480086f1378726a72c2159cababf78c4cc45eb9ad8e2f212698067",
         }
     }
@@ -269,9 +311,28 @@ def test_disjoint_complete_payload_identical_handoff() -> None:
             k = key(d)
             assert k not in all_owners, "Duplicate owner: " + k
             all_owners[k] = name
+            if k == "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-node-saturation":
+                assert name == "node-exporter"
+                group, = d["spec"]["groups"]
+                rule, = group["rules"]
+                assert rule["alert"] == "NodeSystemSaturation" and rule["for"] == "15m"
+                special, normal = rule["expr"].split("\nor\n")
+                assert 'node="socrat-4"' in special and special.endswith("> 6)")
+                assert 'node!="socrat-4"' in normal and normal.endswith("> 2)")
+                continue
             if k == "ConfigMap/cattle-monitoring-system/software-update-otel":
                 assert name == "prometheus"
                 software_update_extension(d)
+                continue
+            if k == "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-homelab-job-failures":
+                assert name == "prometheus"
+                group, = d["spec"]["groups"]
+                assert [r["alert"] for r in group["rules"]] == [
+                    "KubeJobFailed", "SocratPrAgentWebhookRedeliveryFailed",
+                ]
+                # Pin the reviewed additive rule without refreshing the historical fixture.
+                payload = json.dumps(d, sort_keys=True, separators=(",", ":")).encode()
+                assert hashlib.sha256(payload).hexdigest() == "461ecd97ea3b1f2c9d6ff8aaf8be167ed64458d9b21fe9693bf40fa06e7f64be"
                 continue
             actual[k] = {
                 "owner": name,
@@ -280,7 +341,9 @@ def test_disjoint_complete_payload_identical_handoff() -> None:
                 ).hexdigest(),
             }
     assert set(all_owners) == set(fixture) | {
-        "ConfigMap/cattle-monitoring-system/software-update-otel"
+        "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-node-saturation",
+        "ConfigMap/cattle-monitoring-system/software-update-otel",
+        "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-homelab-job-failures",
     }
     assert len(actual) == 77
     assert actual == fixture

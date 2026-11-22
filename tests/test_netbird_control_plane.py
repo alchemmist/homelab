@@ -23,16 +23,16 @@ def _text(value: str | None) -> str:
 
 def load(name, filename) -> types.ModuleType:
     """Load an offline netbird runtime module from the scripts directory."""
-    spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
+    spec = importlib.util.spec_from_file_location(name, ROOT / filename)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-nb = load("netbird_pilot", "netbird-pilot.py")
-deploy = load("netbird_deploy", "netbird-deploy.py")
-bootstrap = load("netbird_bootstrap", "netbird-bootstrap.py")
-backup = load("netbird_backup", "netbird-backup.py")
+nb = load("netbird_pilot", "scripts/netbird-pilot.py")
+deploy = load("netbird_deploy", "ansible/scripts/netbird-deploy.py")
+bootstrap = load("netbird_bootstrap", "scripts/netbird-bootstrap.py")
+backup = load("netbird_backup", "scripts/netbird-backup.py")
 
 
 def control_inputs() -> dict[str, object]:
@@ -55,9 +55,7 @@ def control_inputs() -> dict[str, object]:
 
 def cleared_audit() -> dict[str, object]:
     """Build the cleared runtime-audit document used by status tests."""
-    audit: dict[str, object] = json.loads(
-        (ROOT / "deploy/netbird/runtime-audit.json").read_text()
-    )
+    audit: dict[str, object] = json.loads((ROOT / "deploy/netbird/runtime-audit.json").read_text())
     audit.update(
         kubectl_api_read=True,
         udp_3478_listening=False,
@@ -74,7 +72,7 @@ class ControlPlaneTests(unittest.TestCase):
     def test_repo_check_reports_concrete_blockers_without_applying(self) -> None:
         """The repo check reports concrete blockers without applying."""
         result = subprocess.run(
-            [os.sys.executable, str(ROOT / "scripts/netbird-deploy.py"), "check"],
+            [os.sys.executable, str(ROOT / "ansible/scripts/netbird-deploy.py"), "check"],
             capture_output=True,
             text=True,
         )
@@ -157,7 +155,7 @@ class ControlPlaneTests(unittest.TestCase):
             result = subprocess.run(
                 [
                     os.sys.executable,
-                    str(ROOT / "scripts/netbird-deploy.py"),
+                    str(ROOT / "ansible/scripts/netbird-deploy.py"),
                     "plan",
                     "--inputs",
                     str(inputs),
@@ -173,7 +171,9 @@ class ControlPlaneTests(unittest.TestCase):
             assert "BLOCKED" in _text(result.stderr)
             assert not out.exists()
 
-    def test_internal_stage_does_not_wait_for_edge_or_a_listening_udp_port(self) -> None:
+    def test_internal_stage_does_not_wait_for_edge_or_a_listening_udp_port(
+        self,
+    ) -> None:
         """The internal stage does not wait for edge or a listening UDP port."""
         audit = cleared_audit()
         audit.update(
@@ -335,22 +335,31 @@ class BootstrapTests(unittest.TestCase):
             }
 
         result = bootstrap.claim(
-            "http://127.0.0.1:18080", "owner@example.com", "long-enough", "Owner", opener
+            "http://127.0.0.1:18080",
+            "owner@example.com",
+            "long-enough",
+            "Owner",
+            opener,
         )
         assert result["user_id"] == "user123"
         assert result["personal_access_token_redacted"]
         assert "nbp_secret_token" not in json.dumps(result)
         assert "long-enough" not in json.dumps(result)
-        assert (calls[1][1].get("create_pat") if False else calls[1][1].get("create_pat", None)) is None
+        assert (
+            calls[1][1].get("create_pat") if False else calls[1][1].get("create_pat", None)
+        ) is None
         assert "create_pat" not in calls[1][1]
-
 
         def claimed(_url, _body) -> dict[str, object]:
             return {"setup_required": False}
 
         with self.assertRaises(ValueError):
             bootstrap.claim(
-                "http://127.0.0.1:18080", "owner@example.com", "long-enough", "Owner", claimed
+                "http://127.0.0.1:18080",
+                "owner@example.com",
+                "long-enough",
+                "Owner",
+                claimed,
             )
 
     @unittest.skipUnless(
@@ -380,8 +389,14 @@ class BootstrapTests(unittest.TestCase):
         import hashlib
 
         source = Path("/tmp/netbird-v082-repo/management/server/user.go").read_text().splitlines()
-        assert "initiatorUser.Role == types.UserRoleOwner && initiatorUser.Id != update.Id && update.Role == types.UserRoleOwner" in source[914]
-        assert "initiatorUser.Role != types.UserRoleOwner && oldUser.Role == types.UserRoleOwner && update.Role != oldUser.Role" in source[969]
+        assert (
+            "initiatorUser.Role == types.UserRoleOwner && initiatorUser.Id != update.Id && update.Role == types.UserRoleOwner"
+            in source[914]
+        )
+        assert (
+            "initiatorUser.Role != types.UserRoleOwner && oldUser.Role == types.UserRoleOwner && update.Role != oldUser.Role"
+            in source[969]
+        )
         joined = "\n".join(source)
         assert "return am.SaveOrAddUser(ctx, accountID, initiatorUserID, update, false)" in joined
         assert "updatedUser := oldUser.Copy()" in joined
@@ -390,10 +405,16 @@ class BootstrapTests(unittest.TestCase):
         assert "func (am *DefaultAccountManager) GetOrCreateAccountByUser" in joined
         schema_path = Path("/tmp/netbird-0.82.0/shared/management/http/api/openapi.yml")
         lock = json.loads((ROOT / "deploy/netbird/upstream.lock.json").read_text())
-        assert hashlib.sha256(schema_path.read_bytes()).hexdigest() == lock["sources"]["openapi"]["sha256"]
+        assert (
+            hashlib.sha256(schema_path.read_bytes()).hexdigest()
+            == lock["sources"]["openapi"]["sha256"]
+        )
         schema = yaml.safe_load(schema_path.read_text())
         operation = schema["paths"]["/api/users/{userId}"]["put"]
-        assert operation["requestBody"]["content"]["application/json"]["schema"]["$ref"] == "#/components/schemas/UserRequest"
+        assert (
+            operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+            == "#/components/schemas/UserRequest"
+        )
         user_request = schema["components"]["schemas"]["UserRequest"]
         assert user_request["required"] == ["role", "auto_groups", "is_blocked"]
         assert "id" not in user_request["properties"]

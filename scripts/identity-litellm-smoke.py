@@ -9,10 +9,14 @@ import argparse
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
-    "--run", action="store_true", help="Explicitly authorize temporary acceptance fixtures"
+    "--run",
+    action="store_true",
+    help="Explicitly authorize temporary acceptance fixtures",
 )
 parser.add_argument(
-    "--public-edge", choices=["109.173.40.247", "109.120.141.60"], default="109.173.40.247"
+    "--public-edge",
+    choices=["109.173.40.247", "109.120.141.60"],
+    default="109.173.40.247",
 )
 args = parser.parse_args()
 if not args.run:
@@ -119,7 +123,11 @@ try:
             "failure_result": False,
         },
     )
-    api("POST", "core/users/" + str(user["pk"]) + "/set_password/", {"password": password})
+    api(
+        "POST",
+        "core/users/" + str(user["pk"]) + "/set_password/",
+        {"password": password},
+    )
     with sync_playwright() as p:
         browser = p.chromium.launch(
             args=[
@@ -177,9 +185,18 @@ try:
                             "Callback exception types:",
                             re.findall(r"\b[A-Z][A-Za-z]+(?:Error|Exception)\b", err),
                         )
-                    except (ValueError, TypeError, IndexError, KeyError, AttributeError):
+                    except (
+                        ValueError,
+                        TypeError,
+                        IndexError,
+                        KeyError,
+                        AttributeError,
+                    ):
                         pass
-            if "/api/v3/flows/executor/" in response.url and response.status in [200, 400]:
+            if "/api/v3/flows/executor/" in response.url and response.status in [
+                200,
+                400,
+            ]:
                 try:
                     data = response.json()
                     last.clear()

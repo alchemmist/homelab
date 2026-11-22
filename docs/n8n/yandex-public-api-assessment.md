@@ -25,7 +25,7 @@ No unrelated settings, alarm, Wi-Fi, equalizer or child settings were changed.
 | Same endpoint, `devices.capabilities.audio_player`, play action + URL | 400: `unknown capability type: devices.capabilities.audio_player` |
 | Same endpoint, `devices.capabilities.audio_player`, stream_id URL + playing state | Same 400, rejected by capability type, not audio codec or URL availability |
 | PUT `/v1.0/scenarios/{id}`, owned dedicated scenario definition | 404: `404 page not found` |
-| POST `/v1.0/scenarios/{id}/actions`, existing dedicated scenario | 200 / status=ok; user heard **«Напоминания из календаря настроены»** |
+| POST `/v1.0/scenarios/{id}/actions`, existing dedicated scenario | 200 / status=ok; user heard **“Calendar reminders are set up” (translated)** |
 
 Audio URL used for the two rejected player tests was a short public HTTPS Ogg
 beep, whose availability was checked. Because validation rejected the capability
@@ -69,5 +69,5 @@ in the official app; do not secretly edit it through internal API calls.
 Native n8n execution **1587** ran the public POST with its encrypted bearer
 credential and marked the test reminder successfully. The temporary scheduled
 workflow was removed and the original calendar activated. The stored fixed phrase
-is still «Напоминания из календаря настроены»; changing it requires the official
+is still “Calendar reminders are set up” (translated); changing it requires the official
 app, not an internal API. Six calendar tests and thirteen blog tests pass.

@@ -16,7 +16,7 @@
     tool: /usr/local/libexec/vpn-transit-failover.py
     expected_old_tool: 3f130631c493cf60feed9cc5dd1ee970b233c278fb9cf685a00f32e915f03d19
     expected_new_tool: >-
-      {{ lookup("file", playbook_dir + "/../../scripts/vpn-transit-failover.py", rstrip=false) |
+      {{ lookup("file", playbook_dir + "/../scripts/vpn-transit-failover.py", rstrip=false) |
       hash("sha256") }}
   tasks:
     - name: Require the intended node, phase and promotion approval
@@ -104,7 +104,7 @@
         - {src: /var/lib/homelab-vpn-transit/relay-failover/state.json, dest: state-before.json}
     - name: Install the reviewed failover controller
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../scripts/vpn-transit-failover.py"
+        src: "{{ playbook_dir }}/../scripts/vpn-transit-failover.py"
         dest: "{{ tool }}"
         owner: root
         group: root

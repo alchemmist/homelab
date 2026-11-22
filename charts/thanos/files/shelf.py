@@ -237,20 +237,8 @@ def handler(directory, token):
         def log_message(self, fmt, *args):
             return
 
-        def authorized(self):
-            return _authorized(self, token)
-
-        def read_chunks(self):
-            return _read_chunks(self)
-
-        def send_json(self, status, payload):
-            return _send_json(self, status, payload)
-
         def do_GET(self):
             return _serve_get(self, directory, token)
-
-        def route(self):
-            return _route_parts(self.path)
 
         def do_POST(self):
             return _serve_post(self, directory, token)

@@ -9,7 +9,8 @@ import unittest
 from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
-    "writer_helper", Path(__file__).resolve().parents[1] / "scripts/rustfs/spi_writer_secret.py"
+    "writer_helper",
+    Path(__file__).resolve().parents[1] / "scripts/rustfs/spi_writer_secret.py",
 )
 helper = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(helper)
@@ -25,7 +26,13 @@ class WriterSecret(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
             source = d / "storage.json"
-            for malformed in ([], {}, {"root": []}, {"root": {}}, {"root": {"access": []}}):
+            for malformed in (
+                [],
+                {},
+                {"root": []},
+                {"root": {}},
+                {"root": {"access": []}},
+            ):
                 with self.subTest(storage=malformed):
                     source.write_text(json.dumps(malformed))
                     source.chmod(0o600)
@@ -62,7 +69,10 @@ class WriterSecret(unittest.TestCase):
             p = d / "spi-evidence-writer.secret.json"
             doc = json.loads(p.read_text())
             assert p.stat().st_mode & 0o777 == WRITER_SECRET_FILE_MODE
-            assert doc["metadata"] == {"name": "spi-evidence-writer", "namespace": "automation"}
+            assert doc["metadata"] == {
+                "name": "spi-evidence-writer",
+                "namespace": "automation",
+            }
             assert (
                 json.loads(base64.b64decode(doc["data"]["credentials.json"])) == storage["writer"]
             )

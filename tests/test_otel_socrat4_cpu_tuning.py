@@ -53,5 +53,8 @@ def test_production_owner_preserves_the_same_moscow_only_override() -> None:
         if t.get("name") == "Install Moscow-only Collector parallelism override"
     )
     assert t["when"] == "inventory_hostname == 'socrat-4'"
-    assert t["ansible.builtin.copy"]["src"] == "{{ playbook_dir | dirname }}/files/otel/socrat4-cpu.conf"
+    assert (
+        t["ansible.builtin.copy"]["src"]
+        == "{{ playbook_dir | dirname }}/files/otel/socrat4-cpu.conf"
+    )
     assert t["notify"] == "Restart validated host agent"

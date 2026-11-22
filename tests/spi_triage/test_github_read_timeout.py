@@ -66,7 +66,12 @@ class GitHubReadTimeoutTests(unittest.TestCase):
                     (123, 9999999999, 0),
                 )
                 c.execute("UPDATE jobs SET attempts=100 WHERE id=?", (key,))
-            tables = ("snapshot_budget", "match_review_v3", "job_failure_budget", "llm_admission")
+            tables = (
+                "snapshot_budget",
+                "match_review_v3",
+                "job_failure_budget",
+                "llm_admission",
+            )
 
             def preserved() -> "dict[str, object]":
                 with store.db() as c:

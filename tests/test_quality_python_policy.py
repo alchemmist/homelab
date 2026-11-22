@@ -5,17 +5,15 @@ from __future__ import annotations
 import json
 import sys
 from typing import TYPE_CHECKING
-from unittest.mock import patch
 
 import pytest
 
-from scripts.quality import common, python_inputs
+from ci.quality import common, python_inputs
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-with patch.dict(sys.modules, {"common": common}):
-    from scripts.quality import strict_guard
+from ci.quality import strict_guard
 
 SAMPLE = """\
 def test_behavior() -> None:
@@ -34,11 +32,9 @@ DOC_RULES = {"D100", "D101", "D102", "D103", "S101"}
     [
         ("tests/test_quality_system.py", {"D100", "D101"}),
         ("tests/kubernetes/test_cluster.py", {"D100", "D101"}),
-        ("experiments/venice-autonomy/test_continue.py", {"D100", "D101", "D103", "S101"}),
         ("tests/public_entry_contract.py", DOC_RULES - {"S101"}),
-        ("scripts/quality/tests.py", DOC_RULES),
+        ("ci/quality/tests.py", DOC_RULES),
         ("ansible/roles/vpn_failover/files/smoke_test.py", DOC_RULES),
-        ("experiments/venice-autonomy/protocol_regression.py", DOC_RULES),
     ],
 )
 def test_ruff_missing_docstrings_follow_module_scope(filename: str, expected: set[str]) -> None:
@@ -47,7 +43,7 @@ def test_ruff_missing_docstrings_follow_module_scope(filename: str, expected: se
             common.ROOT / ".venv/bin/ruff",
             "check",
             "--config",
-            "quality/ruff.toml",
+            "ci/quality/ruff.toml",
             "--output-format=json",
             "--stdin-filename",
             filename,
@@ -65,7 +61,7 @@ def test_script_docstring_needs_triple_quotes_even_with_double_quote_character()
             common.ROOT / ".venv/bin/ruff",
             "check",
             "--config",
-            "quality/ruff.toml",
+            "ci/quality/ruff.toml",
             "--select",
             "D300,Q002",
             "--ignore-noqa",
@@ -92,10 +88,10 @@ def test_script_docstring_needs_triple_quotes_even_with_double_quote_character()
 def test_ruff_ignore_drift_fails_configuration(
     original: str, replacement: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    config = (common.ROOT / "quality/ruff.toml").read_text()
-    policy = json.loads((common.ROOT / "quality/strict-policy.json").read_bytes())
-    (tmp_path / "quality").mkdir()
-    (tmp_path / "quality/ruff.toml").write_text(config.replace(original, replacement))
+    config = (common.ROOT / "ci/quality/ruff.toml").read_text()
+    policy = json.loads((common.ROOT / "ci/quality/strict-policy.json").read_bytes())
+    (tmp_path / "ci/quality").mkdir(parents=True)
+    (tmp_path / "ci/quality/ruff.toml").write_text(config.replace(original, replacement))
     monkeypatch.setattr(strict_guard, "ROOT", tmp_path)
     with pytest.raises(ValueError, match=r"Ruff (ignore list|per-file ignores) drifted"):
         strict_guard.verify_ruff_policy(policy)
@@ -133,7 +129,7 @@ def test_suppression_blocks_owned_source(
 @pytest.mark.parametrize(
     "roots",
     [
-        ["scripts/quality/"],
+        ["ci/quality/"],
         ["scripts/"],
         ["scripts/", "tests/"],
         ["ansible/", "deploy/", "scripts/", "tests/"],
@@ -146,7 +142,7 @@ def test_python_inputs_module_emits_exact_nul_delimited_inventory(roots: list[st
         if name.startswith(tuple(roots)) and name.endswith(".py")
     ]
     assert expected
-    result = common.command([sys.executable, "-m", "scripts.quality.python_inputs", *roots])
+    result = common.command([sys.executable, "-m", "ci.quality.python_inputs", *roots])
     assert result.stdout.split("\0") == [*expected, ""]
 
 
@@ -169,9 +165,9 @@ def test_python_inputs_use_owned_paths(monkeypatch: pytest.MonkeyPatch) -> None:
     ("names", "roots", "missing"),
     [
         (
-            ["scripts/other.py", "scripts/quality/README.md"],
-            ["scripts/quality/"],
-            "scripts/quality/",
+            ["scripts/other.py", "ci/quality/README.md"],
+            ["ci/quality/"],
+            "ci/quality/",
         ),
         (["tests/helper.py", "scripts/README.md"], ["scripts/"], "scripts/"),
         ([], ["scripts/", "tests/"], "scripts/"),
@@ -198,3 +194,22 @@ def test_python_inputs_reject_incomplete_inventory(
     monkeypatch.setattr(python_inputs, "owned", list)
     with pytest.raises(ValueError, match=rf"^No tracked owned Python inputs in {missing}$"):
         python_inputs.python_inputs(roots)
+
+
+def test_scoped_ruff_preserves_paths_and_nonzero_status_across_batches(monkeypatch: pytest.MonkeyPatch) -> None:
+    from subprocess import CompletedProcess
+
+    from ci.quality import ruff_scope
+
+    paths = [f"ci/file {i}.py" for i in range(130)]
+    calls = []
+    monkeypatch.setattr(ruff_scope, "python_inputs", lambda roots: paths)
+
+    def invoke(argv, *, check):
+        assert check is False
+        calls.append(argv[argv.index("--") + 1:])
+        return CompletedProcess(argv, int(len(calls) == 1))
+
+    monkeypatch.setattr(ruff_scope.subprocess, "run", invoke)
+    assert ruff_scope.run("I001", ["ci/"]) == 1
+    assert [path for batch in calls for path in batch] == paths

@@ -59,7 +59,7 @@ print(json.dumps({'windowSeconds':WINDOW,'limitBytesPerContainer':LIMIT,'sources
 """
 
 JOURNAL_PROBE = (
-    (ROOT / "scripts/otel-journal-probe.py").read_text().split("\nif __name__", 1)[0]
+    (ROOT / "ansible/scripts/otel-journal-probe.py").read_text().split("\nif __name__", 1)[0]
     + """
 paths=[]
 for root in ('/var/log/journal','/run/log/journal'):
@@ -128,10 +128,10 @@ def privileged_journals(directory, now=None):
             or report.get("rawLogBodiesPersisted") is not False
             or report.get("productionModified") is not False
         ):
-            msg_0 = "Journal evidence does not establish a complete privileged read-only measurement"
-            raise ValueError(
-                msg_0
+            msg_0 = (
+                "Journal evidence does not establish a complete privileged read-only measurement"
             )
+            raise ValueError(msg_0)
         reports[node] = {
             "systemJournalAccessVerified": True,
             "rootAccessVerified": True,
@@ -246,7 +246,13 @@ def main():
             )
         )
         return 0
-    except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError) as error:
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        RuntimeError,
+        subprocess.SubprocessError,
+    ) as error:
         print(str(error), file=sys.stderr)
         return 1
 

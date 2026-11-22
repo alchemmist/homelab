@@ -26,7 +26,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Firing critical alert instances at the end of the selected period. Click to open the matching rules in Grafana Alerting. The rule list shows current state, even when the dashboard displays a historical period.",
+      "description": "Active critical alert instances in Alertmanager, excluding silenced and inhibited instances. Missing data is not zero. Click to open Grafana rules, which also include suppressed alerts. The rule list shows current state, even when the dashboard displays a historical period.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -86,7 +86,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count(ALERTS{alertstate=\"firing\",severity=\"critical\",alertname!~\"Watchdog|InfoInhibitor\"}) or (0 * max(up{job=\"kube-prometheus-stack-prometheus\"} == 1))",
+          "expr": "max(socrat_actionable_alerts{severity=\"critical\"} and on(job,instance) (up{job=\"socrat-actionable-alerts\"} == 1))",
           "format": "time_series",
           "instant": true,
           "refId": "A"
@@ -100,7 +100,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Firing warning alert instances at the end of the selected period. Click to open the matching rules in Grafana Alerting. The rule list shows current state, even when the dashboard displays a historical period.",
+      "description": "Active warning alert instances in Alertmanager, excluding silenced and inhibited instances. Missing data is not zero. Click to open Grafana rules, which also include suppressed alerts. The rule list shows current state, even when the dashboard displays a historical period.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -160,7 +160,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "count(ALERTS{alertstate=\"firing\",severity=\"warning\",alertname!~\"Watchdog|InfoInhibitor\"}) or (0 * max(up{job=\"kube-prometheus-stack-prometheus\"} == 1))",
+          "expr": "max(socrat_actionable_alerts{severity=\"warning\"} and on(job,instance) (up{job=\"socrat-actionable-alerts\"} == 1))",
           "format": "time_series",
           "instant": true,
           "refId": "A"

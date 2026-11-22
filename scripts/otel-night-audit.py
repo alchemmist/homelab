@@ -30,7 +30,10 @@ def save(path, document):
 def audit(args):
     os.umask(0o077)
     args.output.mkdir(mode=0o700, exist_ok=False)
-    environment = {**os.environ, "PATH": "/tmp/otel-migration-ssh/bin:" + os.environ["PATH"]}
+    environment = {
+        **os.environ,
+        "PATH": "/tmp/otel-migration-ssh/bin:" + os.environ["PATH"],
+    }
     report = {
         "startedAt": datetime.now(UTC).isoformat(),
         "productionModified": False,

@@ -32,7 +32,6 @@ class ClientTests(unittest.TestCase):
         """Build an S3 client with scripted responses."""
         self.calls: list[tuple[str, str, dict[str, object], bytes]] = []
 
-
         def transport(*args: object) -> object:
             self.calls.append(cast("tuple[str, str, dict[str, object], bytes]", args))
             value = responses.pop(0)
@@ -48,7 +47,6 @@ class ClientTests(unittest.TestCase):
         release = threading.Event()
         workers = []
         slots = threading.BoundedSemaphore(s.MAX_RESOLVERS)
-
 
         def stuck(*_args, **_kwargs) -> list[tuple[int, int, int, str, tuple[str, int]]]:
             workers.append(threading.current_thread())
@@ -156,9 +154,9 @@ class ClientTests(unittest.TestCase):
 
     def test_retry_date(self) -> None:
         """Verify retry-after HTTP dates are honored."""
-        date = (
-            datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds=50)
-        ).strftime("%a, %d %b %Y %H:%M:%S GMT")
+        date = (datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds=50)).strftime(
+            "%a, %d %b %Y %H:%M:%S GMT"
+        )
         # The Retry-After date minus parser clock skew lands within ~48-50 seconds.
         retry_floor_seconds = 48
         retry_ceiling_seconds = 50
@@ -187,7 +185,8 @@ class ClientTests(unittest.TestCase):
         import importlib.util
 
         spec = importlib.util.spec_from_file_location(
-            "gateway", Path(__file__).resolve().parents[2] / "services/rustfs_gateway/gateway.py"
+            "gateway",
+            Path(__file__).resolve().parents[2] / "services/rustfs_gateway/gateway.py",
         )
         gateway = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(gateway)

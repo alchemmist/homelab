@@ -23,7 +23,7 @@ CLEAN_SHELL = (
     "ansible/roles/starship/files/arc_dots.sh",
     "ansible/roles/starship/files/arc_metrics.sh",
     "ansible/roles/starship/files/arc_status.sh",
-    "scripts/testing-class-wg-guard.sh",
+    "ansible/scripts/testing-class-wg-guard.sh",
 )
 WIDGETS = (
     "ansible/roles/starship/files/arc-refresh.sh",
@@ -32,7 +32,7 @@ WIDGETS = (
     "ansible/roles/starship/files/arc_status.sh",
 )
 NIGHTNODE = "scripts/nightnode/nightnode"
-GUARD = "scripts/testing-class-wg-guard.sh"
+GUARD = "ansible/scripts/testing-class-wg-guard.sh"
 CAFFEINE = "ansible/roles/desktop_environment/files/caffeine-manager.sh"
 TOGGLE = "ansible/roles/desktop_panel/files/toggle_noscreenshare.sh"
 REFRESH = "ansible/roles/starship/files/arc-refresh.sh"

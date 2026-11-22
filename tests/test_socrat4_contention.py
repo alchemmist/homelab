@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 
-from scripts.quality.common import command
+from ci.quality.common import command
 
 
 def test_socrat4_contention() -> None:
@@ -84,7 +84,11 @@ def test_socrat4_contention() -> None:
         (p / "rules.yml").write_text(yaml.safe_dump({"groups": [{"name": "psi", "rules": rules}]}))
         (p / "test.yml").write_text(
             yaml.safe_dump(
-                {"rule_files": ["rules.yml"], "evaluation_interval": "1m", "tests": tests}
+                {
+                    "rule_files": ["rules.yml"],
+                    "evaluation_interval": "1m",
+                    "tests": tests,
+                }
             )
         )
         command([promtool, "test", "rules", "test.yml"], cwd=p)

@@ -48,7 +48,10 @@ class DeploymentOwnership(unittest.TestCase):
                 assert "always" in task["tags"]
                 paths = {
                     **{
-                        name: ["deploy/argocd/apps/open-webui.yaml", "charts/open-webui"]
+                        name: [
+                            "deploy/argocd/apps/open-webui.yaml",
+                            "charts/open-webui",
+                        ]
                         for name in [
                             "open-webui",
                             "open-webui-upgrade",

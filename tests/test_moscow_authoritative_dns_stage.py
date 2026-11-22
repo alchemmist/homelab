@@ -46,14 +46,14 @@ def test_listener_does_not_replace_relay_or_require_wireguard() -> None:
 def test_staging_does_not_publish_moscow_web_records() -> None:
     """Publish the VPN address from staging and withhold Moscow web failover names."""
     spec = importlib.util.spec_from_file_location(
-        "moscow_stage_zone", ROOT / "scripts/public_dns_zone.py"
+        "moscow_stage_zone", ROOT / "ansible/scripts/public_dns_zone.py"
     )
     zone = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(zone)
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         text = zone.render(123, home, vps)
         for name in zone.FAILOVER:
-            assert f"{name} IN A 91.189.82.238" not in text
+            assert (f"{name} IN A 91.189.82.238" in text.splitlines()) == (name == "monori")
         assert "vpn IN A 91.189.82.238" in text
 
 

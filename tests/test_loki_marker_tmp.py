@@ -12,12 +12,20 @@ ROOT = Path(__file__).resolve().parents[1]
 class LokiMarkerScratchTests(unittest.TestCase):
     """Verify Loki's writable scratch stays bounded and secure."""
 
-    def test_loki_only_writable_bounded_scratch_preserves_security_and_data(self) -> None:
+    def test_loki_only_writable_bounded_scratch_preserves_security_and_data(
+        self,
+    ) -> None:
         """A writable scratch dir is paired with hardened containers."""
         rendered = "\n---\n".join(
             subprocess.check_output(
-                ["helm", "template", name, str(ROOT / "charts" / name),
-                 *(["--set-string", "storagePhase=local"] if name == "loki" else [])], text=True
+                [
+                    "helm",
+                    "template",
+                    name,
+                    str(ROOT / "charts" / name),
+                    *(["--set-string", "storagePhase=local"] if name == "loki" else []),
+                ],
+                text=True,
             )
             for name in ("loki", "tempo")
         )
@@ -42,17 +50,41 @@ class LokiMarkerScratchTests(unittest.TestCase):
                 assert mounts["marker-tmp"]["mountPath"] == "/tmp"
                 assert volumes["marker-tmp"]["emptyDir"] == {"sizeLimit": "1Gi"}
             else:
-                assert volumes["data"] == {"name": "data", "persistentVolumeClaim": {"claimName": yaml.safe_load((ROOT / "deploy/storage/tempo-drill/pvc.yaml").read_text())["metadata"]["name"]}}
+                assert volumes["data"] == {
+                    "name": "data",
+                    "persistentVolumeClaim": {
+                        "claimName": yaml.safe_load(
+                            (ROOT / "deploy/storage/tempo-drill/pvc.yaml").read_text()
+                        )["metadata"]["name"]
+                    },
+                }
                 assert "marker-tmp" not in mounts
                 assert "marker-tmp" not in volumes
 
     def test_loki_storage_phases(self) -> None:
         """Storage phases render distinct volumes with validation drift-refused."""
         chart = ROOT / "charts/loki"
-        claim = yaml.safe_load((ROOT / "deploy/storage/loki-drill/pvc.yaml").read_text())["metadata"]["name"]
+        claim = yaml.safe_load((ROOT / "deploy/storage/loki-drill/pvc.yaml").read_text())[
+            "metadata"
+        ]["name"]
         for phase in ("local", "paused", "shared", "typo"):
             with self.subTest(phase=phase):
-                result = subprocess.run(["helm", "template", "loki", str(chart), "-f", str(chart / "alert-graphs.values.yaml"), "--set-string", f"storagePhase={phase}", "--show-only", "templates/deployment.yaml"], text=True, capture_output=True)
+                result = subprocess.run(
+                    [
+                        "helm",
+                        "template",
+                        "loki",
+                        str(chart),
+                        "-f",
+                        str(chart / "alert-graphs.values.yaml"),
+                        "--set-string",
+                        f"storagePhase={phase}",
+                        "--show-only",
+                        "templates/deployment.yaml",
+                    ],
+                    text=True,
+                    capture_output=True,
+                )
                 if phase == "typo":
                     assert result.returncode != 0
                     assert "storagePhase must be" in result.stderr
@@ -67,10 +99,30 @@ class LokiMarkerScratchTests(unittest.TestCase):
                     assert data["hostPath"]["path"] == "/var/lib/private/homelab-otel-loki"
                     assert pod["nodeSelector"] == {"kubernetes.io/hostname": "socrat-1"}
                     continue
-                assert data == {"name": "data", "persistentVolumeClaim": {"claimName": claim}}
+                assert data == {
+                    "name": "data",
+                    "persistentVolumeClaim": {"claimName": claim},
+                }
                 assert pod["nodeSelector"] == {"kubernetes.io/os": "linux"}
                 affinity = pod["affinity"]["nodeAffinity"]
-                terms = affinity["requiredDuringSchedulingIgnoredDuringExecution"]["nodeSelectorTerms"]
+                terms = affinity["requiredDuringSchedulingIgnoredDuringExecution"][
+                    "nodeSelectorTerms"
+                ]
                 assert len(terms) == 1
-                assert {"key": "kubernetes.io/hostname", "operator": "In", "values": ["socrat-0", "socrat-1"]} in terms[0]["matchExpressions"]
-                assert {"weight": 100, "preference": {"matchExpressions": [{"key": "kubernetes.io/hostname", "operator": "In", "values": ["socrat-1"]}]}} in affinity["preferredDuringSchedulingIgnoredDuringExecution"]
+                assert {
+                    "key": "kubernetes.io/hostname",
+                    "operator": "In",
+                    "values": ["socrat-0", "socrat-1"],
+                } in terms[0]["matchExpressions"]
+                assert {
+                    "weight": 100,
+                    "preference": {
+                        "matchExpressions": [
+                            {
+                                "key": "kubernetes.io/hostname",
+                                "operator": "In",
+                                "values": ["socrat-1"],
+                            }
+                        ]
+                    },
+                } in affinity["preferredDuringSchedulingIgnoredDuringExecution"]
