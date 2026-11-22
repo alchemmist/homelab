@@ -5,9 +5,9 @@ import functools
 import hashlib
 import json
 import sys
-import types
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from itertools import islice
-from typing import cast
+from typing import NotRequired, TypedDict, cast
 
 from jsonschema import Draft202012Validator
 
@@ -36,7 +36,26 @@ print(json.dumps(result))
 """
 
 
-async def bounded_fetch(params):
+class GuardState(TypedDict):
+    """Per-message data owned by the guard within upstream metadata."""
+
+    generation: object
+    failures: dict[str, int]
+    recent: list[str]
+    warned: str | None
+    stopped: bool
+    stop_message: str | None
+    no_progress: NotRequired[list[str]]
+    no_progress_seen: NotRequired[int]
+    no_progress_output_id: NotRequired[int]
+
+
+Schema = Mapping[str, object] | bool
+Metadata = dict[str, object]
+Executor = Callable[[object, Metadata, object, dict[str, object]], Awaitable[object]]
+
+
+async def bounded_fetch(params: dict[str, str]) -> str | dict[str, str]:
     try:
         process = await asyncio.create_subprocess_exec(
             sys.executable,
@@ -76,7 +95,7 @@ async def bounded_fetch(params):
         await process.wait()
 
 
-def validation_problem(params, schema):
+def validation_problem(params: object, schema: Schema) -> str | None:
     try:
         errors = list(islice(Draft202012Validator(schema).iter_errors(params), 4))
     except Exception:
@@ -97,7 +116,9 @@ def validation_problem(params, schema):
     return "; ".join(problems)
 
 
-def repeated_period(fingerprints, periods=REPEAT_PERIODS, cycles=REPEAT_CYCLES):
+def repeated_period(
+    fingerprints: list[str], periods: Iterable[int] = REPEAT_PERIODS, cycles: int = REPEAT_CYCLES
+) -> int | None:
     for period in periods:
         need = period * cycles
         if len(fingerprints) >= need and fingerprints[-need:] == fingerprints[-period:] * cycles:
@@ -105,7 +126,7 @@ def repeated_period(fingerprints, periods=REPEAT_PERIODS, cycles=REPEAT_CYCLES):
     return None
 
 
-def record_failure(metadata, name, arguments, problem):
+def record_failure(metadata: Metadata, name: str, arguments: str, problem: str) -> dict[str, str]:
     state = guard_state(metadata)
     fingerprint = hashlib.sha256((name + "\n" + arguments).encode()).hexdigest()
     failures = state["failures"]
@@ -127,11 +148,11 @@ def record_failure(metadata, name, arguments, problem):
     }
 
 
-def guard_state(metadata):
+def guard_state(metadata: Metadata) -> GuardState:
     generation = metadata.get("message_id") or metadata.get("assistant_message_id")
     state = metadata.get(STATE_KEY)
     if not isinstance(state, dict) or state.get("generation") != generation:
-        state = {
+        fresh: GuardState = {
             "generation": generation,
             "failures": {},
             "recent": [],
@@ -139,19 +160,20 @@ def guard_state(metadata):
             "stopped": False,
             "stop_message": None,
         }
-        metadata[STATE_KEY] = state
-    return state
+        metadata[STATE_KEY] = fresh
+        return fresh
+    return cast("GuardState", state)
 
 
-def guard_stopped(metadata):
+def guard_stopped(metadata: Metadata) -> bool:
     return guard_state(metadata)["stopped"]
 
 
-def guard_stop_message(metadata):
+def guard_stop_message(metadata: Metadata) -> str:
     return guard_state(metadata).get("stop_message") or STOP_MESSAGE
 
 
-def record_no_progress_round(metadata, output):
+def record_no_progress_round(metadata: Metadata, output: object) -> None:
     """Track rounds whose every tool call failed before execution.
 
     Calls that resolve_tool_call rejects never reach guarded_execute, so the
@@ -201,7 +223,7 @@ def record_no_progress_round(metadata, output):
         state["stop_message"] = NO_PROGRESS_STOP_MESSAGE
 
 
-def backend_validation_problem(result):
+def backend_validation_problem(result: object) -> str | None:
     value = result
     if isinstance(value, tuple) and value:
         value = value[0]
@@ -214,7 +236,7 @@ def backend_validation_problem(result):
 
 
 def parse_terminal_arguments(
-    arguments: str, spec_parameters: object
+    arguments: str, spec_parameters: Schema
 ) -> tuple[object, str, str | None]:
     """Return (params, canonical, problem) for a raw tool-call argument string."""
     try:
@@ -231,7 +253,7 @@ def parse_terminal_arguments(
 
 
 def clear_failure_on_success(
-    metadata: object, response: tuple[object, ...], fingerprint: str
+    metadata: Metadata, response: tuple[object, ...], fingerprint: str
 ) -> None:
     """Forget the validation failure once the tool call succeeds."""
     value = response[1]
@@ -242,10 +264,10 @@ def clear_failure_on_success(
 
 
 def repeat_guard_response(
-    state: dict[str, object], fingerprint: str, params: object, tool: object, direct: object
+    state: GuardState, fingerprint: str, params: object, tool: object, direct: object
 ) -> tuple[object, dict[str, str], object, str, object] | None:
     """Return the blocked response tuple, or None when the call is not a repeat."""
-    recent = cast("list[str]", state.setdefault("recent", []))
+    recent = state.setdefault("recent", [])
     projected = recent[-(REPEAT_HISTORY - 1) :] + [fingerprint]
     period = repeated_period(projected)
     if period:
@@ -266,9 +288,9 @@ def repeat_guard_response(
 
 
 async def execute_guarded(
-    function: types.FunctionType,
+    function: Executor,
     form_data: object,
-    metadata: dict[str, object],
+    metadata: Metadata,
     event_caller: object,
     tool_call: dict[str, object],
 ) -> object:
@@ -301,23 +323,27 @@ async def execute_guarded(
     direct = tool.get("direct", False)
     if guard_stopped(metadata):
         return {}, {"error": guard_stop_message(metadata)}, tool, "terminal", direct
+    spec = cast("dict[str, object]", tool.get("spec", {}))
     params, canonical, problem = parse_terminal_arguments(
         cast("str", call.get("arguments", "{}")),
-        cast("dict[str, object]", tool.get("spec", {})).get("parameters", {}),
+        cast("Schema", spec.get("parameters", {})),
     )
     if problem:
         result = record_failure(metadata, name, canonical, problem)
         return params if isinstance(params, dict) else {}, result, tool, "terminal", direct
     fingerprint = hashlib.sha256((name + "\n" + canonical).encode()).hexdigest()
-    state = cast("dict[str, object]", guard_state(metadata))
+    state = guard_state(metadata)
     blocked = repeat_guard_response(state, fingerprint, params, tool, direct)
     if blocked is not None:
         return blocked
-    response = await function(form_data, metadata, event_caller, tool_call)
+    # Terminal middleware returns (params, result, tool, type, direct).
+    response = cast(
+        "tuple[object, ...]", await function(form_data, metadata, event_caller, tool_call)
+    )
     problem = backend_validation_problem(response[1])
     if problem:
         return response[0], record_failure(metadata, name, canonical, problem), *response[2:]
-    recent = cast("list[object]", state.setdefault("recent", []))
+    recent = state.setdefault("recent", [])
     state["warned"] = None if fingerprint not in recent else state.get("warned")
     recent.append(fingerprint)
     del recent[:-REPEAT_HISTORY]
@@ -325,9 +351,11 @@ async def execute_guarded(
     return response
 
 
-def guarded_execute(function):
+def guarded_execute(function: Executor) -> Executor:
     @functools.wraps(function)
-    async def wrapped(form_data, metadata, event_caller, tool_call):
+    async def wrapped(
+        form_data: object, metadata: Metadata, event_caller: object, tool_call: dict[str, object]
+    ) -> object:
         return await execute_guarded(function, form_data, metadata, event_caller, tool_call)
 
     return wrapped
