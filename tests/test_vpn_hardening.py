@@ -6,6 +6,8 @@ import io
 import json
 import os
 import sqlite3
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -250,6 +252,17 @@ class HardeningTests(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         audit.apply("wrong", state)
                     run.assert_not_called()
+
+    def test_cli_renders_expected_counter_policy(self) -> None:
+        """Exercise the real entrypoint, not just its importable main function."""
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "scripts/vpn-backend-audit.py"), "--render"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert result.stdout.rstrip() == audit.rules().rstrip()
 
     def test_default_is_preview_and_render_is_offline(self) -> None:
         with (
