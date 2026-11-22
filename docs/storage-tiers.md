@@ -94,8 +94,8 @@ them green from storage checks. Historical runtime handoff:
 
 ## Existing SSD exceptions and archive move
 
-Keep the small active agent SQLite/work-state claims (OpenHands, SWE Mini,
-mutation intake), browser profile state and node identity on SSD for active
+Keep the small active agent SQLite/work-state claims (OpenHands and mutation
+intake), browser profile state and node identity on SSD for active
 state/interactive responsiveness; critical PostgreSQL placement remains owned by
 its explicit database policy. These are bounded exceptions, not a policy that
 all future databases or workspaces need SSD. Reassess actual growth against the

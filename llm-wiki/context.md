@@ -42,12 +42,9 @@ production-операции. Датированные результаты не 
   SPI worker, format-quorum, LiteLLM branding. [Authoritative handoff](../docs/vm105-stateful-20261116.md).
   Новые записи на `socrat-5` авторитетны. Старые claims — stale recovery, не
   актуальная копия. Rollback после новых записей требует fresh reverse handoff.
-- `socrat-5`: [SWE Mini](swe-mini.md), автономная очередь mini-swe-agent для Monori; приём новых задач приостановлен, PVC сохранён.
+- GitOps больше не объявляет SWE Mini для Monori. [Границы удаления и проверки](swe-mini.md); отсутствие декларации не доказывает удаление из кластера.
 - `socrat-5`: [DeeperSeeker](deeperseeker.md), namespace `deeperseeker`. LiteLLM `o-deepseek` смотрит сюда. Логин с домашнего Chrome, токен в дашборде; VPN-identity `svc-free-deepseek`.
 - `socrat-5`: [OpenHands Canvas](openhands.md), готовый upstream UI + Agent Server. Browser→закрытая вкладка→shell/result и native Stop-hook fixture прошли; полный длинный PR loop не принят. Стандартный oauth2-proxy/Authentik OIDC ingress (owner-only) развёрнут; точечный DNS исправлен, trusted TLS и SSO-denial приняты через HOME/VPS; реальный owner MFA/browser roundtrip ещё не принят. GitHub publisher не подключён. PR#500 закрыт извне как superseded, не выдан за Ready.
-  Durable SQLite PVC, отдельные non-root Jobs, только `venice-deepseek` через LiteLLM.
-  Реальный smoke и переход к Monori приняты17ноября; первый PR/review ещё не принят.
-  Production Monori/PVC/банковские credentials не подключены, merge не автоматический.
 - Wiki: `deploy/wiki-runtime/values.yaml`, claim `wiki-runtime-socrat5`;
   `/mnt/files/homelab/wiki-runtime/data`. Runtime volume авторитетен, Git sync
   может отставать. Нельзя править managed tree параллельно writer.
