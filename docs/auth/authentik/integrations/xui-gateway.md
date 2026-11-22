@@ -1,52 +1,52 @@
-# 3x-ui: Authentik MFA-шлюз, не native SSO
+# 3x-ui: an Authentik MFA gateway, not native SSO
 
-## Граница
+## Boundary
 
-Панель `vpn.alchemmist.xyz` (3x-ui 3.11.0) не предоставила native OIDC/SAML в проверенной версии. Поэтому браузер проходит **Authentik MFA → собственный логин 3x-ui**. Пароли, native MFA, пользователи, API-токены, клиенты и база панели не заменяются; автоматического создания/слияния аккаунтов нет. Сам шлюз не превращает Authentik-группы в роли 3x-ui.
+The `vpn.alchemmist.xyz` panel (3x-ui 3.11.0) did not provide native OIDC/SAML in the tested version. Therefore the browser passes **Authentik MFA → the 3x-ui's own login**. The passwords, native MFA, users, API tokens, clients and the panel database are not replaced; there is no automatic account creation/merging. The gateway itself does not turn Authentik groups into 3x-ui roles.
 
-- Приложение `xui-panel`, provider `homelab-xui-panel`, `forward_single`; допуск только `homelab-owner`.
-- Используется существующий embedded outpost; другие providers сохраняются.
-- Nginx без SA-токена, non-root/read-only, pinned image, на `socrat-2`. Браузерные обращения проверяются native forward-auth.
-- `offline_access` добавлен только этому provider, bearer validity оставлена **5 минут**, refresh grant validity — 8 часов. **Ограничение native outpost:** реальный expiry-тест обнаружил browser roundtrip через IdP даже с offline-access; это не бесшовный server-side refresh как у исправленного Argo CD. Активный родительский SSO вернул fixture к native login без нового ввода пароля/TOTP; API/XHR при истёкшем proxy cookie может потребовать обновить страницу. Не увеличивать bearer TTL, чтобы скрыть это; отдельное решение — reviewed gateway с полноценным native OIDC refresh.
-- Proxy cookies проверены как `Secure`/`HttpOnly`; native cookies на публичном HTTPS получают `Secure`. Callback-коды и запросы не пишутся в access/error-логи шлюза (error level `crit`).
-- API без browser MFA разрешён **только** под `/.../panel/api/` с каноническим `Authorization: Bearer …`. Проверяет токен сама 3x-ui; gateway удаляет входящий Cookie. Неверный Bearer не превращается в cookie-вход и не отправляется на IdP. Browser/cookie-only API остаётся за MFA. Вход по логину/паролю — не unattended API-исключение.
-- Подписки text/JSON и существующий Trojan WebSocket имеют отдельные прежние backends, priority 200; панель — gateway с priority 100. Они не зависят от IdP. Native Bearer-ветка не делает auth subrequest; отложенный DNS lookup позволяет gateway стартовать без доступного DNS/IdP. Это не заявление о полном cold-start/HA всей инфраструктуры.
+- The application `xui-panel`, provider `homelab-xui-panel`, `forward_single`; admission only for `homelab-owner`.
+- The existing embedded outpost is used; other providers are kept.
+- Nginx without a SA token, non-root/read-only, a pinned image, on `socrat-2`. Browser requests are checked by native forward-auth.
+- `offline_access` was added only to this provider, the bearer validity was left at **5 minutes**, the refresh grant validity — 8 hours. **A native outpost limitation:** a real expiry test found a browser roundtrip through the IdP even with offline-access; this is not a seamless server-side refresh like the fixed Argo CD's. An active parent SSO returned the fixture to the native login without re-entering the password/TOTP; an API/XHR with an expired proxy cookie may require reloading the page. Do not increase the bearer TTL to hide this; a separate decision — a reviewed gateway with a full native OIDC refresh.
+- The proxy cookies were verified as `Secure`/`HttpOnly`; native cookies over public HTTPS get `Secure`. Callback codes and requests are not written into the gateway's access/error logs (error level `crit`).
+- An API without browser MFA is allowed **only** under `/.../panel/api/` with a canonical `Authorization: Bearer …`. The 3x-ui checks the token itself; the gateway removes the incoming Cookie. An incorrect Bearer is not turned into a cookie login and is not sent to the IdP. A browser/cookie-only API stays behind MFA. A login/password entry is not an unattended API exception.
+- The text/JSON subscriptions and the existing Trojan WebSocket have separate former backends, priority 200; the panel is a gateway with priority 100. They do not depend on the IdP. The native Bearer branch does not make an auth subrequest; a deferred DNS lookup lets the gateway start without an available DNS/IdP. This is not a claim about a full cold-start/HA of the whole infrastructure.
 
-## Прямой порт и recovery
+## Direct port and recovery
 
-До изменения публичный `176.98.185.59:18082` отвечал HTTP 404 и обходил будущий MFA-шлюз. Теперь отдельная nftables-таблица `inet homelab_xui_panel_auth` закрывает TCP 18082 на публичных адресах, включая обращения к public IP через локальный/VPN exit. Не меняются WireGuard, forwarding/NAT, SSH, подписки, VPN-порты или transport-конфигурация.
+Before the change, the public `176.98.185.59:18082` answered HTTP 404 and bypassed the future MFA gateway. Now a separate nftables table `inet homelab_xui_panel_auth` closes TCP 18082 on public addresses, including requests to the public IP via a local/VPN exit. The WireGuard, forwarding/NAT, SSH, subscriptions, VPN ports and transport configuration are not changed.
 
-Оставлены только private destination `10.250.0.2` и loopback, через существующие trusted interfaces. Это **сознательная внутренняя recovery/workload trust boundary**, не универсальное принуждение Authentik ко всем возможным локальным обращениям. Доступ к private backend всё ещё требует native credentials. Не выдавать его как публичный альтернативный URL; owner recovery — через доверенный SSH/WireGuard путь. Уже имеющий root/control над узлом или privileged workload способен обходить эту границу.
+Only the private destination `10.250.0.2` and loopback are left, through the existing trusted interfaces. This is a **deliberate internal recovery/workload trust boundary**, not a universal enforcement of Authentik over all possible local requests. Access to the private backend still requires native credentials. Do not publish it as a public alternative URL; owner recovery goes through a trusted SSH/WireGuard path. Someone already having root/control over the node or a privileged workload is able to bypass this boundary.
 
-`homelab-xui-panel-auth.service` — persistent oneshot, до k3s/VPN-сервисов, `CAP_NET_ADMIN`, только своя таблица. Stop сервиса **не открывает порт**. Инсталляция выполнена явной одноразовой cluster-owner Job: host PID/ROOT read-only, `SYS_CHROOT`, две writable managed directories, без SA-токена. Это административная host-операция, а не новое право обычных workloads/SSH-пользователей; sudo/SSH policy не менялась. Job удаляется TTL-контроллером.
+`homelab-xui-panel-auth.service` is a persistent oneshot, before the k3s/VPN services, `CAP_NET_ADMIN`, only its own table. Stopping the service **does not open the port**. The installation was done by an explicit one-time cluster-owner Job: host PID/ROOT read-only, `SYS_CHROOT`, two writable managed directories, without a SA token. This is an administrative host operation, not a new right for ordinary workloads/SSH users; the sudo/SSH policy was not changed. The Job is removed by a TTL controller.
 
-## Источники и повторение
+## Sources and repetition
 
 - Gateway: `deploy/xui-auth-gateway/`, renderer `scripts/build-xui-auth-gateway.py`.
-- Официальный неизменённый upstream favicon: `icon-source.json`, закреплённый revision/SHA256; отдельный публичный immutable image endpoint, не auth-обход для других ресурсов.
-- Argo Application: `deploy/argocd/apps/xui-auth-gateway.yaml`, `Synced/Healthy` проверяется **до** переключения ingress.
-- Публичные маршруты: `charts/traefik-edge/{values.yaml,templates/ingress.yaml}`. Активация не меняет Deployment/listeners Traefik.
-- Host firewall: `deploy/xui-auth-gateway-host/`. `python3 scripts/xui-panel-firewall-job.py` только печатает reviewed Job. Owner применяет его явно, ждёт Complete, проверяет persistent service и недоступность public 18082. Не оставлять этот шаг «на потом»: иначе raw backend обходит шлюз.
-- Узкий IdP reconciler: `ansible/roles/identity_integrations/files/xui_gateway.py`, config `deploy/identity/xui-panel.json`. Это отдельная forward-auth интеграция, не replay всего foundation/controller.
+- The official unmodified upstream favicon: `icon-source.json`, a pinned revision/SHA256; a separate public immutable image endpoint, not an auth bypass for other resources.
+- Argo Application: `deploy/argocd/apps/xui-auth-gateway.yaml`, `Synced/Healthy` is verified **before** switching the ingress.
+- Public routes: `charts/traefik-edge/{values.yaml,templates/ingress.yaml}`. Activation does not change the Traefik Deployment/listeners.
+- Host firewall: `deploy/xui-auth-gateway-host/`. `python3 scripts/xui-panel-firewall-job.py` only prints the reviewed Job. The owner applies it explicitly, waits for Complete, verifies the persistent service and the unavailability of public 18082. Do not leave this step "for later": otherwise the raw backend bypasses the gateway.
+- A narrow IdP reconciler: `ansible/roles/identity_integrations/files/xui_gateway.py`, config `deploy/identity/xui-panel.json`. This is a separate forward-auth integration, not a replay of the whole foundation/controller.
 
-На owner node защищённый root `~/.cache/homelab-authentik/` содержит существующий `credentials.json`, `xui-panel-journal.json` с точными PK/UUID и `xui-panel-launch.json` с полным HTTPS URL native панели (`{"url": "…"}`). Файлы 0600, каталог 0700; не печатать/публиковать их. Provider/app с совпадающим именем без защищённого journal **не усыновляется**. Initial creation требует launch-файла; повторный `--action check` read-only, `--action apply` reconciles только эти managed objects/owner binding/outpost provider addition. Пример после защищённой доставки файлов:
+On the owner node, the protected root `~/.cache/homelab-authentik/` contains the existing `credentials.json`, `xui-panel-journal.json` with the exact PK/UUID and `xui-panel-launch.json` with the full HTTPS URL of the native panel (`{"url": "…"}`). The files are 0600, the directory 0700; do not print/publish them. A provider/app with a matching name but without a protected journal is **not adopted**. The initial creation requires the launch file; a repeat `--action check` is read-only, `--action apply` reconciles only these managed objects/owner binding/outpost provider addition. An example after a protected delivery of files:
 
 ```sh
 python3 xui_gateway.py ~/.cache/homelab-authentik xui-panel.json --action check
 ```
 
-После реальной проверки разрешены `apply`, затем ещё `check`; нельзя изменять реальные owner factors ради тестов. Новое приложение root Argo применяет из опубликованного `main`, а не борьбой с selfHeal. Отсутствие IdP — fail-closed для публичной human-панели, не повод открыть raw порт или убрать native MFA.
+After a real check, `apply` is allowed, then another `check`; you must not change the real owner factors for tests. The new application root Argo applies from the published `main`, not by fighting selfHeal. The absence of the IdP is fail-closed for the public human panel, not a reason to open the raw port or remove the native MFA.
 
-## Приёмка 2026-11-01/02
+## Acceptance 2026-11-01/02
 
-- Два независимых свежих browser fixture runs: public edges 176.98.185.59 и 109.173.40.247, TLS/SNI проверяется, системный DNS не изменяется.
-- Реальный native password/TOTP enrollment; обычный observer получает native Permission denied. После временного точного user-binding он достигает **только native password screen 3x-ui**, без native входа/доступа к VPN-администрированию. Inspector 404, spoofed identity headers не обходят gateway, invalid Bearer 401 даже с gateway cookie. Все fixture users/bindings удалены.
-- Реальный аутентифицированный Trojan TLS/WebSocket-туннель до и после: HTTPS 200 к example.com. Тест читает действующую machine credential только в памяти/защищённом временном config, не печатает её и не меняет VPN server.
-- 15 уникальных активных subscriptions: 30 успешных native text/JSON HTTPS ответов без IdP HTML/redirect.
-- Хеши native users/settings/API tokens/inbound configuration совпали; исходный VPN pod UID/restart counts и ingress pod template не изменились. VPN/Traefik не перезапускались. Перезапускался только **новый** gateway при исправлении/развёртывании его конфигурации.
-- Первая browser попытка выявила относительный nginx redirect на HTTP/backend port; исправлено на canonical публичный HTTPS и повторно проверено. Первые host installer attempts завершились до записи файлов (D-Bus PID visibility / неверное имя проверяемой службы); успешная установка и последующий reload затронули только firewall oneshot. Ранние неуспешные harness attempts не считаются приёмкой. Отдельная строгая проверка «никаких IdP navigation после 5 минут» не прошла; это явно сохранённое ограничение native proxy, а не причина увеличивать bearer lifetime.
+- Two independent fresh browser fixture runs: public edges 176.98.185.59 and 109.173.40.247, TLS/SNI is verified, the system DNS is not changed.
+- A real native password/TOTP enrollment; an ordinary observer gets a native Permission denied. After a temporary exact user-binding it reaches **only the native 3x-ui password screen**, without a native login/VPN-administration access. Inspector 404, spoofed identity headers do not bypass the gateway, an invalid Bearer 401 even with a gateway cookie. All fixture users/bindings were removed.
+- A real authenticated Trojan TLS/WebSocket tunnel before and after: HTTPS 200 to example.com. The test reads the active machine credential only in memory/a protected temporary config, does not print it and does not change the VPN server.
+- 15 unique active subscriptions: 30 successful native text/JSON HTTPS responses without IdP HTML/redirect.
+- The hashes of native users/settings/API tokens/inbound configuration matched; the original VPN pod UID/restart counts and the ingress pod template did not change. VPN/Traefik were not restarted. Only the **new** gateway was restarted when fixing/deploying its configuration.
+- The first browser attempt found a relative nginx redirect to HTTP/backend port; it was fixed to the canonical public HTTPS and re-verified. The first host installer attempts finished before writing files (D-Bus PID visibility / a wrong name of the checked service); the successful install and the subsequent reload affected only the firewall oneshot. The early unsuccessful harness attempts are not counted as acceptance. A separate strict check "no IdP navigation after 5 minutes" did not pass; this is an explicitly kept native-proxy limitation, not a reason to increase the bearer lifetime.
 
-Повторяемый live тест (явные временные identity/admission writes, не owner):
+A repeatable live test (explicit temporary identity/admission writes, not owner):
 
 ```sh
 python3 scripts/identity-xui-gateway-smoke.py --run
@@ -55,13 +55,13 @@ python3 scripts/identity-xui-gateway-smoke.py --run --public-edge 109.173.40.247
 python3 -m unittest discover -s tests -p test_xui_auth_gateway.py
 ```
 
-Личная owner-проверка native входа/owner recovery и valid-token API клиентом остаётся отдельной: реальные пароли/токены для неё не извлекались. `minutes=5` access и `hours=8` refresh у proxy provider — не доказанный абсолютный восьмичасовой предел и не восьмичасовой тест. Logout не гарантирует немедленного закрытия уже открытых WebSocket или уничтожения native 3x-ui sessions/API tokens.
+A personal owner check of the native login/owner recovery and a valid-token API client remains separate: real passwords/tokens were not extracted for it. `minutes=5` access and `hours=8` refresh for the proxy provider are not a proven absolute eight-hour limit and not an eight-hour test. Logout does not guarantee the immediate closing of already-open WebSockets or the destruction of native 3x-ui sessions/API tokens.
 
-## Откат
+## Rollback
 
-Сохранить private native recovery и текущий firewall. Сначала согласовать явное снятие MFA-гейта с human route (возвращает native-only публичный HTTPS вход); не затрагивать public VPN routes/backends. Только затем убрать provider из **текущего** списка embedded outpost, сохраняя чужие concurrent additions, и удалить только journal-owned application/provider/binding. Не восстанавливать весь старый outpost snapshot вслепую. Не удалять native DB/credentials и не сбрасывать MFA.
+Keep the private native recovery and the current firewall. First agree on an explicit removal of the MFA gate with the human route (returns a native-only public HTTPS login); do not touch the public VPN routes/backends. Only then remove the provider from the **current** embedded outpost list, keeping others' concurrent additions, and delete only the journal-owned application/provider/binding. Do not blindly restore the whole old outpost snapshot. Do not delete the native DB/credentials and do not reset MFA.
 
-Не удалять firewall как побочный эффект rollback. Для его сознательного удаления owner отдельно отключает только `homelab-xui-panel-auth.service`, удаляет только таблицу `inet homelab_xui_panel_auth` и managed unit/rules; никакого `flush ruleset` или восстановления всех node firewall правил.
+Do not delete the firewall as a side effect of rollback. To consciously remove it, the owner separately disables only `homelab-xui-panel-auth.service`, removes only the `inet homelab_xui_panel_auth` table and the managed unit/rules; no `flush ruleset` or restoring all node firewall rules.
 
 
 ## Login Failed to fetch: expired gateway XHR correction

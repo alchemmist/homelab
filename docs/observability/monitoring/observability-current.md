@@ -138,7 +138,7 @@ finalizers: это может каскадно удалить workload. Обыч
   Не превращать отсутствие телеметрии в zero/green и не скрывать gaps интерполяцией.
 
 Источники: [monitoring](monitoring.md),
-[logging operations](../logging/unified-logging-operations.ru.md),
+[logging operations](../logging/unified-logging-operations.md),
 [retention](../logging/otel-loki-retention.md), `deploy/monitoring/otel/`,
 `deploy/monitoring/migration-evidence/`, текущие chart values и resource budgets.
 Старые ссылки на отсутствующие в этом checkout otel-history runbooks не являются

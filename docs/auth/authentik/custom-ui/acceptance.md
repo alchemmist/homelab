@@ -1,27 +1,27 @@
 # Historical browser acceptance
 
-## Текущая граница — 7 ноября, снятие внешних auth gates
+## Current boundary — 7 November, removal of external auth gates
 
-Удалены11 obsolete Authentik Applications (включая старую Kuma bookmark-карточку)
-и10 Proxy Providers; outpost assignments сняты.10 native OIDC Applications,
-их UUID/client credentials/callbacks/policy bindings сохранены. n8n,3x-ui, Kuma
-и Syncthing используют собственный login; SearXNG и опубликованные SPI artifacts
-публичны без Authentik и NetBird. Reader допускает только GET/HEAD, проверяет
-manifest/hash и выдаёт безопасные типы inline. [Контракт и границы](../../applications/native-browser-auth.md).
+11 obsolete Authentik Applications were removed (including the old Kuma bookmark-card)
+and 10 Proxy Providers; outpost assignments were removed.10 native OIDC Applications,
+their UUID/client credentials/callbacks/policy bindings are kept. n8n,3x-ui, Kuma
+and Syncthing use their own login; SearXNG and published SPI artifacts
+are public without Authentik and NetBird. Reader allows only GET/HEAD, checks the
+manifest/hash and serves safe types inline. [Contract and boundaries](../../applications/native-browser-auth.md).
 
-Повторная приёмка после восстановления socrat-2: **82/82** публичных проверок
-на HOME и VPS, обычная проверка TLS без отключения верификации. Все4 ноды Ready;
-socrat-2 Ready с17:55:34UTC7 ноября. Все8 затронутых Argo apps Synced/Healthy.
-Старые xui gateway Application/Deployment/Service/ConfigMap и Pod отсутствуют;
-force-delete не потребовался.10 native OIDC регистраций/providers/bindings и
-сохранённые поля иконок не изменились; Proxy Providers0. Опубликованный artifact
-проверен через оба входа: anonymous GET/HEAD/206, manifest/SHA-256, inline,
-PUT/POST/PATCH/DELETE405. [Приёмка](../../applications/native-browser-auth.md#recovered-vps-final-acceptance).
-Это протокольная приёмка, не новая проверка входа от имени каждого человека.
+Re-acceptance after the socrat-2 recovery: **82/82** public checks
+on HOME and VPS, an ordinary TLS check without disabling verification. All4 nodes Ready;
+socrat-2 Ready from17:55:34UTC7 November. All8 affected Argo apps Synced/Healthy.
+The old xui gateway Application/Deployment/Service/ConfigMap and Pod are absent; no
+force-delete was needed.10 native OIDC registrations/providers/bindings and
+the kept icon fields are unchanged; Proxy Providers0. A published artifact was
+verified through both entries: anonymous GET/HEAD/206, manifest/SHA-256, inline,
+PUT/POST/PATCH/DELETE405. [Acceptance](../../applications/native-browser-auth.md#recovered-vps-final-acceptance).
+This is a protocol acceptance, not a new per-person login check.
 
 
-> Текущий срез7 ноября: [логины, первый вход и native роли](../operations/identity-current-state.md),
-> [NetBird/сеть](../../../network/README.md), [владельцы мониторинга](../../../observability/monitoring/observability-current.md).
-> Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
+> Current cut7 November: [logins, first login and native roles](../operations/identity-current-state.md),
+> [NetBird/network](../../../network/README.md), [monitoring owners](../../../observability/monitoring/observability-current.md).
+> The dated rollout/smoke below is the history of its own stage, not general readiness.
 
-Начало: [identity.md](../../architecture/identity.md). Подробный engineering runbook текущего дизайна.
+Start: [identity.md](../../architecture/identity.md). A detailed engineering runbook of the current design.
