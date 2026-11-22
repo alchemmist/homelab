@@ -13,13 +13,6 @@
       "native": "reports/yaml.json"
     }
   },
-  "shell": {
-    "title": "Shell safety",
-    "run": "uv run python scripts/quality/lint.py shell",
-    "results": {
-      "native": "reports/shell.json"
-    }
-  },
   "manifests": {
     "title": "Manifest validation",
     "run": "uv run python scripts/quality/charts.py",

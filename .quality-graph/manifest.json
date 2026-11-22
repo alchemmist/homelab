@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "14fcb4a081be6f86086c8034b2a09f346a2caea4034cee8e3ca3d93427311286",
+  "graphDigest": "4ee0ed6638a38011fa02248995785e600d65904f02179a456573a5563098190a",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -37,6 +37,33 @@
       },
       "timeoutMinutes": 5,
       "title": "Graph integrity"
+    },
+    {
+      "env": {},
+      "id": "scripts-q000",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "set -euo pipefail\ngit ls-files --error-unmatch -z -- ':(top,glob)scripts/**/*.py' |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 --ignore-noqa --output-format concise --"
+      },
+      "timeoutMinutes": 5,
+      "title": "Python script quotes (Q000)"
     },
     {
       "env": {},
@@ -209,6 +236,61 @@
       },
       "timeoutMinutes": 5,
       "title": "Delivery security"
+    },
+    {
+      "env": {},
+      "id": "shell",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-shell",
+      "result": {
+        "adapter": "native",
+        "path": "reports/shell.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py shell"
+      },
+      "timeoutMinutes": 5,
+      "title": "Shell safety"
+    },
+    {
+      "env": {},
+      "id": "rustfs-return-types",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "uv run ruff check --config quality/ruff.toml --select ANN201 --ignore-noqa services/rustfs_gateway"
+      },
+      "timeoutMinutes": 5,
+      "title": "RustFS gateway public return types"
     }
   ],
   "profiles": {
@@ -593,6 +675,9 @@
         },
         {
           "run": "uv run python scripts/quality/install_tools.py --tools shellcheck"
+        },
+        {
+          "run": ".quality-tools/bin/shellcheck --version"
         }
       ],
       "timeoutMinutes": 5

@@ -64,6 +64,7 @@ profiles:
     extends: default
     setup:
     - run: uv run python scripts/quality/install_tools.py --tools shellcheck
+    - run: .quality-tools/bin/shellcheck --version
   quality-delivery:
     extends: default
     setup:
@@ -107,6 +108,16 @@ nodes:
         findings: false
         files: false
         node: false
+  scripts-q000:
+    title: Python script quotes (Q000)
+    profile: default
+    needs:
+    - graph
+    policy: *id001
+    run: |-
+      set -euo pipefail
+      git ls-files --error-unmatch -z -- ':(top,glob)scripts/**/*.py' |
+        xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 --ignore-noqa --output-format concise --
   secrets:
     title: Credential hygiene
     profile: quality-secrets
@@ -181,4 +192,20 @@ nodes:
       GH_TOKEN: ${{ github.token }}
     results:
       native: reports/workflow.json
+  shell:
+    title: Shell safety
+    profile: quality-shell
+    needs:
+    - graph
+    policy: *id001
+    run: uv run python scripts/quality/lint.py shell
+    results:
+      native: reports/shell.json
+  rustfs-return-types:
+    title: RustFS gateway public return types
+    profile: default
+    needs:
+    - graph
+    policy: *id001
+    run: uv run ruff check --config quality/ruff.toml --select ANN201 --ignore-noqa services/rustfs_gateway
 ...
