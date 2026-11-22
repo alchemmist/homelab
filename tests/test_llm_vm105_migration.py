@@ -249,7 +249,13 @@ class FourAppMigrationTests(unittest.TestCase):
                 )
                 assert ".homelab-vm105-migration-verified.json" in init["args"][0]
                 compile(init["args"][0], "<migration-guard>", "exec")
-                assert init["volumeMounts"][0]["readOnly"]
+                assert any(m["name"] == "data" and m["readOnly"] for m in init["volumeMounts"])
+                if name == "open-webui":
+                    assert "env" not in init
+                    assert {"name": "migration-db", "mountPath": "/run/migration-db", "readOnly": True} in init["volumeMounts"]
+                    assert any(v.get("secret") == {"secretName": "open-webui-postgres", "defaultMode": 292,
+                                                   "items": [{"key": "url", "path": "url"}]} for v in s["volumes"])
+                    assert "/run/migration-db/url" in init["args"][0]
                 assert not s["automountServiceAccountToken"]
 
     def test_private_gateway_address_and_node_stay_together(self) -> None:
