@@ -1,7 +1,7 @@
 {{- if .Values.monoriPublisher }}
 apiVersion: v1
 kind: ConfigMap
-metadata: {name: monori-publisher-code}
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: monori-publisher-code}
 data:
   publisher.py: |
 {{ .Files.Get "files/steward/publisher.py" | indent 4 }}
@@ -16,7 +16,7 @@ data:
 ---
 apiVersion: apps/v1
 kind: Deployment
-metadata: {name: monori-publisher}
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: monori-publisher}
 spec:
   replicas: 1
   strategy: {type: Recreate}
@@ -74,14 +74,14 @@ spec:
 ---
 apiVersion: v1
 kind: Service
-metadata: {name: monori-publisher}
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: monori-publisher}
 spec:
   selector: {app: monori-publisher}
   ports: [{port: 8081, targetPort: 8081}]
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-metadata: {name: monori-publisher-canvas-out}
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: monori-publisher-canvas-out}
 spec:
   podSelector: {matchLabels: {statefulset.kubernetes.io/pod-name: openhands-0}}
   policyTypes: [Egress]
@@ -91,7 +91,7 @@ spec:
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-metadata: {name: monori-publisher-canvas-in}
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: monori-publisher-canvas-in}
 spec:
   podSelector: {matchLabels: {app: monori-publisher}}
   policyTypes: [Ingress]

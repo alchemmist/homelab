@@ -1,7 +1,7 @@
 {{- if .Values.piMonori }}
 apiVersion: v1
 kind: ConfigMap
-metadata: {name: pi-monori-code}
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: pi-monori-code}
 binaryData:
   package-lock.json.gz: {{ .Files.Get "files/pi-monori/package-lock.json.gz" | b64enc | quote }}
 data:
@@ -15,7 +15,7 @@ data:
 ---
 apiVersion: apps/v1
 kind: Deployment
-metadata: {name: pi-monori-{{ $role }}}
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: pi-monori-{{ $role }}}
 spec:
   replicas: 1
   strategy: {type: Recreate}
@@ -71,7 +71,7 @@ spec:
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-metadata: {name: pi-monori-judge-offline}
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: pi-monori-judge-offline}
 spec:
   podSelector: {matchLabels: {app: pi-monori-judge}}
   policyTypes: [Ingress, Egress]
