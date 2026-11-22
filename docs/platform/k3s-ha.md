@@ -98,7 +98,7 @@ VPS `traefik-edge` now uses `https://127.0.0.1:6444`, the standard k3s agent API
 
 `ansible/playbooks/home-ingress-ha.yml` configures home Traefik redundancy and keepalived. Two home Traefik replicas and keepalived are deployed on the home nodes. Router WAN2 TCP 80/443 now target the VIP; the seven other live forwarding rules were preserved. No physical node-loss test has been performed.
 
-- Two home Traefik replicas serve ingress in this dated checkpoint. Rancher placement was superseded on16November: one replica on `socrat-5`, not HA; `rancher-placement.yml` only refreshes/verifies the Git-owned deployment. See [management handoff](../../archive/vm105/vm105-management-20261116.md).
+- Two home Traefik replicas serve ingress in this dated checkpoint. Rancher placement was superseded on16November: one replica on `socrat-5`, not HA; `rancher-placement.yml` only refreshes/verifies the Git-owned deployment. See [management handoff](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-management-20261116.md).
 - Keepalived owns `192.168.0.250/32` on either `socrat-0` (`eno1`) or `socrat-1` (`wlan0`). This is outside the DHCP pool `192.168.0.10`–`192.168.0.200`.
 - Unicast VRRP uses existing LAN addresses, without a virtual MAC on Wi-Fi.
 - Both instances start as `BACKUP` with `nopreempt`; a recovered higher-priority node does not take the VIP away from a healthy owner.

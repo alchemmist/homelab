@@ -6,7 +6,7 @@ Existing release: `deploy/argocd/apps/open-webui.yaml`; chart/defaults:
 `charts/open-webui/`. The authoritative WebUI runs on socrat-5 using
 `open-webui-socrat5`, `/mnt/files/homelab/open-webui/data`. The retained original
 `open-webui-data` on socrat-0 is stale, not a current rollback copy.
-[Accepted handoff and rollback constraints](../../../archive/vm105/llm-apps-vm105-20261115.md).
+[Accepted handoff and rollback constraints](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/llm-apps-vm105-20261115.md).
 
 `open-webui.yml`, `open-webui-upgrade.yml`, `open-webui-https.yml` and
 `open-webui-tool-guard.yml` are retired refusal-only entrypoints, not supported

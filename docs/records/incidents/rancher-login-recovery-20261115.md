@@ -2,7 +2,7 @@
 
 > Historical15Nov recovery: placement below is superseded by the accepted
 >16Nov return to5 with verified native issuer routing. See
-> [current management handoff](../../../archive/vm105/vm105-management-20261116.md).
+> [current management handoff](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-management-20261116.md).
 
 ## Historical recovery result
 

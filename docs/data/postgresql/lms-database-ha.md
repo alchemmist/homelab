@@ -39,7 +39,7 @@ default 300. Expected web recovery still includes node detection, scheduling and
 startup. No full-node outage RTO measurement has been performed in production.
 The application moved to socrat-5 on16Nov; database placement is unchanged.
 The earlier0/1/3 web eligibility is superseded by the production webNodes override.
-See [current move and transport limitations](../../../archive/vm105/vm105-lms-litellm-renderer-20261116.md).
+See [current move and transport limitations](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-lms-litellm-renderer-20261116.md).
 
 Source inspection confirmed the current runtime is PostgreSQL-only; `/data` was
 an unused SQLite-era mount. Production sets `persistence.mountInApp: false`:

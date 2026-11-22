@@ -44,7 +44,7 @@
 Grafana и Grafana MCP приняты на `socrat-5`, новый Grafana claim
 `grafana-socrat5`, старый claim на `socrat-1` stale/Retain. Native SSO, существующие
 идентичности и настоящий read-only MCP→Grafana→Thanos запрос проверены.
-[Полная приёмка и downtime](../../archive/vm105/vm105-grafana-20261116.md).
+[Полная приёмка и downtime](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-grafana-20261116.md).
 Prometheus/Thanos и другие backend не переносились этим изменением. Таблица
 владельцев ниже остаётся полезной, но runtime-утверждения среза7ноября не являются
 новой приёмкой всех компонентов. Источник Grafana также включает
