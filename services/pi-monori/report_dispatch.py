@@ -24,7 +24,8 @@ with db:
 
 ADAPTER=json.loads((c.R/"worker_adapter.json").read_text())
 # Publisher is intentionally not a generic GitHub token. Never silently route another repo to it.
-if ADAPTER["adapter"]!="monori-mutmut-v1" or ADAPTER["repository"]!="alchemmist/monori":raise ValueError("Unenrolled publisher")
+if ADAPTER["adapter"]!="monori-mutmut-v1" or ADAPTER["repository"]!="alchemmist/monori":
+ raise ValueError("Unenrolled publisher")
 
 def rpc(op,**kw):
  p=c.pilot.cmd(["kubectl","-n","openhands","exec","-i","deploy/mutation-report-intake","--","python","-c",RPC],json.dumps(dict(op=op,repo=ADAPTER["repository_id"],issue=c.ISSUE,**kw)),timeout=20)
@@ -33,7 +34,8 @@ def rpc(op,**kw):
 def main():
  lock=(c.R/"run.lock").open("a")
  fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
- while not (reports:=rpc("list")):time.sleep(45)
+ while not (reports:=rpc("list")):
+  time.sleep(45)
  last=c.query("select v from meta where k='last_admission'") if c.D.exists() else []
  prior=int(last[0]["v"]) if last else 0
  c.ISSUE=next((i for i in reports if i>prior),reports[0])
@@ -57,7 +59,8 @@ def main():
  # Recover only historical infra failures with concrete evidence; no model retries for real red tests.
  for t in c.query("select * from tasks where state='needs_triage' and note like '%executor ended%'"):
   log=c.A/c.key(t)/"pi-3.log"
-  if log.exists() and b"502 Bad Gateway" in log.read_bytes()[-2000:]:c.mark(t,"queued","Recovered prior transport failure, no model verdict")
+  if log.exists() and b"502 Bad Gateway" in log.read_bytes()[-2000:]:
+   c.mark(t,"queued","Recovered prior transport failure, no model verdict")
  c.query("update tasks set state='queued' where pr is null and state in ('screening','survived','authoring','rejected')")
  c.query("update tasks set state='published' where pr is not null and state in ('authoring','rejected')")
  c.query("update tasks set state='publication_uncertain' where state='publishing'")
@@ -76,10 +79,12 @@ def main():
   rpc("sync",rows=changes,outputs=outputs,digest=r["digest"],state="processing" if active else "tracking")
  while True:
   try:
-   if (c.R/"report_dispatch.py").stat().st_mtime_ns!=revision:os.execv(sys.executable,[sys.executable,"-Bu",__file__])
+   if (c.R/"report_dispatch.py").stat().st_mtime_ns!=revision:
+    os.execv(sys.executable,[sys.executable,"-Bu",__file__])
    if time.time()>discovery:
     discovery=time.time()+300
-    if any(i!=c.ISSUE for i in rpc("list")):os.execv(sys.executable,[sys.executable,"-Bu",__file__])
+    if any(i!=c.ISSUE for i in rpc("list")):
+     os.execv(sys.executable,[sys.executable,"-Bu",__file__])
    if time.time()>cache:
     live=c.remote_json("issues/"+str(c.ISSUE))
     if live["state"]!="open" or ADAPTER["label"] not in [x["name"] for x in live["labels"]]:
@@ -114,7 +119,8 @@ def main():
     continue
    sync(t["id"])
    c.mark(t,"screening","Leased from signed issue admission",sha)
-   try:c.screen(t,sha)
+   try:
+    c.screen(t,sha)
    except (RuntimeError,subprocess.TimeoutExpired) as ex:
     cache=0
     c.K("judge",["rm","-f","/scratch/campaign-base"],ok=False)
@@ -123,4 +129,5 @@ def main():
   except (OSError,ValueError,RuntimeError,sqlite3.Error,subprocess.SubprocessError) as ex:
    print("adapter backoff:",type(ex).__name__,str(ex)[:360],flush=True)
    time.sleep(45)
-if __name__=="__main__":main()
+if __name__=="__main__":
+ main()
