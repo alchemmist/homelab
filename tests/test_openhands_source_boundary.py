@@ -481,11 +481,16 @@ def _assert_owner_policy_declarations(documents: list[dict[str, object]]) -> Non
             literal = fragment.rstrip()
             for suffix in ("{{- end }}", "{{- if not .Values.retireFailedBackup }}"):
                 literal = literal.removesuffix(suffix).rstrip()
+            # Resolve only the reviewed metadata header; policy bodies must remain literal.
+            literal = literal.replace("\nmetadata: {namespace: {{ $.Release.Namespace | quote }}, name:",
+                                      "\nmetadata: {namespace: openhands, name:", 1)
             assert "{{" not in literal, "Policy template requires explicit review"
             declaration = _mapping(yaml.safe_load(literal))
             name = _get(declaration, "metadata", "name")
             assert isinstance(name, str)
-            assert _named(documents, "NetworkPolicy", name)["spec"] == declaration["spec"], (
+            actual = _named(documents, "NetworkPolicy", name)
+            assert _get(actual, "metadata", "namespace") == _get(declaration, "metadata", "namespace")
+            assert actual["spec"] == declaration["spec"], (
                 "Network policy differs from declared edges"
             )
     boundary = _named(documents, "NetworkPolicy", "openhands-boundary")

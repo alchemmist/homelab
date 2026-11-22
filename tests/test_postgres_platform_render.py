@@ -36,7 +36,7 @@ def _render(
 
 
 def _matches(selector: dict[str, object], labels: dict[str, str]) -> bool:
-    match_labels = selector.get("matchLabels", selector)
+    match_labels = selector.get("matchLabels", {}) if "matchExpressions" in selector else selector.get("matchLabels", selector)
     if not isinstance(match_labels, dict) or any(
         labels.get(key) != value for key, value in match_labels.items()
     ):
@@ -75,13 +75,24 @@ def test_rendered_cnpg_services_and_policies_follow_operator_role_labels() -> No
         for obj in objects
         if obj.get("kind") == "NetworkPolicy"
     }
-    assert set(services) == {"pg-common-primary-metrics", "pg-critical-primary-metrics"}
+    assert set(services) == {"pg-common-primary-metrics", "pg-critical-primary-metrics", "pgadmin"}
     assert set(policies) == {
         "pg-common-ingress",
         "pg-critical-ingress",
         "pg-internal-ingress",
         "pg-common-writer-service-probes",
+        "pgadmin-database-access",
+        "pgadmin-web",
     }
+
+    admin = policies["pgadmin-database-access"]["spec"]
+    assert admin["ingress"] == [{"from": [{"podSelector": {"matchLabels": {"app": "pgadmin"}}}],
+                                "ports": [{"port": 5432}]}]
+    for tier in ("common", "critical", "internal", "critical-async", "unrelated"):
+        assert _matches(admin["podSelector"], {"cnpg.io/cluster": "pg-" + tier}) is (
+            tier in {"common", "critical", "internal"}
+        )
+    assert services["pgadmin"]["spec"]["selector"] == {"app": "pgadmin"}
 
     # CNPG's documented Pod labels: cnpg.io/cluster and cnpg.io/instanceRole.
     # Model promotions by changing only the primary role, as the operator does.
