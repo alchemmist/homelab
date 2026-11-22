@@ -1,87 +1,87 @@
-# Добавить человеку SSH на ноды
+# Give a person SSH on the nodes
 
-> Обычный сетевой доступ — **NetBird**, SSH отдельно по публичному ключу.
-> Linux `tim` не переименован вместе с Authentik login `antropophag`.
-> Standalone WG — только recovery; public HTTPS не открывает SSH в Internet.
+> Ordinary network access is **NetBird**, SSH separately by public key.
+> The Linux `tim` was not renamed together with the Authentik login `antropophag`.
+> Standalone WG — recovery only; public HTTPS does not open SSH to the Internet.
 
-Для этого достаточно Ansible. Authentik, атрибуты и n8n не нужны.
-Плейбук создаёт **обычного Linux-пользователя без sudo**, блокирует пароль и
-добавляет его публичный SSH-ключ на все ноды группы `Socrat` из inventory.
-Это не выдаёт роли Kubernetes, доступ к приложениям или доступ через NetBird.
-Полный сценарий нового админа: [Authentik/MFA → NetBird → отдельные права](../../network/netbird/README.md#как-добавить-нового-админа).
+Ansible is enough for this. Authentik, attributes and n8n are not needed.
+The playbook creates **an ordinary Linux user without sudo**, blocks the password and
+adds their public SSH key to all nodes of the `Socrat` group from the inventory.
+This does not grant Kubernetes roles, application access or access via NetBird.
+The full new-admin scenario: [Authentik/MFA → NetBird → separate rights](../../network/netbird/README.md#how-to-add-a-new-administrator).
 
-## Что подготовить
+## What to prepare
 
-Попроси у человека **публичный** ключ — одну строку `ssh-ed25519 …` из файла
-`.pub`. Приватный ключ остаётся у человека. Сверь fingerprint с владельцем:
+Ask the person for their **public** key — a single line `ssh-ed25519 …` from a
+`.pub` file. The private key stays with the person. Reconcile the fingerprint with the owner:
 
 ```sh
 ssh-keygen -lf "$HOME/Downloads/ivan.pub" -E sha256
 ```
 
-Выбери свободное Linux-имя, например `ivan`. Запускай из актуального checkout
-`homelab`, со своим уже работающим административным SSH-доступом к нодам.
-Нужны Ansible, Python 3, `ssh-keygen`, коллекция `ansible.posix` и право sudo
-для Ansible на целевых машинах. Пароли в Git или аргументы команд не записывать.
+Choose a free Linux name, for example `ivan`. Run from a current `homelab`
+checkout, with your already-working administrative SSH access to the nodes.
+You need Ansible, Python 3, `ssh-keygen`, the `ansible.posix` collection and the sudo
+right for Ansible on the target machines. Do not write passwords into Git or command arguments.
 
-## Сначала проверить, потом применить
+## Check first, then apply
 
 ```sh
 cd homelab/ansible
 
-# Показывает ноды; без --limit это вся группа Socrat, сейчас четыре ноды.
+# Shows the nodes; without --limit this is the whole Socrat group, currently four nodes.
 ansible-playbook playbooks/ssh-user.yml --list-hosts
 
-# Проверяет имя, ключ, состояние аккаунтов и права. Аккаунты/ключи не меняет.
+# Checks the name, key, account state and rights. Does not change accounts/keys.
 ansible-playbook playbooks/ssh-user.yml \
   -e ssh_username=ivan \
   -e "ssh_public_key_file=$HOME/Downloads/ivan.pub" \
   --check --ask-become-pass
 
-# Создаёт недостающее и добавляет ключ.
+# Creates what is missing and adds the key.
 ansible-playbook playbooks/ssh-user.yml \
   -e ssh_username=ivan \
   -e "ssh_public_key_file=$HOME/Downloads/ivan.pub" \
   --ask-become-pass
 ```
 
-`ssh_public_key_file` — путь **на твоём компьютере**, не на нодах. Для отдельной
-машины добавь `--limit socrat-2`; это намеренно не проверит остальные ноды.
-После apply сам человек проверяет вход со своего устройства: например,
-`ssh -l ivan socrat-1`, если у него уже настроены доверенные SSH aliases и
-сетевой доступ. Не отключать проверку host key ради успешного входа.
+`ssh_public_key_file` is a path **on your computer**, not on the nodes. To add a single
+machine, add `--limit socrat-2`; this deliberately will not check the other nodes.
+After the apply, the person themselves verifies the login from their device: for example,
+`ssh -l ivan socrat-1`, if they already have trusted SSH aliases and
+network access configured. Do not disable host-key verification for a successful login.
 
-## Как это работает
+## How it works
 
-- Проверяет каждую выбранную ноду, а не просто наличие имени пользователя.
-- Создаёт отсутствующий аккаунт; существующий безопасный аккаунт не пересоздаёт.
-- Добавляет отсутствующий ключ. **Другие ключи не удаляет**, опции уже имеющегося
-  ключа не ослабляет. Второй ключ добавляется тем же запуском с другим `.pub`.
-- Проверяет password lock, `.ssh` 0700, `authorized_keys` 0600 и владельца файлов.
-- Не добавляет sudo и не переписывает чужие группы/SSH-конфигурацию. Owner,
-  transport/system accounts, привилегированные или отключённые аккаунты,
-  неожиданный home и symlink блокируют операцию вместо автоматического захвата.
-- Повторный запуск при совпадающем состоянии ничего не меняет.
+- Checks each selected node, not merely the presence of a username.
+- Creates a missing account; does not recreate an existing secure account.
+- Adds a missing key. **Does not remove other keys**, does not weaken the options of an
+  already-present key. A second key is added by the same run with another `.pub`.
+- Checks the password lock, `.ssh` 0700, `authorized_keys` 0600 and the files' owner.
+- Does not add sudo and does not rewrite others' groups/SSH configuration. Owner,
+  transport/system accounts, privileged or disabled accounts, an unexpected home and a
+  symlink block the operation instead of an automatic takeover.
+- A repeat run on a matching state changes nothing.
 
-Если нода недоступна или проверка не прошла, это **не общий успех**. Ansible не
-транзакционен: поздняя ошибка может оставить частичный результат. Исправь причину
-и повтори тот же запуск; не удаляй аккаунты/home ради зелёного отчёта.
+If a node is unavailable or the check did not pass, this is **not a general success**. Ansible is not
+transactional: a late error may leave a partial result. Fix the cause
+and repeat the same run; do not delete accounts/homes for a green report.
 
-## Важно про старый users.yml и отзыв
+## Important about the old users.yml and revocation
 
-`users.yml` остаётся декларативным управлением **точным набором ключей** из
-`homelab_users`. Если выбранный человек уже там описан, сначала добавь новый
-ключ в его inventory-запись и проверь `hosts`/`state`: новый плейбук не обходит
-эту политику, иначе следующий baseline удалил бы добавленный ключ.
-Для нового человека вне `homelab_users` существующий baseline его не удаляет.
-Если позже переносишь его в inventory, перечисли все одобренные ключи.
+`users.yml` remains the declarative management of **the exact set of keys** from
+`homelab_users`. If the chosen person is already described there, first add the new
+key to their inventory record and check `hosts`/`state`: the new playbook does not bypass
+this policy, otherwise the next baseline would delete the added key.
+For a new person outside `homelab_users`, the existing baseline does not delete them.
+If you later move them into the inventory, list all approved keys.
 
-Этот плейбук **только добавляет**. Замена `.pub`, удаление человека из Authentik
-или из vars старый ключ не отзывают. Для отзыва используй отдельное reviewed
-изменение полного key set / `state: disabled` через
-[существующий users.yml](identity-host-access.md#4-отзыв-ssh).
-Уже открытые SSH-сессии при удалении ключа сами не завершаются.
+This playbook **only adds**. Replacing the `.pub`, removing the person from Authentik
+or from vars does not revoke the old key. For a revocation, use a separate reviewed
+change of the full key set / `state: disabled` through
+[the existing users.yml](identity-host-access.md#4-ssh-revocation).
+Already-open SSH sessions do not terminate by themselves when a key is removed.
 
-## Транспорт (6 ноября 2026)
+## Transport (6 November 2026)
 
-Обычный SSH остаётся internal-only на четырёх `/32` нод, port 2222, с pinned keys и без public fallback. На owner Mac основной транспорт NetBird, отдельный WG — recovery; публичный DNS/Grafana SSO не выдаёт shell и не меняет этот путь. Не устанавливать старые Mac DNS overrides ради SSH. [Итог сети и границы](../../network/README.md).
+Ordinary SSH stays internal-only on the four node `/32`, port 2222, with pinned keys and without a public fallback. On the owner Mac the main transport is NetBird, a separate WG — recovery; public DNS/Grafana SSO does not grant a shell and does not change this path. Do not install the old Mac DNS overrides for SSH. [The network summary and boundaries](../../network/README.md).
