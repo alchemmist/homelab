@@ -1,50 +1,50 @@
-# Потеря socrat-1 без drain — второе учение, 21 ноября 2026
+# socrat-1 loss without drain — the second drill, 21 November 2026
 
-**Вердикт: управление, репликация PostgreSQL, готовность мониторинга и чтение истории Thanos 5m восстановлены либо сохранены без ручного вмешательства. Внешний доступ не был непрерывным. Доставка Telegram не проверена:** нода вернулась до выдержки правила. Это отдельный опыт, не продолжение 30-минутного окна и не проверка произвольной потери одной ноды. Для сравнения — [первое учение](socrat-1-loss-20261121.md).
+**Verdict: control, PostgreSQL replication, monitoring readiness and Thanos 5m history reading were restored or kept without manual intervention. External access was not continuous. Telegram delivery is unverified:** the node returned before the rule's for-duration. This is a separate experience, not a continuation of the 30-minute window and not a check of an arbitrary single-node loss. For comparison — [the first drill](socrat-1-loss-20261121.md).
 
-## Условия, которые отличают этот прогон
+## Conditions that distinguish this run
 
-- Перед GO в 13:36:39 UTC шесть нод Ready; API через `0`, TCP между etcd `0↔2` и DNS из n8n проверены. Все семь выбранных ролей реально работали на `1`. Никакого drain; узел отключил и вернул оператор. Переносимые данные остаются на NFS узла `0`; это не испытание отказа хранилища.
-- Primary `pg-critical-2` уже на `5`, синхронные потоковые реплики на `0` и `1`, лаг в исходном срезе 0. Здесь ожидается потеря реплики, **не** promotion, в отличие от первого прогона. Никаких изменений PostgreSQL или переключения primary вручную.
-- GitOps-изменение `3424b0a2`: [временный второй Alertmanager](../../../deploy/storage/alertmanager-nfs/cutover.values.yaml), обязательное разнесение по хостам, отдельный retained RWO PVC у каждого ordinal. Оба видели двух участников, Prometheus обнаружил оба адреса. Это проверка выжившего участника, **не доказательство**, что singleton StatefulSet переезжает с недоступного узла.
-- [Startup-проба Pyroscope](../../../charts/pyroscope/templates/backend.yaml): тайм-аут запроса 4 с, 120 попыток с периодом 5 с вместо 36 попыток. Это даёт время на холодный старт, а не объявляет pod готовым раньше. До выключения исторический профиль совпал по total и числу символов; Loki и Tempo вернули исторические и свежие данные. Для 5m исходный результат `900`, отрицательные контроли пусты. Пять приложений Argo Synced/Healthy, расписание cascade включено.
+- Before GO at 13:36:39 UTC six nodes Ready; the API via `0`, TCP between etcd `0↔2` and DNS from n8n were verified. All seven chosen roles really ran on `1`. No drain; the operator powered the node off and back. The portable data stays on the NFS of node `0`; this is not a storage-failure test.
+- Primary `pg-critical-2` is already on `5`, synchronous streaming replicas on `0` and `1`, a zero lag in the initial cut. A replica loss is expected here, **not** a promotion, unlike the first run. No PostgreSQL changes or manual primary switch.
+- The GitOps change `3424b0a2`: [a temporary second Alertmanager](../../../deploy/storage/alertmanager-nfs/cutover.values.yaml), mandatory host spread, a separate retained RWO PVC per ordinal. Both saw two members, Prometheus discovered both addresses. This is a surviving-member check, **not proof** that a singleton StatefulSet moves off an unavailable node.
+- [The Pyroscope startup probe](../../../charts/pyroscope/templates/backend.yaml): a 4s request timeout, 120 attempts with a 5s period instead of 36 attempts. This gives time for a cold start, it does not declare the pod ready earlier. Before the power-off, the historical profile matched by total and character count; Loki and Tempo returned historical and fresh data. For 5m the initial result was `900`, the negative controls empty. Five Argo applications Synced/Healthy, the cascade schedule enabled.
 
-## Хронология по независимым пробам (UTC; Москва = UTC+3)
+## Chronology by independent probes (UTC; Moscow = UTC+3)
 
-Время означает первое наблюдение, если не сказано иначе. Между срезами состояние могло измениться раньше. Последний Lease — не точное время нажатия кнопки.
+The time means the first observation unless stated otherwise. Between cuts, the state could have changed earlier. The last Lease is not the exact button-press time.
 
-| UTC | Наблюдение |
+| UTC | Observation |
 |---|---|
-| 13:47:56 | Последнее обновление Lease `1` перед отключением. |
-| 13:48:12–30 | Первые тайм-ауты внешних HTTP-проб на части маршрутов. В 13:48:28–30 все три имени (Grafana, Authentik, Open WebUI) без HTTP-ответа и через обычный DNS, и через принудительный HOME. `000` — результат curl без HTTP-кода, не серверный `503`. |
-| 13:48:13 / 13:48:28 | Строгий запрос Thanos 5m сначала завершился ошибкой пробы, затем вернул пустой результат. Не интерпретировать ни то, ни другое как удаление блоков. |
-| 13:48:44–13:49:18 | Внешние пути восстанавливались неодновременно. Первый `200` чата через DNS в 13:48:44; в 13:49:00 Grafana уже давала `302`, но Authentik через DNS ещё не ответил. К 13:49:18 оба пути дают Authentik `200`, чат `200`, Grafana `302`. При проверке с `0` HOME VIP находился на `0`. |
-| 13:48:51 / 13:48:58 | `unreachable` с NoSchedule/NoExecute; первый срез Ready=Unknown. У БД 2/3, primary прежний. |
-| 13:49:10 / 13:49:28 | Прямая проверка Alertmanager на `0`: ready, один видимый участник. На primary сохранилась quorum streaming-реплика `pg-critical-3`. Первый срез `KubeNodeNotReady` Pending. |
-| 13:53:51 | Расчётное истечение 300 с допуска `unreachable`; это граница ожидания, не момент готовности. |
-| 13:54:14 | На `0` готовы Loki, Pyroscope, Shelf 5m и Store 5m. Строгая выборка исторического 5m снова дала `900` **до возврата `1`**. |
-| 13:54:29 | На `0` также готовы Tempo и Compactor 5m. Все шесть перенесённых ролей готовы через ~6 мин 33 с от последнего Lease (~5 мин 38 с от taint). Ориентир в пять минут от потери по-прежнему не достигнут. |
-| 13:58:14 / 13:58:29 | Последний срез Unknown / первый Ready у `1`; от последнего Lease до первого Ready ~10 мин 33 с. Снова два участника Alertmanager, метрика etcd вернулась с двух наблюдаемых участников с лидером к трём. |
-| 13:58:44 / 13:58:59 | PostgreSQL снова 3/3, обе реплики видны в `pg_stat_replication`; затем Pending перестал наблюдаться. `Firing` не наблюдался. |
-| 14:01–14:03 | Все шесть нод Ready, оба Alertmanager готовы на разных хостах, остальные шесть ролей готовы на `0`. Primary на `5`, обе реплики streaming/quorum, лаг в проверке 0 байт. Это срез восстановления, не обещание постоянного размещения. |
+| 13:47:56 | The last update of Lease `1` before the power-off. |
+| 13:48:12–30 | The first timeouts of external HTTP probes on part of the routes. At 13:48:28–30 all three names (Grafana, Authentik, Open WebUI) with no HTTP answer both via ordinary DNS and via a forced HOME. `000` is a curl result without an HTTP code, not a server `503`. |
+| 13:48:13 / 13:48:28 | A strict Thanos 5m query first ended with a probe error, then returned an empty result. Do not interpret either as block deletion. |
+| 13:48:44–13:49:18 | The external paths recovered non-simultaneously. The first `200` of the chat via DNS at 13:48:44; at 13:49:00 Grafana already gave `302`, but Authentik via DNS had not yet answered. By 13:49:18 both paths give Authentik `200`, chat `200`, Grafana `302`. When checking from `0`, the HOME VIP was on `0`. |
+| 13:48:51 / 13:48:58 | `unreachable` with NoSchedule/NoExecute; the first cut Ready=Unknown. The DB at 2/3, the primary the former one. |
+| 13:49:10 / 13:49:28 | A direct Alertmanager check on `0`: ready, one visible member. On the primary a quorum streaming replica `pg-critical-3` was kept. The first cut `KubeNodeNotReady` Pending. |
+| 13:53:51 | The computed expiry of the 300s `unreachable` tolerance; this is the waiting boundary, not a readiness moment. |
+| 13:54:14 | On `0`, Loki, Pyroscope, Shelf 5m and Store 5m are ready. A strict sampling of the historical 5m again gave `900` **before `1` returned**. |
+| 13:54:29 | On `0`, Tempo and Compactor 5m are also ready. All six moved roles ready about ~6min33s from the last Lease (~5min38s from the taint). The five-minute-from-loss benchmark is still not reached. |
+| 13:58:14 / 13:58:29 | The last Unknown / first Ready cut of `1`; from the last Lease to the first Ready about ~10min33s. Again two Alertmanager members, the etcd metric returned from two observed members with a leader to three. |
+| 13:58:44 / 13:58:59 | PostgreSQL again 3/3, both replicas visible in `pg_stat_replication`; then Pending stopped being observed. `Firing` was not observed. |
+| 14:01–14:03 | All six nodes Ready, both Alertmanagers ready on different hosts, the other six roles ready on `0`. The primary on `5`, both replicas streaming/quorum, a lag of 0 bytes in the check. This is a recovery cut, not a promise of permanent placement. |
 
-## Что доказано, а что нет
+## What is proven and what is not
 
-| Область | Вывод и предел проверки |
+| Area | Conclusion and check limit |
 |---|---|
-| Control plane | `/readyz` через `0` успешен в **38/38** срезах Ready=Unknown. Метрика etcd и доступность API совместимы с работающим кворумом `0/2`; измерения раз в ~15 с не исключают коротких провалов между ними. При двух оставшихся голосах запаса на ещё один отказ нет. |
-| PostgreSQL | Primary не менялся. Прямой SQL на primary показал `not pg_is_in_recovery()` и `transaction_read_only=off`; реплика на `0` оставалась доступна. Это не сквозная подтверждённая запись приложения через `pg-critical-rw`. |
-| Пользовательский вход | Был краткий внешний перерыв **без** failover БД. Сам по себе failover PostgreSQL не объясняет все сетевые паузы в двух опытах. HOME VIP позднее найден на `0`; точную причину (VIP/ARP, маршрутизация, ingress, другой участок) данные не устанавливают. Свежий MFA-вход и открытие существующего чата пользователем в этом прогоне не подтверждены. |
-| Loki и Tempo | Готовность на `0` доказана при потере `1`. **После возврата** Loki отдал точную старую строку и реальные свежие логи, Tempo — завершённую историческую трассу и свежие трассы. Это не проверка непрерывного приёма каждую минуту отключения. |
-| Pyroscope и Shelf | В первом опыте готовность при выключенной `1` не была достигнута/замечена. Здесь обе роли готовы на `0` уже в 13:54:14. Улучшение наблюдается, но не доказывает причинность изменения пробы. Нет отдельного подтверждения приёма нового профиля или нового блока Shelf в этом окне. |
-| Thanos | Возврат `900` через выбранный Store 5m доказан во время отключения. После него повторены `sum(count_over_time(up[1h]))` на Unix `1792785600` с `partial_response=false`, разрешением `5m` и фильтром конкретного Store; несуществующий Store и raw-only (`0s`) вернули пусто. Ready у Compactor не доказывает проход компакции. |
-| Уведомления | Выживший Alertmanager опрашивался напрямую и оставался доступен. За 38 срезов Unknown правило наблюдалось Pending в 36, Firing — ни разу. До 15-минутной выдержки нода вернулась. **Ни доставка firing, ни resolved в Telegram этим опытом не приняты; это не свидетельство сбоя доставки.** Ранее наблюдавшийся таймаут ответа бота на `/start` — отдельный инцидент. |
+| Control plane | `/readyz` via `0` succeeded in **38/38** Ready=Unknown cuts. The etcd metric and the API availability are compatible with a working `0/2` quorum; readings once per ~15s do not rule out short failures between them. With two remaining votes there is no margin for another failure. |
+| PostgreSQL | The primary did not change. A direct SQL on the primary showed `not pg_is_in_recovery()` and `transaction_read_only=off`; the replica on `0` stayed available. This is not an end-to-end confirmed application write via `pg-critical-rw`. |
+| User login | There was a brief external break **without** a DB failover. PostgreSQL failover by itself does not explain all the network pauses in the two experiences. The HOME VIP was later found on `0`; the exact cause (VIP/ARP, routing, ingress, another segment) the data does not establish. A fresh MFA login and a user opening an existing chat were not confirmed in this run. |
+| Loki and Tempo | Readiness on `0` is proven during the loss of `1`. **After the return** Loki gave the exact old line and real fresh logs, Tempo — a completed historical trace and fresh traces. This is not a check of continuous ingestion every minute of the outage. |
+| Pyroscope and Shelf | In the first experience, readiness with `1` powered off was not reached/noticed. Here both roles are ready on `0` already at 13:54:14. An improvement is observed, but it does not prove the causality of the probe change. There is no separate confirmation of a new profile's ingestion or a new Shelf block in this window. |
+| Thanos | The return of `900` via the chosen Store 5m is proven during the outage. After it, `sum(count_over_time(up[1h]))` was repeated at Unix `1792785600` with `partial_response=false`, resolution `5m` and a filter of the specific Store; a nonexistent Store and raw-only (`0s`) returned empty. The Compactor being Ready does not prove a compaction pass. |
+| Notifications | The surviving Alertmanager was polled directly and stayed available. Over 38 Unknown cuts the rule was observed Pending in 36, Firing — never. The node returned before the 15-minute for-duration. **Neither a firing delivery nor a resolved one to Telegram was accepted by this experience; this is not evidence of a delivery failure.** The previously observed bot response timeout on `/start` is a separate incident. |
 
-## Наблюдение и дальнейшие действия
+## Observation and further actions
 
-Локальные источники: `samples.jsonl` (API через `0`, ноды, pod, endpoints, события, SQL, Prometheus/Thanos), `web.tsv` (обычный DNS и принудительный HOME), `detail.jsonl` (прямой статус и алерты выжившего Alertmanager, метрики отправки, репликация, LAN-пробы), `observations.txt` (получение операторских отметок). На рабочей станции каталог указан в `/tmp/socrat-loss2-latest`; это временные артефакты, не архив. Пропуск опроса не равен отказу. В Git оставлены только агрегаты, без содержимого сообщений, тел логов, credentials, реальных trace ID или символов профилей.
+Local sources: `samples.jsonl` (the API via `0`, nodes, pods, endpoints, events, SQL, Prometheus/Thanos), `web.tsv` (ordinary DNS and a forced HOME), `detail.jsonl` (the direct status and alerts of the surviving Alertmanager, send metrics, replication, LAN probes), `observations.txt` (the obtaining of operator marks). On the workstation the directory is given in `/tmp/socrat-loss2-latest`; these are temporary artifacts, not an archive. A skipped poll is not equal to a failure. Only aggregates are left in Git, without message contents, log bodies, credentials, real trace IDs or profile symbols.
 
-1. **Довести до получателя:** отдельное согласованное окно дольше выдержки правила плюс группировка/доставка. Сопоставить Prometheus Firing → алерт на выжившем Alertmanager → n8n → время реального Telegram → resolved после возврата. Не укорачивать боевое правило, чтобы задним числом «принять» этот опыт. После проверки отдельно решить судьбу временного второго участника; retained PVC не удалять.
-2. **Разобрать внешнюю паузу:** одновременно писать переход VIP/keepalived, метки TCP/TLS/HTTP через LAN, HOME и обычный DNS с независимой внешней точки. Отдельно фиксировать свежий вход и доступ к существующему чату. Не считать HTTP-редирект работающей пользовательской сессией.
-3. **Доказать работу приложений в самом окне:** проверять старые и новые логи/трассы/профили, штатный приём Shelf и безопасную согласованную запись через RW-сервис. Разбирать задержки от Lease до taint, от taint до вытеснения и от создания до Ready раздельно; не сокращать допуски всех писателей без защиты от второго активного экземпляра.
-4. **Не распространять приёмку:** возврат pod на `1` после восстановления — отдельная работа Descheduler, а не часть аварийного RTO. Проблема OTel enqueue-loss не закрыта. Потеря `0` (сервер NFS), потеря двух нод, LMS и локальный certification runner этим опытом не проверялись.
+1. **Bring it to the recipient:** a separate agreed window longer than the rule's for-duration plus grouping/delivery. Correlate Prometheus Firing → an alert on the surviving Alertmanager → n8n → the real Telegram time → resolved after the return. Do not shorten the production rule to retroactively "accept" this experience. After the check, separately decide the fate of the temporary second member; do not delete the retained PVC.
+2. **Analyze the external pause:** simultaneously record the VIP/keepalived transition, the TCP/TLS/HTTP labels via LAN, HOME and ordinary DNS from an independent external point. Separately record a fresh login and access to an existing chat. Do not consider an HTTP redirect a working user session.
+3. **Prove the applications work in the window itself:** check the old and new logs/traces/profiles, a standard Shelf ingestion and a safe consistent write via the RW service. Analyze separately the delays from Lease to taint, from taint to eviction and from creation to Ready; do not shorten the tolerances of all writers without protection from a second active instance.
+4. **Do not spread the acceptance:** a pod returning to `1` after recovery is separate Descheduler work, not part of an emergency RTO. The OTel enqueue-loss problem is not closed. The loss of `0` (the NFS server), the loss of two nodes, LMS and the local certification runner were not checked by this experience.

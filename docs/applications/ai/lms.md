@@ -1,68 +1,68 @@
-# LMS: кабинет курса
+# LMS: the course workspace
 
-> **PostgreSQL (2026-11-20):** Рабочая БД — `pg-common/lms`; `lms-postgres` остановлен, `lms-ha` в гибернации. [Эксплуатация и CA](../../data/postgresql/postgres-platform.md).
+> **PostgreSQL (2026-11-20):** The working DB is `pg-common/lms`; `lms-postgres` is stopped, `lms-ha` is in hibernation. [Operation and CA](../../data/postgresql/postgres-platform.md).
 
-> **Текущие app-роли:** `app-lms-student` и `app-lms-teacher` включены через
-> общий [механизм app-групп](../../auth/applications/app-access-groups.md). Per-client
-> OIDC mappings проецируют их в существующие native student/teacher claims,
-> без глобального наследования и без перезапуска LMS. Native функция выбора
-> роли проверена: обе группы → teacher, пустой набор → deny. Назначение роли
-> не открывает автоматически все уроки; существующие lesson grants сохраняются.
-> Полный browser/JIT acceptance новых групп ещё не заявлен. Ниже — исходный срез.
+> **Current app-roles:** `app-lms-student` and `app-lms-teacher` are enabled through
+> the common [app-groups mechanism](../../auth/applications/app-access-groups.md). Per-client
+> OIDC mappings project them into the existing native student/teacher claims,
+> without global inheritance and without an LMS restart. The native role-selection
+> function is verified: both groups → teacher, an empty set → deny. Assigning a role
+> does not automatically open all lessons; the existing lesson grants are preserved.
+> A full browser/JIT acceptance of the new groups is not yet claimed. Below is the original cut.
 
-Срез на **2 ноября 2026**. Памятка, не замена проверки живого пода. Секреты клиента и пароли сюда не писать.
+Cut on **2 November 2026**. A memo, not a replacement for checking the live pod. Do not write client secrets and passwords here.
 
-## Где это живёт
+## Where it lives
 
-| Что | Где |
+| What | Where |
 | --- | --- |
-| Код | репозиторий `alchemmist/lms` |
-| Сайт ученика | Hugo + тема hugo-docs. Это не React-прототип в `teacher/` |
+| Code | the `alchemmist/lms` repository |
+| The student's site | Hugo + the hugo-docs theme. This is not the React prototype in `teacher/` |
 | API | FastAPI, `backend/app` |
-| База | PostgreSQL `lms-postgres`, Secret `lms-db`, ключ `LMS_DATABASE_URL` |
-| Образ | `ghcr.io/alchemmist/lms` |
-| Выкладка | `.github/workflows/publish-image.yml` → `alchemmist/deploy-to-socrat@v1` пишет `image.tag` и `image.digest` в `deploy/lms/values.yaml` и `charts/lms/values.yaml`. Argo CD application `lms` синкает chart |
-| Адрес | https://lms.alchemmist.xyz |
-| Локально | `http://localhost:8000`. `127.0.0.1` даёт 403: local mode сверяет Host с `LMS_PUBLIC_URL` |
+| Database | PostgreSQL `lms-postgres`, Secret `lms-db`, key `LMS_DATABASE_URL` |
+| Image | `ghcr.io/alchemmist/lms` |
+| Deployment | `.github/workflows/publish-image.yml` → `alchemmist/deploy-to-socrat@v1` writes `image.tag` and `image.digest` into `deploy/lms/values.yaml` and `charts/lms/values.yaml`. The Argo CD application `lms` syncs the chart |
+| Address | https://lms.alchemmist.xyz |
+| Locally | `http://localhost:8000`. `127.0.0.1` gives 403: local mode matches the Host against `LMS_PUBLIC_URL` |
 
-Последний успешно выкатанный образ этой сессии: tag `521b39731a7e0a837418532580a300e8d6a30775`, digest `sha256:55f7befcea8046177aea2465c6ab8edd5be4adc28a2363a0c0ee322aad11cf64`. Под Ready. Workflow **Checks** при этом часто красный: `runner/tests/test_catalog.py` ждёт 78 задач, в дереве их сотни. На публикацию образа это не влияет. Публикация падает отдельно, если падают backend/OIDC тесты, и тогда tag в homelab не меняется.
+The last image successfully rolled out in this session: tag `521b39731a7e0a837418532580a300e8d6a30775`, digest `sha256:55f7befcea8046177aea2465c6ab8edd5be4adc28a2363a0c0ee322aad11cf64`. The pod is Ready. The **Checks** workflow is often red at the same time: `runner/tests/test_catalog.py` expects 78 tasks, the tree has hundreds of them. This does not affect the image publication. The publication fails separately if the backend/OIDC tests fail, and then the tag in homelab does not change.
 
-## Вход
+## Login
 
-Только Authentik. Своих паролей LMS не хранит.
+Authentik only. LMS does not store its own passwords.
 
-- Issuer: `https://auth.socrat.alchemmist.xyz/application/o/lms/` (слэш в конце обязан совпасть).
+- Issuer: `https://auth.socrat.alchemmist.xyz/application/o/lms/` (the trailing slash must match).
 - Client id: `socrat-lms`. Redirect: `https://lms.alchemmist.xyz/auth/callback`.
-- Scope: `openid profile email groups`. Groups в ID token — список имён. Выражение маппинга должно возвращать `{"groups": [group.name ...]}`, не голый список.
-- Неавторизованный заход сразу уходит на Authentik (`/login` → `/auth/login`), без кнопки на промежуточной странице. Так только когда issuer и секрет заданы.
-- Допуск: пересечение групп токена с `LMS_OIDC_ALLOWED_GROUP` (по умолчанию `lms-students`, список через запятую) или с `LMS_OIDC_TEACHER_GROUP` (по умолчанию `lms-teachers`). Роль пишется в сессию. Если человек в обеих группах, он учитель.
-- `alchemmist` добавлен в `lms-teachers` и остаётся учителем. Тестовый ученик Authentik: логин `lms-student`, только группа `lms-students`. Пароль в git не хранить.
-- После смены групп нужен новый вход: старая сессия помнит старую роль. Роль пользователя в таблице `users` обновляется при логине.
+- Scope: `openid profile email groups`. Groups in the ID token are a list of names. The mapping expression must return `{"groups": [group.name ...]}`, not a bare list.
+- An unauthorized entry immediately goes to Authentik (`/login` → `/auth/login`), without a button on an intermediate page. Only so when the issuer and secret are set.
+- Admission: an intersection of the token's groups with `LMS_OIDC_ALLOWED_GROUP` (`lms-students` by default, a comma-separated list) or with `LMS_OIDC_TEACHER_GROUP` (`lms-teachers` by default). The role is written into the session. If a person is in both groups, they are a teacher.
+- `alchemmist` is added to `lms-teachers` and stays a teacher. The Authentik test student: login `lms-student`, only the `lms-students` group. Do not store the password in git.
+- After changing groups, a new login is needed: the old session remembers the old role. The user's role in the `users` table is updated on login.
 
-Секрет клиента: `socrat-authentik-lms` в namespace `lms`. Политика приложения Authentik пускает `homelab-owner` и `lms-students`. Группа `lms-teachers` заведена живьём и записана в `deploy/identity/services.json`; ansible сам по git push не бежит.
+The client secret: `socrat-authentik-lms` in the namespace `lms`. The Authentik application policy admits `homelab-owner` and `lms-students`. The `lms-teachers` group was created live and recorded in `deploy/identity/services.json`; ansible does not run by itself on a git push.
 
-## Что видит человек
+## What a person sees
 
-Интерфейс английский: Sign in, Sign out, Submit solution, View solution, View tests, поиск, ошибки API. Названия курса, блоков, уроков и сам текст остаются русскими.
+The interface is English: Sign in, Sign out, Submit solution, View solution, View tests, search, API errors. The course, block, lesson names and the text itself remain Russian.
 
-Роль и Sign out стоят одной строкой в правом нижнем углу. Они берутся из `data-role` на `<html>`, который бэкенд вписывает при отдаче страницы, и не ждут отдельный круг до `/api/session`.
+The role and Sign out stand on one line in the bottom-right corner. They are taken from `data-role` on `<html>`, which the backend writes in when serving the page, and do not wait for a separate round to `/api/session`.
 
-Учитель на странице задачи видит те же Submit solution плюс View solution и View tests. Панель выезжает справа поверх страницы. Повтор той же кнопки или клик мимо панели её закрывает. Решение — блок кода Python в классах chroma темы, без заголовка и кнопки Close. Тесты — таблица Input / Expected на всю ширину панели, без колонки Origin.
+On the task page, a teacher sees the same Submit solution plus View solution and View tests. The panel slides in from the right over the page. Repeating the same button or a click outside the panel closes it. The solution is a Python code block in the theme's chroma classes, without a heading and a Close button. The tests are a full-panel-width Input / Expected table, without an Origin column.
 
-Справочник решений не читает базу генератора. Он запечён в образ: `backend/app/data/reference.json`. На момент сборки там было около 22 задач с сохранённым текстом решения, из них 4 сертифицированы. Остальные в панели пустые. Ученик этот API получает 403.
+The solution reference does not read the generator's database. It is baked into the image: `backend/app/data/reference.json`. At build time there were about 22 tasks with a saved solution text, of them 4 are certified. The rest are empty in the panel. A student gets 403 for this API.
 
-## Открытие уроков
+## Opening lessons
 
-Таблица `lesson_access` (`lesson_path`, `user_id`). Ученик видит в меню только открытые ему уроки; прямой URL закрытого урока — 404. Пока ни одного гранта нет, меню ученика пустое. Учитель видит всё. Local mode (`LMS_AUTH_MODE=local` на loopback) фильтр не включает, иначе локальный кабинет был бы пустым.
+The `lesson_access` table (`lesson_path`, `user_id`). A student sees in the menu only the lessons opened to them; a direct URL of a closed lesson — 404. While there are no grants, the student's menu is empty. A teacher sees everything. Local mode (`LMS_AUTH_MODE=local` on loopback) does not enable the filter, otherwise the local workspace would be empty.
 
-Управление на странице Textbook, перед текстом урока: теги имён, **+** открывает список ещё не добавленных учеников, **Add** пишет грант, крестик по наведению снимает. В списке только пользователи, которые уже входили как student. Учитель после нового входа в этот список не попадает.
+Management on the Textbook page, before the lesson text: name tags, **+** opens a list of not-yet-added students, **Add** writes a grant, a cross on hover removes it. The list has only users who already logged in as student. A teacher does not enter this list after a new login.
 
-## Чего не коммитить вместе с LMS
+## What not to commit together with LMS
 
-В рабочем дереве `lms` лежат сотни правок `statement.md`, незакоммиченный `migration/pipeline.py` и отдельный прототип `teacher/`. Это не сайт ученика и не образ, пока специально не закоммичено. Генератор описан в [lms-generation.md](lms-generation.md).
+In the `lms` working tree there lie hundreds of `statement.md` edits, an uncommitted `migration/pipeline.py` and a separate `teacher/` prototype. This is not the student's site and not the image, unless specifically committed. The generator is described in [lms-generation.md](lms-generation.md).
 
-## Копия базы в HA-кластер
+## A copy of the database into the HA cluster
 
-Продакшен-веб по-прежнему ходит в `lms-postgres`. Чарт умеет выключить этот Deployment через `database.legacyReplicas` и, когда `database.ha.enabled: true`, примонтировать CA `lms-ha-ca` в `/etc/postgres-ca`. По умолчанию HA выключена. Веб-Deployment катится стратегией Recreate: очередь сдачи работ живёт в процессе, два веб-пода одновременно нельзя.
+The production web still goes to `lms-postgres`. The chart can disable this Deployment via `database.legacyReplicas` and, when `database.ha.enabled: true`, mount the CA `lms-ha-ca` into `/etc/postgres-ca`. By default HA is disabled. The web Deployment rolls with a Recreate strategy: the solution-submission queue lives in the process, you cannot have two web pods at once.
 
-`scripts/lms-ha-copy.py` создаёт разовый Job `postgres:17`. Он читает пароли из Secret `lms-db` и `lms-ha-app`, снимает custom dump с `lms-postgres`, шифрует его на PVC `lms-database-backups` и восстанавливает в `lms-ha-rw` с `verify-full`. Репетиция (`--rehearsal`) не требует остановки веба и не сверяет отпечаток таблиц. Финальная копия требует `--confirm-web-stopped` и нулевые реплики Deployment `lms`. В лог Job попадают только SHA-256 и факт совпадения отпечатка, не строки таблиц.
+`scripts/lms-ha-copy.py` creates a one-time Job `postgres:17`. It reads the passwords from the Secrets `lms-db` and `lms-ha-app`, takes a custom dump from `lms-postgres`, encrypts it on the PVC `lms-database-backups` and restores it into `lms-ha-rw` with `verify-full`. A rehearsal (`--rehearsal`) does not require stopping the web and does not reconcile the table fingerprint. A final copy requires `--confirm-web-stopped` and zero replicas of the `lms` Deployment. Only SHA-256 and the fact of a fingerprint match end up in the Job log, not the table rows.
