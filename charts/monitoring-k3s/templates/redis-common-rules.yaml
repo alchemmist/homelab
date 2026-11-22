@@ -12,10 +12,16 @@ spec:
           for: 2m
           labels: {severity: critical}
           annotations:
+            {{- with index (.Values.alertGraphAnnotations | default dict) "SocratRedisCommonWriterUnavailable" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: 'Redis TLS write/read probe unavailable. LiteLLM may fall back to worker-local enforcement.'
         - alert: SocratRedisCommonRedundancyReduced
           expr: (max(kube_statefulset_status_replicas_ready{namespace="redis",statefulset="redis-common-server"}) or vector(0)) < 3
           for: 3m
           labels: {severity: warning}
           annotations:
+            {{- with index (.Values.alertGraphAnnotations | default dict) "SocratRedisCommonRedundancyReduced" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: 'Fewer than three ready Redis/Sentinel pairs, or no observations.'
