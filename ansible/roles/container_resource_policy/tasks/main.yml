@@ -127,7 +127,6 @@
                "{{ container_resource_policy_directory }}/check_policy.py",
                --namespace,
                default]
-      register: container_resource_policy_check
       changed_when: false
 
     - name: Verify each profile through admission without creating workload pods
@@ -136,7 +135,6 @@
                "{{ container_resource_policy_directory }}/check_profiles.py",
                --profiles,
                "{{ container_resource_policy_directory }}/profiles.json"]
-      register: container_resource_profile_check
       changed_when: false
   rescue:
     - name: Restore previous admission configuration after validation failure

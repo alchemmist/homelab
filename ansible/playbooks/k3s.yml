@@ -346,7 +346,6 @@
         docker build -t localhost/socrat-home:latest "$workdir"
         docker save localhost/socrat-home:latest -o /tmp/socrat-home-image.tar
         k3s ctr -n k8s.io images import /tmp/socrat-home-image.tar
-      register: home_image_build
       changed_when: true
 
     - name: Fetch homepage image archive locally

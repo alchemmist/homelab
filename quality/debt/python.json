@@ -949,16 +949,6 @@
       "rule": "S108"
     },
     {
-      "id": "d1446793502ccaadcfaaed2d71552235d3dfa5802123459add89e8a3a803ba93.1",
-      "path": "ansible/roles/monitoring_stack/files/ensure_admin_secret.py",
-      "rule": "S603"
-    },
-    {
-      "id": "45c94fb95dd5945743a9cdd1b8cb6745b006ffe553e1232d5e30f65d1f4b08bf.1",
-      "path": "ansible/roles/monitoring_stack/files/ensure_admin_secret.py",
-      "rule": "S603"
-    },
-    {
       "id": "80e8da4d2138370d3a169f77c827be928497a40df61c42173d5854adee8ca692.1",
       "path": "ansible/roles/monitoring_thanos/files/ensure_objstore_secrets.py",
       "rule": "S603"

@@ -8,7 +8,6 @@
       --user {{ homelab_user | quote }}
       --check
     executable: python3
-  register: homelab_config_isolation_plan
   check_mode: false
   changed_when: false
 

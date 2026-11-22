@@ -19,8 +19,6 @@ NODE_ADDRESSES = {
     "socrat-2": "10.250.0.2/32",
     "socrat-3": "10.250.0.5/32",
 }
-DESTINATION_GROUP = "netbird-node-agents"
-ADMIN_SOURCE = "netbird-internal-admins"
 
 
 def peer(host):

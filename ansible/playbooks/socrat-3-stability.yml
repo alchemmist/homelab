@@ -50,7 +50,6 @@
             exit 1
           fi
           echo "changed=$changed found=$found"
-      register: host_c2_script
 
     - name: Install the boot unit for the C2 idle guard
       ansible.builtin.copy:
@@ -72,7 +71,6 @@
 
           [Install]
           WantedBy=sysinit.target
-      register: host_c2_unit
 
     - name: Enable the C2 idle guard
       ansible.builtin.systemd_service:
