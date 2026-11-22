@@ -226,8 +226,8 @@
     {
       "path": "deploy/wiki-runtime/chart",
       "basis": "reviewed-git-baseline",
-      "reviewedCommit": "3b2412a0d309febc9fdd2ecab48123b33f7fbb17",
-      "provenanceNote": "Existing local chart/identity guards retained. See deploy/wiki-runtime/oidc/README.md and docs/wiki-upgrade-20261107.md; no claim that all local files equal a tagged upstream release.",
+      "reviewedCommit": "729cc6c67b05d1fb28e0fe0067d1ec570dfe80c2",
+      "provenanceNote": "Existing local chart/identity guards retained. See deploy/wiki-runtime/oidc/README.md and docs/wiki-upgrade-20261107.md; no claim that all local files equal a tagged upstream release. Reviewed local PostgreSQL cutover guard, credential reference and CA mounts from 729cc6c6.",
       "files": {
         "Chart.yaml": "3da852d1b8b108c6d95b5485ceaa5fe2dfdfcb7ce83e075f5bfbd2f3b32a6f1b",
         "README.md": "2ac117441cdb7d59241dcdd462f447bb1b7eac3183430952c65713eb91f2b810",
@@ -235,7 +235,7 @@
         "files/observer_oidc.py": "cc716e7a60c68010610a07092678d7da1652af3c49f6184613f2cf819b912b01",
         "templates/_helpers.tpl": "156c1eb1f18643779370c8bb893f13ce779da5b64fe241040b5294b38d371134",
         "templates/configmap.yaml": "b679f734fffc06ce22b1c0fd3ea19f9f4c52c8f508ac7695c813b2ec8393ff6c",
-        "templates/deployment.yaml": "8b9359884c7bdeabfdb0ea9d61e3e68c7579976c0156128799d73ccf165bec83",
+        "templates/deployment.yaml": "9d705b8a3409a3ba75687473538f2399ccd68e3cadabe12c236034dce3c27083",
         "templates/ingress.yaml": "48ecd6b3a5fa59fa070b572667ea95b92092b2f8129984d4134f8ed893fa9bc2",
         "templates/observer-membership.yaml": "d04644adb33a1f61b8f629f0956320f90b75cb5d766aeb941cbd8b5a5e98c35f",
         "templates/pvc.yaml": "bdb4db3c583a66a4470e33c6429695f2c8fffb6712be0c6146d5071eaff74283",
