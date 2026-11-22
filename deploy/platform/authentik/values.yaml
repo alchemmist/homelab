@@ -67,7 +67,7 @@ server:
       ephemeral-storage: 1Gi
       memory: 1536Mi
     requests:
-      cpu: 100m
+      cpu: 500m
       ephemeral-storage: 256Mi
       memory: 768Mi
   serviceAccountName: identity-runtime
