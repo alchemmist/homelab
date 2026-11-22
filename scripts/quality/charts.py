@@ -265,8 +265,15 @@ def policies(resource):
     return errors
 
 
-def kube_lint(target, resources):
+def kube_lint(target, resources, peers=()):
     """Execute kube_lint."""
+    def key(doc):
+        meta = doc["metadata"]
+        return doc["kind"], meta.get("namespace", ""), meta["name"]
+
+    peer_keys = {key(doc) for doc in peers}
+    if peer_keys.intersection(map(key, resources)):
+        raise ValueError("Ambiguous cross-release lint resource")
     data = command(
         [
             "kube-linter",
@@ -277,7 +284,7 @@ def kube_lint(target, resources):
             "--config",
             "quality/kube-linter.yaml",
         ],
-        stdin=yaml.safe_dump_all(resources),
+        stdin=yaml.safe_dump_all([*resources, *peers]),
         allowed=(0, 1),
     )
     value = json.loads(data.stdout)
@@ -290,6 +297,9 @@ def kube_lint(target, resources):
     result = []
     for item in value["Reports"]:
         obj = item["Object"]["K8sObject"]
+        # Peers are checked and attributed in full by their own release.
+        if (obj["GroupVersionKind"]["Kind"], obj.get("Namespace", ""), obj["Name"]) in peer_keys:
+            continue
         identity = json.dumps(obj, sort_keys=True)
         rule = "kube-linter-" + item["Check"]
         # Hash diagnostics for semantic identity, but never echo possible env/Secret values.
@@ -446,7 +456,14 @@ def check(*, validate=True):
             # Each real parent's complete cached render goes through the normal
             # schema, identity, policy and kube-linter checks under its own ID.
             continue
-        findings.extend(kube_lint(target, resources))
+        peers = []
+        if target["id"] == "monitoring-k3s-0":
+            # The health Service selects the separately managed Grafana MCP Deployment.
+            peer = next(t for t in selected if t["id"] == "grafana-mcp-0")
+            if peer["id"] not in renders:
+                renders[peer["id"]] = render(peer)
+            peers = [doc for doc in renders[peer["id"]] or [] if doc["kind"] == "Deployment"]
+        findings.extend(kube_lint(target, resources, peers))
         seen = set()
         for resource in resources:
             if (
