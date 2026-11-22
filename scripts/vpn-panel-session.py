@@ -54,8 +54,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         raise ValueError("API redirect refused")
 
 
-def command(args: Sequence[str], **kwargs: object) -> str:
-    result = subprocess.run(args, capture_output=True, text=True, timeout=25, **kwargs)
+def command(args: Sequence[str], *, check: bool = False, **kwargs: object) -> str:
+    result = subprocess.run(args, check=check, capture_output=True, text=True, timeout=25, **kwargs)
     if result.returncode:
         raise RuntimeError("Native read failed")
     output: str = result.stdout
@@ -290,7 +290,12 @@ class NativeSession:
         try:
             with os.fdopen(fd, "w") as output:
                 result = subprocess.run(
-                    args, stdout=output, stderr=subprocess.DEVNULL, text=True, timeout=30
+                    args,
+                    check=False,
+                    stdout=output,
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                    timeout=30,
                 )
             text = (self.state / "bootstrap.stdout").read_text()
             found = re.findall(r"^apiToken:\s*([A-Za-z0-9]{48})\s*$", text, re.MULTILINE)

@@ -13,8 +13,8 @@ k = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml", "-n", "llm"]
 remote = "/tmp/identity-before-oidc.sqlite"
 try:
     subprocess.run(
-        k
-        + [
+        [
+            *k,
             "exec",
             "deployment/open-webui",
             "-c",
@@ -22,7 +22,8 @@ try:
             "--",
             "python",
             "-c",
-            'import sqlite3,os; s=sqlite3.connect("/app/backend/data/webui.db"); d=sqlite3.connect("'
+            'import sqlite3,os; s=sqlite3.connect("/app/backend/data/webui.db"); '
+            'd=sqlite3.connect("'
             + remote
             + '"); s.backup(d); d.close(); os.chmod("'
             + remote
@@ -35,12 +36,12 @@ try:
         p = Path(work)
         with (p / "webui.db").open("wb") as f:
             subprocess.run(
-                k + ["exec", "deployment/open-webui", "-c", "open-webui", "--", "cat", remote],
+                [*k, "exec", "deployment/open-webui", "-c", "open-webui", "--", "cat", remote],
                 stdout=f,
                 check=True,
             )
         secrets = subprocess.check_output(
-            k + ["get", "secret", "open-webui-auth", "open-webui-litellm", "-o", "json"]
+            [*k, "get", "secret", "open-webui-auth", "open-webui-litellm", "-o", "json"]
         )
         (p / "secrets.json").write_bytes(secrets)
         with tarfile.open(fileobj=sys.stdout.buffer, mode="w|") as tar:
@@ -48,7 +49,7 @@ try:
                 tar.add(p / name, arcname=name)
 finally:
     subprocess.run(
-        k + ["exec", "deployment/open-webui", "-c", "open-webui", "--", "rm", "-f", remote],
+        [*k, "exec", "deployment/open-webui", "-c", "open-webui", "--", "rm", "-f", remote],
         stdout=subprocess.DEVNULL,
         check=False,
     )

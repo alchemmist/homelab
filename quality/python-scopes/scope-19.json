@@ -1,0 +1,4 @@
+{
+  "include": ["ansible/roles/container_resource_policy/files/*.py"],
+  "rules": ["ANN001", "ANN201"]
+}

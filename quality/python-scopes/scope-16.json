@@ -1,0 +1,4 @@
+{
+  "include": ["scripts/openhands/*.py"],
+  "rules": ["E501", "E701", "E702", "E703"]
+}
