@@ -186,15 +186,6 @@ class Store:
         self.owners = WaitOwners(self)
 
     @contextmanager
-    def read_db(self):
-        # A WAL snapshot can read alongside an enqueue; never reserve the writer for telemetry.
-        with closing(sqlite3.connect(self.path, timeout=15)) as c:
-            c.row_factory = sqlite3.Row
-            c.execute('PRAGMA query_only=ON')
-            c.execute('BEGIN')
-            yield c
-
-    @contextmanager
     def db(self):
         c = sqlite3.connect(self.path, timeout=15)
         c.row_factory = sqlite3.Row
@@ -435,7 +426,7 @@ class Store:
         with self.db() as c: row=c.execute("SELECT issue FROM jobs WHERE episode=? AND issue>0 ORDER BY created LIMIT 1",(episode,)).fetchone()
         return row['issue'] if row else 0
     def health(self):
-        with self.read_db() as c:
+        with self.db() as c:
             counts={r['state']:r['n'] for r in c.execute('SELECT state,count(*) n FROM jobs GROUP BY state')}
             oldest=c.execute("SELECT min(created) FROM jobs WHERE state IN ('queued','retry','processing')").fetchone()[0]
         return {'counts':counts,'oldest_pending_seconds':max(0,int(time.time()-oldest)) if oldest else 0}
@@ -461,6 +452,6 @@ class Store:
             return token,deadline
 
     def dispatch_status(self):
-        with self.read_db() as c:
+        with self.db() as c:
             row=c.execute('SELECT deadline,attempts FROM dispatch WHERE singleton=1').fetchone()
             return dict(row) if row else {'deadline':0,'attempts':0}
