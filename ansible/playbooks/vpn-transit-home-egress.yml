@@ -8,7 +8,7 @@
   tasks:
     - name: Install the scoped fixed-service egress helper
       ansible.builtin.copy:
-        src: ../../scripts/vpn-home-transit-egress.py
+        src: ../scripts/vpn-home-transit-egress.py
         dest: /usr/local/libexec/vpn-home-transit-egress.py
         mode: "0700"
     - name: Check for prior accepted or uncertain state before applying

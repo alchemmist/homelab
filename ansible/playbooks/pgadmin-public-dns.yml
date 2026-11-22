@@ -12,12 +12,12 @@
         mode: "0700"
     - name: Install the pgAdmin public DNS plan and apply tool
       ansible.builtin.copy:
-        src: ../../scripts/pgadmin-public-dns.py
+        src: ../scripts/pgadmin-public-dns.py
         dest: /usr/local/sbin/homelab-pgadmin-public-dns
         mode: "0700"
     - name: Stage the proposed zone renderer for pgAdmin public DNS
       ansible.builtin.copy:
-        src: ../../scripts/public_dns_zone.py
+        src: ../scripts/public_dns_zone.py
         dest: /var/lib/homelab-pgadmin-public-dns/proposed.py
         mode: "0700"
     - name: Compute the pgAdmin public DNS plan

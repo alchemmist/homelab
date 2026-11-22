@@ -18,7 +18,7 @@
         that: public_web_maintenance_task | default('') in maintenance_helpers
     - name: Install the selected maintenance helper
       ansible.builtin.copy:
-        src: ../../scripts/{{ maintenance_helpers[public_web_maintenance_task] }}.py
+        src: ../scripts/{{ maintenance_helpers[public_web_maintenance_task] }}.py
         dest: /usr/local/sbin/homelab-{{ maintenance_helpers[public_web_maintenance_task] }}
         mode: "0700"
     - name: Run the maintenance plan or approved apply

@@ -47,7 +47,7 @@
       changed_when: false
     - name: Install independent node-local tools
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../scripts/{{ item }}.py"
+        src: "{{ playbook_dir }}/../scripts/{{ item }}.py"
         dest: /usr/local/libexec/{{ item }}.py
         mode: "0700"
       loop: [vpn-transit-image, vpn-transit-failover]

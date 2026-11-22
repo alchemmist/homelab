@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "public_dns_zone.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "ansible/scripts" / "public_dns_zone.py"
 spec = importlib.util.spec_from_file_location("public_dns_zone", SCRIPT)
 zone = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(zone)

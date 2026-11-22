@@ -13,7 +13,7 @@
 - name: Verify current owned Ready Rancher revision on the intended node
   ansible.builtin.script:
     cmd: >-
-      {{ (role_path ~ '/../../../scripts/check_target_placement.py') | quote }}
+      {{ (role_path ~ '/../../scripts/check_target_placement.py') | quote }}
       --local --kubeconfig {{ rancher_kubeconfig | quote }}
       --namespace cattle-system --deployment rancher
       --node {{ rancher_placement_nodes[0] | quote }} --timeout 60

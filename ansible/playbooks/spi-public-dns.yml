@@ -12,12 +12,12 @@
         mode: "0700"
     - name: Install the SPI public DNS plan and apply tool
       ansible.builtin.copy:
-        src: ../../scripts/spi-public-dns.py
+        src: ../scripts/spi-public-dns.py
         dest: /usr/local/sbin/homelab-spi-public-dns
         mode: "0700"
     - name: Stage the proposed zone renderer for SPI public DNS
       ansible.builtin.copy:
-        src: ../../scripts/public_dns_zone.py
+        src: ../scripts/public_dns_zone.py
         dest: /var/lib/homelab-spi-public-dns/proposed.py
         mode: "0700"
     - name: Compute the SPI public DNS plan

@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def module() -> ModuleType:
     """Test behavior for module."""
     spec = importlib.util.spec_from_file_location(
-        "vllm_rollout", ROOT / "scripts/otel-vllm-sdk-rollout.py"
+        "vllm_rollout", ROOT / "ansible/scripts/otel-vllm-sdk-rollout.py"
     )
     result = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(result)

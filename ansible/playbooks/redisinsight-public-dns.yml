@@ -12,12 +12,12 @@
         mode: "0700"
     - name: Install the Redis Insight public DNS plan and apply tool
       ansible.builtin.copy:
-        src: ../../scripts/pgadmin-public-dns.py
+        src: ../scripts/pgadmin-public-dns.py
         dest: /usr/local/sbin/homelab-redisinsight-public-dns
         mode: "0700"
     - name: Stage the proposed zone renderer for Redis Insight public DNS
       ansible.builtin.copy:
-        src: ../../scripts/public_dns_zone.py
+        src: ../scripts/public_dns_zone.py
         dest: /var/lib/homelab-redisinsight-public-dns/proposed.py
         mode: "0700"
     - name: Compute the Redis Insight public DNS plan

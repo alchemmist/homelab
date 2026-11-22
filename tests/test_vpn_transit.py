@@ -77,7 +77,7 @@ def test_home_egress_has_only_known_exact_destination_and_no_default_route() -> 
     """Test behavior for test_home_egress_has_only_known_exact_destination_and_no_default_route."""
     import importlib.util
 
-    path = ROOT / "scripts/vpn-home-transit-egress.py"
+    path = ROOT / "ansible/scripts/vpn-home-transit-egress.py"
     spec = importlib.util.spec_from_file_location("home_egress", path)
     assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
@@ -102,7 +102,7 @@ def test_exit_fence_never_blocks_shared_https_or_dns() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
-        "exit_fence", ROOT / "scripts/vpn-exit-transit-fence.py"
+        "exit_fence", ROOT / "ansible/scripts/vpn-exit-transit-fence.py"
     )
     assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)

@@ -11,7 +11,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "gitops_nodes", ROOT / "scripts/netbird-gitops-nodes.py"
+    "gitops_nodes", ROOT / "ansible/scripts/netbird-gitops-nodes.py"
 )
 gitops = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gitops)
@@ -222,7 +222,7 @@ class GitOpsTests(unittest.TestCase):
     def test_old_control_plane_cli_cannot_apply(self) -> None:
         """The old control-plane CLI cannot apply."""
         p = subprocess.run(
-            ["python3", str(ROOT / "scripts/netbird-deploy.py"), "apply"],
+            ["python3", str(ROOT / "ansible/scripts/netbird-deploy.py"), "apply"],
             capture_output=True,
             text=True,
         )

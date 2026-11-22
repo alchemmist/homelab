@@ -16,7 +16,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 def module(name: str) -> ModuleType:
     """Test behavior for module."""
-    s = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
+    s = importlib.util.spec_from_file_location(name, ROOT / "ansible/scripts" / f"{name}.py")
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
     return m
@@ -163,7 +163,7 @@ def test_deployment_single_host_no_api_token_and_native_boot_fence() -> None:
     play = (ROOT / "ansible/playbooks/vpn-transit-mesh-runtime.yml").read_text()
     assert "ExecCondition=/usr/bin/test ! -e" in play and "ExecCondition=+/usr/bin/test -e" in play
     assert "state: started" not in play  # prepare never steals live ports
-    controller = (ROOT / "scripts/vpn-transit-failover.py").read_text()
+    controller = (ROOT / "ansible/scripts/vpn-transit-failover.py").read_text()
     assert "AGENT='k3s-agent.service'" in controller and "'k3s.service'" not in controller
     assert "flock" in controller and "fsync" in controller and "free_ports()" in controller
 
@@ -183,7 +183,7 @@ def test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse() -> None:
             with pytest.raises(OSError):
                 challenger.bind(("0.0.0.0", port))
                 challenger.listen(1)
-    source = (ROOT / "scripts/vpn-transit-failover.py").read_text()
+    source = (ROOT / "ansible/scripts/vpn-transit-failover.py").read_text()
     assert "if typ==socket.SOCK_STREAM:s.setsockopt" in source
 
 

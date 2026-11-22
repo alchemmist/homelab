@@ -38,7 +38,7 @@
       no_log: true
     - name: Install the reviewed runtime retirement tool
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../scripts/moscow-retire-worker-runtime.py"
+        src: "{{ playbook_dir }}/../scripts/moscow-retire-worker-runtime.py"
         dest: /usr/local/libexec/moscow-retire-worker-runtime.py
         owner: root
         group: root

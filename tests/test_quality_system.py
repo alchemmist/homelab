@@ -466,9 +466,9 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     assert recipe("python-scopes") == "uv run --locked python -m ci.quality.python_scopes"
     for target, roots, codes in (
         ("graph", "ci/quality/", "SIM300"),
-        ("scripts-q000", "ci/ scripts/ tests/", "Q000,D300"),
+        ("scripts-q000", "ansible/scripts/ ci/ scripts/ tests/", "Q000,D300"),
         ("deploy-i001", "ansible/ deploy/ ci/ scripts/ tests/", "I001"),
-        ("deploy-i001", "ci/ scripts/ tests/", "F401"),
+        ("deploy-i001", "ansible/scripts/ ci/ scripts/ tests/", "F401"),
         ("rustfs-return-types", "services/rustfs_gateway/", "ANN201"),
     ):
         name = "check_" + codes.lower().replace(",", "_")

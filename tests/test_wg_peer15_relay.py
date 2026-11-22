@@ -80,7 +80,7 @@ class EndpointTests(unittest.TestCase):
         ]:
             assert required in service
         assert "PrivateKey" not in service
-        relay = (ROOT / "scripts/wg-peer15-relay.py").read_text()
+        relay = (ROOT / "ansible/scripts/wg-peer15-relay.py").read_text()
         tree = ast.parse(relay)
         expected = {
             "FRONT": ("10.250.0.1", 51835),

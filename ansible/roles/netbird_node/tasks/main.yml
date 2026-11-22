@@ -17,7 +17,7 @@
             netbird_gitops_values.nodes[inventory_hostname] ==
             wg_socrat_nodes[inventory_hostname].address
         fail_msg: >-
-          Run scripts/netbird-gitops-nodes.py, commit inventory and values,
+          Run ansible/scripts/netbird-gitops-nodes.py, commit inventory and values,
           and let root/Argo CD deploy the agent first.
 
     - name: Validate explicit inventory admission and WG address
@@ -38,7 +38,7 @@
 
     - name: Install secret-free controller programs
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../scripts/{{ item }}"
+        src: "{{ playbook_dir }}/../scripts/{{ item }}"
         dest: "{{ netbird_node_state_dir }}/{{ item }}"
         owner: root
         group: root

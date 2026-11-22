@@ -14,7 +14,7 @@ from pathlib import Path
 
 import yaml
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location("netbird_pilot", ROOT / "scripts/netbird-pilot.py")
 if SPEC is None or SPEC.loader is None:
     raise RuntimeError("netbird-pilot module missing or unloadable")

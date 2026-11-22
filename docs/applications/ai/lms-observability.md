@@ -68,7 +68,7 @@ configuration expansion preserves the literal `${__value.raw}` link.
 The host credential refresher **reconstructs** the datasource provisioning
 Secret every minute. Updating the Secret once is not durable. The field is
 therefore maintained in **both** `scripts/otel-production-grafana.py` and
-`scripts/otel-host-credentials.py`, and the latter was deployed to socrat-0.
+`ansible/scripts/otel-host-credentials.py`, and the latter was deployed to socrat-0.
 The live link was rechecked after subsequent timer runs.
 
 To reapply just the maintained refresher, without touching bootstrap material:

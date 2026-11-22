@@ -7,7 +7,7 @@
   tasks:
     - name: Install owned raw-ingress fence helper
       ansible.builtin.copy:
-        src: ../../scripts/vpn-exit-transit-fence.py
+        src: ../scripts/vpn-exit-transit-fence.py
         dest: /usr/local/libexec/vpn-exit-transit-fence.py
         mode: "0700"
     - name: Inspect prior owned state before applying

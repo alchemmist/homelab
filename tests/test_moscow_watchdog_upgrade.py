@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def env(tmp_path, monkeypatch) -> tuple[ModuleType, Path, Path]:
     """Load the upgrade runtime against a temporary watchdog state fixture."""
     spec = importlib.util.spec_from_file_location(
-        "upgrade", ROOT / "scripts/moscow-watchdog-upgrade.py"
+        "upgrade", ROOT / "ansible/scripts/moscow-watchdog-upgrade.py"
     )
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)

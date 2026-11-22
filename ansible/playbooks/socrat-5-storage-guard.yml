@@ -12,7 +12,7 @@
   tasks:
     - name: Install secret-free guard reconciler
       ansible.builtin.copy:
-        src: ../../scripts/socrat5-storage-guard.py
+        src: ../scripts/socrat5-storage-guard.py
         dest: /usr/local/libexec/socrat5-storage-guard.py
         mode: "0700"
     - name: Render the public desired admission objects

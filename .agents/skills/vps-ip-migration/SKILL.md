@@ -9,7 +9,7 @@ description: "Migrate the public IPv4 address of socrat-2 after provider reassig
 
 Use **`ansible/playbooks/vps-ip-migration.yml`**, not a sequence of unrecorded `sed`, SQL or SSH commands. The playbook is the reproducible host phase; **its success does not certify the migration**. Use this skill before and after running it.
 
-Automation: [`scripts/vps-ip-migration.py`](../../../scripts/vps-ip-migration.py). Unless noted otherwise, paths are relative to the repository root. For the previous migration's inventory, owners and observed failures, see `docs/records/handoffs/vps-ip-migration-20261105.md`.
+Automation: [`ansible/scripts/vps-ip-migration.py`](../../../ansible/scripts/vps-ip-migration.py). Unless noted otherwise, paths are relative to the repository root. For the previous migration's inventory, owners and observed failures, see `docs/records/handoffs/vps-ip-migration-20261105.md`.
 
 - **Playbook:** requires explicit OLD and NEW IPv4 addresses and preflight on all four nodes. It manages allowlisted source files, private preimages, targeted host files, WireGuard endpoints without an interface restart, and native Knot, TCP transport and guard configuration. SQLite operations are limited to read-only audit and online backup. Updating `hosts.address` is a separate native API phase.
 - **Operator:** choose the access path, investigate failures and ownership changes, agree downtime, handle the registrar, GitOps, Kubernetes, Secrets and Collector, and verify external VPN delivery, subscriptions and client profiles.

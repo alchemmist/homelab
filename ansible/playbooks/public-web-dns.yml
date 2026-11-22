@@ -12,12 +12,12 @@
         mode: "0700"
     - name: Install the public web DNS plan and apply tool
       ansible.builtin.copy:
-        src: ../../scripts/public-web-dns.py
+        src: ../scripts/public-web-dns.py
         dest: /usr/local/sbin/homelab-public-web-dns
         mode: "0700"
     - name: Stage the proposed zone renderer for public web DNS
       ansible.builtin.copy:
-        src: ../../scripts/public_dns_zone.py
+        src: ../scripts/public_dns_zone.py
         dest: /var/lib/homelab-public-web-dns/proposed.py
         mode: "0700"
     - name: Compute the public web DNS plan

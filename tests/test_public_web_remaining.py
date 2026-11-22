@@ -16,8 +16,8 @@ from tests.public_entry_contract import assert_read_only_status_policy
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module(name: str) -> ModuleType:
-    s = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
+def module(name: str, directory: str = "ansible/scripts") -> ModuleType:
+    s = importlib.util.spec_from_file_location(name, ROOT / directory / f"{name}.py")
     assert s is not None
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
@@ -215,7 +215,7 @@ def test_kuma_no_gitops_random_secret_by_default() -> None:
 
 
 def test_schema_recovery_never_resets_existing_passwords_or_restarts_database() -> None:
-    text = ast.unparse(ast.parse((ROOT / "scripts/kuma-db-account-recovery.py").read_text()))
+    text = ast.unparse(ast.parse((ROOT / "ansible/scripts/kuma-db-account-recovery.py").read_text()))
     assert "CREATE USER" in text and "ALTER USER" not in text and "DROP USER" not in text
     assert "rollout restart" not in text and "secret['metadata']['resourceVersion']" in text
     assert "schema_grant.replace" in text and "--patch-file=/dev/stdin" in text
@@ -236,7 +236,7 @@ def test_retired_bootstrap_cannot_provision_a_database_or_account() -> None:
 
 def test_dns_cleanup_only_owned_files_and_no_global_flush_or_vpn_commands() -> None:
     text = (ROOT / "scripts/macos-public-dns-cleanup.py").read_text()
-    m = module("macos-public-dns-cleanup")
+    m = module("macos-public-dns-cleanup", "scripts")
     assert len(m.DOMAINS) == 12 and all(x.endswith(".alchemmist.xyz") for x in m.DOMAINS)
     for forbidden in [
         "dscacheutil",

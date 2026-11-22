@@ -52,7 +52,7 @@ network policies, operational scripts. `10.250.0.3` встречается в 56
 не количество независимых ошибок; среди них есть fixtures/исторические инструменты.
 Loopback, bind-address, CIDR и образцы нужно исключать из тревог отдельно.
 
-Особенно явный пример: `scripts/wg-peer15-relay.py:12–15` содержит FRONT/CLIENT/
+Особенно явный пример: `ansible/scripts/wg-peer15-relay.py:12–15` содержит FRONT/CLIENT/
 BACK/TARGET, `scripts/wg-peer15-endpoint.py:17` отдельно хранит endpoint; playbook
 повторяет prerequisite адреса. Связь рабочего relay с `socrat-0`, `socrat-1` и
 `socrat-5` должна быть проверяемой, не угадываемой из нескольких файлов.

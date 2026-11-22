@@ -41,7 +41,7 @@ proposal/gates below remain historical inputs, not a live-state assertion.
   for the edge forwarder. The forwarder digest was not re-verified at the registry.
 - `../../scripts/netbird-pilot.py` compiles manifests and runtime config. It does
   not apply them.
-- `../../scripts/netbird-deploy.py` retains historical check/plan rendering;
+- `../../ansible/scripts/netbird-deploy.py` retains historical check/plan rendering;
   imperative `apply` is disabled. Use the root-managed Argo CD Application.
 - `../../scripts/netbird-bootstrap.py` claims `/api/setup` only on loopback.
 - `../../scripts/netbird-backup.py` plans a quiesced SQLite copy. It is not HA.

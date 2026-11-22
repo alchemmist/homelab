@@ -23,16 +23,16 @@ def _text(value: str | None) -> str:
 
 def load(name, filename) -> types.ModuleType:
     """Load an offline netbird runtime module from the scripts directory."""
-    spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
+    spec = importlib.util.spec_from_file_location(name, ROOT / filename)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-nb = load("netbird_pilot", "netbird-pilot.py")
-deploy = load("netbird_deploy", "netbird-deploy.py")
-bootstrap = load("netbird_bootstrap", "netbird-bootstrap.py")
-backup = load("netbird_backup", "netbird-backup.py")
+nb = load("netbird_pilot", "scripts/netbird-pilot.py")
+deploy = load("netbird_deploy", "ansible/scripts/netbird-deploy.py")
+bootstrap = load("netbird_bootstrap", "scripts/netbird-bootstrap.py")
+backup = load("netbird_backup", "scripts/netbird-backup.py")
 
 
 def control_inputs() -> dict[str, object]:
@@ -72,7 +72,7 @@ class ControlPlaneTests(unittest.TestCase):
     def test_repo_check_reports_concrete_blockers_without_applying(self) -> None:
         """The repo check reports concrete blockers without applying."""
         result = subprocess.run(
-            [os.sys.executable, str(ROOT / "scripts/netbird-deploy.py"), "check"],
+            [os.sys.executable, str(ROOT / "ansible/scripts/netbird-deploy.py"), "check"],
             capture_output=True,
             text=True,
         )
@@ -155,7 +155,7 @@ class ControlPlaneTests(unittest.TestCase):
             result = subprocess.run(
                 [
                     os.sys.executable,
-                    str(ROOT / "scripts/netbird-deploy.py"),
+                    str(ROOT / "ansible/scripts/netbird-deploy.py"),
                     "plan",
                     "--inputs",
                     str(inputs),
