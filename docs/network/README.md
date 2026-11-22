@@ -247,7 +247,7 @@ URL Fully — canonical `grafana.socrat.alchemmist.xyz/public-dashboards/<access
 
 Проверены реальный TV screenshot с живыми данными, YouTube foreground с **одной настоящей VALIDATED VPN network** и последующий Fully без VPN. `NOT_VPN` в Wi-Fi capabilities не считать активным VPN. Физический пульт/холодное включение повторно не проверялись.
 
-Процедуры: [TV](../applications/android-tv/README.md), [операционный runbook](../applications/android-tv/README.md), `tv-public-dashboard.yml` (только URL), `retire-tv-internal-wireguard.yml`, maintenance `retire-tv-alias`, `grafana-tv-dns.yml` (теперь только retirement). Не удалять данные WireGuard app целиком: там сохранён YouTube-профиль. Private historical backups не уничтожать.
+Процедуры: [TV](../applications/android-tv/README.md), [операционный runbook](../applications/android-tv/README.md), `tv-public-dashboard.yml` (только URL), maintenance `retire-tv-alias`, `grafana-tv-dns.yml` (теперь только retirement). Не удалять данные WireGuard app целиком: там сохранён YouTube-профиль. Private historical backups не уничтожать.
 
 ## 9. Что доказано и что ещё отдельно
 
