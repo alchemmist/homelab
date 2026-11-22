@@ -1,12 +1,14 @@
 """Compare independent single-Store Queries: live raw Store vs read-only warm S3."""
 
-import json, sys
+import json
+import sys
 from pathlib import Path
-from start import BASE, create, kube
+
 from delta import source_pod
+from start import BASE, create, kube
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "thanos-warm-drill"))
-from job import container, THANOS, PYTHON
+from job import PYTHON, THANOS, container
 
 TIMES = """
 import json,time

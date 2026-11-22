@@ -1,6 +1,9 @@
 """Start an additive TLS seed; no production bucket settings or retention mutations."""
 
-import json, secrets, subprocess, sys
+import json
+import secrets
+import subprocess
+import sys
 from pathlib import Path
 
 D = Path(__file__).parent
@@ -112,6 +115,7 @@ def main():
             return
     if delta:
         import re
+
         from delta import remote_objects
 
         objects = remote_objects()

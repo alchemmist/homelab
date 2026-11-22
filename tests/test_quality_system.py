@@ -435,6 +435,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     first_layer = {
         "yaml",
         "scripts-q000",
+        "deploy-i001",
         "javascript",
         "secrets",
         "ownership",

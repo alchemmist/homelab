@@ -1,7 +1,11 @@
 """Finish the already approved one-shot cleanup after off-host archive readback."""
 
-import json, sys, time, subprocess
-from retire import D, K, SSH, SPOOL, output
+import json
+import subprocess
+import sys
+import time
+
+from retire import SPOOL, SSH, D, K, output
 
 NAME = "raw-packed-copy-20261121"
 original = "raw-cold-copy-20261121"

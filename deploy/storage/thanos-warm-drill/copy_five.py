@@ -1,6 +1,7 @@
 """Render an isolated seed-copy Job, NOT a writer switch or a cold backup."""
 
 import json
+
 from job import PYTHON, container
 
 COPY = """

@@ -1,8 +1,11 @@
 """One-shot check: an unforced new production shipper block is readable from warm S3."""
 
-import json, re, sys
+import json
+import re
+import sys
 from pathlib import Path
-from start import BASE, SEC, RES, P, create, kube
+
+from start import BASE, RES, SEC, P, create, kube
 
 VERIFY = """
 class Compare:
