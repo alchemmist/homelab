@@ -5,6 +5,10 @@ findings in place. The evidence identifies required access, not a complete
 smaller role. A green render alone would not establish that Rancher can start,
 reconcile native authorization, or recover from drift.
 
+The owner confirmed that Rancher must retain the ability to grant its native Admin
+role. Removing that function is not a remediation option. This decision does not
+approve an exception or certify the current server binding as least privilege.
+
 ## Which identity?
 
 `deploy/argocd/apps/rancher.yaml` installs `charts/rancher` with

@@ -140,7 +140,7 @@ def test_copy_tool_refuses_live_ha_overwrite_and_final_restore_without_freeze() 
     assert "fingerprintMismatch=true; exit 1" in copy
 
 
-def test_database_is_a_source_of_the_lms_application() -> None:
+def test_production_uses_shared_database_and_retired_ha_remains_opt_in() -> None:
     app = yaml.safe_load((ROOT / "deploy/argocd/apps/lms.yaml").read_text())
     assert "sources" not in app["spec"]
     assert app["spec"]["source"]["path"] == "charts/lms"
@@ -157,15 +157,21 @@ def test_database_is_a_source_of_the_lms_application() -> None:
     values = yaml.safe_load((ROOT / "deploy/lms/values.yaml").read_text())
     assert values["image"]["digest"] == "sha256:4f8dea9962f6e036be8503946770066fe38a6ce5c7f9d2e514bc428124ed56e2"
     assert values["database"]["ha"]["enabled"] is True
-    assert values["database"]["ha"]["resources"] is True
+    assert values["database"]["ha"]["resources"] is False
+    assert values["database"]["appSecretName"] == "lms-pg-common"
     docs = rendered("lms", "-n", "lms", "-f", str(ROOT / "deploy/lms/values.yaml"))
-    owned = {(d["kind"], _name(d), _mapping(d["metadata"]).get("namespace")) for d in docs}
+    retired_names = {"lms-ha", "lms-database-backup", "lms-database-backups", "lms-availability", "lms-db-retain"}
+    assert not retired_names.intersection(_name(d) for d in docs)
+    # Still exercise the full subchart in isolation, never enable it in the release.
+    opted_in = rendered("lms", "-n", "lms", "-f", str(ROOT / "deploy/lms/values.yaml"),
+                        "--set", "database.ha.resources=true")
+    owned = {(d["kind"], _name(d), _mapping(d["metadata"]).get("namespace")) for d in opted_in}
     assert ("Cluster", "lms-ha", None) in owned
     assert ("CronJob", "lms-database-backup", "lms") in owned
     assert ("PersistentVolumeClaim", "lms-database-backups", "lms") in owned
     assert ("PrometheusRule", "lms-availability", "cattle-monitoring-system") in owned
     assert ("StorageClass", "lms-db-retain", None) in owned
-    cluster = next(d for d in docs if d["kind"] == "Cluster")
+    cluster = next(d for d in opted_in if d["kind"] == "Cluster")
     cluster_spec = _mapping(cluster["spec"])
     cluster_meta = _mapping(_mapping(cluster["metadata"])["annotations"])
     assert cluster_spec["instances"] == 3
@@ -182,7 +188,7 @@ def test_database_is_a_source_of_the_lms_application() -> None:
         == "ServerSideApply=true"
     )
     cron = next(
-        d for d in docs if d["kind"] == "CronJob" and _name(d) == "lms-database-backup"
+        d for d in opted_in if d["kind"] == "CronJob" and _name(d) == "lms-database-backup"
     )
     cron_spec = _mapping(cron["spec"])
     assert cron_spec["schedule"] == "0 */6 * * *"
