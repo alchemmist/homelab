@@ -11,16 +11,17 @@ s3Evidence:
 queueUI:
   enabled: true
   authEgressCIDRs:
-  - 109.173.40.247/32
-  - 109.120.141.60/32
-legacyImage: harbor.socrat.alchemmist.xyz/spi-triage/runtime@sha256:4cd6a12c1b046c03b74195b2d93aff183d8465230d364b527fa116fd25624a91
+    - 109.173.40.247/32
+    - 109.120.141.60/32
+legacyImage:
+  harbor.socrat.alchemmist.xyz/spi-triage/runtime@sha256:4cd6a12c1b046c03b74195b2d93aff183d8465230d364b527fa116fd25624a91
 legacyImagePullSecrets:
-- name: spi-harbor-pull
+  - name: spi-harbor-pull
 bundleEnabled: false
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/spi-triage
   tag: bootstrap-disabled
   digest: ""
 imagePullSecrets:
-- name: spi-triage-harbor-pull
+  - name: spi-triage-harbor-pull
 ...

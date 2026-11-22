@@ -27,15 +27,19 @@ kube-prometheus-stack:
       KubeMemoryOvercommit:
         rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer
       KubeNodeNotReady:
-        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}
+        rancher_url: >-
+          https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}
       KubeNodeUnreachable:
-        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}
+        rancher_url: >-
+          https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}
       KubePodCrashLooping:
-        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace }}/{{ $labels.pod
-          }}
+        rancher_url: >-
+          https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace
+          }}/{{ $labels.pod }}
       KubePodNotReady:
-        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace }}/{{ $labels.pod
-          }}
+        rancher_url: >-
+          https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace
+          }}/{{ $labels.pod }}
     disabled:
       KubeMemoryOvercommit: true
       KubeNodeNotReady: true
@@ -87,9 +91,9 @@ kube-prometheus-stack:
     env:
       DBUS_SYSTEM_BUS_ADDRESS: unix:path=/host/root/run/dbus/system_bus_socket
     extraArgs:
-    - --collector.textfile.directory=/host/root/var/lib/node_exporter/textfile_collector
-    - --collector.systemd
-    - --collector.systemd.enable-restarts-metrics
+      - --collector.textfile.directory=/host/root/var/lib/node_exporter/textfile_collector
+      - --collector.systemd
+      - --collector.systemd.enable-restarts-metrics
     resources:
       limits:
         memory: 64Mi

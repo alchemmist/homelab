@@ -1,3 +1,4 @@
+---
 # Default values for agent-canvas.
 # This chart deploys the all-in-one agent-canvas image (frontend +
 # agent-server + automation) as a single-replica StatefulSet with a
@@ -73,10 +74,10 @@ ingress:
   enabled: false
   className: ""
   annotations: {}
-    # nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-    # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-    # nginx.ingress.kubernetes.io/proxy-body-size: "50m"
-    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  # nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+  # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  # nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  # cert-manager.io/cluster-issuer: letsencrypt-prod
   hosts:
     - host: agent-canvas.local
       paths:
@@ -141,13 +142,13 @@ config:
   # Extra environment variables to pass through to the container.
   # Each entry is `{ name: ..., value: ... }` or `{ name: ..., valueFrom: ... }`.
   extraEnv: []
-    # - name: LLM_MODEL
-    #   value: "openhands/claude-sonnet-4-5-20250929"
-    # - name: LLM_API_KEY
-    #   valueFrom:
-    #     secretKeyRef:
-    #       name: my-llm-secret
-    #       key: api-key
+  # - name: LLM_MODEL
+  #   value: "openhands/claude-sonnet-4-5-20250929"
+  # - name: LLM_API_KEY
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: my-llm-secret
+  #       key: api-key
 
 secrets:
   # If provided, seed OH_SECRET_KEY (settings encryption) and the
@@ -157,10 +158,10 @@ secrets:
   # for most single-tenant deployments.
   ohSecretKey:
     existingSecret: ""
-    key: "ohSecretKey"
+    key: ohSecretKey
   sessionApiKey:
     existingSecret: ""
-    key: "sessionApiKey"
+    key: sessionApiKey
 
 # ── Pod-level knobs ──────────────────────────────────────────────────────────
 podAnnotations: {}
@@ -178,10 +179,10 @@ podSecurityContext:
   runAsGroup: 10001
 
 securityContext: {}
-  # capabilities:
-  #   drop: [ALL]
-  # readOnlyRootFilesystem: false
-  # allowPrivilegeEscalation: false
+# capabilities:
+#   drop: [ALL]
+# readOnlyRootFilesystem: false
+# allowPrivilegeEscalation: false
 
 resources:
   requests:
@@ -229,7 +230,8 @@ statefulSet:
   # updateStrategy for rollouts.
   updateStrategy:
     type: RollingUpdate
-  # Retained volumes on scale-down/deletion. Kubernetes 1.27+.
-  # persistentVolumeClaimRetentionPolicy:
-  #   whenDeleted: Retain
-  #   whenScaled: Retain
+    # Retained volumes on scale-down/deletion. Kubernetes 1.27+.
+    # persistentVolumeClaimRetentionPolicy:
+    #   whenDeleted: Retain
+    #   whenScaled: Retain
+...
