@@ -8,8 +8,8 @@ The operator changed the integration scope: PR182 sets up CI and integrates revi
 
 ## Active CI scope
 
-CI runs `graph`, followed by `secrets`, `javascript`, `ownership`, `docker`, `workflow`
-and `rustfs-return-types`. The latter blocks missing public return annotations (Ruff
+CI runs `graph`, followed by `secrets`, `javascript`, `ownership`, `docker`, `workflow`,
+`scripts-q000` and `rustfs-return-types`. The latter blocks missing public return annotations (Ruff
 `ANN201`) in `services/rustfs_gateway/`; the full Python check remains available locally.
 Ownership runs six offline checks plus their regression suites; the Ansible
 entrypoint scan covers both `.yml` and `.yaml`.

@@ -39,7 +39,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 09b50276e5830cc2b401762c6b67286d9c7291f83f69db2f27d534f99672bc9e
+          graph-digest: bfd51c9a9e9c8636504f51fad31c6f33992cfd8b55fdb2fc97cf5bb21a9cce1c
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -57,6 +57,53 @@ jobs:
         env:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
+    timeout-minutes: 5
+  scripts-q000:
+    name: Python script quotes (Q000)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: 'false'
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - run: uv sync --locked
+      - run: "set -euo pipefail\ngit ls-files --error-unmatch -z -- ':(top,glob)scripts/**/*.py' |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 --ignore-noqa --output-format concise --"
+        name: Run Python script quotes (Q000)
+        id: quality-command
+        continue-on-error: true
+      - name: Collect Python script quotes (Q000) result
+        id: quality-result
+        if: always()
+        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
+        with:
+          operation: collect
+          node-id: scripts-q000
+          title: Python script quotes (Q000)
+          adapter: exit-code
+          report-path: ''
+          command-outcome: ${{ steps.quality-command.outcome }}
+          graph-digest: bfd51c9a9e9c8636504f51fad31c6f33992cfd8b55fdb2fc97cf5bb21a9cce1c
+          approval-findings: 'false'
+          approval-files: 'false'
+          approval-node: 'false'
+      - name: Upload Python script quotes (Q000) result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: quality-result-scripts-q000-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/scripts-q000.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce Python script quotes (Q000) result
+        if: always()
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
+        run: exit "${EXIT_CODE:-2}"
+    needs:
+      - graph
     timeout-minutes: 5
   secrets:
     name: Credential hygiene
@@ -85,7 +132,7 @@ jobs:
           adapter: native
           report-path: reports/secrets.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 09b50276e5830cc2b401762c6b67286d9c7291f83f69db2f27d534f99672bc9e
+          graph-digest: bfd51c9a9e9c8636504f51fad31c6f33992cfd8b55fdb2fc97cf5bb21a9cce1c
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -135,7 +182,7 @@ jobs:
           adapter: native
           report-path: reports/javascript.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 09b50276e5830cc2b401762c6b67286d9c7291f83f69db2f27d534f99672bc9e
+          graph-digest: bfd51c9a9e9c8636504f51fad31c6f33992cfd8b55fdb2fc97cf5bb21a9cce1c
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -186,7 +233,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 09b50276e5830cc2b401762c6b67286d9c7291f83f69db2f27d534f99672bc9e
+          graph-digest: bfd51c9a9e9c8636504f51fad31c6f33992cfd8b55fdb2fc97cf5bb21a9cce1c
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -240,7 +287,7 @@ jobs:
           adapter: native
           report-path: reports/docker.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 09b50276e5830cc2b401762c6b67286d9c7291f83f69db2f27d534f99672bc9e
+          graph-digest: bfd51c9a9e9c8636504f51fad31c6f33992cfd8b55fdb2fc97cf5bb21a9cce1c
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -290,7 +337,7 @@ jobs:
           adapter: native
           report-path: reports/workflow.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 09b50276e5830cc2b401762c6b67286d9c7291f83f69db2f27d534f99672bc9e
+          graph-digest: bfd51c9a9e9c8636504f51fad31c6f33992cfd8b55fdb2fc97cf5bb21a9cce1c
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -339,7 +386,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 09b50276e5830cc2b401762c6b67286d9c7291f83f69db2f27d534f99672bc9e
+          graph-digest: bfd51c9a9e9c8636504f51fad31c6f33992cfd8b55fdb2fc97cf5bb21a9cce1c
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -387,7 +434,7 @@ jobs:
           adapter: native
           report-path: reports/ansible.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 09b50276e5830cc2b401762c6b67286d9c7291f83f69db2f27d534f99672bc9e
+          graph-digest: bfd51c9a9e9c8636504f51fad31c6f33992cfd8b55fdb2fc97cf5bb21a9cce1c
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
