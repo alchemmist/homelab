@@ -1,114 +1,59 @@
-# Socrat: текущий контекст
+# Socrat: current operating context
 
-Обновление 21 ноября: [Отчёт: внезапная потеря `socrat-1`, 21 ноября 2026](socrat-1-loss-20261121.md). Не переносить выводы на потерю `socrat-0` (NFS) или двух нод.
+[Unexpected loss of `socrat-1`, 21 November 2026](socrat-1-loss-20261121.md): do not extrapolate the results to the loss of `socrat-0` (NFS) or two nodes. The [second outage that day](socrat-1-loss-20261121-run2.md) tested a separate Alertmanager on node `0` without changing the PostgreSQL primary.
 
-[Второе отключение `socrat-1`, 21 ноября 2026](socrat-1-loss-20261121-run2.md) — повтор с отдельным Alertmanager на `0` и без смены primary PostgreSQL.
+This guide reflects the migrations accepted on 16 November 2026. Git describes intent; each handoff records when the running system was last verified. This file does not authorize new production operations. Dated results are not continuous monitoring.
 
-Актуальная навигация после принятых миграций16ноября2026. Git описывает intent;
-время последней runtime-приёмки смотрите в handoff. Этот файл не разрешает новые
-production-операции. Датированные результаты не являются непрерывным мониторингом.
+## Sources of truth
 
-## Источники и владельцы
+- Applications: `deploy/argocd/apps/`. Follow each Application to its values file.
+- Ansible inventory: `ansible/inventory/hosts.yml`. Mesh registry: `wg_socrat_nodes` in `ansible/inventory/group_vars/Socrat/cluster.yml`.
+- Shared issuer transport and its consumers: `deploy/contracts/infrastructure.json`. `ci/check_infrastructure_contracts.py` checks it offline by default; `--write` updates repository files only.
+- Argo CD: `deploy/platform/argo-cd/values.yaml` is canonical; `deploy/argocd/values.yaml` is a compatibility symlink. Use `ansible/playbooks/argocd.yml` only for an explicitly authorized installation in an empty environment. The Git Application manages the existing release.
+- See the [topic index](../README.md) for runbooks. The [archived chronology](context-history-20261116.md) is not a reference for current placement.
 
-- Applications: `deploy/argocd/apps/`; values — по ссылке в конкретном Application.
-- Ansible inventory: `ansible/inventory/hosts.yml`; mesh registry:
-  `ansible/inventory/group_vars/Socrat/cluster.yml` → `wg_socrat_nodes`.
-- Общий issuer transport и его потребители:
-  `deploy/contracts/infrastructure.json`; offline check/generation:
-  `ci/check_infrastructure_contracts.py` (default check, `--write` только Git).
-- Argo CD: canonical `deploy/platform/argo-cd/values.yaml`. Старый путь
-  `deploy/argocd/values.yaml` — compatibility symlink, не отдельная конфигурация.
-  `ansible/playbooks/argocd.yml` — только явно разрешённая установка в пустое
-  окружение; существующий release управляется Git Application.
-- Карта тем: [README](../README.md). Предыдущая длинная хронология сохранена в
-  [архиве](context-history-20261116.md); архив НЕ справочник текущего размещения.
+## Verified placement and data ownership
 
-## Принятое размещение и данные
+- `socrat-5` hosts the Argo application-controller and Rancher. Both are single replicas, not HA. The [management handoff](../vm105-management-20261116.md) verifies native SSO, UIDs, specs, users and roles and records an intervening sign-in incident.
+- PostgreSQL: seven production databases in `pg-common` and `pg-critical`. Consult CNPG for current primary placement, not an old handoff. See the [runbook, CA and retained source volumes](../postgres-platform.md).
+- [Redis Insight](../redisinsight.md) is a shared dashboard. Sign in through `redisinsight-readers` or `homelab-owner`; membership does not grant direct Redis access.
+- LiteLLM uses [shared Redis over TLS](../redis-common.md) for coordination, not response caching. Its primary database remains in `pg-common`. Global limits are not guaranteed if Redis is lost.
+- `socrat-0` hosts Argo CD components, RustFS and vLLM/GPU. Umami and LiteLLM use `pg-common-rw`, not standalone local PostgreSQL.
+- Grafana and Grafana MCP passed acceptance after their cold move to `socrat-5`. The [Grafana handoff](../vm105-grafana-20261116.md) verifies image digests, identity and ACLs, native SSO and a real MCP → Grafana → Thanos request. Grafana uses the `grafana-socrat5` claim; the old claim on `socrat-1` is stale.
+- `socrat-1` hosts the SPI GitHub broker. Check the respective Applications for other components.
+- `socrat-5` hosts n8n, PR Agent, WebUI, Terminal, SearXNG, the Umami application, LMS, the LiteLLM application, the renderer, Monori frontend, blog/wiki workers and SPI queue UI. Blog and Home have distributed replicas; keep anti-affinity in place.
+- Stateful workloads on `socrat-5`: Wishlist, Wiki runtime, Monori backend and sync, SPI worker, format-quorum and LiteLLM branding. See the [authoritative handoff](../vm105-stateful-20261116.md). New writes on `socrat-5` are authoritative. Old claims are stale recovery sources, not current copies. Rolling back after new writes requires a fresh reverse handoff.
+- GitOps no longer declares SWE Mini for Monori. [Retirement scope and verification](../swe-mini.md): absence from Git does not prove removal from the cluster.
+- [DeeperSeeker](../deeperseeker.md) runs on `socrat-5` in namespace `deeperseeker`. LiteLLM routes `o-deepseek` here. Sign-in uses Chrome at home; the token is in the dashboard. VPN identity: `svc-free-deepseek`.
+- [OpenHands Canvas](../openhands.md) on `socrat-5` uses the upstream UI and Agent Server. A browser test verified shell results after closing the tab, and the native Stop-hook fixture passed. The full long-running PR loop has not passed acceptance. Owner-only oauth2-proxy/Authentik OIDC ingress is deployed. Targeted DNS was fixed; trusted TLS and SSO denial were verified from HOME and VPS. The owner's browser/MFA round trip remains unverified. No GitHub publisher is connected. PR #500 was closed externally as superseded, not marked Ready.
+- Wiki: `deploy/wiki-runtime/values.yaml`, claim `wiki-runtime-socrat5`, path `/mnt/files/homelab/wiki-runtime/data`. The runtime volume is authoritative; Git sync may lag. Do not edit the managed tree concurrently with the writer.
 
-- `socrat-5`: Argo application-controller и Rancher; оба single-replica, не HA.
-  [Management handoff](../vm105-management-20261116.md): native SSO, UID/spec,
-  users/roles проверены; промежуточный login incident явно сохранён.
-- PostgreSQL: семь production-БД в `pg-common` и `pg-critical`; размещение primary смотреть в CNPG, не в старых handoff. [Runbook, CA и удержание источников](../postgres-platform.md).
-- [Redis Insight](../redisinsight.md): общая веб-панель, вход через `redisinsight-readers` или `homelab-owner`. Членство не выдаёт прямой доступ к Redis.
-- [redis-common](../redis-common.md): LiteLLM использует общий TLS Redis для координации, не для кэша ответов. Основная БД остаётся в `pg-common`; при потере Redis глобальные лимиты не гарантированы.
-- `socrat-0`: компоненты Argo CD, RustFS и vLLM/GPU; Umami и LiteLLM используют `pg-common-rw`, а не локальные standalone PostgreSQL.
-- `socrat-5`: Grafana и Grafana MCP, приняты после холодного переноса.
-  [Grafana handoff](../vm105-grafana-20261116.md): exact image digests,
-  identity/ACL, native SSO и настоящий MCP→Grafana→Thanos запрос проверены.
-  Grafana stateful, claim `grafana-socrat5`; старый claim на `socrat-1` stale.
-- `socrat-1`: SPI GitHub broker; остальные компоненты сверять по своим Applications.
-- `socrat-5`: n8n, PR Agent; WebUI, Terminal, SearXNG, Umami application;
-  LMS, LiteLLM application, renderer; Monori frontend; blog/wiki workers,
-  SPI queue UI. Blog/Home имеют распределённые реплики; не снимать anti-affinity.
-- Stateful batch на `socrat-5`: Wishlist, Wiki runtime, Monori back/sync,
-  SPI worker, format-quorum, LiteLLM branding. [Authoritative handoff](../vm105-stateful-20261116.md).
-  Новые записи на `socrat-5` авторитетны. Старые claims — stale recovery, не
-  актуальная копия. Rollback после новых записей требует fresh reverse handoff.
-- GitOps больше не объявляет SWE Mini для Monori. [Границы удаления и проверки](../swe-mini.md); отсутствие декларации не доказывает удаление из кластера.
-- `socrat-5`: [DeeperSeeker](../deeperseeker.md), namespace `deeperseeker`. LiteLLM `o-deepseek` смотрит сюда. Логин с домашнего Chrome, токен в дашборде; VPN-identity `svc-free-deepseek`.
-- `socrat-5`: [OpenHands Canvas](../openhands.md), готовый upstream UI + Agent Server. Browser→закрытая вкладка→shell/result и native Stop-hook fixture прошли; полный длинный PR loop не принят. Стандартный oauth2-proxy/Authentik OIDC ingress (owner-only) развёрнут; точечный DNS исправлен, trusted TLS и SSO-denial приняты через HOME/VPS; реальный owner MFA/browser roundtrip ещё не принят. GitHub publisher не подключён. PR#500 закрыт извне как superseded, не выдан за Ready.
-- Wiki: `deploy/wiki-runtime/values.yaml`, claim `wiki-runtime-socrat5`;
-  `/mnt/files/homelab/wiki-runtime/data`. Runtime volume авторитетен, Git sync
-  может отставать. Нельзя править managed tree параллельно writer.
+## Safety constraints and outstanding risks
 
-## Границы безопасности и незакрытые риски
+- Preserve accounts, roles, passwords, keys, sessions, history and native SSO/TLS/PKCE. Signing in on someone's behalf is not user acceptance. Do not bypass MFA.
+- Use Git first and reconcile only the target. No blanket sync or prune, forced deletion, live image overrides, arbitrary schema upgrades or network restarts.
+- Do not replay workflows, publish, run paid inference or sync bank data for a test. Keep secrets and private receipts outside Git; use mode `0700` for directories and `0600` for files. Do not print payloads.
+- Leave VPN workloads on `socrat-2` alone. Do not change Mac VPN, DNS or routes, AllowedIPs, WireGuard identities, operator keys or permanent sudo access for convenience.
+- The `socrat-0` relay between `socrat-1` and `socrat-5` is a non-HA mitigation. The underlying cause has not been established. Healthy applications do not prove VM recovery or HA.
+- Historical Prometheus corruption is a separate issue. Do not clear the WAL. A VM cold boot and full independent restore require separate maintenance acceptance.
+- Backups: the daily n8n job uses the current claim. The latest paired archive on `socrat-3` passed SHA verification; its SQLite database was independently restored and passed a read-only integrity check. One unpaired archive was not accepted. See the [coverage matrix](../backup-coverage-20261116.md) for datasets still outstanding. A retention policy is not a backup.
+- Preserve the historical Wishlist OutOfSync state, SPI failure and limits on human callbacks and the production telemetry child. Do not mark them resolved without a test.
 
-- Сохранять accounts, roles, passwords/keys, sessions/history, native SSO/TLS/PKCE.
-  Не выдавать вход за владельца за пользовательскую приёмку; не обходить MFA.
-- Git-first; только адресный reconcile. Нет blanket sync/prune, force deletion,
-  live image override, произвольного schema upgrade или сетевого рестарта.
-- Не выполнять workflow replay, publication, paid inference, bank sync ради теста.
-  Секреты и private receipts вне Git, dirs0700/files0600; не печатать payloads.
-- VPN-нагрузки `socrat-2` не затрагивать. Не менять Mac VPN/DNS/routes, AllowedIPs,
-  WG identities, operator keys или permanent sudo ради удобства.
-- Relay на `socrat-0` для связи `socrat-1` ↔ `socrat-5` — non-HA mitigation;
-  native root cause не доказана. Healthy приложений не доказывает VM DR/HA.
-- Prometheus historical corruption остаётся отдельной проблемой; не чистить WAL.
-  VM cold boot/full independent restore требуют отдельной maintenance-приёмки.
-- Backup coverage: n8n daily job использует актуальный claim; последний paired
-  архив на `socrat-3` SHA-verified и его SQLite независимо восстановлен/read-only
-  integrity-checked. Один unpaired archive не принят. Остальные recurring datasets
-  ещё не закрыты: [матрица](../backup-coverage-20261116.md). Retain не backup.
-- Исторические Wishlist OutOfSync, SPI failure и ограничения human callbacks /
-  production telemetry-child не стирать и не объявлять исправленными без теста.
+## Work in progress
 
-## Текущая работа
+The owner authorized sequential remediation of the [refactoring audit](../refactoring-audit-20261116.md) and a separate Grafana/Grafana MCP move to `socrat-5`. Implementation and acceptance evidence, not inclusion here, determine whether an item is complete.
 
-Владелец разрешил последовательное устранение выявленного технического долга и
-отдельный перенос Grafana/Grafana MCP на `socrat-5`. Исходное исследование:
-[refactoring audit](../refactoring-audit-20261116.md). Не считать все пункты
-закрытыми по наличию этого файла; состояние фиксируется в реализации/приёмке.
+The first published changes added the canonical Argo bootstrap guard, shared issuer contract and generator, mesh and fixed-relay drift checks without network restarts, separation of current state from history, and offline CI. Two earlier CI defects were fixed: stale SPI expected codes (Publish-only `STORAGE_TRANSIENT` was retained; the workflow did not change) and stale alert graphs. The append-only panel ID ledger preserves historical links. See [ownership and maintenance](../infrastructure-contracts.md). Recurring backups for other datasets, full wiki publication reconciliation and disaster recovery are not complete.
 
-Первый пакет реализации опубликован: canonical Argo bootstrap guard, общий issuer
-контракт/generator, mesh+fixed-relay drift checks (без рестарта сети), current/history
-разделение, offline CI. Дополнительно исправлены два прежних CI-дефекта: stale SPI
-expected codes (Publish-only STORAGE_TRANSIENT сохранён, workflow не менялся) и
-устаревшие alert graphs. Append-only panel ID ledger сохраняет исторические ссылки.
-[Владельцы и обслуживание](../infrastructure-contracts.md). Регулярные backup
-остальных datasets, полная Wiki publication-сверка и DR не объявлены завершёнными.
+See the [implementation checkpoint](../infra-refactor-progress-20261116.md) for outstanding work. HTTP 200 confirmed that the public wiki still served stale text. The [proposed correction](../wiki-public-refactor-proposal-20261116.md) requires the normal native connection with write scope, unavailable during that session.
 
-Поэтапный статус и открытые работы: [implementation checkpoint](../infra-refactor-progress-20261116.md).
-Публичная Wiki: устаревший текст подтверждён HTTP200; [проект правки](../wiki-public-refactor-proposal-20261116.md),
-публикация требует штатного native write-scoped подключения, которого в этой сессии нет.
+The owner deferred backups. The legacy Rancher installer now refuses to run. CI verifies that no plays or imports follow the refusal and that Argo bootstrap versions and values match the Git Application.
 
-Продолжение по запросу владельца: бэкапы пока не делать. Legacy Rancher installer
-выведен в fail-closed refusal-only entrypoint; CI проверяет отсутствие последующих
-plays/imports и согласованность Argo bootstrap version/values с Git Application.
+Subsequent repository-only changes inventoried three vendored trees against a Git baseline (not proof of upstream trust), retired the legacy LiteLLM installer and unified CLI and Ansible placement checks: both require the current ReplicaSet revision and ready Pods. Read-only checks of Rancher, Grafana and MCP on `socrat-5` passed; backups remained deferred.
 
-Следующий source-only пакет: inventories трёх vendored trees (Git baseline,
-не upstream trust), retirement legacy LiteLLM installer, единый stricter placement
-checker для CLI/Ansible: current RS revision + Pod Ready gates. Read-only проверка
-Rancher/Grafana/MCP на `socrat-5` пройдена; бэкапы по-прежнему отложены владельцем.
+The legacy `llm-vision.yml` and combined `monitoring-llm.yml` now refuse before GPU, Helm or identity actions. The gateway monitoring helper checks existing owners, credentials and ACLs read-only; it has no install or repair fallback. No backup, inference or production maintenance was performed.
 
-Legacy continuation: `llm-vision.yml` и combined `monitoring-llm.yml` теперь
-refusal-only до GPU/Helm/identity действий. Gateway monitoring helper — read-only
-проверка существующих owner/credentials/ACL, без install/repair fallback. Бэкапы,
-inference и production maintenance не выполнялись.
-
-Endpoint/source-pointer continuation: relay preflight использует mesh registry;
-CI сверяет unit /32 allowlist и sandbox с canonical endpoints, без изменения unit
-или рестарта. Новый offline checker сверяет Argo local sources/values/refs и
-выбранные current-doc links/claims/default RBAC; исторические receipts исключены.
+Relay preflight now uses the mesh registry. CI compares the unit's /32 allowlist and sandbox against the canonical endpoints without changing or restarting the unit. An offline checker verifies Argo local sources, values and refs, selected current-document links and claims, and default RBAC. Historical receipts are excluded.
 
 Operational continuation: Open Terminal/SearXNG/search bootstrap installers retired
 before keys/Helm/imports. CI classifies literal Ansible Helm entrypoints without
