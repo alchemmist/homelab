@@ -14,8 +14,8 @@ with tempfile.TemporaryDirectory(dir=root) as work:
     p = Path(work)
     with (p / "database.dump").open("wb") as f:
         subprocess.run(
-            k
-            + [
+            [
+                *k,
                 "exec",
                 "harbor-database-0",
                 "-c",
@@ -33,8 +33,8 @@ with tempfile.TemporaryDirectory(dir=root) as work:
         )
     with (p / "registry.tar").open("wb") as f:
         subprocess.run(
-            k
-            + [
+            [
+                *k,
                 "exec",
                 "deployment/harbor-registry",
                 "-c",

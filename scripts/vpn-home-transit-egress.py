@@ -178,7 +178,9 @@ def run(boot=False) -> None:
         ), "Unowned destination route: stop"
         assert not ROOT.exists(), "Existing state; inspect instead of replaying"
         assert (
-            subprocess.run(["nft", "list", "table", "inet", TABLE], capture_output=True).returncode
+            subprocess.run(
+                ["nft", "list", "table", "inet", TABLE], check=False, capture_output=True
+            ).returncode
             != 0
         )
         ROOT.mkdir(parents=True, mode=0o700)
@@ -190,7 +192,10 @@ def run(boot=False) -> None:
         assert (ROOT / "rules.nft").read_text() == source
     command(["nft", "-c", "-f", str(ROOT / "rules.nft")])
     present = (
-        subprocess.run(["nft", "list", "table", "inet", TABLE], capture_output=True).returncode == 0
+        subprocess.run(
+            ["nft", "list", "table", "inet", TABLE], check=False, capture_output=True
+        ).returncode
+        == 0
     )
     if not present:
         command(["nft", "-f", str(ROOT / "rules.nft")])

@@ -1,5 +1,7 @@
 """Report pods whose resources deviate from their assigned profile."""
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
@@ -8,7 +10,81 @@ import subprocess
 import sys
 import time
 from decimal import Decimal, InvalidOperation
-from typing import cast
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Collection, Sequence
+    from typing import Literal, NotRequired, TypedDict
+
+    class OwnerReference(TypedDict):
+        """Controller identity used to match a replacement to its workload."""
+
+        kind: str
+        uid: str
+        name: str
+        controller: NotRequired[bool]
+
+    class Metadata(TypedDict):
+        """Pod identity and ownership fields read from a PodList."""
+
+        namespace: str
+        name: str
+        uid: str
+        ownerReferences: NotRequired[list[OwnerReference]]
+        annotations: NotRequired[dict[str, str]]
+        deletionTimestamp: NotRequired[str]
+
+    class Container(TypedDict):
+        """Container fields shared by live pods and dry-run probes."""
+
+        name: str
+        image: NotRequired[str]
+        resources: NotRequired[dict[str, dict[str, object]]]
+
+    class PodSpec(TypedDict, total=False):
+        """Container lists and scheduling fields used by the policy."""
+
+        nodeName: str
+        nodeSelector: dict[str, str]
+        containers: list[Container]
+        initContainers: list[Container]
+        restartPolicy: str
+
+    class PodStatus(TypedDict, total=False):
+        """Phase and readiness signals used during replacement."""
+
+        phase: str
+        conditions: list[dict[str, str]]
+
+    class Pod(TypedDict):
+        """Subset of a live PodList item consumed by the rollout."""
+
+        metadata: Metadata
+        spec: NotRequired[PodSpec]
+        status: NotRequired[PodStatus]
+
+    class ResourceProfile(TypedDict):
+        """Desired quantities for a single container after profile validation."""
+
+        requests: dict[str, object]
+        limits: dict[str, object]
+        removeCpuLimit: NotRequired[bool]
+
+    class Profile(TypedDict):
+        """Validated profile keyed by namespace, owner kind, and name pattern."""
+
+        namespace: str
+        ownerKind: str
+        ownerPattern: str
+        containers: dict[str, ResourceProfile]
+        nodeSelector: NotRequired[dict[str, str]]
+
+
+CONTAINER_KINDS: tuple[Literal["containers"], Literal["initContainers"]] = (
+    "containers",
+    "initContainers",
+)
+RESOURCE_MODES: tuple[Literal["requests"], Literal["limits"]] = ("requests", "limits")
 
 RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
 LIMIT_RESOURCE_NAMES = ("memory", "ephemeral-storage")
@@ -20,7 +96,7 @@ QUANTITY = re.compile(
 )
 
 
-def quantity(value):
+def quantity(value: object) -> Decimal:
     """Document the quantity operation."""
     match = QUANTITY.fullmatch(str(value)) if value is not None else None
     if not match:
@@ -49,7 +125,7 @@ def quantity(value):
     return number * Decimal(10) ** powers[suffix]
 
 
-def positive(value):
+def positive(value: object) -> bool:
     """Document the positive operation."""
     try:
         return quantity(value) > 0
@@ -57,7 +133,7 @@ def positive(value):
         return False
 
 
-def validate_node_selector(selector):
+def validate_node_selector(selector: object) -> None:
     """Document the validate node selector operation."""
     if not isinstance(selector, dict):
         message = "nodeSelector must be a string map"
@@ -124,7 +200,7 @@ def _validate_profile(profile: dict[str, object]) -> None:
     ):
         message = "Profile requires namespace, ownerKind, and ownerPattern"
         raise ValueError(message)
-    validate_node_selector(cast("dict[str, object]", profile.get("nodeSelector", {})))
+    validate_node_selector(profile.get("nodeSelector", {}))
     pattern = cast("str", profile["ownerPattern"])
     if not pattern.startswith("^") or not pattern.endswith("$"):
         message = "Profile ownerPattern must be anchored with ^ and $"
@@ -137,7 +213,7 @@ def _validate_profile(profile: dict[str, object]) -> None:
         _validate_container_resources(resources)
 
 
-def load_profiles(path):
+def load_profiles(path: str | os.PathLike[str]) -> list[Profile]:
     """Document the load profiles operation."""
     with open(path) as source:
         profiles = json.load(source)
@@ -146,10 +222,10 @@ def load_profiles(path):
         raise ValueError(message)
     for profile in cast("list[dict[str, object]]", profiles):
         _validate_profile(profile)
-    return profiles
+    return cast("list[Profile]", profiles)
 
 
-def matching_profile(pod, profiles):
+def matching_profile(pod: Pod, profiles: Sequence[Profile]) -> Profile | None:
     """Document the matching profile operation."""
     reference = owner(pod)
     matches = [
@@ -166,24 +242,22 @@ def matching_profile(pod, profiles):
 
 
 def _container_mismatches(
-    kind: str, name: str, container: dict[str, object], expected: dict[str, object]
+    kind: str, name: str, container: Container, expected: ResourceProfile
 ) -> list[str]:
     """Return resource mismatches between one live container and its profile."""
     mismatches = []
-    resources = cast("dict[str, object]", container.get("resources", {}))
-    for mode in ("requests", "limits"):
-        for resource, desired in cast("dict[str, object]", expected[mode]).items():
-            actual = cast("dict[str, object]", resources.get(mode, {})).get(resource)
+    resources = container.get("resources", {})
+    for mode in RESOURCE_MODES:
+        for resource, desired in expected[mode].items():
+            actual = resources.get(mode, {}).get(resource)
             if not positive(actual) or quantity(actual) != quantity(desired):
                 mismatches.append(kind + "/" + name + "/" + mode + "/" + resource)
-    if expected.get("removeCpuLimit") and "cpu" in cast(
-        "dict[str, object]", resources.get("limits", {})
-    ):
+    if expected.get("removeCpuLimit") and "cpu" in resources.get("limits", {}):
         mismatches.append(kind + "/" + name + "/limits/cpu-present")
     return mismatches
 
 
-def profile_mismatches(pod, profile):
+def profile_mismatches(pod: Pod, profile: Profile | None) -> list[str]:
     """Document the profile mismatches operation."""
     if profile is None:
         return []
@@ -196,7 +270,7 @@ def profile_mismatches(pod, profile):
     if hostname and spec.get("nodeName") and spec["nodeName"] != hostname:
         mismatches.append("nodeName")
     present = set()
-    for kind in ("containers", "initContainers"):
+    for kind in CONTAINER_KINDS:
         for container in pod.get("spec", {}).get(kind, []):
             name = container["name"]
             present.add(name)
@@ -211,15 +285,15 @@ def profile_mismatches(pod, profile):
     return mismatches
 
 
-def needs_reconcile(pod, profiles=()):
+def needs_reconcile(pod: Pod, profiles: Sequence[Profile] = ()) -> bool:
     """Document the needs reconcile operation."""
     return bool(deficits(pod) or profile_mismatches(pod, matching_profile(pod, profiles)))
 
 
-def deficits(pod):
+def deficits(pod: Pod) -> list[str]:
     """Document the deficits operation."""
     missing = []
-    for kind in ("containers", "initContainers"):
+    for kind in CONTAINER_KINDS:
         for container in pod.get("spec", {}).get(kind, []):
             resources = container.get("resources", {})
             for mode, required in (("requests", RESOURCE_NAMES), ("limits", LIMIT_RESOURCE_NAMES)):
@@ -229,12 +303,12 @@ def deficits(pod):
     return missing
 
 
-def active(pod):
+def active(pod: Pod) -> bool:
     """Document the active operation."""
     return pod.get("status", {}).get("phase") not in ("Succeeded", "Failed")
 
 
-def owner(pod):
+def owner(pod: Pod) -> OwnerReference | None:
     """Document the owner operation."""
     return next(
         (item for item in pod["metadata"].get("ownerReferences", []) if item.get("controller")),
@@ -242,7 +316,7 @@ def owner(pod):
     )
 
 
-def supported(pod):
+def supported(pod: Pod) -> bool:
     """Document the supported operation."""
     reference = owner(pod)
     return bool(
@@ -252,7 +326,7 @@ def supported(pod):
     )
 
 
-def ready(pod):
+def ready(pod: Pod) -> bool:
     """Document the ready operation."""
     return (
         active(pod)
@@ -264,7 +338,7 @@ def ready(pod):
     )
 
 
-def same_workload(original, candidate):
+def same_workload(original: Pod, candidate: Pod) -> bool:
     """Document the same workload operation."""
     original_owner, candidate_owner = owner(original), owner(candidate)
     if not original_owner or not candidate_owner:
@@ -281,7 +355,7 @@ def same_workload(original, candidate):
     return True
 
 
-def eviction_payload(pod):
+def eviction_payload(pod: Pod) -> dict[str, object]:
     """Document the eviction payload operation."""
     metadata = pod["metadata"]
     return {
@@ -295,11 +369,11 @@ def eviction_payload(pod):
 class Client:
     """Kubectl client for reading pod state under the reconcile policy."""
 
-    def __init__(self, kubectl, kubeconfig) -> None:
+    def __init__(self, kubectl: str, kubeconfig: str) -> None:
         """Initialize the kubectl client."""
         self.command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
 
-    def pods(self):
+    def pods(self) -> list[Pod]:
         """Return the full PodList "items" across all namespaces."""
         result = subprocess.run(
             self.command + ["get", "pods", "--all-namespaces", "-o", "json"],
@@ -308,9 +382,9 @@ class Client:
             check=True,
             timeout=40,
         )
-        return json.loads(result.stdout)["items"]
+        return cast("list[Pod]", json.loads(result.stdout)["items"])
 
-    def evict(self, pod):
+    def evict(self, pod: Pod) -> subprocess.CompletedProcess[str]:
         """Evict the given pod manifest via the kubectl eviction API."""
         metadata = pod["metadata"]
         endpoint = (
@@ -329,12 +403,12 @@ class Client:
         )
 
 
-def label(pod):
+def label(pod: Pod) -> str:
     """Document the label operation."""
     return pod["metadata"]["namespace"] + "/" + pod["metadata"]["name"]
 
 
-def excluded(pod, nodes):
+def excluded(pod: Pod, nodes: Collection[str]) -> bool:
     """Document the excluded operation."""
     spec = pod.get("spec", {})
     return (
@@ -343,7 +417,9 @@ def excluded(pod, nodes):
     )
 
 
-def audit(pods, excluded_nodes=(), profiles=()):
+def audit(
+    pods: Collection[Pod], excluded_nodes: Collection[str] = (), profiles: Sequence[Profile] = ()
+) -> list[Pod]:
     """Document the audit operation."""
     active_pods = [pod for pod in pods if active(pod)]
     coverage = [(pod, matching_profile(pod, profiles)) for pod in active_pods]
@@ -386,7 +462,9 @@ def audit(pods, excluded_nodes=(), profiles=()):
     return actionable
 
 
-def reconcile_one(client, original, timeout, interval, profiles=()):
+def reconcile_one(
+    client: Client, original: Pod, timeout: float, interval: float, profiles: Sequence[Profile] = ()
+) -> None:
     """Document the reconcile one operation."""
     deadline = time.monotonic() + timeout
     before = client.pods()
@@ -431,7 +509,7 @@ def reconcile_one(client, original, timeout, interval, profiles=()):
     )
 
 
-def main():
+def main() -> None:
     """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true")
