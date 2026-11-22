@@ -621,12 +621,13 @@ def node_lock_packages(path: Path) -> list[tuple[str, str]] | None:
         raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
     _require_matching_npm_manifest(path, root)
     relative = str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else ""
-    direct = _string_key_dict(root.get("dependencies")) or {}
-    patches = {
-        name: pin for name, pin in _PATCHED_LOCKS.get(relative, {}).items() if name in direct
-    }
-    if patches and not path.with_name("package.json").is_file():
-        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    patches = _PATCHED_LOCKS.get(relative, {})
+    if patches:
+        direct = _string_key_dict(root.get("dependencies")) or {}
+        if not patches.keys() <= direct.keys():
+            raise ValueError(f"{_DEPENDENCY_NPM_LOCK_FAILURE}: missing reviewed direct patch pin")
+        if not path.with_name("package.json").is_file():
+            raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
     located = _located_distributions(packages, patches)
     _require_root_pins(located, _root_pins(root, patches))
     names = {dep for dep, _spec in located.values()}

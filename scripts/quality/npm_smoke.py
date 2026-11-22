@@ -31,7 +31,10 @@ def smoke(group: str, directory: Path) -> None:
     run("npm", "ci", "--strict-peer-deps", "--ignore-scripts", "--no-fund", "--no-audit")
     run("npm", "ls", "--all")
     for path in json.loads(lock.read_text())["packages"]:
-        manifest = json.loads((directory / path / "package.json").read_text())
+        package = directory / path / "package.json"
+        if not package.is_file():
+            raise ValueError(f"Locked package missing from {group} install: {path}")
+        manifest = json.loads(package.read_text())
         if {"preinstall", "install", "postinstall"}.intersection(manifest.get("scripts", {})):
             raise ValueError(f"Install hook in installed {manifest['name']}")
     if group == "argo":

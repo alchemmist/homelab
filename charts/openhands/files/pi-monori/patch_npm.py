@@ -33,24 +33,34 @@ def rewrite(name: str, path: str, data: bytes) -> bytes:
     """Modify only reviewed runtime/manifest fields in verified release archives."""
     if path == "package/package.json":
         manifest = json.loads(data)
+        if (manifest.get("name"), manifest.get("version")) != (name, SOURCES[name][0]):
+            raise ValueError(f"Unexpected upstream package identity for {name}")
         if name == "argocd-mcp":
+            if manifest.get("dependencies", {}).get("zod") != "^3.25.0":
+                raise ValueError("Review the new upstream Zod dependency before patching")
             manifest["dependencies"]["zod"] = "^4.6.7"
-        elif name == "protobufjs":
-            # This optional range-style warning does not build or install anything.
-            del manifest["scripts"]["postinstall"]
         else:
-            # Upstream literally echoes 'preinstall: no-op'.
-            del manifest["scripts"]["preinstall"]
+            hook, expected = {
+                "protobufjs": ("postinstall", "node scripts/postinstall"),
+                "@google/genai": ("preinstall", "echo 'preinstall: no-op'"),
+            }[name]
+            if manifest.get("scripts", {}).get(hook) != expected:
+                raise ValueError(f"Upstream {name} {hook} hook changed; review the patch")
+            del manifest["scripts"][hook]
         return (json.dumps(manifest, indent=2) + "\n").encode()
     if name == "argocd-mcp" and path == "package/dist/index.js":
-        return (
-            data.replace(b'from "zod"', b'from "zod/v4"')
-            .replace(b'zod: "^3.25.0"', b'zod: "^4.6.7"')
-            .replace(
+        for old, new, count in (
+            (b'from "zod"', b'from "zod/v4"', 2),
+            (b'zod: "^3.25.0"', b'zod: "^4.6.7"', 1),
+            (
                 b"this.tool(name, description, mergedSchema,",
                 b"this.registerTool(name, { description, inputSchema: mergedSchema },",
-            )
-        )
+                1,
+            ),
+        ):
+            if data.count(old) != count:
+                raise ValueError(f"Unexpected occurrences of {old!r} in {path}; review the patch")
+            data = data.replace(old, new)
     return data
 
 

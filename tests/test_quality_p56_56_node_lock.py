@@ -580,6 +580,8 @@ def test_compressed_lock_is_bound_to_manifest_and_audited(
     directory.mkdir(parents=True)
     lock = directory / "package-lock.json.gz"
     document = _document({"fixture-package": "1.0.0"})
+    if owner.startswith("charts/"):
+        document = json.loads(gzip.decompress((_REPO / owner / lock.name).read_bytes()))
     raw = json.dumps(document).encode()
     lock.write_bytes(gzip.compress(raw))
     packages = document["packages"]
@@ -600,11 +602,14 @@ def test_compressed_lock_is_bound_to_manifest_and_audited(
     expected = [] if owner.startswith("charts/") else ["DEPENDENCY_LOCK_MISSING"]
     assert [item["ruleId"] for item in findings] == expected
     assert count == 1 + len(posted)
-    assert posted == [("fixture-package", "1.0.0")]
+    rows = sorted(
+        {(k.rsplit("node_modules/", 1)[-1], v["version"]) for k, v in packages.items() if k}
+    )
+    assert posted == rows
     manifest.write_text("{}")
     with pytest.raises(ValueError, match="unsupported or unsafe"):
         lint.check_dependencies(inputs)
-    assert posted == [("fixture-package", "1.0.0")]
+    assert posted == rows
 
 
 @pytest.mark.parametrize(
@@ -962,7 +967,9 @@ def test_skip_presence_proof_refuses_empty_container(
         _digest("_distribution_fields")
 
 
-@pytest.mark.parametrize("mutation", ["digest", "path", "version", "owner", "hook", "manifest"])
+@pytest.mark.parametrize(
+    "mutation", ["digest", "path", "version", "owner", "hook", "manifest", "dropped", "nested"]
+)
 def test_reviewed_archive_admission_is_exact(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mutation: str
 ) -> None:
@@ -981,10 +988,19 @@ def test_reviewed_archive_admission_is_exact(
         entry["version"] = "0.9.1"
     elif mutation == "hook":
         entry["hasInstallScript"] = True
+    elif mutation == "dropped":
+        del manifest["dependencies"]["argocd-mcp"]
+    elif mutation == "nested":
+        document["packages"]["node_modules/@umami/mcp/node_modules/argocd-mcp"] = entry
     lock.write_text(json.dumps(document))
     if mutation == "manifest":
         manifest["dependencies"]["argocd-mcp"] = "0.9.0"
     lock.with_name("package.json").write_text(json.dumps(manifest))
     monkeypatch.setattr(lint, "ROOT", tmp_path)
+    if mutation == "hook":
+        findings, count = lint._npm_lock_audit(lock, relative)
+        assert count == 0
+        assert [finding["ruleId"] for finding in findings] == ["DEPENDENCY_INSTALL_SCRIPT"]
+        return
     with pytest.raises(ValueError, match="unsupported or unsafe"):
         lint.node_lock_packages(lock)
