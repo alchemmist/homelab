@@ -80,6 +80,7 @@ spec:
             - {name: RUSTFS_TLS_PATH, value: /tls}
             - {name: RUSTFS_OBS_LOG_DIRECTORY, value: /tmp}
             - {name: RUSTFS_OBS_LOGGER_LEVEL, value: warn}
+          ports: [{containerPort: 9000}]
           readinessProbe: {httpGet: {scheme: HTTPS, path: /health/ready, port: 9000}, periodSeconds: 5}
           volumeMounts:
             - {name: data, mountPath: /data, subPath: workshop-s3}

@@ -1,4 +1,6 @@
 ---
+image:
+  digest: sha256:0eec9c89554011c9aa16eea88ab89a91b32dc8d6eb96307b7fc2dcd6bbbc7fcf
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
@@ -18,6 +20,8 @@ affinity:
             app.kubernetes.io/name: cert-manager
         topologyKey: kubernetes.io/hostname
 cainjector:
+  image:
+    digest: sha256:593abc7bf8b926d6fcb9c63b91504ad85e1379b25056aa5dee90b35505ab3211
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
@@ -60,6 +64,8 @@ resources:
     cpu: 50m
     memory: 128Mi
 startupapicheck:
+  image:
+    digest: sha256:ee42be19c579e5a80eab13758cc64001ae421effbd8b07030e729d33b29d3952
   resources:
     limits:
       memory: 128Mi
@@ -72,6 +78,8 @@ strategy:
     maxUnavailable: 1
   type: RollingUpdate
 webhook:
+  image:
+    digest: sha256:64c4d5dd55d7d00e5b162e21887f9bffbf1e531ee0668eaf801fae9bd54e536d
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:

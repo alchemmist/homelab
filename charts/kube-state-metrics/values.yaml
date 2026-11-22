@@ -88,6 +88,8 @@ kube-prometheus-stack:
       windows: false
     create: true
   kube-state-metrics:
+    image:
+      sha: sha256:42cfe3723a5f058171c627537fb57a3ea0f26e4380fa18555a95cb1a1b4cfc5b
     # SSA must replace the atomic nodeSelector inherited from the old Helm release.
     nodeSelector:
       kubernetes.io/os: linux

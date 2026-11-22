@@ -1,6 +1,6 @@
 ---
 botServiceVIP: 10.43.167.29
-image: nginx:1.31.2-alpine
+image: nginx:1.31.2-alpine@sha256:54f2a904c251d5a34adf545a72d32515a15e08418dae0266e23be2e18c66fefa
 secretName: monitoring-etcd-metrics-token
 prometheusRelease: kube-prometheus-stack
 port: 9238
@@ -22,7 +22,8 @@ publicIpProbes:
   port: 19116
 serviceProbes:
   enabled: true
-  image: quay.io/prometheus/blackbox-exporter:v0.29.0
+  image:
+    quay.io/prometheus/blackbox-exporter:v0.29.0@sha256:9613f2884689b6fad9f1939f6a3b0388c93a022cfaededb19545b329b5c83dea
   targets:
     - id: blog
       title: Blog

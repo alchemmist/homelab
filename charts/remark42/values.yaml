@@ -1,5 +1,6 @@
 ---
-image: ghcr.io/umputun/remark42:v1.17.1
+image:
+  ghcr.io/umputun/remark42:v1.17.1@sha256:45b3771ec0164332c585a838333427d19cb457f88591306385ba173aa6fbd7c9
 hostPath: /srv/remark42
 nodeName: socrat-2
 host: remark42.alchemmist.xyz

@@ -1,5 +1,6 @@
 ---
-image: pragent/pr-agent:0.50.0-github_app
+image:
+  pragent/pr-agent:0.50.0-github_app@sha256:f46ebe51de3452ffb5de150c1b241290f28806dcf3e673481d4c3179857caf0d
 replicaCount: 1
 nodeName: socrat-5
 host: pr-agent.socrat.alchemmist.xyz

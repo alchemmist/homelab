@@ -1,4 +1,12 @@
 ---
+image:
+  tag: v2.15.2@sha256:0c3d8e5702555b2bfd2ec3fe7a6e5f95484a28fcb9787c498db3e5b0f62652ea
+preUpgrade:
+  image:
+    tag: v0.8.2@sha256:1eeed72d4eda486de13403c4ae6e9d29a0842edc35d0f4a8fb7b0dab79d04be9
+postDelete:
+  image:
+    tag: v0.8.2@sha256:1eeed72d4eda486de13403c4ae6e9d29a0842edc35d0f4a8fb7b0dab79d04be9
 # Disable Fleet GitOps; Rancher MCM currently requires Fleet itself (v2.15.2).
 # Full Fleet removal requires an explicit decision to disable Rancher MCM first.
 features: continuous-delivery=false
