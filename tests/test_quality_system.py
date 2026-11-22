@@ -483,12 +483,15 @@ def test_new_issuer_alias_is_invisible_to_the_registered_list(tmp_path) -> None:
 
     infra = _load_checker("check_infrastructure_contracts.py")
     _copy_rels(tmp_path, _infra_files())
+    # The owner registered Monori's scoped OIDC transport in addition to the prior ten.
+    registered_issuer_count = 11
+    assert infra.check(tmp_path) == registered_issuer_count
     rogue = tmp_path / "deploy/new-issuer-consumer/values.yaml"
     rogue.parent.mkdir(parents=True)
     rogue.write_text(
         "hostAliases:\n  - ip: 10.43.218.222\n    hostnames: [auth.socrat.alchemmist.xyz]\n"
     )
-    assert infra.check(tmp_path) == 11
+    assert infra.check(tmp_path) == registered_issuer_count
     with pytest.raises(ValueError, match="Unregistered issuer transport consumer"):
         boundaries.check(tmp_path)
 
