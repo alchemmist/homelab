@@ -7,7 +7,7 @@ from uuid import UUID
 from job import PYTHON, THANOS, container
 
 
-def render(uid):
+def render(uid: str) -> dict[str, object]:
     seed = "seed-five-" + str(UUID(uid)) + "/tree"
     dst = {
         "name": "candidate",
