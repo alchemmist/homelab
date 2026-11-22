@@ -15,7 +15,8 @@
     validate: /bin/sh -n %s
 
 - name: Inspect the existing maintenance guard
-  ansible.builtin.command: systemctl is-active homelab-ethernet-guard.service
+  homelab_systemd_probe:
+    units: [homelab-ethernet-guard.service]
   register: homelab_ethernet_guard_active
   changed_when: false
   failed_when: homelab_ethernet_guard_active.rc not in [0, 3, 4]

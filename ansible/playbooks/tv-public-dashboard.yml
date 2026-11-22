@@ -72,10 +72,9 @@
     - name: Record the plan digest and receipt id
       ansible.builtin.set_fact:
         tv_plan_hash: >-
-          {{
-          ({'target':tv_adb,'url':tv_start_url,'model':tv_model.stdout,'focus':tv_focus.stdout,'network':tv_network_before.stdout}
-          | to_json) | hash('sha256') }}
-        tv_receipt_id: "{{ now(utc=true,fmt='%Y%m%dT%H%M%SZ') }}"
+          {{ ({'target': tv_adb, 'url': tv_start_url, 'model': tv_model.stdout, 'focus':
+          tv_focus.stdout, 'network': tv_network_before.stdout} | to_json) | hash('sha256') }}
+        tv_receipt_id: "{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
       no_log: true
     - name: Report the URL-only plan digest
       ansible.builtin.debug:
@@ -94,21 +93,20 @@
           ansible.builtin.copy:
             dest: "{{ tv_state }}/tv-before-{{ tv_receipt_id }}.json"
             content: >-
-              {{
-              {'plan_hash':tv_plan_hash,'network':tv_network_before.stdout,'focus':tv_focus.stdout,'url_sha256':tv_start_url
-              | hash('sha256')} | to_nice_json }}
+              {{ {'plan_hash': tv_plan_hash, 'network': tv_network_before.stdout, 'focus':
+              tv_focus.stdout, 'url_sha256': tv_start_url | hash('sha256')} | to_nice_json }}
             mode: "0600"
           no_log: true
         - name: Mark the import uncertain until consumption is proven
           become: true
           ansible.builtin.copy:
             dest: "{{ tv_state }}/tv-uncertain.json"
-            content: "{{ {'plan_hash':tv_plan_hash,'receipt':tv_receipt_id} | to_json }}"
+            content: "{{ {'plan_hash': tv_plan_hash, 'receipt': tv_receipt_id} | to_json }}"
             mode: "0600"
         - name: Write the single startURL candidate
           ansible.builtin.copy:
             dest: "{{ tv_candidate }}"
-            content: "{{ {'startURL':tv_start_url} | to_json }}"
+            content: "{{ {'startURL': tv_start_url} | to_json }}"
             mode: "0600"
           no_log: true
         - name: Push the single startURL file to the TV
@@ -119,6 +117,7 @@
                    push,
                    "{{ tv_candidate }}",
                    /sdcard/fully-once-settings.json]
+          changed_when: true
         - name: Restart only the already-foreground Fully browser
           ansible.builtin.command:
             argv: [adb,
@@ -126,6 +125,7 @@
                    "{{ tv_adb }}",
                    shell,
                    am force-stop de.ozerov.fully; am start -n de.ozerov.fully/.FullyActivity]
+          changed_when: true
         - name: Verify Fully consumed the URL-only file
           ansible.builtin.command:
             argv: [adb,
@@ -154,9 +154,9 @@
           ansible.builtin.copy:
             dest: "{{ tv_state }}/tv-after-{{ tv_receipt_id }}.json"
             content: >-
-              {{ {'plan_hash':tv_plan_hash,'url_sha256':tv_start_url |
-              hash('sha256'),'import_consumed':true,'network_unchanged':true,'preference_keys':['startURL']}
-              | to_nice_json }}
+              {{ {'plan_hash': tv_plan_hash, 'url_sha256': tv_start_url | hash('sha256'),
+              'import_consumed': true, 'network_unchanged': true, 'preference_keys': ['startURL']} |
+              to_nice_json }}
             mode: "0600"
           no_log: true
         - name: Clear the uncertain import marker after success

@@ -8,7 +8,8 @@
     otel_controller_root: >-
       {{ lookup('env', 'HOME') }}/Library/Application Support/homelab/otel-controller
   tasks:
-    - ansible.builtin.set_fact:
+    - name: Allocate a timestamped trace reconciliation path
+      ansible.builtin.set_fact:
         switcher_reconcile_directory: >-
           {{ otel_controller_root }}/switcher-trace-reconcile-{{ lookup("pipe", "date -u
           +%Y%m%dT%H%M%SZ") }}
@@ -38,7 +39,8 @@
             +%Y%m%dT%H%M%SZ") }}
       register: vllm_sdk_reconcile
       changed_when: vllm_sdk_reconcile.rc == 0 and (vllm_sdk_reconcile.stdout | from_json).applied
-    - ansible.builtin.set_fact:
+    - name: Record the SDK configuration and switcher source digests
+      ansible.builtin.set_fact:
         vllm_sdk_configuration_sha256: >-
           {{ (vllm_sdk_reconcile.stdout | from_json).configurationSHA256 }}
         switcher_source_sha256: "{{ (switcher_trace_reconcile.stdout | from_json).sourceSHA256 }}"
@@ -48,10 +50,12 @@
   gather_facts: false
   become: true
   tasks:
-    - ansible.builtin.slurp:
+    - name: Read the existing vLLM configuration epoch
+      ansible.builtin.slurp:
         src: /var/lib/homelab-otel-soak/configuration-epoch.json
       register: vllm_existing_epoch
-    - ansible.builtin.copy:
+    - name: Update the epoch with the vLLM and switcher digests
+      ansible.builtin.copy:
         dest: /var/lib/homelab-otel-soak/configuration-epoch.json
         mode: "0600"
         content: >

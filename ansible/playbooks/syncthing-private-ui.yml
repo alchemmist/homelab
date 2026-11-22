@@ -15,7 +15,7 @@
 
     - name: Install the read-only Syncthing state verifier
       ansible.builtin.copy:
-        src: ../files/syncthing_private_snapshot.py
+        src: "{{ playbook_dir | dirname }}/files/syncthing_private_snapshot.py"
         dest: /usr/local/libexec/syncthing-private-snapshot.py
         owner: root
         group: root

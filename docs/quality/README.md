@@ -17,9 +17,10 @@ followed by `yaml`, `scripts-q000`, `secrets`, `javascript`, `ownership`, `docke
 not just changed files. It does not cover all owned Python.
 Ownership runs six offline checks plus their regression suites; the Ansible
 entrypoint scan covers both `.yml` and `.yaml`.
-`dependencies` runs after `ownership`.
 `tests-medium` runs the complete loopback-isolated integration suite after `ownership`.
-The other four checks remain runnable by name; `make check` and its alias
+Blocking `ansible` (Playbook safety) also runs after `ownership`, using locked parser collections.
+`dependencies` runs after `ownership`.
+The other three checks remain runnable by name; `make check` and its alias
 `make check-all` attempt both active and local-only checks. Restore a
 check to `qg.yaml` and remove its local-only entry once it is verified green.
 

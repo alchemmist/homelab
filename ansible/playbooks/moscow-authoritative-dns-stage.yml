@@ -94,6 +94,7 @@
           ansible.builtin.command: /usr/sbin/knotc zone-status alchemmist.xyz
           changed_when: false
         - name: Verify both the old relay and new authority are active
-          ansible.builtin.command: systemctl is-active knot homelab-vpn-dns-transit
+          homelab_systemd_probe:
+            units: [knot, homelab-vpn-dns-transit]
           changed_when: false
 ...

@@ -50,7 +50,7 @@
             /var/lib/rancher/k3s/storage/pvc-59ac8c87-58a0-4bf0-a7cb-a487a9e95728_openhands_openhands-upgrade-backups
     - name: Install fail-closed mount identity check
       ansible.builtin.copy:
-        src: ../files/socrat5-containerd-hdd-check
+        src: "{{ playbook_dir | dirname }}/files/socrat5-containerd-hdd-check"
         dest: /usr/local/libexec/socrat5-containerd-hdd-check
         owner: root
         group: root

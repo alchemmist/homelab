@@ -60,6 +60,7 @@
         /usr/bin/python3 /usr/local/sbin/homelab-k3s-backup restore
         --directory {{ k3s_ha_backup_directory }}
       when: k3s_ha_backup_directory is defined
+      changed_when: true
 
     - name: Restore server operation
       ansible.builtin.systemd_service:
@@ -76,7 +77,8 @@
 - name: Reconcile an existing primary HA server
   when: k3s_ha_etcd.stat.exists
   block:
-    - ansible.builtin.include_tasks: configure_primary.yml
+    - name: Configure the primary HA server
+      ansible.builtin.include_tasks: configure_primary.yml
 
     - name: Restart the primary only when its configuration changed
       ansible.builtin.systemd_service:

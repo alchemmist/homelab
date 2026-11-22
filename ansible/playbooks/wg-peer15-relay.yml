@@ -19,12 +19,15 @@
             wg_socrat_nodes['socrat-0']['address'] in (relay_mesh_addresses.stdout | from_json |
             map(attribute='addr_info') | flatten | map(attribute='local') | list)
     - name: Stop only owned bounded diagnostic relay units
-      ansible.builtin.command: systemctl stop {{ item }}
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        state: stopped
       loop:
         - homelab-wg15-relay-canary
         - homelab-wg15-relay-canary-b
+      when: not ansible_check_mode
       register: relay_canary_stop
-      changed_when: relay_canary_stop.rc == 0
+      changed_when: relay_canary_stop is succeeded
       failed_when: false
     - name: Install fixed-address no-key relay
       ansible.builtin.copy:
@@ -36,7 +39,7 @@
       notify: Restart only keyless peer15 relay
     - name: Install sandboxed relay unit
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../files/wg-peer15-relay.service"
+        src: "{{ playbook_dir | dirname }}/files/wg-peer15-relay.service"
         dest: /etc/systemd/system/homelab-wg-peer15-relay.service
         owner: root
         group: root
@@ -51,7 +54,8 @@
         enabled: true
         state: started
     - name: Verify relay is active
-      ansible.builtin.command: systemctl is-active homelab-wg-peer15-relay.service
+      homelab_systemd_probe:
+        units: [homelab-wg-peer15-relay.service]
       changed_when: false
     - name: Remove only owned transient script
       ansible.builtin.file:

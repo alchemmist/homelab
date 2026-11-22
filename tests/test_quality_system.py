@@ -445,7 +445,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         "shell",
         "rustfs-return-types",
     }
-    assert set(graph) == {"graph", "dependencies", "tests-medium", *first_layer}
+    assert set(graph) == {"graph", *first_layer, "tests-medium", "ansible", "dependencies"}
     assert graph["dependencies"]["needs"] == ["ownership"]
     assert graph["dependencies"]["policy"]["blocking"] is True
     assert graph["tests-medium"]["needs"] == ["ownership"]
@@ -458,6 +458,8 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     for node in first_layer:
         assert graph[node]["needs"] == ["graph"]
         assert graph[node]["policy"]["blocking"] is True
+    assert graph["ansible"]["needs"] == ["ownership"]
+    assert graph["ansible"]["policy"]["blocking"] is True
     assert graph["yaml"]["profile"] == "default"
     assert graph["yaml"]["run"] == "uv run python scripts/quality/lint.py yaml"
     assert graph["yaml"]["results"] == {"native": "reports/yaml.json"}
@@ -467,7 +469,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     }
     local = json.loads((ROOT / "quality/local-checks.json").read_text())
     assert set(local) == {
-        "python", "manifests", "ansible", "tests-cluster",
+        "python", "manifests", "tests-cluster",
     }
 
 

@@ -159,3 +159,25 @@ def test_render_failure_stops_before_reading_installed_release() -> None:
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@pytest.mark.parametrize(
+    "rc,stdout,stderr,expected",
+    [
+        (0, "same", "", "current"),
+        (0, "different", "", "upgrade"),
+        (1, "", "Error: release: not found\n", "install"),
+        (1, "", "forbidden", None),
+    ],
+)
+def test_explicit_plan_preserves_comparison_and_fails_closed(rc, stdout, stderr, expected, capsys):
+    rendered = subprocess.CompletedProcess(["helm", "template"], 0, "same\n", "")
+    installed = subprocess.CompletedProcess(["helm", "get"], rc, stdout, stderr)
+    with patch("sys.argv", [*ARGUMENTS, "--plan"]), patch("subprocess.run", side_effect=[rendered, installed]):
+        if expected is None:
+            with pytest.raises(subprocess.CalledProcessError):
+                runpy.run_path(str(SCRIPT), run_name="__main__")
+            assert not capsys.readouterr().out
+        else:
+            runpy.run_path(str(SCRIPT), run_name="__main__")
+            assert capsys.readouterr().out.strip() == expected

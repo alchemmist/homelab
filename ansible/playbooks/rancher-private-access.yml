@@ -53,17 +53,23 @@
         owner: root
         group: root
         mode: "0644"
-      register: rancher_private_dns
+      notify: Activate private Rancher DNS
 
     - name: Validate private DNS configuration
       ansible.builtin.command: dnsmasq --test --conf-file=/etc/homelab-private-dns.conf
+      register: rancher_private_dns_validation
       changed_when: false
 
+  handlers:
     - name: Activate private Rancher DNS
       ansible.builtin.systemd_service:
         name: homelab-private-dns.service
         state: restarted
-      when: rancher_private_dns.changed
+      when:
+        - rancher_private_dns_validation is defined
+        - rancher_private_dns_validation is not skipped
+        - rancher_private_dns_validation is succeeded
+        - rancher_private_dns_validation is reachable
 
 - name: Decouple public ingress failover from the private Rancher endpoint
   hosts: socrat-0:socrat-1

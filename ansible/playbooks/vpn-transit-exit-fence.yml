@@ -17,6 +17,7 @@
     - name: Apply only the new raw-ingress table with complete private preimage
       ansible.builtin.command: python3 /usr/local/libexec/vpn-exit-transit-fence.py --apply
       when: not exit_fence.stat.exists
+      changed_when: true
     - name: Install persistent counter-independent validation
       ansible.builtin.copy:
         dest: /etc/systemd/system/homelab-msk-exit-fence.service

@@ -15,6 +15,7 @@
         iptables-legacy-save > "$d/legacy.before"
         update-alternatives --query iptables > "$d/iptables.before"
         update-alternatives --query ip6tables > "$d/ip6tables.before"
+      changed_when: true
     - name: Select existing legacy IPv4 tools (including save and restore slaves)
       community.general.alternatives:
         name: iptables

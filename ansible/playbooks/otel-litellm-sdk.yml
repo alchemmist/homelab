@@ -20,7 +20,8 @@
             +%Y%m%dT%H%M%SZ") }}
       register: litellm_sdk_reconcile
       changed_when: (litellm_sdk_reconcile.stdout | from_json).applied
-    - ansible.builtin.set_fact:
+    - name: Record the LiteLLM SDK configuration digest
+      ansible.builtin.set_fact:
         litellm_sdk_configuration_sha256: >-
           {{ (litellm_sdk_reconcile.stdout | from_json).configurationSHA256 }}
 

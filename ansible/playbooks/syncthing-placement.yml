@@ -32,6 +32,7 @@
           - 5m
           - --kubeconfig
           - /etc/rancher/k3s/k3s.yaml
+      changed_when: true
 
     - name: Wait for all configured Syncthing instances
       ansible.builtin.command: >-

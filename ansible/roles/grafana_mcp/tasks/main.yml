@@ -129,7 +129,7 @@
 
 - name: Install manifest comparison helper
   ansible.builtin.copy:
-    src: "{{ role_path }}/../../files/helm_manifest_changed.py"
+    src: "{{ role_path | dirname | dirname }}/files/helm_manifest_changed.py"
     dest: "{{ grafana_mcp_directory }}/helm_manifest_changed.py"
     mode: "0600"
 
@@ -137,6 +137,7 @@
   ansible.builtin.command:
     argv: [python3,
            "{{ grafana_mcp_directory }}/helm_manifest_changed.py",
+           --plan,
            --release,
            syncthing,
            --chart,
@@ -167,6 +168,6 @@
            --wait,
            --timeout,
            5m]
-  when: (grafana_mcp_gateway_diff.stdout | from_json).changed
+  when: "{'install': true, 'upgrade': true, 'current': false}[grafana_mcp_gateway_diff.stdout]"
   changed_when: true
 ...
