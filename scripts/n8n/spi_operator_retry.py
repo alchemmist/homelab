@@ -8,6 +8,7 @@ import argparse
 import datetime
 import hashlib
 import json
+import os
 import re
 import sqlite3
 import time
@@ -257,6 +258,8 @@ def _verify_audit_state(
 
 def retry(path, authorization, execute=False, manifest=None):
     """Verify state and re-queue the two reviewed dead jobs under immutable audit."""
+    if os.environ.get("SPI_POSTGRES_URL"):
+        raise ValueError("Historical SQLite-only tool; refusing a PostgreSQL deployment")
     authorize(authorization)
     bound = manifest_digest(manifest)
     if authorization.get("target_manifest_digest") != bound:
