@@ -53,10 +53,15 @@ def main():
     ]
     if args.isolate_network and platform.system() == "Darwin":
         # Apply to pytest and every child; only allow IP sockets on loopback.
+        # ansible-core's controller hosts its local worker RPC API on an AF_UNIX
+        # socket under TMPDIR (https://github.com/ansible/ansible/issues/87031).
+        # Unix-domain sockets are local IPC only, so allow them unconditionally.
         policy = (
             '(version 1)(allow default)(deny network*)'
             '(allow network-outbound (remote ip "localhost:*"))'
             '(allow network-bind network-inbound (local ip "localhost:*"))'
+            '(allow network-outbound (remote unix-socket))'
+            '(allow network-bind (local unix-socket))'
         )
         argv = ["/usr/bin/sandbox-exec", "-p", policy, *argv]
     elif args.isolate_network and platform.system() == "Linux":
