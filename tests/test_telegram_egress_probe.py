@@ -94,7 +94,16 @@ def test_periodic_chart_isolated_and_bounded():
         assert spec["automountServiceAccountToken"] is False
         volume = next(v for v in spec["volumes"] if v["name"] == "probe-samples")
         assert volume["emptyDir"] == {"medium": "Memory", "sizeLimit": "4Mi"}
-    assert specs["socrat-bot"]["nodeSelector"]["kubernetes.io/hostname"] == "socrat-2"
+    bot = specs["socrat-bot"]
+    assert not bot.get("hostNetwork")
+    assert bot["hostAliases"] == [{"ip": "10.43.0.213", "hostnames": ["api.telegram.org"]}]
+    term = bot["affinity"]["podAffinity"]["preferredDuringSchedulingIgnoredDuringExecution"][0]["podAffinityTerm"]
+    assert term["namespaces"] == ["postgres"]
+    assert term["labelSelector"]["matchLabels"]["cnpg.io/instanceRole"] == "primary"
+    relay = specs["socrat-telegram-relay"]
+    assert relay["nodeSelector"]["kubernetes.io/hostname"] == "socrat-2"
+    assert not relay["automountServiceAccountToken"]
+    assert all("env" not in c and "envFrom" not in c for c in relay["containers"])
     assert (
         specs["socrat-telegram-path-control"]["nodeSelector"]["kubernetes.io/hostname"]
         == "socrat-3"

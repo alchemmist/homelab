@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "9859604fabd299b0b2c2962f60d24ad595c42405a48db5711095c7376aa70ecd",
+  "graphDigest": "90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -33,7 +33,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run qg validate\nuv run python scripts/quality/contracts.py\nuv run python scripts/quality/strict_guard.py\nuv run python -m scripts.quality.python_inputs scripts/quality/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select SIM300 \\\n    --ignore-noqa --output-format concise --\nuv run pytest -q tests/test_quality_python_policy.py"
+        "run": "make graph"
       },
       "timeoutMinutes": 5,
       "title": "Graph integrity"
@@ -61,7 +61,7 @@
         "path": "reports/yaml.json"
       },
       "step": {
-        "run": "uv run python scripts/quality/lint.py yaml"
+        "run": "make yaml"
       },
       "timeoutMinutes": 5,
       "title": "YAML structure"
@@ -88,7 +88,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "uv run --locked python -m scripts.quality.python_scopes"
+        "run": "make python-scopes"
       },
       "timeoutMinutes": 5,
       "title": "Scoped Python rules"
@@ -115,7 +115,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \\\n    --ignore-noqa --output-format concise --"
+        "run": "make scripts-q000"
       },
       "timeoutMinutes": 5,
       "title": "Python script and test quotes (Q000, D300)"
@@ -142,7 +142,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n    --ignore-noqa --output-format concise --\nuv run python -m scripts.quality.python_inputs scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select F401 \\\n    --ignore-noqa --output-format concise --"
+        "run": "make deploy-i001"
       },
       "timeoutMinutes": 5,
       "title": "Python import order (I001) and unused script/test imports (F401)"
@@ -170,7 +170,7 @@
         "path": "reports/secrets.json"
       },
       "step": {
-        "run": "uv run python scripts/quality/lint.py secrets"
+        "run": "make secrets"
       },
       "timeoutMinutes": 5,
       "title": "Credential hygiene"
@@ -198,7 +198,7 @@
         "path": "reports/javascript.json"
       },
       "step": {
-        "run": "uv run python scripts/quality/lint.py javascript"
+        "run": "make javascript"
       },
       "timeoutMinutes": 5,
       "title": "JavaScript syntax"
@@ -225,7 +225,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run python scripts/check_infrastructure_contracts.py\nuv run python scripts/check_source_pointers.py\nuv run python scripts/check_operational_entrypoints.py\nuv run python scripts/check_vendor_contracts.py\nuv run python scripts/alert_graphs.py --check\nuv run python scripts/n8n/check_failure_alerts.py\nuv run python -m pytest -q \\\n  tests/test_alert_graph_inventory.py \\\n  tests/test_alert_graph_panel_ids.py \\\n  tests/test_alert_graphs_chart.py \\\n  tests/test_infrastructure_contracts.py \\\n  tests/test_n8n_failure_alert_policy.py \\\n  tests/test_n8n_failure_alerts.py \\\n  tests/test_operational_entrypoints.py \\\n  tests/test_source_pointers.py \\\n  tests/test_vendor_contracts.py"
+        "run": "make ownership"
       },
       "timeoutMinutes": 10,
       "title": "Ownership contracts"
@@ -253,7 +253,7 @@
         "path": "reports/docker.json"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run pytest -q tests/test_quality_experiment_admission.py -k docker\nuv run python scripts/quality/lint.py docker\n"
+        "run": "make docker"
       },
       "timeoutMinutes": 5,
       "title": "Container recipes"
@@ -281,7 +281,7 @@
         "path": "reports/tests-fast.xml"
       },
       "step": {
-        "run": "uv run python scripts/quality/tests.py fast --isolate-network"
+        "run": "make tests-fast"
       },
       "timeoutMinutes": 10,
       "title": "Unit tests"
@@ -314,7 +314,7 @@
         "env": {
           "GH_TOKEN": "${{ github.token }}"
         },
-        "run": "uv run python scripts/quality/lint.py workflow"
+        "run": "make workflow"
       },
       "timeoutMinutes": 5,
       "title": "Delivery security"
@@ -342,7 +342,7 @@
         "path": "reports/shell.json"
       },
       "step": {
-        "run": "uv run python scripts/quality/lint.py shell"
+        "run": "make shell"
       },
       "timeoutMinutes": 5,
       "title": "Shell safety"
@@ -369,7 +369,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "uv run ruff check --config quality/ruff.toml --select ANN201 --ignore-noqa services/rustfs_gateway"
+        "run": "make rustfs-return-types"
       },
       "timeoutMinutes": 5,
       "title": "RustFS gateway public return types"
@@ -397,7 +397,7 @@
         "path": "reports/manifests.json"
       },
       "step": {
-        "run": "uv run python scripts/quality/charts.py"
+        "run": "make manifests"
       },
       "timeoutMinutes": 10,
       "title": "Manifest validation"
@@ -425,7 +425,7 @@
         "path": "reports/dependencies.json"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run pytest -q tests/test_quality_dependency_coverage.py \\\n  tests/test_quality_p56_56_node_lock.py\nuv run python scripts/quality/lint.py dependencies\nuv run python scripts/quality/npm_smoke.py\n"
+        "run": "make dependencies"
       },
       "timeoutMinutes": 5,
       "title": "Dependency audit"
@@ -453,7 +453,7 @@
         "path": "reports/tests-medium.xml"
       },
       "step": {
-        "run": "uv run python scripts/quality/tests.py medium --isolate-network"
+        "run": "make tests-medium"
       },
       "timeoutMinutes": 10,
       "title": "Integration tests"
@@ -481,7 +481,7 @@
         "path": "reports/ansible.json"
       },
       "step": {
-        "run": "uv run python scripts/quality/lint.py ansible"
+        "run": "make ansible"
       },
       "timeoutMinutes": 5,
       "title": "Playbook safety"

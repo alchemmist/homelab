@@ -27,11 +27,30 @@ spec:
       annotations: {checksum/telegram-path: {{ $.Files.Get "files/telegram-egress-probe.py" | sha256sum }}}
       {{- end }}
       labels:
+        {{- if $.Values.telegramRelay.routeBot }}
+        telegram-relay-client: "true"
+        {{- end }}
         app.kubernetes.io/name: {{ $component.name }}
         app.kubernetes.io/instance: {{ $.Release.Name }}
         app.kubernetes.io/component: {{ $component.component }}
     spec:
-      {{- if $component.hostNetwork }}
+      {{- if $.Values.telegramRelay.routeBot }}
+      {{- if not $.Values.telegramRelay.enabled }}{{ fail "routeBot requires telegramRelay.enabled" }}{{- end }}
+      # Only Telegram uses the TLS passthrough. Database identity, TLS, Service
+      # discovery, webhook ingress and callback authorization remain unchanged.
+      hostAliases:
+        - ip: {{ $.Values.telegramRelay.clusterIP | quote }}
+          hostnames: [api.telegram.org]
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                namespaces: [postgres]
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels: {cnpg.io/cluster: pg-common, cnpg.io/instanceRole: primary}
+      {{- else if $component.hostNetwork }}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
