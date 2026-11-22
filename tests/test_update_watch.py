@@ -193,3 +193,16 @@ def test_actionable_counts_exclude_suppressed_but_emit_real_zero() -> None:
     assert b'severity="warning"} 1\n' in render(alerts)
     with pytest.raises(ValueError):
         render({})
+
+
+def test_status_page_catalog_tracks_gatus_not_retired_kuma() -> None:
+    targets = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())[
+        "updateWatch"
+    ]["targets"]
+    catalog = {item["id"]: item for item in targets}
+    chart = yaml.safe_load(
+        Path("charts/uptime-kuma/charts/gatus/Chart.yaml").read_text()
+    )
+    assert "uptime-kuma" not in catalog
+    assert catalog["gatus"]["github"] == "TwiN/gatus"
+    assert catalog["gatus"]["current"] == chart["appVersion"]

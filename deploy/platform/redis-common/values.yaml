@@ -49,8 +49,9 @@ haproxy:
     tag: 3.2-alpine@sha256:7816a9801a6846b912bc37e48529808e2fa87c3c47992441940f68e393ebcfeb
   serviceAccount: {automountToken: false}
   resources:
-    requests: {cpu: 25m, memory: 32Mi}
-    limits: {memory: 96Mi}
+    # Both TLS proxies normally use ~84Mi; the previous 96Mi cap caused OOM kills.
+    requests: {cpu: 25m, memory: 96Mi}
+    limits: {memory: 192Mi}
   networkPolicy: {enabled: true}  # No application ingress until consumer cutover.
   # Chart switch mounts the public CA. Our custom frontend passes TLS through.
   tls: {enabled: true, secretName: redis-common-public-ca, certMountPath: /trust, keyName: ca.crt}

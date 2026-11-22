@@ -1,0 +1,36 @@
+{{- if and .Values.statefulRecreate (gt (int .Values.syncReplicaCount) 0) }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: monori-sync-image-cache
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  activeDeadlineSeconds: 1800
+  backoffLimit: 1
+  template:
+    spec:
+      nodeSelector: {kubernetes.io/hostname: {{ .Values.statefulNodeName | quote }}}
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range . }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: cache
+          image: {{ include "monori.image" .Values.images.sync }}
+          imagePullPolicy: IfNotPresent
+          command: [python, -I, -S, -c, pass]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 5m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+{{- end }}
