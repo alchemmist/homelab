@@ -51,7 +51,6 @@ has been changed. No broad test discovery against production is introduced.
 |---|---|---|
 | `check_infrastructure_contracts.py` | Active offline check/generator | Check default; `--write` only tracked configuration, no Kubernetes/SSH/network. |
 | `check_target_placement.py` | Active read-only convergence check | Requires positive desired replicas, observed generation, exact target node, Ready container statuses and Deployment/ReplicaSet ownership. No mutation. |
-| `vm105-stateless-handoff.py` | Historical one-way maintenance | Already-on-socrat-5 refusal; pause/restore Service, exact original worker idle checks. Not a deploy entrypoint. |
 | `vm105-spi-idle-handoff.py` | Historical one-way maintenance | Refuses non-original placement; full owner/lease drain and targeted reconcile hold; never force idle or replay. |
 | `socrat5-storage-guard.py` | Active host storage prerequisite | Review role/invocation and expected mounts; not permission to format a disk. |
 | `socrat5-otel-leaf-bootstrap.py` | Scoped credential maintenance | Existing security/secret-delivery contract; not a general deployment tool. |

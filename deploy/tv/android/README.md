@@ -5,14 +5,14 @@
 Build the two APKs with:
 
 ```sh
-./android/build.sh
+./deploy/tv/android/build.sh
 ```
 
 The script downloads pinned Apktool 2.11.1 and uber-apk-signer 1.3.0 into the user cache, verifies both tool hashes, builds and signs the APKs, and checks that the signature matches the debug certificate currently installed on the TV. The checked-in build state makes an unchanged second run a no-op, avoiding APK signature timestamp churn. A fresh signed build can differ byte-for-byte because the APK signing data is not deterministic, but its signing certificate remains stable. `APKTOOL_JAR`, `UBER_APK_SIGNER_JAR`, and `ANDROID_TOOL_CACHE` can override the defaults.
 
-The resulting `android/releases/tv-mode.apk` and `android/releases/tv-grafana.apk` are checked in so Ansible can install them without requiring Java or Android build tools on the server. Re-run the build script after changing Smali or manifests, then commit the updated APKs with their sources.
+The resulting `deploy/tv/android/releases/tv-mode.apk` and `deploy/tv/android/releases/tv-grafana.apk` are checked in so Ansible can install them without requiring Java or Android build tools on the server. Re-run the build script after changing Smali or manifests, then commit the updated APKs with their sources.
 
-`android/releases/tv-hdmi.apk` is the original signed HDMI helper APK captured from the TV. Its signing key is not present in this repository, so it is kept as a binary recovery artifact and is not rebuilt by the script.
+`deploy/tv/android/releases/tv-hdmi.apk` is the original signed HDMI helper APK captured from the TV. Its signing key is not present in this repository, so it is kept as a binary recovery artifact and is not rebuilt by the script.
 
 Install or refresh all three homelab helper apps on the authorized TV with:
 
@@ -21,7 +21,7 @@ cd ansible
 ansible-playbook playbooks/tv-admin.yml --ask-become-pass
 ```
 
-The playbook installs the homelab helper APKs, grants their required Android permissions, and removes Happ. Fully Kiosk, tvQuickActions, WireGuard and its VPN profiles remain external/manual setup. The TV now has only `alchemmist-tv` for the global full-tunnel route used by YouTube; the internal profile is retired. The private `tv.conf` key is imported into WireGuard on the TV and is deliberately not checked in. tvQuickActions stores button assignments in its private app data; the playbook does not rewrite them. The current assignments and the manual recovery steps are documented in [`../docs/android-tv.md`](../docs/applications/android-tv.md).
+The playbook installs the homelab helper APKs, grants their required Android permissions, and removes Happ. Fully Kiosk, tvQuickActions, WireGuard and its VPN profiles remain external/manual setup. The TV now has only `alchemmist-tv` for the global full-tunnel route used by YouTube; the internal profile is retired. The private `tv.conf` key is imported into WireGuard on the TV and is deliberately not checked in. tvQuickActions stores button assignments in its private app data; the playbook does not rewrite them. The current assignments and the manual recovery steps are documented in [`../../../docs/applications/android-tv.md`](../../../docs/applications/android-tv.md).
 
 ## Public Grafana / on-demand YouTube (2026-11-06)
 

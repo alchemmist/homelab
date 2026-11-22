@@ -128,7 +128,7 @@ class LiteLLMIdentityTests(unittest.TestCase):
         """Reference the Authentik secret optionally and disable env credential login."""
         import yaml
 
-        values = yaml.safe_load((ROOT / "deploy/litellm/values.yaml").read_text())
+        values = yaml.safe_load((ROOT / "deploy/platform/litellm/values.yaml").read_text())
         env = [e for e in values["extraEnvVars"] if e["name"].startswith("GENERIC_")]
         expected_env_count = 10
         assert len(env) == expected_env_count
