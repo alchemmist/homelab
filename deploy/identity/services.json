@@ -45,14 +45,14 @@
     "appRoles": {
       "user": {
         "nativeRole": "project membership managed in Harbor",
-        "assignable": false
+        "assignable": true
       }
     },
     "groupsScope": true,
     "observerAdmissionRequiresBootstrap": true,
     "accessManagement": {
-      "state": "blocked",
-      "reason": "Native project grants and bounded CLI/session revocation require separate acceptance"
+      "state": "ready",
+      "reason": "OIDC login only; project grants and their revocation are managed separately in Harbor"
     }
   },
   "rancher": {
