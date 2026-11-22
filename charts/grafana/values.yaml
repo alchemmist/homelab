@@ -144,6 +144,8 @@ grafana:
       contains(groups[*], 'homelab-platform-operator') || contains(groups[*],
       'homelab-project-maintainer') || contains(groups[*], 'app-grafana-viewer')) && 'Viewer' || ''
   grafana.ini:
+    auth.generic_oauth:
+      client_secret: '$__file{/etc/grafana/secrets/authentik/client-secret}'
     analytics:
       check_for_updates: false
       reporting_enabled: false
@@ -183,11 +185,15 @@ grafana:
       memory: 512Mi
   testFramework:
     enabled: false
-  envValueFrom:
-    GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
-      secretKeyRef:
-        key: client-secret
-        name: socrat-authentik-grafana
+  extraSecretMounts:
+    - name: authentik-oauth-secret
+      secretName: socrat-authentik-grafana
+      mountPath: /etc/grafana/secrets/authentik
+      readOnly: true
+      defaultMode: 0440
+      items:
+        - key: client-secret
+          path: client-secret
 
 # Opt-in only after a released spi-triage image contains /app/graph_gateway.py,
 # Grafana remote renderer and scoped machine credentials have passed acceptance.

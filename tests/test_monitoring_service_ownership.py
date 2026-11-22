@@ -151,12 +151,27 @@ def test_grafana_native_sso_and_no_anonymous_access_are_declarative() -> None:
     assert v["env"]["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_STRICT"] == "true"
     assert v["env"]["GF_AUTH_OAUTH_ALLOW_INSECURE_EMAIL_LOOKUP"] == "false"
     assert "GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET" not in v["env"]
-    assert v["envValueFrom"]["GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET"]["secretKeyRef"] == {
-        "name": "socrat-authentik-grafana",
-        "key": "client-secret",
-    }
+    assert v["grafana.ini"]["auth.generic_oauth"]["client_secret"] == (
+        "$__file{/etc/grafana/secrets/authentik/client-secret}"
+    )
+    mount = v["extraSecretMounts"][0]
+    assert mount["secretName"] == "socrat-authentik-grafana"
+    assert mount["mountPath"] == "/etc/grafana/secrets/authentik"
+    assert mount["items"] == [{"key": "client-secret", "path": "client-secret"}]
+    assert "GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET" not in v.get("envValueFrom", {})
+    docs = render("charts/grafana", "kube-prometheus-stack")
+    deployment = next(
+        d for d in docs if d["kind"] == "Deployment" and d["metadata"]["name"] == "kube-prometheus-stack-grafana"
+    )
+    spec = _mapping_path(deployment, "spec", "template", "spec")
+    volumes = {item["name"]: item for item in _documents(spec["volumes"])}
+    assert _mapping(volumes["authentik-oauth-secret"]["secret"])["secretName"] == "socrat-authentik-grafana"
+    grafana_config = next(
+        d for d in docs if d["kind"] == "ConfigMap" and d["metadata"]["name"] == "kube-prometheus-stack-grafana"
+    )
+    assert "client_secret = $__file{/etc/grafana/secrets/authentik/client-secret}" in _mapping(grafana_config["data"])["grafana.ini"]
     assert v["deploymentStrategy"]["type"] == "Recreate"
-    assert v["nodeSelector"] == {"kubernetes.io/hostname": "socrat-1"}
+    assert v["nodeSelector"] == {"kubernetes.io/hostname": "socrat-5"}
     dependency = yaml.safe_load((ROOT / "charts/grafana/charts/grafana/Chart.yaml").read_text())
     assert dependency["version"] == "14.5.0"
 
