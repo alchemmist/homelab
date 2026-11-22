@@ -7,7 +7,7 @@
 > browser E2E и мгновенный отзыв всех сессий/ключей не заявлены.
 
 > Текущий срез7 ноября: [логины, первый вход и native роли](../authentik/operations/identity-current-state.md),
-> [NetBird/сеть](../../network/network-access.md), [владельцы мониторинга](../../observability/monitoring/observability-current.md).
+> [NetBird/сеть](../../network/README.md), [владельцы мониторинга](../../observability/monitoring/observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
 
 Срез внедрения **1 ноября 2026**. Начало справочника: [identity.md](identity.md).
@@ -185,7 +185,7 @@ Root внешней ноды — trust boundary для workloads/secrets это�
 
 Текущие публичные edges — `109.173.40.247` и **`109.120.141.97`**. Старый `176.98.185.59` — история до 5 ноября. Reviewed Grafana/Rancher entrances публичны с native SSO/ролями; Grafana MCP — bearer-only. Обычный public DNS работает без Mac overrides, anonymous org access Grafana выключен. Только согласованный traffic-light native share доступен без входа. Не публиковать дополнительные private APIs ради branding/healthcheck.
 
-NetBird — основной human ingress, standalone WG — recovery; межнодовый WG сохранён, обязательный Tunnelblick Mac не трогаем. User/device approval requirement выключен, но личная MFA/genuine JWT admission сохранены. Автоматического app/Linux/Kubernetes grant нет. Четыре routing agents и два relay дают bounded data-plane redundancy; management/Signal и Authentik не HA, холодный запуск без management ранее провалился. Текущий lifecycle/overlay guard/Mac/TV cleanup: [network-access.md](../../network/network-access.md), [NetBird](../../network/netbird.md).
+NetBird — основной human ingress, standalone WG — recovery; межнодовый WG сохранён, обязательный Tunnelblick Mac не трогаем. User/device approval requirement выключен, но личная MFA/genuine JWT admission сохранены. Автоматического app/Linux/Kubernetes grant нет. Четыре routing agents и два relay дают bounded data-plane redundancy; management/Signal и Authentik не HA, холодный запуск без management ранее провалился. Текущий lifecycle/overlay guard/Mac/TV cleanup: [network-access.md](../../network/README.md), [NetBird](../../network/netbird/README.md).
 
 Harbor обеспечивает приватные images/robots для workload delivery, но его OIDC
 не заменяет registry robot passwords. HA Harbor тоже отложена; см. [harbor.md](../../platform/harbor.md).

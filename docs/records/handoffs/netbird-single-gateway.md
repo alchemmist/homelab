@@ -1,6 +1,6 @@
 # Historical access architecture: one NetBird gateway, existing WireGuard mesh
 
-> Superseded by [four routing peers and independent relays](netbird-independent-access.md).
+> Superseded by [four routing peers and independent relays](../../network/netbird/infrastructure/netbird-independent-access.md).
 > The single-gateway counts and checks below describe the earlier migration,
 > not the current deployment or an accepted failure-resilient replacement.
 

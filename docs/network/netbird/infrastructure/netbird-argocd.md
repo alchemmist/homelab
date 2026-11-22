@@ -1,6 +1,6 @@
 # NetBird: root-managed Argo CD ownership
 
-2026-11-03. Follow [cluster deployment contract](../platform/cluster-deploy.md).
+2026-11-03. Follow [cluster deployment contract](../../../platform/cluster-deploy.md).
 The historical direct `kubectl` pilot is not an allowed deployment path.
 
 ## Source of truth

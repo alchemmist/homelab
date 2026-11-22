@@ -43,7 +43,7 @@ claim на `socrat-5` не встанет. Данные: claim `deeperseeker-dat
 
 ## VPN
 
-Штатный путь из [service-vpn-egress](../../network/service-vpn-egress.md): init читает подписку,
+Штатный путь из [service-vpn-egress](../../network/vpn-egress/service-vpn-egress.md): init читает подписку,
 оставляет один VLESS/REALITY на `91.189.82.238:32053`, sidecar слушает только
 `127.0.0.1:1080` (SOCKS, без UDP). Чужого HTTP-proxy и hostNetwork нет.
 

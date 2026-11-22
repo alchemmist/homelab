@@ -177,10 +177,10 @@ Action умеет один образ на приложение и только 
 ### NetBird: переход существующего сервиса под Argo CD
 
 Пользовательский onboarding, топология, результаты отказных тестов и незакрытые
-границы: [актуальный NetBird runbook](../network/netbird.md).
+границы: [актуальный NetBird runbook](../network/netbird/README.md).
 
 NetBird больше не исключение: Application создаёт `root` из каталога apps, не
-ручной apply/UI. Подробнее: [netbird-argocd.md](../network/netbird-argocd.md). Сохраняются
+ручной apply/UI. Подробнее: [netbird-argocd.md](../network/netbird/infrastructure/netbird-argocd.md). Сохраняются
 существующие версии upstream-образов по digest; миграция не обновляет образы и
 не переиздаёт идентичности/секреты. Значения секретов и содержимое PVC не в Git.
 Для нового узла: inventory → `scripts/netbird-gitops-nodes.py` → commit inventory
@@ -258,7 +258,7 @@ DaemonSet при текущем Deployment); полный repository suite не 
 Коммиты: disarm `41e10a2`, перенос `7ae691a`, временная пауза LiteLLM `4e2c72e`,
 окончательное удаление/возврат auto-sync **`e7fe891`**. Подробности:
 [операционная миграция](../applications/public-web/public-web-migration.md),
-[доступ и авторизация](../network/network-access.md). Старый aggregate chart не возвращать
+[доступ и авторизация](../network/README.md). Старый aggregate chart не возвращать
 при откате одного приложения; менять только источник его действующего владельца.
 
 

@@ -1,6 +1,10 @@
-# NetBird: доступ людей к кластеру
+# NetBird private network access
 
-Актуализация: **7 ноября 2026**. Общий сетевой итог и ограничения: [network-access.md](network-access.md). Это текущая схема, а не первоначальный pilot.
+- **Connect a person:** follow [administrator onboarding](clients/netbird-administrator-onboarding.md). On a Mac using the corporate VPN, check [Tunnelblick coexistence](clients/netbird-tunnelblick-coexistence.md).
+- **Understand the topology:** see [four routing peers and two relays](infrastructure/netbird-independent-access.md). A working route does not grant SSH, application or Kubernetes permissions.
+- **Manage infrastructure:** use [node onboarding](infrastructure/netbird-node-onboarding.md), [Kubernetes machine peers and STUN](infrastructure/netbird-kubernetes-machine-peers.md), or [Argo CD ownership](infrastructure/netbird-argocd.md).
+
+Актуализация: **7 ноября 2026**. Общий сетевой итог и ограничения: [network-access.md](../README.md). Это текущая схема, а не первоначальный pilot.
 Старые записи «NetBird отложен / не внедрять» описывают уже завершённый этап.
 
 ## Что он делает и чего не делает
@@ -24,8 +28,8 @@ NetBird — управляемый сетевой вход для людей: л
    учётную запись. **Созданная запись без пароля не может начать обычный вход.**
    Сначала выбрать штатную установку пароля; не обещать автоматическое приглашение
    или первый self-set экран. Текущий `antropophag` пока без пароля/MFA.
-   [Первый вход и статус](../auth/authentik/operations/identity-current-state.md),
-   [создание человека](../auth/authentik/operations/identity-operations.md).
+   [Первый вход и статус](../../auth/authentik/operations/identity-current-state.md),
+   [создание человека](../../auth/authentik/operations/identity-operations.md).
 2. **Устройство.** Человек устанавливает NetBird и входит своим Authentik/MFA в
    нашу management-систему. Администратор проверяет принадлежность устройства и
    согласованные identity/device policies; ручной approval не является текущим обязательным шагом. Setup keys для регистрации людей не используем.
@@ -37,7 +41,7 @@ NetBird — управляемый сетевой вход для людей: л
    несуществующий `netbird up --force-reauth`. Проверить результат синхронизации,
    membership и реальные политики; имя группы само по себе ничего не доказывает.
 4. **Linux/SSH.** Передать Linux-имя и публичный `.pub` в
-   [ручной Ansible playbook](../auth/host-access/ssh-user.md). Он создаёт обычного пользователя **без
+   [ручной Ansible playbook](../../auth/host-access/ssh-user.md). Он создаёт обычного пользователя **без
    sudo**, проверяет каждую выбранную ноду и добавляет недостающий ключ, сохраняя
    другие. Никаких Authentik attributes или n8n workflow для этого не нужно.
 5. **Kubernetes и приложения.** Отдельно назначить нужные Rancher/Kubernetes/app
@@ -96,7 +100,7 @@ tracking всех ресурсов. UID объектов/PVC/namespaces, сек�
 сохранились; из-за нормализации ссылки на тот же digest пересоздался только UI
 pod, не management/agents/relays. Исторические direct-apply скрипты не являются
 путём деплоя. Не создавать Application руками и не лечить drift ручным Helm.
-Подробнее: [контракт](../platform/cluster-deploy.md), [adoption](netbird-argocd.md).
+Подробнее: [контракт](../../platform/cluster-deploy.md), [adoption](infrastructure/netbird-argocd.md).
 
 ## Как добавляется новая нода
 
@@ -120,7 +124,7 @@ Missing workloads: `awaiting-argocd-workloads`; missing/non-Ready node:
 `/var/lib/homelab-netbird-nodes/`, machine PAT обслуживает отдельный daily timer.
 Эта API-учётная запись имеет **широкие admin-права, не least privilege**.
 Реальная пятая нода и expiry-boundary rotation PAT ещё не проверены физически.
-Полный порядок: [node onboarding](netbird-node-onboarding.md).
+Полный порядок: [node onboarding](infrastructure/netbird-node-onboarding.md).
 
 ## Исправленные проблемы, которые нельзя вернуть
 
@@ -141,7 +145,7 @@ Missing workloads: `awaiting-argocd-workloads`; missing/non-Ready node:
   Разрешено **только точное GET чтение** с native auth/role checks; локальные
   создание/принятие приглашений, setup и local login/signup по-прежнему закрыты.
   Проверено admin 200 / anonymous 401 на обоих входах.
-  [Диагностика](../records/incidents/netbird-users-invites-403.md).
+  [Диагностика](../../records/incidents/netbird-users-invites-403.md).
 
 ## Что действительно испытано и где границы
 
@@ -156,7 +160,7 @@ Missing workloads: `awaiting-argocd-workloads`; missing/non-Ready node:
 четырёх нод, оба relay и Signal. Это **bounded service-outage tests**, не физическое
 отключение нод, питания площадки или WAN. Cached Signal-connected флаг сам по себе
 не доказательство доступности сервера. Полные доказательства/тайминги:
-[independent access](netbird-independent-access.md).
+[independent access](infrastructure/netbird-independent-access.md).
 
 Не закрыты: physical/site outage, full DR, отдельный nonadmin/Tim-device тест,
 сроки отзыва сессий/устройств, management/Authentik HA и cold-start resilience.
@@ -171,7 +175,7 @@ Mac `.4`); автоматического отзыва не делали, нез
 нужные NetBird devices/доступы и отдельно отозвать SSH-ключи на всех нужных нодах.
 Выключение Authentik user не стирает `authorized_keys`, а добавляющий
 `ssh-user.yml` ничего не отзывает. Применять reviewed exact-key/disabled путь
-[host access](../auth/host-access/identity-host-access.md#4-отзыв-ssh); уже открытые SSH sessions и
+[host access](../../auth/host-access/identity-host-access.md#4-отзыв-ssh); уже открытые SSH sessions и
 forwards требуют отдельного решения. Пока нет отдельной приёмки, не обещать
 мгновенный отзыв по одному изменению группы или истечению пятиминутного bearer.
 
@@ -182,4 +186,4 @@ forwards требуют отдельного решения. Пока нет о�
 - `scripts/netbird-access.py` / `ansible/playbooks/netbird-access.yml`: audit-first scoped grant/revoke/offboard, owner/service protections, private snapshots и fresh exact hash. Временный lifecycle проверен; bootstrap admin ограничен, fixtures удалены. Membership не даёт автоматически app/Linux/Kubernetes/admin роли и не отзывает все старые sessions.
 - Approval mode выключен, но genuine JWT group admission и личная MFA сохранены. Первый реальный новый человек/device остаётся отдельной приёмкой.
 - Межнодовый WG не удалён. Отозваны только obsolete assistant `.6` и явно согласованный TV `.8`; owner recovery `.4` сохранён. Phone `.7`/скомпрометированный key — отдельное решение.
-- После исправления overlapping transport marks на flannel ingress NetworkPolicy проверена cross-node ordinary/forged probes. Не возвращать старый bypass и не менять NetBird marking глобально: [overlay guard](../platform/k3s-networkpolicy-overlay-marks.md).
+- После исправления overlapping transport marks на flannel ingress NetworkPolicy проверена cross-node ordinary/forged probes. Не возвращать старый bypass и не менять NetBird marking глобально: [overlay guard](../../platform/k3s-networkpolicy-overlay-marks.md).

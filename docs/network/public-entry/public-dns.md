@@ -1,6 +1,6 @@
 # Публичный DNS alchemmist.xyz
 
-Актуализировано **12 ноября 2026** (ns3 и проверка родительской делегации; старые приёмки датированы ниже). Текущий сетевой итог: [network-access.md](network-access.md). Это схема и результаты выполненных приёмок, не непрерывный healthcheck и не инструкция повторить migration apply.
+Актуализировано **12 ноября 2026** (ns3 и проверка родительской делегации; старые приёмки датированы ниже). Текущий сетевой итог: [network-access.md](../README.md). Это схема и результаты выполненных приёмок, не непрерывный healthcheck и не инструкция повторить migration apply.
 
 ## Текущее состояние 12 ноября
 
@@ -8,7 +8,7 @@ NS3 NS/A опубликованы на0/1/2/4; REG.RU и родительска�
 проверены. Все6Ready после отдельного исправления московского watchdog.
 HOME/NL web A-selection не менялся: Москва пока не третий общий web A.
 NL→Moscow UDP53 ранее таймаутился при рабочем TCP; причина не установлена.
-[Карта зависимостей и границы HA](../records/handoffs/network-dependency-audit-20261112.md).
+[Карта зависимостей и границы HA](../../records/handoffs/network-dependency-audit-20261112.md).
 
 ## Адреса и делегирование
 
@@ -35,7 +35,7 @@ NL authoritative Knot дополнительно слушает private10.250.0.
 private relay10.250.0.40:53 передаёт TCP/UDP по существующему wg-socrat (отдельный wg-vpn-transit retired). Scoped NL Knot
 restarts потребовались при смене listener; старый dnsmasq mesh:53 сохранён, public listener сохранён; startup dependency на WG.
 Никакого Mac resolver override. Это не HA/partition-consistency гарантия трёх writers.
-[Production evidence/incident](../records/handoffs/vpn-production-cutover-20261109.md).
+[Production evidence/incident](../../records/handoffs/vpn-production-cutover-20261109.md).
 
 ## Что стоит на узлах
 
@@ -77,11 +77,11 @@ curl -sS -H 'accept: application/dns-json' \
 
 ## Mac и границы отказоустойчивости
 
-Owned Mac `/etc/resolver` overrides и wiki restorer lifecycle сняты, глобальные DNS/corporate VPN настройки не менялись. Обычный public HTTPS больше не зависит от workstation overrides; NetBird DNS выключен. Внутренний SSH закреплён за private адресами отдельно от публичного DNS. Server-side private DNS для иных consumers может оставаться. См. [итог Mac cleanup](network-access.md#7-mac-старый-owned-dns-lifecycle-снят-полностью).
+Owned Mac `/etc/resolver` overrides и wiki restorer lifecycle сняты, глобальные DNS/corporate VPN настройки не менялись. Обычный public HTTPS больше не зависит от workstation overrides; NetBird DNS выключен. Внутренний SSH закреплён за private адресами отдельно от публичного DNS. Server-side private DNS для иных consumers может оставаться. См. [итог Mac cleanup](../README.md#7-mac-старый-owned-dns-lifecycle-снят-полностью).
 
 Кэш не узнаёт об отказе до expiry и может держать запись дольше TTL. Уже открытые соединения не переезжают, клиент не обязан повторять DNS после TCP timeout. Public IP failover не копирует PVC/SQLite/MariaDB/GPU и не делает Authentik/management HA. Traefik Edge может использовать последние маршруты без кворума только пока живы процесс, сеть и backend pods. Потерянный backend/storage DNS не восстанавливает.
 
-Источники: [public ingress](public-ingress.md), [VPS migration](../records/handoffs/vps-ip-migration-20261105.md), [public-web closeout](../applications/public-web/public-web-migration.md), `docs/network/router-static-mappings.md`.
+Источники: [public ingress](public-ingress.md), [VPS migration](../../records/handoffs/vps-ip-migration-20261105.md), [public-web closeout](../../applications/public-web/public-web-migration.md), `docs/network/lan/router-static-mappings.md`.
 
 
 ##2026-11-08: partial-network failure / phase1 observation
@@ -139,4 +139,4 @@ combinations preserved unrelated records; serial zone refresh/private receipts,
 no daemon/node/network restart. REG.RU delegation/glue unchanged. All three current
 authoritative NS and Google/Cloudflare answer HOME+VPS; native HTTP-01 Certificate
 Ready, trusted TLS and SSO protection checked on both edges. This is an exact-name
-addition, not a wildcard or permission to expose other services. [App scope](../applications/ai/openhands.md).
+addition, not a wildcard or permission to expose other services. [App scope](../../applications/ai/openhands.md).

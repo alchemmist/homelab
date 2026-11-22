@@ -1,6 +1,6 @@
 # Public ingress through two addresses
 
->7 November current policy: [native login/public exceptions](../applications/public-web/public-web-migration.md),
+>7 November current policy: [native login/public exceptions](../../applications/public-web/public-web-migration.md),
 > not universal Authentik proxy gates. Recovered-VPS acceptance:82/82 public
 > checks passed across HOME and VPS; all4 nodes Ready and all8 affected apps
 > Synced/Healthy. Old gateway Deployment/Pod are gone. Earlier receipts below
@@ -62,7 +62,7 @@ Before this change, the authoritative TTL was 86400 seconds. Resolvers can retai
 
 ## Excluded names
 
-Grafana, Rancher, Search, the former private LLM aliases and the token-protected Grafana MCP endpoint now have explicitly reviewed public HTTPS entry routes. See [public web migration](../applications/public-web/public-web-migration.md) for gate/native authorization, live acceptance and remaining scope. This does not publish their old private gateway or backend ports. Node0 Syncthing `/sync/` now has scoped MFA plus its retained BasicAuth; node1 explicitly reports gateway-only410. Kuma has a separate protected admin host while public status/heartbeat remain read-only. The Mac-owned resolver chain has been retired without changing global DNS or Tunnelblick. A wildcard DNS record is never authorization to expose an arbitrary service.
+Grafana, Rancher, Search, the former private LLM aliases and the token-protected Grafana MCP endpoint now have explicitly reviewed public HTTPS entry routes. See [public web migration](../../applications/public-web/public-web-migration.md) for gate/native authorization, live acceptance and remaining scope. This does not publish their old private gateway or backend ports. Node0 Syncthing `/sync/` now has scoped MFA plus its retained BasicAuth; node1 explicitly reports gateway-only410. Kuma has a separate protected admin host while public status/heartbeat remain read-only. The Mac-owned resolver chain has been retired without changing global DNS or Tunnelblick. A wildcard DNS record is never authorization to expose an arbitrary service.
 
 The wiki is intentionally public under its current runtime configuration, with authenticated editing; it is included above. Its separate WireGuard route does not make the public hostname private.
 

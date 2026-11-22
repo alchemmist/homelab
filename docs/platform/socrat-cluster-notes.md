@@ -440,7 +440,7 @@ dnsPolicy: Default
 
 This pattern fixed DNS problems for hostNetwork pods.
 
-`traefik-edge` replaced Caddy on 2026-10-14. It runs as a hostNetwork pod on `socrat-2`, routes Kubernetes Ingress to local x-ui/xray endpoints over the node WireGuard address, and uses cert-manager for TLS. Home Traefik watches only class `traefik`; the VPS controller watches class `traefik-edge`. The VPS controller now reaches the API through the standard k3s agent load balancer at `https://127.0.0.1:6444`, which has both home API servers as backends. See [the migration and verification notes](../network/vpn-cutover.md#traefik-vps-ingress-migration).
+`traefik-edge` replaced Caddy on 2026-10-14. It runs as a hostNetwork pod on `socrat-2`, routes Kubernetes Ingress to local x-ui/xray endpoints over the node WireGuard address, and uses cert-manager for TLS. Home Traefik watches only class `traefik`; the VPS controller watches class `traefik-edge`. The VPS controller now reaches the API through the standard k3s agent load balancer at `https://127.0.0.1:6444`, which has both home API servers as backends. See [the migration and verification notes](../network/vpn-egress/vpn-cutover.md#traefik-vps-ingress-migration).
 
 `traefik-edge` and `storage` are infrastructure namespaces. `playbooks/rancher-namespaces.yml` marks them with `management.cattle.io/system-namespace=true` to exclude them from Rancher’s **Only User Namespaces** view. Their workloads, project membership and RBAC stay in place.
 
@@ -453,7 +453,7 @@ Managed configuration:
 - `playbooks/vpn-consolidate.yml` migrates the former `x-ui-lab` and `x-ui-legacy` releases with watchdog inhibition, private backups, configuration/subscription comparison, an authenticated tunnel probe and rollback of workload settings on failure. The 2026-10-15 migration preserved all 31 subscriptions and 155 normalized links and passed authenticated VPN probes before and after cutover. Both former namespaces were removed; see the migration record for the private backup location.
 - Production subscription/Traefik routes point to Kubernetes-managed x-ui.
 - Native host `x-ui.service` is stopped/disabled. The emergency Docker container is stopped with restart policy `no`. The cutover preserved client settings, ports, and subscription URLs; no subscription update is required.
-- Deployment, retained legacy ports, backups, and rollback are documented in [vpn-cutover.md](../network/vpn-cutover.md).
+- Deployment, retained legacy ports, backups, and rollback are documented in [vpn-cutover.md](../network/vpn-egress/vpn-cutover.md).
 - Both Docker Caddy and the `caddy-edge` Helm release have been removed. `traefik-edge` owns public TCP 80/443 and UDP 443 in Kubernetes.
 
 Important paths on `socrat-2`:

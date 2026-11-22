@@ -4,7 +4,7 @@
 Текущий n8n использует отдельного native 3x-ui клиента **svc-n8n-google, ID40**,
 его подписку и официальный Xray-core sidecar. Путь: российская нода → штатный
 московский вход VPN-as-service → NL. `wg-socrat` остаётся инфраструктурой,
-не подменяет service-identity. [Штатный runbook](../network/service-vpn-egress.md).
+не подменяет service-identity. [Штатный runbook](../network/vpn-egress/service-vpn-egress.md).
 
 Source5b722c5c, fresh global nativepending[] + SPIowner/processing/paid0,
 48 Node-тестов; Pod n8n-7bc974f784-cbbfn Ready2/2, ArgoHealthy. Подписка

@@ -1,10 +1,10 @@
 # Диагностика входа: native SSO и MFA-шлюзы
 
 > Текущий срез7 ноября: [логины, первый вход и native роли](../operations/identity-current-state.md),
-> [NetBird/сеть](../../../network/network-access.md), [владельцы мониторинга](../../../observability/monitoring/observability-current.md).
+> [NetBird/сеть](../../../network/README.md), [владельцы мониторинга](../../../observability/monitoring/observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
 
-> Сетевой итог 6 ноября: [network-access.md](../../../network/network-access.md). Указанный в старых приёмках `176.98.185.59` — бывший VPS; текущий `109.120.141.97`. Grafana/Rancher теперь имеют reviewed публичные entrances, Mac resolver overrides сняты, Kuma status/admin boundary завершён. Исторические diagnostic symptoms ниже не считать текущим live-срезом.
+> Сетевой итог 6 ноября: [network-access.md](../../../network/README.md). Указанный в старых приёмках `176.98.185.59` — бывший VPS; текущий `109.120.141.97`. Grafana/Rancher теперь имеют reviewed публичные entrances, Mac resolver overrides сняты, Kuma status/admin boundary завершён. Исторические diagnostic symptoms ниже не считать текущим live-срезом.
 
 Срез: **2 ноября 2026**. Индекс: [identity.md](../../architecture/identity.md).
 Этот документ фиксирует проверенные результаты и открытые проблемы; не заменяет live-проверку.

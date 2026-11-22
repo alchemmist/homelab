@@ -1,7 +1,7 @@
 # NetBird: пилот пользовательского доступа (не транспорт кластера)
 
 > **Актуальное продолжение live-этапа:**
-> [STUN и Kubernetes machine peers](netbird-kubernetes-machine-peers.md).
+> [STUN и Kubernetes machine peers](../network/netbird/infrastructure/netbird-kubernetes-machine-peers.md).
 > Ниже сохранён исходный routing/Network proposal, а не текущий статус:
 > control plane/OIDC-only уже работают; выбран более простой direct-overlay
 > INPUT доступ к machine peers без routed own-host prefix и fake HA.

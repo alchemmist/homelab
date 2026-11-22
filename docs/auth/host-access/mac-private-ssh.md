@@ -25,7 +25,7 @@ remains an explicitly named alternative, not the retired .97 address.
 
 
 > **Current primary client: NetBird**, alongside Tunnelblick, verified 2026-11-06.
-> See [NetBird/Tunnelblick coexistence](../../network/netbird-tunnelblick-coexistence.md).
+> See [NetBird/Tunnelblick coexistence](../../network/netbird/clients/netbird-tunnelblick-coexistence.md).
 > The standalone WireGuard configuration below is the preserved recovery path,
 > not the currently active Mac transport. Do not turn it on over the same routes
 > and mistake its successful SSH for NetBird acceptance.

@@ -5,7 +5,7 @@ description: "Grant or revoke internal network access for human homelab administ
 
 # Human administrator admission
 
-1. Read `docs/network/netbird-administrator-onboarding.md` in full. It is the canonical workflow; the old pilot activation scripts are not.
+1. Read `docs/network/netbird/clients/netbird-administrator-onboarding.md` in full. It is the canonical workflow; the old pilot activation scripts are not.
 2. Do not change Tunnelblick, the default route, corporate DNS, inter-server WireGuard, Kubernetes RBAC, SSH users or keys, or real identity UUIDs to grant network access.
 3. Use `ansible/playbooks/netbird-access.yml`. Audit is the default; `reconcile`, `grant`, `revoke` and `offboard` are distinct operations. Apply only with a fresh, approved plan hash. If a receipt is inconclusive, do not retry the write.
 4. Create or verify the person separately in Authentik as an ordinary, non-superuser account. Grant exactly one group, `netbird-internal-admins`, using the exact username and an independently verified UUID. Do not match by email or copy an owner's memberships.

@@ -1,7 +1,7 @@
 # Авторизация: backup, recovery, диагностика и evidence
 
 > Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
-> [NetBird/сеть](../../../network/network-access.md), [владельцы мониторинга](../../../observability/monitoring/observability-current.md).
+> [NetBird/сеть](../../../network/README.md), [владельцы мониторинга](../../../observability/monitoring/observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
 
 Начало: [identity.md](../../architecture/identity.md). Любой recovery меняет доверенную систему:
@@ -248,4 +248,4 @@ consistency. Процедура, guards и доказанные ограниче
 
 ## Сетевой closeout и новые private receipts
 
-См. [network-access.md](../../../network/network-access.md): VPS migration, owned Mac DNS removal, NetBird lifecycle/overlay guard, Kuma credential recovery и retirement TV peer/alias имеют отдельные root-private before/uncertain/after receipts. Исторические backups/keys не удалять из-за нового public HTTPS. В частности Kuma Secret data при recovery изменились; старые SQL passwords и DB lifecycle не менялись. При uncertain marker не запускать apply повторно и не восстанавливать старый Secret вслепую. Эта документация не означает полного DR или мгновенной revocation старых sessions.
+См. [network-access.md](../../../network/README.md): VPS migration, owned Mac DNS removal, NetBird lifecycle/overlay guard, Kuma credential recovery и retirement TV peer/alias имеют отдельные root-private before/uncertain/after receipts. Исторические backups/keys не удалять из-за нового public HTTPS. В частности Kuma Secret data при recovery изменились; старые SQL passwords и DB lifecycle не менялись. При uncertain marker не запускать apply повторно и не восстанавливать старый Secret вслепую. Эта документация не означает полного DR или мгновенной revocation старых sessions.

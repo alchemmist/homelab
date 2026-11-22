@@ -19,9 +19,9 @@ The [public wiki](../wiki/README.md) has a separate audience and publication pro
 
 | Task | Reference |
 | --- | --- |
-| Network onboarding, devices, JWT policies and node agents | [NetBird](network/netbird.md), [DNS](network/public-dns.md) |
-| Foreign egress for applications on Russian nodes | [Service VPN: dedicated 3x-ui client and subscription](network/service-vpn-egress.md) |
-| Moscow VPN frontend, NL backend, retained clients and known limits | [Production setup and history](network/vpn-hardening.md), [acceptance and incident](records/handoffs/vpn-production-cutover-20261109.md) |
+| Network onboarding, devices, JWT policies and node agents | [NetBird](network/netbird/README.md), [DNS](network/public-entry/public-dns.md) |
+| Foreign egress for applications on Russian nodes | [Service VPN: dedicated 3x-ui client and subscription](network/vpn-egress/service-vpn-egress.md) |
+| Moscow VPN frontend, NL backend, retained clients and known limits | [Production setup and history](network/vpn-egress/vpn-hardening.md), [acceptance and incident](records/handoffs/vpn-production-cutover-20261109.md) |
 | SSH public keys, regular Linux accounts and revocation | [SSH users](auth/host-access/ssh-user.md), [host access and RBAC](auth/host-access/identity-host-access.md) |
 | Observer group onboarding, Danila and revocation | [Native observer](auth/roles/observer/native-observer.md), [acceptance checks](records/handoffs/observer-acceptance-20261108.md) |
 | Check which services enforce Authentik, native sign-in or public access | [Browser authentication audit](records/handoffs/browser-auth-audit.md) |

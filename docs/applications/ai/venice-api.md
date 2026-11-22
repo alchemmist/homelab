@@ -3,7 +3,7 @@
 > a known deviation, NOT a template to copy. n8n has been moved to its own native
 > 3x-ui service client/subscription and official Xray client. Venice migration is
 > separate pending work; preserve its browser/session/PVC/identity until a scoped
-> replacement is accepted. See [service VPN runbook](../../network/service-vpn-egress.md).
+> replacement is accepted. See [service VPN runbook](../../network/vpn-egress/service-vpn-egress.md).
 
 # Venice browser API — Mac-independent production, 16 November 2026
 

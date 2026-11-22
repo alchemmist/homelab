@@ -135,8 +135,8 @@ PVC и encryption Secret сохранены. Старый n8n SSH-sidecar уда
 а не рекомендуемый шаблон. Не менять живую браузерную сессию/identity вместе с
 n8n без отдельной подготовки и приёмки.
 
-См. также [VPN](vpn-hardening.md), [сетевые границы](network-access.md),
-[Venice](../applications/ai/venice-api.md), [n8n](../n8n/n8n-workflows.md).
+См. также [VPN](vpn-hardening.md), [сетевые границы](../README.md),
+[Venice](../../applications/ai/venice-api.md), [n8n](../../n8n/n8n-workflows.md).
 
 
 ### Native изменение клиента: учитывать установленную версию панели

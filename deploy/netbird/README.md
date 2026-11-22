@@ -1,5 +1,5 @@
-> **Current human access:** [administrator onboarding](../../docs/network/netbird-administrator-onboarding.md)
-> and [NetBird alongside Tunnelblick](../../docs/network/netbird-tunnelblick-coexistence.md).
+> **Current human access:** [administrator onboarding](../../docs/network/netbird/clients/netbird-administrator-onboarding.md)
+> and [NetBird alongside Tunnelblick](../../docs/network/netbird/clients/netbird-tunnelblick-coexistence.md).
 > Use `ansible/playbooks/netbird-access.yml`, not historical pilot activation scripts.
 > Client DNS is disabled server-side for builtin All; only reviewed Authentik
 > groups are admitted, with MFA and no redundant per-user approval.
@@ -9,16 +9,16 @@
 **Deployment owner: `root -> netbird` Argo CD**, chart `charts/netbird`, values
 [`values.yaml`](values.yaml), application `deploy/argocd/apps/netbird.yaml`.
 The old direct-apply stages below are historical, not a supported deployment path.
-[GitOps ownership and adoption](../../docs/network/netbird-argocd.md).
+[GitOps ownership and adoption](../../docs/network/netbird/infrastructure/netbird-argocd.md).
 
 **Current deployment and failure-test limits:**
-[four routing peers and independent relays](../../docs/network/netbird-independent-access.md).
+[four routing peers and independent relays](../../docs/network/netbird/infrastructure/netbird-independent-access.md).
 Five peers (owner + four existing nodes), genuine owner-only admin JWT source,
 no All grants. Existing-client data-plane service-outage tests passed; restarting
 the client without management failed. Do not claim full HA or retire legacy WG.
 The staged gates and machine-stage5 state below are historical inputs.
 
-**Historical continuation:** [STUN + Kubernetes machine peers](../../docs/network/netbird-kubernetes-machine-peers.md),
+**Historical continuation:** [STUN + Kubernetes machine peers](../../docs/network/netbird/infrastructure/netbird-kubernetes-machine-peers.md),
 [`machine-stage5.json`](machine-stage5.json). Control plane is installed and
 OIDC-only. STUN-only coturn on existing socrat-2 is externally and host-origin
 Binding-tested; machine enrollment remains blocked on genuine JWT groups.
@@ -26,7 +26,7 @@ Binding-tested; machine enrollment remains blocked on genuine JWT groups.
 renders **zero-replica** direct-overlay peers, not routed Networks. The legacy
 proposal/gates below remain historical inputs, not a live-state assertion.
 
-[Русский runbook, blockers и acceptance](../../docs/network/netbird-user-access-pilot.md).
+[Русский runbook, blockers и acceptance](../../docs/research/netbird-user-access-pilot.md).
 
 - `pilot.inputs.json` records the approved FQDN `netbird.socrat.alchemmist.xyz`.
   Every other deployment field and every review gate stays empty or false.

@@ -8,7 +8,7 @@
 Плейбук создаёт **обычного Linux-пользователя без sudo**, блокирует пароль и
 добавляет его публичный SSH-ключ на все ноды группы `Socrat` из inventory.
 Это не выдаёт роли Kubernetes, доступ к приложениям или доступ через NetBird.
-Полный сценарий нового админа: [Authentik/MFA → NetBird → отдельные права](../../network/netbird.md#как-добавить-нового-админа).
+Полный сценарий нового админа: [Authentik/MFA → NetBird → отдельные права](../../network/netbird/README.md#как-добавить-нового-админа).
 
 ## Что подготовить
 
@@ -84,4 +84,4 @@ ansible-playbook playbooks/ssh-user.yml \
 
 ## Транспорт (6 ноября 2026)
 
-Обычный SSH остаётся internal-only на четырёх `/32` нод, port 2222, с pinned keys и без public fallback. На owner Mac основной транспорт NetBird, отдельный WG — recovery; публичный DNS/Grafana SSO не выдаёт shell и не меняет этот путь. Не устанавливать старые Mac DNS overrides ради SSH. [Итог сети и границы](../../network/network-access.md).
+Обычный SSH остаётся internal-only на четырёх `/32` нод, port 2222, с pinned keys и без public fallback. На owner Mac основной транспорт NetBird, отдельный WG — recovery; публичный DNS/Grafana SSO не выдаёт shell и не меняет этот путь. Не устанавливать старые Mac DNS overrides ради SSH. [Итог сети и границы](../../network/README.md).

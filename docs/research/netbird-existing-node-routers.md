@@ -1,6 +1,6 @@
 # NetBird peers on the existing nodes (historical router proposal)
 
-> **Superseded for the live pilot:** use [Kubernetes machine peers](netbird-kubernetes-machine-peers.md).
+> **Superseded for the live pilot:** use [Kubernetes machine peers](../network/netbird/infrastructure/netbird-kubernetes-machine-peers.md).
 > The current architecture is two ordinary own-overlay-address peers, no SSH
 > route via socrat-0, no Docker/systemd deployment or SNAT/FORWARD plan. The
 > historical facts and blockers below are not the current live state.

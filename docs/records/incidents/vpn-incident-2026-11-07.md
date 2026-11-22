@@ -92,7 +92,7 @@ A successful Trojan/HTTPS check is not acceptance of every TCP/UDP VPN profile.
 - [K3s embedded etcd HA](https://docs.k3s.io/datastore/ha-embedded): quorum and
   embedded-datastore requirements; slow storage can affect etcd, but was not
   established as this event's root cause.
-- [Local failover protocol](../../network/vpn-failover.md): native fencing and manual failback.
+- [Local failover protocol](../../network/vpn-egress/vpn-failover.md): native fencing and manual failback.
 
 Observe new diagnostics before changing automatic fencing policy. A design review
 of whether a single public-route probe should fence the whole VPS is warranted,

@@ -1,9 +1,22 @@
+# Cluster network
+
+| What are you trying to do? | Start here |
+| --- | --- |
+| Reach a private cluster address as an administrator | [NetBird clients and routing peers](netbird/README.md) |
+| Use the standalone recovery path | [WireGuard administrative access](wireguard/wireguard-admin-access-plan.md) |
+| Trace a public request into the cluster | [Authoritative DNS](public-entry/public-dns.md) and [HTTPS ingress](public-entry/public-ingress.md) |
+| Route an application's outbound requests through a VPN | [Service VPN egress](vpn-egress/service-vpn-egress.md) |
+| Recover the VPN used by clients | [VPN failover](vpn-egress/vpn-failover.md) |
+| Look up a router address assignment | [LAN static mappings](lan/router-static-mappings.md) |
+
+The dated checkpoints below describe the network at the time of each change; use the task guides above for operating instructions.
+
 ## Прикладной egress: уточнение владельца17Nov2026
 
 `wg-socrat` — VPN-as-infrastructure. Для зарубежного доступа приложения создавать
 отдельного service-клиента в 3x-ui и использовать его подписку штатным VPN-клиентом
 в Pod. Не делать SSH-egress доNL и не менять default route ноды. Реализация и
-проверки: [VPN-as-service](service-vpn-egress.md). История сети ниже сохраняется;
+проверки: [VPN-as-service](vpn-egress/service-vpn-egress.md). История сети ниже сохраняется;
 это уточнение не меняет существующий инфраструктурный транзит Москва→NL.
 
 # Сеть и доступ: актуальный VPN-срез 9 ноября 2026
@@ -136,13 +149,13 @@ STUN настроен на новый адрес, открытый TURN не в�
 
 Builtin All не раздаёт DNS, в том числе будущим peers. **Автоматическое требование user/device approval выключено**; личные Authentik/MFA и group-restricted admission сохранены. Это не All-device policy и не автоматическая выдача app/Linux/Kubernetes/admin-прав. OIDC/JWT mapping группы использует `profile`; существующий pilot сохранён.
 
-Жизненный цикл: `scripts/netbird-access.py`, `ansible/playbooks/netbird-access.yml`, [onboarding](netbird-administrator-onboarding.md). Есть scoped grant/revoke/offboard, защита owner/service identities, свежий hash и private snapshots. Временные grant/revoke/no-op/deletion проверены; bootstrap admin ограничен, старый PAT не даёт прежнего admin-доступа. Не создавать вручную fake JWT-группу с тем же именем.
+Жизненный цикл: `scripts/netbird-access.py`, `ansible/playbooks/netbird-access.yml`, [onboarding](netbird/clients/netbird-administrator-onboarding.md). Есть scoped grant/revoke/offboard, защита owner/service identities, свежий hash и private snapshots. Временные grant/revoke/no-op/deletion проверены; bootstrap admin ограничен, старый PAT не даёт прежнего admin-доступа. Не создавать вручную fake JWT-группу с тем же именем.
 
 Допуск в приложение, NetBird policy, Linux SSH key, sudo и Rancher/Kubernetes/app role — независимые решения. Удаление группы не гарантирует мгновенное закрытие старых sessions/SSH forwards. Первый настоящий новый человек с собственным MFA/device enrollment остаётся отдельной приёмкой: временные fixtures её не заменяют.
 
 Recovery WG проверен через новый VPS и все четыре ноды, включая worker `.5/32` и return path owner `.4`. После теста WG выключен, NetBird восстановлен. Устаревший assistant peer `.6` отозван; возможная косметическая запись в GUI не является действующим grant. Phone `.7` и ранее раскрытый phone key требуют отдельного решения о владельце/ротации, не отзываются попутно.
 
-Подробнее: [NetBird](netbird.md), [совместимость с Tunnelblick](netbird-tunnelblick-coexistence.md), [границы отказоустойчивости](netbird-independent-access.md). Cold start без management раньше провалился; management/Authentik HA и full DR не доказаны. Не удалять независимый recovery.
+Подробнее: [NetBird](netbird/README.md), [совместимость с Tunnelblick](netbird/clients/netbird-tunnelblick-coexistence.md), [границы отказоустойчивости](netbird/infrastructure/netbird-independent-access.md). Cold start без management раньше провалился; management/Authentik HA и full DR не доказаны. Не удалять независимый recovery.
 
 ## 4. Kubernetes: transport mark не даёт pod разрешение
 

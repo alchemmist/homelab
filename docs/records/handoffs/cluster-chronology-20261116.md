@@ -789,9 +789,9 @@ SSH transport, публичный ключ/Linux account, sudo, Kubernetes RBAC 
 Не удалять known_hosts, не добавлять public fallback/ProxyJump и не отключать TLS.
 Ключи/пароли/QR/подписки/activation URLs не публиковать.
 
-Процедуры: [сеть](../../network/network-access.md), [NetBird и onboarding](../../network/netbird.md),
+Процедуры: [сеть](../../network/README.md), [NetBird и onboarding](../../network/netbird/README.md),
 [SSH без sudo](../../auth/host-access/ssh-user.md), [Linux/RBAC](../../auth/host-access/identity-host-access.md),
-[публичный DNS](../../network/public-dns.md).
+[публичный DNS](../../network/public-entry/public-dns.md).
 
 ## Актуально: production VPN через Москву, 9 ноября 2026
 
@@ -842,7 +842,7 @@ backend-счётчики, не блокировки. REALITY32053 исправл
 backends ещё не закрыты; у всех7 plaintext-связей уже есть encrypted alternative,
 но device/subscription acceptance не доказана. `x-ui -getApiToken` ротирует токен,
 не извлекает его; не запускать ради чтения. Не выключать старые клиентские профили и не обещать обход IP/ASN-ban.
-[Актуальный scope, исследования, инструменты и gates](../../network/vpn-hardening.md).
+[Актуальный scope, исследования, инструменты и gates](../../network/vpn-egress/vpn-hardening.md).
 
 ## Личности и авторизация
 
@@ -1000,7 +1000,7 @@ All16 URI+JSON subscriptions verified public/backend before/after: exactly7 plai
 links removed (78 URI entries remain), unrelated profiles/keys/URLs preserved.
 Server publication migration done, not device refresh/legacy retirement. No device
 remote-control prerequisite for this phase; wait for owner refresh confirmation
-before closing32063. Temporary tokens removed; see docs/network/vpn-hardening.md.
+before closing32063. Temporary tokens removed; see docs/network/vpn-egress/vpn-hardening.md.
 
 
 VPN83 latest: raw public eth0 TCP12096/32087 rejected by a dedicated persistent

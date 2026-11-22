@@ -82,7 +82,7 @@ and `k3s-ha.yml`. Before Kubernetes Ready it reports deferred; after the WG mesh
 and Kubernetes membership are ready it registers the persistent machine peer and
 adds the exact administrative resource without a Mac VPN change. The default
 inventory now also loads the socrat-3 overlay and a strict connection-only
-controller alias. See [automatic NetBird onboarding](../network/netbird-node-onboarding.md)
+controller alias. See [automatic NetBird onboarding](../network/netbird/infrastructure/netbird-node-onboarding.md)
 for the generic worker command, prerequisites, opt-out and actual acceptance limits.
 
 Removing a node also requires removing its router mapping and any relay socket explicitly; reconciliation never deletes unrelated mappings or infers removals from an unreachable node.
@@ -107,7 +107,7 @@ loginctl show-user alchemmist -p Linger
 upnpc -l
 ```
 
-In the deployed static mode, expect public TCP mappings `2222`, `2223`, and `2224` in the router configuration, a disabled gateway timer, an active relay socket, and `Linger=yes`. Ansible does not recreate missing static router mappings. See [router desired state](../network/router-static-mappings.md) and the [private administrative access runbook](../network/wireguard-admin-access-plan.md#reapply-the-deployed-configuration). Test public endpoints from an external network as well as from the LAN.
+In the deployed static mode, expect public TCP mappings `2222`, `2223`, and `2224` in the router configuration, a disabled gateway timer, an active relay socket, and `Linger=yes`. Ansible does not recreate missing static router mappings. See [router desired state](../network/lan/router-static-mappings.md) and the [private administrative access runbook](../network/wireguard/wireguard-admin-access-plan.md#reapply-the-deployed-configuration). Test public endpoints from an external network as well as from the LAN.
 
 For SSH server persistence, rerun `ssh.yml` without a bootstrap override, check `sudo sshd -T`, and verify the service is enabled (`ssh.service` on Debian, `sshd.service` on Arch). At a suitable maintenance time, reboot the node and verify fresh SSH access.
 

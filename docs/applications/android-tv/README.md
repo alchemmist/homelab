@@ -105,7 +105,7 @@ Retirement closeout: all four node peer audits report operations=0 (three existi
 
 Срез на **6 ноября 2026** (пульт/холодное включение проверялись пользователем 22 октября). Памятка, как устроен Xiaomi в гостиной и что переживает выключение питания. Операционная инструкция на английском — `docs/applications/android-tv/README.md`. Плейбук — `ansible/playbooks/tv-admin.yml`. Это не замена live-проверке: адрес по DHCP может смениться.
 
-Общий итог VPS/DNS/NetBird/Mac/public access: [network-access.md](../../network/network-access.md). Этот TV setup — окончательный вариант после удаления временного TV домена и внутреннего WG, не промежуточная публикация.
+Общий итог VPS/DNS/NetBird/Mac/public access: [network-access.md](../../network/README.md). Этот TV setup — окончательный вариант после удаления временного TV домена и внутреннего WG, не промежуточная публикация.
 
 ## Зачем он нужен
 

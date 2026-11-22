@@ -12,4 +12,4 @@ Application access has its own identity, quota, expiry and revocation boundary. 
 
 ## Implementation and verification
 
-Commit `5b722c5c` replaced n8n's tunnel. The [dated correction and acceptance record](../n8n/service-vpn-20261117.md) documents the owner's instruction, client provisioning, checks and cleanup. It does not establish that every application was migrated. Use the [current service VPN runbook](../network/service-vpn-egress.md) for operational steps.
+Commit `5b722c5c` replaced n8n's tunnel. The [dated correction and acceptance record](../n8n/service-vpn-20261117.md) documents the owner's instruction, client provisioning, checks and cleanup. It does not establish that every application was migrated. Use the [current service VPN runbook](../network/vpn-egress/service-vpn-egress.md) for operational steps.

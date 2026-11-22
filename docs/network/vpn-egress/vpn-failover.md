@@ -33,7 +33,7 @@ The primary native image digest comes from `charts/x-ui/values.yaml`, `instances
 
 ## Interaction with the HA datastore
 
-`socrat-2` now runs an etcd-only k3s server together with its workload agent. Native VPN recovery deliberately stops its etcd vote as well as every VPS pod. The two healthy home voters retain quorum. If either home voter is also unavailable, native recovery on the VPS leaves only one of three voters: Kubernetes loses quorum even though native VPN can keep serving. This prioritizes independent VPN recovery; it does not promise cluster availability through two simultaneous failures. Return to Kubernetes only after checking the surviving datastore and connectivity. See [the HA recovery runbook](../platform/k3s-ha.md).
+`socrat-2` now runs an etcd-only k3s server together with its workload agent. Native VPN recovery deliberately stops its etcd vote as well as every VPS pod. The two healthy home voters retain quorum. If either home voter is also unavailable, native recovery on the VPS leaves only one of three voters: Kubernetes loses quorum even though native VPN can keep serving. This prioritizes independent VPN recovery; it does not promise cluster availability through two simultaneous failures. Return to Kubernetes only after checking the surviving datastore and connectivity. See [the HA recovery runbook](../../platform/k3s-ha.md).
 
 ## Inspection and maintenance
 
@@ -92,7 +92,7 @@ Historical watchdog installation validation on 2026-10-15, before workload conso
 
 ## Incident follow-up: 2026-11-07
 
-See [the forensic/recovery report](../records/incidents/vpn-incident-2026-11-07.md). Kubernetes-service
+See [the forensic/recovery report](../../records/incidents/vpn-incident-2026-11-07.md). Kubernetes-service
 starts now have a separate `kubernetes_start_timeout_seconds` deadline (default
 180 seconds); other systemctl commands retain40 seconds. Failed public WebSocket
 checks include sanitized stage/error classification; no private URL or exception

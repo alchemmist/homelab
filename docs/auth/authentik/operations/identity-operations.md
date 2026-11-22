@@ -23,7 +23,7 @@ Authentik, native аккаунт обычно создаётся при перв
 полный browser/JIT/revocation acceptance всех новых групп пока не заявлен.
 
 > Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
-> [NetBird/сеть](../../../network/network-access.md), [владельцы мониторинга](../../../observability/monitoring/observability-current.md).
+> [NetBird/сеть](../../../network/README.md), [владельцы мониторинга](../../../observability/monitoring/observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
 
 Начало: [identity.md](../../architecture/identity.md). Протокол/границы: [identity-architecture.md](../../architecture/identity-architecture.md).
@@ -99,7 +99,7 @@ MFA/реального первого входа нет: [актуальная i
 
 **Если это новый администратор кластера:** полный порядок
 [Authentik/MFA → NetBird identity/device + JWT policy → отдельные SSH и
-Kubernetes/app-права](../../../network/netbird.md#как-добавить-нового-админа). Ни одна из этих
+Kubernetes/app-права](../../../network/netbird/README.md#как-добавить-нового-админа). Ни одна из этих
 ступеней не выдаёт остальные автоматически. Linux-аккаунт создаётся ручным
 [Ansible username + public key](../../host-access/ssh-user.md), без sudo и n8n.
 
@@ -298,4 +298,4 @@ ansible-playbook playbooks/identity-integrations.yml \
 
 ## Сетевые изменения 6 ноября
 
-[Сводный итог](../../../network/network-access.md) и [NetBird](../../../network/netbird.md) заменяют старую обязательную device-approval процедуру: сейчас approval flags выключены, admission остаётся personal MFA/JWT group-restricted. Новый человек не получает Linux/sudo/app роли автоматически. Не возвращать Mac resolver files, internal TV profile или отдельный TV домен при onboarding. Native Grafana anonymous org access выключен; public traffic-light share — отдельное явно согласованное исключение.
+[Сводный итог](../../../network/README.md) и [NetBird](../../../network/netbird/README.md) заменяют старую обязательную device-approval процедуру: сейчас approval flags выключены, admission остаётся personal MFA/JWT group-restricted. Новый человек не получает Linux/sudo/app роли автоматически. Не возвращать Mac resolver files, internal TV profile или отдельный TV домен при onboarding. Native Grafana anonymous org access выключен; public traffic-light share — отдельное явно согласованное исключение.

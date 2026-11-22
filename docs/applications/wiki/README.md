@@ -38,7 +38,7 @@ Persisted local data is authoritative. GitHub can lag accepted publications, so 
 
 Before switching routes, verify the isolated runtime, restored content, local administrator, reader/editor/admin permissions, immediate publication after reload, restart recovery and eventual Git synchronization. Use a new PVC and preserve the old release. Switch public ingress and optional private gateway to the same runtime only after acceptance. Keep the existing TLS secret `wiki-tls`; ensure the production hostname has only one active ingress owner.
 
-The optional WG gateway switch is `wiki_editor_runtime_enabled`, default `true`, matching the active runtime routing. [Network instructions](../../network/wiki-editor-network.md) cover the exact-host split DNS and client lifecycle. Setting it to `false` restores legacy routing only as part of a coordinated rollback with the old deployment available.
+The optional WG gateway switch is `wiki_editor_runtime_enabled`, default `true`, matching the active runtime routing. [Network instructions](wiki-editor-network.md) cover the exact-host split DNS and client lifecycle. Setting it to `false` restores legacy routing only as part of a coordinated rollback with the old deployment available.
 
 The Socrat homepage links to the wiki through its chart-managed index ConfigMap. Configure monitoring with `python3 scripts/configure-wiki-monitor.py --activate --publish`; it requests the Kuma password interactively, reuses the exact-URL monitor, and adds it to the existing Socrat apps group without replacing other monitors. It uses the supported API and does not restart Kuma or edit its database.
 

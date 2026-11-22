@@ -12,11 +12,11 @@
 > browser E2E и мгновенный отзыв всех сессий/ключей не заявлены.
 
 > Текущий срез7 ноября: [логины, первый вход и native роли](../operations/identity-current-state.md),
-> [NetBird/сеть](../../../network/network-access.md), [владельцы мониторинга](../../../observability/monitoring/observability-current.md).
+> [NetBird/сеть](../../../network/README.md), [владельцы мониторинга](../../../observability/monitoring/observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
 
 Начало: [identity.md](../../architecture/identity.md). Не путать native SSO, proxy gate и обычную
-плитку. Сетевые entrances/роли актуализированы 6 ноября: [network-access.md](../../../network/network-access.md). Старые session evidence ниже датированы; изменения версий требуют нового review.
+плитку. Сетевые entrances/роли актуализированы 6 ноября: [network-access.md](../../../network/README.md). Старые session evidence ниже датированы; изменения версий требуют нового review.
 
 ## 1. Реестр и исходники
 
@@ -218,7 +218,7 @@ nginx forward-auth3x-ui на n8n proxy-mode без воспроизведени�
 
 **Uptime Kuma:** native OIDC не внедрён и не заявляется. Но разделение входов **завершено**: status `/status/socrat`, status/heartbeat APIs/assets/badges и token push публичны; public Socket.IO/неизвестные admin APIs закрыты, legacy admin paths ведут на `kuma.socrat.alchemmist.xyz`. На admin host personal MFA owner/`uptime-kuma-web-admins`, затем исходная native Kuma auth. MFA не делает человека native admin. Проверены scoped MFA, WebSocket 101/namespace и denial native `getSettings`; fixtures удалены.
 
-При application restart обнаружен Secret/SQL credential mismatch, был наблюдённый ~35min heartbeat gap. Recovery создал отдельный schema-only app account без изменения старых SQL passwords и без DB restart; Secret data изменились, native Kuma account/auth сохранились. Не регенерировать Secret/не менять DB username: [MariaDB runbook](../../../observability/monitoring/uptime-kuma-mariadb.md), [итог и ограничения](../../../network/network-access.md#6-kuma-восстановление-после-инцидента-не-zero-downtime).
+При application restart обнаружен Secret/SQL credential mismatch, был наблюдённый ~35min heartbeat gap. Recovery создал отдельный schema-only app account без изменения старых SQL passwords и без DB restart; Secret data изменились, native Kuma account/auth сохранились. Не регенерировать Secret/не менять DB username: [MariaDB runbook](../../../observability/monitoring/uptime-kuma-mariadb.md), [итог и ограничения](../../../network/README.md#6-kuma-восстановление-после-инцидента-не-zero-downtime).
 
 ### Публичные aliases и Syncthing
 

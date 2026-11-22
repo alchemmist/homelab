@@ -180,7 +180,7 @@ Grafana MCP — public verified-TLS endpoint с отдельным bearer и Vie
 native identity. Secret нельзя коммитить/печатать; browser MFA не подходит machine
 API. Для чтения использовать MCP/API, браузер — для визуального acceptance.
 
-[Деплой](../../platform/cluster-deploy.md) · [сеть](../../network/network-access.md) · [TV](../../applications/android-tv/README.md) ·
+[Деплой](../../platform/cluster-deploy.md) · [сеть](../../network/README.md) · [TV](../../applications/android-tv/README.md) ·
 [SPI](../../applications/spi/spi-incident-triage.md) · [n8n](../../n8n/n8n-workflows.md).
 
 
@@ -248,7 +248,7 @@ monotonic/boot-scoped warm-up (still unhealthy if checks fail), and native resta
 also require confirmation. Failback checks target identity before stopping VPN;
 failed server startup attempts immediate native rollback. No automatic failback,
 TLS weakening or alert muting. Safe last-failure receipt retained outside Git.
-See [current protocol/defaults](../../network/vpn-failover.md#hardened-detection-and-service-identity).
+See [current protocol/defaults](../../network/vpn-egress/vpn-failover.md#hardened-detection-and-service-identity).
 
 Hardening applied live without restarting k3s, x-ui or Traefik; their current Pod
 names were retained, all4 nodes Ready, native primary/Caddy inactive, timer active.

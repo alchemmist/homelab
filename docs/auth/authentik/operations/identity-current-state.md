@@ -138,4 +138,4 @@ Owner recovery, robots, machine API keys и emergency identities не подме
 возможная настройка, **её в этой задаче не применяли**.
 
 Процедуры: [операции](identity-operations.md), [интеграции](../integrations/identity-integrations.md),
-[NetBird](../../../network/netbird.md), [SSH](../../host-access/ssh-user.md), [recovery](identity-recovery.md).
+[NetBird](../../../network/netbird/README.md), [SSH](../../host-access/ssh-user.md), [recovery](identity-recovery.md).

@@ -7,7 +7,7 @@
 > browser E2E и мгновенный отзыв всех сессий/ключей не заявлены.
 
 > Текущий срез7 ноября: [логины, первый вход и native роли](../authentik/operations/identity-current-state.md),
-> [NetBird/сеть](../../network/network-access.md), [владельцы мониторинга](../../observability/monitoring/observability-current.md).
+> [NetBird/сеть](../../network/README.md), [владельцы мониторинга](../../observability/monitoring/observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
 
 **Основа identity — 1 ноября 2026; сеть/публичный доступ актуализированы 6 ноября.** Owner-проверка LiteLLM и native inspector/redirect controls относятся к исходной identity-сессии. Это консолидированное описание всей сессии: как
@@ -17,7 +17,7 @@
 **Дополнено 2 ноября 2026:** ограничения gateway/SSO, исправление 3x-ui Login, открытая диагностика n8n и актуальный frontend. Предварительные проверки n8n не означают, что сообщение владельца закрыто.
 
 
-**Сетевой closeout 6 ноября:** [актуальный итог](../../network/network-access.md) имеет приоритет над старым журналом ниже. Public HTTPS не требует Mac overrides; Grafana anonymous org access выключен, native Viewer/Editor/Admin разделены; Kuma status/admin boundary завершён без native OIDC; NetBird primary, standalone WG recovery, Tunnelblick сохранён; внутренний TV WG и временный TV домен удалены.
+**Сетевой closeout 6 ноября:** [актуальный итог](../../network/README.md) имеет приоритет над старым журналом ниже. Public HTTPS не требует Mac overrides; Grafana anonymous org access выключен, native Viewer/Editor/Admin разделены; Kuma status/admin boundary завершён без native OIDC; NetBird primary, standalone WG recovery, Tunnelblick сохранён; внутренний TV WG и временный TV домен удалены.
 
 ## Читать по задаче
 
@@ -27,8 +27,8 @@
 | Как войти, добавить человека, выдать/отозвать права, работать с MFA | [Ежедневные операции](../authentik/operations/identity-operations.md) |
 | Двойной логин, consent offline_access, Failed to fetch, открытая проблема n8n | [Диагностика SSO и gateway](../authentik/integrations/identity-gateway-troubleshooting.md) |
 | Что сделано для каждого сервиса и как подключать следующий | [Интеграции](../authentik/integrations/identity-integrations.md) |
-| Итог VPS/DNS/публичных входов/Mac/ТВ и границы безопасности | [Сеть и доступ](../../network/network-access.md) |
-| Как устроен NetBird, добавить админа/ноду, что с отказоустойчивостью | [NetBird: актуальный справочник](../../network/netbird.md) |
+| Итог VPS/DNS/публичных входов/Mac/ТВ и границы безопасности | [Сеть и доступ](../../network/README.md) |
+| Как устроен NetBird, добавить админа/ноду, что с отказоустойчивостью | [NetBird: актуальный справочник](../../network/netbird/README.md) |
 | Как добавить username + публичный SSH-ключ на ноды одним Ansible playbook | [SSH: короткая инструкция](../host-access/ssh-user.md) |
 | Как отдельно устроены Linux/SSH, sudo, kubeconfig и Kubernetes RBAC | [Host access](../host-access/identity-host-access.md) |
 | Где frontend/CSS, shadow DOM, фото/шрифты/иконки, inspector, rollback | [Quiet Mono frontend](../authentik/custom-ui/README.md) |
@@ -67,7 +67,7 @@ runtime Authentik/app state; подробная карта файлов есть
   пока не принуждаются к English. Native JSON highlighting/Copy — отдельный backlog.
 - Machine APIs/MCP/robots/webhooks не переводятся на browser redirects.
   Межнодовый WireGuard сохранён; NetBird внедрён как human ingress под Argo CD.
-  [Текущая схема и добавление админа](../../network/netbird.md); legacy recovery WG не отключать.
+  [Текущая схема и добавление админа](../../network/netbird/README.md); legacy recovery WG не отключать.
   Полный cluster-wide human-auth inventory,
   offboarding/old-session enforcement, independent backups/DR и HA ещё не завершены.
 
@@ -91,7 +91,7 @@ fixture smoke и restore check изменяют тестовые ресурсы,
 **1 ноября 2026, после второго rollout.** Пользователь подтвердил работу под
 `alchemmist`, сообщил об отказе Grafana и разрешил sudo-применение/дальнейшую
 миграцию. **На том этапе NetBird был исключён из scope; этот запрет впоследствии
-снят отдельной задачей. Текущее состояние: [NetBird внедрён](../../network/netbird.md).**
+снят отдельной задачей. Текущее состояние: [NetBird внедрён](../../network/netbird/README.md).**
 Посторонние OTel/VPN изменения сохранять.
 
 ## Что работает
@@ -160,7 +160,7 @@ Private Grafana nginx намеренно очищает Authorization header; ad
   Прямые WG-IP:443 сейчас имеют чужой cert из-за отсутствующих Wiki VHs в live
   gateways; public оба IP работают. Не отключать TLS и не запускать вслепую старый
   wiki-editor-access role по уже вынесенному private-gateway.
-- **Kuma boundary завершён 6 ноября:** public status/read/push отделены от personal-MFA admin host и native account controls; public Socket.IO закрыт. Native OIDC по-прежнему нет. Инцидент credential recovery с ~35min heartbeat gap отражён в [сетевом итоге](../../network/network-access.md).
+- **Kuma boundary завершён 6 ноября:** public status/read/push отделены от personal-MFA admin host и native account controls; public Socket.IO закрыт. Native OIDC по-прежнему нет. Инцидент credential recovery с ~35min heartbeat gap отражён в [сетевом итоге](../../network/README.md).
 - LiteLLM, CI/robots, MCP/API, VPN и другие machine credentials не подменять SSO.
   Каталог покрывает восемь foundation-managed portal services (Argo CD отдельно), не буквально все endpoints кластера.
 
@@ -220,10 +220,10 @@ API keys/SSH/VPN, scheduled independent backups/key escrow/full restore,
 scoped RBAC/rotation нового machine admin API, историческая kubeconfig exposure/rotation.
 IdP disable не отзывает автоматически уже выданные app/API/SSH credentials.
 
-В identity-сессии 1 ноября WG keys/routes/firewall не меняли; **это не описание последующих сетевых работ 5–6 ноября**, перечисленных в [итоге](../../network/network-access.md). Не назначать одну подсеть нескольким direct WG
+В identity-сессии 1 ноября WG keys/routes/firewall не меняли; **это не описание последующих сетевых работ 5–6 ноября**, перечисленных в [итоге](../../network/README.md). Не назначать одну подсеть нескольким direct WG
 peers: нужен gateway+ACL/failover. Root на чужой ноде = доверие к workloads/secrets
 на ней; SSO/taints/NetworkPolicy не устраняют эту границу. На том этапе NetBird
-ещё не был внедрён; последующее внедрение и ограничения описаны в [актуальном справочнике](../../network/netbird.md).
+ещё не был внедрён; последующее внедрение и ограничения описаны в [актуальном справочнике](../../network/netbird/README.md).
 
 ### Wiki implementation: историческая приёмка1 ноября
 

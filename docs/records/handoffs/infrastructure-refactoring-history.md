@@ -37,7 +37,7 @@ ArgoSyncedHealthy, GrafanaAPI serves exactfixedpanels. Regression test
 17Nov owner architecture correction: `wg-socrat` is VPN-as-infrastructure only.
 Application foreign egress must use a distinct native3x-ui service client and
 its subscription with an official Pod VPN client, NOT a new SSH-to-NL tunnel.
-[Reusable service-VPN runbook](../../network/service-vpn-egress.md). N8N corrected in5b722c5c;
+[Reusable service-VPN runbook](../../network/vpn-egress/service-vpn-egress.md). N8N corrected in5b722c5c;
 [finite acceptance and cleanup](../../n8n/service-vpn-20261117.md). Venice's
 pre-existing SSH-egress remains a separately recorded deviation, not a template.
 

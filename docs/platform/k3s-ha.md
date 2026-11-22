@@ -105,7 +105,7 @@ VPS `traefik-edge` now uses `https://127.0.0.1:6444`, the standard k3s agent API
 - The health script checks authenticated local API readiness and certificate-validated Rancher `/ping` through the node's own ingress address.
 - Persistent router WAN2 TCP 80/443 forwards target the VIP. DNS retains the same home public address; this is not DNS failover.
 
-See [router operations](../network/router-static-mappings.md). Verify exactly one VIP owner, both direct ingress endpoints and public Rancher before and after cutover. A keepalived handover checks ingress, not complete node-loss recovery.
+See [router operations](../network/lan/router-static-mappings.md). Verify exactly one VIP owner, both direct ingress endpoints and public Rancher before and after cutover. A keepalived handover checks ingress, not complete node-loss recovery.
 
 ### Keepalived startup ordering
 
@@ -166,7 +166,7 @@ SQLite rollback applies only before other etcd members join. Once this is a thre
 ## Availability limits
 
 - One failed voter is tolerated; two are not. Keep two voters healthy during maintenance.
-- Native VPN failover stops the VPS etcd voter. Two healthy home voters retain quorum; a simultaneous home-node failure loses quorum. Native VPN can still serve independently. See [VPN failover](../network/vpn-failover.md).
+- Native VPN failover stops the VPS etcd voter. Two healthy home voters retain quorum; a simultaneous home-node failure loses quorum. Native VPN can still serve independently. See [VPN failover](../network/vpn-egress/vpn-failover.md).
 - Router, home WAN and shared power remain common dependencies. The VIP covers a home node failure, not a site failure.
 - NFS at `/srv/k8s-nfs` remains on `socrat-0`; dependent applications are not made highly available.
 - The public VPS SSH relay still depends on `socrat-0`; retain direct VPS SSH.
