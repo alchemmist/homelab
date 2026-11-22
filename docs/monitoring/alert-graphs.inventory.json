@@ -1461,7 +1461,7 @@
     "resource": "socrat-postgres-platform",
     "group": "postgres-platform",
     "alert": "SocratPgCriticalRedundancyReduced",
-    "expr": "cnpg_pg_replication_streaming_replicas{pg_cluster=\"pg-critical\"} < 3",
+    "expr": "cnpg_pg_replication_streaming_replicas{pg_cluster=\"pg-critical\"} < 2",
     "uid": null,
     "graphs": {
       "version": 1,
