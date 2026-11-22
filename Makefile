@@ -1,40 +1,23 @@
-.DEFAULT_GOAL := help
-
-SHELL := /bin/bash
-
-CI_CHECKS := graph ownership yaml python-scopes scripts-q000 deploy-i001 \
-             rustfs-return-types javascript workflow shell docker ansible \
-             secrets dependencies tests-fast tests-medium
-LOCAL_ONLY := python manifests tests-cluster
-
 export PATH := $(CURDIR)/.quality-tools/bin:$(PATH)
 export UV_LOCKED := 1
 export PYTHONDONTWRITEBYTECODE := 1
 
-.PHONY: setup help check check-all $(CI_CHECKS) $(LOCAL_ONLY)
+check: graph ownership yaml python-scopes scripts-q000 deploy-i001 rustfs-return-types \
+       javascript workflow shell docker ansible secrets dependencies tests-fast tests-medium \
+       python manifests tests-cluster
+
 setup:
 	uv sync --locked
 	uv run python scripts/quality/install_tools.py
 	uv run python scripts/quality/install_collections.py
 
-help:
-	@printf '%s\n' 'make setup: install locked tools' 'make check: run every check' \
-	  'CI: $(CI_CHECKS)' 'Local only: $(LOCAL_ONLY)'
-
-check-all: check
-
-ifneq ($(filter check check-all,$(MAKECMDGOALS)),)
-MAKEFLAGS += -k
-endif
-check: $(CI_CHECKS) $(LOCAL_ONLY)
-
 graph:
 	uv run qg validate
 	uv run python scripts/quality/contracts.py
 	uv run python scripts/quality/strict_guard.py
-	set -o pipefail; uv run python -m scripts.quality.python_inputs scripts/quality/ | \
+	bash -o pipefail -c 'uv run python -m scripts.quality.python_inputs scripts/quality/ | \
 	  xargs -0 -r uv run ruff check --config quality/ruff.toml --select SIM300 \
-	    --ignore-noqa --output-format concise --
+	    --ignore-noqa --output-format concise --'
 	uv run pytest -q tests/test_quality_python_policy.py
 
 ownership:
@@ -62,17 +45,17 @@ python-scopes:
 	uv run --locked python -m scripts.quality.python_scopes
 
 scripts-q000:
-	set -o pipefail; uv run python -m scripts.quality.python_inputs scripts/ tests/ | \
+	bash -o pipefail -c 'uv run python -m scripts.quality.python_inputs scripts/ tests/ | \
 	  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \
-	    --ignore-noqa --output-format concise --
+	    --ignore-noqa --output-format concise --'
 
 deploy-i001:
-	set -o pipefail; uv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ | \
+	bash -o pipefail -c 'uv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ | \
 	  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \
-	    --ignore-noqa --output-format concise --
-	set -o pipefail; uv run python -m scripts.quality.python_inputs scripts/ tests/ | \
+	    --ignore-noqa --output-format concise --'
+	bash -o pipefail -c 'uv run python -m scripts.quality.python_inputs scripts/ tests/ | \
 	  xargs -0 -r uv run ruff check --config quality/ruff.toml --select F401 \
-	    --ignore-noqa --output-format concise --
+	    --ignore-noqa --output-format concise --'
 
 rustfs-return-types:
 	uv run ruff check --config quality/ruff.toml --select ANN201 --ignore-noqa services/rustfs_gateway
@@ -116,3 +99,7 @@ manifests:
 
 tests-cluster:
 	uv run python scripts/quality/tests.py cluster
+
+.PHONY: check setup graph ownership yaml python-scopes scripts-q000 deploy-i001 \
+        rustfs-return-types javascript workflow shell docker ansible secrets dependencies \
+        tests-fast tests-medium python manifests tests-cluster

@@ -29,7 +29,7 @@ Blocking `ansible` (Playbook safety) also runs after `ownership`, using locked p
 The blocking `dependencies` audit runs in CI after `ownership`.
 
 Local-only checks are listed in [`quality/local-checks.json`](../../quality/local-checks.json)
-with their Make target names. `make check` and its alias `make check-all` run both the CI and local-only checks. Restore a
+with their Make target names. `make check` runs both the CI and local-only checks. Restore a
 check to `qg.yaml` and remove its local-only entry once it is verified green.
 
 ### Adding a blocking Python scope
