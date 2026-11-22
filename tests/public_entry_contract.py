@@ -98,3 +98,38 @@ def render(owner=None) -> list[dict[str, object]]:
             )
         )
     return docs
+
+
+PUBLIC_PATHS = (
+    r"^/(?:$|css/|js/|img/|fonts/|assets/|endpoints/|suites/|favicon|apple-touch-icon|"
+    r"manifest\.json|robots\.txt|api/v1/(?:config$|endpoints/|suites/))"
+)
+
+
+def assert_read_only_status_policy(conf: str) -> None:
+    """Require the full server body: no hidden write location or fallback backend."""
+    directives = [
+        line.strip()
+        for line in conf.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    assert directives.count("server {") == 1
+    assert_status_upstream(conf)
+    assert directives[directives.index("server {") + 1 :] == [
+        "listen 8080;",
+        "absolute_redirect off;",
+        "proxy_set_header Host status.alchemmist.xyz;",
+        "proxy_set_header X-Forwarded-Proto https;",
+        'proxy_set_header Upgrade "";',
+        "proxy_set_header Connection close;",
+        "if ($request_method !~ ^(GET|HEAD)$) { return 405; }",
+        "if ($host = kuma.socrat.alchemmist.xyz) { return 302 https://status.alchemmist.xyz/; }",
+        "location = /status/socrat { return 302 /; }",
+        "location = /status/socrat/ { return 302 /; }",
+        "location ~ " + PUBLIC_PATHS + " {",
+        "proxy_pass http://kuma;",
+        "}",
+        "location / { return 404; }",
+        "}",
+        "}",
+    ]

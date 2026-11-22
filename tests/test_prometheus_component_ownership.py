@@ -12,6 +12,8 @@ from unittest.mock import patch
 import pytest
 import yaml
 
+from tests.portable_placement import home_affinity
+
 ROOT = Path(__file__).resolve().parents[1]
 COMPONENTS = (
     "prometheus",
@@ -142,10 +144,49 @@ def software_update_extension(document) -> None:
 
 def migration_payload(document) -> dict[str, object]:
     """Check declared runtime overrides before comparing the unchanged handoff payload."""
-    if document["kind"] != "Prometheus":
+    kind = document["kind"]
+    name = document["metadata"]["name"]
+    if kind not in {"Prometheus", "Alertmanager", "Deployment"} and (kind, name) != (
+        "ServiceMonitor",
+        "kube-prometheus-stack-apiserver",
+    ):
         return cast("dict[str, object]", document)
     result = copy.deepcopy(document)
     spec = result["spec"]
+    if kind == "ServiceMonitor":
+        (endpoint,) = spec["endpoints"]
+        (rule,) = endpoint["relabelings"]
+        assert rule["regex"] == r"10\.250\.0\.(1|3|41):6443"
+        rule["regex"] = r"10\.250\.0\.(1|3|5):6443"
+        return result
+    if kind in {"Alertmanager", "Deployment"}:
+        pod = spec if kind == "Alertmanager" else spec["template"]["spec"]
+        assert pod["nodeSelector"] == {"kubernetes.io/os": "linux"}
+        if kind == "Deployment":
+            assert pod.pop("affinity") == home_affinity()
+        if name == "kube-prometheus-stack-kube-state-metrics":
+            pod["nodeSelector"].clear()
+        pod["nodeSelector"]["kubernetes.io/hostname"] = "socrat-1"
+        return result
+    # Reverse only the verified warm-S3 shipper delta (2948f0e2).
+    shipper = spec["thanos"]
+    assert shipper["objectStorageConfig"] == {"name": "thanos-warm-shipper", "key": "objstore.yml"}
+    shipper["objectStorageConfig"]["name"] = "thanos-objstore-raw"
+    assert shipper["volumeMounts"] == [
+        {"mountPath": "/trust", "name": "thanos-warm-ca", "readOnly": True}
+    ]
+    shipper["volumeMounts"] = [{"mountPath": "/var/lib/socrat-thanos", "name": "thanos-data"}]
+    assert spec["volumes"][0] == {
+        "name": "thanos-warm-ca",
+        "secret": {
+            "secretName": "thanos-warm-api-tls",
+            "items": [{"key": "ca.crt", "path": "ca.crt"}],
+        },
+    }
+    spec["volumes"][0] = {
+        "name": "thanos-data",
+        "hostPath": {"path": "/var/lib/socrat-thanos", "type": "Directory"},
+    }
     source = yaml.safe_load((ROOT / "charts/prometheus/values.yaml").read_text())[
         "kube-prometheus-stack"
     ]["prometheus"]["prometheusSpec"]
@@ -206,7 +247,10 @@ def migration_payload(document) -> dict[str, object]:
         },
     }
     assert spec.pop("podMetadata") == {
-        "annotations": {"homelab.alchemmist.xyz/software-update-scrape-version": "1"}
+        "annotations": {
+            "homelab.alchemmist.xyz/software-update-scrape-version": "1",
+            "homelab.alchemmist.xyz/otel-config-sha256": "db9921b7fe480086f1378726a72c2159cababf78c4cc45eb9ad8e2f212698067",
+        }
     }
     spec.pop("containers")
     extension = {"name": "software-update-otel", "configMap": {"name": "software-update-otel"}}
@@ -284,7 +328,12 @@ def test_offline_source_is_immutable_shared_code_not_shared_ownership() -> None:
         assert app["spec"]["source"]["helm"] == {
             "releaseName": "kube-prometheus-stack",
             "parameters": [],
-            "valueFiles": ["alert-graphs.values.yaml"],
+            "valueFiles": ["alert-graphs.values.yaml"]
+            + (
+                ["../../deploy/storage/alertmanager-nfs/cutover.values.yaml"]
+                if name == "alertmanager"
+                else []
+            ),
         }
         assert app["spec"]["syncPolicy"]["automated"] == {"prune": False, "selfHeal": True}
 

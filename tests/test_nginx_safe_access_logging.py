@@ -1,7 +1,6 @@
 """Offline chart rendering and real nginx parser tests; no cluster access."""
 
 import re
-import shutil
 import subprocess
 import unittest
 from pathlib import Path
@@ -62,7 +61,6 @@ class SafeNginxLoggingTests(unittest.TestCase):
                     assert "~^5 error;" in config
                     assert "access_log /dev/stdout safe_json;" in config
 
-    @unittest.skipUnless(shutil.which("docker"), "docker required for nginx syntax validation")
     def test_real_nginx_http_syntax(self) -> None:
         """The rendered logging directives pass real nginx syntax checks."""
         # Extract exact rendered logging directives; TLS/listen/upstream resources
@@ -94,9 +92,10 @@ class SafeNginxLoggingTests(unittest.TestCase):
                         "--rm",
                         "-i",
                         "--network=none",
+                        "--pull=never",
                         "--entrypoint",
                         "sh",
-                        "nginx:1.28.0-alpine",
+                        (ROOT / "quality/nginx-syntax-image.txt").read_text().strip(),
                         "-c",
                         "cat > /tmp/test.conf; TZ=UTC nginx -t -c /tmp/test.conf",
                     ],
