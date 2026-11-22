@@ -443,6 +443,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         "tests-fast",
         "shell",
         "rustfs-return-types",
+        "image-cves",
     }
     assert set(graph) == {"graph", *first_layer, "tests-medium", "ansible", "dependencies"}
     assert graph["dependencies"]["needs"] == ["ownership"]
