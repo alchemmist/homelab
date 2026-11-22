@@ -172,6 +172,14 @@ def refresh_public_edge_probe(scrape):
             for rule in job.get("relabel_configs", [])
             if rule.get("target_label") == "service_id"
         ]
+        if identity == ["lms"]:
+            target = next(t for t in targets if t["id"] == "lms")
+            params = job["params"]
+            desired = {"module": [target["module"]], "target": [target["url"]]}
+            legacy = {"module": ["http_2xx"], "target": ["http://lms.lms.svc.cluster.local:80/"]}
+            if params not in (legacy, desired):
+                raise ValueError("Unrecognized LMS probe")
+            job["params"] = desired
         if identity == ["status"]:
             if job.get("params", {}).get("module") != ["http_2xx"]:
                 raise ValueError("Unexpected status probe module")

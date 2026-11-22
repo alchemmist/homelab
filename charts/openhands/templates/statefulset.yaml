@@ -82,7 +82,14 @@ spec:
               value: {{ .Values.config.agentServerPort | quote }}
             - name: AUTOMATION_PORT
               value: {{ .Values.config.automationPort | quote }}
-            {{- if .Values.config.automationDbUrl }}
+            {{- if .Values.automationPostgres }}
+            - name: AUTOMATION_DB_URL
+              valueFrom: {secretKeyRef: {name: automations-postgres, key: url}}
+            - {name: PGSSLROOTCERT, value: /pg-ca/ca.crt}
+            - {name: AUTOMATION_DB_POOL_SIZE, value: "3"}
+            - {name: AUTOMATION_DB_MAX_OVERFLOW, value: "1"}
+            - {name: AUTOMATION_RUN_MIGRATIONS_ON_STARTUP, value: "false"}
+            {{- else if .Values.config.automationDbUrl }}
             - name: AUTOMATION_DB_URL
               value: {{ .Values.config.automationDbUrl | quote }}
             {{- end }}
@@ -138,6 +145,9 @@ spec:
           {{- end }}
           {{- if or .Values.persistence.enabled .Values.unlimitedIterations }}
           volumeMounts:
+            {{- if .Values.automationPostgres }}
+            - {name: pg-ca, mountPath: /pg-ca, readOnly: true}
+            {{- end }}
             {{- if .Values.unlimitedIterations }}
             - {name: sdk-iteration-policy, mountPath: /usr/local/lib/python3.13/site-packages/openhands/sdk/conversation/impl/local_conversation.py, subPath: local_conversation.py, readOnly: true}
             - {name: sdk-iteration-policy, mountPath: /usr/local/lib/python3.13/site-packages/openhands/sdk/conversation/goal/controller.py, subPath: controller.py, readOnly: true}
@@ -152,25 +162,6 @@ spec:
             {{- end }}
           {{- end }}
           {{- end }}
-        {{- if .Values.monoriPilot }}
-        - name: mutation-pilot
-          image: {{ include "agent-canvas.image" . }}
-          command: [python, -IBu, /code/loop.py]
-          env:
-            - {name: PILOT_CODE_REVISION, value: {{ printf "%s/v2" (.Files.Get "files/pilot/loop.py" | sha256sum) | quote }}}
-          ports: [{containerPort: 8083, name: pilot}]
-          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
-          resources:
-            requests: {cpu: 100m, memory: 150Mi}
-            limits: {cpu: 1, memory: 1Gi}
-          volumeMounts:
-            - {name: pilot-code, mountPath: /code, readOnly: true}
-            - {name: pilot-ticket, mountPath: /proof, readOnly: true}
-            - {name: pilot-scratch, mountPath: /scratch}
-            - {name: pilot-tmp, mountPath: /tmp}
-            - {name: {{ include "agent-canvas.pvcClaimName" . }}, mountPath: /state, subPath: mutation-pilot-state}
-            - {name: {{ include "agent-canvas.pvcClaimName" . }}, mountPath: /session-key, subPath: openhands/agent-canvas/api-key.txt, readOnly: true}
-        {{- end }}
         {{- if .Values.continueIterationChat }}
         - name: iteration-continuation
           image: {{ include "agent-canvas.image" . }}
@@ -225,11 +216,8 @@ spec:
       {{- end }}
       {{- if or .Values.unlimitedIterations (and .Values.persistence.enabled .Values.persistence.existingClaim) }}
       volumes:
-        {{- if .Values.monoriPilot }}
-        - {name: pilot-code, configMap: {name: mutation-pilot-code}}
-        - {name: pilot-ticket, secret: {secretName: monori-proof-ticket, defaultMode: 0440}}
-        - {name: pilot-scratch, emptyDir: {sizeLimit: 2Gi}}
-        - {name: pilot-tmp, emptyDir: {sizeLimit: 256Mi}}
+        {{- if .Values.automationPostgres }}
+        - {name: pg-ca, configMap: {name: pg-common-ca}}
         {{- end }}
         {{- if .Values.unlimitedIterations }}
         - {name: sdk-iteration-policy, emptyDir: {sizeLimit: 2Mi}}

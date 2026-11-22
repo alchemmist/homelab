@@ -1,0 +1,7 @@
+FROM harbor.socrat.alchemmist.xyz/homelab/wiki-runtime@sha256:dc5b15b391cd94fad3db51dc7fa917e138d77ea345e27518371073538c5a78d9
+USER 0:0
+RUN pip install --no-cache-dir 'psycopg[binary]==3.2.13'
+COPY runtime/oidc.py runtime/auth.py runtime/account_pg.py runtime/import_accounts_pg.py /app/runtime/
+RUN python -c "from pathlib import Path; p=Path('/app/runtime/oidc.py'); s=p.read_text(); old='openid profile email'; assert s.count(old)==1; p.write_text(s.replace(old, old+' groups'))"
+
+USER 1000:1000

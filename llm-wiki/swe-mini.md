@@ -1,6 +1,12 @@
 # SWE Mini: Monori autonomous maintenance
 
-## Desired architecture (acceptance pending)
+> **Retirement in progress.** The owner retired this service. The image release is
+> disabled; do not dispatch it, provision credentials, unpause the queue or merge
+> homelab#462. The steps and receipts below are historical, not operator instructions.
+> A separate Git change removes the Application only after the foreground finalizer
+> is observed on the live child. Do not treat either Git change as a live receipt.
+
+## Historical architecture (acceptance pending at the time)
 
 Owning Application: `deploy/argocd/apps/swe-mini.yaml`; local chart `charts/swe-mini`,
 values `deploy/swe-mini/values.yaml`. Implementation and hash-locked dependencies:
