@@ -46,6 +46,13 @@ spec:
           readinessProbe:
             tcpSocket: {host: 127.0.0.1, port: 443}
             periodSeconds: 5
+          # Local-listener liveness on the same verified socket as the
+          # readiness probe: the relay only fails it when the node-local
+          # 443 listener itself is gone, which is exactly a dead-process
+          # signal, not an upstream endpoint symptom.
+          livenessProbe:
+            tcpSocket: {host: 127.0.0.1, port: 443}
+            periodSeconds: 30
           resources:
 {{ toYaml .Values.resources | indent 12 }}
           volumeMounts:

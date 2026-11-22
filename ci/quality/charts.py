@@ -340,6 +340,83 @@ def authentik_accounts():
 ONE_SHOT_KINDS = frozenset({"Job", "CronJob"})
 ONE_SHOT_EXEMPT_CHECKS = frozenset({"no-liveness-probe", "no-readiness-probe"})
 
+# A pod with hostNetwork: true sends its traffic through the node network
+# stack, outside the per-pod CNI datapath. Cluster NetworkPolicies cannot
+# isolate that traffic (CNI policy applies to the pod's virtual interface, so
+# any policy "selecting" a hostNetwork pod is unverifiable compliance theater
+# for the traffic that matters), and its real boundary is the node firewall.
+# The non-isolated-pod heuristic assumes pod-network traffic, so presence of
+# a hostNetwork contract is structural grounds to drop that check for the
+# object; every off-hostNetwork workload keeps the full check.
+# Workload specs are matched structurally in the report post-processing.
+HOST_BOUNDARY_KINDS = frozenset(
+    {"Pod", "Deployment", "DaemonSet", "StatefulSet", "ReplicaSet", "Job", "CronJob"}
+)
+
+# OCI runtimes used here (containerd/k3s CRI) do not grant ambient
+# capabilities to non-root processes: capabilities.add grants the permitted
+# set, but the effective bind capability never carries over, so a non-root
+# process cannot bind a port < 1024 without image-level file capabilities
+# (setcap) or a rebuilt entrypoint. For a hostNetwork daemon that must own a
+# privileged port on the node address, running as root with all capabilities
+# dropped except NET_BIND_SERVICE is therefore the narrowest implementable
+# identity contract; the validator blanket rule ("run as non-root") is
+# unimplementable for it. The exemption below requires that full structural
+# contract (hostNetwork + a sub-1024 bind + drop ALL + add only
+# NET_BIND_SERVICE + runAsNonRoot explicitly false); any workload without that
+# exact narrowing keeps the finding.
+PRIVILEGED_BIND_EXEMPT_CHECKS = frozenset({"run-as-non-root"})
+
+
+def _pod_spec(doc) -> dict | None:
+    """Return the pod spec owning the workload doc, if any."""
+    if doc.get("kind") not in HOST_BOUNDARY_KINDS:
+        return None
+    if doc["kind"] == "Pod":
+        return doc.get("spec") or None
+    return ((doc.get("spec") or {}).get("template") or {}).get("spec") or None
+
+
+def privileged_bind_contracts(resources) -> set:
+    """Set of (kind, namespace, name) with the structural bind contract."""
+    contracts = set()
+    for doc in resources:
+        spec = _pod_spec(doc)
+        if not spec or not spec.get("hostNetwork"):
+            continue
+        for container in spec.get("containers") or ():
+            context = container.get("securityContext") or {}
+            if context.get("runAsNonRoot") is not False:
+                continue
+            caps = context.get("capabilities") or {}
+            if (caps.get("drop") or []) != ["ALL"] or not "NET_BIND_SERVICE" in (
+                caps.get("add") or []
+            ):
+                continue
+            ports = [
+                p.get("containerPort")
+                for p in container.get("ports") or ()
+                if isinstance(p.get("containerPort"), int)
+            ]
+            if any(port < 1024 for port in ports):
+                meta = doc["metadata"]
+                contracts.add(
+                    (doc["kind"], meta.get("namespace", ""), meta["name"])
+                )
+    return contracts
+
+
+def host_boundary_objects(resources) -> set:
+    """Set of (kind, namespace, name) whose pod spec declares hostNetwork."""
+    boundaries = set()
+    for doc in resources:
+        spec = _pod_spec(doc)
+        if spec and spec.get("hostNetwork"):
+            meta = doc["metadata"]
+            boundaries.add((doc["kind"], meta.get("namespace", ""), meta["name"]))
+    return boundaries
+
+
 # Checks whose kube-linter semantics cannot be satisfied from a single Helm
 # render because the referenced or bound object lives in another reviewed
 # source. Registry entries must pin the exact object and rule and carry an
@@ -494,19 +571,33 @@ def kube_lint(
         raise ValueError("Invalid kube-linter report")
     if data.returncode and not reports:
         raise RuntimeError("kube-linter failed without findings")
-    return catalogue_findings(target, reports, peer_keys, pins)
+    return catalogue_findings(target, reports, peer_keys, pins, resources)
 
 
-def catalogue_findings(target, reports, peer_keys, pins):
+def catalogue_findings(target, reports, peer_keys, pins, resources=()):
     """Post-process one kube-linter report into findings, with real semantics."""
+    # Precompute the structural workload contracts once per report.
+    boundaries = host_boundary_objects(resources)
+    binders = privileged_bind_contracts(resources)
     result = []
     for item in reports:
         obj = item["Object"]["K8sObject"]
         kind = obj["GroupVersionKind"]["Kind"]
+        identity = (kind, obj.get("Namespace", ""), obj["Name"])
         if kind in ONE_SHOT_KINDS and item["Check"] in ONE_SHOT_EXEMPT_CHECKS:
             continue
+        # hostNetwork traffic never traverses the CNI pod datapath: a cluster
+        # NetworkPolicy cannot isolate it, so the isolation check has no
+        # implementable subject. The node firewall owns that boundary.
+        if item["Check"] == "non-isolated-pod" and identity in boundaries:
+            continue
+        # Narrowest root contract for a privileged-port on-address bind (see
+        # PRIVILEGED_BIND_EXEMPT_CHECKS above): unimplementable as non-root
+        # under this CRI, every other root workload keeps the finding.
+        if item["Check"] in PRIVILEGED_BIND_EXEMPT_CHECKS and identity in binders:
+            continue
         # Peers are checked and attributed in full by their own release.
-        peer = (kind, obj.get("Namespace", ""), obj["Name"])
+        peer = identity
         if peer in peer_keys:
             continue
         # A pinned, evidence-verified out-of-band provider or node contract.

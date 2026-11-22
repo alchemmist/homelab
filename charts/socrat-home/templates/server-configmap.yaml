@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ $.Release.Namespace | quote }}
+  name: {{ .Release.Name }}-server-conf
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  # Docker-verified replacement of the image's stock default.conf (which
+  # listens on privileged port 80 as image uid root): the same static site
+  # served on 8080, runnable as nginx uid 101 with a read-only root filesystem.
+  # The access-logging extension keeps its own conf.d drop-in.
+  default.conf: |
+    server {
+        listen       8080;
+        server_name  _;
+        root   /usr/share/nginx/html;
+        index  index.html;
+
+        location / {
+            try_files $uri $uri/ =404;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   /usr/share/nginx/html;
+        }
+    }

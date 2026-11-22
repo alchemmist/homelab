@@ -30,6 +30,15 @@ spec:
     spec:
       serviceAccountName: {{ .Release.Name | quote }}
       automountServiceAccountToken: false
+      securityContext:
+        # Docker-verified (image digest 41e26b08..., linux/amd64): the site is
+        # nginx uid 101 on a read-only root filesystem with /var/cache/nginx
+        # and /run as the only write paths (docker diff), serving 200s on 8080.
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: {type: RuntimeDefault}
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- range .Values.imagePullSecrets }}
@@ -64,6 +73,13 @@ spec:
         - name: access-logging
           configMap:
             name: {{ .Release.Name }}-access-logging
+        - name: server-conf
+          configMap:
+            name: {{ .Release.Name }}-server-conf
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
       {{- if .Values.homepageIndex.enabled }}
         - name: homepage-index
           configMap:
@@ -79,7 +95,26 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.service.targetPort }}
+          readinessProbe:
+            httpGet: {path: /, port: {{ .Values.service.targetPort }}}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /, port: {{ .Values.service.targetPort }}}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
           volumeMounts:
+            - name: server-conf
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+              readOnly: true
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /run
             - name: access-logging
               mountPath: /etc/nginx/conf.d/00-access-logging.conf
               subPath: 00-access-logging.conf

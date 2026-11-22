@@ -240,9 +240,83 @@ def one_shot_probe_semantics() -> None:
     )
 
 
+def host_boundary_semantics() -> None:
+    """Check hostNetwork workload semantics stay narrow and defensible."""
+    stub = target_stub()
+
+    def hostnet(name: str, contract: bool) -> dict[str, object]:
+        doc = probeless("Deployment", name)
+        pod = doc["spec"]["template"]["spec"]
+        pod["hostNetwork"] = True
+        pod["dnsPolicy"] = "Default"
+        container = pod["containers"][0]
+        container["ports"] = [{"containerPort": 443}]
+        container["securityContext"] = {
+            "runAsNonRoot": False,
+            "capabilities": (
+                {"drop": ["ALL"], "add": ["NET_BIND_SERVICE"]}
+                if contract
+                else {"drop": ["ALL"]}
+            ),
+        }
+        return doc
+
+    from ci.quality import charts
+
+    # A hostNetwork pod needs no placebo NetworkPolicy: the node owns the boundary.
+    require(
+        not any(
+            item["ruleId"] == "kube-linter-non-isolated-pod"
+            for item in kube_lint(stub, [hostnet("node-relay", False)])
+        ),
+        "hostNetwork workload without a policy got a non-isolated finding",
+    )
+    # Off-hostNetwork workloads keep the isolation requirement in full.
+    isolated = probeless("Deployment", "serving")
+    require(
+        any(
+            item["ruleId"] == "kube-linter-non-isolated-pod"
+            for item in kube_lint(stub, [isolated])
+        ),
+        "ordinary workload lost its non-isolated finding",
+    )
+    # The exact structural bind contract (drop ALL + NET_BIND_SERVICE only,
+    # explicit runAsNonRoot false, sub-1024 hostNetwork bind) is exempted.
+    require(
+        not any(
+            item["ruleId"] == "kube-linter-run-as-non-root"
+            for item in kube_lint(stub, [hostnet("node-binder", True)])
+        ),
+        "structural privileged-bind contract still got a run-as-non-root finding",
+    )
+    # Anything narrower than the full contract keeps the finding: this pod is
+    # the same hostNetwork 443 binder, but without the one-capability narrowing.
+    loose = hostnet("lazy-binder", False)
+    require(
+        any(
+            item["ruleId"] == "kube-linter-run-as-non-root"
+            for item in kube_lint(stub, [loose])
+        ),
+        "root workload without the capability contract lost its run-as-non-root finding",
+    )
+    # And an ordinary root workload keeps the finding too.
+    ordinary = probeless("Deployment", "plain-root")
+    ordinary["spec"]["template"]["spec"]["containers"][0]["securityContext"] = {
+        "runAsNonRoot": False
+    }
+    require(
+        any(
+            item["ruleId"] == "kube-linter-run-as-non-root"
+            for item in kube_lint(stub, [ordinary])
+        ),
+        "ordinary root workload lost its run-as-non-root finding",
+    )
+
+
 def main() -> None:
     """Check that the actual peer satisfies the Service, but not an incorrect selector."""
     one_shot_probe_semantics()
+    host_boundary_semantics()
     release_namespace_semantics()
     defaults_namespace_policy()
     registry_semantics()

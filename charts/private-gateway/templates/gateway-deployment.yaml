@@ -24,6 +24,20 @@ spec:
     spec:
       hostNetwork: true
       dnsPolicy: Default
+      serviceAccountName: {{ .Chart.Name }}
+      automountServiceAccountToken: false
+      securityContext:
+        # Docker-verified (nginx:1.27-alpine sha256:65645c7b..., linux/amd64):
+        # the full per-node nginx config runs as nginx uid 101 on a read-only
+        # root filesystem; /tmp holds the copied per-node config, /var/cache/nginx
+        # and /run are the remaining writable paths (docker diff). Secret mounts
+        # need group readability (docker-verified permission failure otherwise),
+        # hence fsGroup 101.
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: {type: RuntimeDefault}
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -44,9 +58,9 @@ spec:
             - /bin/sh
             - -ec
             - |
-              cp "/etc/nginx/nodes/${NODE_NAME}.conf" /etc/nginx/nginx.conf
-              nginx -t
-              exec nginx -g 'daemon off;'
+              cp "/etc/nginx/nodes/${NODE_NAME}.conf" /tmp/nginx.conf
+              nginx -t -c /tmp/nginx.conf
+              exec nginx -c /tmp/nginx.conf -g 'daemon off;'
           env:
             - name: NODE_NAME
               valueFrom:
@@ -59,6 +73,10 @@ spec:
             - name: private-health
               containerPort: {{ .Values.healthPort }}
               protocol: TCP
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
           readinessProbe:
             exec:
               command: ["/bin/sh", "-ec", "wget -qO- http://10.250.0.3:{{ .Values.healthPort }}/healthz"]
@@ -87,6 +105,12 @@ spec:
             - name: basic-auth
               mountPath: /etc/nginx/auth
               readOnly: true
+            - name: nginx-tmp
+              mountPath: /tmp
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /run
       volumes:
         {{- if .Values.editorAuthSecret }}
         - name: wiki-editor-secret
@@ -113,4 +137,10 @@ spec:
             items:
               - key: users
                 path: users
+        - name: nginx-tmp
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
 {{- end }}
