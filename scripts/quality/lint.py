@@ -1369,7 +1369,7 @@ def python_directive_lines(source: str) -> set[int]:
                 continue
             for token in tokenize.generate_tokens(io.StringIO(script.value).readline):
                 if token.type == tokenize.COMMENT and re.match(
-                    r"#\s*noqa(?:\s*:|\s*$)", token.string, re.I
+                    r"#\s*noqa(?:\s*:|\s*$)", token.string, re.IGNORECASE
                 ):
                     if script.style == "|":
                         offset = token.start[0]
@@ -1392,7 +1392,7 @@ def workflow_directives(name: str) -> list[Finding]:
     source = (ROOT / name).read_text()
     lines = python_directive_lines(source)
     for number, line in enumerate(source.splitlines(), 1):
-        if re.search(r"#\s*(?:zizmor:\s*ignore|shellcheck\s+disable=)", line, re.I):
+        if re.search(r"#\s*(?:zizmor:\s*ignore|shellcheck\s+disable=)", line, re.IGNORECASE):
             lines.add(number)
     return [
         finding("workflow-suppression", name, number, "Workflow lint suppression is not allowed.")

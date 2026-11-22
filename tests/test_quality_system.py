@@ -434,6 +434,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     assert len({n["title"] for n in graph.values()}) == len(graph)
     first_layer = {
         "yaml",
+        "python-scopes",
         "scripts-q000",
         "deploy-i001",
         "javascript",
@@ -463,6 +464,9 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     for node in first_layer:
         assert graph[node]["needs"] == ["graph"]
         assert graph[node]["policy"]["blocking"] is True
+    scopes = graph["python-scopes"]
+    assert scopes["policy"] == policy
+    assert scopes["run"] == "uv run --locked python -m scripts.quality.python_scopes"
     quotes = graph["scripts-q000"]
     assert quotes["policy"] == policy
     assert quotes["run"] == (

@@ -1,0 +1,4 @@
+{
+  "include": ["scripts/quality/*.py"],
+  "rules": ["FURB167"]
+}
