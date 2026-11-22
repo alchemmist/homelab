@@ -26,12 +26,6 @@ _Job = dict[str, object]
 _AuditEntry = tuple[str, str, str, str, float, str, str, str, str]
 
 
-class _TargetManifest(TypedDict):
-    """Row evidence consumed after checking the manifest digest."""
-
-    rows: list[_Job]
-
-
 class _Authorization(TypedDict, total=False):
     """Fields consulted when checking a recorded authorization."""
 
@@ -114,8 +108,8 @@ def table_hashes(
     return result
 
 
-def manifest_digest(manifest: object) -> str:
-    """Validate the reviewed target manifest and return its canonical digest."""
+def _checked_manifest(manifest: object) -> tuple[str, list[dict[object, object]]]:
+    """Return the digest and the very rows checked against the reviewed target IDs."""
     if (
         not isinstance(manifest, dict)
         or manifest.get("version") != 1
@@ -131,7 +125,13 @@ def manifest_digest(manifest: object) -> str:
         or {r.get("id") for r in rows} != set(TARGETS)
     ):
         raise ValueError("invalid manifest IDs")
-    return digest(manifest)
+    return digest(manifest), rows
+
+
+def manifest_digest(manifest: object) -> str:
+    """Validate the reviewed target manifest and return its canonical digest."""
+    checksum, _ = _checked_manifest(manifest)
+    return checksum
 
 
 def authorize(a: _Authorization) -> None:
@@ -163,7 +163,9 @@ def _require_retryable(row: dict[str, object], error: str) -> None:
         raise ValueError("unexpected state/stage/lease/error/intent")
 
 
-def _reviewed_selected_rows(c: sqlite3.Connection, rows: list[_Job]) -> list[_Job]:
+def _reviewed_selected_rows(
+    c: sqlite3.Connection, rows: list[dict[object, object]]
+) -> list[_Job]:
     """Validate the exact selected rows and their episode isolation."""
     selected = []
     for key, error in TARGETS.items():
@@ -286,7 +288,7 @@ def retry(
 ) -> dict[str, object]:
     """Verify state and re-queue the two reviewed dead jobs under immutable audit."""
     authorize(authorization)
-    bound = manifest_digest(manifest)
+    bound, manifest_rows = _checked_manifest(manifest)
     if authorization.get("target_manifest_digest") != bound:
         raise ValueError("authorization manifest mismatch")
     c = sqlite3.connect("file:" + str(path) + "?mode=rw", uri=True, isolation_level=None)
@@ -294,8 +296,7 @@ def retry(
     try:
         c.execute("BEGIN IMMEDIATE")
         before = table_hashes(c)
-        # manifest_digest checked the rows and their exact IDs before opening the database.
-        rows = _reviewed_selected_rows(c, cast("_TargetManifest", manifest)["rows"])
+        rows = _reviewed_selected_rows(c, manifest_rows)
         _require_fresh_audit(c)
         if not execute:
             c.rollback()
