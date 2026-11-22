@@ -1,6 +1,9 @@
 """Strict inventory of the retired FILESYSTEM bucket only; no symlinks or mounts."""
 
-import hashlib, json, re, stat
+import hashlib
+import json
+import re
+import stat
 
 ID = r"[0-9A-HJKMNP-TV-Z]{26}"
 FILE = re.compile(rf"{ID}/(?:index|meta\.json|deletion-mark\.json|chunks/[0-9]{{6}})")
