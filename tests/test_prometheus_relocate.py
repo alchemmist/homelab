@@ -14,7 +14,7 @@ def load(relative: str) -> ModuleType:
     return module
 
 
-RELOCATE = load("ansible/roles/monitoring_stack/files/prometheus_relocate.py")
+RELOCATE = load("ansible/roles/monitoring_thanos/files/prometheus_relocate.py")
 GUARD = load("ansible/roles/monitoring_k3s/files/prometheus_scrape_guard.py")
 
 

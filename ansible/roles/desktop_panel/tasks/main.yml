@@ -51,7 +51,6 @@
     follow: true
     backup: true
     validate: /usr/bin/python3 -m json.tool %s
-  register: homelab_waybar_config
 
 - name: Deliver the shared Waybar appearance
   tags: waybar
@@ -63,7 +62,6 @@
     mode: "0644"
     follow: true
     backup: true
-  register: homelab_waybar_style
 
 - name: Hide only the Flameshot tray icon
   community.general.ini_file:

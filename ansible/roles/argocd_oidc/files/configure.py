@@ -22,7 +22,6 @@ NAMESPACE = "argocd"
 SECRET_KEY = "oidc.authentik.clientSecret"
 STAGE = "startup"
 APP_SLUG = "argocd"
-APP_URL = "https://argocd.socrat.alchemmist.xyz/"
 REDIRECT_URI = "https://argocd.socrat.alchemmist.xyz/auth/callback"
 
 # Runs in the Authentik server pod so the bootstrap token stays inside the pod
