@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "0981d75069c3f260cc2a52e2a5c84cc6270b9642cb81481ed12000f0f802b0fc",
+  "graphDigest": "347c914b97071865ee9d262146b058c620b7efc6dacb6810ec5a1561cd1d9ed5",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -374,6 +374,34 @@
       },
       "timeoutMinutes": 10,
       "title": "Manifest validation"
+    },
+    {
+      "env": {},
+      "id": "dependencies",
+      "needs": [
+        "ownership"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-javascript",
+      "result": {
+        "adapter": "native",
+        "path": "reports/dependencies.json"
+      },
+      "step": {
+        "run": "set -euo pipefail\nuv run pytest -q tests/test_quality_dependency_coverage.py \\\n  tests/test_quality_p56_56_node_lock.py\nuv run python scripts/quality/lint.py dependencies\nuv run python scripts/quality/npm_smoke.py\n"
+      },
+      "timeoutMinutes": 5,
+      "title": "Dependency audit"
     },
     {
       "env": {},

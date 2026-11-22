@@ -12,12 +12,5 @@
     "results": {
       "junit": "reports/tests-cluster.xml"
     }
-  },
-  "dependencies": {
-    "title": "Dependency audit",
-    "run": "uv run python scripts/quality/lint.py dependencies",
-    "results": {
-      "native": "reports/dependencies.json"
-    }
   }
 }

@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 from scripts.quality import common
 
@@ -328,3 +330,23 @@ def test_strict_python_decoder_preserves_native_report_contract(*, vulnerable: b
 def test_dependency_fixture_keeps_http_module_identity() -> None:
     """Temporary common aliases must not remove the transport module from sys.modules."""
     assert sys.modules["http.client"] is http.client
+
+
+def test_retained_service_lock_matches_direct_inputs_and_image_install() -> None:
+    """Retiring a deployment does not retire the source image's dependency contract."""
+    service = common.ROOT / "services/swe-mini"
+    lock = service / "requirements.txt"
+    lint.validate_requirement_hashes(lock)
+    locked = {
+        canonicalize_name(req.name): req.specifier
+        for line in lock.read_text().splitlines()
+        if line and line[0].isalnum()
+        for req in [Requirement(line.removesuffix("\\").strip())]
+    }
+    direct = [Requirement(line) for line in (service / "requirements.in").read_text().splitlines()]
+    assert direct
+    for req in direct:
+        assert locked[canonicalize_name(req.name)] == req.specifier
+    recipe = (service / "Dockerfile").read_text().splitlines()
+    assert "COPY requirements.txt /app/requirements.txt" in recipe
+    assert "RUN pip install --no-cache-dir --require-hashes -r requirements.txt" in recipe
