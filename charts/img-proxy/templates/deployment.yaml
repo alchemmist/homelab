@@ -18,6 +18,12 @@ spec:
         app.kubernetes.io/name: {{ .Chart.Name }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: {type: RuntimeDefault}
       serviceAccountName: {{ .Release.Name }}
       automountServiceAccountToken: false
 {{- with .Values.nodeSelector }}
@@ -28,6 +34,10 @@ spec:
         - name: nginx
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
           ports:
             - containerPort: {{ .Values.service.targetPort }}
           livenessProbe:
@@ -41,12 +51,16 @@ spec:
               port: {{ .Values.service.targetPort }}
             periodSeconds: 5
           volumeMounts:
+            - {name: nginx-run, mountPath: /run}
+            - {name: nginx-cache, mountPath: /var/cache/nginx}
             - name: config
               mountPath: /etc/nginx/conf.d
               readOnly: true
           resources:
 {{ toYaml .Values.resources | indent 12 }}
       volumes:
+        - {name: nginx-run, emptyDir: {}}
+        - {name: nginx-cache, emptyDir: {}}
         - name: config
           configMap:
             name: {{ .Release.Name }}-nginx

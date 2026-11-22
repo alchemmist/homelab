@@ -25,6 +25,11 @@ def test_rendered_img_proxy_identity_and_dependency_free_probes() -> None:
     assert pod["serviceAccountName"] == "img-proxy"
     assert pod["automountServiceAccountToken"] is False
     container = pod["containers"][0]
+    assert pod["securityContext"]["runAsUser"] == pod["securityContext"]["fsGroup"] == 101
+    assert container["securityContext"]["readOnlyRootFilesystem"] is True
+    writable = {m["name"]: m["mountPath"] for m in container["volumeMounts"] if not m.get("readOnly")}
+    assert writable == {"nginx-run": "/run", "nginx-cache": "/var/cache/nginx"}
+    assert all(v["emptyDir"] == {} for v in pod["volumes"] if v["name"] in writable)
     for probe_name in ("livenessProbe", "readinessProbe"):
         probe = container[probe_name]
         assert probe["httpGet"] == {"path": "/healthz", "port": 8080}
