@@ -99,7 +99,7 @@ kind: Service
 metadata: {name: redisinsight}
 spec:
   selector: {app: redisinsight}
-  ports: [{name: https-upstream, port: 4180, targetPort: proxy}]
+  ports: [{name: http, port: 4180, targetPort: proxy}]
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
