@@ -1,8 +1,8 @@
 # Homelab agent entrypoint
 
 Start at `docs/README.md`. For a named service or alert, follow its direct route;
-read `docs/context/context.md` only for a system overview. Before operational work,
-check `docs/context/safety.md` and the relevant runbook.
+read `docs/platform/system-overview.md` only for a system overview. Before operational work,
+check `docs/platform/operational-boundaries.md` and the relevant runbook.
 
 ## Pull requests
 

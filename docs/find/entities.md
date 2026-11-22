@@ -13,4 +13,4 @@
 | RustFS | [Foundation](../data/object-storage/rustfs-foundation.md); [verification records](../rustfs/) |
 | n8n, SPI | [Workflow operations](../n8n/n8n-workflows.md); [incident triage](../applications/spi-incident-triage.md) |
 | LiteLLM, Open WebUI, LMS | [AI application guides](../applications/ai/) |
-| Other applications | [Application guides](../applications/); [topic notes](../context/topic-notes.md) |
+| Other applications | [Application guides](../applications/); [topic notes](topics.md) |

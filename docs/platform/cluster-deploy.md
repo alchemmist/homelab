@@ -127,7 +127,7 @@ OIDC и существующие credentials сохраняются. Приня�
 
 ## Как устроен Argo CD
 
-Argo CD размещён раздельно: application-controller на `socrat-5`, остальные компоненты на `socrat-0`. UI: `https://argocd.socrat.alchemmist.xyz`, native Authentik OIDC. Canonical values: `deploy/platform/argo-cd/values.yaml`; старый путь — compatibility symlink. `ansible/playbooks/argocd.yml` допускает только явный empty-cluster bootstrap и отказывает при существующих workloads. Текущий контракт: [context](../context/context.md), приёмка: [management handoff](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-management-20261116.md).
+Argo CD размещён раздельно: application-controller на `socrat-5`, остальные компоненты на `socrat-0`. UI: `https://argocd.socrat.alchemmist.xyz`, native Authentik OIDC. Canonical values: `deploy/platform/argo-cd/values.yaml`; старый путь — compatibility symlink. `ansible/playbooks/argocd.yml` допускает только явный empty-cluster bootstrap и отказывает при существующих workloads. Текущий контракт: [context](system-overview.md), приёмка: [management handoff](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-management-20261116.md).
 
 Базовая схема и NetBird:
 

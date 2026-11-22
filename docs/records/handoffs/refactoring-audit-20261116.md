@@ -66,7 +66,7 @@ BACK/TARGET, `scripts/wg-peer15-endpoint.py:17` отдельно хранит en
 
 **Подтверждённые противоречия:**
 
-- `docs/context/context.md` — 1255 строк; раздел о stateless-переносе описывает Monori
+- `docs/platform/system-overview.md` — 1255 строк; раздел о stateless-переносе описывает Monori
   backend на `socrat-0`, SPI worker на `socrat-1`, хотя более новый раздел того же
   файла фиксирует их работу на `socrat-5`.
 - `docs/README.md:42` по-прежнему называет SPI runtime migration pending.

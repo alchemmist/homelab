@@ -5,7 +5,7 @@
 > do not restore shared no-auth mode, private DNS assumptions or old-PVC writers.
 > GPU, VPN/Mac resolver and backup changes are outside this refactor.
 > See [current WebUI ownership](open-webui-upgrades.md) and
-> [current context](../../context/context.md).
+> [current context](../../platform/system-overview.md).
 
 ## Current model selection (2026-10-16)
 

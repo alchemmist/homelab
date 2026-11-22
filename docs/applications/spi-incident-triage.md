@@ -6,7 +6,7 @@ SPI worker/storage и queue UI приняты на `socrat-5`; GitHub broker о�
 на `socrat-1`. [Stateful handoff](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-stateful-20261116.md) фиксирует
 очередь/leases/history, ограничения rollback и сохранённый failed execution.
 Источник worker: `deploy/spi-triage/values.yaml`; текущая архитектурная навигация:
-[context](../context/context.md). Ниже сохранён датированный этап source extraction, а не
+[context](../platform/system-overview.md). Ниже сохранён датированный этап source extraction, а не
 утверждение, что production runtime всё ещё ожидает переноса. Не запускать старые
 activation-команды по историческому разделу без новой проверки.
 

@@ -1,10 +1,10 @@
 # Topic notes and acceptance boundaries
 
-[Current state](../context/context.md) · [Change checks](../quality/README.md) · [Infrastructure contracts](../platform/infrastructure-contracts.md) · [Public wiki](../../wiki/README.md)
+[Current state](../platform/system-overview.md) · [Change checks](../quality/README.md) · [Infrastructure contracts](../platform/infrastructure-contracts.md) · [Public wiki](../../wiki/README.md)
 
 [Unexpected loss of `socrat-1`, 21 November 2026](../records/incidents/socrat-1-loss-20261121.md): observed recovery times, recovery limits and outstanding checks. The [second outage that day](../records/incidents/socrat-1-loss-20261121-run2.md) tested a separate Alertmanager on node `0` without changing the PostgreSQL primary.
 
-For authorization changes, see [B2C application groups](../identity/application-access.md). The [placement and ownership map](../context/context.md) was updated on 16 November 2026. The network overview describes the 10 November snapshot (Moscow VPN Pod/native operation, shared mesh, fallback acceptance and SPI service extraction); the observer snapshot is from 8 November. Other sections carry their own dates. This is an operator reference, not public wiki content or a script for repeating migrations. Git records intent; check the running system separately.
+For authorization changes, see [B2C application groups](../identity/application-access.md). The [placement and ownership map](../platform/system-overview.md) was updated on 16 November 2026. The network overview describes the 10 November snapshot (Moscow VPN Pod/native operation, shared mesh, fallback acceptance and SPI service extraction); the observer snapshot is from 8 November. Other sections carry their own dates. This is an operator reference, not public wiki content or a script for repeating migrations. Git records intent; check the running system separately.
 
 The owner deferred the RF/NL server split. Moscow still exits through NL, and the existing Happ bypass remains in place. See [VPN transit internals](../records/handoffs/vpn-mesh-runtime-20261110.md#what-the-pod-actually-does). Research is not a deployment request. Private recovery evidence stays outside Git.
 
@@ -15,7 +15,7 @@ The owner deferred the RF/NL server split. Moscow still exits through NL, and th
 - [Redis Insight: Authentik groups, dashboard access and revocation](../data/redis/redisinsight.md)
 - [Shared Redis: writer endpoint, guarantees and LiteLLM integration](../data/redis/redis-common.md)
 
-1. [Current context](../context/context.md): topology, constraints and operating procedure.
+1. [Current context](../platform/system-overview.md): topology, constraints and operating procedure.
 2. [Network access](../network/network-access.md): NetBird is the primary route for people. Inter-node WireGuard remains in place; standalone WireGuard is for recovery only. Leave corporate Tunnelblick unchanged.
 3. [Identity](../identity/identity-current-state.md): `antropophag`, passwords and first sign-in, native app links, Umami limitations and the lack of automatic invitations.
 4. [Deployment](../platform/cluster-deploy.md): Git to Argo CD, per-application ingress and the image release contract.

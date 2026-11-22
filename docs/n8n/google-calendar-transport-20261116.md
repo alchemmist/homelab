@@ -2,7 +2,7 @@
 
 ## Intent and diagnosis
 
-Read the [current context](../context/context.md), [network access](../network/network-access.md),
+Read the [current context](../platform/system-overview.md), [network access](../network/network-access.md),
 [VPN hardening](../network/vpn-hardening.md), [n8n workflows](n8n-workflows.md) and public
 wiki/content/network/vpn before selecting a change. NetBird is human access,
 wg-socrat is node transport, Moscow→NL is USER VPN transit, not a blanket app

@@ -4,9 +4,9 @@
   "applicationDirectory": "deploy/argocd/apps",
   "documents": [
     "README.md",
-    "docs/context/context.md",
+    "docs/platform/system-overview.md",
     "docs/README.md",
-    "docs/context/placement.md",
+    "docs/platform/workload-placement.md",
     "docs/find/entities.md",
     "docs/find/symptoms.md",
     "docs/decisions/2026-11-13-keep-moscow-as-a-kubernetes-worker.md",
@@ -43,7 +43,7 @@
         "existingClaim"
       ],
       "documents": [
-        "docs/context/placement.md"
+        "docs/platform/workload-placement.md"
       ],
       "application": "grafana"
     },

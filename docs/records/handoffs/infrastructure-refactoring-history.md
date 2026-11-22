@@ -1,10 +1,10 @@
 # Implementation history
 
-The owner authorized sequential remediation of the [refactoring audit](../records/handoffs/refactoring-audit-20261116.md) and a separate Grafana/Grafana MCP move to `socrat-5`. Implementation and acceptance evidence, not inclusion here, determine whether an item is complete.
+The owner authorized sequential remediation of the [refactoring audit](refactoring-audit-20261116.md) and a separate Grafana/Grafana MCP move to `socrat-5`. Implementation and acceptance evidence, not inclusion here, determine whether an item is complete.
 
-The first published changes added the canonical Argo bootstrap guard, shared issuer contract and generator, mesh and fixed-relay drift checks without network restarts, separation of current state from history, and offline CI. Two earlier CI defects were fixed: stale SPI expected codes (Publish-only `STORAGE_TRANSIENT` was retained; the workflow did not change) and stale alert graphs. The append-only panel ID ledger preserves historical links. See [ownership and maintenance](../platform/infrastructure-contracts.md). Recurring backups for other datasets, full wiki publication reconciliation and disaster recovery are not complete.
+The first published changes added the canonical Argo bootstrap guard, shared issuer contract and generator, mesh and fixed-relay drift checks without network restarts, separation of current state from history, and offline CI. Two earlier CI defects were fixed: stale SPI expected codes (Publish-only `STORAGE_TRANSIENT` was retained; the workflow did not change) and stale alert graphs. The append-only panel ID ledger preserves historical links. See [ownership and maintenance](../../platform/infrastructure-contracts.md). Recurring backups for other datasets, full wiki publication reconciliation and disaster recovery are not complete.
 
-See the [implementation checkpoint](../records/handoffs/infra-refactor-progress-20261116.md) for outstanding work. HTTP 200 confirmed that the public wiki still served stale text. The [proposed correction](../research/wiki-public-refactor-proposal-20261116.md) requires the normal native connection with write scope, unavailable during that session.
+See the [implementation checkpoint](infra-refactor-progress-20261116.md) for outstanding work. HTTP 200 confirmed that the public wiki still served stale text. The [proposed correction](../../research/wiki-public-refactor-proposal-20261116.md) requires the normal native connection with write scope, unavailable during that session.
 
 The owner deferred backups. The legacy Rancher installer now refuses to run. CI verifies that no plays or imports follow the refusal and that Argo bootstrap versions and values match the Git Application.
 
@@ -37,11 +37,11 @@ ArgoSyncedHealthy, GrafanaAPI serves exactfixedpanels. Regression test
 17Nov owner architecture correction: `wg-socrat` is VPN-as-infrastructure only.
 Application foreign egress must use a distinct native3x-ui service client and
 its subscription with an official Pod VPN client, NOT a new SSH-to-NL tunnel.
-[Reusable service-VPN runbook](../network/service-vpn-egress.md). N8N corrected in5b722c5c;
-[finite acceptance and cleanup](../n8n/service-vpn-20261117.md). Venice's
+[Reusable service-VPN runbook](../../network/service-vpn-egress.md). N8N corrected in5b722c5c;
+[finite acceptance and cleanup](../../n8n/service-vpn-20261117.md). Venice's
 pre-existing SSH-egress remains a separately recorded deviation, not a template.
 
-Quality CI/refactoring integration scope: see [current quality runbook](../quality/README.md). Strict findings remain blocking in CI; operator permits a separate red-CI integration decision, not suppressions or source-green claims. No production operation is authorized by this scope.
+Quality CI/refactoring integration scope: see [current quality runbook](../../quality/README.md). Strict findings remain blocking in CI; operator permits a separate red-CI integration decision, not suppressions or source-green claims. No production operation is authorized by this scope.
 
 
 ## Storage runtime update —20 November 2026
@@ -56,8 +56,8 @@ Day-2 owner: `ansible/playbooks/socrat-5-runtime-storage.yml`.
 Dynamic `local-hdd`/`local-ssd` and HDD-first new node5 local-path provisioning are
 accepted; `storage-tiers` is the sole Git owner. Only `nfs-shared` is cluster
 default. Filesystem monitoring is live. Rancher observer API policy fixed and
-Application Healthy. See [followup closeout](../records/handoffs/storage-followup-20261120.md)
-and [historical runtime receipt](../records/handoffs/socrat5-runtime-hdd-complete-20261120.md).
+Application Healthy. See [followup closeout](storage-followup-20261120.md)
+and [historical runtime receipt](socrat5-runtime-hdd-complete-20261120.md).
 Physical hypervisor capacity remains unverified. DeepSeek is an external
 invalid-session blocker; respect its no-login/no-restart runbook window until
 21 November2026 23:48 MSK. Do not extend the existing alert silence.
