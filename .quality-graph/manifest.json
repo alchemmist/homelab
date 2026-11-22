@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "48fc7fd8d9da091ced3dc612ef22a02854ae67f73ccf44540300c5c03061843c",
+  "graphDigest": "52d171ee219ec5a4d5ad6adf5c6a0c13edbcbd6aeed8a9e46e51402ab1f63d45",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -440,6 +440,9 @@
         },
         {
           "run": "uv run python scripts/quality/install_tools.py --tools promtool"
+        },
+        {
+          "run": "docker pull \"$(cat quality/nginx-syntax-image.txt)\""
         }
       ],
       "timeoutMinutes": 10

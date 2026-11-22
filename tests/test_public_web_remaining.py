@@ -11,6 +11,8 @@ from typing import NotRequired, TypedDict
 import pytest
 import yaml
 
+from tests.public_entry_contract import assert_read_only_status_policy
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -162,10 +164,7 @@ def test_public_policies_keep_machine_auth_and_block_human_fallbacks() -> None:
         and "proxy_set_header Upgrade $http_upgrade" in gf
     )
     kuma = (ROOT / "charts/uptime-kuma/files/kuma-policy.conf").read_text()
-    assert "location ^~ /socket.io { return 404; }" in kuma
-    assert "location ^~ /api/push/ { proxy_pass http://kuma; }" in kuma
-    assert "limit_except GET HEAD { deny all; }" in kuma
-    assert "https://kuma.socrat.alchemmist.xyz$request_uri" in kuma
+    assert_read_only_status_policy(kuma)
     sync = (ROOT / "charts/syncthing/files/syncthing-policy.conf").read_text()
     assert "proxy_pass http://gui0/;" in sync and "auth_basic" not in sync
     assert "auth_request" not in sync
@@ -189,10 +188,11 @@ def test_kuma_no_gitops_random_secret_by_default() -> None:
         ]["service"]["name"]
         == "public-web-kuma-proxy"
     )
-    assert len([x for x in docs if x["kind"] == "Deployment"]) == 3
-    assert any(
-        x["kind"] == "Deployment" and x["metadata"]["name"] == "public-web-kuma-proxy" for x in docs
-    )
+    deployments = [x for x in docs if x["kind"] == "Deployment"]
+    assert len(deployments) == 4
+    assert {x["metadata"]["name"]: x["spec"]["replicas"] for x in deployments} == {
+        "gatus": 1, "public-web-kuma-proxy": 1, "uptime-kuma": 0, "uptime-kuma-db": 0,
+    }
 
 
 def test_schema_recovery_never_resets_existing_passwords_or_restarts_database() -> None:

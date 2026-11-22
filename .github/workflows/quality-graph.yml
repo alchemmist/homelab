@@ -40,7 +40,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 48fc7fd8d9da091ced3dc612ef22a02854ae67f73ccf44540300c5c03061843c
+          graph-digest: 52d171ee219ec5a4d5ad6adf5c6a0c13edbcbd6aeed8a9e46e51402ab1f63d45
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -86,7 +86,7 @@ jobs:
           adapter: native
           report-path: reports/secrets.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 48fc7fd8d9da091ced3dc612ef22a02854ae67f73ccf44540300c5c03061843c
+          graph-digest: 52d171ee219ec5a4d5ad6adf5c6a0c13edbcbd6aeed8a9e46e51402ab1f63d45
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -136,7 +136,7 @@ jobs:
           adapter: native
           report-path: reports/javascript.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 48fc7fd8d9da091ced3dc612ef22a02854ae67f73ccf44540300c5c03061843c
+          graph-digest: 52d171ee219ec5a4d5ad6adf5c6a0c13edbcbd6aeed8a9e46e51402ab1f63d45
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -187,7 +187,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 48fc7fd8d9da091ced3dc612ef22a02854ae67f73ccf44540300c5c03061843c
+          graph-digest: 52d171ee219ec5a4d5ad6adf5c6a0c13edbcbd6aeed8a9e46e51402ab1f63d45
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -241,7 +241,7 @@ jobs:
           adapter: native
           report-path: reports/docker.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 48fc7fd8d9da091ced3dc612ef22a02854ae67f73ccf44540300c5c03061843c
+          graph-digest: 52d171ee219ec5a4d5ad6adf5c6a0c13edbcbd6aeed8a9e46e51402ab1f63d45
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -291,7 +291,7 @@ jobs:
           adapter: native
           report-path: reports/workflow.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 48fc7fd8d9da091ced3dc612ef22a02854ae67f73ccf44540300c5c03061843c
+          graph-digest: 52d171ee219ec5a4d5ad6adf5c6a0c13edbcbd6aeed8a9e46e51402ab1f63d45
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -333,6 +333,7 @@ jobs:
         with:
           node-version: 24.11.1
       - run: uv run python scripts/quality/install_tools.py --tools promtool
+      - run: docker pull "$(cat quality/nginx-syntax-image.txt)"
       - run: uv run python scripts/quality/tests.py medium --isolate-network
         name: Run Integration tests
         id: quality-command
@@ -348,7 +349,7 @@ jobs:
           adapter: junit
           report-path: reports/tests-medium.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 48fc7fd8d9da091ced3dc612ef22a02854ae67f73ccf44540300c5c03061843c
+          graph-digest: 52d171ee219ec5a4d5ad6adf5c6a0c13edbcbd6aeed8a9e46e51402ab1f63d45
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'

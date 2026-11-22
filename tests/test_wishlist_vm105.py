@@ -1,9 +1,12 @@
 """Tests for wishlist vm105 deployment moves."""
 
+import os
 import pathlib
+import runpy
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import MagicMock, patch
 
 import yaml
 
@@ -21,7 +24,8 @@ class WishlistMove(unittest.TestCase):
         assert pvc["spec"]["volumeName"] == pv["metadata"]["name"]
         assert pvc["metadata"]["name"] != "wishlist-data"
 
-    def test_production_has_one_writer_exact_image_and_fails_closed_on_empty_data(self) -> None:
+    @staticmethod
+    def render(*options: str):
         raw = subprocess.check_output(
             [
                 "helm",
@@ -32,10 +36,14 @@ class WishlistMove(unittest.TestCase):
                 "wishlist",
                 "-f",
                 str(R / "deploy/wishlist/values.yaml"),
+                *options,
             ],
             text=True,
         )
-        docs = [d for d in yaml.safe_load_all(raw) if d]
+        return [d for d in yaml.safe_load_all(raw) if d]
+
+    def test_production_has_one_writer_exact_image_and_fails_closed_on_empty_data(self) -> None:
+        docs = self.render()
         d = next(d for d in docs if d["kind"] == "Deployment")
         s = d["spec"]["template"]["spec"]
         assert d["spec"]["replicas"] == 1
@@ -51,7 +59,52 @@ class WishlistMove(unittest.TestCase):
         assert s["hostAliases"] == [
             {"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}
         ]
-        guard = s["initContainers"][0]["args"][0]
+        (init,) = s["initContainers"]
+        assert init["name"] == "require-imported-wishlist"
+        assert init["command"] == ["python", "-c"]
+        assert init["env"] == [
+            {
+                "name": "WISHLIST_DATABASE_URL",
+                "valueFrom": {
+                    "secretKeyRef": {"name": "wishlist-postgres", "key": "url"},
+                },
+            }
+        ]
+        # Exercise the rendered read against a synthetic driver, never real
+        # credentials or a database. Missing data and connection errors must stop.
+        with tempfile.TemporaryDirectory() as t:
+            script = pathlib.Path(t) / "guard.py"
+            script.write_text(init["args"][0])
+            driver = MagicMock()
+            connection = driver.connect.return_value.__enter__.return_value
+            with (
+                patch.dict("sys.modules", psycopg=driver),
+                patch.dict(os.environ, WISHLIST_DATABASE_URL="fixture"),
+            ):
+                for exists in (False, True):
+                    driver.reset_mock()
+                    connection.execute.return_value.fetchone.return_value = (exists,)
+                    if exists:
+                        runpy.run_path(str(script))
+                    else:
+                        with self.assertRaises(AssertionError):
+                            runpy.run_path(str(script))
+                    driver.connect.assert_called_once_with("fixture", connect_timeout=5)
+                    connection.execute.assert_called_once_with("SELECT EXISTS(SELECT FROM users)")
+                driver.connect.side_effect = ConnectionError("fixture unavailable")
+                with self.assertRaises(ConnectionError):
+                    runpy.run_path(str(script))
+        old = next(d for d in docs if d["kind"] == "PersistentVolumeClaim")
+        assert old["metadata"]["name"] == "wishlist-data"
+
+    def test_retained_sqlite_mode_refuses_missing_empty_or_invalid_database(self) -> None:
+        docs = self.render("--set", "postgresEnabled=false")
+        d = next(
+            d for d in docs if d["kind"] == "Deployment" and d["metadata"]["name"] == "wishlist"
+        )
+        (init,) = d["spec"]["template"]["spec"]["initContainers"]
+        assert init["name"] == "require-existing-wishlist"
+        guard = init["args"][0]
         with tempfile.TemporaryDirectory() as t:
             p = pathlib.Path(t) / "db"
             g = guard.replace("/data/wishlist.sqlite", str(p))
@@ -63,8 +116,6 @@ class WishlistMove(unittest.TestCase):
             p.write_bytes(b"SQLite format 3\x00" + b"verified-header")
             result = subprocess.run(["python3", "-c", g], capture_output=True)
             assert result.returncode == 0, result.stderr
-        old = next(d for d in docs if d["kind"] == "PersistentVolumeClaim")
-        assert old["metadata"]["name"] == "wishlist-data"
 
     def test_shared_defaults_do_not_repoint_existing_data(self) -> None:
         v = yaml.safe_load((R / "charts/wishlist/values.yaml").read_text())
