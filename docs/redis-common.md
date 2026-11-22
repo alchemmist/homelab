@@ -1,24 +1,24 @@
-# redis-common: общий Redis и координация LiteLLM
+# redis-common: shared Redis and LiteLLM coordination
 
-**Срез на 22 ноября 2026 года.** `redis-common` — отдельный платформенный сервис в namespace `redis`, а не встроенный Redis LiteLLM, Harbor или Argo CD. Первый клиент — `llm/litellm`. Для записи используется один внутренний адрес: **`redis-common-haproxy.redis.svc.cluster.local:6379`**, только TLS с проверкой CA и имени сервера. Не привязывать клиента к pod, ноде или порту Sentinel.
+**As of 22 November 2026**, `redis-common` is a separate platform service in namespace `redis`, not an embedded Redis instance for LiteLLM, Harbor or Argo CD. Its first client is `llm/litellm`. There is one internal writer endpoint: **`redis-common-haproxy.redis.svc.cluster.local:6379`**. Use TLS and verify both the CA and server hostname. Do not pin clients to a pod, node or Sentinel port.
 
-Общая панель чтения: [Redis Insight — Authentik, права и состояние публикации](redisinsight.md).
+Shared read dashboard: [Redis Insight access, permissions and publication status](redisinsight.md).
 
-## Что где хранится
+## What each component stores
 
-- **PostgreSQL `pg-common/litellm`** остаётся основной БД прокси. Redis координирует лимиты, учёт расходов и уведомления об изменении конфигурации и отзыве ключей между воркерами. Кэш ответов и встроенный Redis выключены. На момент приёмки в production один pod и один worker; масштабирование не было частью перехода.
-- **Redis:** primary и две асинхронные реплики разнесены по `socrat-0`, `socrat-1`, `socrat-5`. На каждой ноде также работает Sentinel; для выбора primary нужны два голоса из трёх. Два HAProxy направляют клиента на выбранный сервер. Нода primary не фиксирована.
-- **Гарантии:** AOF `everysec`, локальные PVC с `Retain`, политика `noeviction`. Переполнение памяти может привести к отказу записи, а переключение primary — к потере последних записей. Ни реплики, ни сохранённые PVC не заменяют независимую резервную копию.
+- **PostgreSQL `pg-common/litellm`** remains the proxy's primary database. Redis coordinates rate limits, spend tracking, configuration changes and key-revocation notifications across workers. Response caching and embedded Redis are disabled. Production had one pod and one worker at acceptance; scaling was not part of the migration.
+- **Redis topology:** the primary and two asynchronous replicas run on separate nodes: `socrat-0`, `socrat-1` and `socrat-5`. Each node also runs Sentinel; electing a primary requires two votes out of three. Two HAProxy instances route clients to the elected server. The primary is not tied to a node.
+- **Durability:** AOF `everysec`, local PVCs with `Retain`, and `noeviction`. Exhausting memory can cause writes to fail. Primary failover can lose recent writes. Neither replicas nor retained PVCs replace an independent backup.
 
-## Как проверить, что координация работает
+## Verifying coordination
 
-Начать с `SocratRedisCommonWriterUnavailable`: отдельная проба через клиентский DNS и TLS записывает ключ с TTL и читает его обратно. Если проба не проходит, проверить доступ через HAProxy, кворум Sentinel, TLS и отказы ACL. `SocratRedisCommonRedundancyReduced` означает меньше трёх готовых пар Redis/Sentinel либо отсутствие данных; это не обязательно потеря записи. `Argo Healthy` и TCP-соединение сами по себе запись не подтверждают.
+Start with `SocratRedisCommonWriterUnavailable`: a dedicated probe uses client DNS and TLS to write a key with a TTL and read it back. If it fails, check HAProxy routing, Sentinel quorum, TLS and ACL denials. `SocratRedisCommonRedundancyReduced` means fewer than three ready Redis/Sentinel pairs or missing data; it does not necessarily mean the writer is unavailable. Neither `Argo Healthy` nor a TCP connection proves that writes succeed.
 
-При приёмке образа два изолированных воркера с одним тестовым ключом дали `200/429` при лимите 1 RPM и `200/422` при превышении тестового бюджета. После отзыва ключа второй воркер вернул `401` на второй проверке. В production подтверждены соединения от пользователя `litellm` и подписки на каналы конфигурации и отзыва. **Денежный бюджет не является жёстким потолком:** один запрос может превысить остаток; при потере Redis на стенде второй воркер пропустил запрос сверх RPM. Переключение primary проверяли на стенде, не отключением production-ноды.
+During image acceptance, two isolated workers sharing a test key returned `200/429` at a limit of 1 RPM and `200/422` when the test budget was exceeded. After revocation the second worker returned `401` on the second check. Production checks confirmed connections as `litellm` and subscriptions to the configuration and revocation channels. **The spending budget is not a hard cap:** one request can exceed the remaining balance. When Redis was lost in the test environment, the second worker admitted a request over the RPM limit. Primary failover was tested there, not by shutting down a production node.
 
-## Подключение и изменения
+## Connecting clients and making changes
 
-Новому клиенту нужны свои ACL-пользователь, префиксы ключей и каналов, Secret в его namespace и точечная NetworkPolicy до шлюза. LiteLLM использует `litellm:*`; не переиспользовать его учётную запись. Клиенту передаются только его данные доступа и публичный CA — не `redis-common-control` и не приватный ключ CA.
+Each new client needs its own ACL user, key and channel prefixes, a Secret in its namespace and a narrowly scoped NetworkPolicy to the gateway. LiteLLM uses `litellm:*`; do not reuse its account. Give each client only its own credentials and the public CA certificate, never `redis-common-control` or the CA private key.
 
-- [Argo Application](../deploy/argocd/apps/redis-common.yaml) и [values платформы](../deploy/platform/redis-common/values.yaml) — топология и настройки сервиса. [Активные values LiteLLM](../deploy/platform/litellm/values.yaml) — внешний `general_settings.coordination_redis`.
-- [Операционный runbook](redis-platform.md) — выдача прав, ротация CA, точечный откат и запись о production-приёмке. Откат подключения LiteLLM не требует удаления PVC или возврата PostgreSQL; без Redis считать лимиты локальными.
+- The [Argo Application](../deploy/argocd/apps/redis-common.yaml) and [platform values](../deploy/platform/redis-common/values.yaml) define topology and service settings. The [active LiteLLM values](../deploy/platform/litellm/values.yaml) configure external Redis under `general_settings.coordination_redis`.
+- See the [operations runbook](redis-platform.md) for grants, CA rotation, targeted rollback and production acceptance evidence. Rolling back the LiteLLM connection does not require deleting PVCs or rolling back PostgreSQL. Without Redis, treat rate limits as local to each worker.

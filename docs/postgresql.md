@@ -1,23 +1,23 @@
-# PostgreSQL Socrat: рабочая карта
+# Socrat PostgreSQL: operator reference
 
-[Отчёт: внезапная потеря `socrat-1`, 21 ноября 2026](context/socrat-1-loss-20261121.md): проверенный failover `pg-critical` с `1` на `5`, возврат бывшего primary через `pg_rewind`. Другие кластеры этим не проверены.
+[Unexpected loss of `socrat-1`, 21 November 2026](context/socrat-1-loss-20261121.md): `pg-critical` failed over from node `1` to node `5`, and the former primary rejoined using `pg_rewind`. The test did not cover other clusters.
 
-Срез после переключений 20 ноября 2026. Описание для пользователей — [страница wiki](https://wiki.socrat.alchemmist.xyz/platform/postgresql/), эксплуатация и ротация CA — [runbook](postgres-platform.md). Владелец конфигурации — `charts/postgres-platform`, Argo Application `postgres-platform`, namespace `postgres`.
+This snapshot follows the switchovers on 20 November 2026. See the [user guide](https://wiki.socrat.alchemmist.xyz/platform/postgresql/) for an overview and the [operations runbook](postgres-platform.md) for maintenance and CA rotation. Configuration is owned by `charts/postgres-platform`, Argo Application `postgres-platform`, namespace `postgres`.
 
-| Адрес записи внутри кластера | БД → сервис | Контракт |
+| In-cluster writer endpoint | Database and service | Durability contract |
 |---|---|---|
-| `pg-common-rw.postgres.svc.cluster.local:5432` | `umami`, `lms`, `certification`, `socrat` (бот), `litellm`, `registry` (Harbor) | Обычно primary на NVMe `socrat-0`, async standby на HDD `socrat-5`. Подтверждение не ждёт HDD; аварийное повышение может потерять ещё не доставленный WAL. |
-| `pg-critical-rw.postgres.svc.cluster.local:5432` | `authentik` | Три экземпляра на `socrat-0/1/5`; `synchronous_commit=on`, `ANY 1`, `dataDurability=required`, `failoverQuorum=true`. Потеря всех standby блокирует подтверждения; не ослаблять настройки автоматически. |
+| `pg-common-rw.postgres.svc.cluster.local:5432` | `umami`, `lms`, `certification`, `socrat` (bot), `litellm`, `registry` (Harbor) | The primary normally runs on NVMe on `socrat-0`, with an asynchronous HDD standby on `socrat-5`. Commits do not wait for the HDD. Emergency promotion can lose WAL that has not reached the standby. |
+| `pg-critical-rw.postgres.svc.cluster.local:5432` | `authentik` | Three instances on `socrat-0/1/5`; `synchronous_commit=on`, `ANY 1`, `dataDurability=required`, `failoverQuorum=true`. Losing all standbys blocks commit acknowledgments. Do not automatically relax these settings. |
 
-Фактический primary определяет CNPG (`.status.currentPrimary`); после переключения нода может отличаться от исходной. Клиенты используют проверку имени TLS и отдельные роли. `lms-ha` в гибернации, его CronJob приостановлен. Это не источник LMS. Бэкап/PITR для новых кластеров не настроен. При деградации начать с `up{job="postgres-platform"}`, состояния репликации и места на **реальной** ФС; `Bound` у PVC не означает, что место физически свободно.
+CNPG reports the actual primary in `.status.currentPrimary`; it need not be on the original node after a switchover. Clients verify the TLS hostname and use separate roles. `lms-ha` is hibernating and its CronJob is suspended. It is not the LMS data source. Backups and PITR are not configured for the new clusters. When investigating degradation, start with `up{job="postgres-platform"}`, replication status and free space on the **actual filesystem**. A `Bound` PVC does not prove there is free disk space.
 
-## Базы `app` в `pg-common` и `pg-critical`: не удалять и не переименовывать
+## Do not delete or rename the `app` databases in `pg-common` and `pg-critical`
 
-Помимо сервисных БД из таблицы выше, в каждом кластере есть своя база `app`: в обоих ресурсах CNPG `spec.bootstrap.initdb.database` равен `app`. По [правилам мониторинга CNPG 1.30.2](https://github.com/cloudnative-pg/cloudnative-pg/blob/v1.30.2/docs/src/monitoring.md) это база подключения по умолчанию для запросов экспортёра, а не хранилище метрик. В `pg-critical/app` наблюдались короткие подключения `cnpg_metrics_exporter` для чтения статистики WAL. Отсутствие пользовательских таблиц или активных сессий в момент проверки не означает, что базу можно удалить.
+In addition to the service databases above, each cluster has its own `app` database: both CNPG resources set `spec.bootstrap.initdb.database` to `app`. Under the [CNPG 1.30.2 monitoring rules](https://github.com/cloudnative-pg/cloudnative-pg/blob/v1.30.2/docs/src/monitoring.md), this is the default database for exporter queries, not a metrics store. Short-lived `cnpg_metrics_exporter` connections were observed reading WAL statistics in `pg-critical/app`. An absence of user tables or active sessions during an inspection does not mean the database can be removed.
 
-В обеих базах назначение отмечено английским комментарием (в `psql`: `\l+ app`). Это предупреждение для оператора, а не блокировка удаления.
+Both databases have an English comment explaining their purpose (`\l+ app` in `psql`). The comment warns operators; it does not prevent deletion.
 
-## Закрытие миграции: не путать приёмку с хранением
+## Migration closeout: user acceptance and source retention are separate decisions
 
-- Личный вход в LMS с новой сессией, MFA и открытием защищённой страницы: **не засвидетельствован**. Исправные OIDC discovery и редирект — только техническая проверка. Не отмечать успех по чужому входу, старой сессии или административному доступу.
-- Старые источники: 9 PVC сверены по UID/PV, все `Bound`, активных подов-потребителей не обнаружено; прямой mount старого hostPath Umami не найден. Операционное решение — **удерживать**, а не удалять сейчас. [Задача на ревизию после 2026-12-05 UTC](https://github.com/alchemmist/homelab/issues/216) содержит условия отдельного решения; это не таймер удаления. [Инвентарь](postgres-retained-pvcs.tsv).
+- **Not witnessed:** a user signing in to LMS in a fresh session, completing MFA and opening a protected page. Working OIDC discovery and redirects are technical checks only. Do not claim acceptance based on someone else's login, an existing session or administrator access.
+- Nine old PVCs were checked by UID and PV. All were `Bound`, no active pods were found consuming them, and no direct mount of the old Umami hostPath was found. **Retain the sources.** The [review after 2026-12-05 UTC](https://github.com/alchemmist/homelab/issues/216) sets conditions for a separate decision; it is not a deletion timer. See the [inventory](postgres-retained-pvcs.tsv).

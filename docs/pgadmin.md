@@ -23,20 +23,20 @@ DNS is HOME-only: the VPS ingress does not watch namespace `postgres`. Do not gr
 
 Non-owner SharedServer rows omit the owner's CA filename. Keep `verify-full`; the init container builds libpq's default `root.crt` from only the three public CNPG CA certificates. Roll pgAdmin when a cluster CA rotates. Verify a connection **without** supplying `sslrootcert`, using the shared login and its password helper.
 
-## Доступ: срез на 22 ноября 2026
+## Access as of 22 November 2026
 
-**Действует:** вход через Authentik по `homelab-owner`; все три общих подключения работают от `pgadmin_browser`. В PostgreSQL видна эта общая роль, а не имя пользователя SSO. Доступ к данным определяется SQL-привилегиями, не ролью администратора интерфейса.
+**Active:** Authentik admits `homelab-owner`; all three shared connections use `pgadmin_browser`. PostgreSQL sees that shared role, not the SSO username. SQL privileges determine data access, not the user's pgAdmin administrator status.
 
-| Кластер | Баз, проверенных из pod pgAdmin |
+| Cluster | Databases verified from the pgAdmin pod |
 |---|---:|
 | `pg-common` | 18 |
 | `pg-critical` | 7 |
 | `pg-internal` | 1 |
 
-На момент проверки `pgadmin_browser` мог подключиться ко всем 26 нешаблонным базам с разрешёнными подключениями. Выданы `CONNECT` на базы, `USAGE` на прикладные схемы и `SELECT` на существующие таблицы, представления и последовательности. Это точечные SQL-гранты, не `pg_read_all_data`; новые базы и объекты автоматически их не наследуют. RLS не отключали.
+At verification time, `pgadmin_browser` could connect to all 26 non-template databases that allowed connections. It had `CONNECT` on those databases, `USAGE` on application schemas and `SELECT` on existing tables, views and sequences. These are explicit SQL grants, not `pg_read_all_data`. New databases and objects do not automatically inherit them. Row-level security was not disabled.
 
-**Подготовлено, но не включено:** в Authentik созданы `pgadmin-reader`, `pgadmin-writer` и `pgadmin-admin`. Членство `alchemmist` в `pgadmin-writer` проверено. Само по себе оно пока не даёт ни входа вместо `homelab-owner`, ни записи. На каждом кластере есть отдельная SQL-роль `pgadmin_writer` (`NOLOGIN`): чтение и `INSERT`/`UPDATE`/`DELETE` на существующих прикладных таблицах, права на использование последовательностей. Ей не выдавали `TRUNCATE`, DDL, `SUPERUSER` или `BYPASSRLS`. Подключения pgAdmin эту роль пока не используют.
+**Prepared but not enabled:** Authentik has `pgadmin-reader`, `pgadmin-writer` and `pgadmin-admin` groups. Membership of `alchemmist` in `pgadmin-writer` was verified. That membership alone does not yet grant sign-in without `homelab-owner`, or write access. Each cluster has a separate `pgadmin_writer` SQL role (`NOLOGIN`) with read access, `INSERT`/`UPDATE`/`DELETE` on existing application tables and permission to use sequences. It has no `TRUNCATE`, DDL, `SUPERUSER` or `BYPASSRLS` privileges. The pgAdmin connections do not use this role yet.
 
-**Критерий завершения перехода:** проверить в браузере, что writer может выполнить DML на тестовой таблице с откатом транзакции, а reader получает отказ, в том числе при попытке использовать подключение writer напрямую. Отдельно проверить допуск администратора интерфейса и отказ пользователю без групп. Расширять общую роль `pgadmin_browser` нельзя. Запись во все базы распространяется в том числе на данные Authentik: членство в `pgadmin-writer` после включения будет высокопривилегированным.
+**Acceptance criteria:** in a browser, verify that a writer can perform DML on a test table and roll back the transaction. A reader must be denied, including when attempting to use the writer connection directly. Separately verify admission for a UI administrator and denial for a user without the groups. Do not expand the privileges of the shared `pgadmin_browser` role. Write access across databases includes Authentik data: once enabled, `pgadmin-writer` membership will be highly privileged.
 
-**Диагностика:** если сервер раскрывается, но одна база возвращает `permission denied for database`, проверять `CONNECT` именно на этой базе. Если libpq сообщает об отсутствии `root.crt`, проверять файл в работающем pod, не отключать проверку TLS. После исправления CA временный пользователь в Chrome прошёл OAuth2 и TOTP и раскрыл все три сервера; тестовая учётка и профиль удалены. Эта проверка подтверждала подключение, не права записи.
+**Troubleshooting:** if the server expands but one database returns `permission denied for database`, check `CONNECT` on that database. If libpq reports a missing `root.crt`, check the file in the running pod; do not disable TLS verification. After the CA fix, a temporary Chrome user completed OAuth2 and TOTP and expanded all three servers. The test account and profile were removed. This verified connectivity, not write access.

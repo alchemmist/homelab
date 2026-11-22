@@ -1,35 +1,35 @@
-# Redis Insight: вход через Authentik
+# Redis Insight: signing in with Authentik
 
-Адрес: `https://redis.socrat.alchemmist.xyz`. Это одна панель для логических Redis-сервисов. [GitOps](../deploy/platform/redisinsight/resources/ui.yaml): namespace `redis`, один pod на `socrat-5`, сохранение настроек на retained PVC `redisinsight-data`. Redis Insight слушает только loopback. Единственный Service публикует oauth2-proxy; UI, API и WebSocket закрыты Authentik. Строгий callback `/oauth2/callback`, PKCE, допуск по любой из двух групп: `homelab-owner` или `redisinsight-readers`. Не заменять OIDC проверкой переданного клиентом заголовка.
+`https://redis.socrat.alchemmist.xyz` provides one dashboard for logical Redis services. The [GitOps configuration](../deploy/platform/redisinsight/resources/ui.yaml) runs one pod in namespace `redis` on `socrat-5` and stores settings on the retained `redisinsight-data` PVC. Redis Insight listens only on loopback. The sole Service exposes oauth2-proxy; Authentik protects the UI, API and WebSocket. The gateway uses PKCE, an exact `/oauth2/callback` and membership in either `homelab-owner` or `redisinsight-readers`. Do not replace OIDC with a check on a client-supplied header.
 
-`redis-common` задан штатными переменными преднастройки. При первом входе владельцу предлагается лицензионное соглашение Redis Insight; до принятия UI не импортирует преднастроенные подключения. Условия за владельца не принимались. Redis-пользователь `insight-browser` может читать значения `litellm:*` и контрольный ключ пробы, но не записывать и не администрировать сервер. SCAN показывает имена ключей всего инстанса; это общая панель для доверенных читателей, не интерфейс для изолированных арендаторов. Чтобы добавить другой Redis, нужны отдельный ACL и сетевой доступ к его адресу. Беречь PVC и `redisinsight-runtime` (ключ шифрования настроек); не переносить Redis control credentials в UI.
+`redis-common` is configured through Redis Insight's standard preconfiguration variables. On first sign-in the owner is prompted to accept the license agreement; the UI does not import preconfigured connections until then. Nobody accepted the terms on the owner's behalf. The `insight-browser` Redis user can read `litellm:*` values and the probe key, but cannot write or administer the server. `SCAN` exposes key names across the instance: this dashboard is for trusted readers, not isolated tenants. Adding another Redis requires a separate ACL and network access to its endpoint. Protect the PVC and `redisinsight-runtime` (the settings encryption key). Never copy Redis control credentials into the UI.
 
-## Выдать или отозвать доступ
+## Granting and revoking access
 
-Authentik → Directory → Groups → `redisinsight-readers` → Users: добавить или удалить личную учётную запись. Назначать `homelab-owner` не нужно. После добавления войдите заново. После удаления новый вход не разрешён, если пользователь не владелец; ранее выданная cookie шлюза может действовать до 30 минут. Группа не предоставляет пароль Redis или доступ к порту 6379. Участники видят общие сохранённые подключения; не сохранять в этой панели привилегированные учётные записи. Отдельной изоляции настроек интерфейса по пользователям нет.
+In Authentik, go to **Directory → Groups → `redisinsight-readers` → Users** and add or remove the user's personal account. Do not grant `homelab-owner` for this purpose. After being added, the user must sign in again. Removal prevents new sign-ins unless the user is an owner; an existing gateway cookie can remain valid for up to 30 minutes. Group membership does not grant a Redis password or access to port 6379. Members see the same saved connections and do not have isolated UI settings. Do not save privileged accounts in this dashboard.
 
-### Проверка допуска и границы приёмки
+### Access checks and acceptance limits
 
-- В Authentik у приложения `redisinsight` две разрешающие привязки групп с логикой «ИЛИ». [Скрипт группы](../scripts/redisinsight-reader-group.py) создаёт обычную пустую группу и привязку, но не назначает пользователей. Для обычной выдачи достаточно изменить членство — не нужно повторять provisioning или перезапускать pod.
-- [Шлюз oauth2-proxy](../deploy/platform/redisinsight/resources/deployment.yaml) отдельно проверяет те же две группы по OIDC claim `groups`. Права команд и префиксов задаёт [Redis ACL](../deploy/platform/redisinsight/onboard.py), а не Authentik.
-- После rollout 22 ноября проверены обе живые привязки и оба аргумента `--allowed-group` в pod. Без сессии `/` вернул `302` на Authentik, `/api/databases` и `/socket.io/` — `401`. Интерактивный вход новым читателем не тестировался: при создании группы реальных пользователей не добавляли. Для проверки после назначения попросите получателя войти заново и открыть `redis-common`.
+- The `redisinsight` Authentik application has two group bindings; either one permits access. The [group script](../scripts/redisinsight-reader-group.py) creates an empty, unprivileged group and its binding but does not assign users. For routine grants, change membership only; no reprovisioning or pod restart is needed.
+- The [oauth2-proxy gateway](../deploy/platform/redisinsight/resources/deployment.yaml) independently checks the same two groups in the OIDC `groups` claim. The [Redis ACL](../deploy/platform/redisinsight/onboard.py), not Authentik, controls commands and key prefixes.
+- After the 22 November rollout, both live bindings and both `--allowed-group` pod arguments were verified. Without a session, `/` returned `302` to Authentik; `/api/databases` and `/socket.io/` returned `401`. Interactive sign-in as a new reader was **not** tested: no real users were added when the group was created. After granting access, ask the recipient to sign in again and open `redis-common`.
 
-[Инструкция для пользователя в wiki](../wiki/content/platform/redis.md).
+[End-user guide in the wiki](../wiki/content/platform/redis.md).
 
-## Первичная публикация DNS
+## Initial DNS publication
 
-Как для pgAdmin, публичная A-запись указывает **только на HOME**: не расширять область наблюдения VPS ingress на database namespace. Использовать штатный playbook: он проверяет изменения на всех четырёх авторах зоны, сверяет общий хеш плана и только затем обновляет их по одному. На настроенном операторском Mac используются существующие SSH aliases с закреплёнными ключами. Запускать из корня репозитория в интерактивном терминале, sudo-пароль вводить **только в локальном приглашении Ansible**:
+As with pgAdmin, the public A record points **only to HOME**. Do not expand the VPS ingress watch scope to the database namespace. Use the standard playbook: it checks the changes on all four zone writers, compares the shared plan hash, then updates one writer at a time. The configured operator Mac uses existing SSH aliases with pinned keys. Start in the repository root in an interactive terminal. Enter the sudo password **only at the local Ansible prompt**:
 
 ```sh
 cd ansible
 inv='socrat-0,socrat-1,socrat-2,socrat-4,'
 ansible-playbook -i "$inv" playbooks/redisinsight-public-dns.yml --ask-become-pass
-# Сверить четыре plan_hash и единственное изменение redis.socrat; затем:
-read -r hash  # вставить проверенный plan_hash и нажать Enter
+# Verify all four plan_hash values and the single redis.socrat change, then:
+read -r hash  # paste the verified plan_hash and press Enter
 ansible-playbook -i "$inv" playbooks/redisinsight-public-dns.yml --ask-become-pass \
   -e redisinsight_public_dns_apply=true -e "redisinsight_public_dns_hash=$hash"
 ```
 
-Проверить авторитетные DNS-ответы и `kubectl -n redis wait --for=condition=Ready certificate/redisinsight-tls --timeout=5m`. Затем без `--resolve` и без отключения проверки TLS открыть UI, проверить редирект на Authentik и отказ анонимному `/api/databases`. Владелец проверяет интерактивный вход и видимость подключения. Не сбрасывать MFA или сертификаты ради проверки.
+Check authoritative DNS answers and run `kubectl -n redis wait --for=condition=Ready certificate/redisinsight-tls --timeout=5m`. Open the UI without `--resolve` and with TLS verification enabled. Check the Authentik redirect and denial of anonymous requests to `/api/databases`. The owner verifies interactive sign-in and visibility of the connection. Do not reset MFA or certificates to perform a check.
 
-**Срез 22 ноября:** pod 2/2, PVC Bound, OIDC discovery и owner binding проверены. Через шлюз анонимный `/` дал 302 на Authentik, API и `/socket.io/` — 401. Из UI-контейнера проверены TLS с валидацией имени, Redis AUTH/PING; ACL DRYRUN не разрешил SET. Публичная A-запись применена на 0/1/2/4; все три авторитетных NS возвращают только HOME. Сертификат Let’s Encrypt Ready. После исправления имени порта Service (`http`: TLS завершается на Traefik) обычный HTTPS без DNS overrides даёт 302 на Authentik, анонимные API и Socket.IO — 401. Редирект с проверкой TLS независимо подтверждён с московской ноды. Интерактивный вход владельца/MFA и принятие EULA не выполнялись.
+**22 November snapshot:** pod 2/2, PVC Bound, OIDC discovery and owner binding verified. Through the gateway, anonymous `/` returned 302 to Authentik; the API and `/socket.io/` returned 401. Tests from the UI container verified TLS hostname validation and Redis AUTH/PING; ACL DRYRUN denied SET. The public A record was applied on nodes 0/1/2/4; all three authoritative nameservers returned HOME only. The Let's Encrypt certificate was Ready. After the Service port was renamed `http` (TLS terminates at Traefik), standard HTTPS without DNS overrides returned 302 to Authentik, and anonymous API and Socket.IO requests returned 401. The TLS-verified redirect was independently confirmed from the Moscow node. Interactive owner sign-in, MFA and EULA acceptance were not performed.
