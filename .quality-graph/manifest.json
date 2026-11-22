@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "6b495f02682a7907561662b6bef398daa19249deedb5709539958b52fc00c6aa",
+  "graphDigest": "7210f4c4f8bcc77f8b8aeb0244c7bea9f43f140539fea38a91653d700610ba0f",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -181,6 +181,34 @@
       },
       "timeoutMinutes": 5,
       "title": "Delivery security"
+    },
+    {
+      "env": {},
+      "id": "shell",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-shell",
+      "result": {
+        "adapter": "native",
+        "path": "reports/shell.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py shell"
+      },
+      "timeoutMinutes": 5,
+      "title": "Shell safety"
     }
   ],
   "profiles": {
@@ -526,6 +554,9 @@
         },
         {
           "run": "uv run python scripts/quality/install_tools.py --tools shellcheck"
+        },
+        {
+          "run": ".quality-tools/bin/shellcheck --version"
         }
       ],
       "timeoutMinutes": 5
