@@ -38,7 +38,13 @@ class NvidiaDevicePluginChartTests(unittest.TestCase):
         self.assertEqual(pod_spec["runtimeClassName"], "nvidia")
         self.assertFalse(pod_spec["automountServiceAccountToken"])
         [container] = pod_spec["containers"]
-        self.assertRegex(container["image"], r"@sha256:[0-9a-f]{64}$")
+        # v0.20.2 is the owner-published, cluster-verified plugin tag (main
+        # 20721c33). nvcr.io rejects anonymous manifest reads, so the OCI
+        # digest stays owner-supply evidence; assert the exact identity so
+        # no latest/unqualified drift slips in instead.
+        self.assertEqual(
+            container["image"], "nvcr.io/nvidia/k8s-device-plugin:v0.20.2"
+        )
         [mount] = container["volumeMounts"]
         self.assertEqual(mount["mountPath"], "/var/lib/kubelet/device-plugins")
         self.assertFalse(mount.get("readOnly", False))

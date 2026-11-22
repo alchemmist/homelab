@@ -96,10 +96,12 @@ kube-prometheus-stack:
             - alert: NodeSystemSaturation
               expr: |-
                 (node_load1{job="node-exporter",node="socrat-4"}
-                 / count without (cpu, mode) (node_cpu_seconds_total{job="node-exporter",mode="idle"}) > 6)
+                 / count without (cpu, mode)
+                 (node_cpu_seconds_total{job="node-exporter",mode="idle"}) > 6)
                 or
                 (node_load1{job="node-exporter",node!="socrat-4"}
-                 / count without (cpu, mode) (node_cpu_seconds_total{job="node-exporter",mode="idle"}) > 2)
+                 / count without (cpu, mode)
+                 (node_cpu_seconds_total{job="node-exporter",mode="idle"}) > 2)
               for: 15m
               labels: {severity: warning}
               annotations:
@@ -108,7 +110,8 @@ kube-prometheus-stack:
                   Load per core on {{ $labels.instance }} has exceeded
                   {{ if eq $labels.node "socrat-4" }}6{{ else }}2{{ end }} for 15 minutes
                   (current: {{ printf "%.2f" $value }}).
-                runbook_url: https://runbooks.prometheus-operator.dev/runbooks/node/nodesystemsaturation
+                runbook_url: "https://runbooks.prometheus-operator.dev/runbooks/node/\
+                  nodesystemsaturation"
   prometheus-node-exporter:
     image:
       digest: sha256:8c9bac11973b94b59be88d6e11fee4429aa743c8846cdc75d65b18db33f6a106

@@ -209,7 +209,10 @@ class GrafanaStorage(unittest.TestCase):
         """Mcp remains read only stateless and exact version."""
         v = yaml.safe_load((ROOT / "charts/grafana-mcp/values.yaml").read_text())
         assert v["nodeSelector"]["kubernetes.io/hostname"] == "socrat-5"
-        assert v["image"]["tag"] == "2.0.2"
+        assert v["image"]["tag"] == "2.3.0-alpine"
+        assert v["image"]["digest"] == (
+            "sha256:2483fbc37154988cedda2893abc7d005b9b428147047c8a8e60b8d92d1d0227b"
+        )
         assert v["credentialsSecret"] == "grafana-mcp-credentials"
 
 

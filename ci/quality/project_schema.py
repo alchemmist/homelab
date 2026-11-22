@@ -49,7 +49,7 @@ def crd_projection(document: dict, api: str, kind: str) -> dict:
         for v in spec["versions"]
         if v["served"] and v["name"] == version
     ]
-    meta = json.loads((ROOT / "quality/schemas/service-v1.json").read_bytes())[
+    meta = json.loads((ROOT / "ci/quality/schemas/service-v1.json").read_bytes())[
         "properties"
     ]
     result = strict(schema)

@@ -1211,12 +1211,12 @@ def test_existing_main_push_regression_cannot_be_deferred(omitted: str) -> None:
 
 
 @pytest.mark.parametrize("record", [
-    record for record in json.loads((ROOT / "quality/schemas.lock.json").read_text())["files"]
+    record for record in json.loads((ROOT / "ci/quality/schemas.lock.json").read_text())["files"]
     if "inputSha256" in record
 ], ids=lambda record: record["kind"])
 def test_locked_controller_schemas_close_objects_but_keep_metadata_maps(record: dict) -> None:
     """Every projected GVK rejects unknown fields even when they are nested in metadata."""
-    schema = json.loads((ROOT / "quality/schemas" / record["path"]).read_text())
+    schema = json.loads((ROOT / "ci/quality/schemas" / record["path"]).read_text())
     Draft4Validator.check_schema(schema)
     metadata = schema["properties"]["metadata"]
     validator = Draft4Validator({**metadata, "definitions": schema.get("definitions", {})})
