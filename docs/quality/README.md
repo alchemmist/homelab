@@ -8,12 +8,14 @@ The operator changed the integration scope: PR182 sets up CI and integrates revi
 
 ## Active CI scope
 
-CI runs `graph`, followed by `secrets`, `javascript`, `ownership`, `docker` and `workflow`.
+CI runs `graph`, followed by `secrets`, `javascript`, `ownership`, `docker`, `workflow`
+and `rustfs-return-types`. The latter blocks missing public return annotations (Ruff
+`ANN201`) in `services/rustfs_gateway/`; the full Python check remains available locally.
 Ownership runs six offline checks plus their regression suites; the Ansible
 entrypoint scan covers both `.yml` and `.yaml`.
 Blocking `ansible` (Playbook safety) runs after `ownership`, using the locked parsing collections.
 The other eight checks remain runnable by name; `make check` and its alias
-`make check-all` still attempt all fifteen. Restore a
+`make check-all` attempt both active and local-only checks. Restore a
 check to `qg.yaml` and remove its local-only entry once it is verified green.
 
 ## Historical 15-node DAG (before PR #454)
