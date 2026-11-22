@@ -16,11 +16,14 @@
   tasks:
     - name: Add the private Grafana MCP record
       ansible.builtin.copy:
-        content: "host-record=grafana-mcp.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-1'].address }}\nlocal=/grafana-mcp.socrat.alchemmist.xyz/\n"
+        content: >
+          host-record=grafana-mcp.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-1'].address }}
+
+          local=/grafana-mcp.socrat.alchemmist.xyz/
         dest: /etc/homelab-private-dns.d/grafana-mcp.conf
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
       register: grafana_mcp_dns
 
     - name: Validate private DNS configuration

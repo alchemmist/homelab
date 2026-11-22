@@ -8,7 +8,8 @@
 
 - name: Check the existing graphical tools
   become: false
-  ansible.builtin.shell: for tool in Hyprland awww awww-daemon waybar hypridle; do command -v "$tool" || exit 1; done
+  ansible.builtin.shell: >-
+    for tool in Hyprland awww awww-daemon waybar hypridle; do command -v "$tool" || exit 1; done
   environment:
     PATH: "{{ homelab_user_home }}/.local/bin:/usr/local/bin:/usr/bin:/bin"
   changed_when: false
@@ -30,7 +31,7 @@
 
 - name: Preserve a separate place for local Hyprland overrides
   ansible.builtin.copy:
-    content: ''
+    content: ""
     dest: "{{ homelab_user_home }}/.config/hypr/local.conf"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
@@ -109,7 +110,9 @@
     mode: "0644"
     follow: true
     backup: true
-    validate: "{{ omit if inventory_hostname == 'socrat-1' else '/usr/bin/Hyprland --verify-config --config %s' }}"
+    validate: >-
+      {{ omit if inventory_hostname == 'socrat-1' else '/usr/bin/Hyprland --verify-config
+      --config %s' }}
   register: homelab_hyprland_config
 
 - name: Install Lua entry point for the updated socrat-1 compositor

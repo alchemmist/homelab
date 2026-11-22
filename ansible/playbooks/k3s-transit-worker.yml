@@ -11,7 +11,9 @@
       register: native_fence
     - ansible.builtin.assert:
         that: not native_fence.stat.exists
-        fail_msg: Native gateway is fenced. Use the explicit, reviewed rollback instead of worker enrollment.
+        fail_msg: >-
+          Native gateway is fenced. Use the explicit, reviewed rollback instead of worker
+          enrollment.
   roles:
     - k3s_worker
 ...

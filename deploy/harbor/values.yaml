@@ -15,7 +15,7 @@ expose:
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt-http01
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
-      traefik.ingress.kubernetes.io/router.tls: 'true'
+      traefik.ingress.kubernetes.io/router.tls: "true"
 existingSecretAdminPassword: harbor-bootstrap
 existingSecretSecretKey: harbor-bootstrap
 updateStrategy:
@@ -59,8 +59,9 @@ core:
       memory: 1Gi
       ephemeral-storage: 1Gi
   extraEnvVars:
-  - name: CONFIG_OVERWRITE_JSON
-    value: '{"auth_mode":"db_auth","self_registration":false,"project_creation_restriction":"adminonly"}'
+    - name: CONFIG_OVERWRITE_JSON
+      value: >-
+        {"auth_mode":"db_auth","self_registration":false,"project_creation_restriction":"adminonly"}
 jobservice:
   nodeSelector: *id001
   resources:
@@ -72,7 +73,7 @@ jobservice:
       memory: 1Gi
       ephemeral-storage: 1Gi
   jobLoggers:
-  - stdout
+    - stdout
   maxJobWorkers: 2
 registry:
   nodeSelector: *id001

@@ -5,7 +5,7 @@ replicaCount: 1
 
 image:
   repository: syncthing/syncthing
-  tag: "2.1.7"
+  tag: 2.1.7
   pullPolicy: IfNotPresent
 
 hostPath: /srv/syncthing
@@ -86,19 +86,20 @@ gui:
 publicEntry:
   issuer: letsencrypt-http01
   routes:
-  - name: syncthing-0
-    host: 0.socrat.alchemmist.xyz
-    namespace: syncthing
-    service: public-web-syncthing-0
-    port: 80
-    authorization: native-login
-  - name: syncthing-1
-    host: 1.socrat.alchemmist.xyz
-    namespace: syncthing
-    service: public-web-syncthing-1
-    port: 80
-    authorization: native-login
+    - name: syncthing-0
+      host: 0.socrat.alchemmist.xyz
+      namespace: syncthing
+      service: public-web-syncthing-0
+      port: 80
+      authorization: native-login
+    - name: syncthing-1
+      host: 1.socrat.alchemmist.xyz
+      namespace: syncthing
+      service: public-web-syncthing-1
+      port: 80
+      authorization: native-login
   syncthingPolicyProxy:
     enabled: true
-    image: docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311
+    image:
+      docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311
 ...

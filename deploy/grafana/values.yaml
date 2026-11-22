@@ -32,19 +32,21 @@ grafana:
       hostnames: [auth.socrat.alchemmist.xyz]
   extraInitContainers:
     - name: require-imported-grafana-db
-      image: ghcr.io/cloudnative-pg/postgresql:18.7-system-trixie@sha256:13f5dc1b42c5d96233724be976740df031136ca013f98a56a2877a62b362b453
+      image:
+        ghcr.io/cloudnative-pg/postgresql:18.7-system-trixie@sha256:13f5dc1b42c5d96233724be976740df031136ca013f98a56a2877a62b362b453
       imagePullPolicy: IfNotPresent
       command: [sh, -ec]
       args:
-        - |
-          test "$(psql -XAtq -v ON_ERROR_STOP=1 -c "select exists(select 1 from resource where resource='dashboards') and exists(select 1 from org_user)")" = t
+        - >
+          test "$(psql -XAtq -v ON_ERROR_STOP=1 -c "select exists(select 1 from resource where
+          resource='dashboards') and exists(select 1 from org_user)")" = t
       env:
         - {name: PGHOST, value: pg-common-rw.postgres.svc.cluster.local}
         - {name: PGDATABASE, value: grafana}
         - {name: PGUSER, value: grafana}
         - {name: PGSSLMODE, value: verify-full}
         - {name: PGSSLROOTCERT, value: /etc/grafana/pg-ca/ca.crt}
-        - {name: PGCONNECT_TIMEOUT, value: '5'}
+        - {name: PGCONNECT_TIMEOUT, value: "5"}
         - name: PGPASSWORD
           valueFrom: {secretKeyRef: {name: grafana-postgres, key: password}}
       securityContext:

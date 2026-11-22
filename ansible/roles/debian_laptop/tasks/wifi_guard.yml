@@ -5,7 +5,7 @@
     dest: /usr/local/sbin/homelab-load-guarded-wifi
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
 
 - name: Prevent unguarded automatic loading of the wireless driver
   ansible.builtin.copy:
@@ -13,7 +13,7 @@
     content: "blacklist rtl8723ae\n"
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
 
 - name: Install guarded wireless startup independently of Ethernet
   ansible.builtin.copy:
@@ -32,7 +32,7 @@
       WantedBy=multi-user.target
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
 
 - name: Enable guarded startup for the next boot
   ansible.builtin.systemd_service:
