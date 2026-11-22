@@ -1,76 +1,88 @@
-# Linux, SSH, kubeconfig и Kubernetes RBAC
+# Linux, SSH, kubeconfig and Kubernetes RBAC
 
-> Обычный сетевой доступ — **NetBird**, SSH отдельно по публичному ключу.
-> Linux `tim` не переименован вместе с Authentik login `antropophag`.
-> Standalone WG — только recovery; public HTTPS не открывает SSH в Internet.
+> Ordinary network access is **NetBird**; SSH separately via public key.
+> The Linux `tim` account was not renamed together with the Authentik login
+> `antropophag`.
+> Standalone WG is recovery-only; public HTTPS does not expose SSH to the Internet.
 
-Часть [общего справочника](../architecture/identity.md). Authentik SSO не заменяет эти контуры и
-не выдаёт SSH/root/kubectl автоматически. WireGuard/NetBird topology здесь не менять.
-Сетевой вход и полный сценарий нового админа: [NetBird](../../network/netbird/README.md).
+Part of the [general reference](../architecture/identity.md). Authentik SSO does not
+replace these perimeters and does not grant SSH/root/kubectl automatically. Do
+not change the WireGuard/NetBird topology here. Network entry and the full
+new-administrator scenario: [NetBird](../../network/netbird/README.md).
 
-## 1. Источники
+## 1. Sources
 
 - `ansible/roles/users/tasks/main.yml`, `files/verify.py` — restricted personal users.
-- `ansible/playbooks/ssh-user.yml`, роль `ssh_user` — ручной username + один public key,
-  добавление без удаления остальных ключей: [короткая инструкция](ssh-user.md).
-- `ansible/playbooks/users.yml` — точный декларативный key set из inventory.
-- `ansible/playbooks/identity-hosts.yml` — защита owner kubeconfig + users playbook.
-- [Реестр персональных SSH-учёток](../../../ansible/inventory/group_vars/Socrat/users.yml): `homelab_owner_account` — защищённый sudo-владелец; `homelab_users` — реальные публичные ключи и assignments.
-- `deploy/identity/access-policy.yaml` — intent ролей, не самостоятельный enforcement.
-- [Опциональный Authentik public-key import](identity-ssh-keys.md) — отдельный
-  read-only plan/export и guarded Ansible play; сейчас пустой/выключенный, без
-  миграции Tim. Immutable UUID binding, explicit active/revoked hosts; не SSO/CA.
-- `deploy/identity/observer-role.yaml`, `identity-rbac.yml` — unbound observer definition.
-- K3s install/HA config templates также сохраняют kubeconfig mode/group.
+- `ansible/playbooks/ssh-user.yml`, role `ssh_user` — manual username + one public
+  key, adding without removing the other keys:
+  [short instruction](ssh-user.md).
+- `ansible/playbooks/users.yml` — exact declarative key set from inventory.
+- `ansible/playbooks/identity-hosts.yml` — owner kubeconfig protection + users playbook.
+- [Registry of personal SSH accounts](../../../ansible/inventory/group_vars/Socrat/users.yml):
+  `homelab_owner_account` — the protected sudo owner; `homelab_users` — real public
+  keys and assignments.
+- `deploy/identity/access-policy.yaml` — role intent, not self-standing enforcement.
+- [Optional Authentik public-key import](identity-ssh-keys.md) — a separate
+  read-only plan/export and a guarded Ansible play; currently empty/switched off,
+  without a Tim migration. Immutable UUID binding, explicit active/revoked hosts;
+  not SSO/CA.
+- `deploy/identity/observer-role.yaml`, `identity-rbac.yml` — the unbound observer definition.
+- The K3s install/HA config templates also preserve the kubeconfig mode/group.
 
-Owner/root/automation identity не управляются restricted-user path. Роль запрещает
-`root`, `alchemmist`, `ghactions`; их изменение — отдельная привилегированная процедура.
+Owner/root/automation identities are not managed by the restricted-user path.
+The role forbids `root`, `alchemmist`, `ghactions`; changing them is a separate
+privileged procedure.
 
-## 2. Что делает users role
+## 2. What the users role does
 
-Перед изменениями валидирует username, state, отсутствие sudo intent/опасных
-supplementary groups и формат всех public keys. Допускаются reviewed OpenSSH
-ключи (ed25519/RSA/поддержанные ECDSA/security-key варианты), не private key.
-Usernames уникальны. `authorized_keys` должен быть списком, не одной строкой.
+Before changes it validates the username, state, absence of sudo intent/dangerous
+supplementary groups and the format of all public keys. Reviewed OpenSSH keys are
+allowed (ed25519/RSA/supported ECDSA/security-key variants), not private keys.
+Usernames are unique. `authorized_keys` must be a list, not a single string.
 
-Для assigned пользователя:
+For an assigned user it:
 
-- создаёт/сохраняет home, account и shell;
-- блокирует password authentication (`password_lock`);
-- задаёт **точный** supplementary group set (`append: false`);
-- `.ssh` 0700, `authorized_keys` 0600, владельцем остаётся пользователь;
-- **заменяет**, а не дописывает key set: удалённый из списка ключ действительно исчезает;
-- удаляет legacy прямой `/etc/sudoers.d/<name>` grant;
-- запускает privileged verifier SSH/PAM/sudo/kubeconfig isolation.
+- creates/preserves the home, account and shell;
+- blocks password authentication (`password_lock`);
+- sets the **exact** supplementary group set (`append: false`);
+- `.ssh` 0700, `authorized_keys` 0600, owner remains the user;
+- **replaces** rather than appends the key set: a key removed from the list
+  actually disappears;
+- removes a legacy direct `/etc/sudoers.d/<name>` grant;
+- runs the privileged verifier for SSH/PAM/sudo/kubeconfig isolation.
 
-Роль не выдаёт sudo и отвергает root-equivalent groups: sudo/wheel/admin/docker/
-disk/lxd/incus/kvm/libvirt. Но чужие sudoers rules не угадывает: effective verifier
-нужен именно потому, что привилегия может прийти не из одного файла/группы.
+The role does not grant sudo and rejects root-equivalent groups:
+sudo/wheel/admin/docker/disk/lxd/incus/kvm/libvirt. But it does not guess
+foreign sudoers rules: the effective verifier exists precisely because
+privilege can arrive from more than one file/group.
 
-## 3. Как добавить Linux-доступ
+## 3. How to add Linux access
 
-**Обычный ручной сценарий:** [username + `.pub` → `ssh-user.yml`](ssh-user.md).
-Authentik и workflow не нужны. Этот отдельный play добавляет один ключ, проверяет
-каждую выбранную ноду и не удаляет другие ключи. Дальше описан другой,
-декларативный путь через `homelab_users` с **полной заменой** key set.
-Не путать семантику двух playbooks. Если account уже в inventory, новый public
-key сначала должен быть одобрен и добавлен туда — ручной play это проверяет.
+**Ordinary manual scenario:** [username + `.pub` → `ssh-user.yml`](ssh-user.md).
+No Authentik or workflow needed. That separate play adds one key, checks every
+selected node and does not remove other keys. Below is a different, declarative
+path via `homelab_users` with a **full replacement** of the key set. Do not
+confuse the semantics of the two playbooks. If the account is already in the
+inventory, the new public key must first be approved and added there — the
+manual play checks this.
 
-Сначала отдельно согласовать **какие hosts**, зачем shell, срок и конкретные
-public keys. Личность/ключ fingerprint подтвердить через независимый канал.
-Наличие пользователя в Authentik не является таким согласованием.
+First separately agree on **which hosts**, why a shell, the duration and the
+specific public keys. Confirm identity/key fingerprint through an independent
+channel. The person existing in Authentik is not such an agreement.
 
-В существующем inventory source добавить `homelab_users` запись по действующей
-схеме. Обязательные решения: `name`, explicit `hosts`, список `authorized_keys`,
-`state: present`, без sudo/privileged groups. Public key брать от самого человека;
-не генерировать за него private key и не просить прислать private material.
+In the existing inventory source, add a `homelab_users` entry following the
+current scheme. Mandatory decisions: `name`, explicit `hosts`, the
+`authorized_keys` list, `state: present`, no sudo/privileged groups. Take the
+public key from the person themselves; do not generate their private key and do
+not ask them to send private material.
 
-**Если `hosts` не указан, роль применяет пользователя ко всем hosts соответствующего
-play.** Не оставлять поле случайно пустым при желаемом доступе только к одной ноде.
-Проверить merged group_vars/host_vars и inventory aliases до apply.
+**If `hosts` is not specified, the role applies the user to all hosts of the
+corresponding play.** Do not leave the field accidentally empty when access to
+only one node is intended. Check the merged group_vars/host_vars and inventory
+aliases before apply.
 
-Проверить syntax, diff, затем применить по согласованным хостам с безопасным sudo
-вводом. Пример существующего полного hardening play, не универсальная выдача всем:
+Check syntax, diff, then apply to the agreed hosts with a safe sudo prompt. An
+example of the existing full hardening play, not a universal grant to everyone:
 
 ```sh
 cd ansible
@@ -78,82 +90,93 @@ ansible-playbook -i inventory/hosts.yml \
   playbooks/identity-hosts.yml --ask-become-pass
 ```
 
-Для одной ноды использовать reviewed `--limit` / правильный users playbook и
-inventory, понимая, что `identity-hosts` первый play целится только в socrat-0.
-Не сохранять become password в source. На socrat-3 используется проверенный sudo
-method; не подменять его прежним неработавшим privileged path.
+For a single node, use the reviewed `--limit` / the proper users playbook and
+inventory, understanding that the first play of `identity-hosts` targets only
+socrat-0. Do not store the become password in source. On socrat-3 a verified
+sudo method is used; do not replace it with the previously broken privileged
+path.
 
-После apply: владелец проверяет фактические key fingerprints/effective policy,
-а сам человек делает реальный SSH login с собственного устройства. Проверка
-authorized_keys владельцем не доказывает, что у человека есть правильный private key.
-У Tim intended keys/PAM/public-key/sudo isolation проверены на четырёх нодах,
-но его собственный сетевой private-key acceptance остаётся отдельным шагом.
+After apply: the owner checks the actual key fingerprints/effective policy, and
+the person themselves performs a real SSH login from their own device. The
+owner checking authorized_keys does not prove the person has the correct
+private key. Tim's intended keys/PAM/public-key/sudo isolation were verified on
+the four nodes, but his own network private-key acceptance remains a separate
+step.
 
-## 4. Отзыв SSH
+## 4. SSH revocation
 
-`state: disabled` сохраняет account/home, ставит nologin и очищает authorized_keys.
-Это предпочтительнее несанкционированного удаления пользовательских данных.
-Существующие процессы/SSH sessions этим не гарантированно завершаются: отдельно
-разобрать active connections/jobs и approved termination/credential rotation.
+`state: disabled` preserves the account/home, sets nologin and clears
+authorized_keys. This is preferable to unsanctioned deletion of user data.
+Existing processes/SSH sessions are not guaranteed to end: separately handle
+active connections/jobs and approved termination/credential rotation.
 
-**Удаление пользователя из vars или удаление host из `hosts` само по себе не
-чистит аккаунт на прежней машине.** Роль управляет только текущими assignments,
-специально не удаляя другие accounts. Для revoke сначала явно применить disabled
-состояние на прежней ноде (reviewed per-host override/отдельный проход), проверить
-очистку ключей/privileges, потом убрать assignment. Не делать глобальный destructive cleanup.
+**Removing the user from vars or removing a host from `hosts` does not by
+itself clean the account on the former machine.** The role manages only current
+assignments and deliberately does not delete other accounts. To revoke, first
+explicitly apply the disabled state on the former node (reviewed per-host
+override/a separate pass), verify key/privilege cleanup, then remove the
+assignment. Do not run a global destructive cleanup.
 
-`password_lock` — не эквивалент безопасного SSH policy на любой OS. Учитывать
-sshd `PubkeyAuthentication`, PAM, Account checks и shell; verifier различает это.
-Arch tooling может выдавать OSC/JSON noise, поэтому использовать reviewed parser,
-а не произвольный grep/первую строку terminal output.
+`password_lock` is not equivalent to a safe SSH policy on every OS. Account for
+sshd `PubkeyAuthentication`, PAM, account checks and the shell; the verifier
+distinguishes these. Arch tooling can emit OSC/JSON noise, so use the reviewed
+parser, not an arbitrary grep/first line of terminal output.
 
-## 5. Инцидент с admin kubeconfig
+## 5. The admin kubeconfig incident
 
-На socrat-0 `/etc/rancher/k3s/k3s.yaml` был **0644**. Исправлено немедленно на
-**0640 root:alchemmist**; K3s config сохраняет `write-kubeconfig-mode: "0640"` и
-`write-kubeconfig-group: alchemmist`. Install/HA templates исправлены тоже, чтобы
-новая установка не вернула world-readable credential.
+On socrat-0 `/etc/rancher/k3s/k3s.yaml` was **0644**. Fixed immediately to
+**0640 root:alchemmist**; the K3s config keeps `write-kubeconfig-mode: "0640"`
+and `write-kubeconfig-group: alchemmist`. The install/HA templates were fixed
+too, so a fresh install does not bring back a world-readable credential.
 
-Перед сменой group play проверяет primary + supplementary membership: только
-owner, без unexpected users. Затем проверяет, что Tim не может читать файл, а
-owner всё ещё получает `yes` на `kubectl auth can-i '*' '*' --all-namespaces`.
-Admin kubeconfig не превращается в read-only от выдачи его observer: это полномочие
-cluster-admin, а не обычная настройка подключения.
+Before changing the group, the play checks primary + supplementary membership:
+only the owner, no unexpected users. Then it verifies that Tim cannot read the
+file while the owner still gets `yes` on `kubectl auth can-i '*' '*'
+--all-namespaces`. Handing the admin kubeconfig to an observer does not make it
+read-only: it is a cluster-admin authority, not an ordinary connection setting.
 
-**Chmod не отзывает скопированный certificate/key.** Историческая экспозиция и
-поддерживаемая credential/CA rotation — отдельная задача. Не заявлять, что утечки
-точно не было, если такой forensic/audit не выполнялся; не перезапускать весь K3s
-и не менять CA как побочное действие CSS/SSO rollout.
+**Chmod does not revoke a copied certificate/key.** The historical exposure and
+a supported credential/CA rotation are a separate task. Do not claim there was
+definitely no leak if such forensics/audit was not performed; do not restart
+the whole K3s or change the CA as a side effect of a CSS/SSO rollout.
 
-## 6. Почему sudo exit code недостаточен
+## 6. Why a sudo exit code is not enough
 
-`sudo -l -U tim` может завершиться rc0 и одновременно написать, что Tim не
-разрешено запускать sudo. Verifier использует C locale и разбирает реальный
-policy result, не считает один exit code доказательством grant или denial.
-При error/неразобранном результате требуется review, не предположение о безопасности.
+`sudo -l -U tim` can finish with rc0 while simultaneously printing that Tim is
+not allowed to run sudo. The verifier uses the C locale and parses the real
+policy result; it does not treat a single exit code as proof of a grant or
+denial. An error/unparsed result requires review, not an assumption of safety.
 
-## 7. Kubernetes/Rancher права
+## 7. Kubernetes/Rancher rights
 
-`homelab-project-observer` разрешает get/list/watch pods/services/endpoints/PVC/
-events, deployments/replicasets/statefulsets/daemonsets, jobs/cronjobs,
-ingresses/networkpolicies. **Нет Secrets, pods/exec, pods/log и nodes**.
-Сама definition установлена, human bindings не создавались.
+`homelab-project-observer` allows get/list/watch for
+pods/services/endpoints/PVC/events, deployments/replicasets/statefulsets/
+daemonsets, jobs/cronjobs, ingresses/networkpolicies. **No Secrets, pods/exec,
+pods/log and nodes**. The definition itself is installed; human bindings were
+not created.
 
-Чтобы дать доступ к одному namespace, отдельно определить реальный authentication
-subject/principal и namespace `RoleBinding` на reviewed role. Не создавать
-`ClusterRoleBinding` там, где достаточно namespace. Проверить `kubectl auth can-i`
-на разрешённые и запрещённые resources под соответствующей identity; не выдавать
-чужому человеку owner kubeconfig ради такого теста.
+To grant access to one namespace, separately define the real authentication
+subject/principal and a namespace `RoleBinding` to a reviewed role. Do not
+create a `ClusterRoleBinding` where a namespace one suffices. Check
+`kubectl auth can-i` for allowed and forbidden resources under the appropriate
+identity; do not hand another person the owner kubeconfig for such a test.
 
-Для Rancher дополнительно смотреть exact OIDC principal и реальные project/
-cluster grants: его existing users/principal IDs не те же строки, что IdP groups.
-Auth configs/subject mappings не исправляют широкие старые RBAC bindings сами.
+For Rancher additionally look at the exact OIDC principal and real project/
+cluster grants: its existing users/principal IDs are not the same strings as
+IdP groups. Auth configs/subject mappings do not fix broad old RBAC bindings by
+themselves.
 
-Root ноды способен читать/менять node workloads и secrets. Pod creator/exec в
-namespace потенциально также получает namespace secrets. Ограниченный app role
-не снимает эти host/workload trust boundaries. Нельзя обещать владельцу внешнего
-root-хоста «нет доступа к данным», пока там исполняются доверенные workloads.
+A node root can read/modify node workloads and secrets. A Pod creator/exec in
+a namespace can potentially also get namespace secrets. A limited app role does
+not remove these host/workload trust boundaries. One cannot promise the owner of
+an external root host “no access to data” while trusted workloads run there.
 
-## Рабочий транспорт после 6 ноября
+## Working transport after November 6
 
-Обычные SSH aliases нод используют только `10.250.0.1/.3/.2/.5:2222` с pinned host keys, без public fallback/ProxyJump. Mac NetBird — основной transport, standalone WG owner `.4` — отдельно проверенный recovery, обычно выключен; mandatory Tunnelblick не менять. Наличие публичных human HTTPS entrances не переносит SSH на публичные A records. Внутренний TV peer `.8` отозван, Mac/phone/node identities этим не затронуты. Текущий адрес VPS, DNS lifecycle и acceptance boundaries: [network-access.md](../../network/README.md).
+The nodes' ordinary SSH aliases use only `10.250.0.1/.3/.2/.5:2222` with pinned
+host keys, no public fallback/ProxyJump. The Mac's NetBird is the primary
+transport; the owner's standalone WG `.4` is a separately verified recovery,
+usually off; do not change the mandatory Tunnelblick. The existence of public
+human HTTPS entrances does not move SSH onto the public A records. The internal
+TV peer `.8` is revoked; Mac/phone/node identities were not affected. Current
+VPS address, DNS lifecycle and acceptance boundaries: [network-access.md](../../network/README.md).

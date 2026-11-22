@@ -209,69 +209,75 @@ removed. Bot run42629684670 and SPI run42622862630 completed the ordinary
 Harbor→homelab→Argo cycle. See monitoring/alert-graphs.md for pinned digests and
 activation proof; do not rotate working secrets to diagnose this TLS symptom.
 
-## Harbor: registry кластера Socrat
+## Harbor: the Socrat cluster registry
 
-> **PostgreSQL (2026-11-20):** Рабочая БД registry — внешняя `pg-common/registry`; исходный PVC удерживается, blob storage не переносился. [Эксплуатация и CA](../../data/postgresql/postgres-platform.md).
+> **PostgreSQL (2026-11-20):** The working registry DB is the external `pg-common/registry`; the original PVC is retained, blob storage was not moved. [Operations and CA](../../data/postgresql/postgres-platform.md).
 
-Срез на **30 октября 2026**. Harbor уже развёрнут; распределённая HA-схема пока
-не развёрнута из-за ресурсов. Это контекст и инструкция, не замена live-проверке.
+Snapshot of **October 30, 2026**. Harbor is already deployed; the distributed HA
+scheme is not deployed yet due to resources. This is context and an
+instruction, not a replacement for a live check.
 
-## Observer: актуальное ограничение на 8 ноября 2026
+## Observer: current restriction as of November 8, 2026
 
-**`homelab-observer` не открывает Harbor.** Native Guest правильно запрещал push/delete,
-но старый CLI secret продолжал получать pull после удаления IdP-группы. Поэтому
-сняты только observer admission и его Guest-привязки в `homelab`, `library`,
-`spi-triage`; owner, robots и остальные grants не затронуты. Проверено: старая
-synthetic сессия видит ноль проектов, новый registry JWT не содержит actions.
-Уже выпущенный signed JWT не отзывается задним числом (наблюдался TTL30min).
+**`homelab-observer` does not open Harbor.** Native Guest correctly forbade
+push/delete, but the old CLI secret kept receiving pull after the IdP group was
+removed. Therefore only the observer admission and its Guest bindings in
+`homelab`, `library`, `spi-triage` were removed; the owner, robots and other
+grants are untouched. Verified: the old synthetic session sees zero projects,
+a new registry JWT contains no actions. An already issued signed JWT is not
+revoked retroactively (a 30min TTL was observed).
 
-Не восстанавливать эти права старым bootstrap/readiness receipt, не удалять людей
-и не сбрасывать их пароли ради обхода кеша. Перед reopening нужна отдельная native
-revocation-приёмка: [#134](https://github.com/alchemmist/homelab/issues/134),
+Do not restore these rights from an old bootstrap/readiness receipt, do not
+delete people or reset their passwords to bypass the cache. Reopening needs a
+separate native revocation acceptance:
+[#134](https://github.com/alchemmist/homelab/issues/134),
 [observer evidence](../../records/handoffs/observer-acceptance-20261108.md).
-Остальная registry/robot информация ниже сохраняет дату своего среза.
+The remaining registry/robot information below keeps its snapshot date.
 
-## Вход и состояние
+## Entry and state
 
-- Публичный UI и registry: **https://harbor.socrat.alchemmist.xyz**.
-- Harbor **2.15.4**, официальный chart **1.19.4**, SHA-256 архива закреплён.
-- Обычный human web login — **native Authentik OIDC/MFA** с отдельно reviewed
-  project permissions. Локальный **admin** сохранён как emergency recovery,
-  не общий повседневный логин. Старое описание «только admin, личных users нет»
-  относится к первоначальному bootstrap, а не текущему режиму.
-- Начальный пароль admin на socrat-0:
-  `~/.cache/homelab-harbor/private-values.json`, поле `harborAdminPassword`.
-  После смены пароля в UI файл не гарантирует актуальность пароля.
-- Пароли, robot secrets и содержимое private-values никогда не выводить в чат,
-  логи или Git. На Mac пароль можно передать сразу в `pbcopy` через SSH,
-  не печатая в терминал. Логин robot accounts не использовать для web UI.
+- Public UI and registry: **https://harbor.socrat.alchemmist.xyz**.
+- Harbor **2.15.4**, official chart **1.19.4**, archive SHA-256 pinned.
+- The ordinary human web login is **native Authentik OIDC/MFA** with separately
+  reviewed project permissions. The local **admin** is kept for emergency
+  recovery, not as the shared everyday login. The old description “admin only,
+  no personal users” refers to the initial bootstrap, not the current mode.
+- The initial admin password on socrat-0:
+  `~/.cache/homelab-harbor/private-values.json`, field `harborAdminPassword`.
+  After a password change in the UI, the file does not guarantee the password
+  is current.
+- Never print passwords, robot secrets or private-values contents into chat,
+  logs or Git. On the Mac the password can be piped straight into `pbcopy` over
+  SSH without printing it in the terminal. Do not use robot account logins for
+  the web UI.
 
-## Образы и автоматизация
+## Images and automation
 
-Приватный проект **homelab**, начальная квота 80 GiB. Стандартный проект `library`
-тоже переведён в private. Только admin создаёт проекты.
+Private project **homelab**, initial quota 80 GiB. The standard `library`
+project was also switched to private. Only admins create projects.
 
-Формат image reference:
+Image reference format:
 
 ```text
 harbor.socrat.alchemmist.xyz/homelab/<application>:<git-sha>
 ```
 
-Для production желательно фиксировать digest. Не полагаться на mutable `latest`.
+For production, pinning the digest is preferable. Do not rely on the mutable
+`latest`.
 
-Созданы **проектные**, а не глобальные robot accounts:
+**Project-scoped** (not global) robot accounts were created:
 
-| Назначение | Имя в credential-файле | Права |
+| Purpose | Name in the credential file | Rights |
 |---|---|---|
-| CI | поле `name` из `ci-push.json` | repository pull/push только в homelab |
-| Kubernetes | поле `name` из `cluster-pull.json` | repository pull только в homelab |
+| CI | `name` field from `ci-push.json` | repository pull/push in homelab only |
+| Kubernetes | `name` field from `cluster-pull.json` | repository pull in homelab only |
 
-Использовать точное имя из файла: Harbor добавляет robot/project prefix.
-У обоих срок действия **90 дней с момента создания**, нужна своевременная ротация.
-При пропаже локального credential-файла initializer не пересоздаёт существующего
-робота молча: нужно явно согласовать ротацию.
+Use the exact name from the file: Harbor adds a robot/project prefix. Both
+expire **90 days from creation**; timely rotation is required. If the local
+credential file disappears, the initializer does not silently recreate an
+existing robot: the rotation must be explicitly agreed.
 
-Credentials на socrat-0, каталог 0700, файлы 0600:
+Credentials on socrat-0, directory 0700, files 0600:
 
 ```text
 ~/.cache/homelab-harbor/private-values.json
@@ -279,17 +285,17 @@ Credentials на socrat-0, каталог 0700, файлы 0600:
 ~/.cache/homelab-harbor/cluster-pull.json
 ```
 
-На Mac robot credentials скопированы вне репозитория:
+On the Mac, robot credentials are copied outside the repository:
 
 ```text
 ~/.config/homelab/harbor/ci-push.json
 ~/.config/homelab/harbor/cluster-pull.json
 ```
 
-### Push с Mac
+### Push from the Mac
 
-Команда ниже передаёт пароль через stdin, а не аргумент командной строки.
-Использует отдельный Docker config, не меняя основной login Docker:
+The command below passes the password via stdin, not a command-line argument.
+It uses a separate Docker config without changing the primary Docker login:
 
 ```sh
 python3 - <<'PY'
@@ -311,69 +317,78 @@ docker --config "$HOME/.config/homelab/harbor/docker" push \
   harbor.socrat.alchemmist.xyz/homelab/my-app:<git-sha>
 ```
 
-Заменить `<git-sha>` реальным SHA. Docker config содержит секрет в обратимо
-закодированном виде: защищать как пароль. В CI использовать secret store и
-эфемерный Docker config, не копировать admin password.
+Replace `<git-sha>` with a real SHA. The Docker config contains the secret in
+reversibly encoded form: protect it like a password. In CI use a secret store
+and an ephemeral Docker config; do not copy the admin password.
 
-### Pull из Kubernetes
+### Pull from Kubernetes
 
-- Сформировать `kubernetes.io/dockerconfigjson` Secret с **pull-only** robot.
-- Secret нужен **в каждом namespace**, где приложение скачивает приватные образы.
-- Ссылаться на него через Pod `imagePullSecrets` или специально выбранный
-  ServiceAccount. Не менять глобально все ServiceAccount без необходимости.
-- Credentials не включать в открытые Helm values или Git. Argo CD читает Git; отдельных Fleet GitRepo в репозитории нет.
-- Insecure registry/TLS skip verify не нужны: HTTPS доверенный.
+- Create a `kubernetes.io/dockerconfigjson` Secret with the **pull-only** robot.
+- The Secret is needed **in every namespace** where the application pulls
+  private images.
+- Reference it via Pod `imagePullSecrets` or an explicitly chosen
+  ServiceAccount. Do not change all ServiceAccounts globally without a reason.
+- Do not put credentials into open Helm values or Git. Argo CD reads Git; there
+  are no separate Fleet GitRepos in the repository.
+- No insecure registry/TLS skip verify is needed: the HTTPS is trusted.
 
-**Миграция в Harbor уже выполнена для блога, Cats, Format Quorum, Monori и Socrat Home; LMS намеренно остаётся на GHCR.** Fleet image automation не подключать: GitOps-манифесты Fleet сняты, выкладка через Argo CD. Проверенные CI-прогоны и digest приведены в последующих датированных разделах.
+**The migration to Harbor is already done for the blog, Cats, Format Quorum,
+Monori and Socrat Home; LMS intentionally remains on GHCR.** Do not enable
+Fleet image automation: the Fleet GitOps manifests are removed, rollout
+happens via Argo CD. Verified CI runs and digests are given in the later dated
+sections.
 
-## Как развёрнуто сейчас
+## How it is deployed now
 
-Все компоненты на **socrat-0**, 6 Pod / 7 контейнеров. PVC `local-path`:
-registry 100 GiB, PostgreSQL 5 GiB, Redis 1 GiB. PVC keep и PV reclaim **Retain**.
-Это защита от удаления ресурсов, **не бэкап** и не HA. Local-path capacity не
-является жёсткой файловой квотой.
+All components on **socrat-0**, 6 Pods / 7 containers. Local-path PVCs:
+registry 100 GiB, PostgreSQL 5 GiB, Redis 1 GiB. PVC keep and PV reclaim
+**Retain**. This protects against resource deletion, it is **not a backup**
+and not HA. Local-path capacity is not a hard filesystem quota.
 
-Два публичных ingress (дом и VPS) используют один ingress/TLS Secret.
-Namespace `harbor` включён в `charts/traefik-edge/values.yaml`.
+Two public ingresses (home and VPS) share one ingress/TLS Secret.
+The `harbor` namespace is included in `charts/traefik-edge/values.yaml`.
 
-При потере socrat-0 новые push/pull недоступны; запущенные контейнеры продолжают
-работать. Плановые независимые бэкапы и restore пока **не настроены**. Не делать
-Harbor единственной копией критичных образов до их настройки.
-Trivy, автоматические GC и retention deletion пока отключены.
+If socrat-0 is lost, new push/pull are unavailable; running containers keep
+working. Scheduled independent backups and restore are **not configured yet**.
+Do not make Harbor the only copy of critical images until they are.
+Trivy, automatic GC and retention deletion are still disabled.
 
-Источники и применение:
+Sources and application:
 
 - `deploy/harbor/values.yaml`;
 - `ansible/roles/harbor/`, `ansible/playbooks/harbor.yml`;
-- `docs/platform/harbor/harbor.md` — эксплуатация и восстановление;
-- из `ansible/`: `ansible-playbook playbooks/harbor.yml`.
+- `docs/platform/harbor/harbor.md` — operations and recovery;
+- from `ansible/`: `ansible-playbook playbooks/harbor.yml`.
 
-SSH dual-address hostname может попасть на неправильный публичный вход. Для
-socrat-0 проверен home override `Hostname=109.173.40.247` с прежним
-`HostKeyAlias=[socrat.alchemmist.xyz]:2222`. Не отключать host key checking.
-Не применять playbook автоматически только ради чтения состояния.
+An SSH dual-address hostname can land on the wrong public entrance. For
+socrat-0 the home override `Hostname=109.173.40.247` with the previous
+`HostKeyAlias=[socrat.alchemmist.xyz]:2222` is verified. Do not disable host key
+checking. Do not run the playbook automatically just to read state.
 
-Проверено: health 200 и trusted TLS через оба публичных IP; anonymous `/v2/` 401;
-push BusyBox push-роботом, pull Pod на socrat-1 pull-роботом с `Always`, лог
-`harbor-pull-ok`. Тестовый Pod и временный Secret удалены; smoke image оставлен.
-Это не проверка отказа ноды или восстановления.
+Verified: health 200 and trusted TLS through both public IPs; anonymous `/v2/`
+401; a BusyBox push by the push robot, a pull by a Pod on socrat-1 with the
+pull robot and `Always`, log `harbor-pull-ok`. The test Pod and temporary
+Secret were removed; the smoke image kept. This is not a node-failure or
+restore test.
 
-## Согласованное направление HA
+## The agreed HA direction
 
-Пользователь выбрал полноценный распределённый Harbor, но принял текущую
-нехватку ресурсов. План в `docs/platform/harbor/harbor-ha.md`:
+The user chose a full distributed Harbor but accepted the current lack of
+resources. The plan is in `docs/platform/harbor/harbor-ha.md`:
 
-1. По две реплики core/portal/jobservice/registry на socrat-0/1.
-2. Трёхузловое S3-хранилище на socrat-0/1/3, кандидат Garage с RF=3;
-   совместимость и quorum/rejoin ещё нужно проверить.
-3. CloudNativePG, 3 PostgreSQL instance с синхронной репликацией.
-4. Redis/Valkey + Sentinel на трёх нодах; **не Redis Cluster**.
-5. Сохранить URL, encryption/token signing keys и пользователей/роботов.
+1. Two replicas each of core/portal/jobservice/registry on socrat-0/1.
+2. A three-node S3 store on socrat-0/1/3, Garage with RF=3 as the candidate;
+   compatibility and quorum/rejoin still need testing.
+3. CloudNativePG, 3 PostgreSQL instances with synchronous replication.
+4. Redis/Valkey + Sentinel on three nodes; **not Redis Cluster**.
+5. Keep the URLs, encryption/token signing keys and users/robots.
 
-Цель — переживать потерю одной ноды, включая socrat-0. **Не обещать переживание
-потери квартиры:** две из трёх нод схемы находятся дома, quorum исчезнет вместе с ними.
+The goal is to survive the loss of one node, including socrat-0. **Do not
+promise survival of losing the apartment:** two of the three nodes of the
+scheme are at home; the quorum disappears together with them.
 
-HA-зависимости и миграция **не применены**. Реализован read-only preflight:
+HA dependencies and migration are **not applied**. A read-only preflight is
+implemented:
 
 ```sh
 python3 scripts/harbor-ha-preflight.py collect --output /tmp/harbor-ha-inventory-UNIQUE.json
@@ -382,35 +397,40 @@ python3 scripts/harbor-ha-preflight.py check \
   --output /tmp/harbor-ha-capacity-UNIQUE.json
 ```
 
-Новые уникальные имена; файлы 0600, без перезаписи. Данные старше 15 минут
-отклоняются. Exit 1 — ресурсный blocker, 2 — ошибка инспекции. Даже успешный gate
-не разрешает cutover: ещё нужны бэкап/restore, совместимость и failover-тесты.
+New unique names; files 0600, no overwriting. Data older than 15 minutes is
+rejected. Exit 1 — resource blocker, 2 — inspection error. Even a successful
+gate does not authorize a cutover: backups/restore, compatibility and failover
+tests are still needed.
 
-Policy `deploy/harbor/ha-policy.json` хранит резерв OTel независимо от его
-незавершённых файлов. Если локальный OTel policy присутствует, берётся больший
-резерв; отсутствие файла не обнуляет уже согласованную потребность в памяти.
+The policy `deploy/harbor/ha-policy.json` keeps the OTel reservation
+independently of its unfinished files. If a local OTel policy is present, the
+larger reservation is taken; a missing file does not zero out the already
+agreed memory need.
 
-Первый gate: socrat-1/3 не хватает RAM и scheduler headroom, socrat-0 не проходит
-запас диска при предварительном staging budget. Исторический отчёт в
-`deploy/harbor/migration-evidence/capacity-initial.json`, не принимать его за live.
-Не уменьшать бюджеты ради зелёного результата, не отбирать ресурсы OTel и не
-удалять данные без согласования. Следующий шаг — решение по RAM/ёмкости, затем
-независимый проверенный бэкап и изолированное развёртывание HA foundation.
+First gate: socrat-1/3 lack RAM and scheduler headroom; socrat-0 fails the disk
+margin given the preliminary staging budget. The historical report is in
+`deploy/harbor/migration-evidence/capacity-initial.json`; do not treat it as
+live. Do not shrink budgets for a green result, do not take resources from
+OTel and do not delete data without agreement. The next step is a decision on
+RAM/capacity, then an independent verified backup and an isolated HA
+foundation deployment.
 
 
-## Дополнение 1 ноября 2026: Authentik
+## Addition November 1, 2026: Authentik
 
-**Harbor теперь использует native OIDC / Authentik**: provider grant_types исправлены,
-`systeminfo.auth_mode=oidc_auth`, owner group → system admin. Старый local admin
-остаётся аварийным входом. Initial admin password оказался stale; его не сбрасывали.
-Применён поддерживаемый CONFIG_OVERWRITE_JSON из Secret, отдельный Helm overlay.
-Private project и scoped robots сохранены: pull-only robot после миграции получил
-BusyBox manifest 200 с прежним digest. Browser owner login ещё требует проверки.
+**Harbor now uses native OIDC / Authentik**: provider grant_types fixed,
+`systeminfo.auth_mode=oidc_auth`, owner group → system admin. The old local
+admin remains the emergency entry. The initial admin password turned out to be
+stale; it was not reset. A supported CONFIG_OVERWRITE_JSON from a Secret and a
+separate Helm overlay were applied. Private projects and scoped robots are
+preserved: after the migration the pull-only robot received a BusyBox manifest
+200 with the previous digest. Browser owner login still needs verification.
 
-Перед переключением encrypted DB+registry+credentials backup на Mac; PG18 dump
-восстановлен в isolated PG18, три blob проверены SHA-256. Это не full Harbor DR.
-Не применять legacy bootstrap API с устаревшим initial password после активации OIDC.
-Другие детали/границы SSO: `docs/auth/architecture/identity.md`.
+Before the switch, an encrypted DB+registry+credentials backup was made on
+the Mac; the PG18 dump was restored into an isolated PG18, three blobs were
+SHA-256 checked. This is not a full Harbor DR. Do not apply the legacy
+bootstrap API with the stale initial password after OIDC activation. Other
+SSO details/boundaries: `docs/auth/architecture/identity.md`.
 
 ## Runtime repair — 2026-11-04
 
