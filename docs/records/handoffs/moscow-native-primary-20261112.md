@@ -52,7 +52,7 @@ it as a cluster node; Grafana host metrics/logs retain node/host_name=socrat-4.
    boot-enabled, marker retained. An accidental failback/activate is rejected in
    this mode. Explicit demote is rollback preparation only, not an agent start.
 7. GitOps changed vpn-transit replicas1→0; Argo confirmed Synced/Healthy.
-8. `moscow-retire-worker.yml` required native acceptance and actual desired0.
+8. The since-removed `moscow-retire-worker.yml` required native acceptance and actual desired0.
    An exact reviewed pod snapshot bounded process retirement. The runtime helper
    identified pod cgroups, container IDs, shim namespace/IDs, PID starttime and
    command identity; unknown ownership aborts. Only remaining owned pod tasks/
