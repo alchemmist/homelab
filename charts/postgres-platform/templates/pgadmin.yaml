@@ -59,7 +59,7 @@ spec:
           env:
             - {name: PGADMIN_LISTEN_PORT, value: "5050"}
             - {name: PGADMIN_DISABLE_POSTFIX, value: "1"}
-            - {name: PGADMIN_DEFAULT_EMAIL, value: bootstrap@localhost.invalid}
+            - {name: PGADMIN_DEFAULT_EMAIL, value: pgadmin-bootstrap@alchemmist.xyz}
             - {name: PGADMIN_DEFAULT_PASSWORD, valueFrom: {secretKeyRef: {name: pgadmin-bootstrap, key: password}}}
             - {name: OIDC_SECRET, valueFrom: {secretKeyRef: {name: pgadmin-oidc, key: client-secret}}}
           volumeMounts:
