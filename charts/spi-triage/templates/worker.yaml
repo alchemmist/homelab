@@ -168,7 +168,12 @@ spec:
             - name: tmp
               mountPath: /tmp
             - name: data
+              {{- if .Values.postgresEnabled }}
+              mountPath: /data/graphs
+              subPath: graphs
+              {{- else }}
               mountPath: /data
+              {{- end }}
             - name: github
               mountPath: /github
               readOnly: true
