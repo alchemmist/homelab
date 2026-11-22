@@ -115,6 +115,15 @@ nodes:
         findings: false
         files: false
         node: false
+  docs-language:
+    title: Documentation language
+    profile: default
+    run: make docs-language
+    policy: *id001
+    needs:
+      - graph
+    results:
+      native: reports/docs-language.json
   yaml:
     title: YAML structure
     profile: default

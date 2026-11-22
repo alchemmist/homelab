@@ -3,7 +3,7 @@
 Comprehensive Russian operator manual and session consolidation: [identity manual](identity.md).
 
 Additive granular app IAM, controller ownership and guarded onboarding/offboarding
-(implementation prepared, **not deployed**): [русский runbook](../applications/application-iam.md).
+(implementation prepared, **not deployed**): [integration runbook](../applications/application-iam.md).
 The 2026-11-02 GET-only audit preserved the reviewed owner/Tim UUIDs and grants;
 no new app memberships were assigned.
 

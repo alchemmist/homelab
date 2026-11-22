@@ -437,7 +437,7 @@ not browseremulation. A privatepublic-share URL was emitted by temporaryPlaywrig
 errorlogging; ownerinformed, no unapprovedshare rotation, verifiercleanedup.
 
 
-## Сопровождение кастомного TV-CSS для Argo
+## Maintaining the Argo TV stylesheet
 
 **Текущее согласованное решение:** native Bar gauge909 остаётся в ручном размере
 `x0,y19,w12,h1`. Только на public TV-странице с `socratTv=1` применяется адресное

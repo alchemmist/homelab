@@ -431,6 +431,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     graph = yaml.safe_load((ROOT / "qg.yaml").read_text())["nodes"]
     assert len({n["title"] for n in graph.values()}) == len(graph)
     first_layer = {
+        "docs-language",
         "yaml",
         "python-scopes",
         "scripts-q000",
@@ -1203,3 +1204,25 @@ def test_existing_main_push_regression_cannot_be_deferred(omitted: str) -> None:
     for scheduled in (complete, expanded):
         with pytest.raises(ValueError, match="push regression lost"):
             contracts.require_retained_push_tests(scheduled - {omitted})
+
+
+def test_documentation_language_scope_and_locations(tmp_path, monkeypatch) -> None:
+    from ci.quality import check_docs_language as language
+
+    monkeypatch.setattr(language, "ROOT", tmp_path)
+    files = {
+        "docs/data.tsv": "English\n\u0401",
+        "service/readme.RST": "\u044f",
+        "README": "\u0451",
+        "docs/guide.md": "Caf\u00e9",
+        "src/service.py": "\u0410",
+    }
+    for name, content in files.items():
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    findings, count = language.check(list(files))
+    assert count == 4
+    assert [(f["location"]["path"], f["location"]["startLine"]) for f in findings] == [
+        ("docs/data.tsv", 2), ("service/readme.RST", 1), ("README", 1),
+    ]

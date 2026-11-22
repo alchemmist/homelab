@@ -30,15 +30,11 @@ private credential storage, never paste a token into chat or Git.
 
 Draft compatibility prose:
 
-> # RustFS: объектное хранилище
->
-> RustFS используется в Socrat как S3-совместимое хранилище файлов и диагностик.
-> Актуальные способы доступа, ограничения и правила работы описаны на странице
-> «S3-хранилище» (/platform/s3-storage/).
->
-> Старые этапы подключения и активации SPI не являются текущими инструкциями.
-> Не меняйте настройки хранилища, права доступа или объекты по историческому
-> чек-листу. Для выдачи доступа обратитесь к владельцу сервиса.
+> # RustFS: object storage
+> Socrat uses RustFS as S3-compatible storage for files and diagnostics.
+> See [S3 storage](/platform/s3-storage/) for current access methods, constraints and operating instructions.
+> Historical SPI onboarding and activation checklists are not current instructions.
+> Do not use them to change storage settings, permissions or objects. Ask the service owner for access.
 
 This draft does not claim publication, an owner login or a successful write API
 call. Source README/operational storage references were corrected separately.

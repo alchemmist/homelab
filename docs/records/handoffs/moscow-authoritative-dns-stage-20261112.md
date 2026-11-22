@@ -6,7 +6,7 @@
 > **Live update, 12 November 2026 11:28 UTC:** staged Knot is installed and enabled.
 > Exact additive ns3 NS/A publication was applied on0/1/2/4 with per-host
 > preimages and common approved plan23877b32aeda112b0a0eb9c25d593045a2428e8704c95390ed529ab34902ceaf.
-> REG.RU explicitly confirmed “DNS-серверы изменены” on the second attempt,
+> REG.RU explicitly confirmed that the DNS servers had been changed on the second attempt,
 > after the first request failed and fresh readback proved the old desired set.
 > Parent delegation propagation is separately pending verification below.
 > Historical prepared-only/sudo-blocked status below is superseded.

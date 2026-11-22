@@ -2,7 +2,7 @@
 
 [Отчёт: внезапная потеря `socrat-1`, 21 ноября 2026](../../records/incidents/socrat-1-loss-20261121.md): миграция на NFS, что вернулось во время потери и после неё, доставка алерта и Descheduler.
 
-## Метрики: сбор, прореживание и перенос между нодами — 21 ноября 2026
+## Metric collection, downsampling and node migration (21 November 2026)
 
 | Поток | Вычисления → физический диск | Условие и результат |
 |---|---|---|
@@ -21,7 +21,7 @@
 
 Источники: [Prometheus](../../../charts/prometheus/values.yaml), [размещение и retention Thanos](../../../charts/thanos/values.yaml), [расписание и права каскада](../../../charts/thanos/templates/warm-cascade.yaml), [проверка часовых блоков](../../../charts/thanos/files/hour_copy.py).
 
-## Пропуски свежих метрик в Thanos — 19 ноября 2026
+## Gaps in recent Thanos metrics (19 November 2026)
 
 **Правило чтения:** последние 6 часов обслуживает живой sidecar Prometheus. Только у raw Store Gateway (`thanos-store`) задан `--max-time=-6h`; локальный Prometheus хранит 12 часов, поэтому на границе остаётся около 6 часов перекрытия. Это фильтр чтения, а не удаление блоков. Если sidecar недоступен, на raw-архив как на резерв для последних 6 часов рассчитывать нельзя. При изменении retention перепроверить перекрытие. Источники: [Thanos](../../../charts/thanos/values.yaml), [Prometheus](../../../charts/prometheus/values.yaml); исправление `69a0a2bf`.
 

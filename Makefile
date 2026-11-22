@@ -2,7 +2,7 @@ export PATH := $(CURDIR)/.quality-tools/bin:$(PATH)
 export UV_LOCKED := 1
 export PYTHONDONTWRITEBYTECODE := 1
 
-check: graph ownership yaml python-scopes scripts-q000 deploy-i001 rustfs-return-types \
+check: graph docs-language ownership yaml python-scopes scripts-q000 deploy-i001 rustfs-return-types \
        javascript workflow shell docker ansible secrets dependencies tests-fast tests-medium \
        python manifests tests-cluster image-cves
 
@@ -42,6 +42,9 @@ ownership:
 	  tests/test_operational_entrypoints.py \
 	  tests/test_source_pointers.py \
 	  tests/test_vendor_contracts.py
+
+docs-language:
+	uv run python -m ci.quality.check_docs_language
 
 yaml:
 	uv run python -m ci.quality.check_yaml
