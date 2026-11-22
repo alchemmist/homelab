@@ -35,7 +35,7 @@ check to `qg.yaml` and remove its local-only entry once it is verified green.
 ### Adding a blocking Python scope
 
 Add a distinct `quality/python-scopes/*.json` file; no workflow or runner edit is needed.
-For example, the initial scope is `{"include":["scripts/quality/*.py"],"rules":["FURB167"]}`.
+For example, the initial scope is `{"include":["tests/test_quality*.py"],"rules":["SIM117"]}`.
 Patterns are case-sensitive POSIX globs anchored at the repository root: `*` does not
 cross `/`; `**/` matches zero or more directories. Each pattern must match at least
 one tracked, owned `.py` file (the same vendor/frozen provenance checks as the full

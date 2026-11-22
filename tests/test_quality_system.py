@@ -210,9 +210,8 @@ def test_unmarked_debt_file_cannot_act_as_a_baseline(tmp_path) -> None:
     (debt / "python.json").write_text(
         json.dumps({"version": 1, "reason": "x" * 20, "findings": []})
     )
-    with patch("common.ROOT", tmp_path):
-        with pytest.raises(ValueError, match="non-accepting"):
-            report("python", [], 1, tmp_path / "out.json")
+    with patch("common.ROOT", tmp_path), pytest.raises(ValueError, match="non-accepting"):
+        report("python", [], 1, tmp_path / "out.json")
 
 
 def test_suppression_guard_matches_markers_and_not_its_own_source() -> None:
