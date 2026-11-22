@@ -8,18 +8,46 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+from collections.abc import Iterable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import NotRequired, TypedDict, override
+
+type Counts = dict[tuple[str, int], int]
+
+
+class Execution(TypedDict):
+    """Execution metadata used for deduplication and recent-start counts."""
+
+    id: str
+    startedAt: NotRequired[str | None]
+    status: str
+
+
+class Page(TypedDict):
+    """Execution list and optional pagination cursor returned by n8n."""
+
+    data: list[Execution]
+    nextCursor: NotRequired[str | None]
+
+
+class Snapshot(TypedDict):
+    """Shared collection state read under the metrics lock."""
+
+    ok: int
+    at: float
+    counts: Counts
+
 
 BASE = os.environ.get("N8N_URL", "http://n8n.automation.svc.cluster.local")
 LOCK = threading.Lock()
-STATE = {"ok": 0, "at": 0, "counts": {}}
+STATE: Snapshot = {"ok": 0, "at": 0, "counts": {}}
 
 
-def timestamp(value):
+def timestamp(value: str) -> float:
     return dt.datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
 
 
-def summarize(rows, now):
+def summarize(rows: Iterable[Execution], now: float) -> Counts:
     counts = {
         (status, window): 0
         for status in ("success", "error", "running", "waiting", "other")
@@ -30,9 +58,9 @@ def summarize(rows, now):
         if row["id"] in seen:
             continue
         seen.add(row["id"])
-        if not row.get("startedAt"):
+        if not (started := row.get("startedAt")):
             continue
-        age = now - timestamp(row["startedAt"])
+        age = now - timestamp(started)
         status = (
             row["status"]
             if row["status"] in ("success", "error", "running", "waiting")
@@ -44,8 +72,8 @@ def summarize(rows, now):
     return counts
 
 
-def get_page(cursor=None, status=None):
-    params = {"limit": 100, "includeData": "false"}
+def get_page(cursor: str | None = None, status: str | None = None) -> Page:
+    params: dict[str, str | int] = {"limit": 100, "includeData": "false"}
     if cursor:
         params["cursor"] = cursor
     if status:
@@ -56,10 +84,11 @@ def get_page(cursor=None, status=None):
         headers={"X-N8N-API-KEY": key},
     )
     with urllib.request.urlopen(request, timeout=8) as response:
-        return json.load(response)
+        page: Page = json.load(response)
+        return page
 
 
-def collect():
+def collect() -> Counts:
     # History is sorted by descending execution ID. Count recent starts by
     # current outcome, not recent completions of arbitrarily old executions.
     now = time.time()
@@ -68,7 +97,7 @@ def collect():
         page = get_page(cursor)
         rows.extend(page["data"])
         cursor = page.get("nextCursor")
-        dates = [timestamp(r["startedAt"]) for r in page["data"] if r.get("startedAt")]
+        dates = [timestamp(started) for r in page["data"] if (started := r.get("startedAt"))]
         if not cursor or (dates and max(dates) < now - 3600):
             break
     else:
@@ -91,12 +120,12 @@ def collect():
     return result
 
 
-def loop():
+def loop() -> None:
     while True:
         try:
             counts = collect()
             with LOCK:
-                STATE.update(ok=1, at=time.time(), counts=counts)
+                STATE.update({"ok": 1, "at": time.time(), "counts": counts})
         except Exception:
             # Do not log response bodies, workflow metadata or API credentials.
             with LOCK:
@@ -107,13 +136,13 @@ def loop():
 class Handler(BaseHTTPRequestHandler):
     """HTTP request handler exposing Prometheus metrics."""
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         """Serve the current metrics snapshot on /metrics."""
         if self.path != "/metrics":
             self.send_error(404)
             return
         with LOCK:
-            state = dict(STATE)
+            state = STATE.copy()
         fresh = int(state["ok"] and time.time() - state["at"] < 90)
         lines = [
             "# TYPE socrat_n8n_collection_success gauge",
@@ -134,14 +163,16 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
-    def log_message(self, *_):
+    @override
+    def log_message(self, *_: object) -> None:
         """Suppress default request-line logging."""
 
 
 class MetricsServer(ThreadingHTTPServer):
     """Threaded HTTP server with explicit address binding."""
 
-    def server_bind(self):
+    @override
+    def server_bind(self) -> None:
         """Bind without reverse DNS and pin the server name."""
         # Avoid slow reverse DNS lookups during HTTPServer initialization.
         socketserver.TCPServer.server_bind(self)

@@ -20,6 +20,21 @@ WRITER_SECRET_FILE_MODE = 0o600
 class WriterSecret(unittest.TestCase):
     """Prove unsafe writer-secret inputs are refused and a valid render is idempotent."""
 
+    def test_malformed_storage_is_refused(self) -> None:
+        """Reject malformed containers and fields before rendering anything."""
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            source = d / "storage.json"
+            for malformed in ([], {}, {"root": []}, {"root": {}}, {"root": {"access": []}}):
+                with self.subTest(storage=malformed):
+                    source.write_text(json.dumps(malformed))
+                    source.chmod(0o600)
+                    with self.assertRaisesRegex(
+                        ValueError, "^SPI_WRITER_SECRET_PREPARATION_REFUSED$"
+                    ):
+                        helper.render(d)
+                    assert not (d / "spi-evidence-writer.secret.json").exists()
+
     def test_offline_and_refusals(self) -> None:
         """Render a mode-0600 writer Secret only when the journal matches storage."""
         with tempfile.TemporaryDirectory() as tmp:

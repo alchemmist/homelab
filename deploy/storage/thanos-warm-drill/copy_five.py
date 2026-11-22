@@ -40,7 +40,7 @@ print('seed',dest.name,'verified files',len(manifest),'bytes',written,'manifest 
 """
 
 
-def render():
+def render() -> dict[str, object]:
     c = container("seed", PYTHON, ["python3", "-Bc"], [COPY])
     c["volumeMounts"] = [
         {

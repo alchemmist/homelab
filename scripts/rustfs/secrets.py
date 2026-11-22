@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 
 
-def main():
+def main() -> None:
     """Execute main."""
     p = argparse.ArgumentParser()
     p.add_argument("--private-dir", type=Path, required=True)
@@ -18,6 +18,8 @@ def main():
     spec = importlib.util.spec_from_file_location(
         "bootstrap", Path(__file__).with_name("bootstrap.py")
     )
+    if spec is None or spec.loader is None:
+        raise ImportError("Cannot load RustFS bootstrap")
     b = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(b)
     st = d.lstat()
