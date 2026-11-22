@@ -9,17 +9,17 @@
       ansible.builtin.file:
         path: /var/lib/homelab-openhands-public-dns
         state: directory
-        mode: '0700'
+        mode: "0700"
     - name: Install the OpenHands public DNS plan and apply tool
       ansible.builtin.copy:
         src: ../../scripts/openhands-public-dns.py
         dest: /usr/local/sbin/homelab-openhands-public-dns
-        mode: '0700'
+        mode: "0700"
     - name: Stage the proposed zone renderer for OpenHands public DNS
       ansible.builtin.copy:
         src: ../../scripts/public_dns_zone.py
         dest: /var/lib/homelab-openhands-public-dns/proposed.py
-        mode: '0700'
+        mode: "0700"
     - name: Compute the OpenHands public DNS plan
       ansible.builtin.command: /usr/local/sbin/homelab-openhands-public-dns
       register: dns_plan
@@ -40,7 +40,9 @@
   tasks:
     - name: Apply the approved OpenHands public DNS plan
       ansible.builtin.command:
-        argv: [/usr/local/sbin/homelab-openhands-public-dns, --apply, --approve-plan-hash, "{{ openhands_public_dns_hash }}"]
+        argv: [/usr/local/sbin/homelab-openhands-public-dns, --apply, --approve-plan-hash,
+               "{{ openhands_public_dns_hash }}"]
       when: openhands_public_dns_apply | default(false) | bool
       register: dns_apply
       changed_when: (dns_apply.stdout | from_json).applied
+...

@@ -7,25 +7,27 @@
   vars:
     ansible_host: "{{ '10.250.0.2' if inventory_hostname == 'socrat-2' else inventory_hostname }}"
     ansible_port: "{{ 2223 if inventory_hostname == 'socrat-1' else 2222 }}"
-    ansible_ssh_common_args: >-
-      {{ '-o ProxyJump=socrat-4 -o HostKeyAlias=[socrat.alchemmist.xyz]:2224 -o UserKnownHostsFile=~/.ssh/known_hosts.d/homelab -o StrictHostKeyChecking=yes'
-         if inventory_hostname == 'socrat-2' else '-o ProxyJump=none -o StrictHostKeyChecking=yes' }}
+    ansible_ssh_common_args:
+      "{{ '-o ProxyJump=socrat-4 -o HostKeyAlias=[socrat.alchemmist.xyz]:2224 -o
+      UserKnownHostsFile=~/.ssh/known_hosts.d/homelab -o StrictHostKeyChecking=yes'\n\
+      \   if inventory_hostname == 'socrat-2' else '-o ProxyJump=none -o
+      StrictHostKeyChecking=yes' }}"
   tasks:
     - name: Create the NS3 public DNS staging directory
       ansible.builtin.file:
         path: /var/lib/homelab-ns3-public-dns
         state: directory
-        mode: '0700'
+        mode: "0700"
     - name: Install the NS3 public DNS plan and apply tool
       ansible.builtin.copy:
         src: ../../scripts/ns3-public-dns.py
         dest: /usr/local/sbin/homelab-ns3-public-dns
-        mode: '0700'
+        mode: "0700"
     - name: Stage the proposed zone renderer for NS3 public DNS
       ansible.builtin.copy:
         src: ../../scripts/public_dns_zone.py
         dest: /var/lib/homelab-ns3-public-dns/proposed.py
-        mode: '0700'
+        mode: "0700"
     - name: Compute the NS3 public DNS plan
       ansible.builtin.command: /usr/local/sbin/homelab-ns3-public-dns
       register: dns_plan
@@ -46,9 +48,11 @@
   vars:
     ansible_host: "{{ '10.250.0.2' if inventory_hostname == 'socrat-2' else inventory_hostname }}"
     ansible_port: "{{ 2223 if inventory_hostname == 'socrat-1' else 2222 }}"
-    ansible_ssh_common_args: >-
-      {{ '-o ProxyJump=socrat-4 -o HostKeyAlias=[socrat.alchemmist.xyz]:2224 -o UserKnownHostsFile=~/.ssh/known_hosts.d/homelab -o StrictHostKeyChecking=yes'
-         if inventory_hostname == 'socrat-2' else '-o ProxyJump=none -o StrictHostKeyChecking=yes' }}
+    ansible_ssh_common_args:
+      "{{ '-o ProxyJump=socrat-4 -o HostKeyAlias=[socrat.alchemmist.xyz]:2224 -o
+      UserKnownHostsFile=~/.ssh/known_hosts.d/homelab -o StrictHostKeyChecking=yes'\n\
+      \   if inventory_hostname == 'socrat-2' else '-o ProxyJump=none -o
+      StrictHostKeyChecking=yes' }}"
   tasks:
     - name: Apply the approved NS3 public DNS plan
       ansible.builtin.command:

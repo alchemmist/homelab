@@ -43,7 +43,12 @@
 
     - name: Publish both private Rancher addresses
       ansible.builtin.copy:
-        content: "host-record=rancher.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-0'].address }}\nhost-record=rancher.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-1'].address }}\nlocal=/rancher.socrat.alchemmist.xyz/\n"
+        content: >
+          host-record=rancher.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-0'].address }}
+
+          host-record=rancher.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-1'].address }}
+
+          local=/rancher.socrat.alchemmist.xyz/
         dest: /etc/homelab-private-dns.d/rancher.conf
         owner: root
         group: root
