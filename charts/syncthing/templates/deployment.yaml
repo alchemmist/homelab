@@ -67,11 +67,13 @@ spec:
               value: {{ if and $.Values.privateGui.enabled (eq $name "STGUIADDRESS") }}{{ printf "http://127.0.0.1:%v" $.Values.service.guiPort | quote }}{{ else }}{{ $value | quote }}{{ end }}
             {{- end }}
           livenessProbe:
-            tcpSocket:
+            httpGet:
+              path: /rest/noauth/health
               port: gui
             periodSeconds: 30
           readinessProbe:
-            tcpSocket:
+            httpGet:
+              path: /rest/noauth/health
               port: gui
             periodSeconds: 10
           ports:

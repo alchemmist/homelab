@@ -108,7 +108,7 @@ class SyncthingSchedulingTests(unittest.TestCase):
         assert "nodeAffinity" in pod["affinity"]
 
     def test_syncthing_has_listener_probes_without_service_account_tokens(self) -> None:
-        """Probe the actual GUI listener and never mount an unused API token."""
+        """Probe Syncthing's unauthenticated health endpoint on its named GUI port."""
         resources = self.resources({})
         pod = next(
             item
@@ -121,8 +121,10 @@ class SyncthingSchedulingTests(unittest.TestCase):
             for container in pod["containers"]
             if container["name"] == "syncthing"
         )
-        assert syncthing["livenessProbe"]["tcpSocket"]["port"] == "gui"
-        assert syncthing["readinessProbe"]["tcpSocket"]["port"] == "gui"
+        for probe_name in ("livenessProbe", "readinessProbe"):
+            probe = syncthing[probe_name]["httpGet"]
+            assert probe["path"] == "/rest/noauth/health"
+            assert probe["port"] == "gui"
         gui = next(port for port in syncthing["ports"] if port["name"] == "gui")
         assert gui["containerPort"] == 8384
 

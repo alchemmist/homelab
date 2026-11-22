@@ -1256,6 +1256,51 @@ def test_locked_library_uses_real_consumer_and_broken_helper_fails(tmp_path: Pat
     assert charts.render(target) is None
 
 
+def _render_app_source(app_source: str) -> list[dict]:
+    """Render one local chart using its exact Argo application values and namespace."""
+    for target in charts.argocd_targets()[0]:
+        if target["source"] == app_source:
+            rendered = charts.render(target)
+            assert rendered, target["id"]
+            return rendered
+    raise AssertionError(f"No local Helm source for {app_source}")
+
+
+def test_netbird_probe_ports_resolve_to_declared_container_ports() -> None:
+    """Keep health listeners named and keep the forwarder's ping listener declared."""
+    resources = _render_app_source("deploy/argocd/apps/netbird.yaml")
+    for workload in resources:
+        if workload.get("kind") != "Deployment":
+            continue
+        for container in workload["spec"]["template"]["spec"].get("containers", []):
+            declared = {port["name"] for port in container.get("ports", []) if port.get("name")}
+            for probe_name in ("livenessProbe", "readinessProbe", "startupProbe"):
+                for action in ("httpGet", "tcpSocket"):
+                    probe = container.get(probe_name, {}).get(action)
+                    if probe:
+                        port = probe["port"]
+                        assert isinstance(port, int) or port in declared, (
+                            workload["metadata"]["name"], container["name"], probe_name, port
+                        )
+
+
+def test_thanos_components_have_supported_health_probes() -> None:
+    """Probe Thanos HTTP health/ready endpoints on the declared HTTP port."""
+    resources = _render_app_source("deploy/argocd/apps/thanos.yaml")
+    workloads = [
+        resource
+        for resource in resources
+        if resource.get("kind") == "Deployment"
+        and resource["metadata"]["name"].startswith("thanos-")
+        and resource["metadata"]["name"] not in {"thanos-shelf-1h", "thanos-shelf-5m", "thanos-warm-api"}
+    ]
+    assert len(workloads) == 7
+    for workload in workloads:
+        container = workload["spec"]["template"]["spec"]["containers"][0]
+        assert container["livenessProbe"]["httpGet"] == {"path": "/-/healthy", "port": "http"}
+        assert container["readinessProbe"]["httpGet"] == {"path": "/-/ready", "port": "http"}
+
+
 @pytest.fixture(scope="module")
 def rancher_release() -> list[dict]:
     """Render both local Helm sources using the Application's actual overrides."""
@@ -1281,7 +1326,11 @@ def test_rancher_server_and_hook_bindings(rancher_release: list[dict]) -> None:
         assert workload["spec"]["template"]["spec"]["serviceAccountName"] == account
         sa = objects["ServiceAccount", account]
         for obj in (workload, sa):
-            assert obj["metadata"].get("namespace", "cattle-system") == "cattle-system"
+            assert obj["metadata"]["namespace"] == "cattle-system"
+        if kind == "Job":
+            assert workload["metadata"]["annotations"]["helm.sh/hook"] == (
+                "pre-upgrade" if account.endswith("pre-upgrade") else "post-delete"
+            )
         binding = objects["ClusterRoleBinding", account]
         assert binding["subjects"] == [
             {"kind": "ServiceAccount", "name": account, "namespace": "cattle-system"}
@@ -1306,6 +1355,24 @@ def test_rancher_server_and_hook_bindings(rancher_release: list[dict]) -> None:
     assert objects["ClusterRole", "rancher-pre-upgrade"]["rules"] == [
         {"apiGroups": ["management.cattle.io"], "resources": ["clusters"], "verbs": ["get", "list"]}
     ]
+
+
+def test_rancher_namespaced_resources_and_hooks_are_explicit(rancher_release: list[dict]) -> None:
+    """Render release-owned resources in the destination namespace and retain hook identity."""
+    namespaced = {
+        ("Deployment", "rancher"),
+        ("Service", "rancher"),
+        ("Service", "rancher-internal"),
+        ("ServiceAccount", "rancher"),
+        ("ConfigMap", "rancher-config"),
+    }
+    for kind, name in namespaced:
+        obj = next(d for d in rancher_release if d["kind"] == kind and d["metadata"]["name"] == name)
+        assert obj["metadata"]["namespace"] == "cattle-system"
+    for obj in rancher_release:
+        if obj["kind"] == "Job" and obj["metadata"]["name"].startswith("rancher-"):
+            assert obj["metadata"]["namespace"] == "cattle-system"
+            assert obj["metadata"]["annotations"].get("helm.sh/hook") in {"pre-upgrade", "post-delete"}
 
 
 def test_rancher_admin_grant_does_not_spread(rancher_release: list[dict]) -> None:
