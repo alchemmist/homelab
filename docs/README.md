@@ -33,10 +33,10 @@ The [public wiki](../wiki/README.md) has a separate audience and publication pro
 | Theme, native UI and recovery | [Frontend](auth/authentik/custom-ui/README.md), [backup and recovery](auth/authentik/operations/identity-recovery.md) |
 | Registry, robot accounts and scoped push/pull | [Harbor](platform/harbor/harbor.md) |
 | Wiki runtime and content | [Lifecycle](applications/wiki/wiki-process-lifecycle.md), [upgrade](records/handoffs/wiki-upgrade-20261107.md), [public onboarding source](../wiki/README.md) |
-| Per-node metric collection and retention | [OTel to Prometheus to Thanos: raw data, five-minute and hourly resolution, and deletion limits](observability/monitoring/observability-current.md#метрики-сбор-прореживание-и-перенос-между-нодами--21-ноября-2026) |
+| Per-node metric collection and retention | [OTel to Prometheus to Thanos: raw data, five-minute and hourly resolution, and deletion limits](observability/monitoring/observability-current.md#metric-collection-downsampling-and-node-migration-21-november-2026) |
 | Logs, metrics, traces and profiles | [Current observability](observability/monitoring/observability-current.md), [monitoring](observability/monitoring/monitoring.md) |
 | Incidents, notifications and workflow integration | [Socrat Bot](socrat-bot/README.md), [SPI frontend, backend and operations](applications/spi/spi-incident-triage.md) (see current context for placement), [n8n](n8n/n8n-workflows.md) |
-| TV dashboard, targeted Argo CSS and dedicated YouTube VPN | [Android TV](applications/android-tv/README.md), [maintaining the TV stylesheet](applications/android-tv/README.md#сопровождение-кастомного-tv-css-для-argo) |
+| TV dashboard, targeted Argo CSS and dedicated YouTube VPN | [Android TV](applications/android-tv/README.md), [maintaining the TV stylesheet](applications/android-tv/README.md#maintaining-the-argo-tv-stylesheet) |
 | LMS and local generators | [LMS](applications/ai/lms.md), [local generation](applications/ai/lms-generation.md) |
 | SWE Mini retirement | [Removal scope and verification](applications/ai/swe-mini.md) |
 | OpenHands Canvas (installed; public sign-in and the full PR lifecycle not yet accepted) | [Verified behavior and blockers](applications/ai/openhands.md) |

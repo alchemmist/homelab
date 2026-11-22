@@ -11,7 +11,7 @@ IoT OAuth. No voice proxy service or local Glagol client is deployed.
 
 `Announce via Yandex Station` is the native **CUSTOM.yandexStation** extension,
 not an HTTP wrapper service or a Code node containing tokens. It receives the
-matcher's event-specific text, e.g. «Через 10 минут начинается “Название встречи”».
+matcher's event-specific text, e.g. “Meeting title starts in 10 minutes” (translated example).
 It updates the dedicated **Calendar reminders** cloud scenario, sets volume 5/10
 (50%), and executes it. The previous volume is not restored.
 

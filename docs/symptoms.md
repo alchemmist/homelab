@@ -7,4 +7,4 @@
 | Redis Insight redirects but a reader cannot open the dashboard | [Check both group bindings and the gateway claim](data/redis/redisinsight.md#access-checks-and-acceptance-limits). |
 | The current PostgreSQL primary is not on its expected node | [Check the CNPG primary and durability contract](data/postgresql/postgresql.md); use the [node-loss record](records/incidents/socrat-1-loss-20261121.md) only for past failover evidence. |
 | Authentik login succeeds but the application still denies access | [Identity gateway troubleshooting](auth/authentik/integrations/identity-gateway-troubleshooting.md). |
-| Grafana shows gaps in recent Thanos metrics | [Recent metrics diagnostics](observability/monitoring/observability-current.md#пропуски-свежих-метрик-в-thanos--19-ноября-2026). |
+| Grafana shows gaps in recent Thanos metrics | [Recent metrics diagnostics](observability/monitoring/observability-current.md#gaps-in-recent-thanos-metrics-19-november-2026). |

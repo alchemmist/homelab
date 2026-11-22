@@ -2,14 +2,9 @@
 
 ## Current placement checkpoint —16 November 2026
 
-SPI worker/storage и queue UI приняты на `socrat-5`; GitHub broker отдельно
-на `socrat-1`. [Stateful handoff](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-stateful-20261116.md) фиксирует
-очередь/leases/history, ограничения rollback и сохранённый failed execution.
-Источник worker: `deploy/spi-triage/values.yaml`; текущая архитектурная навигация:
-[context](../../platform/system-overview.md). Ниже сохранён датированный этап source extraction, а не
-утверждение, что production runtime всё ещё ожидает переноса. Не запускать старые
-activation-команды по историческому разделу без новой проверки.
+The SPI worker, storage and queue UI passed acceptance on `socrat-5`; the GitHub broker runs separately on `socrat-1`. The [stateful handoff](https://github.com/alchemmist/homelab/blob/2fd1179442b3c7b05c9049dfa4bbaa47bfbc3790/docs/vm105-stateful-20261116.md) records the queue, leases, history, rollback limits and retained failed execution. See `deploy/spi-triage/values.yaml` for the worker configuration and the [system overview](../../platform/system-overview.md) for current placement.
 
+The source-extraction checkpoint below is historical. It does not mean production is still awaiting migration. Verify current state before using any historical activation command.
 
 ## Current source extraction — 9 November 2026
 

@@ -56,7 +56,7 @@ SVG с embedded PNG без перерисовки. После уточнения
 не сохранять его signed query в Git. Checksum-sensitive line endings не «чистить»
 глобальным formatter: `.gitattributes` сохраняет нужные asset bytes.
 
-## 14. Случайные фоны из dotfiles Nature
+## 14. Random backgrounds from the Nature dotfiles
 
 На 2026-11-01 owner предоставил `~/code/dotfiles/wallpapers/nature/images`:
 30 JPEG (~40MiB, ширина до 5120px). Репозиторий-источник не изменяется; фактические

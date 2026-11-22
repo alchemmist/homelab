@@ -26,7 +26,7 @@ Binding-tested; machine enrollment remains blocked on genuine JWT groups.
 renders **zero-replica** direct-overlay peers, not routed Networks. The legacy
 proposal/gates below remain historical inputs, not a live-state assertion.
 
-[Русский runbook, blockers и acceptance](../../docs/research/netbird-user-access-pilot.md).
+[Pilot runbook, blockers and acceptance criteria](../../docs/research/netbird-user-access-pilot.md).
 
 - `pilot.inputs.json` records the approved FQDN `netbird.socrat.alchemmist.xyz`.
   Every other deployment field and every review gate stays empty or false.
