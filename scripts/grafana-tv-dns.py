@@ -9,26 +9,35 @@ import json
 import os
 import subprocess
 from pathlib import Path
+from typing import Protocol, cast
 
 CURRENT = Path("/usr/local/libexec/public_dns_zone.py")
 ROOT = Path("/var/lib/homelab-grafana-tv-dns-retirement")
 
 
-def require(ok, message):
+def require(ok: bool, message: str) -> None:
     """Raise an error when a required condition is not met."""
     if not ok:
         raise RuntimeError(message)
 
 
-def load(path, name):
+class Renderer(Protocol):
+    """Public DNS renderer interface used to compare the two zone versions."""
+
+    def render(self, serial: int, home: bool, vps: bool, /) -> str: ...
+
+
+def load(path: Path, name: str) -> Renderer:
     """Load a Python module from the supplied path."""
     s = importlib.util.spec_from_file_location(name, path)
+    if s is None or s.loader is None:
+        raise ImportError(f"Cannot load DNS renderer: {path}")
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
-    return m
+    return cast("Renderer", m)
 
 
-def delta(old, new):
+def delta(old: Renderer, new: Renderer) -> None:
     """Perform the delta operation."""
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         before = old.render(123, home, vps).splitlines()
@@ -44,7 +53,7 @@ def delta(old, new):
         )
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")

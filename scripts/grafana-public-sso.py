@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Audit first; change only the reviewed Grafana auth environment settings, never the stack."""
 
+from __future__ import annotations
+
 import argparse
 import fcntl
 import hashlib
@@ -8,6 +10,32 @@ import json
 import os
 import subprocess
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import NotRequired, TypedDict
+
+    class EnvVar(TypedDict):
+        name: str
+        value: NotRequired[str]
+        valueFrom: NotRequired[dict[str, object]]
+
+    class Container(TypedDict):
+        name: str
+        env: NotRequired[list[EnvVar]]
+
+    class PodSpec(TypedDict):
+        containers: list[Container]
+
+    class PodTemplate(TypedDict):
+        spec: PodSpec
+
+    class DeploymentSpec(TypedDict):
+        template: PodTemplate
+
+    class Deployment(TypedDict):
+        spec: DeploymentSpec
+
 
 NS = "cattle-monitoring-system"
 DEPLOY = "kube-prometheus-stack-grafana"
@@ -19,18 +47,18 @@ DESIRED = {
 }
 
 
-def require(ok, message):
+def require(ok: bool, message: str) -> None:
     """Raise an error when a required condition is not met."""
     if not ok:
         raise RuntimeError(message)
 
 
-def kube(*args):
+def kube(*args: str) -> str:
     """Perform the kube operation."""
     return subprocess.check_output(["kubectl", "-n", NS, *args], text=True)
 
 
-def env_plan(d):
+def env_plan(d: Deployment) -> tuple[int, list[str], list[EnvVar]]:
     """Perform the env plan operation."""
     containers = d["spec"]["template"]["spec"]["containers"]
     index = next(i for i, c in enumerate(containers) if c["name"] == "grafana")
@@ -59,7 +87,8 @@ def env_plan(d):
         "Precondition failed; stop and inspect privately",
     )
     require(
-        lookup.get("GF_AUTH_PROXY_ENABLED", {}).get("value", "false") == "false",
+        "GF_AUTH_PROXY_ENABLED" not in lookup
+        or lookup["GF_AUTH_PROXY_ENABLED"].get("value", "false") == "false",
         "Precondition failed; stop and inspect privately",
     )
     legacy_groups = (
@@ -77,14 +106,14 @@ def env_plan(d):
         in (legacy_role, previous_role, DESIRED["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"]),
         "Unreviewed native role mapping; stop",
     )
-    updates = [k for k, v in DESIRED.items() if lookup.get(k, {}).get("value") != v]
-    result = [e for e in env if e["name"] not in DESIRED] + [
+    updates = [k for k, v in DESIRED.items() if k not in lookup or lookup[k].get("value") != v]
+    result: list[EnvVar] = [e for e in env if e["name"] not in DESIRED] + [
         {"name": k, "value": v} for k, v in DESIRED.items()
     ]
     return index, updates, result
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
