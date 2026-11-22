@@ -14,7 +14,7 @@ from local_token_counter import LocalCounter, configured_counter, render
 class CounterContract(unittest.TestCase):
     """Tests for the local token counter contract."""
 
-    def body(self):
+    def body(self) -> dict[str, object]:
         """Return the canonical request body fixture."""
         return {
             "model": "qwen3.8-27b",
@@ -23,7 +23,7 @@ class CounterContract(unittest.TestCase):
             "max_tokens": 768,
         }
 
-    def test_render(self):
+    def test_render(self) -> None:
         """Verify the rendered prompt matches the golden output."""
         assert (
             render(self.body())
@@ -31,7 +31,7 @@ class CounterContract(unittest.TestCase):
             "<|im_start|>assistant\n<think>\n\n</think>\n\n"
         )
 
-    def test_contract_and_size(self):
+    def test_contract_and_size(self) -> None:
         """Verify every contract key and size bound."""
         for key, value in [
             ("model", "other"),
@@ -48,7 +48,7 @@ class CounterContract(unittest.TestCase):
         with self.assertRaises(Failure):
             render(body)
 
-    def test_modes_and_missing_assets(self):
+    def test_modes_and_missing_assets(self) -> None:
         """Verify accounting modes handle missing assets safely."""
         with patch.dict(os.environ, {"SPI_TOKEN_ACCOUNTING_MODE": "byte-bound-v1"}):
             assert configured_counter() is None
@@ -62,7 +62,7 @@ class CounterContract(unittest.TestCase):
 class ProxyFloor(unittest.TestCase):
     """Tests for the proxy token-count floor."""
 
-    def counter(self):
+    def counter(self) -> LocalCounter:
         """Build a local counter instance."""
         from types import SimpleNamespace
 
@@ -70,7 +70,7 @@ class ProxyFloor(unittest.TestCase):
         counter._tokenizer = SimpleNamespace(encode=lambda *a, **kw: SimpleNamespace(ids=[1] * 10))
         return counter
 
-    def body(self, text, maximum=2500):
+    def body(self, text, maximum=2500) -> dict[str, object]:
         """Return a request body with the given text and cap."""
         return {
             "model": "qwen3.8-27b",
@@ -80,7 +80,7 @@ class ProxyFloor(unittest.TestCase):
             "response_format": {},
         }
 
-    def test_raw_floor_and_rounding(self):
+    def test_raw_floor_and_rounding(self) -> None:
         """Verify the raw floor and rounding rules."""
         for text in [" " * 100000 + "x", "a" * 60000, '😀\\"\n' * 1000] + [
             "x" * n for n in range(8)
@@ -92,7 +92,7 @@ class ProxyFloor(unittest.TestCase):
                 assert actual >= 10 + 2 + 256 + maximum
                 assert actual == max(268, (len(text) + 4) // 4 + 256) + maximum
 
-    def test_oversize_no_bpe_and_contract_not_masked(self):
+    def test_oversize_no_bpe_and_contract_not_masked(self) -> None:
         """Verify oversized inputs skip BPE and surface contract errors."""
         from unittest.mock import Mock
 
