@@ -29,7 +29,7 @@ _REPO = Path(__file__).resolve().parents[1]
 _LOCAL_AUDIT = ["pip-audit", "--local", "--strict", "--format", "json"]
 _INTEGRITY = "sha512-" + base64.b64encode(bytes((0x11,)) * 64).decode("ascii")
 _OWNED_LOCK = "tools/official-mcp/package-lock.json"
-_OWNED_DISTRIBUTIONS = 128
+_OWNED_DISTRIBUTIONS = 127
 _UNCHANGED_FUNCTION_DIGESTS = {
     "validate_requirement_lock": "b3a33235549137f1",
     "_distribution_fields": "92a59186d7631950",
@@ -326,7 +326,7 @@ def test_owned_npm_lock_is_fully_described_without_a_network_call(
     assert packages == sorted(set(packages))
     assert ("@umami/mcp", "0.2.0") in packages
     assert ("argocd-mcp", "0.9.0") in packages
-    assert ("zod", "3.25.76") in packages
+    assert ("zod", "3.25.76") not in packages
     assert ("zod", "4.6.7") in packages
     assert ("content-type", "1.0.5") in packages
     assert ("content-type", "2.1.0") in packages
@@ -566,7 +566,8 @@ def test_pi_installer_materializes_the_audited_lock() -> None:
     assert 'package-lock.json.gz: {{ .Files.Get "files/pi-monori/package-lock.json.gz"' in chart
     assert (
         "cp /code/package.json .; gzip -dc /code/package-lock.json.gz > package-lock.json; "
-        "HOME=/tmp npm ci --ignore-scripts" in chart
+        "python -I /code/patch_npm.py pi; HOME=/tmp npm ci --strict-peer-deps --ignore-scripts"
+        in chart
     )
 
 
@@ -959,3 +960,31 @@ def test_skip_presence_proof_refuses_empty_container(
     monkeypatch.setattr(sys.modules[__name__], "_REPO", tmp_path)
     with pytest.raises(AssertionError, match="Unexpected skipped-distribution guard"):
         _digest("_distribution_fields")
+
+
+@pytest.mark.parametrize("mutation", ["digest", "path", "version", "owner", "hook", "manifest"])
+def test_reviewed_archive_admission_is_exact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mutation: str
+) -> None:
+    """A local source is not a generic file: exception or an advisory exemption."""
+    relative = "tools/elsewhere/package-lock.json" if mutation == "owner" else _OWNED_LOCK
+    lock = tmp_path / relative
+    lock.parent.mkdir(parents=True)
+    document = json.loads((_REPO / _OWNED_LOCK).read_bytes())
+    entry = document["packages"]["node_modules/argocd-mcp"]
+    manifest = document["packages"][""]
+    if mutation == "digest":
+        entry["integrity"] = _INTEGRITY
+    elif mutation == "path":
+        entry["resolved"] = "file:../other.tar"
+    elif mutation == "version":
+        entry["version"] = "0.9.1"
+    elif mutation == "hook":
+        entry["hasInstallScript"] = True
+    lock.write_text(json.dumps(document))
+    if mutation == "manifest":
+        manifest["dependencies"]["argocd-mcp"] = "0.9.0"
+    lock.with_name("package.json").write_text(json.dumps(manifest))
+    monkeypatch.setattr(lint, "ROOT", tmp_path)
+    with pytest.raises(ValueError, match="unsupported or unsafe"):
+        lint.node_lock_packages(lock)

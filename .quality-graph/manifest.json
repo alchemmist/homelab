@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "71f7947d8e3a0c70f0d1efb5f44e5b376aae1763fd5b7dfb1fb1972429bcdd53",
+  "graphDigest": "d8756f845f2d90750c95181a9d3fc616655db88dbe31c62995ba9adc2ab70a7e",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -337,13 +337,13 @@
           "error"
         ]
       },
-      "profile": "default",
+      "profile": "quality-javascript",
       "result": {
         "adapter": "native",
         "path": "reports/dependencies.json"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run pytest -q tests/test_quality_dependency_coverage.py tests/test_quality_p56_56_node_lock.py\nuv run python scripts/quality/lint.py dependencies\n"
+        "run": "set -euo pipefail\nuv run pytest -q tests/test_quality_dependency_coverage.py \\\n  tests/test_quality_p56_56_node_lock.py\nuv run python scripts/quality/lint.py dependencies\nuv run python scripts/quality/npm_smoke.py\n"
       },
       "timeoutMinutes": 5,
       "title": "Dependency audit"

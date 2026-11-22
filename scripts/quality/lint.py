@@ -79,6 +79,7 @@ _NPM_PACKAGE_KEYS = frozenset(
         "bin",
         "cpu",
         "dependencies",
+        "deprecated",
         "dev",
         "devDependencies",
         "engines",
@@ -416,7 +417,34 @@ def _npm_lock_document(path: Path) -> dict[str, object] | None:
     return document
 
 
-def _distribution(package_path: str, meta: object) -> tuple[str, str]:
+# Only these exact, reproducibly rebuilt release archives may use a local source.
+# Scope each pin to one consumer and its top-level package; keep upstream OSV identity.
+_PATCHED_LOCKS = {
+    "tools/official-mcp/package-lock.json": {
+        "argocd-mcp": (
+            "0.9.0",
+            "file:argocd-mcp-0.9.0-homelab.tar",
+            "sha512-jyWGa1UQ1OpN/dagz0eUIHwTqmQs8LaIcnewvKH63iNbF1bZMVXOKIFW24UVQ8ein45WJtTbiT69jCe8qWsb8A==",
+        )
+    },
+    "charts/openhands/files/pi-monori/package-lock.json.gz": {
+        "@google/genai": (
+            "2.32.0",
+            "file:genai-2.32.0-homelab.tar",
+            "sha512-PodoSSqBL8AHq6TwAqdgXqh3r8oixlPQ8BmWN/5SuQn/cdVgIUF6rDif4bEaBeZhKA7AyZq0TuAHMx2IcIdYHA==",
+        ),
+        "protobufjs": (
+            "7.6.6",
+            "file:protobufjs-7.6.6-homelab.tar",
+            "sha512-D93pBGhupIdpogX/sdDu6Pt+eiKiupzrZdjxdcK4jEpfPa8q2og3uTKaoEfwebLGH5P7PVAc01ULAMXSdlpctg==",
+        ),
+    },
+}
+
+
+def _distribution(
+    package_path: str, meta: object, patches: dict[str, tuple[str, str, str]]
+) -> tuple[str, str]:
     """Validate one registry distribution and return its name and exact version."""
     parsed = _string_key_dict(meta)
     if parsed is None or set(parsed) - _NPM_PACKAGE_KEYS:
@@ -431,7 +459,11 @@ def _distribution(package_path: str, meta: object) -> tuple[str, str]:
     version = parsed.get("version")
     if not isinstance(version, str) or _NPM_VERSION.fullmatch(version) is None:
         raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
-    if parsed.get("resolved") != _registry_tarball(name, version):
+    patch = patches.get(name) if package_path == f"node_modules/{name}" else None
+    if patch is not None:
+        if (version, parsed.get("resolved"), parsed.get("integrity")) != patch:
+            raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    elif parsed.get("resolved") != _registry_tarball(name, version):
         raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
     if not _sha512_integrity(parsed.get("integrity")):
         raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
@@ -441,13 +473,20 @@ def _distribution(package_path: str, meta: object) -> tuple[str, str]:
     return name, version
 
 
-def _root_pins(root: dict[str, object]) -> dict[str, str]:
+def _root_pins(root: dict[str, object], patches: dict[str, tuple[str, str, str]]) -> dict[str, str]:
     """Return exact root pins from every direct dependency map."""
     if set(root) - _NPM_ROOT_KEYS:
         raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
     pins: dict[str, str] = {}
     for field in _NPM_ROOT_DEP_FIELDS:
-        for name, version in _dependency_map(root.get(field), exact=True).items():
+        deps = root.get(field)
+        if field == "dependencies" and isinstance(deps, dict):
+            deps = dict(deps)
+            for name, (version, source, _) in patches.items():
+                if deps.get(name) != source:
+                    raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+                deps[name] = version
+        for name, version in _dependency_map(deps, exact=True).items():
             previous = pins.get(name)
             if previous is not None and previous != version:
                 raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
@@ -479,7 +518,9 @@ class _InstallScriptsError(ValueError):
         super().__init__(_DEPENDENCY_NPM_LOCK_FAILURE)
 
 
-def _located_distributions(packages: dict[str, object]) -> dict[str, tuple[str, str]]:
+def _located_distributions(
+    packages: dict[str, object], patches: dict[str, tuple[str, str, str]]
+) -> dict[str, tuple[str, str]]:
     """Validate every non-root package entry before any advisory request."""
     if len(packages) - 1 > _MAX_NPM_DISTRIBUTIONS:
         raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
@@ -494,7 +535,7 @@ def _located_distributions(packages: dict[str, object]) -> dict[str, tuple[str, 
     for package_path, meta in packages.items():
         if package_path == "":
             continue
-        located[package_path] = _distribution(package_path, meta)
+        located[package_path] = _distribution(package_path, meta, patches)
     if not located or len(located) > _MAX_NPM_DISTRIBUTIONS:
         raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
     return located
@@ -560,8 +601,7 @@ def _require_matching_npm_manifest(path: Path, root: dict[str, object]) -> None:
     if manifest.get("name") != root.get("name") or manifest.get("version") != root.get("version"):
         raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
     for field in _NPM_ROOT_DEP_FIELDS:
-        declared = _dependency_map(manifest.get(field), exact=True)
-        if declared != _dependency_map(root.get(field), exact=True):
+        if manifest.get(field) != root.get(field):
             raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
 
 
@@ -580,8 +620,15 @@ def node_lock_packages(path: Path) -> list[tuple[str, str]] | None:
     if root is None or root.get("name") != name or root.get("version") != version:
         raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
     _require_matching_npm_manifest(path, root)
-    located = _located_distributions(packages)
-    _require_root_pins(located, _root_pins(root))
+    relative = str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else ""
+    direct = _string_key_dict(root.get("dependencies")) or {}
+    patches = {
+        name: pin for name, pin in _PATCHED_LOCKS.get(relative, {}).items() if name in direct
+    }
+    if patches and not path.with_name("package.json").is_file():
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    located = _located_distributions(packages, patches)
+    _require_root_pins(located, _root_pins(root, patches))
     names = {dep for dep, _spec in located.values()}
     _require_named_dependencies(packages, names)
     return _unique_distributions(located)
