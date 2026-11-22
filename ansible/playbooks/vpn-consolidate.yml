@@ -7,5 +7,6 @@
   roles:
     - vpn_consolidation
 
-- ansible.builtin.import_playbook: rancher-namespaces.yml
+- name: Import rancher namespaces playbook
+  ansible.builtin.import_playbook: rancher-namespaces.yml
 ...

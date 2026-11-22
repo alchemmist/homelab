@@ -20,6 +20,7 @@
 - name: Enable gateway services without an interactive login
   ansible.builtin.command: loginctl enable-linger {{ homelab_user }}
   when: homelab_ssh_linger.stdout != 'yes'
+  changed_when: true
 
 - name: Create gateway configuration directories
   ansible.builtin.file:
@@ -110,7 +111,7 @@
   when: homelab_ssh_router_mapping_mode == 'static'
 
 - name: Clear obsolete dynamic mapping errors
-  ansible.builtin.command: systemctl --user reset-failed homelab-ssh-gateway.service
+  ansible.builtin.command: systemctl reset-failed --user homelab-ssh-gateway.service
   changed_when: false
   when: homelab_ssh_router_mapping_mode == 'static'
 ...

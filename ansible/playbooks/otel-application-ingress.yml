@@ -20,7 +20,8 @@
         path: /usr/local/lib/homelab-otel/otelcol-contrib
         checksum_algorithm: sha256
       register: application_collector_binary
-    - ansible.builtin.assert:
+    - name: Verify the application Collector binary digest
+      ansible.builtin.assert:
         that:
           - >-
             application_collector_binary.stat.checksum ==

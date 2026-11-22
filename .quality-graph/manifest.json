@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "f3774138ec08aa247a62a0e46e08c919c2d9a70c24643bdc913073ae155c5b75",
+  "graphDigest": "f968f8b5a06fce5fe2dbbc8244bafb5af01d8168faba8055f3128e039b26f19a",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -374,6 +374,34 @@
       },
       "timeoutMinutes": 10,
       "title": "Integration tests"
+    },
+    {
+      "env": {},
+      "id": "ansible",
+      "needs": [
+        "ownership"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-ansible",
+      "result": {
+        "adapter": "native",
+        "path": "reports/ansible.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py ansible"
+      },
+      "timeoutMinutes": 5,
+      "title": "Playbook safety"
     }
   ],
   "profiles": {

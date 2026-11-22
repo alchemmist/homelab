@@ -12,7 +12,8 @@
       register: identity_ns
       changed_when: "'created' in identity_ns.stdout"
 
-- ansible.builtin.import_playbook: vpn-edge.yml
+- name: Import vpn edge playbook
+  ansible.builtin.import_playbook: vpn-edge.yml
 
 - name: Deploy Authentik identity foundation
   hosts: socrat-0

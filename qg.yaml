@@ -247,4 +247,13 @@ nodes:
       - ownership
     results:
       junit: reports/tests-medium.xml
+  ansible:
+    title: Playbook safety
+    profile: quality-ansible
+    run: uv run python scripts/quality/lint.py ansible
+    policy: *id001
+    needs:
+      - ownership
+    results:
+      native: reports/ansible.json
 ...

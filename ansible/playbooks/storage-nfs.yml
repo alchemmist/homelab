@@ -49,11 +49,10 @@
         content: |
           fs.inotify.max_user_instances = 1024
           fs.inotify.max_user_watches = 1048576
-      register: inotify_sysctl
+      notify: Apply inotify sysctl settings
 
-    - name: Apply inotify sysctl settings
-      ansible.builtin.command: sysctl -p /etc/sysctl.d/99-inotify.conf
-      when: inotify_sysctl.changed
+    - name: Apply the pending inotify settings before continuing
+      ansible.builtin.meta: flush_handlers
 
     - name: Ensure NFS export directory exists
       ansible.builtin.file:
@@ -155,10 +154,16 @@
         var: storage_classes.stdout_lines
 
   handlers:
+    - name: Apply inotify sysctl settings
+      ansible.builtin.command: sysctl -p /etc/sysctl.d/99-inotify.conf
+      changed_when: true
+
     - name: Reload NFS exports
       ansible.builtin.shell: |
         exportfs -ra
         systemctl restart nfs-mountd nfs-server
+      changed_when: true
 
-- ansible.builtin.import_playbook: rancher-namespaces.yml
+- name: Import rancher namespaces playbook
+  ansible.builtin.import_playbook: rancher-namespaces.yml
 ...

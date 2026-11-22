@@ -9,7 +9,8 @@
       ansible.builtin.stat:
         path: /var/lib/homelab-vpn-transit/relay-failover/fallback.active
       register: native_fence
-    - ansible.builtin.assert:
+    - name: Reject enrollment while the native gateway is fenced
+      ansible.builtin.assert:
         that: not native_fence.stat.exists
         fail_msg: >-
           Native gateway is fenced. Use the explicit, reviewed rollback instead of worker

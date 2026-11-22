@@ -15,7 +15,7 @@
 
     - name: Generate public aliases from inventory
       ansible.builtin.template:
-        src: ../templates/ssh-client.conf.j2
+        src: "{{ playbook_dir | dirname }}/templates/ssh-client.conf.j2"
         dest: "{{ homelab_local_ssh_dir }}/config.d/homelab.conf"
         mode: "0600"
 
