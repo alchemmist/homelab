@@ -4,11 +4,12 @@
 
 ## What runs here
 
-Our [graph declaration](../../qg.yaml) defines 17 blocking nodes. Read `needs` as a prerequisite, not a suggested order:
+Our [graph declaration](../../qg.yaml) defines 18 blocking nodes. Read `needs` as a prerequisite, not a suggested order:
 
 | Prerequisite | Nodes | What they check |
 | --- | --- | --- |
 | None | `graph` | Generated workflows and manifest match their sources; repository contracts, strict policy and selected Python checks pass. |
+| `graph` | `docs-language` | Flags Russian alphabet characters by file and line in tracked text under `docs/` and in README files anywhere in the tree. Existing content blocks too; there is no baseline. This is not a general English-language detector. |
 | `graph` | `yaml`, `javascript`, `shell`, `workflow`, `docker`, `secrets` | YAML structure, JavaScript syntax, shell scripts, GitHub Actions security, container recipes and credential findings. |
 | `graph` | `python-scopes`, `scripts-q000`, `deploy-i001`, `rustfs-return-types` | Selected Ruff rules on specific paths: declared scopes, quotes and docstrings, import order and unused imports, and public return types in the RustFS gateway. This is not the full Python audit. |
 | `graph` | `image-cves`, `tests-fast`, `ownership` | Trivy scans [selected deployed images](../../ci/quality/image_cves.py), the fast suite exercises repository code, and ownership checks verify infrastructure contracts, source pointers, operational entrypoints, vendor boundaries and alert definitions. |
