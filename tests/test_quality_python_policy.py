@@ -59,6 +59,27 @@ def test_ruff_missing_docstrings_follow_module_scope(filename: str, expected: se
     assert {item["code"] for item in json.loads(result.stdout)} & DOC_RULES == expected
 
 
+def test_script_docstring_needs_triple_quotes_even_with_double_quote_character() -> None:
+    result = common.command(
+        [
+            common.ROOT / ".venv/bin/ruff",
+            "check",
+            "--config",
+            "quality/ruff.toml",
+            "--select",
+            "D300,Q002",
+            "--ignore-noqa",
+            "--output-format=json",
+            "--stdin-filename",
+            "scripts/example.py",
+            "-",
+        ],
+        stdin='"Existing module documentation."\n',
+        allowed=(1,),
+    )
+    assert [item["code"] for item in json.loads(result.stdout)] == ["D300"]
+
+
 @pytest.mark.parametrize(
     ("original", "replacement"),
     [
