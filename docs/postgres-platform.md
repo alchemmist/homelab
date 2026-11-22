@@ -12,7 +12,9 @@ Inventory deployed volume refs before rotating. Sources are `postgres/pg-common-
 
 ## Retention
 
-Never prune all retained volumes. Keep source PVCs and Umami `/srv/umami/postgres` on socrat-0 for at least 14 full days after the corresponding cutover. For this batch do not review for disposal before **2026-12-05 UTC**. No automatic deletion. Compare the recorded PVC UID, PV name, mount/host, live consumers and Git references first. Decide explicitly whether a separate restorable copy is needed; no ongoing PITR. Deleting a retained source is not rollback; restoring the old DSN would discard subsequent writes. Do not delete working CA/DSN/robot/OIDC secrets, registry blobs or backup archives.
+Exception authorized 2026-11-22 for six individually verified legacy source claims (Certification, Harbor database, Authentik, LiteLLM, standalone LMS and Socrat Bot) and the old Umami PGDATA only. No exception for lms-ha, shared volumes, archives, NetBird, Secrets, or current database storage.
+
+Original retention policy: never prune all retained volumes. Keep source PVCs and Umami `/srv/umami/postgres` on socrat-0 for at least 14 full days after the corresponding cutover. For this batch do not review for disposal before **2026-12-05 UTC**. No automatic deletion. Compare the recorded PVC UID, PV name, mount/host, live consumers and Git references first. Decide explicitly whether a separate restorable copy is needed; no ongoing PITR. Deleting a retained source is not rollback; restoring the old DSN would discard subsequent writes. Do not delete working CA/DSN/robot/OIDC secrets, registry blobs or backup archives.
 
 ## Monitoring after cutover
 

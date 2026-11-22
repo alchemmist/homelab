@@ -4,14 +4,3 @@ metadata:
   name: {{ .Values.database.secretName }}
 type: Opaque
 # Credential data is runtime-managed; Argo respects its /data ignore rule.
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: {{ .Release.Name }}-postgres
-spec:
-  accessModes: ["ReadWriteOnce"]
-  storageClassName: local-path
-  resources:
-    requests:
-      storage: {{ .Values.database.size }}
