@@ -23,10 +23,11 @@
     },
     "client": {
       "repository": "netbirdio/netbird",
-      "tag": "0.82.0",
-      "digest": "sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965",
-      "linux_amd64": "sha256:ea2982e68e6d4782e1e20adbefe1556f9c6a751c455b9be11850e809554b4d92",
-      "linux_arm64": "sha256:745a46234495340d8eb2e8d8046b0fc67007e3d82183770de04cf095a6c92b98"
+      "tag": "0.83.2",
+      "digest": "sha256:a2f6a659b281d4d6e9820ed07b6822fddfc992f31a6a01e7b1e65c5ad0fa3072",
+      "linux_amd64": "sha256:14e3f1d11197e75eb280c1501c4a355015e752540e4afa323a3404035c6b3512",
+      "linux_arm64": "sha256:0776d2b03e544b4e23c74edbe8f2c71b8c6191255f8e9d7af7661b239305d819",
+      "verification": "Docker Hub release index and per-platform digests"
     },
     "edge_forwarder": {
       "reference": "rancher/mirrored-library-traefik@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259",
