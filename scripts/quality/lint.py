@@ -6,6 +6,7 @@ import argparse
 import ast
 import base64
 import binascii
+import gzip
 import http.client
 import io
 import json
@@ -17,6 +18,7 @@ import ssl
 import sys
 import tempfile
 import tokenize
+import zlib
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlparse
@@ -97,6 +99,7 @@ _NPM_PACKAGE_KEYS = frozenset(
         "version",
     }
 )
+_NPM_LOCK_NAMES = ("package-lock.json", "npm-shrinkwrap.json", "package-lock.json.gz")
 _NPM_ROOT_DEP_FIELDS = ("dependencies", "devDependencies", "optionalDependencies")
 _NPM_NESTED_DEP_FIELDS = ("dependencies", "devDependencies", "optionalDependencies")
 _DEPENDENCY_NPM_LOCK_FAILURE = "npm lock contains unsupported or unsafe package sources"
@@ -253,6 +256,14 @@ def _read_lock_text(path: Path) -> str | None:
     raw = path.read_bytes()
     if len(raw) != size or len(raw) > _MAX_REQUIREMENT_LOCK_BYTES:
         raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    if path.name == "package-lock.json.gz":
+        try:
+            with gzip.GzipFile(fileobj=io.BytesIO(raw)) as compressed:
+                raw = compressed.read(_MAX_REQUIREMENT_LOCK_BYTES + 1)
+        except (OSError, EOFError, zlib.error):
+            raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE) from None
+        if len(raw) > _MAX_REQUIREMENT_LOCK_BYTES:
+            raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
     try:
         return raw.decode("utf-8")
     except UnicodeDecodeError:
@@ -458,8 +469,23 @@ def _lock_identity(document: dict[str, object]) -> tuple[str, str, dict[str, obj
     return name, version, packages
 
 
+class _InstallScriptsError(ValueError):
+    """A lock must be refused before transport if any package selects install scripts."""
+
+    def __init__(self, packages: list[str]) -> None:
+        self.packages = packages
+        super().__init__(_DEPENDENCY_NPM_LOCK_FAILURE)
+
+
 def _located_distributions(packages: dict[str, object]) -> dict[str, tuple[str, str]]:
     """Validate every non-root package entry before any advisory request."""
+    scripted = [
+        _package_name(path)
+        for path, entry in packages.items()
+        if path and isinstance(entry, dict) and entry.get("hasInstallScript") is True
+    ]
+    if scripted:
+        raise _InstallScriptsError(sorted(set(scripted)))
     located: dict[str, tuple[str, str]] = {}
     for package_path, meta in packages.items():
         if package_path == "":
@@ -673,7 +699,19 @@ def post_node_advisory_batch(packages: Sequence[tuple[str, str]]) -> object:
 
 def _npm_lock_audit(path: Path, source: str) -> tuple[list[Finding], int] | None:
     """Audit one npm lock. None keeps an unsupported document blocking."""
-    packages = node_lock_packages(path)
+    try:
+        packages = node_lock_packages(path)
+    except _InstallScriptsError as error:
+        return [
+            finding(
+                "DEPENDENCY_INSTALL_SCRIPT",
+                source,
+                1,
+                f"{package} declares an install script; lock refused before advisory lookup.",
+                package,
+            )
+            for package in error.packages
+        ], 0
     if packages is None:
         return None
     payload = post_node_advisory_batch(packages)
@@ -710,7 +748,7 @@ def check_dependencies(names: Sequence[str]) -> tuple[list[Finding], int]:
             or path.name == "requirements.txt"
             or (path.name.startswith("requirements-") and path.suffix == ".txt")
         )
-        npm_lock = path.name in {"package-lock.json", "npm-shrinkwrap.json"}
+        npm_lock = path.name in _NPM_LOCK_NAMES
         other_lock = path.name in {
             "poetry.lock",
             "Pipfile.lock",
@@ -727,8 +765,7 @@ def check_dependencies(names: Sequence[str]) -> tuple[list[Finding], int]:
             and not any(
                 str(path.with_name(lock)) in inventory
                 for lock in (
-                    "package-lock.json",
-                    "npm-shrinkwrap.json",
+                    *_NPM_LOCK_NAMES,
                     "pnpm-lock.yaml",
                     "yarn.lock",
                     "bun.lock",

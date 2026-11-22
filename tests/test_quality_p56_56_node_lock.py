@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import base64
+import gzip
 import hashlib
 import http.client
 import json
@@ -548,7 +549,58 @@ def test_unsafe_version_three_lock_refuses_before_the_advisory_request(
 
     monkeypatch.setattr(lint, "post_node_advisory_batch", post)
     with pytest.raises(ValueError, match="unsupported or unsafe package sources"):
-        lint.check_dependencies([relative])
+        lint.node_lock_packages(tmp_path / relative)
+    if mutate == "install":
+        findings, count = lint.check_dependencies([relative])
+        assert count == 1  # Only the local Python environment reached the auditor.
+        assert [item["ruleId"] for item in findings] == ["DEPENDENCY_INSTALL_SCRIPT"]
+        assert findings[0]["severity"] == "error"
+    else:
+        with pytest.raises(ValueError, match="unsupported or unsafe package sources"):
+            lint.check_dependencies([relative])
+
+
+def test_compressed_lock_is_bound_to_manifest_and_audited(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Compression is a transport detail, not an exception to npm admission."""
+    lock = tmp_path / "package-lock.json.gz"
+    document = _document({"fixture-package": "1.0.0"})
+    raw = json.dumps(document).encode()
+    lock.write_bytes(gzip.compress(raw))
+    packages = document["packages"]
+    assert isinstance(packages, dict)
+    manifest = tmp_path / "package.json"
+    manifest.write_text(json.dumps(packages[""]))
+    monkeypatch.setattr(lint, "ROOT", tmp_path)
+    monkeypatch.setattr(lint, "command", _command)
+    posted: list[tuple[str, str]] = []
+
+    def post(rows: list[tuple[str, str]]) -> dict[str, object]:
+        posted.extend(rows)
+        return _clean_report(len(rows))
+
+    monkeypatch.setattr(lint, "post_node_advisory_batch", post)
+    findings, count = lint.check_dependencies([manifest.name, lock.name])
+    assert not findings
+    assert count == 1 + len(posted)
+    assert posted == [("fixture-package", "1.0.0")]
+    manifest.write_text("{}")
+    with pytest.raises(ValueError, match="unsupported or unsafe"):
+        lint.check_dependencies([manifest.name, lock.name])
+    assert posted == [("fixture-package", "1.0.0")]
+
+
+@pytest.mark.parametrize("data", [gzip.compress(b"x" * 2048), b"truncated"])
+def test_compressed_lock_refuses_bounded_expansion_and_corruption(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, data: bytes
+) -> None:
+    """Refuse unreadable or oversized compressed data before parsing any lock."""
+    monkeypatch.setattr(lint, "_MAX_REQUIREMENT_LOCK_BYTES", 1024)
+    lock = tmp_path / "package-lock.json.gz"
+    lock.write_bytes(data)
+    with pytest.raises(ValueError, match="unsupported or unsafe"):
+        lint.node_lock_packages(lock)
 
 
 def test_optional_peer_absence_is_still_audited(

@@ -165,4 +165,16 @@ nodes:
       GH_TOKEN: ${{ github.token }}
     results:
       native: reports/workflow.json
+  dependencies:
+    title: Dependency audit
+    profile: default
+    needs:
+    - ownership
+    policy: *id001
+    run: |
+      set -euo pipefail
+      uv run pytest -q tests/test_quality_dependency_coverage.py tests/test_quality_p56_56_node_lock.py
+      uv run python scripts/quality/lint.py dependencies
+    results:
+      native: reports/dependencies.json
 ...

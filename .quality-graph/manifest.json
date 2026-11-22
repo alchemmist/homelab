@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "6b495f02682a7907561662b6bef398daa19249deedb5709539958b52fc00c6aa",
+  "graphDigest": "e9732c3f6ab4050c8529fed4afa8051feb33175dcf707b605e2bc0489a035103",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -181,6 +181,34 @@
       },
       "timeoutMinutes": 5,
       "title": "Delivery security"
+    },
+    {
+      "env": {},
+      "id": "dependencies",
+      "needs": [
+        "ownership"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "native",
+        "path": "reports/dependencies.json"
+      },
+      "step": {
+        "run": "set -euo pipefail\nuv run pytest -q tests/test_quality_dependency_coverage.py tests/test_quality_p56_56_node_lock.py\nuv run python scripts/quality/lint.py dependencies\n"
+      },
+      "timeoutMinutes": 5,
+      "title": "Dependency audit"
     }
   ],
   "profiles": {
