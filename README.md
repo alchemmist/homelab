@@ -5,8 +5,16 @@
 
 [![CI](https://github.com/alchemmist/homelab/actions/workflows/quality-graph-push.yml/badge.svg?branch=main)](https://github.com/alchemmist/homelab/actions/workflows/quality-graph-push.yml)
 
-This repository describes how I run Socrat, my home Kubernetes cluster.
-[Ansible](ansible/) configures the machines. [Argo CD](deploy/argocd/apps/) keeps the applications in sync with Git.
+Socrat is my home Kubernetes cluster. It runs the public Socrat Wiki,
+PostgreSQL for the applications, and Grafana so I can see how the machines
+and services are doing.
 
-- [What runs where](llm-wiki/context.md)
-- [How to check a change](docs/quality/README.md)
+I keep the configuration here so I can answer two questions without logging
+into a node: how is a service supposed to run, and when did that change?
+[Ansible](ansible/) configures the hosts. [Argo CD](deploy/argocd/apps/)
+keeps the applications in sync with Git, so a deployment change starts with
+a diff I can review and test.
+
+Start with the **[Socrat Wiki](https://wiki.socrat.alchemmist.xyz/)** for the
+public documentation (in Russian). If you’re working on the cluster, see
+[what runs where](llm-wiki/context.md) and [how to check a change](docs/quality/README.md).
