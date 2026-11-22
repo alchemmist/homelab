@@ -367,7 +367,8 @@ def apply(state: Path, approval: str) -> dict[str, object]:
         timer_paused = True
         wait_watchdog_drained()
         fd = os.open(
-            h.check_path(Path(cast("str", w["state_dir"])) / "lock"), os.O_RDWR | os.O_NOFOLLOW
+            h.check_path(Path(cast("str", w["state_dir"])) / "lock"),
+            os.O_RDWR | os.O_NOFOLLOW,
         )
         lock = os.fdopen(fd, "w")
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)

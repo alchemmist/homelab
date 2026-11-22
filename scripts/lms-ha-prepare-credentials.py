@@ -1,4 +1,5 @@
 """Prepare high-availability failover credentials for the LMS deployment."""
+
 from __future__ import annotations
 
 import json
@@ -19,7 +20,8 @@ def kube(*args: str, document: dict[str, object] | None = None) -> dict[str, obj
 
 
 existing = subprocess.run(
-    ["kubectl", "-n", "lms", "get", "secret", "lms-ha-app", "-o", "name"], capture_output=True
+    ["kubectl", "-n", "lms", "get", "secret", "lms-ha-app", "-o", "name"],
+    capture_output=True,
 )
 if existing.returncode:
     obj: dict[str, object] = {
@@ -32,7 +34,8 @@ if existing.returncode:
     kube("create", "-f", "-", "-o", "json", document=obj)
 print(json.dumps({"applicationCredentialPrepared": True, "secretsPrinted": False}))
 existing = subprocess.run(
-    ["kubectl", "-n", "lms", "get", "secret", "lms-backup-key", "-o", "name"], capture_output=True
+    ["kubectl", "-n", "lms", "get", "secret", "lms-backup-key", "-o", "name"],
+    capture_output=True,
 )
 if existing.returncode:
     obj = {

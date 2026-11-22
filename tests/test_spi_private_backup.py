@@ -232,7 +232,8 @@ class CleanupBoundaryTests(unittest.TestCase):
 
                 with (
                     patch.object(m.tempfile, "mkstemp", owned),
-                    patch.object(m.sqlite3, "connect", connected),self.assertRaises(TimeoutError)
+                    patch.object(m.sqlite3, "connect", connected),
+                    self.assertRaises(TimeoutError),
                 ):
                     m.backup(str(src), d)
                 assert list(Path(d).glob(".spi-prechange-*")) == []

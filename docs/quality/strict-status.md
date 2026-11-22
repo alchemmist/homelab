@@ -4,7 +4,7 @@
 
 # Strict audit status
 
-This is the tracked receipt for the strict configuration on `quality/strict-all`. It is not a clean-tree claim and not production acceptance. The full per-finding report is private, mode `0700`/`0600`, at `~/Library/Application Support/homelab/quality-strict/`. No raw secret values are in that report.
+This is the tracked receipt for the strict configuration on `ci/quality/strict-all`. It is not a clean-tree claim and not production acceptance. The full per-finding report is private, mode `0700`/`0600`, at `~/Library/Application Support/homelab/quality-strict/`. No raw secret values are in that report.
 
 `configurationReady` is true: the strict policy is enforced, debt does not decide success, and the checks below actually ran. `sourceClean` is false. `scripts/quality/strict_report.py` returns 0 when the tools finish, including when findings remain. That exit code is not a clean tree.
 
@@ -25,7 +25,7 @@ Recorded on the full-report commit `e6bcac5b95e80e632bf983e7ee50cfbe33d80f74`, t
 
 - `pytest tests/test_quality_system.py tests/test_ansible_quality_policy.py`: exit 0, 40 passed.
 - `python scripts/quality/strict_guard.py`: configuration checks passed. Exit 1 is 11 inline suppressions, not a tool crash.
-- `ruff check --config quality/ruff.toml scripts/quality/boundaries.py`: exit 1, `INP001` once.
+- `ruff check --config ci/quality/ruff.toml scripts/quality/boundaries.py`: exit 1, `INP001` once.
 - `zizmor --offline --persona auditor .github/workflows`: exit 0, and the SARIF still has 3 findings. Exit 0 is not a clean audit.
 - `yamllint` and `actionlint` on the two hand-written workflows, and `shellcheck --enable=all` on `android/build.sh`: exit 0 after the document-end markers.
 - `python scripts/quality/strict_report.py`: exit 0, `configurationReady=true`, `sourceClean=false`. No command blocker. Private `summary.json` records head `e6bcac5b95e80e632bf983e7ee50cfbe33d80f74`.
@@ -86,7 +86,7 @@ Yamllint `key-ordering`, `empty-values`, and `quoted-strings` stay off. They col
 
 `SC2250` on `scripts/testing-class-wg-guard.sh` stays unbraced because the reviewed test requires the exact text `-A "$CHAIN" -j DROP`. `SC2310` and `SC2312` on `scripts/nightnode/nightnode` and `scripts/rustfs/deploy.sh` stay because splitting the substitutions would change `set -e` behavior. The two shell `*) ;;` arms are no-ops; an exiting default would reject valid backup ids and extra Deployments.
 
-Local Kind did not run: rootless Podman refused `homelab-qg-1ed5690f29b8` without systemd `Delegate=yes`, and no cluster was left behind. The generated `tests-cluster` job needs the manifest, Ansible, and medium-test jobs, which fail closed on remaining findings, so Quality Graph run `43985778073` skipped it. `.github/workflows/strict-kind-lifecycle.yml` is the hand-written reproduction that produced run `43985778237`. It runs on a pull request only when that workflow file changes, because GitHub will not dispatch a workflow that is absent from the default branch. It is not a trusted-base registration and it does not edit the generated workflows. Missing stack checks, not counted as passes: ESLint, Prettier execution, a separate Bandit run, and Vulture. `quality/rules.json` is not the enforcement catalog. `qg.yaml` was not changed and was not registered through trusted-base. Draft PR 182 tracks this branch. PR 181 is a separate draft and was not updated.
+Local Kind did not run: rootless Podman refused `homelab-qg-1ed5690f29b8` without systemd `Delegate=yes`, and no cluster was left behind. The generated `tests-cluster` job needs the manifest, Ansible, and medium-test jobs, which fail closed on remaining findings, so Quality Graph run `43985778073` skipped it. `.github/workflows/strict-kind-lifecycle.yml` is the hand-written reproduction that produced run `43985778237`. It runs on a pull request only when that workflow file changes, because GitHub will not dispatch a workflow that is absent from the default branch. It is not a trusted-base registration and it does not edit the generated workflows. Missing stack checks, not counted as passes: ESLint, Prettier execution, a separate Bandit run, and Vulture. `ci/quality/rules.json` is not the enforcement catalog. `qg.yaml` was not changed and was not registered through trusted-base. Draft PR 182 tracks this branch. PR 181 is a separate draft and was not updated.
 
 ## Parent continuation: semantic source contracts
 

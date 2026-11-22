@@ -45,7 +45,7 @@ def convert(v, k):
     if k == "timestamptz":
         if isinstance(v, str):
             v = dt.datetime.fromisoformat(v.replace("Z", "+00:00"))
-        return (v if v.tzinfo else v.replace(tzinfo=dt.timezone.utc)).astimezone(dt.timezone.utc)
+        return (v if v.tzinfo else v.replace(tzinfo=dt.UTC)).astimezone(dt.UTC)
     if k == "bytea":
         return v.encode() if isinstance(v, str) else bytes(v)
     if k in ("int4", "int8"):
@@ -197,9 +197,10 @@ if __name__ == "__main__":
                     if orig.exists():
                         shutil.copyfile(orig, str(dest) + suff)
             else:
-                with sqlite3.connect(
-                    srcpath.as_uri() + "?mode=ro", uri=True
-                ) as live, sqlite3.connect(dest) as out:
+                with (
+                    sqlite3.connect(srcpath.as_uri() + "?mode=ro", uri=True) as live,
+                    sqlite3.connect(dest) as out,
+                ):
                     live.backup(out)
             with sqlite3.connect(dest) as src, psycopg.connect(url) as db:
                 db.execute("SET LOCAL TIME ZONE 'UTC'")

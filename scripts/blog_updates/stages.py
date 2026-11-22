@@ -61,7 +61,10 @@ def model(system: str, data: object) -> object:
                                         "additionalProperties": False,
                                         "required": ["text", "source_paths"],
                                         "properties": {
-                                            "text": {"type": "string", "maxLength": 240},
+                                            "text": {
+                                                "type": "string",
+                                                "maxLength": 240,
+                                            },
                                             "source_paths": {
                                                 "type": "array",
                                                 "minItems": 1,
@@ -182,5 +185,11 @@ def _publish(
 ) -> list[Mapping[str, object]]:
     """Report a dry run or propose the rendered announcement upstream."""
     if not write:
-        return [{"status": "dry_run", "entries": decision["entries"], "reason": decision["reason"]}]
+        return [
+            {
+                "status": "dry_run",
+                "entries": decision["entries"],
+                "reason": decision["reason"],
+            }
+        ]
     return [propose(event_after, content, decision["reason"])]

@@ -90,7 +90,7 @@
       block:
         - name: Copy the locked promotion helper into recovery
           ansible.builtin.copy:
-            src: ../../scripts/vpn-native-image-promote.py
+            src: ../scripts/vpn-native-image-promote.py
             dest: "{{ recovery }}/promote.py"
             mode: "0700"
         - name: Atomic locked directory exchange; no unit or workload restart

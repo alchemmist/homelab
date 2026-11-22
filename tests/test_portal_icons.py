@@ -23,7 +23,9 @@ def targets() -> dict[str, str]:
     """Test behavior for targets."""
     result: dict[str, str] = {}
     for filename, source in MANIFEST["files"].items():
-        name = f"https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/{source['sha256'][:12]}-{filename}"
+        name = (
+            f"https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/{source['sha256'][:12]}-{filename}"
+        )
         for slug in source.get("applications", [Path(filename).stem]):
             assert slug not in result
             result[slug] = name
@@ -104,7 +106,12 @@ class FakeAPI:
         self.content = {}
         for filename, record in MANIFEST["files"].items():
             name = "service-icons/" + Path(filename).stem + "-" + record["sha256"][:12] + ".svg"
-            url = "https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/" + record["sha256"][:12] + "-" + filename
+            url = (
+                "https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/"
+                + record["sha256"][:12]
+                + "-"
+                + filename
+            )
             self.files.append({"name": name, "url": url})
             self.content[url] = (ASSETS / filename).read_bytes()
 

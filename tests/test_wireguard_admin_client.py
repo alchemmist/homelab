@@ -27,7 +27,11 @@ class WireGuardAdminClientTests(unittest.TestCase):
             in TEMPLATE
         )
         assert "PersistentKeepalive = {{ wireguard_admin_keepalive }}" in TEMPLATE
-        for endpoint in ("109.173.40.247:51830", "109.173.40.247:51831", "109.120.141.60:51830"):
+        for endpoint in (
+            "109.173.40.247:51830",
+            "109.173.40.247:51831",
+            "109.120.141.60:51830",
+        ):
             assert endpoint in DEFAULTS
 
     def test_profile_does_not_capture_dns(self) -> None:
@@ -61,7 +65,9 @@ class WireGuardAdminClientTests(unittest.TestCase):
             assert tasks[name]["no_log"] is True
         assert "wg_socrat_nodes" in DEFAULTS
 
-    def test_peer_defaults_are_distinct_bare_addresses_and_keys_come_from_inventory(self) -> None:
+    def test_peer_defaults_are_distinct_bare_addresses_and_keys_come_from_inventory(
+        self,
+    ) -> None:
         """Require bare peer addresses and inventory-sourced public keys."""
         assert "item.address is match" in TASKS
         assert "item.address is not search('/')" in TASKS

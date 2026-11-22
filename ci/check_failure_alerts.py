@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import NamedTuple, TypedDict, cast
 
-POLICY = "n8n-workflow-policy.json"
+POLICY = "ci/quality/n8n-workflow-policy.json"
 
 
 def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:

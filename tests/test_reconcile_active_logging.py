@@ -29,7 +29,10 @@ class ReconciliationTests(unittest.TestCase):
             pods = {
                 "items": [
                     {
-                        "metadata": {"namespace": "cattle-monitoring-system", "name": name},
+                        "metadata": {
+                            "namespace": "cattle-monitoring-system",
+                            "name": name,
+                        },
                         "spec": {"containers": [{"name": container}]},
                         "status": {
                             "phase": "Running",
@@ -106,7 +109,10 @@ class ReconciliationTests(unittest.TestCase):
         )
         assert report is not None
         assert report["sources"][0]["cause"] == "agent-self-logs-explicitly-excluded"
-        assert all(r["cause"] == "stdout-emission-without-receipt-investigate" for r in report["sources"][1:])
+        assert all(
+            r["cause"] == "stdout-emission-without-receipt-investigate"
+            for r in report["sources"][1:]
+        )
 
     def test_unaligned_windows_fail_closed(self) -> None:
         """Verify an unaligned source window is rejected and produces no report."""

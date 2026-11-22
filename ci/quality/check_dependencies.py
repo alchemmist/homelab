@@ -458,7 +458,7 @@ def _npm_lock_document(path: Path) -> dict[str, object] | None:
 
 
 _PATCHED_LOCKS = {
-    "tools/official-mcp/package-lock.json": {
+    "deploy/mcp/clients/package-lock.json": {
         "argocd-mcp": (
             "0.9.0",
             "file:argocd-mcp-0.9.0-homelab.tar",

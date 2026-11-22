@@ -1,6 +1,6 @@
 # Strict policy
 
-This file is the enforcement contract for `quality/strict-all`. It does not claim the tree is clean. Historical `quality/debt/*.json` files stay visible and are marked `"acceptance": false`. They do not decide success, and `--record-debt` cannot regenerate them. `quality/rules.json` is an old catalog, not this contract.
+This file is the enforcement contract for `ci/quality/strict-all`. It does not claim the tree is clean. Historical `ci/quality/debt/*.json` files stay visible and are marked `"acceptance": false`. They do not decide success, and `--record-debt` cannot regenerate them. `ci/quality/rules.json` is an old catalog, not this contract.
 
 See [active CI scope](README.md#active-ci-scope) for hosted versus local checks. Graph integrity runs the strict configuration and suppression guard before dependent jobs; a guard failure blocks the graph. The full Python adapter remains a local check.
 
@@ -15,9 +15,8 @@ Monori (`/Users/antonmoss/code/monori`) is the reference for strict Python, read
 - `COM812` is ignored because the formatter owns trailing commas. The defect remains visible through `ruff format --check`.
 - `ISC002` stays enabled. Its formatter conflict requires `allow-multiline = false`, which is not set.
 - `tests/**/test_*.py` ignores only `D102` and `D103` for missing method/function docstrings. The behavior name serves as the test description. This covers both direct modules in `tests/` and nested suites in `blog_updates`, `kubernetes`, `n8n`, `openhands`, `spi_triage`, `swe_mini`, and `wiki_openapi`.
-- Outside `tests/`, `experiments/venice-autonomy/test_*.py` contains five unittest modules: only `D102` is waived there. This is lint scope, not permission to collect or run those experiments. `smoke_test.py`, the browser test runner and other operational scripts are not suites.
 - Ruff matches files, not function names: colocated test helpers share the module's exception. Separate helpers such as `tests/public_entry_contract.py` and the SSH integration driver keep both rules. There is no missing-module/class docstring or docstring-style exemption. The independent `**/tests/**` exception for pytest assertions (`S101`) is unchanged; it does not extend to experiments.
-- mypy `2.4.1` uses `strict` plus `warn_unreachable`, `explicit_package_bases`, `disallow_any_explicit`, `disallow_any_unimported`, `disallow_any_decorated`, `strict_equality_for_none`, and the extra error codes in `quality/mypy.ini`.
+- mypy `2.4.1` uses `strict` plus `warn_unreachable`, `explicit_package_bases`, `disallow_any_explicit`, `disallow_any_unimported`, `disallow_any_decorated`, `strict_equality_for_none`, and the extra error codes in `ci/quality/mypy.ini`.
 - The config file does not set `follow_imports`, `ignore_missing_imports`, or `disable_error_code`. The adapter passes every owned Python file and `--follow-imports=silent` so imported modules that are themselves in that set still report. Missing third-party stubs stay `import-untyped` findings. Stubs are not installed to hide them.
 - A syntax error is a source finding for that file. It is parsed first so mypy's fatal exit 2 cannot drop the rest of the owned set. If mypy still stops (`Duplicate module`, an internal traceback, or exit 2), the adapter retries by directory and then by file. A batch that exits 2 is never stored as a complete audit. `mypy coverage incomplete` is a tool failure, distinct from source findings. The owned-file count is claimed only after every file was examined.
 - There is no Ruff `exclude`. Vendor trees are omitted by `deploy/contracts/vendors.json` before invocation. Owned paths are never reclassified as vendor.
@@ -51,7 +50,7 @@ Not adopted, and not counted as a pass: ESLint, Prettier execution, Bandit besid
 
 ## Ansible
 
-ansible-lint `26.11.0` uses profile `min`, `offline: true`, and `strict: true`. Profile `min` always runs `internal-error`, `load-failure`, `parser-error`, and `syntax-check`. Every other rule printed by `ansible-lint -L` is either enabled or given a reason in `quality/strict-policy.json`.
+ansible-lint `26.11.0` uses profile `min`, `offline: true`, and `strict: true`. Profile `min` always runs `internal-error`, `load-failure`, `parser-error`, and `syntax-check`. Every other rule printed by `ansible-lint -L` is either enabled or given a reason in `ci/quality/strict-policy.json`.
 
 `loop-var-prefix` is enabled without a `loop_var_prefix` setting, so only implicit `item` is flagged. A forced prefix would rename loop variables. `name[prefix]` is not added; that tag rewrites task identities used by `--start-at-task`.
 
@@ -62,13 +61,13 @@ These installed rules are not enabled:
 - `galaxy`, `galaxy-version-incorrect`, `meta-incorrect`, `meta-no-tags`, `meta-runtime`, `meta-video-links`, `role-argument-spec`: Galaxy or Automation Hub publication. `ansible/` is operational content.
 - `only-builtins`: experimental, and it forbids collections the plays intentionally use.
 - `role-name` and `var-naming`: would rename role paths or externally consumed variables without a consumer map.
-- `yaml`: a second yamllint with a different config. `quality/yamllint.yaml` covers the same files.
+- `yaml`: a second yamllint with a different config. `ci/quality/yamllint.yaml` covers the same files.
 
 `profiles.yml` in this release still names rules that `ansible-lint -L` does not provide: `layout`, `meta-version`, `no-changelog`, `max-block-depth`, `max-tasks`, `unsafe-loop`, `spell-var-name`, `avoid-dot-notation`, `import-task-no-when`, `meta-no-dependencies`, `single-entry-point`, and `use-loop`. They are not enabled because this binary has no such rule.
 
 ## Kubernetes
 
-kube-linter `0.8.3` keeps every default check (`doNotAutoAddDefaults: false`) and adds the security and dangling-reference checks in `quality/kube-linter.yaml`. There is no `exclude` list. Defaults include `host-network`, `privileged-container`, `unset-cpu-requirements`, and `dangling-service`. Those findings stay visible, including cross-application dangling references.
+kube-linter `0.8.3` keeps every default check (`doNotAutoAddDefaults: false`) and adds the security and dangling-reference checks in `ci/quality/kube-linter.yaml`. There is no `exclude` list. Defaults include `host-network`, `privileged-container`, `unset-cpu-requirements`, and `dangling-service`. Those findings stay visible, including cross-application dangling references.
 
 Omitted optional checks, with the conflict:
 
@@ -89,7 +88,7 @@ Omitted optional checks, with the conflict:
 
 `ci/quality/strict_guard.py` fails the configuration when tool pins, rule partitions, vendor prefixes, the reviewed secret false-positive digest, the yamllint enable/disable contract, or the generated publisher surface drift. Inline `noqa`, `type: ignore`, `nosec`, shellcheck, yamllint, hadolint, kube-linter, and ansible-lint suppressions are blocking findings. They are not a baseline: fix the source or leave the finding visible rather than adding a directive. A fatal mypy run cannot be reported as full coverage of the owned Python files.
 
-Secret matches still pass only on an exact id, path, and rule in `quality/secret-false-positives.json`. The digest of that file is pinned as `reviewedExceptionDigest`. The pin name does not contain `secret`: that word made gitleaks treat the hash as a generic API key. The reviewed list itself is unchanged.
+Secret matches still pass only on an exact id, path, and rule in `ci/quality/secret-false-positives.json`. The digest of that file is pinned as `reviewedExceptionDigest`. The pin name does not contain `secret`: that word made gitleaks treat the hash as a generic API key. The reviewed list itself is unchanged.
 
 ## What this commit does not do
 

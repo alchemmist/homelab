@@ -65,13 +65,19 @@ def bind(source, output, proof_path, expected_path, binary):
     size = sum(path.stat().st_size for path in source.rglob("*") if path.is_file())
     output.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     disk = shutil.disk_usage(output.parent)
-    require(disk.free - size >= disk.total // 5, "Snapshot binding would violate 20% disk reserve")
+    require(
+        disk.free - size >= disk.total // 5,
+        "Snapshot binding would violate 20% disk reserve",
+    )
     original_hash = hashlib.sha256((source / "meta.json").read_bytes()).hexdigest()
     block = output / metadata["ulid"]
     shutil.copytree(source, block)
     segments = sorted(path.name for path in (block / "chunks").iterdir())
     files = [
-        {"rel_path": "chunks/" + name, "size_bytes": (block / "chunks" / name).stat().st_size}
+        {
+            "rel_path": "chunks/" + name,
+            "size_bytes": (block / "chunks" / name).stat().st_size,
+        }
         for name in segments
     ]
     files += [

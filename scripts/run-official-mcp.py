@@ -24,7 +24,11 @@ def command(name):
             ARGOCD_API_TOKEN=creds.read_private(Path.home() / creds.FILES["argocd"]),
             MCP_READ_ONLY="true",
         )
-        args = ["node", str(BASE / "npm/node_modules/argocd-mcp/dist/index.js"), "stdio"]
+        args = [
+            "node",
+            str(BASE / "npm/node_modules/argocd-mcp/dist/index.js"),
+            "stdio",
+        ]
     elif name == "metrics":
         # This datasource intentionally points to Thanos, NOT directly to the TSDB.
         # v0.18.0 --prometheus.backend overrides the tool allowlist, even for

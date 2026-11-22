@@ -75,7 +75,8 @@ try:
         worker.ART.mkdir()
         (worker.ART / "task.txt").write_text("Create proof.txt containing autonomous and submit.")
         os.environ.update(
-            LLM_BASE=f"http://127.0.0.1:{server.server_port}/v1", LLM_KEY="local-only-test"
+            LLM_BASE=f"http://127.0.0.1:{server.server_port}/v1",
+            LLM_KEY="local-only-test",
         )
         worker.agent_main()
         result = json.loads((worker.ART / "agent-exit.json").read_text())

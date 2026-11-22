@@ -1,4 +1,5 @@
 """Check that public ingress hosts resolve to expected addresses and respond."""
+
 import argparse
 import concurrent.futures
 import json
@@ -30,7 +31,11 @@ PROBES = {
     "img.alchemmist.xyz": ("/", 301, None),
     "llm.alchemmist.xyz": ("/health/liveliness", 200, b"I'm alive!"),
     "remark42.alchemmist.xyz": ("/ping", 200, b"pong"),
-    "status.alchemmist.xyz": ("/api/status-page/heartbeat/socrat", 200, b"heartbeatList"),
+    "status.alchemmist.xyz": (
+        "/api/status-page/heartbeat/socrat",
+        200,
+        b"heartbeatList",
+    ),
     "lms.alchemmist.xyz": ("/", 303, None),
     "vpn.alchemmist.xyz": ("/", 302, None),
 }

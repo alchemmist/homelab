@@ -78,7 +78,7 @@ class _Pod(TypedDict):
 
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("target", ROOT / "scripts/check_target_placement.py")
+spec = importlib.util.spec_from_file_location("target", ROOT / "ansible/scripts/check_target_placement.py")
 assert spec is not None
 assert spec.loader is not None
 target = importlib.util.module_from_spec(spec)
@@ -174,7 +174,11 @@ class Ownership(unittest.TestCase):
 
     def test_unavailable_or_extra_deployment_replicas_rejected(self) -> None:
         """Verify unavailable or extra deployment replicas rejected."""
-        for field, value in [("availableReplicas", 0), ("replicas", 2), ("unavailableReplicas", 1)]:
+        for field, value in [
+            ("availableReplicas", 0),
+            ("replicas", 2),
+            ("unavailableReplicas", 1),
+        ]:
             with self.subTest(field=field):
                 d, _r, p = fixture()
                 d["status"][field] = value
@@ -227,7 +231,7 @@ class Transport(unittest.TestCase):
         )
         assert "ansible.builtin.assert" in tasks[0]
         script = tasks[1]["ansible.builtin.script"]
-        assert "scripts/check_target_placement.py" in script["cmd"]
+        assert "../../scripts/check_target_placement.py" in script["cmd"]
         assert "--local" in script["cmd"]
         assert script["executable"] == "/usr/bin/python3"
         assert not tasks[1]["changed_when"]

@@ -23,7 +23,7 @@ class InfrastructureContracts(unittest.TestCase):
 
     def test_registered_consumers_and_mesh(self) -> None:
         """Accept the canonical repository contract set unchanged."""
-        self.assertEqual(contract.check(ROOT), 11)
+        self.assertEqual(contract.check(ROOT), 12)
 
     def test_openhands_issuer_consumer_is_exact_and_refuses_drift(self) -> None:
         """Review the sole additive consumer and reject IP/scope drift in copied files."""
@@ -34,10 +34,14 @@ class InfrastructureContracts(unittest.TestCase):
             if row["file"] == "deploy/openhands/values.yaml"
         ]
         self.assertEqual(
-            matches, [{"file": "deploy/openhands/values.yaml", "path": ["oidc", "hostAliases"]}]
+            matches,
+            [{"file": "deploy/openhands/values.yaml", "path": ["oidc", "hostAliases"]}],
         )
         for violation in ("ip", "scope"):
-            with self.subTest(violation=violation), tempfile.TemporaryDirectory() as directory:
+            with (
+                self.subTest(violation=violation),
+                tempfile.TemporaryDirectory() as directory,
+            ):
                 root = self.fixture(directory)
                 target = root / "deploy/openhands/values.yaml"
                 text = target.read_text()
@@ -57,7 +61,11 @@ class InfrastructureContracts(unittest.TestCase):
         """Copy every registered contract fixture into a temporary root."""
         root = Path(directory)
         c = json.loads((ROOT / "deploy/contracts/infrastructure.json").read_text())
-        names = ["deploy/contracts/infrastructure.json", c["meshRegistry"], c["ansibleInventory"]]
+        names = [
+            "deploy/contracts/infrastructure.json",
+            c["meshRegistry"],
+            c["ansibleInventory"],
+        ]
         names += [x["file"] for x in c["issuerTransport"]["consumers"]]
         names += [
             c["relayContract"][k]
@@ -98,7 +106,8 @@ class InfrastructureContracts(unittest.TestCase):
             last = root / c["issuerTransport"]["consumers"][-1]["file"]
             last.write_text(
                 last.read_text().replace(
-                    "[auth.socrat.alchemmist.xyz]", "[auth.socrat.alchemmist.xyz, other.example]"
+                    "[auth.socrat.alchemmist.xyz]",
+                    "[auth.socrat.alchemmist.xyz, other.example]",
                 )
             )
             before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
@@ -133,7 +142,9 @@ class InfrastructureContracts(unittest.TestCase):
                 {"file": first["file"], "path": ["contractTestAliases"]}
             )
             config.write_text(json.dumps(c))
-            self.assertEqual(contract.check(root, write=True), 12)
+            self.assertEqual(
+                contract.check(root, write=True), len(c["issuerTransport"]["consumers"])
+            )
             self.assertEqual(p.read_text(), expected)
 
     def test_scope_widening_not_regenerated(self) -> None:
@@ -143,7 +154,8 @@ class InfrastructureContracts(unittest.TestCase):
             p = root / "deploy/platform/rancher/values.yaml"
             p.write_text(
                 p.read_text().replace(
-                    "[auth.socrat.alchemmist.xyz]", "[auth.socrat.alchemmist.xyz, other.example]"
+                    "[auth.socrat.alchemmist.xyz]",
+                    "[auth.socrat.alchemmist.xyz, other.example]",
                 )
             )
             with self.assertRaisesRegex(ValueError, "scope widened"):
@@ -164,8 +176,8 @@ class InfrastructureContracts(unittest.TestCase):
         """Reject an all-interfaces relay mutation and leave the fixture bytes unchanged."""
         with tempfile.TemporaryDirectory() as d:
             root = self.fixture(d)
-            p = root / "scripts/wg-peer15-relay.py"
-            self.assertEqual(contract.check(root), 11)
+            p = root / "ansible/scripts/wg-peer15-relay.py"
+            self.assertEqual(contract.check(root), 12)
             original = p.read_text()
             tree = ast.parse(original)
             front = [
@@ -187,7 +199,9 @@ class InfrastructureContracts(unittest.TestCase):
                 contract.check(root, write=True)
             self.assertEqual(before, {path: path.read_bytes() for path in before})
 
-    def test_relay_sandbox_widening_or_stale_endpoint_rejected_without_writes(self) -> None:
+    def test_relay_sandbox_widening_or_stale_endpoint_rejected_without_writes(
+        self,
+    ) -> None:
         """Reject widened or stale sandbox endpoints without rewriting the unit."""
         for replacement in ["10.250.0.0/16", "10.250.0.99/32"]:
             with tempfile.TemporaryDirectory() as d:

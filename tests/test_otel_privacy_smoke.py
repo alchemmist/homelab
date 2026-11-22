@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
-    "privacy_smoke", ROOT / "scripts/otel-privacy-smoke.py"
+    "privacy_smoke", ROOT / "ansible/scripts/otel-privacy-smoke.py"
 )
 SMOKE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SMOKE)
@@ -68,9 +68,12 @@ class PrivacySmokeTests(unittest.TestCase):
 
     def test_otlp_partial_rejection_is_a_failure(self) -> None:
         """Otlp partial rejection is a failure."""
-        with patch.object(
-            SMOKE.urllib.request,
-            "urlopen",
-            return_value=io.BytesIO(b'{"partialSuccess":{"rejectedLogRecords":"1"}}'),
-        ), self.assertRaisesRegex(ValueError, "rejected"):
+        with (
+            patch.object(
+                SMOKE.urllib.request,
+                "urlopen",
+                return_value=io.BytesIO(b'{"partialSuccess":{"rejectedLogRecords":"1"}}'),
+            ),
+            self.assertRaisesRegex(ValueError, "rejected"),
+        ):
             SMOKE.send(None, {})

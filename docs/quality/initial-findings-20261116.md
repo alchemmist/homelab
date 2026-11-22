@@ -68,7 +68,7 @@ runtime acceptance; Linux-specific tests must run in the actual Linux lane.
 - Secret scan:51reviewed non-secret contexts, stored separately with exact hashes
   and individual explanations; no live credential accepted as technical debt.
 - Helm/schema/KubeLinter: initial per-resource lint/coverage/intent findings are
-  retained in `quality/debt/charts-*.json`. Unknown CRD schemas are not “valid”.
+  retained in `ci/quality/debt/charts-*.json`. Unknown CRD schemas are not “valid”.
 
 Numbers above are dated first-pass evidence. Subsequent generated/new-source
 checks can increase or resolve counts; reports, not this receipt, are current.
@@ -81,7 +81,7 @@ Existing regression mismatches remain blocking; ansible-lint remains explicitly
 advisory as a tool compatibility failure. Hadolint added8source findings, and
 concurrent PR Agent source added3Python findings plus1image-digest violation.
 These are not automatically grandfathered as old debt. See the PR dashboard and
-per-node Job Summaries for the current distinct quality/command failure evidence.
+per-node Job Summaries for the current distinct ci/quality/command failure evidence.
 
 ## Repair checkpoint after semantic redesign
 

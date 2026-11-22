@@ -13,10 +13,14 @@ from typing import TypedDict
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
-    "--run", action="store_true", help="Explicitly authorize temporary acceptance fixtures"
+    "--run",
+    action="store_true",
+    help="Explicitly authorize temporary acceptance fixtures",
 )
 parser.add_argument(
-    "--public-edge", choices=["109.173.40.247", "109.120.141.60"], default="109.173.40.247"
+    "--public-edge",
+    choices=["109.173.40.247", "109.120.141.60"],
+    default="109.173.40.247",
 )
 args = parser.parse_args()
 if not args.run:
@@ -137,7 +141,11 @@ try:
             "failure_result": False,
         },
     )
-    api("POST", "core/users/" + str(user["pk"]) + "/set_password/", {"password": password})
+    api(
+        "POST",
+        "core/users/" + str(user["pk"]) + "/set_password/",
+        {"password": password},
+    )
 
     class Claims(TypedDict):
         """JWT payload fields asserted by this smoke test."""
@@ -214,9 +222,19 @@ try:
                             "Callback exception types:",
                             re.findall(r"\b[A-Z][A-Za-z]+(?:Error|Exception)\b", err),
                         )
-                    except (ValueError, TypeError, IndexError, KeyError, AttributeError, PlaywrightError):
+                    except (
+                        ValueError,
+                        TypeError,
+                        IndexError,
+                        KeyError,
+                        AttributeError,
+                        PlaywrightError,
+                    ):
                         pass
-            if "/api/v3/flows/executor/" in response.url and response.status in [200, 400]:
+            if "/api/v3/flows/executor/" in response.url and response.status in [
+                200,
+                400,
+            ]:
                 try:
                     data = response.json()
                     last.clear()
@@ -234,7 +252,14 @@ try:
                     if data.get("component") == "ak-stage-authenticator-totp":
                         totp_challenge.clear()
                         totp_challenge.update(data)
-                except (ValueError, TypeError, IndexError, KeyError, AttributeError, PlaywrightError):
+                except (
+                    ValueError,
+                    TypeError,
+                    IndexError,
+                    KeyError,
+                    AttributeError,
+                    PlaywrightError,
+                ):
                     pass
 
         page.on("response", observe)

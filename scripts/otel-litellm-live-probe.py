@@ -19,8 +19,13 @@ from pathlib import Path
 
 def run():
     logging.disable(logging.CRITICAL)
-    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    with (
+        contextlib.redirect_stdout(io.StringIO()),
+        contextlib.redirect_stderr(io.StringIO()),
+    ):
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+            OTLPSpanExporter,
+        )
         from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -70,7 +75,7 @@ def run():
         flushed = provider.force_flush(timeout_millis=10000)
         provider.shutdown()
     report = {
-        "success": status in [400, 404] and flushed is True,
+        "success": status in {400, 404} and flushed is True,
         "traceId": trace_id,
         "parentSpanId": parent_id,
         "httpStatus": status,

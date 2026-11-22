@@ -59,7 +59,7 @@ def test_rendered_budget_and_limit_schemas_are_strict_offline(
 ) -> None:
     """Resolve the renderer's actual schema name and reject a misspelled spec field."""
     resource = {"apiVersion": api_version, "kind": kind, "metadata": {"name": "sample"}}
-    schema = ROOT / "quality/schemas" / charts.schema_name(resource)
+    schema = ROOT / "ci/quality/schemas" / charts.schema_name(resource)
     validator = Draft4Validator(json.loads(schema.read_bytes()))
     assert validator.is_valid({**resource, "spec": spec})
     assert not validator.is_valid({**resource, "spec": {**spec, "typo": 1}})
@@ -177,7 +177,7 @@ def test_new_findings_fail_and_resolved_debt_does_not_hide_them(tmp_path) -> Non
 
 def test_recorded_debt_identity_cannot_mark_a_finding_passed(tmp_path) -> None:
     f = finding("RULE", "tests/test_quality_system.py", 1, "message", "visible context")
-    debt = tmp_path / "quality/debt"
+    debt = tmp_path / "ci/quality/debt"
     debt.mkdir(parents=True)
     (debt / "python.json").write_text(
         json.dumps(
@@ -203,7 +203,7 @@ def test_recorded_debt_identity_cannot_mark_a_finding_passed(tmp_path) -> None:
 
 
 def test_unmarked_debt_file_cannot_act_as_a_baseline(tmp_path) -> None:
-    debt = tmp_path / "quality/debt"
+    debt = tmp_path / "ci/quality/debt"
     debt.mkdir(parents=True)
     (debt / "python.json").write_text(
         json.dumps({"version": 1, "reason": "x" * 20, "findings": []})
@@ -342,8 +342,8 @@ def test_network_namespace_preserves_locked_tool_path(
     runner = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(runner)
     monkeypatch.setattr(runner, "ROOT", tmp_path)
-    (tmp_path / "quality").mkdir()
-    (tmp_path / "quality/test-suites.json").write_text(
+    (tmp_path / "ci/quality").mkdir(parents=True)
+    (tmp_path / "ci/quality/test-suites.json").write_text(
         json.dumps({"suites": {suite: ["tests/test_fixture.py"]}})
     )
     monkeypatch.setattr(runner.platform, "system", lambda: system)
@@ -431,6 +431,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     graph = yaml.safe_load((ROOT / "qg.yaml").read_text())["nodes"]
     assert len({n["title"] for n in graph.values()}) == len(graph)
     first_layer = {
+        "docs-language",
         "yaml",
         "python-scopes",
         "scripts-q000",
@@ -443,6 +444,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         "tests-fast",
         "shell",
         "rustfs-return-types",
+        "image-cves",
     }
     assert set(graph) == {"graph", *first_layer, "tests-medium", "ansible", "dependencies"}
     assert graph["dependencies"]["needs"] == ["ownership"]
@@ -465,9 +467,9 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     assert recipe("python-scopes") == "uv run --locked python -m ci.quality.python_scopes"
     for target, roots, codes in (
         ("graph", "ci/quality/", "SIM300"),
-        ("scripts-q000", "ci/ scripts/ tests/", "Q000,D300"),
+        ("scripts-q000", "ansible/scripts/ ci/ scripts/ tests/", "Q000,D300"),
         ("deploy-i001", "ansible/ deploy/ ci/ scripts/ tests/", "I001"),
-        ("deploy-i001", "ci/ scripts/ tests/", "F401"),
+        ("deploy-i001", "ansible/scripts/ ci/ scripts/ tests/", "F401"),
         ("rustfs-return-types", "services/rustfs_gateway/", "ANN201"),
     ):
         name = "check_" + codes.lower().replace(",", "_")
@@ -486,7 +488,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         "blocking": True,
         "approvals": {"findings": False, "files": False, "node": False},
     }
-    local = json.loads((ROOT / "quality/local-checks.json").read_text())
+    local = json.loads((ROOT / "ci/quality/local-checks.json").read_text())
     assert set(local) == {
         "python", "manifests", "tests-cluster",
     }
@@ -571,8 +573,8 @@ def test_new_issuer_alias_is_invisible_to_the_registered_list(tmp_path) -> None:
 
     infra = _load_checker("check_infrastructure_contracts.py")
     _copy_rels(tmp_path, _infra_files())
-    # The owner registered Monori's scoped OIDC transport in addition to the prior ten.
-    registered_issuer_count = 11
+    # Includes the owner-only Redis Insight OIDC gateway.
+    registered_issuer_count = 12
     assert infra.check(tmp_path) == registered_issuer_count
     rogue = tmp_path / "deploy/new-issuer-consumer/values.yaml"
     rogue.parent.mkdir(parents=True)
@@ -819,8 +821,8 @@ def test_mypy_syntax_error_does_not_hide_another_file(tmp_path, monkeypatch) -> 
     from ci.quality import common
 
     common.use_project_tools()
-    (tmp_path / "quality").mkdir()
-    (tmp_path / "quality/mypy.ini").write_text((ROOT / "quality/mypy.ini").read_text())
+    (tmp_path / "ci/quality").mkdir(parents=True)
+    (tmp_path / "ci/quality/mypy.ini").write_text((ROOT / "ci/quality/mypy.ini").read_text())
     (tmp_path / "pkg_a").mkdir()
     (tmp_path / "pkg_b").mkdir()
     (tmp_path / "pkg_a/typed.py").write_text('value: int = "not-an-int"\n')
@@ -841,7 +843,7 @@ def test_generated_publisher_findings_are_not_waived(tmp_path) -> None:
     from ci.quality.common import command, use_project_tools
 
     use_project_tools()
-    policy = json.loads((ROOT / "quality/strict-policy.json").read_text())["generatedWorkflows"]
+    policy = json.loads((ROOT / "ci/quality/strict-policy.json").read_text())["generatedWorkflows"]
     assert policy["trusted"] is False
     assert policy["waiver"] is False
     # Reintroduce the unsafe surface in a fixture, not as a requirement on the real publisher.
@@ -898,10 +900,10 @@ def test_strict_configuration_contract_holds() -> None:
 
 def _frozen_fixture(root: Path) -> Path:
     """Copy only repository source/provenance needed for isolated ownership tests."""
-    policy = json.loads((ROOT / "quality/strict-policy.json").read_text())
+    policy = json.loads((ROOT / "ci/quality/strict-policy.json").read_text())
     record = policy["frozenCompatibility"]
     manifest = json.loads((ROOT / record["manifest"]).read_text())
-    names = ["quality/strict-policy.json", "deploy/contracts/vendors.json", record["manifest"]]
+    names = ["ci/quality/strict-policy.json", "deploy/contracts/vendors.json", record["manifest"]]
     names.extend(record["directory"] + "/" + name for name in manifest["backend_sha256"])
     for name in names:
         path = root / name
@@ -934,7 +936,7 @@ def test_frozen_provenance_mutations_fail_before_ownership_exclusion(
     from ci.quality import common
 
     root = _frozen_fixture(tmp_path)
-    record = json.loads((root / "quality/strict-policy.json").read_text())["frozenCompatibility"]
+    record = json.loads((root / "ci/quality/strict-policy.json").read_text())["frozenCompatibility"]
     manifest_path = root / record["manifest"]
     manifest = json.loads(manifest_path.read_text())
     name = next(iter(manifest["backend_sha256"]))
@@ -962,7 +964,7 @@ def test_frozen_path_escape_rejected_even_with_updated_fixture_digest(tmp_path: 
     from ci.quality import common
 
     root = _frozen_fixture(tmp_path)
-    policy_path = root / "quality/strict-policy.json"
+    policy_path = root / "ci/quality/strict-policy.json"
     policy = json.loads(policy_path.read_text())
     record = policy["frozenCompatibility"]
     manifest_path = root / record["manifest"]
@@ -1158,7 +1160,7 @@ def test_full_audit_preserves_tool_failures_and_unstable_snapshot_as_incomplete(
 
 def test_yaml_empty_and_quote_rules_do_not_confuse_maps_or_typed_values() -> None:
     """Check the real pinned tool, not the previous incorrect disable rationale."""
-    argv = ["yamllint", "--format", "parsable", "--config-file", "quality/yamllint.yaml", "-"]
+    argv = ["yamllint", "--format", "parsable", "--config-file", "ci/quality/yamllint.yaml", "-"]
     valid = '---\npermissions: {}\nflag: true\ncount: 1\nintentionalNull: null\nstringBoolean: "yes"\n...\n'
     good = command(argv, stdin=valid, allowed=(0, 1))
     assert good.returncode == 0
@@ -1202,3 +1204,25 @@ def test_existing_main_push_regression_cannot_be_deferred(omitted: str) -> None:
     for scheduled in (complete, expanded):
         with pytest.raises(ValueError, match="push regression lost"):
             contracts.require_retained_push_tests(scheduled - {omitted})
+
+
+def test_documentation_language_scope_and_locations(tmp_path, monkeypatch) -> None:
+    from ci.quality import check_docs_language as language
+
+    monkeypatch.setattr(language, "ROOT", tmp_path)
+    files = {
+        "docs/data.tsv": "English\n\u0401",
+        "service/readme.RST": "\u044f",
+        "README": "\u0451",
+        "docs/guide.md": "Caf\u00e9",
+        "src/service.py": "\u0410",
+    }
+    for name, content in files.items():
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    findings, count = language.check(list(files))
+    assert count == 4
+    assert [(f["location"]["path"], f["location"]["startLine"]) for f in findings] == [
+        ("docs/data.tsv", 2), ("service/readme.RST", 1), ("README", 1),
+    ]

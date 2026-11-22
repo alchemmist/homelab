@@ -110,7 +110,11 @@ class CredentialsTests(unittest.TestCase):
         MODULE.bootstrap(
             grafana,
             secret(
-                **{"grafana-token": "old", "client-token": "stable", "service-account-id": "12"}
+                **{
+                    "grafana-token": "old",
+                    "client-token": "stable",
+                    "service-account-id": "12",
+                }
             ),
             persist,
         )

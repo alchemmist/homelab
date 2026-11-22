@@ -60,7 +60,12 @@ class TrafficLightArgoTest(unittest.TestCase):
         assert t["format"] == "time_series"
         assert t["legendFormat"] == "{{name}}"
         assert t["expr"] == lab.application_query()
-        for forbidden in ["argocd_app_sync_total", "topk", "increase(", "count_values("]:
+        for forbidden in [
+            "argocd_app_sync_total",
+            "topk",
+            "increase(",
+            "count_values(",
+        ]:
             assert forbidden not in t["expr"]
         assert 'name!="root"' not in t["expr"]
         assert not p["options"]["legend"]["showLegend"]
@@ -75,7 +80,11 @@ class TrafficLightArgoTest(unittest.TestCase):
         )  # Auto ignores zero min width and clips narrow panels.
         assert p["options"]["minVizWidth"] == 0
         assert p["options"]["minVizHeight"] == 0
-        assert [t["id"] for t in p["transformations"]] == ["seriesToRows", "sortBy", "rowsToFields"]
+        assert [t["id"] for t in p["transformations"]] == [
+            "seriesToRows",
+            "sortBy",
+            "rowsToFields",
+        ]
         assert p["transformations"][1]["options"]["sort"] == [{"field": "Metric", "desc": False}]
         (link,) = p["fieldConfig"]["defaults"]["links"]
         assert link["title"] == "${__field.name}"
@@ -182,7 +191,11 @@ class TrafficLightArgoTest(unittest.TestCase):
                 "input_series": [up, app("a")],
                 "promql_expr_test": checks([1, 0, 0, 0, 0]),
             },
-            {"interval": "15s", "input_series": [], "promql_expr_test": checks([None] * 5)},
+            {
+                "interval": "15s",
+                "input_series": [],
+                "promql_expr_test": checks([None] * 5),
+            },
             {
                 "interval": "15s",
                 "input_series": [series(up["series"], "0+0x120"), app("a")],
@@ -228,7 +241,16 @@ class TrafficLightArgoTest(unittest.TestCase):
 
         cases[0]["promql_expr_test"].append(
             app_check(
-                [("a", 5), ("b", 4), ("c", 3), ("d", 6), ("e", 1), ("f", 2), ("g", 2), ("root", 1)]
+                [
+                    ("a", 5),
+                    ("b", 4),
+                    ("c", 3),
+                    ("d", 6),
+                    ("e", 1),
+                    ("f", 2),
+                    ("g", 2),
+                    ("root", 1),
+                ]
             )
         )
         cases[1]["promql_expr_test"].append(app_check([("a", 5)]))

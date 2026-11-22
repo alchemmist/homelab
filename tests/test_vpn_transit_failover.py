@@ -16,7 +16,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 def module(name: str) -> ModuleType:
     """Test behavior for module."""
-    s = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
+    s = importlib.util.spec_from_file_location(name, ROOT / "ansible/scripts" / f"{name}.py")
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
     return m
@@ -70,7 +70,9 @@ def test_no_api_only_failover_and_failure_threshold(ctl, monkeypatch) -> None:
     monkeypatch.setattr(m, "boot_id", lambda: "test-boot")
     c.save(mode="kubernetes", boot_id="test-boot", grace_until=0)
     monkeypatch.setattr(
-        c, "recovery_scope", lambda: {"recover_local": True, "scope": "local-listener-failed"}
+        c,
+        "recovery_scope",
+        lambda: {"recover_local": True, "scope": "local-listener-failed"},
     )
     calls = []
     monkeypatch.setattr(c, "healthy", lambda: False)
@@ -161,7 +163,7 @@ def test_deployment_single_host_no_api_token_and_native_boot_fence() -> None:
     play = (ROOT / "ansible/playbooks/vpn-transit-mesh-runtime.yml").read_text()
     assert "ExecCondition=/usr/bin/test ! -e" in play and "ExecCondition=+/usr/bin/test -e" in play
     assert "state: started" not in play  # prepare never steals live ports
-    controller = (ROOT / "scripts/vpn-transit-failover.py").read_text()
+    controller = (ROOT / "ansible/scripts/vpn-transit-failover.py").read_text()
     assert "AGENT='k3s-agent.service'" in controller and "'k3s.service'" not in controller
     assert "flock" in controller and "fsync" in controller and "free_ports()" in controller
 
@@ -181,7 +183,7 @@ def test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse() -> None:
             with pytest.raises(OSError):
                 challenger.bind(("0.0.0.0", port))
                 challenger.listen(1)
-    source = (ROOT / "scripts/vpn-transit-failover.py").read_text()
+    source = (ROOT / "ansible/scripts/vpn-transit-failover.py").read_text()
     assert "if typ==socket.SOCK_STREAM:s.setsockopt" in source
 
 
@@ -312,7 +314,6 @@ def test_failure_scope_uses_direct_upstream_not_api(
     monkeypatch.setattr(m, "active", lambda _unit: agent)
     monkeypatch.setattr(m, "local_listeners_respond", lambda: listeners)
 
-
     def check(_config, host, source, detail) -> bool:
         assert host == "10.250.0.2" and source == ("10.250.0.40", 0)
         assert isinstance(detail, dict)  # probe records its observation in-place
@@ -332,7 +333,9 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatc
     c.save(mode="kubernetes", boot_id="boot", grace_until=0)
     monkeypatch.setattr(c, "healthy", lambda: False)
     monkeypatch.setattr(
-        c, "recovery_scope", lambda: {"recover_local": False, "scope": "upstream-or-path-unhealthy"}
+        c,
+        "recovery_scope",
+        lambda: {"recover_local": False, "scope": "upstream-or-path-unhealthy"},
     )
     monkeypatch.setattr(
         c,
@@ -359,7 +362,6 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatc
 def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch) -> None:
     """Test behavior for test_probe_failure_records_stage_not_private_path."""
     m, c = ctl
-
 
     def fail(*_a, **_kw) -> None:
         raise TimeoutError

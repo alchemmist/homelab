@@ -20,10 +20,10 @@ class SPIOnlyDNSTests(unittest.TestCase):
     """Ensure DNS zone changes stay SPI-only across health states."""
 
     def test_only_spi_changes_for_all_four_health_states(self):
-        new = load(ROOT / "scripts/public_dns_zone.py", "spi_zone")
-        old = load(ROOT / "scripts/public_dns_zone.py", "previous_zone")
+        new = load(ROOT / "ansible/scripts/public_dns_zone.py", "spi_zone")
+        old = load(ROOT / "ansible/scripts/public_dns_zone.py", "previous_zone")
         old.FAILOVER.remove("spi.socrat")
-        guard = load(ROOT / "scripts/spi-public-dns.py", "spi_guard")
+        guard = load(ROOT / "ansible/scripts/spi-public-dns.py", "spi_guard")
         guard.delta(old, new)
         for home, vps in ((True, True), (True, False), (False, True), (False, False)):
             with self.subTest(home=home, vps=vps):
@@ -45,7 +45,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
     def test_loader_rejects_directories_and_symlinks(self):
         import tempfile
 
-        guard = load(ROOT / "scripts/spi-public-dns.py", "safe_loader")
+        guard = load(ROOT / "ansible/scripts/spi-public-dns.py", "safe_loader")
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
             renderer = base / "renderer.py"
@@ -62,7 +62,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
     def test_malformed_renderer_has_controlled_error(self):
         import tempfile
 
-        guard = load(ROOT / "scripts/spi-public-dns.py", "syntax_guard")
+        guard = load(ROOT / "ansible/scripts/spi-public-dns.py", "syntax_guard")
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "proposed.py"
             for content in ("def broken(:", 'raise ValueError("private diagnostic")'):
@@ -77,7 +77,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
         import tempfile
         from unittest.mock import Mock, patch
 
-        guard = load(ROOT / "scripts/spi-public-dns.py", "lock_guard")
+        guard = load(ROOT / "ansible/scripts/spi-public-dns.py", "lock_guard")
         require = guard.require
         previous_umask = guard.os.umask(0o077)
         self.addCleanup(guard.os.umask, previous_umask)
@@ -117,7 +117,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
         import tempfile
         from unittest.mock import patch
 
-        guard = load(ROOT / "scripts/spi-public-dns.py", "missing_state_guard")
+        guard = load(ROOT / "ansible/scripts/spi-public-dns.py", "missing_state_guard")
         previous = guard.os.umask(0o077)
         self.addCleanup(guard.os.umask, previous)
         with tempfile.TemporaryDirectory() as directory:
@@ -137,7 +137,7 @@ class ExclusiveRendererTests(unittest.TestCase):
     def test_existing_regular_file_is_not_overwritten(self):
         import tempfile
 
-        guard = load(ROOT / "scripts/spi-public-dns.py", "exclusive_file_guard")
+        guard = load(ROOT / "ansible/scripts/spi-public-dns.py", "exclusive_file_guard")
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "stage.tmp"
             path.write_bytes(b"original")
@@ -148,7 +148,7 @@ class ExclusiveRendererTests(unittest.TestCase):
     def test_existing_and_dangling_symlinks_are_not_followed(self):
         import tempfile
 
-        guard = load(ROOT / "scripts/spi-public-dns.py", "exclusive_link_guard")
+        guard = load(ROOT / "ansible/scripts/spi-public-dns.py", "exclusive_link_guard")
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
             for existing in (True, False):
@@ -172,7 +172,7 @@ class ExclusiveRendererTests(unittest.TestCase):
         import stat
         import tempfile
 
-        guard = load(ROOT / "scripts/spi-public-dns.py", "new_inode_guard")
+        guard = load(ROOT / "ansible/scripts/spi-public-dns.py", "new_inode_guard")
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "stage.tmp"
             guard.stage_renderer(path, b"VALUE = 1\n")

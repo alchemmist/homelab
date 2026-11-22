@@ -13,6 +13,9 @@ import ssl
 import urllib.request
 from pathlib import Path
 
+# JSON span kinds can be malformed containers; compare by equality, not by hash.
+SERVER_SPAN_KINDS = (2, "SPAN_KIND_SERVER", "SERVER")
+
 
 def identifier(value):
     if re.fullmatch(r"[0-9a-fA-F]{16}|[0-9a-fA-F]{32}", value):
@@ -216,7 +219,7 @@ def summarize_native_production(
         and span["name"] == target_name
         and span.get("parentSpanId")
         and identifier(span["parentSpanId"]) == parent_id
-        and (not require_server_kind or span.get("kind") in [2, "SPAN_KIND_SERVER", "SERVER"])
+        and (not require_server_kind or span.get("kind") in SERVER_SPAN_KINDS)
     ]
     private_found = "OTEL_CANARY_PRIVATE_CONTENT_MUST_NOT_BE_CAPTURED" in json.dumps(document)
     unique = len({identifier(span["spanId"]) for span, _ in records}) == len(records)
@@ -286,7 +289,8 @@ def run(
     context = ssl.create_default_context(cafile=str(tls / "ca.crt"))
     context.load_cert_chain(str(tls / "client.crt"), str(tls / "client.key"))
     request = urllib.request.Request(
-        "https://10.250.0.3:3200/api/traces/" + trace_id, headers={"Accept": "application/json"}
+        "https://10.250.0.3:3200/api/traces/" + trace_id,
+        headers={"Accept": "application/json"},
     )
     with urllib.request.urlopen(request, context=context, timeout=20) as response:
         body = response.read(8 * 1024**2 + 1)

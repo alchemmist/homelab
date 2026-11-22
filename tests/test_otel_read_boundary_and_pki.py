@@ -52,9 +52,12 @@ class ReadBoundaryTests(unittest.TestCase):
     def test_rbac_evaluation_error_is_not_certified_as_denial(self) -> None:
         """Rbac evaluation error is not certified as denial."""
         pki = load("otel-application-pki")
-        with patch.object(
-            pki.BOOTSTRAP,
-            "kube",
-            return_value={"status": {"allowed": False, "evaluationError": "unavailable"}},
-        ), self.assertRaises(ValueError):
+        with (
+            patch.object(
+                pki.BOOTSTRAP,
+                "kube",
+                return_value={"status": {"allowed": False, "evaluationError": "unavailable"}},
+            ),
+            self.assertRaises(ValueError),
+        ):
             pki.assess("secrets", "get", "otel-root-ca")

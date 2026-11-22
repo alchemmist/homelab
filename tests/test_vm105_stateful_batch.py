@@ -223,7 +223,13 @@ class StatefulBoundaries(unittest.TestCase):
         else:
             pod.pop("initContainers", None)
         for v in pod.get("volumes", []):
-            if v["name"] in ["data", "assets", "clang-versions", "tests", "config-history"]:
+            if v["name"] in [
+                "data",
+                "assets",
+                "clang-versions",
+                "tests",
+                "config-history",
+            ]:
                 v.clear()
 
     def _assert_changed_document(
@@ -286,7 +292,13 @@ class StatefulBoundaries(unittest.TestCase):
                 "format-quorum",
                 {"format-quorum"},
             ),
-            ("charts/litellm-infra", None, "llm", "litellm-infra", {"litellm-branding"}),
+            (
+                "charts/litellm-infra",
+                None,
+                "llm",
+                "litellm-infra",
+                {"litellm-branding"},
+            ),
         ]
         for chart, values, ns, release, allowed in cases:
             with self.subTest(chart=chart):
@@ -316,9 +328,38 @@ class StatefulBoundaries(unittest.TestCase):
                     # without injecting historical values into the current chart.
                     expected = historical(CUTOVERS[chart])
                     if chart == "charts/monori":
-                        # Schema delivery adds exactly one pre-rollout Job and
+                        cache = current.pop(("Job", "monori-sync-image-cache"))
+                        annotations = _mapping(
+                            _mapping(cache["metadata"])["annotations"]
+                        )
+                        self.assertEqual(
+                            annotations["argocd.argoproj.io/hook"], "PreSync"
+                        )
+                        self.assertEqual(
+                            annotations["argocd.argoproj.io/sync-wave"], "-1"
+                        )
+                        cache_pod = _mapping(
+                            _mapping(_mapping(cache["spec"])["template"])["spec"]
+                        )
+                        sync = current[("Deployment", "monori-sync")]
+                        sync_pod = _mapping(
+                            _mapping(_mapping(sync["spec"])["template"])["spec"]
+                        )
+                        self.assertEqual(
+                            cache_pod["nodeSelector"], sync_pod["nodeSelector"]
+                        )
+                        self.assertNotIn("volumes", cache_pod)
+                        container = _mapping(_sequence(cache_pod["containers"])[0])
+                        self.assertEqual(
+                            container["image"],
+                            _mapping(_sequence(sync_pod["containers"])[0])["image"],
+                        )
+                        self.assertEqual(
+                            container["command"], ["python", "-I", "-S", "-c", "pass"]
+                        )
+                        # Schema delivery also adds a pre-rollout Job and
                         # advances only the backend init check, not placement.
-                        job = current.pop(("Job", "monori-schema-0022"))
+                        job = current.pop(("Job", "monori-schema"))
                         annotations = _mapping(_mapping(job["metadata"])["annotations"])
                         self.assertEqual(annotations["argocd.argoproj.io/hook"], "PreSync")
                         backend = expected[("Deployment", "monori-back")]
@@ -326,7 +367,16 @@ class StatefulBoundaries(unittest.TestCase):
                         pod = _mapping(template["spec"])
                         init = _mapping(_sequence(pod["initContainers"])[0])
                         args = _sequence(init["args"])
-                        args[0] = _text(args[0]).replace("[('0021',)]", "[('0022',)]")
+                        args[0] = (
+                            _text(args[0])
+                            .replace(
+                                '    assert c.execute("SELECT version_num',
+                                "    marker=pathlib.Path('/app/server/postgres/revision')\n"
+                                "    target=marker.read_text().strip() if marker.exists() else '0022'\n"
+                                '    assert c.execute("SELECT version_num',
+                            )
+                            .replace("[('0021',)]", "[(target,)]")
+                        )
                         init["args"] = args
                     if chart == "charts/spi-triage":
                         expect_spi_cutover(expected, postgres=True)
@@ -352,7 +402,12 @@ class StatefulBoundaries(unittest.TestCase):
         expect_spi_cutover(expected, postgres=False)
         # f927f5a4 retires the handoff Service target, even with the old flag set.
         current = render(
-            R, chart, values, "automation", "spi-triage", sqlite_with_retired_handoff=True
+            R,
+            chart,
+            values,
+            "automation",
+            "spi-triage",
+            sqlite_with_retired_handoff=True,
         )
         self.assertEqual(current, expected)
 
@@ -388,7 +443,10 @@ class StatefulBoundaries(unittest.TestCase):
         assert mono["backReplicaCount"] == 1
         assert mono["syncReplicaCount"] == 1
         assert mono["statefulRecreate"]
-        for path in ["deploy/wiki-runtime/values.yaml", "deploy/format-quorum/values.yaml"]:
+        for path in [
+            "deploy/wiki-runtime/values.yaml",
+            "deploy/format-quorum/values.yaml",
+        ]:
             assert yaml.safe_load((R / path).read_text())["replicaCount"] == 1
         legacy = (R / "ansible/playbooks/format-quorum.yml").read_text()
         assert "helm upgrade" not in legacy

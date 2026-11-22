@@ -133,8 +133,18 @@ def _admitted(context: _FixtureContext, group_pk: object) -> list[str]:
 def _run_cases(context: _FixtureContext) -> None:
     """Walk every mapping case, recording the verified receipt at the end."""
     cases = [
-        ("app-litellm-user", "litellm", "homelab-litellm-reviewed-identity", "internal_user"),
-        ("app-open-webui-user", "open-webui", "homelab-app-open-webui-profile", "homelab-observer"),
+        (
+            "app-litellm-user",
+            "litellm",
+            "homelab-litellm-reviewed-identity",
+            "internal_user",
+        ),
+        (
+            "app-open-webui-user",
+            "open-webui",
+            "homelab-app-open-webui-profile",
+            "homelab-observer",
+        ),
         ("app-lms-student", "lms", "homelab-app-lms-profile", "lms-students"),
         ("app-lms-teacher", "lms", "homelab-app-lms-profile", "lms-teachers"),
         (

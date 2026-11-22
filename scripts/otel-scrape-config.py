@@ -41,15 +41,11 @@ def assets(value):
         for key, item in value.items():
             if key in INLINE_CREDENTIALS and item:
                 msg = "Inline or masked credentials require explicit credential-file translation"
-                raise ValueError(
-                    msg
-                )
+                raise ValueError(msg)
             if key.endswith("_file") and isinstance(item, str) and item:
                 if not item.startswith(ASSET_ROOTS) or ".." in Path(item).parts:
                     msg = "Unsupported source file dependency requires explicit translation"
-                    raise ValueError(
-                        msg
-                    )
+                    raise ValueError(msg)
                 result.add(item)
             result.update(assets(item))
     elif isinstance(value, list):
@@ -92,7 +88,7 @@ def translate_authorization(job, monitors):
         not re.fullmatch(r"[a-z0-9][a-z0-9.-]*", namespace)
         or not re.fullmatch(r"[a-z0-9][a-z0-9.-]*", name)
         or not re.fullmatch(r"[A-Za-z0-9_.-]+", key)
-        or key in (".", "..")
+        or key in {".", ".."}
         or source.get("optional")
     ):
         msg = "Invalid or optional authorization secret reference"
@@ -144,10 +140,8 @@ def refresh_api_targets(scrape):
             for r in job.get("relabel_configs", [])
             if r.get("action") == "keep" and r.get("source_labels") == ["__address__"]
         ]
-        if len(rules) != 1 or rules[0].get("regex") not in (
-            r"10\.250\.0\.(1|3|5):6443",
-            desired,
-        ):
+        allowed_regexes = (r"10\.250\.0\.(1|3|5):6443", desired)
+        if len(rules) != 1 or rules[0].get("regex") not in allowed_regexes:
             raise ValueError("Unrecognized apiserver scrape keep rule")
         rules[0]["regex"] = desired
     return result
@@ -159,7 +153,9 @@ def refresh_public_edge_probe(scrape):
         "serviceProbes"
     ]["targets"]
     tcp_targets = {
-        t["id"]: t["url"] for t in targets if t["id"] in ("edge-vps", "litellm-db", "umami-db")
+        t["id"]: t["url"]
+        for t in targets
+        if isinstance(t["id"], str) and t["id"] in {"edge-vps", "litellm-db", "umami-db"}
     }
     result = copy.deepcopy(scrape)
     for job in result.get("scrape_configs", []):
@@ -176,7 +172,10 @@ def refresh_public_edge_probe(scrape):
             target = next(t for t in targets if t["id"] == "lms")
             params = job["params"]
             desired = {"module": [target["module"]], "target": [target["url"]]}
-            legacy = {"module": ["http_2xx"], "target": ["http://lms.lms.svc.cluster.local:80/"]}
+            legacy = {
+                "module": ["http_2xx"],
+                "target": ["http://lms.lms.svc.cluster.local:80/"],
+            }
             if params not in (legacy, desired):
                 raise ValueError("Unrecognized LMS probe")
             job["params"] = desired
@@ -216,7 +215,10 @@ def add_moscow_edge_probe(scrape):
         raise ValueError(msg)
     target = next(t for t in targets if t["id"] == "edge-moscow")
     if existing:
-        if existing[0].get("params") != {"module": ["tcp_connect"], "target": [target["url"]]}:
+        if existing[0].get("params") != {
+            "module": ["tcp_connect"],
+            "target": [target["url"]],
+        }:
             msg = "Moscow probe differs from owned catalog"
             raise ValueError(msg)
         return result
@@ -228,7 +230,8 @@ def add_moscow_edge_probe(scrape):
         raise ValueError(msg)
     job["params"] = {"module": ["tcp_connect"], "target": [target["url"]]}
     for rule in job["relabel_configs"]:
-        if rule.get("target_label") in ("service_id", "service_group"):
+        label = rule.get("target_label")
+        if isinstance(label, str) and label in {"service_id", "service_group"}:
             rule["replacement"] = "edge-moscow"
     jobs.append(job)
     return result
@@ -340,7 +343,7 @@ def append_local_translations(translated, group, outputs, nodes):
         local = {
             key: copy.deepcopy(value)
             for key, value in translated.items()
-            if not key.endswith("_sd_configs") and key not in ("static_configs", "relabel_configs")
+            if not key.endswith("_sd_configs") and key not in {"static_configs", "relabel_configs"}
         }
         local["static_configs"] = [
             {"targets": ["127.0.0.1:19100"], "labels": copy.deepcopy(target["labels"])}
@@ -393,7 +396,12 @@ def distribute_source_pools(source, pools, monitors, contract, outputs, mounts):
                         not references,
                         not any(
                             key in translated
-                            for key in ("basic_auth", "authorization", "oauth2", "tls_config")
+                            for key in (
+                                "basic_auth",
+                                "authorization",
+                                "oauth2",
+                                "tls_config",
+                            )
                         ),
                     ]
                 ),
@@ -452,7 +460,8 @@ def compile_config(source, targets, monitors=None):
     mounts: set[object] = set(assets(global_config))
     nodes, seen = distribute_source_pools(source, pools, monitors, contract, outputs, mounts)
     require(
-        not (set(pools) - seen), "Active targets are absent from the effective scrape configuration"
+        not (set(pools) - seen),
+        "Active targets are absent from the effective scrape configuration",
     )
     require(
         nodes == set(NODES),

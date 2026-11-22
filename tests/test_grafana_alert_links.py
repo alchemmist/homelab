@@ -44,7 +44,8 @@ class AlertLinksTest(unittest.TestCase):
         """Treat expression changes as fingerprint changes only with provenance."""
         self.assertNotEqual(LINKS.rule_hash(RULE), LINKS.rule_hash(dict(RULE, query="up == 0")))
         self.assertEqual(
-            LINKS.rule_hash(RULE, True), LINKS.rule_hash(dict(RULE, query="up == 0"), True)
+            LINKS.rule_hash(RULE, True),
+            LINKS.rule_hash(dict(RULE, query="up == 0"), True),
         )
 
     def test_javascript_utf16_hash(self) -> None:
@@ -59,7 +60,9 @@ class AlertLinksTest(unittest.TestCase):
         self.assertIn("pri$Prometheus$\x1fetc\x1frules\x1fa.yaml$group_DOLLAR_one$", unquote(url))
         self.assertTrue(url.endswith("%24-381316856/view"))
 
-    def test_grouped_selectors_keep_severity_variants_and_ignore_other_metrics(self) -> None:
+    def test_grouped_selectors_keep_severity_variants_and_ignore_other_metrics(
+        self,
+    ) -> None:
         """Keep severity variants and ignore metrics that are not ALERTS."""
         other = dict(RULE, name="Other", labels={"severity": "critical"})
         warning = dict(other, labels={"severity": "warning"})
@@ -91,7 +94,11 @@ class AlertLinksTest(unittest.TestCase):
 
     def test_convergence_rejects_old_expression_and_accepts_current(self) -> None:
         """Refuse stale rule expressions during convergence."""
-        group = {"name": "group", "file": "/rules/ns-resource-uid.yaml", "rules": [RULE]}
+        group = {
+            "name": "group",
+            "file": "/rules/ns-resource-uid.yaml",
+            "rules": [RULE],
+        }
         expected = [("ns-resource-uid.yaml", "group", RULE)]
         LINKS.require_convergence({"data": {"groups": [group]}}, expected)
         stale = dict(group, rules=[dict(RULE, query="up == 0")])
@@ -127,7 +134,10 @@ class AlertLinksTest(unittest.TestCase):
         }
         dashboard = {
             "panels": [
-                {"id": 1, "targets": [{"expr": 'ALERTS{alertname="SocratNodeResourceContention"}'}]}
+                {
+                    "id": 1,
+                    "targets": [{"expr": 'ALERTS{alertname="SocratNodeResourceContention"}'}],
+                }
             ]
         }
         calls: list[str] = []
@@ -164,13 +174,22 @@ class AlertLinksTest(unittest.TestCase):
         }
         response = {
             "data": {
-                "groups": [{"name": "services", "file": "/rules/services.yaml", "rules": [service]}]
+                "groups": [
+                    {
+                        "name": "services",
+                        "file": "/rules/services.yaml",
+                        "rules": [service],
+                    }
+                ]
             }
         }
         result = LINKS.resolve(dashboard, response, {}, "overviewAlertLinks", "SocratService")
         self.assertEqual(set(result), {"overviewAlertLinks"})
         self.assertEqual(set(result["overviewAlertLinks"]), {"301"})
-        self.assertIn("SocratServiceBlogUnavailable", result["overviewAlertLinks"]["301"][0]["url"])
+        self.assertIn(
+            "SocratServiceBlogUnavailable",
+            result["overviewAlertLinks"]["301"][0]["url"],
+        )
 
     def test_generic_alert_regex_is_not_a_literal_rule_name(self) -> None:
         """Do not treat a generic regex as a literal rule name."""

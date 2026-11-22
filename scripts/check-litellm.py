@@ -1,4 +1,5 @@
 """Smoke-check the LiteLLM proxy service running in the llm namespace."""
+
 import base64
 import json
 import os
@@ -28,7 +29,9 @@ def request(path, key=None, data=None):
     if key:
         headers["Authorization"] = "Bearer " + key
     req = urllib.request.Request(
-        base + path, headers=headers, data=None if data is None else json.dumps(data).encode()
+        base + path,
+        headers=headers,
+        data=None if data is None else json.dumps(data).encode(),
     )
     with opener.open(req, timeout=180) as response:
         return json.load(response)
@@ -44,7 +47,12 @@ print("unauthenticated API: 401")
 result = request(
     "/key/generate",
     master,
-    {"models": [MODEL], "key_alias": "deployment-verification", "duration": "10m", "rpm_limit": 5},
+    {
+        "models": [MODEL],
+        "key_alias": "deployment-verification",
+        "duration": "10m",
+        "rpm_limit": 5,
+    },
 )
 key = result["key"]
 try:
@@ -55,7 +63,12 @@ try:
         key,
         {
             "model": MODEL,
-            "messages": [{"role": "user", "content": "What is 2 + 2? Reply with the answer only."}],
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "What is 2 + 2? Reply with the answer only.",
+                }
+            ],
             "max_tokens": 64,
             "temperature": 0,
             "chat_template_kwargs": {"enable_thinking": False},

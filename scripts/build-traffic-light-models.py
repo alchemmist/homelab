@@ -28,7 +28,11 @@ def build(source=None):
         legendFormat="{{requested_model}}",
     )
     panel["fieldConfig"]["defaults"]["color"] = {"mode": "palette-classic-by-name"}
-    colors = {"qwen3.8-27b": "#73BF69", "v-deepseek-uc": "#5794F2", "o-deepseek": "#FF9830"}
+    colors = {
+        "qwen3.8-27b": "#73BF69",
+        "v-deepseek-uc": "#5794F2",
+        "o-deepseek": "#FF9830",
+    }
     panel["fieldConfig"]["overrides"] = [
         {
             "matcher": {"id": "byName", "options": name},

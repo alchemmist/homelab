@@ -76,7 +76,12 @@ def validate_path(system, path):
     prefixes = {
         "kubernetes": ("/apis/management.cattle.io/v3/",),
         "harbor": ("/api/v2.0/",),
-        "authentik": ("core/groups/", "core/users/", "core/applications/", "policies/bindings/"),
+        "authentik": (
+            "core/groups/",
+            "core/users/",
+            "core/applications/",
+            "policies/bindings/",
+        ),
     }
     planner.require(
         system in prefixes and parsed.path.startswith(prefixes[system]),
@@ -284,7 +289,9 @@ def main() -> None:
     parser.add_argument("--credentials", required=True, type=Path)
     parser.add_argument("--state", type=Path, default=Path("/var/lib/homelab-observer-bootstrap"))
     parser.add_argument(
-        "--policy", type=Path, default=planner.ROOT / "deploy/identity/observer/profile.json"
+        "--policy",
+        type=Path,
+        default=planner.ROOT / "deploy/identity/observer/profile.json",
     )
     parser.add_argument(
         "--authentik-directory",
@@ -328,7 +335,11 @@ def main() -> None:
                         "operations": len(operations),
                         "plan_hash": approved,
                         "targets": [
-                            {"system": op["system"], "method": op["method"], "path": op["path"]}
+                            {
+                                "system": op["system"],
+                                "method": op["method"],
+                                "path": op["path"],
+                            }
                             for op in operations
                         ],
                     },

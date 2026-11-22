@@ -150,4 +150,4 @@ curl --silent --show-error --range 0-1023 --dump-header - --output /dev/null \
   'https://rustfs.socrat.alchemmist.xyz/public/<known-public-object>'
 ```
 
-For an object larger than 1 KiB, expect `206 Partial Content` and `Content-Range: bytes 0-1023/<total>`, without an OIDC redirect. The console and private data **must not** become anonymous. If only one network fails, report the time, network, hostname and status (or TCP/TLS timeout); do not send credentials or signed URLs. [November incident and acceptance](https://github.com/alchemmist/homelab/issues/557).
+For an object larger than 1 KiB, expect `206 Partial Content` and `Content-Range: bytes 0-1023/<total>`, without an OIDC redirect. The console and private data **must not** become anonymous. If only one network fails, report the time, network, hostname and status (or TCP/TLS timeout); do not send credentials or signed URLs. [Regional access investigation (#557)](https://github.com/alchemmist/homelab/issues/557).

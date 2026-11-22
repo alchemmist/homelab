@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
-    "signals_smoke", ROOT / "scripts/otel-signals-smoke.py"
+    "signals_smoke", ROOT / "ansible/scripts/otel-signals-smoke.py"
 )
 SMOKE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SMOKE)
@@ -47,6 +47,10 @@ class SignalSmokeTests(unittest.TestCase):
         """Require fresh, zero, and one-hour-old log timestamps in that order."""
         now = 10**18
         records = SMOKE.logs_fixture(now)["resourceLogs"][0]["scopeLogs"][0]["logRecords"]
-        assert [int(record["timeUnixNano"]) for record in records] == [now, 0, now - 3600 * 10**9]
+        assert [int(record["timeUnixNano"]) for record in records] == [
+            now,
+            0,
+            now - 3600 * 10**9,
+        ]
         assert SMOKE.SECRET in records[0]["body"]["stringValue"]
         assert SMOKE.SERVICE.startswith("otel-isolated-")

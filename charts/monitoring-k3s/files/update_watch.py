@@ -204,15 +204,46 @@ class State:
             self.body = body
 
 
+def actionable_metrics(alerts: list[dict]) -> bytes:
+    """Count Alertmanager instances after silencing and inhibition, not rule states."""
+    if not isinstance(alerts, list):
+        raise ValueError("expected Alertmanager alert list")
+    counts = {"critical": 0, "warning": 0}
+    for alert in alerts:
+        labels = alert["labels"]
+        severity = labels.get("severity")
+        if (
+            alert["status"]["state"] == "active"
+            and severity in counts
+            and labels["alertname"] not in {"Watchdog", "InfoInhibitor"}
+        ):
+            counts[severity] += 1
+    return "".join(
+        f'socrat_actionable_alerts{{severity="{severity}"}} {count}\n'
+        for severity, count in counts.items()
+    ).encode()
+
+
 def serve(state: State, port: int) -> None:
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
-            if self.path != "/metrics":
+            if self.path == "/actionable-alerts":
+                try:
+                    with urllib.request.urlopen(
+                        "http://kube-prometheus-stack-alertmanager:9093/api/v2/alerts",
+                        timeout=4,
+                    ) as response:
+                        body = actionable_metrics(json.load(response))
+                except (OSError, ValueError, KeyError, TypeError, AttributeError):
+                    self.send_error(503, "Alertmanager data unavailable")
+                    return
+            elif self.path == "/metrics":
+                with state.lock:
+                    body = state.body
+            else:
                 self.send_response(404)
                 self.end_headers()
                 return
-            with state.lock:
-                body = state.body
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; version=0.0.4")
             self.send_header("Content-Length", str(len(body)))

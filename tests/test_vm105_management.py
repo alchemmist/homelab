@@ -35,8 +35,8 @@ class ManagementMove(unittest.TestCase):
     def test_exact_rancher_source_native_route_and_security(self) -> None:
         """Require the pinned Rancher chart, native route, and verified TLS bundle."""
         chart = yaml.safe_load((ROOT / "charts/rancher/Chart.yaml").read_text())
-        assert chart["version"] == "2.15.2"
-        assert chart["appVersion"] == "v2.15.2"
+        assert chart["version"] == "2.15.3"
+        assert chart["appVersion"] == "v2.15.3"
         v = yaml.safe_load((ROOT / "deploy/platform/rancher/values.yaml").read_text())
         assert v["replicas"] == 1
         assert v["antiAffinity"] == "preferred"

@@ -18,7 +18,11 @@ HOST = "auth.socrat.alchemmist.xyz"
 PATH = "/application/o/rancher/.well-known/openid-configuration"
 ISSUER = "https://" + HOST + "/application/o/rancher/"
 MAX_DISCOVERY_BYTES = 65_536
-ENTRIES = {"home": "109.173.40.247", "vps": "109.120.141.60", "internal": "192.168.0.250"}
+ENTRIES = {
+    "home": "109.173.40.247",
+    "vps": "109.120.141.60",
+    "internal": "192.168.0.250",
+}
 
 
 def valid_discovery(data):
@@ -109,7 +113,12 @@ def attempt_probe(entry, result, timeout, phase):
 
 def require_known_pair(entry, vantage) -> None:
     """Fail on unowned entries or vantages, keeping the LAN probe home-only."""
-    if entry not in ENTRIES or vantage not in ["home", "vps", "workstation", "external"]:
+    if entry not in ENTRIES or vantage not in [
+        "home",
+        "vps",
+        "workstation",
+        "external",
+    ]:
         raise ValueError("Unknown owned entry or vantage")
     if entry == "internal" and vantage != "home":
         raise ValueError("Private LAN probe is home-only")
@@ -155,7 +164,10 @@ def main():
     )
     results = [probe(entry, args.vantage) for entry in dict.fromkeys(entries)]
     print(
-        json.dumps({"writes": False, "credentials_used": False, "results": results}, sort_keys=True)
+        json.dumps(
+            {"writes": False, "credentials_used": False, "results": results},
+            sort_keys=True,
+        )
     )
 
 

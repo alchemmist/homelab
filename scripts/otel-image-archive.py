@@ -25,7 +25,8 @@ def run(lock, component, output):
     blobs = output / "oci" / "blobs" / "sha256"
     blobs.mkdir(mode=0o700, parents=True)
     with urllib.request.urlopen(
-        images.request(repository, image["linuxAMD64Digest"], token, "manifests"), timeout=60
+        images.request(repository, image["linuxAMD64Digest"], token, "manifests"),
+        timeout=60,
     ) as response:
         manifest = response.read()
     if "sha256:" + hashlib.sha256(manifest).hexdigest() != image["linuxAMD64Digest"]:
@@ -39,7 +40,8 @@ def run(lock, component, output):
         size = 0
         with (
             urllib.request.urlopen(
-                images.request(repository, descriptor["digest"], token, "blobs"), timeout=180
+                images.request(repository, descriptor["digest"], token, "blobs"),
+                timeout=180,
             ) as response,
             path.open("xb") as stream,
         ):

@@ -56,6 +56,10 @@
         ]
       },
       {
+        "file": "deploy/platform/redisinsight/resources/deployment.yaml",
+        "path": ["spec", "template", "spec", "hostAliases"]
+      },
+      {
         "file": "deploy/platform/rancher/values.yaml",
         "path": [
           "hostAliases"
@@ -84,7 +88,7 @@
     ]
   },
   "relayContract": {
-    "relayScript": "scripts/wg-peer15-relay.py",
+    "relayScript": "ansible/scripts/wg-peer15-relay.py",
     "endpointScript": "scripts/wg-peer15-endpoint.py",
     "frontNode": "socrat-0",
     "clientNode": "socrat-5",

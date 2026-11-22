@@ -15,7 +15,9 @@ parser.add_argument(
     help="Also wait beyond actual five-minute provider token lifetime",
 )
 parser.add_argument(
-    "--public-edge", choices=["109.120.141.60", "109.173.40.247"], default="109.120.141.60"
+    "--public-edge",
+    choices=["109.120.141.60", "109.173.40.247"],
+    default="109.120.141.60",
 )
 args = parser.parse_args()
 if not args.run:
@@ -110,7 +112,11 @@ user = api(
 )
 binding = None
 try:
-    api("POST", "core/users/" + str(user["pk"]) + "/set_password/", {"password": password})
+    api(
+        "POST",
+        "core/users/" + str(user["pk"]) + "/set_password/",
+        {"password": password},
+    )
     with sync_playwright() as p:
         browser = p.chromium.launch(
             args=[
@@ -142,7 +148,10 @@ try:
             ]:
                 denials.append(True)
                 print("Native policy HTTP denial:", response.status, flush=True)
-            if "/api/v3/flows/executor/" not in response.url or response.status not in [200, 400]:
+            if "/api/v3/flows/executor/" not in response.url or response.status not in [
+                200,
+                400,
+            ]:
                 return
             try:
                 data = response.json()
@@ -289,9 +298,15 @@ try:
   }""",
             launch,
         )
-        assert transport == {"csrf": 200, "status": 200, "redirected": False, "json": True}
+        assert transport == {
+            "csrf": 200,
+            "status": 200,
+            "redirected": False,
+            "json": True,
+        }
         print(
-            "PASS: native CSRF + safe empty-login POST returns native JSON, no redirect", flush=True
+            "PASS: native CSRF + safe empty-login POST returns native JSON, no redirect",
+            flush=True,
         )
         # Missing proxy cookie models the exact expired-session branch, no forged JWT.
         context.clear_cookies(name=__import__("re").compile("^authentik_proxy"))
@@ -378,7 +393,11 @@ try:
             page.wait_for_timeout(315000)
             page.goto(launch)
             page.locator("input[type=password]").wait_for(timeout=30000)
-            print("Native proxy browser IdP roundtrip after expiry:", bool(navigations), flush=True)
+            print(
+                "Native proxy browser IdP roundtrip after expiry:",
+                bool(navigations),
+                flush=True,
+            )
             assert all(
                 c["secure"] and c["httpOnly"]
                 for c in context.cookies("https://vpn.alchemmist.xyz")
@@ -391,7 +410,10 @@ try:
         anonymous = browser.new_context()
         r = anonymous.request.get(
             launch,
-            headers={"X-authentik-username": "alchemmist", "X-authentik-groups": "homelab-owner"},
+            headers={
+                "X-authentik-username": "alchemmist",
+                "X-authentik-groups": "homelab-owner",
+            },
             max_redirects=0,
         )
         assert r.status == 302

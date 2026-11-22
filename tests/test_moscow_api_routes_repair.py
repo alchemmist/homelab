@@ -8,7 +8,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "repair", ROOT / "scripts/moscow-api-routes-repair.py"
+    "repair", ROOT / "ansible/scripts/moscow-api-routes-repair.py"
 )
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
@@ -17,8 +17,7 @@ spec.loader.exec_module(m)
 def fixture() -> tuple[str, dict[str, list[str]]]:
     """Build a fixture wg-quick config and the expected per-peer routes."""
     peers: dict[str, list[str]] = {
-        key: [addr + "/32"]
-        for key, addr in zip(m.PEERS, ["10.250.0.1", "10.250.0.3"], strict=True)
+        key: [addr + "/32"] for key, addr in zip(m.PEERS, ["10.250.0.1", "10.250.0.3"], strict=True)
     }
     peers["other"] = ["10.250.0.2/32"]
     text = "[Interface]\nPrivateKey = fixture-not-a-real-key\nAddress = 10.250.0.40/24\n"
@@ -63,7 +62,7 @@ def test_inventory_keeps_exact_api_host_routes_and_no_default() -> None:
     assert host["wg_socrat_extra_allowed_peer_ips"] == {
         "socrat-4": {"socrat-0": ["192.168.0.23/32"], "socrat-1": ["192.168.0.24/32"]}
     }
-    source = (ROOT / "scripts/moscow-api-routes-repair.py").read_text()
+    source = (ROOT / "ansible/scripts/moscow-api-routes-repair.py").read_text()
     assert "'route','add'" in source and "wg-quick" not in source
     assert "'systemctl'" not in source and "private-key" not in source
 

@@ -68,6 +68,10 @@
       "KubeAggregatedAPIErrors": 9,
       "KubeClientCertificateExpiration": 11
     },
+    "alerts-32fe12c750259f22": {
+      "KubeJobFailed": 1,
+      "SocratPrAgentWebhookRedeliveryFailed": 3
+    },
     "alerts-34da2721f95716a0": {
       "NodeCPUHighUsage": 1,
       "NodeClockNotSynchronising": 3,
@@ -237,6 +241,10 @@
       "KubeStateMetricsShardingMismatch": 3,
       "KubeStateMetricsShardsMissing": 5,
       "KubeStateMetricsWatchErrors": 7
+    },
+    "alerts-e1ea8bfeb00b8e93": {
+      "SocratRedisCommonRedundancyReduced": 1,
+      "SocratRedisCommonWriterUnavailable": 3
     },
     "alerts-e717d88c8dfac5eb": {
       "AlertmanagerClusterCrashlooping": 1,

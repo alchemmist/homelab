@@ -9,12 +9,19 @@ spec:
     metadata: {labels: {app: redis-common-write-probe}}
     spec:
       automountServiceAccountToken: false
-      securityContext: {runAsNonRoot: true, runAsUser: 65534, seccompProfile: {type: RuntimeDefault}}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile: {type: RuntimeDefault}
       containers:
         - name: writer
-          image: docker.io/library/redis:7.4-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
+          image: >-
+            docker.io/library/redis:7.4-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
           command: [sleep, infinity]
-          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
           resources: {requests: {cpu: 5m, memory: 8Mi}, limits: {memory: 32Mi}}
           env:
             - name: REDISCLI_AUTH
@@ -30,8 +37,12 @@ spec:
                 - -ec
                 - |
                   host=redis-common-haproxy.redis.svc.cluster.local
-                  r() { redis-cli --raw --tls --sni "$host" --cacert /ca/ca.crt -h "$host" --user writer-probe "$@"; }
+                  r() {
+                    redis-cli --raw --tls --sni "$host" --cacert /ca/ca.crt \
+                      -h "$host" --user writer-probe "$@"
+                  }
                   value="$HOSTNAME:$(date +%s)"
-                  test "$(r SET monitor:writer "$value" EX 60)" = OK && test "$(r GET monitor:writer)" = "$value"
+                  test "$(r SET monitor:writer "$value" EX 60)" = OK
+                  test "$(r GET monitor:writer)" = "$value"
       volumes: [{name: ca, secret: {secretName: redis-common-public-ca}}]
 ...

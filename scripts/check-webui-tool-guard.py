@@ -1,4 +1,5 @@
 """Check the Open WebUI homelab tool guard behaviour across tool kinds."""
+
 import asyncio
 import json
 import uuid

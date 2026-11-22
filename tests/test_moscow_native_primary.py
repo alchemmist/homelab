@@ -1,6 +1,5 @@
 """Tests for the moscow-native-primary playbook phases."""
 
-import types
 from pathlib import Path
 
 import yaml
@@ -33,57 +32,3 @@ def test_enrollment_cannot_release_native_fence() -> None:
         t.get("ansible.builtin.assert", {}).get("that") == "not native_fence.stat.exists"
         for t in p["pre_tasks"]
     )
-
-
-def runtime_module() -> types.ModuleType:
-    """Load the offline worker-retirement runtime module."""
-    import importlib.util
-
-    s = importlib.util.spec_from_file_location(
-        "retire", ROOT / "scripts/moscow-retire-worker-runtime.py"
-    )
-    m = importlib.util.module_from_spec(s)
-    s.loader.exec_module(m)
-    return m
-
-
-def test_runtime_refuses_unknown_workloads_and_pvc() -> None:
-    """Refuse an empty plan and any pod that still has a PVC."""
-    import pytest
-
-    m = runtime_module()
-
-    def pod(ns, name, uid) -> dict[str, dict[str, object]]:
-        return {
-            "metadata": {"namespace": ns, "name": name, "uid": uid},
-            "spec": {"nodeName": "socrat-4"},
-            "status": {},
-        }
-
-    good: dict[str, list[dict[str, dict[str, object]]]] = {
-        "items": [
-            pod("vpn-transit", "vpn-transit-a", "a"),
-            pod(
-                "cattle-monitoring-system", "kube-prometheus-stack-prometheus-node-exporter-b", "b"
-            ),
-        ]
-    }
-    assert len(m.allowed(good)[0]) == 2
-    good["items"][0]["spec"]["volumes"] = [
-        {"persistentVolumeClaim": {"claimName": "do-not-delete"}}
-    ]
-    with pytest.raises(AssertionError):
-        m.allowed(good)
-    with pytest.raises(AssertionError):
-        m.allowed({"items": []})
-
-
-def test_retirement_requires_gitops_zero_and_uid_precondition() -> None:
-    """Require GitOps scale-down and the reviewed confirmation gates."""
-    text = (ROOT / "ansible/playbooks/moscow-retire-worker.yml").read_text()
-    p = yaml.safe_load(text)[0]
-    assert p["hosts"] == "socrat-4" and p["any_errors_fatal"]
-    assert "spec.replicas == 0" in text and "preconditions" in text and "old_node_uid" in text
-    assert "moscow_native_data_path_accepted" in text and "moscow_retire_worker_confirm" in text
-    assert "k3s-killall" not in text and "k3s-uninstall" not in text
-    assert "enabled: false" in text and "state: absent" not in text

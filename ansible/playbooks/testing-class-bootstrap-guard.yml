@@ -13,7 +13,7 @@
           - wg_socrat_nodes[inventory_hostname].address == '10.250.0.40'
     - name: Install narrow guard helper
       ansible.builtin.copy:
-        src: ../../scripts/testing-class-wg-guard.sh
+        src: ../scripts/testing-class-wg-guard.sh
         dest: /usr/local/libexec/testing-class-wg-guard
         owner: root
         group: root

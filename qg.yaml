@@ -73,6 +73,11 @@ profiles:
     extends: default
     setup:
       - run: uv run python -m ci.quality.install_tools --tools gitleaks
+  quality-images:
+    extends: default
+    timeout-minutes: 15
+    setup:
+      - run: uv run python -m ci.quality.install_tools --tools trivy
   quality-manifests:
     extends: quality-helm
     setup:
@@ -97,7 +102,7 @@ profiles:
       - run: uv run python -m ci.quality.install_tools --tools promtool
       - run: |
           set -euo pipefail
-          read -r image < quality/nginx-syntax-image.txt
+          read -r image < ci/quality/nginx-syntax-image.txt
           docker pull "${image}"
 nodes:
   graph:
@@ -110,6 +115,15 @@ nodes:
         findings: false
         files: false
         node: false
+  docs-language:
+    title: Documentation language
+    profile: default
+    run: make docs-language
+    policy: *id001
+    needs:
+      - graph
+    results:
+      native: reports/docs-language.json
   yaml:
     title: YAML structure
     profile: default
@@ -174,6 +188,13 @@ nodes:
     run: make docker
     results:
       native: reports/docker.json
+  image-cves:
+    title: Deployed image vulnerabilities
+    profile: quality-images
+    needs:
+      - graph
+    policy: *id001
+    run: make image-cves
   tests-fast:
     title: Unit tests
     profile: quality-fast

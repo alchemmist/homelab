@@ -13,9 +13,14 @@ import urllib.request
 
 def run():
     logging.disable(logging.CRITICAL)
-    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+    with (
+        contextlib.redirect_stdout(io.StringIO()),
+        contextlib.redirect_stderr(io.StringIO()),
+    ):
         from open_webui.utils.telemetry import instrumentors
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+            OTLPSpanExporter,
+        )
         from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -36,7 +41,10 @@ def run():
         ) as parent:
             parent.set_attribute("homelab.synthetic", True)
             parent.set_status(
-                Status(StatusCode.ERROR, "synthetic mandatory sampling root; not service failure")
+                Status(
+                    StatusCode.ERROR,
+                    "synthetic mandatory sampling root; not service failure",
+                )
             )
             trace_id = format(parent.get_span_context().trace_id, "032x")
             parent_id = format(parent.get_span_context().span_id, "016x")

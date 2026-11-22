@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("nodes", ROOT / "scripts/netbird-node-reconcile.py")
+spec = importlib.util.spec_from_file_location("nodes", ROOT / "ansible/scripts/netbird-node-reconcile.py")
 n = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(n)
 IMAGE = "netbirdio/netbird:0.82.0@sha256:" + "a" * 64
@@ -37,7 +37,12 @@ class Fake(n.Runtime):
         self.config = n.validate_config(
             {
                 "image": IMAGE,
-                "reserved_addresses": ["10.250.0.4", "10.250.0.6", "10.250.0.7", "10.250.0.8"],
+                "reserved_addresses": [
+                    "10.250.0.4",
+                    "10.250.0.6",
+                    "10.250.0.7",
+                    "10.250.0.8",
+                ],
                 "nodes": {"socrat-4": "10.250.0.9"},
             }
         )
@@ -90,7 +95,11 @@ class Fake(n.Runtime):
         """Serve the reconciler's API calls from in-memory fixtures."""
         if method == "GET":
             if path == "groups":
-                return [self.admin, self.group, {"name": "All", "id": "all", "issued": "api"}]
+                return [
+                    self.admin,
+                    self.group,
+                    {"name": "All", "id": "all", "issued": "api"},
+                ]
             if path == "networks":
                 return [{"id": "net", "name": n.NETWORK}]
             if path.endswith("/routers"):
@@ -232,7 +241,9 @@ class ReconcileTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             n.validate_config({"image": "latest", "nodes": {"socrat-4": "10.250.0.9"}})
 
-    def test_render_has_persistent_identity_and_no_human_or_dns_permissions(self) -> None:
+    def test_render_has_persistent_identity_and_no_human_or_dns_permissions(
+        self,
+    ) -> None:
         """Rendered manifests keep identity persistent without human or DNS permissions."""
         pvc, deploy = n.manifests("socrat-28", IMAGE)
         pod = deploy["spec"]["template"]["spec"]
@@ -269,7 +280,9 @@ class ReconcileTest(unittest.TestCase):
         assert f.reconcile("socrat-4")["status"] == "awaiting-argocd-workloads"
         assert f.writes == []
 
-    def test_missing_git_workloads_are_deferred_without_kubernetes_or_api_writes(self) -> None:
+    def test_missing_git_workloads_are_deferred_without_kubernetes_or_api_writes(
+        self,
+    ) -> None:
         """Missing git workloads defer without Kubernetes or API writes."""
         f = Fake(existing=False)
         assert f.reconcile("socrat-4")["status"] == "awaiting-argocd-workloads"
@@ -329,7 +342,15 @@ class ReconcileTest(unittest.TestCase):
 
     def test_node_uid_pvc_peer_address_and_image_drift_are_not_repaired(self) -> None:
         """Identity drift on node, PVC, peer, address or image is never repaired."""
-        for kind in ["node", "pvc", "peer", "address", "image", "key", "deleted-volume"]:
+        for kind in [
+            "node",
+            "pvc",
+            "peer",
+            "address",
+            "image",
+            "key",
+            "deleted-volume",
+        ]:
             f = Fake()
             f.reconcile("socrat-4", self.seed())
             before = len(f.writes)

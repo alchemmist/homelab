@@ -86,6 +86,10 @@ def main():
             ["~monitor:writer", "+set", "+get", "+info"],
         ),
     }
+    install_rules(users)
+
+
+def install_rules(users):
     rules = {
         u: ["on", "#" + hashlib.sha256(p.encode()).hexdigest(), *r]
         for u, (p, r) in users.items()
@@ -146,7 +150,7 @@ def main():
             if json.loads(cli("acl", "setuser", u, "reset", *rule)) != "OK":
                 sys.exit("ACL install failed")
     print(
-        "Client and probe credentials provisioned; persistent ACL and all three runtimes updated."
+        "Persistent ACL and all three runtimes updated."
     )
 
 

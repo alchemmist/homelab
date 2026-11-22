@@ -67,7 +67,7 @@ This verifies a signed simulation, not yet a real new GitHub push delivery.
 
 Historical push introducing `vessel-is-empty.ru.md` tested against real Qwen.
 Initially it also proposed routine book-status changes; tightened editorial
-prompt and repeated: now only `New verse (Ru): Сосуд опустошенный` is proposed.
+prompt and repeated: now only a single Russian-language verse title (translated: “The Emptied Vessel”) is proposed.
 Binary image assets are supplied as metadata, not treated as missing text diffs.
 
 Real draft PR https://github.com/alchemmist/blog/pull/71 used an explicit

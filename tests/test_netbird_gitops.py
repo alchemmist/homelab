@@ -11,7 +11,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "gitops_nodes", ROOT / "scripts/netbird-gitops-nodes.py"
+    "gitops_nodes", ROOT / "ansible/scripts/netbird-gitops-nodes.py"
 )
 gitops = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gitops)
@@ -55,7 +55,9 @@ class GitOpsTests(unittest.TestCase):
         )
         return result
 
-    def test_root_discovers_default_project_application_without_new_bootstrap(self) -> None:
+    def test_root_discovers_default_project_application_without_new_bootstrap(
+        self,
+    ) -> None:
         """The Argo CD root discovers the default-project app without new bootstrap."""
         root = yaml.safe_load((ROOT / "deploy/argocd/root.yaml").read_text())
         app = yaml.safe_load((ROOT / "deploy/argocd/apps/netbird.yaml").read_text())
@@ -65,9 +67,14 @@ class GitOpsTests(unittest.TestCase):
         assert app["spec"]["source"]["path"] == "charts/netbird"
         assert app["spec"]["source"]["helm"]["parameters"] == []
         assert app["spec"]["source"]["helm"]["valueFiles"] == ["../../deploy/netbird/values.yaml"]
-        assert app["spec"]["syncPolicy"]["automated"] == {"prune": False, "selfHeal": True}
+        assert app["spec"]["syncPolicy"]["automated"] == {
+            "prune": False,
+            "selfHeal": True,
+        }
 
-    def test_real_helm_render_includes_complete_stack_without_secret_values(self) -> None:
+    def test_real_helm_render_includes_complete_stack_without_secret_values(
+        self,
+    ) -> None:
         """A real Helm render includes the full stack without secret values."""
         docs = list(
             yaml.safe_load_all(
@@ -88,11 +95,21 @@ class GitOpsTests(unittest.TestCase):
         deployments = [d for d in docs if d["kind"] == "Deployment"]
         assert len(deployments) == 6 + len(_mapping(self.values()["nodes"]))
         names = {d["metadata"]["name"] for d in deployments}
-        assert {"dashboard", "server", "stun", "netbird-edge-forwarder", "netbird-relay-home", "netbird-relay-vps"} <= names
+        assert {
+            "dashboard",
+            "server",
+            "stun",
+            "netbird-edge-forwarder",
+            "netbird-relay-home",
+            "netbird-relay-vps",
+        } <= names
         assert not any(d["kind"] in ["Secret", "Job", "ApplicationSet", "AppProject"] for d in docs)
         for d in docs:
             if d["kind"] in ["Namespace", "PersistentVolumeClaim"]:
-                assert d["metadata"]["annotations"]["argocd.argoproj.io/sync-options"] == "Prune=false,Delete=false"
+                assert (
+                    d["metadata"]["annotations"]["argocd.argoproj.io/sync-options"]
+                    == "Prune=false,Delete=false"
+                )
             if d["kind"] != "Deployment":
                 continue
             for c in d["spec"]["template"]["spec"]["containers"]:
@@ -103,9 +120,13 @@ class GitOpsTests(unittest.TestCase):
                         assert "value" not in env
         dashboard = next(d for d in deployments if d["metadata"]["name"] == "dashboard")
         image = _mapping(self.values()["image"])
-        assert dashboard["spec"]["template"]["spec"]["containers"][0]["image"] == _text(image["repository"]) + "@" + _text(image["digest"])
+        assert dashboard["spec"]["template"]["spec"]["containers"][0]["image"] == _text(
+            image["repository"]
+        ) + "@" + _text(image["digest"])
 
-    def test_home_relay_admits_exact_vps_flannel_source_without_weakening_health(self) -> None:
+    def test_home_relay_admits_exact_vps_flannel_source_without_weakening_health(
+        self,
+    ) -> None:
         """The home relay admits exactly the VPS flannel source with health intact."""
         resources = _documents(self.values()["resources"])
         policy = next(
@@ -128,17 +149,20 @@ class GitOpsTests(unittest.TestCase):
             for r in resources
             if r["kind"] == "Deployment" and _mapping(r["metadata"])["name"] == "netbird-relay-home"
         )
-        container = _documents(
-            _mapping_path(deployment, "spec", "template", "spec")["containers"]
-        )[0]
-        assert _text(_mapping(_mapping(_mapping(container)["readinessProbe"])["httpGet"])["path"]) == "/health"
+        container = _documents(_mapping_path(deployment, "spec", "template", "spec")["containers"])[
+            0
+        ]
+        assert (
+            _text(_mapping(_mapping(_mapping(container)["readinessProbe"])["httpGet"])["path"])
+            == "/health"
+        )
         assert _mapping(_mapping(_mapping(container)["readinessProbe"])["httpGet"])["port"] == 9000
-        env = {
-            _text(_mapping(e)["name"]): e
-            for e in _documents(_mapping(container)["env"])
-        }
+        env = {_text(_mapping(e)["name"]): e for e in _documents(_mapping(container)["env"])}
         assert "secretKeyRef" in _mapping(_mapping(env["NB_AUTH_SECRET"])["valueFrom"])
-        assert _mapping(env["NB_EXPOSED_ADDRESS"])["value"] == "rels://netbird.socrat.alchemmist.xyz:443"
+        assert (
+            _mapping(env["NB_EXPOSED_ADDRESS"])["value"]
+            == "rels://netbird.socrat.alchemmist.xyz:443"
+        )
 
     def inventory(self, address="10.250.0.9") -> dict[str, object]:
         """Build the inventory payload used by the offline gitops node tests."""
@@ -160,11 +184,21 @@ class GitOpsTests(unittest.TestCase):
         original = copy.deepcopy(_documents(values["resources"]))
         image = "netbirdio/netbird:0.82.0@sha256:" + "a" * 64
         assert gitops.desired(values, self.inventory(), image) == ["socrat-4"]
-        assert _documents(values["resources"])[:len(original)] == original
+        assert _documents(values["resources"])[: len(original)] == original
         assert _mapping(values["nodes"])["socrat-4"] == "10.250.0.9"
         assert len(_documents(values["resources"])) == len(original) + 2
         assert gitops.desired(values, self.inventory(), image) == []
-        assert gitops.desired(values, {"Socrat": {"hosts": ["socrat-4"]}, "_meta": _mapping(self.inventory())["_meta"]}, image) == []
+        assert (
+            gitops.desired(
+                values,
+                {
+                    "Socrat": {"hosts": ["socrat-4"]},
+                    "_meta": _mapping(self.inventory())["_meta"],
+                },
+                image,
+            )
+            == []
+        )
         with self.assertRaises(ValueError):
             gitops.desired(values, self.inventory("10.250.0.10"), image)
         _documents(values["resources"]).pop()
@@ -188,7 +222,7 @@ class GitOpsTests(unittest.TestCase):
     def test_old_control_plane_cli_cannot_apply(self) -> None:
         """The old control-plane CLI cannot apply."""
         p = subprocess.run(
-            ["python3", str(ROOT / "scripts/netbird-deploy.py"), "apply"],
+            ["python3", str(ROOT / "ansible/scripts/netbird-deploy.py"), "apply"],
             capture_output=True,
             text=True,
         )

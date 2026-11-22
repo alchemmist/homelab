@@ -101,7 +101,12 @@ def fixtures() -> tuple[
             {
                 "name": "health",
                 "rules": [
-                    {"name": "NodeDown", "type": "alerting", "query": "up == 0", "health": "ok"}
+                    {
+                        "name": "NodeDown",
+                        "type": "alerting",
+                        "query": "up == 0",
+                        "health": "ok",
+                    }
                 ],
             }
         ]
@@ -197,9 +202,17 @@ class SourceRegistryTests(unittest.TestCase):
                 {"x": "a"},
                 True,
             ),
-            ({"matchExpressions": [{"key": "x", "operator": "NotIn", "values": ["a"]}]}, {}, True),
+            (
+                {"matchExpressions": [{"key": "x", "operator": "NotIn", "values": ["a"]}]},
+                {},
+                True,
+            ),
             ({"matchExpressions": [{"key": "x", "operator": "Exists"}]}, {}, False),
-            ({"matchExpressions": [{"key": "x", "operator": "DoesNotExist"}]}, {}, True),
+            (
+                {"matchExpressions": [{"key": "x", "operator": "DoesNotExist"}]},
+                {},
+                True,
+            ),
         ]
         for selector, attributes, expected in cases:
             assert REGISTRY.selected(selector, attributes) == expected
@@ -237,13 +250,24 @@ class SourceRegistryTests(unittest.TestCase):
         target["labels"]["instance"] = "https://user:pass@host/private-vpn-path?token=abc"
         target["scrapeUrl"] = "http://node:9100/hidden-path?auth=secret"
         summary = json.dumps(REGISTRY.target_summary(target))
-        for secret in ("user:pass", "private-vpn-path", "token=abc", "hidden-path", "auth=secret"):
+        for secret in (
+            "user:pass",
+            "private-vpn-path",
+            "token=abc",
+            "hidden-path",
+            "auth=secret",
+        ):
             assert secret not in summary
 
     def test_nested_dashboard_queries_are_inventoried_without_mutation(self) -> None:
         """Nested dashboard queries are inventoried without mutation."""
         document = {
-            "panels": [{"id": 1, "panels": [{"id": 2, "targets": [{"expr": "up", "refId": "B"}]}]}]
+            "panels": [
+                {
+                    "id": 1,
+                    "panels": [{"id": 2, "targets": [{"expr": "up", "refId": "B"}]}],
+                }
+            ]
         }
         assert list(REGISTRY.expressions(document)) == [(2, "B", "up")]
 

@@ -47,7 +47,12 @@ def reviewed_id(value):
 def router_body(node_group):
     if not reviewed_id(node_group):
         raise ValueError("dedicated API group containing exact node agents required")
-    return {"peer_groups": [node_group], "enabled": True, "masquerade": True, "metric": 80}
+    return {
+        "peer_groups": [node_group],
+        "enabled": True,
+        "masquerade": True,
+        "metric": 80,
+    }
 
 
 def admin_input_policy(jwt_group, node_group):

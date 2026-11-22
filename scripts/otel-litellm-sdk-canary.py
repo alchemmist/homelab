@@ -14,7 +14,10 @@ import time
 
 def run():
     logging.disable(logging.CRITICAL)
-    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+    with (
+        contextlib.redirect_stdout(io.StringIO()),
+        contextlib.redirect_stderr(io.StringIO()),
+    ):
         import litellm
         from litellm.integrations.opentelemetry import OpenTelemetry
         from opentelemetry import trace
@@ -27,7 +30,10 @@ def run():
         if handler.config.enable_metrics or handler.config.enable_events:
             msg = "Duplicate metrics or message events must not be enabled"
             raise ValueError(msg)
-        source_audit = {"endedSpans": 0, "sensitiveSyntheticContentFoundAtSource": False}
+        source_audit = {
+            "endedSpans": 0,
+            "sensitiveSyntheticContentFoundAtSource": False,
+        }
 
         class SourcePrivacyAudit(SpanProcessor):
             def on_start(self, span, parent_context=None) -> None:
@@ -63,7 +69,10 @@ def run():
             litellm.completion(
                 model="openai/gpt-4o-mini",
                 messages=[
-                    {"role": "user", "content": "OTEL_CANARY_PRIVATE_CONTENT_MUST_NOT_BE_CAPTURED"}
+                    {
+                        "role": "user",
+                        "content": "OTEL_CANARY_PRIVATE_CONTENT_MUST_NOT_BE_CAPTURED",
+                    }
                 ],
                 mock_response="OTEL_CANARY_PRIVATE_RESPONSE_MUST_NOT_BE_CAPTURED",
                 api_key="otel-canary-not-a-real-credential",

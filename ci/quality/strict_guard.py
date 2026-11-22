@@ -75,7 +75,7 @@ class GeneratedWorkflows(TypedDict):
 
 
 class StrictPolicy(TypedDict):
-    """Keys of quality/strict-policy.json consumed by the strict guard."""
+    """Keys of ci/quality/strict-policy.json consumed by the strict guard."""
 
     ruff: RuffPolicy
     mypy: MypyPolicy
@@ -114,7 +114,7 @@ CODE_SUFFIXES = {".py", ".pyi", ".sh", ".bash", ".yml", ".yaml", ".js", ".ts", "
 
 def policy():
     """Execute policy."""
-    return json.loads((ROOT / "quality/strict-policy.json").read_text())
+    return json.loads((ROOT / "ci/quality/strict-policy.json").read_text())
 
 
 def line_is_suppression(line: str) -> bool:
@@ -156,7 +156,7 @@ def partition(path: str) -> str:
     for prefix in vendor_prefixes():
         if path.startswith(prefix):
             return "vendor"
-    if path.startswith(("quality/", "ci/")) or path in {"qg.yaml", "pyproject.toml"}:
+    if path.startswith("ci/") or path in {"qg.yaml", "pyproject.toml"}:
         return "quality-policy"
     top = path.split("/", 1)[0]
     return {
@@ -167,7 +167,6 @@ def partition(path: str) -> str:
         "deploy": "manifests",
         "services": "services",
         ".github": "workflows",
-        "tools": "workflows",
     }.get(top, "other-owned")
 
 
@@ -214,7 +213,7 @@ def listed_ansible_rules() -> set[str]:
 
 def verify_ruff_policy(data: StrictPolicy) -> None:
     """Fail if ruff config diverges from the strict policy."""
-    ruff = tomllib.loads((ROOT / "quality/ruff.toml").read_text())
+    ruff = tomllib.loads((ROOT / "ci/quality/ruff.toml").read_text())
     lint = ruff.get("lint", {})
     if "exclude" in ruff or "extend-exclude" in ruff or "exclude" in lint:
         raise ValueError("Ruff exclude hides files")
@@ -231,7 +230,7 @@ def verify_ruff_policy(data: StrictPolicy) -> None:
 
 def verify_mypy_policy(data: StrictPolicy) -> None:
     """Fail if mypy strict config or required flags drifted."""
-    mypy = (ROOT / "quality/mypy.ini").read_text()
+    mypy = (ROOT / "ci/quality/mypy.ini").read_text()
     if (
         "strict = true" not in mypy
         or "disable_error_code" in mypy
@@ -252,7 +251,7 @@ def verify_yamllint_contract(data: StrictPolicy) -> None:
     """Fail if yamllint enabled/disabled rules drifted from the policy."""
     from yamllint.config import YamlLintConfig
 
-    yamllint_rules = YamlLintConfig(file=str(ROOT / "quality/yamllint.yaml")).rules
+    yamllint_rules = YamlLintConfig(file=str(ROOT / "ci/quality/yamllint.yaml")).rules
     for name, reason in data["yamllint"]["disabled"].items():
         if not isinstance(reason, str) or len(reason) < 20:
             raise ValueError("Yamllint disable reason is missing")
@@ -274,7 +273,7 @@ def verify_yamllint_rule(actual: object, name: str, options: dict[str, object]) 
 
 def verify_yamllint_text(data: StrictPolicy) -> None:
     """Fail if yamllint truthy, line-length or disables drifted."""
-    yamllint_text = (ROOT / "quality/yamllint.yaml").read_text()
+    yamllint_text = (ROOT / "ci/quality/yamllint.yaml").read_text()
     if "disable" in yamllint_text:
         disabled_names = set(data["yamllint"]["disabled"])
         for line in yamllint_text.splitlines():
@@ -294,7 +293,7 @@ def verify_yamllint_text(data: StrictPolicy) -> None:
 
 def verify_ansible_policy(data: StrictPolicy) -> None:
     """Fail if the ansible-lint partition drifted from the policy."""
-    ansible = yaml.safe_load((ROOT / "quality/ansible-lint.yaml").read_text())
+    ansible = yaml.safe_load((ROOT / "ci/quality/ansible-lint.yaml").read_text())
     if set(ansible) != {"profile", "offline", "strict", "enable_list"}:
         raise ValueError("Ansible lint config has an unexpected key")
     if (
@@ -331,7 +330,7 @@ def verify_ansible_catalog(data: StrictPolicy) -> None:
 
 def verify_kube_linter_policy(data: StrictPolicy) -> None:
     """Fail if kube-linter defaults or includes drifted."""
-    kube = yaml.safe_load((ROOT / "quality/kube-linter.yaml").read_text())
+    kube = yaml.safe_load((ROOT / "ci/quality/kube-linter.yaml").read_text())
     checks = kube["checks"]
     if checks.get("doNotAutoAddDefaults") is not False or "exclude" in checks:
         raise ValueError("kube-linter defaults were disabled")
@@ -344,7 +343,7 @@ def verify_kube_linter_policy(data: StrictPolicy) -> None:
 
 def verify_hadolint_policy() -> None:
     """Fail if hadolint strict threshold drifted."""
-    hadolint = yaml.safe_load((ROOT / "quality/hadolint.yaml").read_text())
+    hadolint = yaml.safe_load((ROOT / "ci/quality/hadolint.yaml").read_text())
     if hadolint.get("ignored") or hadolint.get("failure-threshold") != "style":
         raise ValueError("hadolint strict threshold drifted")
 
@@ -362,7 +361,7 @@ def verify_vendor_provenance(data: StrictPolicy) -> None:
 
 def verify_secret_list(data: StrictPolicy) -> None:
     """Fail if the secret false-positive list changed without review."""
-    secret_path = ROOT / "quality/secret-false-positives.json"
+    secret_path = ROOT / "ci/quality/secret-false-positives.json"
     digest = hashlib.sha256(secret_path.read_bytes()).hexdigest()
     if digest != data["reviewedExceptionDigest"]:
         raise ValueError("Secret false-positive list changed without a policy review")
@@ -429,7 +428,7 @@ def verify_pinned_tools() -> None:
 
 def verify_historical_debt() -> None:
     """Fail if any historical debt file can decide acceptance."""
-    for path in (ROOT / "quality/debt").glob("*.json"):
+    for path in (ROOT / "ci/quality/debt").glob("*.json"):
         debt = json.loads(path.read_text())
         if debt.get("acceptance") is not False:
             raise ValueError("Historical debt file is not marked non-accepting")

@@ -184,6 +184,11 @@
       "reason": "No project MCP access configured to Redis keys or credentials; database browser deployment does not change this boundary."
     },
     {
+      "application": "redisinsight",
+      "decision": "not-connected",
+      "reason": "Owner-only Redis browser; no MCP client access to UI sessions, keys or credentials."
+    },
+    {
       "application": "remark42",
       "decision": "no-first-party-runtime-mcp-identified",
       "reason": "No suitable first-party operational MCP identified in upstream source/docs; do not install community wrappers."

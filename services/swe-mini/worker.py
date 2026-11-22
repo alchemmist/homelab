@@ -92,7 +92,9 @@ def agent_main():
         "output_path": ART / "trajectory.json",
     }
     agent = DefaultAgent(
-        LitellmTextbasedModel(**model_config), LocalEnvironment(cwd=str(ROOT), timeout=180), **cfg
+        LitellmTextbasedModel(**model_config),
+        LocalEnvironment(cwd=str(ROOT), timeout=180),
+        **cfg,
     )
     result = agent.run((ART / "task.txt").read_text())
     result["n_calls"] = agent.n_calls
@@ -152,7 +154,13 @@ def main():
         )
         return
     if command(
-        ["git", "clone", "--quiet", "https://github.com/alchemmist/monori.git", str(ROOT)],
+        [
+            "git",
+            "clone",
+            "--quiet",
+            "https://github.com/alchemmist/monori.git",
+            str(ROOT),
+        ],
         cwd=ROOT.parent,
     ):
         raise RuntimeError("Clone failed")
@@ -160,10 +168,21 @@ def main():
         raise RuntimeError("Checkout failed")
     setup = {
         "python": command(
-            ["uv", "sync", "--locked", "--group", "test", "--group", "analyze", "--group", "audit"]
+            [
+                "uv",
+                "sync",
+                "--locked",
+                "--group",
+                "test",
+                "--group",
+                "analyze",
+                "--group",
+                "audit",
+            ]
         ),
         "node": command(
-            ["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], cwd=ROOT / "web"
+            ["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"],
+            cwd=ROOT / "web",
         ),
     }
     if setup["python"]:
@@ -206,7 +225,8 @@ def main():
         if dependency_repair(proposal["changes"]):
             validate_dependency_update(proposal["changes"], original_package)
             if command(
-                ["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], cwd=ROOT / "web"
+                ["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"],
+                cwd=ROOT / "web",
             ):
                 raise RuntimeError("Candidate dependencies do not install cleanly")
         candidate_checks = checks()
@@ -247,7 +267,10 @@ This narrow bootstrap exception overrides the general ban on dependency manifest
     # Only this subprocess is the model-driven agent; supervisor's post-check commands are fixed.
     rc = command([sys.executable, "/app/worker.py", "--agent"], timeout=4800)
     if bootstrap:
-        command(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], cwd=ROOT / "web")
+        command(
+            ["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"],
+            cwd=ROOT / "web",
+        )
     after = checks()
     result = {
         "lane": lane,
@@ -340,7 +363,10 @@ if __name__ == "__main__":
             )
             print(
                 signed_result(
-                    {"error": type(exc).__name__ + ": " + str(exc)[:400], "command_tail": tail}
+                    {
+                        "error": type(exc).__name__ + ": " + str(exc)[:400],
+                        "command_tail": tail,
+                    }
                 ),
                 flush=True,
             )

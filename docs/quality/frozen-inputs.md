@@ -17,7 +17,7 @@ values. The manifest and all17source files remain byte-identical. No checksum
 was regenerated to bless this cleanup.
 
 The strict ownership boundary now recognizes precisely those existing files.
-`quality/strict-policy.json` pins the existing manifest bytes; the checker then
+`ci/quality/strict-policy.json` pins the existing manifest bytes; the checker then
 validates the canonical repository, fixed directory,17file count, safe basenames,
 no symlinks/path escapes and every preexisting source digest. Validation runs
 before exclusion in `owned()`, in graph-integrity contracts and in strict_guard.

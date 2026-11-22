@@ -116,7 +116,10 @@ def main() -> None:
     def api(path, body=None) -> list[dict[str, object]]:
         request = urllib.request.Request(
             BASE + path,
-            headers={"Authorization": "Token " + token, "Content-Type": "application/json"},
+            headers={
+                "Authorization": "Token " + token,
+                "Content-Type": "application/json",
+            },
             data=None if body is None else json.dumps(body).encode(),
             method="GET" if body is None else "PUT",
         )
@@ -152,7 +155,8 @@ def main() -> None:
         )
         return
     require(
-        a.confirm_personal_login_and_native_transfer, "personal owner login attestation required"
+        a.confirm_personal_login_and_native_transfer,
+        "personal owner login attestation required",
     )
     journal = ROOT / "stage4-owner-handover-before.json"
     fd = os.open(journal, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)

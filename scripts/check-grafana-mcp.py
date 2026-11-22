@@ -1,4 +1,5 @@
 """Smoke-check the public Grafana MCP proxy endpoint."""
+
 import argparse
 import base64
 import json
@@ -173,7 +174,13 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError) as error:
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        RuntimeError,
+        subprocess.SubprocessError,
+    ) as error:
         print(
             "FAIL:",
             type(error).__name__,

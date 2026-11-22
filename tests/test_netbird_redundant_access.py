@@ -52,8 +52,18 @@ class IndependentAccessTest(unittest.TestCase):
 
     def test_native_group_router_not_single_peer_or_default_route(self) -> None:
         """Routers use native groups, not single peers or default routes."""
-        assert mesh.router_body("exact-node-group") == {"peer_groups": ["exact-node-group"], "enabled": True, "masquerade": True, "metric": 80}
-        assert set(mesh.NODE_ADDRESSES.values()) == {"10.250.0.1/32", "10.250.0.2/32", "10.250.0.3/32", "10.250.0.5/32"}
+        assert mesh.router_body("exact-node-group") == {
+            "peer_groups": ["exact-node-group"],
+            "enabled": True,
+            "masquerade": True,
+            "metric": 80,
+        }
+        assert set(mesh.NODE_ADDRESSES.values()) == {
+            "10.250.0.1/32",
+            "10.250.0.2/32",
+            "10.250.0.3/32",
+            "10.250.0.5/32",
+        }
         for bad in [None, "", "All", "default", [], "group/other", "group name"]:
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 mesh.router_body(bad)
@@ -71,14 +81,25 @@ class IndependentAccessTest(unittest.TestCase):
         assert pilot["protocol"] == "tcp"
         assert pilot["ports"] == ["2222"]
         for fn in [mesh.admin_input_policy, mesh.pilot_input_policy]:
-            for args in [("same", "same"), ("All", "nodes"), ("jwt", "default"), ([], "nodes")]:
+            for args in [
+                ("same", "same"),
+                ("All", "nodes"),
+                ("jwt", "default"),
+                ([], "nodes"),
+            ]:
                 with self.assertRaises(ValueError):
                     fn(*args)
 
     def test_relay_pinned_vps_and_no_secret_values_or_management(self) -> None:
         """The relay is pinned to the VPS with no secret values or management."""
         docs = relay.manifests()
-        assert [d["kind"] for d in docs] == ["Deployment", "Service", "NetworkPolicy", "Certificate", "Ingress"]
+        assert [d["kind"] for d in docs] == [
+            "Deployment",
+            "Service",
+            "NetworkPolicy",
+            "Certificate",
+            "Ingress",
+        ]
         pod = docs[0]["spec"]["template"]["spec"]
         assert pod["nodeSelector"] == {"kubernetes.io/hostname": "socrat-2"}
         assert not pod["automountServiceAccountToken"]
@@ -86,7 +107,10 @@ class IndependentAccessTest(unittest.TestCase):
         container = pod["containers"][0]
         assert "@sha256:" in container["image"]
         assert container["resources"]["limits"]["memory"] == "64Mi"
-        assert container["readinessProbe"]["httpGet"] == {"path": "/health", "port": 9000}
+        assert container["readinessProbe"]["httpGet"] == {
+            "path": "/health",
+            "port": 9000,
+        }
         env = {e["name"]: e for e in container["env"]}
         assert env["NB_ENABLE_STUN"]["value"] == "false"
         assert "value" not in env["NB_AUTH_SECRET"]
@@ -101,7 +125,10 @@ class IndependentAccessTest(unittest.TestCase):
         """Self-health uses the native LB with the actual VPS CNI."""
         service, policy = relay.manifests()[1:3]
         assert service["spec"]["publishNotReadyAddresses"]
-        assert service["metadata"]["annotations"]["traefik.ingress.kubernetes.io/service.nativelb"] == "true"
+        assert (
+            service["metadata"]["annotations"]["traefik.ingress.kubernetes.io/service.nativelb"]
+            == "true"
+        )
         ingress = policy["spec"]["ingress"][0]
         cidrs = {source["ipBlock"]["cidr"] for source in ingress["from"]}
         assert "10.42.0.1/32" in cidrs
@@ -112,7 +139,9 @@ class IndependentAccessTest(unittest.TestCase):
     def test_home_relay_is_separate_and_reuses_existing_tls(self) -> None:
         """The home relay is separate and reuses existing TLS."""
         deploy, service, policy, ingress = relay.home_manifests()
-        assert deploy["spec"]["template"]["spec"]["nodeSelector"] == {"kubernetes.io/hostname": "socrat-0"}
+        assert deploy["spec"]["template"]["spec"]["nodeSelector"] == {
+            "kubernetes.io/hostname": "socrat-0"
+        }
         assert service["spec"]["selector"] == {"app": "netbird-relay-home"}
         assert service["spec"]["publishNotReadyAddresses"]
         assert ingress["spec"]["tls"][0]["secretName"] == "netbird-pilot-tls"
@@ -120,7 +149,9 @@ class IndependentAccessTest(unittest.TestCase):
         sources = policy["spec"]["ingress"][0]["from"]
         assert "10.42.0.0/32" in {s["ipBlock"]["cidr"] for s in sources if "ipBlock" in s}
         assert sources[0]["podSelector"]["matchLabels"] == {"app.kubernetes.io/name": "traefik"}
-        assert sources[0]["namespaceSelector"]["matchLabels"] == {"kubernetes.io/metadata.name": "kube-system"}
+        assert sources[0]["namespaceSelector"]["matchLabels"] == {
+            "kubernetes.io/metadata.name": "kube-system"
+        }
         assert relay.advertised_relays()["addresses"] == [relay.URI, relay.HOME_URI]
         assert relay.advertised_relays()["credentialsTTL"] == "12h"
         assert "relay" not in relay.advertised_relays()

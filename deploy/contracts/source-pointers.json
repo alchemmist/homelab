@@ -4,17 +4,23 @@
   "applicationDirectory": "deploy/argocd/apps",
   "documents": [
     "README.md",
-    "llm-wiki/context.md",
-    "llm-wiki/README.md",
-    "docs/infrastructure-contracts.md",
-    "docs/wiki.md",
+    "docs/platform/system-overview.md",
+    "docs/README.md",
+    "docs/platform/kubernetes/workload-placement.md",
+    "docs/entities.md",
+    "docs/symptoms.md",
+    "docs/decisions/2026-11-13-keep-moscow-as-a-kubernetes-worker.md",
+    "docs/decisions/2026-11-17-use-service-vpn-identities-for-application-egress.md",
+    "docs/decisions/README.md",
+    "docs/platform/delivery/infrastructure-contracts.md",
+    "docs/applications/wiki/README.md",
     "wiki/README.md",
-    "docs/litellm.md",
-    "docs/monitoring-llm.md",
-    "llm-wiki/cluster-deploy.md",
-    "docs/open-webui-upgrades.md",
-    "docs/open-webui-tool-guard.md",
-    "docs/open-terminal-browser-cleanup.md"
+    "docs/applications/ai/litellm.md",
+    "docs/observability/monitoring/monitoring-llm.md",
+    "docs/platform/delivery/cluster-deploy.md",
+    "docs/applications/ai/open-webui-upgrades.md",
+    "docs/applications/ai/open-webui-tool-guard.md",
+    "docs/applications/ai/open-terminal-browser-cleanup.md"
   ],
   "currentValues": [
     {
@@ -25,7 +31,7 @@
       ],
       "documents": [
         "wiki/README.md",
-        "docs/wiki.md"
+        "docs/applications/wiki/README.md"
       ],
       "application": "wiki-runtime"
     },
@@ -37,7 +43,7 @@
         "existingClaim"
       ],
       "documents": [
-        "llm-wiki/context.md"
+        "docs/platform/kubernetes/workload-placement.md"
       ],
       "application": "grafana"
     },
@@ -50,7 +56,7 @@
         "policy.default"
       ],
       "documents": [
-        "llm-wiki/cluster-deploy.md"
+        "docs/platform/delivery/cluster-deploy.md"
       ]
     },
     {
@@ -61,7 +67,7 @@
         "claimName"
       ],
       "documents": [
-        "docs/open-webui-upgrades.md"
+        "docs/applications/ai/open-webui-upgrades.md"
       ]
     }
   ],

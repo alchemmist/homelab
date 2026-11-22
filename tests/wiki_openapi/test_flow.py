@@ -71,7 +71,12 @@ class Flow(unittest.TestCase):
     def test_ignores_other_branches_without_github(self):
         bot = Bot([{"filename": "openapi.yaml"}])
         assert (
-            stage("check", {"ref": "refs/heads/dev", "before": BEFORE, "after": SHA}, bot=bot) == []
+            stage(
+                "check",
+                {"ref": "refs/heads/dev", "before": BEFORE, "after": SHA},
+                bot=bot,
+            )
+            == []
         )
         assert bot.calls == 0
 
@@ -104,7 +109,12 @@ class Flow(unittest.TestCase):
     def test_dry_run_does_not_close(self):
         lab = Lab()
         assert (
-            stage("close-older", {"status": "dry_run", "after": SHA}, homelab=lab, write=False)
+            stage(
+                "close-older",
+                {"status": "dry_run", "after": SHA},
+                homelab=lab,
+                write=False,
+            )
             == []
         )
         assert lab.closed == []

@@ -7,7 +7,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "overlay_marks", ROOT / "scripts/k3s-overlay-marks.py"
+    "overlay_marks", ROOT / "ansible/scripts/k3s-overlay-marks.py"
 )
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
@@ -47,7 +47,12 @@ def test_state_normalization_ignores_only_runtime_fields() -> None:
         {
             "nftables": [
                 {"metainfo": {}},
-                {"rule": {"handle": 3, "expr": [{"counter": {"packets": 8, "bytes": 200}}]}},
+                {
+                    "rule": {
+                        "handle": 3,
+                        "expr": [{"counter": {"packets": 8, "bytes": 200}}],
+                    }
+                },
             ]
         }
     ) == [{"rule": {"expr": [{"counter": {}}]}}]
@@ -101,7 +106,6 @@ def test_default_cli_is_read_only(
 
     calls: list[tuple[str, ...]] = []
 
-
     def fake(*args: str, **_kwargs) -> SimpleNamespace:
         """Return scripted nft outputs for the read-only default run."""
         calls.append(args)
@@ -118,12 +122,13 @@ def test_default_cli_is_read_only(
     assert len(calls) == 2
 
 
-def test_cli_rejects_foreign_table_before_kernel_write(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cli_rejects_foreign_table_before_kernel_write(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Refuse applying over a table whose ownership comment is foreign."""
     import json
     import sys
     from types import SimpleNamespace
-
 
     def fake(*args: str, **_kwargs) -> SimpleNamespace:
         """Return scripted nft outputs simulating a foreign table."""

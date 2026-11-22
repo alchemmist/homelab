@@ -110,7 +110,9 @@ def _parameters(name: str) -> dict[str, object]:
 
 
 @pytest.mark.parametrize("prefix", PREFIXES)
-def test_queue_selector_preserves_both_metric_names_without_or_collision(prefix: str) -> None:
+def test_queue_selector_preserves_both_metric_names_without_or_collision(
+    prefix: str,
+) -> None:
     """Every actual phase keeps both counters and independent original-sample stamps."""
     params = _parameters(prefix + " queue depth")
     assert (
@@ -147,9 +149,15 @@ def test_queue_predicate_refuses_incomplete_or_invalid_telemetry(prefix: str) ->
     source = _parameters(prefix + " verify both metrics")["jsCode"]
     assert isinstance(source, str)
     result = command(
-        ["node", "--input-type=module", "-e", RUNNER], stdin=json.dumps({"source": source})
+        ["node", "--input-type=module", "-e", RUNNER],
+        stdin=json.dumps({"source": source}),
     )
     report = _mapping(json.loads(result.stdout))
     passed = report["passed"]
     assert isinstance(passed, list)
     assert len(passed) == PREDICATE_CASE_COUNT
+
+
+def test_reviewed_graph_reducers_and_oracles() -> None:
+    """Exercise the committed workflow offline without contacting n8n or the model."""
+    command(["node", "tests/n8n/check_lms_certify_graph.cjs"])

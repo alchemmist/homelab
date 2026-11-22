@@ -104,12 +104,8 @@ def test_loader_refuses_missing_spec_or_loader(spec: ModuleSpec | None) -> None:
 def test_import_and_fixture_evaluation_do_not_start_external_work() -> None:
     """Trap network, poller and HTTP-server entrypoints throughout the original cases."""
     with (
-        patch(
-            "urllib.request.urlopen", side_effect=AssertionError("network forbidden")
-        ) as network,
-        patch(
-            "threading.Thread", side_effect=AssertionError("poller forbidden")
-        ) as poller,
+        patch("urllib.request.urlopen", side_effect=AssertionError("network forbidden")) as network,
+        patch("threading.Thread", side_effect=AssertionError("poller forbidden")) as poller,
         patch(
             "http.server.ThreadingHTTPServer",
             side_effect=AssertionError("server forbidden"),
@@ -142,9 +138,9 @@ def test_statefulset_target_and_ambiguous_workload() -> None:
 
 def test_openhands_uses_running_canvas_tag_not_sdk_version() -> None:
     watch = load_module()
-    catalog = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())[
-        "updateWatch"
-    ]["targets"]
+    catalog = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())["updateWatch"][
+        "targets"
+    ]
     target = next(x for x in catalog if x["id"] == "openhands")
     assert target["github"] == "OpenHands/OpenHands"
     assert target["statefulset"] == "openhands"
@@ -176,3 +172,31 @@ def test_searxng_uses_only_versioned_image_tags():
         with patch("urllib.request.urlopen", return_value=io.BytesIO(body)):
             sample = watch.evaluate([target], None, 1)[0]
         assert (sample["success"], sample["available"]) == (expected, expected)
+
+
+def test_actionable_counts_exclude_suppressed_but_emit_real_zero() -> None:
+    render = load_module().actionable_metrics
+    alerts = [
+        {
+            "labels": {"severity": "warning", "alertname": "PodFailed"},
+            "status": {"state": state},
+        }
+        for state in ("suppressed", "active")
+    ]
+    assert b'severity="warning"} 0\n' in render(alerts[:1])
+    assert b'severity="warning"} 1\n' in render(alerts)
+    with pytest.raises(ValueError):
+        render({})
+
+
+def test_status_page_catalog_tracks_gatus_not_retired_kuma() -> None:
+    targets = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())[
+        "updateWatch"
+    ]["targets"]
+    catalog = {item["id"]: item for item in targets}
+    chart = yaml.safe_load(
+        Path("charts/uptime-kuma/charts/gatus/Chart.yaml").read_text()
+    )
+    assert "uptime-kuma" not in catalog
+    assert catalog["gatus"]["github"] == "TwiN/gatus"
+    assert catalog["gatus"]["current"] == chart["appVersion"]

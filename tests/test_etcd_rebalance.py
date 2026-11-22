@@ -43,7 +43,10 @@ class FakeEtcd:
 
     def status(self, name: str) -> dict[str, object]:
         """Report the member identity and the scripted leader."""
-        return {"header": {"member_id": self.membership[name]["id"]}, "leader": self.leader}
+        return {
+            "header": {"member_id": self.membership[name]["id"]},
+            "leader": self.leader,
+        }
 
     def call(self, args: list[str], endpoint: str | None = None, structured: object = True) -> None:
         """Apply one etcdctl invocation and record its arguments."""

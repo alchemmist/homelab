@@ -38,6 +38,7 @@ CLUSTER_JOBS = {
     "traefik",
 }
 LOCAL_JOBS = {"node-exporter"}
+PUBLIC_METRICS_PATHS = frozenset({"/metrics", "/metrics/cadvisor", "/metrics/probes", "/probe"})
 SENSITIVE = re.compile(
     r"token|secret|password|cookie|credential|authorization|bearer|api[_-]?key|^key$|username",
     re.IGNORECASE,
@@ -58,9 +59,9 @@ def scrub(value, key=""):
     if isinstance(value, list):
         return [scrub(item, key) for item in value]
     if (
-        key in ("path", "metricsPath")
+        key in {"path", "metricsPath"}
         and isinstance(value, str)
-        and value not in ("/metrics", "/metrics/cadvisor", "/metrics/probes", "/probe")
+        and value not in PUBLIC_METRICS_PATHS
     ):
         return "<redacted-path>"
     if isinstance(value, str) and "://" in value:
@@ -95,7 +96,12 @@ def selected(selector, attributes):
             return False
         if operation == "DoesNotExist" and key in attributes:
             return False
-        if operation not in ("In", "NotIn", "Exists", "DoesNotExist"):
+        if not isinstance(operation, str) or operation not in {
+            "In",
+            "NotIn",
+            "Exists",
+            "DoesNotExist",
+        }:
             msg = "Unsupported label selector operator"
             raise ValueError(msg)
     return True
@@ -140,11 +146,7 @@ def identity(value):
 def target_summary(target):
     labels = target.get("labels", {})
     url = urllib.parse.urlsplit(target["scrapeUrl"])
-    path = (
-        url.path
-        if url.path in ("/metrics", "/metrics/cadvisor", "/metrics/probes", "/probe")
-        else "<redacted-path>"
-    )
+    path = url.path if url.path in PUBLIC_METRICS_PATHS else "<redacted-path>"
     pool = target["scrapePool"]
     parts = pool.split("/")
     if len(parts) < 4 or not parts[-1].isdigit():
@@ -235,7 +237,10 @@ def consumers(rule_document, configmaps):
                     + item["metadata"]["name"],
                 }
             )
-    return {"rules": rules, "dashboards": sorted(dashboards, key=lambda item: item["uid"])}
+    return {
+        "rules": rules,
+        "dashboards": sorted(dashboards, key=lambda item: item["uid"]),
+    }
 
 
 def build(monitors, targets, prometheus, namespaces, rules, configmaps):
@@ -391,7 +396,8 @@ def attach_producers(registry, producers, daemonsets):
         if not observed.get("timers", {}).get(timer, {}).get("active"):
             errors.append("Required producer timer is not active: " + node + "/" + timer)
     disk = next(
-        (item for item in daemonsets["items"] if item["metadata"]["name"] == "thanos-disk"), None
+        (item for item in daemonsets["items"] if item["metadata"]["name"] == "thanos-disk"),
+        None,
     )
     if disk is None:
         errors.append("Thanos disk producer was not inventoried")
@@ -399,7 +405,8 @@ def attach_producers(registry, producers, daemonsets):
     else:
         env = disk["spec"]["template"]["spec"]["containers"][0].get("env", [])
         disk_interval = next(
-            (item.get("value") for item in env if item["name"] == "INTERVAL_SECONDS"), None
+            (item.get("value") for item in env if item["name"] == "INTERVAL_SECONDS"),
+            None,
         )
     registry["hostProducers"] = producers
     registry["diskProducerRefreshSeconds"] = disk_interval
@@ -439,7 +446,15 @@ def main():
         namespaces = PREFLIGHT.kube(host, NAMESPACE, "get", "namespaces", "-o", "json")
         rules = PREFLIGHT.prometheus(host, NAMESPACE, "rules")
         configmaps = PREFLIGHT.kube(
-            host, NAMESPACE, "get", "configmaps", "-A", "-l", "grafana_dashboard=1", "-o", "json"
+            host,
+            NAMESPACE,
+            "get",
+            "configmaps",
+            "-A",
+            "-l",
+            "grafana_dashboard=1",
+            "-o",
+            "json",
         )
         result = build(monitors, targets, prom[0], namespaces, rules, configmaps)
         producers = host_producers(["socrat-0", "socrat-1", "socrat-2", "socrat-3"])
@@ -461,7 +476,13 @@ def main():
             )
         )
         return 0 if result["liveInventoryVerified"] else 1
-    except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError) as error:
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        RuntimeError,
+        subprocess.SubprocessError,
+    ) as error:
         print(str(error), file=sys.stderr)
         return 2
 

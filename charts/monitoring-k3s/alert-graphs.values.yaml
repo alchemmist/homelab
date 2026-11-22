@@ -97,6 +97,14 @@ alertGraphAnnotations:
     {"version":1,"graphs":[{"id":"primary","title":"SocratPgPlatformMetricsMissing","dashboard_uid":"alerts-068de8cd81fbc8d7","panel_id":11,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratPgPlatformMetricsMissing
     / rule
     evaluations","dashboard_uid":"alerts-068de8cd81fbc8d7","panel_id":12,"variables":{},"before_seconds":7200,"after_seconds":300}]}
+  SocratRedisCommonRedundancyReduced: >-
+    {"version":1,"graphs":[{"id":"primary","title":"SocratRedisCommonRedundancyReduced","dashboard_uid":"alerts-e1ea8bfeb00b8e93","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratRedisCommonRedundancyReduced
+    / rule
+    evaluations","dashboard_uid":"alerts-e1ea8bfeb00b8e93","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}
+  SocratRedisCommonWriterUnavailable: >-
+    {"version":1,"graphs":[{"id":"primary","title":"SocratRedisCommonWriterUnavailable","dashboard_uid":"alerts-e1ea8bfeb00b8e93","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratRedisCommonWriterUnavailable
+    / rule
+    evaluations","dashboard_uid":"alerts-e1ea8bfeb00b8e93","panel_id":4,"variables":{},"before_seconds":7200,"after_seconds":300}]}
   SocratRequiredHddMountUnobserved: >-
     {"version":1,"graphs":[{"id":"primary","title":"SocratRequiredHddMountUnobserved","dashboard_uid":"alerts-273f3d3273d5e92e","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratRequiredHddMountUnobserved
     / rule

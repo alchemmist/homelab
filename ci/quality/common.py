@@ -118,7 +118,7 @@ def frozen_source_files() -> frozenset[str]:
     No unlisted path or whole directory becomes exempt. Any manifest, path or
     frozen-byte drift is an error rather than an opportunity to hide new code.
     """
-    policy = json.loads((ROOT / "quality/strict-policy.json").read_text())
+    policy = json.loads((ROOT / "ci/quality/strict-policy.json").read_text())
     record = policy.get("frozenCompatibility")
     if not isinstance(record, dict) or set(record) != {
         "manifest",
@@ -254,7 +254,7 @@ def unique(findings: Iterable[Finding]) -> list[Finding]:
 
 def historical_debt_count(check: str) -> int:
     """Count historical entries that stay visible and cannot decide success."""
-    path = ROOT / "quality/debt" / f"{check}.json"
+    path = ROOT / "ci/quality/debt" / f"{check}.json"
     if not path.is_file():
         return 0
     data = json.loads(path.read_text())
@@ -289,7 +289,7 @@ def _reviewed_secret(item: object) -> ReviewedSecret:
 
 def reviewed_secret_index() -> dict[str, ReviewedSecret]:
     """Index exact reviewed non-secret identities by id, path, and rule."""
-    path = ROOT / "quality/secret-false-positives.json"
+    path = ROOT / "ci/quality/secret-false-positives.json"
     if not path.is_file():
         return {}
     data = json.loads(path.read_text())
@@ -348,7 +348,7 @@ def report(
         ],
         "findings": blocking,
         "notes": [
-            "Full-tree check. Historical quality/debt files do not decide success "
+            "Full-tree check. Historical ci/quality/debt files do not decide success "
             "and cannot be regenerated. Reviewed secret false positives are exact "
             "id/path/rule matches only."
         ],

@@ -1,1 +1,0 @@
-{"include":["scripts/n8n/*.py", "ci/check_failure_alerts.py"],"rules":["ANN201"]}

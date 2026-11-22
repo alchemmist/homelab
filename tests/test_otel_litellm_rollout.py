@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def load() -> types.ModuleType:
     """Test behavior for load."""
     spec = importlib.util.spec_from_file_location(
-        "litellm_rollout", ROOT / "scripts/otel-litellm-sdk-rollout.py"
+        "litellm_rollout", ROOT / "ansible/scripts/otel-litellm-sdk-rollout.py"
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

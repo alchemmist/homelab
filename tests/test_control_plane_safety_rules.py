@@ -12,12 +12,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.skipif(
-    not shutil.which("helm") or not shutil.which("promtool"), reason="Native Helm/promtool required"
+    not shutil.which("helm") or not shutil.which("promtool"),
+    reason="Native Helm/promtool required",
 )
 def test_power_and_quorum_with_native_promtool(tmp_path: Path) -> None:
     """Prove power warnings precede sleep and missing voters stay visible."""
     rendered = subprocess.check_output(
-        ["helm", "template", "monitoring", str(ROOT / "charts/monitoring-k3s")], text=True
+        ["helm", "template", "monitoring", str(ROOT / "charts/monitoring-k3s")],
+        text=True,
     )
     resource = next(
         x
@@ -79,7 +81,12 @@ def test_power_and_quorum_with_native_promtool(tmp_path: Path) -> None:
                     labels.update(instance="node1:9100", nodename="socrat-1", node="socrat-1")
                 expected = [{"exp_labels": labels, "exp_annotations": rule["annotations"]}]
             checks.append({"eval_time": "5m", "alertname": alert, "exp_alerts": expected})
-        return {"name": name, "interval": "30s", "input_series": series, "alert_rule_test": checks}
+        return {
+            "name": name,
+            "interval": "30s",
+            "input_series": series,
+            "alert_rule_test": checks,
+        }
 
     warning = "SocratEtcdVoterHealthUnavailable"
     critical = "SocratEtcdQuorumHealthUnproven"
@@ -103,13 +110,21 @@ def test_power_and_quorum_with_native_promtool(tmp_path: Path) -> None:
             voters=0,
             fire=(warning, critical),
         ),
-        fixture("stale third voter does not prove health", voters=3, stale=True, fire=(warning,)),
+        fixture(
+            "stale third voter does not prove health",
+            voters=3,
+            stale=True,
+            fire=(warning,),
+        ),
     ]
     (tmp_path / "tests.yaml").write_text(
         yaml.safe_dump({"rule_files": ["rules.yaml"], "evaluation_interval": "30s", "tests": tests})
     )
     run = subprocess.run(
-        ["promtool", "test", "rules", "tests.yaml"], cwd=tmp_path, capture_output=True, text=True
+        ["promtool", "test", "rules", "tests.yaml"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
     )
     assert run.returncode == 0, run.stdout + run.stderr
 

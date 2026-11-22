@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-MCP = ROOT / "tools/official-mcp"
+MCP = ROOT / "deploy/mcp/clients"
 
 
 def smoke(group: str, directory: Path) -> None:

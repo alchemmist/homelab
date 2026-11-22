@@ -135,7 +135,10 @@ def build():
             ],
             "transformations": [
                 {"id": "seriesToRows", "options": {}},
-                {"id": "sortBy", "options": {"sort": [{"field": "Metric", "desc": False}]}},
+                {
+                    "id": "sortBy",
+                    "options": {"sort": [{"field": "Metric", "desc": False}]},
+                },
                 {
                     "id": "rowsToFields",
                     "options": {
@@ -192,7 +195,11 @@ def build():
                 "minVizWidth": 0,
                 "minVizHeight": 0,
                 "maxVizHeight": 300,
-                "reduceOptions": {"values": False, "calcs": ["lastNotNull"], "fields": ""},
+                "reduceOptions": {
+                    "values": False,
+                    "calcs": ["lastNotNull"],
+                    "fields": "",
+                },
                 "legend": {
                     "showLegend": False,
                     "displayMode": "list",
