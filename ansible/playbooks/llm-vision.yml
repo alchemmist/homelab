@@ -8,6 +8,11 @@
     - name: Require source-owned maintenance instead of the legacy installer
       ansible.builtin.fail:
         msg: >-
-          Existing inference and gateway configuration belongs to deploy/argocd/apps/vllm.yaml and deploy/argocd/apps/litellm.yaml, charts/vllm, deploy/vllm/profiles and deploy/platform/litellm/values.yaml. This historical installer is retired: no GPU profile upgrade, Helm rollback, metadata-only OCI upgrade or identity reconciliation. Commit reviewed source changes; GPU maintenance and inference acceptance require separate authorization.
+          Existing inference and gateway configuration belongs to deploy/argocd/apps/vllm.yaml and
+          deploy/argocd/apps/litellm.yaml, charts/vllm, deploy/vllm/profiles and
+          deploy/platform/litellm/values.yaml. This historical installer is retired: no GPU profile
+          upgrade, Helm rollback, metadata-only OCI upgrade or identity reconciliation. Commit
+          reviewed source changes; GPU maintenance and inference acceptance require separate
+          authorization.
       tags: [always]
 ...

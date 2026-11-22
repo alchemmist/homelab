@@ -2,6 +2,7 @@
 # No Pod has this selector. Existing accepted connections can finish.
 # Restore canonical Services from deploy/{blog-updates,wiki-openapi}/worker.yaml
 # after new direct Pod readiness, and in a controller finally block on failure.
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -12,8 +13,9 @@ spec:
     app: blog-updates-worker
     homelab.io/migration-drain: no-serving-pods
   ports:
-  - port: 8080
-    targetPort: 8080
+    - port: 8080
+      targetPort: 8080
+...
 ---
 apiVersion: v1
 kind: Service
@@ -25,5 +27,6 @@ spec:
     app: wiki-openapi-worker
     homelab.io/migration-drain: no-serving-pods
   ports:
-  - port: 8080
-    targetPort: 8080
+    - port: 8080
+      targetPort: 8080
+...

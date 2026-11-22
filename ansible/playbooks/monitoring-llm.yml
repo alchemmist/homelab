@@ -8,6 +8,11 @@
     - name: Require source-owned maintenance instead of the legacy installer
       ansible.builtin.fail:
         msg: >-
-          Existing scrape configuration belongs to deploy/argocd/apps/monitoring-llm.yaml and charts/monitoring-llm. This historical combined installer is retired before any host role or Helm action. GPU host maintenance must be reviewed separately and explicitly scoped; do not target the full Socrat group. The monitoring_llm_gateway helper only verifies existing Git ownership and restricted metrics credentials; it never installs or repairs them. See docs/monitoring-llm.md.
+          Existing scrape configuration belongs to deploy/argocd/apps/monitoring-llm.yaml and
+          charts/monitoring-llm. This historical combined installer is retired before any host role
+          or Helm action. GPU host maintenance must be reviewed separately and explicitly scoped; do
+          not target the full Socrat group. The monitoring_llm_gateway helper only verifies existing
+          Git ownership and restricted metrics credentials; it never installs or repairs them. See
+          docs/monitoring-llm.md.
       tags: [always]
 ...

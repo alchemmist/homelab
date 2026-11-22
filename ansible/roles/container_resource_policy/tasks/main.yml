@@ -8,33 +8,35 @@
 - name: Require native mutating admission policies
   ansible.builtin.assert:
     that:
-      - "'mutatingadmissionpolicies' in ((container_resource_policy_api.stdout | from_json).resources | map(attribute='name') | list)"
+      - >-
+        'mutatingadmissionpolicies' in ((container_resource_policy_api.stdout | from_json).resources
+        | map(attribute='name') | list)
 
 - name: Create resource policy staging directory
   ansible.builtin.file:
     path: "{{ container_resource_policy_directory }}"
     state: directory
-    mode: '0700'
+    mode: "0700"
 
 - name: Render resource policy and binding
   ansible.builtin.template:
     src: "{{ item }}.yaml.j2"
     dest: "{{ container_resource_policy_directory }}/{{ item }}.yaml"
-    mode: '0600'
+    mode: "0600"
   loop: [resource-policy, resource-policy-binding]
 
 - name: Stage resource policy validation and reconciliation
   ansible.builtin.copy:
     src: "{{ item }}.py"
     dest: "{{ container_resource_policy_directory }}/{{ item }}.py"
-    mode: '0600'
+    mode: "0600"
   loop: [check_policy, check_profiles, reconcile_pods]
 
 - name: Stage authoritative workload profiles
   ansible.builtin.copy:
     content: "{{ container_resource_policy_profiles | to_nice_json }}"
     dest: "{{ container_resource_policy_directory }}/profiles.json"
-    mode: '0600'
+    mode: "0600"
 
 - name: Validate profile quantities and owner matching before policy activation
   ansible.builtin.command:
@@ -83,13 +85,13 @@
 
 - name: Save restorable admission configuration
   ansible.builtin.copy:
-    content: >-
-      {{ (resource | dict2items | rejectattr('key', 'equalto', 'status') | items2dict)
-         | combine({'metadata': resource.metadata | dict2items
-           | rejectattr('key', 'in', ['resourceVersion', 'generation', 'creationTimestamp', 'managedFields', 'uid'])
-           | items2dict}) | to_nice_json }}
+    content: "{{ (resource | dict2items | rejectattr('key', 'equalto', 'status') | items2dict)\n\
+      \   | combine({'metadata': resource.metadata | dict2items\n\
+      \     | rejectattr('key', 'in', ['resourceVersion', 'generation', 'creationTimestamp',
+      'managedFields', 'uid'])\n\
+      \     | items2dict}) | to_nice_json }}"
     dest: "{{ container_resource_policy_backup.path }}/previous-{{ item.item }}.json"
-    mode: '0600'
+    mode: "0600"
   vars:
     resource: "{{ item.stdout | from_json }}"
   loop: "{{ container_resource_policy_backups.results }}"
@@ -166,22 +168,28 @@
 
     - name: Stop before evictions after failed admission validation
       ansible.builtin.fail:
-        msg: "Admission validation failed; previous admission configuration restored. {{ ansible_failed_result.stderr | default(ansible_failed_result.msg | default('See failed validation output')) }}"
+        msg: >-
+          Admission validation failed; previous admission configuration restored.
+          {{ ansible_failed_result.stderr | default(ansible_failed_result.msg
+          | default('See failed validation output')) }}
 
 - name: Build reconciliation arguments
   ansible.builtin.set_fact:
     container_resource_policy_reconcile_argv: [python3,
                                                -u,
-                                               "{{ container_resource_policy_directory }}/reconcile_pods.py",
+                                               "{{ container_resource_policy_directory
+                                                 }}/reconcile_pods.py",
                                                --apply,
                                                --kubeconfig,
                                                /etc/rancher/k3s/k3s.yaml,
                                                --profiles,
-                                               "{{ container_resource_policy_directory }}/profiles.json"]
+                                               "{{ container_resource_policy_directory
+                                                 }}/profiles.json"]
 
 - name: Add explicitly deferred nodes
   ansible.builtin.set_fact:
-    container_resource_policy_reconcile_argv: "{{ container_resource_policy_reconcile_argv + ['--exclude-node', item] }}"
+    container_resource_policy_reconcile_argv: >-
+      {{ container_resource_policy_reconcile_argv + ['--exclude-node', item] }}
   loop: "{{ container_resource_policy_exclude_nodes }}"
 
 - name: Reconcile existing pods when explicitly enabled

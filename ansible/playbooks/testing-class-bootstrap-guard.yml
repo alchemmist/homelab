@@ -17,11 +17,11 @@
         dest: /usr/local/libexec/testing-class-wg-guard
         owner: root
         group: root
-        mode: '0700'
+        mode: "0700"
     - name: Install guard service
       ansible.builtin.copy:
         dest: /etc/systemd/system/testing-class-wg-guard.service
-        mode: '0644'
+        mode: "0644"
         content: |
           [Unit]
           Description=Isolate testing-class WG bootstrap peer before destination NAT
@@ -36,11 +36,11 @@
       ansible.builtin.file:
         path: /etc/systemd/system/wg-quick@wg-socrat.service.d
         state: directory
-        mode: '0755'
+        mode: "0755"
     - name: Require isolation before WG can start on future boots
       ansible.builtin.copy:
         dest: /etc/systemd/system/wg-quick@wg-socrat.service.d/50-testing-class-guard.conf
-        mode: '0644'
+        mode: "0644"
         content: |
           [Unit]
           Requires=testing-class-wg-guard.service

@@ -3,7 +3,7 @@ apiVersion: v2
 name: uptime-kuma
 version: 0.2.0
 type: application
-description: Uptime Kuma status monitoring for Socrat
+description: Gatus public status page with legacy URL redirects
 dependencies:
   - name: gatus
     version: 0.1.0

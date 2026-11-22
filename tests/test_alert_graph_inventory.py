@@ -76,9 +76,16 @@ class AlertGraphInventoryTests(unittest.TestCase):
             message = "Native alert graph coverage requires Helm; no fallback"
             raise FileNotFoundError(message)
         expected = json.loads((ROOT / "docs/monitoring/alert-graphs.inventory.json").read_text())
-        for owner in graphs.OWNERS:
+        for owner in [*graphs.OWNERS, "rancher"]:
             app = yaml.safe_load((ROOT / "deploy/argocd/apps" / (owner + ".yaml")).read_text())
-            source = app["spec"]["source"]
+            if owner == "rancher":
+                source = next(
+                    s
+                    for s in app["spec"]["sources"]
+                    if s.get("path") == "deploy/platform/rancher/public-entry"
+                )
+            else:
+                source = app["spec"]["source"]
             helm = source["helm"]
             chart = ROOT / source["path"]
             args = [
@@ -100,10 +107,23 @@ class AlertGraphInventoryTests(unittest.TestCase):
                     for rule in group["rules"]:
                         if "alert" not in rule:
                             continue
-                        found.append((doc["metadata"]["name"], rule["alert"], str(rule["expr"])))
-                        assert "spi_graphs" in rule.get("annotations", {}), (owner, rule["alert"])
+                        found.append(
+                            (
+                                doc["metadata"]["name"],
+                                rule["alert"],
+                                str(rule["expr"]),
+                                rule["annotations"]["spi_graphs"],
+                            )
+                        )
             wanted = [
-                (r["resource"], r["alert"], r["expr"]) for r in expected if r["owner"] == owner
+                (
+                    r["resource"],
+                    r["alert"],
+                    r["expr"],
+                    json.dumps(r["graphs"], separators=(",", ":")),
+                )
+                for r in expected
+                if r["owner"] == owner
             ]
             assert sorted(found) == sorted(wanted), owner
 

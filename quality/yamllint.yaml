@@ -4,7 +4,7 @@ rules:
   line-length:
     max: 100
   truthy:
-    allowed-values: ['true', 'false']
+    allowed-values: ["true", "false"]
     check-keys: false
     level: error
   comments:

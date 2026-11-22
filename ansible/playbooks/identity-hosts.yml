@@ -10,13 +10,16 @@
         argv:
           - python3
           - -c
-          - import grp,pwd; g=grp.getgrnam('alchemmist'); members=set(g.gr_mem)|{p.pw_name for p in pwd.getpwall() if p.pw_gid==g.gr_gid}; assert members <= {'alchemmist'}, 'Owner group contains unexpected users'
+          - >-
+            import grp,pwd; g=grp.getgrnam('alchemmist'); members=set(g.gr_mem)|{p.pw_name for p in
+            pwd.getpwall() if p.pw_gid==g.gr_gid}; assert members <= {'alchemmist'}, 'Owner group
+            contains unexpected users'
       changed_when: false
     - name: Persist safe K3s kubeconfig mode
       ansible.builtin.lineinfile:
         path: /etc/rancher/k3s/config.yaml
         regexp: "^write-kubeconfig-mode:"
-        line: 'write-kubeconfig-mode: "0640"'
+        line: "write-kubeconfig-mode: \"0640\""
     - name: Persist owner-only kubeconfig group
       ansible.builtin.lineinfile:
         path: /etc/rancher/k3s/config.yaml
