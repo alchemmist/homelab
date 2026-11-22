@@ -70,6 +70,7 @@ spec:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
           podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
         - ipBlock: {cidr: 10.250.0.2/32} # NL host-network Traefik
+        - ipBlock: {cidr: 10.42.0.0/32} # socrat-2 flannel.1 source to remote pods
       ports: [{port: 8080, protocol: TCP}]
   egress:
     - to:
