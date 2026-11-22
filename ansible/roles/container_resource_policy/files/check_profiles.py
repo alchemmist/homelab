@@ -22,7 +22,7 @@ from reconcile_pods import (
 )
 
 if TYPE_CHECKING:
-    from reconcile_pods import Container, OwnerReference, PodSpec, Profile
+    from reconcile_pods import Container, OwnerReference, Pod, PodSpec, Profile
 
 RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
 
@@ -88,7 +88,7 @@ def check(namespace: str, kubectl: str, kubeconfig: str, profile: Profile, owner
             check=True,
             timeout=40,
         )
-        returned = json.loads(result.stdout)
+        returned = cast("Pod", json.loads(result.stdout))
         expected_selector = dict(spec.get("nodeSelector", {}), **profile.get("nodeSelector", {}))
         assert returned["spec"].get("nodeSelector", {}) == expected_selector, returned["spec"].get(
             "nodeSelector"
