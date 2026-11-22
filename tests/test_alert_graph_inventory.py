@@ -36,7 +36,8 @@ class AlertGraphInventoryTests(unittest.TestCase):
         """Every source variant links to a real panel containing its exact condition."""
         rows = json.loads((ROOT / "docs/monitoring/alert-graphs.inventory.json").read_text())
         # Includes Service-path divergence and distinct absent/down API scrapes.
-        expected_source_rule_count = 216
+        # d3bc05e5 removed the retired LMS HA variant, not the live web probe.
+        expected_source_rule_count = 215
         assert any(r["alert"] == "ThanosWarmWorkshopDiskLow" for r in rows)
         assert len(rows) == expected_source_rule_count
         expected_graph_spec_version = 1
