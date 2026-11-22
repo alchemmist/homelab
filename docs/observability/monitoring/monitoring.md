@@ -10,7 +10,7 @@ Production metrics, logs and traces are collected by the in-cluster OpenTelemetr
 
 ## Container resource budgets
 
-`ansible/playbooks/container-resources.yml` manages measured per-workload requests and selective CPU limits through the native `socrat-container-resource-defaults` admission policy. The authoritative catalog is `ansible/vars/container-resources.yml`; see [resource budgets](../platform/resource-budgets.md) for measurements, per-container values, capacity checks, rollout and rollback.
+`ansible/playbooks/container-resources.yml` manages measured per-workload requests and selective CPU limits through the native `socrat-container-resource-defaults` admission policy. The authoritative catalog is `ansible/vars/container-resources.yml`; see [resource budgets](../../platform/resource-budgets.md) for measurements, per-container values, capacity checks, rollout and rollback.
 
 Ordinary services can burst CPU without a quota. Open Terminal, vLLM and SearXNG retain explicit caps. Memory and ephemeral-storage limits remain safety ceilings, not capacity reservations. Unknown workloads receive fallback requests and memory/storage limits but no automatic CPU cap. GPU/custom resources remain intact. Pod admission does not manage host K3s/etcd services.
 
@@ -29,7 +29,7 @@ Grafana and Alertmanager stay on socrat-1 and explicitly select `local-path`, be
 | Grafana | socrat-1, 1 GiB | Persistent database and settings |
 | Alertmanager | socrat-1, 1 GiB | Persistent silences and notification state |
 
-Local-path PVC sizes do not enforce filesystem quotas. The hourly Job on socrat-3 reads from S3, verifies bytes and publishes without overwriting an existing block. The cascade marks raw after 5 days with verified 5m coverage, 5m after 90 days with verified hourly coverage on 3, and hourly sources after verified transfer. Physical S3 removal waits for the 48h compactor delay. Hourly shelf retention is 730 days. The legacy raw directory was emptied after a verified cold restore; rollback seeds are not new writes. See [release evidence](../../deploy/storage/thanos-retire/README.md). See [warm cutover gates and recovery cautions](../../deploy/storage/thanos-warm-seed/README.md#production-switch-2026-11-21-1818-utc).
+Local-path PVC sizes do not enforce filesystem quotas. The hourly Job on socrat-3 reads from S3, verifies bytes and publishes without overwriting an existing block. The cascade marks raw after 5 days with verified 5m coverage, 5m after 90 days with verified hourly coverage on 3, and hourly sources after verified transfer. Physical S3 removal waits for the 48h compactor delay. Hourly shelf retention is 730 days. The legacy raw directory was emptied after a verified cold restore; rollback seeds are not new writes. See [release evidence](../../../deploy/storage/thanos-retire/README.md). See [warm cutover gates and recovery cautions](../../../deploy/storage/thanos-warm-seed/README.md#production-switch-2026-11-21-1818-utc).
 
 The Grafana datasource uid `prometheus` points at Thanos Query on socrat-1. Dashboard JSON is not rewritten. Alerts are evaluated by Prometheus on socrat-0 and sent to Alertmanager on socrat-1. If socrat-0 is down, fresh samples and alert evaluation stop with it; Grafana stays up. If socrat-3 is offline, graphs lose only hourly blocks that have already moved there. Alertmanager's receiver discards notifications intentionally; delivery is not configured yet.
 

@@ -4,7 +4,7 @@ User connection instructions live in `wiki/content/observability/grafana-mcp.md`
 
 The Streamable HTTP endpoint is `https://grafana-mcp.socrat.alchemmist.xyz/mcp`. The existing reviewed public exact `/mcp` bearer-auth route and private gateway are supported; VPN-only descriptions predate that public-entry migration. Authentication uses a dedicated bearer token stored in `cattle-monitoring-system/grafana-mcp-credentials`, key `client-token`. Never publish the token or reuse the Grafana administrator password as an MCP credential.
 
-The MCP service reads Grafana through its Kubernetes Service. Keep the server read-only and its Grafana identity at Viewer permissions; declarative dashboard and alert changes belong in homelab. Do not broaden the reviewed route to the whole server or disable bearer/Host/TLS checks. Project agent setup and telemetry tools: [official-mcp.md](../platform/official-mcp.md).
+The MCP service reads Grafana through its Kubernetes Service. Keep the server read-only and its Grafana identity at Viewer permissions; declarative dashboard and alert changes belong in homelab. Do not broaden the reviewed route to the whole server or disable bearer/Host/TLS checks. Project agent setup and telemetry tools: [official-mcp.md](../../platform/official-mcp.md).
 
 ## Deployment
 

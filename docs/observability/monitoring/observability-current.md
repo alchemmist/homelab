@@ -1,6 +1,6 @@
 # Наблюдаемость: источники и владельцы
 
-[Отчёт: внезапная потеря `socrat-1`, 21 ноября 2026](../records/incidents/socrat-1-loss-20261121.md): миграция на NFS, что вернулось во время потери и после неё, доставка алерта и Descheduler.
+[Отчёт: внезапная потеря `socrat-1`, 21 ноября 2026](../../records/incidents/socrat-1-loss-20261121.md): миграция на NFS, что вернулось во время потери и после неё, доставка алерта и Descheduler.
 
 ## Метрики: сбор, прореживание и перенос между нодами — 21 ноября 2026
 
@@ -13,17 +13,17 @@
 
 **Политика рабочего архива:** raw ≥5 дней при читаемом покрытии 5m на `1`; 5m ≥90 дней при читаемом покрытии 1h на `3`; 1h на `3` — 730 дней. Возраст — от конца блока, не от выгрузки. Часовой источник освобождается без ожидания 90 дней после проверки файлов, метаданных, чтения через конкретный Store и защиты родительских 5m от повторного downsampling/compaction. Перенос = публикация → проверка → deletion mark; физическую очистку S3 делает Compactor после 48h. Параметры native retention в рабочем S3 остаются `0d` намеренно: срок без проверки покрытия не даёт права удалять. При пропуске интервала, несовпадении меток/источников, отсутствии ответа или дисковой тесноте срок не сокращается. Отдельный старый NFS-архив не входит в эту очистку.
 
-Реализация: [публикация и квитанции](../../charts/thanos/files/hour_copy.py), [условия и маркеры](../../charts/thanos/files/tier.py), [тесты](../../tests/test_thanos_tiers.py). Для остановки новых маркеров задать `APPLY_TIER_MARKS=false` в шаблоне CronJob; это **не отменит** уже созданные маркеры. После загрузки Store или компакции может понадобиться следующий проход. Ищите `mark deletion <ULID>` и проверяйте оставшийся блок, не считайте успешный пустой Job подтверждённым удалением.
+Реализация: [публикация и квитанции](../../../charts/thanos/files/hour_copy.py), [условия и маркеры](../../../charts/thanos/files/tier.py), [тесты](../../../tests/test_thanos_tiers.py). Для остановки новых маркеров задать `APPLY_TIER_MARKS=false` в шаблоне CronJob; это **не отменит** уже созданные маркеры. После загрузки Store или компакции может понадобиться следующий проход. Ищите `mark deletion <ULID>` и проверяйте оставшийся блок, не считайте успешный пустой Job подтверждённым удалением.
 
 **Проверка по участкам.** Для свежего графика сравнить прямой Prometheus, Sidecar и Thanos Query с одинаковыми параметрами (см. ниже). Для отправки на `1` проверять новый ULID в журнале и объект в S3: это подтверждено штатным блоком `01M7ZQNKDF9JW6PX0TH142HGHX`. Для переноса на `3` проверять число подтверждённых часовых блоков в логе `thanos-cascade`, а не только статус Job: `hourly blocks confirmed 0` означает успешный запуск без переноса. Часовой архив не заменяет резервную копию raw.
 
-**Итог разовой миграции.** Старый `/var/lib/socrat-thanos` на `0` пуст; освобождено 49,58 GiB. На `3` отдельно от читаемой часовой истории лежит проверенная сжатая копия 148 исходных файлов (13,43 GiB); временная копия на `0` удалена. Это снимок до переключения, не backup последующих записей. [Проверка восстановления и путь к архиву](../../deploy/storage/thanos-retire/README.md).
+**Итог разовой миграции.** Старый `/var/lib/socrat-thanos` на `0` пуст; освобождено 49,58 GiB. На `3` отдельно от читаемой часовой истории лежит проверенная сжатая копия 148 исходных файлов (13,43 GiB); временная копия на `0` удалена. Это снимок до переключения, не backup последующих записей. [Проверка восстановления и путь к архиву](../../../deploy/storage/thanos-retire/README.md).
 
-Источники: [Prometheus](../../charts/prometheus/values.yaml), [размещение и retention Thanos](../../charts/thanos/values.yaml), [расписание и права каскада](../../charts/thanos/templates/warm-cascade.yaml), [проверка часовых блоков](../../charts/thanos/files/hour_copy.py).
+Источники: [Prometheus](../../../charts/prometheus/values.yaml), [размещение и retention Thanos](../../../charts/thanos/values.yaml), [расписание и права каскада](../../../charts/thanos/templates/warm-cascade.yaml), [проверка часовых блоков](../../../charts/thanos/files/hour_copy.py).
 
 ## Пропуски свежих метрик в Thanos — 19 ноября 2026
 
-**Правило чтения:** последние 6 часов обслуживает живой sidecar Prometheus. Только у raw Store Gateway (`thanos-store`) задан `--max-time=-6h`; локальный Prometheus хранит 12 часов, поэтому на границе остаётся около 6 часов перекрытия. Это фильтр чтения, а не удаление блоков. Если sidecar недоступен, на raw-архив как на резерв для последних 6 часов рассчитывать нельзя. При изменении retention перепроверить перекрытие. Источники: [Thanos](../../charts/thanos/values.yaml), [Prometheus](../../charts/prometheus/values.yaml); исправление `69a0a2bf`.
+**Правило чтения:** последние 6 часов обслуживает живой sidecar Prometheus. Только у raw Store Gateway (`thanos-store`) задан `--max-time=-6h`; локальный Prometheus хранит 12 часов, поэтому на границе остаётся около 6 часов перекрытия. Это фильтр чтения, а не удаление блоков. Если sidecar недоступен, на raw-архив как на резерв для последних 6 часов рассчитывать нельзя. При изменении retention перепроверить перекрытие. Источники: [Thanos](../../../charts/thanos/values.yaml), [Prometheus](../../../charts/prometheus/values.yaml); исправление `69a0a2bf`.
 
 **Что произошло.** На Traffic Light графики n8n (920) и VPN (907) показали разрывы утром. В 08:00 МСК в архив уже попал блок `from-out-of-order` за 07:00–09:00: его границы охватывали два часа, но внутри были только опоздавшие точки. На момент расследования обычного блока за этот период в архиве ещё не было. Один и тот же запрос панели с шагом 60 с дал разные результаты:
 
@@ -33,7 +33,7 @@
 | Только raw Store Gateway | Неполный ряд |
 | Sidecar и raw Store Gateway вместе | Разрывы воспроизводятся, в том числе без дедупликации и downsampling |
 
-**Как проверить повторение.** Взять точное выражение панели из [Traffic Light](../../charts/monitoring-k3s/dashboards/traffic-light.json), не убирая проверку свежести. С одинаковыми `start`, `end` и `step` сравнить `/api/v1/query_range` напрямую в Prometheus и через datasource Grafana `prometheus` (он читает Thanos). Если ответы различаются, в Thanos ограничить `storeMatch[]` сначала адресом sidecar, затем адресом raw gateway из `/api/v1/stores`, затем запросить оба. Сравнивать значения и временные метки каждой серии, а не только статус HTTP или наличие серии. Если ряд отсутствует уже в локальном Prometheus, это другой случай: проверять сбор и доставку, не подставлять нули.
+**Как проверить повторение.** Взять точное выражение панели из [Traffic Light](../../../charts/monitoring-k3s/dashboards/traffic-light.json), не убирая проверку свежести. С одинаковыми `start`, `end` и `step` сравнить `/api/v1/query_range` напрямую в Prometheus и через datasource Grafana `prometheus` (он читает Thanos). Если ответы различаются, в Thanos ограничить `storeMatch[]` сначала адресом sidecar, затем адресом raw gateway из `/api/v1/stores`, затем запросить оба. Сравнивать значения и временные метки каждой серии, а не только статус HTTP или наличие серии. Если ряд отсутствует уже в локальном Prometheus, это другой случай: проверять сбор и доставку, не подставлять нули.
 
 **Приёмка после выкладки:** за 07:15–08:00 МСК все 46 минутных точек каждой серии обеих панелей через Grafana совпали с Prometheus; в двухчасовом окне вокруг границы чтения совпали все 121. На глубине 19–20 часов архив вернул все 61 точку каждой серии. Панели и их запросы не менялись.
 
@@ -169,7 +169,7 @@ Public traffic-light — единственный явный share, не anonymo
 Headerless TV geometry обновлена в `832e341`; прежние hard-coded panel positions
 из октябрьских заметок не текущая layout specification. Источники — dashboard JSON,
 `deploy/platform/grafana/public-entry/files/traffic-light-inset.js` и
-[TV design](../applications/android-tv/traffic-light-tv-design.md), а не инъекция JS в Fully.
+[TV design](../../applications/android-tv/traffic-light-tv-design.md), а не инъекция JS в Fully.
 Последующая documented приёмка (`29f41d9`): dashboard `832e341`, kiosk parity
 `757dc18`, четыре real-browser случая (public/authenticated kiosk ×1920×1080/1440×900),
 40 targeted tests и24 public access checks. Это evidence другой выполненной
@@ -180,8 +180,8 @@ Grafana MCP — public verified-TLS endpoint с отдельным bearer и Vie
 native identity. Secret нельзя коммитить/печатать; browser MFA не подходит machine
 API. Для чтения использовать MCP/API, браузер — для визуального acceptance.
 
-[Деплой](../platform/cluster-deploy.md) · [сеть](../network/network-access.md) · [TV](../applications/android-tv/README.md) ·
-[SPI](../applications/spi/spi-incident-triage.md) · [n8n](../n8n/n8n-workflows.md).
+[Деплой](../../platform/cluster-deploy.md) · [сеть](../../network/network-access.md) · [TV](../../applications/android-tv/README.md) ·
+[SPI](../../applications/spi/spi-incident-triage.md) · [n8n](../../n8n/n8n-workflows.md).
 
 
 ## Отдельные инциденты, замеченные при закрытии split
@@ -220,7 +220,7 @@ ConfigMap policy и Deployment proxy; исходная handoff-версия ос
 
 ### socrat-2 watchdog incident and recovery — 2026-11-07
 
-[Forensic report](../records/incidents/vpn-incident-2026-11-07.md): four failed TLS/WebSocket
+[Forensic report](../../records/incidents/vpn-incident-2026-11-07.md): four failed TLS/WebSocket
 checks from20:02:22 MSK caused the VPN watchdog to stop k3s at20:03:56 and fence
 VPS Pods. This was an explicit stop, not a proven k3s crash/OOM. Exact first
 handshake error was discarded by the old helper; timeout/certificate/false-positive
@@ -248,7 +248,7 @@ monotonic/boot-scoped warm-up (still unhealthy if checks fail), and native resta
 also require confirmation. Failback checks target identity before stopping VPN;
 failed server startup attempts immediate native rollback. No automatic failback,
 TLS weakening or alert muting. Safe last-failure receipt retained outside Git.
-See [current protocol/defaults](../network/vpn-failover.md#hardened-detection-and-service-identity).
+See [current protocol/defaults](../../network/vpn-failover.md#hardened-detection-and-service-identity).
 
 Hardening applied live without restarting k3s, x-ui or Traefik; their current Pod
 names were retained, all4 nodes Ready, native primary/Caddy inactive, timer active.

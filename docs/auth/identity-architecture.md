@@ -7,7 +7,7 @@
 > browser E2E и мгновенный отзыв всех сессий/ключей не заявлены.
 
 > Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
-> [NetBird/сеть](../network/network-access.md), [владельцы мониторинга](../monitoring/observability-current.md).
+> [NetBird/сеть](../network/network-access.md), [владельцы мониторинга](../observability/monitoring/observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
 
 Срез внедрения **1 ноября 2026**. Начало справочника: [identity.md](identity.md).

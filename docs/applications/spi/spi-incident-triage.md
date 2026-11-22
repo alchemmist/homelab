@@ -1351,7 +1351,7 @@ Original n8n workflow `J9akzlydrf9XZiID` is active with additive
 `GRAPH_CAPTURE_DEFERRED`; normal publication resumed. Gateway/renderer and both
 consumers enabled;200/200 current live rules annotated. Nine natural Telegram
 photo receipts and a no-model/no-notification native2-PNG private S3/Reader
-integrity check passed. See `docs/monitoring/alert-graphs.md` for exact digests,
+integrity check passed. See `docs/observability/monitoring/alert-graphs.md` for exact digests,
 expiry/rotation, backups, CNI admission and explicit browser-SSO test limitation.
 No historical replay/reset, fake incident or paid probe was used. Historical
 unrelated matching/backlog receipts are not superseded by this graph deployment.

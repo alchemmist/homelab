@@ -201,7 +201,7 @@ browser-MFA/onboarding тест. Детальная карта, безопасн
 граница LiteLLM hooks: [cluster-deploy.md](../platform/cluster-deploy.md#публичные-входы-принадлежат-приложениям--2026-11-07).
 Ingress handoff был завершён в `e7fe891`; затем monitoring split `8862770`
 передал Grafana собственному app. Не возвращать старого владельца. Текущие sources
-и незавершённый aggregate cleanup: [observability-current.md](../monitoring/observability-current.md).
+и незавершённый aggregate cleanup: [observability-current.md](../observability/monitoring/observability-current.md).
 
 ## 6. Kuma: восстановление после инцидента, не zero downtime
 
@@ -211,7 +211,7 @@ Application-only restart для закрытия старых sockets выяви
 
 Secret UID сохранён, **данные Secret при recovery изменились**; не повторять промежуточное утверждение об неизменных credential bytes. Random bootstrap Secret отключён, старое Argo tracking ownership точно снято/keep сохранён, bootstrap guard не позволяет спутать app/DB username. Не менять DB deployment username или регенерировать живой Secret для обхода guard.
 
-Аудит: maintenance task `kuma-db-account-recovery` (без apply), `scripts/kuma-db-account-recovery.py`, [MariaDB runbook](../monitoring/uptime-kuma-mariadb.md). Private candidate/before/grants/uncertain/after receipts сохранены. При uncertain write остановиться; не менять defaults и не повторять recovery вслепую. Отдельная БД не перезапускалась.
+Аудит: maintenance task `kuma-db-account-recovery` (без apply), `scripts/kuma-db-account-recovery.py`, [MariaDB runbook](../observability/monitoring/uptime-kuma-mariadb.md). Private candidate/before/grants/uncertain/after receipts сохранены. При uncertain write остановиться; не менять defaults и не повторять recovery вслепую. Отдельная БД не перезапускалась.
 
 ## 7. Mac: старый owned DNS lifecycle снят полностью
 

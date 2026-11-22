@@ -9,7 +9,7 @@
 | Authentik, OIDC, groups | [Current identity model](auth/identity-current-state.md); [application access](auth/application-access.md) |
 | NetBird, WireGuard, 3x-ui | [Human and node access](network/network-access.md); [application egress](network/service-vpn-egress.md) |
 | Argo CD, Rancher, Harbor, k3s | [Deployment](platform/cluster-deploy.md); [node and storage runbooks](platform/) |
-| Grafana, Thanos, Prometheus, Loki | [Monitoring](monitoring/observability-current.md); [log operations](logging/operator-guide.md) |
+| Grafana, Thanos, Prometheus, Loki | [Monitoring](observability/monitoring/observability-current.md); [log operations](observability/logging/operator-guide.md) |
 | RustFS | [Foundation](data/object-storage/rustfs-foundation.md); [verification records](rustfs/) |
 | n8n, SPI | [Workflow operations](n8n/n8n-workflows.md); [incident triage](applications/spi/spi-incident-triage.md) |
 | LiteLLM, Open WebUI, LMS | [AI application guides](applications/ai/) |

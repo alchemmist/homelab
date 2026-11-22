@@ -61,7 +61,7 @@ Deployment/service/dashboard reconciled. Original slow real photo upload remains
 to capture/attribute; configuration and this canary do not prove S3 throughput.
 
 
-Image-performance continuation: [pipeline and verified acceptance](../applications/wishlist/wishlist-images.md).
+Image-performance continuation: [pipeline and verified acceptance](../../applications/wishlist/wishlist-images.md).
 The old request_body numeric timing was scrubbed centrally; new bounded numeric
 `wishlist.upload.receive_seconds`/`wishlist.upload.bytes` survive existing privacy
 filters. Native engine durations/bytes, S3 body-download vs cache and browser

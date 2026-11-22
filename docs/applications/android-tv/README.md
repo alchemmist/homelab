@@ -290,7 +290,7 @@ Shared scene по-прежнему использует compacted layout, authen
 `deploy/platform/grafana/public-entry`, не прежнему kube-prometheus-stack app.
 Headerless/full-height disk layout изменён в `832e341`; canonical share URL,
 Fully55%/font75%, empty injectJsCode и отдельный YouTube VPN не менять по старым
-координатам панелей. [Monitoring ownership](../../monitoring/observability-current.md). Source update
+координатам панелей. [Monitoring ownership](../../observability/monitoring/observability-current.md). Source update
 и проверка Argo не заменяют физический remote/cold-boot тест.
 
 ## Полоска Argo и обновление раскладки — 11 ноября 2026

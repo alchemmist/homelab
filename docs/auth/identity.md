@@ -7,7 +7,7 @@
 > browser E2E и мгновенный отзыв всех сессий/ключей не заявлены.
 
 > Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
-> [NetBird/сеть](../network/network-access.md), [владельцы мониторинга](../monitoring/observability-current.md).
+> [NetBird/сеть](../network/network-access.md), [владельцы мониторинга](../observability/monitoring/observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
 
 **Основа identity — 1 ноября 2026; сеть/публичный доступ актуализированы 6 ноября.** Owner-проверка LiteLLM и native inspector/redirect controls относятся к исходной identity-сессии. Это консолидированное описание всей сессии: как

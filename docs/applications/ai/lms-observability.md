@@ -101,7 +101,7 @@ supported query type.
 `browser.resource` measures network-transfer duration; fetch spans measure time
 to response headers. This is a span waterfall, **not a CPU sampling flame graph**
 or coverage of every Python/JS function. CPU profiling is now deployed separately;
-see [service CPU profiling](../../monitoring/service-cpu-profiling.md).
+see [service CPU profiling](../../observability/monitoring/service-cpu-profiling.md).
 
 ## Reproduce the real production check
 

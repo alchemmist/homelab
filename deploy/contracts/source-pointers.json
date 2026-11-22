@@ -16,7 +16,7 @@
     "docs/applications/wiki/README.md",
     "wiki/README.md",
     "docs/applications/ai/litellm.md",
-    "docs/monitoring/monitoring-llm.md",
+    "docs/observability/monitoring/monitoring-llm.md",
     "docs/platform/cluster-deploy.md",
     "docs/applications/ai/open-webui-upgrades.md",
     "docs/applications/ai/open-webui-tool-guard.md",

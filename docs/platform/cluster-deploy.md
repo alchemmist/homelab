@@ -247,7 +247,7 @@ Pending из-за 512Mi request на socrat-0, до запуска контей�
 Ownership-таблица выше учитывает последующий monitoring split `8862770`.
 Первоначальная передача22 ресурсов в восемь apps была отдельной завершённой
 приёмкой; она не доказывает финальный cleanup новых monitoring owners.
-[Текущая карта и read-only status](../monitoring/observability-current.md).
+[Текущая карта и read-only status](../observability/monitoring/observability-current.md).
 
 Приёмка миграции: **134/134** public TLS/anonymous/forged-header/invalid-token
 checks до и после, **88 профильных тестов**. Пять старых ошибок
@@ -299,7 +299,7 @@ verified mTLS readiness, отказ без client certificate, свежие Loki
 browser-MFA/enrollment, backup/restore/HA или every-service telemetry acceptance.
 
 Точные владельцы, безопасный handoff и границы проверок:
-[monitoring-service-split.md](../monitoring/monitoring-service-split.md).
+[monitoring-service-split.md](../observability/monitoring/monitoring-service-split.md).
 На том промежуточном этапе guard отказывал при наличии независимых owners;
 после окончательного split `monitoring.yml` / `monitoring_stack` retired
 **безусловно**, до любых мутаций, включая запуск на свежем кластере. Править действующие Git sources, не старый
@@ -342,14 +342,14 @@ Ansible installer окончательно retired: always-tag fail до люб�
 При handoff сначала disarm/no finalizers, затем adopt, live проверки, затем удаление
 старого Application/values. Ни глобальный prune, ни restart/WAL repair/DB migration,
 ни ротация TLS или alert credentials не выполнялись. Проверки/границы и диаграмма
-владения: [prometheus-service-split.md](../monitoring/prometheus-service-split.md).
+владения: [prometheus-service-split.md](../observability/monitoring/prometheus-service-split.md).
 
 
 Закрывающие коммиты окончательного разделения: `652e286` (disarm), `78a9336`
 (adopt), `bcc93ca` (удаление aggregate), **`0bb4e31`** (финальная проверка/rollback
 safeguards). 104 tests + 24 subtests и 134/134 public checks прошли; на закрытии
 49 Applications Synced/Healthy, но старый WAL alert не маскировался и не исправлялся.
-Подробный итог/границы: [observability-current.md](../monitoring/observability-current.md#зафиксированный-closeout-не-новая-команда-миграции).
+Подробный итог/границы: [observability-current.md](../observability/monitoring/observability-current.md#зафиксированный-closeout-не-новая-команда-миграции).
 
 **Не откатывать передачу владения простым удалением новых Applications с active
 finalizers.** Это может каскадно удалить уже переданные workloads. Обратная

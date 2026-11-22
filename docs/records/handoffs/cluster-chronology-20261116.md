@@ -925,9 +925,9 @@ Prometheus-компонентов повторно проверены все 77 
 Остаётся отдельная проблема WAL Prometheus; сбой digest блога исправлен
 параллельным релизом `f485c74` (blog снова Synced/Healthy). Это **не** обещание
 целостности WAL или здоровья всего кластера. Карта/приёмка и границы:
-[деплой](../../platform/cluster-deploy.md), [наблюдаемость](../../monitoring/observability-current.md),
-[первый closeout](../../monitoring/monitoring-service-split.md),
-[окончательное разделение Prometheus-компонентов](../../monitoring/prometheus-service-split.md).
+[деплой](../../platform/cluster-deploy.md), [наблюдаемость](../../observability/monitoring/observability-current.md),
+[первый closeout](../../observability/monitoring/monitoring-service-split.md),
+[окончательное разделение Prometheus-компонентов](../../observability/monitoring/prometheus-service-split.md).
 
 ## Топология и данные
 
@@ -956,7 +956,7 @@ Grafana MCP/API, браузер — для визуальной проверки
 
 SPI triage использует durable queue, read-only evidence и scoped GitHub App;
 не получает права автоматически чинить инфраструктуру или закрывать инциденты.
-[Бот](../../platform/socrat-bot.md), [SPI](../../applications/spi/spi-incident-triage.md), [n8n](../../n8n/n8n-workflows.md).
+[Бот](../../socrat-bot/operations.md), [SPI](../../applications/spi/spi-incident-triage.md), [n8n](../../n8n/n8n-workflows.md).
 Ручная эскалация20→10 не равна смене severity и не обещает SLA.
 
 TV использует public traffic-light URL канонического Grafana, без внутреннего VPN.

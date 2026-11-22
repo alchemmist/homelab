@@ -21,7 +21,7 @@ PUT/POST/PATCH/DELETE405. [Приёмка](native-browser-auth.md#recovered-vps-
 
 
 > Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
-> [NetBird/сеть](../network/network-access.md), [владельцы мониторинга](../monitoring/observability-current.md).
+> [NetBird/сеть](../network/network-access.md), [владельцы мониторинга](../observability/monitoring/observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
 
 Начало: [identity.md](identity.md). Подробный engineering runbook текущего дизайна.

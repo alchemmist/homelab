@@ -4,6 +4,7 @@ Choose the narrowest route that answers the question. Nothing below is required 
 
 | Starting point | Open |
 | --- | --- |
+| Where do I check metrics, logs, traces or alert delivery? | [Observability](observability/README.md) |
 | How does the cluster fit together? | [System overview and sources of truth](platform/system-overview.md) |
 | I have a service, namespace, group or endpoint | [Entity lookup](entities.md) |
 | I have a symptom or alert | [Symptom lookup](symptoms.md) |
@@ -32,9 +33,9 @@ The [public wiki](../wiki/README.md) has a separate audience and publication pro
 | Theme, native UI and recovery | [Frontend](auth/identity-frontend.md), [backup and recovery](auth/identity-recovery.md) |
 | Registry, robot accounts and scoped push/pull | [Harbor](platform/harbor.md) |
 | Wiki runtime and content | [Lifecycle](applications/wiki/wiki-process-lifecycle.md), [upgrade](records/handoffs/wiki-upgrade-20261107.md), [public onboarding source](../wiki/README.md) |
-| Per-node metric collection and retention | [OTel to Prometheus to Thanos: raw data, five-minute and hourly resolution, and deletion limits](monitoring/observability-current.md#метрики-сбор-прореживание-и-перенос-между-нодами--21-ноября-2026) |
-| Logs, metrics, traces and profiles | [Current observability](monitoring/observability-current.md), [monitoring](monitoring/monitoring.md) |
-| Incidents, notifications and workflow integration | [Socrat bot](platform/socrat-bot.md), [SPI frontend, backend and operations](applications/spi/spi-incident-triage.md) (see current context for placement), [n8n](n8n/n8n-workflows.md) |
+| Per-node metric collection and retention | [OTel to Prometheus to Thanos: raw data, five-minute and hourly resolution, and deletion limits](observability/monitoring/observability-current.md#метрики-сбор-прореживание-и-перенос-между-нодами--21-ноября-2026) |
+| Logs, metrics, traces and profiles | [Current observability](observability/monitoring/observability-current.md), [monitoring](observability/monitoring/monitoring.md) |
+| Incidents, notifications and workflow integration | [Socrat Bot](socrat-bot/README.md), [SPI frontend, backend and operations](applications/spi/spi-incident-triage.md) (see current context for placement), [n8n](n8n/n8n-workflows.md) |
 | TV dashboard, targeted Argo CSS and dedicated YouTube VPN | [Android TV](applications/android-tv/README.md), [maintaining the TV stylesheet](applications/android-tv/README.md#сопровождение-кастомного-tv-css-для-argo) |
 | LMS and local generators | [LMS](applications/ai/lms.md), [local generation](applications/ai/lms-generation.md) |
 | SWE Mini retirement | [Removal scope and verification](applications/ai/swe-mini.md) |
