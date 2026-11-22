@@ -50,7 +50,7 @@ def reconcile(api, root, rollback=False):
 
 
 def main():
-    """Main."""
+    """Update authorization flow titles or restore the titles from the local backup."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("--public-edge", default="109.173.40.247")
