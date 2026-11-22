@@ -5,24 +5,30 @@
   become: true
   any_errors_fatal: true
   tasks:
-    - ansible.builtin.file:
+    - name: Create the Grafana TV alias retirement staging directory
+      ansible.builtin.file:
         path: /var/lib/homelab-grafana-tv-dns-retirement
         state: directory
         mode: "0700"
-    - ansible.builtin.copy:
+    - name: Install the Grafana TV alias retirement plan and apply tool
+      ansible.builtin.copy:
         src: ../../scripts/grafana-tv-dns.py
         dest: /usr/local/sbin/homelab-grafana-tv-dns
         mode: "0700"
-    - ansible.builtin.copy:
+    - name: Stage the proposed zone renderer for Grafana TV alias retirement
+      ansible.builtin.copy:
         src: ../../scripts/public_dns_zone.py
         dest: /var/lib/homelab-grafana-tv-dns-retirement/proposed.py
         mode: "0700"
-    - ansible.builtin.command: /usr/local/sbin/homelab-grafana-tv-dns
+    - name: Compute the Grafana TV alias retirement plan
+      ansible.builtin.command: /usr/local/sbin/homelab-grafana-tv-dns
       register: dns_plan
       changed_when: false
-    - ansible.builtin.debug:
+    - name: Display the Grafana TV alias retirement plan
+      ansible.builtin.debug:
         var: dns_plan.stdout
-    - ansible.builtin.assert:
+    - name: Require the approved Grafana TV alias retirement plan hash
+      ansible.builtin.assert:
         that: (dns_plan.stdout | from_json).plan_hash == public_web_dns_hash
       when: public_web_dns_apply | default(false) | bool
 - name: Serial approved owned-zone refresh
@@ -32,7 +38,8 @@
   become: true
   any_errors_fatal: true
   tasks:
-    - ansible.builtin.command:
+    - name: Apply the approved Grafana TV alias retirement plan
+      ansible.builtin.command:
         argv: [/usr/local/sbin/homelab-grafana-tv-dns,
                --apply,
                --approve-plan-hash,

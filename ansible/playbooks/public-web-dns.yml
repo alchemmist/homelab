@@ -5,24 +5,30 @@
   become: true
   any_errors_fatal: true
   tasks:
-    - ansible.builtin.file:
+    - name: Create the public web DNS staging directory
+      ansible.builtin.file:
         path: /var/lib/homelab-public-web-dns
         state: directory
         mode: '0700'
-    - ansible.builtin.copy:
+    - name: Install the public web DNS plan and apply tool
+      ansible.builtin.copy:
         src: ../../scripts/public-web-dns.py
         dest: /usr/local/sbin/homelab-public-web-dns
         mode: '0700'
-    - ansible.builtin.copy:
+    - name: Stage the proposed zone renderer for public web DNS
+      ansible.builtin.copy:
         src: ../../scripts/public_dns_zone.py
         dest: /var/lib/homelab-public-web-dns/proposed.py
         mode: '0700'
-    - ansible.builtin.command: /usr/local/sbin/homelab-public-web-dns
+    - name: Compute the public web DNS plan
+      ansible.builtin.command: /usr/local/sbin/homelab-public-web-dns
       register: dns_plan
       changed_when: false
-    - ansible.builtin.debug:
+    - name: Display the public web DNS plan
+      ansible.builtin.debug:
         var: dns_plan.stdout
-    - ansible.builtin.assert:
+    - name: Require the approved public web DNS plan hash
+      ansible.builtin.assert:
         that: (dns_plan.stdout | from_json).plan_hash == public_web_dns_hash
       when: public_web_dns_apply | default(false) | bool
 - name: Serial approved owned-zone refresh
@@ -32,7 +38,8 @@
   become: true
   any_errors_fatal: true
   tasks:
-    - ansible.builtin.command:
+    - name: Apply the approved public web DNS plan
+      ansible.builtin.command:
         argv: [/usr/local/sbin/homelab-public-web-dns,
                --apply,
                --approve-plan-hash,
