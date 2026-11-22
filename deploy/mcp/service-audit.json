@@ -195,6 +195,11 @@
       "upstream": "https://github.com/rustfs/mcp"
     },
     {
+      "application": "schoolbot",
+      "decision": "own-app-no-new-wrapper",
+      "reason": "Our own application; no existing maintained native management MCP identified. Do not manufacture REST/OpenAPI wrappers or let infrastructure diagnostics read application databases."
+    },
+    {
       "application": "searxng",
       "decision": "no-first-party-runtime-mcp-identified",
       "reason": "No suitable first-party operational MCP identified in upstream source/docs; do not install community wrappers."

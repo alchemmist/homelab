@@ -14,8 +14,8 @@ ingress:
   tlsSecretName: schoolbot-tls
   clusterIssuer: letsencrypt-http01
 resources:
-  requests: { cpu: 100m, memory: 256Mi }
-  limits: { memory: 768Mi }
+  requests: {cpu: 100m, memory: 256Mi}
+  limits: {memory: 768Mi}
 imagePullSecrets:
   - schoolbot-harbor-pull
 publicBaseUrl: https://bot.sch1357.ru
