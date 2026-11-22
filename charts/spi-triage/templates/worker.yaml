@@ -169,7 +169,12 @@ spec:
             - name: tmp
               mountPath: /tmp
             - name: data
+              {{- if .Values.postgresEnabled }}
+              mountPath: /data/graphs
+              subPath: graphs
+              {{- else }}
               mountPath: /data
+              {{- end }}
             - name: github
               mountPath: /github
               readOnly: true
@@ -228,7 +233,7 @@ spec:
   clusterIP: {{ .Values.serviceClusterIP | quote }}
   {{- end }}
   selector:
-    app: spi-triage
+    app: {{ ternary "spi-pg-handoff" "spi-triage" (.Values.pgHandoff | default false) }}
     {{- if .Values.maintenanceIngressPaused }}
     homelab.io/maintenance-serving: enabled
     {{- end }}

@@ -43,6 +43,7 @@ graphs:
 
 # Completed handoff: temporary ingress guard disabled, original Service restored.
 maintenanceIngressPaused: false
+pgHandoff: true
 
 workerReplicas: 1
 
