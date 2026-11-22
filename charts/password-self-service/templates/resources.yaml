@@ -65,6 +65,49 @@ spec:
   ports: [{name: http, port: 80, targetPort: http}]
 ---
 apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: password-self-service
+  namespace: identity
+spec:
+  podSelector:
+    matchLabels:
+      app: password-self-service
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - {protocol: TCP, port: 8080}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: identity
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: authentik
+              app.kubernetes.io/instance: authentik
+              app.kubernetes.io/component: server
+      ports:
+        - {protocol: TCP, port: 80}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+---
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: password-self-service
