@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def install(record, destination):
     """Execute install."""
     if record["name"] not in {
+        "trivy",
         "promtool",
         "kubectl",
         "kind",

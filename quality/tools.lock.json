@@ -73,6 +73,14 @@
         "sha256": "2a542df32eac02ee17b9d844fb2aa1de00dafa5476579ba8a3ba862e9d572ea0",
         "member": "prometheus-3.15.0.linux-amd64/promtool",
         "checksumEvidence": "Official GitHub release asset digest; no independent signature claim"
+      },
+      {
+        "name": "trivy",
+        "version": "0.76.2",
+        "url": "https://github.com/aquasecurity/trivy/releases/download/v0.76.2/trivy_0.76.2_Linux-64bit.tar.gz",
+        "sha256": "bc0fc726e017b8927a62b2d3531d7a84ee01769daf5c99ed866dced54089fdbf",
+        "member": "trivy",
+        "checksumEvidence": "GitHub release asset digest, recorded at review; no independent signature/provenance verification"
       }
     ],
     "darwin-arm64": [
@@ -147,6 +155,14 @@
         "sha256": "920df4d17e78b3b0175af144eb318b0c74d1cf7b1d1251b326966f0e81977260",
         "member": "prometheus-3.15.0.darwin-arm64/promtool",
         "checksumEvidence": "Official GitHub release asset digest; no independent signature claim"
+      },
+      {
+        "name": "trivy",
+        "version": "0.76.2",
+        "url": "https://github.com/aquasecurity/trivy/releases/download/v0.76.2/trivy_0.76.2_macOS-ARM64.tar.gz",
+        "sha256": "ae7ea358326960406b703c77b2ac490190797d80b306b5b50c2a27221da0a5b8",
+        "member": "trivy",
+        "checksumEvidence": "GitHub release asset digest, recorded at review; no independent signature/provenance verification"
       }
     ]
   }

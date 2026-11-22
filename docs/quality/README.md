@@ -126,3 +126,13 @@ The medium suite needs full Git history for the pinned before/handoff and later 
 Actual Linux jobs add `--isolate-network` to fast/medium. Install only required pinned binaries via `ci/quality/install_tools.py` and parsing collections via `ci/quality/install_collections.py`; do not substitute system versions silently. Use `.venv/bin:.quality-tools/bin` in scoped PATH and `KUBECONFIG=/dev/null` for offline checks. Cluster testing requires an explicitly reviewed disposable Docker/Kind environment; it is not implicitly run by these offline commands.
 
 Publication uses the private fail-closed draft publisher: fresh main/remote ancestry, stable clean head, complete audit metadata, verified open draft and one non-force push. Any refusal means no separate push. PR metadata must identify actual published head and real results. No main merge, admin bypass, production execution, backup/identity/model/worker/provider operation is performed by CI/refactoring preparation.
+
+### Container image CVEs
+
+`make image-cves` scans the linux/amd64 Grafana MCP and NetBird dashboard images
+by digest from their deployment values. Install the pinned CLI locally with
+`uv run python -m ci.quality.install_tools --tools trivy`. The scanner needs
+network access to public registries and its vulnerability database; no Harbor
+credentials are supplied. HIGH and CRITICAL findings appear in the job log.
+A CRITICAL finding with a fixed version, or a scanner error, fails the job.
+Private images and other containers are not covered by this initial inventory.

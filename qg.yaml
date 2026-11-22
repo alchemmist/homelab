@@ -73,6 +73,11 @@ profiles:
     extends: default
     setup:
       - run: uv run python -m ci.quality.install_tools --tools gitleaks
+  quality-images:
+    extends: default
+    timeout-minutes: 15
+    setup:
+      - run: uv run python -m ci.quality.install_tools --tools trivy
   quality-manifests:
     extends: quality-helm
     setup:
@@ -174,6 +179,13 @@ nodes:
     run: make docker
     results:
       native: reports/docker.json
+  image-cves:
+    title: Deployed image vulnerabilities
+    profile: quality-images
+    needs:
+      - graph
+    policy: *id001
+    run: make image-cves
   tests-fast:
     title: Unit tests
     profile: quality-fast

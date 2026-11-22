@@ -4,7 +4,7 @@ export PYTHONDONTWRITEBYTECODE := 1
 
 check: graph ownership yaml python-scopes scripts-q000 deploy-i001 rustfs-return-types \
        javascript workflow shell docker ansible secrets dependencies tests-fast tests-medium \
-       python manifests tests-cluster
+       python manifests tests-cluster image-cves
 
 setup:
 	uv sync --locked
@@ -101,4 +101,7 @@ tests-cluster:
 
 .PHONY: check setup graph ownership yaml python-scopes scripts-q000 deploy-i001 \
         rustfs-return-types javascript workflow shell docker ansible secrets dependencies \
-        tests-fast tests-medium python manifests tests-cluster
+        tests-fast tests-medium python manifests tests-cluster image-cves
+
+image-cves:
+	uv run python -m ci.quality.image_cves
