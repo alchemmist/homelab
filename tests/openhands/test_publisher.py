@@ -14,7 +14,7 @@ class Publisher(unittest.TestCase):
  def test_no_generic_or_merge(self) -> None:
   """Verify the publisher issues no generic or merge commits."""
   with patch.object(m,"api") as api:
-   for a in ["merge","push","delete","request","approve","resolve","workflow_dispatch"]:
+   for a in ["create","life_head","life_ci","life_ready","merge","push","delete","request","approve","resolve","workflow_dispatch"]:
     with self.assertRaises(ValueError):
      m.dispatch({"action":a})
 
@@ -43,20 +43,9 @@ class Publisher(unittest.TestCase):
   for v in ["Bearer token","github_pat_fake","https://host"]:
    with self.assertRaises(ValueError):
     m.clean_text(v,1,90)
- def test_campaign_ci_test_path_requires_proof(self) -> None:
-  """Verify campaign CI test paths require proof of the change."""
-  f={"ci/tests/test_mutation_123456abcdef.py":"# regression"}
-  with self.assertRaises(ValueError):
-   m.changes(f)
-  assert len(m.changes(f, pi_ci=True)) == 1
-  for p in ("ci/tests/conftest.py","ci/lib/mutation_gate.py","ci/tests/test_mutation_123456abcdef.sh"):
-   with self.assertRaises(ValueError):
-    m.changes({p:"bad"},pi_ci=True)
- def test_signed_report_must_be_an_open_owner_labeled_issue(self) -> None:
-  """Verify signed reports bind only to open, owner-labeled issues."""
-  base={"state":"open","user":{"id":104511335},"labels":[{"name":"mutation-report"}]}
-  with patch.object(m,"api",return_value=base):
-   assert m.mutation_target(642) == 642
-  for change in ({"state":"closed"},{"user":{"id":123}},{"labels":[]},{"pull_request":{}}):
-   with patch.object(m,"api",return_value=base|change),self.assertRaises(ValueError):
-    m.mutation_target(642)
+
+ def test_retired_mutation_branch_is_not_owned(self) -> None:
+  sha = "a" * 40
+  pr = {"state":"open","base":{"ref":"main"},"head":{"repo":{"full_name":m.REPO},"ref":"openhands/issue-509/" + "b" * 32,"sha":sha},"user":{"login":"alchemmist"}}
+  with patch.object(m,"api",return_value=pr), self.assertRaises(ValueError):
+   m.owned_pr(509,sha)

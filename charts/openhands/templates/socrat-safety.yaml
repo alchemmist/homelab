@@ -23,11 +23,11 @@ metadata:
   name: openhands-budget
 spec:
   hard:
-    pods: {{ ternary "'5'" "'3'" (default false .Values.piMonori) }}
+    pods: '3'
     requests.cpu: '2'
     requests.memory: 4Gi
-    limits.cpu: {{ ternary "'7'" "'4'" (default false .Values.piMonori) }}
-    limits.memory: {{ ternary "11Gi" "8Gi" (default false .Values.piMonori) }}
+    limits.cpu: '4'
+    limits.memory: 8Gi
     requests.storage: 12Gi
 ---
 apiVersion: networking.k8s.io/v1
@@ -38,9 +38,6 @@ spec:
   podSelector:
     matchExpressions:
       - {key: app, operator: NotIn, values: [openhands-backup-pre142]}
-      {{- if .Values.piMonori }}
-      - {key: app, operator: NotIn, values: [pi-monori-judge]}
-      {{- end }}
   policyTypes: [Ingress, Egress]
   ingress:
     - from:
