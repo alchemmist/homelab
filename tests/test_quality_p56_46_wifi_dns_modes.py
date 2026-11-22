@@ -14,7 +14,6 @@ _MODE = "0644"
 _MODE_COUNT = 2
 _SINGLE_OCTAL_MODE = re.compile(r"mode:\s*'0[0-7]{3,4}'")
 _MODE_FILES: dict[str, tuple[str, ...]] = {
-    "ansible/playbooks/grafana-tv-dns.yml": ("0700", "0700", "0700"),
     "ansible/playbooks/identity-hosts.yml": ("0640",),
     "ansible/playbooks/otel-litellm-sdk.yml": ("0600",),
     "ansible/playbooks/rancher-private-access.yml": ("0755", "0644", "0755"),
