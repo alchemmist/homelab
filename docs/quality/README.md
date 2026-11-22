@@ -19,8 +19,8 @@ files. It does not require new docstrings. Q002 checks the configured quote char
 not triple quoting; it remains part of the full local Ruff policy, not this gate.
 `deploy-i001` checks import order (I001) in tracked, owned Python under
 `ansible/`, `deploy/`, `scripts/` and `tests/`. The same job checks unused imports
-(F401) only under `scripts/`, using a separate tracked, owned inventory that fails
-if empty. Neither gate covers all owned Python.
+(F401) under `scripts/` and `tests/`, using a separate tracked, owned inventory
+that fails if either root is empty. Neither gate covers all owned Python.
 Ownership runs six offline checks plus their regression suites; the Ansible
 entrypoint scan covers both `.yml` and `.yaml`.
 `tests-medium` runs the complete loopback-isolated integration suite after `ownership`.

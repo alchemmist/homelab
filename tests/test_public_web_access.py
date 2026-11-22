@@ -173,10 +173,6 @@ def test_chart_rejects_mislabeled_authorization(owner, key, value, denial: str, 
 
 
 def test_rancher_public_proxy_denies_local_password_without_changing_private_backend() -> None:
-    import subprocess
-
-    import yaml
-
     docs = render("rancher")
     config = next(
         x["data"]["nginx.conf"]
