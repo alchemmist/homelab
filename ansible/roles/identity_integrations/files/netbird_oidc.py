@@ -17,6 +17,8 @@ The strict callback is derived from server.auth.issuer in the NetBird config wit
 the pinned GetRedirectURI algorithm. A missing issuer config blocks apply.
 """
 
+from __future__ import annotations
+
 import argparse
 import hashlib
 import json

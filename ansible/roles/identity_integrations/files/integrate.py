@@ -1,5 +1,7 @@
 """Explicit native OIDC rollout. Back up configuration privately; never log secrets."""
 
+from __future__ import annotations
+
 import base64
 import json
 import os
