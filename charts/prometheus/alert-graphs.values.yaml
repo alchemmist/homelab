@@ -2,6 +2,49 @@
 ---
 kube-prometheus-stack:
   additionalPrometheusRulesMap:
+    homelab-job-failures:
+      groups:
+        - name: homelab-job-failures
+          rules:
+            - alert: KubeJobFailed
+              annotations:
+                description: Job {{ $labels.namespace }}/{{ $labels.job_name }} failed
+                  to complete.
+                runbook_url: >-
+                  https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubejobfailed
+                spi_graphs: >-
+                  {"version":1,"graphs":[{"id":"primary","title":"KubeJobFailed","dashboard_uid":"alerts-32fe12c750259f22","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"KubeJobFailed
+                  / rule
+                  evaluations","dashboard_uid":"alerts-32fe12c750259f22","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}
+                summary: Job failed to complete.
+              expr: |
+                (kube_job_failed{job="kube-state-metrics"} > 0)
+                unless on(namespace, job_name)
+                kube_job_owner{job="kube-state-metrics",namespace="pr-agent",owner_kind="CronJob",owner_name="pr-agent-webhook-redelivery"}
+              for: 15m
+              labels:
+                severity: warning
+            - alert: SocratPrAgentWebhookRedeliveryFailed
+              annotations:
+                description: >-
+                  Inspect {{ $labels.namespace }}/{{ $labels.job_name }} and GitHub
+                  delivery history. A later successful scan clears this alert, but
+                  does not guarantee every delivery succeeded.
+                spi_graphs: >-
+                  {"version":1,"graphs":[{"id":"primary","title":"SocratPrAgentWebhookRedeliveryFailed","dashboard_uid":"alerts-32fe12c750259f22","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratPrAgentWebhookRedeliveryFailed
+                  / rule
+                  evaluations","dashboard_uid":"alerts-32fe12c750259f22","panel_id":4,"variables":{},"before_seconds":7200,"after_seconds":300}]}
+                summary: Webhook redelivery failed without a later successful run.
+              expr: |
+                ((kube_job_failed{job="kube-state-metrics",namespace="pr-agent"} > 0)
+                and on(namespace, job_name)
+                kube_job_owner{job="kube-state-metrics",namespace="pr-agent",owner_kind="CronJob",owner_name="pr-agent-webhook-redelivery"})
+                unless on(namespace, job_name)
+                (kube_job_status_start_time{job="kube-state-metrics",namespace="pr-agent"}
+                < on(namespace) group_left()
+                max by(namespace) (kube_cronjob_status_last_successful_time{job="kube-state-metrics",namespace="pr-agent",cronjob="pr-agent-webhook-redelivery"}))
+              labels:
+                severity: warning
     homelab-memory-overcommit:
       groups:
         - name: homelab-memory-overcommit
@@ -135,9 +178,9 @@ kube-prometheus-stack:
           evaluations","dashboard_uid":"alerts-eddfd167d259fd2e","panel_id":18,"variables":{},"before_seconds":7200,"after_seconds":300}]}
       KubeJobFailed:
         spi_graphs: >-
-          {"version":1,"graphs":[{"id":"primary","title":"KubeJobFailed","dashboard_uid":"alerts-eddfd167d259fd2e","panel_id":19,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"KubeJobFailed
+          {"version":1,"graphs":[{"id":"primary","title":"KubeJobFailed","dashboard_uid":"alerts-32fe12c750259f22","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"KubeJobFailed
           / rule
-          evaluations","dashboard_uid":"alerts-eddfd167d259fd2e","panel_id":20,"variables":{},"before_seconds":7200,"after_seconds":300}]}
+          evaluations","dashboard_uid":"alerts-32fe12c750259f22","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}
       KubeJobNotCompleted:
         spi_graphs: >-
           {"version":1,"graphs":[{"id":"primary","title":"KubeJobNotCompleted","dashboard_uid":"alerts-eddfd167d259fd2e","panel_id":21,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"KubeJobNotCompleted
@@ -378,6 +421,11 @@ kube-prometheus-stack:
           {"version":1,"graphs":[{"id":"primary","title":"PrometheusTargetSyncFailure","dashboard_uid":"alerts-1025f972a9e83dc0","panel_id":45,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"PrometheusTargetSyncFailure
           / rule
           evaluations","dashboard_uid":"alerts-1025f972a9e83dc0","panel_id":46,"variables":{},"before_seconds":7200,"after_seconds":300}]}
+      SocratPrAgentWebhookRedeliveryFailed:
+        spi_graphs: >-
+          {"version":1,"graphs":[{"id":"primary","title":"SocratPrAgentWebhookRedeliveryFailed","dashboard_uid":"alerts-32fe12c750259f22","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratPrAgentWebhookRedeliveryFailed
+          / rule
+          evaluations","dashboard_uid":"alerts-32fe12c750259f22","panel_id":4,"variables":{},"before_seconds":7200,"after_seconds":300}]}
       TargetDown:
         spi_graphs: >-
           {"version":1,"graphs":[{"id":"primary","title":"TargetDown","dashboard_uid":"alerts-74abc29f7bedb572","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"TargetDown

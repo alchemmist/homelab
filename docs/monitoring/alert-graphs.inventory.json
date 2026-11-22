@@ -4527,10 +4527,10 @@
   },
   {
     "owner": "prometheus",
-    "resource": "kube-prometheus-stack-kubernetes-apps",
-    "group": "kubernetes-apps",
+    "resource": "kube-prometheus-stack-homelab-job-failures",
+    "group": "homelab-job-failures",
     "alert": "KubeJobFailed",
-    "expr": "kube_job_failed{job=\"kube-state-metrics\", namespace=~\".*\"}  > 0",
+    "expr": "(kube_job_failed{job=\"kube-state-metrics\"} > 0)\nunless on(namespace, job_name)\nkube_job_owner{job=\"kube-state-metrics\",namespace=\"pr-agent\",owner_kind=\"CronJob\",owner_name=\"pr-agent-webhook-redelivery\"}\n",
     "uid": null,
     "graphs": {
       "version": 1,
@@ -4538,8 +4538,8 @@
         {
           "id": "primary",
           "title": "KubeJobFailed",
-          "dashboard_uid": "alerts-eddfd167d259fd2e",
-          "panel_id": 19,
+          "dashboard_uid": "alerts-32fe12c750259f22",
+          "panel_id": 1,
           "variables": {},
           "before_seconds": 1800,
           "after_seconds": 300
@@ -4547,8 +4547,8 @@
         {
           "id": "condition",
           "title": "KubeJobFailed / rule evaluations",
-          "dashboard_uid": "alerts-eddfd167d259fd2e",
-          "panel_id": 20,
+          "dashboard_uid": "alerts-32fe12c750259f22",
+          "panel_id": 2,
           "variables": {},
           "before_seconds": 7200,
           "after_seconds": 300
@@ -6099,6 +6099,37 @@
           "title": "PrometheusTargetSyncFailure / rule evaluations",
           "dashboard_uid": "alerts-1025f972a9e83dc0",
           "panel_id": 46,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "prometheus",
+    "resource": "kube-prometheus-stack-homelab-job-failures",
+    "group": "homelab-job-failures",
+    "alert": "SocratPrAgentWebhookRedeliveryFailed",
+    "expr": "((kube_job_failed{job=\"kube-state-metrics\",namespace=\"pr-agent\"} > 0)\nand on(namespace, job_name)\nkube_job_owner{job=\"kube-state-metrics\",namespace=\"pr-agent\",owner_kind=\"CronJob\",owner_name=\"pr-agent-webhook-redelivery\"})\nunless on(namespace, job_name)\n(kube_job_status_start_time{job=\"kube-state-metrics\",namespace=\"pr-agent\"}\n< on(namespace) group_left()\nmax by(namespace) (kube_cronjob_status_last_successful_time{job=\"kube-state-metrics\",namespace=\"pr-agent\",cronjob=\"pr-agent-webhook-redelivery\"}))\n",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratPrAgentWebhookRedeliveryFailed",
+          "dashboard_uid": "alerts-32fe12c750259f22",
+          "panel_id": 3,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratPrAgentWebhookRedeliveryFailed / rule evaluations",
+          "dashboard_uid": "alerts-32fe12c750259f22",
+          "panel_id": 4,
           "variables": {},
           "before_seconds": 7200,
           "after_seconds": 300
