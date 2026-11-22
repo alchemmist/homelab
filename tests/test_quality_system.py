@@ -1223,6 +1223,7 @@ def test_documentation_language_scope_and_locations(tmp_path, monkeypatch) -> No
         "README": "\u0451",
         "docs/guide.md": "Caf\u00e9",
         "src/service.py": "\u0410",
+        "docs/n8n/workflow.json": "\u044f",
     }
     for name, content in files.items():
         path = tmp_path / name
@@ -1233,3 +1234,4 @@ def test_documentation_language_scope_and_locations(tmp_path, monkeypatch) -> No
     assert [(f["location"]["path"], f["location"]["startLine"]) for f in findings] == [
         ("docs/data.tsv", 2), ("service/readme.RST", 1), ("README", 1),
     ]
+    assert all(not f["location"]["path"].endswith(".json") for f in findings)
