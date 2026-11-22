@@ -128,8 +128,8 @@ image:
   # -- Docker image repository
   repository: grafana/grafana
   # Overrides the Grafana image tag whose default is the chart appVersion
-  tag: "{{ .Chart.AppVersion }}-distroless"
-  sha: ""
+  tag: 13.3.1-distroless
+  sha: 54e297ac67e2b72572f926892f4e06074dc4f79f2a56ed9a9ca9a88a46f28733
   pullPolicy: IfNotPresent
 
   ## Optionally specify an array of imagePullSecrets.
@@ -150,7 +150,7 @@ testFramework:
     # -- The Docker registry
     registry: docker.io
     repository: bats/bats
-    tag: 1.14.0
+    tag: 1.14.0@sha256:5322b877351fda0cc435de8c6116de7d0a2ec79d7c680132a0ef329a633bc66f
   imagePullPolicy: IfNotPresent
   # @schema skipProperties:true;additionalProperties:true
   securityContext:
