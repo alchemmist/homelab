@@ -29,7 +29,7 @@ _MODE_FILES: dict[str, tuple[str, ...]] = {
         "0755",
         "0644",
         "0755",
-        "0644",
+        # Caffeine unit mode is now enforced by homelab_user_unit (test_user_unit.py).
         "0755",
         "0644",
         "0644",

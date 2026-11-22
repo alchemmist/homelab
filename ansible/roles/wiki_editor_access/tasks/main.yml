@@ -128,7 +128,7 @@
 
 - name: Stage manifest comparison
   ansible.builtin.copy:
-    src: "{{ role_path }}/../../files/helm_manifest_changed.py"
+    src: "{{ role_path | dirname | dirname }}/files/helm_manifest_changed.py"
     dest: "{{ wiki_editor_directory }}/compare.py"
     mode: "0600"
 
@@ -136,6 +136,7 @@
   ansible.builtin.command:
     argv: [python3,
            "{{ wiki_editor_directory }}/compare.py",
+           --plan,
            --release,
            "{{ wiki_editor_gateway_release }}",
            --chart,
@@ -166,6 +167,6 @@
            --wait,
            --timeout,
            5m]
-  when: (wiki_editor_manifest.stdout | from_json).changed
+  when: "{'install': true, 'upgrade': true, 'current': false}[wiki_editor_manifest.stdout]"
   changed_when: true
 ...

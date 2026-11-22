@@ -25,6 +25,7 @@
 
 - name: Install bottom when the account has no monitor binary
   tags: monitor
+  when: not homelab_monitor_binary_stat.stat.executable | default(false)
   block:
     - name: Install the distribution bottom package
       ansible.builtin.package:
@@ -37,7 +38,6 @@
           The configured distribution repositories do not provide bottom.
           Install a trusted bottom package providing {{ homelab_monitor_binary }}
           before applying desktop setup.
-  when: not homelab_monitor_binary_stat.stat.executable | default(false)
 
 - name: Configure monitor table sorting
   ansible.builtin.import_tasks: bottom.yml

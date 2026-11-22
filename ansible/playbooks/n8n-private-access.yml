@@ -86,24 +86,26 @@
 
     - name: Install manifest comparison helper
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../files/helm_manifest_changed.py"
+        src: "{{ playbook_dir | dirname }}/files/helm_manifest_changed.py"
         dest: "{{ n8n_private_directory }}/helm_manifest_changed.py"
         mode: "0600"
 
     - name: Compare private gateway manifests
       ansible.builtin.command:
-        argv: [python3,
-               "{{ n8n_private_directory }}/helm_manifest_changed.py",
-               --release,
-               private-gateway,
-               --chart,
-               "{{ n8n_private_directory }}/gateway-chart",
-               --namespace,
-               syncthing,
-               --values,
-               "{{ n8n_private_directory }}/gateway-values.yaml",
-               --kubeconfig,
-               "{{ n8n_private_kubeconfig }}"]
+        argv:
+          - python3
+          - "{{ n8n_private_directory }}/helm_manifest_changed.py"
+          - --plan
+          - --release
+          - private-gateway
+          - --chart
+          - "{{ n8n_private_directory }}/gateway-chart"
+          - --namespace
+          - syncthing
+          - --values
+          - "{{ n8n_private_directory }}/gateway-values.yaml"
+          - --kubeconfig
+          - "{{ n8n_private_kubeconfig }}"
       register: n8n_private_gateway_diff
       changed_when: false
 
@@ -124,7 +126,7 @@
                --wait,
                --timeout,
                5m]
-      when: (n8n_private_gateway_diff.stdout | from_json).changed
+      when: "{'install': true, 'upgrade': true, 'current': false}[n8n_private_gateway_diff.stdout]"
       changed_when: true
 
 - name: Publish n8n in the private WireGuard DNS
@@ -153,15 +155,20 @@
         owner: root
         group: root
         mode: "0644"
-      register: n8n_dns_record
-
+      notify: Activate the private n8n DNS record
     - name: Validate private DNS configuration before restart
       ansible.builtin.command: dnsmasq --test --conf-file=/etc/homelab-private-dns.conf
+      register: n8n_dns_record_validation
       changed_when: false
 
+  handlers:
     - name: Activate the private n8n DNS record
       ansible.builtin.systemd_service:
         name: homelab-private-dns.service
         state: restarted
-      when: n8n_dns_record.changed
+      when:
+        - n8n_dns_record_validation is defined
+        - n8n_dns_record_validation is not skipped
+        - n8n_dns_record_validation is succeeded
+        - n8n_dns_record_validation is reachable
 ...

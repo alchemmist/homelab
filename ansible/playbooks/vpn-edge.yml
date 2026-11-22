@@ -61,5 +61,6 @@
         certificate/traefik-edge-vpn --timeout=180s
       changed_when: false
 
-- ansible.builtin.import_playbook: rancher-namespaces.yml
+- name: Import rancher namespaces playbook
+  ansible.builtin.import_playbook: rancher-namespaces.yml
 ...

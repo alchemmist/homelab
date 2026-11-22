@@ -53,23 +53,8 @@
     - layout-listener.sh
     - caffeine-manager.sh
 
-- name: Deliver the caffeine lid inhibitor
-  ansible.builtin.copy:
-    src: caffeine-lid-inhibit.service
-    dest: "{{ homelab_user_home }}/.config/systemd/user/caffeine-lid-inhibit.service"
-    owner: "{{ homelab_user }}"
-    group: "{{ homelab_user }}"
-    mode: "0644"
-    follow: true
-    backup: true
-  register: homelab_caffeine_unit
-
-- name: Reload user service definitions
-  become: false
-  ansible.builtin.systemd_service:
-    scope: user
-    daemon_reload: true
-  when: homelab_caffeine_unit.changed
+- name: Configure the caffeine lid inhibitor
+  ansible.builtin.import_tasks: caffeine.yml
 
 - name: Deliver the wallpaper launcher
   ansible.builtin.template:

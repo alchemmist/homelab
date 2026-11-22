@@ -9,7 +9,7 @@
   tasks:
     - name: Copy the context compaction configuration helper
       ansible.builtin.copy:
-        src: ../files/configure_webui_compaction.py
+        src: "{{ playbook_dir | dirname }}/files/configure_webui_compaction.py"
         dest: "{{ homelab_user_home }}/tmp-charts/configure-webui-compaction.py"
         mode: "0600"
     - name: Locate the running Open WebUI pod

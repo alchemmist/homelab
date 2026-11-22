@@ -28,7 +28,8 @@
         - /etc/homelab-vpn-transit/failover.json
         - /var/lib/homelab-vpn-transit/mesh-runtime-prepared.json
       register: prior
-    - ansible.builtin.assert:
+    - name: Refuse to overwrite an earlier preparation
+      ansible.builtin.assert:
         that: prior.results | selectattr('stat.exists') | list | length == 0
         fail_msg: Prior preparation exists; inspect receipt, do not blindly replay.
     - name: Copy public shared configs, not identities or private keys
@@ -55,8 +56,10 @@
         python3 /usr/local/libexec/vpn-transit-image.py /usr/local/libexec/xray-transit
         /var/tmp/homelab-vpn-transit-image.tar
       register: image_build
+      changed_when: true
     - name: Import offline image into existing worker containerd only
       ansible.builtin.command: k3s ctr images import /var/tmp/homelab-vpn-transit-image.tar
+      changed_when: true
     - name: Configure real data-path probe without user credentials
       ansible.builtin.copy:
         dest: /etc/homelab-vpn-transit/failover.json
@@ -133,7 +136,8 @@
         path: /etc/systemd/system/k3s-agent.service.d
         state: directory
         mode: "0755"
-    - ansible.builtin.copy:
+    - name: Install the fallback fence for the worker agent
+      ansible.builtin.copy:
         dest: /etc/systemd/system/k3s-agent.service.d/40-vpn-relay-fallback.conf
         mode: "0644"
         content: >
@@ -154,7 +158,8 @@
           ExecStart=/usr/bin/python3 /usr/local/libexec/vpn-transit-failover.py tick
           TimeoutStartSec=100
           UMask=0077
-    - ansible.builtin.copy:
+    - name: Install the bounded transit watchdog timer
+      ansible.builtin.copy:
         dest: /etc/systemd/system/homelab-vpn-transit-watchdog.timer
         mode: "0644"
         content: |
@@ -169,7 +174,8 @@
     - name: Reload only unit definitions without restarting anything
       ansible.builtin.systemd_service:
         daemon_reload: true
-    - ansible.builtin.file:
+    - name: Create the private transit state directory
+      ansible.builtin.file:
         path: /var/lib/homelab-vpn-transit
         state: directory
         mode: "0700"
@@ -178,6 +184,6 @@
         dest: /var/lib/homelab-vpn-transit/mesh-runtime-prepared.json
         mode: "0600"
         content: >-
-          {{ {"prepared":true,"image":image_build.stdout | from_json,"activated":false} |
+          {{ {"prepared": true, "image": image_build.stdout | from_json, "activated": false} |
           to_nice_json }}
 ...

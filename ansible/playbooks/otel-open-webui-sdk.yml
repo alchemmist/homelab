@@ -21,7 +21,8 @@
       register: open_webui_sdk_reconcile
       changed_when: >-
         open_webui_sdk_reconcile.rc == 0 and (open_webui_sdk_reconcile.stdout | from_json).applied
-    - ansible.builtin.set_fact:
+    - name: Record the Open WebUI SDK configuration digest
+      ansible.builtin.set_fact:
         open_webui_sdk_configuration_sha256: >-
           {{ (open_webui_sdk_reconcile.stdout | from_json).configurationSHA256 }}
 
@@ -30,10 +31,12 @@
   gather_facts: false
   become: true
   tasks:
-    - ansible.builtin.slurp:
+    - name: Read the existing configuration epoch
+      ansible.builtin.slurp:
         src: /var/lib/homelab-otel-soak/configuration-epoch.json
       register: open_webui_existing_epoch
-    - ansible.builtin.copy:
+    - name: Add the Open WebUI SDK digest to the configuration epoch
+      ansible.builtin.copy:
         dest: /var/lib/homelab-otel-soak/configuration-epoch.json
         mode: "0600"
         content: >
