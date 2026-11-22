@@ -128,7 +128,7 @@ nodes:
     policy: *id001
     run: |-
       set -euo pipefail
-      uv run python scripts/quality/quote_inputs.py |
+      uv run python -m scripts.quality.quote_inputs |
         xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \
           --ignore-noqa --output-format concise --
   secrets:

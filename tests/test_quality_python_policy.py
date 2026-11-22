@@ -9,13 +9,13 @@ from unittest.mock import patch
 
 import pytest
 
-from scripts.quality import common
+from scripts.quality import common, quote_inputs
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 with patch.dict(sys.modules, {"common": common}):
-    from scripts.quality import quote_inputs, strict_guard
+    from scripts.quality import strict_guard
 
 SAMPLE = """\
 def test_behavior() -> None:
@@ -107,6 +107,16 @@ def test_suppression_blocks_owned_source(
     assert capsys.readouterr().out.splitlines() == ["suppressions=1", "owned.py:1"]
     source.write_text("value = 1\n")
     assert strict_guard.main() == 0
+
+
+def test_quote_inputs_module_emits_exact_nul_delimited_inventory() -> None:
+    expected = [
+        name
+        for name in common.owned(common.tracked())
+        if name.startswith(("scripts/", "tests/")) and name.endswith(".py")
+    ]
+    result = common.command([sys.executable, "-m", "scripts.quality.quote_inputs"])
+    assert result.stdout.split("\0") == [*expected, ""]
 
 
 def test_quote_inputs_use_owned_paths(monkeypatch: pytest.MonkeyPatch) -> None:

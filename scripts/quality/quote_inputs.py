@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import sys
 
-from common import owned, tracked
+from scripts.quality.common import owned, tracked
 
 
 def quote_inputs() -> list[str]:

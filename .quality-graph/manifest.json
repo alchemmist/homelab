@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "1d7f4e7f04e9e5154a4a8f577f31be82fa0d8c94faa1c15f0f86d0ceef7fcc82",
+  "graphDigest": "9874649e6d1bfa42ae3c19e5b7f02434c5a5a2f49ebb5b977aff022b2594537b",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -88,7 +88,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run python scripts/quality/quote_inputs.py |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \\\n    --ignore-noqa --output-format concise --"
+        "run": "set -euo pipefail\nuv run python -m scripts.quality.quote_inputs |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \\\n    --ignore-noqa --output-format concise --"
       },
       "timeoutMinutes": 5,
       "title": "Python script and test quotes (Q000)"
