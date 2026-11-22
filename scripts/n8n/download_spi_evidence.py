@@ -8,22 +8,30 @@ import os
 import re
 import subprocess
 from pathlib import Path
-from typing import cast
+from typing import TypedDict
 
 _PartKey = tuple[str, str, str, int]
 
 
-def _artifact_pieces(comments: list[object], event_key: str) -> dict[_PartKey, dict[int, str]]:
+class _Comment(TypedDict, total=False):
+    """Fields read from a GitHub issue comment."""
+
+    user: dict[str, object]
+    performed_via_github_app: dict[str, object] | None
+    body: str | None
+
+
+def _artifact_pieces(comments: list[_Comment], event_key: str) -> dict[_PartKey, dict[int, str]]:
     """Group verified comment parts by artifact and checksum."""
     grouped: dict[_PartKey, dict[int, str]] = {}
     for comment in comments:
-        actor = cast("dict[str, object]", comment).get("user", {})
-        app = cast("dict[str, object]", comment).get("performed_via_github_app") or {}
+        actor = comment.get("user", {})
+        app = comment.get("performed_via_github_app") or {}
         if actor.get("type") != "Bot" or (
             app.get("id") != 5569869 if app.get("id") is not None else actor.get("id") != 351189559
         ):
             continue
-        body = cast("str", cast("dict[str, object]", comment).get("body") or "")
+        body = comment.get("body") or ""
         if "<!-- socrat-spi-artifact:" + event_key + ":" not in body:
             continue
         header = re.match(
@@ -71,7 +79,7 @@ def _validate_manifest(output: dict[str, bytes], event_key: str) -> None:
             raise ValueError("MANIFEST_CHECKSUM_MISMATCH")
 
 
-def reconstruct(comments, event_key):
+def reconstruct(comments: list[_Comment], event_key: str) -> dict[str, bytes]:
     grouped = _artifact_pieces(comments, event_key)
     output = _assemble_artifacts(grouped)
     if not output:
@@ -80,7 +88,7 @@ def reconstruct(comments, event_key):
     return output
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--issue", type=int, required=True)
     p.add_argument("--event", required=True)

@@ -9,6 +9,7 @@ import shelf
 
 
 def main():
+    """Serve shelf requests and expose fresh cached usage alongside current filesystem headroom."""
     root = os.environ["SHELF_DIRECTORY"]
     token = Path(os.environ["SHELF_TOKEN_FILE"]).read_text().strip()
     if not token:
