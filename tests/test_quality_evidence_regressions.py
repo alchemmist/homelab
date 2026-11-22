@@ -16,7 +16,7 @@ common = importlib.import_module("ci.quality.common")
 strict_report = importlib.import_module("ci.quality.strict_report")
 
 _FROZEN_FILE_COUNT = 17
-_REVIEWED_NONSECRET_COUNT = 51
+_REVIEWED_NONSECRET_COUNT = 50
 _GIT_SHA1_LENGTH = 40
 _GIT_SHA256_LENGTH = 64
 _PRIVATE_DIRECTORY_MODE = 0o700
