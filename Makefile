@@ -11,8 +11,15 @@ setup:
 	uv run python -m ci.quality.install_tools
 	uv run python -m ci.quality.install_collections
 
+.PHONY: graph-generate graph-validate
+graph-generate:
+	uv run python -m ci.quality.graph generate
+
+graph-validate:
+	uv run python -m ci.quality.graph validate
+
 graph:
-	uv run qg validate
+	$(MAKE) graph-validate
 	uv run python -m ci.quality.contracts
 	uv run python -m ci.quality.strict_guard
 	uv run python -m ci.quality.check_sim300

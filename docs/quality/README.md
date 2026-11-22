@@ -4,7 +4,7 @@
 
 The operator changed the integration scope: PR182 sets up CI and integrates reviewed refactoring; eliminating every pre-existing source finding is follow-up work based on main. Red source checks are visible and do not become accepted baselines or approvals. An owner may separately decide to merge red CI; this is not an instruction to bypass protection, weaken tests or claim strict green. See [integration checklist](ci-enablement.md), [enforcement policy](strict-policy.md) and [historical evidence](strict-status.md).
 
-`Makefile` owns the recipes: run `make <node>` locally to execute the same check as its PR job. `qg.yaml` owns CI profiles, dependencies and result publication. Generate workflows and `.quality-graph/manifest.json` only through the pinned owning compiler (`uv run qg generate`); never hand-edit generated YAML. `qg validate` verifies freshness, not source cleanliness.
+`Makefile` owns the recipes: run `make <node>` locally to execute the same check as its PR job. `qg.yaml` owns CI profiles, dependencies and result publication. Generate workflows and `.quality-graph/manifest.json` only through the pinned owning compiler (`make graph-generate`); never hand-edit generated YAML. `make graph-validate` verifies freshness, not source cleanliness. The CLI, core and GitHub provider are released packages pinned in the project `uv.lock`, not vendored sources. Generation is in memory: the manifest lives under `.quality-graph/`; the executable workflows must remain in `.github/workflows/` for GitHub Actions. The Make targets use the upstream compiler and apply the repository YAML style before checking exact output freshness.
 
 ## Active CI scope
 
@@ -112,7 +112,7 @@ Private complete audit evidence is outside Git at `~/Library/Application Support
 
 ```sh
 uv sync --locked
-uv run qg validate
+make graph-validate
 uv run python -m ci.quality.contracts
 uv run python -m ci.quality.strict_guard
 uv run python -m ci.quality.check_python

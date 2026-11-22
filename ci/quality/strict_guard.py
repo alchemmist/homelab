@@ -156,8 +156,6 @@ def partition(path: str) -> str:
     for prefix in vendor_prefixes():
         if path.startswith(prefix):
             return "vendor"
-    if path.startswith("vendor/quality-graph-github/"):
-        return "workflows"
     if path.startswith(("quality/", "ci/")) or path in {"qg.yaml", "pyproject.toml"}:
         return "quality-policy"
     top = path.split("/", 1)[0]

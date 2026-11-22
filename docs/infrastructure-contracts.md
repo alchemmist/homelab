@@ -41,7 +41,7 @@ no TLS workaround. A new consumer must be explicitly registered and tested.
 
 Quality Graph node `infrastructure-contracts` installs SHA-pinned setup-helm
 with Helm3.19.0, uses locked PyYAML, and runs the explicit offline suite. Generated
-workflows come from `qg.yaml`; use `uv run qg generate` and `uv run qg validate`.
+workflows come from `qg.yaml`; use `make graph-generate` and `make graph-validate`.
 Local success is not a claim that remote CI has already run or branch protection
 has been changed. No broad test discovery against production is introduced.
 
