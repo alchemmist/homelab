@@ -1,0 +1,4 @@
+{
+  "include": ["charts/monitoring-k3s/files/*.py"],
+  "rules": ["ANN001", "ANN002", "ANN201"]
+}
