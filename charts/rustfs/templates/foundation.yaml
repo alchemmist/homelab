@@ -25,6 +25,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: rustfs
 spec:
   replicas: 1
@@ -138,7 +139,7 @@ spec:
 # ClusterIP only. Browser routes, when separately enabled, terminate at Authentik.
 apiVersion: v1
 kind: Service
-metadata: {name: rustfs}
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: rustfs}
 spec:
   selector: {app: rustfs}
   ports:
@@ -148,6 +149,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: rustfs-isolation
 spec:
   podSelector:

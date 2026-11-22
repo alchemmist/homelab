@@ -1,7 +1,7 @@
 {{- if .Values.automationPostgresAccess }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-metadata: {name: automation-postgres-egress}
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: automation-postgres-egress}
 spec:
   podSelector:
     matchExpressions:

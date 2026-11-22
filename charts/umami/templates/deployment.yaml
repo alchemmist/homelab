@@ -1,6 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
-metadata: { name: umami }
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: umami }
 spec:
   replicas: {{ .Values.appReplicas }}
   selector: { matchLabels: { app: umami } }

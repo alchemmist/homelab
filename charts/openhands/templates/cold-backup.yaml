@@ -20,7 +20,7 @@ data:
 ---
 apiVersion: batch/v1
 kind: Job
-metadata: {name: openhands-cold-backup-20261119}
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: openhands-cold-backup-20261119}
 spec:
   backoffLimit: 0
   activeDeadlineSeconds: 2400

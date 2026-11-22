@@ -10,7 +10,7 @@ data:
 ---
 apiVersion: batch/v1
 kind: CronJob
-metadata: {name: thanos-cascade, labels: {app: thanos-cascade}}
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: thanos-cascade, labels: {app: thanos-cascade}}
 spec:
   schedule: '30 * * * *'
   timeZone: Europe/Moscow

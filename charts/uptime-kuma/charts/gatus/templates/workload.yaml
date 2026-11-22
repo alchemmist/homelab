@@ -1,6 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
-metadata: {name: gatus}
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: gatus}
 spec:
   replicas: 1
   strategy: {type: Recreate}
@@ -34,7 +34,7 @@ spec:
 ---
 apiVersion: v1
 kind: Service
-metadata: {name: gatus}
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: gatus}
 spec:
   selector: {app: gatus}
   ports: [{name: http, port: 80, targetPort: http}]

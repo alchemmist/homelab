@@ -20,6 +20,7 @@ data:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: deeperseeker
   labels:
     app: deeperseeker
@@ -34,6 +35,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: deeperseeker
   labels:
     app: deeperseeker

@@ -1,6 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: open-webui
 spec:
   replicas: {{ .Values.replicaCount }}

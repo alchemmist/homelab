@@ -9,6 +9,7 @@ data:
 apiVersion: batch/v1
 kind: CronJob
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: n8n-backup
 spec:
   {{- if .Values.database.postgresEnabled }}

@@ -1,6 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
-metadata: { name: remark42 }
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: remark42 }
 spec:
   replicas: 1
   strategy:

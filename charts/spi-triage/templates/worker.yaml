@@ -15,6 +15,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: spi-triage
 spec:
   replicas: {{ .Values.workerReplicas }}
@@ -197,6 +198,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: spi-triage
   labels:
     app: spi-triage
@@ -217,6 +219,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: spi-triage
 spec:
   podSelector:

@@ -7,7 +7,7 @@
 {{- end -}}
 apiVersion: apps/v1
 kind: Deployment
-metadata: { name: monori-sync }
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: monori-sync }
 spec:
   replicas: {{ .Values.syncReplicaCount }}
   {{- if .Values.statefulRecreate }}
@@ -51,7 +51,7 @@ spec:
 ---
 apiVersion: apps/v1
 kind: Deployment
-metadata: { name: monori-back }
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: monori-back }
 spec:
   replicas: {{ .Values.backReplicaCount }}
   {{- if .Values.statefulRecreate }}
@@ -150,7 +150,7 @@ spec:
 ---
 apiVersion: apps/v1
 kind: Deployment
-metadata: { name: monori }
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: monori }
 spec:
   replicas: 1
   selector: { matchLabels: { app: monori } }

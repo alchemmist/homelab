@@ -12,6 +12,7 @@ data:
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: thanos-disk
   labels:
     app: thanos-disk

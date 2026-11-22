@@ -1,6 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: socrat-bot
   labels:
     app.kubernetes.io/name: socrat-bot

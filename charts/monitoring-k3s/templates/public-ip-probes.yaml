@@ -19,6 +19,7 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: socrat-public-ip-probes
 spec:
   replicas: 1

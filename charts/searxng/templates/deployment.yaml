@@ -1,6 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: searxng
 spec:
   replicas: 1
@@ -76,6 +77,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: searxng
 spec:
   type: ClusterIP
