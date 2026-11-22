@@ -259,6 +259,13 @@ class FourAppMigrationTests(unittest.TestCase):
             "template"
         ]["spec"]
         assert s["nodeSelector"] == {"kubernetes.io/hostname": "socrat-0"}
+        assert s["hostNetwork"] is True
+        container = s["containers"][0]
+        assert container["ports"] == [
+            {"name": "http", "containerPort": 18080, "protocol": "TCP"}
+        ]
+        for probe in ("startupProbe", "readinessProbe", "livenessProbe"):
+            assert container[probe]["tcpSocket"] == {"host": "10.250.0.1", "port": 18080}
         cm = cast("ConfigMapDoc", obj(docs, "ConfigMap", "open-webui-gateway"))["data"][
             "default.conf"
         ]

@@ -27,6 +27,10 @@ spec:
         - name: nginx
           image: {{ .Values.gateway.image | quote }}
           imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: {{ .Values.gateway.port }}
+              protocol: TCP
           resources:
             {{- toYaml .Values.gateway.resources | nindent 12 }}
           startupProbe:
