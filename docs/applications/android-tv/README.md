@@ -56,7 +56,7 @@ The 5px screen inset is not a Fully setting. The private Grafana gateway injects
 
 ## Restore HDMI at startup
 
-The inspected firmware exposes **Настройки → Настройки устройства → Входы → Не менять источник сигнала**. Its description says to retain the previous input after power-on or reboot. The setting is `Settings.Global.set_auto_play`: its original value was `0`; it is now `1`.
+The inspected firmware exposes **Settings → Device settings → Inputs → Do not change signal source** (the TV's UI string is in Russian on this firmware). Its description says to retain the previous input after power-on or reboot. The setting is `Settings.Global.set_auto_play`: its original value was `0`; it is now `1`.
 
 HDMI 1 maps to `com.mediatek.tvinput/.hdmi.HDMIInputService/HW4`. HDMI 1 was selected via the built-in TV application. This is a last-input policy, not a forced HDMI override: switching to a different input later can change what is restored. The separate `tv_auto_play_input` option controls playback when an input is connected and was left unchanged.
 
@@ -101,89 +101,165 @@ The one-time fleet peer removal is complete; it is not part of TV provisioning o
 
 Retirement closeout: all four node peer audits report operations=0 (three existing owned peers removed; worker already absent), all three authoritative DNS audits report operations=0, and the exact alias resource audit reports operations=0. At that historical closeout `public-web-entry` was Synced/Healthy; its resources now belong to their service Applications (see public-web-migration.md). Canonical public acceptance: 24/24 two-IP checks; 66 focused tests. The real TV displays live data on the canonical hostname with no active VPN network; YouTube's separate helper was verified foreground with one VALIDATED VPN before returning to Grafana. No physical button/power-cycle claim is implied.
 
-## Гостиная: телевизор как монитор и светофор Grafana
+## Living room: the TV as a monitor and a Grafana traffic light
 
-Срез на **6 ноября 2026** (пульт/холодное включение проверялись пользователем 22 октября). Памятка, как устроен Xiaomi в гостиной и что переживает выключение питания. Операционная инструкция на английском — `docs/applications/android-tv/README.md`. Плейбук — `ansible/playbooks/tv-admin.yml`. Это не замена live-проверке: адрес по DHCP может смениться.
+Snapshot for **November 6, 2026** (the remote/cold boot were checked by the user on
+October 22). A memo on how the living-room Xiaomi is set up and what survives a
+power loss. The operational instructions in English:
+`docs/applications/android-tv/README.md`. The playbook:
+`ansible/playbooks/tv-admin.yml`. This is not a replacement for a live check: the
+DHCP address may change.
 
-Общий итог VPS/DNS/NetBird/Mac/public access: [network-access.md](../../network/README.md). Этот TV setup — окончательный вариант после удаления временного TV домена и внутреннего WG, не промежуточная публикация.
+The overall VPS/DNS/NetBird/Mac/public-access summary:
+[network-access.md](../../network/README.md). This TV setup is the final version
+after removing the temporary TV domain and the internal WG, not an intermediate
+publication.
 
-## Зачем он нужен
+## Why it is needed
 
-Две роли, между которыми нужно переключаться одной кнопкой:
+Two roles that must be switchable with one button:
 
-1. Монитор сервера. Картинка идёт по HDMI 1.
-2. Светофорная панель Grafana в браузере. Кинопоиск и YouTube остаются обычным телевизором: кнопка Home открывает штатный лаунчер, оттуда их можно запустить как обычно.
+1. Server monitor. The picture comes over HDMI 1.
+2. The Grafana traffic-light panel in a browser. Kinopoisk and YouTube remain an
+ordinary television: the Home button opens the stock launcher, and they can be
+started from there as usual.
 
-После включения питания сам поднимается последний источник. Пока это HDMI 1, на экране сразу картинка с сервера. Grafana сама экран не занимает. На неё переключаются цветной кнопкой пульта, когда она нужна.
+After power-on, the last source comes up by itself. While that is HDMI 1, the
+server picture appears on screen immediately. Grafana does not take over the
+screen by itself. You switch to it with a colored remote button when needed.
 
-Пользователь проверил реальное выключение и включение: HDMI, обе цветные кнопки и Home ведут себя так, как описано ниже.
+The user verified a real power-off and power-on: HDMI, both colored buttons and
+Home behave as described below.
 
-## Железо и доступ
+## Hardware and access
 
 | | |
 | --- | --- |
-| Модель | MiTV-MOOQ1, устройство `tarzan`, Android 11 |
-| LAN | `192.168.0.19`, экран 1920×1080 |
-| ADB | с socrat-0: `adb connect 192.168.0.19:5555`, порт `service.adb.tcp.port=5555` |
-| Termux SSH | `u0_a44`, порт `8022`, ключ только на socrat-0: `~/.ssh/homelab-tv` |
+| Model | MiTV-MOOQ1, device `tarzan`, Android 11 |
+| LAN | `192.168.0.19`, screen 1920×1080 |
+| ADB | from socrat-0: `adb connect 192.168.0.19:5555`, port `service.adb.tcp.port=5555` |
+| Termux SSH | `u0_a44`, port `8022`, the key only on socrat-0: `~/.ssh/homelab-tv` |
 
-ADB — это shell UID 2000, не root. `persist.adb.tcp.port` без root не ставится, поэтому после холодной перезагрузки сетевая отладка может не вернуться, пока её снова не разрешат на телевизоре. Автозапуск SSH в Termux не настроен.
+ADB is shell UID 2000, not root. `persist.adb.tcp.port` cannot be set without
+root, so after a cold reboot network debugging may not return until it is
+allowed again on the TV. Termux SSH autostart is not configured.
 
-Плейбук ставит `adb` на socrat-0, заводит ключ, проверяет модель и приводит настройки ниже к описанному виду. Он не ставит приложения и не обходит подтверждение отладки. Приложения уже установлены вручную.
+The playbook installs `adb` on socrat-0, sets up the key, checks the model and
+brings the settings below to the described state. It installs no applications
+and does not bypass the debugging confirmation. The applications are already
+installed manually.
 
 ```sh
 cd ansible
 ansible-playbook playbooks/tv-admin.yml --ask-become-pass
 ```
 
-Принудительно выбрать HDMI 1 в этом прогоне: `-e homelab_tv_select_hdmi=true`. Заново залить стартовый URL Fully: `-e homelab_tv_fully_reapply=true`.
+To force-select HDMI 1 in this run: `-e homelab_tv_select_hdmi=true`. To re-push
+the Fully start URL: `-e homelab_tv_fully_reapply=true`.
 
-## Пульт
+## The remote
 
-Цветные кнопки — это не настройка прошивки и не запись в git. Их перехватывает **tvQuickActions** (`dev.vodik7.tvquickactions.free`, сборка `3.3.2-free`), служба доступности `KeyAccessibilityService`. Пока служба включена, нажатие физической кнопки не уходит в Кинопоиск, Okko или IVI, а выполняет действие из приватной базы приложения.
+The colored buttons are neither a firmware setting nor a Git record. They are
+intercepted by **tvQuickActions** (`dev.vodik7.tvquickactions.free`, build
+`3.3.2-free`), the `KeyAccessibilityService` accessibility service. While the
+service is enabled, pressing the physical button does not go to Kinopoisk, Okko
+or IVI but runs the action from the application's private database.
 
-Системное приложение Xiaomi `com.xiaomi.android.tvsetup.partnercustomizer` выключено. Если его включить, оно снова заберёт эти клавиши: tvQuickActions перестанет открываться и видеть нажатия. Плейбук держит его выключенным и заново включает службу доступности, если та сбросилась. Сами строки «кнопка → действие» он не перезаписывает.
+The Xiaomi system application `com.xiaomi.android.tvsetup.partnercustomizer` is
+disabled. If it is enabled, it will grab these keys again: tvQuickActions will
+stop opening and seeing presses. The playbook keeps it disabled and re-enables
+the accessibility service if it was reset. It does not rewrite the
+“button → action” rows themselves.
 
-Home сюда не входит. Это системная кнопка, лаунчер остаётся `com.google.android.tvlauncher`. Из него по-прежнему запускаются Кинопоиск и YouTube. Fully не делать домашним экраном.
+Home is not part of this. It is a system button; the launcher remains
+`com.google.android.tvlauncher`. Kinopoisk and YouTube still start from it. Do
+not make Fully the home screen.
 
-### Что нажато сейчас
+### What is assigned right now
 
-Одиночное нажатие. Двойное и долгое в приложении есть, но на этих кнопках не используются.
+Single press. Double and long presses exist in the application but are not used
+on these buttons.
 
-| Кнопка | Код Android | Действие |
+| Button | Android code | Action |
 | --- | --- | --- |
-| BUTTON_11 | 198 | открыть `xyz.alchemmist.grafana` («Grafana»): отключить YouTube VPN, если включён, и открыть публичный светофор в Fully Kiosk без подключения VPN |
-| BUTTON_10 | 197 | открыть `xyz.alchemmist.hdmi`, это HDMI 1 |
-| BUTTON_14 | 201 | открыть Кинопоиск (`ru.kinopoisk.tv`) |
-| BUTTON_16 | 203 | открыть `xyz.alchemmist.tvmode` («YouTube VPN»): переключить WireGuard на профиль `alchemmist-tv` для глобальной сети и открыть YouTube |
-| Home | — | штатный лаунчер, tvQuickActions её не ловит |
+| BUTTON_11 | 198 | open `xyz.alchemmist.grafana` (“Grafana”): disconnect the YouTube VPN if enabled, and open the public traffic light in Fully Kiosk without bringing up a VPN |
+| BUTTON_10 | 197 | open `xyz.alchemmist.hdmi`, which is HDMI 1 |
+| BUTTON_14 | 201 | open Kinopoisk (`ru.kinopoisk.tv`) |
+| BUTTON_16 | 203 | open `xyz.alchemmist.tvmode` (“YouTube VPN”): switch WireGuard to the `alchemmist-tv` profile for the global network and open YouTube |
+| Home | — | the stock launcher; tvQuickActions does not catch it |
 
-Все назначенные горячие клавиши заданы как «открыть приложение», не как shell-команда. Поэтому они живут без сетевой отладки. Помощник `xyz.alchemmist.grafana` отключает только `alchemmist-tv`, ждёт исчезновения VPN-сети и открывает Fully с сохранённым публичным URL. Он не подключает никакой туннель. `xyz.alchemmist.hdmi` выбирает HDMI 1. Помощник `xyz.alchemmist.tvmode` подключает единственный оставшийся профиль `alchemmist-tv`, ждёт `VALIDATED` и открывает YouTube. Настройки/ключ этого глобального профиля не менялись. Оба helper APK обновляются совместимой прежней подписью и больше не содержат `xiaomi-tv` или записи always-on VPN. Назначения кнопок не переписывались.
+All assigned shortcuts are set as “open an application”, not as a shell command.
+So they live without network debugging. The `xyz.alchemmist.grafana` helper
+disconnects only `alchemmist-tv`, waits for the VPN network to disappear and
+opens Fully with the saved public URL. It connects no tunnel. `xyz.alchemmist.hdmi`
+selects HDMI 1. The `xyz.alchemmist.tvmode` helper connects the single remaining
+profile `alchemmist-tv`, waits for `VALIDATED` and opens YouTube. The settings/key
+of that global profile were not changed. Both helper APKs are updated with the
+compatible old signature and no longer contain `xiaomi-tv` or always-on VPN
+writes. The button assignments were not rewritten.
 
-### Исходники и установка помощников
+### Helper sources and installation
 
-Исходники YouTube и Grafana — Smali-код с манифестами в `deploy/tv/android/tv-mode/` и `deploy/tv/android/tv-grafana/`. Их можно пересобрать на машине с Java командой `./deploy/tv/android/build.sh`: Apktool и uber-apk-signer закреплены по версии и SHA-256; скрипт проверяет, что подпись совместима с установленными на ТВ APK. APK попадают в `deploy/tv/android/releases/`. `tv-hdmi.apk` — сохранённый оригинальный подписанный APK: исходный ключ подписи HDMI-помощника в репозитории отсутствует.
+The YouTube and Grafana sources are Smali code with manifests in
+`deploy/tv/android/tv-mode/` and `deploy/tv/android/tv-grafana/`. They can be
+rebuilt on a machine with Java via `./deploy/tv/android/build.sh`: Apktool and
+uber-apk-signer are pinned by version and SHA-256; the script verifies that the
+signature is compatible with the APKs installed on the TV. The APKs go into
+`deploy/tv/android/releases/`. `tv-hdmi.apk` is the saved original signed APK:
+the HDMI helper's original signing key is absent from the repository.
 
-Плейбук `ansible/playbooks/tv-admin.yml` устанавливает/обновляет все три homelab-помощника и выдаёт VPN/secure-settings разрешения, поддерживает нужные приложения в whitelist standby и удаляет Happ. Он не устанавливает Fully, tvQuickActions или WireGuard. WireGuard-профили импортируются на ТВ вручную; их приватные ключи не хранятся в репозитории. Плейбук также не переписывает приватную базу назначений кнопок tvQuickActions — их задают вручную по инструкции выше.
+The playbook `ansible/playbooks/tv-admin.yml` installs/updates all three
+homelab helpers and grants the VPN/secure-settings permissions, keeps the
+needed applications on the standby whitelist and removes Happ. It does not
+install Fully, tvQuickActions or WireGuard. WireGuard profiles are imported on
+the TV manually; their private keys are not stored in the repository. The
+playbook also does not rewrite tvQuickActions' private button-assignment
+database — those are set manually per the instructions above.
 
-Для BUTTON_16 достаточно бесплатного действия tvQuickActions «открыть приложение» → `YouTube VPN`. Платные макросы, ADB-команды и custom actions не используются. Нельзя назначать кнопку напрямую на YouTube: тогда перед его запуском не переключится VPN.
+BUTTON_16 only needs the free tvQuickActions “open application” action →
+`YouTube VPN`. Paid macros, ADB commands and custom actions are not used. You
+must not assign the button directly to YouTube: then the VPN would not switch
+before it launches.
 
-HDMI 1 для прошивки — `com.mediatek.tvinput/.hdmi.HDMIInputService/HW4`. Настройка **Не менять источник сигнала** — это `settings get global set_auto_play`, значение `1`. Это память последнего входа, а не жёсткая привязка к HDMI: если перед выключением выбран другой источник, после включения вернётся он.
+HDMI 1 is `com.mediatek.tvinput/.hdmi.HDMIInputService/HW4` to the firmware. The
+**Do not change signal source** setting is
+`settings get global set_auto_play`, value `1`. This is a last-input memory, not
+a hard binding to HDMI: if a different source was selected before power-off, that
+one returns after power-on.
 
-### Как поменять
+### How to change it
 
-Менять в самом tvQuickActions с пульта. В git это не коммитится: база лежит в приватных данных приложения и переживает перезагрузку. Повторный прогон `tv-admin.yml` назначения не стирает.
+Change it inside tvQuickActions itself, with the remote. It is not committed to
+Git: the database lives in the application's private data and survives reboots.
+Re-running `tv-admin.yml` does not erase the assignments.
 
-1. Home, затем список приложений, открыть tvQuickActions. Цветной кнопкой его не открыть: она уже занята действием.
-2. Нажать на пульте ту кнопку, которую нужно переназначить. Приложение покажет её как текущую.
-3. Задать действие одиночного нажатия. Для Grafana — запуск `Grafana` (`xyz.alchemmist.grafana`), не Fully напрямую. Для HDMI — `xyz.alchemmist.hdmi`. Для YouTube — `YouTube VPN` (`xyz.alchemmist.tvmode`), а не YouTube напрямую. Двойное и долгое нажатие можно занять отдельно, если нужно второе действие на той же кнопке.
-4. Выйти и проверить физическим нажатием. `adb shell input keyevent` службу доступности не проверяет: ввод с компьютера может не дойти до tvQuickActions, хотя пульт работает.
+1. Home, then the application list, open tvQuickActions. You cannot open it with
+a colored button: that is already taken by an action.
+2. Press the button you want to reassign on the remote. The application will
+show it as the current one.
+3. Set the single-press action. For Grafana — launch `Grafana`
+(`xyz.alchemmist.grafana`), not Fully directly. For HDMI — `xyz.alchemmist.hdmi`.
+For YouTube — `YouTube VPN` (`xyz.alchemmist.tvmode`), not YouTube directly.
+Double and long press can be assigned separately if a second action on the same
+button is needed.
+4. Exit and check with a physical press. `adb shell input keyevent` does not
+exercise the accessibility service: computer input may not reach tvQuickActions
+even though the remote works.
 
-Новая свободная цветная кнопка назначается тем же путём: открыть приложение и нажать её. Стоит сборка free. Если она не даст добавить ещё одну кнопку, предел у этой сборки, а не у плейбука.
+A new free colored button is assigned the same way: open the application and
+press it. The free build is installed. If it will not let you add another
+button, that is the limit of this build, not of the playbook.
 
-Внутри приложения есть и другие типы действий: intent, меню, ADB-команда. Для этих назначений достаточно запуска приложения; ADB-команда завязана на отладку, а сетевая отладка после выключения питания может не вернуться.
+The application also has other action types: intent, menu, ADB command. For
+these assignments an application launch is enough; an ADB command depends on
+debugging, and network debugging may not return after a power-off.
 
-Если кнопка должна открывать светофор, цель — Fully, не адрес в обычном браузере. Масштаб, вход `tv` и киоск хранятся в Fully. Если кнопка должна вернуть картинку сервера, цель — `xyz.alchemmist.hdmi`. Для YouTube с VPN цель — приложение `YouTube VPN`; оно само выполняет смену туннеля. Тот же вход HDMI без помощника, если приложение придётся заводить заново:
+If a button must open the traffic light, the target is Fully, not an address in
+an ordinary browser. The scale, the `tv` login and the kiosk mode are stored in
+Fully. If a button must return the server picture, the target is
+`xyz.alchemmist.hdmi`. For YouTube with VPN the target is the `YouTube VPN`
+application; it performs the tunnel switch itself. The same HDMI input without
+the helper, should the application have to be set up again:
 
 ```sh
 am start -n com.mediatek.wwtv.tvcenter/com.mitv.livetv.tv.MainActivity \
@@ -192,9 +268,10 @@ am start -n com.mediatek.wwtv.tvcenter/com.mitv.livetv.tv.MainActivity \
   -d content://android.media.tv/passthrough/com.mediatek.tvinput%2F.hdmi.HDMIInputService%2FHW4
 ```
 
-### Если кнопки замолчали
+### If the buttons went silent
 
-Сначала не переназначать их заново. Обычная поломка: служба доступности выключена или Xiaomi снова забрала клавиши. С socrat-0:
+First, do not reassign them. The usual breakage: the accessibility service is
+off or Xiaomi grabbed the keys again. From socrat-0:
 
 ```sh
 adb connect 192.168.0.19:5555
@@ -202,120 +279,201 @@ adb -s 192.168.0.19:5555 shell settings get secure enabled_accessibility_service
 adb -s 192.168.0.19:5555 shell pm list packages -d
 ```
 
-В списке служб должна быть `dev.vodik7.tvquickactions.free/dev.vodik7.tvquickactions.KeyAccessibilityService`. Среди выключенных пакетов должен быть `com.xiaomi.android.tvsetup.partnercustomizer`. Оба условия возвращает плейбук, назначения кнопок при этом остаются:
+The service list must contain
+`dev.vodik7.tvquickactions.free/dev.vodik7.tvquickactions.KeyAccessibilityService`.
+Among the disabled packages must be `com.xiaomi.android.tvsetup.partnercustomizer`.
+The playbook restores both conditions while the button assignments stay in
+place:
 
 ```sh
 cd ansible
 ansible-playbook playbooks/tv-admin.yml --ask-become-pass
 ```
 
-После этого tvQuickActions снова открывается из списка приложений, и в нём видны те же действия.
+After that tvQuickActions opens again from the application list and shows the
+same actions.
 
-## Grafana на экране
+## Grafana on screen
 
-Браузер — Fully Kiosk `de.ozerov.fully`. Стартовый адрес:
+The browser is Fully Kiosk `de.ozerov.fully`. The start address:
 
 `https://grafana.socrat.alchemmist.xyz/public-dashboards/<accessToken>?kiosk=1&hideLogo=1&autofitpanels=true&socratTv=1`
 
-Это native public sharing **только** `socrat-traffic-light`, без входа и без anonymous Viewer всей организации. Точный URL берётся без подмены hostname из root-private `/var/lib/homelab-grafana-tv-public/fully-url.json` на socrat-0. Отдельный `tv.alchemmist.xyz` отменён и удалён. Внутренний профиль `xiaomi-tv` удалён из WireGuard на ТВ; его peer отозван на серверах, а inventory больше его не создаёт. Обычные дашборды и API сохраняют SSO/роли.
+This is native public sharing of **only** `socrat-traffic-light`, without a
+login and without anonymous Viewer for the whole organization. The exact URL is
+taken, without substituting the hostname, from the root-private
+`/var/lib/homelab-grafana-tv-public/fully-url.json` on socrat-0. The separate
+`tv.alchemmist.xyz` is retired and removed. The internal profile `xiaomi-tv` is
+deleted from WireGuard on the TV; its peer is revoked on the servers, and the
+inventory no longer creates it. Ordinary dashboards and the API keep SSO/roles.
 
-- `kiosk=1` — полный киоск Grafana, без верхней полосы диапазона и Refresh.
-- `hideLogo=1` — без нижней плашки Powered by Grafana. Голый `?kiosk` верхнюю полосу оставлял.
-- `injectJsCode` пустой. JavaScript через Fully считается Plus-функцией и рисует водяной знак PLUS Features Activated. Туда скрипт не возвращать.
-- `launchOnBoot`, `kioskMode`, `disableHome` и `disableHomeButton` — false. Киоск здесь только параметр страницы Grafana. Fully не становится лаунчером и не стартует вместе с питанием, иначе закрыл бы картинку HDMI.
+- `kiosk=1` — full Grafana kiosk, without the top time-range bar and Refresh.
+- `hideLogo=1` — without the Powered by Grafana footer. A bare `?kiosk` left
+the top bar in place.
+- `injectJsCode` is empty. JavaScript through Fully is considered a Plus feature
+and draws a PLUS Features Activated watermark. Do not return the script there.
+- `launchOnBoot`, `kioskMode`, `disableHome` and `disableHomeButton` are false.
+The kiosk here is only a Grafana page parameter. Fully does not become the
+launcher and does not start with power, otherwise it would cover the HDMI
+picture.
 
-Плейбук записывает это в `/sdcard/fully-once-settings.json`. Fully читает файл на следующем старте и удаляет его. Чтобы файл был виден, у Fully разрешены `NO_ISOLATED_STORAGE` и `LEGACY_STORAGE`. Перезапуск Fully — только если файл изменился или передан `-e homelab_tv_fully_reapply=true`.
+The playbook writes this into `/sdcard/fully-once-settings.json`. Fully reads the
+file on the next start and deletes it. For the file to be visible, Fully has
+`NO_ISOLATED_STORAGE` and `LEGACY_STORAGE` permissions. Fully restarts only if
+the file changed or `-e homelab_tv_fully_reapply=true` is passed.
 
-Для публичного светофора вход **не нужен**. Прежний пользователь `tv` / Secret `socrat-grafana-tv` не использовались и не менялись; это исторический приватный доступ, не публичный пароль.
+The public traffic light needs **no login**. The former user `tv` / Secret
+`socrat-grafana-tv` were not used or changed; that is historical private access,
+not a public password.
 
-Дашборд — UID `socrat-traffic-light`, JSON `charts/monitoring-k3s/dashboards/traffic-light.json`, ConfigMap `socrat-traffic-light-dashboard`. Обновление 5 секунд. Текущее live-окно — `now-12h` (проверено 6 ноября), не интервал обновления; прежняя памятка описывала `now-3h`. JSON дашборда при публикации не менялся. Слева плитки сервисов, справа CPU, память, диск и температура, ноды `socrat-0` … `socrat-3` по возрастанию имени. У socrat-2 нет датчика температуры CPU.
+The dashboard is UID `socrat-traffic-light`, JSON
+`charts/monitoring-k3s/dashboards/traffic-light.json`, ConfigMap
+`socrat-traffic-light-dashboard`. Refresh: 5 seconds. The current live window is
+`now-12h` (verified November 6), not the refresh interval; the earlier memo
+described `now-3h`. The dashboard JSON was not changed by the publication. On
+the left are service tiles, on the right CPU, memory, disk and temperature, the
+nodes `socrat-0` … `socrat-3` in ascending name order. socrat-2 has no CPU
+temperature sensor.
 
-Приватный старый маршрут `/d/socrat-traffic-light` сохраняет свой JS `charts/syncthing/files/traffic-light-inset.js` и `trafficLightInset: true`. Его ConfigMap/Pod и Syncthing не менялись. Публичный policy nginx подмешивает `deploy/platform/grafana/public-entry/files/traffic-light-inset.js`. Только для public URL с `socratTv=1` и проверенным UID он переносит 5px inset, скрывает header/footer и восстанавливает autofit: native public scene не применяет старые kiosk/autofit-параметры. Геометрия берётся из **скомпактированного** native layout, а не из потенциально пересекающихся `gridPos`; 51 панель была результатом приёмки6 ноября; текущий состав/layout изменён7 ноября
-и определяется dashboard JSON, а не этим старым количеством. JS/CSS остаются серверными, `injectJsCode` Fully пустой.
+The private old route `/d/socrat-traffic-light` keeps its JS
+`charts/syncthing/files/traffic-light-inset.js` and `trafficLightInset: true`.
+Its ConfigMap/Pod and Syncthing were not changed. The public policy nginx mixes
+in `deploy/platform/grafana/public-entry/files/traffic-light-inset.js`. Only for
+the public URL with `socratTv=1` and the verified UID does it move the 5px inset,
+hide header/footer and restore autofit: the native public scene does not apply
+the old kiosk/autofit parameters. The geometry comes from the **compacted**
+native layout, not from potentially overlapping `gridPos`; the 51 panels were
+the November 6 acceptance result; the current composition/layout was changed on
+November 7 and is determined by the dashboard JSON, not by that old count. The
+JS/CSS stay server-side; Fully's `injectJsCode` is empty.
 
-Для **только URL**, без полного TV provisioning, использовать `ansible/playbooks/tv-public-dashboard.yml`: сначала аудит, затем `tv_public_apply=true` и свежий `tv_public_hash`. Он требует уже авторизованный ADB, Fully на переднем плане и отсутствие чужого pending import; импортирует ровно `startURL`, перезапускает только Fully и проверяет неизменность DNS/VPN guard. При `tv-uncertain.json` повторять нельзя без проверки приватных receipts. 6 ноября файл успешно прочитан Fully, public page с живыми данными проверена реальным ADB screenshot. Пульт, HDMI и холодное включение повторно не тестировались и не перенастраивались.
+For **URL-only**, without full TV provisioning, use
+`ansible/playbooks/tv-public-dashboard.yml`: first an audit, then
+`tv_public_apply=true` with a fresh `tv_public_hash`. It requires an already
+authorized ADB, Fully in the foreground and the absence of a foreign pending
+import; it imports exactly `startURL`, restarts only Fully and verifies that the
+DNS/VPN guard is unchanged. With a `tv-uncertain.json` marker, do not retry
+without checking the private receipts. On November 6 the file was successfully
+read by Fully; the public page with live data was checked by a real ADB
+screenshot. The remote, HDMI and cold boot were not retested or reconfigured.
 
-Масштаб страницы Fully задаётся плейбуком как 55% через `initialScale`, размер веб-шрифта — 75% через `fontSize`; desktop mode остаётся включённым вручную.
+The Fully page scale is set by the playbook as 55% via `initialScale`, the web
+font size as 75% via `fontSize`; desktop mode remains enabled manually.
 
-## Сеть до Grafana
+## Network to Grafana
 
-Светофор работает через обычный публичный `grafana.socrat.alchemmist.xyz`. Внутренний туннель/ключ `xiaomi-tv` (бывший `10.250.0.8`) удалён через UI WireGuard, а серверный public peer удалён из persistent/runtime конфигурации всех узлов, где он существовал. Остальные peer bindings сохранены; интерфейсы не перезапускались. Приватные исторические backups не уничтожались.
+The traffic light works through the ordinary public
+`grafana.socrat.alchemmist.xyz`. The internal tunnel/key `xiaomi-tv` (formerly
+`10.250.0.8`) was deleted via the WireGuard UI, and the server-side public peer
+was removed from the persistent/runtime configuration of all nodes where it
+existed. The other peer bindings are preserved; the interfaces were not
+restarted. The private historical backups were not destroyed.
 
-На ТВ остался **только** `alchemmist-tv` для YouTube, `10.0.0.10`: его ключ/конфигурация не читались и не заменялись. Профиль включается YouTube-помощником по требованию. `always_on_vpn_app` очищен, lockdown выключен; новый setup не восстанавливает автоподключение внутренней сети. Android Private DNS остаётся `off`, как раньше, для совместимости YouTube; DNS/маршруты самого глобального профиля не менялись. Для Grafana после отключения YouTube VPN используются Wi-Fi и обычное публичное разрешение имени.
+Only `alchemmist-tv` for YouTube, `10.0.0.10`, remains on the TV: its
+key/configuration was not read or replaced. The profile is enabled by the
+YouTube helper on demand. `always_on_vpn_app` is cleared, lockdown is off; the
+new setup does not restore the internal-network auto-connect. Android Private
+DNS stays `off`, as before, for YouTube compatibility; the DNS/routes of the
+global profile itself were not changed. For Grafana, after disconnecting the
+YouTube VPN, Wi-Fi and ordinary public name resolution are used.
 
-Проверен переход помощниками: YouTube запустился с `VALIDATED` VPN; Grafana затем открылась без активной VPN-сети. Это не проверка физического пульта или холодного включения — назначения/HDMI не менялись.
+The helper transition was checked: YouTube started with a `VALIDATED` VPN;
+Grafana then opened without an active VPN network. This is not a check of the
+physical remote or cold boot — the assignments/HDMI were not changed.
 
-## Что не автоматизировано
+## What is not automated
 
-Плейбук устанавливает только homelab-помощники HDMI/Grafana/YouTube VPN и удаляет Happ. Сторонние Fully, tvQuickActions, WireGuard и VPN-профили нужно завести отдельно. Профиль глобального VPN для YouTube импортируется в WireGuard как `alchemmist-tv` из приватного файла конфигурации; исходный `tv.conf` и его ключ нельзя класть в git. Внутренний профиль для Grafana больше не нужен и не импортируется. Плейбук не задаёт масштаб 65% и desktop mode, не логинит пользователя `tv` (публичному светофору вход не нужен) и не записывает назначения кнопок. На новом телевизоре приложения, VPN-профили и сами кнопки потребуют ручной настройки; для публичного светофора нужны созданный native share и его URL, а не пароль Grafana.
+The playbook installs only the homelab HDMI/Grafana/YouTube VPN helpers and
+removes Happ. Third-party Fully, tvQuickActions, WireGuard and the VPN profiles
+must be set up separately. The global VPN profile for YouTube is imported into
+WireGuard as `alchemmist-tv` from a private configuration file; the original
+`tv.conf` and its key must not go into Git. The internal profile for Grafana is
+no longer needed and is not imported. The playbook does not set the 65% scale
+and desktop mode, does not log in the `tv` user (the public traffic light needs
+no login) and does not write button assignments. On a new television the
+applications, VPN profiles and the buttons themselves will need manual setup;
+for the public traffic light a created native share and its URL are needed, not
+a Grafana password.
 
-## TV dashboard rollout, 7 ноября 2026
+## TV dashboard rollout, November 7, 2026
 
-В GitOps выпущен `208e2ea`: CPU показывает занятые логические ядра, RAM и корневой
-диск — абсолютный объём (GiB), длина полосы нормализована к ёмкости конкретной ноды.
-История CPU над VPN заменена на p95 домашнего HTTP Traefik; внизу добавлен список
-до трёх активных critical/warning проблем. Текущий VPN Stat со sparkline сохранён.
-Argo CD подтвердил Synced / Healthy. Публичный URL открыт и визуально проверен
-в Chromium 1920×1080; это не проверка физического ТВ с масштабом Fully. Детали:
-`docs/applications/android-tv/traffic-light-tv-design.md`. Прямой patch ConfigMap откатывает Argo CD;
-публиковать нужно через Git. Доступ к публичному URL не требует WireGuard.
+`208e2ea` was released via GitOps: CPU shows busy logical cores, RAM and the root
+disk an absolute volume (GiB), and the bar length is normalized to the specific
+node's capacity. The VPN CPU history was replaced with p95 of the home HTTP
+Traefik; below, a list of up to three active critical/warning issues was added.
+The current VPN Stat with sparkline is preserved. Argo CD confirmed Synced /
+Healthy. The public URL was opened and visually checked in Chromium at
+1920×1080; this is not a check of the physical TV with the Fully scale.
+Details: `docs/applications/android-tv/traffic-light-tv-design.md`. A direct
+ConfigMap patch would revert via Argo CD; publish through Git. Access to the
+public URL does not require WireGuard.
 
-## Актуальная раскладка после визуальной правки 7 ноября
+## The current layout after the visual edit of November 7
 
-Релизы `832e341` (dashboard) и `757dc18` (kiosk presentation): сетка **24×16**,
-CPU/Memory/Disk по **8 строк** высотой. Абсолютные значения, относительная длина
-полос и пороги сохранены. RPS и n8n стоят рядом, каждый `w=7,h=4`; у новых блоков
-нет шапок, info, легенд и плашек диапазона. Под ними три отдельных читаемых Stat
-n8n. Вместо полосок по приложениям Argo — две state-timeline дорожки: Git / Apps.
-Сервисные имена пока сохранены: анонимизация кубиков не понадобилась для места.
+Releases `832e341` (dashboard) and `757dc18` (kiosk presentation): a **24×16**
+grid, CPU/Memory/Disk **8 rows** tall each. Absolute values, relative bar
+lengths and thresholds preserved. RPS and n8n stand side by side, each `w=7,h=4`;
+the new blocks have no headers, info, legends or range chips. Below them, three
+separate readable n8n Stats. Instead of per-application Argo bars there are two
+state-timeline tracks: Git / Apps. The service names are kept for now:
+anonymizing the tiles was not needed for space.
 
-Проверять **оба** маршрута: фактический `/public-dashboards/<token>?...&socratTv=1`
-и `/d/socrat-traffic-light?kiosk=1&hideLogo=1&autofitpanels=true`. У ordinary kiosk
-был независимый баг native autofit, сжимавший ресурсы и оставлявший пустоты. Только
-для этого opt-in режима активный policy asset
-`deploy/platform/grafana/public-entry/files/traffic-light-inset.js` теперь применяет
-такую же равномерную fit-сетку; edit/viewPanel не перехватываются. Auth hover сохранён.
-Shared scene по-прежнему использует compacted layout, authenticated fit принимает
-только целую collision-free сохранённую сетку. UI редактирования, auth и Fully не менялись.
+Check **both** routes: the actual
+`/public-dashboards/<token>?...&socratTv=1` and
+`/d/socrat-traffic-light?kiosk=1&hideLogo=1&autofitpanels=true`. The ordinary
+kiosk had an independent native autofit bug that squeezed resources and left
+empty gaps. Only for this opt-in mode does the active policy asset
+`deploy/platform/grafana/public-entry/files/traffic-light-inset.js` now apply
+the same uniform fit grid; edit/viewPanel are not intercepted. The auth hover is
+preserved. The shared scene still uses the compacted layout; the authenticated
+fit accepts only a whole collision-free saved grid. The editing UI, auth and
+Fully were not changed.
 
-Реальная браузерная проверка четырёх комбинаций (оба маршрута × 1920×1080 / 1440×900):
-55 панелей, одинаковая pixel-высота CPU/Memory/Disk (531 / 441 px), общая нижняя
-граница Disk/VPN, без пересечений и обрезания Stat. Скрипт:
-`scripts/check-traffic-light-tv-layout.cjs`; URL и session state передаются приватными
-файлами, не коммитятся. Детали и ограничения — `docs/applications/android-tv/traffic-light-tv-design.md`.
+A real browser check of four combinations (both routes × 1920×1080 / 1440×900):
+55 panels, equal pixel height of CPU/Memory/Disk (531 / 441 px), a common lower
+boundary of Disk/VPN, no overlaps and no clipped Stats. Script:
+`scripts/check-traffic-light-tv-layout.cjs`; the URL and session state are
+passed via private files and are not committed. Details and limitations:
+`docs/applications/android-tv/traffic-light-tv-design.md`.
 
-## Владение dashboard и свежая раскладка — 7 ноября 2026
+## Dashboard ownership and the fresh layout — November 7, 2026
 
-После monitoring split public policy/TV assets принадлежат Application **grafana**,
-`deploy/platform/grafana/public-entry`, не прежнему kube-prometheus-stack app.
-Headerless/full-height disk layout изменён в `832e341`; canonical share URL,
-Fully55%/font75%, empty injectJsCode и отдельный YouTube VPN не менять по старым
-координатам панелей. [Monitoring ownership](../../observability/monitoring/observability-current.md). Source update
-и проверка Argo не заменяют физический remote/cold-boot тест.
+After the monitoring split, the public policy/TV assets belong to the
+Application **grafana**, `deploy/platform/grafana/public-entry`, not the former
+kube-prometheus-stack app. The headerless/full-height disk layout was changed in
+`832e341`; do not change the canonical share URL, Fully55%/font75%, the empty
+injectJsCode and the separate YouTube VPN according to the old panel
+coordinates. [Monitoring ownership](../../observability/monitoring/observability-current.md). A source
+update and an Argo check do not replace a physical remote/cold-boot test.
 
-## Полоска Argo и обновление раскладки — 11 ноября 2026
+## The Argo bar and the layout update — November 11, 2026
 
-Новый owner layout хранится в Git; полоска909 внизу x0,y19,w12. Native bar/group
-width уже1 (максимум), поэтому для заметного утолщения увеличен сам модульh1→h2.
-TV fit теперь21 строка вместо20: прочие gridPos не менялись; общая авто-подгонка
-может немного изменить их pixel-высоту. Fully55%/font75%, public URL, серверный
-presentation JS/CSS, VPN и пульт не изменялись. На свежем public URL при1920×1080
-до изменения canvas полосы27px. Это браузерный замер, не физический TV screenshot.
+The new owner layout is stored in Git; the909 bar at the bottom is x0,y19,w12.
+The native bar/group width is already1 (the maximum), so for a visible
+thickening the module itself was enlarged h1→h2. The TV fit is now21 rows
+instead of20: the other gridPos entries did not change; the overall auto-fit
+may slightly change their pixel height. Fully55%/font75%, the public URL, the
+server-side presentation JS/CSS, VPN and the remote were not changed. On the
+fresh public URL at1920×1080 the bar was27px before the change. This is a
+browser measurement, not a physical TV screenshot.
 
-В этом прогоне с socrat-0 адрес192.168.0.19:5555 недоступен; ни ADB5555, ни
-Termux8022 listeners в LAN не обнаружены. Не обходили авторизацию и не включали
-отладку принудительно. Физическая приёмка/reload Fully пока недоступны.
-Refresh5s обновляет метрики, но не гарантирует подхват новой геометрии уже открытой
-страницей. После layout rollout обновить страницу в Fully; не считать постоянно
-открытую вкладку обновлённой только по движению значений. Не менять масштаб всего
-дашборда ради одной полосы и не запускать полный TV provisioning для reload.
+In this run, the address192.168.0.19:5555 was unreachable from socrat-0;
+neither ADB5555 nor Termux8022 listeners were found on the LAN. We did not
+bypass authorization or force debugging on. Physical acceptance/reloading Fully
+is therefore unavailable. Refresh5s updates the metrics but does not guarantee
+that a page already open picks up the new geometry. After a layout rollout,
+refresh the page in Fully; do not consider a constantly open tab updated merely
+because the values move. Do not rescale the whole dashboard for the sake of one
+bar and do not run full TV provisioning just to reload.
 
-После rollout9a47ee49 fresh anonymous public browser verified: canvas27→76px при
-1920×1080 (≈2.8×). Emulated55% viewport3491×1964,DSF0.55: canvas72→160CSSpx;
-это только эмуляция масштаба, не замер устройства. Public909 query HTTP200.
-32 tests passed, scoped Helm diff only canonical ConfigMap, Argo Synced/Healthy.
-Live exact dashboard comparison (excluding version) confirms only909.h changed.
-Физический TV/его открытая вкладка по-прежнему не проверены и не перезагружены.
+After the rollout9a47ee49, a fresh anonymous public browser was verified: canvas
+27→76px at1920×1080 (≈2.8×). An emulated55%
+viewport3491×1964,DSF0.55: canvas72→160CSSpx; that is only a scale emulation,
+not a device measurement. The Public909 query gave HTTP200.
+32 tests passed, the scoped Helm diff touched only the canonical ConfigMap,
+Argo Synced/Healthy. A live exact dashboard comparison (excluding the version)
+confirms only909.h changed. The physical TV / its open tab is still unchecked
+and not reloaded.
 
 ### Superseding Argo design: per-Application Bar gauge, h1
 
@@ -345,58 +503,64 @@ No Fully settings, public share URL, presentation assets, VPN or other panels ch
 After deployment reload Fully for geometry/query changes; no claim of physical TV
 verification while documented ADB access is unavailable.
 
-Приёмкаeb7cd6a3:49 actual query frames=49 named K8s Applications. Signed-in normal
-и kiosk: по49 resolved native browser-title links, наведение проверено на КАЖДОМ
-из49 блоков при1920×1080 и1440×900, все bounds внутри панели. Public1920 и55%-
-emulation:49 целиком видимых блоков; native высота76.66px.32 tests, ArgoSynced/Healthy;
-live diff only909. Это browser acceptance, не физический TV screenshot.
+Acceptance eb7cd6a3:49 actual query frames=49 named K8s Applications.
+Signed-in normal and kiosk: 49 resolved native browser-title links each,
+the hover checked on EVERY one of the 49 blocks at1920×1080 and1440×900,
+all bounds inside the panel. Public1920 and the 55%-emulation: 49 fully
+visible blocks; native height76.66px.32 tests, ArgoSynced/Healthy; the live
+diff is only909. This is browser acceptance, not a physical TV screenshot.
 
-15:16MSK11Nov: адрес из wiki192.168.0.19:5555 теперь отвечает, но adb devices
-показываетunauthorized (socrat-0 SSH useralchemmist); модель ещё не подтверждена.
-Не обходили авторизацию, не сбрасывали ключи/настройки, не reload Fully через ADB.
-Для реального device screenshot требуется разрешённый ADB; для новой геометрии
-уже открытой страницы — reload Fully. Не считать адрес сам по себе проверкой модели.
+15:16MSK11Nov: the address from the wiki, 192.168.0.19:5555, now responds, but
+`adb devices` shows unauthorized (socrat-0 SSH user alchemmist); the model is
+not yet confirmed. We did not bypass authorization, did not reset
+keys/settings, did not reload Fully via ADB. A real device screenshot requires
+an authorized ADB; the new geometry of an already open page requires a Fully
+reload. The address by itself is not proof of the model.
+## Real TV diagnosis: subpixel Bar gauge, November 11, 2026
 
-## Реальный TV diagnosis: subpixel Bar gauge, 11 ноября 2026
+ADB is now authorized; getprop confirms MiTV-MOOQ1/tarzan, Fully foreground.
+Real screencaps were taken before and after reloading only Fully (no pending
+import). The reload did not fix the 49 blocks that looked like sparse hairs.
+Important: native screencap writes 65 bytes of vendor diagnostics before the
+PNG; strip down to the PNG signature before opening the picture.
 
-ADB теперь авторизован; getprop confirmsMiTV-MOOQ1/tarzan, Fully foreground. Сняты
-реальные screencap before и после reload толькоFully (pending import отсутствовал).
-Reload не исправил49 блоков, выглядевших как редкие волоски. Важно: native screencap
-пишет65 bytesvendor diagnostics передPNG; strip доPNG signature до открытия картинки.
+A UI audit: Fully initialScale55%, font75%, desktop=true, wideViewport=true,
+overview=false preserved. The real WebView is 156.0.8078.47, Android
+density320/DPR2. For an exact read-only DOM audit, the free Webview Contents
+Debugging was temporarily enabled (originally false); CDP goes through the
+authorized ADB and an SSH loopback-only tunnel, not a public port, not Fully JS
+injection. After acceptance, return debug to false and remove the forward.
 
-Аудит через UI: Fully initialScale55%,font75%, desktop=true, wideViewport=true,
-overview=false сохранены. РеальныйWebView156.0.8078.47, Android density320/DPR2.
-Для точного read-only DOM audit временно включена бесплатная Webview Contents
-Debugging (originalfalse); CDP идёт через authorized ADB и SSHloopback-only tunnel,
-не public port, не Fully JS injection. После приёмки вернутьdebugfalse и снятьforward.
+The actual viewport: innerWidth1024, innerHeight575; screen960×540CSS,
+visualScale0.9375. Do not emulate the TV as 3491CSSpx/DSF0.55: that was a wrong
+model. In the old w12,h2: the panel is 503CSSpx, content 485; 49 bars with 48
+native gaps×10px left only 5px for the colored parts: each one 0.10156CSSpx
+(≈0.19 physicalpx). The DOM count of 49 and the bounds check passed, but
+rasterization made most invisible. It is not a data or height problem;
+lowering minVizWidth to 0 only prevented clipping, it did not ensure visibility.
 
-Фактический viewport innerWidth1024,innerHeight575; screen960×540CSS,visualScale0.9375.
-Не эмулироватьTV как3491CSSpx/DSF0.55: это была неверная модель. В старомw12,h2:
-панель503CSSpx, content485;49 баров с48 native gaps×10px оставляли всего5px на
-цветные части:каждый0.10156CSSpx (≈0.19 physicalpx). DOM count49 и bounds check
-проходили, но rasterization делала большинство невидимыми. Не проблема данных или
-высоты; уменьшениеminVizWidth до0 только предотвращалоclip, не обеспечивало видимость.
-
-Scoped native fix:909 width12→24 в пустую правую половину нижней строки, x0,y19,h2
+Scoped native fix: 909 width 12→24 into the empty right half of the bottom row, x0,y19,h2
 unchanged. Other panels/settings untouched, no CSS/JS/plugin/zoom/DPI changes.90
 empty cells remain. New regression requires≥8CSSpx per49 bars atviewport1024.
 
-Приёмка0a5f53fb выполнена НА ФИЗИЧЕСКОМ ТВ после Page.reload его WebView:
-49 native bars/49 app links, panel1014CSSpx, eachbar10.523CSSpx vs0.10156 before;
-height28.578CSSpx unchanged. Final ADB screenshot1920×1080 после выключенияdebug
-проверен визуально и поPNG scanline1025:49 отдельных цветных участков шириной
-18–20physicalpx. Это не fixture/emulation. Скриншоты/DOM evidence private/tmp:
-`tv-actual-gauge-before.png`, `tv-actual-gauge-final.png`, `tv-dom-before-width.json`,
-`tv-dom-after-width.json`.33 tests pass; exact live dashboard diff only909.w,
-scoped Helm only canonical CM, ArgoSynced/Healthy. No unrelated dirty VPN files touched.
-
-Cleanup verified: Webview Contents Debugging вернули в исходноеfalse через UI;
-/proc/net/unix больше не показываетdebug socket; ADB forward19222 removed, SSH
-loopback tunnel closed, own temporaryuiautomator XML deleted. Fully foreground,
-actual updated dashboard already loaded: owner reload not needed for this release.
-Fully zoom/fonts/desktop/wideViewport, DNS/VPN/remote keys/HDMI unchanged. Initial
-scale55 is not a substitute for measuring actual viewport/DPR on the device.
-
+Acceptance 0a5f53fb was performed ON THE PHYSICAL TV after a Page.reload of
+its WebView: 49 native bars/49 app links, panel1014CSSpx, each bar 10.523CSSpx
+vs 0.10156 before; height 28.578CSSpx unchanged. The final ADB screenshot
+1920×1080, taken after debug was switched off, was checked visually and by PNG
+scanline1025: 49 separate colored areas 18–20physicalpx wide. This is not a
+fixture/emulation. The screenshots/DOM evidence is private/tmp:
+`tv-actual-gauge-before.png`, `tv-actual-gauge-final.png`,
+`tv-dom-before-width.json`, `tv-dom-after-width.json`.33 tests pass; the exact
+live dashboard diff is only909.w, the scoped Helm only the canonical CM,
+ArgoSynced/Healthy. No unrelated dirty VPN files touched.
+Cleanup verified: Webview Contents Debugging was returned to the original false
+via the UI; /proc/net/unix no longer shows the debug socket; the ADB forward
+19222 was removed, the SSH loopback tunnel closed, our own temporary
+uiautomator XML deleted. Fully foreground, the actual updated dashboard already
+loaded: the owner's reload is not needed for this release.
+Fully zoom/fonts/desktop/wideViewport, DNS/VPN/remote keys/HDMI unchanged. An
+initial scale of 55 is not a substitute for measuring the actual viewport/DPR
+on the device.
 ### Moscow IP cube —11November2026
 
 NativeStat928 added belowHomeIP atx23,y8,w1,h1; target91.189.82.238:443 (socrat-4),
@@ -439,58 +603,65 @@ errorlogging; ownerinformed, no unapprovedshare rotation, verifiercleanedup.
 
 ## Maintaining the Argo TV stylesheet
 
-**Текущее согласованное решение:** native Bar gauge909 остаётся в ручном размере
-`x0,y19,w12,h1`. Только на public TV-странице с `socratTv=1` применяется адресное
-оформление. Это явно одобренное владельцем исключение, не разрешение менять весь
-дашборд CSS-правками.
+**The currently agreed solution:** the native Bar gauge909 stays at the manual
+size `x0,y19,w12,h1`. Targeted styling is applied only on the public TV page
+with `socratTv=1`. This is an explicitly owner-approved exception, not
+permission to change the whole dashboard with CSS edits.
 
-- **Git-источник:** `deploy/platform/grafana/public-entry/files/traffic-light-inset.js`,
-  функция `compactArgoRules()`. Доставляется существующим Grafana policy proxy,
-  а не настройкой `injectJsCode` Fully. CSS ограничен
+- **Git source:** `deploy/platform/grafana/public-entry/files/traffic-light-inset.js`,
+  the `compactArgoRules()` function. It is delivered by the existing Grafana
+  policy proxy, not by Fully's `injectJsCode` setting. The CSS is scoped to
   `.socrat-tv-public-grid [data-viz-panel-id="panel-909"]`.
-- **Параметры:** внутренний padding8→3 CSSpx; промежутки10→2 CSSpx. Flex заново
-  распределяет ширину ячеек; отдельно растягивается native data-link wrapper и
-  цветная заливка. Уменьшить только margin недостаточно: Grafana уже вычислила
-  субпиксельную ширину баров с учётом своих10px промежутков.
-- **Почему TV отличался:** физический экран1920×1080, но реальная страница1024CSSpx,
-  DPR2/visualScale0.9375. Не использовать старую эмуляцию3491CSSpx/масштаб0.55 как
-  доказательство. При49 приложениях прежние48 промежутков занимали480CSSpx из
-  примерно485 доступных, оставляя каждому бару лишь0.10CSSpx.
-- **Границы:** обычные signed-in просмотр/редактирование/kiosk не меняются;
-  общая сетка, другие панели, native цвета/данные/ссылки, масштабы Fully55% и
-  шрифт75% не изменены. Классы добавляются только после проверки UID, типа и
-  структуры native DOM. Нет данных/неподдерживаемый DOM — отказ от модификации,
-  а не нарисованные зелёные блоки. Число приложений динамическое, не фиксированные49.
-- **Регрессии:** `tests/test_grafana_tv_public.py` проверяет область действия,
-  защитные условия и сохранность native данных. При изменении asset требуется
-  проверить scoped Helm diff; допустимы policy ConfigMap и checksum его proxy
-  Deployment. Проверить и обновить только соответствующие два reviewed hash в
-  `tests/fixtures/public-entry-handoff.json`, не переписывать hashes других owners.
-- **Приёмка:** проверить наличие всех приложений, фактическую ширину/высоту заливок
-  и полное попадание внутрь панели. Количество DOM-элементов само по себе не
-  доказывает видимость. Нужен настоящий ADB screenshot плюс замеры в WebView;
-  preview/mixed-state fixture не выдавать за физический TV. Последний результат:
-  49 видимых блоков14–15physicalpx шириной в исходной половине строки.
-- **Обновление:** Git→Argo Application `grafana`→существующий policy proxy;
-  не перезапускать backend Grafana/Prometheus ради CSS. После доставки перечитать
-  страницу TV: metric refresh5s не заменяет загрузку новой версии JS/model.
-  Временную WebView-отладку возвращать в исходное состояние, ADB/SSH forward закрывать.
+- **Parameters:** inner padding 8→3 CSSpx; gaps 10→2 CSSpx. Flex re-distributes
+  the cell widths; the native data-link wrapper and the colored fill are
+  stretched separately. Reducing only the margin is not enough: Grafana has
+  already computed the subpixel bar widths accounting for its own 10px gaps.
+- **Why the TV differed:** the physical screen is 1920×1080, but the real page
+  is 1024CSSpx, DPR2/visualScale0.9375. Do not use the old emulation of
+  3491CSSpx/0.55 scale as proof. With 49 applications, the former 48 gaps took
+  480CSSpx out of roughly 485 available, leaving each bar only 0.10CSSpx.
+- **Boundaries:** ordinary signed-in view/editor/kiosk are unchanged; the
+  common grid, other panels, native colors/data/links, Fully's 55% scale and
+  75% font are untouched. Classes are added only after checking the UID, type
+  and structure of the native DOM. No data / unsupported DOM — refuse to
+  modify, do not paint green blocks. The application count is dynamic, not a
+  fixed 49.
+- **Regressions:** `tests/test_grafana_tv_public.py` checks the scope, the
+  guard conditions and the preservation of native data. When the asset changes,
+  a scoped Helm diff is required; the policy ConfigMap and the checksum of its
+  proxy Deployment are allowed. Check and update only the corresponding two
+  reviewed hashes in `tests/fixtures/public-entry-handoff.json`; do not rewrite
+  other owners' hashes.
+- **Acceptance:** verify the presence of all applications, the actual
+  width/height of the fills, and that they are fully inside the panel. The
+  number of DOM elements by itself does not prove visibility. A real ADB
+  screenshot plus measurements in the WebView are needed; a
+  preview/mixed-state fixture must not be passed off as the physical TV. Latest
+  result: 49 visible blocks 14–15physicalpx wide in the original half of the
+  row.
+- **Update:** Git→Argo Application `grafana`→the existing policy proxy; do not
+  restart the Grafana/Prometheus backend for the sake of CSS. After delivery,
+  re-read the TV page: the metric refresh of 5s does not replace loading the
+  new JS/model version. Return temporary WebView debugging to its original
+  state and close the ADB/SSH forwards.
 
-### Свежесть и точный смысл Argo-цветов
+### Freshness and the exact meaning of the Argo colors
 
-Это instant latest-state, не история и не среднее. Argo metrics собираются15s,
-дашборд обновляет запросы5s: обычно несколько–20s после изменения, уже отражённого
-самим Argo; это не мгновенный push и не строгая максимальная задержка. Freshness90s,
-up/inventory guards не должны выдавать устаревший/неполный набор за свежий зелёный.
-Ready = Healthy+Synced; синий = Progressing; красный = Degraded/Missing;
-оранжевый = OutOfSync/Suspended; серый = Unknown. Операция Syncing отдельно не
-отслеживается, короткий переход может пройти между сборами. Все зелёные означают
-последние свежие состояния Applications, не доказательство доступности всех сервисов.
+This is an instant latest-state, not history and not an average. Argo metrics
+are collected every 15s, the dashboard re-runs queries every 5s: typically
+several–20s after a change already reflected by Argo itself; this is not an
+instant push and not a strict maximum delay. The freshness of 90s and the
+up/inventory guards must not pass off a stale/incomplete set as a fresh green
+one. Ready = Healthy+Synced; blue = Progressing; red = Degraded/Missing;
+orange = OutOfSync/Suspended; gray = Unknown. The Syncing operation is not
+tracked separately; a short transition can slip between collections. All green
+means the latest fresh Application states, not proof that all services are
+reachable.
 
-Код TV-fix: `c6121e19`, интеграция с concurrent main: `f37bdda6`, физическая
-приёмка/cleanup: `f459af38`. MoscowIP и ручная раскладка также сохранены в Git;
-не возвращать старые принудительные размерыw24/h2 при следующей генерации.
-
+The TV-fix code: `c6121e19`, integration with concurrent main: `f37bdda6`,
+physical acceptance/cleanup: `f459af38`. The MoscowIP and the manual layout
+are also stored in Git; do not restore the old forced w24/h2 sizes at the next
+generation.
 ## Quality panels in owner-approved free space —11November2026
 
 Owner authorized research-based additions; code7e77376, integrated0218340f and
