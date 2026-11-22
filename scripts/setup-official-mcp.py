@@ -11,6 +11,7 @@ import platform
 import shlex
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import time
@@ -71,7 +72,14 @@ def install_runtime(target: Path, *, offline: bool, archive: Path | None) -> Non
     for name in ("package.json", "package-lock.json"):
         shutil.copyfile(ROOT / "tools/official-mcp" / name, npm / name)
     subprocess.run(
-        ["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"]
+        [sys.executable, "-I", str(ROOT / "charts/openhands/files/pi-monori/patch_npm.py"), "argo"]
+        + (["--offline"] if offline else []),
+        cwd=npm,
+        check=True,
+        timeout=120,
+    )
+    subprocess.run(
+        ["npm", "ci", "--strict-peer-deps", "--ignore-scripts", "--no-audit", "--no-fund"]
         + (["--offline"] if offline else []),
         cwd=npm,
         check=True,

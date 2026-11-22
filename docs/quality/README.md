@@ -19,7 +19,8 @@ Ownership runs six offline checks plus their regression suites; the Ansible
 entrypoint scan covers both `.yml` and `.yaml`.
 `tests-medium` runs the complete loopback-isolated integration suite after `ownership`.
 Blocking `ansible` (Playbook safety) also runs after `ownership`, using locked parser collections.
-The other four checks remain runnable by name; `make check` and its alias
+`dependencies` runs after `ownership`.
+The other three checks remain runnable by name; `make check` and its alias
 `make check-all` attempt both active and local-only checks. Restore a
 check to `qg.yaml` and remove its local-only entry once it is verified green.
 
