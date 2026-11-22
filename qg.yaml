@@ -127,6 +127,13 @@ nodes:
       - graph
     results:
       native: reports/yaml.json
+  python-scopes:
+    title: Scoped Python rules
+    profile: default
+    needs:
+      - graph
+    policy: *id001
+    run: uv run --locked python -m scripts.quality.python_scopes
   scripts-q000:
     title: Python script and test quotes (Q000, D300)
     profile: default

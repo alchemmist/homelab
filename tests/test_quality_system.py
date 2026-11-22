@@ -210,9 +210,8 @@ def test_unmarked_debt_file_cannot_act_as_a_baseline(tmp_path) -> None:
     (debt / "python.json").write_text(
         json.dumps({"version": 1, "reason": "x" * 20, "findings": []})
     )
-    with patch("common.ROOT", tmp_path):
-        with pytest.raises(ValueError, match="non-accepting"):
-            report("python", [], 1, tmp_path / "out.json")
+    with patch("common.ROOT", tmp_path), pytest.raises(ValueError, match="non-accepting"):
+        report("python", [], 1, tmp_path / "out.json")
 
 
 def test_suppression_guard_matches_markers_and_not_its_own_source() -> None:
@@ -434,6 +433,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     assert len({n["title"] for n in graph.values()}) == len(graph)
     first_layer = {
         "yaml",
+        "python-scopes",
         "scripts-q000",
         "deploy-i001",
         "javascript",
@@ -463,6 +463,9 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     for node in first_layer:
         assert graph[node]["needs"] == ["graph"]
         assert graph[node]["policy"]["blocking"] is True
+    scopes = graph["python-scopes"]
+    assert scopes["policy"] == policy
+    assert scopes["run"] == "uv run --locked python -m scripts.quality.python_scopes"
     quotes = graph["scripts-q000"]
     assert quotes["policy"] == policy
     assert quotes["run"] == (
