@@ -78,6 +78,34 @@ def test_escaping_finding_rejected() -> None:
         finding("RULE", "../private", 1, "message", "context")
 
 
+def test_workflow_noqa_requires_a_python_comment() -> None:
+    """Keep heredocs, prose and quoted strings distinct from actual Python waivers."""
+    from lint import python_directive_lines
+
+    marker = "# " + "noqa"
+    source = f'''\
+name: "example {marker}"
+# A YAML comment mentioning {marker}
+defaults: {{run: {{shell: python}}}}
+jobs:
+  inherits:
+    steps:
+      - run: |
+          print("{marker}")
+          import unused  {marker}: F401
+  overrides:
+    defaults: {{run: {{shell: bash}}}}
+    steps:
+      - run: |
+          cat <<'END'
+          {marker}
+          END
+      - shell: python3
+        run: "import another  {marker.upper()}"
+'''
+    assert python_directive_lines(source) == {9, 18}
+
+
 def test_failed_tools_are_not_quality_approvals(tmp_path) -> None:
     out = tmp_path / "result.json"
     failure(out, RuntimeError("DO NOT ECHO SECRET PAYLOAD"))

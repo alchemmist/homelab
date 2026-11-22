@@ -7,6 +7,7 @@ import ast
 import base64
 import binascii
 import http.client
+import io
 import json
 import math
 import os
@@ -15,6 +16,7 @@ import shutil
 import ssl
 import sys
 import tempfile
+import tokenize
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlparse
@@ -1241,6 +1243,62 @@ def check_actions(names: list[str]) -> tuple[list[Finding], int]:
     ), len(files)
 
 
+def python_directive_lines(source: str) -> set[int]:
+    """Find noqa comment tokens in Python run steps, not YAML prose or shell data."""
+    import yaml
+
+    def fields(node: yaml.Node | None) -> dict[str, yaml.Node]:
+        if not isinstance(node, yaml.MappingNode):
+            return {}
+        return {key.value: value for key, value in node.value if isinstance(key, yaml.ScalarNode)}
+
+    def shell(node: yaml.Node | None, fallback: str) -> str:
+        return node.value if isinstance(node, yaml.ScalarNode) else fallback
+
+    def default_shell(mapping: dict[str, yaml.Node], fallback: str) -> str:
+        run = fields(fields(mapping.get("defaults")).get("run"))
+        return shell(run.get("shell"), fallback)
+
+    document = fields(yaml.compose(source, Loader=yaml.SafeLoader))
+    lines = set()
+    for job in fields(document.get("jobs")).values():
+        config = fields(job)
+        steps = config.get("steps")
+        if not isinstance(steps, yaml.SequenceNode):
+            continue
+        inherited = default_shell(config, default_shell(document, "bash"))
+        for step in steps.value:
+            values = fields(step)
+            script = values.get("run")
+            if (
+                not isinstance(script, yaml.ScalarNode)
+                or shell_dialect(shell(values.get("shell"), inherited)) != "python"
+            ):
+                continue
+            for token in tokenize.generate_tokens(io.StringIO(script.value).readline):
+                if token.type == tokenize.COMMENT and re.match(
+                    r"#\s*noqa(?:\s*:|\s*$)", token.string, re.I
+                ):
+                    # Only literal blocks preserve physical line offsets. Otherwise
+                    # anchor the finding to the scalar, not a guessed source line.
+                    offset = token.start[0] if script.style == "|" else 0
+                    lines.add(script.start_mark.line + 1 + offset)
+    return lines
+
+
+def workflow_directives(name: str) -> list[Finding]:
+    """Reject inline audit waivers without treating shell/YAML data as Python."""
+    source = (ROOT / name).read_text()
+    lines = python_directive_lines(source)
+    for number, line in enumerate(source.splitlines(), 1):
+        if re.search(r"#\s*(?:zizmor:\s*ignore|shellcheck\s+disable=)", line, re.I):
+            lines.add(number)
+    return [
+        finding("workflow-suppression", name, number, "Workflow lint suppression is not allowed.")
+        for number in sorted(lines)
+    ]
+
+
 def check_actionlint(names: list[str]) -> tuple[list[Finding], int]:
     """Run the actionlint linter and return findings and target count."""
     files = workflow_files(names)
@@ -1375,11 +1433,7 @@ def check(tool: str) -> tuple[list[Finding], int]:
     if tool == "workflow":
         security, count = check("actions")
         expressions, _ = check("actionlint")
-        directives = []
-        for name in workflow_files(names):
-            for number, line in enumerate((ROOT / name).read_text().splitlines(), 1):
-                if re.search(r"#\s*(?:zizmor:\s*ignore|shellcheck\s+disable=|noqa\b)", line, re.I):
-                    directives.append(finding("workflow-suppression", name, number, "Workflow lint suppression is not allowed."))
+        directives = [item for name in workflow_files(names) for item in workflow_directives(name)]
         return security + expressions + directives, count
     if tool == "dependencies":
         return check_dependencies(names)
