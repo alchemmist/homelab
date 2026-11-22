@@ -18,7 +18,7 @@ metadata:
   labels:
     app.kubernetes.io/name: uptime-kuma-db
 spec:
-  replicas: 1
+  replicas: {{ .Values.database.replicaCount }}
   strategy:
     type: Recreate
   selector:

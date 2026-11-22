@@ -63,6 +63,22 @@ def fetch_releases(repo, timeout):
     return payload
 
 
+def searxng_image_tags(timeout):
+    # Upstream publishes rolling date-SHA images, not GitHub Releases.
+    url = "https://hub.docker.com/v2/repositories/searxng/searxng/tags?page_size=100&ordering=last_updated"
+    with urllib.request.urlopen(url, timeout=timeout) as response:
+        payload = json.load(response)
+    if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
+        raise ValueError("unexpected Docker Hub response")
+    return [
+        {"tag_name": item["name"]}
+        for item in payload["results"]
+        if isinstance(item, dict)
+        and isinstance(item.get("name"), str)
+        and re.fullmatch(r"\d{4}\.\d{1,2}\.\d{1,2}-[0-9a-f]{7,40}", item["name"])
+    ]
+
+
 def version_from_image(image):
     """Version embedded in a tag. Digest-only references have no tag."""
     if not image:
@@ -100,7 +116,11 @@ def evaluate(targets, fetch, timeout, images=None):
             if current is None:
                 message = "current version is not a dotted triple"
                 raise ValueError(message)
-            releases = fetch(target["github"], timeout)
+            releases = (
+                searxng_image_tags(timeout)
+                if target.get("source") == "searxng-image-tags"
+                else fetch(target["github"], timeout)
+            )
             latest, _tag = latest_stable(releases)
             if latest is None:
                 message = "no stable release"
@@ -128,7 +148,9 @@ def render_metrics(samples):
             f'current="{escape_label(sample["current"])}",'
             f'latest="{escape_label(sample["latest"])}"'
         )
-        lines.append(f"socrat_software_update_available{{{labels}}} {sample['available']}")
+        lines.append(
+            f"socrat_software_update_available{{{labels}}} {sample['available']}"
+        )
         lines.append(
             "socrat_software_update_check_success"
             f'{{app="{escape_label(sample["app"])}"}} {sample["success"]}'
@@ -193,7 +215,9 @@ def deployment_image(target, timeout):
     if ":" in host and not host.startswith("["):
         host = f"[{host}]"
     token = (
-        open("/var/run/secrets/kubernetes.io/serviceaccount/token", encoding="utf-8").read().strip()
+        open("/var/run/secrets/kubernetes.io/serviceaccount/token", encoding="utf-8")
+        .read()
+        .strip()
     )
     url = f"https://{host}:{port}/apis/apps/v1/namespaces/{namespace}/{resource}/{name}"
     request = urllib.request.Request(
@@ -221,7 +245,13 @@ def load_images(targets, timeout):
             continue
         try:
             images[target["id"]] = deployment_image(target, timeout)
-        except (OSError, urllib.error.URLError, ValueError, KeyError, json.JSONDecodeError):
+        except (
+            OSError,
+            urllib.error.URLError,
+            ValueError,
+            KeyError,
+            json.JSONDecodeError,
+        ):
             images[target["id"]] = None
     return images
 
@@ -237,7 +267,11 @@ def main():
 
     def refresh() -> None:
         while True:
-            state.update(evaluate(targets, fetch_releases, timeout, load_images(targets, timeout)))
+            state.update(
+                evaluate(
+                    targets, fetch_releases, timeout, load_images(targets, timeout)
+                )
+            )
             time.sleep(interval)
 
     threading.Thread(target=refresh, daemon=True).start()
