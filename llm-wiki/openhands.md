@@ -23,9 +23,8 @@ allowlisting or proof against public-production probing.
 
 Run `python3 scripts/provision-openhands.py` explicitly as the operator, after Argo
 creates the app. It creates/preserves a distinct LiteLLM virtual key restricted to
-`venice-deepseek`, max_parallel_requests=1, in Secret `openhands-model`. Personal Pi
-and SWE Mini keys are unchanged. The original copied SWE key was replaced by the
-independent OpenHands key; no old key is revoked while SWE work might still use it.
+`venice-deepseek`, max_parallel_requests=1, in Secret `openhands-model`. The independent OpenHands key replaced a copied SWE Mini key. Retiring SWE Mini
+does not require modifying the OpenHands Secret, its key or personal Pi keys.
 
 The helper uses the native settings, provider-connection, LLM-profile and
 AgentProfile APIs and activates `socrat-deepseek`. Profiles reference an encrypted
