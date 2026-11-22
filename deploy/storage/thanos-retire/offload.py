@@ -1,6 +1,14 @@
 """One archive only, verified TLS and bearer; receiver publishes only after full SHA-256."""
 
-import hashlib, hmac, http.client, json, os, re, ssl, sys, time
+import hashlib
+import hmac
+import http.client
+import json
+import os
+import re
+import ssl
+import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path

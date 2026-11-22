@@ -1,6 +1,11 @@
 """Run only in short-lived signer; output capability paths through private exec pipe."""
 
-import datetime, hashlib, hmac, json, os, sys
+import datetime
+import hashlib
+import hmac
+import json
+import os
+import sys
 from urllib.parse import quote, urlencode
 
 
