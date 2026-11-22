@@ -1,0 +1,4 @@
+{
+  "include": ["scripts/build-*.py"],
+  "rules": ["E501"]
+}
