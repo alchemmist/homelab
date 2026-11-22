@@ -265,6 +265,13 @@ def policies(resource):
     return errors
 
 
+RELEASE_PEERS = {
+    "monitoring-k3s-0": ("grafana-mcp-0", "Deployment", "grafana-mcp"),
+    "litellm-2": ("litellm-0", "Service", "litellm"),
+    "rustfs-0": ("authentik-0", "Service", "authentik-server"),
+}
+
+
 def authentik_accounts():
     """Use the same namespace-scoped account documents applied by the Ansible role."""
     path = ROOT / "deploy/authentik/foundation.yaml"
@@ -466,12 +473,16 @@ def check(*, validate=True):
             # schema, identity, policy and kube-linter checks under its own ID.
             continue
         peers = []
-        if target["id"] == "monitoring-k3s-0":
-            # The health Service selects the separately managed Grafana MCP Deployment.
-            peer = next(t for t in selected if t["id"] == "grafana-mcp-0")
-            if peer["id"] not in renders:
-                renders[peer["id"]] = render(peer)
-            peers = [doc for doc in renders[peer["id"]] or [] if doc["kind"] == "Deployment"]
+        # These consumers reference objects rendered by a different Helm source.
+        # Only the actual provider object is context; it still has its own gate.
+        link = RELEASE_PEERS.get(target["id"])
+        if link:
+            peer_id, kind, name = link
+            peer = next(t for t in selected if t["id"] == peer_id)
+            if peer_id not in renders:
+                renders[peer_id] = render(peer)
+            peers = [doc for doc in renders[peer_id] or []
+                     if doc["kind"] == kind and doc["metadata"]["name"] == name]
         if target["id"] == "authentik-0":
             peers = authentik_accounts()
             # Do not discard the foundation accounts' own lint diagnostics.

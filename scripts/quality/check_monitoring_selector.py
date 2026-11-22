@@ -43,6 +43,28 @@ def main() -> None:
         doc["spec"]["template"]["spec"]["serviceAccountName"] = "absent-runtime"
     assert len(missing()) == len(workloads)
 
+    for target_id, ingress_name, provider_id, service_name in (
+        ("litellm-2", "litellm-alias-browser", "litellm-0", "litellm"),
+        ("rustfs-0", "rustfs-authentik-browser", "authentik-0", "authentik-server"),
+    ):
+        target = releases[target_id]
+        ingress, = [r for r in render(target) or [] if r["kind"] == "Ingress"
+                    and r["metadata"]["name"] == ingress_name]
+        service, = [r for r in render(releases[provider_id]) or [] if r["kind"] == "Service"
+                    and r["metadata"]["name"] == service_name]
+        assert ingress["metadata"]["namespace"] == service["metadata"].get(
+            "namespace", releases[provider_id]["namespace"]
+        )
+        routes = [p["backend"]["service"] for r in ingress["spec"]["rules"]
+                  for p in r["http"]["paths"]]
+        for route in routes:
+            assert route["name"] == service_name
+            assert route["port"]["number"] in {p["port"] for p in service["spec"]["ports"]}
+        rule = "kube-linter-dangling-ingress"
+        assert not any(f["ruleId"] == rule for f in kube_lint(target, [ingress], [service]))
+        routes[0]["name"] = "absent-backend"
+        assert any(f["ruleId"] == rule for f in kube_lint(target, [ingress], [service]))
+
 
 if __name__ == "__main__":
     main()

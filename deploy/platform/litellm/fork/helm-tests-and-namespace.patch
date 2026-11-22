@@ -1,0 +1,126 @@
+diff --git a/charts/litellm/templates/ingress.yaml b/charts/litellm/templates/ingress.yaml
+index ea9ffcbb..e0fac8a7 100644
+--- a/charts/litellm/templates/ingress.yaml
++++ b/charts/litellm/templates/ingress.yaml
+@@ -15,6 +15,7 @@ apiVersion: extensions/v1beta1
+ {{- end }}
+ kind: Ingress
+ metadata:
++  namespace: {{ .Release.Namespace | quote }}
+   name: {{ $fullName }}
+   labels:
+     {{- include "litellm.labels" . | nindent 4 }}
+diff --git a/charts/litellm/templates/service.yaml b/charts/litellm/templates/service.yaml
+index 11812208..baeab0f2 100644
+--- a/charts/litellm/templates/service.yaml
++++ b/charts/litellm/templates/service.yaml
+@@ -1,6 +1,7 @@
+ apiVersion: v1
+ kind: Service
+ metadata:
++  namespace: {{ .Release.Namespace | quote }}
+   name: {{ include "litellm.fullname" . }}
+   {{- with .Values.service.annotations }}
+   annotations:
+diff --git a/charts/litellm/templates/serviceaccount.yaml b/charts/litellm/templates/serviceaccount.yaml
+index 7655470f..02e7f83f 100644
+--- a/charts/litellm/templates/serviceaccount.yaml
++++ b/charts/litellm/templates/serviceaccount.yaml
+@@ -11,3 +11,11 @@ metadata:
+   {{- end }}
+ automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
+ {{- end }}
++
++---
++apiVersion: v1
++kind: ServiceAccount
++metadata:
++  namespace: {{ .Release.Namespace | quote }}
++  name: {{ include "litellm.fullname" . }}-helm-test
++automountServiceAccountToken: false
+diff --git a/charts/litellm/templates/tests/test-connection.yaml b/charts/litellm/templates/tests/test-connection.yaml
+index 86a8f66b..59df58df 100644
+--- a/charts/litellm/templates/tests/test-connection.yaml
++++ b/charts/litellm/templates/tests/test-connection.yaml
+@@ -1,15 +1,27 @@
+ apiVersion: v1
+ kind: Pod
+ metadata:
++  namespace: {{ .Release.Namespace | quote }}
+   name: "{{ include "litellm.fullname" . }}-test-connection"
+   labels:
+     {{- include "litellm.labels" . | nindent 4 }}
+   annotations:
+     "helm.sh/hook": test
+ spec:
++  serviceAccountName: {{ include "litellm.fullname" . }}-helm-test
++  automountServiceAccountToken: false
++  securityContext:
++    runAsNonRoot: true
++    runAsUser: 65534
++    runAsGroup: 65534
++    seccompProfile: {type: RuntimeDefault}
+   containers:
+     - name: wget
+-      image: busybox
++      image: docker.io/library/busybox:1.38.0@sha256:a46257e06c82ad85242d0d38077d0a52d9896389ca60a1a59d3463db586e5fa4
++      securityContext:
++        allowPrivilegeEscalation: false
++        readOnlyRootFilesystem: true
++        capabilities: {drop: [ALL]}
+       command: ['sh', '-c']
+       args:
+         - |
+@@ -17,9 +29,9 @@ spec:
+           sleep 10
+           # Try multiple times with a delay between attempts
+           for i in $(seq 1 30); do
+-            wget -T 5 "{{ include "litellm.fullname" . }}:{{ .Values.service.port }}/health/readiness" && exit 0
++            wget -O /dev/null -T 5 "{{ include "litellm.fullname" . }}:{{ .Values.service.port }}/health/readiness" && exit 0
+             echo "Attempt $i failed, waiting..."
+             sleep 2
+           done
+           exit 1
+-  restartPolicy: Never
+\ No newline at end of file
++  restartPolicy: Never
+diff --git a/charts/litellm/templates/tests/test-env-vars.yaml b/charts/litellm/templates/tests/test-env-vars.yaml
+index 9f027755..103775b3 100644
+--- a/charts/litellm/templates/tests/test-env-vars.yaml
++++ b/charts/litellm/templates/tests/test-env-vars.yaml
+@@ -1,15 +1,27 @@
+ apiVersion: v1
+ kind: Pod
+ metadata:
++  namespace: {{ .Release.Namespace | quote }}
+   name: "{{ include "litellm.fullname" . }}-env-test"
+   labels:
+     {{- include "litellm.labels" . | nindent 4 }}
+   annotations:
+     "helm.sh/hook": test
+ spec:
++  serviceAccountName: {{ include "litellm.fullname" . }}-helm-test
++  automountServiceAccountToken: false
++  securityContext:
++    runAsNonRoot: true
++    runAsUser: 65534
++    runAsGroup: 65534
++    seccompProfile: {type: RuntimeDefault}
+   containers:
+     - name: test
+-      image: busybox
++      image: docker.io/library/busybox:1.38.0@sha256:a46257e06c82ad85242d0d38077d0a52d9896389ca60a1a59d3463db586e5fa4
++      securityContext:
++        allowPrivilegeEscalation: false
++        readOnlyRootFilesystem: true
++        capabilities: {drop: [ALL]}
+       command: ['sh', '-c']
+       args:
+         - |
+@@ -40,4 +52,4 @@ spec:
+           value: {{ .Values.envVars.DD_SERVICE | quote }}
+         - name: USE_DDTRACE
+           value: {{ .Values.envVars.USE_DDTRACE | quote }}
+-  restartPolicy: Never
+\ No newline at end of file
++  restartPolicy: Never
