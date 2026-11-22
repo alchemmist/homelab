@@ -165,4 +165,11 @@ nodes:
       GH_TOKEN: ${{ github.token }}
     results:
       native: reports/workflow.json
+  rustfs-return-types:
+    title: RustFS gateway public return types
+    profile: default
+    needs:
+    - graph
+    policy: *id001
+    run: uv run ruff check --config quality/ruff.toml --select ANN201 --ignore-noqa services/rustfs_gateway
 ...
