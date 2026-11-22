@@ -10,11 +10,14 @@
       "COM812"
     ],
     "perFileIgnores": {
-      "**/test/**": [
+      "tests/**/test_*.py": [
+        "D102",
+        "D103"
+      ],
+      "experiments/venice-autonomy/test_*.py": [
         "D102"
       ],
       "**/tests/**": [
-        "D102",
         "S101"
       ]
     },
@@ -23,7 +26,8 @@
       "D213": "Unsatisfiable with D212. PEP 257 keeps the summary on the first docstring line, so D212 stays.",
       "ISC001": "Unsatisfiable with the Ruff formatter, which can introduce single-line implicit concatenations. ruff format --check stays mandatory.",
       "COM812": "Redundant with the Ruff formatter, which owns trailing commas. ruff format --check reports the same defect.",
-      "D102": "Test methods need no mandatory docstring in test/ or tests/ trees.",
+      "D102": "Behavior-named unittest methods in test_*.py modules do not need a redundant docstring.",
+      "D103": "Behavior-named pytest functions in tests/**/test_*.py do not need a redundant docstring.",
       "S101": "Pytest rewrites assert in tests/ trees."
     }
   },
