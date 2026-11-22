@@ -13,7 +13,8 @@ from pathlib import Path
 from typing import TypedDict
 
 import yaml
-from common import (
+
+from ci.quality.common import (
     ROOT,
     command,
     frozen_source_files,
@@ -155,7 +156,7 @@ def partition(path: str) -> str:
     for prefix in vendor_prefixes():
         if path.startswith(prefix):
             return "vendor"
-    if path.startswith(("quality/", "scripts/quality/")) or path in {"qg.yaml", "pyproject.toml"}:
+    if path.startswith(("quality/", "ci/")) or path in {"qg.yaml", "pyproject.toml"}:
         return "quality-policy"
     top = path.split("/", 1)[0]
     return {
@@ -369,10 +370,10 @@ def verify_secret_list(data: StrictPolicy) -> None:
 
 def verify_quality_tooling() -> None:
     """Fail if debt regeneration or baseline acceptance returned."""
-    for name in ("scripts/quality/lint.py", "scripts/quality/charts.py"):
+    for name in [*(ROOT / "ci/quality").glob("check_*.py"), ROOT / "ci/quality/runner.py", ROOT / "ci/quality/charts.py"]:
         if "--record-debt" in (ROOT / name).read_text():
             raise ValueError("Debt regeneration flag returned")
-    common = (ROOT / "scripts/quality/common.py").read_text()
+    common = (ROOT / "ci/quality/common.py").read_text()
     if "not in known" in common or "Baseline regeneration is forbidden" not in common:
         raise ValueError("Debt baseline can decide success again")
 
@@ -400,7 +401,7 @@ def verify_generated_publisher(data: StrictPolicy) -> None:
 def verify_lint_scanner_text(data: StrictPolicy) -> None:
     """Fail if strict scanner invocation or coverage reporting drifted."""
     publisher = data["generatedWorkflows"]
-    lint_text = (ROOT / "scripts/quality/lint.py").read_text()
+    lint_text = "\n".join((ROOT / "ci/quality" / name).read_text() for name in ("lint_support.py", "check_python.py", "check_workflow.py"))
     for needle in ("--enable=all", "--follow-imports=silent", "--persona", "auditor"):
         if needle not in lint_text:
             raise ValueError("Strict linter invocation drifted")

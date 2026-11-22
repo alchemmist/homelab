@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from scripts.quality import common, python_scopes
+from ci.quality import common, python_scopes
 
 if TYPE_CHECKING:
     from pathlib import Path

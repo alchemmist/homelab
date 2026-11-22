@@ -26,7 +26,7 @@ jobs:
       - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
         with:
           version: v3.19.0
-      - run: uv run python scripts/quality/install_tools.py --tools kind kubectl
+      - run: uv run python -m ci.quality.install_tools --tools kind kubectl
       - name: Private UUID Kind lifecycle
-        run: uv run python scripts/quality/tests.py cluster
+        run: uv run python -m ci.quality.tests cluster
 ...

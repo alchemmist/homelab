@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38",
+  "graphDigest": "240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -118,7 +118,7 @@
         "run": "make scripts-q000"
       },
       "timeoutMinutes": 5,
-      "title": "Python script and test quotes (Q000, D300)"
+      "title": "Python CI, script and test quotes (Q000, D300)"
     },
     {
       "env": {},
@@ -145,7 +145,7 @@
         "run": "make deploy-i001"
       },
       "timeoutMinutes": 5,
-      "title": "Python import order (I001) and unused script/test imports (F401)"
+      "title": "Python import order (I001) and unused CI/script/test imports (F401)"
     },
     {
       "env": {},
@@ -561,7 +561,7 @@
           "run": "uv sync --locked"
         },
         {
-          "run": "uv run python scripts/quality/install_collections.py"
+          "run": "uv run python -m ci.quality.install_collections"
         }
       ],
       "timeoutMinutes": 5
@@ -594,7 +594,7 @@
           }
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools kind kubectl"
+          "run": "uv run python -m ci.quality.install_tools --tools kind kubectl"
         }
       ],
       "timeoutMinutes": 15
@@ -620,7 +620,7 @@
           "run": "uv sync --locked"
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools actionlint shellcheck"
+          "run": "uv run python -m ci.quality.install_tools --tools actionlint shellcheck"
         }
       ],
       "timeoutMinutes": 5
@@ -646,7 +646,7 @@
           "run": "uv sync --locked"
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools hadolint"
+          "run": "uv run python -m ci.quality.install_tools --tools hadolint"
         }
       ],
       "timeoutMinutes": 5
@@ -685,7 +685,7 @@
           }
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools hadolint"
+          "run": "uv run python -m ci.quality.install_tools --tools hadolint"
         }
       ],
       "timeoutMinutes": 10
@@ -754,7 +754,7 @@
           }
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools promtool"
+          "run": "uv run python -m ci.quality.install_tools --tools promtool"
         },
         {
           "run": "set -euo pipefail\nread -r image < quality/nginx-syntax-image.txt\ndocker pull \"${image}\"\n"
@@ -819,10 +819,10 @@
           }
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools kubeconform kube-linter"
+          "run": "uv run python -m ci.quality.install_tools --tools kubeconform kube-linter"
         },
         {
-          "run": "uv run python scripts/quality/check_monitoring_selector.py"
+          "run": "uv run python -m ci.quality.check_monitoring_selector"
         }
       ],
       "timeoutMinutes": 10
@@ -848,7 +848,7 @@
           "run": "uv sync --locked"
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools gitleaks"
+          "run": "uv run python -m ci.quality.install_tools --tools gitleaks"
         }
       ],
       "timeoutMinutes": 5
@@ -874,7 +874,7 @@
           "run": "uv sync --locked"
         },
         {
-          "run": "uv run python scripts/quality/install_tools.py --tools shellcheck"
+          "run": "uv run python -m ci.quality.install_tools --tools shellcheck"
         },
         {
           "run": ".quality-tools/bin/shellcheck --version"

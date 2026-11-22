@@ -8,8 +8,8 @@ import json
 import re
 from pathlib import Path
 
-import boundaries
-from common import ROOT, frozen_source_files, tracked
+from ci.quality import boundaries
+from ci.quality.common import ROOT, frozen_source_files, tracked
 
 
 def require(condition: object, message: str) -> None:
@@ -179,7 +179,7 @@ def check():
         node = checks["tests-" + suite]
         isolation = "" if suite == "cluster" else " --isolate-network"
         require(
-            f"tests-{suite}:\n\tuv run python scripts/quality/tests.py {suite}{isolation}\n" in makefile,
+            f"tests-{suite}:\n\tuv run python -m ci.quality.tests {suite}{isolation}\n" in makefile,
             "Test suite execution contract drift",
         )
         require(
@@ -217,7 +217,7 @@ def check():
         "check_operational_entrypoints.py",
         "check_vendor_contracts.py",
     ):
-        path = ROOT / "scripts" / name
+        path = ROOT / "ci" / name
         spec = importlib.util.spec_from_file_location(name.removesuffix(".py"), path)
         require(spec is not None and spec.loader is not None, "Missing architecture checker")
         module = importlib.util.module_from_spec(spec)

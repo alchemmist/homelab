@@ -12,13 +12,8 @@ from unittest.mock import patch
 
 import pytest
 
-from scripts.quality import common
-
-with patch.dict(sys.modules, {"common": common}):
-    from scripts.quality import boundaries
-
-    with patch.dict(sys.modules, {"boundaries": boundaries}):
-        from scripts.quality import contracts, lint
+from ci.quality import check_dependencies as lint
+from ci.quality import check_docker, contracts
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -179,7 +174,7 @@ def test_auditor_and_transport_fixtures_share_stdlib_module() -> None:
 )
 def test_docker_filename_variants_are_admitted(name: str, *, expected: bool) -> None:
     """Filename variants are source inputs, never Docker build invocations."""
-    assert lint.docker_targets([name]) == ([name] if expected else [])
+    assert check_docker.docker_targets([name]) == ([name] if expected else [])
 
 
 def test_docker_adapter_transports_each_source_and_keeps_findings() -> None:
@@ -191,13 +186,8 @@ def test_docker_adapter_transports_each_source_and_keeps_findings() -> None:
     names = [*sources, "docs/not_a_dockerfile.md"]
     payload = [{"code": "DL3013", "line": 1, "message": "synthetic source diagnostic"}]
     process = subprocess.CompletedProcess(["hadolint"], 1, stdout=json.dumps(payload), stderr="")
-    with (
-        patch.object(lint, "use_project_tools"),
-        patch.object(lint, "tracked", return_value=names),
-        patch.object(lint, "owned", return_value=names),
-        patch.object(lint, "command", return_value=process) as command,
-    ):
-        findings, checked = lint.check("docker")
+    with patch.object(check_docker, "command", return_value=process) as command:
+        findings, checked = check_docker.check_docker(names)
     assert checked == len(sources)
     assert [row["location"]["path"] for row in findings] == sources
     assert [row["ruleId"] for row in findings] == ["DL3013"] * len(sources)

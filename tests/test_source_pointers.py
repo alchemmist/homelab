@@ -67,7 +67,7 @@ class _PointerConfig(TypedDict):
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
-    "source_pointers", ROOT / "scripts/check_source_pointers.py"
+    "source_pointers", ROOT / "ci/check_source_pointers.py"
 )
 assert spec is not None
 assert spec.loader is not None

@@ -1,6 +1,6 @@
 # Alert graph mapping and release gate
 
-`python3 scripts/alert_graphs.py --check` verifies the generated inventory,
+`python3 -m ci.check_alert_graphs` verifies the generated inventory,
 annotation values, reviewed gateway panel policy and diagnostic dashboards.
 The current source set is200 rules:193 Prometheus rules and7 Grafana-managed
 rules,188 distinct mappings,29 dashboards. Array order is priority: Telegram

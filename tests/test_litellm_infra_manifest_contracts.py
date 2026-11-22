@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import importlib
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts/quality"))
-charts = importlib.import_module("charts")
+
+from ci.quality import charts
 
 
 def render(release: str, chart: str, *values: str) -> list[dict]:

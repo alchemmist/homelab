@@ -101,7 +101,7 @@ long-term reliability promise. Historical15Nov/12Nov failures below retained.
 ## Автоматическая привязка новых JSON-шаблонов — offline policy
 
 Создание workflow в коде сопровождается проверкой
-`uv run python scripts/n8n/check_failure_alerts.py`; при пропущенной привязке —
+`uv run python ci/check_failure_alerts.py`; при пропущенной привязке —
 та же команда с `--fix`, review/commit JSON и обычный native sync. Никакого CronJob
 или автоматического изменения live n8n. Обнаружение новых файлов рекурсивное по
 roots в `n8n-workflow-policy.json`; другой явно заданный handler не перетирается,

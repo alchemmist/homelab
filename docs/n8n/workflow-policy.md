@@ -9,14 +9,14 @@ are supported; non-workflow JSON is not mistaken for a template.
 
 ```sh
 uv sync --locked
-uv run python scripts/n8n/check_failure_alerts.py
+uv run python ci/check_failure_alerts.py
 # If the check reports a missing binding:
-uv run python scripts/n8n/check_failure_alerts.py --fix
-uv run python scripts/n8n/check_failure_alerts.py
+uv run python ci/check_failure_alerts.py --fix
+uv run python ci/check_failure_alerts.py
 uv run qg validate
 ```
 
-The checker is standard-library-only, so `python3 scripts/n8n/check_failure_alerts.py`
+The checker is standard-library-only, so `python3 ci/check_failure_alerts.py`
 also works without installing Quality Graph. The explicit `--fix` changes local
 JSON only, preserving graph/credentials/other settings semantically. It adds the
 existing handler reference; it does NOT generate a new live alert/workflow.

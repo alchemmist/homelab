@@ -9,11 +9,12 @@ import re
 import sys
 import tempfile
 import uuid
+from importlib import import_module
 from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict
 
-import lint
-from common import (
+from ci.quality import charts
+from ci.quality.common import (
     ROOT,
     command,
     failure,
@@ -23,14 +24,12 @@ from common import (
     tracked,
     use_project_tools,
 )
-from strict_guard import partition, suppression_hits, verify_configuration
-
-import charts
+from ci.quality.strict_guard import partition, suppression_hits, verify_configuration
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Mapping
 
-    from common import Finding
+    from ci.quality.common import Finding
 
 LOGGER = logging.getLogger(__name__)
 
@@ -278,7 +277,9 @@ def summarize(tool: str, payload: Mapping[str, object]) -> tuple[_ToolStats, lis
 
 def run_tool(name: str) -> dict[str, object]:
     """Collect the actual linter result and its native report."""
-    raw_findings, raw_count = lint.check(name)
+    use_project_tools()
+    module = import_module(f"ci.quality.check_{name}")
+    raw_findings, raw_count = getattr(module, f"check_{name}")(owned(tracked()))
     findings, count = _lint_check_result(raw_findings, raw_count)
     output = ROOT / "reports" / f"{name}.json"
     report(name, findings, count, output)

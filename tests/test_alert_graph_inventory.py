@@ -9,7 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from scripts.quality.common import command
+from ci.quality.common import command
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("alert_graphs", ROOT / "scripts/alert_graphs.py")
@@ -65,7 +65,7 @@ class AlertGraphInventoryTests(unittest.TestCase):
     def test_generated_files_are_current(self) -> None:
         """Canonical generation must agree with every checked-in diagnostic output."""
         run = command(
-            [sys.executable, "scripts/alert_graphs.py", "--check"],
+            [sys.executable, "-m", "ci.check_alert_graphs"],
             allowed=(0, 1),
         )
         assert run.returncode == 0, run.stderr + run.stdout

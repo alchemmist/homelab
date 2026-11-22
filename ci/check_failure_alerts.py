@@ -157,7 +157,7 @@ def _review_workflow(
     else:
         state["errors"].append(
             f"{doc.relative}: missing settings.errorWorkflow; "
-            "run python scripts/n8n/check_failure_alerts.py --fix"
+            "run python ci/check_failure_alerts.py --fix"
         )
 
 
@@ -224,7 +224,7 @@ def main() -> int:
         action="store_true",
         help="Fill missing local settings; never overwrite a different handler",
     )
-    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[2])
+    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     args = parser.parse_args()
     try:
         return run(args.root, args.fix)

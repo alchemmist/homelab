@@ -7,7 +7,7 @@ from typing import Any
 
 import yaml
 
-from scripts.quality.common import command
+from ci.quality.common import command
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 

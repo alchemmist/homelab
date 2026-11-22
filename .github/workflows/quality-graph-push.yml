@@ -37,7 +37,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -82,7 +82,7 @@ jobs:
           adapter: native
           report-path: reports/yaml.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -129,7 +129,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -151,7 +151,7 @@ jobs:
       - graph
     timeout-minutes: 5
   scripts-q000:
-    name: Python script and test quotes (Q000, D300)
+    name: Python CI, script and test quotes (Q000, D300)
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -162,25 +162,25 @@ jobs:
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
       - run: make scripts-q000
-        name: Run Python script and test quotes (Q000, D300)
+        name: Run Python CI, script and test quotes (Q000, D300)
         id: quality-command
         continue-on-error: true
-      - name: Collect Python script and test quotes (Q000, D300) result
+      - name: Collect Python CI, script and test quotes (Q000, D300) result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
           node-id: scripts-q000
-          title: Python script and test quotes (Q000, D300)
+          title: Python CI, script and test quotes (Q000, D300)
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
-      - name: Upload Python script and test quotes (Q000, D300) result
+      - name: Upload Python CI, script and test quotes (Q000, D300) result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
@@ -188,7 +188,7 @@ jobs:
           path: ${{ runner.temp }}/quality-graph/scripts-q000.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce Python script and test quotes (Q000, D300) result
+      - name: Enforce Python CI, script and test quotes (Q000, D300) result
         if: always()
         shell: bash
         env:
@@ -198,7 +198,7 @@ jobs:
       - graph
     timeout-minutes: 5
   deploy-i001:
-    name: Python import order (I001) and unused script/test imports (F401)
+    name: Python import order (I001) and unused CI/script/test imports (F401)
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -209,27 +209,27 @@ jobs:
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
       - run: make deploy-i001
-        name: Run Python import order (I001) and unused script/test imports (F401)
+        name: Run Python import order (I001) and unused CI/script/test imports (F401)
         id: quality-command
         continue-on-error: true
-      - name: Collect Python import order (I001) and unused script/test imports (F401)
-          result
+      - name: Collect Python import order (I001) and unused CI/script/test imports
+          (F401) result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
           node-id: deploy-i001
-          title: Python import order (I001) and unused script/test imports (F401)
+          title: Python import order (I001) and unused CI/script/test imports (F401)
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
-      - name: Upload Python import order (I001) and unused script/test imports (F401)
-          result
+      - name: Upload Python import order (I001) and unused CI/script/test imports
+          (F401) result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
@@ -237,8 +237,8 @@ jobs:
           path: ${{ runner.temp }}/quality-graph/deploy-i001.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce Python import order (I001) and unused script/test imports (F401)
-          result
+      - name: Enforce Python import order (I001) and unused CI/script/test imports
+          (F401) result
         if: always()
         shell: bash
         env:
@@ -258,7 +258,7 @@ jobs:
           persist-credentials: "false"
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
-      - run: uv run python scripts/quality/install_tools.py --tools gitleaks
+      - run: uv run python -m ci.quality.install_tools --tools gitleaks
       - run: make secrets
         name: Run Credential hygiene
         id: quality-command
@@ -274,7 +274,7 @@ jobs:
           adapter: native
           report-path: reports/secrets.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -324,7 +324,7 @@ jobs:
           adapter: native
           report-path: reports/javascript.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -375,7 +375,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -407,7 +407,7 @@ jobs:
           persist-credentials: "false"
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
-      - run: uv run python scripts/quality/install_tools.py --tools hadolint
+      - run: uv run python -m ci.quality.install_tools --tools hadolint
       - run: make docker
         name: Run Container recipes
         id: quality-command
@@ -423,7 +423,7 @@ jobs:
           adapter: native
           report-path: reports/docker.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -462,7 +462,7 @@ jobs:
       - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
         with:
           node-version: 24.11.1
-      - run: uv run python scripts/quality/install_tools.py --tools hadolint
+      - run: uv run python -m ci.quality.install_tools --tools hadolint
       - run: make tests-fast
         name: Run Unit tests
         id: quality-command
@@ -478,7 +478,7 @@ jobs:
           adapter: junit
           report-path: reports/tests-fast.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -510,7 +510,7 @@ jobs:
           persist-credentials: "false"
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
-      - run: uv run python scripts/quality/install_tools.py --tools actionlint shellcheck
+      - run: uv run python -m ci.quality.install_tools --tools actionlint shellcheck
       - run: make workflow
         env:
           GH_TOKEN: ${{ github.token }}
@@ -528,7 +528,7 @@ jobs:
           adapter: native
           report-path: reports/workflow.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -562,7 +562,7 @@ jobs:
           persist-credentials: "false"
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
-      - run: uv run python scripts/quality/install_tools.py --tools shellcheck
+      - run: uv run python -m ci.quality.install_tools --tools shellcheck
       - run: .quality-tools/bin/shellcheck --version
       - run: make shell
         name: Run Shell safety
@@ -579,7 +579,7 @@ jobs:
           adapter: native
           report-path: reports/shell.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -626,7 +626,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -662,8 +662,8 @@ jobs:
       - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
         with:
           version: v3.19.0
-      - run: uv run python scripts/quality/install_tools.py --tools kubeconform kube-linter
-      - run: uv run python scripts/quality/check_monitoring_selector.py
+      - run: uv run python -m ci.quality.install_tools --tools kubeconform kube-linter
+      - run: uv run python -m ci.quality.check_monitoring_selector
       - run: make manifests
         name: Run Manifest validation
         id: quality-command
@@ -679,7 +679,7 @@ jobs:
           adapter: native
           report-path: reports/manifests.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -729,7 +729,7 @@ jobs:
           adapter: native
           report-path: reports/dependencies.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -768,7 +768,7 @@ jobs:
       - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
         with:
           node-version: 24.11.1
-      - run: uv run python scripts/quality/install_tools.py --tools promtool
+      - run: uv run python -m ci.quality.install_tools --tools promtool
       - run: |
           set -euo pipefail
           read -r image < quality/nginx-syntax-image.txt
@@ -788,7 +788,7 @@ jobs:
           adapter: junit
           report-path: reports/tests-medium.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -820,7 +820,7 @@ jobs:
           persist-credentials: "false"
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
-      - run: uv run python scripts/quality/install_collections.py
+      - run: uv run python -m ci.quality.install_collections
       - run: make ansible
         name: Run Playbook safety
         id: quality-command
@@ -836,7 +836,7 @@ jobs:
           adapter: native
           report-path: reports/ansible.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 90be74ea4978d1421a480e55f412808c9006266d12f27f846fbf8a6bbf0a0c38
+          graph-digest: 240b43c3609ae3b5f19a42d6f34e17c68c84f3fd4bbc90d49377e3701f07847b
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"

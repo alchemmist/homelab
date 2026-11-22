@@ -13,7 +13,8 @@ from collections import Counter
 from pathlib import Path
 
 import yaml
-from common import ROOT, owned, tracked
+
+from ci.quality.common import ROOT, owned, tracked
 
 
 def require(*, condition: bool, message: str) -> None:

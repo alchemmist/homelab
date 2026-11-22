@@ -513,31 +513,23 @@ def outputs(rules):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true")
-    args = parser.parse_args()
+    parser.parse_args()
     rules = inventory()
     generated, mappings = outputs(rules)
     for path, content in generated.items():
-        if args.check:
-            if not path.exists() or path.read_text() != content:
-                raise SystemExit(
-                    "Generated alert graph file differs: " + str(path.relative_to(ROOT))
-                )
-        else:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(content)
-    if not args.check:
-        for relative in ("docs/n8n/spi/alerts.json", "docs/n8n/yandex-session-alerts.json"):
-            path = ROOT / relative
-            obj = json.loads(path.read_text())
-            for rule in obj["rules"]:
-                spec = mappings["grafana-managed"][rule["title"]]
-                rule.setdefault("annotations", {})["spi_graphs"] = json.dumps(
-                    spec, separators=(",", ":")
-                )
-                rule["annotations"]["__dashboardUid__"] = spec["graphs"][0]["dashboard_uid"]
-                rule["annotations"]["__panelId__"] = str(spec["graphs"][0]["panel_id"])
-            path.write_text(json.dumps(obj, indent=2) + "\n")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+    for relative in ("docs/n8n/spi/alerts.json", "docs/n8n/yandex-session-alerts.json"):
+        path = ROOT / relative
+        obj = json.loads(path.read_text())
+        for rule in obj["rules"]:
+            spec = mappings["grafana-managed"][rule["title"]]
+            rule.setdefault("annotations", {})["spi_graphs"] = json.dumps(
+                spec, separators=(",", ":")
+            )
+            rule["annotations"]["__dashboardUid__"] = spec["graphs"][0]["dashboard_uid"]
+            rule["annotations"]["__panelId__"] = str(spec["graphs"][0]["panel_id"])
+        path.write_text(json.dumps(obj, indent=2) + "\n")
     print(
         "Rules:",
         len(rules),

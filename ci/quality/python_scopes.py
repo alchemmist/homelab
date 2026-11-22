@@ -8,7 +8,7 @@ from itertools import batched
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
-from scripts.quality import common
+from ci.quality import common
 
 if TYPE_CHECKING:
     from pathlib import Path

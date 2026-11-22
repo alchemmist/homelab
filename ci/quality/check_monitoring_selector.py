@@ -1,6 +1,6 @@
 """Offline negative control for the monitoring health Service (requires manifest tools)."""
 
-from charts import authentik_accounts, kube_lint, render, targets
+from ci.quality.charts import authentik_accounts, kube_lint, render, targets
 
 
 def main() -> None:
