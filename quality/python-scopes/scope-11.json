@@ -1,1 +1,1 @@
-{"include":["scripts/n8n/*.py", "ci/check_failure_alerts.py"],"rules":["ANN201"]}
+{"include":["scripts/n8n/*.py", "scripts/n8n/lms_certify/*.py", "ci/check_failure_alerts.py"],"rules":["ANN201"]}

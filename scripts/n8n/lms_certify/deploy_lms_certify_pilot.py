@@ -6,9 +6,9 @@ import secrets
 import subprocess
 from pathlib import Path
 
-from sync import CONFIG, api
+from scripts.n8n.sync import CONFIG, api
 
-root=Path(__file__).resolve().parents[2]
+root=Path(__file__).resolve().parents[3]
 lms=root.parent/"lms"
 docs=root/"docs/n8n/lms-certify"
 ns="automation"
