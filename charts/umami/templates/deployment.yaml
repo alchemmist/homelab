@@ -21,6 +21,9 @@ spec:
         ports: [{ name: http, containerPort: 3000 }]
         volumeMounts:
         - { name: pg-ca, mountPath: /etc/pg-common, readOnly: true }
+        livenessProbe:
+          httpGet: { path: /api/heartbeat, port: http }
+          periodSeconds: 10
         readinessProbe:
           httpGet: { path: /api/heartbeat, port: http }
           periodSeconds: 5
