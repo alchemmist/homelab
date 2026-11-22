@@ -51,7 +51,7 @@ SSH = [
     "socrat-0",
 ]
 credential = json.loads(
-    subprocess.check_output(SSH + ["cat ~/.cache/homelab-authentik/credentials.json"])
+    subprocess.check_output([*SSH, "cat ~/.cache/homelab-authentik/credentials.json"])
 )
 
 
@@ -208,7 +208,7 @@ try:
         page.locator("input[type=password]").filter(visible=True).fill(password)
         page.locator("button[type=submit]").click()
         page.wait_for_timeout(2000)
-        for step in range(60):
+        for _step in range(60):
             if page.locator("ak-stage-authenticator-totp").is_visible():
                 print("Native TOTP enrollment presented")
                 source = (
@@ -293,7 +293,7 @@ finally:
     finally:
         cleanup = Path(__file__).with_name("identity-litellm-cleanup.py").read_text()
         subprocess.run(
-            SSH + ["python3", "-"],
+            [*SSH, "python3", "-"],
             input=("target=" + repr(fixture_id) + "\n" + cleanup).encode(),
             check=True,
             timeout=90,

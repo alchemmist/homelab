@@ -103,7 +103,7 @@ async def main():
     try:
         created = await raw("write_file", {"path": path, "content": original})
         assert "error" not in serialize(created).lower(), "Fixture creation failed"
-        for index in range(3):
+        for should_stop in (False, False, True):
             result = await call(
                 {
                     "path": path,
@@ -113,7 +113,7 @@ async def main():
             error = cast("str", result[1]["error"])
             assert "target" in error and "replacement" in error
             assert original not in error and changed not in error
-            assert guard_stopped(metadata) == (index == 2)
+            assert guard_stopped(metadata) == should_stop
         assert dispatches == 0, "Invalid calls reached terminal"
         read = await raw("read_file", {"path": path})
         assert original in serialize(read) and changed not in serialize(read), (

@@ -39,4 +39,5 @@ class UpgradeSafety(unittest.TestCase):
         assert config["service"]["pipelines"]["metrics"]["receivers"] == ["prometheus", "otlp", "prometheus/software_updates"]
         assert config["receivers"]["prometheus/software_updates"]["config"]["scrape_configs"][0]["job_name"] == "monitoring-update-watch"
 
-if __name__=="__main__":unittest.main()
+if __name__=="__main__":
+    unittest.main()

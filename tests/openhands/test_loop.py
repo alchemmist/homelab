@@ -47,7 +47,8 @@ class LoopSetup(unittest.TestCase):
         assert m.selector_matches({"matchExpressions": [{"key": "app", "operator": "In", "values": ["fixture"]}]}, labels)
         assert m.selector_matches({"matchExpressions": [{"key": "missing", "operator": "NotIn", "values": ["x"]}]}, labels)
         assert not m.selector_matches({"matchExpressions": [{"key": "app", "operator": "DoesNotExist"}]}, labels)
-        with self.assertRaises(ValueError):m.selector_matches({"matchExpressions":[{"key":"app","operator":"Unknown"}]},labels)
+        with self.assertRaises(ValueError):
+            m.selector_matches({"matchExpressions":[{"key":"app","operator":"Unknown"}]},labels)
 
     def test_independent_review_has_no_network_or_credentials(self) -> None:
         """Verify the independent review job has no network or credentials."""
@@ -66,4 +67,5 @@ class LoopSetup(unittest.TestCase):
         assert job["spec"]["activeDeadlineSeconds"] == 45
 
 
-if __name__=="__main__":unittest.main()
+if __name__=="__main__":
+    unittest.main()

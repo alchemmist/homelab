@@ -4,15 +4,20 @@ import logging
 import os
 import signal
 import time
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Never, override
+
+ProcessIdentity = tuple[int, int]
 
 
 class JsonFormatter(logging.Formatter):
     """Logging formatter that emits structured JSON records."""
 
-    def format(self, record):
+    @override
+    def format(self, record: logging.LogRecord) -> str:
         """Render a log record as JSON, omitting exception text."""
         # Do not render exception text/tracebacks: they can contain process arguments.
         event = getattr(record, "event", "watchdog_error")
@@ -41,12 +46,12 @@ class Process:
     args: tuple[str, ...]
 
     @property
-    def identity(self):
+    def identity(self) -> ProcessIdentity:
         """Stable (pid, start-ticks) identity of the process."""
         return self.pid, self.start
 
 
-def read_process(pid, proc=Path("/proc")):
+def read_process(pid: int, proc: Path = Path("/proc")) -> Process | None:
     try:
         directory = proc / str(pid)
         stat = (directory / "stat").read_text()
@@ -62,7 +67,7 @@ def read_process(pid, proc=Path("/proc")):
         return None
 
 
-def snapshot(proc=Path("/proc")):
+def snapshot(proc: Path = Path("/proc")) -> dict[int, Process]:
     result = {}
     for directory in proc.iterdir():
         if directory.name.isdigit():
@@ -72,7 +77,7 @@ def snapshot(proc=Path("/proc")):
     return result
 
 
-def is_test_browser(process):
+def is_test_browser(process: Process) -> bool:
     return (
         process.executable in {"chrome", "chromium", "headless_shell", "chrome-headless-shell"}
         and any(arg == "--headless" or arg.startswith("--headless=") for arg in process.args)
@@ -82,7 +87,7 @@ def is_test_browser(process):
     )
 
 
-def signal_process(identity, sig):
+def signal_process(identity: ProcessIdentity, sig: int) -> bool:
     pid, start = identity
     try:
         fd = os.pidfd_open(pid)
@@ -114,22 +119,28 @@ class Browser:
     """State of a running supervised browser instance."""
 
     started: float
-    members: set = field(default_factory=set)
+    members: set[ProcessIdentity] = field(default_factory=set)
     terminated: float | None = None
 
 
 class Watchdog:
     """Watchdog that supervises and restarts browser processes."""
 
-    def __init__(self, lifetime=900, grace=5, ticks=None, send=signal_process) -> None:
+    def __init__(
+        self,
+        lifetime: float = 900,
+        grace: float = 5,
+        ticks: int | None = None,
+        send: Callable[[ProcessIdentity, signal.Signals], object] = signal_process,
+    ) -> None:
         """Initialize watchdog timing and process handling."""
         self.lifetime = lifetime
         self.grace = grace
         self.ticks = ticks or os.sysconf("SC_CLK_TCK")
         self.send = send
-        self.browsers: dict[tuple[int, int], Browser] = {}
+        self.browsers: dict[ProcessIdentity, Browser] = {}
 
-    def step(self, processes, now):
+    def step(self, processes: Mapping[int, Process], now: float) -> None:
         """Advance one watchdog tick: track new browsers and reap ended ones."""
         for process in processes.values():
             if is_test_browser(process) and process.identity not in self.browsers:
@@ -174,7 +185,7 @@ class Watchdog:
                 self.send(identity, sig)
 
 
-def positive_setting(name, default):
+def positive_setting(name: str, default: str) -> float:
     value = float(os.environ.get(name, default))
     if not 0 < value < float("inf"):
         message = f"{name} must be finite and positive"
@@ -182,7 +193,7 @@ def positive_setting(name, default):
     return value
 
 
-def main():
+def main() -> Never:
     handler = logging.StreamHandler()
     handler.setFormatter(JsonFormatter())
     logging.basicConfig(level=logging.INFO, handlers=[handler])
