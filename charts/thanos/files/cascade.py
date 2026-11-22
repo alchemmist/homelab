@@ -23,6 +23,7 @@ DAY_MS = 86400000
 
 
 def fully_covered(block, covers):
+    """Check that unmarked intervals span the block without a gap."""
     start = block["minTime"]
     end = block["maxTime"]
     if end <= start:
@@ -45,6 +46,7 @@ def fully_covered(block, covers):
 
 
 def block_bytes(block):
+    """Use the recorded size, or estimate 5m bytes from the block duration."""
     if "bytes" in block and block["bytes"] is not None:
         return int(block["bytes"])
     span = max(0, block["maxTime"] - block["minTime"]) / DAY_MS
@@ -52,6 +54,7 @@ def block_bytes(block):
 
 
 def selected(blocks):
+    """Return ULIDs in stable order for the plan output."""
     return sorted(block["ulid"] for block in blocks)
 
 
@@ -133,6 +136,7 @@ def _five_shelf_removals(
 def plan(
     raw_blocks, five_blocks, hour_blocks, now_ms, disk_free_bytes, five_reachable, hour_reachable
 ):
+    """Choose copies and deletion marks from the supplied inventories without performing I/O."""
     raw_hours = [block for block in raw_blocks if block.get("resolution") == HOUR_RESOLUTION]
     raw_fives = [block for block in raw_blocks if block.get("resolution") == FIVE_RESOLUTION]
     shelf_five_ids = {block["ulid"] for block in five_blocks}
@@ -174,6 +178,7 @@ def plan(
 
 
 def parse_ls(text):
+    """Decode consecutive Thanos metadata objects, including multiline JSON, into block rows."""
     decoder = json.JSONDecoder()
     blocks = []
     index = 0
@@ -198,6 +203,7 @@ def parse_ls(text):
 
 
 def apply_deletion_marks(blocks, unmarked_ulids):
+    """Flag rows in place when their ULIDs are absent from the unmarked listing."""
     unmarked = set(unmarked_ulids)
     for block in blocks:
         block["deletionMark"] = block["ulid"] not in unmarked
@@ -205,6 +211,7 @@ def apply_deletion_marks(blocks, unmarked_ulids):
 
 
 def load_plan(payload):
+    """Plan from CLI JSON; default missing inventories to empty and reachability flags to false."""
     return plan(
         payload.get("raw") or [],
         payload.get("five") or [],
@@ -217,6 +224,7 @@ def load_plan(payload):
 
 
 def kubernetes_request(method, path, body=None, timeout=30):
+    """Send an in-cluster JSON request using the service account token and CA."""
     token = Path("/var/run/secrets/kubernetes.io/serviceaccount/token").read_text().strip()
     host = os.environ.get("KUBERNETES_SERVICE_HOST", "kubernetes.default.svc")
     port = os.environ.get("KUBERNETES_SERVICE_PORT", "443")
@@ -240,6 +248,7 @@ def kubernetes_request(method, path, body=None, timeout=30):
 
 
 def scale_compactor(namespace, name, replicas):
+    """Patch the deployment scale; the caller waits separately for replicas to stop."""
     kubernetes_request(
         "PATCH",
         f"/apis/apps/v1/namespaces/{namespace}/deployments/{name}/scale",
@@ -248,6 +257,7 @@ def scale_compactor(namespace, name, replicas):
 
 
 def wait_compactor_idle(namespace, name, timeout=180):
+    """Wait until desired, current and ready replica counts are all zero, or time out."""
     deadline = time.monotonic() + timeout
     path = f"/apis/apps/v1/namespaces/{namespace}/deployments/{name}"
     while True:
@@ -265,6 +275,7 @@ def wait_compactor_idle(namespace, name, timeout=180):
 
 
 def default_runner(argv):
+    """Return command stdout, forwarding stderr and raising on a nonzero exit."""
     completed = subprocess.run(
         argv, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
@@ -277,6 +288,7 @@ def default_runner(argv):
 
 
 def disk_free_bytes(prometheus_url):
+    """Return available bytes from a single usable query sample, or None if unknown."""
     query = (
         'max(node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype=~"ext4|xfs"}'
         ' * on(instance) group_left(nodename) node_uname_info{job="node-exporter",nodename="socrat-1"})'
@@ -298,6 +310,7 @@ def disk_free_bytes(prometheus_url):
 
 
 def list_blocks(config, thanos_bin, runner):
+    """Compare full and unmarked bucket listings to recover deletion status."""
     common = ["--objstore.config-file=" + config, "-o", "json", "--timeout=2m", "--log.level=error"]
     listed = runner([thanos_bin, "tools", "bucket", "ls", *common])
     unmarked = runner([thanos_bin, "tools", "bucket", "ls", *common, "--exclude-delete"])
@@ -307,6 +320,7 @@ def list_blocks(config, thanos_bin, runner):
 
 
 def command_code(result, label):
+    """Accept text output or None from a runner; reject other results as command failures."""
     if isinstance(result, int) and result != 0:
         raise subprocess.CalledProcessError(result, label)
     if result is None:
@@ -317,6 +331,7 @@ def command_code(result, label):
 
 
 def mark_blocks(ulids, config, thanos_bin, runner):
+    """Request Thanos deletion marks without removing block objects directly."""
     for ulid in ulids:
         command_code(
             runner(
@@ -337,6 +352,7 @@ def mark_blocks(ulids, config, thanos_bin, runner):
 
 
 def shelf_open(url, token, method, data=None, timeout=120):
+    """Open a bearer-authenticated shelf request, supplying the length for file uploads."""
     headers = {"Authorization": "Bearer " + token, "Accept": "application/json"}
     if hasattr(data, "read"):
         headers["Content-Length"] = str(os.fstat(data.fileno()).st_size)
@@ -345,6 +361,7 @@ def shelf_open(url, token, method, data=None, timeout=120):
 
 
 def fetch_shelf(base, token):
+    """Return the inventory and a reachability flag so an empty shelf differs from a failed read."""
     if not base or not token:
         return [], False
     try:
@@ -358,6 +375,7 @@ def fetch_shelf(base, token):
 
 
 def upload_block(base, token, directory, ulid):
+    """Stream the local block into shelf staging, then commit after all files were sent."""
     root = os.path.join(directory, ulid)
     if not os.path.isdir(root):
         raise FileNotFoundError(ulid)
@@ -380,6 +398,7 @@ def upload_block(base, token, directory, ulid):
 
 
 def mark_shelf(base, token, ulids):
+    """Post deletion markers for the selected shelf blocks without removing their data."""
     for ulid in ulids:
         with shelf_open(
             base.rstrip("/") + "/v1/blocks/" + ulid + "/deletion-mark", token, "POST", b"{}"
@@ -388,6 +407,7 @@ def mark_shelf(base, token, ulids):
 
 
 def read_token():
+    """Read the shelf bearer token, or return an empty string if no token file is configured."""
     path = os.environ.get("SHELF_TOKEN_FILE", "")
     if not path:
         return ""
@@ -395,6 +415,7 @@ def read_token():
 
 
 def execute():
+    """Pause compaction, copy blocks, then relist and replan before marking any source."""
     thanos_bin = os.environ.get("THANOS_BIN", "/usr/local/bin/thanos")
     namespace = os.environ.get("NAMESPACE", "cattle-monitoring-system")
     compactor = os.environ.get("COMPACTOR_NAME", "thanos-compactor")
@@ -452,6 +473,7 @@ def execute():
 
 
 def main(argv=None):
+    """Print a plan from stdin or run the cascade, translating stop signals to exits."""
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] not in ("plan", "run"):
         print("usage: cascade.py plan|run", file=sys.stderr)

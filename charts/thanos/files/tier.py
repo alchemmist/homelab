@@ -8,18 +8,19 @@ from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
-from hour_copy import Bucket, HOUR, ULID, run
+from hour_copy import HOUR, ULID, Bucket, run
 
 DAY = 86400000
 FIVE = 300000
 
 
 def resolution(m):
+    """Read the downsampling interval in milliseconds from Thanos block metadata."""
     return m["thanos"]["downsample"]["resolution"]
 
 
 def encloses(target, source, res):
-    """A single complete successor is sufficient; never assume adjacent blocks cover a gap."""
+    """Require one complete successor; do not infer coverage from adjacent blocks."""
     ids = set(source["compaction"]["sources"])
     return (
         resolution(target) == res
@@ -35,6 +36,7 @@ def encloses(target, source, res):
 
 
 def same_block(a, b):
+    """Require equal ULIDs and ranges as well as mutual coverage at the same resolution."""
     return (
         a["ulid"] == b["ulid"]
         and a["minTime"] == b["minTime"]
@@ -45,22 +47,25 @@ def same_block(a, b):
 
 
 def get(url):
+    """Return Thanos response data only for a successful reply without warnings."""
     with urlopen(url, timeout=30) as r:
         reply = json.load(r)
     if reply["status"] != "success" or reply.get("warnings"):
-        raise IOError("incomplete Thanos response")
+        raise OSError("incomplete Thanos response")
     return reply["data"]
 
 
 def loaded(store):
+    """Index loaded blocks by ULID, rejecting an inventory that reports a Store error."""
     d = get("http://" + store + ":10902/api/v1/blocks?view=loaded")
     if d.get("err"):
-        raise IOError("Store cannot load its inventory")
+        raise OSError("Store cannot load its inventory")
     return {m["ulid"]: m for m in d["blocks"]}
 
 
 def serves(store, block, source):
     # A positive Store-only read supplements the exact loaded-block, range and lineage checks.
+    """Probe for samples through the named Store at the source midpoint and successor resolution."""
     t = (source["minTime"] + source["maxTime"]) // 2000
     q = urlencode(
         {
@@ -78,6 +83,7 @@ def serves(store, block, source):
 
 
 def marker(b, uid, name, apply):
+    """Keep existing marks; in apply mode write missing marks and verify them by reading back."""
     key = uid + "/" + name + "-mark.json"
     if not ULID.fullmatch(uid) or name not in (
         "deletion",
@@ -105,11 +111,12 @@ def marker(b, uid, name, apply):
         body["reason"] = "manual"
     b.read(key, method="PUT", payload=json.dumps(body).encode())
     if json.loads(b.read(key)) != body:
-        raise IOError("marker readback mismatch")
+        raise OSError("marker readback mismatch")
     return True
 
 
 def tiers(b, dest, confirmed, apply=False):
+    """Evaluate warm blocks for retention marks using successor coverage and Store readbacks."""
     warm, cold = loaded("thanos-store"), loaded("thanos-store-1h")
     active = {}
     for prefix in b.listing(groups=True):
