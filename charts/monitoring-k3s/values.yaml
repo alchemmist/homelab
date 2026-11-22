@@ -290,10 +290,11 @@ updateWatch:
       title: Remark42
       current: 1.17.1
       github: umputun/remark42
-    - id: uptime-kuma
-      title: Uptime Kuma
-      current: 2.5.7
-      github: louislam/uptime-kuma
+    # The uptime-kuma namespace now runs digest-pinned Gatus, not Kuma.
+    - id: gatus
+      title: Gatus
+      current: 5.38.0
+      github: TwiN/gatus
     - id: syncthing
       title: Syncthing
       current: 2.1.7
