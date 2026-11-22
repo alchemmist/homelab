@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "c850d2de161f4330fa14da2abf5985b1259850785f88a7fcc446240680c8c2cf",
+  "graphDigest": "a33c7eaa9e42c914cbe96913b725c433187166092b2f69e034b8c091d97e5571",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -88,10 +88,10 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \\\n    --ignore-noqa --output-format concise --"
+        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs scripts/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \\\n    --ignore-noqa --output-format concise --\nuv run python -m scripts.quality.python_inputs tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \\\n    --ignore-noqa --output-format concise --"
       },
       "timeoutMinutes": 5,
-      "title": "Python script and test quotes (Q000)"
+      "title": "Python inline quotes and test docstring quotes"
     },
     {
       "env": {},

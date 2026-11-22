@@ -458,6 +458,13 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     for node in first_layer:
         assert graph[node]["needs"] == ["graph"]
         assert graph[node]["policy"]["blocking"] is True
+    quotes = graph["scripts-q000"]
+    assert quotes["policy"] == policy
+    for root, rules in [("scripts/", "Q000"), ("tests/", "Q000,D300")]:
+        assert (
+            f"scripts.quality.python_inputs {root} |\n"
+            f"  xargs -0 -r uv run ruff check --config quality/ruff.toml --select {rules} "
+        ) in quotes["run"]
     i001 = graph["deploy-i001"]
     assert i001["policy"] == policy
     assert "scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |" in i001["run"]

@@ -13,8 +13,13 @@ followed by `yaml`, `scripts-q000`, `deploy-i001`, `secrets`, `javascript`, `own
 `tests-fast`, `shell` and `rustfs-return-types`. The latter blocks missing public return annotations (Ruff
 `ANN201`) in `services/rustfs_gateway/`; the full Python check remains available locally.
 `yaml` runs the full YAML check, including generated workflows, and collects `reports/yaml.json`.
-`scripts-q000` checks every tracked, owned `.py` file under `scripts/` and `tests/`,
-not just changed files. `deploy-i001` checks import order in tracked, owned Python under
+`scripts-q000` checks inline quotes (Q000) in every tracked, owned `.py` file under
+`scripts/` and `tests/`, not just changed files. In `tests/` the same job also checks
+existing docstrings for triple double quotes (D300); it does not require new docstrings.
+Q002 checks the configured quote character, not triple quoting: the original 18 Q002
+findings coincided exactly with D300, but the rules are not equivalent. There is no
+separate Q002 gate; the full local Ruff policy still selects both.
+`deploy-i001` checks import order in tracked, owned Python under
 `ansible/`, `deploy/`, `scripts/` and `tests/`. Neither gate covers all owned Python.
 Ownership runs six offline checks plus their regression suites; the Ansible
 entrypoint scan covers both `.yml` and `.yaml`.
