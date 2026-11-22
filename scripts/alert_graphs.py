@@ -500,7 +500,7 @@ def outputs(rules):
                 }
             }
         if owner == "lms":
-            value = {"lms-database-ha": value}
+            value = {**value, "lms-database-ha": value}
         directory = ROOT / (
             "deploy/platform/rancher/public-entry" if owner == "rancher" else "charts/" + owner
         )

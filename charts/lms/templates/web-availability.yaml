@@ -1,0 +1,26 @@
+{{- if not .Values.database.ha.resources }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: lms-availability
+  namespace: cattle-monitoring-system
+  labels:
+    release: kube-prometheus-stack
+  annotations:
+    argocd.argoproj.io/compare-options: ServerSideDiff=true
+    argocd.argoproj.io/sync-options: ServerSideApply=true
+spec:
+  groups:
+    - name: lms.availability
+      rules:
+        - alert: LMSWebUnavailable
+          expr: kube_deployment_status_replicas_available{namespace="lms",deployment="lms"} < 1
+          for: 1m
+          labels: {severity: critical, service: lms}
+          annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "LMSWebUnavailable" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: LMS has no available web worker.
+            description: Check the database primary endpoint, app startup and node readiness. Do not create a blank database to restore availability.
+{{- end }}
