@@ -1,4 +1,4 @@
-"""Placement-only boundaries and guarded worker handoff; offline, no credentials."""
+"""Placement-only boundaries for the four workloads; offline, no credentials."""
 
 import copy
 import subprocess
@@ -83,54 +83,6 @@ class PlacementTests(unittest.TestCase):
                 broker = cron["spec"]["jobTemplate"]["spec"]["template"]["spec"]
                 assert "nodeSelector" not in broker
                 assert broker["affinity"] == home_affinity()
-
-    def test_endpoint_slice_null_is_a_valid_empty_drain(self):
-        import importlib.util
-
-        spec = importlib.util.spec_from_file_location(
-            "worker_handoff", R / "scripts/vm105-stateless-handoff.py"
-        )
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        for value in [
-            {"items": []},
-            {"items": [{"endpoints": None}]},
-            {"items": [{"endpoints": []}]},
-        ]:
-            assert not module.has_ready_endpoints(value)
-        assert module.has_ready_endpoints(
-            {"items": [{"endpoints": [{"addresses": ["10.0.0.1"], "conditions": {"ready": True}}]}]}
-        )
-        assert not module.has_ready_endpoints(
-            {
-                "items": [
-                    {"endpoints": [{"addresses": ["10.0.0.1"], "conditions": {"ready": False}}]}
-                ]
-            }
-        )
-
-    def test_drain_is_two_exact_services_only_and_finally_restores(self):
-        p = R / "deploy/migrations/vm105-four-stateless-20261116/drain-services.yaml"
-        docs = [x for x in yaml.safe_load_all(p.read_text()) if x]
-        assert {x["metadata"]["name"] for x in docs} == {
-            "blog-updates-worker",
-            "wiki-openapi-worker",
-        }
-        for x in docs:
-            assert x["kind"] == "Service"
-            assert x["metadata"]["namespace"] == "automation"
-            assert x["spec"]["selector"]["homelab.io/migration-drain"] == "no-serving-pods"
-        source = (R / "scripts/vm105-stateless-handoff.py").read_text()
-        for required in [
-            "idle(old_name)",
-            "finally:",
-            "canonicalServiceRestored",
-            "/proc/1/task",
-            "endpointslices",
-        ]:
-            assert required in source
-        for forbidden in ["--force", "--grace-period=0", "/create-pr", "delete", "workflow_entity"]:
-            assert forbidden not in source
 
 
 if __name__ == "__main__":

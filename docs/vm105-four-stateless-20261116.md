@@ -32,12 +32,10 @@ handoff correction4aecc85e. Owning source:
   default empty list, no backend/RBAC/jobs/NetworkPolicy modification.
 * `deploy/monori/values.yaml`: frontNodeName5; chart default0 and frontend-only
   configurable selector. Back/sync node0 and images/storage unchanged.
-* `scripts/vm105-stateless-handoff.py`: source-based single-worker service
-  quiesce, read-only idle checkpoint, ordinary Recreate, canonical Service
-  restoration in finally. No workflow invocation, secret initializer or force.
-* `deploy/migrations/vm105-four-stateless-20261116/drain-services.yaml`: guarded
-  TEMPORARY Service selectors, not an Argo application source. Do not apply as
-  an ordinary final manifest. Both production Services restored after handoff.
+
+The one-time handoff helper and temporary Service selectors were retired after
+both canonical Services were restored. The procedure below is a historical
+record, not a redeployment runbook.
 
 ## Preflight and worker drain
 
