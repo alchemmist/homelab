@@ -89,6 +89,7 @@ def check_endpoint(item):
                 "%{http_code}",
                 f"https://{host}{path}",
             ],
+            check=False,
             capture_output=True,
             text=True,
             timeout=20,
@@ -116,6 +117,7 @@ def check_dns(host):
     for authority in ADDRESSES:
         result = subprocess.run(
             ["dig", "@" + authority, host, "A", "+short", "+time=3", "+tries=1"],
+            check=False,
             capture_output=True,
             text=True,
             timeout=10,
