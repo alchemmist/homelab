@@ -83,6 +83,9 @@ def transfer(key: str, spec: Capability) -> str:
 
 def main() -> None:
     batch: dict[str, Capability] = json.loads(Path("/caps/keys.json").read_text())
+    for spec in batch.values():
+        if not Capability.__required_keys__.issubset(spec):
+            raise ValueError("incomplete transfer capability")
     block = None
     manifest = {}
     total = 0

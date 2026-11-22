@@ -2,10 +2,9 @@
 
 import json
 import re
-from typing import NotRequired
 
 from delta import remote_objects, source_pod
-from start import Resource, kube
+from start import SeedJob, kube
 
 SOURCE = """
 import json
@@ -23,17 +22,11 @@ print(json.dumps(out))
 """
 
 
-class SeedJob(Resource):
-    """A listed Job may not have reported status yet."""
-
-    status: NotRequired[dict[str, object]]
-
-
 def batch(jobs: list[SeedJob]) -> list[tuple[str, int]]:
     objects = remote_objects()
     verified = set()
     for job in jobs:
-        if not job.get("status", {}).get("succeeded"):
+        if not (job.get("status") or {}).get("succeeded"):
             continue
         log = kube("logs", "job/" + job["metadata"]["name"])
         if "all files verified" in log:

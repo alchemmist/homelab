@@ -6,7 +6,7 @@ import subprocess
 import sys
 from collections.abc import Mapping
 from pathlib import Path
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 D = Path(__file__).parent
 NS = "cattle-monitoring-system"
@@ -44,6 +44,22 @@ class Resource(TypedDict):
     """Fields the seed needs from a kubectl JSON response."""
 
     metadata: ResourceMetadata
+
+
+class JobCondition(TypedDict):
+    type: str
+    status: str
+
+
+class JobStatus(TypedDict, total=False):
+    succeeded: int
+    conditions: list[JobCondition]
+
+
+class SeedJob(Resource):
+    """A listed Job may not have reported status yet."""
+
+    status: NotRequired[JobStatus | None]
 
 
 def kube(*args: str, data: str | None = None) -> str:
@@ -100,13 +116,13 @@ def main() -> None:
     marks = sys.argv[1:] == ["--run", "--source-compaction-marks"]
     if not delta and not marks and sys.argv[1:] != ["--run"]:
         sys.exit("use --run explicitly")
-    jobs = json.loads(
+    jobs: list[SeedJob] = json.loads(
         kube("get", "jobs", "-l", "thanos-warm-client=seed", "-o", "json")
     )["items"]
     assert not any(
         not any(
             c["type"] in ("Complete", "Failed") and c["status"] == "True"
-            for c in j.get("status", {}).get("conditions", [])
+            for c in (j.get("status") or {}).get("conditions", [])
         )
         for j in jobs
     ), "another seed in flight"
@@ -139,7 +155,7 @@ def main() -> None:
         objects = remote_objects()
         verified = set()
         for j in jobs:
-            if not j.get("status", {}).get("succeeded"):
+            if not (j.get("status") or {}).get("succeeded"):
                 continue
             log = kube("logs", "job/" + j["metadata"]["name"])
             if not re.search(

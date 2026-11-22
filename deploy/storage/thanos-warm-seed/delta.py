@@ -2,7 +2,6 @@
 
 import json
 import xml.etree.ElementTree as ET
-from typing import cast
 from urllib.parse import urlencode
 
 from start import INVENTORY, Resource, kube
@@ -29,10 +28,11 @@ def remote_objects() -> dict[str, int]:
         )
         root = ET.fromstring(data)
         for entry in root.findall("{*}Contents"):
-            # RustFS ListObjectsV2 supplies Key and Size for every Contents entry.
-            key = cast("str", entry.findtext("{*}Key"))
+            key, size = entry.findtext("{*}Key"), entry.findtext("{*}Size")
+            if not key or size is None:
+                raise ValueError("ListObjectsV2 Contents missing Key or Size")
             assert key not in obj
-            obj[key] = int(cast("str", entry.findtext("{*}Size")))
+            obj[key] = int(size)
         if root.findtext("{*}IsTruncated") == "false":
             return obj
         nxt = root.findtext("{*}NextContinuationToken")
