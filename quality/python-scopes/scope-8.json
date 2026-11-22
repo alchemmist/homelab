@@ -1,0 +1,4 @@
+{
+  "include": ["scripts/public-*.py"],
+  "rules": ["E501", "PLR2004"]
+}
