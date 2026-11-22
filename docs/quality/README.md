@@ -8,11 +8,11 @@ The operator changed the integration scope: PR182 sets up CI and integrates revi
 
 ## Active CI scope
 
-CI runs `graph`, followed by `secrets`, `javascript`, `ownership`, `docker`, `workflow`, `scripts-q000`, `shell` and `rustfs-return-types`. The latter blocks missing public return annotations (Ruff
+CI runs `graph`, followed by `secrets`, `javascript`, `ownership`, `docker`, `workflow`, `tests-fast`, `scripts-q000`, `shell` and `rustfs-return-types`. The latter blocks missing public return annotations (Ruff
 `ANN201`) in `services/rustfs_gateway/`; the full Python check remains available locally.
 Ownership runs six offline checks plus their regression suites; the Ansible
 entrypoint scan covers both `.yml` and `.yaml`.
-The other eight checks remain runnable by name; `make check` and its alias
+The other seven checks remain runnable by name; `make check` and its alias
 `make check-all` attempt both active and local-only checks. Restore a
 check to `qg.yaml` and remove its local-only entry once it is verified green.
 
@@ -69,7 +69,7 @@ This is strict configuration for the adopted tools, **not a claim that every con
 
 ## Test inventory and safety
 
-pytest is the single runner, including unittest classes. All test modules under `tests/` and `experiments/` must be explicitly scheduled or named with a reason in `notScheduled`; unknown/stale/overlapping entries fail Graph integrity. No global pytest discovery of operational or autonomous experiments is authorized. The synchronization inventory is 162 scheduled of 312 modules; the remaining150 are explicit coverage gaps, not passed tests. Re-run contracts for current counts.
+pytest is the single runner, including unittest classes. All test modules under `tests/` and `experiments/` must be explicitly scheduled or named with a reason in `notScheduled`; unknown/stale/overlapping entries fail Graph integrity. No global pytest discovery of operational or autonomous experiments is authorized. The remaining `notScheduled` entries are explicit coverage gaps, not passed tests. Run `uv run python scripts/quality/contracts.py` for current counts.
 
 Newly reviewed pure helper/publisher-negative/dashboard tests join fast; source-only Helm upgrade assertions join medium and do not execute Jobs or backups. Two newly synchronized owner tests import provisioning/validation entrypoints and remain explicitly unexecuted pending bounded isolation review. Five experimental autonomy test modules remain deferred. No previously scheduled module was removed.
 
