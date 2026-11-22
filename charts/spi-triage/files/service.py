@@ -321,7 +321,7 @@ def serve():
         while True:
             try:
                 h=store.health()
-                with store.db()as c:pending=c.execute("SELECT count(*)FROM spi_links WHERE state!='applied'").fetchone()[0]
+                with store.read_db()as c:pending=c.execute("SELECT count(*)FROM spi_links WHERE state!='applied'").fetchone()[0]
                 log_event('queue_health',oldest_pending_seconds=h['oldest_pending_seconds'],dead_jobs=h['counts'].get('dead',0),telegram_links_pending=pending)
             except Exception:log_event('health_read_failed','error')
             time.sleep(60)
@@ -340,7 +340,7 @@ def serve():
                 for state in ['queued','retry','processing','complete','dry_run','dead']:
                     lines.append('socrat_spi_jobs{state="'+state+'"} '+str(h['counts'].get(state,0)))
                 lines+=['# TYPE socrat_spi_oldest_pending_seconds gauge','socrat_spi_oldest_pending_seconds '+str(h['oldest_pending_seconds'])]
-                with store.db()as c:
+                with store.read_db()as c:
                     pending=c.execute("SELECT count(*)FROM spi_links WHERE state!='applied'").fetchone()[0]
                 lines+=['socrat_spi_telegram_links_pending '+str(pending),'socrat_spi_telegram_links_enabled '+str(int(delivery.enabled))]
                 d=store.dispatch_status()
