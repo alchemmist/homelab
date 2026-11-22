@@ -94,17 +94,17 @@ def owned_test_files(names: list[str]) -> set[str]:
 def check():
     """Execute check."""
     frozen_source_files()
-    for policy in (ROOT / "quality").rglob("*.json"):
-        require(policy.resolve().is_relative_to(ROOT / "quality"), "Quality policy path escape")
+    for policy in (ROOT / "ci/quality").rglob("*.json"):
+        require(policy.resolve().is_relative_to(ROOT / "ci/quality"), "Quality policy path escape")
         json.loads(policy.read_text(), object_pairs_hook=unique_json)
 
-    lock = json.loads((ROOT / "quality/schemas.lock.json").read_text())
+    lock = json.loads((ROOT / "ci/quality/schemas.lock.json").read_text())
     require(lock["kubernetesVersion"] == "1.36.0", "Quality integrity contract failed")
     paths = set()
     for item in lock["files"]:
-        path = ROOT / "quality/schemas" / item["path"]
+        path = ROOT / "ci/quality/schemas" / item["path"]
         require(
-            path.resolve().is_relative_to(ROOT / "quality/schemas"),
+            path.resolve().is_relative_to(ROOT / "ci/quality/schemas"),
             "Quality integrity contract failed",
         )
         require(path.name not in paths, "Quality integrity contract failed")
@@ -115,10 +115,10 @@ def check():
         )
         local_refs(json.loads(path.read_text()))
     require(
-        paths == {p.name for p in (ROOT / "quality/schemas").glob("*.json")},
+        paths == {p.name for p in (ROOT / "ci/quality/schemas").glob("*.json")},
         "Quality integrity contract failed",
     )
-    tools = json.loads((ROOT / "quality/tools.lock.json").read_text())
+    tools = json.loads((ROOT / "ci/quality/tools.lock.json").read_text())
     for records in tools["platforms"].values():
         require(
             len({r["name"] for r in records}) == len(records),
@@ -144,7 +144,7 @@ def check():
                 record["member"] is None or ".." not in Path(record["member"]).parts,
                 "Quality integrity contract failed",
             )
-    inventory = json.loads((ROOT / "quality/test-suites.json").read_text())
+    inventory = json.loads((ROOT / "ci/quality/test-suites.json").read_text())
     actual = owned_test_files(tracked())
     scheduled = [p for paths in inventory["suites"].values() for p in paths]
     require(len(scheduled) == len(set(scheduled)), "Test assigned to multiple suites")
@@ -164,7 +164,7 @@ def check():
     import yaml
 
     graph = yaml.safe_load((ROOT / "qg.yaml").read_text())
-    local = json.loads((ROOT / "quality/local-checks.json").read_text())
+    local = json.loads((ROOT / "ci/quality/local-checks.json").read_text())
     require(not (local.keys() & graph["nodes"].keys()), "Check declared twice")
     checks = {**local, **graph["nodes"]}
     makefile = (ROOT / "Makefile").read_text()
@@ -181,7 +181,7 @@ def check():
         require(
             node["results"] == {"junit": f"reports/tests-{suite}.xml"}, "Test report contract drift"
         )
-    for baseline in (ROOT / "quality/debt").glob("*.json"):
+    for baseline in (ROOT / "ci/quality/debt").glob("*.json"):
         data = json.loads(baseline.read_text())
         require(data["version"] == 1 and len(data["reason"]) >= 20, "Unreviewed quality debt")
         require(data.get("acceptance") is False, "Quality debt must not be accepted")
@@ -193,7 +193,7 @@ def check():
                 not Path(item["path"]).is_absolute() and ".." not in Path(item["path"]).parts,
                 "Unsafe debt source path",
             )
-    exceptions = json.loads((ROOT / "quality/secret-false-positives.json").read_text())
+    exceptions = json.loads((ROOT / "ci/quality/secret-false-positives.json").read_text())
     exception_ids = [item["id"] for item in exceptions["findings"]]
     require(len(exception_ids) == len(set(exception_ids)), "Duplicate secret exception IDs")
     for item in exceptions["findings"]:

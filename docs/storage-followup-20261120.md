@@ -65,7 +65,7 @@ invalid session. Read-only local SQLite inspection found one ACTIVE token: local
 ACTIVE status does not prove upstream validity, and it is not claimed currently
 QUARANTINED. No new upstream calls were made by this followup to rediscover an
 already known failure.
-Current authoritative llm-wiki/deeperseeker.md records a historically revoked/
+Current authoritative docs/deeperseeker.md records a historically revoked/
 quarantined main token and a no-login/no-restart window for two banned accounts until
 **21 November2026 23:48 MSK**. Whether main is the banned account is not proven.
 Do not try to close this by reauthentication now, repeated Restore, browser

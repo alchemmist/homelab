@@ -31,6 +31,7 @@ from ci.quality.strict_report import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
+
 @pytest.mark.parametrize(
     ("configuration_ready", "source_clean", "expected"),
     [(True, True, 0), (True, False, 1), (False, False, 2), (False, True, 2)],
@@ -58,7 +59,7 @@ def test_rendered_budget_and_limit_schemas_are_strict_offline(
 ) -> None:
     """Resolve the renderer's actual schema name and reject a misspelled spec field."""
     resource = {"apiVersion": api_version, "kind": kind, "metadata": {"name": "sample"}}
-    schema = ROOT / "quality/schemas" / charts.schema_name(resource)
+    schema = ROOT / "ci/quality/schemas" / charts.schema_name(resource)
     validator = Draft4Validator(json.loads(schema.read_bytes()))
     assert validator.is_valid({**resource, "spec": spec})
     assert not validator.is_valid({**resource, "spec": {**spec, "typo": 1}})
@@ -82,7 +83,7 @@ def test_workflow_noqa_requires_a_python_comment() -> None:
     from ci.quality.check_workflow import python_directive_lines
 
     marker = "# " + "noqa"
-    source = f"""\
+    source = f'''\
 name: "example {marker}"
 # A YAML comment mentioning {marker}
 defaults: {{run: {{shell: python}}}}
@@ -109,7 +110,7 @@ jobs:
         run: "import quoted
           {marker}"
         name: multiline quoted scalar
-"""
+'''
     assert python_directive_lines(source) == {9, 18, 22, 25}
 
 
@@ -154,9 +155,7 @@ def test_native_command_preserves_checked_capture_and_explicit_test_directory(
     }
 
 
-def test_native_command_test_directory_does_not_accept_failed_processes(
-    tmp_path: Path,
-) -> None:
+def test_native_command_test_directory_does_not_accept_failed_processes(tmp_path: Path) -> None:
     """Nonzero native exits still fail without disclosing captured source output."""
     payload = "private-native-fixture-payload"
     result = subprocess.CompletedProcess(["native-fixture"], 1, stdout=payload, stderr=payload)
@@ -178,7 +177,7 @@ def test_new_findings_fail_and_resolved_debt_does_not_hide_them(tmp_path) -> Non
 
 def test_recorded_debt_identity_cannot_mark_a_finding_passed(tmp_path) -> None:
     f = finding("RULE", "tests/test_quality_system.py", 1, "message", "visible context")
-    debt = tmp_path / "quality/debt"
+    debt = tmp_path / "ci/quality/debt"
     debt.mkdir(parents=True)
     (debt / "python.json").write_text(
         json.dumps(
@@ -204,15 +203,12 @@ def test_recorded_debt_identity_cannot_mark_a_finding_passed(tmp_path) -> None:
 
 
 def test_unmarked_debt_file_cannot_act_as_a_baseline(tmp_path) -> None:
-    debt = tmp_path / "quality/debt"
+    debt = tmp_path / "ci/quality/debt"
     debt.mkdir(parents=True)
     (debt / "python.json").write_text(
         json.dumps({"version": 1, "reason": "x" * 20, "findings": []})
     )
-    with (
-        patch("ci.quality.common.ROOT", tmp_path),
-        pytest.raises(ValueError, match="non-accepting"),
-    ):
+    with patch("ci.quality.common.ROOT", tmp_path), pytest.raises(ValueError, match="non-accepting"):
         report("python", [], 1, tmp_path / "out.json")
 
 
@@ -302,9 +298,7 @@ def test_installer_rejects_escaping_binary_name(tmp_path) -> None:
         install_tools.install({"name": "../escape"}, tmp_path)
 
 
-def test_native_producer_payload_matches_released_quality_graph_schema(
-    tmp_path,
-) -> None:
+def test_native_producer_payload_matches_released_quality_graph_schema(tmp_path) -> None:
     import jsonschema
 
     from ci.quality.common import command
@@ -348,8 +342,8 @@ def test_network_namespace_preserves_locked_tool_path(
     runner = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(runner)
     monkeypatch.setattr(runner, "ROOT", tmp_path)
-    (tmp_path / "quality").mkdir()
-    (tmp_path / "quality/test-suites.json").write_text(
+    (tmp_path / "ci/quality").mkdir(parents=True)
+    (tmp_path / "ci/quality/test-suites.json").write_text(
         json.dumps({"suites": {suite: ["tests/test_fixture.py"]}})
     )
     monkeypatch.setattr(runner.platform, "system", lambda: system)
@@ -387,18 +381,13 @@ def test_network_namespace_preserves_locked_tool_path(
     "image", ["example:latest", "example@sha256:short", "example@sha256:not-a-digest"]
 )
 def test_image_digest_must_be_real_sha256_shape(image) -> None:
-    resource = {
-        "kind": "Pod",
-        "spec": {"containers": [{"name": "test", "image": image}]},
-    }
+    resource = {"kind": "Pod", "spec": {"containers": [{"name": "test", "image": image}]}}
     assert any(rule == "image-digest" for rule, _ in charts.policies(resource))
     resource["spec"]["containers"][0]["image"] = "example@sha256:" + "a" * 64
     assert not charts.policies(resource)
 
 
-def test_dependency_audit_uses_installed_environment_and_deduplicates(
-    monkeypatch,
-) -> None:
+def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatch) -> None:
     from types import SimpleNamespace
 
     from ci.quality import check_dependencies as lint
@@ -454,14 +443,9 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         "tests-fast",
         "shell",
         "rustfs-return-types",
+        "image-cves",
     }
-    assert set(graph) == {
-        "graph",
-        *first_layer,
-        "tests-medium",
-        "ansible",
-        "dependencies",
-    }
+    assert set(graph) == {"graph", *first_layer, "tests-medium", "ansible", "dependencies"}
     assert graph["dependencies"]["needs"] == ["ownership"]
     assert graph["dependencies"]["policy"]["blocking"] is True
     assert graph["tests-medium"]["needs"] == ["ownership"]
@@ -470,17 +454,11 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     for name, node in graph.items():
         assert node["run"] == f"make {name}"
         assert f"\n{name}:\n\t" in makefile
-
     def recipe(name: str) -> str:
-        return " ".join(
-            makefile.split(f"\n{name}:\n", 1)[1].split("\n\n", 1)[0].replace("\\\n", " ").split()
-        )
+        return " ".join(makefile.split(f"\n{name}:\n", 1)[1].split("\n\n", 1)[0].replace("\\\n", " ").split())
 
     policy = graph["graph"]["policy"]
-    assert policy == {
-        "blocking": True,
-        "approvals": {"files": False, "findings": False, "node": False},
-    }
+    assert policy == {"blocking": True, "approvals": {"files": False, "findings": False, "node": False}}
     for name in first_layer:
         assert graph[name]["needs"] == ["graph"]
         assert graph[name]["policy"] == policy
@@ -509,17 +487,14 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         "blocking": True,
         "approvals": {"findings": False, "files": False, "node": False},
     }
-    local = json.loads((ROOT / "quality/local-checks.json").read_text())
+    local = json.loads((ROOT / "ci/quality/local-checks.json").read_text())
     assert set(local) == {
-        "python",
-        "manifests",
-        "tests-cluster",
+        "python", "manifests", "tests-cluster",
     }
 
 
 def test_shell_policy_finds_extensionless_scripts_and_inline_steps(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Both ShellCheck transports retain diagnostics in the combined shell result."""
     monkeypatch.setattr(common, "ROOT", tmp_path)
@@ -539,12 +514,13 @@ def test_shell_policy_finds_extensionless_scripts_and_inline_steps(
             assert [Path(source).read_text() for source in sources] == ["echo $HOME"]
         else:
             assert sources == shell_files
-        rows = [{"file": source, "code": 2086, "line": 1, "message": "quote"} for source in sources]
+        rows = [
+            {"file": source, "code": 2086, "line": 1, "message": "quote"} for source in sources
+        ]
         return subprocess.CompletedProcess(argv, 1, stdout=json.dumps(rows))
 
     monkeypatch.setattr(lint, "command", shellcheck)
     from ci.quality import check_shell
-
     monkeypatch.setattr(check_shell, "ROOT", tmp_path)
     monkeypatch.setattr(check_shell, "command", shellcheck)
     findings, checked = check_shell.check_shell([*shell_files, workflow])
@@ -844,8 +820,8 @@ def test_mypy_syntax_error_does_not_hide_another_file(tmp_path, monkeypatch) -> 
     from ci.quality import common
 
     common.use_project_tools()
-    (tmp_path / "quality").mkdir()
-    (tmp_path / "quality/mypy.ini").write_text((ROOT / "quality/mypy.ini").read_text())
+    (tmp_path / "ci/quality").mkdir(parents=True)
+    (tmp_path / "ci/quality/mypy.ini").write_text((ROOT / "ci/quality/mypy.ini").read_text())
     (tmp_path / "pkg_a").mkdir()
     (tmp_path / "pkg_b").mkdir()
     (tmp_path / "pkg_a/typed.py").write_text('value: int = "not-an-int"\n')
@@ -866,7 +842,7 @@ def test_generated_publisher_findings_are_not_waived(tmp_path) -> None:
     from ci.quality.common import command, use_project_tools
 
     use_project_tools()
-    policy = json.loads((ROOT / "quality/strict-policy.json").read_text())["generatedWorkflows"]
+    policy = json.loads((ROOT / "ci/quality/strict-policy.json").read_text())["generatedWorkflows"]
     assert policy["trusted"] is False
     assert policy["waiver"] is False
     # Reintroduce the unsafe surface in a fixture, not as a requirement on the real publisher.
@@ -923,14 +899,10 @@ def test_strict_configuration_contract_holds() -> None:
 
 def _frozen_fixture(root: Path) -> Path:
     """Copy only repository source/provenance needed for isolated ownership tests."""
-    policy = json.loads((ROOT / "quality/strict-policy.json").read_text())
+    policy = json.loads((ROOT / "ci/quality/strict-policy.json").read_text())
     record = policy["frozenCompatibility"]
     manifest = json.loads((ROOT / record["manifest"]).read_text())
-    names = [
-        "quality/strict-policy.json",
-        "deploy/contracts/vendors.json",
-        record["manifest"],
-    ]
+    names = ["ci/quality/strict-policy.json", "deploy/contracts/vendors.json", record["manifest"]]
     names.extend(record["directory"] + "/" + name for name in manifest["backend_sha256"])
     for name in names:
         path = root / name
@@ -939,9 +911,7 @@ def _frozen_fixture(root: Path) -> Path:
     return root
 
 
-def test_frozen_scope_excludes_exact_existing_files_not_new_neighbours(
-    tmp_path: Path,
-) -> None:
+def test_frozen_scope_excludes_exact_existing_files_not_new_neighbours(tmp_path: Path) -> None:
     """A new neighbouring file remains owned; no whole-directory exemption exists."""
     from ci.quality import common
 
@@ -965,7 +935,7 @@ def test_frozen_provenance_mutations_fail_before_ownership_exclusion(
     from ci.quality import common
 
     root = _frozen_fixture(tmp_path)
-    record = json.loads((root / "quality/strict-policy.json").read_text())["frozenCompatibility"]
+    record = json.loads((root / "ci/quality/strict-policy.json").read_text())["frozenCompatibility"]
     manifest_path = root / record["manifest"]
     manifest = json.loads(manifest_path.read_text())
     name = next(iter(manifest["backend_sha256"]))
@@ -984,21 +954,16 @@ def test_frozen_provenance_mutations_fail_before_ownership_exclusion(
     elif mutation == "new-entry":
         manifest["backend_sha256"]["new_owned.py"] = "a" * 64
         manifest_path.write_text(json.dumps(manifest))
-    with (
-        patch.object(common, "ROOT", root),
-        pytest.raises(ValueError, match="[Ff]rozen"),
-    ):
+    with patch.object(common, "ROOT", root), pytest.raises(ValueError, match="[Ff]rozen"):
         common.owned([record["directory"] + "/" + name])
 
 
-def test_frozen_path_escape_rejected_even_with_updated_fixture_digest(
-    tmp_path: Path,
-) -> None:
+def test_frozen_path_escape_rejected_even_with_updated_fixture_digest(tmp_path: Path) -> None:
     """A reviewed manifest digest is not permission to escape the owned tree."""
     from ci.quality import common
 
     root = _frozen_fixture(tmp_path)
-    policy_path = root / "quality/strict-policy.json"
+    policy_path = root / "ci/quality/strict-policy.json"
     policy = json.loads(policy_path.read_text())
     record = policy["frozenCompatibility"]
     manifest_path = root / record["manifest"]
@@ -1008,10 +973,7 @@ def test_frozen_path_escape_rejected_even_with_updated_fixture_digest(
     manifest_path.write_text(json.dumps(manifest))
     record["sha256"] = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
     policy_path.write_text(json.dumps(policy))
-    with (
-        patch.object(common, "ROOT", root),
-        pytest.raises(ValueError, match="Unsafe frozen"),
-    ):
+    with patch.object(common, "ROOT", root), pytest.raises(ValueError, match="Unsafe frozen"):
         common.owned(["charts/spi-triage/files/anything.py"])
 
 
@@ -1126,14 +1088,7 @@ def _audit_fake_collectors(
             raise ValueError(message)
         return names
 
-    return (
-        snapshots,
-        fake_tool,
-        fake_manifests,
-        fake_failure,
-        fake_configuration,
-        fake_owned,
-    )
+    return snapshots, fake_tool, fake_manifests, fake_failure, fake_configuration, fake_owned
 
 
 def _assert_interrupted_audit(module: "ModuleType", base: Path, head: str) -> None:
@@ -1147,14 +1102,10 @@ def _assert_interrupted_audit(module: "ModuleType", base: Path, head: str) -> No
 
 
 @pytest.mark.parametrize(
-    "fault",
-    ["none", "suppressions", "configuration", "dirty", "head-change", "interrupt"],
+    "fault", ["none", "suppressions", "configuration", "dirty", "head-change", "interrupt"]
 )
 def test_full_audit_preserves_tool_failures_and_unstable_snapshot_as_incomplete(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    fault: str,
-    caplog: pytest.LogCaptureFixture,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str, caplog: pytest.LogCaptureFixture
 ) -> None:
     """Use isolated fake collectors, never actual hosts, credentials or lint runs."""
     module = sys.modules["ci.quality.strict_report"]
@@ -1172,9 +1123,7 @@ def test_full_audit_preserves_tool_failures_and_unstable_snapshot_as_incomplete(
         module, "source_snapshot", lambda: next(cast("Iterator[object]", snapshots))
     )
     monkeypatch.setattr(
-        module,
-        "command",
-        lambda argv: subprocess.CompletedProcess(argv, 0, "test\n", ""),
+        module, "command", lambda argv: subprocess.CompletedProcess(argv, 0, "test\n", "")
     )
     monkeypatch.setattr(module, "tracked", list)
     monkeypatch.setattr(module, "owned", owned)
@@ -1210,14 +1159,7 @@ def test_full_audit_preserves_tool_failures_and_unstable_snapshot_as_incomplete(
 
 def test_yaml_empty_and_quote_rules_do_not_confuse_maps_or_typed_values() -> None:
     """Check the real pinned tool, not the previous incorrect disable rationale."""
-    argv = [
-        "yamllint",
-        "--format",
-        "parsable",
-        "--config-file",
-        "quality/yamllint.yaml",
-        "-",
-    ]
+    argv = ["yamllint", "--format", "parsable", "--config-file", "ci/quality/yamllint.yaml", "-"]
     valid = '---\npermissions: {}\nflag: true\ncount: 1\nintentionalNull: null\nstringBoolean: "yes"\n...\n'
     good = command(argv, stdin=valid, allowed=(0, 1))
     assert good.returncode == 0

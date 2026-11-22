@@ -4,7 +4,7 @@
 
 The operator changed the integration scope: PR182 sets up CI and integrates reviewed refactoring; eliminating every pre-existing source finding is follow-up work based on main. Red source checks are visible and do not become accepted baselines or approvals. An owner may separately decide to merge red CI; this is not an instruction to bypass protection, weaken tests or claim strict green. See [integration checklist](ci-enablement.md), [enforcement policy](strict-policy.md) and [historical evidence](strict-status.md).
 
-`Makefile` owns the recipes: run `make <node>` locally to execute the same check as its PR job. `qg.yaml` owns CI profiles, dependencies and result publication. Generate workflows and `.quality-graph/manifest.json` only through the pinned owning compiler (`uv run qg generate`); never hand-edit generated YAML. `qg validate` verifies freshness, not source cleanliness.
+`Makefile` owns the recipes: run `make <node>` locally to execute the same check as its PR job. `qg.yaml` owns CI profiles, dependencies and result publication. Generate workflows and `.quality-graph/manifest.json` only through the pinned owning compiler (`make graph-generate`); never hand-edit generated YAML. `make graph-validate` verifies freshness, not source cleanliness. The CLI, core and GitHub provider are released packages pinned in the project `uv.lock`, not vendored sources. Generation is in memory: the manifest lives under `.quality-graph/`; the executable workflows must remain in `.github/workflows/` for GitHub Actions. The Make targets use the upstream compiler and apply the repository YAML style before checking exact output freshness.
 
 ## Active CI scope
 
@@ -28,13 +28,13 @@ entrypoint scan covers both `.yml` and `.yaml`.
 Blocking `ansible` (Playbook safety) also runs after `ownership`, using locked parser collections.
 The blocking `dependencies` audit runs in CI after `ownership`.
 
-Local-only checks are listed in [`quality/local-checks.json`](../../quality/local-checks.json)
+Local-only checks are listed in [`ci/quality/local-checks.json`](../../ci/quality/local-checks.json)
 with their Make target names. `make check` runs both the CI and local-only checks. Restore a
 check to `qg.yaml` and remove its local-only entry once it is verified green.
 
 ### Adding a blocking Python scope
 
-Add a distinct `quality/python-scopes/*.json` file; no workflow or runner edit is needed.
+Add a distinct `ci/quality/python-scopes/*.json` file; no workflow or runner edit is needed.
 For example, the initial scope is `{"include":["tests/test_quality*.py"],"rules":["SIM117"]}`.
 Patterns are case-sensitive POSIX globs anchored at the repository root: `*` does not
 cross `/`; `**/` matches zero or more directories. Each pattern must match at least
@@ -69,20 +69,20 @@ Independent fast nodes collect failures together. Ownership is a real source-con
 
 | Surface | Actual enforced checks | Owner |
 | --- | --- | --- |
-| Python | Ruff ALL, mandatory formatter, strict mypy plus additional error codes, owned-file/syntax coverage | `quality/ruff.toml`, `quality/mypy.ini`, `ci/quality/check_python.py` |
-| YAML | strict yamllint, duplicate keys, tags/typing/quotes, framing, comments, length and whitespace | `quality/yamllint.yaml` |
+| Python | Ruff ALL, mandatory formatter, strict mypy plus additional error codes, owned-file/syntax coverage | `ci/quality/ruff.toml`, `ci/quality/mypy.ini`, `ci/quality/check_python.py` |
+| YAML | strict yamllint, duplicate keys, tags/typing/quotes, framing, comments, length and whitespace | `ci/quality/yamllint.yaml` |
 | Shell | ShellCheck `--enable=all`; supported workflow shell bodies also checked | `ci/quality/check_shell.py` |
 | Delivery | actionlint; zizmor auditor, including generated workflows | `ci/quality/check_workflow.py` |
-| Credentials | Gitleaks; immutable exact reviewed false positives; context drift remains blocking | `quality/secret-false-positives.json`, `quality/strict-policy.json` |
-| Containers | Hadolint at style threshold; inline/global ignore pragmas disabled; owned Dockerfile and Containerfile names (plain, prefix or suffix, case-insensitive) | `quality/hadolint.yaml`, `ci/quality/check_docker.py` |
-| JavaScript | Node syntax checks; actual Node/PromQL/parser regression fixtures in reviewed suites | `ci/quality/check_javascript.py`, `quality/test-suites.json` |
-| Ansible | offline strict ansible-lint, parser floor plus enumerated non-conflicting rules | `quality/ansible-lint.yaml` |
-| Kubernetes | Helm rendering, local checksum-locked schema validation, default plus additional kube-linter checks and source contracts | `ci/quality/charts.py`, `quality/kube-linter.yaml`, `quality/schemas.lock.json` |
+| Credentials | Gitleaks; immutable exact reviewed false positives; context drift remains blocking | `ci/quality/secret-false-positives.json`, `ci/quality/strict-policy.json` |
+| Containers | Hadolint at style threshold; inline/global ignore pragmas disabled; owned Dockerfile and Containerfile names (plain, prefix or suffix, case-insensitive) | `ci/quality/hadolint.yaml`, `ci/quality/check_docker.py` |
+| JavaScript | Node syntax checks; actual Node/PromQL/parser regression fixtures in reviewed suites | `ci/quality/check_javascript.py`, `ci/quality/test-suites.json` |
+| Ansible | offline strict ansible-lint, parser floor plus enumerated non-conflicting rules | `ci/quality/ansible-lint.yaml` |
+| Kubernetes | Helm rendering, local checksum-locked schema validation, default plus additional kube-linter checks and source contracts | `ci/quality/charts.py`, `ci/quality/kube-linter.yaml`, `ci/quality/schemas.lock.json` |
 | Dependencies | Python requirement/hash validation and pip-audit; exact npm lock/manifest integrity and TLS OSV auditing; unsupported locks block | `ci/quality/check_dependencies.py` |
 | Architecture | mesh/inventory, native issuer transport, deployment/source/vendor ownership and operational entrypoint contracts | `deploy/contracts/`, `ci/check_*`, `ci/quality/boundaries.py` |
-| Test coverage | explicit disjoint test inventory, offline fast/medium suites, real disposable Kind suite | `quality/test-suites.json`, `ci/quality/tests.py`, `tests/kubernetes/` |
+| Test coverage | explicit disjoint test inventory, offline fast/medium suites, real disposable Kind suite | `ci/quality/test-suites.json`, `ci/quality/tests.py`, `tests/kubernetes/` |
 
-`quality/rules.json` and `quality/debt/` are historical catalogs/receipts, not current enforcement or acceptance. Tool/collection/schema locks live under `quality/`. Root project defaults are not interchangeable with the owning quality formatter config.
+`ci/quality/rules.json` and `ci/quality/debt/` are historical catalogs/receipts, not current enforcement or acceptance. Tool/collection/schema locks live under `ci/quality/`. Root project defaults are not interchangeable with the owning quality formatter config.
 
 ## Exceptions: small, explicit, not a debt waiver
 
@@ -98,7 +98,7 @@ This is strict configuration for the adopted tools, **not a claim that every con
 
 pytest is the single runner, including unittest classes. All test modules under `tests/` and `experiments/` must be explicitly scheduled or named with a reason in `notScheduled`; unknown/stale/overlapping entries fail Graph integrity. No global pytest discovery of operational or autonomous experiments is authorized. The remaining `notScheduled` entries are explicit coverage gaps, not passed tests. Run `uv run python -m ci.quality.contracts` for current counts.
 
-Newly reviewed pure helper/publisher-negative/dashboard tests join fast; source-only Helm upgrade assertions join medium and do not execute Jobs or backups. Two newly synchronized owner tests import provisioning/validation entrypoints and remain explicitly unexecuted pending bounded isolation review. Five experimental autonomy test modules remain deferred. No previously scheduled module was removed.
+Newly reviewed pure helper/publisher-negative/dashboard tests join fast; source-only Helm upgrade assertions join medium and do not execute Jobs or backups. Two newly synchronized owner tests import provisioning/validation entrypoints and remain explicitly unexecuted pending bounded isolation review. No previously scheduled module was removed.
 
 Linux fast/medium use loopback-only network namespaces and stripped cloud/SSH/operator-kubeconfig variables. This prevents accidents, not hostile-code execution. Kind uses locked binaries, a UUID cluster, a private loopback kubeconfig, no production data/credentials and exact cleanup; never docker prune. It exercises actual scheduling, Service HTTP, scale, invalid Deployment rejection, RBAC and local PV Retain. It is not K3s/SSO/backup/runtime acceptance. Historical hosted Kind success is not current-head hosted green.
 
@@ -112,7 +112,7 @@ Private complete audit evidence is outside Git at `~/Library/Application Support
 
 ```sh
 uv sync --locked
-uv run qg validate
+make graph-validate
 uv run python -m ci.quality.contracts
 uv run python -m ci.quality.strict_guard
 uv run python -m ci.quality.check_python
@@ -126,3 +126,13 @@ The medium suite needs full Git history for the pinned before/handoff and later 
 Actual Linux jobs add `--isolate-network` to fast/medium. Install only required pinned binaries via `ci/quality/install_tools.py` and parsing collections via `ci/quality/install_collections.py`; do not substitute system versions silently. Use `.venv/bin:.quality-tools/bin` in scoped PATH and `KUBECONFIG=/dev/null` for offline checks. Cluster testing requires an explicitly reviewed disposable Docker/Kind environment; it is not implicitly run by these offline commands.
 
 Publication uses the private fail-closed draft publisher: fresh main/remote ancestry, stable clean head, complete audit metadata, verified open draft and one non-force push. Any refusal means no separate push. PR metadata must identify actual published head and real results. No main merge, admin bypass, production execution, backup/identity/model/worker/provider operation is performed by CI/refactoring preparation.
+
+### Container image CVEs
+
+`make image-cves` scans the linux/amd64 Grafana MCP and NetBird dashboard images
+by digest from their deployment values. Install the pinned CLI locally with
+`uv run python -m ci.quality.install_tools --tools trivy`. The scanner needs
+network access to public registries and its vulnerability database; no Harbor
+credentials are supplied. HIGH and CRITICAL findings appear in the job log.
+A CRITICAL finding with a fixed version, or a scanner error, fails the job.
+Private images and other containers are not covered by this initial inventory.

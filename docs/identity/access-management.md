@@ -1,6 +1,6 @@
 # Identity and access management
 
-Comprehensive Russian operator manual and session consolidation: [llm-wiki identity](../../llm-wiki/identity.md).
+Comprehensive Russian operator manual and session consolidation: [identity manual](../identity.md).
 
 Additive granular app IAM, controller ownership and guarded onboarding/offboarding
 (implementation prepared, **not deployed**): [русский runbook](application-iam.md).

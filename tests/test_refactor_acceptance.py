@@ -138,11 +138,11 @@ class CurrentDocumentation(unittest.TestCase):
 
     def test_current_context_is_bounded_and_history_separate(self) -> None:
         """Current context is bounded and history separate."""
-        text = (ROOT / "llm-wiki/context.md").read_text()
+        text = (ROOT / "docs/context/context.md").read_text()
         context_line_budget = 160
         assert len(text.splitlines()) < context_line_budget
         assert "context-history-20261116.md" in text
-        assert (ROOT / "llm-wiki/context-history-20261116.md").is_file()
+        assert (ROOT / "docs/context/context-history-20261116.md").is_file()
 
 
 class GrafanaStorage(unittest.TestCase):

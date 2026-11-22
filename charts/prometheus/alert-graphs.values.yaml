@@ -21,6 +21,17 @@ kube-prometheus-stack:
                 (kube_job_failed{job="kube-state-metrics"} > 0)
                 unless on(namespace, job_name)
                 kube_job_owner{job="kube-state-metrics",namespace="pr-agent",owner_kind="CronJob",owner_name="pr-agent-webhook-redelivery"}
+                unless on(namespace, job_name)
+                (
+                  kube_job_owner{job="kube-state-metrics",namespace="pr-agent",owner_kind="CronJob",owner_name="spi-github-broker"}
+                  and on(namespace, job_name) (kube_job_status_succeeded{job="kube-state-metrics",namespace="pr-agent"} == 1)
+                  and on(namespace, job_name) (
+                    kube_job_status_start_time{job="kube-state-metrics",namespace="pr-agent"}
+                    < on(namespace) group_left() max by(namespace) (
+                      kube_cronjob_status_last_successful_time{job="kube-state-metrics",namespace="pr-agent",cronjob="spi-github-broker"}
+                    )
+                  )
+                )
               for: 15m
               labels:
                 severity: warning

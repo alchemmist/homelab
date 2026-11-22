@@ -53,7 +53,7 @@ For bot compare 13:13:34 UTC separately; no historic socket route is known.
    Compare host route/rule snapshots before/after three guest VPN cycles, relay TCP
    continuity and guest egress/kill-switch behavior. Disable host autostart only
    after owner acceptance. Rollback stops guest, never reenables whole-host VPN.
-   For Kubernetes consumers use `llm-wiki/service-vpn-egress.md`, not a desktop VM.
+   For Kubernetes consumers use `docs/service-vpn-egress.md`, not a desktop VM.
 
 ### Scrape activation is not just Argo Sync
 

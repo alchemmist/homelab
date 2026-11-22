@@ -32,14 +32,9 @@ DOC_RULES = {"D100", "D101", "D102", "D103", "S101"}
     [
         ("tests/test_quality_system.py", {"D100", "D101"}),
         ("tests/kubernetes/test_cluster.py", {"D100", "D101"}),
-        (
-            "experiments/venice-autonomy/test_continue.py",
-            {"D100", "D101", "D103", "S101"},
-        ),
         ("tests/public_entry_contract.py", DOC_RULES - {"S101"}),
         ("ci/quality/tests.py", DOC_RULES),
         ("ansible/roles/vpn_failover/files/smoke_test.py", DOC_RULES),
-        ("experiments/venice-autonomy/protocol_regression.py", DOC_RULES),
     ],
 )
 def test_ruff_missing_docstrings_follow_module_scope(filename: str, expected: set[str]) -> None:
@@ -48,7 +43,7 @@ def test_ruff_missing_docstrings_follow_module_scope(filename: str, expected: se
             common.ROOT / ".venv/bin/ruff",
             "check",
             "--config",
-            "quality/ruff.toml",
+            "ci/quality/ruff.toml",
             "--output-format=json",
             "--stdin-filename",
             filename,
@@ -66,7 +61,7 @@ def test_script_docstring_needs_triple_quotes_even_with_double_quote_character()
             common.ROOT / ".venv/bin/ruff",
             "check",
             "--config",
-            "quality/ruff.toml",
+            "ci/quality/ruff.toml",
             "--select",
             "D300,Q002",
             "--ignore-noqa",
@@ -85,10 +80,7 @@ def test_script_docstring_needs_triple_quotes_even_with_double_quote_character()
     ("original", "replacement"),
     [
         ("[lint]\n", '[lint]\nextend-ignore = ["D103"]\n'),
-        (
-            "[lint]\n",
-            '[lint]\nextend-per-file-ignores = { "scripts/*.py" = ["D102"] }\n',
-        ),
+        ("[lint]\n", '[lint]\nextend-per-file-ignores = { "scripts/*.py" = ["D102"] }\n'),
         ("\nignore =", "\n# ignore ="),
         ("[lint.per-file-ignores]", "[unused]"),
     ],
@@ -96,10 +88,10 @@ def test_script_docstring_needs_triple_quotes_even_with_double_quote_character()
 def test_ruff_ignore_drift_fails_configuration(
     original: str, replacement: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    config = (common.ROOT / "quality/ruff.toml").read_text()
-    policy = json.loads((common.ROOT / "quality/strict-policy.json").read_bytes())
-    (tmp_path / "quality").mkdir()
-    (tmp_path / "quality/ruff.toml").write_text(config.replace(original, replacement))
+    config = (common.ROOT / "ci/quality/ruff.toml").read_text()
+    policy = json.loads((common.ROOT / "ci/quality/strict-policy.json").read_bytes())
+    (tmp_path / "ci/quality").mkdir(parents=True)
+    (tmp_path / "ci/quality/ruff.toml").write_text(config.replace(original, replacement))
     monkeypatch.setattr(strict_guard, "ROOT", tmp_path)
     with pytest.raises(ValueError, match=r"Ruff (ignore list|per-file ignores) drifted"):
         strict_guard.verify_ruff_policy(policy)
@@ -143,9 +135,7 @@ def test_suppression_blocks_owned_source(
         ["ansible/", "deploy/", "scripts/", "tests/"],
     ],
 )
-def test_python_inputs_module_emits_exact_nul_delimited_inventory(
-    roots: list[str],
-) -> None:
+def test_python_inputs_module_emits_exact_nul_delimited_inventory(roots: list[str]) -> None:
     expected = [
         name
         for name in common.owned(common.tracked())
@@ -206,9 +196,7 @@ def test_python_inputs_reject_incomplete_inventory(
         python_inputs.python_inputs(roots)
 
 
-def test_scoped_ruff_preserves_paths_and_nonzero_status_across_batches(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_scoped_ruff_preserves_paths_and_nonzero_status_across_batches(monkeypatch: pytest.MonkeyPatch) -> None:
     from subprocess import CompletedProcess
 
     from ci.quality import ruff_scope
@@ -219,7 +207,7 @@ def test_scoped_ruff_preserves_paths_and_nonzero_status_across_batches(
 
     def invoke(argv, *, check):
         assert check is False
-        calls.append(argv[argv.index("--") + 1 :])
+        calls.append(argv[argv.index("--") + 1:])
         return CompletedProcess(argv, int(len(calls) == 1))
 
     monkeypatch.setattr(ruff_scope.subprocess, "run", invoke)

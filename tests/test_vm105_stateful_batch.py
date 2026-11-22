@@ -328,7 +328,36 @@ class StatefulBoundaries(unittest.TestCase):
                     # without injecting historical values into the current chart.
                     expected = historical(CUTOVERS[chart])
                     if chart == "charts/monori":
-                        # Schema delivery adds exactly one pre-rollout Job and
+                        cache = current.pop(("Job", "monori-sync-image-cache"))
+                        annotations = _mapping(
+                            _mapping(cache["metadata"])["annotations"]
+                        )
+                        self.assertEqual(
+                            annotations["argocd.argoproj.io/hook"], "PreSync"
+                        )
+                        self.assertEqual(
+                            annotations["argocd.argoproj.io/sync-wave"], "-1"
+                        )
+                        cache_pod = _mapping(
+                            _mapping(_mapping(cache["spec"])["template"])["spec"]
+                        )
+                        sync = current[("Deployment", "monori-sync")]
+                        sync_pod = _mapping(
+                            _mapping(_mapping(sync["spec"])["template"])["spec"]
+                        )
+                        self.assertEqual(
+                            cache_pod["nodeSelector"], sync_pod["nodeSelector"]
+                        )
+                        self.assertNotIn("volumes", cache_pod)
+                        container = _mapping(_sequence(cache_pod["containers"])[0])
+                        self.assertEqual(
+                            container["image"],
+                            _mapping(_sequence(sync_pod["containers"])[0])["image"],
+                        )
+                        self.assertEqual(
+                            container["command"], ["python", "-I", "-S", "-c", "pass"]
+                        )
+                        # Schema delivery also adds a pre-rollout Job and
                         # advances only the backend init check, not placement.
                         job = current.pop(("Job", "monori-schema"))
                         annotations = _mapping(_mapping(job["metadata"])["annotations"])

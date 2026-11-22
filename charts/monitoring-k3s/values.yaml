@@ -290,10 +290,11 @@ updateWatch:
       title: Remark42
       current: 1.17.1
       github: umputun/remark42
-    - id: uptime-kuma
-      title: Uptime Kuma
-      current: 2.5.7
-      github: louislam/uptime-kuma
+    # The uptime-kuma namespace now runs digest-pinned Gatus, not Kuma.
+    - id: gatus
+      title: Gatus
+      current: 5.38.0
+      github: TwiN/gatus
     - id: syncthing
       title: Syncthing
       current: 2.1.7
@@ -320,8 +321,11 @@ updateWatch:
       github: grafana/grafana
     - id: pyroscope
       title: Pyroscope
-      current: 2.4.3
+      current: 2.4.4
       github: grafana/pyroscope
+      namespace: cattle-monitoring-system
+      deployment: pyroscope
+      container: pyroscope
     - id: thanos
       title: Thanos
       current: 0.42.4
@@ -332,7 +336,7 @@ updateWatch:
       github: netbirdio/netbird
     - id: nvidia-device-plugin
       title: NVIDIA device plugin
-      current: 0.20.1
+      current: 0.20.2
       github: NVIDIA/k8s-device-plugin
     - id: pr-agent
       title: PR-Agent

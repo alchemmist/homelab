@@ -1,0 +1,537 @@
+## CURRENT: 17Nov — SSH-egress заменён на VPN-as-service
+
+Владелец отклонил отдельные SSH-туннели как архитектуру прикладного egress.
+Текущий n8n использует отдельного native 3x-ui клиента **svc-n8n-google, ID40**,
+его подписку и официальный Xray-core sidecar. Путь: российская нода → штатный
+московский вход VPN-as-service → NL. `wg-socrat` остаётся инфраструктурой,
+не подменяет service-identity. [Штатный runbook](service-vpn-egress.md).
+
+Source5b722c5c, fresh global nativepending[] + SPIowner/processing/paid0,
+48 Node-тестов; Pod n8n-7bc974f784-cbbfn Ready2/2, ArgoHealthy. Подписка
+получается init через native JSON endpoint при старте, не hot-refresh.
+Группа `services`; по решению владельца quota0/expiry0 — без квоты и
+автоматического истечения. limitIp1 сохранён; накопленный трафик не сброшен.
+Все7 графов/настроек/credentialrefs/static/pin/activities/PVC/Secret сохранены.
+Google-only scope и сквозной TLS остались, GitHub/прочие сервисы напрямую.
+Старый n8n SSH-sidecar удалён, отдельный SSH-key отозван, его2Secret удалены;
+общий registryrobot не отозван. Venice не меняли; его SSH-вариант — отклонение,
+НЕ шаблон для новых сервисов. Нижние SSH-acceptance записи — история, superseded.
+
+## CURRENT17Nov owner-approved follow-up: Google NL egress + SPI compaction LIVE
+
+Supersedes the earlier PARTIAL/no-egress status BELOW; keep it as incident history.
+[Authoritative follow-up](n8n/google-only-nl-egress-20261117.md).
+
+Owner authorizedGoogle-onlyNLegress and askedreuseVenicepattern. N8Nnowusesown
+pinnedSSHidentityandTWOstaticloopbackforwards onlywww/oauth2Google443, NOTVenice
+privatekey/profileoragenericexit. Originalend-to-endTLS/SNI/CA/nativecredentials
+retained, noHTTP/OAuthPOSTreplay. Otherworkflowsnative. NoVPN/route/MTU/DNSchange.
+InitialmissingHarborpullcredentialcausedshort1/2Readydowntime/49624error; corrected
+viaGit2f26a12fafterNEWfreshglobaldrain. Noalertmute/historycleanup. Node5Pod
+n8n-8679f69fc9-x8j9rReady2/2,restart0,45Nodetests,realstrictTLS/negativeSSHtests,
+all7nativegraphs/settings/static/pin/activities/PVC/Googlecredentials unchanged.
+VeniceUID/specunchanged. FiniteCalendar14naturalsuccesses08:37–08:50; laterfinal
+sampleinprivatehandoff. Noovernight/voice/refreshPOSTacceptanceclaim.
+
+SPI8c89246LIVE viaexplicitrelease44050085445/freshglobaldrain: ALWAYS rawmetrics→
+observedextrema/trend→lossless100/100rowtablecompaction→boundedprose→tokenfit→
+finalmodel. Actualoriginalcontext25618vs39595reservation underSAME30000budget,
+same10artifactIDs/candidate174,model/networkcalls0forproof.469nativeCItests0skips;
+image185bd5cd…aec71e6d,exactruntimehashes/health200/ArgoHealthy. NoextraLLMcall,
+paidbudget/attempt/backoff/deadlinereset/state-schema/workflowgraphchange. Full
+snapshotsunaltered; unknownformatsfailclosed; sensitivekeyredactionandtable
+identitiesprotected. Finalfallbackprefixstilldisclosesomissions. Newlossless
+naturalreportacceptancePENDING. Botholdmorningcontextjobsnaturallycompletedwith
+reporttrue/attempt8BEFOREthisnewrelease(2cfc5ccbprefix16),soNOTitsacceptance.
+
+## CURRENT17Nov: morning failures, Calendar PARTIAL / SPI context fix LIVE
+
+Calendar initial16Nov acceptance was finite, notall-nightstability. Morning
+four-candidate exhaustion exposedmultipleflakyGoogleaddresses.0ab81dac fixes
+candidatecoverage(max8/two pre-HTTP sockets/same9.5sbudget), BUT subsequent
+5naturalruns stillfailedall8; do NOT callCalendarfullyfixed. Source/path-dependent
+TLSfailures reproducedoutsidePod, while same8IPs allverifyfromNL. Headers-only
+capture confirmsClientHelloretransmission/nopeerTLSdata onbadflows; precise
+provider/Google/DPIcauseunproven. Network/MTU/VPN/DNSunchanged; noSNI/TLSbypass.
+A narrowlyprivateGoogle-onlyNLegress wouldbeaseparateroutingdecision, NOT deployed.
+
+SeparateSPI2cfc5ccb nowlive imagec25911c5…e2b2cabe4: explicitmodel-onlymetricseries
+projection fixes100seriescontext(39595→16810reservation) WITHOUT extra modelcalls/
+quota/deadlineresets or changingfullstoredoriginals/IDs.464nativeCItests0skips,
+freshglobaldrain, SPIactivityrestored. Twojobs retainoriginalfuturebackoff; new
+naturalreportacceptancePENDING. OneLLMnetworkerroralreadyrecovered naturally.
+[Full current evidence/status](n8n/google-calendar-transport-20261117.md).
+
+## CURRENT16Nov23:22MSK: Calendar TLS address failover LIVE
+
+Follow-up research isolated a CURRENT DNS-provided GoogleIPv4 whoseTCP connects
+butTLS stalls, while7other addresses work; reproduced outsidePod and acrossTLS
+versions too. Not proof of provider/MTU/CNI fault; forcingIPv4/DNS-only insufficient.
+Read publicwiki VPN and the network intent in docs before selecting no-network-change
+correction. Scoped native HTTPS connection failover now enabled byGit9a014aa2:
+fresh existing-resolverDNS, originalSNI/CA, max4pre-HTTP TLS candidates under9.5s;
+HTTP receives socket only AFTER verifiedTLS. No HTTP/OAuthPOST replay, TLS bypass,
+IP pin, VPN/routing/MTU change, nodeRetryOnFail or timeout increase. IDs/credentials/
+graph/settings/pin/static/history preserved; googleDnsEnabled remainsfalse.
+
+Fresh global natural drain+SPIowner/processing/paid0 beforepush; related activities
+restored. ArgoSyncedHealthy, exactruntimehashes. Firstnatural48686 succeeded with
+Google4827ms and TWO observedpre-HTTP failovers; not a voice-delivery test or
+long-term reliability promise. Historical15Nov/12Nov failures below retained.
+[Diagnosis, design, tests and acceptance](n8n/google-calendar-transport-20261116.md).
+
+# n8n: правила разработки, эксплуатации и авторизации workflow
+
+## CURRENT15Nov: Google Calendar OAuth recovered; latency caveat
+
+Пользователь переподключил существующий **Google Calendar account** в19:22МСК.
+После этого8плановых Calendar executions успешны19:24–19:33; новых error нет.
+Новый backup независимо проверен на3 (hash/SQLite/key/source5/7workflows/10creds).
+Но два запуска отменены по существующему110сек таймауту; полную стабильность
+не заявлять. DNS-проба прошла, а отдельные безавторизационные Google HEAD-пробы
+иногда упираются в6.5сек deadline на TLS после успешногоTCP, и поIPv6, и поIPv4.
+Корневая причина/связь с110сек отменами не доказана; googleDnsEnabled:false,
+сеть и таймауты сохранены.
+Никаких ручных запусков речи, reset/SQL, отключения алертов или увеличения таймаута.
+[Доказательства и границы](n8n/google-calendar-auth-20261115.md).
+
+Контракт для агентов и оператора. Актуализировано: **3 ноября 2026**.
+Связанный документ: [архитектура автоматизаций умного дома](smart-home-automation.md).
+
+## Автоматическая привязка новых JSON-шаблонов — offline policy
+
+Создание workflow в коде сопровождается проверкой
+`uv run python ci/check_failure_alerts.py`; при пропущенной привязке —
+та же команда с `--fix`, review/commit JSON и обычный native sync. Никакого CronJob
+или автоматического изменения live n8n. Обнаружение новых файлов рекурсивное по
+roots в `ci/quality/n8n-workflow-policy.json`; другой явно заданный handler не перетирается,
+канонический Error Trigger исключён строго по path/name/type без рекурсии.
+UI-only workflows CI не видит до экспорта в исходники.
+
+Новый CI задан в **qg.yaml**, outputs получены `uv run qg generate`, freshness —
+`uv run qg validate`. CLI/provider0.1.8 одинаково pinned, runtime SHA из официального
+quickstart. CI только проверяет; исправление вызывает разработчик/агент. На момент
+внедрения qg.yaml в обоих repos отсутствовал; это bootstrap по migration guide,
+старые проверки сохранены до PR parity, privileged release не переносился в graph.
+Не считать локальный generate/validate приёмкой trusted publisher или изменением
+required branch checks. [Процесс и команды](n8n/workflow-policy.md).
+
+## Уведомление об упавшем execution — 9 ноября 2026
+
+Настроен общий **Workflow Failure Alerts** (`iZn7biFh6321a1w8`): native
+Error Trigger → безопасная проекция метаданных → существующий Socrat bot
+`/v1/messages` напрямую. Все шесть текущих business workflows ссылаются на него
+через `settings.errorWorkflow`, в том числе Socrat Alerts. Сам handler не
+ссылается на себя и не ходит в Socrat Alerts/SPI — рекурсии доставки нет.
+
+Уведомление на английском: workflow, execution ID, failed node (если есть),
+прямая protected n8n ссылка. Raw error/message/stack, headers и payload не уходят
+в Telegram; детали доступны внутри n8n. Сохранение bodies handler отключено;
+native входные данные могут временно существовать до завершения/pruning.
+Это одно событие отказа, не окно ошибок20минут и не обещание exactly-once.
+
+Проверены6bindings и published settings активных workflows,9offline тестов.
+Активность сохранена:5active, SPI **уже был inactive**; не включался этой задачей.
+Native refresh GitHub triggers заменил Wiki/Blog webhook ID/signing secret:
+старые удалены, новые active, по одному на URL, events прежние. Credential refs,
+бизнес-данные и графы при каждой записи проверены. Отдельную смену SPI Route JS
+в течение окна не перезаписывали. Существующие SPI/Grafana alerts не меняли.
+
+Новые workflows не наследуют binding автоматически: добавлять через
+`scripts/n8n/sync_failure_alerts.py` (без флага — только plan). Уже идущие/Wait
+executions могут хранить старые settings; ручные тесты, caught errors, отмена и
+полный отказ n8n не равны обычному automatic failed execution. Сам handler не
+может сообщить о поломке собственного транспорта тем же транспортом; независимый
+health monitoring нужен отдельно. Первый естественный Telegram end-to-end этим
+срезом не заявляется; искусственных запусков/ошибок/сообщений не создавали.
+[Runbook и enrollment receipt](n8n/workflow-failure-alerts.md).
+
+## Текущий календарь: динамический TTS и автоматическая сессия
+
+Пользователь **разрешил исключение для внутреннего API именно для календарной
+озвучки**, при условии автоматического обновления сессии. Старое public-only
+ограничение не распространять на эту конкретную native-ноду; другие интеграции
+по-прежнему делать публичным API, где это возможно. Отдельный voice-сервис не
+возвращать.
+
+Активный календарь: `Every Minute → Select Calendars → Get Upcoming Events → Match Due Reminders → Announce via Yandex Station → Mark Announced`.
+Последняя интеграционная нода — **CUSTOM.yandexStation**, получает динамический
+`$json.text`. Credential **Yandex Station Auto Session** (`yandexStationApi`):
+зашифрованные xToken/deviceId/scenarioId. Промежуточные cookies/CSRF только в памяти,
+не в outputs, HTTP headers нод, логах и git. Код: `charts/n8n/extensions/`.
+
+Сессия создаётся из x-token при первом вызове/рестарте. После истечения 6-часового
+кэша следующий вызов создаёт новую; 401/403 подготовки также вызывает обновление. Сценарий: 50% и динамическая фраза, без возврата
+старой громкости. Потерянный ответ запуска не ретраить: речь могла прозвучать.
+Задачи по credential сериализуются; есть in-process защита от параллельного повтора
+уже подтверждённого dedupKey. Не обещать exactly-once.
+
+Активный **Yandex Session Maintenance** проверяет действие каждые 15 минут, без
+запуска речи. Не создавать новую веб-сессию каждые 15 минут принудительно: здоровая
+используется повторно. Grafana **Automation / Yandex calendar**: ошибка за 20 минут
+и отсутствие успешной проверки 40 минут. Явный receiver — Socrat Alerts → Telegram;
+глобальный Grafana receiver не менялся. Доставка зависит от n8n, но не от Яндекс
+credential: полный отказ n8n может задержать сообщение, хотя Grafana покажет alert.
+
+X-token тоже может быть отозван. Тогда `X_TOKEN_REJECTED`, алерт и контролируемая
+повторная авторизация/замена native credential в **обоих** workflow. Секреты не
+просить в чат, SQLite не править. Runbook: `docs/n8n/setup.md`.
+
+Проверены live 1804 (свежая сессия без звука), 1809 (динамическая речь и dedup),
+1817 (плановый maintenance), 1832 (новая сессия после финального рестарта без
+браузерного входа), Grafana contact test 200 и доставка Socrat Alerts 1819.
+28 тестов: 9 JS-клиент, 6 календарь, 13 блог. JSON обоих workflow и alert rules
+хранятся в git; `sync.py` / `sync_yandex_session.py` меняют только inactive records.
+
+## Эксплуатационные ориентиры для агентов
+
+- `docs/n8n/calendar-voice-reminder.json` — динамические календарные уведомления;
+  `docs/n8n/yandex-session-maintenance.json` — отдельная беззвучная проверка.
+- `charts/n8n/extensions/YandexStation.node.js` — native-нода;
+  `YandexStationApi.credentials.js` — credential; `yandex-client.js` — протокол,
+  сессионный кэш, сериализация и подтверждённый in-process dedup.
+- Mount/read-only ConfigMap и checksum находятся в `charts/n8n/templates/`.
+  Если нода не распознана после переноса, восстановить расширение и credential,
+  а не возвращать retired voice-сервис, raw Cookie/CSRF или фиксированную фразу.
+- Renderer `scripts/n8n/sync.py` и maintenance helper
+  `scripts/n8n/sync_yandex_session.py` требуют явной деактивации перед обновлением;
+  после проверки вернуть исходное active-состояние. Не терять ID/static data.
+- Alert UIDs: `yandex-session-failure`, `yandex-session-missing`.
+  Контакт и правила воспроизводятся из `docs/n8n/yandex-session-alerts.json`
+  через `scripts/n8n/provision_yandex_alerts.py`, без смены глобальной policy.
+- В текущей Grafana старый receivers/test API возвращает 410. Для повторного теста
+  использовать discovery `/apis/notifications.alerting.grafana.app/v1beta1/namespaces/default/receivers`,
+  затем POST `…/receivers/{metadata.name}/test` с `{integration, alert}`.
+  Тест вызывает реальное сообщение; предупредить пользователя. Не подменять
+  корректную проверку доставки искусственной поломкой рабочей Яндекс-сессии.
+- После credential-изменений сохранена новая согласованная off-node SQLite-копия
+  с проверкой integrity/foreign keys; encryption key сохранён отдельно приватно.
+  Это разовый backup, не реализованное расписание резервного копирования.
+
+## SPI: автоматический разбор инцидентов
+
+Новый контракт и эксплуатация: [SPI incident triage](spi-incident-triage.md).
+**Все генерируемые заголовки `[SPI]`, описания и комментарии GitHub — на английском.**
+Старые пользовательские issues не переименовывать. Модель сравнивает только открытые
+SPI; технические повторы webhook не являются новыми инцидентами.
+
+Socrat Alerts сохранён по ID, native trigger авторизует и ставит группу в durable
+очередь, не записывая headers/токены в execution data. Telegram остаётся отдельным
+быстрым путём. Медленный SPI Incident Triage: claim → match → evidence → analyze →
+publish. SPI-публикация включена после проверенного dry-run; **блог по-прежнему
+WRITE_ENABLED=false**. Не путать эти политики. Код: `charts/spi-triage/`, runbook:
+`docs/n8n/spi/setup.md`. Проверены живые dry-run, Telegram, auth401, дубликаты,
+перезапуск/очередь, refresh scoped App token; после v2 — 98 тестов. Evidence v2
+сохраняет текстовые артефакты прямо в комментариях, добавляет абсолютные Grafana-ссылки,
+Loki stack/context, поиск Tempo traces, pod/events и привязку к image/release revision.
+Поддерживаемые stack paths дают source excerpts на immutable commit. Manifest содержит
+SHA-256, усечения и пробелы. Восстановление файлов: `scripts/n8n/download_spi_evidence.py`.
+Проверены реальные артефакты SPI #9 и roundtrip всех файлов. Версия, наблюдаемая сейчас,
+не доказывает версию в момент старого инцидента; неизвестные host/source versions нельзя
+выдумывать. Модель не заменяет доказательство причины. Автоматически менять алерты
+или инфраструктуру нельзя.
+
+## Обязательные правила
+
+1. **Workflow обязательно отражается в кодовой базе.** JSON в git — источник
+   воспроизводимой структуры, а не необязательный бэкап UI. Изменения live workflow
+   переносить в JSON; изменения JSON синхронизировать с n8n и проверять исполнением.
+2. **Весь пользовательский текст внутри workflow — на английском:** название,
+   имена нод, встроенные пояснения и диагностические сообщения, которые мы добавляем.
+   Русский допустим в целевом контенте: например, речь Станции или название стиха.
+   Документация wiki может быть на русском.
+3. **Никаких жёлтых карточек / Sticky Note-нод.** Пояснения хранить в runbook/wiki,
+   а смысл этапа передавать коротким английским именем ноды.
+4. **Ноды отражают семантические этапы, а не каждую мелкую операцию.** Не прятать
+   весь сценарий в один «do everything» блок, но и не раздувать канву десятками
+   вспомогательных блоков. Согласованную структуру менять только после согласования.
+5. **Никаких секретов в git, JSON workflow, промптах, образах и логах.** Только
+   n8n credentials, внешние Kubernetes Secrets и локальные приватные файлы.
+6. Использовать API/MCP для доступных агенту операций. Не перекладывать на
+   пользователя клики «Execute step», импорт или активацию, если агент может это
+   сделать сам. Интерактивный OAuth consent остаётся действием пользователя.
+7. Не объявлять интеграцию готовой только по успешному импорту. Проверять реальные
+   выполнения, внешние эффекты, отрицательные случаи и повторный запуск.
+
+## Семантическая структура: пример Blog Updates
+
+Ровно четыре блока, без дополнительных IF/Code/Note-нод на канве:
+
+**Blog push → Validate via LiteLLM → Generate via LiteLLM → Create Pull Request**
+
+- **Blog push:** подписанное событие GitHub; нужный репозиторий и ветка.
+- **Validate via LiteLLM:** подготовка фактического контекста и отдельный вызов
+  модели для решения, заслуживают ли изменения записи. Отрицательный результат
+  выдаёт ноль items и останавливает цепочку без отдельной IF-ноды.
+- **Generate via LiteLLM:** второй, самостоятельный вызов модели для текста только
+  по отобранным изменениям. Не объединять с первым модельным запросом.
+- **Create Pull Request:** проверка результата, детерминированный Markdown,
+  дедупликация и GitHub-запись. Не содержит третьего вызова модели.
+
+Вспомогательная логика допустима внутри этапа/его узкого backend endpoint.
+В текущей реализации последние три ноды — HTTP Request к отдельным внутренним
+endpoint worker: `/validate`, `/generate`, `/create-pr`. Это **не** прямые
+LiteLLM-ноды: каждый из первых двух endpoint сам вызывает LiteLLM. Не возвращаться
+к одному endpoint, который делает весь сценарий целиком.
+
+Ограничение «четыре блока» относится к этому сценарию, а не ко всем будущим workflow.
+Для других сценариев сначала согласовать краткую семантическую схему.
+
+## Репозитории и артефакты
+
+В homelab:
+
+- `docs/n8n/blog-updates/workflow.json` — структура Blog Updates без секретов;
+- `docs/n8n/blog-updates/prompt.md` — редакционные инструкции модели;
+- `docs/n8n/blog-updates/setup.md` — запуск, проверки и ограничения;
+- `scripts/blog_updates/` — backend этапов, GitHub-клиент, deployment helper;
+- `deploy/blog-updates/worker.yaml` — workload и внутренний Service;
+- `tests/blog_updates/` — автоматические тесты;
+- `docs/n8n/calendar-voice-reminder.json` и `docs/n8n/setup.md` — календарный сценарий;
+- `scripts/n8n/sync.py` — синхронизация **календарного** сценария. Не считать его
+  универсальным синхронизатором: Blog Updates пока требует отдельного provisioning.
+
+В `~/code/blog`: `site/content/updates.md` — единственный источник журнала;
+`site/layouts/index.html` показывает пять последних записей, архив использует тот
+же Markdown. Не редактировать сгенерированный `site/public`.
+
+Instance credential IDs сопоставлять при импорте через локальную конфигурацию;
+в git оставлять placeholders. ID не заменяет credential и не переносит OAuth.
+Не создавать дубликаты workflow/credentials при каждом деплое. Обновлять по
+проверенному ID или однозначному имени; при неоднозначности остановиться.
+
+## Доступ к n8n и авторизация
+
+- UI/API: `https://n8n.socrat.alchemmist.xyz`.
+- Сейчас n8n **публичный по HTTPS**, доступен через домашний и VPS ingress;
+  приватный gateway также сохранён. Не описывать его как VPN-only.
+  На Mac пользователь использует **NetBird**, не старые WG-профили. `utun100`
+  может быть рабочим NetBird-интерфейсом; Disconnected у WireGuard не означает
+  отказ NetBird. Проверять `netbird status`, не предлагать включать старый VPN.
+- UI защищён внешним входом Authentik, после которого может требоваться отдельный
+  аккаунт n8n. Это gate, **не native SSO**. Community-инсталляция не получила
+  единого входа от одного reverse proxy; не отключать внутреннюю авторизацию.
+  Наличие WG также не заменяет вход.
+- Public API: `/api/v1/`, заголовок `X-N8N-API-KEY`.
+- MCP: `/mcp-server/http`, `Authorization: Bearer <MCP token>`.
+  Первоначальный аудит 2026-11-07 выявлял backend403 (instance MCP disabled), но
+  последующая проверка с обновлённым локальным token успешно прошла `initialize`
+  и `tools/list`: этот blocker закрыт. В локальном project config Mac клиент
+  включён; доступны `search_workflows` и `get_workflow_details`, серверный
+  `execute_workflow` скрыт от агента. Workflow при проверке не исполнялись.
+  В примере `deploy/mcp/examples/pi-mcp.json` запись пока disabled — не переносить локальное
+  включение на другие checkout/машины как уже выполненное.
+  Exact ingress принадлежит `charts/n8n/templates/access.yaml`; UI gate сохранён.
+  [MCP runbook в wiki](official-mcp.md) фиксирует текущее состояние и границы доступа.
+  API key и MCP token — разные credentials, не взаимозаменяемы.
+- Локальные файлы: `~/.config/n8n/api-key`, `~/.config/n8n/mcp-token`.
+  Каталог — mode 0700, секретные файлы — 0600. Не выводить содержимое.
+- MCP использует Streamable HTTP: сначала initialize, затем discovery tools.
+  Проверять фактически доступные инструменты и их схемы; не предполагать, что MCP
+  умеет provisioning credentials или редактирование workflow. API и MCP дополняют
+  друг друга; устанавливать сторонний MCP-сервис для обычного импорта не требуется.
+- Предпочитать штатный DNS. `curl --resolve ...:443:10.250.0.1` — диагностический
+  обход DNS для WG, не универсальное условие работы API. Не отключать TLS-проверку.
+- Не сбрасывать owner, не создавать аккаунты и не менять пароль ради автоматизации
+  без явного разрешения пользователя.
+
+### Внешние сервисы
+
+**Google Calendar:** создать OAuth credential, проверить callback
+`https://n8n.socrat.alchemmist.xyz/rest/oauth2-credential/callback` в Google Console.
+Consent выполняет пользователь в браузере. Не коммитить client secret, refresh
+или access tokens. Если credential API возвращает некорректную схему, не
+подставлять фиктивные поля: использовать штатный OAuth UI и затем привязать ID.
+
+**GitHub:** отдельный fine-grained token только для `alchemmist/blog` либо
+repository-scoped GitHub App. Для текущего native GitHub Trigger нужны:
+Contents read/write, Pull requests read/write, Webhooks read/write, Metadata read.
+Локально: `~/.config/n8n/blog-github-token`. Не копировать широкий операторский
+`gh`-токен в worker. Native Trigger регистрирует webhook и проверяет подпись до
+передачи события дальше. Одной секретности URL недостаточно.
+
+**LiteLLM:** отдельный virtual API key на workflow, не master key и не общий ключ
+других приложений. Для Blog Updates создан alias `n8n-blog-updates`, ограниченный
+`qwen3.8-27b`, с лимитом 6 requests/min. Локально:
+`~/.config/n8n/blog-litellm-key`. Worker обращается по внутреннему адресу
+`http://litellm.llm.svc.cluster.local:4000/v1`.
+
+**Worker:** Secret `automation/blog-updates-worker` содержит `GITHUB_TOKEN`,
+`LITELLM_KEY`, `WORKER_TOKEN`; HTTP требует `X-Worker-Token`. Service — ClusterIP,
+не публичный ingress. В n8n — отдельный Header Auth credential. Локальные mappings:
+`blog-credentials.json`, `blog-workflow-id`; для календаря —
+`calendar-credentials.json`. Секретные значения и приватные mappings не коммитить.
+
+Токены, присланные в чат, не повторять в ответах. Сохранять приватно, не включать
+в отчёты/диффы; рекомендовать ротацию. Не просить присылать новые секреты в чат.
+
+## Календарные напоминания: фактическая конфигурация
+
+- `primary` означает только основной календарь, а не все календари пользователя.
+  При пропущенном напоминании сначала проверить, в каком календаре лежит событие.
+- После исправления 2 ноября workflow опрашивает **Личное (primary) и Y-team**.
+  Нода `Select Calendars` выдаёт calendar IDs, следующая Google Calendar-нода
+  читает каждый из них. Этот дополнительный этап относится к календарю; Blog
+  Updates по-прежнему имеет ровно четыре ноды.
+- `~/.config/n8n/calendar-config.json` (0600, вне git) содержит `calendar_ids`;
+  `scripts/n8n/sync.py` внедряет их в исходный JSON. При отсутствии файла источник
+  по умолчанию читает только primary. Не терять mapping при переносе инсталляции.
+- Обрабатываются только явные popup overrides события. `useDefault=true` не
+  разворачивается в настройки календаря. All-day событие без overrides не является
+  подтверждением, что найдено нужное напоминание о встрече.
+- Текущее окно — от 15 секунд до due до 75 секунд после due. Пропущенные из-за
+  простоя или неверного календаря напоминания позже автоматически не догоняются.
+- Инцидент: встреча 2 ноября в 14:00 имела popup за 10 минут в Y-team, но workflow
+  читал primary. После исправления live execution 76 получил четыре события из
+  двух календарей. Read-only тест реального события на момент start−10 минут
+  дал один match. Это не тест физической озвучки: тестовый голос не запускался.
+- Озвучка динамическая через native CUSTOM.yandexStation, с автоматическим
+  x-token login/renewal. Credential `yandexStationApi`, никакого ручного Cookie/CSRF.
+- `calendar-credentials.json`: Google OAuth + yandexStationApi; календари primary
+  и Y-team — отдельный приватный mapping. Device/scenario IDs внутри credential.
+- Ошибки не отмечают dedup. Workflow timeout 110 секунд покрывает cold login;
+  сериализация и in-process cache защищают от параллельных подтверждённых повторов.
+  Выполнение не transactional и не durable replay.
+- Maintenance каждые 15 минут проверяет реальные права на PUT без звука, алерты
+  различают ошибки и исчезновение успешных проверок. Подробный runbook обязателен.
+
+## Безопасность модельных этапов
+
+- Диффы, тексты и сообщения коммитов — недоверенные данные, не инструкции модели.
+- Строгий JSON-контракт; ответ проверяется кодом. Не исполнять команды/пути/URL,
+  придуманные моделью. Источники записи должны быть в проверенном наборе изменений.
+- Валидация отбирает значимые для читателя события, генерация формулирует их.
+  Опечатки, рефакторинг и обычные статусы чтения книг обычно не заслуживают Update.
+- Системные даты и Markdown-обёртку формировать кодом. Ссылки должны проверяться,
+  не приниматься на веру из ответа модели.
+- При неполном диффе, превышении бюджета, невалидном JSON или недоступной модели
+  завершаться безопасно, без случайной записи в GitHub. Не обрезать контекст молча.
+
+### Устойчивость LiteLLM-вызовов
+
+В исправлении `8268853`:
+
+- `response_format=json_schema` с точным контрактом, дополнительно проверяемым
+  backend; `chat_template_kwargs.enable_thinking=false`, max_tokens=1000;
+- timeout одного модельного запроса 360 секунд, HTTP-ноды n8n — 900 секунд;
+- на невалидный JSON/контракт — одна повторная попытка (максимум две), затем
+  безопасная ошибка; транспортные ошибки не маскируются как «новостей нет»;
+- контролируемые `UnsafeInput` возвращают причину для диагностики, не секреты;
+- четыре видимые ноды сохранены, никаких дополнительных IF/Note-блоков.
+
+Причина изменения: положительные тесты выявили ошибку формата и timeout. При
+одном активном запросе vLLM, очереди и скорости около 10 токенов/с короткий
+клиентский timeout не покрывал генерацию и ожидание. Не исправлять это перезапуском
+общей модели или бесконечными retries. Даже 900 секунд не гарантируют доступность
+при любой нагрузке; очередь/возобновление задач остаются отдельной работой.
+Положительный signed test 69 прошёл все четыре этапа и вернул ожидаемую запись о
+стихе в dry-run. 13 тестов проходят, включая ограниченный повтор ошибочного ответа.
+
+## Проверка и включение
+
+1. Проверить JSON и тесты, сохранить структуру в git.
+2. Импортировать/обновить без побочных эффектов; активный workflow при изменении
+   при необходимости деактивировать и вернуть прежнее состояние после успеха.
+   Учитывать, что GitHub Trigger при этом пересоздаёт hook/секрет подписи.
+3. Прогнать dry-run на положительном и отрицательном примерах через реальную модель.
+4. Проверить webhook: без подписи — 401, корректно подписанное событие проходит.
+5. Проверить число и имена выполненных этапов, а не только HTTP 200 при приёме.
+6. Для write-этапа создать явно тестовый draft PR: только ожидаемый файл/дифф;
+   повтор не создаёт дубликат; закрытый PR не открывается заново.
+   Тест не сливать в main, закрыть и убрать ветку после проверки.
+7. Отдельно включить production writes только после готовности и разрешения.
+   Сообщить точное состояние: active/inactive и dry-run/write — разные вещи.
+
+**Текущее состояние Blog Updates:** webhook/workflow активен, но
+`WRITE_ENABLED=false`: реальные push анализируются, PR автоматически не создаются.
+Проверены signed historical simulations, модельный отбор/генерация, тестовый PR
+#71 (закрыт без merge) и повторы. Автоматические проверки публикации/draft,
+формирование ссылок и durable retry ещё требуют доработки. Не называть это
+полностью готовым production-сценарием. Актуальное состояние сверять с deployment
+и runbook, не полагаться только на этот исторический срез.
+
+## Надёжность и эксплуатация
+
+- Повтор webhook не должен давать повторный PR/уведомление. Закрытие PR человеком —
+  редакционное решение; не открывать его заново автоматически.
+- Не перетирать продвинувшийся main и ручные изменения. Нужны повторный анализ или
+  явный безопасный конфликт, а не force push.
+- Таймауты и retries учитывать отдельно от идемпотентности. Принятый webhook ещё
+  не означает завершённую задачу; лог/очередь должны позволять восстановить сбой.
+- Медленный LLM-запрос не должен блокировать health checks и убирать Service из
+  endpoints. В worker health обслуживается отдельно, операции сериализуются lock.
+- Текущая сериализация не является durable queue. Прерванная запись после создания
+  ветки требует восстановления, не обещать exactly-once.
+- Предпочитать прямые HTTP-ноды и native credentials, если отдельному backend
+  нечего делать кроме proxy. Не возвращать обязательный capability-сервис:
+  пользователь отменил это правило 3 ноября. Содержательный Blog Updates worker
+  остаётся. Не плодить параллельные cron-реализации той же задачи.
+
+## Хранилище, миграции и восстановление
+
+**Инцидент 2 ноября:** после Fleet → Argo CD приложение оказалось на новом пустом
+PVC и запросило первичную настройку. Точная удалившая данные операция не доказана.
+Не создавать новый аккаунт и не выдавать импорт JSON за восстановление базы.
+Проверять PVC/PV identity, возраст тома, mount path, число настроенных аккаунтов,
+workflow и credentials. `/healthz=200` и успешный HTTPS не доказывают сохранность.
+
+Состояние восстановлено из сохранившихся SQLite rollback-journal записей на диске:
+прежний owner с хешем пароля, оба workflow с исходными ID, четыре credentials с
+Google OAuth, API/MCP keys, доступное static state и связи личного проекта.
+Это **реконструированная база, не целый исходный файл и не точный point-in-time
+snapshot**. Полная история выполнений и всех версий не восстановлена. Пароль не
+сбрасывался; реальный browser login чужим паролем агентом не проверялся.
+
+Проверено: SQLite integrity/foreign keys, прежний API key, отсутствие Setup,
+успешные scheduled Calendar executions с восстановленным Google credential.
+После восстановления дополнительно исправлены неверный выбор календаря и ошибки
+модельных запросов: восстановление базы само по себе не гарантировало корректную
+бизнес-логику. Подробности: `docs/n8n/recovery-2026-11-02.md`.
+
+- Согласованная копия восстановленной базы и encryption Secret сохранены приватно
+  вне узла, не в git. Начальная попытка полного образа диска завершилась timeout;
+  частичный образ **не считать бэкапом**.
+- PV имеет reclaim policy Retain; PVC шаблон — Helm keep и Argo
+  `Prune=false,Delete=false`. Это защита жизненного цикла, не резервное копирование.
+- Перед переносом между Helm и Argo сохранять существующий PVC/PV и проверенный
+  off-node backup SQLite **вместе с encryption key**. Регулярные проверяемые
+  off-node бэкапы всё ещё требуют отдельной реализации. Возвращать n8n на Fleet GitRepo нельзя: `deploy/fleet/n8n.yaml` и `deploy/n8n/fleet.yaml` удалены, владелец — Application `n8n`.
+- При замене базы остановить единственного writer, сохранить предыдущие файлы,
+  проверить integrity и связи, только затем запускать и активировать сценарии.
+- Не отключать self-heal без последующего восстановления. Live-патчи могут быть
+  немедленно отменены Argo: исправлять source of truth, а не бороться с контроллером.
+- Публичный Authentik ingress теперь имеет собственный `n8n-authentik-tls`.
+  Приватный n8n vhost должен оставаться в `charts/private-gateway/values.yaml` и
+  идти через Traefik HTTPS, чтобы сохранить Authentik и machine endpoint policies.
+  При ошибке HTTPS проверять публичные IP **и** реальный WG/DNS-путь браузера.
+
+## Git и работа агента
+
+- Сначала проверить status: в homelab и blog часто есть параллельные чужие изменения.
+  Добавлять файлы адресно, не `git add .`; не включать кэш Python, build output,
+  приватные файлы или изменения других задач.
+- Перед коммитом: тесты, staged diff и проверка секретов. Коммит/push — по разрешению
+  пользователя; отчёт содержит commit SHA, результат push и фактический режим live.
+- При общем Helm-релизе сохранять актуальные live values и согласовывать конкурирующие
+  изменения. Не ломать Harbor/другие маршруты ради n8n.
+- Не обходить TLS/SSH-проверки, не публиковать backend/секреты для удобства отладки.
+- Документация должна честно разделять реализованное, проверенное и оставшееся.
+
+### Mac: n8n через публичный вход, без зависимости от NetBird
+
+2026-11-04: NetBird Connected, 4/4 peers, но legacy точный resolver
+`/etc/resolver/n8n.socrat.alchemmist.xyz` обращался к приватным DNS
+10.250.0.2/.3/.1, возвращавшим 10.250.0.1. Публичный ingress при этом работал;
+таймаут приватного HTTPS не был падением n8n или доказательством отказа NetBird.
+
+С согласия владельца точный resolver n8n переключён на публичные DNS 1.1.1.1 и
+9.9.9.9. Нет фиксации одного ingress IP: публичный DNS сохраняет failover.
+Остальные private resolvers, маршруты и NetBird не менялись. Authentik gate и
+внутренняя авторизация n8n сохранены. Helper `scripts/n8n/public_editor_dns.py`
+по умолчанию показывает план; `--apply` требует штатного root consent macOS,
+сохраняет root-only backup и сбрасывает DNS cache. Не удалять общий resolver
+`socrat.alchemmist.xyz`: это затронет другие приватные приложения.
+
+Проверено обычным DNS/TLS с Mac: публичные A-записи, HTTPS302 на Authentik,
+цепочка до HTTP200 страницы входа. Это не доказательство прохождения личного
+логина пользователя. Не перезапускать n8n и не менять PVC/credentials ради DNS.

@@ -22,3 +22,7 @@ __pycache__/
 # Generated quality reports and verified local tools
 /reports/
 /.quality-tools/
+
+# Local Quality Graph scratch space; keep the committed manifest.
+/.quality-graph/tmp/
+/.quality-graph/*.lock

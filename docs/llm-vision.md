@@ -41,7 +41,7 @@ The backend values and the standalone profile must agree:
 - `charts/vllm/values.yaml`
 - `deploy/vllm/profiles/qwen3.8-27b.yaml`
 
-LiteLLM calls vLLM directly. Its advertised context must match in `deploy/litellm/values.yaml` and `deploy/platform/litellm/values.yaml`.
+LiteLLM calls vLLM directly. Its advertised context must match the vLLM configuration in the LiteLLM deployment values (`deploy/platform/litellm/values.yaml`).
 
 `ansible/playbooks/llm-vision.yml` is retired: it refuses before any GPU/backend
 upgrade, automatic Helm rollback, metadata-only OCI upgrade or identity import.

@@ -27,7 +27,7 @@ def check_yaml(names: list[str]) -> tuple[list[Finding], int]:
     from yamllint import linter
     from yamllint.config import YamlLintConfig
 
-    config = YamlLintConfig(file=str(ROOT / "quality/yamllint.yaml"))
+    config = YamlLintConfig(file=str(ROOT / "ci/quality/yamllint.yaml"))
     files = yaml_targets(names)
     result = [
         finding(
