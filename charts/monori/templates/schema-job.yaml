@@ -7,8 +7,8 @@ metadata:
     argocd.argoproj.io/hook: PreSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
 spec:
-  activeDeadlineSeconds: 120
-  backoffLimit: 0
+  activeDeadlineSeconds: 240
+  backoffLimit: 3
   template:
     metadata:
       labels: {maintenance: monori-schema}
@@ -35,11 +35,11 @@ spec:
                   version = db.execute('SELECT version_num FROM public.alembic_version').fetchall()
                   if version == [('0021',)]:
                       db.execute(pathlib.Path('/app/server/postgres/0022_refunds.sql').read_text())
-                      db.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON public.refund_links TO monori_app")
                   elif version != [('0022',)]:
                       raise RuntimeError('Unexpected Monori schema revision')
                   if db.execute('SELECT version_num FROM public.alembic_version').fetchall() != [('0022',)]:
                       raise RuntimeError('Migration did not reach revision 0022')
+                  db.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON public.refund_links TO monori_app")
                   db.execute('SELECT refund_tx_id, original_tx_id FROM public.refund_links LIMIT 0')
           env:
             - name: MIGRATION_URL
