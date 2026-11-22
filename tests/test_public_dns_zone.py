@@ -141,10 +141,10 @@ def test_vpn_has_only_moscow_even_when_original_entrances_fail() -> None:
         assert "ns2 IN A 109.120.141.60" in lines
 
 
-@pytest.mark.parametrize("home,vps,ips", [(True, True, [zone.HOME, zone.MOSCOW]), (True, False, [zone.HOME]),
+@pytest.mark.parametrize("home,moscow,ips", [(True, True, [zone.HOME, zone.MOSCOW]), (True, False, [zone.HOME]),
     (False, True, [zone.MOSCOW]), (False, False, [zone.HOME, zone.MOSCOW])])
-def test_monori_https_selection_is_scoped(home, vps, ips):
-    lines = zone.render(123, True, True, monori_health=(home, vps)).splitlines()
+def test_monori_https_selection_is_scoped(home, moscow, ips):
+    lines = zone.render(123, True, True, monori_health=(home, moscow)).splitlines()
     assert [x for x in lines if x.startswith("monori IN A ")] == ["monori IN A " + ip for ip in ips]
     assert [x for x in lines if x.startswith("lms IN A ")] == ["lms IN A " + zone.HOME]
 
