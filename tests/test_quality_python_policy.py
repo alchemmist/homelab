@@ -60,16 +60,21 @@ def test_ruff_missing_docstrings_follow_module_scope(filename: str, expected: se
 
 
 @pytest.mark.parametrize(
-    "extra",
-    ['extend-ignore = ["D103"]', 'extend-per-file-ignores = { "scripts/*.py" = ["D102"] }'],
+    ("original", "replacement"),
+    [
+        ("[lint]\n", '[lint]\nextend-ignore = ["D103"]\n'),
+        ("[lint]\n", '[lint]\nextend-per-file-ignores = { "scripts/*.py" = ["D102"] }\n'),
+        ("\nignore =", "\n# ignore ="),
+        ("[lint.per-file-ignores]", "[unused]"),
+    ],
 )
-def test_unreviewed_additional_ruff_ignores_fail_configuration(
-    extra: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_ruff_ignore_drift_fails_configuration(
+    original: str, replacement: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config = (common.ROOT / "quality/ruff.toml").read_text()
     policy = json.loads((common.ROOT / "quality/strict-policy.json").read_bytes())
     (tmp_path / "quality").mkdir()
-    (tmp_path / "quality/ruff.toml").write_text(config.replace("[lint]\n", f"[lint]\n{extra}\n"))
+    (tmp_path / "quality/ruff.toml").write_text(config.replace(original, replacement))
     monkeypatch.setattr(strict_guard, "ROOT", tmp_path)
     with pytest.raises(ValueError, match=r"Ruff (ignore list|per-file ignores) drifted"):
         strict_guard.verify_ruff_policy(policy)

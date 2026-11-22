@@ -214,15 +214,16 @@ def listed_ansible_rules() -> set[str]:
 def verify_ruff_policy(data: StrictPolicy) -> None:
     """Fail if ruff config diverges from the strict policy."""
     ruff = tomllib.loads((ROOT / "quality/ruff.toml").read_text())
-    if "exclude" in ruff or "extend-exclude" in ruff or "exclude" in ruff.get("lint", {}):
+    lint = ruff.get("lint", {})
+    if "exclude" in ruff or "extend-exclude" in ruff or "exclude" in lint:
         raise ValueError("Ruff exclude hides files")
-    if ruff["lint"]["select"] != ["ALL"]:
+    if lint.get("select") != ["ALL"]:
         raise ValueError("Ruff must select ALL")
-    if "extend-ignore" in ruff["lint"] or ruff["lint"]["ignore"] != data["ruff"]["ignore"]:
+    if "extend-ignore" in lint or lint.get("ignore") != data["ruff"]["ignore"]:
         raise ValueError("Ruff ignore list drifted from the strict policy")
     if (
-        "extend-per-file-ignores" in ruff["lint"]
-        or ruff["lint"]["per-file-ignores"] != data["ruff"]["perFileIgnores"]
+        "extend-per-file-ignores" in lint
+        or lint.get("per-file-ignores") != data["ruff"]["perFileIgnores"]
     ):
         raise ValueError("Ruff per-file ignores drifted")
 
