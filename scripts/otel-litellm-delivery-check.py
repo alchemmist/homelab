@@ -9,11 +9,11 @@ import urllib.request
 from pathlib import Path
 from typing import cast
 
+APPLICATIONS = ("litellm", "vllm")
+
 
 def run(pod, application="litellm"):
-    if application not in ("litellm", "vllm") or not re.fullmatch(
-        application + r"-[a-z0-9-]+", pod
-    ):
+    if application not in APPLICATIONS or not re.fullmatch(application + r"-[a-z0-9-]+", pod):
         message = "Expected one exact allowlisted application SDK pod identity"
         raise ValueError(message)
     root = Path("/var/lib/homelab-otel/tls")
@@ -64,26 +64,25 @@ def run(pod, application="litellm"):
         "logBodiesFetchedOrSaved": False,
         "allApplicationLogCoverageComplete": False,
     }
-    if application in ("litellm", "vllm"):
-        private_logs = get(
-            "https://10.250.0.3:3100/loki/api/v1/query?"
-            + urllib.parse.urlencode(
-                {
-                    "query": 'sum(count_over_time({k8s_namespace_name="llm"} | k8s_pod_name="'
-                    + pod
-                    + '" | k8s_container_name="'
-                    + application
-                    + '" |= "OTEL_CANARY_PRIVATE_CONTENT_MUST_NOT_BE_CAPTURED" [2h]))'
-                }
-            ),
-            context,
-        )
-        private_count = sum(float(cast("list[str]", point["value"])[1]) for point in private_logs)
-        result.update(
-            syntheticPromptLogEntriesLast2h=private_count,
-            syntheticPromptAbsentFromApplicationLogs=private_count == 0,
-        )
-        result["success"] = result["success"] and private_count == 0
+    private_logs = get(
+        "https://10.250.0.3:3100/loki/api/v1/query?"
+        + urllib.parse.urlencode(
+            {
+                "query": 'sum(count_over_time({k8s_namespace_name="llm"} | k8s_pod_name="'
+                + pod
+                + '" | k8s_container_name="'
+                + application
+                + '" |= "OTEL_CANARY_PRIVATE_CONTENT_MUST_NOT_BE_CAPTURED" [2h]))'
+            }
+        ),
+        context,
+    )
+    private_count = sum(float(cast("list[str]", point["value"])[1]) for point in private_logs)
+    result.update(
+        syntheticPromptLogEntriesLast2h=private_count,
+        syntheticPromptAbsentFromApplicationLogs=private_count == 0,
+    )
+    result["success"] = result["success"] and private_count == 0
     print(json.dumps(result))
     if not result["success"]:
         raise SystemExit(1)
@@ -92,6 +91,6 @@ def run(pod, application="litellm"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--pod", required=True)
-    parser.add_argument("--application", choices=["litellm", "vllm"], default="litellm")
+    parser.add_argument("--application", choices=APPLICATIONS, default="litellm")
     args = parser.parse_args()
     run(args.pod, args.application)

@@ -46,8 +46,8 @@ def kube(*args, document=None):
     # kubectl wait/delete emit human-readable output, not resource JSON.
     # Their exit status is checked above; never mistake a successful deletion
     # for a parser failure or retry it solely because its text was not JSON.
-    command = args[2] if len(args) >= 3 and args[0] in ("-n", "--namespace") else args[0]
-    if command in ("wait", "delete"):
+    command = args[2] if len(args) >= 3 and args[0] in {"-n", "--namespace"} else args[0]
+    if command in {"wait", "delete"}:
         return None
     return json.loads(result.stdout) if result.stdout.strip() else None
 
