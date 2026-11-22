@@ -318,7 +318,7 @@ class StatefulBoundaries(unittest.TestCase):
                     if chart == "charts/monori":
                         # Schema delivery adds exactly one pre-rollout Job and
                         # advances only the backend init check, not placement.
-                        job = current.pop(("Job", "monori-schema-0022"))
+                        job = current.pop(("Job", "monori-schema"))
                         annotations = _mapping(_mapping(job["metadata"])["annotations"])
                         self.assertEqual(annotations["argocd.argoproj.io/hook"], "PreSync")
                         backend = expected[("Deployment", "monori-back")]
@@ -326,7 +326,12 @@ class StatefulBoundaries(unittest.TestCase):
                         pod = _mapping(template["spec"])
                         init = _mapping(_sequence(pod["initContainers"])[0])
                         args = _sequence(init["args"])
-                        args[0] = _text(args[0]).replace("[('0021',)]", "[('0022',)]")
+                        args[0] = _text(args[0]).replace(
+                            '    assert c.execute("SELECT version_num',
+                            "    marker=pathlib.Path('/app/server/postgres/revision')\n"
+                            "    target=marker.read_text().strip() if marker.exists() else '0022'\n"
+                            '    assert c.execute("SELECT version_num',
+                        ).replace("[('0021',)]", "[(target,)]")
                         init["args"] = args
                     if chart == "charts/spi-triage":
                         expect_spi_cutover(expected, postgres=True)
