@@ -2,34 +2,33 @@
 
 from __future__ import annotations
 
-import shutil
-import subprocess
+import importlib
+import sys
 from pathlib import Path
 
-import pytest
-import yaml
-
 ROOT = Path(__file__).resolve().parents[1]
-HELM = shutil.which("helm")
+sys.path.insert(0, str(ROOT / "scripts/quality"))
+charts = importlib.import_module("charts")
 
 
-def render(release: str, chart: str, *args: str) -> list[dict]:
+def render(release: str, chart: str, *values: str) -> list[dict]:
     """Render one actual owning chart in its Argo destination namespace."""
-    result = subprocess.run(  # noqa: S603 -- fixed Helm executable and repository chart paths
-        [HELM or "helm", "template", release, str(ROOT / chart), "--namespace", "llm", *args],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return [obj for obj in yaml.safe_load_all(result.stdout) if obj]
+    target = {
+        "release": release,
+        "chart": ROOT / chart,
+        "namespace": "llm",
+        "values": [ROOT / value for value in values],
+        "parameters": [],
+    }
+    result = charts.render(target)
+    assert result, f"empty or failed Helm render for {chart}"
+    return result
 
 
-@pytest.mark.skipif(HELM is None, reason="Helm is required for offline chart rendering")
 def test_gateway_and_monitoring_policies_select_real_cross_release_workloads() -> None:
     """Compose vLLM, LiteLLM and monitoring renders before judging policy selectors."""
-    values = ROOT / "deploy/platform/litellm/values.yaml"
-    vllm = render("vllm", "charts/vllm", "-f", str(ROOT / "charts/vllm/values.yaml"))
-    litellm = render("litellm", "charts/litellm", "-f", str(values))
+    vllm = render("vllm", "charts/vllm", "charts/vllm/values.yaml")
+    litellm = render("litellm", "charts/litellm", "deploy/platform/litellm/values.yaml")
     monitoring = render("monitoring-llm", "charts/monitoring-llm")
     infra = render("litellm-infra", "charts/litellm-infra")
     composed = vllm + litellm + monitoring + infra
