@@ -69,15 +69,15 @@
   },
   "DaemonSet/cattle-monitoring-system/kube-prometheus-stack-prometheus-node-exporter": {
     "owner": "node-exporter",
-    "sha256": "6b257edfdfe6106fc547f1aff9cd075a691fc5fdf1f2780c1cdc8446e289b842"
+    "sha256": "b1eab39dc781a9df0d05156859aa83a89f3724988a7575bc6ef7b472400bc914"
   },
   "Deployment/cattle-monitoring-system/kube-prometheus-stack-kube-state-metrics": {
     "owner": "kube-state-metrics",
-    "sha256": "9ec72e64867b1edb2df6fc5def8499ae7b25c35c4e6850586006b50fc56a5b7f"
+    "sha256": "f9c7a37752bf1bc95f9aef1c20ac860a5cc5d2d7551643f90c6fb782e095871d"
   },
   "Deployment/cattle-monitoring-system/kube-prometheus-stack-operator": {
     "owner": "prometheus-operator",
-    "sha256": "95f6b5bfa8e8158266b51d0646f2f774f7d892406bed28fc2bdb088ebbab11b8"
+    "sha256": "78db668f403bf748398226f737746958ad7c9d985b2f2ed45f13b463967d1fd7"
   },
   "MutatingWebhookConfiguration//kube-prometheus-stack-admission": {
     "owner": "prometheus-operator",

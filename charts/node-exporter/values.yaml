@@ -113,6 +113,8 @@ kube-prometheus-stack:
                 runbook_url: >-
                   https://runbooks.prometheus-operator.dev/runbooks/node/nodesystemsaturation
   prometheus-node-exporter:
+    image:
+      digest: sha256:8c9bac11973b94b59be88d6e11fee4429aa743c8846cdc75d65b18db33f6a106
     env:
       DBUS_SYSTEM_BUS_ADDRESS: unix:path=/host/root/run/dbus/system_bus_socket
     extraArgs:

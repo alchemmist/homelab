@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "f14cf98a7e862b2f048651fb21826cd50bf18929a78f15b8eb6e079647ee7de1",
+  "graphDigest": "f730de066abbfc6e484fecfbb849bc990d810f1ad0efc4beb55e536f45f32004",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -428,6 +428,34 @@
       },
       "timeoutMinutes": 5,
       "title": "RustFS gateway public return types"
+    },
+    {
+      "env": {},
+      "id": "manifests",
+      "needs": [
+        "ownership"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-manifests",
+      "result": {
+        "adapter": "native",
+        "path": "reports/manifests.json"
+      },
+      "step": {
+        "run": "make manifests"
+      },
+      "timeoutMinutes": 10,
+      "title": "Manifest validation"
     },
     {
       "env": {},
@@ -873,6 +901,9 @@
         },
         {
           "run": "uv run python -m ci.quality.install_tools --tools kubeconform kube-linter"
+        },
+        {
+          "run": "uv run python -m ci.quality.check_monitoring_selector"
         }
       ],
       "timeoutMinutes": 10
