@@ -1,13 +1,18 @@
 """Validate container resource profiles against live workload owners."""
 
+from __future__ import annotations
+
 import argparse
 import copy
 import json
 import os
 import subprocess
 import sys
+from typing import TYPE_CHECKING, cast
 
 from reconcile_pods import (
+    CONTAINER_KINDS,
+    RESOURCE_MODES,
     Client,
     load_profiles,
     matching_profile,
@@ -16,15 +21,18 @@ from reconcile_pods import (
     quantity,
 )
 
+if TYPE_CHECKING:
+    from reconcile_pods import Container, OwnerReference, Pod, PodSpec, Profile
+
 RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
 
 
-def check(namespace, kubectl, kubeconfig, profile, owner_name):
+def check(namespace: str, kubectl: str, kubeconfig: str, profile: Profile, owner_name: str) -> None:
     """Document the check operation."""
     command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
     selector = {"resource-policy.socrat.io/probe": "preserved"}
     selector.update(dict.fromkeys(profile.get("nodeSelector", {}), "previous"))
-    containers = []
+    containers: list[Container] = []
     for name in profile["containers"]:
         containers.append(
             {
@@ -42,7 +50,12 @@ def check(namespace, kubectl, kubeconfig, profile, owner_name):
             }
         )
     containers.append({"name": "unprofiled", "image": "registry.k8s.io/pause:3.10"})
-    for container_type in ("containers", "initContainers"):
+    for container_type in CONTAINER_KINDS:
+        spec: PodSpec = {
+            "restartPolicy": "Never",
+            "nodeSelector": selector,
+            "containers": copy.deepcopy(containers),
+        }
         pod = {
             "apiVersion": "v1",
             "kind": "Pod",
@@ -59,18 +72,14 @@ def check(namespace, kubectl, kubeconfig, profile, owner_name):
                     }
                 ],
             },
-            "spec": {
-                "restartPolicy": "Never",
-                "nodeSelector": selector,
-                "containers": copy.deepcopy(containers),
-            },
+            "spec": spec,
         }
         if container_type == "initContainers":
-            del pod["spec"]["nodeSelector"]
-            pod["spec"]["containers"] = [
+            del spec["nodeSelector"]
+            spec["containers"] = [
                 {"name": "main-unprofiled", "image": "registry.k8s.io/pause:3.10"}
             ]
-            pod["spec"]["initContainers"] = copy.deepcopy(containers)
+            spec["initContainers"] = copy.deepcopy(containers)
         result = subprocess.run(
             command + ["create", "--dry-run=server", "-o", "json", "-f", "-"],
             input=json.dumps(pod),
@@ -79,10 +88,8 @@ def check(namespace, kubectl, kubeconfig, profile, owner_name):
             check=True,
             timeout=40,
         )
-        returned = json.loads(result.stdout)
-        expected_selector = dict(
-            pod["spec"].get("nodeSelector", {}), **profile.get("nodeSelector", {})
-        )
+        returned = cast("Pod", json.loads(result.stdout))
+        expected_selector = dict(spec.get("nodeSelector", {}), **profile.get("nodeSelector", {}))
         assert returned["spec"].get("nodeSelector", {}) == expected_selector, returned["spec"].get(
             "nodeSelector"
         )
@@ -97,7 +104,7 @@ def check(namespace, kubectl, kubeconfig, profile, owner_name):
                 assert "cpu" not in actual.get("limits", {}), actual
                 continue
             expected = profile["containers"][container["name"]]
-            for mode in ("requests", "limits"):
+            for mode in RESOURCE_MODES:
                 for key, value in expected[mode].items():
                     assert quantity(actual[mode][key]) == quantity(value), (
                         container["name"],
@@ -113,7 +120,7 @@ def check(namespace, kubectl, kubeconfig, profile, owner_name):
     print("No workload pods created.")
 
 
-def main():
+def main() -> None:
     """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--kubectl", default="kubectl")
@@ -128,7 +135,7 @@ def main():
     for pod in pods:
         profile = matching_profile(pod, profiles)
         if profile is not None:
-            examples[id(profile)] = owner(pod)["name"]
+            examples[id(profile)] = cast("OwnerReference", owner(pod))["name"]
     for profile in profiles:
         if id(profile) not in examples:
             raise ValueError("Profile has no live owner for dry-run verification: " + str(profile))

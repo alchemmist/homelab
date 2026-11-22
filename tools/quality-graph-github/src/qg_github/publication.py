@@ -25,7 +25,7 @@ from qg_github.dashboard import (
     render_dashboard,
 )
 from qg_github.declarations import read_pr_results
-from qg_github.github import GITHUB_PAGE_SIZE, GitHubPort
+from qg_github.github import GITHUB_PAGE_SIZE, GitHubError, GitHubPort
 from qg_github.labels import parse_label_state, reconcile_labels
 from qg_github.presentation import pr_presentation_graph
 from quality_graph_core.graph import Graph
@@ -114,7 +114,10 @@ def publish_workflow_run(
         return PublicationOutcome(published=False)
     if not _is_latest_run(port, event, number):
         return PublicationOutcome(published=False)
-    graph = Graph.from_yaml(_repository_file(port, "qg.yaml", pull.base_sha))
+    graph = Graph.from_yaml(
+        _repository_file(port, "qg.yaml", pull.base_sha),
+        lambda path: _repository_file(port, path, pull.base_sha),
+    )
     return _publish_completed_workflow_run(port, event, number, pull, graph)
 
 
@@ -184,7 +187,10 @@ def watch_workflow_run(
         return PublicationOutcome(published=False)
     if not _is_latest_run(port, event, number):
         return PublicationOutcome(published=False)
-    graph = Graph.from_yaml(_repository_file(port, "qg.yaml", pull.base_sha))
+    graph = Graph.from_yaml(
+        _repository_file(port, "qg.yaml", pull.base_sha),
+        lambda path: _repository_file(port, path, pull.base_sha),
+    )
     projected = pr_presentation_graph(graph)
     if projected is None:
         return PublicationOutcome(published=False)
@@ -272,7 +278,9 @@ def _workflow_jobs(port: GitHubPort, run_id: int) -> tuple[JsonValue, ...]:
 def _optional_workflow_jobs(port: GitHubPort, run_id: int) -> tuple[JsonValue, ...]:
     try:
         return _workflow_jobs(port, run_id)
-    except (RuntimeError, TypeError):
+    except (RuntimeError, TypeError) as error:
+        if isinstance(error, GitHubError) and error.throttled:
+            raise
         return ()
 
 
@@ -490,7 +498,10 @@ def reconcile_publication(
     existing = _existing_check(port, run.head_sha, f"quality-graph:{run.id}:{run.attempt}")
     if existing and existing.get("status") == "completed":
         return
-    graph = Graph.from_yaml(_repository_file(port, "qg.yaml", pull.base_sha))
+    graph = Graph.from_yaml(
+        _repository_file(port, "qg.yaml", pull.base_sha),
+        lambda path: _repository_file(port, path, pull.base_sha),
+    )
     projected = pr_presentation_graph(graph)
     if projected is None:
         return
