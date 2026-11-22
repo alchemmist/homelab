@@ -2,7 +2,9 @@
 """Render the alchemmist.xyz zone from static records and ingress health."""
 
 import argparse
+import http.client
 import socket
+import ssl
 from pathlib import Path
 
 HOME = "109.173.40.247"
@@ -83,7 +85,26 @@ def healthy_addresses(home_up, vps_up):
     return chosen
 
 
-def render(serial, home_up, vps_up):
+def monori_addresses(home_ok, vps_ok):
+    """Prefer HOME; keep both last-resort addresses when neither path is verified."""
+    return [HOME] if home_ok else [VPS] if vps_ok else [HOME, VPS]
+
+
+def monori_https(address, timeout):
+    """Check the exact entrance without resolving the name through our own zone."""
+    host = "monori.alchemmist.xyz"
+    try:
+        with socket.create_connection((address, 443), timeout=timeout) as raw:
+            with ssl.create_default_context().wrap_socket(raw, server_hostname=host) as tls:
+                tls.sendall(f"GET / HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n".encode())
+                with http.client.HTTPResponse(tls) as response:
+                    response.begin()
+                    return response.status == 200
+    except (OSError, http.client.HTTPException):
+        return False
+
+
+def render(serial, home_up, vps_up, *, monori_health=None):
     """Execute render."""
     addresses = healthy_addresses(home_up, vps_up)
     lines = [
@@ -101,7 +122,10 @@ def render(serial, home_up, vps_up):
     for value in TXT:
         lines.append('@ IN TXT "%s"' % value)
     for name in FAILOVER:
-        for address in addresses:
+        selected = addresses
+        if name == "monori":
+            selected = monori_addresses(*(monori_health or (home_up, vps_up)))
+        for address in selected:
             lines.append("%s IN A %s" % (name, address))
     for name in sorted(STATIC_A):
         for address in STATIC_A[name]:
@@ -149,7 +173,15 @@ def main():
         if args.assume_vps == "down"
         else probe(args.vps_target, args.port, args.timeout)
     )
-    text = render(args.serial, home_up, vps_up)
+    # Explicit assume flags keep offline acceptance deterministic.
+    def checked(mode, up, target):
+        return up and (mode != "probe" or monori_https(target, args.timeout))
+
+    monori_health = (
+        checked(args.assume_home, home_up, args.home_target),
+        checked(args.assume_vps, vps_up, args.vps_target),
+    )
+    text = render(args.serial, home_up, vps_up, monori_health=monori_health)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     previous = args.output.read_text() if args.output.exists() else ""
     if previous != text:

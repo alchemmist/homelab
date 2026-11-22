@@ -98,12 +98,17 @@ def test_rustfs_names_additive_without_changes_to_existing_records() -> None:
             "venice.socrat IN A ",
             "password.socrat IN A ",
         )
+        # Monori alone has a separately tested primary/standby publication policy.
+        historical = prior["render"](123, home, vps).splitlines()
+        assert [x for x in new if x.startswith("monori IN A ")] == [
+            "monori IN A " + ip for ip in zone.monori_addresses(home, vps)
+        ]
         assert [
             line
             for line in new
-            if not line.startswith(names)
+            if not line.startswith((*names, "monori IN A "))
             and line not in ("@ IN NS ns3.alchemmist.xyz.", "ns3 IN A 91.189.82.238")
-        ] == prior["render"](123, home, vps).splitlines()
+        ] == [x for x in historical if not x.startswith("monori IN A ")]
         for name in ("rustfs.socrat", "spi-evidence.socrat"):
             for address in zone.healthy_addresses(home, vps):
                 assert new.count(f"{name} IN A {address}") == 1
@@ -134,3 +139,11 @@ def test_vpn_has_only_moscow_even_when_original_entrances_fail() -> None:
         ]
         assert "ns1 IN A 109.173.40.247" in lines
         assert "ns2 IN A 109.120.141.60" in lines
+
+
+@pytest.mark.parametrize("home,vps,ips", [(True, True, [zone.HOME]), (True, False, [zone.HOME]),
+    (False, True, [zone.VPS]), (False, False, [zone.HOME, zone.VPS])])
+def test_monori_https_selection_is_scoped(home, vps, ips):
+    lines = zone.render(123, True, True, monori_health=(home, vps)).splitlines()
+    assert [x for x in lines if x.startswith("monori IN A ")] == ["monori IN A " + ip for ip in ips]
+    assert [x for x in lines if x.startswith("lms IN A ")] == ["lms IN A " + ip for ip in (zone.HOME, zone.VPS)]
