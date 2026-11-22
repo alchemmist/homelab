@@ -195,7 +195,7 @@ def transfer(port, state, phase):
         "%{http_code} %{size_download}",
         "https://speed.cloudflare.com/__down?bytes=65536",
     ]
-    result = subprocess.run(args, capture_output=True, text=True, env=env, timeout=30)
+    result = subprocess.run(args, check=False, capture_output=True, text=True, env=env, timeout=30)
     h.save(
         state / (phase + "-curl-private.json"),
         {"returncode": result.returncode, "stdout": result.stdout, "stderr": result.stderr},

@@ -12,10 +12,12 @@ import socket
 import ssl
 import time
 import urllib.parse
+from http import HTTPStatus
 
 HOST = "auth.socrat.alchemmist.xyz"
 PATH = "/application/o/rancher/.well-known/openid-configuration"
 ISSUER = "https://" + HOST + "/application/o/rancher/"
+MAX_DISCOVERY_BYTES = 65_536
 ENTRIES = {"home": "109.173.40.247", "vps": "109.120.141.60", "internal": "192.168.0.250"}
 
 
@@ -83,11 +85,11 @@ def attempt_probe(entry, result, timeout, phase):
         response = http.client.HTTPResponse(tls)
         response.begin()
         result["http_status"] = response.status
-        result["http_ok"] = response.status == 200
+        result["http_ok"] = response.status == HTTPStatus.OK
         phase["at"] = "body"
-        body = response.read(65537)
+        body = response.read(MAX_DISCOVERY_BYTES + 1)
         result["body_bytes"] = len(body)
-        if len(body) > 65536:
+        if len(body) > MAX_DISCOVERY_BYTES:
             result["failure_kind"] = "body_bound"
         elif not result["http_ok"]:
             result["failure_kind"] = "http_status"

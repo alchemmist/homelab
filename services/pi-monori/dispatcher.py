@@ -21,12 +21,14 @@ CARDS={"integer_value":("common/json_values.py",["server/tests/unit/test_db_reco
 
 def cmd(args: Sequence[str], data: str | None = None, timeout: int = 120, *, ok: bool = True):
     p=subprocess.run(args,input=data,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=timeout)
-    if ok and p.returncode:raise RuntimeError(f"{args[0]} exit {p.returncode}: "+p.stderr[-500:]+p.stdout[-300:])
+    if ok and p.returncode:
+        raise RuntimeError(f"{args[0]} exit {p.returncode}: "+p.stderr[-500:]+p.stdout[-300:])
     return p
 
 def k(role: str,args: Sequence[str],data: str | None=None,timeout: int=120,*,ok: bool=True):return cmd(["kubectl","-n","openhands","exec","-i","deploy/pi-monori-"+role,"-c","sandbox","--",*args],data,timeout,ok=ok)
 def sql(q: str,args: Sequence[object]=()):
-    with contextlib.closing(sqlite3.connect(ROOT/"queue.sqlite")) as d,d:return d.execute(q,args).fetchall()
+    with contextlib.closing(sqlite3.connect(ROOT/"queue.sqlite")) as d,d:
+        return d.execute(q,args).fetchall()
 def phase(name: str,st: str,note: str):
     sql("insert into events values(?,?,?,?)",(time.time(),name,st,note[:2300]))
     print(time.strftime("%FT%T%z"),name,st,note[:180],flush=True)
@@ -48,22 +50,29 @@ def mutfile(name: str,src: str,mid: str):
     return "".join(lines[:fn.lineno-1]+part+lines[fn.end_lineno:])
 
 def inspect_test(text: str,name: str):
-    if not 30<len(text)<15000:raise ValueError("missing or oversized new regression test")
+    if not 30<len(text)<15000:
+        raise ValueError("missing or oversized new regression test")
     tree=ast.parse(text)
     calls={"integer_value","_amount","Workbook","pytest.raises","str","isinstance","len","type","bool","int","float","dict","list","tuple","set","Cell","Decimal","range","date","pytest.mark.parametrize"}
     modules={"pytest","datetime","decimal","openpyxl","openpyxl.cell.cell","monori.common.json_values","monori.server.app.workbook.parser"}
     tests=[n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name.startswith("test_")]
-    if not tests or any(not isinstance(n,(ast.FunctionDef,ast.Import,ast.ImportFrom,ast.Expr)) for n in tree.body):raise ValueError("new file must be a small isolated regression")
+    if not tests or any(not isinstance(n,(ast.FunctionDef,ast.Import,ast.ImportFrom,ast.Expr)) for n in tree.body):
+        raise ValueError("new file must be a small isolated regression")
     for n in ast.walk(tree):
         if isinstance(n,(ast.Import,ast.ImportFrom)):
             ms=[n.module] if isinstance(n,ast.ImportFrom) else [a.name for a in n.names]
-            if any(m not in modules for m in ms) or any(a.asname or a.name.startswith("__") or a.name=="*" for a in n.names):raise ValueError("unexpected import in test")
-        if isinstance(n,(ast.Name,ast.Attribute)) and (getattr(n,"id","").startswith("__") or getattr(n,"attr","").startswith("__")):raise ValueError("dunder forbidden")
-        if isinstance(n,(ast.While,ast.AsyncFunctionDef,ast.ClassDef,ast.Lambda,ast.Global,ast.Nonlocal,ast.Delete,ast.Try)):raise ValueError("unsupported test construct")
+            if any(m not in modules for m in ms) or any(a.asname or a.name.startswith("__") or a.name=="*" for a in n.names):
+                raise ValueError("unexpected import in test")
+        if isinstance(n,(ast.Name,ast.Attribute)) and (getattr(n,"id","").startswith("__") or getattr(n,"attr","").startswith("__")):
+            raise ValueError("dunder forbidden")
+        if isinstance(n,(ast.While,ast.AsyncFunctionDef,ast.ClassDef,ast.Lambda,ast.Global,ast.Nonlocal,ast.Delete,ast.Try)):
+            raise ValueError("unsupported test construct")
         if isinstance(n,ast.Call):
             called=ast.unparse(n.func)
-            if called not in calls and not (isinstance(n.func,ast.Attribute) and n.func.attr in {"cell","search","group"}):raise ValueError("unsupported test call: "+called[:60])
-    if not any(isinstance(n,ast.Call) and ast.unparse(n.func)==name for n in ast.walk(tree)):raise ValueError("test must call the assigned function directly")
+            if called not in calls and not (isinstance(n.func,ast.Attribute) and n.func.attr in {"cell","search","group"}):
+                raise ValueError("unsupported test call: "+called[:60])
+    if not any(isinstance(n,ast.Call) and ast.unparse(n.func)==name for n in ast.walk(tree)):
+        raise ValueError("test must call the assigned function directly")
 
 PUBLISH="""import sys,json,hmac,pathlib,urllib.request as u
 x=json.load(sys.stdin);x['proof']=hmac.new(pathlib.Path('/proof/key').read_bytes(),json.dumps(x,sort_keys=True).encode(),'sha256').hexdigest();r=u.urlopen(u.Request('http://monori-publisher:8081/v1',data=json.dumps(x).encode(),headers={'Content-Type':'application/json'}),timeout=75);print(r.read().decode())"""
@@ -89,15 +98,18 @@ def process(name: str):
     assert not rc and re.search(r"\d+ passed",out),"baseline not green"
     for mid in CAT[name]:
         scanned=dict(sql("select mid,status from scans where card=?",(name,)))
-        if mid in scanned and scanned[mid]!="survived":continue
+        if mid in scanned and scanned[mid]!="survived":
+            continue
         try:
             write("judge",basepath,mutfile(name,src,mid))
             rc,out=suite(olds)
-        finally:restore()
+        finally:
+            restore()
         if rc==1 and re.search(r"\d+ failed",out):
             sql("insert or replace into scans values(?,?,?)",(name,mid,"killed"))
             continue
-        if rc or not re.search(r"\d+ passed",out):raise RuntimeError("unexpected old-suite verdict")
+        if rc or not re.search(r"\d+ passed",out):
+            raise RuntimeError("unexpected old-suite verdict")
         old_receipt=out.splitlines()[-1]
         sql("insert or replace into scans values(?,?,?)",(name,mid,"survived"))
         break
@@ -144,7 +156,8 @@ def process(name: str):
             feedback=str(err)[:900]
             phase(name,"reject-"+str(attempt),feedback)
             continue
-        finally:restore()
+        finally:
+            restore()
         receipt={"base":BASE,"card":name,"mutmut":mid,"old_suite":olds,"old_mutant":old_receipt,"new_mutant":red,"original":green,"file":dest,"sha256":hashlib.sha256(text.encode()).hexdigest()}
         (ROOT/(name+"-proof.json")).write_text(json.dumps(receipt,indent=2))
         phase(name,"publishing",mid+" signed proof; on lost ack reconcile manually")
@@ -164,8 +177,11 @@ def main():
     sql("create table if not exists scans(card text,mid text,status text,primary key(card,mid))")
     for name in CARDS:
         last=sql("select state from events where card=? order by rowid desc limit 1",(name,))
-        if last and last[0][0] in ("blocked","published","exhausted"):continue
-        if last and last[0][0]=="publishing":raise RuntimeError("Ambiguous prior write: reconcile GitHub before resuming")
+        if last and last[0][0] in ("blocked","published","exhausted"):
+            continue
+        if last and last[0][0]=="publishing":
+            raise RuntimeError("Ambiguous prior write: reconcile GitHub before resuming")
         process(name)
     print("Two-card pilot finished; no automatic admission of unverified families",flush=True)
-if __name__=="__main__":main()
+if __name__=="__main__":
+    main()

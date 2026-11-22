@@ -91,7 +91,9 @@ def _run_restore_pod(service: str, dump: bytes, blobs: int) -> None:
 
     def run(argv, data=None) -> bytes:
         cmd = "env K3S_CONFIG_FILE=/dev/null " + shlex.join(k + argv)
-        result = subprocess.run(b.SSH + [cmd], input=data, capture_output=True, timeout=300)
+        result = subprocess.run(
+            [*b.SSH, cmd], input=data, capture_output=True, timeout=300, check=False
+        )
         if result.returncode:
             raise RuntimeError("Isolated restore operation failed (details suppressed)")
         out: bytes = result.stdout

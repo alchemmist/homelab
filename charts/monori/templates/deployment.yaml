@@ -84,7 +84,7 @@ spec:
             p=pathlib.Path('/app/data')
             assert all((p/k).stat().st_size for k in ('.auth_secret','.encryption_key'))
             with psycopg.connect(os.environ['MONORI_DATABASE_URL'],connect_timeout=6) as c:
-                assert c.execute("SELECT version_num FROM alembic_version").fetchall()==[('0021',)]
+                assert c.execute("SELECT version_num FROM alembic_version").fetchall()==[('0022',)]
                 assert c.execute('SELECT EXISTS(SELECT FROM users), EXISTS(SELECT FROM accounts)').fetchone()==(True,True)
             with psycopg.connect(os.environ['MONORI_CONSOLE_DATABASE_URL'],connect_timeout=6) as c:
                 assert c.execute("SELECT current_user,has_schema_privilege('public','CREATE')").fetchone()==('monori_console',False)

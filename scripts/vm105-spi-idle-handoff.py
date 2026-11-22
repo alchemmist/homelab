@@ -65,12 +65,16 @@ def patch_service(*, paused: bool) -> None:
 
 def idle_state() -> dict[str, object]:
     """Read the app-contract idle counters inside the running SPI container."""
-    code = """import sqlite3,os,time,json
-c=sqlite3.connect('file:'+os.environ.get('SPI_DATABASE','/data/spi.sqlite')+'?mode=ro',uri=True);c.execute('pragma query_only=on')
-a=c.execute(\"select count(*)from jobs where state in ('queued','retry','processing')\").fetchone()[0]
-b=c.execute(\"select count(*)from workflow_wait_owner where phase in ('ready','waiting','running')\").fetchone()[0]
-d=c.execute('select count(*)from spi_links where lease>?',(time.time(),)).fetchone()[0]
-print(json.dumps({'activeOrQueuedJobs':a,'liveOwners':b,'liveLinkLeases':d}))
+    code = """import json,os,psycopg
+with psycopg.connect(os.environ['SPI_POSTGRES_URL'],connect_timeout=5) as db:
+    db.execute('SET TRANSACTION READ ONLY')
+    name,jobs,owners,links,budgets=db.execute(\"\"\"SELECT current_database(),
+      (SELECT count(*) FROM public.jobs WHERE state IN ('queued','retry','processing')),
+      (SELECT count(*) FROM public.workflow_wait_owner WHERE phase IN ('ready','waiting','running')),
+      (SELECT count(*) FROM public.spi_links WHERE lease>extract(epoch FROM now())),
+      (SELECT count(*) FROM public.llm_admission WHERE active=1 AND expires>extract(epoch FROM now()))\"\"\").fetchone()
+    if name!='spi_triage': raise RuntimeError('Unexpected database')
+    print(json.dumps(dict(activeOrQueuedJobs=jobs,liveOwners=owners,liveLinkLeases=links,liveAdmissions=budgets)))
 """
     return cast(
         "dict[str, object]",

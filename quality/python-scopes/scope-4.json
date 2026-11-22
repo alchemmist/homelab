@@ -1,0 +1,4 @@
+{
+  "include": ["scripts/check-*.py"],
+  "rules": ["PLR2004", "PLW1510", "PLW2901"]
+}

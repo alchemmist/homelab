@@ -17,15 +17,35 @@ import urllib.request
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import NotRequired, TypedDict, cast
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def ready_canary_pod(pods, nodes):
+class _Metadata(TypedDict):
+    name: str
+    creationTimestamp: NotRequired[str]
+    deletionTimestamp: NotRequired[str | None]
+
+
+class _Status(TypedDict, total=False):
+    conditions: list[dict[str, str]]
+    phase: str
+
+
+class _Node(TypedDict):
+    metadata: _Metadata
+    status: _Status
+
+
+class _Pod(_Node):
+    spec: dict[str, object]
+
+
+def ready_canary_pod(pods: dict[str, object], nodes: dict[str, object]) -> str:
     ready_nodes = {
         node["metadata"]["name"]
-        for node in nodes["items"]
+        for node in cast("list[_Node]", nodes["items"])
         if any(
             c["type"] == "Ready" and c["status"] == "True"
             for c in node["status"].get("conditions", [])
@@ -33,7 +53,7 @@ def ready_canary_pod(pods, nodes):
     }
     candidates = [
         pod
-        for pod in pods["items"]
+        for pod in cast("list[_Pod]", pods["items"])
         if not pod["metadata"].get("deletionTimestamp")
         and pod["spec"].get("nodeName") in ready_nodes
         and pod["status"].get("phase") == "Running"
@@ -49,8 +69,8 @@ def ready_canary_pod(pods, nodes):
     ]["name"]
 
 
-def kubepython(code):
-    def inspect(command) -> dict[str, object]:
+def kubepython(code: str) -> dict[str, object]:
+    def inspect(command: str) -> dict[str, object]:
         result = subprocess.run(
             ["ssh", "-o", "BatchMode=yes", "socrat-0", command],
             text=True,
@@ -77,24 +97,49 @@ def kubepython(code):
     result = subprocess.run(command, input=code, text=True, capture_output=True, timeout=60)
     if result.returncode:
         raise RuntimeError("LMS canary operation failed; sensitive output suppressed")
-    return json.loads(result.stdout)
+    return cast("dict[str, object]", json.loads(result.stdout))
 
 
-def get_json(url):
+def get_json(url: str) -> dict[str, object]:
     request = urllib.request.Request(url, headers={"Accept": "application/json"})
     with urllib.request.urlopen(request, timeout=30) as response:
-        return json.load(response)
+        return cast("dict[str, object]", json.load(response))
 
 
-def hex_id(value):
+def hex_id(value: str) -> str:
     if len(value) in (16, 32) and all(c in "0123456789abcdef" for c in value):
         return value
     return base64.b64decode(value).hex()
 
 
-def summarize_trace(document):
-    records = []
-    for batch in document.get("batches", document.get("resourceSpans", [])):
+class _Span(TypedDict):
+    name: str
+    spanId: str
+    parentSpanId: NotRequired[str]
+    startTimeUnixNano: str | int
+    endTimeUnixNano: str | int
+
+
+class _Scope(TypedDict, total=False):
+    spans: list[_Span]
+
+
+class _Batch(TypedDict, total=False):
+    scopeSpans: list[_Scope]
+    instrumentationLibrarySpans: list[_Scope]
+
+
+class _SpanRecord(TypedDict):
+    name: str
+    id: str
+    parent: str | None
+    durationMs: float
+
+
+def summarize_trace(document: dict[str, object]) -> list[_SpanRecord]:
+    records: list[_SpanRecord] = []
+    batches = document.get("batches", document.get("resourceSpans", []))
+    for batch in cast("list[_Batch]", batches):
         for scope in batch.get("scopeSpans", batch.get("instrumentationLibrarySpans", [])):
             for span in scope.get("spans", []):
                 records.append(
@@ -142,7 +187,7 @@ def _run_browser_canary(args: argparse.Namespace, cookie: str) -> tuple[_Browser
     return observation, trace_id
 
 
-def _await_trace(grafana_url: object, trace_id: str) -> object:
+def _await_trace(grafana_url: object, trace_id: str) -> dict[str, object]:
     """Poll production Tempo until the browser canary trace is visible."""
     trace = None
     # Existing tail sampler waits 30 seconds; backend visibility is eventual.
@@ -163,7 +208,7 @@ def _await_trace(grafana_url: object, trace_id: str) -> object:
 
 
 def _verify_waterfall(
-    records: list[dict[str, object]], observation: _BrowserObservation
+    records: list[_SpanRecord], observation: _BrowserObservation
 ) -> tuple[set[str], list[str]]:
     """Verify the chain of parent spans and name the intermediate proxies."""
     page = next(s for s in records if s["name"] == "browser.page")
@@ -180,13 +225,17 @@ def _verify_waterfall(
         seen.add(api["id"])
         api = by_id[api["parent"]]
         if api["name"] != "browser.api":
-            proxy_names.append(cast("str", api["name"]))
+            proxy_names.append(api["name"])
     if api["parent"] != page["id"]:
         raise ValueError("Browser API span is not a child of the page")
-    names = {cast("str", s["name"]) for s in records}
+    names = {s["name"] for s in records}
     if not {"content.read_render", "db.connect", "db.transaction"} <= names:
         raise ValueError("Real backend operation spans missing")
     return names, proxy_names
+
+
+class _LokiStream(TypedDict):
+    values: list[object]
 
 
 def _verify_loki_correlation(grafana_url: object, trace_id: str) -> int:
@@ -197,7 +246,9 @@ def _verify_loki_correlation(grafana_url: object, trace_id: str) -> int:
         + "/api/datasources/proxy/uid/loki/loki/api/v1/query_range?"
         + urllib.parse.urlencode({"query": query, "limit": 20, "since": "15m"})
     )
-    count = sum(len(stream["values"]) for stream in logs["data"]["result"])
+    data = cast("dict[str, object]", logs["data"])
+    streams = cast("list[_LokiStream]", data["result"])
+    count = sum(len(stream["values"]) for stream in streams)
     if count < 2:
         raise ValueError("Correlated real LMS Loki log lines missing")
     return count
@@ -208,11 +259,12 @@ def _verify_dashboard(
 ) -> tuple[str, object, bool]:
     """Verify the live dashboard in a browser and the Loki-to-Tempo link."""
     dashboard = get_json(args.grafana_url + "/api/dashboards/uid/lms-performance")
-    if dashboard["dashboard"]["uid"] != "lms-performance":
+    model = cast("dict[str, object]", dashboard["dashboard"])
+    if model["uid"] != "lms-performance":
         raise ValueError("Dashboard not provisioned")
-    dashboard_url = cast(
-        "str", args.grafana_url + dashboard["meta"]["url"] + "?var-trace_id=" + trace_id
-    )
+    meta = cast("dict[str, object]", dashboard["meta"])
+    grafana_url: str = args.grafana_url
+    dashboard_url = grafana_url + cast("str", meta["url"]) + "?var-trace_id=" + trace_id
     ui_env = {
         **os.environ,
         "LMS_CHECKOUT": str(args.lms_checkout.resolve()),
@@ -234,7 +286,8 @@ def _verify_dashboard(
     # Grafana may omit jsonData for an incompletely provisioned datasource;
     # treat that as no derived fields rather than turning verification into a
     # KeyError unrelated to the trace-link assertion.
-    derived = loki.get("jsonData", {}).get("derivedFields", [])
+    json_data = cast("dict[str, object]", loki.get("jsonData", {}))
+    derived = cast("list[dict[str, object]]", json_data.get("derivedFields", []))
     link_verified = any(
         field.get("name") == "TraceID"
         and field.get("datasourceUid") == "tempo"
@@ -246,7 +299,7 @@ def _verify_dashboard(
     return dashboard_url, ui_proof, link_verified
 
 
-def run(args):
+def run(args: argparse.Namespace) -> None:
     if not args.create_canary_session:
         raise ValueError(
             "Explicit --create-canary-session required; temporary privileged test identity will be deleted"
@@ -263,7 +316,7 @@ with store.connect() as db:
     db.execute('UPDATE sessions SET expires_at=%s WHERE token_hash=%s', (int(time.time())+900, digest(cookie)))
 print(json.dumps(dict(cookie=cookie)))
 """)
-        cookie = result["cookie"]
+        cookie = cast("str", result["cookie"])
         observation, trace_id = _run_browser_canary(args, cookie)
         trace = _await_trace(args.grafana_url, trace_id)
         records = summarize_trace(trace)
