@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "6914bfd1f25edb9cdac24f47dcd5d1ca1b622d5ef2abf81e41b3e5c4c46276b5",
+  "graphDigest": "38e3365d6b2a64a54a390ce55faa797ada636df8bf6c5460dafbe7250089a89f",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -88,10 +88,10 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\ngit ls-files --error-unmatch -z -- ':(top,glob)scripts/**/*.py' |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \\\n    --ignore-noqa --output-format concise --"
+        "run": "set -euo pipefail\nuv run python -m scripts.quality.quote_inputs |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \\\n    --ignore-noqa --output-format concise --"
       },
       "timeoutMinutes": 5,
-      "title": "Python script quotes (Q000)"
+      "title": "Python script and test quotes (Q000)"
     },
     {
       "env": {},
