@@ -249,7 +249,13 @@ class StatefulBoundaries(unittest.TestCase):
                     # The placement migration and subsequent approved changes are
                     # separate contracts. Compare *all* current documents first,
                     # without injecting historical values into the current chart.
-                    self.assertEqual(current, historical(CUTOVERS[chart]))
+                    expected = historical(CUTOVERS[chart])
+                    if chart == "charts/litellm-infra":
+                        # fe3903c2 retired exactly the dormant DB controller and
+                        # Service; compare the retained PVC and every other byte.
+                        expected.pop(("Deployment", "litellm-postgres"))
+                        expected.pop(("Service", "litellm-postgres"))
+                    self.assertEqual(current, expected)
                     after = historical(HANDOFF)
                 self.assertEqual(before.keys(), after.keys())
                 for key, old in before.items():
