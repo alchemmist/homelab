@@ -72,7 +72,7 @@ continueQaChat: ''
 # Owner explicitly requested no iteration-count stop for main agents, task workers or goals.
 unlimitedIterations: true
 
-replicaCount: 1
+replicaCount: 0
 automationPostgresAccess: true
 coldBackup20261119: true
 retireFailedBackup: true
