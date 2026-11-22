@@ -83,7 +83,9 @@ def test_failed_lookup_does_not_claim_an_update() -> None:
 
 def test_catalog_lists_open_webui() -> None:
     """Require the Open WebUI catalog pin recorded in the chart values."""
-    catalog = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())["updateWatch"]
+    catalog = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())[
+        "updateWatch"
+    ]
     [target] = [target for target in catalog["targets"] if target["id"] == "open-webui"]
     assert target["github"] == "open-webui/open-webui"
     assert target["current"] == "0.12.3"
@@ -176,3 +178,18 @@ def test_searxng_uses_only_versioned_image_tags():
         with patch("urllib.request.urlopen", return_value=io.BytesIO(body)):
             sample = watch.evaluate([target], None, 1)[0]
         assert (sample["success"], sample["available"]) == (expected, expected)
+
+
+def test_actionable_counts_exclude_suppressed_but_emit_real_zero() -> None:
+    render = load_module().actionable_metrics
+    alerts = [
+        {
+            "labels": {"severity": "warning", "alertname": "PodFailed"},
+            "status": {"state": state},
+        }
+        for state in ("suppressed", "active")
+    ]
+    assert b'severity="warning"} 0\n' in render(alerts[:1])
+    assert b'severity="warning"} 1\n' in render(alerts)
+    with pytest.raises(ValueError):
+        render({})
