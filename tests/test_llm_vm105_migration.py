@@ -191,15 +191,17 @@ class FourAppMigrationTests(unittest.TestCase):
     """Offline contracts for the four-app vm105 placement handoff."""
 
     def test_stateless_placement_does_not_move_umami_database(self) -> None:
-        """Move stateless apps while Umami's database stays on socrat-0."""
+        """Place the apps on VM105 without reviving the retired local DB or mounting its data."""
         for name in ["umami", "searxng"]:
             d = render(name)
             assert cast("DeploymentDoc", obj(d, "Deployment", name))["spec"]["template"]["spec"]["nodeSelector"] == {"kubernetes.io/hostname": "socrat-5"}
-        db = cast("DeploymentDoc", obj(render("umami"), "Deployment", "umami-db"))["spec"][
-            "template"
-        ]["spec"]
-        assert db["nodeSelector"] == {"kubernetes.io/hostname": "socrat-0"}
-        assert db["volumes"][0]["hostPath"]["path"] == "/srv/umami/postgres"
+        umami = render("umami")
+        for kind in ("Deployment", "Service"):
+            assert [
+                cast("Metadata", d["metadata"])["name"] for d in umami if d and d["kind"] == kind
+            ] == ["umami"]
+        app = cast("DeploymentDoc", obj(umami, "Deployment", "umami"))["spec"]["template"]["spec"]
+        assert app["volumes"] == [{"name": "pg-ca", "configMap": {"name": "pg-common-ca"}}]
 
     def test_dedicated_retained_vm_storage_and_original_claims(self) -> None:
         """Verify retained volumes and rebuilt claims for both UI apps."""
