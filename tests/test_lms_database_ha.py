@@ -87,8 +87,13 @@ def test_database_has_three_separate_failure_domains_and_required_sync_quorum() 
 
 
 def test_backups_are_encrypted_and_not_shared_plaintext_files() -> None:
-    docs = rendered("lms-database-ha", "--set", "backup.enabled=true")
+    docs = rendered("lms-database-ha", "-n", "lms", "--set", "backup.enabled=true")
     cron = next(d for d in docs if d["kind"] == "CronJob")
+    assert _mapping(cron["metadata"])["namespace"] == "lms"
+    backup_claim = next(
+        d for d in docs if d["kind"] == "PersistentVolumeClaim" and _name(d) == "lms-database-backups"
+    )
+    assert _mapping(backup_claim["metadata"])["namespace"] == "lms"
     assert _mapping_path(cron, "spec")["concurrencyPolicy"] == "Forbid"
     spec = _mapping_path(cron, "spec", "jobTemplate", "spec", "template", "spec")
     assert spec["automountServiceAccountToken"] is False
