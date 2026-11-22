@@ -471,9 +471,9 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         ("deploy-i001", "scripts/ tests/", "F401"),
     ):
         assert (
-            f"set -o pipefail; uv run python -m scripts.quality.python_inputs {roots} | "
+            f"bash -o pipefail -c 'uv run python -m scripts.quality.python_inputs {roots} | "
             f"xargs -0 -r uv run ruff check --config quality/ruff.toml --select {codes} "
-            "--ignore-noqa --output-format concise --"
+            "--ignore-noqa --output-format concise --'"
         ) in recipe(target)
     assert recipe("tests-medium") == "uv run python scripts/quality/tests.py medium --isolate-network"
     assert graph["manifests"]["profile"] == "quality-manifests"
