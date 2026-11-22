@@ -14,8 +14,10 @@ class Resume(unittest.TestCase):
   """Check resume eligibility only at the exact error-event boundary."""
   e={"kind": "ConversationErrorEvent","source": "environment","code": "MaxIterationsReached","id": "one"}
   assert m.eligible("error", e)
-  for k,v in [("kind","MessageEvent"),("source","agent"),("code","MaxBudgetReached"),("code","LLMError"),("id","")]:assert not m.eligible("error", {**e, k: v})
-  for st in ["finished","paused","running","waiting_for_confirmation","idle"]:assert not m.eligible(st, e)
+  for k,v in [("kind","MessageEvent"),("source","agent"),("code","MaxBudgetReached"),("code","LLMError"),("id","")]:
+   assert not m.eligible("error", {**e, k: v})
+  for st in ["finished","paused","running","waiting_for_confirmation","idle"]:
+   assert not m.eligible(st, e)
  def test_only_explicit_parallel_limit(self):
   """Check only explicit max-parallel rate limits are retryable."""
   e={"kind": "ConversationErrorEvent","source": "environment","detail": "RateLimitError Limit type: max_parallel_requests. Limit resets at: 2026-11-19 06:45:01 UTC"}
@@ -52,7 +54,8 @@ class Resume(unittest.TestCase):
   """Check worker resume only when the worker states the pause reason."""
   def ev(t):return {"kind": "MessageEvent","source": "agent","id": "p","llm_message": {"content":[{"text":t}]}}
   assert m.pending_worker("finished", [ev("I need to look at the tests.")], 0) == ("plan", "p")
-  for t in ["I need to get permission.", "Done: https://github.com/example", "[БЛОКЕР QA]","Tests passed."]:assert m.pending_worker("finished", [ev(t)], 0) is None
+  for t in ["I need to get permission.", "Done: https://github.com/example", "[БЛОКЕР QA]","Tests passed."]:
+   assert m.pending_worker("finished", [ev(t)], 0) is None
   assert m.pending_worker("paused", [ev("I need to read tests.")], 0) is None
  def test_capacity_restart_release_and_pause(self):
   """Check capacity restart releases held slots and stays paused."""
@@ -65,8 +68,10 @@ class Resume(unittest.TestCase):
     state={"execution_status":"error","agent":{"llm":{"model":"test"}}}
     ev={"id": cid,"kind": "ConversationErrorEvent","source": "environment","code": "LLMRateLimitError","detail": "RateLimitError max_parallel_requests=1 requests in flight"}
     def api(s="",method="GET"):
-     if s.startswith("/events"):return {"items":[ev]}
-     if not s:return state
+     if s.startswith("/events"):
+      return {"items":[ev]}
+     if not s:
+      return state
      assert not held
      state["execution_status"]="running"
      observations.append((cid,"tool result"))

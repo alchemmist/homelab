@@ -31,6 +31,10 @@ global:
 postgresql:
   enabled: false
 server:
+  # Base64 JSON: {"options":"-c jit=off"}. Avoid compiling the wide
+  # identification-stage source lookup on each web request. Web sessions only.
+  env:
+    - {name: AUTHENTIK_POSTGRESQL__CONN_OPTIONS, value: eyJvcHRpb25zIjoiLWMgaml0PW9mZiJ9}
   # Remove a slow backend from routing on the normal readiness budget. Avoid
   # recycling its warm workers during a transient shared latency spike.
   livenessProbe:

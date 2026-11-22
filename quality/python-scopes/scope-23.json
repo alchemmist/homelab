@@ -1,0 +1,1 @@
+{"include":["charts/open-webui/files/*.py"],"rules":["ANN001","ANN201","ANN202"]}

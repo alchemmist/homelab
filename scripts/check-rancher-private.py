@@ -108,6 +108,7 @@ def main():
     args = parser.parse_args()
     result = subprocess.run(
         ["ssh", "-o", "BatchMode=yes", args.ssh_host, "python3 -"],
+        check=False,
         input=REMOTE,
         text=True,
         timeout=240,
@@ -137,6 +138,7 @@ def main():
             command += [scheme + "://rancher.socrat.alchemmist.xyz/ping"]
             result = subprocess.run(
                 ["ssh", "-o", "BatchMode=yes", args.external_ssh_host, shlex.join(command)],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=45,

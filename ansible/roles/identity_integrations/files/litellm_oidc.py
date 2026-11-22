@@ -10,6 +10,7 @@ import socket
 import subprocess
 import urllib.request
 import uuid
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Protocol, cast
 
@@ -43,7 +44,8 @@ def identity_expression(owner_uid, owner_email, user_uuids=(), user_group=None):
         ' "litellm_user_email": '
         + repr(owner_email)
         + ' if owner else uid + "@sso.socrat.alchemmist.xyz",\n'
-        ' "litellm_user_role": "proxy_admin" if owner else ("internal_user" if member else "internal_user_viewer")}\n'
+        ' "litellm_user_role": "proxy_admin" if owner else '
+        '("internal_user" if member else "internal_user_viewer")}\n'
     )
 
 
@@ -112,7 +114,8 @@ from prisma import Prisma
 async def main():
  db=Prisma();await db.connect()
  try:
-  rows=await db.query_raw('SELECT user_id,user_role,user_email,password,sso_user_id FROM "LiteLLM_UserTable"')
+  rows=await db.query_raw('SELECT user_id,user_role,user_email,password,sso_user_id '
+                          'FROM "LiteLLM_UserTable"')
   print(json.dumps(rows,default=str))
  finally:await db.disconnect()
 asyncio.run(main())
@@ -132,7 +135,8 @@ asyncio.run(main())
     _require_access_group(access_group)
     if not args.apply:
         print(
-            "Preflight passed: native OIDC available, reviewed owner and owner-only local password boundary; no changes"
+            "Preflight passed: native OIDC available, reviewed owner "
+            "and owner-only local password boundary; no changes"
         )
         return
     private(args.root / "litellm-users-before-oidc.json", users)
@@ -140,7 +144,7 @@ asyncio.run(main())
     _sync_owner_binding(args.root / "litellm-owner-binding.json", private, owner)
     clients = _register_client(args.root / "oidc-clients.json", one, private)
     mapping = _scope_mapping(one, api, owner, owner_rows[0]["user_email"], granted)
-    mappings = _default_scope_pks(api) + [mapping["pk"]]
+    mappings = [*_default_scope_pks(api), mapping["pk"]]
     provider = _require_oauth2_provider(api, one, clients, mappings)
     manifest = json.loads((args.root / "service-icons/sources.json").read_text())
     app = _require_application(api, manifest, provider, one)
@@ -158,7 +162,7 @@ def _require_versions(api: "ApiCall", container: object) -> None:
         raise RuntimeError(msg)
 
 
-def _reviewed_rows(users: "Sequence[dict[str, object]]") -> list[dict[str, object]]:
+def _reviewed_rows(users: Sequence[dict[str, object]]) -> list[dict[str, object]]:
     """Return the reviewed proxy_admin rows, enforcing the capacity gate."""
     rows = [r for r in users if r["user_id"] == OWNER_ID and r["user_role"] == "proxy_admin"]
     if len(rows) != 1 or len(users) > 5:
@@ -521,7 +525,8 @@ def _reconcile_secret(
         }
         kubectl(["patch", "deployment", "litellm", "--type=strategic", "-p", json.dumps(patch)])
         print(
-            "Native OIDC configured; graceful rolling update started. Do not force-delete draining pods."
+            "Native OIDC configured; graceful rolling update started. "
+            "Do not force-delete draining pods."
         )
     else:
         print("Native OIDC configuration reconciled; no deployment restart requested")

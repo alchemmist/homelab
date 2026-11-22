@@ -12,20 +12,20 @@ from integrations import GitHub, Model
 class SnapshotConsistencyTests(unittest.TestCase):
     """Tests for snapshot row consistency."""
 
-    def rows(self, n=61):
+    def rows(self, n=61) -> list[dict[str, int | str]]:
         """Build n synthetic snapshot rows."""
         return [
             {"number": i, "title": "[SPI] fake", "updated_at": "first", "body": "", "comments": 0}
             for i in range(1, n + 1)
         ]
 
-    def transport(self, mutation, descending=False, n=61):
+    def transport(self, mutation, descending=False, n=61) -> tuple[GitHub, list[str]]:
         """Run the snapshot transport against mutated rows."""
         g = GitHub(Mock(), "unused")
         rows = self.rows(n)
         calls = []
 
-        def request(method, path, body=None):
+        def request(method, path, body=None) -> list[dict[str, int | str]]:
             import urllib.parse
 
             q = urllib.parse.parse_qs(urllib.parse.urlsplit(path).query)
@@ -40,7 +40,7 @@ class SnapshotConsistencyTests(unittest.TestCase):
         g.request = request
         return g, calls
 
-    def test_old_desc_insert_reproduces_actual_current_duplicate_with_valid_proof(self):
+    def test_old_desc_insert_reproduces_actual_current_duplicate_with_valid_proof(self) -> None:
         """Verify late inserts reproduce duplicates with a valid proof."""
         original = self.rows()
         m = Model(Mock(), "fake")
@@ -86,7 +86,7 @@ class SnapshotConsistencyTests(unittest.TestCase):
         m.call.assert_not_called()
         assert proof == saved[-1]
 
-    def test_insert_close_reopen_reorder_coherent_or_visible_instability(self):
+    def test_insert_close_reopen_reorder_coherent_or_visible_instability(self) -> None:
         """Verify inserts, closes and reorders stay coherent or visibly unstable."""
         for n in (61, 62):
             mutations = [
@@ -115,7 +115,7 @@ class SnapshotConsistencyTests(unittest.TestCase):
                         assert unstable_code == "GITHUB_SNAPSHOT_UNSTABLE"
                     assert len(calls) <= page_fetch_limit
 
-    def test_comment_window_update_defers_no_model(self):
+    def test_comment_window_update_defers_no_model(self) -> None:
         """Verify comment-window updates defer without model calls."""
         g = GitHub(Mock(), "unused")
         first = self.rows()
@@ -130,7 +130,7 @@ class SnapshotConsistencyTests(unittest.TestCase):
         snapshot_retries = 2
         assert g.issues.call_count == snapshot_retries
 
-    def test_bad_schema_finite(self):
+    def test_bad_schema_finite(self) -> None:
         """Verify bad schemas fail finitely."""
         g = GitHub(Mock(), "unused")
         g.request = Mock(return_value=[{"title": "[SPI] bad", "number": "secret"}])
@@ -146,7 +146,7 @@ class PatientBudgetTests(unittest.TestCase):
     setUp = f.EngineTests.setUp
     tearDown = f.EngineTests.tearDown
 
-    def test_engine_unstable_snapshot_zero_model(self):
+    def test_engine_unstable_snapshot_zero_model(self) -> None:
         """Verify unstable snapshots reach zero model calls."""
         key = self.store.enqueue(f.event())["job_id"]
         self.store.claim()
@@ -162,7 +162,7 @@ class PatientBudgetTests(unittest.TestCase):
                 == 0
             )
 
-    def test_snapshot_deferral_preserves_proof_and_failure_budget(self):
+    def test_snapshot_deferral_preserves_proof_and_failure_budget(self) -> None:
         """Verify snapshot deferrals preserve proofs and failure budgets."""
         key = self.store.enqueue(f.event())["job_id"]
         self.store.claim()

@@ -1,4 +1,5 @@
 """Existing-user app membership lifecycle. Default plan/check are GET-only.
+
 Never creates/deletes/merges humans, resets passwords/MFA or manages legacy groups.
 """
 
@@ -30,7 +31,7 @@ class Api(Protocol):
 
 
 def api_for(root: Path) -> Api:
-    """Api for."""
+    """Build an API client using credentials from the private deployment directory."""
     path = root / "credentials.json"
     if root.stat().st_mode & 0o077 or path.stat().st_mode & 0o077:
         message = "Deployment directory/credentials must be private"
@@ -217,25 +218,16 @@ def _user_operations(
     # Disable FIRST, before membership removals. Never enable on preserve.
     if state == "disabled" and user["is_active"]:
         operations.append({"action": "disable", "username": name, "pk": user["pk"]})
-    for group in sorted(managed - set(wanted)):
-        operations.append(
+    for action, members in (("remove", managed - set(wanted)), ("add", added)):
+        operations.extend(
             {
-                "action": "remove",
+                "action": action,
                 "username": name,
                 "pk": user["pk"],
                 "group": group,
                 "groupPk": groups[group]["pk"],
             }
-        )
-    for group in sorted(added):
-        operations.append(
-            {
-                "action": "add",
-                "username": name,
-                "pk": user["pk"],
-                "group": group,
-                "groupPk": groups[group]["pk"],
-            }
+            for group in sorted(members)
         )
     if state == "active" and not user["is_active"]:
         operations.append({"action": "enable", "username": name, "pk": user["pk"]})
@@ -315,7 +307,7 @@ def apply_plan(api: Api, plan: dict[str, object], approval: object) -> None:
 
 
 def main():
-    """Main."""
+    """Print the membership plan, report drift, or apply and verify the approved changes."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("action", choices=["plan", "check", "apply"], default="plan", nargs="?")

@@ -17,13 +17,13 @@ UID = "socrat-traffic-light"
 STATE = Path("/var/lib/homelab-grafana-tv-public")
 
 
-def need(ok, msg):
+def need(ok: bool, msg: str) -> None:
     """Raise an error when a required condition is not met."""
     if not ok:
         raise RuntimeError(msg)
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
@@ -57,7 +57,9 @@ def main():
             + base64.b64decode(secret["admin-password"])
         ).decode()
 
-        def api(method, path, data=None) -> tuple[int, dict[str, object]]:
+        def api(
+            method: str, path: str, data: dict[str, object] | None = None
+        ) -> tuple[int, dict[str, object]]:
             req = urllib.request.Request(
                 "http://" + ip + path,
                 method=method,

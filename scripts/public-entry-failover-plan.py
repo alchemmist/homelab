@@ -14,6 +14,11 @@ import json
 from pathlib import Path
 
 ENTRIES = ("home", "vps")
+MIN_STREAK_THRESHOLD = 2
+MIN_DISTINCT_VANTAGES = 2
+MAX_VANTAGE_ID_LENGTH = 64
+MAX_OBSERVATIONS_PER_ROUND = 32
+MAX_INPUT_BYTES = 65_536
 
 
 def initial(published):
@@ -32,7 +37,7 @@ def initial(published):
 
 def require_valid_policy(now, max_age, threshold) -> None:
     """Fail on malformed clocks or out-of-range freshness/streak policy."""
-    if type(now) is not int or threshold < 2 or max_age < 1:
+    if type(now) is not int or threshold < MIN_STREAK_THRESHOLD or max_age < 1:
         msg = "Invalid policy"
         raise ValueError(msg)
 
@@ -47,15 +52,16 @@ def require_valid_inputs(state, required) -> None:
         raise ValueError(msg)
     for entry in ENTRIES:
         if not isinstance(required[entry], list) or not all(
-            isinstance(v, str) and 0 < len(v) <= 64 for v in required[entry]
+            isinstance(v, str) and 0 < len(v) <= MAX_VANTAGE_ID_LENGTH for v in required[entry]
         ):
             msg = "Invalid vantage registry"
             raise ValueError(msg)
-        if len(set(required[entry])) < 2:
-            msg_0 = "Two distinct configured vantage IDs required; independence must be attested separately"
-            raise ValueError(
-                msg_0
+        if len(set(required[entry])) < MIN_DISTINCT_VANTAGES:
+            msg = (
+                "Two distinct configured vantage IDs required; "
+                "independence must be attested separately"
             )
+            raise ValueError(msg)
 
 
 def collect_rows(observations) -> dict:
@@ -147,7 +153,10 @@ def plan(state, batch, required, now, max_age=90, threshold=3):
     """Execute plan."""
     require_valid_policy(now, max_age, threshold)
     require_valid_inputs(state, required)
-    if type(batch.get("round")) is not int or len(batch.get("observations", [])) > 32:
+    if (
+        type(batch.get("round")) is not int
+        or len(batch.get("observations", [])) > MAX_OBSERVATIONS_PER_ROUND
+    ):
         msg = "Invalid bounded round"
         raise ValueError(msg)
     fingerprint = hashlib.sha256(
@@ -200,7 +209,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("input", type=Path)
     args = p.parse_args()
-    assert args.input.stat().st_size <= 65536
+    assert args.input.stat().st_size <= MAX_INPUT_BYTES
     data = json.loads(args.input.read_text())
     print(
         json.dumps(

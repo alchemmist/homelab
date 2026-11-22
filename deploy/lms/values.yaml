@@ -12,20 +12,21 @@ tracing:
   grafanaDashboard: true
 profiling:
   enabled: true
-lms-database-ha:
-  hibernate: true  # Historical experiment only; retain PVCs and stop legacy dumps.
 database:
   appSecretName: lms-pg-common
   ha:
     caSecretName: lms-pg-common-ca
     enabled: true
-    resources: true
+    resources: false
   legacyReplicas: 0
 replicaCount: 1
 persistence:
   mountInApp: false
 
-webNodes: [socrat-5]
+# The single web worker has no local PVC. Preserve the normal placement,
+# but let the replacement start on a healthy home node after eviction.
+webNodes: [socrat-5, socrat-0, socrat-1]
+preferredWebNode: socrat-5
 # Same issuer/certificate/SNI, narrow in-Pod route through the existing ingress.
 hostAliases:
   - ip: 10.43.218.222
