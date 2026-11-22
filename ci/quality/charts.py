@@ -315,6 +315,12 @@ RELEASE_PEERS = {
 }
 
 
+FOUNDATION_STUB = {
+    "id": "authentik-foundation",
+    "source": "deploy/authentik/foundation.yaml",
+}
+
+
 def authentik_accounts():
     """Use the same namespace-scoped account documents applied by the Ansible role."""
     path = ROOT / "deploy/authentik/foundation.yaml"
@@ -334,9 +340,130 @@ def authentik_accounts():
 ONE_SHOT_KINDS = frozenset({"Job", "CronJob"})
 ONE_SHOT_EXEMPT_CHECKS = frozenset({"no-liveness-probe", "no-readiness-probe"})
 
+# Checks whose kube-linter semantics cannot be satisfied from a single Helm
+# render because the referenced or bound object lives in another reviewed
+# source. Registry entries must pin the exact object and rule and carry an
+# in-repo evidence pointer; anything outside this set can never be registered.
+REGISTRABLE_CHECKS = frozenset(
+    {
+        "env-value-from",
+        "read-secret-from-env-var",
+        "dangling-service",
+        "dangling-networkpolicy",
+        "dangling-networkpolicypeer-podselector",
+        "dangling-servicemonitor",
+        "access-to-secrets",
+        "access-to-create-pods",
+        "cluster-admin-role-binding",
+        "host-network",
+        "host-pid",
+        "privileged-ports",
+        "writable-host-mount",
+        "sensitive-host-mounts",
+        "drop-net-raw-capability",
+    }
+)
 
-def kube_lint(target, resources, peers=()):
+
+ProviderRegistry = dict[tuple[str, str, str, str], dict[str, object]]
+Pin = tuple[tuple[str, str, str, str], str]
+
+
+class Pins:
+    """Consumption tracker for the pinned cross-source provider registry."""
+
+    def __init__(self, registry: ProviderRegistry) -> None:
+        """Start from a verified registry; track every accepted finding."""
+        self.registry = registry
+        self.consumed: set[Pin] = set()
+
+    def accepts(
+        self, identity: tuple[str, str, str, str], check: str
+    ) -> bool:
+        """Return whether an exact, verified registry pin covers this finding."""
+        entry = self.registry.get(identity)
+        if entry is None or check not in entry["checks"]:
+            return False
+        self.consumed.add((identity, check))
+        return True
+
+    def verify_scope(self, consumers: set[str]) -> None:
+        """Fail on any registry pin that is unknown, orphaned or partially stale."""
+        for key, entry in self.registry.items():
+            if entry["consumer"] not in consumers:
+                raise ValueError("Registry entry references unknown consumer: " + str(key))
+            for check in entry["checks"]:
+                if (key, check) not in self.consumed:
+                    raise ValueError(
+                        "Registry entry matched no " + check + " finding (stale pin): " + str(key)
+                    )
+
+
+def provider_registry() -> ProviderRegistry:
+    """Load and verify the pinned cross-source provider and contract registry."""
+    entries = {}
+    directory = ROOT / "ci/quality/providers"
+    paths = sorted(directory.glob("*.yaml"))
+    for path in paths:
+        data = yaml.safe_load(path.read_text())
+        if not isinstance(data, dict) or data.get("version") != 1:
+            raise ValueError("Invalid provider registry file: " + path.name)
+        for raw in data.get("entries", []):
+            entry = {
+                "consumer": raw.get("consumer"),
+                "kind": raw.get("kind"),
+                "namespace": raw.get("namespace"),
+                "name": raw.get("name"),
+                "checks": tuple(raw.get("checks", ())),
+                "evidence": raw.get("evidence"),
+            }
+            if any(not entry[key] for key in ("consumer", "kind", "namespace", "name", "evidence")):
+                raise ValueError("Incomplete provider registry entry in " + path.name)
+            if not entry["checks"] or set(entry["checks"]) - REGISTRABLE_CHECKS:
+                message = "Non-registrable check in " + path.name + ": " + str(entry["name"])
+                raise ValueError(message)
+            reference = local_path(str(entry["evidence"]))
+            if entry["name"] not in reference.read_text():
+                raise ValueError("Evidence does not name the object in " + path.name)
+            key = (entry["consumer"], entry["kind"], entry["namespace"], entry["name"])
+            if key in entries:
+                raise ValueError("Duplicate provider registry entry: " + str(key))
+            entries[key] = entry
+    return entries
+
+
+def release_peer_objects(target, selected, renders):
+    """Return the exact provider objects another release renders for a target."""
+    # These consumers reference objects rendered by a different Helm source.
+    # Only the actual provider object is context; it still has its own gate.
+    link = RELEASE_PEERS.get(target["id"])
+    if not link:
+        return []
+    peer_id, kind, name = link
+    peer = next((t for t in selected if t["id"] == peer_id), None)
+    if peer is None:
+        # A missing declared peer is a configuration error, not a silent skip.
+        message = f"Missing release peer target: {peer_id}"
+        raise ValueError(message)
+    if peer_id not in renders:
+        renders[peer_id] = render(peer)
+    return [
+        doc
+        for doc in renders[peer_id] or []
+        if doc["kind"] == kind and doc["metadata"]["name"] == name
+    ]
+
+
+def kube_lint(
+    target: RenderTarget,
+    resources: list[object],
+    peers: tuple[object, ...] = (),
+    pins: Pins | None = None,
+) -> list[object]:
     """Execute kube_lint."""
+    if pins is None:
+        pins = Pins(provider_registry())
+
     def key(doc):
         meta = doc["metadata"]
         return doc["kind"], meta.get("namespace", ""), meta["name"]
@@ -358,20 +485,30 @@ def kube_lint(target, resources, peers=()):
         allowed=(0, 1),
     )
     value = json.loads(data.stdout)
-    if value.get("Reports") is None and data.returncode == 0 and "Summary" in value:
-        value["Reports"] = []
-    if not isinstance(value.get("Reports"), list):
+    reports = value.get("Reports")
+    if reports is None and data.returncode == 0 and "Summary" in value:
+        reports = []
+    if not isinstance(reports, list):
         raise ValueError("Invalid kube-linter report")
-    if data.returncode and not value["Reports"]:
+    if data.returncode and not reports:
         raise RuntimeError("kube-linter failed without findings")
+    return catalogue_findings(target, reports, peer_keys, pins)
+
+
+def catalogue_findings(target, reports, peer_keys, pins):
+    """Post-process one kube-linter report into findings, with real semantics."""
     result = []
-    for item in value["Reports"]:
+    for item in reports:
         obj = item["Object"]["K8sObject"]
         kind = obj["GroupVersionKind"]["Kind"]
         if kind in ONE_SHOT_KINDS and item["Check"] in ONE_SHOT_EXEMPT_CHECKS:
             continue
         # Peers are checked and attributed in full by their own release.
-        if (kind, obj.get("Namespace", ""), obj["Name"]) in peer_keys:
+        peer = (kind, obj.get("Namespace", ""), obj["Name"])
+        if peer in peer_keys:
+            continue
+        # A pinned, evidence-verified out-of-band provider or node contract.
+        if pins.accepts((target["id"], *peer), item["Check"]):
             continue
         identity = json.dumps(obj, sort_keys=True)
         rule = "kube-linter-" + item["Check"]
@@ -501,6 +638,7 @@ def check(*, validate=True):
     findings = []
     inventory = []
     renders = {}
+    pins = Pins(provider_registry())
     for target in selected:
         source = target["source"]
         lint = command(
@@ -529,30 +667,12 @@ def check(*, validate=True):
             # Each real parent's complete cached render goes through the normal
             # schema, identity, policy and kube-linter checks under its own ID.
             continue
-        peers = []
-        # These consumers reference objects rendered by a different Helm source.
-        # Only the actual provider object is context; it still has its own gate.
-        link = RELEASE_PEERS.get(target["id"])
-        if link:
-            peer_id, kind, name = link
-            # A missing declared peer is a configuration error, not a silent skip;
-            # report the exact absent provider instead of an unhandled StopIteration.
-            message = f"Missing release peer target: {peer_id}"
-            peer = next(
-                (t for t in selected if t["id"] == peer_id), None
-            )
-            if peer is None:
-                raise ValueError(message)
-            if peer_id not in renders:
-                renders[peer_id] = render(peer)
-            peers = [doc for doc in renders[peer_id] or []
-                     if doc["kind"] == kind and doc["metadata"]["name"] == name]
-        if target["id"] == "authentik-0":
-            peers = authentik_accounts()
+        peers = release_peer_objects(target, selected, renders)
+        if target["id"] == "authentik-0" and authentik_accounts():
             # Do not discard the foundation accounts' own lint diagnostics.
-            foundation = {"id": "authentik-foundation", "source": "deploy/authentik/foundation.yaml"}
-            findings.extend(kube_lint(foundation, peers) if peers else [])
-        findings.extend(kube_lint(target, resources, peers))
+            findings.extend(kube_lint(FOUNDATION_STUB, authentik_accounts(), pins=pins))
+            peers = peers + authentik_accounts()
+        findings.extend(kube_lint(target, resources, peers, pins=pins))
         seen = set()
         for resource in resources:
             if (
@@ -580,6 +700,10 @@ def check(*, validate=True):
                 )
             )
             findings.extend(policy_findings(target=target, resource=resource, key=key))
+    # No orphaned entries: every registry pin must still match a real finding
+    # of its consumer target, or it is removed rather than left in place.
+    consumers = {target["id"] for target in selected} | {"authentik-foundation"}
+    pins.verify_scope(consumers)
     return findings, len(selected), sorted(set(inventory))
 
 

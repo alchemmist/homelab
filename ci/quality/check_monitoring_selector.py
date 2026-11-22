@@ -1,9 +1,11 @@
 """Offline negative controls for rendered-object lint semantics (requires manifest tools)."""
 
 from ci.quality.charts import (
+    Pins,
     apply_release_namespace,
     authentik_accounts,
     kube_lint,
+    provider_registry,
     render,
     targets,
 )
@@ -117,6 +119,97 @@ def defaults_namespace_policy() -> None:
     require(checked >= 8, "defaults targets were not inventoried; control is vacuous")
 
 
+def registry_semantics() -> None:
+    """Check registry pins cover verified providers, never hide real defects."""
+    namespace = "registry-semantics"
+    docs = []
+    for name in ("quality-check-evidence-provider", "quality-check-absent-provider"):
+        docs.append(
+            {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "metadata": {"name": name, "namespace": namespace},
+                "spec": {
+                    "template": {
+                        "metadata": {},
+                        "spec": {
+                            "containers": [
+                                {
+                                    "name": "work",
+                                    "image": "example.invalid/app@sha256:"
+                                    + "0" * 64,
+                                    "env": [
+                                        {
+                                            "name": "TOKEN",
+                                            "valueFrom": {
+                                                "secretKeyRef": {"name": name, "key": "token"}
+                                            },
+                                        }
+                                    ],
+                                }
+                            ]
+                        },
+                    }
+                },
+            }
+        )
+    stub = {"id": "registry-semantics", "source": "synthetic", "namespace": namespace}
+    identity = (
+        "registry-semantics",
+        "Deployment",
+        namespace,
+        "quality-check-evidence-provider",
+    )
+    registry = {
+        identity: {
+            "consumer": "registry-semantics",
+            "kind": "Deployment",
+            "namespace": namespace,
+            "name": "quality-check-evidence-provider",
+            "checks": ("env-value-from", "read-secret-from-env-var"),
+            "evidence": "ci/quality/providers/README.md",
+        }
+    }
+    findings = kube_lint(stub, docs, pins=Pins(registry))
+    rules = {str(item["ruleId"]) for item in findings}
+    require(
+        "kube-linter-env-value-from" in rules,
+        "environment reference to a truly absent secret stopped being reported",
+    )
+    covered = {
+        "kube-linter-env-value-from",
+        "kube-linter-read-secret-from-env-var",
+    }
+    require(
+        sum(
+            item["ruleId"] in covered
+            and "quality-check-evidence-provider" in item["message"]
+            for item in findings
+        )
+        == 0,
+        "registered provider still produced findings for covered rules",
+    )
+    # Loader validation: unconvinced evidence must fail the run.
+    from ci.quality import charts
+
+    path = charts.ROOT / "ci/quality/providers/_control-invalid.yaml"
+    path.write_text(
+        "version: 1\nentries:\n"
+        "- consumer: registry-semantics\n  kind: Secret\n"
+        "  namespace: nobody\n  name: never-checked\n"
+        "  checks: [env-value-from]\n"
+        "  evidence: ci/quality/providers/README.md\n"
+    )
+    try:
+        provider_registry()
+    except ValueError:
+        pass
+    else:
+        raise ValueError("registry loader accepted unconvinced evidence")
+    finally:
+        path.unlink()
+
+
 def one_shot_probe_semantics() -> None:
     """Check one-shot Jobs need no scaffolding probes, while real defects stay."""
     stub = target_stub()
@@ -152,6 +245,7 @@ def main() -> None:
     one_shot_probe_semantics()
     release_namespace_semantics()
     defaults_namespace_policy()
+    registry_semantics()
     releases = {t["id"]: t for t in targets()}
     target = releases["monitoring-k3s-0"]
     resources = render(target)
