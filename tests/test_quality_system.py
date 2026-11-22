@@ -439,6 +439,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         "ownership",
         "docker",
         "workflow",
+        "tests-fast",
         "shell",
         "rustfs-return-types",
     }
@@ -449,10 +450,10 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     assert "uv run python scripts/quality/strict_guard.py" in graph["graph"]["run"].splitlines()
     for node in first_layer:
         assert graph[node]["needs"] == ["graph"]
-    assert graph["rustfs-return-types"]["policy"]["blocking"] is True
+        assert graph[node]["policy"]["blocking"] is True
     local = json.loads((ROOT / "quality/local-checks.json").read_text())
     assert set(local) == {
-        "python", "yaml", "tests-fast",
+        "python", "yaml",
         "manifests", "ansible", "tests-medium", "tests-cluster", "dependencies",
     }
 
