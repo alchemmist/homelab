@@ -166,11 +166,15 @@ def check():
     local = json.loads((ROOT / "quality/local-checks.json").read_text())
     require(not (local.keys() & graph["nodes"].keys()), "Check declared twice")
     checks = {**local, **graph["nodes"]}
+    makefile = (ROOT / "Makefile").read_text()
+    for name, check in checks.items():
+        require(check["run"] == f"make {name}", f"Check must use its local target: {name}")
+        require(f"\n{name}:\n\t" in makefile, f"Missing explicit Make recipe: {name}")
     for suite in inventory["suites"]:
         node = checks["tests-" + suite]
         isolation = "" if suite == "cluster" else " --isolate-network"
         require(
-            node["run"] == f"uv run python scripts/quality/tests.py {suite}{isolation}",
+            f"tests-{suite}:\n\tuv run python scripts/quality/tests.py {suite}{isolation}\n" in makefile,
             "Test suite execution contract drift",
         )
         require(

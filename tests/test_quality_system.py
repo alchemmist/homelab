@@ -450,46 +450,36 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     assert graph["dependencies"]["policy"]["blocking"] is True
     assert graph["tests-medium"]["needs"] == ["ownership"]
     assert graph["tests-medium"]["policy"]["blocking"] is True
-    assert graph["tests-medium"]["run"] == "uv run python scripts/quality/tests.py medium --isolate-network"
+    makefile = (ROOT / "Makefile").read_text()
+    for name, node in graph.items():
+        assert node["run"] == f"make {name}"
+        assert f"\n{name}:\n\t" in makefile
+    def recipe(name: str) -> str:
+        return " ".join(makefile.split(f"\n{name}:\n", 1)[1].split("\n\n", 1)[0].replace("\\\n", " ").split())
+
     policy = graph["graph"]["policy"]
-    assert policy["blocking"] is True
-    assert policy["approvals"] == {"files": False, "findings": False, "node": False}
-    assert "uv run python scripts/quality/strict_guard.py" in graph["graph"]["run"].splitlines()
-    assert (
-        "uv run python -m scripts.quality.python_inputs scripts/quality/ |\n"
-        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select SIM300 \\\n"
-        "    --ignore-noqa --output-format concise --"
-    ) in graph["graph"]["run"]
-    for node in first_layer:
-        assert graph[node]["needs"] == ["graph"]
-        assert graph[node]["policy"]["blocking"] is True
-    scopes = graph["python-scopes"]
-    assert scopes["policy"] == policy
-    assert scopes["run"] == "uv run --locked python -m scripts.quality.python_scopes"
-    quotes = graph["scripts-q000"]
-    assert quotes["policy"] == policy
-    assert quotes["run"] == (
-        "set -euo pipefail\n"
-        "uv run python -m scripts.quality.python_inputs scripts/ tests/ |\n"
-        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \\\n"
-        "    --ignore-noqa --output-format concise --"
-    )
-    imports = graph["deploy-i001"]
-    assert imports["title"] == "Python import order (I001) and unused script/test imports (F401)"
-    assert imports["policy"] == policy
-    assert imports["run"] == (
-        "set -euo pipefail\n"
-        "uv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |\n"
-        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n"
-        "    --ignore-noqa --output-format concise --\n"
-        "uv run python -m scripts.quality.python_inputs scripts/ tests/ |\n"
-        "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select F401 \\\n"
-        "    --ignore-noqa --output-format concise --"
-    )
+    assert policy == {"blocking": True, "approvals": {"files": False, "findings": False, "node": False}}
+    for name in first_layer:
+        assert graph[name]["needs"] == ["graph"]
+        assert graph[name]["policy"] == policy
+    assert "uv run python scripts/quality/strict_guard.py" in recipe("graph")
+    assert recipe("python-scopes") == "uv run --locked python -m scripts.quality.python_scopes"
+    for target, roots, codes in (
+        ("graph", "scripts/quality/", "SIM300"),
+        ("scripts-q000", "scripts/ tests/", "Q000,D300"),
+        ("deploy-i001", "ansible/ deploy/ scripts/ tests/", "I001"),
+        ("deploy-i001", "scripts/ tests/", "F401"),
+    ):
+        assert (
+            f"set -o pipefail; uv run python -m scripts.quality.python_inputs {roots} | "
+            f"xargs -0 -r uv run ruff check --config quality/ruff.toml --select {codes} "
+            "--ignore-noqa --output-format concise --"
+        ) in recipe(target)
+    assert recipe("tests-medium") == "uv run python scripts/quality/tests.py medium --isolate-network"
     assert graph["ansible"]["needs"] == ["ownership"]
     assert graph["ansible"]["policy"]["blocking"] is True
     assert graph["yaml"]["profile"] == "default"
-    assert graph["yaml"]["run"] == "uv run python scripts/quality/lint.py yaml"
+    assert recipe("yaml") == "uv run python scripts/quality/lint.py yaml"
     assert graph["yaml"]["results"] == {"native": "reports/yaml.json"}
     assert graph["yaml"]["policy"] == {
         "blocking": True,
