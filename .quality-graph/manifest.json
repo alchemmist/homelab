@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "fcf2b396925168a7309aac971223d481f6594f4fc2a9e813a1ee6da6ebe38fc7",
+  "graphDigest": "6fba09f49c6f458977266325490077d2f67d40db4b78a6acbb9b7bfa42165f58",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -346,6 +346,34 @@
       },
       "timeoutMinutes": 5,
       "title": "RustFS gateway public return types"
+    },
+    {
+      "env": {},
+      "id": "dependencies",
+      "needs": [
+        "ownership"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-javascript",
+      "result": {
+        "adapter": "native",
+        "path": "reports/dependencies.json"
+      },
+      "step": {
+        "run": "set -euo pipefail\nuv run pytest -q tests/test_quality_dependency_coverage.py \\\n  tests/test_quality_p56_56_node_lock.py\nuv run python scripts/quality/lint.py dependencies\nuv run python scripts/quality/npm_smoke.py\n"
+      },
+      "timeoutMinutes": 5,
+      "title": "Dependency audit"
     },
     {
       "env": {},

@@ -101,7 +101,11 @@ def test_secret_reader_rejects_symlink_and_unsafe_mode(tmp_path) -> None:
 def test_package_lock_and_release_checksums_are_pinned() -> None:
     """Require pinned package versions and 64-character release checksums."""
     p = json.loads((ROOT / "tools/official-mcp/package.json").read_text())
-    assert p["dependencies"] == {"argocd-mcp": "0.9.0", "@umami/mcp": "0.2.0"}
+    assert p["dependencies"] == {
+        "@umami/mcp": "0.2.0",
+        "argocd-mcp": "file:argocd-mcp-0.9.0-homelab.tar",
+        "zod": "4.6.7",
+    }
     lock = json.loads((ROOT / "tools/official-mcp/package-lock.json").read_text())
     assert lock["packages"][""]["dependencies"] == p["dependencies"]
     assert all(
