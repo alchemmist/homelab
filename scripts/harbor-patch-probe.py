@@ -66,7 +66,10 @@ def main():
         status, headers, _, elapsed = request("PATCH", path, auth, layer)
         if status != 202:
             raise SystemExit(f"Upload PATCH: HTTP {status}; no retry")
-        path = upload_path(headers.get("Location"))
+        next_path = upload_path(headers.get("Location"))
+        if urlsplit(next_path).path != urlsplit(path).path:
+            raise ValueError("Registry changed the upload session ID")
+        path = next_path
         if headers.get("Range") != f"0-{len(layer)-1}":
             raise ValueError("Registry did not acknowledge the entire payload")
         print(json.dumps({"address": str(args.address), "bytes": len(layer), "patch_seconds": elapsed, "KiB_per_second": len(layer) / 1024 / elapsed}))
