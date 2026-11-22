@@ -19,6 +19,8 @@ envVars:
 environmentSecrets:
   - litellm-env
 extraEnvVars:
+  - name: COORDINATION_REDIS_URL
+    valueFrom: {secretKeyRef: {name: redis-common-litellm, key: url}}
   - name: VENICE_BRIDGE_API_KEY
     valueFrom:
       secretKeyRef:
@@ -99,7 +101,7 @@ image:
   pullPolicy: IfNotPresent
   repository: harbor.socrat.alchemmist.xyz/homelab/litellm
   tag:
-    a691e23abfac6dd0f2b69f9f5b4f714241f39ac4@sha256:21245d86b352d55f42404dfc7be5bcdb53028aa0be10077e9bb606c5e534e5f3
+    eb6e7f61e4fa0fa1425461e4e92145c8eab73bef@sha256:b39c5a8cbb7b36d656bfb5be83960473ae34e246ff952cec73e736d982121b6d
 imagePullSecrets:
   - name: litellm-harbor-pull
 ingress:
@@ -123,7 +125,7 @@ migrationJob:
   # Last migration succeeded and its Job was deleted; do not recreate it for placement.
   # Chart fails closed on image changes until normal upgrade migrations are reviewed.
   placementOnlyImage:
-    harbor.socrat.alchemmist.xyz/homelab/litellm:a691e23abfac6dd0f2b69f9f5b4f714241f39ac4@sha256:21245d86b352d55f42404dfc7be5bcdb53028aa0be10077e9bb606c5e534e5f3
+    harbor.socrat.alchemmist.xyz/homelab/litellm:eb6e7f61e4fa0fa1425461e4e92145c8eab73bef@sha256:b39c5a8cbb7b36d656bfb5be83960473ae34e246ff952cec73e736d982121b6d
   enabled: false
   hooks:
     argocd:
@@ -143,6 +145,7 @@ nodeSelector:
 numWorkers: 1
 proxy_config:
   general_settings:
+    coordination_redis: {namespace: litellm, url: os.environ/COORDINATION_REDIS_URL}
     cancel_on_disconnect: true
     disable_env_credential_login: true
     master_key: os.environ/LITELLM_MASTER_KEY
@@ -209,9 +212,12 @@ proxy_config:
 redis:
   enabled: false
 volumes:
+  - name: redis-common-ca
+    secret: {secretName: redis-common-litellm, items: [{key: ca.crt, path: ca.crt}]}
   - name: pg-common-ca
     secret: {secretName: pg-common-ca}
 volumeMounts:
+  - {name: redis-common-ca, mountPath: /etc/redis-common, readOnly: true}
   - {name: pg-common-ca, mountPath: /etc/pg-common, readOnly: true}
 replicaCount: 1
 resources:

@@ -138,7 +138,7 @@ class MigrationTests(unittest.TestCase):
             render("charts/litellm", broken, "litellm", "llm")
         assert v["envVars"]["DISABLE_SCHEMA_UPDATE"].lower() == "true"
         assert re.search(
-            r"^a691e23abfac6dd0f2b69f9f5b4f714241f39ac4@sha256:[a-f0-9]{64}$", v["image"]["tag"]
+            r"^eb6e7f61e4fa0fa1425461e4e92145c8eab73bef@sha256:[a-f0-9]{64}$", v["image"]["tag"]
         )
         assert v["masterkeySecretName"] == "litellm-env"
 
