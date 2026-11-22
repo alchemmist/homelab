@@ -493,7 +493,14 @@ def check(*, validate=True):
         link = RELEASE_PEERS.get(target["id"])
         if link:
             peer_id, kind, name = link
-            peer = next(t for t in selected if t["id"] == peer_id)
+            # A missing declared peer is a configuration error, not a silent skip;
+            # report the exact absent provider instead of an unhandled StopIteration.
+            message = f"Missing release peer target: {peer_id}"
+            peer = next(
+                (t for t in selected if t["id"] == peer_id), None
+            )
+            if peer is None:
+                raise ValueError(message)
             if peer_id not in renders:
                 renders[peer_id] = render(peer)
             peers = [doc for doc in renders[peer_id] or []
