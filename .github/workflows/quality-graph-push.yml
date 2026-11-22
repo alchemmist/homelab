@@ -22,9 +22,15 @@ jobs:
           persist-credentials: 'false'
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
-      - run: 'uv run qg validate
+      - run: 'set -euo pipefail
 
-          uv run python scripts/quality/contracts.py'
+          uv run qg validate
+
+          uv run python scripts/quality/contracts.py
+
+          uv run python scripts/quality/strict_guard.py
+
+          uv run pytest -q tests/test_quality_python_policy.py'
         name: Run Graph integrity
         id: quality-command
         continue-on-error: true
@@ -39,7 +45,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: fe99332feb32e3e6c44f6e94f77c55d04ba6a6e6d245bdba4abe1849b0ad177f
+          graph-digest: b8b9a9e3c7902ee9893425f5bc7d56478ea9093b05813a59ef67a84b784d0d8a
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -84,7 +90,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: fe99332feb32e3e6c44f6e94f77c55d04ba6a6e6d245bdba4abe1849b0ad177f
+          graph-digest: b8b9a9e3c7902ee9893425f5bc7d56478ea9093b05813a59ef67a84b784d0d8a
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -132,7 +138,7 @@ jobs:
           adapter: native
           report-path: reports/secrets.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: fe99332feb32e3e6c44f6e94f77c55d04ba6a6e6d245bdba4abe1849b0ad177f
+          graph-digest: b8b9a9e3c7902ee9893425f5bc7d56478ea9093b05813a59ef67a84b784d0d8a
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -182,7 +188,7 @@ jobs:
           adapter: native
           report-path: reports/javascript.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: fe99332feb32e3e6c44f6e94f77c55d04ba6a6e6d245bdba4abe1849b0ad177f
+          graph-digest: b8b9a9e3c7902ee9893425f5bc7d56478ea9093b05813a59ef67a84b784d0d8a
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -233,7 +239,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: fe99332feb32e3e6c44f6e94f77c55d04ba6a6e6d245bdba4abe1849b0ad177f
+          graph-digest: b8b9a9e3c7902ee9893425f5bc7d56478ea9093b05813a59ef67a84b784d0d8a
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -287,7 +293,7 @@ jobs:
           adapter: native
           report-path: reports/docker.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: fe99332feb32e3e6c44f6e94f77c55d04ba6a6e6d245bdba4abe1849b0ad177f
+          graph-digest: b8b9a9e3c7902ee9893425f5bc7d56478ea9093b05813a59ef67a84b784d0d8a
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -337,7 +343,7 @@ jobs:
           adapter: native
           report-path: reports/workflow.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: fe99332feb32e3e6c44f6e94f77c55d04ba6a6e6d245bdba4abe1849b0ad177f
+          graph-digest: b8b9a9e3c7902ee9893425f5bc7d56478ea9093b05813a59ef67a84b784d0d8a
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -388,7 +394,7 @@ jobs:
           adapter: native
           report-path: reports/shell.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: fe99332feb32e3e6c44f6e94f77c55d04ba6a6e6d245bdba4abe1849b0ad177f
+          graph-digest: b8b9a9e3c7902ee9893425f5bc7d56478ea9093b05813a59ef67a84b784d0d8a
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -435,7 +441,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: fe99332feb32e3e6c44f6e94f77c55d04ba6a6e6d245bdba4abe1849b0ad177f
+          graph-digest: b8b9a9e3c7902ee9893425f5bc7d56478ea9093b05813a59ef67a84b784d0d8a
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'

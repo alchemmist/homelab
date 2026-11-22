@@ -94,7 +94,7 @@ def marker(*parts: str) -> str:
 SUPPRESSION = re.compile(
     "|".join(
         [
-            r"#\s*" + marker("no", "qa") + r"\b",
+            r"(?i:#\s*(?:(?:ruff|flake8):\s*)?noqa\b|#\s*ruff:\s*disable\b)",
             r"#\s*" + marker("type:") + r"\s*" + marker("ignore") + r"\b",
             r"#\s*" + marker("pyright:") + r"\s*" + marker("ignore") + r"\b",
             r"#\s*" + marker("no", "sec") + r"\b",
@@ -218,9 +218,12 @@ def verify_ruff_policy(data: StrictPolicy) -> None:
         raise ValueError("Ruff exclude hides files")
     if ruff["lint"]["select"] != ["ALL"]:
         raise ValueError("Ruff must select ALL")
-    if ruff["lint"]["ignore"] != data["ruff"]["ignore"]:
+    if "extend-ignore" in ruff["lint"] or ruff["lint"]["ignore"] != data["ruff"]["ignore"]:
         raise ValueError("Ruff ignore list drifted from the strict policy")
-    if ruff["lint"]["per-file-ignores"] != data["ruff"]["perFileIgnores"]:
+    if (
+        "extend-per-file-ignores" in ruff["lint"]
+        or ruff["lint"]["per-file-ignores"] != data["ruff"]["perFileIgnores"]
+    ):
         raise ValueError("Ruff per-file ignores drifted")
 
 

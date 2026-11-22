@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "fe99332feb32e3e6c44f6e94f77c55d04ba6a6e6d245bdba4abe1849b0ad177f",
+  "graphDigest": "b8b9a9e3c7902ee9893425f5bc7d56478ea9093b05813a59ef67a84b784d0d8a",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -33,7 +33,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "uv run qg validate\nuv run python scripts/quality/contracts.py"
+        "run": "set -euo pipefail\nuv run qg validate\nuv run python scripts/quality/contracts.py\nuv run python scripts/quality/strict_guard.py\nuv run pytest -q tests/test_quality_python_policy.py"
       },
       "timeoutMinutes": 5,
       "title": "Graph integrity"
