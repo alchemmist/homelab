@@ -11,6 +11,8 @@ from typing import NotRequired, TypedDict
 import pytest
 import yaml
 
+from tests.public_entry_contract import assert_read_only_status_policy
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -162,26 +164,28 @@ def test_public_policies_keep_machine_auth_and_block_human_fallbacks() -> None:
         and "proxy_set_header Upgrade $http_upgrade" in gf
     )
     kuma = (ROOT / "charts/uptime-kuma/files/kuma-policy.conf").read_text()
-    assert "location ^~ /socket.io { return 404; }" in kuma
-    assert "location ^~ /api/push/ { proxy_pass http://kuma; }" in kuma
-    assert "limit_except GET HEAD { deny all; }" in kuma
-    assert "https://kuma.socrat.alchemmist.xyz$request_uri" in kuma
+    assert_read_only_status_policy(kuma)
     sync = (ROOT / "charts/syncthing/files/syncthing-policy.conf").read_text()
     assert "proxy_pass http://gui0/;" in sync and "auth_basic" not in sync
     assert "auth_request" not in sync
     assert "return 410" in sync and "syncthing-sync-1" not in sync
 
 
-def test_kuma_no_gitops_random_secret_by_default() -> None:
-    docs = [
+def render_status(*args: str) -> list[dict[str, object]]:
+    """Render the complete post-retirement status release, including Gatus."""
+    return [
         x
         for x in yaml.safe_load_all(
             subprocess.check_output(
-                ["helm", "template", "uptime-kuma", str(ROOT / "charts/uptime-kuma")], text=True
+                ["helm", "template", "uptime-kuma", str(ROOT / "charts/uptime-kuma"), *args], text=True
             )
         )
         if x
     ]
+
+
+def test_kuma_no_gitops_random_secret_by_default() -> None:
+    docs = render_status()
     assert not any(x["kind"] == "Secret" for x in docs)
     assert (
         next(x for x in docs if x["kind"] == "Ingress")["spec"]["rules"][0]["http"]["paths"][0][
@@ -189,10 +193,11 @@ def test_kuma_no_gitops_random_secret_by_default() -> None:
         ]["service"]["name"]
         == "public-web-kuma-proxy"
     )
-    assert len([x for x in docs if x["kind"] == "Deployment"]) == 3
-    assert any(
-        x["kind"] == "Deployment" and x["metadata"]["name"] == "public-web-kuma-proxy" for x in docs
-    )
+    deployments = [x for x in docs if x["kind"] == "Deployment"]
+    assert len(deployments) == 2
+    assert {x["metadata"]["name"]: x["spec"]["replicas"] for x in deployments} == {
+        "gatus": 1, "public-web-kuma-proxy": 1,
+    }
 
 
 def test_schema_recovery_never_resets_existing_passwords_or_restarts_database() -> None:
@@ -203,20 +208,12 @@ def test_schema_recovery_never_resets_existing_passwords_or_restarts_database() 
     assert "Foreign/partial service account; stop" in text and "uncertain.json" in text
 
 
-def test_fresh_bootstrap_rejects_mismatched_application_identity() -> None:
-    r = subprocess.run(
-        [
-            "helm",
-            "template",
-            "uptime-kuma",
-            str(ROOT / "charts/uptime-kuma"),
-            "--set",
-            "database.bootstrapSecret=true",
-        ],
-        text=True,
-        capture_output=True,
-    )
-    assert r.returncode != 0 and "Fresh DB bootstrap requires" in r.stderr
+def test_retired_bootstrap_cannot_provision_a_database_or_account() -> None:
+    # The retired chart inputs must have no effect, even if an old override
+    # requests a fresh account and a running MariaDB/Kuma writer.
+    assert render_status(
+        "--set", "database.bootstrapSecret=true,database.enabled=true,database.replicaCount=1,replicaCount=1",
+    ) == render_status()
 
 
 def test_dns_cleanup_only_owned_files_and_no_global_flush_or_vpn_commands() -> None:

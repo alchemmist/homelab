@@ -31,7 +31,7 @@ FLOWS = {
 }
 
 
-def require(ok, message) -> None:
+def require(message: str, *, ok: object) -> None:
     if not ok:
         raise RuntimeError(message)
 
@@ -81,10 +81,10 @@ class API:
     def call(self, method, path, value=None) -> "object | None":
         """Call the pinned API with strict path validation."""
         require(
-            not path.startswith("/") and "://" not in path,
             "Fixed native API path required",
+            ok=not path.startswith("/") and "://" not in path,
         )
-        require(method == "GET" or self.write, "Plan is read-only")
+        require("Plan is read-only", ok=method == "GET" or self.write)
         data = None if value is None else json.dumps(value).encode()
         req = urllib.request.Request(
             BASE + path,
@@ -143,7 +143,7 @@ class API:
                 "Malformed native pagination cursor",
                 ok=next_page is None or (type(next_page) is int and next_page in (0, page + 1)),
             )
-            result.extend(cast("list[dict[str, object]]", row_data["results"]))
+            result.extend(cast("list[dict[str, object]]", data["results"]))
             if not next_page:
                 return result
         raise RuntimeError("Bounded native pagination exceeded")
@@ -180,8 +180,8 @@ def inspect(
     app = one(api, "core/applications/", "slug", catalog["application"]["slug"])
     groups = {name: one(api, "core/groups/", "name", name) for name in catalog["groups"]}
     require(
-        all(groups[name] for name in catalog["groups"][:2]),
         "Legacy admission groups missing",
+        ok=all(groups[name] for name in catalog["groups"][:2]),
     )
     if groups["app-spi-triage-operator"]:
         group_valid(groups["app-spi-triage-operator"])

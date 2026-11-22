@@ -18,7 +18,8 @@ not just changed files. It does not cover all owned Python.
 Ownership runs six offline checks plus their regression suites; the Ansible
 entrypoint scan covers both `.yml` and `.yaml`.
 `manifests` runs the full offline chart check after `ownership`.
-The other five checks remain runnable by name; `make check` and its alias
+`tests-medium` runs the complete loopback-isolated integration suite after `ownership`.
+The other four checks remain runnable by name; `make check` and its alias
 `make check-all` attempt both active and local-only checks. Restore a
 check to `qg.yaml` and remove its local-only entry once it is verified green.
 
@@ -99,6 +100,8 @@ uv run python scripts/quality/lint.py yaml
 uv run python scripts/quality/tests.py fast
 uv run python scripts/quality/tests.py medium
 ```
+
+The medium suite needs full Git history for the pinned before/handoff and later owner-cutover renders (CI uses `fetch-depth: 0`). A shallow clone is not sufficient. Preload the [pinned nginx parser](../nginx-access-logging.md) before isolating the suite.
 
 Actual Linux jobs add `--isolate-network` to fast/medium. Install only required pinned binaries via `scripts/quality/install_tools.py` and parsing collections via `scripts/quality/install_collections.py`; do not substitute system versions silently. Use `.venv/bin:.quality-tools/bin` in scoped PATH and `KUBECONFIG=/dev/null` for offline checks. Cluster testing requires an explicitly reviewed disposable Docker/Kind environment; it is not implicitly run by these offline commands.
 

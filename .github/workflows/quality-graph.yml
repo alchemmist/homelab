@@ -43,7 +43,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b7a685814b72cde5788e34a10568909e0737e881dea1b0a3f3c9a6daf788cb9e
+          graph-digest: 06d81f74c38f559556ceb7cf3553891ebfdc0671720e6029d377bbc9cf55a2b1
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -88,7 +88,7 @@ jobs:
           adapter: native
           report-path: reports/yaml.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b7a685814b72cde5788e34a10568909e0737e881dea1b0a3f3c9a6daf788cb9e
+          graph-digest: 06d81f74c38f559556ceb7cf3553891ebfdc0671720e6029d377bbc9cf55a2b1
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -122,7 +122,7 @@ jobs:
       - run: uv sync --locked
       - run: |-
           set -euo pipefail
-          uv run python -m scripts.quality.quote_inputs |
+          uv run python -m scripts.quality.python_inputs scripts/ tests/ |
             xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \
               --ignore-noqa --output-format concise --
         name: Run Python script and test quotes (Q000)
@@ -139,7 +139,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b7a685814b72cde5788e34a10568909e0737e881dea1b0a3f3c9a6daf788cb9e
+          graph-digest: 06d81f74c38f559556ceb7cf3553891ebfdc0671720e6029d377bbc9cf55a2b1
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -152,6 +152,57 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Enforce Python script and test quotes (Q000) result
+        if: always()
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
+        run: exit "${EXIT_CODE:-2}"
+    needs:
+      - graph
+    timeout-minutes: 5
+  deploy-i001:
+    name: Owned deploy Python import order (I001)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: "false"
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - run: uv sync --locked
+      - run: |-
+          set -euo pipefail
+          uv run python -m scripts.quality.python_inputs deploy/ |
+            xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \
+              --ignore-noqa --output-format concise --
+        name: Run Owned deploy Python import order (I001)
+        id: quality-command
+        continue-on-error: true
+      - name: Collect Owned deploy Python import order (I001) result
+        id: quality-result
+        if: always()
+        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
+        with:
+          operation: collect
+          node-id: deploy-i001
+          title: Owned deploy Python import order (I001)
+          adapter: exit-code
+          report-path: ""
+          command-outcome: ${{ steps.quality-command.outcome }}
+          graph-digest: 06d81f74c38f559556ceb7cf3553891ebfdc0671720e6029d377bbc9cf55a2b1
+          approval-findings: "false"
+          approval-files: "false"
+          approval-node: "false"
+      - name: Upload Owned deploy Python import order (I001) result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: quality-result-deploy-i001-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/deploy-i001.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce Owned deploy Python import order (I001) result
         if: always()
         shell: bash
         env:
@@ -187,7 +238,7 @@ jobs:
           adapter: native
           report-path: reports/secrets.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b7a685814b72cde5788e34a10568909e0737e881dea1b0a3f3c9a6daf788cb9e
+          graph-digest: 06d81f74c38f559556ceb7cf3553891ebfdc0671720e6029d377bbc9cf55a2b1
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -237,7 +288,7 @@ jobs:
           adapter: native
           report-path: reports/javascript.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b7a685814b72cde5788e34a10568909e0737e881dea1b0a3f3c9a6daf788cb9e
+          graph-digest: 06d81f74c38f559556ceb7cf3553891ebfdc0671720e6029d377bbc9cf55a2b1
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -305,7 +356,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b7a685814b72cde5788e34a10568909e0737e881dea1b0a3f3c9a6daf788cb9e
+          graph-digest: 06d81f74c38f559556ceb7cf3553891ebfdc0671720e6029d377bbc9cf55a2b1
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -356,7 +407,7 @@ jobs:
           adapter: native
           report-path: reports/docker.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b7a685814b72cde5788e34a10568909e0737e881dea1b0a3f3c9a6daf788cb9e
+          graph-digest: 06d81f74c38f559556ceb7cf3553891ebfdc0671720e6029d377bbc9cf55a2b1
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -411,7 +462,7 @@ jobs:
           adapter: junit
           report-path: reports/tests-fast.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b7a685814b72cde5788e34a10568909e0737e881dea1b0a3f3c9a6daf788cb9e
+          graph-digest: 06d81f74c38f559556ceb7cf3553891ebfdc0671720e6029d377bbc9cf55a2b1
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -461,7 +512,7 @@ jobs:
           adapter: native
           report-path: reports/workflow.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b7a685814b72cde5788e34a10568909e0737e881dea1b0a3f3c9a6daf788cb9e
+          graph-digest: 06d81f74c38f559556ceb7cf3553891ebfdc0671720e6029d377bbc9cf55a2b1
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -512,7 +563,7 @@ jobs:
           adapter: native
           report-path: reports/shell.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b7a685814b72cde5788e34a10568909e0737e881dea1b0a3f3c9a6daf788cb9e
+          graph-digest: 06d81f74c38f559556ceb7cf3553891ebfdc0671720e6029d377bbc9cf55a2b1
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -560,7 +611,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b7a685814b72cde5788e34a10568909e0737e881dea1b0a3f3c9a6daf788cb9e
+          graph-digest: 06d81f74c38f559556ceb7cf3553891ebfdc0671720e6029d377bbc9cf55a2b1
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -612,7 +663,7 @@ jobs:
           adapter: native
           report-path: reports/manifests.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b7a685814b72cde5788e34a10568909e0737e881dea1b0a3f3c9a6daf788cb9e
+          graph-digest: 06d81f74c38f559556ceb7cf3553891ebfdc0671720e6029d377bbc9cf55a2b1
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -625,6 +676,65 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Enforce Manifest validation result
+        if: always()
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
+        run: exit "${EXIT_CODE:-2}"
+    needs:
+      - ownership
+    timeout-minutes: 10
+  tests-medium:
+    name: Integration tests
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: "false"
+          fetch-depth: "0"
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - run: uv sync --locked
+      - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
+        with:
+          version: v3.19.0
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
+        with:
+          node-version: 24.11.1
+      - run: uv run python scripts/quality/install_tools.py --tools promtool
+      - run: |
+          set -euo pipefail
+          read -r image < quality/nginx-syntax-image.txt
+          docker pull "${image}"
+      - run: uv run python scripts/quality/tests.py medium --isolate-network
+        name: Run Integration tests
+        id: quality-command
+        continue-on-error: true
+      - name: Collect Integration tests result
+        id: quality-result
+        if: always()
+        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
+        with:
+          operation: collect
+          node-id: tests-medium
+          title: Integration tests
+          adapter: junit
+          report-path: reports/tests-medium.xml
+          command-outcome: ${{ steps.quality-command.outcome }}
+          graph-digest: 06d81f74c38f559556ceb7cf3553891ebfdc0671720e6029d377bbc9cf55a2b1
+          approval-findings: "false"
+          approval-files: "false"
+          approval-node: "false"
+      - name: Upload Integration tests result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: quality-result-tests-medium-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/tests-medium.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce Integration tests result
         if: always()
         shell: bash
         env:

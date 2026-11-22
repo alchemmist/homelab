@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "b7a685814b72cde5788e34a10568909e0737e881dea1b0a3f3c9a6daf788cb9e",
+  "graphDigest": "06d81f74c38f559556ceb7cf3553891ebfdc0671720e6029d377bbc9cf55a2b1",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -88,10 +88,37 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\nuv run python -m scripts.quality.quote_inputs |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \\\n    --ignore-noqa --output-format concise --"
+        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs scripts/ tests/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \\\n    --ignore-noqa --output-format concise --"
       },
       "timeoutMinutes": 5,
       "title": "Python script and test quotes (Q000)"
+    },
+    {
+      "env": {},
+      "id": "deploy-i001",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "set -euo pipefail\nuv run python -m scripts.quality.python_inputs deploy/ |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n    --ignore-noqa --output-format concise --"
+      },
+      "timeoutMinutes": 5,
+      "title": "Owned deploy Python import order (I001)"
     },
     {
       "env": {},
@@ -347,6 +374,34 @@
       },
       "timeoutMinutes": 10,
       "title": "Manifest validation"
+    },
+    {
+      "env": {},
+      "id": "tests-medium",
+      "needs": [
+        "ownership"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-integration",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-medium.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py medium --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Integration tests"
     }
   ],
   "profiles": {
@@ -617,6 +672,9 @@
         },
         {
           "run": "uv run python scripts/quality/install_tools.py --tools promtool"
+        },
+        {
+          "run": "set -euo pipefail\nread -r image < quality/nginx-syntax-image.txt\ndocker pull \"${image}\"\n"
         }
       ],
       "timeoutMinutes": 10
