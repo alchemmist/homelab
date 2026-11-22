@@ -88,7 +88,7 @@ def translate_authorization(job, monitors):
         not re.fullmatch(r"[a-z0-9][a-z0-9.-]*", namespace)
         or not re.fullmatch(r"[a-z0-9][a-z0-9.-]*", name)
         or not re.fullmatch(r"[A-Za-z0-9_.-]+", key)
-        or key in (".", "..")
+        or key in {".", ".."}
         or source.get("optional")
     ):
         msg = "Invalid or optional authorization secret reference"
@@ -140,10 +140,8 @@ def refresh_api_targets(scrape):
             for r in job.get("relabel_configs", [])
             if r.get("action") == "keep" and r.get("source_labels") == ["__address__"]
         ]
-        if len(rules) != 1 or rules[0].get("regex") not in (
-            r"10\.250\.0\.(1|3|5):6443",
-            desired,
-        ):
+        allowed_regexes = (r"10\.250\.0\.(1|3|5):6443", desired)
+        if len(rules) != 1 or rules[0].get("regex") not in allowed_regexes:
             raise ValueError("Unrecognized apiserver scrape keep rule")
         rules[0]["regex"] = desired
     return result
@@ -155,7 +153,9 @@ def refresh_public_edge_probe(scrape):
         "serviceProbes"
     ]["targets"]
     tcp_targets = {
-        t["id"]: t["url"] for t in targets if t["id"] in ("edge-vps", "litellm-db", "umami-db")
+        t["id"]: t["url"]
+        for t in targets
+        if isinstance(t["id"], str) and t["id"] in {"edge-vps", "litellm-db", "umami-db"}
     }
     result = copy.deepcopy(scrape)
     for job in result.get("scrape_configs", []):
@@ -230,7 +230,8 @@ def add_moscow_edge_probe(scrape):
         raise ValueError(msg)
     job["params"] = {"module": ["tcp_connect"], "target": [target["url"]]}
     for rule in job["relabel_configs"]:
-        if rule.get("target_label") in ("service_id", "service_group"):
+        label = rule.get("target_label")
+        if isinstance(label, str) and label in {"service_id", "service_group"}:
             rule["replacement"] = "edge-moscow"
     jobs.append(job)
     return result
@@ -342,7 +343,7 @@ def append_local_translations(translated, group, outputs, nodes):
         local = {
             key: copy.deepcopy(value)
             for key, value in translated.items()
-            if not key.endswith("_sd_configs") and key not in ("static_configs", "relabel_configs")
+            if not key.endswith("_sd_configs") and key not in {"static_configs", "relabel_configs"}
         }
         local["static_configs"] = [
             {"targets": ["127.0.0.1:19100"], "labels": copy.deepcopy(target["labels"])}

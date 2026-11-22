@@ -187,7 +187,7 @@ def replay_request(context, port, path, body=None):
         data = response.read(4 * 1024**2 + 1)
     if len(data) > 4 * 1024**2:
         raise ValueError("Bounded synthetic response exceeded")
-    return json.loads(data) if data and path not in ["/ready", "/-/ready"] else {}
+    return json.loads(data) if data and path not in {"/ready", "/-/ready"} else {}
 
 
 def replay_start(args, root, environment, children, generations, name):
@@ -204,7 +204,7 @@ def replay_start(args, root, environment, children, generations, name):
             "--web.config.file=" + str(root / "web.json"),
             "--web.enable-otlp-receiver",
         ]
-    elif name in ["cluster", "trace-gateway"]:
+    elif name in {"cluster", "trace-gateway"}:
         command = [
             str(args.binaries / "otelcol-contrib"),
             "--config=" + str(root / (name + ".json")),

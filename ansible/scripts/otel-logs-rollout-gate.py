@@ -29,7 +29,8 @@ def metrics():
 
 def total(data, prefix):
     base = prefix.removesuffix("_total")
-    names = {k.split("{")[0] for k in data if k.split("{")[0] in (base, base + "_total")}
+    aliases = {base, base + "_total"}
+    names = aliases.intersection(k.split("{")[0] for k in data)
     if len(names) > 1:
         raise ValueError("Ambiguous counter metric suffix: " + base)
     return sum(v for k, v in data.items() if k.split("{")[0] in names)

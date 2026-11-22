@@ -77,7 +77,7 @@ def configure(bundle, cutover):
             for target in targets
             if target["scrapePool"] == job["job_name"]
             and target["labels"].get("pod") == "prometheus-" + PROM + "-0"
-            and urlparse(target["scrapeUrl"]).port in (9090, 8080, 10902)
+            and urlparse(target["scrapeUrl"]).port in {9090, 8080, 10902}
         ]
         if self_targets:
             if len(self_targets) != 1:
@@ -197,10 +197,12 @@ def run(bundle, output, cutover):
             "initialDelaySeconds": 20,
         },
     }
+    # Preserve other volume entries, even if a malformed name is not hashable.
+    replaced_volume_names = ("otel-config", "otel-tls", "otel-source-auth", "otel-source-tls")
     volumes = [
         value
         for value in current["spec"].get("volumes", [])
-        if value["name"] not in ["otel-config", "otel-tls", "otel-source-auth", "otel-source-tls"]
+        if value["name"] not in replaced_volume_names
     ]
     volumes.extend(
         [

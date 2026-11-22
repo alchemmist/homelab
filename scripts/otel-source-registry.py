@@ -38,6 +38,7 @@ CLUSTER_JOBS = {
     "traefik",
 }
 LOCAL_JOBS = {"node-exporter"}
+PUBLIC_METRICS_PATHS = frozenset({"/metrics", "/metrics/cadvisor", "/metrics/probes", "/probe"})
 SENSITIVE = re.compile(
     r"token|secret|password|cookie|credential|authorization|bearer|api[_-]?key|^key$|username",
     re.IGNORECASE,
@@ -58,9 +59,9 @@ def scrub(value, key=""):
     if isinstance(value, list):
         return [scrub(item, key) for item in value]
     if (
-        key in ("path", "metricsPath")
+        key in {"path", "metricsPath"}
         and isinstance(value, str)
-        and value not in ("/metrics", "/metrics/cadvisor", "/metrics/probes", "/probe")
+        and value not in PUBLIC_METRICS_PATHS
     ):
         return "<redacted-path>"
     if isinstance(value, str) and "://" in value:
@@ -95,7 +96,12 @@ def selected(selector, attributes):
             return False
         if operation == "DoesNotExist" and key in attributes:
             return False
-        if operation not in ("In", "NotIn", "Exists", "DoesNotExist"):
+        if not isinstance(operation, str) or operation not in {
+            "In",
+            "NotIn",
+            "Exists",
+            "DoesNotExist",
+        }:
             msg = "Unsupported label selector operator"
             raise ValueError(msg)
     return True
@@ -140,11 +146,7 @@ def identity(value):
 def target_summary(target):
     labels = target.get("labels", {})
     url = urllib.parse.urlsplit(target["scrapeUrl"])
-    path = (
-        url.path
-        if url.path in ("/metrics", "/metrics/cadvisor", "/metrics/probes", "/probe")
-        else "<redacted-path>"
-    )
+    path = url.path if url.path in PUBLIC_METRICS_PATHS else "<redacted-path>"
     pool = target["scrapePool"]
     parts = pool.split("/")
     if len(parts) < 4 or not parts[-1].isdigit():

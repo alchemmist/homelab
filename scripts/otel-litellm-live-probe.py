@@ -75,7 +75,7 @@ def run():
         flushed = provider.force_flush(timeout_millis=10000)
         provider.shutdown()
     report = {
-        "success": status in [400, 404] and flushed is True,
+        "success": status in {400, 404} and flushed is True,
         "traceId": trace_id,
         "parentSpanId": parent_id,
         "httpStatus": status,
