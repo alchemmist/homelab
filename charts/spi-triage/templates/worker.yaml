@@ -56,11 +56,23 @@ spec:
           command: [python, -B, -c]
           args:
             - >-
+              {{ if .Values.postgresEnabled }}
+              import os,psycopg;
+              c=psycopg.connect(os.environ['SPI_POSTGRES_URL'],connect_timeout=5);
+              assert c.execute("SELECT current_database(),EXISTS(SELECT FROM jobs),to_regclass('workflow_wait_owner') IS NOT NULL").fetchone()==('spi_triage',True,True);
+              c.close()
+              {{ else }}
               from pathlib import Path;
               p=Path('/data/spi.sqlite');
               assert p.is_file() and p.open('rb').read(16)==b'SQLite format 3\x00', 'Existing SPI job database required'
+              {{ end }}
           securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          {{- if .Values.postgresEnabled }}
+          envFrom: [{secretRef: {name: spi-triage-postgres}}]
+          volumeMounts: [{name: pg-ca, mountPath: /pg-ca, readOnly: true}]
+          {{- else }}
           volumeMounts: [{name: data, mountPath: /data, readOnly: true}]
+          {{- end }}
       {{- end }}
       containers:
         - name: worker
@@ -69,6 +81,9 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ .Values.secretName }}
+            {{- if .Values.postgresEnabled }}
+            - secretRef: {name: spi-triage-postgres}
+            {{- end }}
           env:
             {{- if .Values.queueUI.enabled }}
             - {name: SPI_QUEUE_UI_ENABLED, value: 'true'}
@@ -131,6 +146,9 @@ spec:
               cpu: '1'
               memory: 384Mi
           volumeMounts:
+            {{- if .Values.postgresEnabled }}
+            - {name: pg-ca, mountPath: /pg-ca, readOnly: true}
+            {{- end }}
             {{- if .Values.graphs.enabled }}
             - {name: graph-client, mountPath: /graph-client, readOnly: true}
             {{- end }}
@@ -155,6 +173,9 @@ spec:
               mountPath: /github
               readOnly: true
       volumes:
+        {{- if .Values.postgresEnabled }}
+        - {name: pg-ca, configMap: {name: pg-common-ca}}
+        {{- end }}
         {{- if .Values.graphs.enabled }}
         - name: graph-client
           secret:
@@ -234,6 +255,10 @@ spec:
       ports:
         - port: 8080
   egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: postgres}}
+          podSelector: {matchLabels: {cnpg.io/cluster: pg-common}}
+      ports: [{port: 5432, protocol: TCP}]
     {{- if .Values.graphs.enabled }}
     - to:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: cattle-monitoring-system}}
