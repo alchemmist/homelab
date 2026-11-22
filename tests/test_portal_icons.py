@@ -23,28 +23,31 @@ def targets() -> dict[str, str]:
     """Test behavior for targets."""
     result: dict[str, str] = {}
     for filename, source in MANIFEST["files"].items():
-        name = "service-icons/" + Path(filename).stem + "-" + source["sha256"][:12] + ".svg"
+        name = f"https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/{source['sha256'][:12]}-{filename}"
         for slug in source.get("applications", [Path(filename).stem]):
             assert slug not in result
             result[slug] = name
     return result
 
 
+REVIEWED_APPS = {
+    "grafana",
+    "harbor",
+    "rancher",
+    "open-webui",
+    "wiki",
+    "litellm",
+    "lms",
+    "argocd",
+    "netbird-pilot",
+    "spi-rustfs-native",
+    "monori",
+}
+
+
 def test_current_application_coverage_and_asset_checksums() -> None:
-    """Test behavior for test_current_application_coverage_and_asset_checksums."""
-    mapping = targets()
-    assert set(mapping) == {
-        "grafana",
-        "harbor",
-        "rancher",
-        "open-webui",
-        "wiki",
-        "litellm",
-        "lms",
-        "argocd",
-        "netbird-pilot",
-        "spi-rustfs-native",
-    }
+    """Require exactly the managed applications and verify each approved icon's digest."""
+    assert set(targets()) == REVIEWED_APPS
     for filename, record in MANIFEST["files"].items():
         assert hashlib.sha256((ASSETS / filename).read_bytes()).hexdigest() == record["sha256"]
 
@@ -151,7 +154,8 @@ def test_updates_only_icons_and_keeps_unmanaged_app(tmp_path) -> None:
     api = FakeAPI()
     before = copy.deepcopy(api.apps)
     run(tmp_path, api, list(before.values()))
-    assert len(api.patches) == 10
+    assert sorted(api.patches) == sorted(REVIEWED_APPS)
+    assert {slug: api.apps[slug]["meta_icon"] for slug in REVIEWED_APPS} == targets()
     for slug, app in api.apps.items():
         assert {k: v for k, v in app.items() if k != "meta_icon"} == {
             k: v for k, v in before[slug].items() if k != "meta_icon"

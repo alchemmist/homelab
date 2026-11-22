@@ -46,6 +46,11 @@ def _sharing_contract(source: str) -> None:
     module = ast.parse(source)
     mains = [n for n in module.body if isinstance(n, ast.FunctionDef) and n.name == "main"]
     assert len(mains) == 1
+    # A docstring is inert; only discard an actual leading function docstring.
+    guards = [n for n in module.body if isinstance(n, ast.FunctionDef) and n.name == "need"]
+    assert len(guards) == 1
+    if ast.get_docstring(guards[0]) is not None:
+        guards[0].body.pop(0)
     _same_statement(
         module.body, "def need(ok, msg):\n    if not ok:\n        raise RuntimeError(msg)"
     )
@@ -54,9 +59,12 @@ def _sharing_contract(source: str) -> None:
     body = locks[0].body
     locked = _same_statement(body, "fcntl.flock(lock, fcntl.LOCK_EX)")
     settings = _same_statement(body, 'code, settings = api("GET", "/api/admin/settings")')
+    section = _same_statement(
+        body, 'anonymous = cast("dict[str, object]", settings.get("auth.anonymous", {}))'
+    )
     anonymous = _same_statement(
         body,
-        'need(code == 200 and settings.get("auth.anonymous", {}).get("enabled") '
+        'need(code == 200 and anonymous.get("enabled") '
         'in [False, "false"], "Organization anonymous access drift; refuse publication")',
     )
     content = _same_statement(
@@ -86,7 +94,8 @@ def _sharing_contract(source: str) -> None:
     post = _same_statement(apply.body, 'code, after = api("POST", endpoint, desired)')
     assert apply.body[0] is approval
     assert apply.body.index(approval) < apply.body.index(post)
-    assert body.index(locked) < body.index(settings) < body.index(anonymous)
+    assert body.index(locked) < body.index(settings)
+    assert body[body.index(settings) : body.index(anonymous) + 1] == [settings, section, anonymous]
     assert body.index(anonymous) < body.index(content) < body.index(desired) < body.index(apply)
     writes = [
         n
@@ -115,13 +124,15 @@ def test_public_sharing_does_not_enable_org_anonymous() -> None:
         ('"timeSelectionEnabled": True', '"timeSelectionEnabled": False'),
         ("a.approve_plan_hash == digest", "True"),
         ('live["panels"] == expected["panels"]', "True"),
-        ("code == 200 and settings.get", "code == 200 or settings.get"),
+        ("code == 200 and anonymous.get", "code == 200 or anonymous.get"),
+        ('settings.get("auth.anonymous", {})', '{"enabled": False}'),
         ("raise RuntimeError(msg)", "return"),
     ],
 )
 def test_public_sharing_contract_rejects_security_mutations(needle: str, replacement: str) -> None:
     """Reject synthetic bypasses by parsing only; never import or run the publisher."""
     source = (ROOT / "scripts/grafana-llm-public.py").read_text()
+    _sharing_contract(source)
     assert source.count(needle) == 1
     changed = source.replace(needle, replacement, 1)
     with pytest.raises(AssertionError):
