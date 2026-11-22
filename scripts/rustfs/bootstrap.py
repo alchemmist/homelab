@@ -14,6 +14,7 @@ import re
 import stat
 import subprocess
 import tempfile
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Protocol, TypedDict
 
@@ -34,15 +35,28 @@ class Credentials(TypedDict):
     writer: AccessSecret
 
 
+class CommandRow(TypedDict, total=False):
+    """Fields consumed from the different mc JSON response records."""
+
+    accessKey: str
+    policy: str
+    key: str
+    status: str
+    permission: str
+    userStatus: str
+    policyName: str
+    memberOf: list[str] | None
+
+
 class Command(Protocol):
     """Callable running one private mc request and returning parsed rows."""
 
-    def __call__(self, *args: str, stdin: bytes | None = ...) -> list[dict[str, str]]:
+    def __call__(self, *args: str, stdin: bytes | None = ...) -> list[CommandRow]:
         """Run one request and return its parsed JSON rows."""
         ...
 
 
-def policy(actions):
+def policy(actions: Iterable[str]) -> dict[str, object]:
     """Execute policy."""
     return {
         "Version": "2012-10-17",
@@ -63,7 +77,7 @@ POLICIES = {
 }
 
 
-def canonical_policy(document):
+def canonical_policy(document: object) -> dict[str, object]:
     """Execute canonical_policy."""
     if not isinstance(document, dict) or set(document) - {"Version", "Statement", "Id"}:
         raise ValueError("unexpected policy fields")
@@ -96,21 +110,21 @@ def canonical_policy(document):
     }
 
 
-def private_directory(path):
+def private_directory(path: Path) -> None:
     """Execute private_directory."""
     s = path.lstat()
     if not stat.S_ISDIR(s.st_mode) or s.st_uid != os.getuid() or s.st_mode & 0o077:
         raise ValueError("private owned directory required")
 
 
-def private(path):
+def private(path: Path) -> None:
     """Execute private."""
     s = path.lstat()
     if not stat.S_ISREG(s.st_mode) or s.st_uid != os.getuid() or s.st_mode & 0o077:
         raise ValueError("private owned regular credentials file required")
 
 
-def run(mc, config, args, stdin=None):
+def run(mc: str, config: str, args: Sequence[str], stdin: bytes | None = None) -> list[CommandRow]:
     """Execute run."""
     result = subprocess.run(
         [mc, "--config-dir", config, "--json", *args],
@@ -122,7 +136,7 @@ def run(mc, config, args, stdin=None):
     )
     if result.returncode or len(result.stdout) > 1024 * 1024:
         raise ValueError("bootstrap request failed; stop and inspect privately; no automatic retry")
-    rows = []
+    rows: list[CommandRow] = []
     decoder = json.JSONDecoder()
     text = result.stdout.decode().strip()
     while text:
@@ -227,7 +241,7 @@ def attach_spi_users(
             mc("admin", "policy", "attach", "store", "spi-" + role, "--user", accesses[role])
 
 
-def main():
+def main() -> None:
     """Execute main."""
     p = argparse.ArgumentParser()
     p.add_argument("--credentials", type=Path, required=True)
@@ -271,7 +285,7 @@ def main():
             )
         )
 
-        def mc(*a, stdin=None):
+        def mc(*a: str, stdin: bytes | None = None) -> list[CommandRow]:
             return run(args.mc, tmp, list(a), stdin)
 
         # Inventories must succeed before any mutation. No failure means 'absent'.
