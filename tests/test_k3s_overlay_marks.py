@@ -2,6 +2,7 @@
 
 import importlib.util
 from pathlib import Path
+
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -119,7 +120,8 @@ def test_default_cli_is_read_only(
 
 def test_cli_rejects_foreign_table_before_kernel_write(monkeypatch: pytest.MonkeyPatch) -> None:
     """Refuse applying over a table whose ownership comment is foreign."""
-    import json, sys
+    import json
+    import sys
     from types import SimpleNamespace
 
 

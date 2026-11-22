@@ -15,7 +15,7 @@ followed by `yaml`, `scripts-q000`, `deploy-i001`, `secrets`, `javascript`, `own
 `yaml` runs the full YAML check, including generated workflows, and collects `reports/yaml.json`.
 `scripts-q000` checks every tracked, owned `.py` file under `scripts/` and `tests/`,
 not just changed files. `deploy-i001` checks import order in tracked, owned Python under
-`ansible/`, `deploy/` and `scripts/`. Neither gate covers all owned Python.
+`ansible/`, `deploy/`, `scripts/` and `tests/`. Neither gate covers all owned Python.
 Ownership runs six offline checks plus their regression suites; the Ansible
 entrypoint scan covers both `.yml` and `.yaml`.
 `tests-medium` runs the complete loopback-isolated integration suite after `ownership`.
