@@ -27,6 +27,10 @@ spec:
           image: {{ .Values.image | quote }}
           imagePullPolicy: Never
           args: [run, -config, /etc/relay/user.json]
+          ports:
+            - name: https
+              containerPort: 443
+              protocol: TCP
           env:
             - {name: GOMEMLIMIT, value: 96MiB}
           securityContext:

@@ -166,6 +166,13 @@ def test_deployment_single_host_no_api_token_and_native_boot_fence() -> None:
     assert "flock" in controller and "fsync" in controller and "free_ports()" in controller
 
 
+def test_vpn_transit_declares_its_actual_readiness_listener() -> None:
+    """Declare the existing node-loopback readiness port without adding a listener."""
+    s = (ROOT / "charts/vpn-transit/templates/deployment.yaml").read_text()
+    assert "containerPort: 443" in s and "name: https" in s and "protocol: TCP" in s
+    assert 'tcpSocket: {host: 127.0.0.1, port: 443}' in s
+
+
 def test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse() -> None:
     """Test behavior for test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse."""
     m = module("vpn-transit-failover")
