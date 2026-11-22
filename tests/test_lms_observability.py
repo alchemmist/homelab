@@ -228,6 +228,7 @@ def test_hibernated_database_alerts_do_not_page_for_production_lms() -> None:
         return {r["alert"] for r in _documents(groups[0]["rules"])}
 
     assert rules() == {"LMSWebUnavailable"}
-    assert rules("--set", "lms-database-ha.hibernate=false") == {
+    assert rules("--set", "lms-database-ha.hibernate=false") == {"LMSWebUnavailable"}
+    assert rules("--set", "database.ha.resources=true", "--set", "lms-database-ha.hibernate=false") == {
         "LMSWebUnavailable", "LMSDatabaseQuorumAtRisk", "LMSDatabaseRedundancyDegraded", "LMSDatabaseBackupOverdue"
     }
