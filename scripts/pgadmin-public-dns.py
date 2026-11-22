@@ -11,7 +11,9 @@ import subprocess
 from pathlib import Path
 
 CURRENT = Path("/usr/local/libexec/public_dns_zone.py")
-ROOT = Path("/var/lib/homelab-pgadmin-public-dns")
+PROFILE = "redisinsight" if "redisinsight" in Path(__file__).name else "pgadmin"
+NAME = "redis.socrat" if PROFILE == "redisinsight" else "pg.socrat"
+ROOT = Path(f"/var/lib/homelab-{PROFILE}-public-dns")
 
 
 def require(ok, message):
@@ -50,13 +52,13 @@ def delta(old, new):
         before = old.render(123, home, vps).splitlines()
         after = new.render(123, home, vps).splitlines()
         require(
-            [x for x in after if not x.startswith("pg.socrat IN A ")]
-            == [x for x in before if not x.startswith("pg.socrat IN A ")],
+            [x for x in after if not x.startswith((NAME + " IN A "))]
+            == [x for x in before if not x.startswith((NAME + " IN A "))],
             "Unrelated DNS record change; stop",
         )
         require(
-            [x for x in after if x.startswith("pg.socrat IN A ")]
-            == ["pg.socrat IN A " + old.HOME],
+            [x for x in after if x.startswith((NAME + " IN A "))]
+            == [(NAME + " IN A ") + old.HOME],
             "Wrong new record",
         )
 
@@ -98,14 +100,14 @@ def main():
             "tool": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
             "before": hashlib.sha256(old).hexdigest(),
             "after": hashlib.sha256(new).hexdigest(),
-            "name": "pg.socrat",
+            "name": NAME,
         }
         digest = hashlib.sha256(json.dumps(context, sort_keys=True).encode()).hexdigest()
         if a.apply and changed:
             require(a.approve_plan_hash == digest, "Fresh hash approval required")
             (ROOT / "before.py").write_bytes(old)
             (ROOT / "uncertain.json").write_text(json.dumps(context))
-            temp = CURRENT.with_name("public_dns_zone.py.openhands-public.tmp")
+            temp = CURRENT.with_name(f"public_dns_zone.py.{PROFILE}-public.tmp")
             stage_renderer(temp, new)
             require(CURRENT.read_bytes() == old, "Concurrent renderer change; stop")
             temp.replace(CURRENT)
@@ -119,7 +121,7 @@ def main():
                     "knotc",
                     "zone-read",
                     "alchemmist.xyz",
-                    "pg.socrat.alchemmist.xyz.",
+                    NAME + ".alchemmist.xyz.",
                     "A",
                 ],
                 text=True,

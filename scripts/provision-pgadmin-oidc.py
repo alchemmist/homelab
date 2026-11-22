@@ -91,9 +91,11 @@ def validate(api, owner, settings, provider, app, journal):
     check(b.get("group") == owner["pk"] and not b.get("user") and not b.get("policy") and b.get("enabled") is True and not b.get("negate") and not b.get("failure_result"), "Owner-only admission binding drift")
 
 
-def main():
+def main(namespace="postgres"):
+    slug = APP["slug"]
+    secret_name = slug + "-oidc"
     p = argparse.ArgumentParser(description=__doc__)
-    private = Path.home()/".config/homelab/pgadmin"
+    private = Path.home()/".config/homelab"/slug
     p.add_argument("--credentials",type=Path,default=private/"authentik-api-token.json")
     p.add_argument("--state-dir",type=Path,default=private/"oidc")
     p.add_argument("--backup-receipt",type=Path,default=private/"oidc-backup-receipt.json")
@@ -148,18 +150,18 @@ def main():
         validate(api,owner,settings,provider,app,journal)
         marker.unlink()
     # Credential delivery is operator-only; do not expose it to database clients.
-    old = subprocess.check_output(["kubectl","-n","postgres","get","secret","pgadmin-oidc","--ignore-not-found","-o","json"])
+    old = subprocess.check_output(["kubectl","--context","Socrat","-n",namespace,"get","secret",secret_name,"--ignore-not-found","-o","json"])
     if old.strip():
         old = json.loads(old)
-        check(old["metadata"].get("labels",{}).get("homelab-app") == "pgadmin", "Unexpected existing Secret owner")
-    payload = {"apiVersion":"v1","kind":"Secret","metadata":{"name":"pgadmin-oidc","namespace":"postgres","labels":{"homelab-app":"pgadmin"}},
+        check(old["metadata"].get("labels",{}).get("homelab-app") == slug, "Unexpected existing Secret owner")
+    payload = {"apiVersion":"v1","kind":"Secret","metadata":{"name":secret_name,"namespace":namespace,"labels":{"homelab-app":slug}},
                "type":"Opaque","stringData":{"client-id":CLIENT,"client-secret":journal["client_secret"],"cookie-secret":journal["cookie_secret"]}}
     if old:
         for name,value in payload["stringData"].items():
             check(secrets.compare_digest(base64.b64decode(old.get("data",{}).get(name,"")),value.encode()), "Runtime Secret drift; no silent rotation")
     else:
-        subprocess.run(["kubectl","create","-f","-"],input=json.dumps(payload).encode(),stdout=subprocess.DEVNULL,check=True)
-    print("pgAdmin OIDC ready: existing owner group only; OIDC Secret delivered; values withheld")
+        subprocess.run(["kubectl","--context","Socrat","create","-f","-"],input=json.dumps(payload).encode(),stdout=subprocess.DEVNULL,check=True)
+    print(slug + " OIDC ready: existing owner group only; OIDC Secret delivered; values withheld")
 
 
 if __name__ == "__main__":

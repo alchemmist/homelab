@@ -1,0 +1,48 @@
+---
+- name: Whole-fleet DNS addition preflight (no package/config/service restarts)
+  hosts: socrat-0:socrat-1:socrat-2:socrat-4
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Create the Redis Insight public DNS staging directory
+      ansible.builtin.file:
+        path: /var/lib/homelab-redisinsight-public-dns
+        state: directory
+        mode: "0700"
+    - name: Install the Redis Insight public DNS plan and apply tool
+      ansible.builtin.copy:
+        src: ../../scripts/pgadmin-public-dns.py
+        dest: /usr/local/sbin/homelab-redisinsight-public-dns
+        mode: "0700"
+    - name: Stage the proposed zone renderer for Redis Insight public DNS
+      ansible.builtin.copy:
+        src: ../../scripts/public_dns_zone.py
+        dest: /var/lib/homelab-redisinsight-public-dns/proposed.py
+        mode: "0700"
+    - name: Compute the Redis Insight public DNS plan
+      ansible.builtin.command: /usr/local/sbin/homelab-redisinsight-public-dns
+      register: dns_plan
+      changed_when: false
+    - name: Display the Redis Insight public DNS plan
+      ansible.builtin.debug:
+        var: dns_plan.stdout
+    - name: Require the approved Redis Insight public DNS plan hash
+      ansible.builtin.assert:
+        that: (dns_plan.stdout | from_json).plan_hash == redisinsight_public_dns_hash
+      when: redisinsight_public_dns_apply | default(false) | bool
+- name: Serial approved owned-zone refresh
+  hosts: socrat-0:socrat-1:socrat-2:socrat-4
+  serial: 1
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Apply the approved Redis Insight public DNS plan
+      ansible.builtin.command:
+        argv: [/usr/local/sbin/homelab-redisinsight-public-dns, --apply, --approve-plan-hash,
+               "{{ redisinsight_public_dns_hash }}"]
+      when: redisinsight_public_dns_apply | default(false) | bool
+      register: dns_apply
+      changed_when: (dns_apply.stdout | from_json).applied
+...
