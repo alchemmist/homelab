@@ -27,13 +27,6 @@
       "junit": "reports/tests-fast.xml"
     }
   },
-  "manifests": {
-    "title": "Manifest validation",
-    "run": "uv run python scripts/quality/charts.py",
-    "results": {
-      "native": "reports/manifests.json"
-    }
-  },
   "ansible": {
     "title": "Playbook safety",
     "run": "uv run python scripts/quality/lint.py ansible",

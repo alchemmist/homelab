@@ -430,13 +430,20 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
 
     graph = yaml.safe_load((ROOT / "qg.yaml").read_text())["nodes"]
     assert len({n["title"] for n in graph.values()}) == len(graph)
-    assert set(graph) == {"graph", "javascript", "secrets", "ownership", "docker", "workflow"}
+    assert set(graph) == {
+        "graph", "javascript", "secrets", "ownership", "docker", "workflow", "manifests",
+    }
+    assert graph["manifests"]["profile"] == "quality-manifests"
+    assert graph["manifests"]["run"] == "uv run python scripts/quality/charts.py"
+    assert graph["manifests"]["needs"] == ["ownership"]
+    assert graph["manifests"]["policy"] == graph["graph"]["policy"]
+    assert graph["manifests"]["results"] == {"native": "reports/manifests.json"}
     for node in ("javascript", "secrets", "ownership", "docker", "workflow"):
         assert graph[node]["needs"] == ["graph"]
     local = json.loads((ROOT / "quality/local-checks.json").read_text())
     assert set(local) == {
         "python", "yaml", "shell", "tests-fast",
-        "manifests", "ansible", "tests-medium", "tests-cluster", "dependencies",
+        "ansible", "tests-medium", "tests-cluster", "dependencies",
     }
 
 

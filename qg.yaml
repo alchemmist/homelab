@@ -165,4 +165,13 @@ nodes:
       GH_TOKEN: ${{ github.token }}
     results:
       native: reports/workflow.json
+  manifests:
+    title: Manifest validation
+    profile: quality-manifests
+    needs:
+    - ownership
+    policy: *id001
+    run: uv run python scripts/quality/charts.py
+    results:
+      native: reports/manifests.json
 ...
