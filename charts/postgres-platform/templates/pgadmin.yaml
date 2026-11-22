@@ -19,11 +19,28 @@ data:
         'OAUTH2_USERNAME_CLAIM': 'email', 'OAUTH2_ADDITIONAL_CLAIMS': {'groups': ['homelab-owner']},
     }]
     ALLOW_SAVE_PASSWORD = False
+    MASTER_PASSWORD_REQUIRED = False
+    ALLOW_SAVE_TUNNEL_PASSWORD = False
+    SHARED_STORAGE = [{'name': 'CNPG', 'path': '/cnpg', 'restricted_access': True}]
+    SERVER_PASSEXEC_COMMANDS = {'cluster-browser': ['/venv/bin/python', '/browser-helper/password.py']}
     SESSION_COOKIE_SECURE = True
+  password.py: |
+    import os
+    import sys
+    from pathlib import Path
+
+    env = os.environ
+    targets = {f'pg-{t}-rw.postgres.svc.cluster.local': t for t in ('common', 'critical', 'internal')}
+    tier = targets.get(env.get('PGADMIN_PASSEXEC_HOST'))
+    if (not tier or env.get('PGADMIN_PASSEXEC_AUTH_SOURCE') != 'oauth2'
+            or env.get('PGADMIN_PASSEXEC_USERNAME') != 'pgadmin_browser'
+            or env.get('PGADMIN_PASSEXEC_PORT') != '5432'):
+        sys.exit(1)
+    sys.stdout.write(Path('/browser-auth', tier).read_text())
   servers.json: |
     {"Servers":{
     {{- range $i,$tier := list "common" "critical" "internal" }}
-      {{ if $i }},{{ end }}"{{ add $i 1 }}":{"Name":"pg-{{ $tier }}","Group":"Socrat","Host":"pg-{{ $tier }}-rw.postgres.svc.cluster.local","Port":5432,"MaintenanceDB":"postgres","Username":"postgres","Shared":true,"ConnectionParameters":{"sslmode":"verify-full","sslrootcert":"/cnpg/{{ $tier }}.crt"}}
+      {{ if $i }},{{ end }}"{{ add $i 1 }}":{"Name":"pg-{{ $tier }}","Group":"Socrat","Host":"pg-{{ $tier }}-rw.postgres.svc.cluster.local","Port":5432,"MaintenanceDB":"postgres","Username":"pgadmin_browser","SharedUsername":"pgadmin_browser","PasswordExecCommand":"cluster-browser","Shared":true,"ConnectionParameters":{"sslmode":"verify-full","connect_timeout":5,"sslrootcert":"CNPG:/{{ $tier }}.crt"}}
     {{- end }}
     }}
 ---
@@ -58,6 +75,7 @@ spec:
           readinessProbe: {httpGet: {path: /misc/ping, port: http}}
           resources: {requests: {cpu: 50m, memory: 192Mi}, limits: {memory: 768Mi}}
           env:
+            - {name: PGADMIN_REPLACE_SERVERS_ON_STARTUP, value: "True"}
             - {name: PGADMIN_LISTEN_PORT, value: "5050"}
             - {name: PGADMIN_DISABLE_POSTFIX, value: "1"}
             - {name: PGADMIN_DEFAULT_EMAIL, value: pgadmin-bootstrap@alchemmist.xyz}
@@ -67,10 +85,19 @@ spec:
             - {name: state, mountPath: /var/lib/pgadmin}
             - {name: config, mountPath: /pgadmin4/config_local.py, subPath: config_local.py, readOnly: true}
             - {name: config, mountPath: /pgadmin4/servers.json, subPath: servers.json, readOnly: true}
+            - {name: config, mountPath: /browser-helper/password.py, subPath: password.py, readOnly: true}
+            - {name: browser-auth, mountPath: /browser-auth, readOnly: true}
             - {name: cas, mountPath: /cnpg, readOnly: true}
       volumes:
         - {name: state, persistentVolumeClaim: {claimName: pgadmin-state}}
         - {name: config, configMap: {name: pgadmin-config}}
+        - name: browser-auth
+          projected:
+            defaultMode: 0440
+            sources:
+            {{- range $tier := list "common" "critical" "internal" }}
+              - secret: {name: pgadmin-browser-{{ $tier }}, items: [{key: password, path: {{ $tier }}}]}
+            {{- end }}
         - name: cas
           projected:
             sources:

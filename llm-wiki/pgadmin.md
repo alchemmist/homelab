@@ -5,7 +5,14 @@ Native OAuth2 only, provider `homelab-pgadmin`, strict `/oauth2/authorize` callb
 `homelab-owner` binding and matching group claim. The bootstrap account has no local web login.
 PostgreSQL login is separate from Authentik: use an authorized database role, not the bootstrap password.
 Shared server definitions use the three CNPG `-rw` Services and per-cluster CA certificates.
-There are no shared SQL passwords. A read-only DB role is recommended for browsing.
+Owner-only shared connections use `pgadmin_browser`, a non-admin CNPG-managed login per cluster.
+Provision distinct Kubernetes basic-auth Secrets `pgadmin-browser-{common,critical,internal}`
+(username `pgadmin_browser`, independently generated passwords) before deploying. The named
+password helper accepts only OAuth2 and the exact database hosts, port and login. Keep the
+Secrets outside Git. No password saving or master-password prompt. Rotate through CNPG;
+never enable the postgres superuser for UI access. Browse catalogues with normal PUBLIC
+permissions; on `pg-common/lms` this role also has USAGE on public and SELECT on its existing
+tables. No grant of `pg_read_all_data` or administrative privileges.
 The removed async standby was outside `pg-critical`'s synchronous quorum.
 
 Desired state: `charts/postgres-platform/templates/pgadmin.yaml`. Keep `pgadmin-bootstrap`
