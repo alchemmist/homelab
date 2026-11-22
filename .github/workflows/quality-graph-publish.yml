@@ -3,7 +3,7 @@
 name: Quality Graph Publisher
 'on':
   schedule:
-    - cron: '3-58/5 * * * *'
+    - cron: 3-58/5 * * * *
   issue_comment:
     types: [created, edited]
 permissions: {}
@@ -43,3 +43,4 @@ jobs:
         uses: alchemmist/quality-graph@a08603fcb44e9e22813b497ed391addf68797ce3
         with:
           operation: scheduled-command
+...
