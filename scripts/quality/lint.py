@@ -99,7 +99,9 @@ _NPM_PACKAGE_KEYS = frozenset(
         "version",
     }
 )
-_NPM_LOCK_NAMES = ("package-lock.json", "npm-shrinkwrap.json", "package-lock.json.gz")
+_NPM_LOCK_NAMES = ("package-lock.json", "npm-shrinkwrap.json")
+# Only this chart materializes a compressed lock before invoking npm ci.
+_PI_MANIFEST = "charts/openhands/files/pi-monori/package.json"
 _NPM_ROOT_DEP_FIELDS = ("dependencies", "devDependencies", "optionalDependencies")
 _NPM_NESTED_DEP_FIELDS = ("dependencies", "devDependencies", "optionalDependencies")
 _DEPENDENCY_NPM_LOCK_FAILURE = "npm lock contains unsupported or unsafe package sources"
@@ -479,6 +481,8 @@ class _InstallScriptsError(ValueError):
 
 def _located_distributions(packages: dict[str, object]) -> dict[str, tuple[str, str]]:
     """Validate every non-root package entry before any advisory request."""
+    if len(packages) - 1 > _MAX_NPM_DISTRIBUTIONS:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
     scripted = [
         _package_name(path)
         for path, entry in packages.items()
@@ -748,7 +752,7 @@ def check_dependencies(names: Sequence[str]) -> tuple[list[Finding], int]:
             or path.name == "requirements.txt"
             or (path.name.startswith("requirements-") and path.suffix == ".txt")
         )
-        npm_lock = path.name in _NPM_LOCK_NAMES
+        npm_lock = path.name in (*_NPM_LOCK_NAMES, "package-lock.json.gz")
         other_lock = path.name in {
             "poetry.lock",
             "Pipfile.lock",
@@ -762,6 +766,9 @@ def check_dependencies(names: Sequence[str]) -> tuple[list[Finding], int]:
             path.name == "requirements.in" and str(path.with_suffix(".txt")) not in inventory
         ) or (
             path.name == "package.json"
+            and not (
+                name == _PI_MANIFEST and str(path.with_name("package-lock.json.gz")) in inventory
+            )
             and not any(
                 str(path.with_name(lock)) in inventory
                 for lock in (
