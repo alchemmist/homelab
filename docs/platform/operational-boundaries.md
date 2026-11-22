@@ -8,3 +8,12 @@
 - Historical Prometheus corruption is a separate issue. Do not clear the WAL. A VM cold boot and full independent restore require separate maintenance acceptance.
 - Backups: the daily n8n job uses the current claim. The latest paired archive on `socrat-3` passed SHA verification; its SQLite database was independently restored and passed a read-only integrity check. One unpaired archive was not accepted. See the [coverage matrix](../records/handoffs/backup-coverage-20261116.md) for datasets still outstanding. A retention policy is not a backup.
 - Preserve the historical Wishlist OutOfSync state, SPI failure and limits on human callbacks and the production telemetry child. Do not mark them resolved without a test.
+
+## Interpreting historical results
+
+- “Synced/Healthy”, test results, screenshots and counters apply only to the resource and time recorded. Do not add counts across suites or generalize an owner or fixture test to a new user, another device or ISP, or full disaster recovery.
+- `tim` in old identity-provider logs is a former login. The Linux account `tim`, Rancher resource names and `wg-socrat` are separate identifiers; do not rename them in bulk.
+- NetBird access does not grant SSH, sudo or cluster-admin rights. Authentik MFA does not replace application RBAC.
+- Pushing an image or commit does not prove rollout. Check auto-sync settings and hooks.
+- Historical migration scripts can change production. Before running one, perform a fresh audit, verify scope, UID and hash, make a private backup and check locking or compare-and-swap protection. Investigate uncertain writes before retrying.
+- Never publish credentials, QR codes, private keys, subscriptions or share, recovery or activation URLs that contain tokens. A public hostname does not imply anonymous API access.

@@ -5,11 +5,42 @@ Choose the narrowest route that answers the question. Nothing below is required 
 | Starting point | Open |
 | --- | --- |
 | How does the cluster fit together? | [System overview and sources of truth](platform/system-overview.md) |
-| I have a service, namespace, group or endpoint | [Entity lookup](find/entities.md) |
-| I have a symptom or alert | [Symptom lookup](find/symptoms.md) |
+| I have a service, namespace, group or endpoint | [Entity lookup](entities.md) |
+| I have a symptom or alert | [Symptom lookup](symptoms.md) |
 | Why was this design chosen? | [Accepted decisions](decisions/) |
 | What was actually tested, and when? | [Incidents](records/incidents/) or [handoffs](records/handoffs/); neither is a current operating procedure |
 | Is this change allowed or safe? | [Operational boundaries](platform/operational-boundaries.md) and [repository checks](quality/README.md) |
 | Is this a proposal rather than an accepted change? | [Research](research/) and [open investigations](issues/) |
 
-See the [topic notes](find/topics.md) for additional application guides and limits of earlier acceptance tests. The [public wiki](../wiki/README.md) has a separate audience and publication process.
+The [public wiki](../wiki/README.md) has a separate audience and publication process.
+
+## Runbooks by task
+
+| Task | Reference |
+| --- | --- |
+| Network onboarding, devices, JWT policies and node agents | [NetBird](network/netbird.md), [DNS](network/public-dns.md) |
+| Foreign egress for applications on Russian nodes | [Service VPN: dedicated 3x-ui client and subscription](network/service-vpn-egress.md) |
+| Moscow VPN frontend, NL backend, retained clients and known limits | [Production setup and history](network/vpn-hardening.md), [acceptance and incident](records/handoffs/vpn-production-cutover-20261109.md) |
+| SSH public keys, regular Linux accounts and revocation | [SSH users](identity/ssh-user.md), [host access and RBAC](identity/identity-host-access.md) |
+| Observer group onboarding, Danila and revocation | [Native observer](identity/native-observer.md), [acceptance checks](identity/observer-acceptance-20261108.md) |
+| Check which services enforce Authentik, native sign-in or public access | [Browser authentication audit](identity/browser-auth-audit.md) |
+| Identity reference and routine administration | [Identity](identity/identity.md), [operations](identity/identity-operations.md) |
+| B2C app groups, automatic provisioning and native roles | [Access contract](identity/application-access.md), [technical runbook](identity/app-access-groups.md) |
+| External users changing passwords without internal dashboard access | [Password self-service](identity/password-self-service.md) |
+| OIDC, native app roles and gateway exceptions | [Architecture](identity/identity-architecture.md), [integrations](identity/identity-integrations.md), [troubleshooting](identity/identity-gateway-troubleshooting.md) |
+| Optional SSH-key integration (disabled) | [UUID and key assignments](identity/identity-ssh-keys.md) |
+| Theme, native UI and recovery | [Frontend](identity/identity-frontend.md), [backup and recovery](identity/identity-recovery.md) |
+| Registry, robot accounts and scoped push/pull | [Harbor](platform/harbor.md) |
+| Wiki runtime and content | [Lifecycle](applications/wiki-process-lifecycle.md), [upgrade](records/handoffs/wiki-upgrade-20261107.md), [public onboarding source](../wiki/README.md) |
+| Per-node metric collection and retention | [OTel to Prometheus to Thanos: raw data, five-minute and hourly resolution, and deletion limits](monitoring/observability-current.md#метрики-сбор-прореживание-и-перенос-между-нодами--21-ноября-2026) |
+| Logs, metrics, traces and profiles | [Current observability](monitoring/observability-current.md), [monitoring](monitoring/monitoring.md) |
+| Incidents, notifications and workflow integration | [Socrat bot](platform/socrat-bot.md), [SPI frontend, backend and operations](applications/spi-incident-triage.md) (see current context for placement), [n8n](n8n/n8n-workflows.md) |
+| TV dashboard, targeted Argo CSS and dedicated YouTube VPN | [Android TV](applications/android-tv.md), [maintaining the TV stylesheet](applications/android-tv.md#сопровождение-кастомного-tv-css-для-argo) |
+| LMS and local generators | [LMS](applications/ai/lms.md), [local generation](applications/ai/lms-generation.md) |
+| SWE Mini retirement | [Removal scope and verification](applications/ai/swe-mini.md) |
+| OpenHands Canvas (installed; public sign-in and the full PR lifecycle not yet accepted) | [Verified behavior and blockers](applications/ai/openhands.md) |
+| Venice browser bridge, Google session and LiteLLM model | [Current state and limitations](applications/ai/venice-api.md) |
+| Dedicated DeepSeek web-session bridge, LiteLLM `o-deepseek` and rate limits to avoid a ban | [Status and limitations](applications/ai/deeperseeker.md) |
+| Other subsystems | [RustFS](data/object-storage/rustfs-foundation.md), [smart home](applications/smart-home-automation.md), [inference reliability](applications/ai/inference-client-reliability.md) |
+
+[Official MCP connections for agents](platform/official-mcp.md): project settings, service inventory, read-only scope and known blockers.
