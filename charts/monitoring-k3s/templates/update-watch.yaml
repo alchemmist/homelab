@@ -73,6 +73,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/watcher: {{ .Files.Get "files/update_watch.py" | sha256sum }}
         checksum/catalog: {{ .Values.updateWatch.targets | toJson | sha256sum }}
       labels:
         app: monitoring-update-watch
@@ -176,5 +177,5 @@ spec:
             spi_graphs: {{ . | quote }}
             {{- end }}
             summary: Software update check failed.
-            description: '{{ `{{ $labels.app }}` }} could not be compared with GitHub releases for 6 hours. No update notification is emitted for that application until the lookup succeeds.'
+            description: '{{ `{{ $labels.app }}` }} could not be compared with its upstream version source for 6 hours. No update notification is emitted for that application until the lookup succeeds.'
 {{- end }}
