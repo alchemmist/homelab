@@ -22,6 +22,51 @@ CUTOVERS = {
     "charts/litellm-infra": "7b4786fb4cc2e722a010c4b483b87dc209ae8d12",
 }
 
+# These identities now spell out the release namespace that Helm previously
+# supplied implicitly. Update only the historical expectation, never the
+# candidate; a missing or different current namespace must fail comparison.
+EXPLICIT_NAMESPACES = {
+    "charts/monori": (
+        ("Deployment", "monori"),
+        ("Deployment", "monori-back"),
+        ("Deployment", "monori-sync"),
+        ("Ingress", "monori"),
+        ("Service", "back"),
+        ("Service", "monori"),
+        ("Service", "monori-sync"),
+    ),
+    "charts/spi-triage": (
+        ("Deployment", "spi-queue-ui"),
+        ("Deployment", "spi-triage"),
+        ("Ingress", "spi-queue-ui"),
+        ("NetworkPolicy", "spi-queue-ui"),
+        ("NetworkPolicy", "spi-triage"),
+        ("Service", "spi-queue-ui"),
+        ("Service", "spi-triage"),
+        ("ServiceAccount", "spi-evidence-reader"),
+    ),
+    "charts/format-quorum": (
+        ("Deployment", "format-quorum"),
+        ("Ingress", "format-quorum"),
+        ("Service", "format-quorum"),
+    ),
+    "charts/litellm-infra": (
+        ("Deployment", "litellm-branding"),
+        ("Ingress", "litellm-branding"),
+        ("Service", "litellm-branding"),
+    ),
+}
+
+
+def compare_namespace_inputs(
+    documents: dict[tuple[str, str], dict[str, object]], chart: str, ns: str
+) -> None:
+    """Apply the exact owned namespace declaration delta to the historical side only."""
+    for key in EXPLICIT_NAMESPACES.get(chart, ()):
+        meta = _mapping(documents[key]["metadata"])
+        assert "namespace" not in meta
+        meta["namespace"] = ns
+
 
 def checkout(root: pathlib.Path, revision: str, *paths: str) -> pathlib.Path:
     """Extract only the Git inputs for an offline baseline render."""
@@ -256,8 +301,11 @@ class StatefulBoundaries(unittest.TestCase):
                         expected.pop(("Deployment", "litellm-postgres"))
                         expected.pop(("Service", "litellm-postgres"))
                         expected.pop(("PersistentVolumeClaim", "litellm-postgres"))
+                    compare_namespace_inputs(expected, chart, ns)
                     self.assertEqual(current, expected)
                     after = historical(HANDOFF)
+                else:
+                    compare_namespace_inputs(before, chart, ns)
                 self.assertEqual(before.keys(), after.keys())
                 for key, old in before.items():
                     if old != after[key]:
