@@ -125,7 +125,7 @@ resources:
                 periodSeconds: 20
                 successThreshold: 1
                 tcpSocket:
-                  port: 9000
+                  port: health
                 timeoutSeconds: 1
               name: server
               ports:
@@ -145,7 +145,7 @@ resources:
                 failureThreshold: 3
                 httpGet:
                   path: /oauth2/.well-known/openid-configuration
-                  port: 80
+                  port: http
                   scheme: HTTP
                 initialDelaySeconds: 5
                 periodSeconds: 10
@@ -839,11 +839,14 @@ resources:
                 - containerPort: 8082
                   name: h2c
                   protocol: TCP
+                - containerPort: 8081
+                  name: ping
+                  protocol: TCP
               readinessProbe:
                 failureThreshold: 3
                 httpGet:
                   path: /ping
-                  port: 8081
+                  port: ping
                   scheme: HTTP
                 periodSeconds: 10
                 successThreshold: 1
@@ -927,18 +930,21 @@ resources:
                 periodSeconds: 10
                 successThreshold: 1
                 tcpSocket:
-                  port: 9000
+                  port: health
                 timeoutSeconds: 1
               name: relay
               ports:
                 - containerPort: 33080
                   name: relay
                   protocol: TCP
+                - containerPort: 9000
+                  name: health
+                  protocol: TCP
               readinessProbe:
                 failureThreshold: 3
                 httpGet:
                   path: /health
-                  port: 9000
+                  port: health
                   scheme: HTTP
                 initialDelaySeconds: 2
                 periodSeconds: 5
@@ -1024,18 +1030,21 @@ resources:
                 periodSeconds: 10
                 successThreshold: 1
                 tcpSocket:
-                  port: 9000
+                  port: health
                 timeoutSeconds: 1
               name: relay
               ports:
                 - containerPort: 33080
                   name: relay
                   protocol: TCP
+                - containerPort: 9000
+                  name: health
+                  protocol: TCP
               readinessProbe:
                 failureThreshold: 3
                 httpGet:
                   path: /health
-                  port: 9000
+                  port: health
                   scheme: HTTP
                 initialDelaySeconds: 2
                 periodSeconds: 5

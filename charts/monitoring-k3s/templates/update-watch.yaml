@@ -18,6 +18,7 @@ data:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: monitoring-update-watch
   labels:
     app: monitoring-update-watch
@@ -33,6 +34,7 @@ spec:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: monitoring-update-watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -64,6 +66,7 @@ subjects:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: monitoring-update-watch
 spec:
   replicas: 1

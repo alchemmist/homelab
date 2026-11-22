@@ -19,6 +19,12 @@ data:
       listen 8080;
       server_name _;
 
+      # Local, dependency-free health endpoint: probes must not depend on weserv.nl.
+      location = /healthz {
+        access_log off;
+        return 204;
+      }
+
       location / {
         proxy_pass https://images.weserv.nl;
         proxy_ssl_server_name on;

@@ -446,9 +446,18 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         "rustfs-return-types",
         "image-cves",
     }
-    assert set(graph) == {"graph", *first_layer, "tests-medium", "ansible", "dependencies"}
+    assert set(graph) == {
+        "graph",
+        *first_layer,
+        "manifests",
+        "tests-medium",
+        "ansible",
+        "dependencies",
+    }
     assert graph["dependencies"]["needs"] == ["ownership"]
     assert graph["dependencies"]["policy"]["blocking"] is True
+    assert graph["manifests"]["needs"] == ["ownership"]
+    assert graph["manifests"]["policy"]["blocking"] is True
     assert graph["tests-medium"]["needs"] == ["ownership"]
     assert graph["tests-medium"]["policy"]["blocking"] is True
     makefile = (ROOT / "Makefile").read_text()
@@ -489,9 +498,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         "approvals": {"findings": False, "files": False, "node": False},
     }
     local = json.loads((ROOT / "ci/quality/local-checks.json").read_text())
-    assert set(local) == {
-        "python", "manifests", "tests-cluster",
-    }
+    assert set(local) == {"python", "tests-cluster"}
 
 
 def test_shell_policy_finds_extensionless_scripts_and_inline_steps(

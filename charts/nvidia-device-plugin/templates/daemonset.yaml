@@ -1,6 +1,7 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: {{ .Release.Name }}
   labels:
     app.kubernetes.io/name: nvidia-device-plugin

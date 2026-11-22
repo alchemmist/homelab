@@ -4,6 +4,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: {{ $name }}
   labels:
     app: {{ $name }}
@@ -74,13 +75,16 @@ spec:
               containerPort: 10902
             - name: grpc
               containerPort: 10901
-          {{- if $component.spreadQuery }}
+          livenessProbe:
+            httpGet: {path: /-/healthy, port: http}
+            timeoutSeconds: 3
+            periodSeconds: 10
+            failureThreshold: 3
           readinessProbe:
             httpGet: {path: /-/ready, port: http}
             timeoutSeconds: 3
             periodSeconds: 5
             failureThreshold: 3
-          {{- end }}
           resources:
             {{- toYaml $component.resources | nindent 12 }}
           securityContext:
@@ -109,6 +113,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: {{ $name }}
   labels:
     app: {{ $name }}

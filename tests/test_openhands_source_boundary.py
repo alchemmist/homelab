@@ -342,6 +342,8 @@ def _assert_owner_oidc_extensions(documents: list[dict[str, object]]) -> None:
     args = _list(oauth["args"])
     required = [
         "--provider=oidc",
+        "--client-secret-file=/run/oidc-client-secret",
+        "--cookie-secret-file=/run/oidc-cookie-secret",
         "--oidc-issuer-url=https://auth.socrat.alchemmist.xyz/application/o/openhands/",
         "--redirect-url=https://openhands.socrat.alchemmist.xyz/oauth2/callback",
         "--upstream=http://openhands.openhands.svc.cluster.local:8000/",
@@ -364,6 +366,19 @@ def _assert_owner_oidc_extensions(documents: list[dict[str, object]]) -> None:
         isinstance(a, str) and a.startswith(("--skip-auth", "--insecure-oidc", "--ssl-insecure"))
         for a in args
     ), "OIDC authorization weakened"
+    pod = _mapping(_get(gateway, "spec", "template", "spec"))
+    assert _get(pod, "securityContext", "fsGroup") == 65532
+    keys = ["client-secret", "cookie-secret"]
+    assert oauth["volumeMounts"] == [
+        {"name": "oauth-keys", "subPath": k, "mountPath": "/run/oidc-" + k, "readOnly": True} for k in keys
+    ]
+    assert pod["volumes"] == [{"name": "oauth-keys", "secret": {
+        "secretName": "openhands-oidc", "defaultMode": 288,
+        "items": [{"key": k, "path": k} for k in keys],
+    }}]
+    assert {_mapping(v)["name"] for v in _list(oauth["env"])} == {
+        "OAUTH2_PROXY_CLIENT_ID", "OAUTH2_PROXY_REDIS_PASSWORD"
+    }
     ingress = _named(documents, "Ingress", "openhands-oidc")
     assert ingress["spec"] == {
         "ingressClassName": "traefik",
@@ -461,11 +476,16 @@ def _assert_owner_policy_declarations(documents: list[dict[str, object]]) -> Non
             literal = fragment.rstrip()
             for suffix in ("{{- end }}", "{{- if not .Values.retireFailedBackup }}"):
                 literal = literal.removesuffix(suffix).rstrip()
+            # Resolve only the reviewed metadata header; policy bodies must remain literal.
+            literal = literal.replace("\nmetadata: {namespace: {{ $.Release.Namespace | quote }}, name:",
+                                      "\nmetadata: {namespace: openhands, name:", 1)
             assert "{{" not in literal, "Policy template requires explicit review"
             declaration = _mapping(yaml.safe_load(literal))
             name = _get(declaration, "metadata", "name")
             assert isinstance(name, str)
-            assert _named(documents, "NetworkPolicy", name)["spec"] == declaration["spec"], (
+            actual = _named(documents, "NetworkPolicy", name)
+            assert _get(actual, "metadata", "namespace") == _get(declaration, "metadata", "namespace")
+            assert actual["spec"] == declaration["spec"], (
                 "Network policy differs from declared edges"
             )
     boundary = _named(documents, "NetworkPolicy", "openhands-boundary")

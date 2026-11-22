@@ -42,7 +42,7 @@ class AlertGraphInventoryTests(unittest.TestCase):
             "SocratRedisCommonWriterUnavailable",
             "SocratRedisCommonRedundancyReduced",
         }
-        assert sum(row["alert"] == "LMSWebUnavailable" for row in rows) == 1
+        assert [r["owner"] for r in rows if r["alert"] == "LMSWebUnavailable"] == ["lms"]
         assert any(r["alert"] == "ThanosWarmWorkshopDiskLow" for r in rows)
         assert len(rows) == expected_source_rule_count
         expected_graph_spec_version = 1

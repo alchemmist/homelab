@@ -142,6 +142,111 @@
       "path": "validatingwebhookconfiguration-admissionregistration-v1.json",
       "url": "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/6ea44f54bb5cdedb2f61fba42c9b342e97959262/v1.36.0-standalone-strict/validatingwebhookconfiguration-admissionregistration-v1.json",
       "sha256": "e3119eb8530edcd3b114b653d2291f9c56bd62ba62349db23d6e4c8fc1eb8bda"
+    },
+    {
+      "path": "certificate-cert-manager-v1.json",
+      "source": "helm template cert-manager charts/cert-manager -f deploy/platform/cert-manager/values.yaml -s templates/crds.yaml",
+      "inputSha256": "c5f460eae5fa1bc963e2f263e93a360821c81c3d57043da9d74f35b1fa470aff",
+      "sha256": "590afdf1d0e86e20ab3a9bd9494eca3137961c13e7b95a45105c0c9fc1c1a127",
+      "apiVersion": "cert-manager.io/v1",
+      "kind": "Certificate"
+    },
+    {
+      "path": "issuer-cert-manager-v1.json",
+      "source": "helm template cert-manager charts/cert-manager -f deploy/platform/cert-manager/values.yaml -s templates/crds.yaml",
+      "inputSha256": "c5f460eae5fa1bc963e2f263e93a360821c81c3d57043da9d74f35b1fa470aff",
+      "sha256": "581d52a859cf7ddf2c842a0087ae572c36d928a8a8a528d70aedf7bf046dccc8",
+      "apiVersion": "cert-manager.io/v1",
+      "kind": "Issuer"
+    },
+    {
+      "path": "alertmanager-monitoring-v1.json",
+      "source": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz!kube-prometheus-stack/charts/crds/crds/crd-alertmanagers.yaml",
+      "inputSha256": "9d0ab153e07de608f0f326575d550f8f4d6cb445faeafe1a02dbc32d53d8fb35",
+      "sha256": "2b1b4405730b5790efaf5722686ccff53d44e328c0155e616b0dd970c038b437",
+      "apiVersion": "monitoring.coreos.com/v1",
+      "kind": "Alertmanager"
+    },
+    {
+      "path": "prometheus-monitoring-v1.json",
+      "source": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz!kube-prometheus-stack/charts/crds/crds/crd-prometheuses.yaml",
+      "inputSha256": "611dfc31e8051bf50286b71fcb028019934c50ff7b8270353f7930a36aac0552",
+      "sha256": "e311be26ea726d53a332ca88959e5d345dfb54d839db0e4cdcd383d7ed751ffc",
+      "apiVersion": "monitoring.coreos.com/v1",
+      "kind": "Prometheus"
+    },
+    {
+      "path": "prometheusrule-monitoring-v1.json",
+      "source": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz!kube-prometheus-stack/charts/crds/crds/crd-prometheusrules.yaml",
+      "inputSha256": "cfdf52a56c57640094cf2753f089b57c7aaa3043a418b7aa03807a52e35a4d20",
+      "sha256": "a9a1cc3770b4f34d2e25caeda87b8ebbbeaca2944c98124a3e112492fe6cfbfd",
+      "apiVersion": "monitoring.coreos.com/v1",
+      "kind": "PrometheusRule"
+    },
+    {
+      "path": "servicemonitor-monitoring-v1.json",
+      "source": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz!kube-prometheus-stack/charts/crds/crds/crd-servicemonitors.yaml",
+      "inputSha256": "ca8f16070220b412167a86989b9b48eb89318a3c3849cfafff889065ced5cd2e",
+      "sha256": "6556e171602b52560004b6191158365df68ecca0f90ebeed70b77e2bef701080",
+      "apiVersion": "monitoring.coreos.com/v1",
+      "kind": "ServiceMonitor"
+    },
+    {
+      "path": "podmonitor-monitoring-v1.json",
+      "source": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz!kube-prometheus-stack/charts/crds/crds/crd-podmonitors.yaml",
+      "inputSha256": "177fcd5360ba95b769aa27f1b19eb3ec9169d875213c748cc45960ca2c6bf47f",
+      "sha256": "d6d49bf964e8283a05040b36b6283c3da7095980405dc74cb91c71cfd63d5831",
+      "apiVersion": "monitoring.coreos.com/v1",
+      "kind": "PodMonitor"
+    },
+    {
+      "path": "globalrole-management-v3.json",
+      "source": "https://raw.githubusercontent.com/rancher/rancher/272e65580ca92b9dc51e0f0f0f9ae9d6d356e3b8/pkg/crds/yaml/generated/management.cattle.io_globalroles.yaml",
+      "inputSha256": "57455432de3cb6a3cd1a0fc24623cc2013f2fb20a712ba1020dbd000ad0f1986",
+      "sha256": "378701a8d149c8b666ed0107e55f6e872a5fd9df74d5cc8e71390943d2ba6138",
+      "apiVersion": "management.cattle.io/v3",
+      "kind": "GlobalRole"
+    },
+    {
+      "path": "roletemplate-management-v3.json",
+      "source": "https://raw.githubusercontent.com/rancher/rancher/272e65580ca92b9dc51e0f0f0f9ae9d6d356e3b8/pkg/crds/yaml/generated/management.cattle.io_roletemplates.yaml",
+      "inputSha256": "4479e81d3899027a60bb8978eb8abebb044425b1aa93912c08c0d49449b2aab8",
+      "sha256": "2de5e2028a3a46e08ba8f0a99138b0c4878ff914b5882cf951411164fbfe9fd2",
+      "apiVersion": "management.cattle.io/v3",
+      "kind": "RoleTemplate"
+    },
+    {
+      "path": "clusterroletemplatebinding-management-v3.json",
+      "source": "https://raw.githubusercontent.com/rancher/rancher/272e65580ca92b9dc51e0f0f0f9ae9d6d356e3b8/pkg/crds/yaml/generated/management.cattle.io_clusterroletemplatebindings.yaml",
+      "inputSha256": "52e59062ea3bf7b3382bf52c57c48696c4018a80f101c8f9a40a162c72f7867c",
+      "sha256": "12b2e4a1cb5dacb605fc6e744c140975a03d14374370fbd9264ee0c125b6c912",
+      "apiVersion": "management.cattle.io/v3",
+      "kind": "ClusterRoleTemplateBinding"
+    },
+    {
+      "path": "cluster-postgresql-v1.json",
+      "source": "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/30cca36d32328a78dc96c51db966ce629d5b72db/config/crd/bases/postgresql.cnpg.io_clusters.yaml",
+      "inputSha256": "3a96b6aacc23ef070e9eaca232f79ba12856d0229dea932794d1894cca354bf1",
+      "sha256": "18ef78fe49cb7bfa16fc79f1325bd5f50e1395e04ba22459ba1732840280e7e3",
+      "apiVersion": "postgresql.cnpg.io/v1",
+      "kind": "Cluster"
+    },
+    {
+      "path": "middleware-traefik-v1alpha1.json",
+      "source": "helm template traefik-crd traefik-crd-40.1.5+up40.1.0.tgz -s templates/traefik.io_middlewares.yaml",
+      "inputSha256": "464688938e29a02afc3d79c42b5580024e6ee0498fad7d43dbd8fc840c1a535b",
+      "sha256": "771d6acdb30e2d6a29b400b859702f88fddfc742979c613e5b81af60ead6178a",
+      "apiVersion": "traefik.io/v1alpha1",
+      "kind": "Middleware"
+    },
+    {
+      "path": "customresourcedefinition-apiextensions-v1.json",
+      "source": "https://raw.githubusercontent.com/kubernetes/kubernetes/ecf6decece6a6de25a57aad9ba90b6ce580f6f78/api/openapi-spec/v3/apis__apiextensions.k8s.io__v1_openapi.json",
+      "inputSha256": "1c7dd621bece6661867bcc29471f774a46b36c02567d59815c7c72f6d08aa512",
+      "sha256": "382a8c24d6acec9c3eba7ea3bc7a3911b7f462c37e35268c1e46e66d318ee3d1",
+      "apiVersion": "apiextensions.k8s.io/v1",
+      "kind": "CustomResourceDefinition",
+      "component": "io.k8s.apiextensions-apiserver.pkg.apis.apiextensions.v1.CustomResourceDefinition"
     }
   ],
   "unavailable": [

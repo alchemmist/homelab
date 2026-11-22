@@ -3,6 +3,7 @@ kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
   name: {{ template "rancher.fullname" . }}-custom-logos
+  namespace: {{ .Release.Namespace }}
 spec:
   accessModes:
     - {{ .Values.customLogos.accessMode | quote }}

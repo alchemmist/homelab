@@ -1,6 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: open-webui
 spec:
   replicas: {{ .Values.replicaCount }}
@@ -42,14 +43,13 @@ spec:
           command: [python, -c]
           args:
             - |
-              import json, os, pathlib, psycopg
+              import json, pathlib, psycopg
               assert json.loads(pathlib.Path('/data/.homelab-vm105-migration-verified.json').read_text())['verified']
-              with psycopg.connect(os.environ['DATABASE_URL'], connect_timeout=8) as db:
+              url = pathlib.Path('/run/migration-db/url').read_bytes().decode('utf-8')
+              with psycopg.connect(url, connect_timeout=8) as db:
                   assert db.execute('SELECT EXISTS (SELECT FROM "user"), EXISTS (SELECT FROM alembic_version)').fetchone() == (True, True)
-          env:
-            - name: DATABASE_URL
-              valueFrom: {secretKeyRef: {name: open-webui-postgres, key: url}}
           volumeMounts:
+            - {name: migration-db, mountPath: /run/migration-db, readOnly: true}
             - {name: data, mountPath: /data, readOnly: true}
             - {name: pg-ca, mountPath: /pg-ca, readOnly: true}
         {{- end }}
@@ -161,6 +161,13 @@ spec:
             - name: data
               mountPath: /app/backend/data
       volumes:
+        {{- if and .Values.migrationStorage.enabled (eq .Values.persistence.claimName .Values.migrationStorage.name) }}
+        - name: migration-db
+          secret:
+            secretName: open-webui-postgres
+            defaultMode: 292  # 0444; mounted only in the migration guard
+            items: [{key: url, path: url}]
+        {{- end }}
         - {name: pg-ca, configMap: {name: pg-common-ca}}
         {{- if .Values.otel.enabled }}
         - name: otel-source

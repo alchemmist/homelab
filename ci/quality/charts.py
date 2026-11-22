@@ -266,8 +266,31 @@ def policies(resource):
     return errors
 
 
-def kube_lint(target, resources):
+RELEASE_PEERS = {
+    "monitoring-k3s-0": ("grafana-mcp-0", "Deployment", "grafana-mcp"),
+    "litellm-2": ("litellm-0", "Service", "litellm"),
+    "rustfs-0": ("authentik-0", "Service", "authentik-server"),
+}
+
+
+def authentik_accounts():
+    """Use the same namespace-scoped account documents applied by the Ansible role."""
+    path = ROOT / "deploy/authentik/foundation.yaml"
+    return [
+        doc for doc in yaml.load_all(path.read_text(), Loader=ManifestLoader)
+        if doc and doc["kind"] == "ServiceAccount"
+    ]
+
+
+def kube_lint(target, resources, peers=()):
     """Execute kube_lint."""
+    def key(doc):
+        meta = doc["metadata"]
+        return doc["kind"], meta.get("namespace", ""), meta["name"]
+
+    peer_keys = {key(doc) for doc in peers}
+    if peer_keys.intersection(map(key, resources)):
+        raise ValueError("Ambiguous cross-release lint resource")
     data = command(
         [
             "kube-linter",
@@ -278,7 +301,7 @@ def kube_lint(target, resources):
             "--config",
             "ci/quality/kube-linter.yaml",
         ],
-        stdin=yaml.safe_dump_all(resources),
+        stdin=yaml.safe_dump_all([*resources, *peers]),
         allowed=(0, 1),
     )
     value = json.loads(data.stdout)
@@ -291,6 +314,9 @@ def kube_lint(target, resources):
     result = []
     for item in value["Reports"]:
         obj = item["Object"]["K8sObject"]
+        # Peers are checked and attributed in full by their own release.
+        if (obj["GroupVersionKind"]["Kind"], obj.get("Namespace", ""), obj["Name"]) in peer_keys:
+            continue
         identity = json.dumps(obj, sort_keys=True)
         rule = "kube-linter-" + item["Check"]
         # Hash diagnostics for semantic identity, but never echo possible env/Secret values.
@@ -390,6 +416,27 @@ def policy_findings(*, target: RenderTarget, resource: RenderedObject, key: str)
     ]
 
 
+def library_consumer(target: RenderTarget, selected: list[RenderTarget]) -> RenderTarget | None:
+    """Require a declared, exact-version locked dependency of an inventoried application."""
+    chart = target["chart"]
+    meta = yaml.safe_load((chart / "Chart.yaml").read_bytes())
+    if meta.get("type", "application") != "library":
+        return None
+    # A Helm library is not installable. Lint it directly and verify a real,
+    # inventoried default install of its parent (not a generated dummy Pod).
+    parent = chart.parent.parent
+    consumers = [t for t in selected if t["chart"] == parent and t["id"].startswith("defaults-")]
+    if chart.parent.name == "charts" and len(consumers) == 1:
+        declared = yaml.safe_load((parent / "Chart.yaml").read_bytes()).get("dependencies", [])
+        locked = yaml.safe_load((parent / "Chart.lock").read_bytes())["dependencies"]
+        if any(dep["name"] == meta["name"] for dep in declared) and any(
+            dep["name"] == meta["name"] and dep["version"] == meta["version"] for dep in locked
+        ):
+            return consumers[0]
+    message = "Library chart lacks an inventoried, exact-version locked consumer"
+    raise ValueError(message)
+
+
 def check(*, validate=True):
     """Execute check."""
     selected = targets()
@@ -397,6 +444,7 @@ def check(*, validate=True):
         raise ValueError("No local chart targets")
     findings = []
     inventory = []
+    renders = {}
     for target in selected:
         source = target["source"]
         lint = command(
@@ -405,8 +453,12 @@ def check(*, validate=True):
             allowed=(0, 1),
             timeout=180,
         )
-        resources = render(target)
-        if lint.returncode or resources is None:
+        consumer = library_consumer(target, selected)
+        effective = consumer or target
+        if effective["id"] not in renders:
+            renders[effective["id"]] = render(effective)
+        resources = renders[effective["id"]]
+        if lint.returncode or resources is None or (consumer and not resources):
             findings.append(
                 finding(
                     "helm-lint-render",
@@ -417,9 +469,27 @@ def check(*, validate=True):
                     target["id"] + contract_hash(target),
                 )
             )
-        if resources is None:
+        if resources is None or consumer:
+            # Each real parent's complete cached render goes through the normal
+            # schema, identity, policy and kube-linter checks under its own ID.
             continue
-        findings.extend(kube_lint(target, resources))
+        peers = []
+        # These consumers reference objects rendered by a different Helm source.
+        # Only the actual provider object is context; it still has its own gate.
+        link = RELEASE_PEERS.get(target["id"])
+        if link:
+            peer_id, kind, name = link
+            peer = next(t for t in selected if t["id"] == peer_id)
+            if peer_id not in renders:
+                renders[peer_id] = render(peer)
+            peers = [doc for doc in renders[peer_id] or []
+                     if doc["kind"] == kind and doc["metadata"]["name"] == name]
+        if target["id"] == "authentik-0":
+            peers = authentik_accounts()
+            # Do not discard the foundation accounts' own lint diagnostics.
+            foundation = {"id": "authentik-foundation", "source": "deploy/authentik/foundation.yaml"}
+            findings.extend(kube_lint(foundation, peers) if peers else [])
+        findings.extend(kube_lint(target, resources, peers))
         seen = set()
         for resource in resources:
             if (

@@ -25,6 +25,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: rustfs
 spec:
   replicas: 1
@@ -82,6 +83,9 @@ spec:
             periodSeconds: 20
             timeoutSeconds: 3
             failureThreshold: 6
+          args:
+            - --access-key-file=/run/rustfs-root/access
+            - --secret-key-file=/run/rustfs-root/secret
           env:
             # Override image-level wildcard console CORS; never allow arbitrary origins.
             - {name: RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS, value: 'https://rustfs.socrat.alchemmist.xyz'}
@@ -110,12 +114,6 @@ spec:
             {{- end }}
             - name: RUSTFS_VOLUMES
               value: /data
-            - name: RUSTFS_ACCESS_KEY
-              valueFrom:
-                secretKeyRef: {name: {{ .Values.rootSecret }}, key: access-key}
-            - name: RUSTFS_SECRET_KEY
-              valueFrom:
-                secretKeyRef: {name: {{ .Values.rootSecret }}, key: secret-key}
             - name: RUSTFS_OBS_LOG_DIRECTORY
               value: /logs
           ports:
@@ -125,9 +123,17 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - {name: data, mountPath: /data}
+            - {name: root-credentials, mountPath: /run/rustfs-root, readOnly: true}
             - {name: logs, mountPath: /logs}
             - {name: tmp, mountPath: /tmp}
       volumes:
+        - name: root-credentials
+          secret:
+            secretName: {{ .Values.rootSecret }}
+            defaultMode: 288  # 0440; pod fsGroup is 10001
+            items:
+              - {key: access-key, path: access}
+              - {key: secret-key, path: secret}
         - name: data
           persistentVolumeClaim: {claimName: rustfs-data}
         - name: logs
@@ -138,7 +144,7 @@ spec:
 # ClusterIP only. Browser routes, when separately enabled, terminate at Authentik.
 apiVersion: v1
 kind: Service
-metadata: {name: rustfs}
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: rustfs}
 spec:
   selector: {app: rustfs}
   ports:
@@ -148,6 +154,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: rustfs-isolation
 spec:
   podSelector:

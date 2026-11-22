@@ -1,6 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: x-ui
   labels:
     app.kubernetes.io/name: x-ui
@@ -21,6 +22,7 @@ spec:
     spec:
       hostNetwork: true
       dnsPolicy: Default
+      automountServiceAccountToken: false
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.nodeName | quote }}
       containers:
@@ -56,6 +58,12 @@ spec:
               port: {{ $prefix }}-panel
             periodSeconds: 2
             failureThreshold: 45
+          livenessProbe:
+            tcpSocket:
+              host: {{ $instance.probeHost | quote }}
+              port: {{ $prefix }}-panel
+            periodSeconds: 10
+            failureThreshold: 3
           readinessProbe:
             tcpSocket:
               host: {{ $instance.probeHost | quote }}

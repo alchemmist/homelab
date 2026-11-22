@@ -2,6 +2,7 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: lms-database-backup
   annotations:
     argocd.argoproj.io/compare-options: ServerSideDiff=true

@@ -53,6 +53,7 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: litellm-branding
 spec:
   replicas: {{ .Values.brandingReplicas }}
@@ -82,7 +83,11 @@ spec:
           image: nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236
           command: [/bin/sh, -ec]
           args: ['for f in socrat-logo-light-v1.svg socrat-logo-dark-v1.svg socrat-icon-v1.png; do test -s "/assets/$f" || exit 1; done']
-          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
           volumeMounts: [{name: assets, mountPath: /assets, readOnly: true}]
       {{- end }}
       containers:
@@ -108,6 +113,13 @@ spec:
             httpGet:
               path: /health
               port: http
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
           volumeMounts:
             - name: config
               mountPath: /etc/nginx/nginx.conf
@@ -130,6 +142,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: litellm-branding
 spec:
   selector:
@@ -141,6 +154,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: litellm-branding
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: websecure

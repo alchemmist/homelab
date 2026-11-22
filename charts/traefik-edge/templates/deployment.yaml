@@ -1,6 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: {{ .Release.Name }}
 spec:
   replicas: 1
@@ -65,16 +66,19 @@ spec:
               containerPort: {{ .Values.httpsPort }}
               hostPort: {{ .Values.httpsPort }}
               protocol: UDP
+            - name: health
+              containerPort: {{ .Values.healthPort }}
+              protocol: TCP
           readinessProbe:
             httpGet:
               host: 127.0.0.1
               path: /ping
-              port: {{ .Values.healthPort }}
+              port: health
           livenessProbe:
             httpGet:
               host: 127.0.0.1
               path: /ping
-              port: {{ .Values.healthPort }}
+              port: health
             initialDelaySeconds: 10
           resources:
 {{ toYaml .Values.resources | indent 12 }}

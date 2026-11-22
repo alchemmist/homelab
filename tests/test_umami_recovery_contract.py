@@ -55,3 +55,11 @@ def test_offline_render_references_but_never_replaces_credentials() -> None:
     assert app["volumeMounts"] == [
         {"name": "pg-ca", "mountPath": "/etc/pg-common", "readOnly": True}
     ]
+    assert app["livenessProbe"] == {
+        "httpGet": {"path": "/api/heartbeat", "port": "http"},
+        "periodSeconds": 10,
+    }
+    assert app["readinessProbe"] == {
+        "httpGet": {"path": "/api/heartbeat", "port": "http"},
+        "periodSeconds": 5,
+    }

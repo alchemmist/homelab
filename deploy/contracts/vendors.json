@@ -1,11 +1,18 @@
 {
+  "linkInventoryGlobs": [
+    "charts/*/charts/kube-prometheus-stack-*.tgz"
+  ],
+  "links": {
+    "charts/alertmanager/charts/kube-prometheus-stack-92.10.0.tgz": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz",
+    "charts/kube-state-metrics/charts/kube-prometheus-stack-92.10.0.tgz": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz",
+    "charts/node-exporter/charts/kube-prometheus-stack-92.10.0.tgz": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz",
+    "charts/prometheus-operator/charts/kube-prometheus-stack-92.10.0.tgz": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz",
+    "charts/prometheus/charts/kube-prometheus-stack-92.10.0.tgz": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz"
+  },
   "schemaVersion": 1,
   "trees": [
     {
-      "path": "charts/rancher",
       "basis": "reviewed-git-baseline",
-      "reviewedCommit": "c621952be41db352e6928701f61947e0260cef67",
-      "provenanceNote": "Original package hashes and reversible local hostAliases patch verified separately by test_vm105_management.py. This inventory also detects extra files not listed in the upstream manifest.",
       "files": {
         ".helmignore": "11d5bbdbcdf1fa5aff71bba2bd6f088fb00d00ff9927db0bb482d0b1e10fc578",
         "Chart.yaml": "d4b4c2b88ba19eccb7223542e2deb1c50eb6daeb489e95a053218c47ef474e28",
@@ -18,8 +25,8 @@
         "templates/_errors.tpl": "4c63712aa1df683441963d70cb8dfec21bc024c16009ff140a6bd652e91f0fb7",
         "templates/_helpers.tpl": "da660f2862c35d9fc12d4dba3cadc56bd57df35e8d8a0cd498a07be265d7c5e3",
         "templates/clusterRoleBinding.yaml": "0b0fcdcc9a3f562470b6f03b705f5b1e0eac9648646c4a65fcdc2d3fdd1626c6",
-        "templates/configMap.yaml": "d83bab79eeab6d24afe7dbc1f77b263e0c9d76cd8d70d70633b53a47f520642e",
-        "templates/deployment.yaml": "6793aca15779fe1b6d53b67e504f8c12da0f7a89b5ec6e5c5c33abaf0b7c6e47",
+        "templates/configMap.yaml": "1e12c719092e1b483442cfaa798b4c79c515952e755bd0604bc1b02eb5ae5459",
+        "templates/deployment.yaml": "3b64b3ab9e0608354b48d1625958a511030f5cef4798691c3043b76ade1051d3",
         "templates/extra-manifests.yaml": "825c39436fc226becc5879a786743b7ac0b0d101c0caf9911e5416c4bdad1876",
         "templates/ingate/_helpers.tpl": "53aad1390e14d52e2f0e57a3eea045921a7ca3b1d0353ecf5dc5cf1bf15b6445",
         "templates/ingate/gateway-cert.yaml": "37d17d96f6218c9c034867684cab90fe8d27a14d407e9c0ab76940d0e86da344",
@@ -40,19 +47,19 @@
         "templates/pre-upgrade-hook-job.yaml": "03b8ff789ba754e94ad23f8682c6ecac6427066f6c6c1a3578efedc1b06d3893",
         "templates/pre-upgrade-hook-service-account.yaml": "2eb9299575461a905015fd5ca33bcb7766cdd4a0233ed05073467ecc0c8a95a5",
         "templates/priorityClass.yaml": "95d49f9dc882222220803a221c5f7f35d520de362882c4b3d19d270e179ae524",
-        "templates/pvc.yaml": "43b69c715f974a7a3a84e1e51e3659fbfc04bd378fff250ab39510e9f44937a6",
+        "templates/pvc.yaml": "3a3f6514a7c6ae857e92fe48b162bec3203456143e04d69d1928605d8d81e3c4",
         "templates/secret.yaml": "93aa74be1fee667b7cc3cc75cfbc7718c96fb40b24f75cfd5d9b69f62d6f47b7",
-        "templates/service.yaml": "5741f0a6be7dd140a217632eb889afd71480073c28bb2decd1c01417429cede7",
-        "templates/serviceAccount.yaml": "94b09aa1006de205090d1cc0e2995f157983012212172452277ecdbe08732ee2",
+        "templates/service.yaml": "1514b552322becf6b146f42ed07096be50d9f3820d4f52b9a934a975062688c7",
+        "templates/serviceAccount.yaml": "f54214adf135e02a22bcbfe2177ae65423faff5f00ab731e0bb7492eba3a3026",
         "values.schema.json": "0f21619410d775e299ab296b177e80e75b651d69584a7fcb3ffddf828c8ef88c",
         "values.yaml": "f3e512dbaf9a08c562bac15c0ac78d837f264d0e9a71f6469e489390acf5892c"
-      }
+      },
+      "path": "charts/rancher",
+      "provenanceNote": "Original package hashes and reversible local hostAliases patch verified separately by test_vm105_management.py. This inventory also detects extra files not listed in the upstream manifest.",
+      "reviewedCommit": "c621952be41db352e6928701f61947e0260cef67"
     },
     {
-      "path": "charts/litellm",
       "basis": "reviewed-git-baseline",
-      "reviewedCommit": "5e7f2f8ce946ad428dec8a079ced2b1803d80222",
-      "provenanceNote": "Existing upstream-file-sha256.json retained; local schema/migration guards and chart metadata differ. This baseline is not an independent re-download or upstream signature verification.",
       "files": {
         ".helmignore": "bb987e6a8ef45a99255d1d632812482d5f0f3255ea841520b4d90342df5fe2b3",
         "Chart.lock": "df03e86cd5aec7b2e31731714d30c221987278152916586cc1ed4747c8ac82ca",
@@ -191,18 +198,18 @@
         "templates/deployment.yaml": "29db8f71f0a8ddc9896e3b3788d54cbb5b6b4c18802dd03999523635bf4c1827",
         "templates/extra-resources.yaml": "a9237cea5cf9e0f6aa508aef6ce22ab92c56cf3dae0b113e8372f09a4cae8002",
         "templates/hpa.yaml": "511be49b8a219e1c25a404a4afc8e28a4d3c5c9d8d81dbc9d892af14aff74246",
-        "templates/ingress.yaml": "decd197bd9b2c5598f07c49001c41d5d203a94ccd058f249f3a5ca1eb7926b28",
+        "templates/ingress.yaml": "dc0dbd273f8a9677b95ba6b377635d87bfea1c22cfe9028bbf8821d67072cee0",
         "templates/keda.yaml": "756aed47ff18554adcbb7c473edca979b826b5e2b4e5261fd9cd97740c0e82ef",
         "templates/migrations-job.yaml": "932481ceb30570919c70fbaa293887e50cff3d7ca3e61447ac51e2757fbd33e3",
         "templates/poddisruptionbudget.yaml": "27b49c41265fbb940e3b25393170200ac640dc2603df6029b5c92a5c7cf3a243",
         "templates/secret-dbcredentials.yaml": "80c9cca466f626c7590f71a8eb9c74044ad48213640bdb325750d7eca87ac575",
         "templates/secret-masterkey.yaml": "f19f8f767d699d65ac95c4170f420ec7546789c2657aa7eecbdaa79cc959eca8",
         "templates/service-metrics.yaml": "1149579b53b32108cf7650fb6c47dacd145e7499f74de01fd9f3ab9d338fd275",
-        "templates/service.yaml": "5ddbd8c5dfd7eb6556506e84e3818e8e2d68f3ad6dc5c3567d50918a1ca8d686",
-        "templates/serviceaccount.yaml": "d9bd51327167bc5736fc757b47c621dd77ea74e3391abfa44b0200c9be95d26a",
+        "templates/service.yaml": "1151d80295a1f4584460e21357b4da82e35b4c035e6fecbe9f937ee7a3484a17",
+        "templates/serviceaccount.yaml": "65a1c7c993e3644697b1e4dcc36e0548247bbcc7423033875f3763a4773fb0a9",
         "templates/servicemonitor.yaml": "adb925e7ba49bb1c68b0422384f4a7eebc531930cfa71803e3a3813d06ad873b",
-        "templates/tests/test-connection.yaml": "cc96e73667a7e045e8d8893f05b99e60c2fa5e2d9ae29abb88b561f7f108286b",
-        "templates/tests/test-env-vars.yaml": "6eb830e4544328eb464b8e34ceba8cc2c16c37082820c7b7412c3d5244f7d938",
+        "templates/tests/test-connection.yaml": "0c2007e03f70505ba705f6fb5db4a84e2b4d74d6ac7469c5b9eaf9dbceb82aac",
+        "templates/tests/test-env-vars.yaml": "8916373efb668d8f900dcc5594941ddb75ba92b557a75bbb3ff0dae370a80375",
         "templates/tests/test-servicemonitor.yaml": "60221b5d2f609438148eaf35ca558a2b195bc3b72468dafa5bba417132dd4811",
         "tests/billing_metrics_tests.yaml": "138fd949ddab7bd985c3feb94ae6e418fb60048371f010dd7411cdccc9b84764",
         "tests/bundled_db_images_tests.yaml": "e4abed03d1fbf4acf8156bb658e2a89eda8c523a8aa771ea86d0173a2450d953",
@@ -221,13 +228,13 @@
         "tests/service_tests.yaml": "1dbedcf39c9c494c1cc2fdfb1c2ce1c775f8ec4d96059149543774656c3afa9c",
         "upstream-file-sha256.json": "2e714e96a05bff31fe0b3fc297c8a793ee01f4ae68722423ac884680d19e484a",
         "values.yaml": "c22805eed706aa459dc319eec07298a68265ce54efe63dbf71627e0efe751986"
-      }
+      },
+      "path": "charts/litellm",
+      "provenanceNote": "Existing upstream-file-sha256.json retained; local schema/migration guards and chart metadata differ. This baseline is not an independent re-download or upstream signature verification.",
+      "reviewedCommit": "5e7f2f8ce946ad428dec8a079ced2b1803d80222"
     },
     {
-      "path": "deploy/wiki-runtime/chart",
       "basis": "reviewed-git-baseline",
-      "reviewedCommit": "729cc6c67b05d1fb28e0fe0067d1ec570dfe80c2",
-      "provenanceNote": "Existing local chart/identity guards retained. See deploy/wiki-runtime/oidc/README.md and docs/wiki-upgrade-20261107.md; no claim that all local files equal a tagged upstream release. Reviewed local PostgreSQL cutover guard, credential reference and CA mounts from 729cc6c6.",
       "files": {
         "Chart.yaml": "3da852d1b8b108c6d95b5485ceaa5fe2dfdfcb7ce83e075f5bfbd2f3b32a6f1b",
         "README.md": "2ac117441cdb7d59241dcdd462f447bb1b7eac3183430952c65713eb91f2b810",
@@ -243,28 +250,21 @@
         "templates/static.yaml": "f754333d3103003beb5096e0078877021e11f084ea1553a63187ce295d0556b2",
         "values.schema.json": "4dab7d9d11865b2f0545afe17ff762240919b1ef1ca1d8de8bd40d240d38dd5a",
         "values.yaml": "2437498f6383cb92cfb0dc85d71f501de199702b7a8d9d41141460b9ff0094e3"
-      }
+      },
+      "path": "deploy/wiki-runtime/chart",
+      "provenanceNote": "Existing local chart/identity guards retained. See deploy/wiki-runtime/oidc/README.md and docs/wiki-upgrade-20261107.md; no claim that all local files equal a tagged upstream release. Reviewed local PostgreSQL cutover guard, credential reference and CA mounts from 729cc6c6.",
+      "reviewedCommit": "729cc6c67b05d1fb28e0fe0067d1ec570dfe80c2"
     },
     {
-      "path": "charts/_vendor",
       "basis": "reviewed-git-baseline",
-      "reviewedCommit": "3abc9bb512fb597318f5c195af03146d10fd1d04",
-      "provenanceNote": "Monitoring bundle SHA equals the existing checked-in .sha256/README assertion; 319 archive members inspected without extraction (regular files/directories only, no absolute or parent traversal paths). Accepted Git baseline, not independent upstream download/signature/authenticity certification. Five existing component aliases remain unchanged.",
       "files": {
         "README.md": "9bf0ec67f8637e630cafc7bc8466b7bb337366c23df0e2af1bdcc2ea133253dd",
         "kube-prometheus-stack-92.10.0.sha256": "5ef35535e795db21fcdd2bf0b3873a1c1d3358cd7450c7eaa6bbf27c43bcfeb3",
         "kube-prometheus-stack-92.10.0.tgz": "85240efc443d7c2525d72851ab9c7c550c7abdb892b70f768ab8e727d9c3c898"
-      }
+      },
+      "path": "charts/_vendor",
+      "provenanceNote": "Monitoring bundle SHA equals the existing checked-in .sha256/README assertion; 319 archive members inspected without extraction (regular files/directories only, no absolute or parent traversal paths). Accepted Git baseline, not independent upstream download/signature/authenticity certification. Five existing component aliases remain unchanged.",
+      "reviewedCommit": "3abc9bb512fb597318f5c195af03146d10fd1d04"
     }
-  ],
-  "linkInventoryGlobs": [
-    "charts/*/charts/kube-prometheus-stack-*.tgz"
-  ],
-  "links": {
-    "charts/alertmanager/charts/kube-prometheus-stack-92.10.0.tgz": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz",
-    "charts/kube-state-metrics/charts/kube-prometheus-stack-92.10.0.tgz": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz",
-    "charts/node-exporter/charts/kube-prometheus-stack-92.10.0.tgz": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz",
-    "charts/prometheus/charts/kube-prometheus-stack-92.10.0.tgz": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz",
-    "charts/prometheus-operator/charts/kube-prometheus-stack-92.10.0.tgz": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz"
-  }
+  ]
 }

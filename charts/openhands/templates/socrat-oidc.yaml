@@ -27,6 +27,7 @@ spec:
         runAsNonRoot: true
         runAsUser: 65532
         runAsGroup: 65532
+        fsGroup: 65532
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: oauth2-proxy
@@ -34,6 +35,8 @@ spec:
           args:
             - --http-address=0.0.0.0:4180
             - --provider=oidc
+            - --client-secret-file=/run/oidc-client-secret
+            - --cookie-secret-file=/run/oidc-cookie-secret
             - --oidc-issuer-url=https://auth.socrat.alchemmist.xyz/application/o/openhands/
             - --redirect-url=https://openhands.socrat.alchemmist.xyz/oauth2/callback
             - --upstream=http://openhands.openhands.svc.cluster.local:8000/
@@ -77,12 +80,12 @@ spec:
           env:
             - name: OAUTH2_PROXY_CLIENT_ID
               valueFrom: {secretKeyRef: {name: openhands-oidc, key: client-id}}
-            - name: OAUTH2_PROXY_CLIENT_SECRET
-              valueFrom: {secretKeyRef: {name: openhands-oidc, key: client-secret}}
-            - name: OAUTH2_PROXY_COOKIE_SECRET
-              valueFrom: {secretKeyRef: {name: openhands-oidc, key: cookie-secret}}
             - name: OAUTH2_PROXY_REDIS_PASSWORD
               valueFrom: {secretKeyRef: {name: openhands-oidc-sessions, key: password}}
+          # Snapshot both keys until pod replacement, as with the original env refs.
+          volumeMounts:
+            - {name: oauth-keys, subPath: client-secret, mountPath: /run/oidc-client-secret, readOnly: true}
+            - {name: oauth-keys, subPath: cookie-secret, mountPath: /run/oidc-cookie-secret, readOnly: true}
           ports: [{name: http, containerPort: 4180}]
           startupProbe:
             httpGet: {path: /ping, port: http}
@@ -101,6 +104,14 @@ spec:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities: {drop: [ALL]}
+      volumes:
+        - name: oauth-keys
+          secret:
+            secretName: openhands-oidc
+            defaultMode: 288  # 0440, fsGroup 65532
+            items:
+              - {key: client-secret, path: client-secret}
+              - {key: cookie-secret, path: cookie-secret}
 ---
 apiVersion: v1
 kind: Service

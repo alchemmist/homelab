@@ -1,6 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: {{ .Release.Name }}
 spec:
   replicas: {{ ternary 0 (int .Values.replicaCount) .Values.browserCandidate.serveApi }}
@@ -20,6 +21,8 @@ spec:
       nodeSelector:
 {{ toYaml . | indent 8 }}
       {{- end }}
+      serviceAccountName: {{ .Release.Name }}
+      automountServiceAccountToken: false
       {{- if .Values.hostNetwork }}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet

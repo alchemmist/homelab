@@ -18,6 +18,7 @@ global:
     type: RollingUpdate
     rollingUpdate: {maxUnavailable: 1, maxSurge: 1}
   image:
+    digest: sha256:602227a86455d6772e3d16b7d852713c4f864f40df5df894abd1285bb53979a5
     tag: 2026.8.5
   # Do not bypass pressure, maintenance or other administrative taints.
   tolerations:
@@ -31,6 +32,9 @@ global:
 postgresql:
   enabled: false
 server:
+  # Both platform manifests of the pinned image start as numeric UID 1000.
+  containerSecurityContext:
+    runAsNonRoot: true
   # Base64 JSON: {"options":"-c jit=off"}. Avoid compiling the wide
   # identification-stage source lookup on each web request. Web sessions only.
   env:
@@ -80,6 +84,9 @@ server:
 serviceAccount:
   create: false
 worker:
+  # Both platform manifests of the pinned image start as numeric UID 1000.
+  containerSecurityContext:
+    runAsNonRoot: true
   affinity:
     nodeAffinity: *preferredNodes
     podAntiAffinity:

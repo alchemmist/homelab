@@ -1,6 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: lms-database-backups
   annotations:
     helm.sh/resource-policy: keep

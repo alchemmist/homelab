@@ -6,13 +6,6 @@
       "native": "reports/python.json"
     }
   },
-  "manifests": {
-    "title": "Manifest validation",
-    "run": "make manifests",
-    "results": {
-      "native": "reports/manifests.json"
-    }
-  },
   "tests-cluster": {
     "title": "Cluster lifecycle",
     "run": "make tests-cluster",

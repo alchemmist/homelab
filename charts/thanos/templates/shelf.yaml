@@ -19,6 +19,7 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: {{ $name }}
   labels:
     app: {{ $name }}
@@ -118,6 +119,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: {{ $name }}
   labels:
     app: {{ $name }}

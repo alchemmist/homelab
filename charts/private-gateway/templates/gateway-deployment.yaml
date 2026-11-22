@@ -2,6 +2,7 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: {{ .Chart.Name }}
   labels:
     app.kubernetes.io/name: {{ .Chart.Name }}
@@ -37,6 +38,8 @@ spec:
         - name: private-gui
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
           command:
             - /bin/sh
             - -ec

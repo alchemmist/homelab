@@ -4,4 +4,8 @@ name: uptime-kuma
 version: 0.2.0
 type: application
 description: Gatus public status page with legacy URL redirects
+dependencies:
+  - name: gatus
+    version: 0.1.0
+    repository: ""
 ...

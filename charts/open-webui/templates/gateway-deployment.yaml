@@ -1,6 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: open-webui-gateway
 spec:
   replicas: 1
@@ -26,6 +27,10 @@ spec:
         - name: nginx
           image: {{ .Values.gateway.image | quote }}
           imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: {{ .Values.gateway.port }}
+              protocol: TCP
           resources:
             {{- toYaml .Values.gateway.resources | nindent 12 }}
           startupProbe:

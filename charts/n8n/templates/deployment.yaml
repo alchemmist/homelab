@@ -4,6 +4,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: {{ $.Release.Namespace | quote }}
   name: n8n
 spec:
   replicas: {{ .Values.replicaCount }}

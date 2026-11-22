@@ -7,6 +7,8 @@ kube-prometheus-stack:
   alertmanager:
     enabled: false
   prometheusOperator:
+    image:
+      sha: 7c88d4e7bae63bd8d0f8da986054337c23b4472fa8d3c6817f5bc4b8407a2d6a
     affinity: &portablePlacement
       nodeAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
@@ -24,6 +26,8 @@ kube-prometheus-stack:
                   values: [socrat-0]
     admissionWebhooks:
       patch:
+        image:
+          sha: 778d97dc3986355625e14392419b3364c487a7c807d4d86ddad1df369129b082
         affinity: *portablePlacement
         resources:
           limits:

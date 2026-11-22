@@ -15,6 +15,8 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
+  # Preserve the Kubernetes default: do not drain below the healthy budget.
+  unhealthyPodEvictionPolicy: IfHealthyBudget
   {{- with .Values.server.pdb.maxUnavailable }}
   maxUnavailable: {{ . }}
   {{- else }}

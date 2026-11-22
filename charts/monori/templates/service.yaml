@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Service
-metadata: { name: monori-sync }
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: monori-sync }
 spec: { selector: { app: monori-sync }, ports: [{ name: http, port: 8010, targetPort: http }] }
 ---
 apiVersion: v1
 kind: Service
-metadata: { name: back }
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: back }
 spec: { selector: { app: monori-back }, ports: [{ name: http, port: 8000, targetPort: http }] }
 ---
 apiVersion: v1
 kind: Service
-metadata: { name: monori }
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: monori }
 spec: { selector: { app: monori }, ports: [{ name: http, port: 80, targetPort: http }] }

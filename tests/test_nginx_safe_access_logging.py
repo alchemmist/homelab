@@ -61,6 +61,22 @@ class SafeNginxLoggingTests(unittest.TestCase):
                     assert "~^5 error;" in config
                     assert "access_log /dev/stdout safe_json;" in config
 
+    def test_private_gateway_renders_declared_resource_budget(self) -> None:
+        """The gateway Pod uses its chart's declared requests and limits."""
+        gateway = next(
+            doc
+            for doc in self.render("private-gateway")
+            if doc and doc.get("kind") == "DaemonSet"
+        )
+        container = gateway["spec"]["template"]["spec"]["containers"][0]
+        assert container["resources"] == {
+            "requests": {"cpu": "50m", "memory": "128Mi"},
+            "limits": {"memory": "512Mi"},
+        }
+        # Listener remains on the node's existing address/ports.
+        assert gateway["spec"]["template"]["spec"]["hostNetwork"] is True
+        assert container["ports"][0]["containerPort"] == 18443
+
     def test_real_nginx_http_syntax(self) -> None:
         """The rendered logging directives pass real nginx syntax checks."""
         # Extract exact rendered logging directives; TLS/listen/upstream resources

@@ -2,6 +2,8 @@
 # Runtime credentials and signing keys are preserved in existing cluster Secrets.
 externallyManagedRuntimeSecrets: true
 core:
+  image:
+    tag: v2.15.4@sha256:7d2ba5304a729887cdec7cb222a82b500278423de230ae5150c386a6c332b112
   extraEnvVars:
     - name: CONFIG_OVERWRITE_JSON
       valueFrom:
@@ -68,6 +70,8 @@ expose:
   type: ingress
 externalURL: https://harbor.socrat.alchemmist.xyz
 jobservice:
+  image:
+    tag: v2.15.4@sha256:f143578ef30e2be5c48873298257ed0fca31545025958c534e536a06765d2b82
   jobLoggers:
     - stdout
   maxJobWorkers: 2
@@ -97,6 +101,8 @@ persistence:
       storageClass: local-path
   resourcePolicy: keep
 portal:
+  image:
+    tag: v2.15.4@sha256:01edf478505b21dba23a83c095f6ecac0c1e705690093edbab41e9a4d6754a75
   nodeSelector:
     kubernetes.io/hostname: socrat-0
   resources:
@@ -109,6 +115,8 @@ portal:
       memory: 64Mi
 redis:
   internal:
+    image:
+      tag: v2.15.4@sha256:bb022e8f236f56f53cee7bb1f609595e497da67d829048e0af2284f97e6eb54f
     nodeSelector:
       kubernetes.io/hostname: socrat-0
     resources:
@@ -121,6 +129,8 @@ redis:
         memory: 128Mi
 registry:
   controller:
+    image:
+      tag: v2.15.4@sha256:30bd1ace4e3bb390d75b84673f98ddb4a69fcc6d116932ea764391df01943fb7
     resources:
       limits:
         ephemeral-storage: 1Gi
@@ -132,6 +142,8 @@ registry:
   nodeSelector:
     kubernetes.io/hostname: socrat-0
   registry:
+    image:
+      tag: v2.15.4@sha256:dc0cb388a6445c69c8a0c406679290d2991c9698833d9e6e86a23bdfaf2f83c3
     resources:
       limits:
         ephemeral-storage: 1Gi
@@ -141,6 +153,8 @@ registry:
         ephemeral-storage: 64Mi
         memory: 256Mi
 trivy:
+  image:
+    tag: v2.15.4@sha256:813ca81b4a4ea0f44f5fa81cca2645eeb58d4b1f6c66b428df9d506174bb71d9
   enabled: true
   resources:
     requests:

@@ -53,6 +53,7 @@ spec:
         {{- if not (empty .Values.containerSecurityContext) }}
         securityContext: {{ .Values.containerSecurityContext | toYaml | nindent 10 }}
         {{- end }}
+        ports: [{containerPort: 6379}]
         livenessProbe:
           tcpSocket:
             port: 6379

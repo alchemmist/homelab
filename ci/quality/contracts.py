@@ -31,7 +31,12 @@ def local_refs(value):
     """Execute local_refs."""
     if isinstance(value, dict):
         for key, item in value.items():
-            if key == "$ref":
+            if key in {"properties", "patternProperties", "definitions"} and isinstance(
+                item, dict
+            ):
+                for subschema in item.values():
+                    local_refs(subschema)
+            elif key == "$ref":
                 require(
                     isinstance(item, str) and item.startswith("#"),
                     "Remote schema reference forbidden",

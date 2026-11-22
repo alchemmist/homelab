@@ -82,6 +82,7 @@ profiles:
     extends: quality-helm
     setup:
       - run: uv run python -m ci.quality.install_tools --tools kubeconform kube-linter
+      - run: uv run python -m ci.quality.check_monitoring_selector
   quality-ansible:
     extends: default
     setup:
@@ -231,6 +232,15 @@ nodes:
       - graph
     policy: *id001
     run: make rustfs-return-types
+  manifests:
+    title: Manifest validation
+    profile: quality-manifests
+    needs:
+      - ownership
+    policy: *id001
+    run: make manifests
+    results:
+      native: reports/manifests.json
   dependencies:
     title: Dependency audit
     profile: quality-javascript

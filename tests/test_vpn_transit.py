@@ -46,9 +46,15 @@ def test_transport_never_advertises_a_default_route_or_mutates_old_interface() -
     assert "10.251.4.2/32" in template and "10.251.4.1/32" in template
     play = yaml.safe_load((ROOT / "ansible/playbooks/vpn-transit-transport.yml").read_text())
     assert play[0]["hosts"] == "socrat-2:socrat-4"
-    tasks = (ROOT / "ansible/roles/vpn_transit/tasks/main.yml").read_text()
-    assert "Refuse retired duplicate-channel provisioning" in tasks
-    assert "wg-quick@wg-vpn-transit" in tasks
+    tasks = yaml.safe_load((ROOT / "ansible/roles/vpn_transit/tasks/main.yml").read_text())
+    assert tasks == [
+        {
+            "name": "Refuse retired duplicate-channel provisioning",
+            "ansible.builtin.fail": {
+                "msg": "Dedicated wg-vpn-transit retired; use existing wg-socrat and mesh runtime playbook."
+            },
+        }
+    ]
 
 
 def test_small_worker_keeps_admission_and_has_no_control_plane_role() -> None:
@@ -93,8 +99,8 @@ def test_home_egress_has_only_known_exact_destination_and_no_default_route() -> 
     assert play[0]["hosts"] == "socrat-0:socrat-1:socrat-3"
     assert play[0]["serial"] == 1
     source = path.read_text()
-    assert "prohibit" in source and "'32760'" in source
-    assert "'default_routes_unchanged': True" in source
+    assert 'fence = ["ip", "-4", "route", "del", "prohibit", EXIT + "/32", "metric", "32760"]' in source
+    assert '"default_routes_unchanged": True' in source
 
 
 def test_exit_fence_never_blocks_shared_https_or_dns() -> None:

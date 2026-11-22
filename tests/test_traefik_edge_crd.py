@@ -29,6 +29,15 @@ class EdgeCrdTests(unittest.TestCase):
         )
         cls.resources = [d for d in yaml.safe_load_all(output) if d]
 
+    def test_health_probes_use_declared_named_health_port(self) -> None:
+        deployment = next(d for d in self.resources if d["kind"] == "Deployment")
+        container = deployment["spec"]["template"]["spec"]["containers"][0]
+        health = next(port for port in container["ports"] if port["name"] == "health")
+        assert health["containerPort"] == 19090
+        assert "hostPort" not in health
+        assert container["readinessProbe"]["httpGet"]["port"] == "health"
+        assert container["livenessProbe"]["httpGet"]["port"] == "health"
+
     def test_provider_is_namespace_and_label_scoped(self) -> None:
         d = next(d for d in self.resources if d["kind"] == "Deployment")
         args = d["spec"]["template"]["spec"]["containers"][0]["args"]

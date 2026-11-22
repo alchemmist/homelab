@@ -15,6 +15,7 @@ apiVersion: extensions/v1beta1
 {{- end }}
 kind: Ingress
 metadata:
+  namespace: {{ .Release.Namespace | quote }}
   name: {{ $fullName }}
   labels:
     {{- include "litellm.labels" . | nindent 4 }}

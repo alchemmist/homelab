@@ -32,7 +32,7 @@ data:
 ---
 apiVersion: apps/v1
 kind: Deployment
-metadata: {name: socrat-telegram-path-control}
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: socrat-telegram-path-control}
 spec:
   replicas: 1
   strategy: {type: Recreate}

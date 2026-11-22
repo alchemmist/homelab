@@ -4,6 +4,7 @@ import ast
 import hashlib
 import json
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -110,8 +111,13 @@ class MigrationTests(unittest.TestCase):
             == "socrat-authentik-lms"
         )
 
-    def test_vendor_preserves_every_upstream_file_except_two_minimal_extensions(self):
-        root = R / "charts/litellm"
+    def test_vendor_preserves_every_upstream_file_after_reversing_local_extensions(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name) / "litellm"
+        shutil.copytree(R / "charts/litellm", root)
+        patch = R / "deploy/platform/litellm/fork/helm-tests-and-namespace.patch"
+        subprocess.run(["git", "apply", "-R", "-p3", str(patch)], cwd=root, check=True)
         manifest = json.loads((root / "upstream-file-sha256.json").read_text())
         for name, digest in manifest.items():
             s = (root / name).read_bytes()
