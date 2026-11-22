@@ -18,6 +18,8 @@ def check(names: list[str]) -> tuple[list[Finding], int]:
         path = Path(name)
         if "docs" not in path.parts[:-1] and not README.fullmatch(path.name):
             continue
+        if "docs" in path.parts[:-1] and path.suffix.lower() == ".json":
+            continue  # JSON artifacts (n8n workflow exports, fixtures) are not documentation prose.
         data = (ROOT / name).read_bytes()
         if data.startswith((codecs.BOM_UTF32_LE, codecs.BOM_UTF32_BE)):
             encoding = "utf-32"
