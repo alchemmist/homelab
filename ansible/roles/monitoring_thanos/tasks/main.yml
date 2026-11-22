@@ -14,7 +14,7 @@
 
 - name: Copy the Prometheus relocate helper
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../roles/monitoring_stack/files/prometheus_relocate.py"
+    src: prometheus_relocate.py
     dest: "{{ monitoring_thanos_directory }}/prometheus_relocate.py"
     mode: "0700"
 

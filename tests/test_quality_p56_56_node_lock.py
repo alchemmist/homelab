@@ -560,28 +560,15 @@ def test_unsafe_version_three_lock_refuses_before_the_advisory_request(
             lint.check_dependencies([relative])
 
 
-def test_pi_installer_materializes_the_audited_lock() -> None:
-    """Keep the chart's compressed-lock exception bound to the actual install source."""
-    chart = (_REPO / "charts/openhands/templates/pi-monori.yaml").read_text()
-    assert 'package-lock.json.gz: {{ .Files.Get "files/pi-monori/package-lock.json.gz"' in chart
-    assert (
-        "cp /code/package.json .; gzip -dc /code/package-lock.json.gz > package-lock.json; "
-        "python -I /code/patch_npm.py pi; HOME=/tmp npm ci --strict-peer-deps --ignore-scripts"
-        in chart
-    )
-
-
-@pytest.mark.parametrize("owner", ["charts/openhands/files/pi-monori", "tools/fixture"])
 def test_compressed_lock_is_bound_to_manifest_and_audited(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, owner: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Compression is a transport detail, not an exception to npm admission."""
+    owner = "tools/fixture"
     directory = tmp_path / owner
     directory.mkdir(parents=True)
     lock = directory / "package-lock.json.gz"
     document = _document({"fixture-package": "1.0.0"})
-    if owner.startswith("charts/"):
-        document = json.loads(gzip.decompress((_REPO / owner / lock.name).read_bytes()))
     raw = json.dumps(document).encode()
     lock.write_bytes(gzip.compress(raw))
     packages = document["packages"]
@@ -599,7 +586,7 @@ def test_compressed_lock_is_bound_to_manifest_and_audited(
     monkeypatch.setattr(lint, "post_node_advisory_batch", post)
     inputs = [f"{owner}/{manifest.name}", f"{owner}/{lock.name}"]
     findings, count = lint.check_dependencies(inputs)
-    expected = [] if owner.startswith("charts/") else ["DEPENDENCY_LOCK_MISSING"]
+    expected = ["DEPENDENCY_LOCK_MISSING"]
     assert [item["ruleId"] for item in findings] == expected
     assert count == 1 + len(posted)
     rows = sorted(

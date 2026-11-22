@@ -98,7 +98,6 @@
     validate: >-
       {{ omit if inventory_hostname == 'socrat-1' else '/usr/bin/Hyprland --verify-config
       --config %s' }}
-  register: homelab_hyprland_config
 
 - name: Install Lua entry point for the updated socrat-1 compositor
   tags: hyprland

@@ -2,7 +2,6 @@
 - name: Check that starship is installed
   ansible.builtin.command: which starship
   changed_when: false
-  register: starship_binary
 
 - name: Ensure machine-wide starship config directories exist
   ansible.builtin.file:

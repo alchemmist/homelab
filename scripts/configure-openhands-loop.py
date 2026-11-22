@@ -11,7 +11,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEST = "/home/openhands/.openhands/tools/filesystem"
-WORKSPACE = "/home/openhands/workspace/the-loop-demo"
 
 
 def main():

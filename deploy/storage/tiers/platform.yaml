@@ -197,6 +197,14 @@ data:
             }
           ]
         },
+        "redis-local-retain": {
+          "nodePathMap": [
+            {"node": "DEFAULT_PATH_FOR_NON_LISTED_NODES", "paths": []},
+            {"node": "socrat-0", "paths": ["/var/lib/rancher/k3s/storage"]},
+            {"node": "socrat-1", "paths": ["/var/lib/rancher/k3s/storage"]},
+            {"node": "socrat-5", "paths": ["/var/lib/rancher/k3s/fast-storage"]}
+          ]
+        },
         "pg-local-retain": {
           "nodePathMap": [
             {

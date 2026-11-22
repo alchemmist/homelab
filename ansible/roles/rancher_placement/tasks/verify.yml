@@ -18,6 +18,5 @@
       --namespace cattle-system --deployment rancher
       --node {{ rancher_placement_nodes[0] | quote }} --timeout 60
     executable: /usr/bin/python3
-  register: rancher_placement_verification
   changed_when: false
 ...
