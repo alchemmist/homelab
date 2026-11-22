@@ -60,7 +60,7 @@ remain necessary; this is not a full DR or control-plane HA claim.
 ## Inventory-driven node onboarding without shadow deployment
 
 1. Add the trusted host/WG address using the normal inventory procedure.
-2. Run `python3 scripts/netbird-gitops-nodes.py` locally. It uses the complete
+2. Run `python3 ansible/scripts/netbird-gitops-nodes.py` locally. It uses the complete
    Ansible inventory and generates **only secret-free Git values**, never cluster
    objects or API grants. Commit inventory and values together; publish to main.
    `--check` verifies the generated state without writing files. Existing omitted

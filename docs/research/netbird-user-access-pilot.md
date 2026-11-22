@@ -200,10 +200,10 @@ reviewed локальном файле (не подставлять тестов
 ```sh
 PY=/tmp/homelab-iam-tests/bin/python
 $PY -m unittest discover -s tests -p 'test_netbird*.py' -v
-$PY scripts/netbird-deploy.py check          # ожидаемый BLOCKED: audit и пустые gates
+$PY ansible/scripts/netbird-deploy.py check          # ожидаемый BLOCKED: audit и пустые gates
 $PY scripts/netbird-pilot.py validate        # ожидаемый BLOCKED с repo inputs
 # После отдельного reviewed inputs и нового audit, где блокеры сняты:
-$PY scripts/netbird-deploy.py plan --inputs /protected/pilot.inputs.json --audit /protected/audit.json --out /tmp/netbird-reviewed
+$PY ansible/scripts/netbird-deploy.py plan --inputs /protected/pilot.inputs.json --audit /protected/audit.json --out /tmp/netbird-reviewed
 # apply требует --context и фразу apply-netbird-control-plane. Argo sync не вызывается.
 ```
 

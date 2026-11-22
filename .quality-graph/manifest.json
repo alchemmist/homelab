@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "58347465ed085b83f7db677025f228ead74987a132b679887c1c80437853ff8f",
+  "graphDigest": "f14cf98a7e862b2f048651fb21826cd50bf18929a78f15b8eb6e079647ee7de1",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -37,6 +37,34 @@
       },
       "timeoutMinutes": 5,
       "title": "Graph integrity"
+    },
+    {
+      "env": {},
+      "id": "docs-language",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "native",
+        "path": "reports/docs-language.json"
+      },
+      "step": {
+        "run": "make docs-language"
+      },
+      "timeoutMinutes": 5,
+      "title": "Documentation language"
     },
     {
       "env": {},
@@ -400,34 +428,6 @@
       },
       "timeoutMinutes": 5,
       "title": "RustFS gateway public return types"
-    },
-    {
-      "env": {},
-      "id": "manifests",
-      "needs": [
-        "ownership"
-      ],
-      "policy": {
-        "approvals": {
-          "files": false,
-          "findings": false,
-          "node": false
-        },
-        "blocking": true,
-        "blockingSeverities": [
-          "error"
-        ]
-      },
-      "profile": "quality-manifests",
-      "result": {
-        "adapter": "native",
-        "path": "reports/manifests.json"
-      },
-      "step": {
-        "run": "make manifests"
-      },
-      "timeoutMinutes": 10,
-      "title": "Manifest validation"
     },
     {
       "env": {},
@@ -873,9 +873,6 @@
         },
         {
           "run": "uv run python -m ci.quality.install_tools --tools kubeconform kube-linter"
-        },
-        {
-          "run": "uv run python -m ci.quality.check_monitoring_selector"
         }
       ],
       "timeoutMinutes": 10

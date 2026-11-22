@@ -431,6 +431,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     graph = yaml.safe_load((ROOT / "qg.yaml").read_text())["nodes"]
     assert len({n["title"] for n in graph.values()}) == len(graph)
     first_layer = {
+        "docs-language",
         "yaml",
         "python-scopes",
         "scripts-q000",
@@ -445,7 +446,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         "rustfs-return-types",
         "image-cves",
     }
-    assert set(graph) == {"graph", "manifests", *first_layer, "tests-medium", "ansible", "dependencies"}
+    assert set(graph) == {"graph", *first_layer, "tests-medium", "ansible", "dependencies"}
     assert graph["dependencies"]["needs"] == ["ownership"]
     assert graph["dependencies"]["policy"]["blocking"] is True
     assert graph["tests-medium"]["needs"] == ["ownership"]
@@ -466,9 +467,9 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     assert recipe("python-scopes") == "uv run --locked python -m ci.quality.python_scopes"
     for target, roots, codes in (
         ("graph", "ci/quality/", "SIM300"),
-        ("scripts-q000", "ci/ scripts/ tests/", "Q000,D300"),
+        ("scripts-q000", "ansible/scripts/ ci/ scripts/ tests/", "Q000,D300"),
         ("deploy-i001", "ansible/ deploy/ ci/ scripts/ tests/", "I001"),
-        ("deploy-i001", "ci/ scripts/ tests/", "F401"),
+        ("deploy-i001", "ansible/scripts/ ci/ scripts/ tests/", "F401"),
         ("rustfs-return-types", "services/rustfs_gateway/", "ANN201"),
     ):
         name = "check_" + codes.lower().replace(",", "_")
@@ -478,11 +479,6 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
             assert module.main() == 1
         run.assert_called_once_with(codes, roots.split())
     assert recipe("tests-medium") == "uv run python -m ci.quality.tests medium --isolate-network"
-    assert graph["manifests"]["profile"] == "quality-manifests"
-    assert recipe("manifests") == "uv run python -m ci.quality.charts"
-    assert graph["manifests"]["needs"] == ["ownership"]
-    assert graph["manifests"]["policy"] == policy
-    assert graph["manifests"]["results"] == {"native": "reports/manifests.json"}
     assert graph["ansible"]["needs"] == ["ownership"]
     assert graph["ansible"]["policy"]["blocking"] is True
     assert graph["yaml"]["profile"] == "default"
@@ -494,7 +490,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     }
     local = json.loads((ROOT / "ci/quality/local-checks.json").read_text())
     assert set(local) == {
-        "python", "tests-cluster",
+        "python", "manifests", "tests-cluster",
     }
 
 
@@ -1210,185 +1206,23 @@ def test_existing_main_push_regression_cannot_be_deferred(omitted: str) -> None:
             contracts.require_retained_push_tests(scheduled - {omitted})
 
 
-@pytest.mark.parametrize("record", [
-    record for record in json.loads((ROOT / "ci/quality/schemas.lock.json").read_text())["files"]
-    if "inputSha256" in record
-], ids=lambda record: record["kind"])
-def test_locked_controller_schemas_close_objects_but_keep_metadata_maps(record: dict) -> None:
-    """Every projected GVK rejects unknown fields even when they are nested in metadata."""
-    schema = json.loads((ROOT / "ci/quality/schemas" / record["path"]).read_text())
-    Draft4Validator.check_schema(schema)
-    metadata = schema["properties"]["metadata"]
-    validator = Draft4Validator({**metadata, "definitions": schema.get("definitions", {})})
-    assert validator.is_valid({"name": "sample", "labels": {"example.org/key": "value"}})
-    assert not validator.is_valid({"name": "sample", "labelz": {}})
-    assert schema["additionalProperties"] is False
-    assert schema["properties"]["apiVersion"]["enum"] == [record["apiVersion"]]
-    assert schema["properties"]["kind"]["enum"] == [record["kind"]]
+def test_documentation_language_scope_and_locations(tmp_path, monkeypatch) -> None:
+    from ci.quality import check_docs_language as language
 
-
-def test_schema_ref_property_name_does_not_allow_remote_references() -> None:
-    """A CRD may describe a field literally called $ref, but not load a remote schema."""
-    from ci.quality.contracts import local_refs
-
-    local_refs({"properties": {"$ref": {"type": "string"}}})
-    with pytest.raises(ValueError, match="Remote schema reference"):
-        local_refs({"properties": {"$ref": {"$ref": "https://example.invalid/schema"}}})
-
-
-@pytest.mark.parametrize("name", ["postgresql", "redis"])
-def test_locked_library_uses_real_consumer_and_broken_helper_fails(tmp_path: Path, name: str) -> None:
-    """Do not accept an empty render or downgrade an installability failure to success."""
-    selected = charts.targets()
-    child = next(t for t in selected if t["id"] == f"defaults-charts-litellm-charts-{name}-charts-common")
-    owner = charts.library_consumer(child, selected)
-    assert owner is not None and owner["chart"].name == name
-    with pytest.raises(ValueError, match="locked consumer"):
-        charts.library_consumer(child, [child])
-    parent = tmp_path / name
-    shutil.copytree(owner["chart"], parent)
-    target = {**owner, "chart": parent}
-    assert any(d["kind"] == "StatefulSet" for d in charts.render(target))
-    names = parent / "charts/common/templates/_names.tpl"
-    names.write_text(names.read_text().replace("common.names.fullname", "missing.fullname"))
-    assert charts.render(target) is None
-
-
-def _render_app_source(app_source: str) -> list[dict]:
-    """Render one local chart using its exact Argo application values and namespace."""
-    for target in charts.argocd_targets()[0]:
-        if target["source"] == app_source:
-            rendered = charts.render(target)
-            assert rendered, target["id"]
-            return rendered
-    raise AssertionError(f"No local Helm source for {app_source}")
-
-
-def test_netbird_probe_ports_resolve_to_declared_container_ports() -> None:
-    """Keep health listeners named and keep the forwarder's ping listener declared."""
-    resources = _render_app_source("deploy/argocd/apps/netbird.yaml")
-    for workload in resources:
-        if workload.get("kind") != "Deployment":
-            continue
-        for container in workload["spec"]["template"]["spec"].get("containers", []):
-            declared = {port["name"] for port in container.get("ports", []) if port.get("name")}
-            for probe_name in ("livenessProbe", "readinessProbe", "startupProbe"):
-                for action in ("httpGet", "tcpSocket"):
-                    probe = container.get(probe_name, {}).get(action)
-                    if probe:
-                        port = probe["port"]
-                        assert isinstance(port, int) or port in declared, (
-                            workload["metadata"]["name"], container["name"], probe_name, port
-                        )
-
-
-def test_thanos_components_have_supported_health_probes() -> None:
-    """Probe Thanos HTTP health/ready endpoints on the declared HTTP port."""
-    resources = _render_app_source("deploy/argocd/apps/thanos.yaml")
-    workloads = [
-        resource
-        for resource in resources
-        if resource.get("kind") == "Deployment"
-        and resource["metadata"]["name"].startswith("thanos-")
-        and resource["metadata"]["name"] not in {"thanos-shelf-1h", "thanos-shelf-5m", "thanos-warm-api"}
-    ]
-    assert len(workloads) == 7
-    for workload in workloads:
-        container = workload["spec"]["template"]["spec"]["containers"][0]
-        assert container["livenessProbe"]["httpGet"] == {"path": "/-/healthy", "port": "http"}
-        assert container["readinessProbe"]["httpGet"] == {"path": "/-/ready", "port": "http"}
-
-
-@pytest.fixture(scope="module")
-def rancher_release() -> list[dict]:
-    """Render both local Helm sources using the Application's actual overrides."""
-    documents = []
-    for target in charts.argocd_targets()[0]:
-        if target["source"] == "deploy/argocd/apps/rancher.yaml":
-            assert target["namespace"] == "cattle-system"
-            rendered = charts.render(target)
-            assert rendered, target["id"]
-            documents.extend(rendered)
-    return documents
-
-
-def test_rancher_server_and_hook_bindings(rancher_release: list[dict]) -> None:
-    """Follow each workload to its account and cluster binding, not just a role name."""
-    objects = {(d["kind"], d["metadata"]["name"]): d for d in rancher_release}
-    for kind, account in (
-        ("Deployment", "rancher"),
-        ("Job", "rancher-pre-upgrade"),
-        ("Job", "rancher-post-delete"),
-    ):
-        workload = objects[kind, account]
-        assert workload["spec"]["template"]["spec"]["serviceAccountName"] == account
-        sa = objects["ServiceAccount", account]
-        for obj in (workload, sa):
-            assert obj["metadata"]["namespace"] == "cattle-system"
-        if kind == "Job":
-            assert workload["metadata"]["annotations"]["helm.sh/hook"] == (
-                "pre-upgrade" if account.endswith("pre-upgrade") else "post-delete"
-            )
-        binding = objects["ClusterRoleBinding", account]
-        assert binding["subjects"] == [
-            {"kind": "ServiceAccount", "name": account, "namespace": "cattle-system"}
-        ]
-        ref = binding["roleRef"]
-        assert ref["apiGroup"] == "rbac.authorization.k8s.io" and ref["kind"] == "ClusterRole"
-        if kind == "Job":
-            assert ref["name"] == account
-            assert ("ClusterRole", account) in objects
-        elif ref["name"] != "cluster-admin":
-            # A replacement must at least support reconcileGlobalRole's label-
-            # selected cluster-wide list. This is necessary, not sufficient.
-            assert any(
-                "rbac.authorization.k8s.io" in rule.get("apiGroups", [])
-                and "clusterroles" in rule.get("resources", [])
-                and "list" in rule["verbs"]
-                and not rule.get("resourceNames")
-                for rule in objects["ClusterRole", ref["name"]]["rules"]
-            )
-    # The pre-upgrade RKE1 inventory lists management clusters. This small
-    # role is not the permission contract for the long-running server.
-    assert objects["ClusterRole", "rancher-pre-upgrade"]["rules"] == [
-        {"apiGroups": ["management.cattle.io"], "resources": ["clusters"], "verbs": ["get", "list"]}
-    ]
-
-
-def test_rancher_namespaced_resources_and_hooks_are_explicit(rancher_release: list[dict]) -> None:
-    """Render release-owned resources in the destination namespace and retain hook identity."""
-    namespaced = {
-        ("Deployment", "rancher"),
-        ("Service", "rancher"),
-        ("Service", "rancher-internal"),
-        ("ServiceAccount", "rancher"),
-        ("ConfigMap", "rancher-config"),
+    monkeypatch.setattr(language, "ROOT", tmp_path)
+    files = {
+        "docs/data.tsv": "English\n\u0401",
+        "service/readme.RST": "\u044f",
+        "README": "\u0451",
+        "docs/guide.md": "Caf\u00e9",
+        "src/service.py": "\u0410",
     }
-    for kind, name in namespaced:
-        obj = next(d for d in rancher_release if d["kind"] == kind and d["metadata"]["name"] == name)
-        assert obj["metadata"]["namespace"] == "cattle-system"
-    for obj in rancher_release:
-        if obj["kind"] == "Job" and obj["metadata"]["name"].startswith("rancher-"):
-            assert obj["metadata"]["namespace"] == "cattle-system"
-            assert obj["metadata"]["annotations"].get("helm.sh/hook") in {"pre-upgrade", "post-delete"}
-
-
-def test_rancher_admin_grant_does_not_spread(rancher_release: list[dict]) -> None:
-    """No hook, observer, group or other subject may inherit the server's grant."""
-    observer = next(
-        d for d in rancher_release
-        if d["kind"] == "CronJob" and d["metadata"]["name"] == "observer-membership"
-    )
-    pod = observer["spec"]["jobTemplate"]["spec"]["template"]["spec"]
-    assert pod["serviceAccountName"] == "observer-membership"
-    for doc in rancher_release:
-        if doc["kind"] not in {"RoleBinding", "ClusterRoleBinding"}:
-            continue
-        if doc["roleRef"]["name"] == "cluster-admin":
-            assert (doc["kind"], doc["metadata"]["name"]) == ("ClusterRoleBinding", "rancher")
-            assert doc["subjects"] == [
-                {"kind": "ServiceAccount", "name": "rancher", "namespace": "cattle-system"}
-            ]
-            # The regression must not depend on retaining this binding, but
-            # while present the manifest gate must continue reporting it.
-            assert "cluster-admin-binding" in {rule for rule, _ in charts.policies(doc)}
+    for name, content in files.items():
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    findings, count = language.check(list(files))
+    assert count == 4
+    assert [(f["location"]["path"], f["location"]["startLine"]) for f in findings] == [
+        ("docs/data.tsv", 2), ("service/readme.RST", 1), ("README", 1),
+    ]

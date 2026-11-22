@@ -20,7 +20,7 @@ Folder expansion choices and sidebar scroll position are restored before page re
 
 ## Bootstrap and recovery
 
-`ansible/playbooks/wiki.yml` invokes `scripts/bootstrap-wiki-runtime.py`. The helper prepares the namespace, new PVC, bootstrap and Git credentials. It does not create a Fleet identity or apply a GitRepo. It neither reads nor copies registry credentials. Use this playbook only after reviewing its declarations. Existing bootstrap credentials are preserved rather than rotated on reruns. Production bootstrap and routing cutover have completed. Argo CD reconciles the Application from `deploy/argocd/apps/wiki-runtime.yaml`.
+`ansible/playbooks/wiki.yml` invokes `ansible/scripts/bootstrap-wiki-runtime.py`. The helper prepares the namespace, new PVC, bootstrap and Git credentials. It does not create a Fleet identity or apply a GitRepo. It neither reads nor copies registry credentials. Use this playbook only after reviewing its declarations. Existing bootstrap credentials are preserved rather than rotated on reruns. Production bootstrap and routing cutover have completed. Argo CD reconciles the Application from `deploy/argocd/apps/wiki-runtime.yaml`.
 
 For a clean installation without legacy Git credentials, the playbook supports `-e wiki_runtime_skip_legacy_git=true`. Verify the remaining prerequisites before applying. Existing registry secrets for legacy private images are left untouched. For the existing Socrat installation, follow the migration runbook and restore the accepted data before activating the runtime; namespace and PVC creation alone do not migrate content.
 

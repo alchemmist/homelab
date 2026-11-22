@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
-    "metrics_smoke", ROOT / "scripts/otel-metrics-smoke.py"
+    "metrics_smoke", ROOT / "ansible/scripts/otel-metrics-smoke.py"
 )
 SMOKE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SMOKE)

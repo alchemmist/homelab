@@ -314,7 +314,7 @@ updateWatch:
       github: goharbor/harbor
     - id: rancher
       title: Rancher
-      current: 2.15.2
+      current: 2.15.3
       github: rancher/rancher
     - id: grafana
       title: Grafana

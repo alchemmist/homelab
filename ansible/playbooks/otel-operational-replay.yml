@@ -85,7 +85,7 @@
       loop: [cluster, trace-gateway, loki, tempo]
     - name: Install the isolated replay helper
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../scripts/otel-operational-replay.py"
+        src: "{{ playbook_dir }}/../scripts/otel-operational-replay.py"
         dest: "{{ otel_ops_root }}/replay.py"
         mode: "0700"
     - name: Only owned synthetic children in loopback-only namespace, durable state outside tmp

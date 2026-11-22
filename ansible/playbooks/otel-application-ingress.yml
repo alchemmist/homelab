@@ -6,7 +6,7 @@
   tasks:
     - name: Maintain credential updater without touching credential values or restarting signals
       ansible.builtin.copy:
-        src: ../../scripts/otel-host-credentials.py
+        src: ../scripts/otel-host-credentials.py
         dest: /var/lib/homelab-otel/credentials.py
         mode: "0700"
 

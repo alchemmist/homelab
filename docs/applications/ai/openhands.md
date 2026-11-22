@@ -83,7 +83,7 @@ preflight matched; all four health-state deltas preserve unrelated records; seri
 refresh completed with private receipts and no daemon/node/VPN restart. REG.RU
 nameservers/glue and other records were not changed. All three authoritative NS,
 Google and Cloudflare now return both existing HOME/VPS entrances. The restored
-`scripts/openhands-public-dns.py`/Ansible playbook is exact-name-only, not a general
+`ansible/scripts/openhands-public-dns.py`/Ansible playbook is exact-name-only, not a general
 zone editor; source and tests are committed.
 
 Certificate `identity/openhands-oidc-tls` is **Ready=True**. Both public edges pass

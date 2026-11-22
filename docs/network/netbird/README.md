@@ -106,7 +106,7 @@ pod, не management/agents/relays. Исторические direct-apply скр
 
 1. Явно добавить доверенный host и уникальный серверный WG-адрес в inventory.
    Не брать адрес человеческого устройства; существующий WG mesh нужен отдельно.
-2. В корне repo выполнить `python3 scripts/netbird-gitops-nodes.py` и закоммитить/
+2. В корне repo выполнить `python3 ansible/scripts/netbird-gitops-nodes.py` и закоммитить/
    опубликовать inventory вместе с обновлённым `deploy/netbird/values.yaml`.
    Генератор только готовит Git, не деплоит в кластер. Проверка: `--check`.
 3. Root/Argo CD создаёт Deployment/PVC. Присоединить узел к Kubernetes обычным
@@ -183,7 +183,7 @@ forwards требуют отдельного решения. Пока нет о�
 
 - NetBird — основной транспорт Mac; recovery WG проверен через новый VPS `109.120.141.97` и оставлен выключенным. Tunnelblick не выключался/не перенастраивался. Все ordinary SSH — internal `/32`/2222, pinned host keys, без public fallback.
 - Mac: `disableDns=true`, `disableClientRoutes=false`, `disableServerRoutes=true`, выбраны только четыре `wg-socrat-*` routes. Builtin All не раздаёт DNS будущим peers. No exit/LAN/pod/service/corporate route capture.
-- `scripts/netbird-access.py` / `ansible/playbooks/netbird-access.yml`: audit-first scoped grant/revoke/offboard, owner/service protections, private snapshots и fresh exact hash. Временный lifecycle проверен; bootstrap admin ограничен, fixtures удалены. Membership не даёт автоматически app/Linux/Kubernetes/admin роли и не отзывает все старые sessions.
+- `ansible/scripts/netbird-access.py` / `ansible/playbooks/netbird-access.yml`: audit-first scoped grant/revoke/offboard, owner/service protections, private snapshots и fresh exact hash. Временный lifecycle проверен; bootstrap admin ограничен, fixtures удалены. Membership не даёт автоматически app/Linux/Kubernetes/admin роли и не отзывает все старые sessions.
 - Approval mode выключен, но genuine JWT group admission и личная MFA сохранены. Первый реальный новый человек/device остаётся отдельной приёмкой.
 - Межнодовый WG не удалён. Отозваны только obsolete assistant `.6` и явно согласованный TV `.8`; owner recovery `.4` сохранён. Phone `.7`/скомпрометированный key — отдельное решение.
 - После исправления overlapping transport marks на flannel ingress NetworkPolicy проверена cross-node ordinary/forged probes. Не возвращать старый bypass и не менять NetBird marking глобально: [overlay guard](../../platform/kubernetes/k3s-networkpolicy-overlay-marks.md).

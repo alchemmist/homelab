@@ -6,7 +6,7 @@
   tasks:
     - name: Install reviewed create-only helper
       ansible.builtin.copy:
-        src: ../../scripts/public-web-access.py
+        src: ../scripts/public-web-access.py
         dest: /usr/local/sbin/homelab-public-web-access
         mode: "0700"
     - name: Install secret-free reviewed host catalog

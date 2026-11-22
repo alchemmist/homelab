@@ -1,4 +1,4 @@
 {
-  "include": ["scripts/grafana-*.py"],
+  "include": ["scripts/grafana-*.py", "ansible/scripts/grafana-*.py"],
   "rules": ["ANN001", "ANN002", "ANN201"]
 }

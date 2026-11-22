@@ -1,7 +1,7 @@
 ---
 - name: Install narrowly scoped overlay boundary helper
   ansible.builtin.copy:
-    src: "{{ role_path }}/../../../scripts/k3s-overlay-marks.py"
+    src: "{{ role_path }}/../../scripts/k3s-overlay-marks.py"
     dest: /usr/local/sbin/homelab-k3s-overlay-marks
     owner: root
     group: root

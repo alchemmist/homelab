@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BOOTSTRAP_FILES = (
     ROOT / "ansible/playbooks/wiki.yml",
-    ROOT / "scripts/bootstrap-wiki-runtime.py",
+    ROOT / "ansible/scripts/bootstrap-wiki-runtime.py",
 )
 BOOTSTRAP_FORBIDDEN = (
     "fleet.cattle.io",

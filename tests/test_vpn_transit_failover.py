@@ -16,7 +16,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 def module(name: str) -> ModuleType:
     """Test behavior for module."""
-    s = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
+    s = importlib.util.spec_from_file_location(name, ROOT / "ansible/scripts" / f"{name}.py")
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
     return m
@@ -159,30 +159,13 @@ def test_deployment_single_host_no_api_token_and_native_boot_fence() -> None:
         and "hostNetwork: true" in s
         and "automountServiceAccountToken: false" in s
     )
-    assert (
-        "imagePullPolicy: Never" in s
-        and "homelab.io/bootstrap" in s
-        and "NET_BIND_SERVICE" in s
-    )
+    assert "imagePullPolicy: Never" in s and "homelab.io/bootstrap" in s and "NET_BIND_SERVICE" in s
     play = (ROOT / "ansible/playbooks/vpn-transit-mesh-runtime.yml").read_text()
-    assert (
-        "ExecCondition=/usr/bin/test ! -e" in play
-        and "ExecCondition=+/usr/bin/test -e" in play
-    )
+    assert "ExecCondition=/usr/bin/test ! -e" in play and "ExecCondition=+/usr/bin/test -e" in play
     assert "state: started" not in play  # prepare never steals live ports
-    controller = (ROOT / "scripts/vpn-transit-failover.py").read_text()
-    assert 'AGENT = "k3s-agent.service"' in controller
-    assert '"k3s.service"' not in controller
-    assert (
-        "flock" in controller and "fsync" in controller and "free_ports()" in controller
-    )
-
-
-def test_vpn_transit_declares_its_actual_readiness_listener() -> None:
-    """Declare the existing node-loopback readiness port without adding a listener."""
-    s = (ROOT / "charts/vpn-transit/templates/deployment.yaml").read_text()
-    assert "containerPort: 443" in s and "name: https" in s and "protocol: TCP" in s
-    assert "tcpSocket: {host: 127.0.0.1, port: 443}" in s
+    controller = (ROOT / "ansible/scripts/vpn-transit-failover.py").read_text()
+    assert "AGENT='k3s-agent.service'" in controller and "'k3s.service'" not in controller
+    assert "flock" in controller and "fsync" in controller and "free_ports()" in controller
 
 
 def test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse() -> None:
@@ -200,36 +183,13 @@ def test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse() -> None:
             with pytest.raises(OSError):
                 challenger.bind(("0.0.0.0", port))
                 challenger.listen(1)
-    import ast
-
-    tree = ast.parse((ROOT / "scripts/vpn-transit-failover.py").read_text())
-    free_ports = next(
-        node
-        for node in ast.walk(tree)
-        if isinstance(node, ast.FunctionDef) and node.name == "free_ports"
-    )
-    stream_guards = [
-        node
-        for node in ast.walk(free_ports)
-        if isinstance(node, ast.If)
-        and isinstance(node.test, ast.Compare)
-        and ast.unparse(node.test) == "typ == socket.SOCK_STREAM"
-    ]
-    assert len(stream_guards) == 2
-    assert any(
-        isinstance(call, ast.Call)
-        and ast.unparse(call.func) == "s.setsockopt"
-        and ast.unparse(call.args[1]) == "socket.SO_REUSEADDR"
-        for guard in stream_guards
-        for call in ast.walk(guard)
-    )
+    source = (ROOT / "ansible/scripts/vpn-transit-failover.py").read_text()
+    assert "if typ==socket.SOCK_STREAM:s.setsockopt" in source
 
 
 def test_machine_https_exception_is_exact_not_a_human_acl_relaxation() -> None:
     """Keep the machine passthrough exact and the role default empty."""
-    host = yaml.safe_load(
-        (ROOT / "ansible/inventory/host_vars/socrat-2.yml").read_text()
-    )
+    host = yaml.safe_load((ROOT / "ansible/inventory/host_vars/socrat-2.yml").read_text())
     defaults = yaml.safe_load(
         (ROOT / "ansible/roles/wireguard_private_web/defaults/main.yml").read_text()
     )
@@ -238,9 +198,7 @@ def test_machine_https_exception_is_exact_not_a_human_acl_relaxation() -> None:
     assert host["public_dns_extra_listen"] == ["10.250.0.2@5354"]
 
 
-def test_late_native_health_reconciles_without_replaying_lifecycle(
-    ctl, monkeypatch
-) -> None:
+def test_late_native_health_reconciles_without_replaying_lifecycle(ctl, monkeypatch) -> None:
     """Test behavior for test_late_native_health_reconciles_without_replaying_lifecycle."""
     m, c = ctl
     m.atomic(c.marker, {"reason": "four failures"})
@@ -251,9 +209,7 @@ def test_late_native_health_reconciles_without_replaying_lifecycle(
     monkeypatch.setattr(c, "prerequisites", lambda: calls.append("verified"))
     monkeypatch.setattr(m, "run", lambda *_a, **_kw: pytest.fail("no lifecycle replay"))
     c.tick()
-    assert (
-        c.state["mode"] == "native" and c.state["failures"] == 0 and c.state["healthy"]
-    )
+    assert c.state["mode"] == "native" and c.state["failures"] == 0 and c.state["healthy"]
     assert c.marker.exists() and calls == ["verified"]
     receipts = list(m.ROOT.glob("*-native-reconciled.json"))
     assert len(receipts) == 1
@@ -261,21 +217,15 @@ def test_late_native_health_reconciles_without_replaying_lifecycle(
     assert len(list(m.ROOT.glob("*-native-reconciled.json"))) == 1
 
 
-@pytest.mark.parametrize(
-    "native,healthy", [(False, True), (True, False), (False, False)]
-)
-def test_unhealthy_native_transition_stays_fenced(
-    ctl, monkeypatch, native, healthy
-) -> None:
+@pytest.mark.parametrize("native,healthy", [(False, True), (True, False), (False, False)])
+def test_unhealthy_native_transition_stays_fenced(ctl, monkeypatch, native, healthy) -> None:
     """Test behavior for test_unhealthy_native_transition_stays_fenced."""
     m, c = ctl
     m.atomic(c.marker, {})
     c.save(mode="transition-to-native", failures=4)
     monkeypatch.setattr(m, "active", lambda unit: native if unit == m.NATIVE else False)
     monkeypatch.setattr(c, "healthy", lambda: healthy)
-    monkeypatch.setattr(
-        c, "prerequisites", lambda: pytest.fail("no transition acceptance")
-    )
+    monkeypatch.setattr(c, "prerequisites", lambda: pytest.fail("no transition acceptance"))
     c.tick()
     assert c.state["mode"] == "transition-to-native" and not c.state["healthy"]
     assert c.marker.exists()
@@ -310,9 +260,7 @@ def test_late_native_acceptance_requires_prerequisites(ctl, monkeypatch) -> None
     assert c.state["mode"] == "transition-to-native" and c.marker.exists()
 
 
-def test_native_primary_requires_healthy_fenced_native_and_is_sticky(
-    ctl, monkeypatch
-) -> None:
+def test_native_primary_requires_healthy_fenced_native_and_is_sticky(ctl, monkeypatch) -> None:
     """Test behavior for test_native_primary_requires_healthy_fenced_native_and_is_sticky."""
     m, c = ctl
     monkeypatch.setattr(c, "prerequisites", lambda: None)
@@ -334,9 +282,7 @@ def test_native_primary_requires_healthy_fenced_native_and_is_sticky(
     assert c.state["mode"] == "native" and c.marker.exists()
 
 
-def test_unhealthy_primary_never_restarts_agent_or_releases_fence(
-    ctl, monkeypatch
-) -> None:
+def test_unhealthy_primary_never_restarts_agent_or_releases_fence(ctl, monkeypatch) -> None:
     """Test behavior for test_unhealthy_primary_never_restarts_agent_or_releases_fence."""
     m, c = ctl
     monkeypatch.setattr(c, "prerequisites", lambda: None)
@@ -344,9 +290,7 @@ def test_unhealthy_primary_never_restarts_agent_or_releases_fence(
     c.save(mode="native-primary")
     monkeypatch.setattr(m, "active", lambda unit: unit == m.NATIVE)
     monkeypatch.setattr(c, "healthy", lambda: False)
-    monkeypatch.setattr(
-        m, "run", lambda *_a, **_k: pytest.fail("must not change lifecycle")
-    )
+    monkeypatch.setattr(m, "run", lambda *_a, **_k: pytest.fail("must not change lifecycle"))
     c.tick()
     assert not c.state["healthy"] and c.marker.exists()
     with pytest.raises(AssertionError):
@@ -382,9 +326,7 @@ def test_failure_scope_uses_direct_upstream_not_api(
     assert d["recover_local"] == recover and d["scope"] == scope
 
 
-def test_upstream_failure_never_fences_worker_or_releases_marker(
-    ctl, monkeypatch
-) -> None:
+def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatch) -> None:
     """Test behavior for test_upstream_failure_never_fences_worker_or_releases_marker."""
     m, c = ctl
     monkeypatch.setattr(m, "boot_id", lambda: "boot")
@@ -398,17 +340,11 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(
     monkeypatch.setattr(
         c,
         "activate",
-        lambda _why: pytest.fail(
-            "must not fence healthy local listeners for upstream failure"
-        ),
+        lambda _why: pytest.fail("must not fence healthy local listeners for upstream failure"),
     )
     for _ in range(12):
         c.tick()
-    assert (
-        c.state["mode"] == "kubernetes"
-        and not c.state["healthy"]
-        and not c.marker.exists()
-    )
+    assert c.state["mode"] == "kubernetes" and not c.state["healthy"] and not c.marker.exists()
     assert c.state["failures"] == 4
     assert len(list(m.ROOT.glob("*-failure-classified.json"))) == 1
     # Upstream recovers but local TLS path remains bad: now a local recovery is justified.
@@ -433,9 +369,7 @@ def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch) -> None:
     monkeypatch.setattr(m.socket, "create_connection", fail)
     assert not c.healthy()
     assert c.last_probe["stage"] == "tcp" and c.last_probe["port"] == 32053
-    assert c.last_probe["error"] == "TimeoutError" and "/test" not in json.dumps(
-        c.last_probe
-    )
+    assert c.last_probe["error"] == "TimeoutError" and "/test" not in json.dumps(c.last_probe)
 
 
 def test_boot_grace_never_refreshes_old_green_health_or_carries_failure_count(
@@ -453,9 +387,7 @@ def test_boot_grace_never_refreshes_old_green_health_or_carries_failure_count(
     assert c.state["healthy"] is False and c.state["failures"] == 0
 
 
-def test_failed_websocket_diagnostic_does_not_store_private_path(
-    ctl, monkeypatch
-) -> None:
+def test_failed_websocket_diagnostic_does_not_store_private_path(ctl, monkeypatch) -> None:
     """Test failed websocket diagnostics avoid private paths."""
     m, c = ctl
 

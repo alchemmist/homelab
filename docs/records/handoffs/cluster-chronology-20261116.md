@@ -645,7 +645,7 @@ padding3CSSpx, gap2CSSpx, flex redistribution. Ручныеw12/h1 сохране
 подтверждены реальным screenshot и WebView-замерами. Обычный ноутбук/другие панели/
 Fully55%/font75% не менялись; не возвращать прежнее растягиваниеw24/h2. MoscowIP928
 добавлен справа и работает по свежему TCP443 probe91.189.82.238. Код, scoped Helm,
-приёмка и границы: [TV-CSS и сопровождение](../../applications/android-tv/README.md#сопровождение-кастомного-tv-css-для-argo).
+приёмка и границы: [TV-CSS и сопровождение](../../applications/android-tv/README.md#maintaining-the-argo-tv-stylesheet).
 Это исключение из старого «без CSS» только для одной панели, не глобальное разрешение.
 
 ## SSH management policy — owner override 2026-11-10

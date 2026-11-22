@@ -23,7 +23,7 @@
       ansible.builtin.command:
         argv:
           - python3
-          - "{{ playbook_dir }}/../../scripts/otel-logs-only-config.py"
+          - "{{ playbook_dir }}/../scripts/otel-logs-only-config.py"
           - "{{ logging_private_dir }}/{{ inventory_hostname }}.yaml"
           - "{{ playbook_dir }}/../../deploy/monitoring/otel/agent.yaml"
           - "{{ logging_private_dir }}/{{ inventory_hostname }}-candidate.yaml"
@@ -33,7 +33,7 @@
       no_log: true
     - name: Install gate helper without changing service units
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../scripts/otel-logs-rollout-gate.py"
+        src: "{{ playbook_dir }}/../scripts/otel-logs-rollout-gate.py"
         dest: /var/tmp/otel-logs-rollout-gate.py
         mode: "0700"
     - name: Stage private candidate beside live config

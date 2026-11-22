@@ -97,7 +97,7 @@ Rollback requires an explicit decision: disable only this owned native public sh
 
 ### Internal-TV access retirement
 
-`retire-tv-internal-wireguard.yml` audits all four nodes before serial apply. It accepts per-node fresh `tv_peer_hashes`, validates the exact public key/address/comment, retains root-private config backups and stops on uncertainty. Runtime removal uses `wg set ... peer <owned-key> remove`, not service/interface restart or broad sync. The old internal profile is deleted via the official WireGuard UI; never clear WireGuard app data, uninstall it or delete the YouTube profile to retire one key. The canonical public URL is now used by both TV playbooks and the focused public acceptance script.
+The one-time fleet peer removal is complete; it is not part of TV provisioning or recovery. Preserve the private per-node configuration backups. Never clear WireGuard app data, uninstall it or delete the separate YouTube profile. Both TV playbooks and the focused public acceptance script use the canonical public URL.
 
 Retirement closeout: all four node peer audits report operations=0 (three existing owned peers removed; worker already absent), all three authoritative DNS audits report operations=0, and the exact alias resource audit reports operations=0. At that historical closeout `public-web-entry` was Synced/Healthy; its resources now belong to their service Applications (see public-web-migration.md). Canonical public acceptance: 24/24 two-IP checks; 66 focused tests. The real TV displays live data on the canonical hostname with no active VPN network; YouTube's separate helper was verified foreground with one VALIDATED VPN before returning to Grafana. No physical button/power-cycle claim is implied.
 
@@ -437,7 +437,7 @@ not browseremulation. A privatepublic-share URL was emitted by temporaryPlaywrig
 errorlogging; ownerinformed, no unapprovedshare rotation, verifiercleanedup.
 
 
-## Сопровождение кастомного TV-CSS для Argo
+## Maintaining the Argo TV stylesheet
 
 **Текущее согласованное решение:** native Bar gauge909 остаётся в ручном размере
 `x0,y19,w12,h1`. Только на public TV-странице с `socratTv=1` применяется адресное

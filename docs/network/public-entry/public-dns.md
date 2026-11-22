@@ -39,7 +39,7 @@ restarts потребовались при смене listener; старый dns
 
 ## Что стоит на узлах
 
-Knot работает на ОС socrat-0/1/2/4, не в pod. Source для прежних узлов: `ansible/playbooks/public-authoritative-dns.yml`; первоначальная установка Москвы: `ansible/playbooks/moscow-authoritative-dns-stage.yml`; renderer `scripts/public_dns_zone.py`. NS3-only refresh: `ansible/playbooks/ns3-public-dns.yml`. Не переигрывать первоначальную установку на уже настроенном сервере.
+Knot работает на ОС socrat-0/1/2/4, не в pod. Source для прежних узлов: `ansible/playbooks/public-authoritative-dns.yml`; первоначальная установка Москвы: `ansible/playbooks/moscow-authoritative-dns-stage.yml`; renderer `ansible/scripts/public_dns_zone.py`. NS3-only refresh: `ansible/playbooks/ns3-public-dns.yml`. Не переигрывать первоначальную установку на уже настроенном сервере.
 
 - Домашний DNS слушает VIP `192.168.0.250:53`; роутер пересылает на него TCP/UDP 53. HOME HTTPS 80/443 также обслуживается через существующую схему VIP.
 - VPS authoritative DNS слушает новый публичный адрес.
@@ -56,10 +56,10 @@ Knot работает на ОС socrat-0/1/2/4, не в pod. Source для пр�
 
 Не править разные authoritative серверы независимо вслепую. Сначала проверить все четыре health-комбинации renderer: все несогласованные records должны оставаться byte-equivalent. Затем whole-fleet preflight, fresh exact hash, serial owned-zone refresh с private backups/receipts, без daemon/node restart. При uncertain marker остановиться, не повторять write.
 
-- `scripts/public-web-dns.py` / `public-web-dns.yml` — узкая первоначальная Kuma addition, не универсальный DNS editor.
-- `scripts/grafana-tv-dns.py` / `grafana-tv-dns.yml` — теперь только retirement временного TV alias, не его создание.
-- `scripts/vps-ip-migration.py` — отдельная completed migration; не запускать ради текущей DNS-проверки.
-- `scripts/retire-tv-public-alias.py` — только exact owned Kubernetes alias resources; не blanket Argo prune.
+- `ansible/scripts/public-web-dns.py` / `public-web-dns.yml` — узкая первоначальная Kuma addition, не универсальный DNS editor.
+- `ansible/scripts/grafana-tv-dns.py` / `grafana-tv-dns.yml` — теперь только retirement временного TV alias, не его создание.
+- `ansible/scripts/vps-ip-migration.py` — отдельная completed migration; не запускать ради текущей DNS-проверки.
+- `ansible/scripts/retire-tv-public-alias.py` — только exact owned Kubernetes alias resources; не blanket Argo prune.
 
 Финальные DNS retirement audits трёх узлов показали operations=0; alias-resource audit — operations=0. Остальные records сохранены. Ключи NS/SSH, credentials и частные receipts в wiki не помещать.
 
@@ -109,7 +109,7 @@ Operator explicitly approved adding only `spi.socrat`, after independent public
 DoH confirmed NXDOMAIN for both SPI and the assumed wildcard. Source adds this
 name to existing failover records; TTL, addresses, wildcard and all other records
 are unchanged across all four health combinations. Narrow tooling:
-`scripts/spi-public-dns.py`, `ansible/playbooks/spi-public-dns.yml`, private state
+`ansible/scripts/spi-public-dns.py`, `ansible/playbooks/spi-public-dns.yml`, private state
 `/var/lib/homelab-spi-public-dns`. Follow the existing whole-fleet preflight, fresh
 exact hash approval and serial zone-refresh procedure; no daemon/node restart.
 Never run the Kuma-only helper for SPI. No apply has occurred: SSH to socrat-0/1

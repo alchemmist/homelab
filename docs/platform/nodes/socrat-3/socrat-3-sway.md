@@ -29,7 +29,7 @@ Windows float rather than automatically tiling. Drag title bars to move them
 and borders to resize them. The bottom panel provides a menu, open-window
 icons, minimized-window chooser, minimize/maximize/close buttons, desktop
 button, network settings, volume, language and clock. The window buttons
-operate on the focused application. Click its taskbar icon or use «Окна» to restore a minimized window.
+operate on the focused application. Click its taskbar icon or use the Windows menu to restore a minimized window.
 Volume supports wheel adjustment and a click opens the mixer.
 
 - Alt+Shift or the language indicator switches English/Russian.

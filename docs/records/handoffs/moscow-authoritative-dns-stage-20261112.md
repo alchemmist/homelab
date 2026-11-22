@@ -6,7 +6,7 @@
 > **Live update, 12 November 2026 11:28 UTC:** staged Knot is installed and enabled.
 > Exact additive ns3 NS/A publication was applied on0/1/2/4 with per-host
 > preimages and common approved plan23877b32aeda112b0a0eb9c25d593045a2428e8704c95390ed529ab34902ceaf.
-> REG.RU explicitly confirmed “DNS-серверы изменены” on the second attempt,
+> REG.RU explicitly confirmed that the DNS servers had been changed on the second attempt,
 > after the first request failed and fresh readback proved the old desired set.
 > Parent delegation propagation is separately pending verification below.
 > Historical prepared-only/sudo-blocked status below is superseded.
@@ -91,7 +91,7 @@ from their local interactive terminal using normal `--ask-become-pass`:
 
 ```sh
 cd ansible
-sha=$(shasum -a 256 ../scripts/public_dns_zone.py | awk '{print $1}')
+sha=$(shasum -a 256 scripts/public_dns_zone.py | awk '{print $1}')
 # Review the diff and matching preflight digest before this command.
 ansible-playbook playbooks/moscow-authoritative-dns-stage.yml \
   --ask-become-pass \
@@ -133,7 +133,7 @@ REG.RU write has occurred.
   was weakened. Native nft executable absent; iptables INPUT policy inspected.
 - Knot/public-dns-refresh.timer enabled; Knot memory approximately5.7MB. Explicit
   public IP listener and local zone: no WG/Kubernetes startup dependency added.
-- Guarded fleet addition used scripts/ns3-public-dns.py and
+- Guarded fleet addition used ansible/scripts/ns3-public-dns.py and
   ansible/playbooks/ns3-public-dns.yml. Only the two exact records may differ
   across all four existing health combinations. Fresh approved hash validated on
   every host before serial apply;0/1/2/4 receipts confirm NS and A in Knot.
