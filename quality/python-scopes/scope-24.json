@@ -1,0 +1,4 @@
+{
+  "include": ["services/rustfs_gateway/*.py"],
+  "rules": ["ANN001"]
+}

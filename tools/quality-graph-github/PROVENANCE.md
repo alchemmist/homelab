@@ -1,5 +1,5 @@
-This is `packages/github` from [Quality Graph v0.2.3](https://github.com/alchemmist/quality-graph/tree/6714b6ea824125a2c7d6ea6bd27fcfec69efd133/packages/github), under its MIT license.
-Compare this directory with `git archive 6714b6ea824125a2c7d6ea6bd27fcfec69efd133:packages/github`
+This is `packages/github` from [Quality Graph v0.2.4](https://github.com/alchemmist/quality-graph/tree/f5cef503eaf0734b9c9a0c6f88ee8206b2a6235d/packages/github), under its MIT license.
+Compare this directory with `git archive f5cef503eaf0734b9c9a0c6f88ee8206b2a6235d:packages/github`
 in an upstream clone.
 
 The local changes are for strict YAML serialization: the compiler uses double-quoted or

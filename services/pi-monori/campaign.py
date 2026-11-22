@@ -94,9 +94,12 @@ def init():
    for num in nums:
     uid=fam+"__mutmut_"+num
     priority=int(r["id"])
-    if fam.endswith("common.json_values.x_optional_string"):priority=-3
-    if fam.endswith("server.app.importer.x_parse_amount_kop"):priority=-2
-    if fam.endswith("server.app.workbook.spec.x_kop_from_rub"):priority=-1
+    if fam.endswith("common.json_values.x_optional_string"):
+     priority=-3
+    if fam.endswith("server.app.importer.x_parse_amount_kop"):
+     priority=-2
+    if fam.endswith("server.app.workbook.spec.x_kop_from_rub"):
+     priority=-1
     db.execute("insert or ignore into tasks values(?,?,?,?,?,?,?,?,?,?)",(uid,fam,int(num),r["section"],priority,"queued" if f and num in f["diffs"] else "catalog_drift","","",None,0))
  # Seed actual published pilot coverage, never re-publish it.
  for name in ("integer_value","_amount"):
@@ -106,7 +109,8 @@ def init():
    if published:
     v=json.loads(proof.read_text())
     uid=next((k for k in C if k.endswith(".x_"+name)),None)
-    if uid:query("update tasks set state='published',pr=?,base=?,note=? where id=? and state='queued'",(json.loads(published[0][0])["pr"],v["base"],"pilot proof",uid.rsplit(".",1)[0]+"."+v["mutmut"]))
+    if uid:
+     query("update tasks set state='published',pr=?,base=?,note=? where id=? and state='queued'",(json.loads(published[0][0])["pr"],v["base"],"pilot proof",uid.rsplit(".",1)[0]+"."+v["mutmut"]))
 
 def mark(t: Task,state: str,note: str="",base: str | None=None,pr: int | None=None):
  q=(state,note[:1500],base or t["base"],pr or t["pr"],time.time(),t["id"])
@@ -117,7 +121,8 @@ def key(t: Task):return hashlib.sha256(t["id"].encode()).hexdigest()[:12]
 def remote_json(path: str):
  # Public GET only; no publisher/host credentials in workers.
  import urllib.request
- with urllib.request.urlopen(urllib.request.Request("https://api.github.com/repos/alchemmist/monori/"+path,headers={"User-Agent":"socrat-campaign"}),timeout=15) as r:return json.load(r)
+ with urllib.request.urlopen(urllib.request.Request("https://api.github.com/repos/alchemmist/monori/"+path,headers={"User-Agent":"socrat-campaign"}),timeout=15) as r:
+  return json.load(r)
 def git(*a):return pilot.cmd(["git","--git-dir=base.git",*a]).stdout
 def source(sha: str,file: str):return git("show",sha+":"+file)
 
@@ -128,7 +133,8 @@ def patch(t: Task,sha: str):
  old="".join(f["old"])
  start,end,repl=f["diffs"][str(t["num"])]
  mut="".join(f["old"][:start]+repl+f["old"][end:])
- if not old or s.count(old)!=1:raise ValueError("Generated function body not unique/exact on current base; refresh required")
+ if not old or s.count(old)!=1:
+  raise ValueError("Generated function body not unique/exact on current base; refresh required")
  return file,s,s.replace(old,mut,1),"".join(difflib.unified_diff(old.splitlines(True),mut.splitlines(True),n=3))
 
 def select_suite(t: Task,sha: str):
@@ -161,7 +167,8 @@ def killed(p: tuple[int, str]):return p[0]==1 and bool(re.search(r"\b[1-9]\d* fa
 def install_base(sha: str):
  """Stream tracked files only. No untrusted tar input on the SSH host."""
  for file in ("pyproject.toml","server/pyproject.toml","common/pyproject.toml","ci/pyproject.toml"):
-  if source(sha,file)!=source(BASE0,file):raise RuntimeError("dependency drift: rebuild locked offline verifier before admitting this base")
+  if source(sha,file)!=source(BASE0,file):
+   raise RuntimeError("dependency drift: rebuild locked offline verifier before admitting this base")
  prep=K("judge",["sh","-ec",'cd /scratch/monori; if test -f /scratch/campaign-base && test "$(cat /scratch/campaign-base)" = "$1";then echo ready;fi',"sh",sha])
  if "ready" not in prep.stdout:
   with subprocess.Popen(["git","--git-dir=base.git","archive",sha],stdout=subprocess.PIPE) as inp:
@@ -171,23 +178,31 @@ def install_base(sha: str):
  K("author",["sh","-ec",'git --git-dir=/scratch/base.git cat-file -e "$1^{commit}" 2>/dev/null || git --git-dir=/scratch/base.git fetch --depth=1 https://github.com/alchemmist/monori.git main',"sh",sha])
 
 def candidate_guard(text: str,src: str):
- if not 40<len(text)<20000:raise ValueError("missing/oversized candidate")
- if re.search(r"#\s*(?:type:\s*ignore|noqa|nosec)",text):raise ValueError("repo forbids lint/type suppressions")
+ if not 40<len(text)<20000:
+  raise ValueError("missing/oversized candidate")
+ if re.search(r"#\s*(?:type:\s*ignore|noqa|nosec)",text):
+  raise ValueError("repo forbids lint/type suppressions")
  tree=ast.parse(text)
- if any(isinstance(n,ast.arg) and n.annotation and any(isinstance(a,ast.Name) and a.id in {"object","Any"} for a in ast.walk(n.annotation)) for n in ast.walk(tree)):raise ValueError("use a concrete project type, not object/Any")
+ if any(isinstance(n,ast.arg) and n.annotation and any(isinstance(a,ast.Name) and a.id in {"object","Any"} for a in ast.walk(n.annotation)) for n in ast.walk(tree)):
+  raise ValueError("use a concrete project type, not object/Any")
  allowed=("monori."+src.partition("/")[0]+".","monori.common.")
  safe={"pytest","datetime","decimal","collections","dataclasses","typing","pathlib","io","json","re","math","unittest.mock","openpyxl","sqlite3","uuid"}
- if not any(isinstance(n,ast.FunctionDef) and n.name.startswith("test_") for n in tree.body):raise ValueError("missing test")
+ if not any(isinstance(n,ast.FunctionDef) and n.name.startswith("test_") for n in tree.body):
+  raise ValueError("missing test")
  for n in ast.walk(tree):
   if isinstance(n,(ast.Import,ast.ImportFrom)):
    mods=[n.module or ""] if isinstance(n,ast.ImportFrom) else [a.name for a in n.names]
    bad=[m for m in mods if not (m.startswith(allowed) or m in {v.rstrip(".") for v in allowed} or any(m==v or m.startswith(v+".") for v in safe))]
-   if bad:raise ValueError("Outside offline unit-test scope: "+", ".join(bad)+". Use the target module directly: monori."+src[:-3].replace("/","."))
-   if any(a.name.startswith("__") or a.name=="*" for a in n.names):raise ValueError("dynamic import")
+   if bad:
+    raise ValueError("Outside offline unit-test scope: "+", ".join(bad)+". Use the target module directly: monori."+src[:-3].replace("/","."))
+   if any(a.name.startswith("__") or a.name=="*" for a in n.names):
+    raise ValueError("dynamic import")
   if isinstance(n,(ast.Name,ast.Attribute)):
    x=n.id if isinstance(n,ast.Name) else n.attr
-   if x.startswith("__") or x in {"eval","exec","compile","globals","locals","exit","quit","getattr","setattr","delattr","skip","skipif","xfail","importorskip","open","read_bytes","read_text","write_bytes","write_text","unlink","system","popen","connect_ex","socket","subprocess","os","sys","builtins","importlib","pytest_plugins"}:raise ValueError("test uses unsupported introspection, I/O or bypass")
-  if isinstance(n,ast.Constant) and isinstance(n.value,str) and ("/scratch/" in n.value or "/proc/" in n.value or "PYTEST_CURRENT_TEST" in n.value):raise ValueError("environment-dependent test")
+   if x.startswith("__") or x in {"eval","exec","compile","globals","locals","exit","quit","getattr","setattr","delattr","skip","skipif","xfail","importorskip","open","read_bytes","read_text","write_bytes","write_text","unlink","system","popen","connect_ex","socket","subprocess","os","sys","builtins","importlib","pytest_plugins"}:
+    raise ValueError("test uses unsupported introspection, I/O or bypass")
+  if isinstance(n,ast.Constant) and isinstance(n.value,str) and ("/scratch/" in n.value or "/proc/" in n.value or "PYTEST_CURRENT_TEST" in n.value):
+   raise ValueError("environment-dependent test")
 
 def try_pi(
  t: Task,
@@ -258,7 +273,8 @@ def try_pi(
    text=K("author",["python","-c",get,wt+"/"+dest]).stdout
    try:
     candidate_guard(text,src)
-    if repair and text==repair["previous"]:raise ValueError("CI repair did not change the failed file")
+    if repair and text==repair["previous"]:
+     raise ValueError("CI repair did not change the failed file")
     changed=K("author",["git","-C",wt,"diff","--name-only",sha]).stdout.strip()
     assert changed in ("",dest),"unrelated edits present"
     receipt=prove(t,sha,dest,text,oldtests)
@@ -275,13 +291,15 @@ def try_pi(
     obj=json.loads(r.stdout)
     assert obj["pr"]==t["pr"]
     mark(t,"published",obj["head"],sha,obj["pr"])
-   else:mark(t,"verified","Independent proof archived; awaiting publisher slot",sha)
+   else:
+    mark(t,"verified","Independent proof archived; awaiting publisher slot",sha)
    return
   mark(t,"needs_triage","No proof after 3 attempts. "+feedback,sha)
  finally:
   if repair:
    event=query("select state from tasks where id=?",(t["id"],))[0]["state"]
-   if event not in ("published","update_uncertain","rejected","needs_triage"):mark(t,"published","CI repair attempt did not meet proof; PR remains open",sha,t["pr"])
+   if event not in ("published","update_uncertain","rejected","needs_triage"):
+    mark(t,"published","CI repair attempt did not meet proof; PR remains open",sha,t["pr"])
   K("author",["git","--git-dir=/scratch/base.git","worktree","remove","--force",wt],ok=False)
 
 def prove(t: Task,sha: str,dest: str,text: str,oldtests: list[str]):
@@ -305,7 +323,8 @@ def prove(t: Task,sha: str,dest: str,text: str,oldtests: list[str]):
   K("judge",["rm","-f",J+dest])
 
 def screen(t: Task,sha: str):
- try:src,orig,mut,detail=patch(t,sha)
+ try:
+  src,orig,mut,detail=patch(t,sha)
  except (ValueError,KeyError):
   mark(t,"catalog_drift","Cannot apply exact mutation to current main",sha)
   return
@@ -321,7 +340,8 @@ def screen(t: Task,sha: str):
  try:
   reset_source(src,mut)
   p=tests(oldtests,50 if t["category"]=="Timeouts" else 220)
- finally:reset_source(src,orig)
+ finally:
+  reset_source(src,orig)
  if killed(p):
   mark(t,"already_killed",p[1].splitlines()[-1],sha)
   return
@@ -333,11 +353,15 @@ def screen(t: Task,sha: str):
   folder=A/key(prior)
   pf=folder/"proof.json"
   tf=folder/"test.py.txt"
-  if not pf.exists() or not tf.exists():continue
+  if not pf.exists() or not tf.exists():
+   continue
   receipt=json.loads(pf.read_text())
-  if receipt["base"]!=sha:continue
-  try:prove(t,sha,receipt["dest"],tf.read_text(),oldtests)
-  except (AssertionError,ValueError):continue
+  if receipt["base"]!=sha:
+   continue
+  try:
+   prove(t,sha,receipt["dest"],tf.read_text(),oldtests)
+  except (AssertionError,ValueError):
+   continue
   mark(t,"covered_pending_merge","Covered by "+prior["id"],sha,prior["pr"])
   return
  mark(t,"survived",p[1].splitlines()[-1],sha)
@@ -351,7 +375,8 @@ def publish(t: Task,sha: str):
  dest=receipt["dest"]
  if receipt["base"]!=sha:
   oldtests,_=select_suite(t,sha)
-  try:receipt=prove(t,sha,dest,text,oldtests)
+  try:
+   receipt=prove(t,sha,dest,text,oldtests)
   except (AssertionError,ValueError):
    mark(t,"rebase_triage","Proof no longer holds on new main",sha)
    return
@@ -374,32 +399,41 @@ def reconcile(prs: Sequence[Pull],sha: str):
  # Repair lost acknowledgements by unique title, never replay a blind create.
  for t in query("select * from tasks where state='publication_uncertain'"):
   matches=[p for p in prs if p["title"].endswith(f"[{ISSUE}:"+key(t)+"]") and p["head"]["ref"].startswith(f"openhands/issue-{ISSUE}/") and p["user"]["login"]=="alchemmist"]
-  if len(matches)==1:mark(t,"published",matches[0]["head"]["sha"],t["base"],matches[0]["number"])
- if len(prs)>=100:return
+  if len(matches)==1:
+   mark(t,"published",matches[0]["head"]["sha"],t["base"],matches[0]["number"])
+ if len(prs)>=100:
+  return
  for t in query("select * from tasks where state in ('published','needs_triage') and pr is not null"):
-  if t["pr"] in open_by:continue
+  if t["pr"] in open_by:
+   continue
   p=remote_json("pulls/"+str(t["pr"]))
-  if p["state"]=="closed":mark(t,"merged" if p["merged"] else "closed_unmerged","GitHub reconciliation; full rerun still required",sha,t["pr"])
+  if p["state"]=="closed":
+   mark(t,"merged" if p["merged"] else "closed_unmerged","GitHub reconciliation; full rerun still required",sha,t["pr"])
 
 def repair_one(prs: Sequence[Pull],sha: str):
  bynum={p["number"]:p for p in prs}
  now=time.time()
  for t in query("select * from tasks where state in ('published','needs_triage') and pr is not null order by updated"):
   p=bynum.get(t["pr"])
-  if not p or p.get("draft") or not p["head"]["ref"].startswith(f"openhands/issue-{ISSUE}/"):continue
+  if not p or p.get("draft") or not p["head"]["ref"].startswith(f"openhands/issue-{ISSUE}/"):
+   continue
   head=p["head"]["sha"]
   cache="checks:"+head
   cached=query("select v from meta where k=?",(cache,))
-  if cached and now-float(cached[0]["v"])<900:continue
+  if cached and now-float(cached[0]["v"])<900:
+   continue
   query("insert or replace into meta values(?,?)",(cache,str(now)))
   checks=remote_json("commits/"+head+"/check-runs?per_page=100")
   fails=[r["name"] for r in checks["check_runs"] if r["conclusion"]=="failure"]
-  if not fails:continue
+  if not fails:
+   continue
   keyfix="fix:"+str(p["number"])
   attempts=query("select v from meta where k=?",(keyfix,))
-  if attempts and int(attempts[0]["v"])>=3:continue
+  if attempts and int(attempts[0]["v"])>=3:
+   continue
   files=remote_json("pulls/"+str(p["number"])+"/files?per_page=30")
-  if len(files)!=1 or files[0]["status"]!="added" or not re.fullmatch(r"(?:ci/tests|server/tests/unit)/test_(?:mutation_[0-9a-f]{12}|pi509_[a-z_]+)\.py",files[0]["filename"]):continue
+  if len(files)!=1 or files[0]["status"]!="added" or not re.fullmatch(r"(?:ci/tests|server/tests/unit)/test_(?:mutation_[0-9a-f]{12}|pi509_[a-z_]+)\.py",files[0]["filename"]):
+   continue
   dest=files[0]["filename"]
   git("fetch","--depth=1","origin","refs/pull/"+str(p["number"])+"/head")
   previous=source(head,dest)
@@ -413,12 +447,16 @@ def repair_one(prs: Sequence[Pull],sha: str):
 
 def census(sha: str,prs: Sequence[Pull]):
  # No blanket merge; only after queued work drained and GitHub writes reconciled.
- if sha==BASE0 or any(p["head"]["ref"].startswith(f"openhands/issue-{ISSUE}/") for p in prs):return False
- if query("select id from tasks where state in ('published','verified','publishing','publication_uncertain','update_uncertain') limit 1"):return False
+ if sha==BASE0 or any(p["head"]["ref"].startswith(f"openhands/issue-{ISSUE}/") for p in prs):
+  return False
+ if query("select id from tasks where state in ('published','verified','publishing','publication_uncertain','update_uncertain') limit 1"):
+  return False
  token="census:"+sha
- if query("select v from meta where k=?",(token,)):return False
+ if query("select v from meta where k=?",(token,)):
+  return False
  pre=K("judge",["/scratch/census-venv/bin/python","-m","mutmut","run","--help"],ok=False)
- if pre.returncode:raise RuntimeError("full mutation environment not seeded")
+ if pre.returncode:
+  raise RuntimeError("full mutation environment not seeded")
  root=R/"waves"/sha
  root.mkdir(parents=True,exist_ok=True)
  query("insert into meta values(?,?)",(token,"running"))
@@ -432,14 +470,16 @@ def census(sha: str,prs: Sequence[Pull]):
  main_guard=re.search(r"(?m)^if\s+__name__\s*==\s*(['\"])__main__\1\s*:",catalog_source)
  assert main_guard,"index catalog CLI guard missing"
  extractor=catalog_source[:main_guard.start()]+"\nroot=pathlib.Path('/scratch/monori/mutants'); c=extract(root); statuses={k:v for f in root.rglob('*.py.meta') for k,v in json.loads(f.read_text())['exit_code_by_key'].items()};sys.stdout.buffer.write(gzip.compress(json.dumps([c,statuses]).encode()))"
- with (root/"raw.json.gz").open("wb") as out:subprocess.run(["kubectl","-n","openhands","exec","-i","deploy/pi-monori-judge","-c","sandbox","--","python","-"],input=extractor.encode(),stdout=out,check=True,timeout=180)
+ with (root/"raw.json.gz").open("wb") as out:
+  subprocess.run(["kubectl","-n","openhands","exec","-i","deploy/pi-monori-judge","-c","sandbox","--","python","-"],input=extractor.encode(),stdout=out,check=True,timeout=180)
  catalog,status=json.load(gzip.open(root/"raw.json.gz"))
  expect=sum(len(f["diffs"]) for f in catalog.values())
  assert expect and len(status)>=expect and all(type(v) is int for v in status.values()),"incomplete census; never mark as clear"
  rows=[]
  classes={0:"Survivors by area",33:"No coverage by area",-24:"Timeouts"}
  for uid,rc in status.items():
-  if rc not in classes:continue
+  if rc not in classes:
+   continue
   u=uid if uid.startswith("monori.") else "monori."+uid
   fam,_,num=u.rpartition("__mutmut_")
   rows.append((u,fam,int(num),classes[rc],100,"queued" if num in catalog.get(fam,{}).get("diffs",{}) else "catalog_drift",sha,"fresh full census",None,0))
@@ -480,7 +520,8 @@ def loop():
     slots=0 if len(prs)>=100 else max(0,5-sum(p["head"]["ref"].startswith(f"openhands/issue-{ISSUE}/") for p in prs))
     reconcile(prs,sha)
     lastfetch=time.time()
-    try:repair_one(prs,sha)
+    try:
+     repair_one(prs,sha)
     except (OSError,ValueError,RuntimeError,sqlite3.Error,subprocess.SubprocessError) as ex:
      print("CI repair deferred",type(ex).__name__,str(ex)[:180],flush=True)
    if query("select id from tasks where state='transport_wait' and updated<? limit 1",(time.time()-180,)):
@@ -493,14 +534,17 @@ def loop():
     continue
    ts=query("select * from tasks where state='queued' order by case when ord<0 then ord else 0 end, num, ord, id limit 1")
    if not ts:
-    if not census(sha,prs):time.sleep(90)
+    if not census(sha,prs):
+     time.sleep(90)
     continue
    c=ts[0]
    try:
     mark(c,"screening","Independent old-suite check on current main",sha)
     screen(c,sha)
-   except (subprocess.TimeoutExpired,RuntimeError,ValueError) as ex:mark(c,"infra_triage",str(ex)[:400],sha)
+   except (subprocess.TimeoutExpired,RuntimeError,ValueError) as ex:
+    mark(c,"infra_triage",str(ex)[:400],sha)
   except (OSError,ValueError,RuntimeError,sqlite3.Error,subprocess.SubprocessError) as ex:
    print("controller backoff",type(ex).__name__,str(ex)[:250],flush=True)
    time.sleep(60)
-if __name__=="__main__":loop()
+if __name__=="__main__":
+ loop()

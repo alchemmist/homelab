@@ -154,7 +154,10 @@ def build(source, output):
         "pillowVersion": pillow_version,
         "libwebpVersion": features.version("webp"),
         "libavifVersion": features.version("avif"),
-        "rights": "Owner-requested existing wallpaper collection; upstream photo rights are not reassigned.",
+        "rights": (
+            "Owner-requested existing wallpaper collection; upstream photo rights are not "
+            "reassigned."
+        ),
         "photos": [],
     }
     dest = output / "nature"

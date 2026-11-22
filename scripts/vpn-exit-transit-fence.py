@@ -49,7 +49,9 @@ def run(boot=False) -> None:
     if not boot:
         assert not ROOT.exists(), "Existing apply state; inspect, never replay"
         assert (
-            subprocess.run(["nft", "list", "table", "inet", TABLE], capture_output=True).returncode
+            subprocess.run(
+                ["nft", "list", "table", "inet", TABLE], check=False, capture_output=True
+            ).returncode
             != 0
         )
         ROOT.mkdir(parents=True, mode=0o700)
@@ -60,7 +62,12 @@ def run(boot=False) -> None:
         assert (ROOT / "accepted.json").exists()
         assert (ROOT / "rules.nft").read_text() == RULES
     command(["nft", "-c", "-f", str(ROOT / "rules.nft")])
-    if subprocess.run(["nft", "list", "table", "inet", TABLE], capture_output=True).returncode != 0:
+    if (
+        subprocess.run(
+            ["nft", "list", "table", "inet", TABLE], check=False, capture_output=True
+        ).returncode
+        != 0
+    ):
         command(["nft", "-f", str(ROOT / "rules.nft")])
     observed = projection()
     if boot:

@@ -13,13 +13,13 @@ class UnsafeInput(Exception):
     """Exception raised on unsafe wiki OpenAPI input."""
 
 
-def require_sha(value: object):
+def require_sha(value: object) -> str:
     if not isinstance(value, str) or not SHA.fullmatch(value):
         raise UnsafeInput("Full SHA required")
     return value
 
 
-def spec_changed(event: object, files: Iterable[object] | None):
+def spec_changed(event: object, files: Iterable[object] | None) -> bool:
     """Files is the GitHub compare/commit file list. Push payload is not trusted for this."""
     if not isinstance(event, dict) or event.get("ref") != "refs/heads/main":
         return False
@@ -30,11 +30,11 @@ def spec_changed(event: object, files: Iterable[object] | None):
     return any(isinstance(item, dict) and item.get("filename") == SPEC for item in files or [])
 
 
-def branch_for(sha: object):
+def branch_for(sha: object) -> str:
     return "automation/wiki-openapi-" + require_sha(sha)
 
 
-def page_ok(markdown: object):
+def page_ok(markdown: object) -> str:
     if not isinstance(markdown, str) or len(markdown) > 200_000:
         raise UnsafeInput("Rendered page is missing or too large")
     if not markdown.startswith("---\n") or 'title: "Socrat Bot"' not in markdown.split("---", 2)[1]:
@@ -48,7 +48,7 @@ def select_closable(
     decision: object,
     candidates: Sequence[Mapping[str, object]],
     keep: object,
-):
+) -> list[int]:
     """Model may only name already-filtered automation PRs, never the survivor."""
     if not isinstance(decision, dict) or not isinstance(decision.get("close"), list):
         raise UnsafeInput("Model close list is missing")

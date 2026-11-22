@@ -74,7 +74,11 @@ def configure_monori(root, api):
             rows(api, "propertymappings/provider/scope/")
         ),
         "redirect_uris": [
-            {"matching_mode": "strict", "url": service["redirect"], "redirect_uri_type": "authorization"}
+            {
+                "matching_mode": "strict",
+                "url": service["redirect"],
+                "redirect_uri_type": "authorization",
+            }
         ],
         "sub_mode": "hashed_user_id",
         "issuer_mode": "per_provider",
@@ -83,8 +87,12 @@ def configure_monori(root, api):
     }
     if provider:
         retained = provider.get("client_secret")
-        if not isinstance(retained, str) or not secrets.compare_digest(retained.encode(), secret.encode()):
-            raise RuntimeError("Cannot verify retained Monori secret against provider; refusing reconciliation")
+        if not isinstance(retained, str) or not secrets.compare_digest(
+            retained.encode(), secret.encode()
+        ):
+            raise RuntimeError(
+                "Cannot verify retained Monori secret against provider; refusing reconciliation"
+            )
         for k, value in config.items():
             current = provider.get(k)
             if k == "property_mappings":

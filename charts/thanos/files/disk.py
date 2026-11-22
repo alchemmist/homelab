@@ -13,6 +13,7 @@ ROLES = (
 
 
 def allocated(path) -> int:
+    """Read allocated bytes without following symlinks, falling back to logical size if needed."""
     stat = os.lstat(path)
     blocks = getattr(stat, "st_blocks", None)
     if blocks is None:
@@ -21,6 +22,7 @@ def allocated(path) -> int:
 
 
 def directory_bytes(path) -> int:
+    """Sum allocation for the root and its entries without descending into linked directories."""
     total = allocated(path)
     for root, dirs, files in os.walk(path, followlinks=False):
         for name in dirs:
@@ -31,6 +33,7 @@ def directory_bytes(path) -> int:
 
 
 def host_path(path, host_root) -> str:
+    """Translate a path under the mounted host root to its /var/lib metric label."""
     prefix = host_root.rstrip("/")
     if path == prefix or path.startswith(prefix + "/"):
         return cast("str", "/var/lib" + path[len(prefix) :])
@@ -38,6 +41,7 @@ def host_path(path, host_root) -> str:
 
 
 def rows(host_root) -> "list[tuple[str, str, int]]":
+    """Measure configured trees, distinguishing retained raw data from the active workshop."""
     found = []
     storage = os.path.join(host_root, "rancher/k3s/storage")
     if os.path.isdir(storage):
@@ -64,6 +68,7 @@ def rows(host_root) -> "list[tuple[str, str, int]]":
 
 
 def render(node, entries) -> str:
+    """Format one Prometheus gauge series per node, role and directory."""
     lines = [
         "# HELP socrat_metrics_directory_bytes Allocated bytes in one metrics cascade directory.",
         "# TYPE socrat_metrics_directory_bytes gauge",
@@ -77,6 +82,7 @@ def render(node, entries) -> str:
 
 
 def write(path, body) -> None:
+    """Replace the textfile only after writing the complete sample beside it."""
     temporary = path + ".tmp"
     with open(temporary, "w", encoding="utf-8") as handle:
         handle.write(body)
@@ -84,6 +90,7 @@ def write(path, body) -> None:
 
 
 def main() -> None:
+    """Keep the last complete sample if a compactor renames a file during the periodic walk."""
     node = os.environ["NODE_NAME"]
     host_root = os.environ.get("HOST_VAR_LIB", "/host/var/lib")
     output = os.environ.get("OUTPUT", "/textfile/socrat-metrics-disk.prom")

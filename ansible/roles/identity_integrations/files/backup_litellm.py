@@ -10,9 +10,9 @@ import tarfile
 KUBE = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml", "-n", "llm"]
 
 
-def get(*args):
+def get(*args: str) -> bytes:
     """Document the get operation."""
-    return subprocess.check_output(KUBE + list(args), timeout=180)
+    return subprocess.check_output([*KUBE, *args], timeout=180)
 
 
 files = {

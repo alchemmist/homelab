@@ -22,7 +22,9 @@ RECEIPT = Path("/var/lib/homelab-recovery/20261113-vpn-native-image/promotion.js
 
 
 def active(unit) -> bool:
-    p = subprocess.run(["systemctl", "is-active", "--quiet", unit], capture_output=True, timeout=5)
+    p = subprocess.run(
+        ["systemctl", "is-active", "--quiet", unit], check=False, capture_output=True, timeout=5
+    )
     assert p.returncode in (0, 3)
     return p.returncode == 0
 
@@ -73,6 +75,7 @@ def promote(candidate, old_image, new_image) -> None:
         assert not active("homelab-vpn-primary.service") and not active("homelab-vpn-caddy.service")
         status = subprocess.run(
             ["/usr/local/sbin/homelab-vpn-failover", "status"],
+            check=False,
             capture_output=True,
             text=True,
             timeout=30,

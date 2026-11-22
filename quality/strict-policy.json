@@ -211,7 +211,7 @@
     "trusted": false,
     "waiver": false,
     "publisher": ".github/workflows/quality-graph-publish.yml",
-    "compiler": "quality-graph-github 0.2.3 (6714b6ea824125a2c7d6ea6bd27fcfec69efd133) scheduled-publisher.yaml.in",
+    "compiler": "quality-graph-github 0.2.4 (f5cef503eaf0734b9c9a0c6f88ee8206b2a6235d) scheduled-publisher.yaml.in",
     "triggers": {
       "workflow_dispatch": {},
       "schedule": [

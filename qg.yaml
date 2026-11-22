@@ -7,7 +7,7 @@ provider:
     runtime:
       action: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
       publication: scheduled
-      publisher-action: alchemmist/quality-graph@6714b6ea824125a2c7d6ea6bd27fcfec69efd133
+      publisher-action: alchemmist/quality-graph@f5cef503eaf0734b9c9a0c6f88ee8206b2a6235d
       upload-artifact-action: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
 profiles:
   default:
