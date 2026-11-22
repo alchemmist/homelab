@@ -165,7 +165,7 @@ def default_targets(result: list[RenderTarget], consumed: set[str]) -> list[Rend
                     "id": "defaults-" + str(chart.relative_to(ROOT)).replace("/", "-"),
                     "source": name,
                     "chart": chart,
-                    "namespace": "default",
+                    "namespace": "quality-check",
                     "release": "quality-check",
                     "values": [],
                     "parameters": [],
@@ -201,6 +201,46 @@ def arguments(target):
     return args
 
 
+MANIFEST_CLUSTER_SCOPED_KINDS = frozenset(
+    {
+        "ClusterRoleBinding",
+        "ClusterRole",
+        "CustomResourceDefinition",
+        "GlobalRole",
+        "MutatingWebhookConfiguration",
+        "Namespace",
+        "PriorityClass",
+        "RoleTemplate",
+        "ClusterRoleTemplateBinding",
+        "StorageClass",
+        "ValidatingWebhookConfiguration",
+    }
+)
+
+
+def apply_release_namespace(target, docs):
+    """Model Helm's install-time namespace assignment for offline lint.
+
+    `helm template` leaves `metadata.namespace` unset whenever a chart relies on
+    `.Release.Namespace`; at install time (and in GitOps reconciliation) those
+    objects are created in the release namespace. Filling the same namespace
+    before kube-linter lets cross-object checks (use-namespace,
+    dangling-service, env-value-from) evaluate the real adjacency instead of
+    comparing objects that appear namespace-less to objects with explicit
+    namespaces. Cluster-scoped kinds keep no namespace, and an explicitly
+    set namespace is never overwritten.
+    """
+    for doc in docs:
+        if (
+            isinstance(doc, dict)
+            and doc.get("kind") not in MANIFEST_CLUSTER_SCOPED_KINDS
+            and isinstance(doc.get("metadata"), dict)
+            and not doc["metadata"].get("namespace")
+        ):
+            doc["metadata"]["namespace"] = target["namespace"]
+    return docs
+
+
 def render(target):
     """Execute render."""
     args = [
@@ -219,9 +259,11 @@ def render(target):
     if process.returncode:
         return None
     try:
-        return [item for item in yaml.load_all(process.stdout, Loader=ManifestLoader) if item]
+        docs = [doc for doc in yaml.load_all(process.stdout, Loader=ManifestLoader) if doc]
     except yaml.YAMLError:
-        return None  # Invalid rendered YAML is a quality failure, not a successful empty render.
+        # Invalid rendered YAML is a quality failure, not a successful empty render.
+        return None
+    return apply_release_namespace(target, docs)
 
 
 def schema_name(resource):

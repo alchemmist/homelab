@@ -1,6 +1,12 @@
 """Offline negative controls for rendered-object lint semantics (requires manifest tools)."""
 
-from ci.quality.charts import authentik_accounts, kube_lint, render, targets
+from ci.quality.charts import (
+    apply_release_namespace,
+    authentik_accounts,
+    kube_lint,
+    render,
+    targets,
+)
 
 
 def target_stub(identifier: str = "lint-semantics") -> dict[str, str]:
@@ -52,6 +58,65 @@ def require(condition: object, detail: str) -> None:
         raise ValueError("Lint semantics control failed: " + detail)
 
 
+def release_namespace_semantics() -> None:
+    """Check Helm's release-namespace fill enables adjacency, defects included."""
+    stub = {"id": "namespace-semantics", "source": "synthetic", "namespace": "release-ns"}
+    # Helm-templated objects without an explicit namespace: install assigns the
+    # release namespace, so offline lint must respect the same adjacency.
+    service = {
+        "apiVersion": "v1",
+        "kind": "Service",
+        "metadata": {"name": "serving"},
+        "spec": {
+            "selector": {
+                "app.kubernetes.io/name": "missing",
+            },
+        },
+    }
+    docs = apply_release_namespace(
+        stub,
+        [
+            service,
+            {
+                "apiVersion": "rbac.authorization.k8s.io/v1",
+                "kind": "ClusterRole",
+                "metadata": {"name": "cluster-scoped"},
+                "rules": [],
+            },
+        ],
+    )
+    require(
+        docs[0]["metadata"]["namespace"] == "release-ns",
+        "namespace-inheriting object failed to inherit the release namespace",
+    )
+    require(
+        "namespace" not in docs[1]["metadata"],
+        "cluster-scoped object received a release namespace",
+    )
+    rules = {item["ruleId"] for item in kube_lint(stub, docs)}
+    require(
+        "kube-linter-use-namespace" not in rules,
+        "object assigned its release namespace still reported use-namespace",
+    )
+    require(
+        "kube-linter-dangling-service" in rules,
+        "service with a selector matching no pod stopped being reported as dangling",
+    )
+
+
+def defaults_namespace_policy() -> None:
+    """Check synthetic default-only renders never claim the shared default namespace."""
+    checked = 0
+    for target in targets():
+        if target["id"].startswith("defaults-"):
+            checked += 1
+            require(
+                target["namespace"] == "quality-check",
+                "synthetic defaults render uses the shared default namespace",
+            )
+    require(checked >= 8, "defaults targets were not inventoried; control is vacuous")
+
+
 def one_shot_probe_semantics() -> None:
     """Check one-shot Jobs need no scaffolding probes, while real defects stay."""
     stub = target_stub()
@@ -85,6 +150,8 @@ def one_shot_probe_semantics() -> None:
 def main() -> None:
     """Check that the actual peer satisfies the Service, but not an incorrect selector."""
     one_shot_probe_semantics()
+    release_namespace_semantics()
+    defaults_namespace_policy()
     releases = {t["id"]: t for t in targets()}
     target = releases["monitoring-k3s-0"]
     resources = render(target)
