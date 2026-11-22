@@ -1,0 +1,15 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: redis-common-writer-clients}
+spec:
+  podSelector: {matchLabels: {app: redis-ha-haproxy, release: redis-common}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: llm}}
+          podSelector:
+            matchLabels: {app.kubernetes.io/name: litellm, app.kubernetes.io/instance: litellm}
+        - podSelector: {matchLabels: {app: redis-common-write-probe}}
+      ports: [{port: 6379, protocol: TCP}]
+...

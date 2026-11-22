@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: socrat-redis-common
+  labels: {release: {{ .Values.prometheusRelease }}}
+spec:
+  groups:
+    - name: redis-common
+      rules:
+        - alert: SocratRedisCommonWriterUnavailable
+          expr: (max(kube_deployment_status_replicas_available{namespace="redis",deployment="redis-common-write-probe"}) or vector(0)) < 1
+          for: 2m
+          labels: {severity: critical}
+          annotations:
+            summary: 'Redis TLS write/read probe unavailable. LiteLLM may fall back to worker-local enforcement.'
+        - alert: SocratRedisCommonRedundancyReduced
+          expr: (max(kube_statefulset_status_replicas_ready{namespace="redis",statefulset="redis-common-server"}) or vector(0)) < 3
+          for: 3m
+          labels: {severity: warning}
+          annotations:
+            summary: 'Fewer than three ready Redis/Sentinel pairs, or no observations.'
