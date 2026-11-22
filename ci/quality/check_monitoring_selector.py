@@ -1,10 +1,90 @@
-"""Offline negative control for the monitoring health Service (requires manifest tools)."""
+"""Offline negative controls for rendered-object lint semantics (requires manifest tools)."""
 
 from ci.quality.charts import authentik_accounts, kube_lint, render, targets
 
 
+def target_stub(identifier: str = "lint-semantics") -> dict[str, str]:
+    """Build a synthetic, non-selecting lint target for direct kube_lint controls."""
+    return {"id": identifier, "source": "synthetic"}
+
+
+def probeless(kind: str, name: str) -> dict[str, object]:
+    """Build a minimal completion- or serving-shaped workload without any probes."""
+    doc = {
+        "apiVersion": "batch/v1" if kind in {"Job", "CronJob"} else "apps/v1",
+        "kind": kind,
+        "metadata": {"name": name},
+        "spec": {},
+    }
+    pod = {
+        "containers": [
+            {
+                "name": "work",
+                "image": "example.invalid/app@sha256:" + "0" * 64,
+            }
+        ]
+    }
+    if kind == "Job":
+        doc["spec"] = {"template": {"metadata": {}, "spec": pod}}
+    elif kind == "CronJob":
+        doc["spec"] = {
+            "schedule": "*/5 * * * *",
+            "jobTemplate": {"spec": {"template": {"metadata": {}, "spec": pod}}},
+        }
+    else:
+        doc["spec"] = {"template": {"metadata": {}, "spec": pod}}
+    return doc
+
+
+def probe_rules(findings: list[dict[str, object]]) -> set[str]:
+    """Collect only the probe-presence rules from a kube_lint result."""
+    return {
+        str(item["ruleId"])
+        for item in findings
+        if item["ruleId"]
+        in {"kube-linter-no-liveness-probe", "kube-linter-no-readiness-probe"}
+    }
+
+
+def require(condition: object, detail: str) -> None:
+    """Fail the negative control explicitly instead of silently passing it."""
+    if not condition:
+        raise ValueError("Lint semantics control failed: " + detail)
+
+
+def one_shot_probe_semantics() -> None:
+    """Check one-shot Jobs need no scaffolding probes, while real defects stay."""
+    stub = target_stub()
+    # The absence of a probe is not a defect for a completion-based workload.
+    require(
+        probe_rules(
+            kube_lint(stub, [probeless("Job", "one-shot"), probeless("CronJob", "per-run")])
+        )
+        == set(),
+        "probeless one-shot Job/CronJob reported a probe-presence finding",
+    )
+    # A traffic-serving Deployment without probes remains a defect.
+    require(
+        probe_rules(kube_lint(stub, [probeless("Deployment", "serving")]))
+        == {"kube-linter-no-liveness-probe", "kube-linter-no-readiness-probe"},
+        "probeless serving Deployment lost its probe-presence findings",
+    )
+    # A declared one-shot probe with a real mismatched defect is still reported.
+    job = probeless("Job", "broken-probe")
+    container = job["spec"]["template"]["spec"]["containers"][0]
+    container["livenessProbe"] = {"tcpSocket": {"port": 8123}}
+    require(
+        any(
+            item["ruleId"] == "kube-linter-liveness-port"
+            for item in kube_lint(stub, [job])
+        ),
+        "one-shot Job with a mismatched probe port was not reported",
+    )
+
+
 def main() -> None:
     """Check that the actual peer satisfies the Service, but not an incorrect selector."""
+    one_shot_probe_semantics()
     releases = {t["id"]: t for t in targets()}
     target = releases["monitoring-k3s-0"]
     resources = render(target)

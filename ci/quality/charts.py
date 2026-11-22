@@ -282,6 +282,17 @@ def authentik_accounts():
     ]
 
 
+# A one-shot Job pod never serves traffic through a Service and its lifecycle is
+# completion based: readiness does not gate endpoints and liveness resumption is
+# the controller's restart responsibility, not a probe decision. Probing a
+# completion-based workload with an invented endpoint would be a placeholder
+# probe, so its absence is not a defect. Every other probe check (a declared
+# probe with a wrong port, an unreadily declared field, serving kinds without
+# probes) keeps its full meaning for these kinds and all others.
+ONE_SHOT_KINDS = frozenset({"Job", "CronJob"})
+ONE_SHOT_EXEMPT_CHECKS = frozenset({"no-liveness-probe", "no-readiness-probe"})
+
+
 def kube_lint(target, resources, peers=()):
     """Execute kube_lint."""
     def key(doc):
@@ -314,8 +325,11 @@ def kube_lint(target, resources, peers=()):
     result = []
     for item in value["Reports"]:
         obj = item["Object"]["K8sObject"]
+        kind = obj["GroupVersionKind"]["Kind"]
+        if kind in ONE_SHOT_KINDS and item["Check"] in ONE_SHOT_EXEMPT_CHECKS:
+            continue
         # Peers are checked and attributed in full by their own release.
-        if (obj["GroupVersionKind"]["Kind"], obj.get("Namespace", ""), obj["Name"]) in peer_keys:
+        if (kind, obj.get("Namespace", ""), obj["Name"]) in peer_keys:
             continue
         identity = json.dumps(obj, sort_keys=True)
         rule = "kube-linter-" + item["Check"]
