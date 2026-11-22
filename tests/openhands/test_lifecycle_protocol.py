@@ -12,7 +12,8 @@ s.loader.exec_module(m)
 H="a"*40
 
 def check(v):
- if not v:raise ValueError("blocked")
+ if not v:
+  raise ValueError("blocked")
 def owned(n,h):return {"head":{"ref":"openhands/issue-509/"+"a"*32},"labels":[{"name":"mutation-pr"}]}
 def snapshot(author="Bot",reply=False):
  def nodes(x) -> "dict[str, object]":return {"nodes":x,"pageInfo":{"hasNextPage":False}}
@@ -26,7 +27,8 @@ class Protocol(unittest.TestCase):
   """Check a pending bot remark blocks ready even on a green snapshot."""
   api=Mock(return_value={"data":{"repository":{"pullRequest":snapshot()}}})
   with patch.dict(m.G,assess=lambda *a:{"ready_to_review":True,"blockers":[]}):
-   with self.assertRaises(ValueError):m.lifecycle({"action":"life_ready","head":H,"pr":515},api,owned,check)
+   with self.assertRaises(ValueError):
+    m.lifecycle({"action":"life_ready","head":H,"pr":515},api,owned,check)
   assert all(v.args[0] == "graphql" for v in api.call_args_list)
  def test_independent_sha_reread_before_marker(self):
   """Check the head SHA is independently re-read before the marker entry."""
@@ -36,5 +38,6 @@ class Protocol(unittest.TestCase):
   items=iter([a,b])
   api=Mock(side_effect=lambda *args:{"data":{"repository":{"pullRequest":next(items)}}})
   with patch.dict(m.G,assess=lambda *a:{"ready_to_review":True,"blockers":[]}):
-   with self.assertRaises(ValueError):m.lifecycle({"action":"life_ready","head":H,"pr":514},api,owned,check)
+   with self.assertRaises(ValueError):
+    m.lifecycle({"action":"life_ready","head":H,"pr":514},api,owned,check)
   assert [c.args[0] for c in api.call_args_list] == ["graphql", "graphql"]

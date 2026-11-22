@@ -42,7 +42,8 @@ class NativeOIDC(unittest.TestCase):
         assert "+" not in encoded
         assert "/" not in encoded
         assert base64.urlsafe_b64decode(encoded) == raw
-        with self.assertRaises(RuntimeError): m.encode_cookie_secret(b"too short")
+        with self.assertRaises(RuntimeError):
+            m.encode_cookie_secret(b"too short")
 
     def test_owner_only_existing_identity(self):
                                                  """Verify only the existing owner identity passes validation."""
@@ -53,24 +54,28 @@ class NativeOIDC(unittest.TestCase):
         original = copy.deepcopy(self.journal)
         for value in (None,{**original,"status":"pending"},{**original,"client_secret":"changed"}):
             self.journal = value
-            with self.assertRaises(RuntimeError): self.validate()
+            with self.assertRaises(RuntimeError):
+                self.validate()
 
     def test_binding_cannot_expand_or_disable(self):
         """Verify existing bindings cannot be broadened or disabled."""
         for key,value in [("group","observer"),("user","someone"),("policy","permissive"),("enabled",False),("negate",True),("failure_result",True)]:
             original = copy.deepcopy(self.bindings)
             self.bindings[0][key] = value
-            with self.assertRaises(RuntimeError): self.validate()
+            with self.assertRaises(RuntimeError):
+                self.validate()
             self.bindings = original
         self.bindings *= 2
-        with self.assertRaises(RuntimeError): self.validate()
+        with self.assertRaises(RuntimeError):
+            self.validate()
 
     def test_callback_or_grant_drift_blocked(self):
         """Verify callback URLs and grant types must not drift."""
         for key,value in [("client_id","wrong"),("grant_types",["authorization_code","password"]),("redirect_uris",[{"matching_mode":"regex","url":".*"}])]:
             old = copy.deepcopy(self.provider)
             self.provider[key] = value
-            with self.assertRaises(RuntimeError): self.validate()
+            with self.assertRaises(RuntimeError):
+                self.validate()
             self.provider = old
 
 
@@ -164,4 +169,5 @@ class OIDCRender(unittest.TestCase):
         assert self.helm("--set", "oidc.enabled=false").returncode != 0
 
 
-if __name__ == "__main__": unittest.main()
+if __name__ == "__main__":
+    unittest.main()
