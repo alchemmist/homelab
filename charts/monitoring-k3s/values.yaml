@@ -280,7 +280,7 @@ updateWatch:
     - id: searxng
       title: SearXNG
       current: "2026.10.19"
-      github: searxng/searxng
+      source: searxng-image-tags
     - id: remark42
       title: Remark42
       current: "1.17.1"

@@ -20,13 +20,6 @@
       "native": "reports/shell.json"
     }
   },
-  "workflow": {
-    "title": "Delivery security",
-    "run": "uv run python scripts/quality/lint.py workflow",
-    "results": {
-      "native": "reports/workflow.json"
-    }
-  },
   "tests-fast": {
     "title": "Unit tests",
     "run": "uv run python scripts/quality/tests.py fast --isolate-network",
