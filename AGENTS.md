@@ -4,7 +4,7 @@ Read `llm-wiki/context.md` first; use `llm-wiki/README.md` for topic runbooks.
 
 ## MCP
 
-Tracked project settings are `.pi/mcp.json`. Read `docs/official-mcp.md` and
+No particular agent or MCP client is required. For optional connections, read `docs/official-mcp.md` and
 `deploy/mcp/service-audit.json` for scope, installation, coverage and blocked items.
 Only a trusted project loads its commands. Never execute a credential helper to
 show its output: it writes a token into the MCP client's private pipe.

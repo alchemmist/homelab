@@ -622,7 +622,7 @@ def test_openhands_mcp_inventory_is_explicitly_no_client() -> None:
     assert len(matches) == 1
     assert matches[0]["decision"] == "no-client"
     assert "connector" not in matches[0]
-    config = _mapping(json.loads((ROOT / ".pi/mcp.json").read_text()))
+    config = _mapping(json.loads((ROOT / "deploy/mcp/examples/pi-mcp.json").read_text()))
     assert "openhands" not in _mapping(config["mcpServers"])
 
 

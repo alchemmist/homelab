@@ -56,6 +56,10 @@
         ]
       },
       {
+        "file": "deploy/platform/redisinsight/resources/deployment.yaml",
+        "path": ["spec", "template", "spec", "hostAliases"]
+      },
+      {
         "file": "deploy/platform/rancher/values.yaml",
         "path": [
           "hostAliases"

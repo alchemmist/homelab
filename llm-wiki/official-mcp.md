@@ -1,6 +1,6 @@
 # MCP для агентов Homelab — 2026-11-07
 
-Точка входа агента — `AGENTS.md`, настоящий project config — `.pi/mcp.json`.
+Точка входа агента — `AGENTS.md`, Pi необязателен; пример — `deploy/mcp/examples/pi-mcp.json`, локальные настройки не в Git.
 Протокол первоначального подключения: [runbook](../docs/official-mcp.md),
 [реестр всех сервисов на момент аудита](../deploy/mcp/service-audit.json).
 Последующее локальное включение n8n описано ниже; прежний blocker в реестре
@@ -82,7 +82,7 @@ tracked версия в main содержит только безопасные 
 аналитика посещаемости: сначала отдельный разрешённый analytics API key.
 
 Важно различать локальный и общий config: n8n включён в приватном
-`/Users/antonmoss/code/homelab/.pi/mcp.json`; committed `.pi/mcp.json` пока содержит
+`/Users/antonmoss/code/homelab/.pi/mcp.json`; пример `deploy/mcp/examples/pi-mcp.json` пока содержит
 консервативное `enabled: false`. Этот wiki-only update не меняет общий config,
 runbook, audit или настройки других машин. При новом checkout проверить состояние
 записи, наличие собственного разрешённого токена и protocol handshake, затем

@@ -18,6 +18,8 @@ Research is not a pending deployment task. Private recovery evidence remains off
 
 [PostgreSQL: размещение, гарантии и границы приёмки](postgresql.md).
 
+[pgAdmin: вход через Authentik, действующие права чтения и статус подключения writer](pgadmin.md).
+
 [Общий Redis: адрес записи, гарантии и подключение LiteLLM](redis-common.md).
 
 1. [Текущий контекст](context.md) — краткая схема, ограничения и порядок работы.

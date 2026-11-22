@@ -68,6 +68,10 @@
       "KubeAggregatedAPIErrors": 9,
       "KubeClientCertificateExpiration": 11
     },
+    "alerts-32fe12c750259f22": {
+      "KubeJobFailed": 1,
+      "SocratPrAgentWebhookRedeliveryFailed": 3
+    },
     "alerts-34da2721f95716a0": {
       "NodeCPUHighUsage": 1,
       "NodeClockNotSynchronising": 3,

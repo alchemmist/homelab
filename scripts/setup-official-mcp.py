@@ -70,9 +70,9 @@ def install_runtime(target: Path, *, offline: bool, archive: Path | None) -> Non
     npm = target / "npm"
     npm.mkdir(parents=True, exist_ok=True)
     for name in ("package.json", "package-lock.json"):
-        shutil.copyfile(ROOT / "tools/official-mcp" / name, npm / name)
+        shutil.copyfile(ROOT / "deploy/mcp/clients" / name, npm / name)
     subprocess.run(
-        [sys.executable, "-I", str(ROOT / "tools/official-mcp/patch_npm.py"), "argo"]
+        [sys.executable, "-I", str(ROOT / "deploy/mcp/clients/patch_npm.py"), "argo"]
         + (["--offline"] if offline else []),
         cwd=npm,
         check=True,
@@ -156,16 +156,16 @@ def configure_project_files(project: Path, *, target: Path, folder: Path) -> Non
     )
     if tracked or not ignored:
         raise ValueError(
-            "Refuse to overwrite tracked/unignored project config; use its committed settings instead."
+            "Refuse to overwrite tracked/unignored project config; use an ignored local configuration."
         )
-    if destination.is_symlink():
+    if destination.parent.is_symlink() or destination.is_symlink():
         raise ValueError("Refuse symlink project config")
     if destination.exists():
         private_write(
             folder / "project-backups" / ("mcp-" + str(time.time_ns()) + ".json"),
             destination.read_bytes(),
         )
-    config = json.loads((ROOT / ".pi/mcp.json").read_text())
+    config = json.loads((ROOT / "deploy/mcp/examples/pi-mcp.json").read_text())
     for server in config["mcpServers"].values():
         if server.get("command") == "python3":
             server["args"] = [
@@ -200,7 +200,7 @@ def main():
     p.add_argument(
         "--configure-project",
         type=Path,
-        help="Install cached-path settings only into an old checkout where .pi/mcp.json remains ignored/untracked; backup first, never merge/reset tracked work",
+        help="Install cached-path settings into a checkout where .pi/mcp.json remains ignored/untracked; backup first, never merge/reset tracked work",
     )
     args = p.parse_args()
     target = Path.home() / ".local/share/homelab/mcp"

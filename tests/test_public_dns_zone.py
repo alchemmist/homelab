@@ -87,6 +87,9 @@ def test_rustfs_names_additive_without_changes_to_existing_records() -> None:
         new = zone.render(123, home, vps).splitlines()
         # Require the exact reviewed new records before the unchanged historical comparison.
         new = _reviewed_openhands_addition(new, zone.healthy_addresses(home, vps))
+        redis_prefix = "redis.socrat IN A "
+        assert [r for r in new if r.startswith(redis_prefix)] == [redis_prefix + zone.HOME]
+        new = [r for r in new if not r.startswith(redis_prefix)]
         prefix = "pg.socrat IN A "
         assert [r for r in new if r.startswith(prefix)] == [prefix + zone.HOME]
         new = [r for r in new if not r.startswith(prefix)]
