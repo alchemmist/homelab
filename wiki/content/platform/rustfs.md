@@ -146,7 +146,7 @@ calendar/blog, Telegram test, model invocation or other comment change occurred.
 A public object under `/public/` should not redirect to sign-in. Test a known public object, not the bucket directory: an anonymous directory listing may be denied even when the file is readable.
 
 ```sh
-curl --silent --show-error --range 0-1023 --dump-header - --output /dev/null \
+curl --silent --show-error --connect-timeout 5 --max-time 15 --range 0-1023 --dump-header - --output /dev/null \
   'https://rustfs.socrat.alchemmist.xyz/public/<known-public-object>'
 ```
 
