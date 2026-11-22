@@ -1,7 +1,6 @@
 """Tests for SPI triage message delivery integration."""
 
 import json
-import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -9,8 +8,7 @@ from typing import Protocol
 from unittest.mock import Mock, patch
 
 import test_triage as fixture
-from core import Failure, Store
-from integrations import GitHub
+from core import Failure
 from telegram_delivery import Delivery
 from telegram_links import Links
 

@@ -467,14 +467,14 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         "    --ignore-noqa --output-format concise --"
     )
     imports = graph["deploy-i001"]
-    assert imports["title"] == "Python import order (I001) and script imports (F401)"
+    assert imports["title"] == "Python import order (I001) and unused script/test imports (F401)"
     assert imports["policy"] == policy
     assert imports["run"] == (
         "set -euo pipefail\n"
         "uv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |\n"
         "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \\\n"
         "    --ignore-noqa --output-format concise --\n"
-        "uv run python -m scripts.quality.python_inputs scripts/ |\n"
+        "uv run python -m scripts.quality.python_inputs scripts/ tests/ |\n"
         "  xargs -0 -r uv run ruff check --config quality/ruff.toml --select F401 \\\n"
         "    --ignore-noqa --output-format concise --"
     )

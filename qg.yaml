@@ -136,7 +136,7 @@ nodes:
         xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000,D300 \
           --ignore-noqa --output-format concise --
   deploy-i001:
-    title: Python import order (I001) and script imports (F401)
+    title: Python import order (I001) and unused script/test imports (F401)
     profile: default
     needs:
       - graph
@@ -146,7 +146,7 @@ nodes:
       uv run python -m scripts.quality.python_inputs ansible/ deploy/ scripts/ tests/ |
         xargs -0 -r uv run ruff check --config quality/ruff.toml --select I001 \
           --ignore-noqa --output-format concise --
-      uv run python -m scripts.quality.python_inputs scripts/ |
+      uv run python -m scripts.quality.python_inputs scripts/ tests/ |
         xargs -0 -r uv run ruff check --config quality/ruff.toml --select F401 \
           --ignore-noqa --output-format concise --
   secrets:
