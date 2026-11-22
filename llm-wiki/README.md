@@ -18,6 +18,8 @@ Research is not a pending deployment task. Private recovery evidence remains off
 
 [PostgreSQL: размещение, гарантии и границы приёмки](postgresql.md).
 
+[Общий Redis: адрес записи, гарантии и подключение LiteLLM](redis-common.md).
+
 1. [Текущий контекст](context.md) — краткая схема, ограничения и порядок работы.
 2. [Сеть и доступ](network-access.md) — **NetBird основной human ingress**, межнодовый
    WG сохранён, standalone WG только recovery, корпоративный Tunnelblick не трогать.
