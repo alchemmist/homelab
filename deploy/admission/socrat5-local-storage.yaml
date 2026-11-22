@@ -2,6 +2,7 @@
 # Do not apply to NFS-enabled VM105. Guard playbook explicitly refuses recreation.
 # Kept for historical recovery/source contract tests, not an active GitOps object.
 # Local-only worker: opt in explicitly, never discover unsupported NFS at mount time.
+---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
@@ -12,19 +13,25 @@ spec:
   failurePolicy: Fail
   matchConstraints:
     resourceRules:
-      - apiGroups: ['']
+      - apiGroups: [""]
         apiVersions: [v1]
         operations: [CREATE, UPDATE]
         resources: [pods]
   variables:
     - name: pinnedHere
-      expression: "has(object.spec.nodeName) && object.spec.nodeName == 'socrat-5'"
+      expression: has(object.spec.nodeName) && object.spec.nodeName == 'socrat-5'
     - name: pinnedElsewhere
-      expression: "has(object.spec.nodeName) && object.spec.nodeName != '' && object.spec.nodeName != 'socrat-5'"
+      expression: >-
+        has(object.spec.nodeName) && object.spec.nodeName != '' && object.spec.nodeName !=
+        'socrat-5'
     - name: selectorElsewhere
-      expression: "has(object.spec.nodeSelector) && 'kubernetes.io/hostname' in object.spec.nodeSelector && object.spec.nodeSelector['kubernetes.io/hostname'] != 'socrat-5'"
+      expression: >-
+        has(object.spec.nodeSelector) && 'kubernetes.io/hostname' in object.spec.nodeSelector &&
+        object.spec.nodeSelector['kubernetes.io/hostname'] != 'socrat-5'
     - name: selectsHere
-      expression: "has(object.spec.nodeSelector) && 'kubernetes.io/hostname' in object.spec.nodeSelector && object.spec.nodeSelector['kubernetes.io/hostname'] == 'socrat-5'"
+      expression: >-
+        has(object.spec.nodeSelector) && 'kubernetes.io/hostname' in object.spec.nodeSelector &&
+        object.spec.nodeSelector['kubernetes.io/hostname'] == 'socrat-5'
     - name: toleratesLocalOnly
       expression: >-
         has(object.spec.tolerations) && object.spec.tolerations.exists(t,
@@ -45,10 +52,11 @@ spec:
           (request.namespace == 'automation' && has(v.persistentVolumeClaim) &&
            v.persistentVolumeClaim.claimName == 'n8n-socrat5'))
       message: >-
-        socrat-5 is a no-NFS/local-only worker. Remote/unclassified persistent volumes
-        (including PVC and inline CSI) require a different node. Broad Exists tolerations
-        with PVCs must pin another hostname. Only the verified node5-local NetBird identity and n8n migration claims
+        socrat-5 is a no-NFS/local-only worker. Remote/unclassified persistent volumes (including
+        PVC and inline CSI) require a different node. Broad Exists tolerations with PVCs must pin
+        another hostname. Only the verified node5-local NetBird identity and n8n migration claims
         are named PVC exceptions.
+...
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding
@@ -59,3 +67,4 @@ metadata:
 spec:
   policyName: homelab-socrat5-local-storage
   validationActions: [Deny]
+...

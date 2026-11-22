@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "f2d7835d8500a59b2306191b8173c2c393e9380a79b1c38e34e6d7d1ad53b136",
+  "graphDigest": "6914bfd1f25edb9cdac24f47dcd5d1ca1b622d5ef2abf81e41b3e5c4c46276b5",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -40,6 +40,34 @@
     },
     {
       "env": {},
+      "id": "yaml",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "native",
+        "path": "reports/yaml.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py yaml"
+      },
+      "timeoutMinutes": 5,
+      "title": "YAML structure"
+    },
+    {
+      "env": {},
       "id": "scripts-q000",
       "needs": [
         "graph"
@@ -60,7 +88,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "set -euo pipefail\ngit ls-files --error-unmatch -z -- ':(top,glob)scripts/**/*.py' |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 --ignore-noqa --output-format concise --"
+        "run": "set -euo pipefail\ngit ls-files --error-unmatch -z -- ':(top,glob)scripts/**/*.py' |\n  xargs -0 -r uv run ruff check --config quality/ruff.toml --select Q000 \\\n    --ignore-noqa --output-format concise --"
       },
       "timeoutMinutes": 5,
       "title": "Python script quotes (Q000)"

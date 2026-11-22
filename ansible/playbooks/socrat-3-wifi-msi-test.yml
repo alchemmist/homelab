@@ -6,14 +6,22 @@
   any_errors_fatal: true
   tasks:
     - name: Require the protected Ethernet module and unloaded Wi-Fi driver
-      ansible.builtin.shell: |
+      ansible.builtin.shell: >
         set -eu
+
         test ! -d /sys/module/rtl8723ae
+
         test "$(cat /sys/class/net/enp2s0/carrier)" = 1
+
         work=$(mktemp -d)
+
         trap 'rm -rf "$work"' EXIT
-        objcopy --dump-section .note.gnu.build-id="$work/build-id" /usr/local/src/homelab-network-recovery/6.12.111+deb13-amd64/alx/alx.ko "$work/alx.ko"
+
+        objcopy --dump-section .note.gnu.build-id="$work/build-id"
+        /usr/local/src/homelab-network-recovery/6.12.111+deb13-amd64/alx/alx.ko "$work/alx.ko"
+
         test -s "$work/build-id"
+
         cmp "$work/build-id" /sys/module/alx/notes/.note.gnu.build-id
       changed_when: false
 

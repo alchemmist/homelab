@@ -1,13 +1,16 @@
+---
 worker:
   name: venice-agent-worker
-  image: docker.io/library/node@sha256:1f70dfa8d7be2321da1247e671217c11a555cd005edf4ccb014af28c9e8f78ca
+  image:
+    docker.io/library/node@sha256:1f70dfa8d7be2321da1247e671217c11a555cd005edf4ccb014af28c9e8f78ca
   resources:
     requests:
       cpu: 50m
       memory: 64Mi
       ephemeral-storage: 32Mi
     limits:
-      cpu: '1'
+      cpu: "1"
       memory: 512Mi
       ephemeral-storage: 128Mi
 controllerServiceAccount: venice-agent-controller
+...

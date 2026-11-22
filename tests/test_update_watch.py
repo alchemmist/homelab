@@ -8,6 +8,7 @@ from typing import NoReturn, TypedDict
 from unittest.mock import patch
 
 import pytest
+import yaml
 
 MODULE = Path("charts/monitoring-k3s/files/update_watch.py")
 
@@ -82,9 +83,10 @@ def test_failed_lookup_does_not_claim_an_update() -> None:
 
 def test_catalog_lists_open_webui() -> None:
     """Require the Open WebUI catalog pin recorded in the chart values."""
-    text = Path("charts/monitoring-k3s/values.yaml").read_text()
-    assert "github: open-webui/open-webui" in text
-    assert 'current: "0.12.3"' in text
+    catalog = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())["updateWatch"]
+    [target] = [target for target in catalog["targets"] if target["id"] == "open-webui"]
+    assert target["github"] == "open-webui/open-webui"
+    assert target["current"] == "0.12.3"
 
 
 @pytest.mark.parametrize("spec", [None, ModuleSpec("update_watch", loader=None)])
@@ -139,8 +141,6 @@ def test_statefulset_target_and_ambiguous_workload() -> None:
 
 
 def test_openhands_uses_running_canvas_tag_not_sdk_version() -> None:
-    import yaml
-
     watch = load_module()
     catalog = yaml.safe_load(Path("charts/monitoring-k3s/values.yaml").read_text())[
         "updateWatch"

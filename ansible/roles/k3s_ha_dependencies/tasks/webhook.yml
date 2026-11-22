@@ -19,7 +19,10 @@
 
 - name: Merge supported webhook chart values
   ansible.builtin.set_fact:
-    ha_webhook_values: "{{ (((ha_webhook_config.stdout | default('{}', true) | from_json).get('data', {}).get('rancher-webhook', '{}') | from_yaml) | default({}, true)) | combine(ha_webhook_overrides, recursive=true) }}"
+    ha_webhook_values: >-
+      {{ (((ha_webhook_config.stdout | default('{}', true) | from_json).get('data',
+      {}).get('rancher-webhook', '{}') | from_yaml) | default({}, true))
+      | combine(ha_webhook_overrides, recursive=true) }}
   vars:
     ha_webhook_overrides:
       replicaCount: 2

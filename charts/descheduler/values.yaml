@@ -1,13 +1,14 @@
+---
 descheduler:
   fullnameOverride: descheduler
-  schedule: '*/5 * * * *'
+  schedule: "*/5 * * * *"
   suspend: false
   startingDeadlineSeconds: 45
   activeDeadlineSeconds: 90
   successfulJobsHistoryLimit: 12
   failedJobsHistoryLimit: 3
   cmdOptions: {v: 3}
-  priorityClassName: ''
+  priorityClassName: ""
   resources:
     requests: {cpu: 50m, memory: 96Mi}
     limits: {cpu: 500m, memory: 256Mi}
@@ -51,7 +52,14 @@ descheduler:
               namespaces: {include: [cattle-monitoring-system]}
               labelSelector:
                 matchExpressions:
-                  - {key: app, operator: In, values: [otel-tempo, otel-loki, thanos-shelf-5m, thanos-store-5m, thanos-compactor-5m]}
+                  - key: app
+                    operator: In
+                    values:
+                      - otel-tempo
+                      - otel-loki
+                      - thanos-shelf-5m
+                      - thanos-store-5m
+                      - thanos-compactor-5m
       - name: shared-pyroscope
         plugins: *preferredOnly
         pluginConfig:
@@ -62,3 +70,4 @@ descheduler:
               namespaces: {include: [cattle-monitoring-system]}
               labelSelector:
                 matchLabels: {app.kubernetes.io/name: pyroscope}
+...

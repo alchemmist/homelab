@@ -23,48 +23,62 @@
         state: present
     - name: Require already accepted archive binds (never bootstrap empty datasets)
       ansible.builtin.command:
-        argv: [findmnt, -nro, SOURCE, --mountpoint, '{{ item.target }}']
+        argv: [findmnt, -nro, SOURCE, --mountpoint, "{{ item.target }}"]
       loop:
-        - {target: /var/lib/rancher/k3s/storage/pvc-27716289-aa8c-4da0-97b1-3239eae625bf_openhands_openhands-cold-backups, source: '/dev/sdb1[/homelab/openhands-archives/cold-backups]'}
-        - {target: /var/lib/rancher/k3s/storage/pvc-59ac8c87-58a0-4bf0-a7cb-a487a9e95728_openhands_openhands-upgrade-backups, source: '/dev/sdb1[/homelab/openhands-archives/upgrade-backups]'}
+        - target: >-
+            /var/lib/rancher/k3s/storage/pvc-27716289-aa8c-4da0-97b1-3239eae625bf_openhands_openhands-cold-backups
+          source: /dev/sdb1[/homelab/openhands-archives/cold-backups]
+        - target: >-
+            /var/lib/rancher/k3s/storage/pvc-59ac8c87-58a0-4bf0-a7cb-a487a9e95728_openhands_openhands-upgrade-backups
+          source: /dev/sdb1[/homelab/openhands-archives/upgrade-backups]
       register: archive_mount
       changed_when: false
       failed_when: archive_mount.rc != 0 or archive_mount.stdout != item.source
     - name: Persist archive data mounts without changing PV or PVC identity
       ansible.posix.mount:
-        src: '{{ item.source }}'
-        path: '{{ item.target }}'
+        src: "{{ item.source }}"
+        path: "{{ item.target }}"
         fstype: none
         opts: bind,x-systemd.requires-mounts-for=/mnt/files
         state: present
       loop:
-        - {source: /mnt/files/homelab/openhands-archives/cold-backups, target: /var/lib/rancher/k3s/storage/pvc-27716289-aa8c-4da0-97b1-3239eae625bf_openhands_openhands-cold-backups}
-        - {source: /mnt/files/homelab/openhands-archives/upgrade-backups, target: /var/lib/rancher/k3s/storage/pvc-59ac8c87-58a0-4bf0-a7cb-a487a9e95728_openhands_openhands-upgrade-backups}
+        - source: /mnt/files/homelab/openhands-archives/cold-backups
+          target: >-
+            /var/lib/rancher/k3s/storage/pvc-27716289-aa8c-4da0-97b1-3239eae625bf_openhands_openhands-cold-backups
+        - source: /mnt/files/homelab/openhands-archives/upgrade-backups
+          target: >-
+            /var/lib/rancher/k3s/storage/pvc-59ac8c87-58a0-4bf0-a7cb-a487a9e95728_openhands_openhands-upgrade-backups
     - name: Install fail-closed mount identity check
       ansible.builtin.copy:
         src: ../files/socrat5-containerd-hdd-check
         dest: /usr/local/libexec/socrat5-containerd-hdd-check
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
     - name: Ensure actual server unit drop-in directory
       ansible.builtin.file:
         path: /etc/systemd/system/k3s.service.d
         state: directory
-        mode: '0755'
+        mode: "0755"
     - name: Require HDD and runtime bind before starting actual server unit
       ansible.builtin.copy:
         dest: /etc/systemd/system/k3s.service.d/60-containerd-hdd.conf
         owner: root
         group: root
-        mode: '0644'
-        content: |
+        mode: "0644"
+        content: >
           [Unit]
-          RequiresMountsFor=/mnt/files /var/lib/rancher/k3s/agent/containerd /var/lib/rancher/k3s/storage/pvc-27716289-aa8c-4da0-97b1-3239eae625bf_openhands_openhands-cold-backups /var/lib/rancher/k3s/storage/pvc-59ac8c87-58a0-4bf0-a7cb-a487a9e95728_openhands_openhands-upgrade-backups
+
+          RequiresMountsFor=/mnt/files /var/lib/rancher/k3s/agent/containerd
+          /var/lib/rancher/k3s/storage/pvc-27716289-aa8c-4da0-97b1-3239eae625bf_openhands_openhands-cold-backups
+          /var/lib/rancher/k3s/storage/pvc-59ac8c87-58a0-4bf0-a7cb-a487a9e95728_openhands_openhands-upgrade-backups
+
           [Service]
+
           ExecStartPre=/usr/local/libexec/socrat5-containerd-hdd-check
       notify: Reload systemd without service restart
   handlers:
     - name: Reload systemd without service restart
       ansible.builtin.systemd_service:
         daemon_reload: true
+...
