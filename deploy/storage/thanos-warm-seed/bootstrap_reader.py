@@ -31,7 +31,7 @@ def main():
         sys.argv[2]
         if len(sys.argv) == 3
         and sys.argv[1] == "--run"
-        and sys.argv[2] in ("shipper", "compactor")
+        and sys.argv[2] in ("shipper", "compactor", "tier-marker")
         else None
     )
     assert role or fixture or sys.argv[1:] == ["--run"]
@@ -118,6 +118,11 @@ echo 'workshop read-only policy attached'
         ]
         if role == "compactor":
             policy["Statement"][1]["Action"].append("s3:DeleteObject")
+        if role == "tier-marker":
+            policy = json.loads(json.dumps(POLICY))
+            policy["Statement"].append({"Effect": "Allow", "Action": ["s3:PutObject"],
+                "Resource": ["arn:aws:s3:::thanos-workshop/*/" + f + "-mark.json"
+                             for f in ("deletion", "no-downsample", "no-compact")]})
         c["env"][-1]["value"] = json.dumps(policy)
         c["command"][2] = script.replace(
             "thanos-workshop-read", "thanos-workshop-" + role

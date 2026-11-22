@@ -108,6 +108,7 @@
       "tests/test_thanos_cascade.py",
       "tests/test_thanos_retired_tree.py",
       "tests/test_thanos_shelf.py",
+      "tests/test_thanos_tiers.py",
       "tests/test_thanos_warm_hour_copy.py",
       "tests/test_traffic_light.py",
       "tests/test_traffic_light_models.py",
