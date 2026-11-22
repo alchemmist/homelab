@@ -5409,21 +5409,6 @@
       "rule": "S607"
     },
     {
-      "id": "e44817bb3f788da656b3d295670f2fba4453a236593591333b8e0f6432bd3325.1",
-      "path": "scripts/retire-tv-internal-wireguard.py",
-      "rule": "S607"
-    },
-    {
-      "id": "a2b18642becd397173ea45eb976bfe4928f3e58440bb96bf6d9d952a1182612b.1",
-      "path": "scripts/retire-tv-internal-wireguard.py",
-      "rule": "S603"
-    },
-    {
-      "id": "c4f6c603735b81e1f75447490c52adc3d0d93a8775f1611983043d22ce6fc9d4.1",
-      "path": "scripts/retire-tv-internal-wireguard.py",
-      "rule": "S607"
-    },
-    {
       "id": "7db8dbd5261cbf66201ccf4e1f7ec583d66e7525cebd9dc31791e4beb771e76e.1",
       "path": "scripts/retire-tv-public-alias.py",
       "rule": "S603"
