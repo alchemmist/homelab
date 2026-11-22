@@ -25,6 +25,8 @@ updateMode: polling
 timezone: Europe/Moscow
 # CNPG creates role schoolbot and stores it in secret pg-internal-schoolbot
 # in namespace postgres. Copy username and password into schoolbot-env.
+# Percent-encode DATABASE_PASSWORD. Kubernetes inserts it into DATABASE_URL
+# and does not encode reserved characters.
 database:
   host: pg-internal-rw.postgres.svc.cluster.local
   port: 5432

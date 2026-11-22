@@ -67,6 +67,9 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.envSecretName }}
                   key: DATABASE_PASSWORD
+            # The entrypoint passes this DSN to asyncpg.connect, which reads sslmode.
+            # SQLAlchemy 2.0.40 forwards query keys as connect kwargs, so the image
+            # rewrites sslmode to ssl before create_async_engine.
             - name: DATABASE_URL
               value: {{ printf "postgresql+asyncpg://$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@%s:%v/%s?sslmode=require" .Values.database.host .Values.database.port .Values.database.name | quote }}
             - name: APP_MASTER_KEY
