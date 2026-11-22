@@ -34,6 +34,7 @@ result = subprocess.run(
     ],
     input=code.encode(),
     capture_output=True,
+    check=False,
 )
 if result.returncode:
     raise RuntimeError("Fixture database cleanup failed; details suppressed")

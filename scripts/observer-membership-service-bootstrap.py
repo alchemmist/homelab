@@ -51,7 +51,7 @@ os.umask(0o077)
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
-    def redirect_request(self, *_a, **_kw):
+    def redirect_request(self, *_a: object, **_kw: object) -> None:
         """Refuse redirects so credentials are never forwarded."""
         return
 
@@ -60,6 +60,7 @@ http = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect()
 
 
 def api(method, path, body=None):
+    """Call the IdP API, retaining HTTP error details in a private file."""
     req = urllib.request.Request(
         "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
         method=method,
@@ -84,6 +85,7 @@ def api(method, path, body=None):
 
 
 def rows(path):
+    """Collect IdP results and fail if pagination does not finish within 100 pages."""
     out = []
     for page in range(1, 101):
         d = api("GET", path + ("&" if "?" in path else "?") + "page_size=100&page=" + str(page))

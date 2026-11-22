@@ -8,6 +8,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import TypedDict, cast
 
 import jwt
 
@@ -18,13 +19,25 @@ class BrokerFailure(Exception):
     """Exception raised when the wiki broker run fails."""
 
 
+class _Installation(TypedDict):
+    id: int
+    suspended_at: str | None
+    permissions: dict[str, str]
+
+
+class _Grant(TypedDict):
+    token: str
+    expires_at: str
+    permissions: dict[str, str]
+
+
 def request(
     method: str,
     url: str,
     token: str,
     body: object = None,
     context: ssl.SSLContext | None = None,
-):
+) -> object:
     req = urllib.request.Request(
         url,
         data=json.dumps(body).encode() if body is not None else None,
@@ -45,7 +58,7 @@ def request(
         raise BrokerFailure("HTTP_" + str(exc.code)) from None
 
 
-def main():
+def main() -> None:
     global PHASE
     PHASE = "sign"
     now = int(time.time())
@@ -55,8 +68,9 @@ def main():
         algorithm="RS256",
     )
     PHASE = "installation"
-    installation = request(
-        "GET", "https://api.github.com/repos/alchemmist/homelab/installation", auth
+    installation = cast(
+        "_Installation",
+        request("GET", "https://api.github.com/repos/alchemmist/homelab/installation", auth),
     )
     permissions = installation.get("permissions") or {}
     if (
@@ -66,14 +80,19 @@ def main():
     ):
         raise ValueError("APP_PERMISSION_MISSING")
     PHASE = "mint"
-    grant = request(
-        "POST",
-        "https://api.github.com/app/installations/" + str(installation["id"]) + "/access_tokens",
-        auth,
-        {
-            "repositories": ["homelab"],
-            "permissions": {"contents": "write", "pull_requests": "write", "metadata": "read"},
-        },
+    grant = cast(
+        "_Grant",
+        request(
+            "POST",
+            "https://api.github.com/app/installations/"
+            + str(installation["id"])
+            + "/access_tokens",
+            auth,
+            {
+                "repositories": ["homelab"],
+                "permissions": {"contents": "write", "pull_requests": "write", "metadata": "read"},
+            },
+        ),
     )
     granted = grant["permissions"]
     if (

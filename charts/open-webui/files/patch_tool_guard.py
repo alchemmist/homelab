@@ -28,7 +28,7 @@ EVENT = "    if not event_emitter:\n        return\n\n    if tool_function_name 
 EVENT_GUARD = "    if not event_emitter or _is_tool_result_error(tool_result):\n        return\n\n    if tool_function_name == 'display_file':"
 
 
-def patch(source):
+def patch(source: str) -> str:
     if IMPORT in source:
         message = "Tool guard already present; expected pristine middleware"
         raise ValueError(message)

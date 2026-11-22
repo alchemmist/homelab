@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """OFFLINE ONLY: render the dedicated SPI writer Secret; no API calls."""
 
+from __future__ import annotations
+
 import argparse
 import base64
 import hashlib
@@ -10,7 +12,7 @@ import stat
 from pathlib import Path
 
 
-def private_json(path):
+def private_json(path: Path) -> object:
     """Execute private_json."""
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     with os.fdopen(fd, "rb") as stream:
@@ -28,25 +30,33 @@ def private_json(path):
     return json.loads(raw)
 
 
-def render(directory):
+def render(directory: str | Path) -> None:
     """Execute render."""
     try:
         d = Path(directory)
         st = d.lstat()
         if not stat.S_ISDIR(st.st_mode) or st.st_uid != os.getuid() or st.st_mode & 0o077:
             raise ValueError
-        storage = private_json(d / "storage.json")
+        raw = private_json(d / "storage.json")
+        if not isinstance(raw, dict):
+            raise ValueError
+        storage: dict[str, dict[str, str]] = {}
+        for role in ("root", "reader", "writer"):
+            row = raw.get(role)
+            if not isinstance(row, dict):
+                raise ValueError
+            storage[role] = {}
+            for field in ("access", "secret"):
+                value = row.get(field)
+                if (
+                    not isinstance(value, str)
+                    or not 1 <= len(value) <= 2048
+                    or any(ord(c) < 33 or ord(c) > 126 for c in value)
+                ):
+                    raise ValueError
+                storage[role][field] = value
         for field in ("access", "secret"):
-            values = [storage[r][field] for r in ("root", "reader", "writer")]
-            if (
-                any(
-                    not isinstance(v, str)
-                    or not 1 <= len(v) <= 2048
-                    or any(ord(c) < 33 or ord(c) > 126 for c in v)
-                    for v in values
-                )
-                or len(set(values)) != 3
-            ):
+            if len({row[field] for row in storage.values()}) != 3:
                 raise ValueError
         intended = {
             storage[r]["access"]: hashlib.sha256(storage[r]["secret"].encode()).hexdigest()
@@ -78,7 +88,7 @@ def render(directory):
         raise ValueError("SPI_WRITER_SECRET_PREPARATION_REFUSED") from None
 
 
-def main():
+def main() -> None:
     """Execute main."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--private-dir", type=Path, required=True)

@@ -11,6 +11,7 @@ ULID = re.compile(r"^[0-9A-Z]{26}$")
 
 
 def safe_relative(path):
+    """Split a relative upload path, rejecting backslashes, empty components and dot segments."""
     if not path or path.startswith("/") or "\\" in path:
         message = "bad path"
         raise ValueError(message)
@@ -22,14 +23,17 @@ def safe_relative(path):
 
 
 def staging_path(directory, ulid):
+    """Locate the hidden incoming directory used before a shelf block is published."""
     return os.path.join(directory, "." + ulid + ".incoming")
 
 
 def block_path(directory, ulid):
+    """Locate the published directory for a shelf block."""
     return os.path.join(directory, ulid)
 
 
 def read_block(directory, ulid):
+    """Summarize the block interval and resolution together with on-disk deletion status."""
     meta_path = os.path.join(block_path(directory, ulid), "meta.json")
     with open(meta_path, encoding="utf-8") as handle:
         meta = json.load(handle)
@@ -46,6 +50,7 @@ def read_block(directory, ulid):
 
 
 def list_blocks(directory):
+    """List published ULID directories with metadata, including blocks marked for deletion."""
     if not os.path.isdir(directory):
         return []
     blocks = []
@@ -60,6 +65,7 @@ def list_blocks(directory):
 
 
 def begin(directory, ulid):
+    """Start a fresh upload for a ULID, discarding its previous incomplete staging tree."""
     if not ULID.match(ulid):
         message = "bad ulid"
         raise ValueError(message)
@@ -70,6 +76,7 @@ def begin(directory, ulid):
 
 
 def write_file(directory, ulid, relative, chunks):
+    """Stream chunks into a temporary staging file and rename it after the write completes."""
     if not ULID.match(ulid):
         message = "bad ulid"
         raise ValueError(message)
@@ -86,6 +93,7 @@ def write_file(directory, ulid, relative, chunks):
 
 
 def commit(directory, ulid):
+    """Publish a matching staged block; replacing a live tree takes two separate renames."""
     if not ULID.match(ulid):
         message = "bad ulid"
         raise ValueError(message)
@@ -108,6 +116,7 @@ def commit(directory, ulid):
 
 
 def mark_deleted(directory, ulid, details="cascade"):
+    """Replace the deletion marker atomically, leaving the block files in place."""
     if not ULID.match(ulid):
         message = "bad ulid"
         raise ValueError(message)
@@ -223,6 +232,7 @@ def _serve_put(handler: BaseHTTPRequestHandler, directory: str, token: str) -> N
 
 
 def handler(directory, token):
+    """Bind inventory reads, staged uploads and marker requests to one shelf directory and token."""
     class ShelfHandler(BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
             return
@@ -252,11 +262,13 @@ def handler(directory, token):
 
 
 def serve(directory, token, port=8080):
+    """Listen on all interfaces for concurrent shelf requests until the server is stopped."""
     server = ThreadingHTTPServer(("0.0.0.0", port), handler(directory, token))
     server.serve_forever()
 
 
 def main():
+    """Create the shelf root and serve it using the configured token or token file."""
     directory = os.environ["SHELF_DIRECTORY"]
     token = os.environ.get("SHELF_TOKEN")
     if not token:

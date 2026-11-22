@@ -1,16 +1,27 @@
 """Strict inventory of the retired FILESYSTEM bucket only; no symlinks or mounts."""
 
+from __future__ import annotations
+
 import hashlib
 import json
 import re
 import stat
+from pathlib import Path
+from typing import TypedDict
 
 ID = r"[0-9A-HJKMNP-TV-Z]{26}"
 FILE = re.compile(rf"{ID}/(?:index|meta\.json|deletion-mark\.json|chunks/[0-9]{{6}})")
 DIR = re.compile(rf"{ID}(?:/chunks)?")
 
 
-def shape(root):
+class Manifest(TypedDict):
+    """JSON inventory; each file maps to its size and SHA-256, in that order."""
+
+    dirs: list[str]
+    files: dict[str, list[int | str]]
+
+
+def shape(root: Path) -> tuple[dict[str, int], list[str]]:
     assert root.is_dir() and not root.is_symlink()
     dev = root.stat().st_dev
     files = {}
@@ -36,7 +47,7 @@ def shape(root):
     return files, dirs
 
 
-def checksum(p):
+def checksum(p: Path) -> str:
     h = hashlib.sha256()
     with p.open("rb") as f:
         while b := f.read(2**20):
@@ -44,7 +55,7 @@ def checksum(p):
     return h.hexdigest()
 
 
-def manifest(root):
+def manifest(root: Path) -> Manifest:
     files, dirs = shape(root)
     return {
         "dirs": dirs,
@@ -52,7 +63,7 @@ def manifest(root):
     }
 
 
-def digest(m):
+def digest(m: Manifest) -> str:
     return hashlib.sha256(
         json.dumps(m, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()

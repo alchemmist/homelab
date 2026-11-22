@@ -28,12 +28,15 @@ ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
     "trace_verify", ROOT / "scripts/lms-observability-verify.py"
 )
+if spec is None or spec.loader is None:
+    msg = "Cannot load the LMS observability helper"
+    raise ImportError(msg)
 helper = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(helper)
 PROFILE = "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
 
 
-def post(grafana, method, body) -> dict[str, object]:
+def post(grafana: str, method: str, body: dict[str, object]) -> dict[str, object]:
     req = urllib.request.Request(
         grafana.rstrip("/")
         + "/api/datasources/proxy/uid/pyroscope/querier.v1.QuerierService/"
@@ -45,7 +48,7 @@ def post(grafana, method, body) -> dict[str, object]:
         return cast("dict[str, object]", json.load(response))
 
 
-def run(args) -> None:
+def run(args: argparse.Namespace) -> None:
     if not args.create_canary_session:
         raise ValueError("Explicit --create-canary-session is required")
     issuer, subject = "urn:homelab:lms-cpu-canary", str(uuid.uuid4())

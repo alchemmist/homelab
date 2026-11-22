@@ -253,9 +253,11 @@ def build_plan(state, services):
         bindings = [b for b in state["policies/bindings/"] if b["target"] == app["pk"]]
         admissible = {groups[n]["pk"] for n in expected_group_names if n in groups}
         seen = _existing_admission_pks(bindings, admissible, slug)
-        for name in active:
-            if name not in groups or groups[name]["pk"] not in seen:
-                operations.append({"kind": "binding", "slug": slug, "group": name})
+        operations.extend(
+            {"kind": "binding", "slug": slug, "group": name}
+            for name in active
+            if name not in groups or groups[name]["pk"] not in seen
+        )
         aliases = service.get("accessManagement", {}).get("claimAliases")
         if aliases:
             _plan_scope_migration(
@@ -457,6 +459,7 @@ def api_for(root):
 
 
 def main():
+    """Print the access plan and apply it only when its digest matches the confirmation."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("root", type=Path)
     p.add_argument("--apply", action="store_true")

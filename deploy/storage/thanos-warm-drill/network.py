@@ -1,22 +1,26 @@
 """Run a bounded isolated 0 -> 1 shipper outage drill (no live bucket mounted)."""
 
+from __future__ import annotations
+
 import json
 import secrets
 import subprocess
 import sys
 import time
+from collections.abc import Callable, Mapping
 from copy import deepcopy
+from typing import TypeVar
 
-from job import PROM, PYTHON, THANOS, container
+from job import PROM, PYTHON, THANOS, Container, container
 
 NS = "cattle-monitoring-system"
 RUN = "warm-net-" + secrets.token_hex(4)
 SEL = {"warm-drill": RUN}
-made = []
+made: list[tuple[str, str]] = []
 RUST = "rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2"
 
 
-def k(*args, data=None, check=True):
+def k(*args: str, data: str | None = None, check: bool = True) -> subprocess.CompletedProcess[str]:
     proc = subprocess.run(
         ["kubectl", "--request-timeout=15s", "-n", NS, *args],
         input=data,
@@ -29,7 +33,7 @@ def k(*args, data=None, check=True):
     return proc
 
 
-def add(kind, spec, tail="", api="v1"):
+def add(kind: str, spec: Mapping[str, object], tail: str = "", api: str = "v1") -> str:
     name = RUN + tail
     obj = {
         "apiVersion": api,
@@ -42,7 +46,10 @@ def add(kind, spec, tail="", api="v1"):
     return name
 
 
-def wait(fn, seconds):
+T = TypeVar("T")
+
+
+def wait(fn: Callable[[], T], seconds: float) -> T:
     until = time.monotonic() + seconds
     while time.monotonic() < until:
         result = fn()
@@ -52,15 +59,20 @@ def wait(fn, seconds):
     raise RuntimeError("timeout: " + fn.__name__)
 
 
-def ex(p, c, *args):
+def ex(p: str, c: str, *args: str) -> subprocess.CompletedProcess[str]:
     return k("exec", p, "-c", c, "--", *args, check=False)
 
 
-def mount(name, path, ro=False):
+def mount(name: str, path: str, ro: bool = False) -> dict[str, str | bool]:
     return {"name": name, "mountPath": path, "readOnly": ro}
 
 
-def pod(node, containers, vols, init=None):
+def pod(
+    node: str,
+    containers: list[Container],
+    vols: list[dict[str, object]],
+    init: list[Container] | None = None,
+) -> dict[str, object]:
     return {
         "spec": {
             "nodeSelector": {"kubernetes.io/hostname": node},
@@ -81,7 +93,7 @@ def pod(node, containers, vols, init=None):
     }
 
 
-def drill():
+def drill() -> None:
     access, secret = secrets.token_hex(10), secrets.token_hex(32)
     obj = json.dumps(
         {
@@ -118,7 +130,7 @@ def drill():
     )
     add(
         "Service",
-        {"spec": {"selector": {**SEL, "role": "bucket"}, "ports": [{"port": 9000}]}},
+        {"spec": {"selector": dict(SEL, role="bucket"), "ports": [{"port": 9000}]}},
     )
     data = mount("candidate", "/candidate")
     init = container(
@@ -144,7 +156,8 @@ def drill():
             "valueFrom": {"secretKeyRef": {"name": RUN, "key": v}},
         }
         for key, v in [("ACCESS_KEY", "access"), ("SECRET_KEY", "secret")]
-    ] + [
+    ]
+    rust["env"] += [
         {"name": k, "value": v}
         for k, v in [
             ("RUSTFS_VOLUMES", "/data"),
@@ -166,7 +179,7 @@ def drill():
     )
     backend["metadata"] = {"name": RUN + "-s", "labels": {**SEL, "role": "bucket"}}
 
-    def server():
+    def server() -> None:
         add("Pod", deepcopy(backend), "-s")
         wait(
             lambda: (
@@ -284,11 +297,12 @@ HTTPServer(('127.0.0.1',8000),H).serve_forever()"""
         "-c",
     )
 
-    def samples(port, end=None):
+    def samples(port: int, end: float | str | None = None) -> list[list[float | str]]:
         t = "" if end is None else "&time=" + str(end)
         code = f"import urllib.request,json;d=json.load(urllib.request.urlopen('http://127.0.0.1:{port}/api/v1/query?query=warm_number%5B20m%5D&partial_response=false{t}',timeout=4));assert not d.get('warnings');print(json.dumps(d['data']['result'][0]['values']))"
         r = ex(client, "fixture", "python3", "-c", code)
-        return json.loads(r.stdout) if r.returncode == 0 else []
+        values: list[list[float | str]] = json.loads(r.stdout) if r.returncode == 0 else []
+        return values
 
     wait(lambda: samples(12902), 240)
     print("remote Store read before outage: OK", flush=True)

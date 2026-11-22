@@ -1,0 +1,4 @@
+{
+  "include": ["charts/open-terminal/files/*.py"],
+  "rules": ["ANN001", "ANN201"]
+}
