@@ -226,7 +226,7 @@ spec:
   clusterIP: {{ .Values.serviceClusterIP | quote }}
   {{- end }}
   selector:
-    app: spi-triage
+    app: {{ ternary "spi-pg-handoff" "spi-triage" (.Values.pgHandoff | default false) }}
     {{- if .Values.maintenanceIngressPaused }}
     homelab.io/maintenance-serving: enabled
     {{- end }}
