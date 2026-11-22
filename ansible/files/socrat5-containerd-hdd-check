@@ -1,8 +1,16 @@
 #!/bin/sh
 # Never let K3s silently write runtime data into the root SSD beneath a missing bind.
 set -eu
-[ "$(findmnt -nro SOURCE --mountpoint /mnt/files)" = /dev/sdb1 ]
-[ "$(findmnt -nro SOURCE --mountpoint /var/lib/rancher/k3s/agent/containerd)" = "/dev/sdb1[/homelab/runtime/containerd]" ]
-[ "$(stat -c '%d:%i' /var/lib/rancher/k3s/agent/containerd)" = "$(stat -c '%d:%i' /mnt/files/homelab/runtime/containerd)" ]
-[ "$(findmnt -nro SOURCE --mountpoint /var/lib/rancher/k3s/storage/pvc-27716289-aa8c-4da0-97b1-3239eae625bf_openhands_openhands-cold-backups)" = "/dev/sdb1[/homelab/openhands-archives/cold-backups]" ]
-[ "$(findmnt -nro SOURCE --mountpoint /var/lib/rancher/k3s/storage/pvc-59ac8c87-58a0-4bf0-a7cb-a487a9e95728_openhands_openhands-upgrade-backups)" = "/dev/sdb1[/homelab/openhands-archives/upgrade-backups]" ]
+require_source() {
+    source_device=$(findmnt -nro SOURCE --mountpoint "$1")
+    [ "${source_device}" = "$2" ]
+}
+containerd=/var/lib/rancher/k3s/agent/containerd
+require_source /mnt/files /dev/sdb1
+require_source "${containerd}" '/dev/sdb1[/homelab/runtime/containerd]'
+mounted_id=$(stat -c '%d:%i' "${containerd}")
+backing_id=$(stat -c '%d:%i' /mnt/files/homelab/runtime/containerd)
+[ -n "${mounted_id}" ]
+[ "${mounted_id}" = "${backing_id}" ]
+require_source /var/lib/rancher/k3s/storage/pvc-27716289-aa8c-4da0-97b1-3239eae625bf_openhands_openhands-cold-backups '/dev/sdb1[/homelab/openhands-archives/cold-backups]'
+require_source /var/lib/rancher/k3s/storage/pvc-59ac8c87-58a0-4bf0-a7cb-a487a9e95728_openhands_openhands-upgrade-backups '/dev/sdb1[/homelab/openhands-archives/upgrade-backups]'
