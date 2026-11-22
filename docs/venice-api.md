@@ -131,8 +131,7 @@ https://llm.alchemmist.xyz/v1 endpoint with their own LiteLLM virtual keys.
 The original direct Venice endpoint still exists; never give its upstream key
 to ordinary LiteLLM users if access control is meant to stay in LiteLLM.
 
-Canonical change: deploy/platform/litellm/values.yaml, not the legacy snapshot
-in deploy/litellm/values.yaml. Existing Qwen route/image/database/migration fence,
+Canonical change: `deploy/platform/litellm/values.yaml`. Existing Qwen route/image/database/migration fence,
 users, key rights, SSO and logging settings preserved. LiteLLM remains1.105.1,
 one worker/replica; no PostgreSQL upgrade or schema migration was enabled.
 
