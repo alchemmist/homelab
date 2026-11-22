@@ -13,3 +13,7 @@ One client endpoint: `redis-common-haproxy.redis.svc.cluster.local:6379`, TLS on
 ## Maintenance
 
 CA/leaf rotation requires explicit coordination: establish overlapping public trust in gateway and all clients, roll/reload, then rotate leaf certificates on one Redis/Sentinel pair at a time and prove reconnect with strict validation. Update mounted certs alone does not reload every process. Retire old trust last. Monitor expiry. Chart init resolves the three per-ordinal announce Service IPs; if Services are ever recreated, reinitialize gateway pods one at a time. No claim of a hard spend ceiling: the pinned LiteLLM image admitted excess RPM during a tested outage.
+
+## Initial cluster receipt — 2026-11-22
+
+Published `4ec7ee37`; first init failed before Redis started (`exec format error`, ARM-only manifest). `6ab3ea60` pins the multi-arch Redis index; recreated only the never-ready server-0 pod after selective StatefulSet sync. Original PVC retained. Argo then reported Synced/Healthy, three 2 GiB Bound claims and three 3/3 server pods on socrat-1/5/0. Two HAProxy pods were Ready. Primary reported two connected replicas; `SENTINEL CKQUORUM` reported three usable voters. From a disposable in-cluster pod via the writer DNS, TLS with the platform CA and an ephemeral single-key ACL: SET NX EX returned OK, GET returned the witness, foreign-key GET returned NOPERM. Removed temporary pod, network grant and ACL; witness TTL 60s. No LiteLLM credentials or access enabled, no primary disruption in production, no claim of budget or DR acceptance.

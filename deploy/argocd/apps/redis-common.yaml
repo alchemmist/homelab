@@ -1,3 +1,4 @@
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata: {name: redis-common, namespace: argocd}
@@ -17,3 +18,4 @@ spec:
   destination: {server: https://kubernetes.default.svc, namespace: redis}
   # First rollout is gated on secrets/CA and available space on three nodes.
   syncPolicy: {syncOptions: [CreateNamespace=true]}
+...

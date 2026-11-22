@@ -18,6 +18,12 @@ metadata:
 spec:
   instances: {{ ternary 3 2 (eq $tier "critical") }}
   imageName: {{ $.Values.imageName | quote }}
+  managed:
+    roles:
+      - name: pgadmin_browser
+        ensure: present
+        login: true
+        passwordSecret: {name: "pgadmin-browser-{{ $tier }}"}
   enableSuperuserAccess: false
   storage:
     size: {{ ternary "5Gi" "20Gi" (eq $tier "critical") }}

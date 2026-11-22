@@ -6,6 +6,12 @@ metadata:
 spec:
   instances: 1
   imageName: {{ .Values.imageName | quote }}
+  managed:
+    roles:
+      - name: pgadmin_browser
+        ensure: present
+        login: true
+        passwordSecret: {name: pgadmin-browser-internal}
   enableSuperuserAccess: false
   bootstrap:
     initdb:

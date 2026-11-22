@@ -102,7 +102,6 @@ _NPM_PACKAGE_KEYS = frozenset(
 )
 _NPM_LOCK_NAMES = ("package-lock.json", "npm-shrinkwrap.json")
 # Only this chart materializes a compressed lock before invoking npm ci.
-_PI_MANIFEST = "charts/openhands/files/pi-monori/package.json"
 _NPM_ROOT_DEP_FIELDS = ("dependencies", "devDependencies", "optionalDependencies")
 _NPM_NESTED_DEP_FIELDS = ("dependencies", "devDependencies", "optionalDependencies")
 _DEPENDENCY_NPM_LOCK_FAILURE = "npm lock contains unsupported or unsafe package sources"
@@ -427,18 +426,7 @@ _PATCHED_LOCKS = {
             "sha512-jyWGa1UQ1OpN/dagz0eUIHwTqmQs8LaIcnewvKH63iNbF1bZMVXOKIFW24UVQ8ein45WJtTbiT69jCe8qWsb8A==",
         )
     },
-    "charts/openhands/files/pi-monori/package-lock.json.gz": {
-        "@google/genai": (
-            "2.32.0",
-            "file:genai-2.32.0-homelab.tar",
-            "sha512-PodoSSqBL8AHq6TwAqdgXqh3r8oixlPQ8BmWN/5SuQn/cdVgIUF6rDif4bEaBeZhKA7AyZq0TuAHMx2IcIdYHA==",
-        ),
-        "protobufjs": (
-            "7.6.6",
-            "file:protobufjs-7.6.6-homelab.tar",
-            "sha512-D93pBGhupIdpogX/sdDu6Pt+eiKiupzrZdjxdcK4jEpfPa8q2og3uTKaoEfwebLGH5P7PVAc01ULAMXSdlpctg==",
-        ),
-    },
+
 }
 
 
@@ -814,9 +802,6 @@ def check_dependencies(names: Sequence[str]) -> tuple[list[Finding], int]:
             path.name == "requirements.in" and str(path.with_suffix(".txt")) not in inventory
         ) or (
             path.name == "package.json"
-            and not (
-                name == _PI_MANIFEST and str(path.with_name("package-lock.json.gz")) in inventory
-            )
             and not any(
                 str(path.with_name(lock)) in inventory
                 for lock in (

@@ -1,1 +1,0 @@
-{"providers":{"litellm":{"baseUrl":"http://127.0.0.1:4188/v1","apiKey":"local-relay-not-a-secret","api":"openai-completions","models":[{"id":"v-deepseek-uc","name":"v-deepseek-uc","reasoning":false,"input":["text"],"contextWindow":32768,"maxTokens":4096,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"compat":{"supportsUsageInStreaming":true}}]}}}
