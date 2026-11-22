@@ -19,7 +19,7 @@ transport; Pi's `!command` headers are not portable MCP configuration syntax.
 | Name | Upstream / connection | State / purpose |
 | --- | --- | --- |
 | `socrat-grafana` | `grafana/mcp-grafana` 2.0.2, existing digest-pinned HTTPS server | Read-only Grafana plus Prometheus/Thanos, Alertmanager, Loki, Tempo and Pyroscope |
-| `argocd` | `argoproj-labs/mcp-for-argocd`, npm `argocd-mcp` 0.9.0 with the [homelab Zod 4 port](ci/quality/npm-patches.md) | Official project **Labs**, stdio, `MCP_READ_ONLY=true`; diagnostics, not an imperative deploy path |
+| `argocd` | `argoproj-labs/mcp-for-argocd`, npm `argocd-mcp` 0.9.0 with the [homelab Zod 4 port](quality/npm-patches.md) | Official project **Labs**, stdio, `MCP_READ_ONLY=true`; diagnostics, not an imperative deploy path |
 | `socrat-metrics` | `prometheus/prometheus-mcp`, stable 0.18.0 | Official upstream binary, stdio; queries/docs/metadata through existing Grafana Viewer datasource proxy |
 | `n8n` | Built into installed n8n 1.123.87 | **Disabled client pending owner enablement**, no third-party n8n wrapper |
 | `umami` | Official `@umami/mcp` 0.2.0; native endpoint also exists in installed 3.4.1 | **Disabled client pending an authorized API key** |
