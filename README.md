@@ -1,6 +1,7 @@
-<img src="assets/rancher/socrat-logo.png" alt="Socrat logo" width="96" height="96">
-
-# Socrat homelab
+<h1>
+  <img src="assets/rancher/socrat-logo.png" alt="" width="60" height="60" align="center">
+  &nbsp;&nbsp;&nbsp;Socrat homelab
+</h1>
 
 [![CI](https://github.com/alchemmist/homelab/actions/workflows/quality-graph-push.yml/badge.svg?branch=main)](https://github.com/alchemmist/homelab/actions/workflows/quality-graph-push.yml)
 
