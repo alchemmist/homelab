@@ -29,9 +29,10 @@ entries:
     checks: [env-value-from, read-secret-from-env-var, no-read-only-root-fs]
     evidence: docs/quality/harbor-readonly-rootfs-contract.md
   # harbor-trivy: install_cert.sh writable-root contract (home/scanner
-  # variant) and SCANNER_TRIVY_REDIS_URL env-only wiring.
+  # variant) and SCANNER_TRIVY_REDIS_URL env-only wiring. (StatefulSet: trivy is
+  # the chart's persistent scanner workload.)
   - consumer: harbor-0
-    kind: Deployment
+    kind: StatefulSet
     namespace: harbor
     name: harbor-trivy
     checks: [read-secret-from-env-var, no-read-only-root-fs]
