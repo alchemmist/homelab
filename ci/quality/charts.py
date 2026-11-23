@@ -318,6 +318,15 @@ RELEASE_PEERS = {
     "monitoring-k3s-0": ("grafana-mcp-0", [("Deployment", "grafana-mcp")]),
     "litellm-2": ("litellm-0", [("Service", "litellm"), ("Deployment", "litellm")]),
     "rustfs-0": ("authentik-0", [("Service", "authentik-server"), ("Deployment", "authentik-server")]),
+    # Cross-release NetworkPolicy peers: the ingress/egress pod selector names a
+    # workload owned by a different Helm release in the same namespace. Load that
+    # provider release's real objects as lint context so kube-linter resolves the
+    # peer instead of reporting a dangling selector. The peer keeps its own gate.
+    "litellm-infra-0": [
+        ("litellm-0", [("Deployment", "litellm")]),
+        ("vllm-0", [("Deployment", "vllm")]),
+    ],
+    "open-terminal-0": ("open-webui-0", [("Deployment", "open-webui")]),
 }
 
 
@@ -523,21 +532,27 @@ def release_peer_objects(target, selected, renders):
     link = RELEASE_PEERS.get(target["id"])
     if not link:
         return []
-    peer_id, wanted = link
-    peer = next((t for t in selected if t["id"] == peer_id), None)
-    if peer is None:
-        # A missing declared peer is a configuration error, not a silent skip.
-        message = f"Missing release peer target: {peer_id}"
-        raise ValueError(message)
-    if peer_id not in renders:
-        renders[peer_id] = render(peer)
-    # The Service and the pods behind it: existence providers are full objects,
-    # not synthetic stubs, and stay attributed to their own release.
-    return [
-        doc
-        for doc in renders[peer_id] or []
-        if (doc["kind"], doc["metadata"]["name"]) in set(wanted)
-    ]
+    # A target may draw cross-release peers from more than one provider release,
+    # so the value is either a single (peer_id, wanted) link or a list of them.
+    # A single link starts with a peer_id string; a list of links starts with a link.
+    links = link if isinstance(link[0], tuple) else [link]
+    objects = []
+    for peer_id, wanted in links:
+        peer = next((t for t in selected if t["id"] == peer_id), None)
+        if peer is None:
+            # A missing declared peer is a configuration error, not a silent skip.
+            message = f"Missing release peer target: {peer_id}"
+            raise ValueError(message)
+        if peer_id not in renders:
+            renders[peer_id] = render(peer)
+        # The Service and the pods behind it: existence providers are full objects,
+        # not synthetic stubs, and stay attributed to their own release.
+        objects += [
+            doc
+            for doc in renders[peer_id] or []
+            if (doc["kind"], doc["metadata"]["name"]) in set(wanted)
+        ]
+    return objects
 
 
 def kube_lint(
