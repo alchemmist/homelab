@@ -262,7 +262,7 @@ updateWatch:
       container: open-webui
     - id: x-ui
       title: 3x-ui
-      current: 3.10.2
+      current: 3.11.0
       github: MHSanaei/3x-ui
       namespace: x-ui
       deployment: x-ui
