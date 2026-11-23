@@ -454,6 +454,21 @@ REGISTRABLE_CHECKS = frozenset(
         "writable-host-mount",
         "sensitive-host-mounts",
         "drop-net-raw-capability",
+        # The two container hardening advisories below are included for one
+        # narrow class: pinned upstream images whose own entrypoint/binary
+        # mandates a writable root filesystem or uid 0 (supervisord/certbot
+        # dashboards writing their config tree at runtime, harbor-style
+        # entrypoints installing CA bundles into the OS trust store, Go
+        # binaries binding the port wired through every rendered router).
+        # Those facts cannot be changed from any manifest, can be verified
+        # against the pinned image (Docker run / entrypoint source), and the
+        # per-object evidence carries exactly that verification. Every
+        # positive-evidence guarantee of this registry stays intact: the
+        # entry must match a real finding of the named object, the evidence
+        # must exist and name the object, and any uncovered finding still
+        # blocks.
+        "run-as-non-root",
+        "no-read-only-root-fs",
     }
 )
 

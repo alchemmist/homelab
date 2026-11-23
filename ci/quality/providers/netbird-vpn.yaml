@@ -1,0 +1,88 @@
+version: 1
+entries:
+  # WireGuard host-gateway peer on node socrat-0. The pinned netbird image
+  # (0.83.2, no file capabilities on the binary) requires uid 0 with exactly
+  # NET_ADMIN/NET_RAW/BPF to build the nb-host tun interface on the host
+  # /dev/net/tun device, and the peer's function is terminating WireGuard in
+  # the node network namespace. Full per-object evidence:
+  # docs/quality/netbird-vpn-image-contracts.md ("machine-socrat-0").
+  - consumer: netbird-0
+    kind: Deployment
+    namespace: netbird-host-peers
+    name: machine-socrat-0
+    checks: [host-network, run-as-non-root, drop-net-raw-capability, writable-host-mount]
+    evidence: docs/quality/netbird-vpn-image-contracts.md
+  # Same host-gateway contract for node socrat-1; see machine-socrat-0.
+  - consumer: netbird-0
+    kind: Deployment
+    namespace: netbird-host-peers
+    name: machine-socrat-1
+    checks: [host-network, run-as-non-root, drop-net-raw-capability, writable-host-mount]
+    evidence: docs/quality/netbird-vpn-image-contracts.md
+  # Same host-gateway contract for node socrat-2; see machine-socrat-0.
+  - consumer: netbird-0
+    kind: Deployment
+    namespace: netbird-host-peers
+    name: machine-socrat-2
+    checks: [host-network, run-as-non-root, drop-net-raw-capability, writable-host-mount]
+    evidence: docs/quality/netbird-vpn-image-contracts.md
+  # Same host-gateway contract for node socrat-3; see machine-socrat-0.
+  - consumer: netbird-0
+    kind: Deployment
+    namespace: netbird-host-peers
+    name: machine-socrat-3
+    checks: [host-network, run-as-non-root, drop-net-raw-capability, writable-host-mount]
+    evidence: docs/quality/netbird-vpn-image-contracts.md
+  # Host-gateway peer on node socrat-5 without the tun hostPath device (that
+  # node provisions the kernel interface differently); hostNetwork + caps/
+  # root identity contract as for machine-socrat-0.
+  - consumer: netbird-0
+    kind: Deployment
+    namespace: netbird-host-peers
+    name: machine-socrat-5
+    checks: [host-network, run-as-non-root, drop-net-raw-capability]
+    evidence: docs/quality/netbird-vpn-image-contracts.md
+  # coturn STUN must listen on the node address (UDP 3478 on
+  # --listening-ip=109.120.141.60); the node firewall is the boundary.
+  # See docs/quality/netbird-vpn-image-contracts.md ("stun").
+  - consumer: netbird-0
+    kind: Deployment
+    namespace: netbird-pilot
+    name: stun
+    checks: [host-network]
+    evidence: docs/quality/netbird-vpn-image-contracts.md
+  # netbird management server: binds :80 wired through the forwarder
+  # ConfigMap routers; no file capabilities in the image, runtime state writes
+  # on the image filesystem. See "...management/dashboard: server".
+  - consumer: netbird-0
+    kind: Deployment
+    namespace: netbird-pilot
+    name: server
+    checks: [run-as-non-root, no-read-only-root-fs, privileged-ports]
+    evidence: docs/quality/netbird-vpn-image-contracts.md
+  # netbird dashboard: supervisord config mandates user=root for supervisor,
+  # the nginx master and the init_cert/certbot program, nginx listens :80 and
+  # the entrypoint rewrites the nginx config tree at startup (Docker-verified
+  # with the pinned image). See "...management/dashboard: dashboard".
+  - consumer: netbird-0
+    kind: Deployment
+    namespace: netbird-pilot
+    name: dashboard
+    checks: [run-as-non-root, no-read-only-root-fs, privileged-ports]
+    evidence: docs/quality/netbird-vpn-image-contracts.md
+  # netbird relay (home): the upstream relay binary reads the auth secret
+  # from the NB_AUTH_SECRET env var only (same env-contract class as the
+  # gatus DSN). See "...Relays: netbird-relay-home".
+  - consumer: netbird-0
+    kind: Deployment
+    namespace: identity
+    name: netbird-relay-home
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/netbird-vpn-image-contracts.md
+  # netbird relay (vps): NB_AUTH_SECRET env contract as netbird-relay-home.
+  - consumer: netbird-0
+    kind: Deployment
+    namespace: identity
+    name: netbird-relay-vps
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/netbird-vpn-image-contracts.md
