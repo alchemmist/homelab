@@ -269,7 +269,7 @@ updateWatch:
       container: primary
     - id: open-terminal
       title: Open Terminal
-      current: 0.14.1
+      current: 0.17.22
       github: open-webui/open-terminal
     - id: n8n
       title: n8n
