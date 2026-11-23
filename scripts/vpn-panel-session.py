@@ -50,13 +50,15 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     @typing.override
     def redirect_request(self, *args, **kwargs) -> typing.NoReturn:
         """Refuse API redirects instead of following them."""
-        raise ValueError("API redirect refused")
+        msg = "API redirect refused"
+        raise ValueError(msg)
 
 
 def command(args: Sequence[str], *, check: bool = False, **kwargs: object) -> str:
     result = subprocess.run(args, check=check, capture_output=True, text=True, timeout=25, **kwargs)
     if result.returncode:
-        raise RuntimeError("Native read failed")
+        msg = "Native read failed"
+        raise RuntimeError(msg)
     output: str = result.stdout
     return output
 
@@ -72,9 +74,11 @@ def api_path(database=DB) -> str:
         settings = dict(con.execute("SELECT key,value FROM settings"))
     path = settings["webBasePath"]
     if not re.fullmatch(r"/[A-Za-z0-9_/-]*/?", path) or ".." in path or "//" in path:
-        raise ValueError("Unexpected API base path")
+        msg = "Unexpected API base path"
+        raise ValueError(msg)
     if int(settings["webPort"]) != 18082:
-        raise ValueError("Unexpected panel port")
+        msg = "Unexpected panel port"
+        raise ValueError(msg)
     url: str = "http://127.0.0.1:18082/" + path.strip("/") + "/panel/api"
     return url
 
@@ -84,14 +88,17 @@ def request(base, token, method, path, body=None) -> object:
         r"/(?:setting/apiTokens(?:/create|/delete/[0-9]+)?|inbounds/(?:list|update/[0-9]+)|clients/(?:add|del/[A-Za-z0-9_.@-]+)|hosts/(?:list|raw|get/[A-Za-z0-9_-]{1,64}|update/[A-Za-z0-9_-]{1,64}))",
         path,
     ):
-        raise ValueError("Unreviewed native API operation")
+        msg = "Unreviewed native API operation"
+        raise ValueError(msg)
     if path.startswith("/hosts/") and (
         (path.startswith("/hosts/update/") and method != "POST")
         or (not path.startswith("/hosts/update/") and method != "GET")
     ):
-        raise ValueError("Unreviewed host API method")
+        msg = "Unreviewed host API method"
+        raise ValueError(msg)
     if not re.fullmatch(r"[A-Za-z0-9]{48}", token):
-        raise ValueError("Invalid machine credential")
+        msg = "Invalid machine credential"
+        raise ValueError(msg)
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
     req = urllib.request.Request(
         base + path,
@@ -109,36 +116,28 @@ def request(base, token, method, path, body=None) -> object:
         with opener.open(req, timeout=20) as response:
             data = response.read(8 * 1024 * 1024 + 1)
             if len(data) > 8 * 1024 * 1024 or response.status != 200:
-                raise ValueError("Unexpected native API response")
+                msg = "Unexpected native API response"
+                raise ValueError(msg)
         obj = json.loads(data)
         if obj.get("success") is not True:
-            raise ValueError("Native API rejected operation")
+            msg = "Native API rejected operation"
+            raise ValueError(msg)
         resolved: object = obj.get("obj")
         return resolved
     except Exception:
-        raise RuntimeError(
-            "Native API operation failed; inspect private receipts, never retry writes blindly"
-        ) from None
+        msg = "Native API operation failed; inspect private receipts, never retry writes blindly"
+        raise RuntimeError(msg) from None
 
 
 def pod_identity() -> "dict[str, object]":
     items = json.loads(
         command(
-            KUBE
-            + [
-                "-n",
-                "x-ui",
-                "get",
-                "pods",
-                "-l",
-                "app.kubernetes.io/name=x-ui",
-                "-o",
-                "json",
-            ]
+            [*KUBE, "-n", "x-ui", "get", "pods", "-l", "app.kubernetes.io/name=x-ui", "-o", "json"]
         )
     )["items"]
     if len(items) != 1:
-        raise ValueError("Expected one primary pod")
+        msg = "Expected one primary pod"
+        raise ValueError(msg)
     p = items[0]
     if (
         p["spec"]["nodeName"] != "socrat-2"
@@ -146,16 +145,19 @@ def pod_identity() -> "dict[str, object]":
         or p["spec"]["containers"][0]["image"] != IMAGE
         or not all(c["ready"] for c in p["status"]["containerStatuses"])
     ):
-        raise ValueError("Unexpected primary workload")
-    ex = KUBE + ["-n", "x-ui", "exec", p["metadata"]["name"], "-c", "primary", "--"]
-    if command(ex + ["/app/x-ui", "-v"]).strip() != "3.11.0":
-        raise ValueError("Panel version drift")
+        msg = "Unexpected primary workload"
+        raise ValueError(msg)
+    ex = [*KUBE, "-n", "x-ui", "exec", p["metadata"]["name"], "-c", "primary", "--"]
+    if command([*ex, "/app/x-ui", "-v"]).strip() != "3.11.0":
+        msg = "Panel version drift"
+        raise ValueError(msg)
     if (
-        not command(ex + ["/app/bin/xray-linux-amd64", "version"])
+        not command([*ex, "/app/bin/xray-linux-amd64", "version"])
         .splitlines()[0]
         .startswith("Xray 26.10.21 ")
     ):
-        raise ValueError("Core version drift")
+        msg = "Core version drift"
+        raise ValueError(msg)
     return {"name": p["metadata"]["name"], "uid": p["metadata"]["uid"], "image": IMAGE}
 
 
@@ -165,13 +167,15 @@ class NativeSession:
     def __init__(self, state, database=DB, worker_scope="node-sync") -> None:
         """Initialize the native panel session."""
         if worker_scope not in ("node-sync", "admin"):
-            raise ValueError("Unreviewed worker scope")
+            msg = "Unreviewed worker scope"
+            raise ValueError(msg)
         self.worker_scope = worker_scope
         self.state = Path(state).absolute()
         self.database = Path(database)
         label = self.state.name
         if not re.fullmatch(r"vpn83-[a-z0-9-]{8,32}", label):
-            raise ValueError("Use a fresh explicit vpn83-* session name")
+            msg = "Use a fresh explicit vpn83-* session name"
+            raise ValueError(msg)
         self.names = {kind: label + "-" + kind for kind in ("bootstrap", "cleanup", "worker")}
         self.base = None
         self.credentials: dict[str, _Credential] = {}
@@ -182,7 +186,8 @@ class NativeSession:
         """Check planned panel tokens against existing names before writing."""
         original = token_rows(self.database)
         if any(r["name"] in self.names.values() for r in original):
-            raise ValueError("Temporary token name collision; never rotate")
+            msg = "Temporary token name collision; never rotate"
+            raise ValueError(msg)
         return {
             "pod": pod_identity(),
             "configuration_sha256": h.inspect(self.database)["configuration_sha256"],
@@ -208,7 +213,8 @@ class NativeSession:
             or row["scope"] != expected["scope"]
             or row["token"] != hashlib.sha256(expected["token"].encode()).hexdigest()
         ):
-            raise ValueError("Credential ownership changed; refusing deletion")
+            msg = "Credential ownership changed; refusing deletion"
+            raise ValueError(msg)
         return cast("dict[str, object]", row)
 
     def _delete(self, kind, actor) -> None:
@@ -222,7 +228,8 @@ class NativeSession:
                 {"expectedScope": row["scope"]},
             )
         if self._owned(kind) is not None:
-            raise RuntimeError("Credential deletion did not converge")
+            msg = "Credential deletion did not converge"
+            raise RuntimeError(msg)
 
     def _create(self, kind, scope, minutes, actor) -> None:
         expires = int(time.time() * 1000) + minutes * 60000
@@ -246,29 +253,35 @@ class NativeSession:
             or obj.get("scope") != scope
             or obj.get("expiresAt") != expires
         ):
-            raise RuntimeError("Unexpected created credential")
+            msg = "Unexpected created credential"
+            raise RuntimeError(msg)
         self._save_credential(kind, obj)
         if self._owned(kind) is None:
-            raise RuntimeError("Missing created credential")
+            msg = "Missing created credential"
+            raise RuntimeError(msg)
 
     def open(self, approval) -> "NativeSession":
         """Create the session tokens once, after explicit root approval."""
         if socket.gethostname() != "socrat-2" or os.geteuid() != 0:
-            raise ValueError("Explicit session creation requires root on socrat-2")
+            msg = "Explicit session creation requires root on socrat-2"
+            raise ValueError(msg)
         self.state = h.private_directory(self.state)
         fd = os.open(self.state / "lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
         self.lock = os.fdopen(fd, "w")
         fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         if any(p.name != "lock" for p in self.state.iterdir()):
-            raise ValueError("Existing session state; inspect instead of replaying")
+            msg = "Existing session state; inspect instead of replaying"
+            raise ValueError(msg)
         plan = self.preview()
         if approval != h.digest(plan):
-            raise ValueError("Fresh approval hash required")
+            msg = "Fresh approval hash required"
+            raise ValueError(msg)
         self.original = token_rows(self.database)
         self.base = api_path(self.database)
         h.inspect(self.database, self.state / "backup")
         if self.preview() != plan:
-            raise ValueError("State drift before credential creation")
+            msg = "State drift before credential creation"
+            raise ValueError(msg)
         h.save(self.state / "before-tokens.json", self.original)
         h.save(self.state / "uncertain.json", {"approval": approval, "names": self.names})
         p = cast("dict[str, str]", plan["pod"])
@@ -279,7 +292,8 @@ class NativeSession:
             os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
             0o600,
         )
-        args = KUBE + [
+        args = [
+            *KUBE,
             "-n",
             "x-ui",
             "exec",
@@ -308,10 +322,12 @@ class NativeSession:
             text = (self.state / "bootstrap.stdout").read_text()
             found = re.findall(r"^apiToken:\s*([A-Za-z0-9]{48})\s*$", text, re.MULTILINE)
             if result.returncode or len(found) != 1:
-                raise RuntimeError("Bootstrap issuance uncertain")
+                msg = "Bootstrap issuance uncertain"
+                raise RuntimeError(msg)
             rows = [r for r in token_rows(self.database) if r["name"] == self.names["bootstrap"]]
             if len(rows) != 1:
-                raise RuntimeError("Bootstrap row uncertain")
+                msg = "Bootstrap row uncertain"
+                raise RuntimeError(msg)
             self._save_credential(
                 "bootstrap",
                 {
@@ -322,7 +338,8 @@ class NativeSession:
                 },
             )
             if self._owned("bootstrap") is None:
-                raise RuntimeError("Bootstrap ownership missing")
+                msg = "Bootstrap ownership missing"
+                raise RuntimeError(msg)
             self._create("cleanup", "admin", 30, "bootstrap")
             self._delete("bootstrap", "cleanup")
             self._create("worker", self.worker_scope, 20, "cleanup")
@@ -334,9 +351,11 @@ class NativeSession:
     def call(self, method, path, body=None) -> object:
         """Call the unprivileged dashboard token endpoints by exact path."""
         if path.startswith("/setting/"):
-            raise ValueError("Worker cannot use administrative token endpoints")
+            msg = "Worker cannot use administrative token endpoints"
+            raise ValueError(msg)
         if self._owned("worker") is None:
-            raise RuntimeError("Worker credential unavailable")
+            msg = "Worker credential unavailable"
+            raise RuntimeError(msg)
         return request(self.base, self.credentials["worker"]["token"], method, path, body)
 
     def cleanup(self) -> None:
@@ -359,7 +378,8 @@ class NativeSession:
         if self.original and [r for r in rows if r["id"] in original_ids] != self.original:
             errors.append("original-token-drift")
         if errors:
-            raise RuntimeError("Temporary credential cleanup uncertain; inspect private state")
+            msg = "Temporary credential cleanup uncertain; inspect private state"
+            raise RuntimeError(msg)
         if (self.state / "uncertain.json").exists():
             h.save(
                 self.state / "credential-cleanup.json",

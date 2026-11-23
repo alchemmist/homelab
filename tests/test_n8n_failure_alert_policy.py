@@ -10,6 +10,8 @@ import unittest
 from pathlib import Path
 from typing import override
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("failure_policy", ROOT / "ci/check_failure_alerts.py")
 policy = importlib.util.module_from_spec(spec)
@@ -189,12 +191,12 @@ class WorkflowPolicyTests(unittest.TestCase):
         """Symlinks and path traversal are rejected."""
         self.put("workflows/valid.json", self.workflow(errorWorkflow="handler1"))
         (self.root / "workflows/link.json").symlink_to(self.root / policy.POLICY)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.run_policy(True)
         (self.root / "workflows/link.json").unlink()
         self.config["workflow_roots"] = ["../outside"]
         self.put(policy.POLICY, self.config)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.run_policy(True)
 
     def test_symlinked_subdirectory_cannot_hide_unchecked_templates(self) -> None:
@@ -204,7 +206,7 @@ class WorkflowPolicyTests(unittest.TestCase):
         (self.root / "workflows/hidden").symlink_to(
             self.root / "elsewhere", target_is_directory=True
         )
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.run_policy(True)
 
     def test_empty_discovery_is_not_a_green_check(self) -> None:

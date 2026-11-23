@@ -69,7 +69,8 @@ def test_four_nodes_have_unique_exact_client_host_routes() -> None:
     }
     assert "10.250.0.5/32" in _sequence(peers[0]["allowed_ips"])
     assert peers[0]["name"] == "socrat-0"
-    assert "default" not in routes and "0.0.0.0/0" not in routes
+    assert "default" not in routes
+    assert "0.0.0.0/0" not in routes
 
 
 def test_worker_routes_mac_back_to_same_gateway_without_duplicate_peer() -> None:

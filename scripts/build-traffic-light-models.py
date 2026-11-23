@@ -57,7 +57,7 @@ def build(source=None):
     return d
 
 
-def write(d):
+def write(d) -> None:
     # Preserve existing owned-widget compaction and actual ConfigMap size budget.
     quality = runpy.run_path(str(SOURCE.parents[3] / "scripts/build-traffic-light-quality.py"))
     quality["write"](d)

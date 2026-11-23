@@ -160,7 +160,7 @@ class AutomationTests(unittest.TestCase):
             p = self.root(d)
             fake = Fake()
             fake.users.append({"username": a.NAME})
-            with patch.object(a, "api", fake), self.assertRaises(RuntimeError):
+            with patch.object(a, "api", fake), pytest.raises(RuntimeError):
                 a.migrate(p, "apply")
             assert fake.writes == []
 
@@ -170,7 +170,7 @@ class AutomationTests(unittest.TestCase):
             p = self.root(d)
             fake = Fake()
             fake.users[0]["uuid"] = "different-owner"
-            with patch.object(a, "api", fake), self.assertRaises(RuntimeError):
+            with patch.object(a, "api", fake), pytest.raises(RuntimeError):
                 a.migrate(p, "apply")
             assert fake.writes == []
 
@@ -185,7 +185,7 @@ class AutomationTests(unittest.TestCase):
             ):
                 a.migrate(p, "apply")
             a.save(p / "credentials.json", {"AUTHENTIK_BOOTSTRAP_TOKEN": "other"})
-            with patch.object(a, "api", fake), self.assertRaises(RuntimeError):
+            with patch.object(a, "api", fake), pytest.raises(RuntimeError):
                 a.migrate(p, "check")
 
     def bootstrap(self, p) -> BootstrapManifest:
@@ -222,7 +222,7 @@ class AutomationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             a.save(p / "automation-api.json", {"status": "preparing"})
-            with self.assertRaises(SystemExit):
+            with pytest.raises(SystemExit):
                 self.bootstrap(p)
 
     def ready_retirement(self, p, fake) -> None:
@@ -258,7 +258,7 @@ class AutomationTests(unittest.TestCase):
             with (
                 patch.object(a, "api", fake),
                 contextlib.redirect_stdout(io.StringIO()),
-                self.assertRaises(RuntimeError),
+                pytest.raises(RuntimeError),
             ):
                 a.retire_default_admin(p)
             assert not any(m == "DELETE" for m, _, _ in fake.writes)
@@ -274,7 +274,7 @@ class AutomationTests(unittest.TestCase):
                 patch.object(a, "api", fake),
                 patch("subprocess.check_output", self.kube_read),
                 contextlib.redirect_stdout(io.StringIO()),
-                self.assertRaises(RuntimeError),
+                pytest.raises(RuntimeError),
             ):
                 a.retire_default_admin(p)
             assert not any(m == "DELETE" for m, _, _ in fake.writes)
@@ -292,7 +292,7 @@ class AutomationTests(unittest.TestCase):
                 patch.object(a, "api", fake),
                 patch("subprocess.check_output", return_value=secret),
                 contextlib.redirect_stdout(io.StringIO()),
-                self.assertRaises(RuntimeError),
+                pytest.raises(RuntimeError),
             ):
                 a.retire_default_admin(p)
             assert not any(m == "DELETE" for m, _, _ in fake.writes)

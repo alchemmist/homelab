@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Root-run local host gate; no log bodies or environment values are printed."""
 
+import contextlib
 import json
 import os
 import shlex
@@ -20,10 +21,8 @@ def metrics():
         if not line or line.startswith("#"):
             continue
         key, value = line.rsplit(" ", 1)
-        try:
+        with contextlib.suppress(ValueError):
             result[key] = float(value)
-        except ValueError:
-            pass
     return result
 
 

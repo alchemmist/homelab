@@ -27,7 +27,7 @@ def certificate_hash():
     return hashlib.sha256(Path("/etc/otel-client/tls.crt").read_bytes()).hexdigest()
 
 
-def record(value):
+def record(value) -> None:
     temporary = PROGRESS.with_suffix(".new")
     temporary.write_text(json.dumps(value))
     temporary.replace(PROGRESS)
@@ -39,7 +39,7 @@ def require(expected: object, message: str) -> None:
         raise ValueError(message)
 
 
-def run():
+def run() -> None:
     logging.disable(logging.CRITICAL)
     require(
         os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "").lower() == "connection=close",

@@ -46,7 +46,8 @@ def _open_connections(
 def _emit_backup(path: str, max_bytes: int, check: Callable[[], None]) -> None:
     """Stream the verified private backup to stdout in bounded deadline chunks."""
     if os.path.getsize(path) > max_bytes:
-        raise RuntimeError("backup size exceeded")
+        msg = "backup size exceeded"
+        raise RuntimeError(msg)
     with open(path, "rb") as f:
         while True:
             check()
@@ -109,10 +110,11 @@ def _progress_guard(
 ) -> Callable[[int, int, int], None]:
     """Return the deadline- and size-enforcing progress callback."""
 
-    def progress(status, remaining, total):
+    def progress(status, remaining, total) -> None:
         check()
         if total * page_size > max_bytes:
-            raise RuntimeError("backup size exceeded")
+            msg = "backup size exceeded"
+            raise RuntimeError(msg)
 
     return progress
 
@@ -120,13 +122,14 @@ def _progress_guard(
 def _alarm_expired(*args: object) -> None:
     """Fire the one-shot SIGALRM as a hard deadline."""
     signal.setitimer(signal.ITIMER_REAL, 0)
-    raise TimeoutError("backup deadline exceeded")
+    msg = "backup deadline exceeded"
+    raise TimeoutError(msg)
 
 
 def _deadline_check(start: float, deadline_seconds: float) -> Callable[[], None]:
     """Return the periodic watchdog used across streaming boundaries."""
 
-    def check():
+    def check() -> None:
         if time.monotonic() - start >= deadline_seconds:
             _alarm_expired()
 
@@ -136,9 +139,11 @@ def _deadline_check(start: float, deadline_seconds: float) -> Callable[[], None]
 def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60) -> None:
     """Stream a consistent SQLite backup to stdout within size and time bounds."""
     if os.environ.get("SPI_POSTGRES_URL"):
-        raise ValueError("SQLite is not the active SPI database")
+        msg = "SQLite is not the active SPI database"
+        raise ValueError(msg)
     if deadline_seconds <= 0 or max_bytes <= 0:
-        raise ValueError("invalid bounds")
+        msg = "invalid bounds"
+        raise ValueError(msg)
     start = time.monotonic()
     old_handler = signal.getsignal(signal.SIGALRM)
     old_timer = signal.getitimer(signal.ITIMER_REAL)
@@ -169,7 +174,8 @@ def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60) 
         )
         dst.set_progress_handler(lambda: int(time.monotonic() - start >= deadline_seconds), 100)
         if dst.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
-            raise RuntimeError("backup integrity failure")
+            msg = "backup integrity failure"
+            raise RuntimeError(msg)
         check()
         dst.close()
         dst = None

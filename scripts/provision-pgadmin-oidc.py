@@ -46,7 +46,7 @@ PROVIDER = {
 }
 
 
-def check(ok, message):
+def check(ok, message) -> None:
     iam.require(message, ok=ok)
 
 
@@ -56,7 +56,7 @@ def encode_cookie_secret(raw):
     return base64.urlsafe_b64encode(raw).decode()
 
 
-def write_private(path, data):
+def write_private(path, data) -> None:
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(data, f)
@@ -97,7 +97,7 @@ def inspect(api):
     settings = {
         **PROVIDER,
         "signing_key": signing["pk"],
-        "property_mappings": selected + [groups[0]["pk"]],
+        "property_mappings": [*selected, groups[0]["pk"]],
         **{key: value["pk"] for key, value in flows.items()},
     }
     provider = iam.one(api, "providers/oauth2/", "name", PROVIDER["name"])
@@ -107,7 +107,7 @@ def inspect(api):
     return owner, settings, provider, app
 
 
-def validate(api, owner, settings, provider, app, journal, extra_groups=()):
+def validate(api, owner, settings, provider, app, journal, extra_groups=()) -> None:
     check(
         provider and app and journal and journal.get("status") == "active",
         "Partial identity or missing private journal; no adoption/reset",
@@ -151,7 +151,7 @@ def validate(api, owner, settings, provider, app, journal, extra_groups=()):
         )
 
 
-def main(namespace="postgres", extra_bindings=lambda api, app: {}):
+def main(namespace="postgres", extra_bindings=lambda api, app: {}) -> None:
     slug = APP["slug"]
     secret_name = slug + "-oidc"
     p = argparse.ArgumentParser(description=__doc__)

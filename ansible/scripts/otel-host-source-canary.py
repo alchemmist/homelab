@@ -156,7 +156,7 @@ def run(directory):
     return result
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--directory", required=True, type=Path)
     args = parser.parse_args()

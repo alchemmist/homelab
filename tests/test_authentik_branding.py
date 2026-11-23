@@ -169,7 +169,7 @@ class AuthentikBrandingTests(unittest.TestCase):
         assert "stages/authenticator/" not in source
         assert "verify=False" not in source
         assert "api/v3/" in source
-        assert "2026.8.5" in source
+        assert "2026.8.6" in source
         assert "api('POST', 'admin/file/" not in source
         assert "/-/quiet-mono/v1/" in source
 

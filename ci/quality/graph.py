@@ -6,12 +6,14 @@ import argparse
 import json
 from dataclasses import replace
 from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import yaml
 from qg_cli.project import Project
-from quality_graph_core.provider import GeneratedProject
 from yaml.tokens import ScalarToken
+
+if TYPE_CHECKING:
+    from quality_graph_core.provider import GeneratedProject
 
 
 def workflow_style(source: str) -> str:
@@ -37,7 +39,8 @@ def workflow_style(source: str) -> str:
         result = result[:start] + replacement + result[end:]
     result = result.rstrip("\n") + "\n...\n"
     if json.dumps(yaml.safe_load(source)) != json.dumps(yaml.safe_load(result)):
-        raise ValueError("Formatting changed the generated workflow")
+        msg = "Formatting changed the generated workflow"
+        raise ValueError(msg)
     return result.replace("and run qg generate.", "and run make graph-generate.", 1)
 
 

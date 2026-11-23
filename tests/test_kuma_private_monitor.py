@@ -8,6 +8,8 @@ from contextlib import closing
 from pathlib import Path
 from typing import cast, override
 
+import pytest
+
 MODULE_PATH = (
     Path(__file__).resolve().parents[1]
     / "ansible/roles/uptime_kuma_private_monitoring/files/configure_monitor.py"
@@ -63,37 +65,35 @@ class KumaPrivateMonitorTests(unittest.TestCase):
         """Rewrite identity while preserving history, groups, and layout."""
         before = self.snapshot()
         result = MODULE.configure(self.path)
-        self.assertEqual(result["monitor_id"], 7)
-        self.assertTrue(result["changed"])
-        self.assertEqual(self.snapshot(result["backup"]), before)
+        assert result["monitor_id"] == 7
+        assert result["changed"]
+        assert self.snapshot(result["backup"]) == before
         after = self.snapshot()
-        self.assertEqual(after["heartbeat"], before["heartbeat"])
-        self.assertEqual(after["monitor_group"], before["monitor_group"])
-        self.assertEqual(after["monitor"][1], before["monitor"][1])
-        self.assertEqual(after["monitor"][0][:2], before["monitor"][0][:2])
-        self.assertEqual(after["monitor"][0][-2:], before["monitor"][0][-2:])
+        assert after["heartbeat"] == before["heartbeat"]
+        assert after["monitor_group"] == before["monitor_group"]
+        assert after["monitor"][1] == before["monitor"][1]
+        assert after["monitor"][0][:2] == before["monitor"][0][:2]
+        assert after["monitor"][0][-2:] == before["monitor"][0][-2:]
         with closing(sqlite3.connect(self.path)) as db, db:
             db.row_factory = sqlite3.Row
             row = db.execute("SELECT * FROM monitor WHERE id = 7").fetchone()
             assert row is not None
-            self.assertEqual({key: row[key] for key in MODULE.DESIRED}, MODULE.DESIRED)
+            assert {key: row[key] for key in MODULE.DESIRED} == MODULE.DESIRED
         backup = Path(result["backup"])
-        self.assertEqual(backup.stat().st_mode & 0o777, 0o600)
-        self.assertEqual(backup.parent.stat().st_mode & 0o777, 0o700)
+        assert backup.stat().st_mode & 511 == 384
+        assert backup.parent.stat().st_mode & 511 == 448
 
     def test_check_is_read_only_and_apply_is_idempotent(self) -> None:
         """Keep check mode read-only and apply idempotently once."""
         before = self.path.read_bytes()
-        self.assertEqual(
-            MODULE.configure(self.path, check=True), {"changed": True, "monitor_id": 7}
-        )
-        self.assertEqual(self.path.read_bytes(), before)
-        self.assertFalse((self.path.parent / "backups").exists())
+        assert MODULE.configure(self.path, check=True) == {"changed": True, "monitor_id": 7}
+        assert self.path.read_bytes() == before
+        assert not (self.path.parent / "backups").exists()
         MODULE.configure(self.path)
         expected = {"changed": False, "monitor_id": 7}
-        self.assertEqual(MODULE.configure(self.path), expected)
-        self.assertEqual(MODULE.configure(self.path, check=True), expected)
-        self.assertEqual(len(list((self.path.parent / "backups").iterdir())), 1)
+        assert MODULE.configure(self.path) == expected
+        assert MODULE.configure(self.path, check=True) == expected
+        assert len(list((self.path.parent / "backups").iterdir())) == 1
 
     def test_ambiguous_monitor_is_refused_without_writes(self) -> None:
         """Refuse ambiguous matches without leaving any database writes."""
@@ -104,22 +104,22 @@ class KumaPrivateMonitorTests(unittest.TestCase):
             )
         before = self.path.read_bytes()
         for check in (True, False):
-            with self.assertRaisesRegex(ValueError, "found 2"):
+            with pytest.raises(ValueError, match="found 2"):
                 MODULE.configure(self.path, check=check)
-        self.assertEqual(self.path.read_bytes(), before)
-        self.assertFalse((self.path.parent / "backups").exists())
+        assert self.path.read_bytes() == before
+        assert not (self.path.parent / "backups").exists()
 
     def test_missing_monitor_and_database_are_not_created(self) -> None:
         """Fail closed for absent monitors and never create a database."""
         with closing(sqlite3.connect(self.path)) as db, db:
             db.execute("DELETE FROM monitor WHERE id = 7")
-        with self.assertRaisesRegex(ValueError, "found 0"):
+        with pytest.raises(ValueError, match="found 0"):
             MODULE.configure(self.path)
         missing = self.path.parent / "missing.db"
         for check in (True, False):
-            with self.assertRaises(sqlite3.OperationalError):
+            with pytest.raises(sqlite3.OperationalError):
                 MODULE.configure(missing, check=check)
-        self.assertFalse(missing.exists())
+        assert not missing.exists()
 
 
 if __name__ == "__main__":

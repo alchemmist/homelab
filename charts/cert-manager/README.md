@@ -1,35 +1,31 @@
 # cert-manager
 
-cert-manager is a Kubernetes addon to automate the management and issuance of
-TLS certificates from various issuing sources.
+cert-manager creates TLS certificates for workloads in your Kubernetes or OpenShift cluster and renews the certificates before they expire.
 
-It will ensure certificates are valid and up to date periodically, and attempt
-to renew certificates at an appropriate time before expiry.
+cert-manager can obtain certificates from a [variety of certificate authorities](https://cert-manager.io/docs/configuration/issuers/), including:
+[Let's Encrypt](https://cert-manager.io/docs/configuration/acme/), [HashiCorp Vault](https://cert-manager.io/docs/configuration/vault/),
+[CyberArk](https://cert-manager.io/docs/configuration/venafi/) and [private PKI](https://cert-manager.io/docs/configuration/ca/).
 
 ## Prerequisites
 
-- Kubernetes 1.22+
+Make sure you are using a version of Kubernetes that is supported by
+cert-manager. For more information, see the [Supported Releases
+page](https://cert-manager.io/docs/releases/).
 
 ## Installing the Chart
 
 Full installation instructions, including details on how to configure extra
-functionality in cert-manager can be found in the [installation docs](https://cert-manager.io/docs/installation/kubernetes/).
-
-Before installing the chart, you must first install the cert-manager CustomResourceDefinition resources.
-This is performed in a separate step to allow you to easily uninstall and reinstall cert-manager without deleting your installed custom resources.
-
-```bash
-$ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.crds.yaml
-```
+functionality in cert-manager can be found in the [installation docs](https://cert-manager.io/docs/installation/helm/).
 
 To install the chart with the release name `cert-manager`:
 
 ```console
-## Add the Jetstack Helm repository
-$ helm repo add jetstack https://charts.jetstack.io --force-update
-
-## Install the cert-manager helm chart
-$ helm install cert-manager --namespace cert-manager --version v1.16.2 jetstack/cert-manager
+helm install \
+  cert-manager oci://quay.io/jetstack/charts/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --version v1.21.3 \
+  --set crds.enabled=true
 ```
 
 In order to begin issuing certificates, you will need to set up a ClusterIssuer
@@ -56,17 +52,25 @@ are documented in our full [upgrading guide](https://cert-manager.io/docs/instal
 To uninstall/delete the `cert-manager` deployment:
 
 ```console
-$ helm delete cert-manager --namespace cert-manager
+helm delete cert-manager --namespace cert-manager
 ```
 
 The command removes all the Kubernetes components associated with the chart and deletes the release.
 
 If you want to completely uninstall cert-manager from your cluster, you will also need to
-delete the previously installed CustomResourceDefinition resources:
+delete the previously installed CustomResourceDefinition resources.
 
-```console
-$ kubectl delete -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.crds.yaml
-```
+> ☢️ This will remove all `Issuer`,`ClusterIssuer`,`Certificate`,`CertificateRequest`,`Order` and `Challenge` resources from the cluster:
+>
+> ```console
+> kubectl delete crd \
+>   issuers.cert-manager.io \
+>   clusterissuers.cert-manager.io \
+>   certificates.cert-manager.io \
+>   certificaterequests.cert-manager.io \
+>   orders.acme.cert-manager.io \
+>   challenges.acme.cert-manager.io
+> ```
 
 ## Configuration
 <!-- AUTO-GENERATED -->
@@ -87,6 +91,18 @@ For example:
 imagePullSecrets:
   - name: "image-pull-secret"
 ```
+#### **global.nodeSelector** ~ `object`
+> Default value:
+> ```yaml
+> {}
+> ```
+
+Global node selector  
+  
+The nodeSelector on Pods tells Kubernetes to schedule Pods on the nodes with matching labels. For more information, see [Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/).  
+  
+If a component-specific nodeSelector is also set, it will be merged and take precedence.
+
 #### **global.commonLabels** ~ `object`
 > Default value:
 > ```yaml
@@ -94,9 +110,9 @@ imagePullSecrets:
 > ```
 
 Labels to apply to all resources.  
-Please note that this does not add labels to the resources created dynamically by the controllers. For these resources, you have to add the labels in the template in the cert-manager custom resource: For example, podTemplate/ ingressTemplate in ACMEChallengeSolverHTTP01Ingress. For more information, see the [cert-manager documentation](https://cert-manager.io/docs/reference/api-docs/#acme.cert-manager.io/v1.ACMEChallengeSolverHTTP01Ingress).  
-For example, secretTemplate in CertificateSpec  
-For more information, see the [cert-manager documentation](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1.CertificateSpec).
+These labels are also applied to dynamically-created ACME HTTP01 solver resources  
+(pods, services, ingresses, or Gateway API HTTPRoutes).  
+The following ACME identity label keys are reserved and will be silently ignored on dynamically-created resources: acme.cert-manager.io/http-domain, acme.cert-manager.io/http-token, acme.cert-manager.io/http01-solver. For per-Issuer-specific labels, use the HTTP01 ingress solver podTemplate and ingressTemplate fields for pod/ingress resources, or the gatewayHTTPRoute solver labels field for Gateway API HTTPRoute resources.
 #### **global.revisionHistoryLimit** ~ `number`
 
 The number of old ReplicaSets to retain to allow rollback (if not set, the default Kubernetes value is set to 10).
@@ -108,6 +124,18 @@ The number of old ReplicaSets to retain to allow rollback (if not set, the defau
 > ```
 
 The optional priority class to be used for the cert-manager pods.
+#### **global.hostUsers** ~ `bool`
+
+Set all pods to run in a user namespace without host access. Experimental: may be removed once the Kubernetes User Namespaces feature is GA.  
+  
+Requirements:  
+  - Kubernetes ≥ 1.33, or  
+  - Kubernetes 1.27–1.32 with UserNamespacesSupport feature gate enabled.  
+  
+Set to false to run pods in a user namespace without host access.  
+  
+See [limitations](https://kubernetes.io/docs/concepts/workloads/pods/user-namespaces/#limitations) for details.
+
 #### **global.rbac.create** ~ `bool`
 > Default value:
 > ```yaml
@@ -163,6 +191,20 @@ The interval between attempts by the acting master to renew a leadership slot be
 #### **global.leaderElection.retryPeriod** ~ `string`
 
 The duration the clients should wait between attempting acquisition and renewal of a leadership.
+
+#### **global.runtimeClassName** ~ `string`
+> Default value:
+> ```yaml
+> ""
+> ```
+
+A Kubernetes Runtime Class to apply to ACME HTTP01 solver pods, if required. For more information, see [Runtime Class](https://kubernetes.io/docs/concepts/containers/).  
+  
+For example:
+
+```yaml
+runtimeClassName: gvisor
+```
 
 #### **installCRDs** ~ `bool`
 > Default value:
@@ -230,13 +272,18 @@ This prevents downtime during voluntary disruptions such as during a Node upgrad
 Pod is currently running.
 #### **podDisruptionBudget.minAvailable** ~ `unknown`
 
-This configures the minimum available pods for disruptions. It can either be set to an integer (e.g. 1) or a percentage value (e.g. 25%).  
+This configures the minimum available pods for disruptions. It can either be set to an integer (e.g., 1) or a percentage value (e.g., 25%).  
 It cannot be used if `maxUnavailable` is set.
 
 
 #### **podDisruptionBudget.maxUnavailable** ~ `unknown`
 
-This configures the maximum unavailable pods for disruptions. It can either be set to an integer (e.g. 1) or a percentage value (e.g. 25%). it cannot be used if `minAvailable` is set.
+This configures the maximum unavailable pods for disruptions. It can either be set to an integer (e.g., 1) or a percentage value (e.g., 25%). it cannot be used if `minAvailable` is set.
+
+
+#### **podDisruptionBudget.unhealthyPodEvictionPolicy** ~ `string`
+
+This configures how to act with unhealthy pods during eviction. Note that this requires Kubernetes 1.31 or `PDBUnhealthyPodEvictionPolicy` feature gate enabled for the cluster to work.
 
 
 #### **featureGates** ~ `string`
@@ -253,17 +300,51 @@ A comma-separated list of feature gates that should be enabled on the controller
 > ```
 
 The maximum number of challenges that can be scheduled as 'processing' at once.
+#### **imageRegistry** ~ `string`
+> Default value:
+> ```yaml
+> quay.io
+> ```
+
+The container registry used for all cert-manager images by default. This can include path prefixes (e.g. `artifactory.example.com/docker`).
+
+#### **imageNamespace** ~ `string`
+> Default value:
+> ```yaml
+> jetstack
+> ```
+
+The repository namespace used for all cert-manager images by default.  
+Examples:  
+- jetstack  
+- cert-manager
+
 #### **image.registry** ~ `string`
 
-The container registry to pull the manager image from.
+Deprecated: per-component registry prefix.  
+  
+If set, this value is *prepended* to the image repository that the chart would otherwise render. This applies both when `image.repository` is set and when the repository is computed from  
+`imageRegistry` + `imageNamespace` + `image.name`.  
+  
+This can produce "double registry" style references such as `legacy.example.io/quay.io/jetstack/...`. Prefer using the global `imageRegistry`/`imageNamespace` values.
+
+#### **image.name** ~ `string`
+> Default value:
+> ```yaml
+> cert-manager-controller
+> ```
+
+The image name for the cert-manager controller.  
+This is used (together with `imageRegistry` and `imageNamespace`) to construct the full image reference.
 
 #### **image.repository** ~ `string`
 > Default value:
 > ```yaml
-> quay.io/jetstack/cert-manager-controller
+> ""
 > ```
 
-The container image for the cert-manager controller.
+Full repository override (takes precedence over `imageRegistry`, `imageNamespace`, and `image.name`).  
+Example: quay.io/jetstack/cert-manager-controller
 
 #### **image.tag** ~ `string`
 
@@ -271,7 +352,7 @@ Override the image tag to deploy by setting this variable. If no value is set, t
 
 #### **image.digest** ~ `string`
 
-Setting a digest will override any tag.
+Setting a digest pins the image. If a tag is also set, the rendered reference will include both ("image:tag@digest"), though only the digest will be used for pulling.
 
 #### **image.pullPolicy** ~ `string`
 > Default value:
@@ -300,7 +381,7 @@ Override the "cert-manager.fullname" value. This value is used as part of most o
 
 #### **nameOverride** ~ `string`
 
-Override the "cert-manager.name" value, which is used to annotate some of the resources that are created by this Chart (using "app.kubernetes.io/name"). NOTE: There are some inconsistencies in the Helm chart when it comes to these annotations (some resources use eg. "cainjector.name" which resolves to the value "cainjector").
+Override the "cert-manager.name" value, which is used to annotate some of the resources that are created by this Chart (using "app.kubernetes.io/name"). NOTE: There are some inconsistencies in the Helm chart when it comes to these annotations (some resources use, e.g., "cainjector.name" which resolves to the value "cainjector").
 
 #### **serviceAccount.create** ~ `bool`
 > Default value:
@@ -316,7 +397,13 @@ If not set and create is true, a name is generated using the fullname template.
 
 #### **serviceAccount.annotations** ~ `object`
 
-Optional additional annotations to add to the controller's Service Account.
+Optional additional annotations to add to the controller's Service Account. Templates are allowed for both keys and values.  
+Example using templating:
+
+```yaml
+annotations:
+  "{{ .Chart.Name }}-helm-chart/version": "{{ .Chart.Version }}"
+```
 
 #### **serviceAccount.labels** ~ `object`
 
@@ -364,17 +451,23 @@ config:
   kubernetesAPIQPS: 9000
   kubernetesAPIBurst: 9000
   numberOfConcurrentWorkers: 200
+  gatewayAPI:
+    enabled: true
+  # Feature gates as of v1.20.0. Listed with their default values.
+  # See https://cert-manager.io/docs/cli/controller/
   featureGates:
-    AdditionalCertificateOutputFormats: true
-    DisallowInsecureCSRUsageDefinition: true
-    ExperimentalCertificateSigningRequestControllers: true
-    ExperimentalGatewayAPISupport: true
-    LiteralCertificateSubject: true
-    SecretsFilteredCaching: true
-    ServerSideApply: true
-    StableCertificateRequestName: true
-    UseCertificateRequestBasicConstraints: true
-    ValidateCAA: true
+    AllAlpha: false # ALPHA - default=false
+    AllBeta: false # BETA - default=false
+    ACMEHTTP01IngressPathTypeExact: true # BETA - default=true
+    ExperimentalCertificateSigningRequestControllers: false # ALPHA - default=false
+    ExperimentalGatewayAPISupport: true # BETA - default=true
+    LiteralCertificateSubject: true # BETA - default=true
+    NameConstraints: true # BETA - default=true
+    OtherNames: true # BETA - default=true
+    SecretsFilteredCaching: true # BETA - default=true
+    ServerSideApply: false # ALPHA - default=false
+    StableCertificateRequestName: true # BETA - default=true
+    UseCertificateRequestBasicConstraints: false # ALPHA - default=false
   # Configure the metrics server for TLS
   # See https://cert-manager.io/docs/devops-tips/prometheus-metrics/#tls
   metricsTLSConfig:
@@ -383,6 +476,16 @@ config:
       secretName: "cert-manager-metrics-ca"
       dnsNames:
       - cert-manager-metrics
+  # Configure PEM size limits for certificate validation
+  # Useful for certificates with many DNS names (e.g., Istio gateways with 100+ DNS names)
+  pemSizeLimitsConfig:
+    maxCertificateSize: 36500     # Maximum size in bytes for individual certificates (default: 36500)
+    maxPrivateKeySize: 13000      # Maximum size in bytes for private keys (default: 13000)
+    maxChainLength: 95000         # Maximum size in bytes for certificate chains (default: 95000)
+    maxBundleSize: 330000         # Maximum size in bytes for certificate bundles (default: 330000)
+  # Configure certificate request backoff durations
+  certificateRequestMinimumBackoffDuration: 1h
+  certificateRequestMaximumBackoffDuration: 32h
 ```
 #### **dns01RecursiveNameservers** ~ `string`
 > Default value:
@@ -412,7 +515,7 @@ Option to disable cert-manager's build-in auto-approver. The auto-approver appro
 > - clusterissuers.cert-manager.io/*
 > ```
 
-List of signer names that cert-manager will approve by default. CertificateRequests referencing these signer names will be auto-approved by cert-manager. Defaults to just approving the cert-manager.io Issuer and ClusterIssuer issuers. When set to an empty array, ALL issuers will be auto-approved by cert-manager. To disable the auto-approval, because eg. you are using approver-policy, you can enable 'disableAutoApproval'.  
+List of signer names that cert-manager will approve by default. CertificateRequests referencing these signer names will be auto-approved by cert-manager. Defaults to just approving the cert-manager.io Issuer and ClusterIssuer issuers. When set to an empty array, ALL issuers will be auto-approved by cert-manager. To disable the auto-approval, because, e.g., you are using approver-policy, you can enable 'disableAutoApproval'.  
 ref: https://cert-manager.io/docs/concepts/certificaterequest/#approval
 
 #### **extraArgs** ~ `array`
@@ -430,6 +533,43 @@ For example:
 ```yaml
 extraArgs:
   - --controllers=*,-certificaterequests-approver
+```
+#### **extraContainers** ~ `array`
+> Default value:
+> ```yaml
+> []
+> ```
+
+Extra containers to add to the pod spec in the deployment of the cert-manager controller. For example, to deploy the [aws_signing_helper](https://github.com/aws/rolesanywhere-credential-helper) (replacing the ARNs as relevant):
+
+```yaml
+extraEnv:
+  - name: AWS_EC2_METADATA_SERVICE_ENDPOINT
+  - value: http://127.0.0.1:9911
+extraContainers:
+  - name: rolesanywhere-credential-helper
+    image: public.ecr.aws/rolesanywhere/credential-helper:latest
+    command: [aws_signing_helper]
+    args:
+      - serve
+      - --private-key
+      - /etc/cert/tls.key
+      - --certificate
+      - /etc/cert/tls.crt
+      - --role-arn
+      - $ROLE_ARN
+      - --profile-arn
+      - $PROFILE_ARN
+      - --trust-anchor-arn
+      - $TRUST_ANCHOR_ARN
+    volumeMounts:
+      - name: cert
+        mountPath: /etc/cert/
+        readOnly: true
+volumes:
+  - name: cert
+    secret:
+      secretName: cert
 ```
 #### **extraEnv** ~ `array`
 > Default value:
@@ -556,6 +696,45 @@ The nodeSelector on Pods tells Kubernetes to schedule Pods on the nodes with mat
   
 This default ensures that Pods are only scheduled to Linux nodes. It prevents Pods being scheduled to Windows nodes in a mixed OS cluster.
 
+#### **networkPolicy.enabled** ~ `bool`
+> Default value:
+> ```yaml
+> false
+> ```
+
+Create network policies for cert-manager.
+#### **networkPolicy.ingress** ~ `array`
+> Default value:
+> ```yaml
+> - ports:
+>     - port: http-metrics
+>       protocol: TCP
+>     - port: http-healthz
+>       protocol: TCP
+> ```
+
+Ingress rule for the cert-manager network policy.  
+By default all pods are allowed access to:  
+  http-metrics and http-healthz ports
+
+#### **networkPolicy.egress** ~ `array`
+> Default value:
+> ```yaml
+> - ports:
+>     - port: 80
+>       protocol: TCP
+>     - port: 443
+>       protocol: TCP
+>     - port: 53
+>       protocol: TCP
+>     - port: 53
+>       protocol: UDP
+>     - port: 6443
+>       protocol: TCP
+> ```
+
+Egress rule for the cert-manager network policy. By default, it allows all outbound traffic to ports 80 and 443, as well as DNS ports.
+
 #### **ingressShim.defaultIssuerName** ~ `string`
 
 Optional default issuer to use for ingress resources.
@@ -601,6 +780,20 @@ affinity:
          values:
          - master
 ```
+#### **runtimeClassName** ~ `string`
+> Default value:
+> ```yaml
+> ""
+> ```
+
+A Kubernetes Runtime Class to apply to ACME HTTP01 solver pods, if required. For more information, see [Runtime Class](https://kubernetes.io/docs/concepts/containers/).  
+  
+For example:
+
+```yaml
+runtimeClassName: gvisor
+```
+
 #### **tolerations** ~ `array`
 > Default value:
 > ```yaml
@@ -671,7 +864,7 @@ enableServiceLinks indicates whether information about services should be inject
 
 Enable Prometheus monitoring for the cert-manager controller and webhook. If you use the Prometheus Operator, set prometheus.podmonitor.enabled or prometheus.servicemonitor.enabled, to create a PodMonitor or a  
 ServiceMonitor resource.  
-Otherwise, 'prometheus.io' annotations are added to the cert-manager and cert-manager-webhook Deployments. Note that you can not enable both PodMonitor and ServiceMonitor as they are mutually exclusive. Enabling both will result in an error.
+Otherwise, 'prometheus.io' annotations are added to the cert-manager and cert-manager-webhook Deployments. Note that you cannot enable both PodMonitor and ServiceMonitor as they are mutually exclusive. Enabling both will result in an error.
 #### **prometheus.servicemonitor.enabled** ~ `bool`
 > Default value:
 > ```yaml
@@ -690,20 +883,6 @@ The namespace that the service monitor should live in, defaults to the cert-mana
 > ```
 
 Specifies the `prometheus` label on the created ServiceMonitor. This is used when different Prometheus instances have label selectors matching different ServiceMonitors.
-#### **prometheus.servicemonitor.targetPort** ~ `number`
-> Default value:
-> ```yaml
-> 9402
-> ```
-
-The target port to set on the ServiceMonitor. This must match the port that the cert-manager controller is listening on for metrics.
-#### **prometheus.servicemonitor.path** ~ `string`
-> Default value:
-> ```yaml
-> /metrics
-> ```
-
-The path to scrape for metrics.
 #### **prometheus.servicemonitor.interval** ~ `string`
 > Default value:
 > ```yaml
@@ -778,13 +957,6 @@ The namespace that the pod monitor should live in, defaults to the cert-manager 
 > ```
 
 Specifies the `prometheus` label on the created PodMonitor. This is used when different Prometheus instances have label selectors matching different PodMonitors.
-#### **prometheus.podmonitor.path** ~ `string`
-> Default value:
-> ```yaml
-> /metrics
-> ```
-
-The path to scrape for metrics.
 #### **prometheus.podmonitor.interval** ~ `string`
 > Default value:
 > ```yaml
@@ -956,14 +1128,19 @@ This prevents downtime during voluntary disruptions such as during a Node upgrad
 Pod is currently running.
 #### **webhook.podDisruptionBudget.minAvailable** ~ `unknown`
 
-This property configures the minimum available pods for disruptions. Can either be set to an integer (e.g. 1) or a percentage value (e.g. 25%).  
+This property configures the minimum available pods for disruptions. Can either be set to an integer (e.g., 1) or a percentage value (e.g., 25%).  
 It cannot be used if `maxUnavailable` is set.
 
 
 #### **webhook.podDisruptionBudget.maxUnavailable** ~ `unknown`
 
-This property configures the maximum unavailable pods for disruptions. Can either be set to an integer (e.g. 1) or a percentage value (e.g. 25%).  
+This property configures the maximum unavailable pods for disruptions. Can either be set to an integer (e.g., 1) or a percentage value (e.g., 25%).  
 It cannot be used if `minAvailable` is set.
+
+
+#### **webhook.podDisruptionBudget.unhealthyPodEvictionPolicy** ~ `string`
+
+This configures how to act with unhealthy pods during eviction. Note that this requires Kubernetes 1.31 or `PDBUnhealthyPodEvictionPolicy` feature gate enabled for the cluster to work.
 
 
 #### **webhook.deploymentAnnotations** ~ `object`
@@ -1108,6 +1285,20 @@ affinity:
          values:
          - master
 ```
+#### **webhook.runtimeClassName** ~ `string`
+> Default value:
+> ```yaml
+> ""
+> ```
+
+A Kubernetes Runtime Class to apply to ACME HTTP01 solver pods, if required. For more information, see [Runtime Class](https://kubernetes.io/docs/concepts/containers/).  
+  
+For example:
+
+```yaml
+runtimeClassName: gvisor
+```
+
 #### **webhook.tolerations** ~ `array`
 > Default value:
 > ```yaml
@@ -1175,15 +1366,28 @@ Optionally set the IP family policy for the controller Service to configure dual
 Optionally set the IP families for the controller Service that should be supported, in the order in which they should be applied to ClusterIP. Can be IPv4 and/or IPv6.
 #### **webhook.image.registry** ~ `string`
 
-The container registry to pull the webhook image from.
+Deprecated: per-component registry prefix.  
+  
+If set, this value is *prepended* to the image repository that the chart would otherwise render. This applies both when `webhook.image.repository` is set and when the repository is computed from  
+`imageRegistry` + `imageNamespace` + `webhook.image.name`.  
+  
+This can produce "double registry" style references such as `legacy.example.io/quay.io/jetstack/...`. Prefer using the global `imageRegistry`/`imageNamespace` values.
+
+#### **webhook.image.name** ~ `string`
+> Default value:
+> ```yaml
+> cert-manager-webhook
+> ```
+
+The image name for the cert-manager webhook.
 
 #### **webhook.image.repository** ~ `string`
 > Default value:
 > ```yaml
-> quay.io/jetstack/cert-manager-webhook
+> ""
 > ```
 
-The container image for the cert-manager webhook
+Full repository override (takes precedence over `imageRegistry`, `imageNamespace`, and `webhook.image.name`).
 
 #### **webhook.image.tag** ~ `string`
 
@@ -1191,7 +1395,7 @@ Override the image tag to deploy by setting this variable. If no value is set, t
 
 #### **webhook.image.digest** ~ `string`
 
-Setting a digest will override any tag
+Setting a digest pins the image. If a tag is also set, the rendered reference will include both ("image:tag@digest"), though only the digest will be used for pulling.
 
 #### **webhook.image.pullPolicy** ~ `string`
 > Default value:
@@ -1277,12 +1481,18 @@ Create network policies for the webhooks.
 #### **webhook.networkPolicy.ingress** ~ `array`
 > Default value:
 > ```yaml
-> - from:
->     - ipBlock:
->         cidr: 0.0.0.0/0
+> - ports:
+>     - port: https
+>       protocol: TCP
+>     - port: healthcheck
+>       protocol: TCP
+>     - port: http-metrics
+>       protocol: TCP
 > ```
 
-Ingress rule for the webhook network policy. By default, it allows all inbound traffic.
+Ingress rule for the webhook network policy.  
+By default all pods are allowed access to:  
+  https, http-metrics, and http-healthz ports
 
 #### **webhook.networkPolicy.egress** ~ `array`
 > Default value:
@@ -1298,9 +1508,6 @@ Ingress rule for the webhook network policy. By default, it allows all inbound t
 >       protocol: UDP
 >     - port: 6443
 >       protocol: TCP
->   to:
->     - ipBlock:
->         cidr: 0.0.0.0/0
 > ```
 
 Egress rule for the webhook network policy. By default, it allows all outbound traffic to ports 80 and 443, as well as DNS ports.
@@ -1326,6 +1533,27 @@ Additional volume mounts to add to the cert-manager controller container.
 > ```
 
 enableServiceLinks indicates whether information about services should be injected into the pod's environment variables, matching the syntax of Docker links.
+#### **webhook.enableClientVerification** ~ `bool`
+> Default value:
+> ```yaml
+> false
+> ```
+
+enableClientVerification turns on client verification of requests made to the webhook server
+#### **webhook.clientCAFile** ~ `string`
+> Default value:
+> ```yaml
+> ""
+> ```
+
+the client CA file to be used for verification
+#### **webhook.apiserverClientCertSubjects** ~ `string`
+> Default value:
+> ```yaml
+> ""
+> ```
+
+Subject names to verify for the client certificate. Multiple values may be supplied as a comma-separated list.
 ### CA Injector
 
 #### **cainjector.enabled** ~ `bool`
@@ -1416,6 +1644,43 @@ Pod Security Context to be set on the cainjector component Pod. For more informa
 
 Container Security Context to be set on the cainjector component container. For more information, see [Configure a Security Context for a Pod or Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
 
+#### **cainjector.networkPolicy.enabled** ~ `bool`
+> Default value:
+> ```yaml
+> false
+> ```
+
+Create network policies for the cainjector.
+#### **cainjector.networkPolicy.ingress** ~ `array`
+> Default value:
+> ```yaml
+> - ports:
+>     - port: http-metrics
+>       protocol: TCP
+> ```
+
+Ingress rule for the webhook cainjector policy.  
+By default all pods are allowed access to:  
+  http-metrics port
+
+#### **cainjector.networkPolicy.egress** ~ `array`
+> Default value:
+> ```yaml
+> - ports:
+>     - port: 80
+>       protocol: TCP
+>     - port: 443
+>       protocol: TCP
+>     - port: 53
+>       protocol: TCP
+>     - port: 53
+>       protocol: UDP
+>     - port: 6443
+>       protocol: TCP
+> ```
+
+Egress rule for the cainjector network policy. By default, it allows all outbound traffic to ports 80 and 443, as well as DNS ports.
+
 #### **cainjector.podDisruptionBudget.enabled** ~ `bool`
 > Default value:
 > ```yaml
@@ -1429,15 +1694,20 @@ Pod is currently running.
 #### **cainjector.podDisruptionBudget.minAvailable** ~ `unknown`
 
 `minAvailable` configures the minimum available pods for disruptions. It can either be set to  
-an integer (e.g. 1) or a percentage value (e.g. 25%).  
+an integer (e.g., 1) or a percentage value (e.g., 25%).  
 Cannot be used if `maxUnavailable` is set.
 
 
 #### **cainjector.podDisruptionBudget.maxUnavailable** ~ `unknown`
 
 `maxUnavailable` configures the maximum unavailable pods for disruptions. It can either be set to  
-an integer (e.g. 1) or a percentage value (e.g. 25%).  
+an integer (e.g., 1) or a percentage value (e.g., 25%).  
 Cannot be used if `minAvailable` is set.
+
+
+#### **cainjector.podDisruptionBudget.unhealthyPodEvictionPolicy** ~ `string`
+
+This configures how to act with unhealthy pods during eviction. Note that this requires Kubernetes 1.31 or `PDBUnhealthyPodEvictionPolicy` feature gate enabled for the cluster to work.
 
 
 #### **cainjector.deploymentAnnotations** ~ `object`
@@ -1528,6 +1798,20 @@ affinity:
          values:
          - master
 ```
+#### **cainjector.runtimeClassName** ~ `string`
+> Default value:
+> ```yaml
+> ""
+> ```
+
+A Kubernetes Runtime Class to apply to ACME HTTP01 solver pods, if required. For more information, see [Runtime Class](https://kubernetes.io/docs/concepts/containers/).  
+  
+For example:
+
+```yaml
+runtimeClassName: gvisor
+```
+
 #### **cainjector.tolerations** ~ `array`
 > Default value:
 > ```yaml
@@ -1581,15 +1865,28 @@ Optional additional labels to add to the CA Injector Pods.
 Optional additional labels to add to the CA Injector metrics Service.
 #### **cainjector.image.registry** ~ `string`
 
-The container registry to pull the cainjector image from.
+Deprecated: per-component registry prefix.  
+  
+If set, this value is *prepended* to the image repository that the chart would otherwise render. This applies both when `cainjector.image.repository` is set and when the repository is computed from  
+`imageRegistry` + `imageNamespace` + `cainjector.image.name`.  
+  
+This can produce "double registry" style references such as `legacy.example.io/quay.io/jetstack/...`. Prefer using the global `imageRegistry`/`imageNamespace` values.
+
+#### **cainjector.image.name** ~ `string`
+> Default value:
+> ```yaml
+> cert-manager-cainjector
+> ```
+
+The image name for the cert-manager cainjector.
 
 #### **cainjector.image.repository** ~ `string`
 > Default value:
 > ```yaml
-> quay.io/jetstack/cert-manager-cainjector
+> ""
 > ```
 
-The container image for the cert-manager cainjector
+Full repository override (takes precedence over `imageRegistry`, `imageNamespace`, and `cainjector.image.name`).
 
 #### **cainjector.image.tag** ~ `string`
 
@@ -1597,7 +1894,7 @@ Override the image tag to deploy by setting this variable. If no value is set, t
 
 #### **cainjector.image.digest** ~ `string`
 
-Setting a digest will override any tag.
+Setting a digest pins the image. If a tag is also set, the rendered reference will include both ("image:tag@digest"), though only the digest will be used for pulling.
 
 #### **cainjector.image.pullPolicy** ~ `string`
 > Default value:
@@ -1662,15 +1959,28 @@ enableServiceLinks indicates whether information about services should be inject
 
 #### **acmesolver.image.registry** ~ `string`
 
-The container registry to pull the acmesolver image from.
+Deprecated: per-component registry prefix.  
+  
+If set, this value is *prepended* to the image repository that the chart would otherwise render. This applies both when `acmesolver.image.repository` is set and when the repository is computed from  
+`imageRegistry` + `imageNamespace` + `acmesolver.image.name`.  
+  
+This can produce "double registry" style references such as `legacy.example.io/quay.io/jetstack/...`. Prefer using the global `imageRegistry`/`imageNamespace` values.
+
+#### **acmesolver.image.name** ~ `string`
+> Default value:
+> ```yaml
+> cert-manager-acmesolver
+> ```
+
+The image name for the cert-manager acmesolver.
 
 #### **acmesolver.image.repository** ~ `string`
 > Default value:
 > ```yaml
-> quay.io/jetstack/cert-manager-acmesolver
+> ""
 > ```
 
-The container image for the cert-manager acmesolver.
+Full repository override (takes precedence over `imageRegistry`, `imageNamespace`, and `acmesolver.image.name`).
 
 #### **acmesolver.image.tag** ~ `string`
 
@@ -1678,7 +1988,7 @@ Override the image tag to deploy by setting this variable. If no value is set, t
 
 #### **acmesolver.image.digest** ~ `string`
 
-Setting a digest will override any tag.
+Setting a digest pins the image. If a tag is also set, the rendered reference will include both ("image:tag@digest"), though only the digest will be used for pulling.
 
 #### **acmesolver.image.pullPolicy** ~ `string`
 > Default value:
@@ -1687,6 +1997,20 @@ Setting a digest will override any tag.
 > ```
 
 Kubernetes imagePullPolicy on Deployment.
+#### **acmesolver.runtimeClassName** ~ `string`
+> Default value:
+> ```yaml
+> ""
+> ```
+
+A Kubernetes Runtime Class to apply to ACME HTTP01 solver pods, if required. For more information, see [Runtime Class](https://kubernetes.io/docs/concepts/containers/).  
+  
+For example:
+
+```yaml
+runtimeClassName: gvisor
+```
+
 ### Startup API Check
 
 
@@ -1734,6 +2058,11 @@ Timeout for 'kubectl check api' command.
 > ```
 
 Job backoffLimit
+#### **startupapicheck.ttlSecondsAfterFinished** ~ `integer`
+
+Limits the lifetime of a Job that has finished execution (either Complete or Failed). If this field is set, once the Job finishes, it will be automatically cleaned up after ttlSecondsAfterFinished seconds. This is disabled by default (field is not set) to preserve backward compatibility and avoid issues with GitOps tools (e.g. Argo CD) that may attempt to reconcile or recreate Jobs after they are automatically deleted. For more information, see [Automatic Cleanup for Finished Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/ttlafterfinished/).
+
+
 #### **startupapicheck.jobAnnotations** ~ `object`
 > Default value:
 > ```yaml
@@ -1778,7 +2107,7 @@ extraEnv:
 > {}
 > ```
 
-Resources to provide to the cert-manager controller pod.  
+Resources to provide to the cert-manager startupapicheck pod.  
   
 For example:
 
@@ -1819,6 +2148,20 @@ affinity:
          values:
          - master
 ```
+#### **startupapicheck.runtimeClassName** ~ `string`
+> Default value:
+> ```yaml
+> ""
+> ```
+
+A Kubernetes Runtime Class to apply to ACME HTTP01 solver pods, if required. For more information, see [Runtime Class](https://kubernetes.io/docs/concepts/containers/).  
+  
+For example:
+
+```yaml
+runtimeClassName: gvisor
+```
+
 #### **startupapicheck.tolerations** ~ `array`
 > Default value:
 > ```yaml
@@ -1845,15 +2188,28 @@ tolerations:
 Optional additional labels to add to the startupapicheck Pods.
 #### **startupapicheck.image.registry** ~ `string`
 
-The container registry to pull the startupapicheck image from.
+Deprecated: per-component registry prefix.  
+  
+If set, this value is *prepended* to the image repository that the chart would otherwise render. This applies both when `startupapicheck.image.repository` is set and when the repository is computed from  
+`imageRegistry` + `imageNamespace` + `startupapicheck.image.name`.  
+  
+This can produce "double registry" style references such as `legacy.example.io/quay.io/jetstack/...`. Prefer using the global `imageRegistry`/`imageNamespace` values.
+
+#### **startupapicheck.image.name** ~ `string`
+> Default value:
+> ```yaml
+> cert-manager-startupapicheck
+> ```
+
+The image name for the cert-manager startupapicheck.
 
 #### **startupapicheck.image.repository** ~ `string`
 > Default value:
 > ```yaml
-> quay.io/jetstack/cert-manager-startupapicheck
+> ""
 > ```
 
-The container image for the cert-manager startupapicheck.
+Full repository override (takes precedence over `imageRegistry`, `imageNamespace`, and `startupapicheck.image.name`).
 
 #### **startupapicheck.image.tag** ~ `string`
 
@@ -1861,7 +2217,7 @@ Override the image tag to deploy by setting this variable. If no value is set, t
 
 #### **startupapicheck.image.digest** ~ `string`
 
-Setting a digest will override any tag.
+Setting a digest pins the image. If a tag is also set, the rendered reference will include both ("image:tag@digest"), though only the digest will be used for pulling.
 
 #### **startupapicheck.image.pullPolicy** ~ `string`
 > Default value:

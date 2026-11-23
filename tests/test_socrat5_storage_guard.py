@@ -5,10 +5,13 @@ import importlib.util
 import unittest
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("guard", ROOT / "ansible/scripts/socrat5-storage-guard.py")
+spec = importlib.util.spec_from_file_location(
+    "guard", ROOT / "ansible/scripts/socrat5-storage-guard.py"
+)
 g = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(g)
 
@@ -40,21 +43,21 @@ class StorageGuardTests(unittest.TestCase):
         """Refuse a document whose owner label was removed."""
         p = copy.deepcopy(self.docs[0])
         p["metadata"]["labels"].clear()
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             g.validate_existing(self.docs[0], p)
 
     def test_narrowing_selector_drift_is_not_ignored(self) -> None:
         """Refuse a namespace selector that drops existing objects."""
         p = copy.deepcopy(self.docs[0])
         p["spec"]["matchConstraints"]["namespaceSelector"] = {"matchLabels": {"skip": "most"}}
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             g.validate_existing(self.docs[0], p)
 
     def test_weakened_binding_refused(self) -> None:
         """Refuse a binding that warns instead of denying."""
         p = copy.deepcopy(self.docs[1])
         p["spec"]["validationActions"] = ["Warn"]
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             g.validate_existing(self.docs[1], p)
 
     def test_existing_workers_keep_default_taint_template(self) -> None:

@@ -396,3 +396,35 @@ Old failed pre142 attempt (UID fc7f87f8-226f-4ef5-a357-38d3358feed0) ran
 ### Retired mutation-testing integration
 
 The issue-509 pilot, report consumer, author/judge and mutation publication are retired. Do not reinstall the legacy units. The separate Monori application and Canvas QA publisher remain.
+
+## Upgrade to Agent Canvas 1.43.0 — 23 Nov 2026
+
+Vendored chart tracks upstream `helm/agent-canvas`; the only upstream change
+v1.41.0→v1.43.0 is `appVersion` (release-please). Chart, templates, UPSTREAM.md
+and all image pins (StatefulSet guard, cold/upgrade backup Jobs, demo validator)
+moved to `ghcr.io/openhands/agent-canvas:1.43.0@sha256:bcdbb3fb9610f14eda67f39fc609f162ad8c3c28697d6ff3f4adae55c15c3f1d`.
+
+SDK iteration overlay revalidated inside the new image before commit:
+`local_conversation.py` still holds exactly 6 `iteration >= self.max_iteration_per_run:`
+conditions, `goal/controller.py` exactly 1 `self.iteration >= self.max_iterations:`;
+both patched copies compile and mount over stock files read-only. Overlay digest
+constants updated (`01a20677…`, `651761b9…`).
+
+Post-upgrade runtime exposed the real migration gap: dispatcher and scheduler
+erred (`automation_runs.deferred_until`, `automations.factory_id` missing). Alembic
+037→040 applied explicitly in the pinned image (postgres+pg8000, TLS verify-full,
+per the automation_transfer precedent; startup auto-migration stays disabled).
+038/039 are additive columns/index, 040 adds the `factories` table plus nullable
+`automations.factory_id`. Pre-migration logical dump from the CNPG primary:
+`pg_dump --no-owner --no-privileges`, 14 COPY blocks, 38 KB, SHA256
+4731be85a1e3b96f536eb4ed2a70c8d5e953a0dc666fc5f1d219e76c689f8cba. After restart:
+alembic version 040, `/health` ok, zero ERROR lines in container logs, Argo Synced.
+Both dated cold/upgrade claims and the new dump are operator-side artifacts; a
+verified off-site copy of the automations dump is still open work.
+
+The completed immutable `openhands-cold-backup-20261119` Job (Job specs are
+immutable, its rendered image had to follow the bump) is retired: flag false, Job
+and its ConfigMap deleted from the cluster. The retained `openhands-cold-backups`
+claim still renders permanently (Prune=false,Delete=false) like
+`openhands-upgrade-backups`. Owner journal evidence lives in the sealed receipt
+from 19 Nov; do not replay the dated Job.

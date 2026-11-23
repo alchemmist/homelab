@@ -6,6 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
     "operator_retry", ROOT / "scripts/n8n/spi_operator_retry.py"
@@ -151,7 +153,7 @@ class RetryTests(unittest.TestCase):
 
     def reject(self) -> None:
         before = self.rows()
-        with self.assertRaises((ValueError, sqlite3.DatabaseError)):
+        with pytest.raises((ValueError, sqlite3.DatabaseError)):
             m.retry(self.path, self.auth, True, self.manifest)
         assert before == self.rows()
 
@@ -180,7 +182,7 @@ class RetryTests(unittest.TestCase):
                 c.execute("SELECT count(*) FROM operator_retry_audit").fetchone()[0]
                 == AUDIT_ROW_COUNT
             )
-            with self.assertRaises(sqlite3.DatabaseError):
+            with pytest.raises(sqlite3.DatabaseError):
                 c.execute("DELETE FROM operator_retry_audit")
 
     def test_nonce_survives_redeath_restart(self) -> None:

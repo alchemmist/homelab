@@ -83,7 +83,8 @@ def test_database_has_three_separate_failure_domains_and_required_sync_quorum() 
     assert storage["storageClass"] == "lms-db-retain"
     sc = next(d for d in docs if d["kind"] == "StorageClass")
     assert sc["reclaimPolicy"] == "Retain"
-    assert "@sha256:" in _text(c["imageName"]) and ":17.11-" in _text(c["imageName"])
+    assert "@sha256:" in _text(c["imageName"])
+    assert ":17.11-" in _text(c["imageName"])
     assert c["enableSuperuserAccess"] is False
 
 
@@ -103,7 +104,8 @@ def test_backups_are_encrypted_and_not_shared_plaintext_files() -> None:
     expressions = _documents(terms[0]["matchExpressions"])
     assert expressions[0]["values"] == ["socrat-0", "socrat-1"]
     cmd = _text(_documents(_mapping(_documents(spec["containers"])[0])["args"])[0])
-    assert "umask 077" in cmd and "--symmetric --cipher-algo AES256" in cmd
+    assert "umask 077" in cmd
+    assert "--symmetric --cipher-algo AES256" in cmd
     assert "--passphrase-file /backup-key/passphrase" in cmd
     assert "PGSSLMODE=verify-full" in cmd
     assert "cmp /tmp/database.dump /tmp/checked.dump" in cmd
@@ -116,7 +118,8 @@ def test_single_worker_recreate_and_bounded_node_eviction_are_preserved() -> Non
     docs = rendered("lms", "--set", "database.ha.enabled=true")
     dep = next(d for d in docs if d["kind"] == "Deployment" and _name(d) == "lms")
     dep_spec = _mapping(dep["spec"])
-    assert dep_spec["replicas"] == 1 and _mapping(dep_spec["strategy"])["type"] == "Recreate"
+    assert dep_spec["replicas"] == 1
+    assert _mapping(dep_spec["strategy"])["type"] == "Recreate"
     pod = _mapping_path(dep, "spec", "template", "spec")
     assert {t["tolerationSeconds"] for t in _documents(pod["tolerations"])} == {60}
     secret_volume = next(v for v in _documents(pod["volumes"]) if v["name"] == "postgres-ca")
@@ -134,7 +137,8 @@ def test_copy_tool_refuses_live_ha_overwrite_and_final_restore_without_freeze() 
     copy = (ROOT / "scripts/lms-ha/copy-database.sh").read_text()
     assert "cmp /tmp/source.dump /tmp/recovered.dump" in copy
     assert "cmp /tmp/source.fingerprint /tmp/target.fingerprint" in copy
-    assert "--single-transaction" in copy and "PGSSLMODE=verify-full" in copy
+    assert "--single-transaction" in copy
+    assert "PGSSLMODE=verify-full" in copy
     assert 'COLLATE "C"' in copy
     assert "fingerprintMismatch=true; exit 1" in copy
 

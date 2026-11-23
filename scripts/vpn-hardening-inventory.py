@@ -28,7 +28,8 @@ def digest(value) -> str:
 def check_path(path) -> Path:
     resolved: Path = Path(path).absolute()
     if any(p.is_symlink() for p in (resolved, *resolved.parents)):
-        raise ValueError("Symlinks are not allowed")
+        msg = "Symlinks are not allowed"
+        raise ValueError(msg)
     return resolved
 
 
@@ -41,7 +42,8 @@ def private_directory(path) -> Path:
         or st.st_uid != os.geteuid()
         or stat.S_IMODE(st.st_mode) != 0o700
     ):
-        raise ValueError("State directory must be caller-owned, mode 0700")
+        msg = "State directory must be caller-owned, mode 0700"
+        raise ValueError(msg)
     return directory
 
 
@@ -125,25 +127,29 @@ def summarize(config) -> "dict[str, object]":
 def inspect(database, state=None) -> "dict[str, object]":
     database = check_path(database)
     if not database.is_file():
-        raise ValueError("Database must be an existing regular file")
+        msg = "Database must be an existing regular file"
+        raise ValueError(msg)
     # No immutable=1: include committed WAL state. Copy to one consistent snapshot.
     with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True)) as source:
         with closing(sqlite3.connect(":memory:")) as snapshot:
             source.backup(snapshot)
             if snapshot.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
-                raise ValueError("SQLite integrity check failed")
+                msg = "SQLite integrity check failed"
+                raise ValueError(msg)
             config = projection(snapshot)
             if state is not None:
                 directory = private_directory(state)
                 if any(directory.iterdir()):
-                    raise ValueError("Backup state must be empty; never overwrite evidence")
+                    msg = "Backup state must be empty; never overwrite evidence"
+                    raise ValueError(msg)
                 path = directory / "x-ui-before.sqlite3"
                 fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
                 os.close(fd)
                 with closing(sqlite3.connect(path)) as backup:
                     snapshot.backup(backup)
                     if backup.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
-                        raise ValueError("Backup integrity check failed")
+                        msg = "Backup integrity check failed"
+                        raise ValueError(msg)
                 save(directory / "inventory.json", summarize(config))
     return summarize(config)
 
@@ -164,6 +170,5 @@ if __name__ == "__main__":
     try:
         main()
     except (OSError, ValueError, RuntimeError, sqlite3.Error):
-        raise SystemExit(
-            "Inventory/backup stopped; inspect private state before retrying"
-        ) from None
+        msg = "Inventory/backup stopped; inspect private state before retrying"
+        raise SystemExit(msg) from None

@@ -24,7 +24,7 @@ def command(arguments):
     return subprocess.run(arguments, check=True, capture_output=True, text=True, timeout=30).stdout
 
 
-def verify(path, expected):
+def verify(path, expected) -> None:
     stat = path.lstat()
     if path.is_symlink() or not path.is_file() or stat.st_uid != 0 or stat.st_mode & 0o022:
         message = "Native canary executable must be root owned and not writable by others"
@@ -110,7 +110,7 @@ def unit(root, label):
     return root.name + "-" + label + ".service"
 
 
-def stop(root, labels):
+def stop(root, labels) -> None:
     for label in labels:
         if (
             command(["systemctl", "show", unit(root, label), "-p", "MainPID", "--value"]).strip()
@@ -119,7 +119,7 @@ def stop(root, labels):
             command(["systemctl", "stop", unit(root, label)])
 
 
-def start(root, label, executable, arguments, memory, environment=None, extra=None):
+def start(root, label, executable, arguments, memory, environment=None, extra=None) -> None:
     properties = [
         f"MemoryMax={memory}",
         "MemorySwapMax=0",
@@ -130,10 +130,10 @@ def start(root, label, executable, arguments, memory, environment=None, extra=No
     argv = ["systemd-run", "--no-block", "--collect", "--unit=" + unit(root, label)]
     argv += ["--property=" + item for item in properties]
     argv += ["--setenv=" + key + "=" + value for key, value in (environment or {}).items()]
-    command(argv + [str(executable)] + arguments)
+    command([*argv, str(executable), *arguments])
 
 
-def wait_port(ip, port):
+def wait_port(ip, port) -> None:
     deadline = time.monotonic() + 20
     while time.monotonic() < deadline:
         try:
@@ -234,7 +234,7 @@ def classify_shutdown_replay(text):
     }
 
 
-def validate_contract(root, request, now=None):
+def validate_contract(root, request, now=None) -> None:
     collected = datetime.fromisoformat(request["scrapeContractCollectedAt"])
     age = ((now or datetime.now(UTC)) - collected).total_seconds()
     if not 0 <= age <= 900:
@@ -254,7 +254,7 @@ def require(expected: object, message: str) -> None:
         raise ValueError(message)
 
 
-def prepare_phase(root, request, result):
+def prepare_phase(root, request, result) -> None:
     """Validate the contract and write validated agent/gateway configurations."""
     validate_contract(root, request)
     available = (
@@ -288,7 +288,7 @@ def prepare_phase(root, request, result):
     result["availableMemoryBytes"] = available
 
 
-def backend_start_phase(root, request, _result):
+def backend_start_phase(root, request, _result) -> None:
     """Start the private Prometheus OTLP backend and the gateway collector."""
     verify(root / "prometheus", request["prometheusSHA256"])
     for port in (19099, 43170, 18889):
@@ -343,7 +343,7 @@ def backend_start_phase(root, request, _result):
     wait_port(request["backendIP"], 43170)
 
 
-def agents_start_phase(root, request, _result):
+def agents_start_phase(root, request, _result) -> None:
     """Start the node exporter and its private agent collector."""
     for port in (19100, 18888):
         with socket.socket() as handle:
@@ -387,7 +387,7 @@ def agents_start_phase(root, request, _result):
     wait_port("127.0.0.1", 18888)
 
 
-def probe_phase(root, request, result):
+def probe_phase(root, request, result) -> None:
     """Poll until all four agents report equivalent fresh targets."""
     expected = {
         identity({**labels, "__name__": "up"}) for labels in request["expectedLabels"].values()
@@ -422,7 +422,7 @@ def probe_phase(root, request, result):
     )
 
 
-def outage_proof_phase(root, request, result):
+def outage_proof_phase(root, request, result) -> None:
     """Prove pre-restart outage samples survived the durable queues."""
     stops = json.loads((root / "gateway-stop-result.json").read_text())["timeUnixSeconds"]
     restarts = json.loads((root / "restarts.json").read_text())
@@ -445,7 +445,7 @@ def outage_proof_phase(root, request, result):
     result["allFourPersistentQueuesSurvivedAgentRestart"] = True
 
 
-def cleanup_phase(root, _request, result):
+def cleanup_phase(root, _request, result) -> None:
     """Stop every owned service and remove the temporary credentials."""
     labels = ["agent", "exporter"] + (
         ["gateway", "prometheus"] if socket.gethostname() == "socrat-1" else []
@@ -469,7 +469,7 @@ def cleanup_phase(root, _request, result):
     result["temporaryTLSRemoved"] = True
 
 
-def await_queue_phase(root, _request, result):
+def await_queue_phase(root, _request, result) -> None:
     """Await the durable exporter queue reaching its expected bounded state."""
     phase = result["phase"]
     started = time.monotonic()
@@ -489,7 +489,7 @@ def await_queue_phase(root, _request, result):
         raise ValueError(message)
 
 
-def drain_start_phase(root, request, _result):
+def drain_start_phase(root, request, _result) -> None:
     """Start the agent collector with its OTLP drain receiver configuration."""
     agent = json.loads((root / "agent.json").read_text())
     agent["receivers"] = {"otlp": {"protocols": {"grpc": {"endpoint": "127.0.0.1:18887"}}}}
@@ -506,7 +506,7 @@ def drain_start_phase(root, request, _result):
     wait_port("127.0.0.1", 18888)
 
 
-def selected_cleanup_phase(root, _request, result):
+def selected_cleanup_phase(root, _request, result) -> None:
     """Stop the phase's selected services and require them to be gone."""
     phase = result["phase"]
     labels = ["agent", "exporter"] if phase == "agents-cleanup" else ["gateway", "prometheus"]
@@ -522,7 +522,7 @@ def selected_cleanup_phase(root, _request, result):
     result["allSelectedProcessesStopped"] = True
 
 
-def journal_phase(root, _request, result):
+def journal_phase(root, _request, result) -> None:
     """Record rejection counts and queue evidence from the agent journal."""
     text = command(["journalctl", "--no-pager", "-o", "cat", "-u", unit(root, "agent")])
     markers = {
@@ -539,7 +539,7 @@ def journal_phase(root, _request, result):
     result["shutdownReplay"] = classify_shutdown_replay(text)
 
 
-def telemetry_phase(root, _request, result):
+def telemetry_phase(root, _request, result) -> None:
     """Record current exporter telemetry and the agent cgroup memory peak."""
     result["exporterTelemetry"] = telemetry(root)
     result["agentCgroup"] = command(
@@ -549,7 +549,7 @@ def telemetry_phase(root, _request, result):
     result["agentMemoryPeakBytes"] = int(peak.read_text()) if peak.is_file() else None
 
 
-def gateway_start_phase(root, request, _result):
+def gateway_start_phase(root, request, _result) -> None:
     """Start the gateway collector against the private OTLP backend."""
     start(
         root,
@@ -562,7 +562,7 @@ def gateway_start_phase(root, request, _result):
     wait_port(request["backendIP"], 43170)
 
 
-def agent_restart_phase(root, _request, result):
+def agent_restart_phase(root, _request, result) -> None:
     """Restart the agent collector and record the restart instant."""
     result["restartStartedAt"] = time.time()
     result["telemetryBeforeRestart"] = telemetry(root)
@@ -570,7 +570,7 @@ def agent_restart_phase(root, _request, result):
     wait_port("127.0.0.1", 18888)
 
 
-def gateway_stop_phase(root, _request, _result):
+def gateway_stop_phase(root, _request, _result) -> None:
     """Stop the gateway collector."""
     stop(root, ["gateway"])
 

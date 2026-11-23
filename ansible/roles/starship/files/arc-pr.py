@@ -19,7 +19,7 @@ def arc(args, cwd=None):
     """Execute the arc operation."""
     try:
         return subprocess.run(
-            ["arc"] + args,
+            ["arc", *args],
             cwd=cwd,
             capture_output=True,
             text=True,
@@ -29,7 +29,7 @@ def arc(args, cwd=None):
         return ""
 
 
-def write_atomic(path, content):
+def write_atomic(path, content) -> None:
     """Execute the write_atomic operation."""
     tmp = f"{path}.tmp.{os.getpid()}"
     with open(tmp, "w") as f:
@@ -37,7 +37,7 @@ def write_atomic(path, content):
     os.replace(tmp, path)
 
 
-def refresh(root, branch, base):
+def refresh(root, branch, base) -> None:
     """Execute the refresh operation."""
     os.makedirs(os.path.dirname(base), exist_ok=True)
     pr_out = ""
@@ -54,7 +54,7 @@ def refresh(root, branch, base):
     write_atomic(base + ".pr", pr_out)
 
 
-def main():
+def main() -> None:
     """Execute the main operation."""
     if len(sys.argv) >= 5 and sys.argv[1] == "refresh":
         refresh(sys.argv[2], sys.argv[3], sys.argv[4])

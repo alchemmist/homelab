@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEST = "/home/openhands/.openhands/tools/filesystem"
 
 
-def main():
+def main() -> None:
     files = {
         n: (ROOT / "services/openhands/mcp" / n).read_text()
         for n in ["package.json", "package-lock.json"]

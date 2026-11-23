@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
+from typing import Never
 
 FIELDS = (
     ("temperature.gpu", "temperature_celsius", 1),
@@ -50,7 +51,7 @@ def sample(name, labels, value):
 def _metric_lines(labels, row):
     """Convert one GPU query row into its numeric metric lines."""
     metrics = []
-    for (_, metric, factor), raw in zip(FIELDS, row[3:]):
+    for (_, metric, factor), raw in zip(FIELDS, row[3:], strict=False):
         if metric == "performance_state" and raw.startswith("P"):
             raw = raw[1:]
         try:
@@ -59,7 +60,7 @@ def _metric_lines(labels, row):
             continue
         if math.isfinite(value):
             metrics.append(sample("socrat_gpu_" + metric, labels, value))
-    for reason, raw in zip(REASONS, row[3 + len(FIELDS) :]):
+    for reason, raw in zip(REASONS, row[3 + len(FIELDS) :], strict=False):
         if raw in ("Active", "Not Active"):
             metrics.append(
                 sample(
@@ -85,7 +86,7 @@ def parse_metrics(output):
         if not row[0].startswith("GPU-"):
             msg = "Invalid NVIDIA GPU identity"
             raise ValueError(msg)
-        labels = dict(zip(("uuid", "name", "index"), row[:3]))
+        labels = dict(zip(("uuid", "name", "index"), row[:3], strict=False))
         count += 1
         metrics.extend(_metric_lines(labels, row))
     if not count:
@@ -94,7 +95,7 @@ def parse_metrics(output):
     return "".join(metrics)
 
 
-def atomic_write(destination, content):
+def atomic_write(destination, content) -> None:
     """Execute the atomic_write operation."""
     destination = Path(destination)
     descriptor, temporary = tempfile.mkstemp(prefix=".nvidia-", dir=destination.parent)
@@ -133,7 +134,7 @@ def collect(binary, destination):
     return success
 
 
-def main():
+def main() -> Never:
     """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--binary", default="/usr/bin/nvidia-smi")

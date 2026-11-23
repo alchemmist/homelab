@@ -23,7 +23,7 @@ FORBIDDEN = {
 }
 
 
-async def main():
+async def main() -> None:
     """Run the command-line entry point."""
     for name in ("argocd", "metrics"):
         params = StdioServerParameters(

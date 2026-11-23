@@ -13,7 +13,7 @@ from pathlib import Path
 ROLES = {"syncthing-web-admins": "syncthing", "uptime-kuma-web-admins": "uptime-kuma"}
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     """Execute require."""
     if not ok:
         raise RuntimeError(message)
@@ -52,7 +52,7 @@ def plan(groups):
     return ops
 
 
-def main():
+def main() -> None:
     """Execute main."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")

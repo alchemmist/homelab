@@ -62,7 +62,7 @@ def require(expected: object, message: str) -> None:
         raise ValueError(message)
 
 
-def run(output, apply):
+def run(output, apply) -> None:
     os.umask(0o077)
     parent = Path.home() / "Library/Application Support/homelab/otel-controller"
     require(

@@ -78,7 +78,9 @@ class _Pod(TypedDict):
 
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("target", ROOT / "ansible/scripts/check_target_placement.py")
+spec = importlib.util.spec_from_file_location(
+    "target", ROOT / "ansible/scripts/check_target_placement.py"
+)
 assert spec is not None
 assert spec.loader is not None
 target = importlib.util.module_from_spec(spec)

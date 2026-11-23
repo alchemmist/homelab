@@ -22,14 +22,16 @@ def upload_path(location):
     """Reject off-origin upload locations before sending any upload credentials."""
     u = urlsplit(urljoin(f"https://{HOST}{PREFIX}", location or ""))
     if (u.scheme, u.netloc) != ("https", HOST) or not u.path.startswith(PREFIX):
-        raise ValueError("Unexpected registry upload origin")
+        msg = "Unexpected registry upload origin"
+        raise ValueError(msg)
     suffix = u.path[len(PREFIX) :]
     if not suffix or any(c not in "0123456789abcdef-" for c in suffix.lower()):
-        raise ValueError("Unexpected registry upload ID")
+        msg = "Unexpected registry upload ID"
+        raise ValueError(msg)
     return u.path + ("?" + u.query if u.query else "")
 
 
-def main():
+def main() -> None:
     """Authenticate with a test writer, measure PATCH only, and cancel the session."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--address", type=ipaddress.ip_address, required=True)
@@ -51,7 +53,8 @@ def main():
                 r = conn.getresponse()
                 data = r.read(65537)
                 if len(data) > 65536:
-                    raise ValueError("Response exceeded metadata limit")
+                    msg = "Response exceeded metadata limit"
+                    raise ValueError(msg)
                 return r.status, r.headers, data, time.monotonic() - start
             finally:
                 conn.close()
@@ -62,23 +65,28 @@ def main():
     q = urlencode({"service": "harbor-registry", "scope": f"repository:{REPO}:pull,push"})
     status, _, payload, _ = request("GET", "/service/token?" + q, "Basic " + basic)
     if status != 200:
-        raise SystemExit(f"Token request: HTTP {status}")
+        msg = f"Token request: HTTP {status}"
+        raise SystemExit(msg)
     auth = "Bearer " + json.loads(payload)["token"]
     layer = secrets.token_bytes(1024 * 1024)
     status, headers, _, _ = request("POST", PREFIX, auth, b"")
     if status != 202:
-        raise SystemExit(f"Upload initialization: HTTP {status}; no retry")
+        msg = f"Upload initialization: HTTP {status}; no retry"
+        raise SystemExit(msg)
     path = upload_path(headers.get("Location"))
     try:
         status, headers, _, elapsed = request("PATCH", path, auth, layer)
         if status != 202:
-            raise SystemExit(f"Upload PATCH: HTTP {status}; no retry")
+            msg = f"Upload PATCH: HTTP {status}; no retry"
+            raise SystemExit(msg)
         next_path = upload_path(headers.get("Location"))
         if urlsplit(next_path).path != urlsplit(path).path:
-            raise ValueError("Registry changed the upload session ID")
+            msg = "Registry changed the upload session ID"
+            raise ValueError(msg)
         path = next_path
         if headers.get("Range") != f"0-{len(layer) - 1}":
-            raise ValueError("Registry did not acknowledge the entire payload")
+            msg = "Registry did not acknowledge the entire payload"
+            raise ValueError(msg)
         print(
             json.dumps(
                 {
@@ -92,7 +100,8 @@ def main():
     finally:
         status, _, _, _ = request("DELETE", path, auth)
         if status != 204:
-            raise SystemExit(f"Upload cancellation: HTTP {status}; reconcile before rerunning")
+            msg = f"Upload cancellation: HTTP {status}; reconcile before rerunning"
+            raise SystemExit(msg)
 
 
 if __name__ == "__main__":

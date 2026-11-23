@@ -5,10 +5,13 @@ import importlib.util
 import unittest
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("merge", ROOT / "ansible/scripts/otel-logs-only-config.py")
+spec = importlib.util.spec_from_file_location(
+    "merge", ROOT / "ansible/scripts/otel-logs-only-config.py"
+)
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
@@ -53,7 +56,7 @@ class ScopedRolloutTests(unittest.TestCase):
     def test_shared_mutation_refused(self) -> None:
         """Verify a shared memory limiter edit fails before the merge is accepted."""
         self.live["processors"]["memory_limiter"]["limit_mib"] = 987
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             m.merge(self.live, self.desired)
 
     def test_existing_log_endpoint_is_authoritative(self) -> None:
@@ -88,7 +91,7 @@ class ScopedRolloutTests(unittest.TestCase):
             )
             == expected_records
         )
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             gate.total(
                 {
                     "otelcol_exporter_sent_log_records": 12,

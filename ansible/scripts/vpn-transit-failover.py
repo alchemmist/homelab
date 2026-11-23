@@ -5,6 +5,7 @@ No API availability-only failover. Native mode is sticky until explicit failback
 """
 
 import argparse
+import contextlib
 import fcntl
 import hashlib
 import json
@@ -47,7 +48,7 @@ def run(
     return p
 
 
-def atomic(path, value):
+def atomic(path, value) -> None:
     tmp = path.with_suffix(".tmp")
     data = json.dumps(value, sort_keys=True).encode()
     with tmp.open("wb") as f:
@@ -87,7 +88,8 @@ def identity(pid: int, cid: str) -> dict[str, object] | None:
     if not p.exists():
         return None
     cg = (p / "cgroup").read_text()
-    assert cid in cg and ("kubepods" in cg or "cri-containerd" in cg)
+    assert cid in cg
+    assert "kubepods" in cg or "cri-containerd" in cg
     return {"pid": pid, "cid": cid, "start": (p / "stat").read_text().split()[21]}
 
 
@@ -191,12 +193,12 @@ class Controller:
             else {"mode": "prepared", "failures": 0}
         )
 
-    def save(self, **fields):
+    def save(self, **fields) -> None:
         """Persist updated state fields atomically."""
         self.state.update(fields)
         atomic(ROOT / "state.json", self.state)
 
-    def receipt(self, action, **fields):
+    def receipt(self, action, **fields) -> None:
         """Append a timestamped receipt file for the taken action."""
         v = {"action": action, "at": time.time(), **fields}
         atomic(ROOT / (str(time.time_ns()) + "-" + action + ".json"), v)
@@ -242,7 +244,8 @@ class Controller:
         assert active("homelab-vpn-management-relay.service")
         assert not active("homelab-vpn-transit.service")  # retired combined service
         r = run(["ip", "route", "get", "10.250.0.2"]).stdout
-        assert "dev wg-socrat" in r and "src 10.250.0.40" in r
+        assert "dev wg-socrat" in r
+        assert "src 10.250.0.40" in r
 
     def activate(self, reason: str) -> None:
         """Enter the xray fallback mode after all prerequisites pass."""
@@ -260,10 +263,8 @@ class Controller:
         self.save(mode="transition-to-native", healthy=False)
         run(["systemctl", "stop", AGENT], timeout=75)
         assert not active(AGENT)
-        try:
+        with contextlib.suppress(RuntimeError, subprocess.TimeoutExpired):
             processes += pod_processes()
-        except (RuntimeError, subprocess.TimeoutExpired):
-            pass
         unique = {i["pid"]: i for i in processes}
         for i in unique.values():
             terminate_owned(i)
@@ -288,23 +289,30 @@ class Controller:
     def promote(self) -> None:
         """Explicitly accept a healthy fenced native relay as the permanent primary."""
         self.prerequisites()
-        assert self.marker.exists() and self.state["mode"] == "native"
-        assert not active(AGENT) and active(NATIVE) and self.healthy()
+        assert self.marker.exists()
+        assert self.state["mode"] == "native"
+        assert not active(AGENT)
+        assert active(NATIVE)
+        assert self.healthy()
         self.save(mode="native-primary", failures=0, healthy=True)
         self.receipt("native-primary-accepted")
 
     def demote(self) -> None:
         """Explicit rollback preparation; never starts a worker or releases its fence."""
         self.prerequisites()
-        assert self.marker.exists() and self.state["mode"] == "native-primary"
-        assert not active(AGENT) and active(NATIVE) and self.healthy()
+        assert self.marker.exists()
+        assert self.state["mode"] == "native-primary"
+        assert not active(AGENT)
+        assert active(NATIVE)
+        assert self.healthy()
         self.save(mode="native", failures=0, healthy=True)
         self.receipt("native-primary-demoted")
 
     def failback(self) -> None:
         """Return to the native primary path after re-validation."""
         self.prerequisites()
-        assert self.marker.exists() and self.state["mode"] == "native"
+        assert self.marker.exists()
+        assert self.state["mode"] == "native"
         self.save(mode="transition-to-kubernetes", healthy=False)
         try:
             run(["systemctl", "stop", NATIVE])
@@ -324,7 +332,8 @@ class Controller:
                     self.receipt("kubernetes-accepted")
                     return
                 time.sleep(3)
-            raise RuntimeError("Pod data-path recovery deadline exceeded")
+            msg = "Pod data-path recovery deadline exceeded"
+            raise RuntimeError(msg)
         except Exception:
             self.activate("failback failed; native rollback")
             raise
@@ -340,7 +349,8 @@ class Controller:
             # start an agent. Unknown states and unhealthy transitions remain fenced.
             if self.state["mode"] == "transition-to-native" and ok:
                 if active(AGENT):
-                    raise RuntimeError("Agent active during fenced native transition")
+                    msg = "Agent active during fenced native transition"
+                    raise RuntimeError(msg)
                 self.prerequisites()
                 self.receipt(
                     "native-reconciled",
@@ -351,7 +361,8 @@ class Controller:
                 self.save(healthy=ok, last_probe=getattr(self, "last_probe", {}))
             return
         if self.state["mode"] != "kubernetes":
-            raise RuntimeError("Uncertain transition; inspect receipts, do not replay")
+            msg = "Uncertain transition; inspect receipts, do not replay"
+            raise RuntimeError(msg)
         boot = boot_id()
         if self.state.get("boot_id") != boot:
             self.save(boot_id=boot, grace_until=time.time() + 120, healthy=False, failures=0)

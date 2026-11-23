@@ -7,6 +7,7 @@ import subprocess
 import unittest
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -22,7 +23,7 @@ class NativeOIDC(unittest.TestCase):
 
     bindings: "list[dict[str, object]]"
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Load the owner identity and journal fixture."""
         self.owner = {"pk": "owner"}
         self.settings = copy.deepcopy(m.PROVIDER)
@@ -45,7 +46,7 @@ class NativeOIDC(unittest.TestCase):
             }
         ]
 
-    def validate(self):
+    def validate(self) -> None:
         """Run the validator against the scripted API journal."""
 
         class API:
@@ -54,21 +55,21 @@ class NativeOIDC(unittest.TestCase):
 
         m.validate(API(), self.owner, self.settings, self.provider, self.app, self.journal)
 
-    def test_cookie_secret_uses_go_raw_url_alphabet(self):
+    def test_cookie_secret_uses_go_raw_url_alphabet(self) -> None:
         """Verify the cookie secret uses the Go raw-url alphabet."""
         raw = bytes([251]) * 32
         encoded = m.encode_cookie_secret(raw)
         assert "+" not in encoded
         assert "/" not in encoded
         assert base64.urlsafe_b64decode(encoded) == raw
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             m.encode_cookie_secret(b"too short")
 
-    def test_owner_only_existing_identity(self):
+    def test_owner_only_existing_identity(self) -> None:
         """Verify only the existing owner identity passes validation."""
         self.validate()
 
-    def test_no_adoption_or_rotation(self):
+    def test_no_adoption_or_rotation(self) -> None:
         """Verify provider keys are neither adopted nor rotated silently."""
         original = copy.deepcopy(self.journal)
         for value in (
@@ -77,10 +78,10 @@ class NativeOIDC(unittest.TestCase):
             {**original, "client_secret": "changed"},
         ):
             self.journal = value
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 self.validate()
 
-    def test_binding_cannot_expand_or_disable(self):
+    def test_binding_cannot_expand_or_disable(self) -> None:
         """Verify existing bindings cannot be broadened or disabled."""
         for key, value in [
             ("group", "observer"),
@@ -92,14 +93,14 @@ class NativeOIDC(unittest.TestCase):
         ]:
             original = copy.deepcopy(self.bindings)
             self.bindings[0][key] = value
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 self.validate()
             self.bindings = original
         self.bindings *= 2
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             self.validate()
 
-    def test_callback_or_grant_drift_blocked(self):
+    def test_callback_or_grant_drift_blocked(self) -> None:
         """Verify callback URLs and grant types must not drift."""
         for key, value in [
             ("client_id", "wrong"),
@@ -108,7 +109,7 @@ class NativeOIDC(unittest.TestCase):
         ]:
             old = copy.deepcopy(self.provider)
             self.provider[key] = value
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 self.validate()
             self.provider = old
 
@@ -140,7 +141,7 @@ class OIDCRender(unittest.TestCase):
         assert r.returncode == 0, r.stderr
         return [v for v in yaml.safe_load_all(r.stdout) if v]
 
-    def test_only_ingress_terminates_at_oidc(self):
+    def test_only_ingress_terminates_at_oidc(self) -> None:
         """Verify only the Ingress terminates TLS at the OIDC proxy."""
         ingresses = [v for v in self.objects() if v["kind"] == "Ingress"]
         assert len(ingresses) == 1
@@ -151,14 +152,14 @@ class OIDCRender(unittest.TestCase):
             == "openhands-oidc"
         )
 
-    def test_tls_is_tracked_not_hidden_by_healthy_proxy(self):
+    def test_tls_is_tracked_not_hidden_by_healthy_proxy(self) -> None:
         """Verify TLS state is tracked, not masked by a healthy proxy."""
         cert = next(v for v in self.objects() if v["kind"] == "Certificate")
         assert cert["spec"]["secretName"] == "openhands-oidc-tls"
         assert cert["spec"]["dnsNames"] == ["openhands.socrat.alchemmist.xyz"]
         assert cert["spec"]["issuerRef"]["kind"] == "ClusterIssuer"
 
-    def test_backend_only_reachable_from_gateway(self):
+    def test_backend_only_reachable_from_gateway(self) -> None:
         """Verify the backend is reachable only from the gateway namespace."""
         p = next(
             v
@@ -172,7 +173,7 @@ class OIDCRender(unittest.TestCase):
             }
         ]
 
-    def test_vps_hostnetwork_source_is_exact_and_proxy_only(self):
+    def test_vps_hostnetwork_source_is_exact_and_proxy_only(self) -> None:
         """Verify VPS HostNetwork source is exact and proxies only."""
         p = next(
             v
@@ -182,7 +183,7 @@ class OIDCRender(unittest.TestCase):
         assert {"ipBlock": {"cidr": "10.42.0.0/32"}} in p["spec"]["ingress"][0]["from"]
         assert p["spec"]["ingress"][0]["ports"] == [{"port": 4180, "protocol": "TCP"}]
 
-    def test_identity_uses_immutable_subject_not_unverified_mail(self):
+    def test_identity_uses_immutable_subject_not_unverified_mail(self) -> None:
         """Verify identity binds to the immutable subject, not the email."""
         d = next(
             v
@@ -197,7 +198,7 @@ class OIDCRender(unittest.TestCase):
             "allow-unverified-email" in a or "skip-issuer-verification" in a for a in args
         )
 
-    def test_oidc_not_custom_auth_or_bearer_bypass(self):
+    def test_oidc_not_custom_auth_or_bearer_bypass(self) -> None:
         """Verify the chart uses OIDC, with no custom-auth bypass."""
         d = next(
             v
@@ -220,7 +221,7 @@ class OIDCRender(unittest.TestCase):
         canvas = next(v for v in self.objects() if v["kind"] == "StatefulSet")
         assert "openhands-oidc" not in str(canvas["spec"]["template"]["spec"].get("volumes", []))
 
-    def test_refresh_uses_server_side_sessions_without_weakening_expiry(self):
+    def test_refresh_uses_server_side_sessions_without_weakening_expiry(self) -> None:
         """Verify refresh uses server-side sessions with expiry intact."""
         d = next(
             v
@@ -240,7 +241,7 @@ class OIDCRender(unittest.TestCase):
             "key": "password",
         }
 
-    def test_session_cache_is_private_nonpersistent_and_restricted(self):
+    def test_session_cache_is_private_nonpersistent_and_restricted(self) -> None:
         """Verify the session cache is private, non-persistent and restricted."""
         d = next(
             v
@@ -267,7 +268,7 @@ class OIDCRender(unittest.TestCase):
         ]
         assert p["spec"]["egress"] == []
 
-    def test_no_unprotected_ingress_or_bootstrap(self):
+    def test_no_unprotected_ingress_or_bootstrap(self) -> None:
         """Verify enabling the ingress or bootstrap never leaves open paths."""
         assert self.helm("--set", "ingress.enabled=true").returncode != 0
         assert self.helm("--set", "oidc.enabled=false").returncode != 0

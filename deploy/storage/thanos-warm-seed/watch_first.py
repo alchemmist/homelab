@@ -35,11 +35,10 @@ raise TimeoutError('no new journaled block verified during observation')
 
 def main() -> None:
     baseline = json.loads(Path(sys.argv[1]).read_bytes())["uploaded"]
-    assert baseline and all(re.fullmatch("[0-9A-HJKMNP-TV-Z]{26}", u) for u in baseline)
+    assert baseline
+    assert all(re.fullmatch("[0-9A-HJKMNP-TV-Z]{26}", u) for u in baseline)
     pod = json.loads(
-        kube(
-            "get", "pod", "prometheus-kube-prometheus-stack-prometheus-0", "-o", "json"
-        )
+        kube("get", "pod", "prometheus-kube-prometheus-stack-prometheus-0", "-o", "json")
     )
     claim = next(
         v["persistentVolumeClaim"]["claimName"]
@@ -84,10 +83,7 @@ def main() -> None:
                 "subPath": "prometheus-db",
                 "readOnly": True,
             },
-            *(
-                {"name": k, "mountPath": "/" + k, "readOnly": True}
-                for k in ["s3", "trust"]
-            ),
+            *({"name": k, "mountPath": "/" + k, "readOnly": True} for k in ["s3", "trust"]),
         ],
     }
     # Match the Prometheus disk reader uid/gid without changing PVC ownership.

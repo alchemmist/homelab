@@ -43,7 +43,8 @@ def server(timeout=40) -> "dict[str, object]":
                     "bytes": len(data),
                     "port": PORT,
                 }
-    raise TimeoutError("No valid HOME datagram in bounded window")
+    msg = "No valid HOME datagram in bounded window"
+    raise TimeoutError(msg)
 
 
 def client() -> "dict[str, object]":
@@ -66,7 +67,8 @@ def client() -> "dict[str, object]":
                     "bytes": len(reply),
                     "vpn_or_client_failover_acceptance": False,
                 }
-    raise TimeoutError("No matching UDP response")
+    msg = "No matching UDP response"
+    raise TimeoutError(msg)
 
 
 if __name__ == "__main__":
@@ -76,4 +78,5 @@ if __name__ == "__main__":
     try:
         print(json.dumps(server() if a.mode == "server" else client()))
     except (OSError, AssertionError):
-        raise SystemExit("Bounded diagnostic failed; no existing network state changed.") from None
+        msg = "Bounded diagnostic failed; no existing network state changed."
+        raise SystemExit(msg) from None

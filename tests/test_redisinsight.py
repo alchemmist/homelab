@@ -3,7 +3,7 @@ from pathlib import Path
 import yaml
 
 
-def test_only_group_gateway_is_routable():
+def test_only_group_gateway_is_routable() -> None:
     path = Path(__file__).resolve().parents[1] / "deploy/platform/redisinsight/resources"
     docs = {
         r["kind"]: r["spec"]

@@ -129,9 +129,7 @@ class SyncthingSchedulingTests(unittest.TestCase):
         )["spec"]["template"]["spec"]
         assert pod["automountServiceAccountToken"] is False
         syncthing = next(
-            container
-            for container in pod["containers"]
-            if container["name"] == "syncthing"
+            container for container in pod["containers"] if container["name"] == "syncthing"
         )
         for probe_name in ("livenessProbe", "readinessProbe"):
             probe = syncthing[probe_name]["httpGet"]

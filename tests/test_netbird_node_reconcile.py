@@ -6,8 +6,12 @@ import json
 import unittest
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("nodes", ROOT / "ansible/scripts/netbird-node-reconcile.py")
+spec = importlib.util.spec_from_file_location(
+    "nodes", ROOT / "ansible/scripts/netbird-node-reconcile.py"
+)
 n = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(n)
 IMAGE = "netbirdio/netbird:0.82.0@sha256:" + "a" * 64
@@ -175,7 +179,8 @@ class Fake(n.Runtime):
     def restart_without_key(self, host, deployment) -> None:
         """Simulate a restart failure when the fixture flag is set."""
         if self.fail_restart:
-            raise ValueError("simulated restart failure")
+            msg = "simulated restart failure"
+            raise ValueError(msg)
 
     def kub(self, args, obj=None, optional=False, stdin=None) -> bytes:
         """Serve the reconciler's kubectl calls from in-memory fixtures."""
@@ -207,7 +212,7 @@ class ReconcileTest(unittest.TestCase):
 
     def test_kernel_only_daemon_has_no_tun_or_interactive_sso(self) -> None:
         """The kernel-only daemon has no TUN or interactive SSO."""
-        pvc, deployment = n.manifests("socrat-5", IMAGE, kernel_only=True)
+        _pvc, deployment = n.manifests("socrat-5", IMAGE, kernel_only=True)
         spec = deployment["spec"]["template"]["spec"]
         assert spec["containers"][0]["command"] == ["netbird"]
         assert spec["containers"][0]["args"] == ["service", "run"]
@@ -225,7 +230,7 @@ class ReconcileTest(unittest.TestCase):
             {"socrat-4": "10.250.0.255"},
             {"socrat-4": "10.250.0.9", "socrat-5": "10.250.0.9"},
         ]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 n.validate_config(
                     {
                         "image": IMAGE,
@@ -238,14 +243,14 @@ class ReconcileTest(unittest.TestCase):
                         "nodes": values,
                     }
                 )
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             n.validate_config({"image": "latest", "nodes": {"socrat-4": "10.250.0.9"}})
 
     def test_render_has_persistent_identity_and_no_human_or_dns_permissions(
         self,
     ) -> None:
         """Rendered manifests keep identity persistent without human or DNS permissions."""
-        pvc, deploy = n.manifests("socrat-28", IMAGE)
+        _pvc, deploy = n.manifests("socrat-28", IMAGE)
         pod = deploy["spec"]["template"]["spec"]
         env = {e["name"]: e.get("value") for e in pod["containers"][0]["env"]}
         assert "NB_SETUP_KEY" not in env
@@ -260,7 +265,7 @@ class ReconcileTest(unittest.TestCase):
         """Adoption requires the trusted exact peer, not a name."""
         for seed in [None, {"nodes": {"socrat-4": {"id": "wrong"}}}]:
             f = Fake()
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 f.reconcile("socrat-4", seed)
             assert f.writes == []
 
@@ -299,7 +304,7 @@ class ReconcileTest(unittest.TestCase):
         """Unmanaged workloads cannot be adopted by the controller."""
         f = Fake()
         f.dep["metadata"].pop("labels")
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             f.reconcile("socrat-4", self.seed())
         assert f.writes == []
 
@@ -331,12 +336,12 @@ class ReconcileTest(unittest.TestCase):
         f = Fake()
         f.enrolled = False
         f.fail_restart = True
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             f.reconcile("socrat-4")
         assert f.state["cleanup"]["revoked"]
         assert f.state["nodes"]["socrat-4"]["phase"] != "ready"
         writes = len(f.writes)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             f.reconcile("socrat-4")
         assert len(f.writes) == writes
 
@@ -369,7 +374,7 @@ class ReconcileTest(unittest.TestCase):
             if kind == "deleted-volume":
                 f.existing = False
                 f.enrolled = False
-            with self.subTest(kind=kind), self.assertRaises(ValueError):
+            with self.subTest(kind=kind), pytest.raises(ValueError):
                 f.reconcile("socrat-4")
             assert len(f.writes) == before
 
@@ -383,7 +388,7 @@ class ReconcileTest(unittest.TestCase):
                 f.policies[0]["rules"][0]["sources"] = [{"id": "All"}]
             if kind == "member":
                 f.group["peers"] = [{"id": "human-device"}]
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 f.reconcile("socrat-4", self.seed())
             assert f.writes == []
 
@@ -403,7 +408,7 @@ class ReconcileTest(unittest.TestCase):
                 f.policies[-1]["enabled"] = False
             if kind == "broadened":
                 f.policies[-1]["rules"][0]["sources"] = [{"id": "All"}]
-            with self.subTest(kind=kind), self.assertRaises(ValueError):
+            with self.subTest(kind=kind), pytest.raises(ValueError):
                 f.reconcile("socrat-4")
             assert len(f.writes) == before
 
@@ -411,6 +416,6 @@ class ReconcileTest(unittest.TestCase):
         """An uncertain write remains blocking."""
         f = Fake()
         f.state["pending"] = {"method": "POST", "path": "policies"}
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             f.write("POST", "policies", {})
         assert f.writes == []

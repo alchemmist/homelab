@@ -23,7 +23,8 @@ def reject_unsafe_tls(node: object) -> None:
     if isinstance(node, dict):
         for key, item in node.items():
             if key == "allowInsecure" and item is not False:
-                raise SystemExit("TLS_POLICY")
+                msg = "TLS_POLICY"
+                raise SystemExit(msg)
             reject_unsafe_tls(item)
     elif isinstance(node, list):
         for item in node:
@@ -42,17 +43,20 @@ def validate_profile(outbound: dict[str, object]) -> None:
         or endpoint.get("port") != PORT
         or stream.get("security") != "reality"
     ):
-        raise SystemExit("PROFILE_POLICY")
+        msg = "PROFILE_POLICY"
+        raise SystemExit(msg)
     reject_unsafe_tls(outbound)
     if not isinstance((stream.get("realitySettings") or {}).get("publicKey"), str):
-        raise SystemExit("REALITY_IDENTITY")
+        msg = "REALITY_IDENTITY"
+        raise SystemExit(msg)
 
 
 def prepare(value):
     profiles = value if isinstance(value, list) else [value]
     outbounds = vless_outbounds(profiles)
     if len(outbounds) != 1:
-        raise SystemExit("PROFILE_COUNT")
+        msg = "PROFILE_COUNT"
+        raise SystemExit(msg)
     outbound = json.loads(json.dumps(outbounds[0]))
     validate_profile(outbound)
     outbound["tag"] = "service-vpn"
@@ -71,7 +75,7 @@ def prepare(value):
     }
 
 
-def main():
+def main() -> None:
     raw = open("/vpn-identity/subscription-url", encoding="utf8").read().strip()
     url = urlparse(raw)
     if (
@@ -83,14 +87,17 @@ def main():
         or url.query
         or url.fragment
     ):
-        raise SystemExit("SUBSCRIPTION_POLICY")
+        msg = "SUBSCRIPTION_POLICY"
+        raise SystemExit(msg)
     req = urllib.request.Request(raw, method="GET")
     with urllib.request.urlopen(req, timeout=8) as response:
         if response.status != 200:
-            raise SystemExit("SUBSCRIPTION_HTTP")
+            msg = "SUBSCRIPTION_HTTP"
+            raise SystemExit(msg)
         body = response.read(262145)
     if len(body) > 262144:
-        raise SystemExit("SUBSCRIPTION_SIZE")
+        msg = "SUBSCRIPTION_SIZE"
+        raise SystemExit(msg)
     config = prepare(json.loads(body.decode()))
     tmp = "/vpn-runtime/client.json.tmp"
     fd = os.open(tmp, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)

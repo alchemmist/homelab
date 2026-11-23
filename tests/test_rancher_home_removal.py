@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import NotRequired, TypedDict
 from unittest.mock import MagicMock, patch
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -155,7 +156,7 @@ class RancherDashboardFilteringTest(unittest.TestCase):
             patch.object(sys, "stdin", io.StringIO(yaml.safe_dump(self.home()))),
             patch.object(sys, "stdout", io.StringIO()),
         ):
-            with self.assertRaisesRegex(RuntimeError, "missing Rancher dashboards: required"):
+            with pytest.raises(RuntimeError, match="missing Rancher dashboards: required"):
                 RENDERER.main()
 
 

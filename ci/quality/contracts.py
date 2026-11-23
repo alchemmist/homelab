@@ -27,13 +27,11 @@ def unique_json(pairs):
     return result
 
 
-def local_refs(value):
+def local_refs(value) -> None:
     """Execute local_refs."""
     if isinstance(value, dict):
         for key, item in value.items():
-            if key in {"properties", "patternProperties", "definitions"} and isinstance(
-                item, dict
-            ):
+            if key in {"properties", "patternProperties", "definitions"} and isinstance(item, dict):
                 for subschema in item.values():
                     local_refs(subschema)
             elif key == "$ref":
@@ -96,7 +94,7 @@ def owned_test_files(names: list[str]) -> set[str]:
     }
 
 
-def check():
+def check() -> None:
     """Execute check."""
     frozen_source_files()
     for policy in (ROOT / "ci/quality").rglob("*.json"):

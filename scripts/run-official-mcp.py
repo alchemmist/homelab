@@ -51,21 +51,22 @@ def command(name):
         )
         args = ["node", str(BASE / "npm/node_modules/@umami/mcp/bin/umami-mcp.js")]
     else:
-        raise ValueError("Unknown official MCP server")
+        msg = "Unknown official MCP server"
+        raise ValueError(msg)
     return args, env
 
 
-def main():
+def main() -> None:
     """Execute main."""
     if len(sys.argv) != 2 or sys.argv[1] not in ("argocd", "metrics", "umami"):
-        raise SystemExit("Usage: run-official-mcp.py {argocd|metrics|umami}")
+        msg = "Usage: run-official-mcp.py {argocd|metrics|umami}"
+        raise SystemExit(msg)
     try:
         args, env = command(sys.argv[1])
         os.execvpe(args[0], args, env)
     except (OSError, ValueError):
-        raise SystemExit(
-            "Official MCP prerequisite missing/unsafe; run scripts/setup-official-mcp.py (no tokens in logs)."
-        ) from None
+        msg = "Official MCP prerequisite missing/unsafe; run scripts/setup-official-mcp.py (no tokens in logs)."
+        raise SystemExit(msg) from None
 
 
 if __name__ == "__main__":

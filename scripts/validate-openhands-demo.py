@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Collection
 
 ROOT = Path(__file__).resolve().parents[1]
-IMAGE = "ghcr.io/openhands/agent-canvas:1.41.0@sha256:dcae97b63c9845fd1d4313857af6b10fb5888324a154238c4795ef86233d227c"
+IMAGE = "ghcr.io/openhands/agent-canvas:1.43.0@sha256:bcdbb3fb9610f14eda67f39fc609f162ad8c3c28697d6ff3f4adae55c15c3f1d"
 
 
 def kubectl(*args, data=None) -> bytes:
@@ -39,7 +39,8 @@ def selector_matches(selector, labels) -> bool:
         elif op == "DoesNotExist":
             matches = key not in labels
         else:
-            raise ValueError("Unknown label selector operator")
+            msg = "Unknown label selector operator"
+            raise ValueError(msg)
         if not matches:
             return False
     return True
@@ -135,14 +136,16 @@ def main() -> None:
         base + "test_intervals.py",
     ).decode()
     if live_tests != original:
-        raise SystemExit("STOP: agent modified acceptance tests")
+        msg = "STOP: agent modified acceptance tests"
+        raise SystemExit(msg)
     name = "openhands-demo-validation-" + secrets.token_hex(4)
     cm, np, job = resources(name, candidate, original)
     # NetworkPolicies are additive: an overlapping allow policy defeats deny-all.
     policies = json.loads(kubectl("-n", "identity", "get", "networkpolicy", "-o", "json"))
     labels = cast("dict[str, str]", job["spec"]["template"]["metadata"]["labels"])
     if any(selector_matches(p["spec"]["podSelector"], labels) for p in policies["items"]):
-        raise SystemExit("STOP: overlapping NetworkPolicy; isolation not established")
+        msg = "STOP: overlapping NetworkPolicy; isolation not established"
+        raise SystemExit(msg)
     created = []
     try:
         for kind, obj in [("configmap", cm), ("networkpolicy", np), ("job", job)]:
@@ -176,7 +179,8 @@ def main() -> None:
         }
         print(json.dumps(report))
         if not ok:
-            raise SystemExit("Independent validation failed")
+            msg = "Independent validation failed"
+            raise SystemExit(msg)
     finally:
         # Do not remove the isolation policy while any candidate process can run.
         # On deletion failure, retain the policy/snapshot and fail visibly.

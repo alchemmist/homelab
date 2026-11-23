@@ -85,9 +85,10 @@ def complete(name, messages, expected, minimum_request_bytes=0):
     }
     encoded_payload = json.dumps(payload).encode()
     if len(encoded_payload) <= minimum_request_bytes:
-        raise ValueError(
+        msg = (
             f"{name}: request must exceed {minimum_request_bytes} bytes, got {len(encoded_payload)}"
         )
+        raise ValueError(msg)
     print(f"REQUEST {name}: {len(encoded_payload)} bytes", flush=True)
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
     request = urllib.request.Request(
@@ -99,7 +100,8 @@ def complete(name, messages, expected, minimum_request_bytes=0):
     content = choice["message"].get("content") or ""
     normalized = "".join(content.upper().split())
     if choice.get("finish_reason") == "length" or not all(code in normalized for code in expected):
-        raise ValueError(f"{name}: expected synthetic codes {expected}, received {content[:160]!r}")
+        msg = f"{name}: expected synthetic codes {expected}, received {content[:160]!r}"
+        raise ValueError(msg)
     usage = result.get("usage") or {}
     print(
         f"PASS {name}: {time.monotonic() - started:.2f}s; "
@@ -109,7 +111,7 @@ def complete(name, messages, expected, minimum_request_bytes=0):
     return {"role": "assistant", "content": content}
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     parser = argparse.ArgumentParser()
     parser.add_argument(

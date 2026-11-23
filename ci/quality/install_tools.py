@@ -13,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def install(record, destination):
+def install(record, destination) -> None:
     """Execute install."""
     if record["name"] not in {
         "trivy",
@@ -27,7 +27,8 @@ def install(record, destination):
         "shellcheck",
         "kube-linter",
     }:
-        raise ValueError("Unknown or escaping tool name")
+        msg = "Unknown or escaping tool name"
+        raise ValueError(msg)
     process = subprocess.run(
         [
             "/usr/bin/curl",
@@ -55,21 +56,24 @@ def install(record, destination):
     )
     data = process.stdout
     if len(data) > 256 * 1024 * 1024:
-        raise ValueError("Tool archive exceeds limit")
+        msg = "Tool archive exceeds limit"
+        raise ValueError(msg)
     if hashlib.sha256(data).hexdigest() != record["sha256"]:
-        raise ValueError("Tool checksum mismatch")
+        msg = "Tool checksum mismatch"
+        raise ValueError(msg)
     if record["member"]:
         with tarfile.open(fileobj=io.BytesIO(data)) as archive:
             member = archive.getmember(record["member"])
             if not member.isfile() or member.size > 256 * 1024 * 1024:
-                raise ValueError("Unsafe tool archive member")
+                msg = "Unsafe tool archive member"
+                raise ValueError(msg)
             data = archive.extractfile(member).read()
     target = destination / record["name"]
     target.write_bytes(data)
     target.chmod(0o755)
 
 
-def main():
+def main() -> None:
     """Execute main."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--tools", nargs="+")
@@ -77,13 +81,15 @@ def main():
     key = f"{platform.system().lower()}-{platform.machine()}"
     lock = json.loads((ROOT / "ci/quality/tools.lock.json").read_text())
     if key not in lock["platforms"]:
-        raise ValueError(f"Unsupported tool platform: {key}")
+        msg = f"Unsupported tool platform: {key}"
+        raise ValueError(msg)
     destination = ROOT / ".quality-tools/bin"
     destination.mkdir(parents=True, exist_ok=True)
     records = lock["platforms"][key]
     if args.tools:
         if set(args.tools) - {r["name"] for r in records}:
-            raise ValueError("Unknown tool requested")
+            msg = "Unknown tool requested"
+            raise ValueError(msg)
         records = [r for r in records if r["name"] in args.tools]
     for record in records:
         install(record, destination)

@@ -70,9 +70,7 @@ def require_http_protocol() -> None:
     """Fail unless the installed exporter selected the pinned HTTP protocol."""
     if os.environ.get("OTEL_EXPORTER_OTLP_TRACES_PROTOCOL") != "http/protobuf":
         msg = "vLLM ignores generic protocol for this selector; insecure gRPC path forbidden"
-        raise ValueError(
-            msg
-        )
+        raise ValueError(msg)
 
 
 def require_fresh_handshakes(*, renewal: bool) -> None:
@@ -215,7 +213,7 @@ def publish_result(*, result: dict[str, object], renewal: bool, valid: bool) -> 
         raise SystemExit(1)
 
 
-def run():
+def run() -> None:
     logging.disable(logging.CRITICAL)
     require_http_protocol()
     renewal = os.environ.get("HOMELAB_AWAIT_LEAF_RENEWAL") == "1"
@@ -257,16 +255,16 @@ def run():
         }
 
         class Audit(SpanProcessor):
-            def on_start(self, span, parent_context=None):
+            def on_start(self, span, parent_context=None) -> None:
                 pass
 
-            def on_end(self, span):
+            def on_end(self, span) -> None:
                 audit_on_end(span, audit)
 
-            def shutdown(self):
+            def shutdown(self) -> None:
                 pass
 
-            def force_flush(self, timeout_millis=30000):
+            def force_flush(self, timeout_millis=30000) -> bool:
                 return True
 
         provider.add_span_processor(Audit())

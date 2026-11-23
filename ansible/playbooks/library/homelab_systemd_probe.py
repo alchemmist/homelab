@@ -9,7 +9,10 @@ def main() -> None:
     module = AnsibleModule(
         argument_spec={
             "units": {"type": "list", "elements": "str", "required": True},
-            "property": {"type": "str", "choices": ["ActiveState", "LoadState", "DropInPaths", "ExecStart"]},
+            "property": {
+                "type": "str",
+                "choices": ["ActiveState", "LoadState", "DropInPaths", "ExecStart"],
+            },
         },
         supports_check_mode=True,
     )
@@ -24,7 +27,12 @@ def main() -> None:
         module.exit_json(skipped=True, changed=False, rc=0, stdout="", stderr="")
     query = ["show", "--property", prop, "--value"] if prop else ["is-active"]
     rc, out, err = module.run_command(["systemctl", *query, "--", *units])
-    result = {"changed": False, "rc": rc, "stdout": out.rstrip("\r\n"), "stderr": err.rstrip("\r\n")}
+    result = {
+        "changed": False,
+        "rc": rc,
+        "stdout": out.rstrip("\r\n"),
+        "stderr": err.rstrip("\r\n"),
+    }
     if rc:
         module.fail_json(msg="Systemd unit probe failed", **result)
     module.exit_json(**result)

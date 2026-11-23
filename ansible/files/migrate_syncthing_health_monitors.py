@@ -51,7 +51,7 @@ def migrate(database, plan, check=False):
     return {"changed": True, "updated": len(updates), "backup": str(backup_path)}
 
 
-def main():
+def main() -> None:
     """Main."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--database", type=Path, required=True)

@@ -8,6 +8,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 SOURCE = (
     Path(__file__).resolve().parents[1] / "ansible/roles/ssh_gateway/files/homelab_ssh_gateway.py"
 )
@@ -79,7 +81,7 @@ class GatewayTests(unittest.TestCase):
             patch.object(GATEWAY, "ssh_port", return_value=2222),
             patch.object(GATEWAY.subprocess, "run", return_value=output) as run,
         ):
-            with self.assertRaisesRegex(RuntimeError, "unmanaged"):
+            with pytest.raises(RuntimeError, match="unmanaged"):
                 GATEWAY.reconcile(self.config)
         assert run.call_count == 1
 
@@ -112,7 +114,7 @@ class GatewayTests(unittest.TestCase):
             patch.object(GATEWAY, "ssh_port", return_value=2222),
             patch.object(GATEWAY.subprocess, "run", side_effect=responses) as run,
         ):
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 GATEWAY.reconcile(self.config)
         assert run.call_args_list[3].args[0][-6:] == [
             "-a",

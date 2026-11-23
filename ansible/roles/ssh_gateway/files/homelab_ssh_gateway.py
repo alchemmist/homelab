@@ -46,10 +46,11 @@ def ssh_port(node):
                     return port
         except OSError:
             continue
-    raise RuntimeError(f"No SSH listener on {node['name']} ({node['address']})")
+    msg = f"No SSH listener on {node['name']} ({node['address']})"
+    raise RuntimeError(msg)
 
 
-def _reconcile_node(config, prefix, mappings, owned, node):
+def _reconcile_node(config, prefix, mappings, owned, node) -> None:
     """Add or refresh the port mapping for one managed SSH node."""
     port = ssh_port(node)
     address = node["address"]
@@ -72,13 +73,14 @@ def _reconcile_node(config, prefix, mappings, owned, node):
             msg = "External port is occupied by an unmanaged mapping"
             raise RuntimeError(msg)
         subprocess.run(
-            prefix + ["-d", str(node["external_port"]), "TCP"],
+            [*prefix, "-d", str(node["external_port"]), "TCP"],
             capture_output=True,
             text=True,
             timeout=15,
             check=True,
         )
-    command = prefix + [
+    command = [
+        *prefix,
         "-e",
         description,
         "-a",
@@ -100,8 +102,8 @@ def _reconcile_node(config, prefix, mappings, owned, node):
         if existing:
             try:
                 subprocess.run(
-                    prefix
-                    + [
+                    [
+                        *prefix,
                         "-e",
                         existing[2],
                         "-a",
@@ -122,10 +124,10 @@ def _reconcile_node(config, prefix, mappings, owned, node):
     print(f"{node['name']}: {node['external_port']} -> {address}:{port}", flush=True)
 
 
-def reconcile(config):
+def reconcile(config) -> None:
     """Execute the reconcile operation."""
     prefix = ["upnpc", "-u", config["router_description"]]
-    listing = subprocess.run(prefix + ["-l"], capture_output=True, text=True, timeout=15)
+    listing = subprocess.run([*prefix, "-l"], capture_output=True, text=True, timeout=15)
     if (
         listing.returncode
         or f"ExternalIPAddress = {config['external_address']}" not in listing.stdout
@@ -152,7 +154,7 @@ def reconcile(config):
         raise RuntimeError("\n".join(errors))
 
 
-def relay(config, name):
+def relay(config, name) -> None:
     """Execute the relay operation."""
     node = next(node for node in config["nodes"] if node["name"] == name and node.get("relay"))
     port = ssh_port(node)
@@ -161,7 +163,7 @@ def relay(config, name):
     )
 
 
-def main():
+def main() -> None:
     """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=CONFIG)

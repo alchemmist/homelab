@@ -69,7 +69,8 @@ def test_gateway_and_monitoring_policies_select_real_cross_release_workloads() -
         "charts/prometheus/alert-graphs.values.yaml",
     )
     prometheus_service = next(
-        obj for obj in prometheus
+        obj
+        for obj in prometheus
         if obj.get("kind") == "Service"
         and obj["metadata"]["name"] == "kube-prometheus-stack-prometheus"
     )

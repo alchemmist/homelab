@@ -25,11 +25,11 @@ ARGO_STATE_CHECK_COUNT = 5
 class TrafficLightArgoTest(unittest.TestCase):
     """Tests for TrafficLightArgoTest."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.dashboard = lab.build()
         self.panels = {p["id"]: p for p in self.dashboard["panels"]}
 
-    def test_generated_copy_and_unchanged_original_panels(self):
+    def test_generated_copy_and_unchanged_original_panels(self) -> None:
         assert json.loads(lab.OUTPUT.read_text()) == self.dashboard
         assert self.dashboard["uid"] == "socrat-traffic-light"
         original = json.loads(lab.SOURCE.read_text())
@@ -41,7 +41,7 @@ class TrafficLightArgoTest(unittest.TestCase):
         }
         assert not set(self.panels) & set(range(950, 976))
 
-    def test_current_strip_is_per_application_native_bar_gauge_without_chrome(self):
+    def test_current_strip_is_per_application_native_bar_gauge_without_chrome(self) -> None:
         p = self.panels[909]
         assert p["type"] == "bargauge"
         assert p["gridPos"] == {"x": 0, "y": 18, "w": 12, "h": 1}
@@ -98,7 +98,7 @@ class TrafficLightArgoTest(unittest.TestCase):
             str(code + 1): {"text": name, "color": color} for name, code, color in lab.STATES
         }
 
-    def test_generator_preserves_manual_argo_geometry_and_thresholds(self):
+    def test_generator_preserves_manual_argo_geometry_and_thresholds(self) -> None:
         original = json.loads(lab.SOURCE.read_text())
         owner = next(p for p in original["panels"] if p["id"] == ARGOCD_STRIP_PANEL_ID)
         panel = self.panels[909]
@@ -110,7 +110,7 @@ class TrafficLightArgoTest(unittest.TestCase):
         )
 
     @unittest.skipUnless(shutil.which("helm"), "helm needed for apply-size regression")
-    def test_rendered_apply_annotation_stays_below_kubernetes_limit(self):
+    def test_rendered_apply_annotation_stays_below_kubernetes_limit(self) -> None:
         import yaml
 
         chart = ROOT / "charts/monitoring-k3s"
@@ -133,7 +133,7 @@ class TrafficLightArgoTest(unittest.TestCase):
         assert len(json.dumps(cm, separators=(",", ":")).encode()) < MAX_DASHBOARD_BYTES
         assert json.loads(next(iter(cm["data"].values()))) == self.dashboard
 
-    def test_nonoverlapping_tv_grid(self):
+    def test_nonoverlapping_tv_grid(self) -> None:
         occupied = {}
         for p in self.dashboard["panels"]:
             g = p["gridPos"]
@@ -146,7 +146,7 @@ class TrafficLightArgoTest(unittest.TestCase):
         assert len(self.panels) == len(self.dashboard["panels"])
 
     @unittest.skipUnless(shutil.which("promtool"), "promtool needed for PromQL semantics")
-    def test_promql_partition_latest_labels_and_telemetry_gaps(self):
+    def test_promql_partition_latest_labels_and_telemetry_gaps(self) -> None:
         def series(name, values="1+0x120"):
             return {"series": name, "values": values}
 
@@ -158,14 +158,14 @@ class TrafficLightArgoTest(unittest.TestCase):
 
         def checks(counts, when="30m"):
             if len(counts) == ARGO_STATE_CHECK_COUNT:
-                counts = counts + [None if counts[0] is None else 0]
+                counts = [*counts, None if counts[0] is None else 0]
             return [
                 {
                     "expr": expr,
                     "eval_time": when,
                     "exp_samples": [] if n is None else [{"labels": "{}", "value": n}],
                 }
-                for (_, expr, _), n in zip(lab.queries()[1], counts)
+                for (_, expr, _), n in zip(lab.queries()[1], counts, strict=False)
             ]
 
         up = series('up{job="socrat-argocd"}')

@@ -49,7 +49,8 @@ class GitHub:
             with urllib.request.urlopen(request, timeout=45) as response:
                 return json.load(response)
         except urllib.error.HTTPError as exc:
-            raise RuntimeError(f"GitHub {method} failed (HTTP {exc.code})") from None
+            msg = f"GitHub {method} failed (HTTP {exc.code})"
+            raise RuntimeError(msg) from None
 
     def compare(self, before: str, after: str) -> Comparison:
         """Validate both commit SHAs before any comparison is attempted."""

@@ -16,7 +16,7 @@ HOST = "socrat-0"
 JOBS = {"vllm", "litellm"}
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     deadline = time.monotonic() + 120
     while True:

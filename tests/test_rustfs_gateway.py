@@ -10,6 +10,8 @@ import unittest
 from email.message import Message
 from pathlib import Path
 
+import pytest
+
 spec = importlib.util.spec_from_file_location(
     "gateway",
     Path(__file__).resolve().parents[1] / "services/rustfs_gateway/gateway.py",
@@ -30,7 +32,7 @@ METHOD_NOT_ALLOWED_STATUS = 405
 class Tests(unittest.TestCase):
     """Validate RustFS gateway key-path handling."""
 
-    def test_paths(self):
+    def test_paths(self) -> None:
         assert g.valid_key(BASE + "manifest.json") == (BASE + "manifest.json")[1:]
         assert g.valid_key(BASE + "E001-test.json")
         for tail in [
@@ -44,10 +46,10 @@ class Tests(unittest.TestCase):
             "E001-é",
             "manifest.json/",
         ]:
-            with self.subTest(tail=tail), self.assertRaises(ValueError):
+            with self.subTest(tail=tail), pytest.raises(ValueError):
                 g.valid_key(BASE + tail)
 
-    def test_sign_vector(self):
+    def test_sign_vector(self) -> None:
         # Determinism and request binding; independent OpenSSL canonical vector below.
         headers = g.sign(
             "GET",
@@ -74,10 +76,10 @@ class Tests(unittest.TestCase):
             "http://user@rustfs/a",
             "http://rustfs/a#frag",
         ]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 g.sign("GET", url, "a", "b")
 
-    def test_bounded(self):
+    def test_bounded(self) -> None:
         class Response(io.BytesIO):
             status = 200
             headers = Message()
@@ -95,17 +97,17 @@ class Tests(unittest.TestCase):
             r = Response(body)
             r.headers = Message()
             r.headers["Content-Length"] = length
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 g.bounded(r)
 
-    def test_http_auth_and_exact_bytes(self):
+    def test_http_auth_and_exact_bytes(self) -> None:
         class Reader:
             calls = []
 
-            def authorization(self, cookie):
+            def authorization(self, cookie) -> int:
                 return 200 if cookie == "valid=1" else 401
 
-            def read(self, key):
+            def read(self, key) -> bytes:
                 self.calls.append(key)
                 return b'{"x":1}\n'
 
@@ -202,7 +204,7 @@ class Tests(unittest.TestCase):
 class Integrity(unittest.TestCase):
     """Verify lazy readers check manifests and file content."""
 
-    def test_reader_checks_manifest_and_file(self):
+    def test_reader_checks_manifest_and_file(self) -> None:
         import json
 
         file = b'{"safe":true}'
@@ -230,19 +232,19 @@ class Integrity(unittest.TestCase):
         assert reader.read(prefix + "/E001-safe.json") == file
         assert reader.read(prefix + "/manifest.json") == manifest
         objects[prefix + "/E001-safe.json"] = b"changed"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             reader.read(prefix + "/E001-safe.json")
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             reader.read(prefix + "/E002-other.json")
         objects[prefix + "/manifest.json"] = b"{}"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             reader.read(prefix + "/manifest.json")
 
-    def test_redirect_denied(self):
-        with self.assertRaises(ValueError):
+    def test_redirect_denied(self) -> None:
+        with pytest.raises(ValueError):
             g.NoRedirect().redirect_request(None, None, 302, "", {}, "http://evil/")
 
-    def test_trusted_auth_response(self):
+    def test_trusted_auth_response(self) -> None:
         import os
         from unittest.mock import patch
 
@@ -280,7 +282,7 @@ class Integrity(unittest.TestCase):
         assert not reader.authorized("")
         assert not reader.authorized("a\r\nX-authentik-groups: homelab-owner")
 
-    def test_signing_against_openssl_canonical_vector(self):
+    def test_signing_against_openssl_canonical_vector(self) -> None:
         import subprocess
 
         def sha(data):
@@ -331,7 +333,7 @@ class Integrity(unittest.TestCase):
 class PreservedPreviewTests(unittest.TestCase):
     """Check preview always serves an allow-listed safe type."""
 
-    def test_preview_type_allowlist(self):
+    def test_preview_type_allowlist(self) -> None:
         for name, mime in [
             ("E001-file.pdf", "application/pdf"),
             ("E001-file.png", "image/png"),
@@ -353,12 +355,12 @@ class PreservedPreviewTests(unittest.TestCase):
             "bytes=2-1",
             "Bytes=0-1",
         ]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 g.byte_range(value, 8)
         assert g.byte_range("bytes=-2", 8) == (6, 7)
         assert g.byte_range("bytes=2-", 8) == (2, 7)
 
-    def test_v3_binary_artifact_integrity(self):
+    def test_v3_binary_artifact_integrity(self) -> None:
         import json
 
         body = b"\x89PNG\r\n\x1a\n\xff\x00"
@@ -385,5 +387,5 @@ class PreservedPreviewTests(unittest.TestCase):
         reader.object = lambda key: objects[key]
         assert reader.read(prefix + "/E001-image.png") == body
         objects[prefix + "/E001-image.png"] = b"corrupt"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             reader.read(prefix + "/E001-image.png")

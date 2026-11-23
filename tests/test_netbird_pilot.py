@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TypedDict
 from unittest.mock import patch
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -184,7 +185,7 @@ class PilotTests(unittest.TestCase):
         nb.validate(inputs())
         for key in inputs():
             c = {k: v for k, v in inputs().items() if k != key}
-            with self.subTest(key=key), self.assertRaises(ValueError):
+            with self.subTest(key=key), pytest.raises(ValueError):
                 nb.validate(c)
         for key in nb.REVIEWS:
             document = inputs()
@@ -192,10 +193,10 @@ class PilotTests(unittest.TestCase):
             if key == "existing_node_router_mode_reviewed":
                 nb.validate(document)
                 document["routing_peers"][0]["host"] = "socrat-2"
-                with self.subTest(review=key), self.assertRaises(ValueError):
+                with self.subTest(review=key), pytest.raises(ValueError):
                     nb.validate(document)
                 continue
-            with self.subTest(review=key), self.assertRaises(ValueError):
+            with self.subTest(review=key), pytest.raises(ValueError):
                 nb.validate(document)
 
     def test_no_broad_networks_ports_or_all_to_all(self) -> None:
@@ -210,7 +211,7 @@ class PilotTests(unittest.TestCase):
         ]:
             c = inputs()
             c["resources"][0]["address"] = address
-            with self.subTest(address=address), self.assertRaises(ValueError):
+            with self.subTest(address=address), pytest.raises(ValueError):
                 nb.validate(c)
         for field, value in [
             ("ports", [80, 443]),
@@ -219,11 +220,11 @@ class PilotTests(unittest.TestCase):
         ]:
             c = inputs()
             c["resources"][0][field] = value
-            with self.subTest(field=field), self.assertRaises(ValueError):
+            with self.subTest(field=field), pytest.raises(ValueError):
                 nb.validate(c)
         c = inputs()
         c["resources"][1]["ports"] = [22]
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             nb.validate(c)
 
     def test_mesh_k3s_transport_never_selected_as_overlay(self) -> None:
@@ -237,14 +238,14 @@ class PilotTests(unittest.TestCase):
         ]:
             c = inputs()
             c["overlay_cidr"] = network
-            with self.subTest(network=network), self.assertRaises(ValueError):
+            with self.subTest(network=network), pytest.raises(ValueError):
                 nb.validate(c)
 
     def test_one_ssh_router_is_not_a_second_ha_peer(self) -> None:
         """A single SSH router is not a second HA peer."""
         empty = inputs()
         empty["routing_peers"] = []
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             nb.validate(empty)
         doubled = inputs()
         doubled["routing_peers"].append(
@@ -255,18 +256,18 @@ class PilotTests(unittest.TestCase):
                 "metric": 200,
             }
         )
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             nb.validate(doubled)
         blocked = inputs()
         blocked["review"]["existing_node_router_mode_reviewed"] = False
         blocked["routing_peers"][0]["host"] = "socrat-2"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             nb.validate(blocked)
         allowed = inputs()
         allowed["routing_peers"][0]["host"] = "socrat-0"
         allowed["review"]["existing_node_router_mode_reviewed"] = True
         nb.validate(allowed)
-        with tempfile.TemporaryDirectory() as directory, self.assertRaises(ValueError):
+        with tempfile.TemporaryDirectory() as directory, pytest.raises(ValueError):
             nb.render(allowed, Path(directory) / "routers")
         compose = nb.router_compose(allowed, allowed["routing_peers"][0])
         assert set(compose["services"]) == {"routing-peer"}
@@ -308,9 +309,9 @@ class PilotTests(unittest.TestCase):
         assert nb.ingress_allowed(policy, "10.42.0.20", 9000)
         assert not nb.ingress_allowed(policy, "10.42.0.20", 9090)
         assert not nb.ingress_allowed(policy, "203.0.113.10", 3478, "UDP")
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             nb.manifests(inputs(), "internal", ["10.43.0.1/32"])
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             nb.manifests(inputs(), "internal", None)
 
     def test_manifest_pins_runtime_secret_singleton_no_argo(self) -> None:
@@ -422,7 +423,7 @@ class PilotTests(unittest.TestCase):
         for key in ["policies", "routes"]:
             s = snapshot()
             s[key] = [{"id": "default"}]
-            with self.subTest(key=key), self.assertRaises(ValueError):
+            with self.subTest(key=key), pytest.raises(ValueError):
                 nb.access_requests(inputs(), bindings(), s)
         for field, value in [
             ("name", "All"),
@@ -431,15 +432,15 @@ class PilotTests(unittest.TestCase):
         ]:
             s = snapshot()
             s["groups"][2][field] = value
-            with self.subTest(field=field), self.assertRaises(ValueError):
+            with self.subTest(field=field), pytest.raises(ValueError):
                 nb.access_requests(inputs(), bindings(), s)
         s = snapshot()
         s["groups"][0]["issued"] = "api"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             nb.access_requests(inputs(), bindings(), s)
         b = bindings()
         b["peer_ids"]["router-b"] = b["peer_ids"]["router-a"]
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             nb.access_requests(inputs(), b, snapshot())
 
     def test_network_current_schema_empty_required_no_partial_replay(self) -> None:
@@ -453,7 +454,7 @@ class PilotTests(unittest.TestCase):
                     s["networks"][0][field] = value
                 with (
                     self.subTest(field=field, value=value),
-                    self.assertRaisesRegex(ValueError, "complete current API"),
+                    pytest.raises(ValueError, match="complete current API"),
                 ):
                     nb.access_requests(inputs(), bindings(), s)
 
@@ -475,13 +476,13 @@ class PilotTests(unittest.TestCase):
                     s["groups"][2][field] = value
                 with (
                     self.subTest(field=field, value=value),
-                    self.assertRaises(ValueError),
+                    pytest.raises(ValueError),
                 ):
                     nb.access_requests(inputs(), bindings(), s)
         # A second JWT group with the destination name is unsafe even if the bound ID is API-issued.
         s = snapshot()
         s["groups"].append({**s["groups"][2], "id": "duplicate0001", "issued": "jwt"})
-        with self.assertRaisesRegex(ValueError, "group ID/name mismatch"):
+        with pytest.raises(ValueError, match="group ID/name mismatch"):
             nb.access_requests(inputs(), bindings(), s)
 
     def test_settings_group_propagation_expiry_expose_and_ipv6(self) -> None:
@@ -503,7 +504,7 @@ class PilotTests(unittest.TestCase):
             assert {p.name: p.read_bytes() for p in a.iterdir()} == {
                 p.name: p.read_bytes() for p in b.iterdir()
             }
-            with self.assertRaises(FileExistsError):
+            with pytest.raises(FileExistsError):
                 nb.render(inputs(), a)
 
     def test_runtime_config_secrets_not_printed_and_mode_0600(self) -> None:
@@ -563,7 +564,7 @@ class UpstreamContractTests(unittest.TestCase):
         assert hashlib.sha256(path.read_bytes()).hexdigest() == lock["sources"]["openapi"]["sha256"]
         schemas = yaml.safe_load(path.read_text())["components"]["schemas"]
 
-        def check(name, body):
+        def check(name, body) -> None:
             schema = {
                 "$ref": "#/components/schemas/" + name,
                 "components": {"schemas": schemas},

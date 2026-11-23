@@ -68,7 +68,8 @@ def test_cloud_atomic_permissions_and_no_active_swap_mutation(tmp_path) -> None:
     assert source.index("require(result.returncode == 0") < source.index(
         "command(['systemctl', 'reset-failed'"
     )
-    assert "'swapoff'" not in source and "'mkswap'," not in source
+    assert "'swapoff'" not in source
+    assert "'mkswap'," not in source
     assert "'cloud-init', 'clean'" not in source
 
 

@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.parametrize(
-    "chart,ns,service,authorization",
+    ("chart", "ns", "service", "authorization"),
     [
         ("open-webui", "llm", "open-webui", "native-oidc"),
         ("searxng", "llm", "searxng", "public"),
@@ -25,11 +25,9 @@ def test_direct_route_and_reject_mislabeled_backend(
     """Require each published route identity and reject a substituted service name."""
     values = yaml.safe_load((ROOT / f"charts/{chart}/values.yaml").read_text())
     route = values["publicEntry"]["routes"][0]
-    assert (
-        route["namespace"] == ns
-        and route["service"] == service
-        and route["authorization"] == authorization
-    )
+    assert route["namespace"] == ns
+    assert route["service"] == service
+    assert route["authorization"] == authorization
     route["service"] = "unreviewed-service"
     override = tmp_path / "override.yaml"
     override.write_text(yaml.safe_dump(values))
@@ -109,7 +107,8 @@ def test_private_reader_has_only_pinned_idp_egress_and_storage_keeps_s3_iam() ->
 def test_syncthing_public_route_has_no_extra_basic_auth_wrapper() -> None:
     """Require the Syncthing public route to proxy without a second auth wrapper."""
     nginx = (ROOT / "charts/syncthing/files/syncthing-policy.conf").read_text()
-    assert "auth_basic" not in nginx and "auth_request" not in nginx
+    assert "auth_basic" not in nginx
+    assert "auth_request" not in nginx
     assert "return 410" in nginx
     assert "proxy_pass http://gui0" in nginx
 

@@ -83,7 +83,7 @@ def require(expected: object, message: str) -> None:
         raise ValueError(message)
 
 
-def run(output, apply):
+def run(output, apply) -> None:
     os.umask(0o077)
     controller = Path.home() / "Library/Application Support/homelab/otel-controller"
     require(
@@ -286,9 +286,8 @@ def run(output, apply):
             print(json.dumps(receipt))
             return
         time.sleep(5)
-    raise ValueError(
-        "Readiness or natural request drain pending; preserve preimages, never force kill or automatically delete/restore DB"
-    )
+    msg = "Readiness or natural request drain pending; preserve preimages, never force kill or automatically delete/restore DB"
+    raise ValueError(msg)
 
 
 if __name__ == "__main__":

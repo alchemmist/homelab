@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from typing import Protocol
 from unittest.mock import Mock, patch
 
+import pytest
 import test_triage as fixture
 from core import Failure
 from telegram_delivery import Delivery
@@ -89,7 +90,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         """Verify ambiguous comments reconcile without a second write."""
         key = self.process(through=3)
         self.github.request.side_effect = Failure("UPSTREAM_NETWORK_ERROR")
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.run("publish", key)
         url = "https://github.com/alchemmist/homelab/issues/7#issuecomment-778"
         self.github.reconcile.return_value = 7
@@ -112,7 +113,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         key = self.process(through=3)
         before = self.store.get(key)["result"]
         self.links.record_primary_publication = Mock(side_effect=RuntimeError("db fault"))
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             self.engine.save_primary(
                 key,
                 dict(before),
@@ -383,7 +384,8 @@ class DeliveryIntegrationTests(unittest.TestCase):
 
         def reference(marker, issue) -> "dict[str, object]":
             if fixture.event("resolved")["event_key"] in marker:
-                raise Failure("UPSTREAM_NETWORK_ERROR")
+                msg = "UPSTREAM_NETWORK_ERROR"
+                raise Failure(msg)
             return {
                 "kind": "comment",
                 "role": "primary",
@@ -458,7 +460,8 @@ class DeliveryIntegrationTests(unittest.TestCase):
 
         def reference(marker, issue) -> "dict[str, object]":
             if fixture.event("resolved")["event_key"] in marker:
-                raise Failure("PRIMARY_PUBLICATION_MISSING")
+                msg = "PRIMARY_PUBLICATION_MISSING"
+                raise Failure(msg)
             return {
                 "kind": "issue",
                 "role": "primary",

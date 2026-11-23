@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -199,10 +200,10 @@ class GitOpsTests(unittest.TestCase):
             )
             == []
         )
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             gitops.desired(values, self.inventory("10.250.0.10"), image)
         _documents(values["resources"]).pop()
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             gitops.desired(values, self.inventory(), image)
 
     def test_controller_has_no_imperative_deployment_escape(self) -> None:
@@ -211,11 +212,11 @@ class GitOpsTests(unittest.TestCase):
         runtime.k = []
         with patch.object(gitops.node.subprocess, "run") as run:
             for operation in ["create", "apply", "replace", "patch", "scale", "run"]:
-                with self.subTest(operation=operation), self.assertRaises(ValueError):
+                with self.subTest(operation=operation), pytest.raises(ValueError):
                     runtime.kub([operation, "-f", "-"], {"kind": "Deployment"})
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 runtime.kub(["-n", gitops.node.NS, "rollout", "restart", "deployment/a"])
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 runtime.kub(["delete", "pvc", "anything"])
             run.assert_not_called()
 

@@ -54,7 +54,7 @@ def admin(method, path, data=None):
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
-    def redirect_request(self, *_args):
+    def redirect_request(self, *_args) -> None:
         """Refuse redirects so credentials are never forwarded."""
         return
 
@@ -197,7 +197,8 @@ asyncio.run(main())"""
                     )
                     if not key:
                         print("TOTP challenge fields:", sorted(challenge.keys()))
-                        raise RuntimeError("TOTP setup format needs driver update")
+                        msg = "TOTP setup format needs driver update"
+                        raise RuntimeError(msg)
                     key = base64.b32decode(key.upper() + "=" * ((-len(key)) % 8))
                     h = hmac.new(
                         key, struct.pack(">Q", int(time.time()) // 30), hashlib.sha1
@@ -219,7 +220,8 @@ asyncio.run(main())"""
                     else json.loads(body)
                 )
             else:
-                raise RuntimeError("Too many flow challenges")
+                msg = "Too many flow challenges"
+                raise RuntimeError(msg)
         else:
             status, headers, body = browser(urllib.parse.urljoin(base, target))
             if status in [301, 302, 303, 307]:
@@ -231,7 +233,8 @@ asyncio.run(main())"""
                     profile.get("email") != username + "@example.invalid"
                     or profile.get("role") != "user"
                 ):
-                    raise RuntimeError("Unexpected WebUI identity or role")
+                    msg = "Unexpected WebUI identity or role"
+                    raise RuntimeError(msg)
                 if profile.get("token"):
                     claims = json.loads(
                         base64.urlsafe_b64decode(profile["token"].split(".")[1] + "===")
@@ -247,9 +250,11 @@ asyncio.run(main())"""
                 )
                 break
             else:
-                raise RuntimeError("Unexpected final non-Wiki page")
+                msg = "Unexpected final non-Wiki page"
+                raise RuntimeError(msg)
     else:
-        raise RuntimeError("Too many redirects")
+        msg = "Too many redirects"
+        raise RuntimeError(msg)
 finally:
     admin("DELETE", "core/users/" + str(user["pk"]) + "/")
     print("Temporary Authentik acceptance identity removed")

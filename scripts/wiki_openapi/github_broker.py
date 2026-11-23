@@ -78,7 +78,8 @@ def main() -> None:
         or permissions.get("pull_requests") != "write"
         or permissions.get("contents") != "write"
     ):
-        raise ValueError("APP_PERMISSION_MISSING")
+        msg = "APP_PERMISSION_MISSING"
+        raise ValueError(msg)
     PHASE = "mint"
     grant = cast(
         "_Grant",
@@ -104,7 +105,8 @@ def main() -> None:
         or granted.get("pull_requests") != "write"
         or granted.get("issues")
     ):
-        raise ValueError("INVALID_TOKEN_SCOPE")
+        msg = "INVALID_TOKEN_SCOPE"
+        raise ValueError(msg)
     root = Path("/var/run/secrets/kubernetes.io/serviceaccount")
     context = ssl.create_default_context(cafile=str(root / "ca.crt"))
     PHASE = "publish_secret"

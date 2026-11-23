@@ -14,7 +14,7 @@ CURRENT = Path("/usr/local/libexec/public_dns_zone.py")
 ROOT = Path("/var/lib/homelab-public-web-dns")
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     """Execute require."""
     if not ok:
         raise RuntimeError(message)
@@ -28,7 +28,7 @@ def load(path, name):
     return m
 
 
-def delta(old, new):
+def delta(old, new) -> None:
     """Execute delta."""
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         before = old.render(123, home, vps).splitlines()
@@ -45,7 +45,7 @@ def delta(old, new):
         )
 
 
-def main():
+def main() -> None:
     """Execute main."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")

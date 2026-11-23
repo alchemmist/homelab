@@ -25,9 +25,8 @@ def run(argv, *, data=None, check=True, timeout=180):
     )
     if check and result.returncode:
         # Only synthetic fixture commands reach this helper; no operator secrets.
-        raise RuntimeError(
-            f"Ephemeral {argv[0]} failed ({result.returncode}): {result.stderr[-3000:]}"
-        )
+        msg = f"Ephemeral {argv[0]} failed ({result.returncode}): {result.stderr[-3000:]}"
+        raise RuntimeError(msg)
     return result
 
 
@@ -109,7 +108,7 @@ def cluster(tmp_path_factory):
         )
 
 
-def test_release_reconciles_and_serves_http(cluster):
+def test_release_reconciles_and_serves_http(cluster) -> None:
     """Run test release reconciles and serves http."""
     _, config, context, kube = cluster
     ns = "chart-contract"
@@ -146,12 +145,12 @@ def test_release_reconciles_and_serves_http(cluster):
     assert dep["status"]["observedGeneration"] == dep["metadata"]["generation"]
     body = kube("get", "--raw", f"/api/v1/namespaces/{ns}/services/cats:80/proxy/").stdout
     assert "Welcome to nginx!" in body
-    run(args + ["--set", "replicaCount=3"], timeout=210)
+    run([*args, "--set", "replicaCount=3"], timeout=210)
     dep = json.loads(kube("-n", ns, "get", "deployment", "cats", "-o", "json").stdout)
     assert dep["status"]["availableReplicas"] == 3
 
 
-def test_apiserver_rejects_invalid_rendered_replica_count(cluster):
+def test_apiserver_rejects_invalid_rendered_replica_count(cluster) -> None:
     """Run test apiserver rejects invalid rendered replica count."""
     *_, kube = cluster
     rendered = run(
@@ -167,10 +166,11 @@ def test_apiserver_rejects_invalid_rendered_replica_count(cluster):
     dep = next(d for d in yaml.safe_load_all(rendered) if d and d["kind"] == "Deployment")
     result = kube("apply", "--dry-run=server", "-f", "-", data=json.dumps(dep), check=False)
     assert result.returncode != 0
-    assert "replicas" in result.stderr and "Invalid" in result.stderr
+    assert "replicas" in result.stderr
+    assert "Invalid" in result.stderr
 
 
-def test_application_reader_is_enforced_by_real_rbac(cluster):
+def test_application_reader_is_enforced_by_real_rbac(cluster) -> None:
     """Run test application reader is enforced by real rbac."""
     *_, kube = cluster
     spec = importlib.util.spec_from_file_location(
@@ -209,7 +209,7 @@ def test_application_reader_is_enforced_by_real_rbac(cluster):
         assert result.returncode == (0 if allowed else 1)
 
 
-def test_local_pv_retains_identity_after_claim_deletion(cluster):
+def test_local_pv_retains_identity_after_claim_deletion(cluster) -> None:
     """Run test local pv retains identity after claim deletion."""
     name, _, _, kube = cluster
     ns = "storage-contract"

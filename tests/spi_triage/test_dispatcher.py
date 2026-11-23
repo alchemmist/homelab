@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "charts/spi-triage/files"))
+import pytest
 from core import Store
 from dispatcher import Dispatcher
 
@@ -73,7 +74,7 @@ class DispatchTests(unittest.TestCase):
             patch("core.random.uniform", return_value=1),
         ):
             self.enqueue()
-            token, deadline = self.store.reserve_dispatch()
+            _token, deadline = self.store.reserve_dispatch()
             assert deadline == 130
             reopened = Store(self.store.path)
             assert reopened.reserve_dispatch(129) == (None, 130)
@@ -140,9 +141,9 @@ class ServiceSafetyTests(unittest.TestCase):
                         connection=left,
                         rfile=stream,
                     )
-                    with self.assertRaises(Failure) as caught:
+                    with pytest.raises(Failure) as caught:
                         read_request_body(handler, timeout=0.03)
-                    assert caught.exception.code == code
+                    assert caught.value.code == code
                     assert left.gettimeout() is None
             finally:
                 left.close()
@@ -193,7 +194,7 @@ class DispatchTransportTests(unittest.TestCase):
                 "dispatcher.threading.Timer",
                 side_effect=lambda seconds, callback: real_timer(0.02, callback),
             ),
-            self.assertRaises(http.client.RemoteDisconnected),
+            pytest.raises(http.client.RemoteDisconnected),
         ):
             Dispatcher(None, "unused")._post()
         assert connection.closed

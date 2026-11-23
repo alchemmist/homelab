@@ -21,13 +21,11 @@ state = json.loads(k("get", "job", job, "-o", "json"))
 assert any(c["type"] == "Complete" and c["status"] == "True" for c in state["status"]["conditions"])
 lines = k("logs", "job/" + job).splitlines()
 r = json.loads(next(l for l in reversed(lines) if l.startswith(b"{")))
-assert (
-    r["format"] == "openhands-full-claim-v2"
-    and r["restored_sqlite_integrity"] == "ok"
-    and r["verified_settings_and_handoff"]
-    and min(r["history_events"].values()) > 0
-    and r["excluded"] == []
-)
+assert r["format"] == "openhands-full-claim-v2"
+assert r["restored_sqlite_integrity"] == "ok"
+assert r["verified_settings_and_handoff"]
+assert min(r["history_events"].values()) > 0
+assert r["excluded"] == []
 key = subprocess.check_output(
     [
         "openssl",
@@ -42,7 +40,8 @@ key = subprocess.check_output(
     ],
     input=base64.b64decode(r["wrapped_key"], validate=True),
 )
-assert len(key) == 32 and hashlib.sha256(key).hexdigest() == r["key_sha256"]
+assert len(key) == 32
+assert hashlib.sha256(key).hexdigest() == r["key_sha256"]
 del key
 r.update(
     job_uid=state["metadata"]["uid"],

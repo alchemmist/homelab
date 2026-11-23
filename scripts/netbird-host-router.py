@@ -134,7 +134,8 @@ def parse_mib(value) -> int:
     """Parse a Kubernetes-style memory limit such as "96m" into MiB."""
     match = re.fullmatch(r"([1-9][0-9]*)m", value or "")
     if match is None:
-        raise ValueError("memory limit must look like 96m")
+        msg = "memory limit must look like 96m"
+        raise ValueError(msg)
     return int(match.group(1))
 
 
@@ -414,15 +415,14 @@ def _nft(host, facts) -> str:
     iface = facts["interface"]
     port = facts["frontend_port"]
     lines = [
-        "add table ip %s" % TABLE,
-        "add chain ip %s input { type filter hook input priority -50; policy accept; }" % TABLE,
-        "add chain ip %s forward { type filter hook forward priority -50; policy accept; }" % TABLE,
-        "add chain ip %s postrouting { type nat hook postrouting priority 90; policy accept; }"
-        % TABLE,
+        f"add table ip {TABLE}",
+        f"add chain ip {TABLE} input {{ type filter hook input priority -50; policy accept; }}",
+        f"add chain ip {TABLE} forward {{ type filter hook forward priority -50; policy accept; }}",
+        f"add chain ip {TABLE} postrouting {{ type nat hook postrouting priority 90; policy accept; }}",
         'add rule ip %s input iifname "%s" ip daddr %s tcp dport %d ct state new,established accept'
         % (TABLE, iface, OVERLAY_TOKEN, port),
-        'add rule ip %s input iifname "%s" ct state established,related accept' % (TABLE, iface),
-        'add rule ip %s input iifname "%s" drop' % (TABLE, iface),
+        f'add rule ip {TABLE} input iifname "{iface}" ct state established,related accept',
+        f'add rule ip {TABLE} input iifname "{iface}" drop',
         'add rule ip %s input iifname != "%s" tcp dport %d drop' % (TABLE, iface, port),
     ]
     if host["name"] == "socrat-0":
@@ -437,8 +437,7 @@ def _nft(host, facts) -> str:
             )
         )
         lines.append(
-            'add rule ip %s forward oifname "%s" ct state established,related accept'
-            % (TABLE, iface)
+            f'add rule ip {TABLE} forward oifname "{iface}" ct state established,related accept'
         )
         lines.append(
             'add rule ip %s postrouting iifname "%s" oifname "%s" ip daddr %s tcp dport %d snat to %s'
@@ -451,22 +450,22 @@ def _nft(host, facts) -> str:
                 host["snat_address"],
             )
         )
-    lines.append('add rule ip %s forward iifname "%s" drop' % (TABLE, iface))
+    lines.append(f'add rule ip {TABLE} forward iifname "{iface}" drop')
     body = "\n".join(lines) + "\n"
-    return """#!/bin/sh
+    return f"""#!/bin/sh
 set -eu
-if grep -F -q '%s' "$0"; then
-    echo 'refusing to load %s before the overlay address is enrolled' >&2
+if grep -F -q '{OVERLAY_TOKEN}' "$0"; then
+    echo 'refusing to load {TABLE} before the overlay address is enrolled' >&2
     exit 1
 fi
-nft=$(command -v nft) || { echo 'nft is required' >&2; exit 1; }
+nft=$(command -v nft) || {{ echo 'nft is required' >&2; exit 1; }}
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
 cat >"$tmp" <<'NFT'
-%sNFT
+{body}NFT
 "$nft" -c -f "$tmp"
 "$nft" -f "$tmp"
-""" % (OVERLAY_TOKEN, TABLE, body)
+"""
 
 
 def assign_overlay(script, address, overlay_cidr) -> str:
@@ -485,7 +484,7 @@ def firewall_rules(script, chain) -> list[str]:
     """Extract the rules declared for the given nftables chain from the script."""
     rules = []
     for line in script.splitlines():
-        if line.startswith("add rule ip %s %s " % (TABLE, chain)):
+        if line.startswith(f"add rule ip {TABLE} {chain} "):
             rules.append(line)
     return rules
 
@@ -494,22 +493,22 @@ def _up_script(facts) -> str:
     forbidden = "|".join(sorted(FORBIDDEN_IFACES | {"wg-*"}))
     return """#!/bin/sh
 set -eu
-IFACE=%s
+IFACE={}
 case "$IFACE" in
-    %s) echo 'refusing existing interface' >&2; exit 1;;
+    {}) echo 'refusing existing interface' >&2; exit 1;;
 esac
 if [ ! -f /etc/netbird-host-router/setup.key ]; then
     echo 'setup key file is missing' >&2
     exit 1
 fi
-mode=$(stat -c %%a /etc/netbird-host-router/setup.key)
+mode=$(stat -c %a /etc/netbird-host-router/setup.key)
 case "$mode" in
     400|600) ;;
     *) echo 'setup key file mode must be 0400 or 0600' >&2; exit 1;;
 esac
 url=$(sed -n 's/^NB_MANAGEMENT_URL=//p' /etc/netbird-host-router/client.env)
 case "$url" in
-    ""|%s|*[[:space:]]*|*\"*|*\'*|*[;\\$`]*) echo 'management URL is not enrolled' >&2; exit 1;;
+    ""|{}|*[[:space:]]*|*\"*|*\'*|*[;\\$`]*) echo 'management URL is not enrolled' >&2; exit 1;;
 esac
 if [ -x /usr/local/bin/netbird ]; then
     NB=/usr/local/bin/netbird
@@ -537,12 +536,12 @@ set -- \
     --enable-ssh-local-port-forwarding=false \
     --enable-ssh-remote-port-forwarding=false \
     --disable-ipv6=true
-if [ "${NB_DISABLE_SERVER_ROUTES:-}" = true ]; then
+if [ "${{NB_DISABLE_SERVER_ROUTES:-}}" = true ]; then
     set -- "$@" --disable-server-routes=true
 fi
 "$NB" up "$@"
 wait "$pid"
-""" % (facts["interface"], forbidden, URL_TOKEN)
+""".format(facts["interface"], forbidden, URL_TOKEN)
 
 
 def _frontend_source(facts) -> str:
@@ -705,29 +704,30 @@ def _unit(host, facts, image, runtime) -> str:
     disable = "true" if host["name"] == "socrat-2" else "false"
     common = [
         "[Unit]",
-        "Description=NetBird host peer for %s" % host["name"],
+        "Description=NetBird host peer for {}".format(host["name"]),
         "After=network-online.target",
         "[Service]",
         "Type=simple",
-        "Environment=NB_DISABLE_SERVER_ROUTES=%s" % disable,
+        f"Environment=NB_DISABLE_SERVER_ROUTES={disable}",
         "Restart=on-failure",
         "RestartSec=5",
-        "MemoryMax=%s" % facts["client_memory"].upper(),
+        "MemoryMax={}".format(facts["client_memory"].upper()),
     ]
     if runtime == "docker":
         common.append("NoNewPrivileges=true")
         common.append(
             "ExecStart=/usr/bin/docker run --rm --name netbird-host-router "
             "--cap-drop=ALL --cap-add=NET_ADMIN --cap-add=NET_RAW --cap-add=BPF "
-            "--security-opt=no-new-privileges:true --memory=%s --memory-swap=%s --pids-limit=64 "
+            "--security-opt=no-new-privileges:true --memory={} --memory-swap={} --pids-limit=64 "
             "--read-only --tmpfs=/tmp:rw,noexec,nosuid,size=16m --network=host --device=/dev/net/tun "
-            "-e NB_LOG_FILE=console -e NB_DISABLE_SERVER_ROUTES=%s "
+            "-e NB_LOG_FILE=console -e NB_DISABLE_SERVER_ROUTES={} "
             "-v /var/lib/netbird-host-router:/var/lib/netbird "
             "-v /etc/netbird-host-router/setup.key:/etc/netbird-host-router/setup.key:ro "
             "-v /etc/netbird-host-router/client.env:/etc/netbird-host-router/client.env:ro "
             "-v /usr/local/libexec/netbird-host-router/netbird-up.sh:/netbird-up.sh:ro "
-            "--entrypoint=/bin/sh %s /netbird-up.sh"
-            % (facts["client_memory"], facts["client_memory"], disable, image)
+            "--entrypoint=/bin/sh {} /netbird-up.sh".format(
+                facts["client_memory"], facts["client_memory"], disable, image
+            )
         )
     else:
         common.extend(
@@ -755,17 +755,17 @@ CapabilityBoundingSet=
 PrivateTmp=true
 ProtectSystem=strict
 ReadOnlyPaths=/etc/netbird-host-router
-MemoryMax=%s
+MemoryMax={}
 RestrictAddressFamilies=AF_INET
 [Install]
 WantedBy=multi-user.target
-""" % facts["frontend_memory"].upper()
+""".format(facts["frontend_memory"].upper())
 
 
 def _playbook(host) -> str:
     tasks = """---
-- name: Install the reviewed NetBird host-router files for %s
-  hosts: "%s"
+- name: Install the reviewed NetBird host-router files for {}
+  hosts: "{}"
   become: true
   gather_facts: false
   vars:
@@ -778,16 +778,16 @@ def _playbook(host) -> str:
           - netbird_host_router_interface | default('nb-host') == 'nb-host'
     - name: Install owned unit, firewall script, and frontend
       ansible.builtin.copy:
-        src: "{{ item.src }}"
-        dest: "{{ item.dest }}"
-        mode: "{{ item.mode }}"
+        src: "{{{{ item.src }}}}"
+        dest: "{{{{ item.dest }}}}"
+        mode: "{{{{ item.mode }}}}"
       loop:
-        - {src: netbird-host-router.service, dest: /etc/systemd/system/netbird-host-router.service, mode: "0644"}
-        - {src: netbird-grafana-frontend.service, dest: /etc/systemd/system/netbird-grafana-frontend.service, mode: "0644"}
-        - {src: table.nft.sh, dest: /usr/local/libexec/netbird-host-router/table.nft.sh, mode: "0755"}
-        - {src: netbird-up.sh, dest: /usr/local/libexec/netbird-host-router/netbird-up.sh, mode: "0755"}
-        - {src: grafana-frontend.py, dest: /usr/local/libexec/netbird-host-router/grafana-frontend.py, mode: "0644"}
-""" % (host["name"], host["name"])
+        - {{src: netbird-host-router.service, dest: /etc/systemd/system/netbird-host-router.service, mode: "0644"}}
+        - {{src: netbird-grafana-frontend.service, dest: /etc/systemd/system/netbird-grafana-frontend.service, mode: "0644"}}
+        - {{src: table.nft.sh, dest: /usr/local/libexec/netbird-host-router/table.nft.sh, mode: "0755"}}
+        - {{src: netbird-up.sh, dest: /usr/local/libexec/netbird-host-router/netbird-up.sh, mode: "0755"}}
+        - {{src: grafana-frontend.py, dest: /usr/local/libexec/netbird-host-router/grafana-frontend.py, mode: "0644"}}
+""".format(host["name"], host["name"])
     if host["name"] == "socrat-0":
         tasks += """        - {src: 99-netbird-host-router.conf, dest: /etc/sysctl.d/99-netbird-host-router.conf, mode: "0644"}
 """
@@ -799,7 +799,7 @@ def _playbook(host) -> str:
 
 def _client_env(facts) -> str:
     url = facts["management_url"] or URL_TOKEN
-    return "NB_MANAGEMENT_URL=%s\n" % url
+    return f"NB_MANAGEMENT_URL={url}\n"
 
 
 def assert_clean(filename, content) -> None:
@@ -823,7 +823,7 @@ def assert_clean(filename, content) -> None:
     for marker in markers:
         require(
             marker not in content,
-            "%s contains forbidden marker %s" % (filename, marker),
+            f"{filename} contains forbidden marker {marker}",
         )
 
 

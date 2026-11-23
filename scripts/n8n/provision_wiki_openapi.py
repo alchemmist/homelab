@@ -77,7 +77,8 @@ with urllib.request.urlopen(req, timeout=30) as r:
         check=True,
     ).stdout.strip()
     if not key.startswith("sk-"):
-        raise RuntimeError("LiteLLM key was not created")
+        msg = "LiteLLM key was not created"
+        raise RuntimeError(msg)
     token = pysecrets.token_urlsafe(40)
     apply_secret("automation", "wiki-openapi", {"WORKER_TOKEN": token, "LITELLM_KEY": key})
     return token
@@ -108,7 +109,7 @@ def sync_workflow(worker_token) -> None:
     mapping["githubApi"] = blog["githubApi"]
     workflow = json.loads((BASE / "docs/n8n/wiki-openapi/workflow.json").read_text())
     for node in workflow["nodes"]:
-        for kind, cred in list(node.get("credentials", {}).items()):
+        for kind, _cred in list(node.get("credentials", {}).items()):
             node["credentials"][kind] = mapping[kind]
     existing = [
         item
@@ -116,9 +117,11 @@ def sync_workflow(worker_token) -> None:
         if item["name"] == workflow["name"]
     ]
     if len(existing) > 1:
-        raise RuntimeError("Ambiguous workflow name")
+        msg = "Ambiguous workflow name"
+        raise RuntimeError(msg)
     if existing and existing[0].get("active"):
-        raise RuntimeError("Deactivate the workflow before syncing")
+        msg = "Deactivate the workflow before syncing"
+        raise RuntimeError(msg)
     body = {key: workflow[key] for key in ("name", "nodes", "connections", "settings")}
     result = api(
         "PUT" if existing else "POST",

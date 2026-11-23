@@ -9,6 +9,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
     "netbird_host_router", ROOT / "scripts/netbird-host-router.py"
@@ -170,20 +172,20 @@ class HostRouterTests(unittest.TestCase):
             assert "10.250.0.2" not in rendered["socrat-2"]["table.nft.sh"]
         contradicted = hr.default_facts()
         contradicted["ssh_port"] = 22
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             hr.validate(contradicted)
         for bad in (2224, 443, 22_222, None):
             facts = ready()
             facts["ssh_port"] = bad
             facts["ssh_probe"] = None
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 hr.validate(facts)
 
     def test_destination_host_cannot_be_a_second_router(self) -> None:
         """The destination host cannot double as a second router."""
         facts = hr.default_facts()
         facts["hosts"][1]["owned"] = ["109.120.141.60"]
-        with self.assertRaisesRegex(ValueError, "own 10.250.0.2"):
+        with pytest.raises(ValueError, match="own 10.250.0.2"):
             hr.validate(facts)
         assert hr.roles(hr.default_facts())["socrat-2"]["ssh_delivery"] == "input"
         assert not hr.roles(hr.default_facts())["socrat-2"]["ssh_routing_peer"]
@@ -277,19 +279,19 @@ class HostRouterTests(unittest.TestCase):
         """Shared VIPs and existing interfaces fail closed."""
         facts = hr.default_facts()
         facts["upstream_address"] = "10.250.0.1"
-        with self.assertRaisesRegex(ValueError, "upstream"):
+        with pytest.raises(ValueError, match="upstream"):
             hr.validate(facts)
         facts = hr.default_facts()
         facts["frontend_port"] = 443
-        with self.assertRaisesRegex(ValueError, "8443"):
+        with pytest.raises(ValueError, match="8443"):
             hr.validate(facts)
         facts = hr.default_facts()
         facts["interface"] = "wg-socrat"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             hr.validate(facts)
         facts = hr.default_facts()
         facts["overlay_cidr"] = "10.250.0.0/24"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             hr.validate(facts)
 
     def test_apply_copies_only_owned_files_after_blockers_clear(self) -> None:

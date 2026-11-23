@@ -91,7 +91,7 @@ def summarize(
     return report
 
 
-def walk_litellm_records(value, trace_id, records, service=None):
+def walk_litellm_records(value, trace_id, records, service=None) -> None:
     """Accumulate spans of one trace, tagging the enclosing resource service."""
     if isinstance(value, dict):
         resource = value.get("resource", {})
@@ -275,7 +275,7 @@ def run(
     open_webui_canary=False,
     production_open_webui=False,
     production_litellm_inference=False,
-):
+) -> None:
     os.umask(0o077)
     if (
         os.geteuid() != 0

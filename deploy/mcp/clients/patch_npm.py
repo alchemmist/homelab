@@ -17,7 +17,6 @@ SOURCES = {
         "0.9.0",
         "5xfz8JB2ZNCcl/fvkJJnX1aH7AdmSD68cZDY/xzwRoBtoedfDXnwEKN3TBcItFkr0IDpMNR4sXwcsEE4R14trw==",
     ),
-
 }
 GROUPS = {"argo": ("argocd-mcp",)}
 
@@ -27,10 +26,12 @@ def rewrite(name: str, path: str, data: bytes) -> bytes:
     if path == "package/package.json":
         manifest = json.loads(data)
         if (manifest.get("name"), manifest.get("version")) != (name, SOURCES[name][0]):
-            raise ValueError(f"Unexpected upstream package identity for {name}")
+            msg = f"Unexpected upstream package identity for {name}"
+            raise ValueError(msg)
         if name == "argocd-mcp":
             if manifest.get("dependencies", {}).get("zod") != "^3.25.0":
-                raise ValueError("Review the new upstream Zod dependency before patching")
+                msg = "Review the new upstream Zod dependency before patching"
+                raise ValueError(msg)
             manifest["dependencies"]["zod"] = "^4.6.7"
         return (json.dumps(manifest, indent=2) + "\n").encode()
     if name == "argocd-mcp" and path == "package/dist/index.js":
@@ -44,7 +45,8 @@ def rewrite(name: str, path: str, data: bytes) -> bytes:
             ),
         ):
             if data.count(old) != count:
-                raise ValueError(f"Unexpected occurrences of {old!r} in {path}; review the patch")
+                msg = f"Unexpected occurrences of {old!r} in {path}; review the patch"
+                raise ValueError(msg)
             data = data.replace(old, new)
     return data
 
@@ -56,7 +58,8 @@ def materialize(name: str, directory: Path, offline: bool) -> None:
     dest = directory / f"{stem}-homelab.tar"
     if offline and dest.exists():
         if not dest.is_file() or dest.is_symlink():
-            raise ValueError(f"Unsafe offline artifact: {dest.name}")
+            msg = f"Unsafe offline artifact: {dest.name}"
+            raise ValueError(msg)
         verify(dest, name, directory)
         return
     url = f"https://registry.npmjs.org/{name}/-/{stem}.tgz"
@@ -85,12 +88,14 @@ def materialize(name: str, directory: Path, offline: bool) -> None:
             or archives[0].is_symlink()
             or not archives[0].is_file()
         ):
-            raise ValueError(f"Expected one regular npm pack tarball for {name}@{version}")
+            msg = f"Expected one regular npm pack tarball for {name}@{version}"
+            raise ValueError(msg)
         with archives[0].open("rb") as archive:
             raw = archive.read(4 * 1024 * 1024 + 1)
 
     if hashlib.sha512(raw).digest() != base64.b64decode(digest):
-        raise ValueError(f"Unexpected upstream SHA-512 for {name}@{version}")
+        msg = f"Unexpected upstream SHA-512 for {name}@{version}"
+        raise ValueError(msg)
     with tempfile.TemporaryDirectory(dir=directory) as staging:
         tmp = Path(staging) / "patched.tar"
         with (
@@ -99,7 +104,8 @@ def materialize(name: str, directory: Path, offline: bool) -> None:
         ):
             for member in src:
                 if not member.isfile():
-                    raise ValueError(f"Unexpected non-regular member: {member.name}")
+                    msg = f"Unexpected non-regular member: {member.name}"
+                    raise ValueError(msg)
                 body = rewrite(name, member.name, src.extractfile(member).read())
                 header = tarfile.TarInfo(member.name)
                 header.size = len(body)
@@ -117,7 +123,8 @@ def verify(path: Path, name: str, directory: Path) -> None:
         "sha512-" + base64.b64encode(hashlib.sha512(path.read_bytes()).digest()).decode()
         != expected
     ):
-        raise ValueError(f"Rebuilt artifact does not match lock: {name}")
+        msg = f"Rebuilt artifact does not match lock: {name}"
+        raise ValueError(msg)
 
 
 def main() -> None:

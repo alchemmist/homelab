@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -47,10 +49,10 @@ class PublicationOrigin(unittest.TestCase):
                 "http://rustfs.socrat.alchemmist.xyz",
             ):
                 with patch.dict(os.environ, SPI_EVIDENCE_PUBLIC_ORIGIN=origin):
-                    with self.assertRaises(bundle.Failure):
+                    with pytest.raises(bundle.Failure):
                         bundle.storage_markdown(objects)
             with patch.dict(os.environ, SPI_EVIDENCE_PUBLIC_ORIGIN="https://evil.invalid"):
-                with self.assertRaises(bundle.Failure):
+                with pytest.raises(bundle.Failure):
                     bundle.storage_markdown(objects)
         finally:
             sys.path.pop(0)

@@ -7,6 +7,7 @@ Never contacts Kubernetes, runs workflows, reads credentials, or executes tools.
 import argparse
 import ast
 import configparser
+import contextlib
 import ipaddress
 import json
 from pathlib import Path
@@ -68,10 +69,12 @@ def _validate_mesh(
     mesh: dict[str, _MeshNode] = load(mesh_path)["wg_socrat_nodes"]
     hosts: dict[str, dict[str, object]] = load(inventory_path)["all"]["children"]["Socrat"]["hosts"]
     if set(mesh) != set(hosts):
-        raise ValueError("Inventory/mesh node membership drift")
+        msg = "Inventory/mesh node membership drift"
+        raise ValueError(msg)
     addresses = [str(ipaddress.ip_address(n["address"])) for n in mesh.values()]
     if len(set(addresses)) != len(addresses):
-        raise ValueError("Duplicate node mesh addresses")
+        msg = "Duplicate node mesh addresses"
+        raise ValueError(msg)
     for name, node in mesh.items():
         expected = (
             node["endpoint"].rsplit(":", 1)[0] if name in ssh_from_public else node["address"]
@@ -90,10 +93,8 @@ def _assert_literals(path: Path) -> dict[str, object]:
             and len(statement.targets) == 1
             and isinstance(statement.targets[0], ast.Name)
         ):
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 result[statement.targets[0].id] = ast.literal_eval(statement.value)
-            except (ValueError, TypeError):
-                pass
     return result
 
 
@@ -112,7 +113,8 @@ def _relay_topology(
         "TARGET": (target_ip, int(target_port)),
     }
     if target_lan != target_ip or any(r.get(k) != v for k, v in expected.items()):
-        raise ValueError("Fixed relay topology drift; requires reviewed network change")
+        msg = "Fixed relay topology drift; requires reviewed network change"
+        raise ValueError(msg)
     return expected
 
 
@@ -129,7 +131,8 @@ def _relay_updater(
         or e.get("PEER") != mesh[relay["targetNode"]]["public_key"]
         or e.get("DIRECT") != relay["directRecoveryEndpoint"]
     ):
-        raise ValueError("Relay updater endpoint/peer identity drift")
+        msg = "Relay updater endpoint/peer identity drift"
+        raise ValueError(msg)
 
 
 def _relay_sandbox(root: Path, relay: _RelayContract, expected: dict[str, tuple[str, int]]) -> None:
@@ -140,7 +143,8 @@ def _relay_sandbox(root: Path, relay: _RelayContract, expected: dict[str, tuple[
     allow = service["IPAddressAllow"].split()
     required = {expected["CLIENT"][0] + "/32", expected["TARGET"][0] + "/32"}
     if len(allow) != len(required) or set(allow) != required or service["IPAddressDeny"] != "any":
-        raise ValueError("Relay sandbox endpoint scope drift; no automatic network regeneration")
+        msg = "Relay sandbox endpoint scope drift; no automatic network regeneration"
+        raise ValueError(msg)
     for key, value in {
         "DynamicUser": "yes",
         "NoNewPrivileges": "yes",
@@ -162,7 +166,8 @@ def _relay_hardening(root: Path, relay: _RelayContract) -> None:
     if not any(
         "wg_socrat_nodes['" + relay["frontNode"] + "']['address']" in line for line in assertion
     ):
-        raise ValueError("Relay preflight must derive the address from the mesh registry")
+        msg = "Relay preflight must derive the address from the mesh registry"
+        raise ValueError(msg)
 
 
 def _check_consumer(
@@ -171,14 +176,15 @@ def _check_consumer(
     """Validate one registered consumer; return the scalar edit to be rendered."""
     target = root / consumer["file"]
     if not target.resolve().is_relative_to(root.resolve()):
-        raise ValueError("Consumer escapes repository")
+        msg = "Consumer escapes repository"
+        raise ValueError(msg)
     text = target.read_text()
     value, tree = yaml.safe_load(text), yaml.compose(text)
     for key in consumer["path"]:
         value, tree = value[key], scalar_node(tree, key)
     matches = [
         (entry, node)
-        for entry, node in zip(value, tree.value)
+        for entry, node in zip(value, tree.value, strict=False)
         if route["hostname"] in entry.get("hostnames", [])
     ]
     if len(matches) != 1:
@@ -204,7 +210,8 @@ def _apply_renders(root: Path, pending: dict[Path, tuple[str, list[tuple[int, in
         result = original
         for start, end, replacement in sorted(edits, reverse=True):
             if end > previous:
-                raise ValueError("Overlapping registered issuer scalars")
+                msg = "Overlapping registered issuer scalars"
+                raise ValueError(msg)
             result = result[:start] + replacement + result[end:]
             previous = start
         rendered[target] = result
@@ -225,7 +232,8 @@ def _issuer_aliases(root: Path, route: _IssuerRoute, *, write: bool) -> int:
     for consumer in route["consumers"]:
         identity = (consumer["file"], tuple(consumer["path"]))
         if identity in seen:
-            raise ValueError("Duplicate registered consumer")
+            msg = "Duplicate registered consumer"
+            raise ValueError(msg)
         seen.add(identity)
         # Validate every consumer before changing any file. A late scope error
         # must not leave a partly regenerated configuration behind.
@@ -251,7 +259,8 @@ def _validate_relay(root: Path, relay: _RelayContract, mesh: dict[str, _MeshNode
 def check(root=ROOT, write=False):
     c = json.loads((root / "deploy/contracts/infrastructure.json").read_text())
     if c["schemaVersion"] != 1:
-        raise ValueError("Unsupported contract schema")
+        msg = "Unsupported contract schema"
+        raise ValueError(msg)
     mesh = _validate_mesh(
         root / c["meshRegistry"],
         root / c["ansibleInventory"],
@@ -261,7 +270,7 @@ def check(root=ROOT, write=False):
     return _issuer_aliases(root, c["issuerTransport"], write=write)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--write",

@@ -50,7 +50,8 @@ def post(grafana: str, method: str, body: dict[str, object]) -> dict[str, object
 
 def run(args: argparse.Namespace) -> None:
     if not args.create_canary_session:
-        raise ValueError("Explicit --create-canary-session is required")
+        msg_0 = "Explicit --create-canary-session is required"
+        raise ValueError(msg_0)
     issuer, subject = "urn:homelab:lms-cpu-canary", str(uuid.uuid4())
     result = None
     try:
@@ -80,13 +81,15 @@ print(json.dumps(dict(cookie=cookie)))
             )
             with urllib.request.urlopen(req, timeout=10) as response:
                 if response.status != 200 or response.geturl() != url:
-                    raise RuntimeError("Canary failed to open real lesson; response suppressed")
+                    msg_0 = "Canary failed to open real lesson; response suppressed"
+                    raise RuntimeError(msg_0)
                 if len(response.read()) < 1000:
-                    raise RuntimeError("Unexpected lesson response")
+                    msg_0 = "Unexpected lesson response"
+                    raise RuntimeError(msg_0)
             durations.append((time.monotonic() - began) * 1000)
             count += 1
             time.sleep(max(0, 0.1 - (time.monotonic() - began)))
-        for attempt in range(18):
+        for _attempt in range(18):
             end_ms = int(time.time() * 1000)
             data = post(
                 args.grafana_url,
@@ -118,7 +121,8 @@ print(json.dumps(dict(cookie=cookie)))
                 break
             time.sleep(5)
         else:
-            raise RuntimeError("No nonzero CPU profile with actual application frames received")
+            msg_0 = "No nonzero CPU profile with actual application frames received"
+            raise RuntimeError(msg_0)
         result = {
             "verifiedAt": datetime.now(UTC).isoformat(),
             "success": True,
@@ -155,7 +159,8 @@ with store.connect() as db:
 print(json.dumps(dict(deleted=remaining==0)))
 """)
         if not cleanup["deleted"]:
-            raise RuntimeError("Temporary profile identity cleanup failed")
+            msg_0 = "Temporary profile identity cleanup failed"
+            raise RuntimeError(msg_0)
         if result is not None:
             result["syntheticProfileDeleted"] = True
     if args.output:

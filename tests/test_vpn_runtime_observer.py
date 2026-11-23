@@ -76,7 +76,8 @@ def test_export_is_atomic_numeric_no_accounts_or_paths(tmp_path: Path) -> None:
     assert 'runtime{component="relay"} 0' in text
     assert p.stat().st_mode & 0o777 == 0o644
     assert len(list(tmp_path.iterdir())) == 1
-    assert "email" not in text and "token" not in text
+    assert "email" not in text
+    assert "token" not in text
 
 
 def test_observer_has_no_recovery_or_mutating_command() -> None:
@@ -119,5 +120,7 @@ def test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock(
 
     with patch.object(m, "command", side_effect=run):
         out = m.observe(profile, proc=tmp_path)
-    assert out["runtime"] == 0 and out["check_success"] == 1 and out["off"] == 0
+    assert out["runtime"] == 0
+    assert out["check_success"] == 1
+    assert out["off"] == 0
     assert out["observed_timestamp_seconds"] == (tmp_path / "state.json").stat().st_mtime

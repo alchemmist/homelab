@@ -23,11 +23,12 @@ def test_scope_and_atomic_replacement() -> None:
         in s
     )
     assert "priority -175" in s
-    assert "nb-host" not in s and "wg-socrat" not in s
+    assert "nb-host" not in s
+    assert "wg-socrat" not in s
 
 
 @pytest.mark.parametrize(
-    "interface,cidr",
+    ("interface", "cidr"),
     [
         ('x"; flush ruleset', "10.42.0.0/16"),
         ("flannel.1", "0.0.0.0/0"),
@@ -58,7 +59,7 @@ def test_state_normalization_ignores_only_runtime_fields() -> None:
     ) == [{"rule": {"expr": [{"counter": {}}]}}]
     expected = m.normalize({"nftables": m.desired("flannel.1", "10.42.0.0/16")})
     assert m.normalize({"nftables": expected}) == expected
-    assert m.normalize({"nftables": expected + [{"rule": {"expr": []}}]}) != expected
+    assert m.normalize({"nftables": [*expected, {"rule": {"expr": []}}]}) != expected
 
 
 def test_persistence_has_no_network_restart() -> None:
@@ -67,7 +68,8 @@ def test_persistence_has_no_network_restart() -> None:
     unit = (ROOT / "ansible/roles/k3s_overlay_marks/templates/overlay-marks.service.j2").read_text()
     assert "name: homelab-k3s-overlay-marks.service" in role
     assert "Before=k3s.service k3s-agent.service" in unit
-    assert "wg-quick" not in unit and "netbird" not in unit
+    assert "wg-quick" not in unit
+    assert "netbird" not in unit
     assert (
         "k3s_overlay_marks_apply | default(false)"
         in (ROOT / "ansible/playbooks/k3s-overlay-marks.yml").read_text()

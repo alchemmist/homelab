@@ -36,7 +36,8 @@ def main() -> None:
     mode = sys.argv[1]
     parent = Q
     if mode != "qa":
-        raise ValueError("Only QA workers are supported")
+        msg = "Only QA workers are supported"
+        raise ValueError(msg)
     j = api("conversations/" + parent)
     root = pathlib.Path(typing.cast("dict[str, str]", j["workspace"])["working_dir"])
     repo = root / "repo"

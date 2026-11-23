@@ -75,7 +75,8 @@ def test_three_failures_withdraw_and_three_passes_restore() -> None:
         assert s["published"] == ["home"]
     r = p.plan(s, batch(6), REQUIRED, 180)
     assert r["state"]["published"] == ["home", "vps"]
-    assert r["writes"] is False and r["ready_to_publish"] is False
+    assert r["writes"] is False
+    assert r["ready_to_publish"] is False
 
 
 def test_partition_never_silently_means_healthy_or_global_down() -> None:
@@ -83,8 +84,10 @@ def test_partition_never_silently_means_healthy_or_global_down() -> None:
     b = batch(1)
     b["observations"][-1]["backend_ok"] = False
     r = p.plan(s, b, REQUIRED, 30)
-    assert r["decision"] == "hold_review" and r["observations"]["vps"] == "partitioned"
-    assert r["state"]["published"] == s["published"] and s == p.initial(["home", "vps"])
+    assert r["decision"] == "hold_review"
+    assert r["observations"]["vps"] == "partitioned"
+    assert r["state"]["published"] == s["published"]
+    assert s == p.initial(["home", "vps"])
 
 
 @pytest.mark.parametrize(
@@ -100,7 +103,8 @@ def test_missing_local_stale_future_hold(change) -> None:
     b = batch(1)
     change(b)
     r = p.plan(p.initial(["home", "vps"]), b, REQUIRED, 30)
-    assert r["decision"] == "hold_review" and r["state"]["published"] == ["home", "vps"]
+    assert r["decision"] == "hold_review"
+    assert r["state"]["published"] == ["home", "vps"]
 
 
 def test_both_down_never_publish_empty() -> None:
@@ -108,9 +112,8 @@ def test_both_down_never_publish_empty() -> None:
     for n in [1, 2, 3]:
         r = p.plan(s, batch(n, False, False), REQUIRED, n * 30)
         s = r["state"]
-    assert (
-        s["published"] == ["home", "vps"] and r["observations"]["publication"] == "would_be_empty"
-    )
+    assert s["published"] == ["home", "vps"]
+    assert r["observations"]["publication"] == "would_be_empty"
 
 
 def test_duplicate_idempotence_and_no_reused_sample_streak() -> None:
@@ -177,8 +180,11 @@ def test_certificate_failure_never_counts_as_backend_up() -> None:
     ):
         ctx.return_value.wrap_socket.side_effect = ssl.SSLCertVerificationError("SECRET")
         r = h.probe("vps", "home")
-    assert r["tcp_ok"] and not r["tls_ok"] and not r["backend_ok"]
-    assert "SECRET" not in json.dumps(r) and r["failure_kind"] == "tls_certificate"
+    assert r["tcp_ok"]
+    assert not r["tls_ok"]
+    assert not r["backend_ok"]
+    assert "SECRET" not in json.dumps(r)
+    assert r["failure_kind"] == "tls_certificate"
 
 
 def test_success_preserves_sni_host_and_marks_self_probe_local_only() -> None:
@@ -194,7 +200,8 @@ def test_success_preserves_sni_host_and_marks_self_probe_local_only() -> None:
         ctx.return_value.wrap_socket.return_value = tls
         r = h.probe("home", "home")
         assert ctx.return_value.wrap_socket.call_args.kwargs["server_hostname"] == h.HOST
-    assert r["backend_ok"] and r["local_only"]
+    assert r["backend_ok"]
+    assert r["local_only"]
     assert ("Host: " + h.HOST).encode() in tls.sendall.call_args.args[0]
     assert b"Authorization" not in tls.sendall.call_args.args[0]
     assert response.read.call_args.args == (65537,)

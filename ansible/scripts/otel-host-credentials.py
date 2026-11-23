@@ -87,7 +87,7 @@ def materialize_certificate(api, root, namespace, secret):
     return changed
 
 
-def mirror_source_auth(api, cfg, namespace):
+def mirror_source_auth(api, cfg, namespace) -> None:
     """Mirror only the explicitly scoped source credentials into host secrets."""
     mirror = {}
     for reference in cfg["sourceReferences"]:
@@ -104,7 +104,7 @@ def mirror_source_auth(api, cfg, namespace):
         api(namespace + "/secrets/otel-source-auth", {"data": mirror}, method="PATCH")
 
 
-def mirror_grafana_sources(api, namespace, grafana):
+def mirror_grafana_sources(api, namespace, grafana) -> None:
     """Mirror the private CA leaf into the Grafana datasource secret only."""
     leaf = api(namespace + "/secrets/" + grafana["leafSecret"])["data"]
     secure = {
@@ -157,7 +157,7 @@ def mirror_grafana_sources(api, namespace, grafana):
         api(target, {"data": data}, method="PATCH")
 
 
-def mirror_remote_tls(api, cfg):
+def mirror_remote_tls(api, cfg) -> None:
     """Replicate each curated TLS secret and annotate deployment restarts."""
     for reference in cfg["mirroredTLSSecrets"]:
         data = api(
@@ -193,7 +193,7 @@ def mirror_remote_tls(api, cfg):
                 )
 
 
-def restart_units_if_changed(changed):
+def restart_units_if_changed(changed) -> None:
     """Restart every locally-owned collector unit when the leaf changed."""
     if changed:
         for unit in [
@@ -215,7 +215,7 @@ def restart_units_if_changed(changed):
                 )
 
 
-def run(verify_scope=False):
+def run(verify_scope=False) -> None:
     os.umask(0o077)
     require(
         os.geteuid() == 0 and not ROOT.is_symlink(),
@@ -238,8 +238,7 @@ def run(verify_scope=False):
     if (
         verify_scope
         or (
-            datetime.fromisoformat(token["expirationTimestamp"].replace("Z", "+00:00"))
-            - datetime.now(UTC)
+            datetime.fromisoformat(token["expirationTimestamp"]) - datetime.now(UTC)
         ).total_seconds()
         < 43200
     ):
@@ -257,9 +256,10 @@ def run(verify_scope=False):
         atomic(ROOT / "token.json", json.dumps(token))
     secret = api(cfg, token, context, namespace + "/secrets/" + cfg["secret"])["data"]
     changed = materialize_certificate(api, ROOT, namespace, secret)
-    bound_api = lambda path, payload=None, method=None: api(
-        cfg, token, context, path, payload, method
-    )
+
+    def bound_api(path, payload=None, method=None):
+        return api(cfg, token, context, path, payload, method)
+
     if cfg["sourceReferences"]:
         mirror_source_auth(bound_api, cfg, namespace)
     grafana = cfg.get("grafanaDatasourceSecret")

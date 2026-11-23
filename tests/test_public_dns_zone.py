@@ -13,18 +13,18 @@ spec.loader.exec_module(zone)
 
 def test_both_entrances_stay_published_while_both_are_healthy() -> None:
     text = zone.render(1, True, True)
-    assert text.count("chat IN A %s" % zone.HOME) == 1
-    assert text.count("chat IN A %s" % zone.VPS) == 1
-    assert "mail IN A %s" % zone.HOME in text
-    assert "mail IN A %s" % zone.VPS not in text
+    assert text.count(f"chat IN A {zone.HOME}") == 1
+    assert text.count(f"chat IN A {zone.VPS}") == 1
+    assert f"mail IN A {zone.HOME}" in text
+    assert f"mail IN A {zone.VPS}" not in text
 
 
 def test_home_failure_leaves_only_the_vps_on_failover_names() -> None:
     text = zone.render(2, False, True)
-    assert "llm IN A %s" % zone.VPS in text
-    assert "llm IN A %s" % zone.HOME not in text
-    assert "ns1 IN A %s" % zone.HOME in text
-    assert "sync IN A %s" % zone.HOME in text
+    assert f"llm IN A {zone.VPS}" in text
+    assert f"llm IN A {zone.HOME}" not in text
+    assert f"ns1 IN A {zone.HOME}" in text
+    assert f"sync IN A {zone.HOME}" in text
 
 
 def test_netbird_and_existing_bot_survive_renderer_deploys_and_follow_health() -> None:
@@ -159,7 +159,7 @@ def test_vpn_has_only_moscow_even_when_original_entrances_fail() -> None:
 
 
 @pytest.mark.parametrize(
-    "home,moscow,ips",
+    ("home", "moscow", "ips"),
     [
         (True, True, [zone.HOME, zone.MOSCOW]),
         (True, False, [zone.HOME]),
@@ -167,23 +167,24 @@ def test_vpn_has_only_moscow_even_when_original_entrances_fail() -> None:
         (False, False, [zone.HOME, zone.MOSCOW]),
     ],
 )
-def test_monori_https_selection_is_scoped(home, moscow, ips):
+def test_monori_https_selection_is_scoped(home, moscow, ips) -> None:
     lines = zone.render(123, True, True, monori_health=(home, moscow)).splitlines()
     assert [x for x in lines if x.startswith("monori IN A ")] == ["monori IN A " + ip for ip in ips]
     assert [x for x in lines if x.startswith("lms IN A ")] == ["lms IN A " + zone.HOME]
 
 
 @pytest.mark.parametrize(
-    "rc,status,healthy", [(0, "200", True), (0, "503", False), (60, "000", False)]
+    ("rc", "status", "healthy"), [(0, "200", True), (0, "503", False), (60, "000", False)]
 )
-def test_monori_https_requires_verified_exchange(monkeypatch, rc, status, healthy):
+def test_monori_https_requires_verified_exchange(monkeypatch, rc, status, healthy) -> None:
     import subprocess
 
     def run(argv, **kwargs):
         assert argv[argv.index("--resolve") + 1] == "monori.alchemmist.xyz:8443:127.0.0.1"
         assert argv[-1] == "https://monori.alchemmist.xyz:8443/"
         assert argv[argv.index("--max-time") + 1] == "3"
-        assert "--insecure" not in argv and "-k" not in argv
+        assert "--insecure" not in argv
+        assert "-k" not in argv
         assert kwargs["timeout"] == 3.5
         return subprocess.CompletedProcess(argv, rc, stdout=status)
 
@@ -191,8 +192,10 @@ def test_monori_https_requires_verified_exchange(monkeypatch, rc, status, health
     assert zone.monori_https("127.0.0.1", 8443, 3) is healthy
 
 
-@pytest.mark.parametrize("home,vps", [(True, True), (True, False), (False, True), (False, False)])
-def test_existing_production_oidc_pair_preserved(home, vps):
+@pytest.mark.parametrize(
+    ("home", "vps"), [(True, True), (True, False), (False, True), (False, False)]
+)
+def test_existing_production_oidc_pair_preserved(home, vps) -> None:
     lines = zone.render(123, home, vps).splitlines()
     for name in ("lms", "auth.socrat"):
         prefix = name + " IN A "

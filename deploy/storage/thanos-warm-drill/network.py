@@ -7,11 +7,13 @@ import secrets
 import subprocess
 import sys
 import time
-from collections.abc import Callable, Mapping
 from copy import deepcopy
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from job import PROM, PYTHON, THANOS, Container, container
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
 
 NS = "cattle-monitoring-system"
 RUN = "warm-net-" + secrets.token_hex(4)
@@ -142,9 +144,7 @@ def drill() -> None:
         ],
         data,
     )
-    rust = container(
-        "bucket", RUST, [], [], {**mount("candidate", "/data"), "subPath": RUN}
-    )
+    rust = container("bucket", RUST, [], [], {**mount("candidate", "/data"), "subPath": RUN})
     del rust["command"], rust["args"]
     rust["resources"] = {
         "requests": {"cpu": "250m", "memory": "512Mi"},
@@ -321,8 +321,10 @@ HTTPServer(('127.0.0.1',8000),H).serve_forever()"""
     print("backend absent; new local samples:", len(b) - len(a), flush=True)
     end = b[-1][0]
     expected = samples(9090, end)
-    assert expected and all(
-        int(float(y[1])) == int(float(x[1])) + 1 for x, y in zip(expected, expected[1:])
+    assert expected
+    assert all(
+        int(float(y[1])) == int(float(x[1])) + 1
+        for x, y in zip(expected, expected[1:], strict=False)
     )
     server()
     wait(lambda: samples(12902, end) == expected, 240)
@@ -337,9 +339,7 @@ if __name__ == "__main__":
     if sys.argv[1:] != ["--run"]:
         sys.exit("use --run explicitly")
     if (
-        subprocess.check_output(
-            ["kubectl", "config", "current-context"], text=True
-        ).strip()
+        subprocess.check_output(["kubectl", "config", "current-context"], text=True).strip()
         != "Socrat"
     ):
         sys.exit("expected Socrat kube context")

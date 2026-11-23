@@ -7,6 +7,8 @@ from pathlib import Path
 from types import ModuleType
 from typing import Never
 
+import pytest
+
 FILES = Path(__file__).resolve().parents[2] / "charts/spi-triage/files"
 
 
@@ -152,7 +154,8 @@ class OutboxTest(unittest.TestCase):
         self.receipt()
 
         def fail(*a, **kw) -> Never:
-            raise TimeoutError("X-Internal-Token: secret-value")
+            msg = "X-Internal-Token: secret-value"
+            raise TimeoutError(msg)
 
         self.outbox.request = fail
         self.outbox.once()
@@ -245,12 +248,12 @@ class OutboxTest(unittest.TestCase):
             {"id": 8},
             {"html_url": self.publication()["html_url"] + "?token=x"},
         ]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 links.primary_url(self.publication(**changes))
 
     def test_atomic_rollback(self) -> None:
         """Verify atomic delivery rollback."""
-        with self.assertRaises(RuntimeError), self.store.db() as c:
+        with pytest.raises(RuntimeError), self.store.db() as c:
             self.outbox.record_primary_publication(
                 "event", "e", 1, self.publication(), connection=c
             )

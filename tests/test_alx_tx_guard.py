@@ -71,14 +71,16 @@ class AlxTxGuardTests(unittest.TestCase):
         source = Path(SOURCE).read_text()
         match = re.search(r"static bool alx_clean_tx_irq\(struct alx_tx_queue \*txq\)\s*\{", source)
         if match is None:
-            raise AssertionError("alx_clean_tx_irq definition not found")
+            msg = "alx_clean_tx_irq definition not found"
+            raise AssertionError(msg)
         depth = 1
         end = match.end()
         while depth and end < len(source):
             depth += (source[end] == "{") - (source[end] == "}")
             end += 1
         if depth:
-            raise AssertionError("unterminated alx_clean_tx_irq definition")
+            msg = "unterminated alx_clean_tx_irq definition"
+            raise AssertionError(msg)
         function = source[match.start() : end]
         cls.temporary = tempfile.TemporaryDirectory()
         cls.addClassCleanup(cls.temporary.cleanup)

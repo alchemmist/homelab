@@ -56,7 +56,7 @@ CPU_TEMPERATURE_QUERY = (
 )
 
 
-def add_cpu_temperature(dashboard):
+def add_cpu_temperature(dashboard) -> None:
     """Execute the add_cpu_temperature operation."""
     existing = next((p for p in dashboard["panels"] if p["id"] == CPU_TEMPERATURE_PANEL_ID), None)
     position = (
@@ -113,7 +113,7 @@ def add_cpu_temperature(dashboard):
     )
 
 
-def resolve_node_exporter(dashboard):
+def resolve_node_exporter(dashboard) -> None:
     """Execute the resolve_node_exporter operation."""
     variables = dashboard.setdefault("templating", {}).setdefault("list", [])
     instance = next(variable for variable in variables if variable.get("name") == "instance")
@@ -161,7 +161,7 @@ def panels(dashboard):
         yield from panels(panel)
 
 
-def _pin_node_series(dashboard):
+def _pin_node_series(dashboard) -> None:
     """Rewrite one pinned dashboard's targets to use nodename labels."""
     for panel in panels(dashboard):
         for target in panel.get("targets", []):
@@ -181,7 +181,7 @@ def _pin_node_series(dashboard):
                 matcher["options"] = matcher["options"].replace("{{instance}}", "{{nodename}}")
 
 
-def _retitle_rancher(manifest, name, dashboard):
+def _retitle_rancher(manifest, name, dashboard) -> None:
     """Strip the Rancher prefix from a retained dashboard's title."""
     dashboard["title"] = dashboard["title"].removeprefix("Rancher / ").removeprefix("[Rancher] ")
     manifest["data"][name] = json.dumps(dashboard, ensure_ascii=False, separators=(",", ":"))
@@ -239,7 +239,7 @@ def _process_manifest(manifest, found):
     return (True, None)
 
 
-def main():
+def main() -> None:
     """Read ConfigMaps on stdin and rework the pinned Rancher dashboards."""
     manifests = list(yaml.safe_load_all(sys.stdin))
     found: set[str] = set()

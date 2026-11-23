@@ -15,7 +15,8 @@ class UnsafeInput(Exception):
 
 def require_sha(value: object) -> str:
     if not isinstance(value, str) or not SHA.fullmatch(value):
-        raise UnsafeInput("Full SHA required")
+        msg = "Full SHA required"
+        raise UnsafeInput(msg)
     return value
 
 
@@ -36,11 +37,14 @@ def branch_for(sha: object) -> str:
 
 def page_ok(markdown: object) -> str:
     if not isinstance(markdown, str) or len(markdown) > 200_000:
-        raise UnsafeInput("Rendered page is missing or too large")
+        msg = "Rendered page is missing or too large"
+        raise UnsafeInput(msg)
     if not markdown.startswith("---\n") or 'title: "Socrat Bot"' not in markdown.split("---", 2)[1]:
-        raise UnsafeInput("Rendered page lost its Socrat Bot front matter")
+        msg = "Rendered page lost its Socrat Bot front matter"
+        raise UnsafeInput(msg)
     if "POST /v1/messages" not in markdown:
-        raise UnsafeInput("Rendered page has no message API")
+        msg = "Rendered page has no message API"
+        raise UnsafeInput(msg)
     return markdown
 
 
@@ -51,7 +55,8 @@ def select_closable(
 ) -> list[int]:
     """Model may only name already-filtered automation PRs, never the survivor."""
     if not isinstance(decision, dict) or not isinstance(decision.get("close"), list):
-        raise UnsafeInput("Model close list is missing")
+        msg = "Model close list is missing"
+        raise UnsafeInput(msg)
     allowed = {item["number"] for item in candidates}
     chosen = []
     for number in decision["close"]:

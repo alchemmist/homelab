@@ -5,6 +5,8 @@ import pathlib
 import unittest
 from unittest.mock import patch
 
+import pytest
+
 p = pathlib.Path(__file__).resolve().parents[2] / "charts/openhands/files/steward/publisher.py"
 s = importlib.util.spec_from_file_location("publisher", p)
 m = importlib.util.module_from_spec(s)
@@ -30,7 +32,7 @@ class Publisher(unittest.TestCase):
                 "resolve",
                 "workflow_dispatch",
             ]:
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     m.dispatch({"action": a})
 
             api.assert_not_called()
@@ -43,7 +45,7 @@ class Publisher(unittest.TestCase):
             "server/tests/x.sh",
             "server/app/.git/a.py",
         ]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 m.changes({p: "x"})
 
     def test_other_branch(self) -> None:
@@ -59,7 +61,7 @@ class Publisher(unittest.TestCase):
                 "user": {"login": "alchemmist"},
             },
         ) as api:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 m.owned_pr(1, sha)
             assert api.call_count == 1
 
@@ -74,7 +76,7 @@ class Publisher(unittest.TestCase):
                 "body": "ordinary issue",
             },
         ) as api:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 m.dispatch(
                     {
                         "action": "qa_create",
@@ -90,7 +92,7 @@ class Publisher(unittest.TestCase):
         """Verify QA file filtering and credential redaction."""
         assert len(m.changes({"web/e2e/filter.spec.ts": "abc"}, True)) == 1
         for v in ["Bearer token", "github_pat_fake", "https://host"]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 m.clean_text(v, 1, 90)
 
     def test_retired_mutation_branch_is_not_owned(self) -> None:
@@ -105,5 +107,5 @@ class Publisher(unittest.TestCase):
             },
             "user": {"login": "alchemmist"},
         }
-        with patch.object(m, "api", return_value=pr), self.assertRaises(ValueError):
+        with patch.object(m, "api", return_value=pr), pytest.raises(ValueError):
             m.owned_pr(509, sha)

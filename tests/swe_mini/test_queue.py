@@ -13,6 +13,8 @@ from types import ModuleType, SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2] / "services/swe-mini"
 
 
@@ -238,7 +240,7 @@ class QueueTransitions(unittest.TestCase):
         """Idle-path API failures are backed off rather than spammed."""
         c.save("test", state="failed")
         with patch.object(c, "github", side_effect=RuntimeError("external API unavailable")) as api:
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 c.tick()
             c.tick()
             assert api.call_count == 1

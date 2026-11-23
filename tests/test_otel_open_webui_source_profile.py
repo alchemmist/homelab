@@ -7,6 +7,8 @@ from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -35,10 +37,10 @@ def fixtures() -> tuple[
             self.db_engine = db_engine
 
     class Http:
-        def instrument(self):
+        def instrument(self) -> None:
             calls.append("http")
 
-        def uninstrument(self):
+        def uninstrument(self) -> None:
             calls.append("http-stop")
 
     class FastApi:
@@ -79,7 +81,7 @@ class OpenWebuiProfileTests(unittest.TestCase):
         self,
     ) -> None:
         """Only http instrumentors no body serializing or duplicate signals."""
-        calls, native, sdk, modules = fixtures()
+        calls, native, _sdk, modules = fixtures()
         with patch.dict(sys.modules, modules):
             module().activate()
             profile = native.Instrumentor("app", "never-connected-db")
@@ -95,13 +97,13 @@ class OpenWebuiProfileTests(unittest.TestCase):
 
     def test_guard_and_before_setup_order_required_no_late_fallback(self) -> None:
         """Guard and before setup order required no late fallback."""
-        calls, native, sdk, modules = fixtures()
+        calls, _native, sdk, modules = fixtures()
         with patch.dict(sys.modules, modules):
             sdk.TracerProvider._homelab_source_privacy = False
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 module().activate()
             sdk.TracerProvider._homelab_source_privacy = True
             with patch.dict(sys.modules, {"open_webui.utils.telemetry.setup": ModuleType("setup")}):
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     module().activate()
             assert calls == []

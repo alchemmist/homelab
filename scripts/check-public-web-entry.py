@@ -35,7 +35,8 @@ def addresses(explicit=None):
             for address in map(ipaddress.ip_address, values)
         )
     ):
-        raise ValueError("Exactly two distinct public IPv4 entrances required")
+        msg = "Exactly two distinct public IPv4 entrances required"
+        raise ValueError(msg)
     return values
 
 
@@ -124,7 +125,7 @@ def probe(case):
     }
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(

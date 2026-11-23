@@ -32,10 +32,8 @@ def run() -> None:
             synthetic_failure
         )
 
-        try:
+        with contextlib.suppress(ValueError):
             synthetic_failure()
-        except ValueError:
-            pass
         spans = memory.get_finished_spans()
         if len(spans) != 1:
             msg = "Native exception instrumentation was not exercised"

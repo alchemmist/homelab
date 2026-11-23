@@ -41,7 +41,8 @@ def api(host: str, port: int, path: str) -> tuple[int, bytes]:
 def snapshot() -> tuple[list[tuple[str, str]], list[tuple[str, int]]]:
     status, raw = api("kubernetes.default.svc", 443, SLICE)
     if status != 200 or len(raw) > 262144:
-        raise ValueError("discovery unavailable")
+        msg = "discovery unavailable"
+        raise ValueError(msg)
     items = json.loads(raw)["items"]
     targets: set[tuple[str, int]] = set()
     for item in items:
@@ -55,12 +56,11 @@ def snapshot() -> tuple[list[tuple[str, str]], list[tuple[str, int]]]:
                     "terminating"
                 ):
                     targets.update(
-                        (str(ipaddress.IPv4Address(addr)), port["port"])
-                        for addr in ep["addresses"]
+                        (str(ipaddress.IPv4Address(addr)), port["port"]) for addr in ep["addresses"]
                     )
-    return sorted(
-        (x["metadata"]["uid"], x["metadata"]["resourceVersion"]) for x in items
-    ), sorted(targets)
+    return sorted((x["metadata"]["uid"], x["metadata"]["resourceVersion"]) for x in items), sorted(
+        targets
+    )
 
 
 def health(host: str, port: int) -> str:

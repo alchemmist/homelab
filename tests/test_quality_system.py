@@ -31,7 +31,6 @@ from ci.quality.strict_report import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-
 @pytest.mark.parametrize(
     ("configuration_ready", "source_clean", "expected"),
     [(True, True, 0), (True, False, 1), (False, False, 2), (False, True, 2)],
@@ -83,7 +82,7 @@ def test_workflow_noqa_requires_a_python_comment() -> None:
     from ci.quality.check_workflow import python_directive_lines
 
     marker = "# " + "noqa"
-    source = f'''\
+    source = f"""\
 name: "example {marker}"
 # A YAML comment mentioning {marker}
 defaults: {{run: {{shell: python}}}}
@@ -110,7 +109,7 @@ jobs:
         run: "import quoted
           {marker}"
         name: multiline quoted scalar
-'''
+"""
     assert python_directive_lines(source) == {9, 18, 22, 25}
 
 
@@ -208,7 +207,10 @@ def test_unmarked_debt_file_cannot_act_as_a_baseline(tmp_path) -> None:
     (debt / "python.json").write_text(
         json.dumps({"version": 1, "reason": "x" * 20, "findings": []})
     )
-    with patch("ci.quality.common.ROOT", tmp_path), pytest.raises(ValueError, match="non-accepting"):
+    with (
+        patch("ci.quality.common.ROOT", tmp_path),
+        pytest.raises(ValueError, match="non-accepting"),
+    ):
         report("python", [], 1, tmp_path / "out.json")
 
 
@@ -464,11 +466,17 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     for name, node in graph.items():
         assert node["run"] == f"make {name}"
         assert f"\n{name}:\n\t" in makefile
+
     def recipe(name: str) -> str:
-        return " ".join(makefile.split(f"\n{name}:\n", 1)[1].split("\n\n", 1)[0].replace("\\\n", " ").split())
+        return " ".join(
+            makefile.split(f"\n{name}:\n", 1)[1].split("\n\n", 1)[0].replace("\\\n", " ").split()
+        )
 
     policy = graph["graph"]["policy"]
-    assert policy == {"blocking": True, "approvals": {"files": False, "findings": False, "node": False}}
+    assert policy == {
+        "blocking": True,
+        "approvals": {"files": False, "findings": False, "node": False},
+    }
     for name in first_layer:
         assert graph[name]["needs"] == ["graph"]
         assert graph[name]["policy"] == policy
@@ -502,7 +510,8 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
 
 
 def test_shell_policy_finds_extensionless_scripts_and_inline_steps(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Both ShellCheck transports retain diagnostics in the combined shell result."""
     monkeypatch.setattr(common, "ROOT", tmp_path)
@@ -522,13 +531,12 @@ def test_shell_policy_finds_extensionless_scripts_and_inline_steps(
             assert [Path(source).read_text() for source in sources] == ["echo $HOME"]
         else:
             assert sources == shell_files
-        rows = [
-            {"file": source, "code": 2086, "line": 1, "message": "quote"} for source in sources
-        ]
+        rows = [{"file": source, "code": 2086, "line": 1, "message": "quote"} for source in sources]
         return subprocess.CompletedProcess(argv, 1, stdout=json.dumps(rows))
 
     monkeypatch.setattr(lint, "command", shellcheck)
     from ci.quality import check_shell
+
     monkeypatch.setattr(check_shell, "ROOT", tmp_path)
     monkeypatch.setattr(check_shell, "command", shellcheck)
     findings, checked = check_shell.check_shell([*shell_files, workflow])
@@ -567,7 +575,7 @@ def _infra_files():
     return names
 
 
-def _copy_rels(tmp_path, names):
+def _copy_rels(tmp_path, names) -> None:
     for name in names:
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -647,7 +655,7 @@ def test_duplicate_issuer_alias_fails(tmp_path) -> None:
         infra.check(tmp_path)
 
 
-def _pointer_fixture(tmp_path, document):
+def _pointer_fixture(tmp_path, document) -> None:
     import yaml
 
     chart = tmp_path / "charts/demo"
@@ -744,7 +752,7 @@ def _retired_play():
     ]
 
 
-def _entrypoint_fixture(tmp_path):
+def _entrypoint_fixture(tmp_path) -> None:
     import yaml
 
     app = tmp_path / "deploy/argocd/apps/demo.yaml"
@@ -1232,6 +1240,8 @@ def test_documentation_language_scope_and_locations(tmp_path, monkeypatch) -> No
     findings, count = language.check(list(files))
     assert count == 4
     assert [(f["location"]["path"], f["location"]["startLine"]) for f in findings] == [
-        ("docs/data.tsv", 2), ("service/readme.RST", 1), ("README", 1),
+        ("docs/data.tsv", 2),
+        ("service/readme.RST", 1),
+        ("README", 1),
     ]
     assert all(not f["location"]["path"].endswith(".json") for f in findings)

@@ -3,6 +3,7 @@
 No cookies, caller identity headers, request paths or bodies are logged.
 """
 
+import contextlib
 import datetime
 import hashlib
 import hmac
@@ -46,7 +47,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         """Close the response and refuse redirects instead of following them."""
         if response is not None:
             response.close()
-        raise ValueError("redirect denied")
+        msg = "redirect denied"
+        raise ValueError(msg)
 
 
 # Absolute elapsed budgets, in addition to individual socket inactivity limits.
@@ -57,10 +59,8 @@ MAX_CONNECTIONS = 8
 
 
 def expire(sock: socket.socket) -> None:
-    try:
+    with contextlib.suppress(OSError):
         sock.shutdown(socket.SHUT_RDWR)
-    except OSError:
-        pass
 
 
 def watchdog(sock: socket.socket, seconds: float) -> threading.Timer:
@@ -120,7 +120,8 @@ class DeadlineConnection:
             if self.deadline_expired or time.monotonic() - start >= UPSTREAM_SECONDS:
                 if sock is not None:
                     expire(sock)
-                raise TimeoutError("upstream deadline")
+                msg = "upstream deadline"
+                raise TimeoutError(msg)
         except BaseException:
             self.close()
             raise
@@ -193,7 +194,8 @@ def opener() -> urllib.request.OpenerDirector:
 
 def valid_key(path: str) -> str:
     if not KEY.fullmatch(path) or ".." in path:
-        raise ValueError("invalid key")
+        msg = "invalid key"
+        raise ValueError(msg)
     return path[1:]
 
 
@@ -209,7 +211,8 @@ def sign(
     """AWS SigV4, unsigned query unsupported; canonical URI encoded exactly once."""
     u = urllib.parse.urlsplit(url)
     if u.query or u.fragment or u.username or u.password:
-        raise ValueError("invalid upstream")
+        msg = "invalid upstream"
+        raise ValueError(msg)
     now = now or datetime.datetime.now(datetime.UTC)
     stamp = now.strftime("%Y%m%dT%H%M%SZ")
     day = stamp[:8]
@@ -254,13 +257,16 @@ def sign(
 
 def bounded(response: http.client.HTTPResponse) -> bytes:
     if response.status != 200 or response.headers.get("Content-Encoding", "identity") != "identity":
-        raise ValueError("invalid response")
+        msg = "invalid response"
+        raise ValueError(msg)
     length = response.headers.get("Content-Length", "")
     if not length.isascii() or not length.isdigit() or int(length) > MAX_BYTES:
-        raise ValueError("invalid length")
+        msg = "invalid length"
+        raise ValueError(msg)
     body = response.read(int(length) + 1)
     if len(body) != int(length):
-        raise ValueError("length mismatch")
+        msg = "length mismatch"
+        raise ValueError(msg)
     return body
 
 
@@ -272,10 +278,12 @@ class Reader:
         self.http = opener()
         self.auth = os.environ["AUTH_URL"]
         if self.auth != ORIGIN + "/outpost.goauthentik.io/auth/nginx":
-            raise ValueError("fixed auth origin required")
+            msg = "fixed auth origin required"
+            raise ValueError(msg)
         self.s3 = os.environ.get("S3_ENDPOINT", "http://rustfs.rustfs.svc.cluster.local:9000")
         if self.s3 != "http://rustfs.rustfs.svc.cluster.local:9000":
-            raise ValueError("fixed S3 service required")
+            msg = "fixed S3 service required"
+            raise ValueError(msg)
         self.access = os.environ["S3_ACCESS_KEY"]
         self.secret = os.environ["S3_SECRET_KEY"]
 
@@ -324,19 +332,22 @@ class Reader:
         event, manifest_hash = prefix.split("/")[-2:]
         manifest = self.object(prefix + "/manifest.json")
         if hashlib.sha256(manifest).hexdigest() != manifest_hash:
-            raise ValueError("manifest hash mismatch")
+            msg = "manifest hash mismatch"
+            raise ValueError(msg)
         document = json.loads(manifest.decode("ascii"))
         if (
             not isinstance(document, dict)
             or document.get("event_key") != event
             or document.get("format") not in ("socrat-evidence-v2", "socrat-evidence-v3")
         ):
-            raise ValueError("manifest identity mismatch")
+            msg = "manifest identity mismatch"
+            raise ValueError(msg)
         if filename == "manifest.json":
             return manifest
         rows = document.get("artifacts")
         if not isinstance(rows, list) or len(rows) > 1000:
-            raise ValueError("invalid manifest")
+            msg = "invalid manifest"
+            raise ValueError(msg)
         matches = [
             r
             for r in rows
@@ -346,15 +357,18 @@ class Reader:
             and r["id"] + "-" + r["name"] == filename
         ]
         if len(matches) != 1:
-            raise ValueError("unlisted file")
+            msg = "unlisted file"
+            raise ValueError(msg)
         row = matches[0]
         binary = document["format"] == "socrat-evidence-v3"
         size = row.get("stored_bytes" if binary else "stored_chars")
         if type(size) is not int or not 0 <= size <= (MAX_BYTES if binary else 90000):
-            raise ValueError("invalid artifact length")
+            msg = "invalid artifact length"
+            raise ValueError(msg)
         body = self.object(key)
         if len(body) != size or hashlib.sha256(body).hexdigest() != row.get("sha256"):
-            raise ValueError("artifact hash mismatch")
+            msg = "artifact hash mismatch"
+            raise ValueError(msg)
         if not binary:
             body.decode("ascii")
         return body
@@ -393,17 +407,20 @@ def presentation(filename: str | None) -> tuple[str, bool]:
 def byte_range(value: str, size: int) -> tuple[int, int]:
     match = re.fullmatch(r"bytes=([0-9]{0,20})-([0-9]{0,20})", value)
     if not match or not size or not any(match.groups()):
-        raise ValueError("invalid range")
+        msg = "invalid range"
+        raise ValueError(msg)
     first, last = match.groups()
     if not first:
         count = int(last)
         if count == 0:
-            raise ValueError("empty suffix")
+            msg = "empty suffix"
+            raise ValueError(msg)
         return max(0, size - count), size - 1
     start = int(first)
     end = min(int(last), size - 1) if last else size - 1
     if start >= size or start > end:
-        raise ValueError("unsatisfiable range")
+        msg = "unsatisfiable range"
+        raise ValueError(msg)
     return start, end
 
 
@@ -466,7 +483,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             try:
                 target = self.raw_requestline.split()[1].decode("ascii")
                 if target != self.path:
-                    raise ValueError("normalized target denied")
+                    msg = "normalized target denied"
+                    raise ValueError(msg)
                 valid_key(target)
             except (ValueError, IndexError):
                 self.respond(404)
@@ -494,7 +512,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 try:
                     target = self.raw_requestline.split()[1].decode("ascii")
                     if target != self.path:
-                        raise ValueError("normalized target denied")
+                        msg = "normalized target denied"
+                        raise ValueError(msg)
                     valid_key(target)
                     location = (
                         ORIGIN
@@ -511,7 +530,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         try:
             raw_target = self.raw_requestline.split()[1].decode("ascii")
             if raw_target != self.path:
-                raise ValueError("normalized target denied")
+                msg = "normalized target denied"
+                raise ValueError(msg)
             if raw_target == "/":
                 self.respond(
                     200,
@@ -534,7 +554,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if ranges:
             try:
                 if len(ranges) != 1:
-                    raise ValueError("multiple ranges")
+                    msg = "multiple ranges"
+                    raise ValueError(msg)
                 start, end = byte_range(ranges[0], len(body))
             except ValueError:
                 self.respond(416, full_length=len(body))

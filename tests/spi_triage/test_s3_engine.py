@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 from urllib.parse import urlsplit
 
+import pytest
 from core import Failure, Store, digest
 from evidence_bundle import prepare_bundle, storage_markdown, storage_objects
 from s3_evidence import StorageTransient
@@ -82,7 +83,7 @@ class EngineStorageTests(unittest.TestCase):
             body,
         )
         assert len(urls) == len(objects)
-        for url, (key, raw) in zip(urls, objects, strict=True):
+        for url, (key, _raw) in zip(urls, objects, strict=True):
             parsed = urlsplit(url)
             assert parsed.scheme == "https"
             assert parsed.netloc == urlsplit(gateway.ORIGIN).netloc
@@ -138,7 +139,7 @@ class EngineStorageTests(unittest.TestCase):
             return result
 
         self.s.ensure_object.side_effect = upload
-        with self.assertRaisesRegex(Failure, "STORAGE_TRANSIENT"):
+        with pytest.raises(Failure, match="STORAGE_TRANSIENT"):
             self.engine.run("publish", self.key)
         saved = self.store.get(self.key)
         assert len(saved["result"]["storage_publication"]["verified"]) == 1
@@ -170,7 +171,7 @@ class EngineStorageTests(unittest.TestCase):
 
         self.g.snapshot.side_effect = [[], [{"number": 3, "updated_at": "new"}]]
         original = copy.deepcopy(self.bundle)
-        with self.assertRaisesRegex(Failure, "OPEN_SPI_CHANGED"):
+        with pytest.raises(Failure, match="OPEN_SPI_CHANGED"):
             self.engine.run("publish", self.key)
         result = self.store.get(self.key)["result"]
         audit = copy.deepcopy(result["snapshot_audit"])
@@ -209,7 +210,7 @@ class EngineStorageTests(unittest.TestCase):
         for cycle in range(20):
             current = self.store.get(self.key)
             if current["state"] == "dead":
-                with self.assertRaises(Failure):
+                with pytest.raises(Failure):
                     self.engine.run("publish", self.key)
                 continue
             r = current["result"]
@@ -229,7 +230,7 @@ class EngineStorageTests(unittest.TestCase):
                 [],
                 [{"number": 3, "updated_at": str(cycle)}],
             ]
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 self.engine.run("publish", self.key)
         final = self.store.get(self.key)
         assert final["state"] == "dead"
@@ -264,7 +265,7 @@ class EngineStorageTests(unittest.TestCase):
         }
         for cycle in range(20):
             if self.store.get(self.key)["state"] == "dead":
-                with self.assertRaises(Failure):
+                with pytest.raises(Failure):
                     self.engine.run("match", self.key)
                 continue
             r = self.store.get(self.key)["result"]
@@ -277,7 +278,7 @@ class EngineStorageTests(unittest.TestCase):
                 [],
                 [{"number": 3, "updated_at": str(cycle)}],
             ]
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 self.engine.run("publish", self.key)
         assert self.engine.model.analyze.call_count == 3
         assert self.engine.evidence.collect.call_count == 3
@@ -292,14 +293,14 @@ class EngineStorageTests(unittest.TestCase):
             c.execute(
                 "CREATE TRIGGER abort_reset BEFORE UPDATE ON jobs WHEN NEW.stage=0 BEGIN SELECT RAISE(ABORT,'crash'); END"
             )
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.run("publish", self.key)
         with self.store.db() as c:
             assert c.execute("SELECT count(*) FROM snapshot_budget").fetchone()[0] == 0
             c.execute("DROP TRIGGER abort_reset")
         current = self.store.get(self.key)
         self.store.save(self.key, 3, current["result"], state="processing")
-        with self.assertRaisesRegex(Failure, "OPEN_SPI_CHANGED"):
+        with pytest.raises(Failure, match="OPEN_SPI_CHANGED"):
             self.engine.run("publish", self.key)
         saved = self.store.get(self.key)
         self.store.replace_snapshot(self.key, saved, saved["result"], True)
@@ -320,8 +321,8 @@ class EngineStorageTests(unittest.TestCase):
             )
             self.store.save(self.key, 3, r, state="processing")
             self.g.snapshot.return_value = [{"number": 3, "updated_at": str(cycle)}]
-            with self.assertRaisesRegex(
-                Failure, "WRITE_NEEDS_REVIEW" if cycle == 2 else "OPEN_SPI_CHANGED"
+            with pytest.raises(
+                Failure, match="WRITE_NEEDS_REVIEW" if cycle == 2 else "OPEN_SPI_CHANGED"
             ):
                 self.engine.run("publish", self.key)
         assert self.store.get(self.key)["state"] == "dead"
@@ -331,12 +332,12 @@ class EngineStorageTests(unittest.TestCase):
     def test_old_result_reset_fails_closed_with_independent_retention(self) -> None:
         """Verify old result resets fail closed with independent retention."""
         self.g.snapshot.side_effect = [[], [{"number": 3, "updated_at": "new"}]]
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.run("publish", self.key)
         retained = self.store.get(self.key)["result"]
         self.store.save(self.key, 0, {}, state="processing")
         self.engine.store = Store(self.store.path)
-        with self.assertRaisesRegex(Failure, "WRITE_NEEDS_REVIEW"):
+        with pytest.raises(Failure, match="WRITE_NEEDS_REVIEW"):
             self.engine.run("match", self.key)
         with self.store.db() as c:
             import json
@@ -350,7 +351,7 @@ class EngineStorageTests(unittest.TestCase):
         """Verify unknown overbound entries stay in the audit."""
         self.r["snapshot_audit"] = [{"unknown": n} for n in range(4)]
         self.store.save(self.key, 3, self.r)
-        with self.assertRaisesRegex(Failure, "WRITE_NEEDS_REVIEW"):
+        with pytest.raises(Failure, match="WRITE_NEEDS_REVIEW"):
             self.engine.run("publish", self.key)
         assert self.store.get(self.key)["result"] == self.r
         self.s.ensure_object.assert_not_called()
@@ -358,7 +359,7 @@ class EngineStorageTests(unittest.TestCase):
     def test_changed_snapshot_preserves_lock(self) -> None:
         """Verify a changed snapshot still preserves the lock."""
         self.g.snapshot.side_effect = [[], [{"number": 3, "updated_at": "new"}]]
-        with self.assertRaisesRegex(Failure, "OPEN_SPI_CHANGED"):
+        with pytest.raises(Failure, match="OPEN_SPI_CHANGED"):
             self.engine.run("publish", self.key)
         self.g.request.assert_not_called()
         assert self.store.get(self.key)["result"]["publication_backend"] == "s3"
@@ -376,7 +377,7 @@ class EngineStorageTests(unittest.TestCase):
         self.r["publication_backend"] = "s3"
         self.r["storage_publication"] = {"binding": [], "verified": []}
         self.store.save(self.key, 3, self.r)
-        with self.assertRaisesRegex(Failure, "STORAGE_INTEGRITY"):
+        with pytest.raises(Failure, match="STORAGE_INTEGRITY"):
             self.engine.run("publish", self.key)
         self.g.request.assert_not_called()
         self.s.ensure_object.assert_not_called()
@@ -394,7 +395,7 @@ class EngineStorageTests(unittest.TestCase):
         self.engine.storage_backend = "legacy"
         self.g.comments.return_value = []
         self.g.request.side_effect = Failure("HTTP_429")
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.run("publish", self.key)
         saved = self.store.get(self.key)
         assert saved["result"]["publication_backend"] == "legacy"
@@ -419,7 +420,7 @@ class EngineStorageTests(unittest.TestCase):
                 r["artifact_publication"] = progress
                 self.store.save(self.key, 3, r, state="processing", intent=None)
                 self.g.snapshot.return_value = [{"number": 77, "updated_at": "changed"}]
-                with self.assertRaisesRegex(Failure, "WRITE_NEEDS_REVIEW"):
+                with pytest.raises(Failure, match="WRITE_NEEDS_REVIEW"):
                     self.engine.run("publish", self.key)
                 saved = self.store.get(self.key)["result"]
                 assert saved == {**r, "publication_backend": "legacy"}
@@ -545,7 +546,7 @@ class EngineStorageTests(unittest.TestCase):
         from s3_evidence import StorageConflict
 
         self.s.ensure_object.side_effect = StorageConflict()
-        with self.assertRaisesRegex(Failure, "STORAGE_CONFLICT"):
+        with pytest.raises(Failure, match="STORAGE_CONFLICT"):
             self.engine.run("publish", self.key)
         assert self.s.ensure_object.call_count == 1
         self.g.request.assert_not_called()
@@ -569,17 +570,18 @@ class EngineStorageTests(unittest.TestCase):
             return result
 
         self.s.ensure_object.side_effect = ensure
-        with self.assertRaisesRegex(Failure, "STORAGE_TRANSIENT"):
+        with pytest.raises(Failure, match="STORAGE_TRANSIENT"):
             self.engine.run("publish", self.key)
         self.store.save(self.key, 3, self.store.get(self.key)["result"], state="processing")
 
         def post(method, path, data) -> None:
             assert len(self.store.get(self.key)["result"]["storage_publication"]["verified"]) == 2
             posts.append(data)
-            raise Failure("HTTP_502")
+            msg = "HTTP_502"
+            raise Failure(msg)
 
         self.g.request.side_effect = post
-        with self.assertRaisesRegex(Failure, "HTTP_502"):
+        with pytest.raises(Failure, match="HTTP_502"):
             self.engine.run("publish", self.key)
         saved = self.store.get(self.key)
         self.store.save(self.key, 3, saved["result"], state="processing")
@@ -604,14 +606,14 @@ class EngineStorageTests(unittest.TestCase):
         self.s.ensure_object.side_effect = StorageTransient(1)
         for _ in range(12):
             self.store.save(self.key, 3, self.store.get(self.key)["result"], state="processing")
-            with self.assertRaisesRegex(Failure, "STORAGE_TRANSIENT"):
+            with pytest.raises(Failure, match="STORAGE_TRANSIENT"):
                 self.engine.run("publish", self.key)
         with self.store.db() as c:
             assert c.execute("SELECT count(*) FROM job_failure_budget").fetchone()[0] == 0
         self.s.ensure_object.side_effect = self.verify
         self.g.request.side_effect = Failure("HTTP_429")
         self.store.save(self.key, 3, self.store.get(self.key)["result"], state="processing")
-        with self.assertRaisesRegex(Failure, "HTTP_429"):
+        with pytest.raises(Failure, match="HTTP_429"):
             self.engine.run("publish", self.key)
         self.store.save(self.key, 3, self.store.get(self.key)["result"], state="processing")
         self.g.request.side_effect = None

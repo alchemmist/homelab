@@ -76,7 +76,7 @@ def test_no_api_only_failover_and_failure_threshold(ctl, monkeypatch) -> None:
     )
     calls = []
     monkeypatch.setattr(c, "healthy", lambda: False)
-    monkeypatch.setattr(c, "activate", lambda why: calls.append(why))
+    monkeypatch.setattr(c, "activate", calls.append)
     for _ in range(3):
         c.tick()
     assert calls == []
@@ -84,14 +84,15 @@ def test_no_api_only_failover_and_failure_threshold(ctl, monkeypatch) -> None:
     assert len(calls) == 1
     monkeypatch.setattr(c, "healthy", lambda: True)
     c.tick()
-    assert c.state["failures"] == 0 and c.state["grace_until"] == 0
+    assert c.state["failures"] == 0
+    assert c.state["grace_until"] == 0
 
 
 def test_prepared_and_native_are_sticky(ctl, monkeypatch) -> None:
     """Test behavior for test_prepared_and_native_are_sticky."""
     m, c = ctl
     calls = []
-    monkeypatch.setattr(c, "activate", lambda why: calls.append(why))
+    monkeypatch.setattr(c, "activate", calls.append)
     c.tick()
     assert calls == []
     m.atomic(c.marker, {"native": True})
@@ -99,13 +100,14 @@ def test_prepared_and_native_are_sticky(ctl, monkeypatch) -> None:
     monkeypatch.setattr(m, "active", lambda _: True)
     monkeypatch.setattr(c, "healthy", lambda: True)
     c.tick()
-    assert c.state["mode"] == "native" and c.state["healthy"]
+    assert c.state["mode"] == "native"
+    assert c.state["healthy"]
     assert calls == []
 
 
 def test_uncertain_transition_never_replays(ctl) -> None:
     """Test behavior for test_uncertain_transition_never_replays."""
-    m, c = ctl
+    _m, c = ctl
     c.save(mode="transition-to-kubernetes")
     with pytest.raises(RuntimeError, match="Uncertain"):
         c.tick()
@@ -122,7 +124,8 @@ def test_unknown_port_owner_blocks_native_start(ctl, monkeypatch) -> None:
     monkeypatch.setattr(m.time, "sleep", lambda _: None)
 
     def occupied() -> None:
-        raise OSError("occupied")
+        msg = "occupied"
+        raise OSError(msg)
 
     monkeypatch.setattr(m, "free_ports", occupied)
     with pytest.raises(OSError):
@@ -154,18 +157,22 @@ def test_image_determinism_and_binary_integrity(tmp_path, monkeypatch) -> None:
 def test_deployment_single_host_no_api_token_and_native_boot_fence() -> None:
     """Keep one host, no API token, and a boot fence that does not start the agent."""
     s = (ROOT / "charts/vpn-transit/templates/deployment.yaml").read_text()
-    assert (
-        "type: Recreate" in s
-        and "hostNetwork: true" in s
-        and "automountServiceAccountToken: false" in s
-    )
-    assert "imagePullPolicy: Never" in s and "homelab.io/bootstrap" in s and "NET_BIND_SERVICE" in s
+    assert "type: Recreate" in s
+    assert "hostNetwork: true" in s
+    assert "automountServiceAccountToken: false" in s
+    assert "imagePullPolicy: Never" in s
+    assert "homelab.io/bootstrap" in s
+    assert "NET_BIND_SERVICE" in s
     play = (ROOT / "ansible/playbooks/vpn-transit-mesh-runtime.yml").read_text()
-    assert "ExecCondition=/usr/bin/test ! -e" in play and "ExecCondition=+/usr/bin/test -e" in play
+    assert "ExecCondition=/usr/bin/test ! -e" in play
+    assert "ExecCondition=+/usr/bin/test -e" in play
     assert "state: started" not in play  # prepare never steals live ports
     controller = (ROOT / "ansible/scripts/vpn-transit-failover.py").read_text()
-    assert "AGENT='k3s-agent.service'" in controller and "'k3s.service'" not in controller
-    assert "flock" in controller and "fsync" in controller and "free_ports()" in controller
+    assert "AGENT='k3s-agent.service'" in controller
+    assert "'k3s.service'" not in controller
+    assert "flock" in controller
+    assert "fsync" in controller
+    assert "free_ports()" in controller
 
 
 def test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse() -> None:
@@ -209,15 +216,18 @@ def test_late_native_health_reconciles_without_replaying_lifecycle(ctl, monkeypa
     monkeypatch.setattr(c, "prerequisites", lambda: calls.append("verified"))
     monkeypatch.setattr(m, "run", lambda *_a, **_kw: pytest.fail("no lifecycle replay"))
     c.tick()
-    assert c.state["mode"] == "native" and c.state["failures"] == 0 and c.state["healthy"]
-    assert c.marker.exists() and calls == ["verified"]
+    assert c.state["mode"] == "native"
+    assert c.state["failures"] == 0
+    assert c.state["healthy"]
+    assert c.marker.exists()
+    assert calls == ["verified"]
     receipts = list(m.ROOT.glob("*-native-reconciled.json"))
     assert len(receipts) == 1
     c.tick()
     assert len(list(m.ROOT.glob("*-native-reconciled.json"))) == 1
 
 
-@pytest.mark.parametrize("native,healthy", [(False, True), (True, False), (False, False)])
+@pytest.mark.parametrize(("native", "healthy"), [(False, True), (True, False), (False, False)])
 def test_unhealthy_native_transition_stays_fenced(ctl, monkeypatch, native, healthy) -> None:
     """Test behavior for test_unhealthy_native_transition_stays_fenced."""
     m, c = ctl
@@ -227,7 +237,8 @@ def test_unhealthy_native_transition_stays_fenced(ctl, monkeypatch, native, heal
     monkeypatch.setattr(c, "healthy", lambda: healthy)
     monkeypatch.setattr(c, "prerequisites", lambda: pytest.fail("no transition acceptance"))
     c.tick()
-    assert c.state["mode"] == "transition-to-native" and not c.state["healthy"]
+    assert c.state["mode"] == "transition-to-native"
+    assert not c.state["healthy"]
     assert c.marker.exists()
 
 
@@ -240,7 +251,8 @@ def test_late_native_acceptance_refuses_active_agent(ctl, monkeypatch) -> None:
     monkeypatch.setattr(c, "healthy", lambda: True)
     with pytest.raises(RuntimeError, match="Agent active"):
         c.tick()
-    assert c.state["mode"] == "transition-to-native" and c.marker.exists()
+    assert c.state["mode"] == "transition-to-native"
+    assert c.marker.exists()
 
 
 def test_late_native_acceptance_requires_prerequisites(ctl, monkeypatch) -> None:
@@ -252,12 +264,14 @@ def test_late_native_acceptance_requires_prerequisites(ctl, monkeypatch) -> None
     monkeypatch.setattr(c, "healthy", lambda: True)
 
     def refuse() -> None:
-        raise RuntimeError("prerequisite drift")
+        msg = "prerequisite drift"
+        raise RuntimeError(msg)
 
     monkeypatch.setattr(c, "prerequisites", refuse)
     with pytest.raises(RuntimeError, match="prerequisite drift"):
         c.tick()
-    assert c.state["mode"] == "transition-to-native" and c.marker.exists()
+    assert c.state["mode"] == "transition-to-native"
+    assert c.marker.exists()
 
 
 def test_native_primary_requires_healthy_fenced_native_and_is_sticky(ctl, monkeypatch) -> None:
@@ -271,7 +285,8 @@ def test_native_primary_requires_healthy_fenced_native_and_is_sticky(ctl, monkey
     m.atomic(c.marker, {"native": True})
     c.save(mode="native")
     c.promote()
-    assert c.state["mode"] == "native-primary" and c.marker.exists()
+    assert c.state["mode"] == "native-primary"
+    assert c.marker.exists()
     c.tick()
     assert c.state["mode"] == "native-primary"
     with pytest.raises(AssertionError):
@@ -279,7 +294,8 @@ def test_native_primary_requires_healthy_fenced_native_and_is_sticky(ctl, monkey
     with pytest.raises(AssertionError):
         c.activate("accidental fallback replay")
     c.demote()
-    assert c.state["mode"] == "native" and c.marker.exists()
+    assert c.state["mode"] == "native"
+    assert c.marker.exists()
 
 
 def test_unhealthy_primary_never_restarts_agent_or_releases_fence(ctl, monkeypatch) -> None:
@@ -292,13 +308,14 @@ def test_unhealthy_primary_never_restarts_agent_or_releases_fence(ctl, monkeypat
     monkeypatch.setattr(c, "healthy", lambda: False)
     monkeypatch.setattr(m, "run", lambda *_a, **_k: pytest.fail("must not change lifecycle"))
     c.tick()
-    assert not c.state["healthy"] and c.marker.exists()
+    assert not c.state["healthy"]
+    assert c.marker.exists()
     with pytest.raises(AssertionError):
         c.demote()
 
 
 @pytest.mark.parametrize(
-    "agent,listeners,upstream,recover,scope",
+    ("agent", "listeners", "upstream", "recover", "scope"),
     [
         (True, True, False, False, "upstream-or-path-unhealthy"),
         (True, True, True, True, "local-path-failed-upstream-healthy"),
@@ -315,7 +332,8 @@ def test_failure_scope_uses_direct_upstream_not_api(
     monkeypatch.setattr(m, "local_listeners_respond", lambda: listeners)
 
     def check(_config, host, source, detail) -> bool:
-        assert host == "10.250.0.2" and source == ("10.250.0.40", 0)
+        assert host == "10.250.0.2"
+        assert source == ("10.250.0.40", 0)
         assert isinstance(detail, dict)  # probe records its observation in-place
         if not upstream:
             raise TimeoutError
@@ -323,7 +341,8 @@ def test_failure_scope_uses_direct_upstream_not_api(
 
     monkeypatch.setattr(m, "probe", check)
     d = c.recovery_scope()
-    assert d["recover_local"] == recover and d["scope"] == scope
+    assert d["recover_local"] == recover
+    assert d["scope"] == scope
 
 
 def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatch) -> None:
@@ -344,12 +363,14 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatc
     )
     for _ in range(12):
         c.tick()
-    assert c.state["mode"] == "kubernetes" and not c.state["healthy"] and not c.marker.exists()
+    assert c.state["mode"] == "kubernetes"
+    assert not c.state["healthy"]
+    assert not c.marker.exists()
     assert c.state["failures"] == 4
     assert len(list(m.ROOT.glob("*-failure-classified.json"))) == 1
     # Upstream recovers but local TLS path remains bad: now a local recovery is justified.
     calls = []
-    monkeypatch.setattr(c, "activate", lambda why: calls.append(why))
+    monkeypatch.setattr(c, "activate", calls.append)
     monkeypatch.setattr(
         c,
         "recovery_scope",
@@ -368,8 +389,10 @@ def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch) -> None:
 
     monkeypatch.setattr(m.socket, "create_connection", fail)
     assert not c.healthy()
-    assert c.last_probe["stage"] == "tcp" and c.last_probe["port"] == 32053
-    assert c.last_probe["error"] == "TimeoutError" and "/test" not in json.dumps(c.last_probe)
+    assert c.last_probe["stage"] == "tcp"
+    assert c.last_probe["port"] == 32053
+    assert c.last_probe["error"] == "TimeoutError"
+    assert "/test" not in json.dumps(c.last_probe)
 
 
 def test_boot_grace_never_refreshes_old_green_health_or_carries_failure_count(
@@ -382,9 +405,11 @@ def test_boot_grace_never_refreshes_old_green_health_or_carries_failure_count(
     monkeypatch.setattr(c, "healthy", lambda: False)
     monkeypatch.setattr(c, "activate", lambda _: pytest.fail("boot grace"))
     c.tick()
-    assert c.state["healthy"] is False and c.state["failures"] == 0
+    assert c.state["healthy"] is False
+    assert c.state["failures"] == 0
     c.tick()
-    assert c.state["healthy"] is False and c.state["failures"] == 0
+    assert c.state["healthy"] is False
+    assert c.state["failures"] == 0
 
 
 def test_failed_websocket_diagnostic_does_not_store_private_path(ctl, monkeypatch) -> None:
@@ -410,10 +435,8 @@ def test_failed_websocket_diagnostic_does_not_store_private_path(ctl, monkeypatc
             return Connection()
 
     monkeypatch.setattr(m.socket, "create_connection", lambda *_a, **_kw: Connection())
-    monkeypatch.setattr(m.ssl, "create_default_context", lambda: Context())
-    assert (
-        not c.healthy()
-        and c.last_probe["http_status"] == 403
-        and c.last_probe["stage"] == "websocket"
-    )
+    monkeypatch.setattr(m.ssl, "create_default_context", Context)
+    assert not c.healthy()
+    assert c.last_probe["http_status"] == 403
+    assert c.last_probe["stage"] == "websocket"
     assert "/test" not in json.dumps(c.last_probe)

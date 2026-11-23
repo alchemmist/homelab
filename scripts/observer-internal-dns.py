@@ -23,7 +23,8 @@ def zone(address: str) -> str:
     import ipaddress
 
     if not ipaddress.ip_address(address).is_private or ":" in address:
-        raise ValueError("Expected private IPv4 Service address")
+        msg = "Expected private IPv4 Service address"
+        raise ValueError(msg)
     return f"""{HOST}:53 {{
     errors
     hosts {{
@@ -43,7 +44,8 @@ def desired(before, address, owned_value=None):
     value = zone(address)
     old = before.get("data", {}).get(KEY)
     if old is not None and old != value and old != owned_value:
-        raise RuntimeError("Owned DNS key collision; inspect before changing")
+        msg = "Owned DNS key collision; inspect before changing"
+        raise RuntimeError(msg)
     data = dict(before.get("data", {}))
     data[KEY] = value
     return data
@@ -73,7 +75,8 @@ def kubectl(*args: str, payload: str | None = None):
         timeout=30,
     )
     if r.returncode:
-        raise RuntimeError("Kubernetes operation failed; inspect private state, no blind retry")
+        msg = "Kubernetes operation failed; inspect private state, no blind retry"
+        raise RuntimeError(msg)
     return json.loads(r.stdout)
 
 
@@ -98,13 +101,15 @@ def main() -> None:
         for x in c.get("args", [])
     ), "Public ACME resolver precondition missing"
     before = kubectl("-n", "kube-system", "get", "configmap", "coredns-custom", "-o", "json")
-    assert before.get("data") and not before.get("immutable", False)
+    assert before.get("data")
+    assert not before.get("immutable", False)
     address = INTERNAL_VIP
     owned_value = None
     if a.replace_owned_state:
         receipt = json.loads((a.replace_owned_state / "receipt.json").read_text())
         previous = json.loads((a.replace_owned_state / "after.json").read_text())
-        assert receipt["state"] == "exact-readback-accepted" and receipt["only_changed_key"] == KEY
+        assert receipt["state"] == "exact-readback-accepted"
+        assert receipt["only_changed_key"] == KEY
         assert not (a.replace_owned_state / "uncertain.json").exists()
         assert previous["metadata"]["uid"] == before["metadata"]["uid"]
         owned_value = previous["data"][KEY]
@@ -166,12 +171,11 @@ def main() -> None:
         )
         save("write-response.json", result)
     after = kubectl("-n", "kube-system", "get", "configmap", "coredns-custom", "-o", "json")
-    assert after["metadata"]["uid"] == before["metadata"]["uid"] and after["data"] == data
+    assert after["metadata"]["uid"] == before["metadata"]["uid"]
+    assert after["data"] == data
     current = kubectl("-n", "kube-system", "get", "svc", "traefik", "-o", "json")
-    assert (
-        current["metadata"]["uid"] == service["metadata"]["uid"]
-        and current["spec"]["clusterIP"] == service["spec"]["clusterIP"]
-    )
+    assert current["metadata"]["uid"] == service["metadata"]["uid"]
+    assert current["spec"]["clusterIP"] == service["spec"]["clusterIP"]
     save("after.json", after)
     save(
         "receipt.json",

@@ -247,7 +247,7 @@ SSO, labels, taints and NetworkPolicy do not remove that boundary.
 
 ## Backup, restore and availability
 
-Authentik 2026.8.5, PostgreSQL 17.11, server and worker run on socrat-0 with explicit
+Authentik 2026.8.6, PostgreSQL 17.11, server and worker run on socrat-0 with explicit
 budgets, retained local PVCs and no mounted runtime Kubernetes API token.
 **Single-node, not HA.** Local emergency service logins must remain available.
 

@@ -651,7 +651,8 @@ def node_lock_packages(path: Path) -> list[tuple[str, str]] | None:
     if patches:
         direct = _string_key_dict(root.get("dependencies")) or {}
         if not patches.keys() <= direct.keys():
-            raise ValueError(f"{_DEPENDENCY_NPM_LOCK_FAILURE}: missing reviewed direct patch pin")
+            msg = f"{_DEPENDENCY_NPM_LOCK_FAILURE}: missing reviewed direct patch pin"
+            raise ValueError(msg)
         if not path.with_name("package.json").is_file():
             raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
     located = _located_distributions(packages, patches)

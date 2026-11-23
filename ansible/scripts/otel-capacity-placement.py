@@ -128,7 +128,7 @@ def run(kubeconfig, state_directory):
             "-p",
             json.dumps(patch),
         ]
-        command(args + ["--dry-run=server"])
+        command([*args, "--dry-run=server"])
         command(args)
         try:
             command(
@@ -217,7 +217,7 @@ def run(kubeconfig, state_directory):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--kubeconfig", default="/etc/rancher/k3s/k3s.yaml")
     parser.add_argument("--state-directory", type=Path, required=True)

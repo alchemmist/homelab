@@ -4,6 +4,8 @@ import importlib.util
 import unittest
 from pathlib import Path
 
+import pytest
+
 PATH = Path(__file__).resolve().parents[1] / "charts/monitoring-k3s/files/n8n-activity-exporter.py"
 spec = importlib.util.spec_from_file_location("observer", PATH)
 observer = importlib.util.module_from_spec(spec)
@@ -55,7 +57,7 @@ class ActivityTest(unittest.TestCase):
         old = observer.get_page
         observer.get_page = lambda *args: {"data": [], "nextCursor": "more"}
         try:
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 observer.collect()
         finally:
             observer.get_page = old

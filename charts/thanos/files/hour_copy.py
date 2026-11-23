@@ -22,16 +22,12 @@ HOUR = 3600000
 class Bucket:
     """Issue signed path-style S3 requests to the configured workshop bucket."""
 
-    def __init__(self, cfg):
+    def __init__(self, cfg) -> None:
         """Use the object-store configuration's CA file to verify the S3 endpoint."""
         self.cfg = cfg
-        self.ctx = ssl.create_default_context(
-            cafile=cfg["http_config"]["tls_config"]["ca_file"]
-        )
+        self.ctx = ssl.create_default_context(cafile=cfg["http_config"]["tls_config"]["ca_file"])
 
-    def read(
-        self, key="", query=None, *, sink=None, method="GET", absent=False, payload=None
-    ):
+    def read(self, key="", query=None, *, sink=None, method="GET", absent=False, payload=None):
         """Return bounded bytes or stream to a sink for a (size, SHA-256) pair.
 
         With absent=True, a 404 returns None rather than raising.
@@ -74,18 +70,18 @@ class Bucket:
         )
         conn = http.client.HTTPSConnection(host, context=self.ctx, timeout=120)
         try:
-            conn.request(
-                method, path + ("?" + q if q else ""), body=payload, headers=hdrs
-            )
+            conn.request(method, path + ("?" + q if q else ""), body=payload, headers=hdrs)
             res = conn.getresponse()
             if absent and res.status == 404:
                 return None
             if res.status != 200:
-                raise OSError(f"{method} {key}: status {res.status}")
+                msg = f"{method} {key}: status {res.status}"
+                raise OSError(msg)
             if sink is None:
                 body = res.read(16 * 1024**2 + 1)
                 if len(body) > 16 * 1024**2:
-                    raise ValueError("unexpected metadata size")
+                    msg = "unexpected metadata size"
+                    raise ValueError(msg)
                 return body
             h = hashlib.sha256()
             n = 0
@@ -112,7 +108,8 @@ class Bucket:
                 return result
             tok = root.findtext("{*}NextContinuationToken")
             if not tok or tok == q.get("continuation-token"):
-                raise ValueError("bad continuation")
+                msg = "bad continuation"
+                raise ValueError(msg)
             q["continuation-token"] = tok
 
 
@@ -135,7 +132,8 @@ def hashes(root):
     out = {}
     for f in root.rglob("*"):
         if f.is_symlink():
-            raise ValueError("unexpected symlink")
+            msg = "unexpected symlink"
+            raise ValueError(msg)
         if f.is_file():
             with f.open("rb") as r:
                 out[str(f.relative_to(root))] = (
@@ -148,7 +146,8 @@ def hashes(root):
 def run(bucket, dest):
     """Verify and publish eligible hourly blocks without replacement; return confirmed ULIDs."""
     if not dest.is_dir():
-        raise ValueError("destination not mounted")
+        msg = "destination not mounted"
+        raise ValueError(msg)
     confirmed = set()
     for prefix in sorted(bucket.listing(groups=True)):
         uid = prefix.rstrip("/")
@@ -159,16 +158,14 @@ def run(bucket, dest):
             continue  # unfinished upload
         m = json.loads(meta)
         if m["ulid"] != uid:
-            raise ValueError("ULID mismatch")
+            msg = "ULID mismatch"
+            raise ValueError(msg)
         if (
             m["thanos"]["downsample"]["resolution"] != HOUR
             or m["maxTime"] < (time.time() - 730 * 86400) * 1000
         ):
             continue
-        if (
-            bucket.read(prefix + "deletion-mark.json", method="HEAD", absent=True)
-            is not None
-        ):
+        if bucket.read(prefix + "deletion-mark.json", method="HEAD", absent=True) is not None:
             continue
         target = dest / uid
         if (target / "deletion-mark.json").exists():
@@ -177,8 +174,7 @@ def run(bucket, dest):
         if not target.exists() and any(
             covers(json.loads(f.read_bytes()), m)
             for f in dest.glob("*/meta.json")
-            if ULID.fullmatch(f.parent.name)
-            and not (f.parent / "deletion-mark.json").exists()
+            if ULID.fullmatch(f.parent.name) and not (f.parent / "deletion-mark.json").exists()
         ):
             continue
         keys = bucket.listing(prefix)
@@ -192,7 +188,8 @@ def run(bucket, dest):
         ):
             raise ValueError("unexpected block inventory: " + uid)
         if shutil.disk_usage(dest).free < sum(rel.values()) + 10 * 2**30:
-            raise OSError("hour shelf headroom too low")
+            msg = "hour shelf headroom too low"
+            raise OSError(msg)
         with tempfile.TemporaryDirectory(prefix=".warm-copy-", dir=dest) as temp:
             stage = Path(temp) / uid
             stage.mkdir()
@@ -205,13 +202,15 @@ def run(bucket, dest):
                     w.flush()
                     os.fsync(w.fileno())
                 if expected[k][0] != rel[k]:
-                    raise OSError("object size mismatch")
+                    msg = "object size mismatch"
+                    raise OSError(msg)
             if (
                 hashes(stage) != expected
                 or (stage / "meta.json").read_bytes() != meta
                 or bucket.listing(prefix) != keys
             ):
-                raise OSError("block changed during copy")
+                msg = "block changed during copy"
+                raise OSError(msg)
             # Persist staging directory entries before making the block visible.
             for sub in (stage / "chunks", stage):
                 fd = os.open(sub, os.O_DIRECTORY)
@@ -221,18 +220,14 @@ def run(bucket, dest):
                     os.close(fd)
             if target.exists():
                 if hashes(target) != expected:
-                    raise OSError("existing block differs; refusing replacement")
+                    msg = "existing block differs; refusing replacement"
+                    raise OSError(msg)
             else:
                 # Linux renameat2(RENAME_NOREPLACE): atomic publication, never overwrite.
                 import ctypes
 
                 libc = ctypes.CDLL(None, use_errno=True)
-                if (
-                    libc.renameat2(
-                        -100, os.fsencode(stage), -100, os.fsencode(target), 1
-                    )
-                    != 0
-                ):
+                if libc.renameat2(-100, os.fsencode(stage), -100, os.fsencode(target), 1) != 0:
                     raise OSError(ctypes.get_errno(), "publication refused")
                 fd = os.open(dest, os.O_DIRECTORY)
                 os.fsync(fd)
@@ -247,7 +242,8 @@ def run(bucket, dest):
             ).encode()
             if receipt.exists():
                 if receipt.read_bytes() != body:
-                    raise OSError("conflicting copy receipt")
+                    msg = "conflicting copy receipt"
+                    raise OSError(msg)
             else:
                 with tempfile.NamedTemporaryFile(dir=receipts) as f:
                     f.write(body)

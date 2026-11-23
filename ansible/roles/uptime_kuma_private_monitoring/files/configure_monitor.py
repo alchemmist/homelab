@@ -79,7 +79,7 @@ def configure(db_path, check=False):
         return result
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--db", required=True)
     parser.add_argument("--check", action="store_true")

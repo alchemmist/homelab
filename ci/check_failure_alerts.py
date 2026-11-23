@@ -16,7 +16,8 @@ def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
     result = {}
     for key, value in pairs:
         if key in result:
-            raise ValueError("duplicate JSON key")
+            msg = "duplicate JSON key"
+            raise ValueError(msg)
         result[key] = value
     return result
 
@@ -28,10 +29,12 @@ def load(path: Path) -> object:
 def inside(root: Path, name: str) -> Path:
     relative = Path(name)
     if relative.is_absolute() or ".." in relative.parts:
-        raise ValueError("policy paths must be repository-relative")
+        msg = "policy paths must be repository-relative"
+        raise ValueError(msg)
     path = root / relative
     if path.is_symlink() or not path.resolve().is_relative_to(root):
-        raise ValueError("symlinks and paths outside the repository are forbidden")
+        msg = "symlinks and paths outside the repository are forbidden"
+        raise ValueError(msg)
     return path
 
 
@@ -68,10 +71,12 @@ def _load_policy(root: Path) -> _ScanContext:
         or not policy.get("handler_id")
         or not policy.get("workflow_roots")
     ):
-        raise ValueError("invalid workflow policy")
+        msg = "invalid workflow policy"
+        raise ValueError(msg)
     target = policy["handler_id"]
     if not isinstance(target, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", target):
-        raise ValueError("invalid handler identity")
+        msg = "invalid handler identity"
+        raise ValueError(msg)
     handler = policy.get("handler_template")
     if handler:
         inside(root, cast("str", handler))
@@ -84,10 +89,12 @@ def _collect_workflow_files(root: Path, policy: dict[str, object]) -> set[Path]:
     for name in cast("list[object]", policy["workflow_roots"]):
         directory = inside(root, cast("str", name))
         if not directory.is_dir():
-            raise ValueError("configured workflow root is missing")
+            msg = "configured workflow root is missing"
+            raise ValueError(msg)
         for path in directory.rglob("*"):
             if path.is_symlink() or not path.resolve().is_relative_to(root):
-                raise ValueError("symlinked workflow JSON is forbidden")
+                msg = "symlinked workflow JSON is forbidden"
+                raise ValueError(msg)
             if path.is_file() and path.suffix == ".json":
                 files.add(path)
     return files

@@ -7,6 +7,7 @@ import types
 import unittest
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -145,7 +146,7 @@ class PublicEntryTests(unittest.TestCase):
             owner.subject("6015c85b-82e9-49ce-a4e3-0270c676e26d"),
             owner.subject(connector="local"),
         ]:
-            with self.subTest(candidate=candidate), self.assertRaises(ValueError):
+            with self.subTest(candidate=candidate), pytest.raises(ValueError):
                 owner.target_user([self.fixture()], candidate)
         for key, value in [
             ("email", "other@example.invalid"),
@@ -155,9 +156,9 @@ class PublicEntryTests(unittest.TestCase):
         ]:
             user = self.fixture()
             user[key] = value
-            with self.subTest(key=key), self.assertRaises(ValueError):
+            with self.subTest(key=key), pytest.raises(ValueError):
                 owner.target_user([user], owner.subject())
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             owner.target_user([], owner.subject())
 
 

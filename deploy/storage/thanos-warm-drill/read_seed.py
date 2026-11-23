@@ -82,9 +82,7 @@ print('isolated production seed read: 5m=900 raw-only=empty at 1792785600')
                     },
                     "restartPolicy": "Never",
                     "initContainers": [store, query],
-                    "containers": [
-                        container("verify", PYTHON, ["python3", "-Bc"], [verify])
-                    ],
+                    "containers": [container("verify", PYTHON, ["python3", "-Bc"], [verify])],
                     "volumes": [
                         {"name": "scratch", "emptyDir": {"sizeLimit": "512Mi"}},
                         {

@@ -133,7 +133,7 @@ def build(state, policy):
     return operations
 
 
-def apply(client, operation, state):
+def apply(client, operation, state) -> None:
     """Apply one migration step, rechecking preservation before removing legacy admission."""
     action = operation["action"]
     if action == "create-chat-group":
@@ -219,7 +219,8 @@ def apply(client, operation, state):
         )
         client.call("authentik", "DELETE", "policies/bindings/" + operation["binding"] + "/")
     else:
-        raise ValueError("Unreviewed migration operation")
+        msg = "Unreviewed migration operation"
+        raise ValueError(msg)
 
 
 def main() -> None:

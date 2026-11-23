@@ -86,7 +86,8 @@ def render(directory: str | Path) -> None:
             stream.flush()
             os.fsync(stream.fileno())
     except (OSError, ValueError):
-        raise ValueError("SPI_WRITER_SECRET_PREPARATION_REFUSED") from None
+        msg = "SPI_WRITER_SECRET_PREPARATION_REFUSED"
+        raise ValueError(msg) from None
 
 
 def main() -> None:
@@ -97,7 +98,8 @@ def main() -> None:
     try:
         render(args.private_dir)
     except (OSError, ValueError):
-        raise SystemExit("SPI_WRITER_SECRET_PREPARATION_REFUSED") from None
+        msg = "SPI_WRITER_SECRET_PREPARATION_REFUSED"
+        raise SystemExit(msg) from None
 
 
 if __name__ == "__main__":

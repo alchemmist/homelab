@@ -1,4 +1,4 @@
-/* Quiet Mono v5 — Authentik 2026.8.5 native components, no replacement login JS.
+/* Quiet Mono v5 — Authentik 2026.8.6 native components, no replacement login JS.
    Render asset URL placeholders using the reviewed media manifest. Scope to flow components. */
 @import url('__ASSET_NATURE_SCENE__');
 @font-face{font-family:QuietMono;src:url('__ASSET_COURIER__') format('woff2');font-weight:400;font-display:swap}

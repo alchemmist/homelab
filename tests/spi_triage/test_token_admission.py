@@ -7,6 +7,7 @@ import time
 import unittest
 from unittest.mock import Mock, patch
 
+import pytest
 import test_triage as f
 from core import MATCH_SCHEMA, REPORT_SCHEMA, Failure, Store
 from integrations import Model
@@ -33,15 +34,15 @@ class AdmissionTests(unittest.TestCase):
     def test_restart_parallel_and_window(self) -> None:
         """Verify reservations survive restart, parallelism and windows."""
         r = self.store.reserve_llm(15000, now=100)
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             Store(self.store.path).reserve_llm(1, now=101)
         self.store.finish_llm(r, now=110)
         s = Store(self.store.path)
         r = s.reserve_llm(15000, now=111)
         s.finish_llm(r, now=111)
-        with self.assertRaises(Failure) as e:
+        with pytest.raises(Failure) as e:
             s.reserve_llm(1, now=170.999)
-        assert e.exception.code == "LLM_ADMISSION_DEFERRED"
+        assert e.value.code == "LLM_ADMISSION_DEFERRED"
         s.reserve_llm(1, now=171)
 
     def test_rpm_and_crash_expiry(self) -> None:
@@ -49,10 +50,10 @@ class AdmissionTests(unittest.TestCase):
         for t in (1, 2, 3):
             r = self.store.reserve_llm(1, now=t)
             self.store.finish_llm(r, now=t)
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.store.reserve_llm(1, now=4)
         r = self.store.reserve_llm(1, timeout=10, now=64)
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             Store(self.store.path).reserve_llm(1, now=134.99)
         Store(self.store.path).reserve_llm(1, now=135)
 
@@ -60,11 +61,11 @@ class AdmissionTests(unittest.TestCase):
         """Verify unused reservations never refund the impossible."""
         r = self.store.reserve_llm(30000, now=1)
         self.store.finish_llm(r, actual=1, now=2)
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.store.reserve_llm(1, now=3)
-        with self.assertRaises(Failure) as e:
+        with pytest.raises(Failure) as e:
             self.store.reserve_llm(30001, now=100)
-        assert e.exception.code == "LLM_REQUEST_TOO_LARGE"
+        assert e.value.code == "LLM_REQUEST_TOO_LARGE"
 
     @patch.dict(os.environ, {"SPI_TOKEN_ACCOUNTING_MODE": "byte-bound-v1"})
     def test_serialized_schema_output_and_analysis(self) -> None:
@@ -83,14 +84,14 @@ class AdmissionTests(unittest.TestCase):
             assert m.reservation(body) == expected
             assert m.reservation(body) < len(json.dumps(body).encode()) + 2048 + output
             assert m.reservation(body) > len(body["messages"][1]["content"])
-        with self.assertRaises(Failure) as e:
+        with pytest.raises(Failure) as e:
             m.call(
                 "test",
                 {"huge": ["x" * 12000] * 5},
                 REPORT_SCHEMA,
                 time.monotonic() + 20,
             )
-        assert e.exception.code == "LLM_REQUEST_TOO_LARGE"
+        assert e.value.code == "LLM_REQUEST_TOO_LARGE"
         m.http.request.assert_not_called()
 
     def test_local_compressible_and_incompressible_before_http(self) -> None:
@@ -110,9 +111,9 @@ class AdmissionTests(unittest.TestCase):
 
         rng = random.Random(419)
         noise = "".join(rng.choice(string.ascii_letters + string.digits) for _ in range(60000))
-        with self.assertRaises(Failure) as e:
+        with pytest.raises(Failure) as e:
             m.call("test", {"huge": noise}, MATCH_SCHEMA, time.monotonic() + 20)
-        assert e.exception.code == "LLM_REQUEST_TOO_LARGE"
+        assert e.value.code == "LLM_REQUEST_TOO_LARGE"
         h.request.assert_not_called()
 
     def test_local_computed_cost_durable_clock(self) -> None:
@@ -130,16 +131,16 @@ class AdmissionTests(unittest.TestCase):
         for i, cost in enumerate(costs):
             now = 100 + i * 2
             r = s.reserve_llm(cost, now=now)
-            with self.assertRaises(Failure) as e:
+            with pytest.raises(Failure) as e:
                 Store(s.path).reserve_llm(1, now=now + 0.1)
-            assert e.exception.code == "LLM_ADMISSION_DEFERRED"
+            assert e.value.code == "LLM_ADMISSION_DEFERRED"
             s.finish_llm(r, actual=1, now=now + 1)
             s = Store(s.path)
         with s.db() as db:
             assert [
                 r[0] for r in db.execute("select tokens from llm_admission order by id")
             ] == costs
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             s.reserve_llm(1, now=161.999)
         r = s.reserve_llm(costs[0], now=162)
         s.finish_llm(r, actual=30000, now=163)
@@ -148,7 +149,7 @@ class AdmissionTests(unittest.TestCase):
                 db.execute("select tokens from llm_admission where id=?", (r,)).fetchone()[0]
                 == 30000
             )
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             Store(s.path).reserve_llm(1, now=223.999)
         Store(s.path).reserve_llm(1, now=224)
 
@@ -162,7 +163,7 @@ class AdmissionTests(unittest.TestCase):
         m = Model(h, "fake", store=self.store)
         for _ in range(3):
             assert m.call("test", {}, MATCH_SCHEMA, time.monotonic() + 20) == GOOD
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             Model(h, "fake", store=Store(self.store.path)).call(
                 "test", {}, MATCH_SCHEMA, time.monotonic() + 20
             )
@@ -232,11 +233,12 @@ class AdmissionTests(unittest.TestCase):
             if len(ids) == 2 and not any("selection" in s for s in saved):
                 return {**GOOD, "issue_number": ids[0]}
             if len(ids) == 2:
-                raise Failure("LLM_ADMISSION_DEFERRED", retry_after=61)
+                msg = "LLM_ADMISSION_DEFERRED"
+                raise Failure(msg, retry_after=61)
             return {**GOOD, "issue_number": ids[0]}
 
         m.call = choose
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             m.match(f.event(), issues, on_progress=saved.append)
         assert "selection" in saved[-1]
         m.call = Mock(
@@ -254,12 +256,12 @@ class AdmissionTests(unittest.TestCase):
         h = Mock()
         h.request.return_value = {"choices": [{"message": {"content": "bad JSON"}}]}
         m = Model(h, "fake", store=self.store)
-        with self.assertRaises(Failure) as e:
+        with pytest.raises(Failure) as e:
             m.call("test", {}, MATCH_SCHEMA, time.monotonic() + 30)
-        assert e.exception.code == "LLM_INVALID_MODEL_SCHEMA"
+        assert e.value.code == "LLM_INVALID_MODEL_SCHEMA"
         from core import LLM_TRANSIENT
 
-        assert e.exception.code not in LLM_TRANSIENT
+        assert e.value.code not in LLM_TRANSIENT
         assert h.request.call_count == 1
 
     def test_numeric_rate_headers_allowlist_and_durable_metadata(self) -> None:
@@ -282,10 +284,10 @@ class AdmissionTests(unittest.TestCase):
             },
             None,
         )
-        with self.assertRaises(Failure) as e:
+        with pytest.raises(Failure) as e:
             h.request("POST", "http://internal")
-        assert e.exception.retry_after == 60
-        assert e.exception.rate_metadata == {
+        assert e.value.retry_after == 60
+        assert e.value.rate_metadata == {
             "tokens_remaining": 4155.0,
             "tokens_reset": 60.0,
             "retry_after": 60,
@@ -294,8 +296,8 @@ class AdmissionTests(unittest.TestCase):
         self.store.fail(
             key,
             "LLM_HTTP_429",
-            retry_after=e.exception.retry_after,
-            rate_metadata={**e.exception.rate_metadata, "body": "not allowed"},
+            retry_after=e.value.retry_after,
+            rate_metadata={**e.value.rate_metadata, "body": "not allowed"},
         )
         with self.store.db() as c:
             data = json.loads(c.execute("select metadata from llm_rate_metadata").fetchone()[0])
@@ -330,7 +332,7 @@ class AdmissionTests(unittest.TestCase):
         assert cost >= proxy
         r = self.store.reserve_llm(cost, now=200)
         self.store.finish_llm(r, actual=1, now=201)
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.store.reserve_llm(cost, now=202)
         self.store.reserve_llm(cost, now=262)
 
@@ -340,8 +342,8 @@ class AdmissionTests(unittest.TestCase):
             return
         m = Model(Mock(), "fake", store=self.store)
         with patch.object(m.counter, "_tokenizer") as native:
-            with self.assertRaises(Failure) as e:
+            with pytest.raises(Failure) as e:
                 m.call("test", {"text": " " * 600000}, REPORT_SCHEMA, time.monotonic() + 20)
-            assert e.exception.code == "LLM_REQUEST_TOO_LARGE"
+            assert e.value.code == "LLM_REQUEST_TOO_LARGE"
             native.encode.assert_not_called()
         m.http.request.assert_not_called()

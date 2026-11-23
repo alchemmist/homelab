@@ -5,6 +5,8 @@ import importlib.util
 import unittest
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
     "peer15_endpoint", ROOT / "scripts/wg-peer15-endpoint.py"
@@ -40,26 +42,26 @@ class EndpointTests(unittest.TestCase):
 
     def test_unknown_endpoint_rejected(self) -> None:
         """An endpoint outside the direct and relay pair is rejected."""
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             endpoint.replace_endpoint(
                 self.config().replace(endpoint.DIRECT, "192.0.2.1:1234"), endpoint.RELAY
             )
 
     def test_duplicate_peer_rejected(self) -> None:
         """Two copies of the peer block are rejected."""
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             endpoint.replace_endpoint(self.config() + self.config(), endpoint.RELAY)
 
     def test_missing_peer_rejected(self) -> None:
         """A config without the peer1 key is rejected."""
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             endpoint.replace_endpoint(
                 self.config().replace(endpoint.PEER, "absent"), endpoint.RELAY
             )
 
     def test_duplicate_endpoint_rejected(self) -> None:
         """Two endpoint lines in the peer block are rejected."""
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             endpoint.replace_endpoint(
                 self.config().replace(
                     "Endpoint = " + endpoint.DIRECT,

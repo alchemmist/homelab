@@ -38,16 +38,7 @@ def main() -> None:
         ]
         assert len(candidates) == 1
         out = subprocess.check_output(
-            cmd
-            + [
-                "exec",
-                candidates[0]["metadata"]["name"],
-                "--",
-                "python3",
-                "-c",
-                CENSUS,
-                path,
-            ],
+            [*cmd, "exec", candidates[0]["metadata"]["name"], "--", "python3", "-c", CENSUS, path],
             text=True,
         )
         rows = [json.loads(x) for x in out.splitlines()]

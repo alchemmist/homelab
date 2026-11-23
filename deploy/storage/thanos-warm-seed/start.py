@@ -71,15 +71,11 @@ def kube(*args: str, data: str | None = None) -> str:
         timeout=90,
     )
     if p.returncode:
-        raise RuntimeError(
-            "kubectl failed: " + str(args[:2])
-        )  # no capability paths in errors
+        raise RuntimeError("kubectl failed: " + str(args[:2]))  # no capability paths in errors
     return p.stdout
 
 
-def create(
-    kind: str, body: Mapping[str, object], name: str = NAME, api: str = "v1"
-) -> Resource:
+def create(kind: str, body: Mapping[str, object], name: str = NAME, api: str = "v1") -> Resource:
     created: Resource = json.loads(
         kube(
             "create",
@@ -87,9 +83,7 @@ def create(
             "-",
             "-o",
             "json",
-            data=json.dumps(
-                {"apiVersion": api, "kind": kind, "metadata": {"name": name}, **body}
-            ),
+            data=json.dumps({"apiVersion": api, "kind": kind, "metadata": {"name": name}, **body}),
         )
     )
     return created
@@ -138,9 +132,7 @@ def main() -> None:
         )
     )["items"]
     assert len(pods) == 1
-    files = json.loads(
-        kube("exec", pods[0]["metadata"]["name"], "--", "python3", "-c", INVENTORY)
-    )
+    files = json.loads(kube("exec", pods[0]["metadata"]["name"], "--", "python3", "-c", INVENTORY))
     if marks:
         from markers import batch
 
@@ -163,27 +155,23 @@ def main() -> None:
             ):
                 continue
             verified.update(
-                re.findall(
-                    r"^verified block ([0-9A-Z]{26}) cumulative bytes", log, re.MULTILINE
-                )
+                re.findall(r"^verified block ([0-9A-Z]{26}) cumulative bytes", log, re.MULTILINE)
             )
         assert not any(k in objects and objects[k] != n for k, n in files), (
             "size mismatch; review required"
         )
         needed = {
-            k.split("/")[0]
-            for k, n in files
-            if k not in objects or k.split("/")[0] not in verified
+            k.split("/")[0] for k, n in files if k not in objects or k.split("/")[0] not in verified
         }
         files = [(k, n) for k, n in files if k.split("/")[0] in needed]
         if not files:
             print("No unconfirmed active blocks at this observation")
             return
-    assert files and max(n for _, n in files) < 5 * 2**30
-    backend = json.loads(kube("get", "pod", "-l", "app=thanos-warm-api", "-o", "json"))[
-        "items"
-    ]
-    assert len(backend) == 1 and backend[0]["spec"]["nodeName"] == "socrat-1"
+    assert files
+    assert max(n for _, n in files) < 5 * 2**30
+    backend = json.loads(kube("get", "pod", "-l", "app=thanos-warm-api", "-o", "json"))["items"]
+    assert len(backend) == 1
+    assert backend[0]["spec"]["nodeName"] == "socrat-1"
     free = (
         int(
             kube(
@@ -246,7 +234,7 @@ def main() -> None:
             (D / "sign.py").read_text(),
             data=json.dumps(files),
         )
-        assert set(json.loads(caps)) == set(k for k, _ in files)
+        assert set(json.loads(caps)) == {k for k, _ in files}
     finally:
         kube("delete", "pod", signer, "--wait=false")
     mounts = [

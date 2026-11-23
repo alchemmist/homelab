@@ -36,7 +36,11 @@ def _render(
 
 
 def _matches(selector: dict[str, object], labels: dict[str, str]) -> bool:
-    match_labels = selector.get("matchLabels", {}) if "matchExpressions" in selector else selector.get("matchLabels", selector)
+    match_labels = (
+        selector.get("matchLabels", {})
+        if "matchExpressions" in selector
+        else selector.get("matchLabels", selector)
+    )
     if not isinstance(match_labels, dict) or any(
         labels.get(key) != value for key, value in match_labels.items()
     ):
@@ -58,22 +62,17 @@ def _matches(selector: dict[str, object], labels: dict[str, str]) -> bool:
         if operator == "DoesNotExist" and key in labels:
             return False
         if operator not in {"In", "NotIn", "Exists", "DoesNotExist"}:
-            raise AssertionError(
-                f"unsupported Kubernetes selector operator: {operator}"
-            )
+            msg = f"unsupported Kubernetes selector operator: {operator}"
+            raise AssertionError(msg)
     return True
 
 
 def test_rendered_cnpg_services_and_policies_follow_operator_role_labels() -> None:
     """CNPG creates these Pods; role changes must move metrics endpoints, not policy scope."""
     objects = _render()
-    services = {
-        obj["metadata"]["name"]: obj for obj in objects if obj.get("kind") == "Service"
-    }
+    services = {obj["metadata"]["name"]: obj for obj in objects if obj.get("kind") == "Service"}
     policies = {
-        obj["metadata"]["name"]: obj
-        for obj in objects
-        if obj.get("kind") == "NetworkPolicy"
+        obj["metadata"]["name"]: obj for obj in objects if obj.get("kind") == "NetworkPolicy"
     }
     assert set(services) == {"pg-common-primary-metrics", "pg-critical-primary-metrics", "pgadmin"}
     assert set(policies) == {
@@ -86,8 +85,9 @@ def test_rendered_cnpg_services_and_policies_follow_operator_role_labels() -> No
     }
 
     admin = policies["pgadmin-database-access"]["spec"]
-    assert admin["ingress"] == [{"from": [{"podSelector": {"matchLabels": {"app": "pgadmin"}}}],
-                                "ports": [{"port": 5432}]}]
+    assert admin["ingress"] == [
+        {"from": [{"podSelector": {"matchLabels": {"app": "pgadmin"}}}], "ports": [{"port": 5432}]}
+    ]
     for tier in ("common", "critical", "internal", "critical-async", "unrelated"):
         assert _matches(admin["podSelector"], {"cnpg.io/cluster": "pg-" + tier}) is (
             tier in {"common", "critical", "internal"}
@@ -118,17 +118,19 @@ def test_rendered_cnpg_services_and_policies_follow_operator_role_labels() -> No
     # 77c83ffd retired the standalone async standby and its inbound peer grant.
     assert all(obj["metadata"]["name"] != "pg-critical-async" for obj in objects)
     critical = policies["pg-critical-ingress"]["spec"]["ingress"]
-    assert not any(peer.get("podSelector", {}).get("matchLabels", {}).get("cnpg.io/cluster")
-                   == "pg-critical-async" for rule in critical for peer in rule["from"])
+    assert not any(
+        peer.get("podSelector", {}).get("matchLabels", {}).get("cnpg.io/cluster")
+        == "pg-critical-async"
+        for rule in critical
+        for peer in rule["from"]
+    )
 
 
 def test_database_client_and_probe_policy_peers_remain_narrow() -> None:
     """Render regressions guard the explicit namespaces, labels, and ports for real clients."""
     objects = _render()
     policies = {
-        obj["metadata"]["name"]: obj
-        for obj in objects
-        if obj.get("kind") == "NetworkPolicy"
+        obj["metadata"]["name"]: obj for obj in objects if obj.get("kind") == "NetworkPolicy"
     }
     common = policies["pg-common-ingress"]["spec"]["ingress"]
     critical = policies["pg-critical-ingress"]["spec"]["ingress"]

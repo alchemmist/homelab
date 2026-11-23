@@ -63,7 +63,9 @@ class MonitoringLlmNetworkPolicyTests(unittest.TestCase):
         workload_labels = workload["spec"]["template"]["metadata"]["labels"]
         assert selector == {"matchLabels": {"app": "vllm"}}
         assert selector_matches(selector, workload_labels)
-        assert workload["metadata"].get("namespace", "llm") == policy["metadata"].get("namespace", "llm")
+        assert workload["metadata"].get("namespace", "llm") == policy["metadata"].get(
+            "namespace", "llm"
+        )
         assert policy["spec"]["policyTypes"] == ["Ingress"]
         assert policy["spec"]["ingress"][0]["ports"] == [{"protocol": "TCP", "port": 8000}]
         peers = policy["spec"]["ingress"][0]["from"]
@@ -89,7 +91,8 @@ class MonitoringLlmNetworkPolicyTests(unittest.TestCase):
             "charts/prometheus/alert-graphs.values.yaml",
         )
         prometheus_service = next(
-            obj for obj in prometheus_docs
+            obj
+            for obj in prometheus_docs
             if obj.get("kind") == "Service"
             and obj["metadata"]["name"] == "kube-prometheus-stack-prometheus"
         )
@@ -100,7 +103,8 @@ class MonitoringLlmNetworkPolicyTests(unittest.TestCase):
         policies = self.render("monitoring-llm", "charts/monitoring-llm", "llm")
         owners = self.render("vllm", "charts/vllm", "llm")
         policy = next(
-            doc for doc in policies
+            doc
+            for doc in policies
             if doc.get("kind") == "NetworkPolicy" and doc["metadata"]["name"] == "vllm-monitoring"
         )
         workload = next(doc for doc in owners if doc.get("kind") == "Deployment")
@@ -109,7 +113,10 @@ class MonitoringLlmNetworkPolicyTests(unittest.TestCase):
         assert selector_matches(selector, labels)
         assert not selector_matches(selector, {**labels, "app": "not-vllm"})
         assert not any(
-            selector_matches(selector, obj.get("spec", {}).get("template", {}).get("metadata", {}).get("labels", {}))
+            selector_matches(
+                selector,
+                obj.get("spec", {}).get("template", {}).get("metadata", {}).get("labels", {}),
+            )
             for obj in policies
             if obj.get("kind") in {"Deployment", "DaemonSet", "StatefulSet", "Job"}
         )

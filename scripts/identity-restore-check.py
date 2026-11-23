@@ -37,7 +37,8 @@ def _restore_webui_database(tar: tarfile.TarFile) -> None:
     b.save(database, _sqlite_member(tar, "webui.db"))
     connection = sqlite3.connect(database.as_uri() + "?mode=ro&immutable=1", uri=True)
     if connection.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
-        raise RuntimeError("SQLite integrity failed")
+        msg = "SQLite integrity failed"
+        raise RuntimeError(msg)
     ids = {r[0] for r in connection.execute("SELECT id FROM user")}
     expected = {
         u["openWebuiUserId"]
@@ -48,7 +49,8 @@ def _restore_webui_database(tar: tarfile.TarFile) -> None:
         ).values()
     }
     if not expected <= ids:
-        raise RuntimeError("Reviewed original WebUI identities missing")
+        msg = "Reviewed original WebUI identities missing"
+        raise RuntimeError(msg)
     connection.close()
     temporary.cleanup()
     print(
@@ -77,10 +79,12 @@ def _verify_database_dump(tar: tarfile.TarFile, service: str) -> tuple[bytes, in
             if member.isfile() and member.name.endswith("/data"):
                 digest = hashlib.sha256(registry.extractfile(member).read()).hexdigest()
                 if member.name.split("/")[-2] != digest:
-                    raise RuntimeError("Harbor blob checksum mismatch")
+                    msg = "Harbor blob checksum mismatch"
+                    raise RuntimeError(msg)
                 blobs += 1
     if not blobs:
-        raise RuntimeError("No registry blobs in snapshot")
+        msg = "No registry blobs in snapshot"
+        raise RuntimeError(msg)
     return _sqlite_member(tar, "database.dump"), blobs
 
 
@@ -95,7 +99,8 @@ def _run_restore_pod(service: str, dump: bytes, blobs: int) -> None:
             [*b.SSH, cmd], input=data, capture_output=True, timeout=300, check=False
         )
         if result.returncode:
-            raise RuntimeError("Isolated restore operation failed (details suppressed)")
+            msg = "Isolated restore operation failed (details suppressed)"
+            raise RuntimeError(msg)
         out: bytes = result.stdout
         return out
 
@@ -180,7 +185,8 @@ def _run_restore_pod(service: str, dump: bytes, blobs: int) -> None:
         )
         expected_count = 5 if service == "authentik" else 1
         if count != expected_count:
-            raise RuntimeError("Expected restored identities missing")
+            msg = "Expected restored identities missing"
+            raise RuntimeError(msg)
         print(
             json.dumps(
                 {
@@ -205,7 +211,7 @@ def _run_restore_pod(service: str, dump: bytes, blobs: int) -> None:
         )
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--backup", type=Path, required=True)
@@ -214,7 +220,8 @@ def main():
     args = p.parse_args()
     encrypted = args.backup.read_bytes()
     if not encrypted.startswith(b.HEADER):
-        raise SystemExit("Invalid backup format")
+        msg = "Invalid backup format"
+        raise SystemExit(msg)
     offset = len(b.HEADER)
     archive = AESGCM(args.key.read_bytes()).decrypt(
         encrypted[offset : offset + 12], encrypted[offset + 12 :], b.HEADER

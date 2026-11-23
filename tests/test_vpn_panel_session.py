@@ -8,6 +8,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 EXPECTED_REMOVED_PLAINTEXT_LINKS = 7
@@ -25,39 +27,39 @@ spec.loader.exec_module(m)
 class SessionTests(unittest.TestCase):
     """Tests for SessionTests."""
 
-    def test_unsafe_name_rejected(self):
+    def test_unsafe_name_rejected(self) -> None:
         for name in ("install", "cli-fallback", "vpn83-../x", "vpn83-a"):
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 m.NativeSession("/tmp/" + name)
 
-    def test_collision_refuses_even_preview(self):
+    def test_collision_refuses_even_preview(self) -> None:
         s = m.NativeSession("/tmp/vpn83-20261108-test")
         with (
             patch.object(m, "token_rows", return_value=[{"name": s.names["worker"]}]),
             patch.object(m, "pod_identity") as pod,
         ):
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 s.preview()
             pod.assert_not_called()
 
-    def test_api_paths_and_redirects_are_restricted(self):
+    def test_api_paths_and_redirects_are_restricted(self) -> None:
         for path in ("/setting/reset", "/inbounds/update/1?x=y", "/../secret"):
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 m.request("http://127.0.0.1:18082/base", "A" * 48, "POST", path, {})
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             m.NoRedirect().redirect_request(None, None, None, None, None, None)
 
-    def test_wrong_host_refuses_before_token_creation(self):
+    def test_wrong_host_refuses_before_token_creation(self) -> None:
         s = m.NativeSession("/tmp/vpn83-20261108-host")
         with (
             patch.object(m.socket, "gethostname", return_value="socrat-0"),
             patch.object(m.subprocess, "run") as run,
         ):
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 s.open("bad")
             run.assert_not_called()
 
-    def test_native_success_and_cleanup_preserve_original_credentials(self):
+    def test_native_success_and_cleanup_preserve_original_credentials(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state = Path(tmp).resolve() / "vpn83-20261108-success"
             s = m.NativeSession(state)
@@ -140,13 +142,13 @@ class SessionTests(unittest.TestCase):
                 assert not any(r["name"] == s.names["bootstrap"] for r in rows)
                 assert s.credentials["worker"]["scope"] == "node-sync"
                 s.call("GET", "/inbounds/list")
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     s.call("POST", "/setting/apiTokens/create", {})
                 # Ownership mismatch must never delete a credential.
                 worker = next(r for r in rows if r["name"] == s.names["worker"])
                 old = worker["token"]
                 worker["token"] = "foreign"
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     s._owned("worker")
                 worker["token"] = old
                 s.cleanup()
@@ -167,7 +169,7 @@ class SessionTests(unittest.TestCase):
                 json.loads((state / "credential-cleanup.json").read_text())
             )
 
-    def test_wrong_approval_does_not_invoke_cli(self):
+    def test_wrong_approval_does_not_invoke_cli(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state = Path(tmp).resolve() / "vpn83-20261108-approval"
             s = m.NativeSession(state)
@@ -183,7 +185,7 @@ class SessionTests(unittest.TestCase):
                 patch.object(s, "preview", return_value={"x": 1}),
                 patch.object(m.subprocess, "run") as run,
             ):
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     s.open("wrong")
                 run.assert_not_called()
             if s.lock:
@@ -224,7 +226,7 @@ class TargetHelperTests(unittest.TestCase):
             "clientStats": [{"secret": "sentinel"}],
         }
 
-    def test_only_target_is_patched_and_stats_not_posted(self):
+    def test_only_target_is_patched_and_stats_not_posted(self) -> None:
         module = self.module()
         before = self.inbound()
         after = module.api_payload(before)
@@ -239,16 +241,16 @@ class TargetHelperTests(unittest.TestCase):
             json.loads(before["streamSettings"])["realitySettings"]["target"] == "www.intel.com:443"
         )
 
-    def test_unexpected_sni_or_security_stops(self):
+    def test_unexpected_sni_or_security_stops(self) -> None:
         module = self.module()
         before = self.inbound()
         s = json.loads(before["streamSettings"])
         s["security"] = "none"
         before["streamSettings"] = json.dumps(s)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             module.api_payload(before)
 
-    def test_probe_is_loopback_and_only_allows_public_test_destination(self):
+    def test_probe_is_loopback_and_only_allows_public_test_destination(self) -> None:
         module = self.module()
         cfg = module.vless_client(
             json.loads(self.inbound()["streamSettings"]), "new-owned-id", 12345
@@ -259,13 +261,13 @@ class TargetHelperTests(unittest.TestCase):
         assert "PRIVATE_SENTINEL" not in json.dumps(cfg)
         assert cfg["outbounds"][1]["settings"]["vnext"][0]["users"][0]["flow"] == ""
 
-    def test_json_formatting_is_not_a_semantic_change(self):
+    def test_json_formatting_is_not_a_semantic_change(self) -> None:
         module = self.module()
         a = {"inbounds": [{"id": 1, "stream_settings": '{"b":2,"a":1}'}]}
         b = {"inbounds": [{"id": 1, "stream_settings": '{ "a": 1, "b": 2 }'}]}
         assert module.semantic(a) == module.semantic(b)
 
-    def test_modern_nested_json_dto_is_supported_without_legacy_reencoding(self):
+    def test_modern_nested_json_dto_is_supported_without_legacy_reencoding(self) -> None:
         module = self.module()
         before = self.inbound()
         before["streamSettings"] = json.loads(before["streamSettings"])
@@ -291,7 +293,7 @@ class SubscriptionMigrationTests(unittest.TestCase):
         spec.loader.exec_module(m)
         return m
 
-    def test_payload_only_excludes_publication(self):
+    def test_payload_only_excludes_publication(self) -> None:
         m = self.module()
         before = {
             "id": 7,
@@ -310,10 +312,10 @@ class SubscriptionMigrationTests(unittest.TestCase):
         expected.pop("clientStats")
         assert after == expected
         assert not before["excludeFromSub"]
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             m.payload(after, 7)
 
-    def test_publication_delta_preserves_opaque_imports_and_credentials(self):
+    def test_publication_delta_preserves_opaque_imports_and_credentials(self) -> None:
         m = self.module()
         secure = "vless://preserved@192.0.2.1:32053?security=reality"
         legacy = "vless://preserved@192.0.2.1:32063?security=none"
@@ -325,10 +327,10 @@ class SubscriptionMigrationTests(unittest.TestCase):
             == EXPECTED_REMOVED_PLAINTEXT_LINKS
         )
         after["0"] = [secure]
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             m.check_delta(before, after)
 
-    def test_only_reality_random_id_is_normalized(self):
+    def test_only_reality_random_id_is_normalized(self) -> None:
         m = self.module()
         before = {
             "shortId": "preserve",
@@ -349,7 +351,7 @@ class SubscriptionMigrationTests(unittest.TestCase):
             {"outbounds": [{"protocol": "trojan", "settings": {"vnext": [{"port": 32063}]}}]}
         )
 
-    def test_native_flat_vless_json_settings_are_detected(self):
+    def test_native_flat_vless_json_settings_are_detected(self) -> None:
         m = self.module()
         assert m.json_legacy(
             {
@@ -379,30 +381,30 @@ class BackendGuardTests(unittest.TestCase):
         spec.loader.exec_module(m)
         return m
 
-    def test_exact_owned_guard_and_missing_table_comment_supported(self):
+    def test_exact_owned_guard_and_missing_table_comment_supported(self) -> None:
         m = self.module("vpn-backend-guard.py")
         objects = m.expected()
         m.validate(objects)
         objects[0]["table"]["comment"] = m.OWNER
         m.validate(objects)
         objects[-1]["rule"]["expr"][1]["match"]["right"]["set"].append(443)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             m.validate(objects)
 
-    def test_foreign_owner_and_extra_rule_refused(self):
+    def test_foreign_owner_and_extra_rule_refused(self) -> None:
         m = self.module("vpn-backend-guard.py")
         objects = m.expected()
         objects[0]["table"]["comment"] = "foreign"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             m.validate(objects)
         objects = m.expected()
         objects.append({"rule": {"expr": [{"accept": None}]}})
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             m.validate(objects)
 
     def test_exact_existing_netbird_allowance_preserved_without_relaxing_public_guard(
         self,
-    ):
+    ) -> None:
         import copy
 
         m = self.module("vpn-backend-guard.py")
@@ -432,22 +434,22 @@ class BackendGuardTests(unittest.TestCase):
         for iface in ["eth0", "lo", "wg-socrat"]:
             bad = copy.deepcopy(objects)
             bad[2]["rule"]["expr"][0]["match"]["right"] = iface
-            with self.subTest(interface=iface), self.assertRaises(ValueError):
+            with self.subTest(interface=iface), pytest.raises(ValueError):
                 m.validate(bad)
         bad = copy.deepcopy(objects)
         bad.append(copy.deepcopy(allow))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             m.validate(bad)
         bad = copy.deepcopy(objects)
         bad[2]["rule"]["expr"].append({"drop": None})
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             m.validate(bad)
         bad = copy.deepcopy(objects)
         bad[-1]["rule"]["expr"][-1] = {"accept": None}
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             m.validate(bad)
 
-    def test_guard_scope_and_boot_ensure(self):
+    def test_guard_scope_and_boot_ensure(self) -> None:
         m = self.module("vpn-backend-guard.py")
         text = m.rules()
         assert 'iifname "eth0"' in text
@@ -459,7 +461,7 @@ class BackendGuardTests(unittest.TestCase):
         assert "--ensure" in m.UNIT
         assert "ExecStop=" not in m.UNIT
 
-    def test_trojan_probe_uses_fresh_own_secret_and_verified_tls443(self):
+    def test_trojan_probe_uses_fresh_own_secret_and_verified_tls443(self) -> None:
         m = self.module("vpn-backend-enforce.py")
         cfg = m.client(
             {
@@ -477,7 +479,7 @@ class BackendGuardTests(unittest.TestCase):
         assert cfg["outbounds"][0]["protocol"] == "blackhole"
         assert cfg["routing"]["rules"][0]["domain"] == ["full:speed.cloudflare.com"]
 
-    def test_nft_106_conntrack_membership_uses_in_operator(self):
+    def test_nft_106_conntrack_membership_uses_in_operator(self) -> None:
         m = self.module("vpn-backend-guard.py")
         expr = m.expected()[2]["rule"]["expr"][2]
         assert expr["match"]["op"] == "in"
@@ -495,16 +497,16 @@ class HomeProbeTests(unittest.TestCase):
         spec.loader.exec_module(m)
         return m
 
-    def test_home_receipt_write_is_private_exclusive(self):
+    def test_home_receipt_write_is_private_exclusive(self) -> None:
         m = self.module()
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp) / "proof.json"
             m.exclusive(p, {"own_fixture": True})
             assert p.stat().st_mode & 0o777 == SESSION_FILE_MODE
-            with self.assertRaises(FileExistsError):
+            with pytest.raises(FileExistsError):
                 m.exclusive(p, {"overwrite": True})
 
-    def test_probe_limits_destination_and_avoids_global_network_writes(self):
+    def test_probe_limits_destination_and_avoids_global_network_writes(self) -> None:
         text = (ROOT / "scripts/vpn-home-probe.py").read_text()
         assert "65536" in text
         assert "socks5h://127.0.0.1:" in text
@@ -528,7 +530,7 @@ class LegacyRetirementTests(unittest.TestCase):
         spec.loader.exec_module(m)
         return m
 
-    def test_watchdog_removes_only_legacy_dependencies(self):
+    def test_watchdog_removes_only_legacy_dependencies(self) -> None:
         m = self.module()
         old = {
             "state_dir": "/var/lib/homelab-vpn-failover",
@@ -554,18 +556,18 @@ class LegacyRetirementTests(unittest.TestCase):
             {"protocol": "udp", "port": 32085}
         ]
         assert len(old["tcp_endpoints"]) == LEGACY_ENDPOINT_COUNT
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             m.watchdog_after(after)
 
-    def test_collector_rewrite_is_narrow_and_not_repeatable(self):
+    def test_collector_rewrite_is_narrow_and_not_repeatable(self) -> None:
         m = self.module()
         before = "ExecStart=python3 collector --ports 32087,32053,32083,32063 --state PRIVATEPATH"
         after = m.monitoring_after(before)
         assert after == "ExecStart=python3 collector --ports 32087,32053,32083 --state PRIVATEPATH"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             m.monitoring_after(after)
 
-    def test_native_projection_only_disables_excluded_legacy(self):
+    def test_native_projection_only_disables_excluded_legacy(self) -> None:
         m = self.module()
         old = {
             "inbounds": [
@@ -589,10 +591,10 @@ class LegacyRetirementTests(unittest.TestCase):
         after["inbounds"][0]["enable"] = 1
         assert after == old
         old["inbounds"][0]["exclude_from_sub"] = 0
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             m.desired(old)
 
-    def test_expected_sqlite_enable_flag_keeps_integer_sort_semantics(self):
+    def test_expected_sqlite_enable_flag_keeps_integer_sort_semantics(self) -> None:
         m = self.module()
         old = {
             "inbounds": [
