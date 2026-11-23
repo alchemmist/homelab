@@ -96,3 +96,42 @@ restricted to the workshop Store, returned HTTP 422 `EOF` for that window.
 The same query moved ten minutes earlier and later returned 120 samples each.
 The Prometheus sidecar and the separate 5m/1h Stores advertise time ranges
 excluding this date. Do not infer the missing values from adjacent samples.
+
+## Cold audit verdict and surgical repair, 2026-11-23
+
+The full cold audit of raw block `01M7RY8BC3H3G4HNS4B7BQB8T2` finished on
+socrat-3 (`thanos-cold-block-audit`, streaming the `retired-thanos-raw-20261121`
+archive without unpacking it). All 49 chunk segments passed: every per-file
+size and SHA-256 matched the verified manifest, every record CRC32C validated,
+and every chunk decoded with the upstream v0.309.1 XOR decoder. Totals matched
+the block compaction stats exactly: 209,661,260 records over
+25,065,032,497 advertised samples. Exactly one record failed: the already
+localized chunk ref `167710384981` in `chunks/000040` (CRC valid, XOR decoder
+EOF at 89 of 120 samples). The corruption is confirmed to be limited to the
+last 31 samples of that single chunk; nothing else in the block is damaged.
+
+Repair applied (option chosen: keep the 89 decoded samples, drop the corrupt
+tail, in place):
+
+- Record layout at offset 206660437 of `chunks/000040`:
+  `[uvarint chunkLen=48][version 0x01][48-byte chunk][CRC32C BE]`; the chunk
+  starts with a big-endian uint16 sample count.
+- The count was patched `120 -> 89` and the record CRC recomputed. Segment
+  size stays exactly 536,870,100 bytes; every other byte, all offsets and the
+  v2 index are unchanged. New segment SHA-256:
+  `8a67942454db0b3da7222c0e12be2adebc708ccce27b2b5cf7e45bc0cf6e11f5`
+  (original preserved verbatim in the cold archive:
+  `2b3b77c4356c533b6a0ed7bd4e59b5f38bf8745361bce54f3791bf92f9a7ee23`).
+- The patched segment re-audited end to end: 5,426,540 records,
+  650,737,445 advertised samples, `bad=0`.
+- The S3 object `thanos-workshop/01M7RY8BC3H3G4HNS4B7BQB8T2/chunks/000040`
+  was replaced via multipart upload with the audited bytes under the
+  compactor write credential; a pre-replacement S3 copy matched the archived
+  original hash, and a post-replacement ranged GET matched the patched hash.
+- Verification in production: the raw Compactor completed a full compaction
+  iteration and the downsampling pass with zero EOF errors and no restarts;
+  the previously failing strict raw-only query_interval for 2026-11-17
+  04:20–04:30 UTC now returns HTTP 200 with samples across the window.
+  The permanent data loss is the final 31 samples (about 04:29:50–04:29:59
+  UTC) of `node_systemd_unit_state{state="activating", name="dbus.socket",
+  instance="192.168.0.24:9100"}`; adjacent values were never substituted.
