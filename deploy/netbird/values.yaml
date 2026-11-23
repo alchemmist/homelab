@@ -223,7 +223,6 @@ resources:
           - -n
           - --stun-only
           - --no-auth
-          - --no-tcp
           - --no-tls
           - --no-dtls
           - --no-cli
@@ -265,13 +264,13 @@ resources:
           - mountPath: /tmp
             name: tmp
           livenessProbe:
-            udpSocket:
+            tcpSocket:
               port: stun
             periodSeconds: 30
             timeoutSeconds: 2
             failureThreshold: 3
           readinessProbe:
-            udpSocket:
+            tcpSocket:
               port: stun
             periodSeconds: 30
             timeoutSeconds: 2
