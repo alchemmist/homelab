@@ -1,7 +1,7 @@
 ---
 replicaCount: 1
 image:
-  ghcr.io/open-webui/open-terminal:0.14.1@sha256:03af3bd6c71af3548cbaef874f72d0a8ebd7daa813e0f08d3bdfe8f865f65212
+  ghcr.io/open-webui/open-terminal:0.17.22@sha256:56c5c185a02cb91c97de38f6c55720353306d2780b9c6fe2256f401d6d48b982
 nodeName: socrat-5
 secretName: open-terminal-api
 storageClass: local-path

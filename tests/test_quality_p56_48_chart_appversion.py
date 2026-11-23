@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Whole-file locks. Only the appVersion quote style was allowed to change.
 CHART_TEXT = {
     "charts/open-terminal/Chart.yaml": (
-        "---\napiVersion: v2\nname: open-terminal\nversion: 0.1.0\nappVersion: 0.14.1\n...\n"
+        "---\napiVersion: v2\nname: open-terminal\nversion: 0.1.0\nappVersion: 0.17.22\n...\n"
     ),
     "charts/pyroscope/Chart.yaml": (
         "---\n"
