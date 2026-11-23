@@ -302,7 +302,7 @@ updateWatch:
       github: syncthing/syncthing
     - id: traefik
       title: Traefik
-      current: 3.7.13
+      current: 3.7.19
       github: traefik/traefik
     - id: cert-manager
       title: cert-manager
