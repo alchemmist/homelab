@@ -53,7 +53,7 @@ def classify(error):
     return {"kind": "validation_or_internal"}
 
 
-def stage(request) -> str:
+def stage(request):
     # Use only fixed labels, never a logged URL or arbitrary path component.
     path = urllib.parse.urlsplit(request.full_url).path
     if path == "/api/v3/core/groups/":
@@ -125,7 +125,7 @@ def failure_event(error):
     }
 
 
-def run(controller) -> int:
+def run(controller):
     original = controller.opener
 
     def observed(*args: object, **kwargs: object) -> ObservedHTTP:

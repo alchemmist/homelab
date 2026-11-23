@@ -25,7 +25,7 @@ OWNER = "9e33877a-3eaa-4541-98eb-8cdc10088ef6"
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
-    def redirect_request(self, *args, **kwargs) -> None:
+    def redirect_request(self, *args, **kwargs):
         """Refuse redirects so credentials are never forwarded."""
         return
 
@@ -41,7 +41,7 @@ def opener(context=None):
 class MembershipReader:
     """Cached reader for the observer membership token file."""
 
-    def __init__(self, token_file, ttl=60) -> None:
+    def __init__(self, token_file, ttl=60):
         """Initialize membership cache state."""
         self.token_file, self.ttl = Path(token_file), ttl
         self.lock, self.expires = threading.Lock(), 0
@@ -73,7 +73,7 @@ class MembershipReader:
         message = "Incomplete membership pagination"
         raise RuntimeError(message)
 
-    def refresh(self) -> None:
+    def refresh(self):
         """Reload the cached user/group inventory once it expires."""
         with self.lock:
             if time.monotonic() < self.expires:
@@ -116,7 +116,9 @@ class MembershipReader:
 
 def rancher_plan(users, attributes, authconfig, admitted):
     protected = {OWNER} | {
-        p[len(PREFIX) :] for p in authconfig["allowedPrincipalIds"] if p.startswith(PREFIX)
+        p[len(PREFIX) :]
+        for p in authconfig["allowedPrincipalIds"]
+        if p.startswith(PREFIX)
     }
     by_name = {u["metadata"]["name"]: u for u in users}
     operations = []
@@ -125,14 +127,18 @@ def rancher_plan(users, attributes, authconfig, admitted):
         user = by_name.get(meta["name"])
         if not user:
             continue
-        external = [p[len(PREFIX) :] for p in user.get("principalIds", []) if p.startswith(PREFIX)]
+        external = [
+            p[len(PREFIX) :]
+            for p in user.get("principalIds", [])
+            if p.startswith(PREFIX)
+        ]
         if len(external) != 1 or external[0] in protected:
             continue
         subject = external[0]
         cache = attr.get("GroupPrincipals", {}).get("genericoidc")
-        if attr.get("ExtraByProvider", {}).get("genericoidc", {}).get("principalid") != [
-            PREFIX + subject
-        ]:
+        if attr.get("ExtraByProvider", {}).get("genericoidc", {}).get(
+            "principalid"
+        ) != [PREFIX + subject]:
             # Historical orphan identities can have no live provider cache. They
             # are not ours to adopt/repair. Never let one block unrelated viewers;
             # a mismatched cache carrying our grant remains a fail-closed error.
@@ -140,19 +146,23 @@ def rancher_plan(users, attributes, authconfig, admitted):
             if not items or (
                 isinstance(items, list)
                 and all(
-                    isinstance(p, dict) and p.get("metadata", {}).get("name") != PRINCIPAL
+                    isinstance(p, dict)
+                    and p.get("metadata", {}).get("name") != PRINCIPAL
                     for p in items
                 )
             ):
                 continue
             message = "Native cache identity mismatch"
             raise RuntimeError(message)
-        if not isinstance(cache, dict) or not isinstance(cache.get("Items"), (list, type(None))):
+        if not isinstance(cache, dict) or not isinstance(
+            cache.get("Items"), (list, type(None))
+        ):
             message = "Malformed generic OIDC cache"
             raise RuntimeError(message)
         old = cache["Items"] or []
         if any(
-            not isinstance(p, dict) or not isinstance(p.get("metadata", {}).get("name"), str)
+            not isinstance(p, dict)
+            or not isinstance(p.get("metadata", {}).get("name"), str)
             for p in old
         ):
             message = "Malformed cached group principal"
@@ -204,7 +214,7 @@ def rancher_plan(users, attributes, authconfig, admitted):
     return operations
 
 
-def install_wiki_guard(store) -> None:
+def install_wiki_guard(store):
     path = os.getenv("OBSERVER_IDP_READ_TOKEN_FILE")
     if not path or not getattr(store, "oidc_enabled", False):
         return
@@ -240,7 +250,7 @@ def install_wiki_guard(store) -> None:
     store.token_session = wrap(store.token_session)
 
 
-def reconcile_rancher() -> None:
+def reconcile_rancher():
     reader = MembershipReader(os.environ["OBSERVER_IDP_READ_TOKEN_FILE"])
     reader.refresh()  # Complete, validated identity snapshot BEFORE any writes.
     base = (
@@ -250,7 +260,9 @@ def reconcile_rancher() -> None:
         + os.getenv("KUBERNETES_SERVICE_PORT_HTTPS", "443")
     )
     ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-    token = Path("/var/run/secrets/kubernetes.io/serviceaccount/token").read_text().strip()
+    token = (
+        Path("/var/run/secrets/kubernetes.io/serviceaccount/token").read_text().strip()
+    )
     http = opener(ssl.create_default_context(cafile=ca))
     prefix = "/apis/management.cattle.io/v3/"
 
@@ -278,7 +290,9 @@ def reconcile_rancher() -> None:
                 "GET",
                 path
                 + "?limit=100"
-                + ("&continue=" + urllib.parse.quote(cursor, safe="") if cursor else ""),
+                + (
+                    "&continue=" + urllib.parse.quote(cursor, safe="") if cursor else ""
+                ),
             )
             result.extend(data["items"])
             cursor = data["metadata"].get("continue", "")
