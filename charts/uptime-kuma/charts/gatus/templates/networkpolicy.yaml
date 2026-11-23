@@ -1,0 +1,126 @@
+{{- /*
+Probed-target contract. Each in-cluster URL in files/config.yaml maps to
+(namespace, port) below, and the preamble proves the two sets match one-to-one,
+so the egress rules are exactly the traffic the mounted config generates.
+Targets are allowed per namespace+port because Gatus resolves Service DNS names
+to pod IPs that rotate. Public https checks leave through the reviewed public
+egress path and are covered by the public contract verified below.
+*/ -}}
+{{- $probeTargets := dict
+  "socrat-home:8080" (list "socrat-home" 8080)
+  "blog:80" (list "blog" 80)
+  "cats:80" (list "cats" 80)
+  "monori:8000" (list "monori" 8000)
+  "wishlist:80" (list "wishlist" 80)
+  "lms:80" (list "lms" 80)
+  "wiki:8080" (list "wiki" 8080)
+  "format-quorum:80" (list "format-quorum" 80)
+  "umami:80" (list "umami" 80)
+  "remark42:80" (list "remark42" 80)
+  "identity:80" (list "identity" 80)
+  "llm:8080" (list "llm" 8080)
+  "llm:4000" (list "llm" 4000)
+  "harbor:80" (list "harbor" 80)
+  "syncthing:80" (list "syncthing" 80)
+  "cattle-monitoring-system:80" (list "cattle-monitoring-system" 80)
+  "cattle-monitoring-system:9090" (list "cattle-monitoring-system" 9090)
+  "venice-api:8080" (list "venice-api" 8080)
+  "automation:80" (list "automation" 80)
+  "automation:8080" (list "automation" 8080)
+  "pr-agent:80" (list "pr-agent" 80)
+  "cattle-system:80" (list "cattle-system" 80)
+-}}
+{{- $publicHosts := list
+  "argocd.socrat.alchemmist.xyz"
+  "netbird.socrat.alchemmist.xyz"
+  "socrat.alchemmist.xyz"
+  "alchemmist.xyz"
+  "wishlist.alchemmist.xyz"
+  "img.alchemmist.xyz"
+-}}
+{{- $config := .Files.Get "files/config.yaml" | fromYaml -}}
+{{- $declared := dict -}}
+{{- range $e := $config.endpoints -}}
+  {{- $u := $e.url -}}
+  {{- if hasPrefix "http://" $u -}}
+    {{- $hp := $u | trimPrefix "http://" | splitList "/" | first -}}
+    {{- $host := $hp | splitList ":" | first -}}
+    {{- $ns := $host | splitList "." | last -}}
+    {{- $port := "80" -}}
+    {{- if contains ":" $hp -}}
+      {{- $port = $hp | splitList ":" | last -}}
+    {{- end -}}
+    {{- $key := printf "%s:%s" $ns $port -}}
+    {{- $_ := set $declared $key true -}}
+    {{- $contract := get $probeTargets $key -}}
+    {{- if not $contract -}}
+      {{- fail (printf "gatus config probes %s but no egress contract entry declares it" $key) -}}
+    {{- end -}}
+    {{- if or (ne (index $contract 0) $ns) (ne (index $contract 1 | toString) $port) -}}
+      {{- fail (printf "gatus egress contract entry %s disagrees with the probed host" $key) -}}
+    {{- end -}}
+  {{- else if hasPrefix "https://" $u -}}
+    {{- $h := $u | trimPrefix "https://" | splitList "/" | first | splitList ":" | first -}}
+    {{- if not (has $h $publicHosts) -}}
+      {{- fail (printf "gatus config probes %s which is not in the reviewed public egress contract" $h) -}}
+    {{- end -}}
+  {{- else -}}
+    {{- fail (printf "gatus config probes unsupported url %s" $u) -}}
+  {{- end -}}
+{{- end -}}
+{{- range $key := keys $probeTargets -}}
+  {{- if not (hasKey $declared $key) -}}
+    {{- fail (printf "gatus egress contract declares %s but the config no longer probes it" $key) -}}
+  {{- end -}}
+{{- end -}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: {{ $.Release.Namespace | quote }}
+  name: gatus-isolation
+spec:
+  # Bidirectional isolation for the status page. Ingress arrives only from the
+  # in-namespace public-web-kuma-proxy Deployment that the Ingress routes
+  # through, so the page stays reachable solely via the reviewed public entry.
+  # Egress is DNS, the platform Postgres instance that stores check results,
+  # and exactly the (namespace, port) pairs the mounted config probes.
+  podSelector:
+    matchLabels:
+      app: gatus
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {matchLabels: {app: public-web-kuma-proxy}}
+      ports:
+        - {protocol: TCP, port: 8080}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: postgres-platform
+          podSelector:
+            matchLabels:
+              cnpg.io/cluster: pg-common
+      ports:
+        - {protocol: TCP, port: 5432}
+    {{- range $key := sortAlpha (keys $probeTargets) }}
+    {{- $contract := get $probeTargets $key }}
+    # probed endpoint target {{ $key }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ index $contract 0 | quote }}
+      ports:
+        - {protocol: TCP, port: {{ index $contract 1 }}}
+    {{- end }}

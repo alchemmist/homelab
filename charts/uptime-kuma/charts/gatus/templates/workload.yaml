@@ -11,7 +11,18 @@ spec:
       annotations:
         checksum/config: {{ .Files.Get "files/config.yaml" | sha256sum | quote }}
     spec:
+      serviceAccountName: gatus
       automountServiceAccountToken: false
+      # Docker-verified against the pinned digest: the image is one static Go
+      # binary with no shell that writes only /tmp, and it serves 8080 for any
+      # numeric uid. So the pod runs unprivileged on a read-only root with /tmp
+      # as its only writable mount.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
       containers:
         - name: gatus
           image: docker.io/twinproduction/gatus@sha256:085ed63da963728965d00a3c78aa6167e3bf135218485b893201758e079e8415
@@ -22,17 +33,27 @@ spec:
           env:
             - name: GATUS_CONFIG_PATH
               value: /config/config.yaml
+            # GATUS_DATABASE_URL is interpolated into the mounted config by the
+            # upstream binary (${GATUS_DATABASE_URL}); it has no file-backed
+            # equivalent, so this Secret reference stays (see the gatus docs note).
             - name: GATUS_DATABASE_URL
               valueFrom: {secretKeyRef: {name: gatus-postgres, key: url}}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
           volumeMounts:
             - {name: config, mountPath: /config, readOnly: true}
             - {name: ca, mountPath: /pg-ca, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
           resources:
             requests: {cpu: 25m, memory: 64Mi}
             limits: {memory: 256Mi}
       volumes:
         - {name: config, configMap: {name: gatus-config}}
         - {name: ca, configMap: {name: pg-common-ca}}
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}
 ---
 apiVersion: v1
 kind: Service
