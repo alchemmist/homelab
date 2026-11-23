@@ -318,7 +318,7 @@ updateWatch:
       github: rancher/rancher
     - id: grafana
       title: Grafana
-      current: 13.2.4
+      current: 13.3.1
       github: grafana/grafana
     - id: pyroscope
       title: Pyroscope
