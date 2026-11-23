@@ -1,0 +1,38 @@
+version: 1
+entries:
+  # harbor-core: install_cert.sh entrypoint requires a writable image root
+  # (CA staging into /harbor + OS trust store), and the upstream 2.15.4 chart
+  # wires the runtime tokens (JOBSERVICE_SECRET, REGISTRY_* etc.) as
+  # secretKeyRef env vars only. Evidence discussion:
+  # docs/quality/harbor-readonly-rootfs-contract.md ("harbor-core").
+  - consumer: harbor-0
+    kind: Deployment
+    namespace: harbor
+    name: harbor-core
+    checks: [env-value-from, read-secret-from-env-var, no-read-only-root-fs]
+    evidence: docs/quality/harbor-readonly-rootfs-contract.md
+  # harbor-jobservice: same install_cert.sh writable-root contract and
+  # CORE_SECRET/JOBSERVICE_SECRET env-only wiring.
+  - consumer: harbor-0
+    kind: Deployment
+    namespace: harbor
+    name: harbor-jobservice
+    checks: [env-value-from, read-secret-from-env-var, no-read-only-root-fs]
+    evidence: docs/quality/harbor-readonly-rootfs-contract.md
+  # harbor-registry: registry + registryctl containers share the
+  # install_cert.sh writable-root contract; REGISTRY_HTTP_SECRET /
+  # REGISTRY_RELOAD_KEY are secretKeyRef env vars only.
+  - consumer: harbor-0
+    kind: Deployment
+    namespace: harbor
+    name: harbor-registry
+    checks: [env-value-from, read-secret-from-env-var, no-read-only-root-fs]
+    evidence: docs/quality/harbor-readonly-rootfs-contract.md
+  # harbor-trivy: install_cert.sh writable-root contract (home/scanner
+  # variant) and SCANNER_TRIVY_REDIS_URL env-only wiring.
+  - consumer: harbor-0
+    kind: Deployment
+    namespace: harbor
+    name: harbor-trivy
+    checks: [read-secret-from-env-var, no-read-only-root-fs]
+    evidence: docs/quality/harbor-readonly-rootfs-contract.md

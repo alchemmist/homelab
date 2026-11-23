@@ -62,3 +62,34 @@ conclusion: the write is an upstream image design, not a deployment defect.
   (upstream issue/PR), or
 - an initContainer that stages the CA store into an emptyDir and an image
   variant whose entrypoint reads only staged state.
+
+## Env/secret wiring of `harbor-core`, `harbor-jobservice`, `harbor-registry`, `harbor-trivy`
+
+This deployment runs harbor with `externallyManagedRuntimeSecrets: true`
+(`deploy/platform/harbor/values.yaml`): the `harbor-core`, `harbor-jobservice`,
+`harbor-pg-common` and related Secrets are provisioned out-of-band (harbor
+uploads its config through the bootstrap contract rather than rendered
+Secrets), and the vendored upstream chart templates wire the runtime tokens
+exclusively through `secretKeyRef` environment variables:
+
+- `harbor-core` (`charts/harbor/templates/core/core-dpl.yaml`): `_REDIS_URL_CORE`,
+  `CORE_SECRET`, `JOBSERVICE_SECRET`, `REGISTRY_CREDENTIAL_PASSWORD`,
+  `CSRF_KEY` etc. via `secretKeyRef` on `secretName` values like
+  `harbor-core`/`harbor-jobservice`;
+- `harbor-jobservice`: `CORE_SECRET`, `JOBSERVICE_SECRET`;
+- `harbor-registry` (registry + registryctl containers): `REGISTRY_HTTP_SECRET`,
+  `REGISTRY_RELOAD_KEY`;
+- `harbor-trivy`: `TRIVY_REDIS_URL`… and `SCANNER_TRIVY_REDIS_URL` from
+  `secretKeyRef`.
+
+The harbor Go binaries consume these values from the process environment
+only (no flag/file alternative exists for CSRF keys, registry shared secret
+or the jobservice token in the pinned 2.15.4 binaries; the same env-reading
+pattern is shipped by the upstream chart for every deployment), so
+`env-value-from` and `read-secret-from-env-var` are unimplementable for these
+four Deployments in this repository. Together with the install_cert.sh
+writable-filesystem requirement above (which covers `no-read-only-root-fs`
+for `harbor-core`, `harbor-jobservice`, `harbor-registry` and `harbor-trivy`),
+these findings are registered in
+`ci/quality/providers/harbor-image-contracts.yaml` with this document as
+evidence.
