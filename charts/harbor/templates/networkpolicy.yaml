@@ -1,0 +1,385 @@
+{{- /*
+Component isolation for the vendored Harbor chart. Every rule below is derived
+from a rendered object of this release, so the matrix stays true to source:
+
+- The Ingress routes /api/, /service/, /v2/ and /c/ to harbor-core and / to
+  harbor-portal, so public traffic reaches only those two, via kube-system
+  traefik.
+- The rendered harbor-core ConfigMap names exactly: REGISTRY_URL
+  harbor-registry:5000, REGISTRY_CONTROLLER_URL harbor-registry:8080,
+  JOBSERVICE_URL harbor-jobservice, PORTAL_URL harbor-portal,
+  TRIVY_ADAPTER_URL harbor-trivy:8080, _REDIS_URL_CORE/_REDIS_URL_REG
+  harbor-redis:6379, and POSTGRESQL_HOST is the platform Postgres
+  (pg-common-rw in the 'postgres' namespace, TCP 5432).
+- The harbor-jobservice ConfigMap names CORE_URL harbor-core:80,
+  TOKEN_SERVICE_URL harbor-core:80/service/token, REGISTRY_URL
+  harbor-registry:5000, REGISTRY_CONTROLLER_URL harbor-registry:8080, and a
+  redis worker pool harbor-redis:6379.
+- The harbor-registry ConfigMap names redis harbor-redis:6379, /storage on the
+  registry PVC, and registryctl on :8080 in the same pod.
+- The harbor-trivy Secret pins redis db 5 on harbor-redis:6379; package the
+  trivy adapter reads are SCANNER_TRIVY_DB_REPOSITORY mirror.gcr.io and
+  ghcr.io over the public egress path.
+- Core also reaches its own OIDC/webhook endpoints through the shared public
+  entry (traefik), so the egress to kube-system traefik 80/443 is the hairpin
+  contract for socrat.* hostnames.
+*/ -}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: harbor-core-isolation
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+{{ include "harbor.labels" . | indent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      component: core
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: traefik
+              app.kubernetes.io/name: traefik
+      ports:
+        - {protocol: TCP, port: 8080}
+    - from:
+        - podSelector:
+            matchLabels:
+              component: jobservice
+      ports:
+        - {protocol: TCP, port: 8080}
+    # registryctl and the registry event webhook both call the core service.
+    - from:
+        - podSelector:
+            matchLabels:
+              component: registry
+      ports:
+        - {protocol: TCP, port: 8080}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: postgres
+          podSelector:
+            matchLabels:
+              cnpg.io/cluster: pg-common
+      ports:
+        - {protocol: TCP, port: 5432}
+    - to:
+        - podSelector:
+            matchLabels:
+              component: registry
+      ports:
+        - {protocol: TCP, port: 5000}
+        - {protocol: TCP, port: 8080}
+    - to:
+        - podSelector:
+            matchLabels:
+              component: jobservice
+      ports:
+        - {protocol: TCP, port: 8080}
+    - to:
+        - podSelector:
+            matchLabels:
+              component: portal
+      ports:
+        - {protocol: TCP, port: 8080}
+    - to:
+        - podSelector:
+            matchLabels:
+              component: redis
+      ports:
+        - {protocol: TCP, port: 6379}
+    - to:
+        - podSelector:
+            matchLabels:
+              component: trivy
+      ports:
+        - {protocol: TCP, port: 8080}
+    # OIDC discovery and webhook delivery go through the shared public entry.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: traefik
+              app.kubernetes.io/name: traefik
+      ports:
+        - {protocol: TCP, port: 80}
+        - {protocol: TCP, port: 443}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: harbor-jobservice-isolation
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+{{ include "harbor.labels" . | indent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      component: jobservice
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              component: core
+      ports:
+        - {protocol: TCP, port: 8080}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    - to:
+        - podSelector:
+            matchLabels:
+              component: core
+      ports:
+        - {protocol: TCP, port: 8080}
+    - to:
+        - podSelector:
+            matchLabels:
+              component: registry
+      ports:
+        - {protocol: TCP, port: 5000}
+        - {protocol: TCP, port: 8080}
+    - to:
+        - podSelector:
+            matchLabels:
+              component: redis
+      ports:
+        - {protocol: TCP, port: 6379}
+    # Webhook and replication delivery leave via the reviewed public path.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 169.254.0.0/16
+              - 192.168.0.0/16
+      ports:
+        - {protocol: TCP, port: 443}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: harbor-portal-isolation
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+{{ include "harbor.labels" . | indent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      component: portal
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: traefik
+              app.kubernetes.io/name: traefik
+      ports:
+        - {protocol: TCP, port: 8080}
+    # Core proxies portal content as its own default route.
+    - from:
+        - podSelector:
+            matchLabels:
+              component: core
+      ports:
+        - {protocol: TCP, port: 8080}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    # static-only server; kept for the portal->core proxy_pass fallback
+    - to:
+        - podSelector:
+            matchLabels:
+              component: core
+      ports:
+        - {protocol: TCP, port: 8080}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: harbor-registry-isolation
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+{{ include "harbor.labels" . | indent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      component: registry
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              component: core
+      ports:
+        - {protocol: TCP, port: 5000}
+        - {protocol: TCP, port: 8080}
+    - from:
+        - podSelector:
+            matchLabels:
+              component: jobservice
+      ports:
+        - {protocol: TCP, port: 5000}
+        - {protocol: TCP, port: 8080}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    - to:
+        - podSelector:
+            matchLabels:
+              component: redis
+      ports:
+        - {protocol: TCP, port: 6379}
+    # the distribution event webhook posts to the core service
+    - to:
+        - podSelector:
+            matchLabels:
+              component: core
+      ports:
+        - {protocol: TCP, port: 8080}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: harbor-redis-isolation
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+{{ include "harbor.labels" . | indent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      component: redis
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              component: core
+      ports:
+        - {protocol: TCP, port: 6379}
+    - from:
+        - podSelector:
+            matchLabels:
+              component: jobservice
+      ports:
+        - {protocol: TCP, port: 6379}
+    - from:
+        - podSelector:
+            matchLabels:
+              component: registry
+      ports:
+        - {protocol: TCP, port: 6379}
+    - from:
+        - podSelector:
+            matchLabels:
+              component: trivy
+      ports:
+        - {protocol: TCP, port: 6379}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: harbor-trivy-isolation
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+{{ include "harbor.labels" . | indent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      component: trivy
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              component: core
+      ports:
+        - {protocol: TCP, port: 8080}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    - to:
+        - podSelector:
+            matchLabels:
+              component: redis
+      ports:
+        - {protocol: TCP, port: 6379}
+    # SCANNER_TRIVY_DB_REPOSITORY: mirror.gcr.io and ghcr.io database mirrors.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 169.254.0.0/16
+              - 192.168.0.0/16
+      ports:
+        - {protocol: TCP, port: 443}

@@ -72,7 +72,13 @@ spec:
 {{- toYaml . | nindent 10 }}
 {{- end }}
         {{- if not (empty .Values.containerSecurityContext) }}
-        securityContext: {{ .Values.containerSecurityContext | toYaml | nindent 10 }}
+        securityContext:
+          {{- $sc := deepCopy .Values.containerSecurityContext }}
+          {{- /* The chart nginx.conf pins pid and all *_temp_path under /tmp,
+               and harbor-portal serves static files only, so the container
+               filesystem can stay read-only with a writable /tmp. */}}
+          {{- $_ := set $sc "readOnlyRootFilesystem" true }}
+{{ toYaml $sc | indent 10 }}
         {{- end }}
         livenessProbe:
           httpGet:
@@ -100,6 +106,9 @@ spec:
         - name: portal-config
           mountPath: /etc/nginx/nginx.conf
           subPath: nginx.conf
+        # nginx pid + client/proxy/fastcgi/uwsgi/scgi temp paths land here
+        - name: portal-tmp
+          mountPath: /tmp
         {{- if .Values.internalTLS.enabled }}
         - name: portal-internal-certs
           mountPath: /etc/harbor/ssl/portal
@@ -108,6 +117,8 @@ spec:
       - name: portal-config
         configMap:
           name: "{{ template "harbor.portal" . }}"
+      - name: portal-tmp
+        emptyDir: {}
       {{- if .Values.internalTLS.enabled }}
       - name: portal-internal-certs
         secret:
