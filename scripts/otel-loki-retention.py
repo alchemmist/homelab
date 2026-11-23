@@ -131,8 +131,11 @@ def render(text, policy):
     fallback, streams = rules(policy)
     block = "  retention_period: " + str(fallback) + "h\n  retention_stream:\n"
     for priority, selector, period in streams:
+        # Match the reviewed yaml-lint double-quote style so rendering is idempotent.
         block += (
-            f"    - selector: '{selector}'\n      priority: {priority}\n      period: {period}h\n"
+            "    - selector: "
+            + json.dumps(selector)
+            + f"\n      priority: {priority}\n      period: {period}h\n"
         )
     # Replace only the limits retention stanza, preserving all unrelated Loki settings.
     text, count = re.subn(
@@ -144,6 +147,8 @@ def render(text, policy):
     if count != 1:
         message = "Expected one bounded limits retention stanza"
         raise ValueError(message)
+    # The reviewed config quotes the schema migration date; keep it verbatim.
+    text = text.replace("- from: '2026-01-01'", '- from: "2026-01-01"')
     return text
 
 

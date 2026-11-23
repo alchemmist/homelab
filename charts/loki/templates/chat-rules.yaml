@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: otel-loki-deeperseeker-rules
-  labels:
-    app.kubernetes.io/part-of: otel-backends
-data:
-  deeperseeker-web-chats.yaml: |
-{{ .Files.Get "files/rules/fake/deeperseeker-web-chats.yaml" | indent 4 }}
