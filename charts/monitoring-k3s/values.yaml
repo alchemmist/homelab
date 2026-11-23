@@ -333,7 +333,7 @@ updateWatch:
       github: thanos-io/thanos
     - id: netbird
       title: NetBird
-      current: 0.82.0
+      current: 0.83.2
       github: netbirdio/netbird
     - id: nvidia-device-plugin
       title: NVIDIA device plugin
