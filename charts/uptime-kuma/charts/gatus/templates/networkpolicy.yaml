@@ -108,7 +108,7 @@ spec:
     - to:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: postgres-platform
+              kubernetes.io/metadata.name: postgres
           podSelector:
             matchLabels:
               cnpg.io/cluster: pg-common
