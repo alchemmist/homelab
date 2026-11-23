@@ -2,7 +2,7 @@
 # local, local-hold, cold, shared-hold, shared
 fivePhase: shared
 warmCascade: true
-workshopHold: true
+workshopHold: false
 warmWorkshopDeleteDelay: 48h
 images:
   thanos:
