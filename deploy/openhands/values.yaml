@@ -72,6 +72,6 @@ unlimitedIterations: true
 replicaCount: 1
 automationPostgres: true
 automationPostgresAccess: true
-coldBackup20261119: true
+coldBackup20261119: false
 retireFailedBackup: true
 ...
