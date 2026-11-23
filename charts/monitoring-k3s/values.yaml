@@ -248,7 +248,7 @@ updateWatch:
   targets:
     - id: openhands
       title: OpenHands Agent Canvas
-      current: 1.41.0
+      current: 1.43.0
       github: OpenHands/OpenHands
       namespace: openhands
       statefulset: openhands
