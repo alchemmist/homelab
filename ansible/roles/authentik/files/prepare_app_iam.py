@@ -17,7 +17,7 @@ import urllib.parse
 import urllib.request
 from contextlib import contextmanager
 from pathlib import Path
-from typing import cast
+from typing import Never, cast
 from uuid import uuid4
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
@@ -76,7 +76,7 @@ def tool_hash():
     return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
-def private(path, directory=False):
+def private(path, directory=False) -> None:
     """Document the private operation."""
     s = path.lstat()
     require(
@@ -91,7 +91,7 @@ def private(path, directory=False):
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
-    def redirect_request(self, _req, fp, _code, _msg, _headers, _newurl):
+    def redirect_request(self, _req, fp, _code, _msg, _headers, _newurl) -> Never:
         """Refuse redirects by closing the body and raising instead."""
         if fp is not None:
             fp.close()
@@ -206,7 +206,7 @@ def hashes(state):
     return {path: digest(items) for path, items in state.items()}
 
 
-def empty_group(group):
+def empty_group(group) -> None:
     """Document the empty group operation."""
     require(
         group.get("is_superuser") is False
@@ -433,7 +433,7 @@ def locked(root):
         os.close(fd)  # never unlink a lock inode another invocation may hold
 
 
-def sync_directory(path):
+def sync_directory(path) -> None:
     """Flush directory entries to disk before continuing."""
     fd = os.open(path, os.O_RDONLY)
     try:
@@ -442,7 +442,7 @@ def sync_directory(path):
         os.close(fd)
 
 
-def atomic_json(path, value):
+def atomic_json(path, value) -> None:
     """Replace a JSON file atomically and sync both its contents and directory entry."""
     fd, tmp = tempfile.mkstemp(prefix=".pending-", dir=path.parent)
     try:

@@ -26,6 +26,7 @@ else:
     def override(method: _F) -> _F:
         return method
 
+
 HOST = "raw-cold-copy-20261121"
 SIZE = 16 * 2**20
 ROOT = Path("/data")
@@ -41,11 +42,9 @@ class ArchiveInfo(TypedDict):
 def info() -> ArchiveInfo:
     h = (ROOT / "archive.sha256").read_text().split()
     m = (ROOT / "verified.sha256").read_text().strip()
-    assert (
-        len(h) == 2
-        and h[1] == ARCHIVE
-        and all(re.fullmatch("[0-9a-f]{64}", s) for s in (h[0], m))
-    )
+    assert len(h) == 2
+    assert h[1] == ARCHIVE
+    assert all(re.fullmatch("[0-9a-f]{64}", s) for s in (h[0], m))
     return {"sha256": h[0], "size": (ROOT / ARCHIVE).stat().st_size, "manifest": m}
 
 
@@ -115,7 +114,8 @@ def receive() -> None:
         except (OSError, AssertionError):
             time.sleep(5)
     else:
-        raise TimeoutError("waiting for verified cold restore on 0")
+        msg = "waiting for verified cold restore on 0"
+        raise TimeoutError(msg)
     assert 0 < meta["size"] < 55 * 2**30
     partial = ROOT / (ARCHIVE + ".partial")
     assert not (ROOT / ARCHIVE).exists()

@@ -16,8 +16,8 @@ with tempfile.TemporaryDirectory(dir=root) as work:
     # Resolve the active CNPG primary on each run; never dump the retained legacy PVC.
     pg = [*k[:-1], "postgres"]
     primary = subprocess.check_output(
-        pg
-        + [
+        [
+            *pg,
             "get",
             "cluster.postgresql.cnpg.io",
             "pg-critical",
@@ -31,8 +31,8 @@ with tempfile.TemporaryDirectory(dir=root) as work:
         raise RuntimeError(message)
     with (p / "database.dump").open("wb") as f:
         subprocess.run(
-            pg
-            + [
+            [
+                *pg,
                 "exec",
                 primary,
                 "-c",
@@ -50,12 +50,12 @@ with tempfile.TemporaryDirectory(dir=root) as work:
         )
     pod = json.loads(
         subprocess.check_output(
-            k + ["get", "pods", "-l", "app.kubernetes.io/component=server", "-o", "json"]
+            [*k, "get", "pods", "-l", "app.kubernetes.io/component=server", "-o", "json"]
         )
     )["items"][0]["metadata"]["name"]
     with (p / "data.tar").open("wb") as f:
         subprocess.run(
-            k + ["exec", pod, "-c", "server", "--", "tar", "-C", "/data", "-cf", "-", "."],
+            [*k, "exec", pod, "-c", "server", "--", "tar", "-C", "/data", "-cf", "-", "."],
             stdout=f,
             check=True,
         )

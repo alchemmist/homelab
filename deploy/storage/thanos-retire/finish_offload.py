@@ -14,11 +14,13 @@ other = ["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes", "socra
 
 def main() -> None:
     if sys.flags.optimize:
-        raise RuntimeError("safety checks need standard Python")
+        msg = "safety checks need standard Python"
+        raise RuntimeError(msg)
     assert sys.argv[1:] == ["--after-release"]
-    manifest = output(SSH + ["cat " + SPOOL + "/manifest.json"])
-    released = json.loads(output(SSH + ["cat " + SPOOL + "/released.json"]))
-    assert released["source_empty"] and released["files"] >= 100
+    manifest = output([*SSH, "cat " + SPOOL + "/manifest.json"])
+    released = json.loads(output([*SSH, "cat " + SPOOL + "/released.json"]))
+    assert released["source_empty"]
+    assert released["files"] >= 100
     write = """import pathlib,sys,json,hashlib,os
 p=pathlib.Path(sys.argv[1]);os.umask(0o077);obj=json.load(sys.stdin);d=hashlib.sha256(json.dumps(obj,sort_keys=True,separators=(',',':')).encode()).hexdigest();assert d==sys.argv[2];f=p/'manifest.json'
 if f.exists(): assert json.loads(f.read_bytes())==obj
@@ -28,23 +30,13 @@ else:
     import shlex
 
     output(
-        other
-        + [
-            "python3 -c "
-            + shlex.quote(write)
-            + " "
-            + SPOOL
-            + " "
-            + released["manifest"]
-        ],
+        [*other, "python3 -c " + shlex.quote(write) + " " + SPOOL + " " + released["manifest"]],
         manifest,
     )
     deadline = time.monotonic() + 20 * 3600
     while time.monotonic() < deadline:
         try:
-            j = json.loads(
-                output(K + ["--request-timeout=20s", "get", "job", NAME, "-o", "json"])
-            )
+            j = json.loads(output([*K, "--request-timeout=20s", "get", "job", NAME, "-o", "json"]))
         except subprocess.CalledProcessError:
             # Status lookup is read-only. Never interpret a lost API connection as success.
             time.sleep(45)
@@ -55,7 +47,8 @@ else:
             break
         time.sleep(45)
     else:
-        raise TimeoutError("retain local backup")
+        msg = "retain local backup"
+        raise TimeoutError(msg)
     prog = (
         (D / "tree.py").read_text()
         + """\nfrom pathlib import Path
@@ -78,18 +71,16 @@ with tarfile.open(fileobj=proc.stdout,mode='r|') as t:
 assert proc.wait()==0 and seen==m['files'] and dirs==set(m['dirs']);(p/'restore-verified.json').write_text(json.dumps(proof));print(json.dumps(proof),flush=True)
 """
     )
-    proof = json.loads(output(other + ["nice -n 12 ionice -c2 -n7 python3 -I -"], prog))
-    assert (
-        proof["manifest"] == released["manifest"]
-        and proof["sha256"] == released["archive"]
-    )
+    proof = json.loads(output([*other, "nice -n 12 ionice -c2 -n7 python3 -I -"], prog))
+    assert proof["manifest"] == released["manifest"]
+    assert proof["sha256"] == released["archive"]
     # The working archive on 0 is now only a byte-identical duplicate of the verified copy on 3.
     scrub = (
         (D / "tree.py").read_text()
         + f"""\nfrom pathlib import Path
 p=Path({SPOOL!r});r=json.loads((p/'released.json').read_bytes());assert r['source_empty'] and r['archive']=={proof["sha256"]!r};f=p/'raw.tar.zst';assert f.is_file() and not f.is_symlink() and checksum(f)==r['archive'];f.unlink();(p/'offsite-complete.json').write_text({json.dumps(proof)!r});print('released compressed transit archive on 0')"""
     )
-    print(output(SSH + ["python3 -I -"], scrub), flush=True)
+    print(output([*SSH, "python3 -I -"], scrub), flush=True)
     for resource in [
         "pod/" + NAME,
         "service/" + original,
@@ -98,7 +89,7 @@ p=Path({SPOOL!r});r=json.loads((p/'released.json').read_bytes());assert r['sourc
         "configmap/" + NAME,
         "configmap/" + original,
     ]:
-        output(K + ["delete", resource, "--ignore-not-found", "--wait=false"])
+        output([*K, "delete", resource, "--ignore-not-found", "--wait=false"])
     print(
         "verified independent cold archive on socrat-3:",
         SPOOL,

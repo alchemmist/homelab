@@ -4,6 +4,8 @@ import ast
 import unittest
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -74,7 +76,7 @@ class IdentityGuards(unittest.TestCase):
             "//rustfs.socrat.alchemmist.xyz",
             "https://user:secret@rustfs.socrat.alchemmist.xyz",
         ):
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 module.authority(url)
         assert "actual['client_id']" in ast.unparse(
             ast.parse((ROOT / "scripts/rustfs/unified_identity.py").read_text())

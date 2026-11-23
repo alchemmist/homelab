@@ -70,9 +70,7 @@ def main() -> None:
                                 "name": "s3",
                                 "secret": {
                                     "secretName": "thanos-hour-fixture-reader",
-                                    "items": [
-                                        {"key": "objstore.yml", "path": "objstore.yml"}
-                                    ],
+                                    "items": [{"key": "objstore.yml", "path": "objstore.yml"}],
                                 },
                             },
                         ],

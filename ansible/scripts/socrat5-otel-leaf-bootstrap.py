@@ -21,7 +21,8 @@ def k(*args, document=None) -> str:
         timeout=180,
     )
     if p.returncode:
-        raise RuntimeError("Kubernetes leaf operation failed; private evidence, no blind replay")
+        msg = "Kubernetes leaf operation failed; private evidence, no blind replay"
+        raise RuntimeError(msg)
     return p.stdout
 
 
@@ -38,11 +39,14 @@ def main() -> None:
         assert not k("-n", NS, "get", kind, name, "--ignore-not-found", "-o", "name").strip(), (
             "STOP unexpected existing identity"
         )
-    meta = lambda name: {
-        "name": name,
-        "namespace": NS,
-        "labels": {"app.kubernetes.io/part-of": "homelab-otel"},
-    }
+
+    def meta(name):
+        return {
+            "name": name,
+            "namespace": NS,
+            "labels": {"app.kubernetes.io/part-of": "homelab-otel"},
+        }
+
     docs = [
         {
             "apiVersion": "cert-manager.io/v1",

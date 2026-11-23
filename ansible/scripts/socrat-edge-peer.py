@@ -56,7 +56,7 @@ def scan_existing_peers(
     return matches
 
 
-def main():
+def main() -> None:
     """Execute main."""
     os.umask(0o077)
     config = Path("/etc/wireguard/wg-socrat.conf")

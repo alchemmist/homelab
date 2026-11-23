@@ -14,7 +14,8 @@ from pathlib import Path
 def main() -> None:
     os.umask(0o077)
     if os.environ.get("SSH_ORIGINAL_COMMAND", "") not in ("", "receive-n8n-backup"):
-        raise SystemExit("unsupported command")
+        msg = "unsupported command"
+        raise SystemExit(msg)
     directory = Path.home() / "backups/n8n"
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     name = (
@@ -31,24 +32,28 @@ def main() -> None:
             while chunk := sys.stdin.buffer.read(1024 * 1024):
                 size += len(chunk)
                 if size > 2 * 1024**3:
-                    raise ValueError("archive exceeds 2 GiB limit")
+                    msg = "archive exceeds 2 GiB limit"
+                    raise ValueError(msg)
                 out.write(chunk)
                 digest.update(chunk)
             out.flush()
             os.fsync(out.fileno())
         if size < 32:
-            raise ValueError("empty/truncated archive")
+            msg = "empty/truncated archive"
+            raise ValueError(msg)
         # Fully validate gzip CRC before publishing. Never extract remote paths.
         with gzip.open(partial, "rb") as compressed:
             expanded = 0
             while chunk := compressed.read(1024 * 1024):
                 expanded += len(chunk)
                 if expanded > 4 * 1024**3:
-                    raise ValueError("expanded archive exceeds limit")
+                    msg = "expanded archive exceeds limit"
+                    raise ValueError(msg)
         with tarfile.open(partial, "r:gz") as archive:
             names = {m.name.removeprefix("./") for m in archive.getmembers()}
             if not {"data/database.sqlite", "manifest.json", "encryption-key"} <= names:
-                raise ValueError("missing recovery state")
+                msg = "missing recovery state"
+                raise ValueError(msg)
         # Atomic publication only after successful transfer and archive validation.
         partial.rename(directory / name)
         with (directory / (name + ".sha256")).open("x") as out:

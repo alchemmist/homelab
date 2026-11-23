@@ -8,6 +8,7 @@ from typing import TypedDict
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "charts/spi-triage/files"))
+import pytest
 from core import Failure
 from local_token_counter import LocalCounter, configured_counter, render
 
@@ -54,11 +55,11 @@ class CounterContract(unittest.TestCase):
         ]:
             bad = dict(self.body())
             bad[key] = value
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 render(bad)
         body = self.body()
         body["messages"][1]["content"] = "a" * 524289
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             render(body)
 
     def test_modes_and_missing_assets(self) -> None:
@@ -66,9 +67,9 @@ class CounterContract(unittest.TestCase):
         with patch.dict(os.environ, {"SPI_TOKEN_ACCOUNTING_MODE": "byte-bound-v1"}):
             assert configured_counter() is None
         with patch.dict(os.environ, {"SPI_TOKEN_ACCOUNTING_MODE": "unknown"}):
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 configured_counter()
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             LocalCounter("/nonexistent/spi-tokenizer")
 
 
@@ -127,5 +128,5 @@ class ProxyFloor(unittest.TestCase):
         ]:
             bad = dict(body)
             bad[key] = value
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 counter.reservation(bad)

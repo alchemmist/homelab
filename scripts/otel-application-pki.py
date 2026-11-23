@@ -119,7 +119,7 @@ def assess(resource, verb, name=None, group="", namespace=NS):
     return result.get("allowed") is True
 
 
-def run(output):
+def run(output) -> None:
     os.umask(0o077)
     if output.exists():
         msg = "Preserve existing application PKI observations"

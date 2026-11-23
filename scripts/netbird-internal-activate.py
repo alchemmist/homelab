@@ -56,9 +56,11 @@ def _reviewed_journal() -> tuple[str, dict[str, object]]:
         json.loads((ROOT / "internal-network-stage.json").read_text()),
     )
     if state["state"] != "internal-resources-ready-await-genuine-admin-JWT":
-        raise ValueError("unexpected stage or replay")
+        msg = "unexpected stage or replay"
+        raise ValueError(msg)
     if not (ROOT / "internal-network-enrollment-retired.json").is_file():
-        raise ValueError("enrollment keys and Secrets must be retired first")
+        msg = "enrollment keys and Secrets must be retired first"
+        raise ValueError(msg)
     return token, state
 
 
@@ -74,7 +76,8 @@ def _require_owner_alignment(token: str, identity: object) -> list[object]:
         for u in users
         if cast("dict[str, object]", u)["role"] == "owner"
     ] != [subject()]:
-        raise ValueError("native owner identity mismatch")
+        msg = "native owner identity mismatch"
+        raise ValueError(msg)
     return users
 
 
@@ -82,7 +85,8 @@ def _require_unmodified_policies(token: str, state: dict[str, object]) -> list[o
     """Only the reviewed SSH policy may exist before activation."""
     policies = cast("list[object]", _api(token, "GET", "policies"))
     if {cast("dict[str, object]", p)["id"] for p in policies} != {state["ssh_policy"]}:
-        raise ValueError("unexpected policy drift")
+        msg = "unexpected policy drift"
+        raise ValueError(msg)
     return policies
 
 
@@ -114,7 +118,8 @@ def _reviewed_admin_members(token: str, identity: object, group: object) -> set[
         and not cast("dict[str, object]", p).get("login_expired")
     }
     if not members or not members.issubset(owner_peers):
-        raise ValueError("admin JWT members must be genuinely admitted exact-owner devices only")
+        msg = "admin JWT members must be genuinely admitted exact-owner devices only"
+        raise ValueError(msg)
     return members
 
 
@@ -124,7 +129,8 @@ def _require_network_alignment(token: str, state: dict[str, object]) -> None:
     if {cast("dict[str, object]", n)["id"] for n in _api(token, "GET", "networks")} != {
         cast("dict[str, object]", n)["id"] for n in state_networks.values()
     }:
-        raise ValueError("network drift")
+        msg = "network drift"
+        raise ValueError(msg)
 
 
 def _planned_policies(
@@ -139,7 +145,8 @@ def _planned_policies(
     for resource in resources:
         raw = cast("dict[str, object]", resource)
         if not raw["enabled"] or raw["type"] != "host" or raw.get("groups"):
-            raise ValueError("resource enabled/type/group drift")
+            msg = "resource enabled/type/group drift"
+            raise ValueError(msg)
         plan.append(
             {
                 "address": raw["address"],
@@ -161,14 +168,15 @@ def _build_activation_plan(
         "dict[str, tuple[object, list[str]]]",
         cast("dict[str, object]", compiler)["NETWORKS"],
     )
-    for host, (name, addresses) in compiled_networks.items():
+    for host, (_name, addresses) in compiled_networks.items():
         network = cast("dict[str, object]", networks[host])
         resources = cast(
             "list[object]",
             _api(token, "GET", "networks/" + cast("str", network["id"]) + "/resources"),
         )
         if {cast("dict[str, object]", r)["address"] for r in resources} != set(addresses):
-            raise ValueError("resource scope drift")
+            msg = "resource scope drift"
+            raise ValueError(msg)
         routers = cast(
             "list[dict[str, object]]",
             _api(token, "GET", "networks/" + cast("str", network["id"]) + "/routers"),
@@ -180,7 +188,8 @@ def _build_activation_plan(
             or not routers[0]["enabled"]
             or not routers[0]["masquerade"]
         ):
-            raise ValueError("router/return-path drift")
+            msg = "router/return-path drift"
+            raise ValueError(msg)
         plan.extend(_planned_policies(compiler, admin_id, resources))
     return plan
 
@@ -210,7 +219,8 @@ def _activate_policies(token: str, admin_id: str, plan: list[dict[str, object]])
                 "destinationResource"
             ]
         ):
-            raise ValueError("native policy readback mismatch; inspect journal, no retry")
+            msg = "native policy readback mismatch; inspect journal, no retry"
+            raise ValueError(msg)
     return created
 
 
@@ -223,15 +233,17 @@ def _require_activation_converged(
         state["ssh_policy"],
         *created,
     }:
-        raise ValueError("unexpected policies after activation")
+        msg = "unexpected policies after activation"
+        raise ValueError(msg)
     if {
         cast("dict[str, object]", u)["id"]: cast("dict[str, object]", u)["role"]
         for u in cast("list[object]", _api(token, "GET", "users"))
     } != {cast("dict[str, object]", u)["id"]: cast("dict[str, object]", u)["role"] for u in users}:
-        raise ValueError("unexpected role changes")
+        msg = "unexpected role changes"
+        raise ValueError(msg)
 
 
-def main():
+def main() -> None:
     """Plan or apply the guarded internal stage activation."""
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
@@ -262,7 +274,8 @@ def main():
     if not args.apply:
         return
     if args.approve_plan_hash != digest:
-        raise ValueError("approved current plan hash required")
+        msg = "approved current plan hash required"
+        raise ValueError(msg)
     dest = ROOT / "internal-network-activation-before.json"
     fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as f:

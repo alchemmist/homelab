@@ -54,7 +54,7 @@ homelab-platform-operator. No ROLE_POLICY or arbitrary group-policy mapping.
 Root isolated from reader/writer, no broad Secret RBAC or SA-token mounts.
 
 Console: Authentik full proxy all paths (including callbacks), then native OIDC.
-Evidence: Authentik **forward_single**, because pinned Authentik 2026.8.5 registers
+Evidence: Authentik **forward_single**, because pinned Authentik 2026.8.6 registers
 /auth/nginx only in forward modes. Reader directly validates bounded Cookie at
 fixed HTTPS evidence origin auth endpoint and trusted pipe-separated groups;
 ignores client identity headers. Fixed origin, exact paths, no query/encoding or

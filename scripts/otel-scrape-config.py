@@ -142,7 +142,8 @@ def refresh_api_targets(scrape):
         ]
         allowed_regexes = (r"10\.250\.0\.(1|3|5):6443", desired)
         if len(rules) != 1 or rules[0].get("regex") not in allowed_regexes:
-            raise ValueError("Unrecognized apiserver scrape keep rule")
+            msg = "Unrecognized apiserver scrape keep rule"
+            raise ValueError(msg)
         rules[0]["regex"] = desired
     return result
 
@@ -177,11 +178,13 @@ def refresh_public_edge_probe(scrape):
                 "target": ["http://lms.lms.svc.cluster.local:80/"],
             }
             if params not in (legacy, desired):
-                raise ValueError("Unrecognized LMS probe")
+                msg = "Unrecognized LMS probe"
+                raise ValueError(msg)
             job["params"] = desired
         if identity == ["status"]:
             if job.get("params", {}).get("module") != ["http_2xx"]:
-                raise ValueError("Unexpected status probe module")
+                msg = "Unexpected status probe module"
+                raise ValueError(msg)
             job["params"]["target"] = [next(t["url"] for t in targets if t["id"] == "status")]
         if len(identity) == 1 and identity[0] in tcp_targets:
             if job.get("params", {}).get("module") != ["tcp_connect"]:
@@ -286,7 +289,8 @@ def add_service_path_scrape(scrape):
     }
     existing = [j for j in result["scrape_configs"] if j["job_name"] == job["job_name"]]
     if existing and existing != [job]:
-        raise ValueError("Conflicting service path scrape owner")
+        msg = "Conflicting service path scrape owner"
+        raise ValueError(msg)
     if not existing:
         result["scrape_configs"].append(job)
     return result
@@ -328,7 +332,7 @@ def require(expected: object, message: str) -> None:
         raise ValueError(message)
 
 
-def append_local_translations(translated, group, outputs, nodes):
+def append_local_translations(translated, group, outputs, nodes) -> None:
     """Bring one local job's targets onto the owning node's agent config."""
     for target in group:
         discovered = target.get("discoveredLabels", {})
@@ -516,7 +520,7 @@ def validation_config(value):
     return value
 
 
-def main():
+def main() -> int | None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ssh-host", default="socrat-0")
     parser.add_argument("--output", type=Path, required=True)

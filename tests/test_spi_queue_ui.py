@@ -35,7 +35,7 @@ class QueueWebTests(unittest.TestCase):
     """Exercise the SPI queue web handler against rendered assets."""
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         cls.auth_patch = patch.object(web.Handler, "authorization", return_value=200)
         cls.auth_patch.start()
         cls.server = web.Server(("127.0.0.1", 0), web.Handler)
@@ -43,7 +43,7 @@ class QueueWebTests(unittest.TestCase):
         cls.thread.start()
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         cls.server.shutdown()
         cls.server.server_close()
         cls.thread.join(2)
@@ -62,7 +62,7 @@ class QueueWebTests(unittest.TestCase):
         c.close()
         return result
 
-    def test_static_csp_and_no_framework(self):
+    def test_static_csp_and_no_framework(self) -> None:
         code, headers, body = self.request()
         assert code == OK_STATUS
         assert "private, no-store" in headers["Cache-Control"]
@@ -75,7 +75,7 @@ class QueueWebTests(unittest.TestCase):
         assert "textContent" in js
         assert "expected_updated" in js
 
-    def test_host_group_and_arbitrary_path_denied(self):
+    def test_host_group_and_arbitrary_path_denied(self) -> None:
         assert self.request(extra={"Host": "evil.invalid"})[0] == BAD_REQUEST_STATUS
         assert self.request(path="/queue/../../service.py")[0] == NOT_FOUND_STATUS
         assert self.request(path="/queue/app.js?x=1")[0] == NOT_FOUND_STATUS
@@ -83,7 +83,7 @@ class QueueWebTests(unittest.TestCase):
 
     def test_anonymous_challenge_returns_exact_queue_and_does_not_trust_identity_header(
         self,
-    ):
+    ) -> None:
         with patch.object(web.Handler, "authorization", return_value=401):
             code, headers, _ = self.request(extra={"X-authentik-groups": "homelab-owner"})
         assert code == CHALLENGE_REDIRECT_STATUS
@@ -91,7 +91,7 @@ class QueueWebTests(unittest.TestCase):
             "rd"
         ] == [web.ORIGIN + "/queue/"]
 
-    def test_csrf_rejected_before_upstream(self):
+    def test_csrf_rejected_before_upstream(self) -> None:
         for extra in (
             {},
             {"Origin": "https://evil.invalid", "X-SPI-Queue": "1"},
@@ -101,7 +101,7 @@ class QueueWebTests(unittest.TestCase):
                 assert self.request("POST", "/queue/api/cancel", "{}", extra)[0] == FORBIDDEN_STATUS
                 upstream.assert_not_called()
 
-    def test_fixed_upstream_and_no_cookie_identity_or_worker_header_forwarding(self):
+    def test_fixed_upstream_and_no_cookie_identity_or_worker_header_forwarding(self) -> None:
         response = Mock(status=200)
         response.read.return_value = b'{"items":[],"counts":{}}'
         connection = Mock()
@@ -126,7 +126,7 @@ class QueueWebTests(unittest.TestCase):
         assert b"local-fixture-token" not in body
         connection.close.assert_called_once()
 
-    def test_no_arbitrary_proxy_target_or_cors(self):
+    def test_no_arbitrary_proxy_target_or_cors(self) -> None:
         headers = {
             "Origin": web.ORIGIN,
             "X-SPI-Queue": "1",
@@ -143,7 +143,7 @@ class QueueWebTests(unittest.TestCase):
 class QueueAuthorizationTests(unittest.TestCase):
     """Verify callers authorize only with a real session cookie."""
 
-    def test_caller_groups_never_authorize_without_real_cookie(self):
+    def test_caller_groups_never_authorize_without_real_cookie(self) -> None:
         from email.message import Message
 
         handler = Mock()
@@ -153,7 +153,7 @@ class QueueAuthorizationTests(unittest.TestCase):
             assert RealAuthorization(handler) == UNAUTHORIZED_STATUS
             auth.assert_not_called()
 
-    def test_only_trusted_auth_response_groups_grant_access(self):
+    def test_only_trusted_auth_response_groups_grant_access(self) -> None:
         from email.message import Message
 
         handler = Mock()
@@ -177,7 +177,7 @@ class QueueAuthorizationTests(unittest.TestCase):
 class QueueHelmTests(unittest.TestCase):
     """Check the queue chart's private routes and identity."""
 
-    def test_private_routes_network_identity_and_separate_secret(self):
+    def test_private_routes_network_identity_and_separate_secret(self) -> None:
         raw = subprocess.check_output(
             [
                 "helm",

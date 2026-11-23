@@ -18,13 +18,15 @@ from pathlib import Path
 HOST = "harbor.socrat.alchemmist.xyz"
 
 
-def configure(repository):
+def configure(repository) -> None:
     """Perform the configure operation."""
     if not re.fullmatch(r"homelab/[a-z0-9-]+", repository):
-        raise ValueError("INVALID_REPOSITORY")
+        msg = "INVALID_REPOSITORY"
+        raise ValueError(msg)
     username, password = os.environ["HARBOR_USERNAME"], os.environ["HARBOR_PASSWORD"]
     if not username or not password or "\n" in username or "\n" in password:
-        raise ValueError("INVALID_CREDENTIAL_CONFIGURATION")
+        msg = "INVALID_CREDENTIAL_CONFIGURATION"
+        raise ValueError(msg)
     auth = base64.b64encode((username + ":" + password).encode()).decode()
     query = urllib.parse.urlencode(
         {
@@ -46,11 +48,13 @@ def configure(repository):
     with urllib.request.build_opener(NoRedirect()).open(request, timeout=15) as response:
         body = response.read(65537)
         if len(body) > 65536:
-            raise ValueError("TOKEN_RESPONSE_TOO_LARGE")
+            msg = "TOKEN_RESPONSE_TOO_LARGE"
+            raise ValueError(msg)
         result = json.loads(body)
     token = result.get("token") or result.get("access_token")
     if not isinstance(token, str):
-        raise ValueError("TOKEN_RESPONSE_INVALID")
+        msg = "TOKEN_RESPONSE_INVALID"
+        raise ValueError(msg)
     # This is a grant sanity check of an HTTPS-authenticated issuer response;
     # registry signature validation remains the registry's responsibility.
     part = token.split(".")[1]
@@ -61,7 +65,8 @@ def configure(repository):
         if x.get("type") == "repository" and x.get("name") == repository
     ]
     if not any({"pull", "push"} <= set(x.get("actions", [])) for x in grants):
-        raise ValueError("ROBOT_PUSH_GRANT_MISSING")
+        msg = "ROBOT_PUSH_GRANT_MISSING"
+        raise ValueError(msg)
     directory = Path(tempfile.mkdtemp(prefix="harbor-ci-auth-", dir=os.environ["RUNNER_TEMP"]))
     directory.chmod(0o700)
     path = directory / "config.json"

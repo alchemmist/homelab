@@ -11,7 +11,7 @@ EXPLORER = "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer"
 def test_authentik_image_tag_is_a_version_string() -> None:
     """The pinned authentik tag is text, not a number or a quoted payload."""
     values = yaml.safe_load((ROOT / "deploy/authentik/values.yaml").read_text(encoding="utf-8"))
-    assert values["global"]["image"]["tag"] == "2026.8.5"
+    assert values["global"]["image"]["tag"] == "2026.8.6"
 
 
 def test_monitoring_annotation_and_relabel_scalars_keep_exact_values() -> None:

@@ -46,7 +46,8 @@ def build(config: dict[str, object], policy: dict[str, object]) -> dict[str, obj
         or policy.get("newVpsOrPublicIp") is not False
         or policy.get("scope") != "existing-socrat-2-only"
     ):
-        raise ValueError("Unsupported scope")
+        msg = "Unsupported scope"
+        raise ValueError(msg)
     desired = policy["realityCorrection"]
     if not isinstance(desired, dict):
         reason = "Explicit apply policy required"
@@ -55,10 +56,12 @@ def build(config: dict[str, object], policy: dict[str, object]) -> dict[str, obj
         not isinstance(desired.get("apiApplyEnabled"), bool)
         or desired.get("preserveClientMaterial") is not True
     ):
-        raise ValueError("Explicit apply policy and preserved client material required")
+        msg = "Explicit apply policy and preserved client material required"
+        raise ValueError(msg)
     matches = [x for x in _inbounds(config) if isinstance(x, dict) and x["port"] == desired["port"]]
     if len(matches) != 1:
-        raise ValueError("Expected exactly one target inbound")
+        msg = "Expected exactly one target inbound"
+        raise ValueError(msg)
     row = matches[0]
     stream: dict[str, object] = json.loads(str(row["stream_settings"]))
     if not row["enable"] or any(
@@ -68,20 +71,24 @@ def build(config: dict[str, object], policy: dict[str, object]) -> dict[str, obj
             stream.get("security") != desired["security"],
         )
     ):
-        raise ValueError("Unexpected transport or disabled inbound")
+        msg = "Unexpected transport or disabled inbound"
+        raise ValueError(msg)
     reality = stream["realitySettings"]
     if not isinstance(reality, dict):
         reason = "Expected REALITY settings"
         raise TypeError(reason)
     if reality["serverNames"] != desired["serverNames"]:
-        raise ValueError("Unexpected client-visible SNI; do not migrate it implicitly")
+        msg = "Unexpected client-visible SNI; do not migrate it implicitly"
+        raise ValueError(msg)
     keys = [key for key in ("target", "dest") if key in reality]
     if len(keys) != 1:
-        raise ValueError("Ambiguous REALITY target schema")
+        msg = "Ambiguous REALITY target schema"
+        raise ValueError(msg)
     key = keys[0]
     current = reality[key]
     if current not in (desired["oldTarget"], desired["newTarget"]):
-        raise ValueError("Target drift; stop")
+        msg = "Target drift; stop"
+        raise ValueError(msg)
     after = copy.deepcopy(config)
     operations: list[dict[str, object]] = []
     if current != desired["newTarget"]:
@@ -119,7 +126,8 @@ def main() -> None:
         with closing(sqlite3.connect(":memory:")) as snapshot:
             source.backup(snapshot)
             if snapshot.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
-                raise ValueError("Integrity check failed")
+                msg = "Integrity check failed"
+                raise ValueError(msg)
             result = build(inventory.projection(snapshot), json.loads(args.policy.read_text()))
     print(inventory.canonical(result))
 
@@ -128,6 +136,5 @@ if __name__ == "__main__":
     try:
         main()
     except (OSError, ValueError, RuntimeError, ImportError, sqlite3.Error):
-        raise SystemExit(
-            "Target preview stopped on unsupported state; no writes performed"
-        ) from None
+        msg = "Target preview stopped on unsupported state; no writes performed"
+        raise SystemExit(msg) from None

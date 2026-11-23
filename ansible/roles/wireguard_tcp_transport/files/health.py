@@ -1,4 +1,5 @@
 """WireGuard TCP transport health probe with restart bookkeeping."""
+
 import json
 import subprocess
 import time
@@ -19,7 +20,7 @@ def next_state(state, now, healthy):
     }, restart
 
 
-def main():
+def main() -> None:
     now = time.clock_gettime(time.CLOCK_BOOTTIME)
     state = json.loads(STATE.read_text()) if STATE.exists() else {}
     try:

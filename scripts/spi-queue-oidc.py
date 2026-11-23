@@ -113,9 +113,8 @@ class API:
             error.close()
             raise RuntimeError("Native API rejected operation: HTTP " + str(status)) from None
         except (OSError, ValueError, urllib.error.URLError):
-            raise RuntimeError(
-                "Native API transport failed; do not retry ambiguous writes"
-            ) from None
+            msg = "Native API transport failed; do not retry ambiguous writes"
+            raise RuntimeError(msg) from None
 
     def rows(self, path) -> "list[dict[str, object]]":
         """Collect all pages of rows for an API path."""
@@ -147,7 +146,8 @@ class API:
             result.extend(cast("list[dict[str, object]]", data["results"]))
             if not next_page:
                 return result
-        raise RuntimeError("Bounded native pagination exceeded")
+        msg = "Bounded native pagination exceeded"
+        raise RuntimeError(msg)
 
 
 def one(api, path, field, value) -> "dict[str, object] | None":

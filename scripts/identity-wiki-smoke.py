@@ -54,7 +54,7 @@ def admin(method, path, data=None):
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
-    def redirect_request(self, *_args):
+    def redirect_request(self, *_args) -> None:
         """Refuse redirects so credentials are never forwarded."""
         return
 
@@ -154,7 +154,8 @@ try:
                     )
                     if not key:
                         print("TOTP challenge fields:", sorted(challenge.keys()))
-                        raise RuntimeError("TOTP setup format needs driver update")
+                        msg = "TOTP setup format needs driver update"
+                        raise RuntimeError(msg)
                     key = base64.b32decode(key.upper() + "=" * ((-len(key)) % 8))
                     h = hmac.new(
                         key, struct.pack(">Q", int(time.time()) // 30), hashlib.sha1
@@ -176,7 +177,8 @@ try:
                     else json.loads(body)
                 )
             else:
-                raise RuntimeError("Too many flow challenges")
+                msg = "Too many flow challenges"
+                raise RuntimeError(msg)
         else:
             status, headers, body = browser(urllib.parse.urljoin(base, target))
             if status in [301, 302, 303, 307]:
@@ -185,9 +187,11 @@ try:
                 _, _, body = browser("https://wiki.socrat.alchemmist.xyz/api/auth/me")
                 profile = json.loads(body)
                 if profile.get("user", {}).get("username") != username:
-                    raise RuntimeError("Unexpected Wiki identity")
+                    msg = "Unexpected Wiki identity"
+                    raise RuntimeError(msg)
                 if profile["user"]["role"] != "reader" or profile["writable"]:
-                    raise RuntimeError("Observer unexpectedly received edit rights")
+                    msg = "Observer unexpectedly received edit rights"
+                    raise RuntimeError(msg)
                 request = urllib.request.Request(
                     "https://wiki.socrat.alchemmist.xyz/api/editor/batch",
                     data=b"{}",
@@ -199,18 +203,22 @@ try:
                 )
                 try:
                     opener.open(request, timeout=30)
-                    raise RuntimeError("Reader could write")
+                    msg = "Reader could write"
+                    raise RuntimeError(msg)
                 except urllib.error.HTTPError as error:
                     if error.code != 403:
-                        raise RuntimeError("Unexpected write rejection status") from error
+                        msg = "Unexpected write rejection status"
+                        raise RuntimeError(msg) from error
                 print(
                     "Wiki password + TOTP + consent + OIDC/PKCE passed; observer is reader; writes denied 403"
                 )
                 break
             else:
-                raise RuntimeError("Unexpected final non-Wiki page")
+                msg = "Unexpected final non-Wiki page"
+                raise RuntimeError(msg)
     else:
-        raise RuntimeError("Too many redirects")
+        msg = "Too many redirects"
+        raise RuntimeError(msg)
 finally:
     admin("DELETE", "core/users/" + str(user["pk"]) + "/")
     print("Temporary Authentik acceptance identity removed")

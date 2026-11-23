@@ -128,13 +128,12 @@ def _verify_native(
 ) -> tuple[dict[str, object], dict[str, object]]:
     """Verify the reviewed native password-change flow, prompts and writer stage."""
     native = _exact(snapshot, "flows/instances/", "Change Password")
-    assert (
-        native["authentication"] == "require_authenticated"
-        and native["slug"] == "default-password-change"
-    )
+    assert native["authentication"] == "require_authenticated"
+    assert native["slug"] == "default-password-change"
     prompt = _exact(snapshot, "stages/prompt/stages/", "default-password-change-prompt")
     write = _exact(snapshot, "stages/user_write/", "default-password-change-write")
-    assert write["user_creation_mode"] == "never_create" and write["create_users_group"] is None
+    assert write["user_creation_mode"] == "never_create"
+    assert write["create_users_group"] is None
     rows = snapshot["stages/prompt/prompts/"]
     fields = [p for p in rows if p["pk"] in cast("list[object]", prompt["fields"])]
     assert {p["field_key"] for p in fields} == {"password", "password_repeat"}
@@ -158,7 +157,8 @@ def _ensure(
     # Absence rechecked immediately before additive create.
     client.api("POST", path, spec)
     verified = [r for r in client.all_rows(path) if r.get(key) == value]
-    assert len(verified) == 1 and all(verified[0].get(k) == v for k, v in spec.items())
+    assert len(verified) == 1
+    assert all(verified[0].get(k) == v for k, v in spec.items())
     return verified[0]
 
 
@@ -220,8 +220,8 @@ def _apply_route(resources: list[dict[str, object]]) -> None:
     env = {**os.environ, "K3S_CONFIG_FILE": "/dev/null"}
     for obj in resources:
         result = subprocess.run(
-            k
-            + [
+            [
+                *k,
                 "-n",
                 "identity",
                 "get",
@@ -241,7 +241,7 @@ def _apply_route(resources: list[dict[str, object]]) -> None:
         else:
             assert "NotFound" in result.stderr, "Route inspection failed"
             subprocess.run(
-                k + ["create", "-f", "-"],
+                [*k, "create", "-f", "-"],
                 input=json.dumps(obj),
                 text=True,
                 env=env,
@@ -249,7 +249,7 @@ def _apply_route(resources: list[dict[str, object]]) -> None:
             )
 
 
-def main():
+def main() -> None:
     """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("root", type=Path)

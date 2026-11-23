@@ -58,10 +58,10 @@ class WorkerAdmissionSafetyTests(unittest.TestCase):
                 timeout=30,
             )
             output = result.stdout + result.stderr
-            self.assertNotEqual(result.returncode, 0, output)
-            self.assertIn("Restrict worker provisioning to its dedicated Debian host", output)
-            self.assertIn("Assertion failed", output)
-            self.assertNotIn("Inspect existing server datastore", output)
+            assert result.returncode != 0, output
+            assert "Restrict worker provisioning to its dedicated Debian host" in output
+            assert "Assertion failed" in output
+            assert "Inspect existing server datastore" not in output
 
     def test_existing_control_planes_remain_rejected_when_worker_name_is_overridden(
         self,

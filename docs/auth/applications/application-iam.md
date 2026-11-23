@@ -37,7 +37,7 @@ children, users and RBAC roles, with the marker
 adopted. **The full `configure.py` is NOT a command of this migration.** It has
 top-level side effects: it can change owner privileges, MFA stages, scopes,
 providers, applications and the outpost. Do not run or import it for the sake
-of creating app groups/bindings. For pinned Authentik **2026.8.5**, explicit
+of creating app groups/bindings. For pinned Authentik **2026.8.6**, explicit
 `is_superuser: false`, **`parents: []`** (M2M, not the obsolete singular
 `parent`) and `roles: []` are checked. Missing/null/incomplete responses are
 forbidden; **any** inheritance, including owner-superuser or an RBAC ancestor,
@@ -109,7 +109,7 @@ boundary, not permission to run apply. First an independent owner break-glass,
 a protected backup and a verified recovery certificate; then a change window
 and a pause of all UI/controller writers. Do not read/print the private cache
 as a whole, API responses or Secret diffs. Verify the live API schema of pinned
-Authentik **2026.8.5** before writing.
+Authentik **2026.8.6** before writing.
 
 ### Write boundary
 

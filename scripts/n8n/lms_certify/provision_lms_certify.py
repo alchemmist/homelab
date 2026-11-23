@@ -13,7 +13,8 @@ def main() -> None:
     body = json.loads((ROOT / "docs/n8n/lms-certify/workflow.json").read_text())
     matches = [w for w in api("GET", "workflows?limit=250")["data"] if w["name"] == body["name"]]
     if matches:
-        raise SystemExit("Pilot already exists; refusing to overwrite live configuration")
+        msg = "Pilot already exists; refusing to overwrite live configuration"
+        raise SystemExit(msg)
     result = api("POST", "workflows", body)
     print(result["id"], "active=" + str(result["active"]))
 

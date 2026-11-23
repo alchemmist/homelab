@@ -39,7 +39,8 @@ def sample(base) -> dict[str, object]:
         ) as response:
             value = json.load(response)
         if value.get("status") != "success":
-            raise ValueError("Prometheus query unsuccessful")
+            msg = "Prometheus query unsuccessful"
+            raise ValueError(msg)
         metrics[name] = [row["value"] for row in value["data"]["result"]]
     return result
 
@@ -72,7 +73,8 @@ def main() -> None:
                 }
             line = json.dumps(row, separators=(",", ":")) + "\n"
             if output.tell() + len(line.encode()) > 2 * 1024 * 1024:
-                raise RuntimeError("2MiB observation budget reached")
+                msg = "2MiB observation budget reached"
+                raise RuntimeError(msg)
             output.write(line)
             output.flush()
             remaining = deadline - time.monotonic()

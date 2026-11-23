@@ -140,7 +140,7 @@ def _add_derivative(
     record[label + "AvifQuality"] = avif_quality
 
 
-def build(source, output):
+def build(source, output) -> None:
     files = _collect_files(source)
     manifest = json.loads((output / "assets.json").read_text())
     manifest = {k: v for k, v in manifest.items() if not k.startswith("NATURE_")}

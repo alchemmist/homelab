@@ -21,10 +21,10 @@ class Foundation(unittest.TestCase):
             text=True,
         )
 
-    def test_default_is_off(self):
+    def test_default_is_off(self) -> None:
         assert self.render().strip() == ""
 
-    def test_retention_and_placement(self):
+    def test_retention_and_placement(self) -> None:
         text = self.render("--set", "enabled=true")
         assert text.count("Prune=false,Delete=false") == RETENTION_MARKER_COUNT
         assert "reclaimPolicy: Retain" in text
@@ -33,7 +33,7 @@ class Foundation(unittest.TestCase):
         assert "nodeName:" not in text
         assert "storage: 20Gi" in text
 
-    def test_no_exposure(self):
+    def test_no_exposure(self) -> None:
         text = self.render("--set", "enabled=true")
         assert "kind: Ingress" not in text
         assert "kind: Service\n" in text
@@ -44,7 +44,7 @@ class Foundation(unittest.TestCase):
         assert "readOnlyRootFilesystem: true" in text
         assert "sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2" in text
 
-    def test_protected_routes_and_secret_boundaries(self):
+    def test_protected_routes_and_secret_boundaries(self) -> None:
         text = self.render(
             "--set",
             "enabled=true",
@@ -77,17 +77,26 @@ class Foundation(unittest.TestCase):
         assert "type: LoadBalancer" not in text
         # Root is referenced by storage only; gateway has its isolated reader Secret.
         docs = list(yaml.safe_load_all(text))
-        storage, = [doc for doc in docs if doc and "rustfs-root" in str(doc)
-                    and doc["kind"] == "Deployment" and doc["metadata"]["name"] == "rustfs"]
+        (storage,) = [
+            doc
+            for doc in docs
+            if doc
+            and "rustfs-root" in str(doc)
+            and doc["kind"] == "Deployment"
+            and doc["metadata"]["name"] == "rustfs"
+        ]
         assert all("rustfs-root" not in str(doc) for doc in docs if doc is not storage)
         pod = storage["spec"]["template"]["spec"]
-        volume, = [v for v in pod["volumes"] if v.get("secret", {}).get("secretName") == "rustfs-root"]
+        (volume,) = [
+            v for v in pod["volumes"] if v.get("secret", {}).get("secretName") == "rustfs-root"
+        ]
         assert volume["secret"]["items"] == [
-            {"key": "access-key", "path": "access"}, {"key": "secret-key", "path": "secret"}
+            {"key": "access-key", "path": "access"},
+            {"key": "secret-key", "path": "secret"},
         ]
         assert all(volume["name"] not in str(c) for c in pod["initContainers"])
-        container, = pod["containers"]
-        mount, = [m for m in container["volumeMounts"] if m["name"] == volume["name"]]
+        (container,) = pod["containers"]
+        (mount,) = [m for m in container["volumeMounts"] if m["name"] == volume["name"]]
         assert mount["readOnly"]
         env = {v["name"]: v.get("value") for v in container["env"]}
         for field in ("access", "secret"):
@@ -98,7 +107,7 @@ class Foundation(unittest.TestCase):
         assert "rustfs-writer" not in text
         assert "path: /health/ready" in text
 
-    def test_activation_guards(self):
+    def test_activation_guards(self) -> None:
         for values in [
             ["--set", "gateway.enabled=true"],
             ["--set", "browserRoutes.enabled=true"],
@@ -118,7 +127,7 @@ class Foundation(unittest.TestCase):
             )
             assert result.returncode != 0
 
-    def test_manual_app(self):
+    def test_manual_app(self) -> None:
         text = (ROOT / "deploy/argocd/apps/rustfs.yaml").read_text()
         assert "automated:" not in text
 

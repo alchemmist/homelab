@@ -1,4 +1,5 @@
 """Plan and apply Thanos block cascades through the compactor."""
+
 import json
 import os
 import signal
@@ -10,7 +11,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import cast
+from typing import Never, cast
 
 RAW_RESOLUTION = 0
 FIVE_RESOLUTION = 300000
@@ -247,7 +248,7 @@ def kubernetes_request(method, path, body=None, timeout=30):
     return json.loads(raw) if raw else {}
 
 
-def scale_compactor(namespace, name, replicas):
+def scale_compactor(namespace, name, replicas) -> None:
     """Patch the deployment scale; the caller waits separately for replicas to stop."""
     kubernetes_request(
         "PATCH",
@@ -256,7 +257,7 @@ def scale_compactor(namespace, name, replicas):
     )
 
 
-def wait_compactor_idle(namespace, name, timeout=180):
+def wait_compactor_idle(namespace, name, timeout=180) -> None:
     """Poll for zero desired, current and ready replicas; missing counts are treated as zero."""
     deadline = time.monotonic() + timeout
     path = f"/apis/apps/v1/namespaces/{namespace}/deployments/{name}"
@@ -276,9 +277,7 @@ def wait_compactor_idle(namespace, name, timeout=180):
 
 def default_runner(argv):
     """Return command stdout, forwarding stderr and raising on a nonzero exit."""
-    completed = subprocess.run(
-        argv, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
+    completed = subprocess.run(argv, check=False, text=True, capture_output=True)
     if completed.returncode != 0:
         sys.stderr.write(completed.stderr)
         raise subprocess.CalledProcessError(
@@ -305,7 +304,15 @@ def disk_free_bytes(prometheus_url):
             return None
         available = int(float(result[0]["value"][1]))
         return available if available >= 0 else None
-    except (urllib.error.URLError, TimeoutError, KeyError, ValueError, OverflowError, IndexError, TypeError):
+    except (
+        urllib.error.URLError,
+        TimeoutError,
+        KeyError,
+        ValueError,
+        OverflowError,
+        IndexError,
+        TypeError,
+    ):
         return None
 
 
@@ -319,7 +326,7 @@ def list_blocks(config, thanos_bin, runner):
     return blocks
 
 
-def command_code(result, label):
+def command_code(result, label) -> None:
     """Accept text output or None from a runner; reject other results as command failures."""
     if isinstance(result, int) and result != 0:
         raise subprocess.CalledProcessError(result, label)
@@ -330,7 +337,7 @@ def command_code(result, label):
     raise subprocess.CalledProcessError(1, label)
 
 
-def mark_blocks(ulids, config, thanos_bin, runner):
+def mark_blocks(ulids, config, thanos_bin, runner) -> None:
     """Request Thanos deletion marks without removing block objects directly."""
     for ulid in ulids:
         command_code(
@@ -374,7 +381,7 @@ def fetch_shelf(base, token):
         return [], False
 
 
-def upload_block(base, token, directory, ulid):
+def upload_block(base, token, directory, ulid) -> None:
     """Stream the local block into shelf staging, then commit after all files were sent."""
     root = os.path.join(directory, ulid)
     if not os.path.isdir(root):
@@ -397,7 +404,7 @@ def upload_block(base, token, directory, ulid):
         response.read()
 
 
-def mark_shelf(base, token, ulids):
+def mark_shelf(base, token, ulids) -> None:
     """Post deletion markers for the selected shelf blocks without removing their data."""
     for ulid in ulids:
         with shelf_open(
@@ -414,7 +421,7 @@ def read_token():
     return Path(path).read_text().strip()
 
 
-def execute():
+def execute() -> int:
     """Pause compaction, copy blocks, then relist and replan before marking any source."""
     thanos_bin = os.environ.get("THANOS_BIN", "/usr/local/bin/thanos")
     namespace = os.environ.get("NAMESPACE", "cattle-monitoring-system")
@@ -483,7 +490,7 @@ def main(argv=None):
         sys.stdout.write("\n")
         return 0
 
-    def stop(signum, frame):
+    def stop(signum, frame) -> Never:
         raise SystemExit(128 + signum)
 
     signal.signal(signal.SIGTERM, stop)

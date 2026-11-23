@@ -1,27 +1,27 @@
 ---
-# Vendored from charts.goauthentik.io authentik 2026.8.5.
+# Vendored from charts.goauthentik.io authentik 2026.8.6.
 # Conditional subcharts (postgresql, authentik-remote-cluster) are omitted:
 # this install disables both, and Argo CD dependency builds against those
 # repositories time out on socrat.
 annotations:
   artifacthub.io/changes: |
     - kind: changed
-      description: upgrade to authentik 2026.8.5
+      description: upgrade to authentik 2026.8.6
   artifacthub.io/images: |
     - name: authentik
-      image: ghcr.io/goauthentik/server:2026.8.5
+      image: ghcr.io/goauthentik/server:2026.8.6
       whitelisted: true
     - name: authentik-outpost-proxy
-      image: ghcr.io/goauthentik/proxy:2026.8.5
+      image: ghcr.io/goauthentik/proxy:2026.8.6
       whitelisted: true
     - name: authentik-outpost-ldap
-      image: ghcr.io/goauthentik/ldap:2026.8.5
+      image: ghcr.io/goauthentik/ldap:2026.8.6
       whitelisted: true
     - name: authentik-outpost-radius
-      image: ghcr.io/goauthentik/radius:2026.8.5
+      image: ghcr.io/goauthentik/radius:2026.8.6
       whitelisted: true
     - name: authentik-outpost-rac
-      image: ghcr.io/goauthentik/rac:2026.8.5
+      image: ghcr.io/goauthentik/rac:2026.8.6
       whitelisted: true
   artifacthub.io/license: GPL
   artifacthub.io/links: |
@@ -39,7 +39,7 @@ annotations:
     - title: Admin interface
       url: https://docs.goauthentik.io/img/screen_admin_light.jpg
 apiVersion: v2
-appVersion: 2026.8.5
+appVersion: 2026.8.6
 description: authentik is an open-source Identity Provider focused on flexibility
   and versatility
 home: https://goauthentik.io
@@ -67,5 +67,5 @@ sources:
   - https://goauthentik.io/docs/
   - https://github.com/goauthentik/authentik
 type: application
-version: 2026.8.5
+version: 2026.8.6
 ...

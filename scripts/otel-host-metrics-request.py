@@ -90,7 +90,7 @@ def create(bundle, binaries, prometheus, exporter_path, backend_ip):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     for name in ("bundle", "binaries", "prometheus", "exporter-path", "output"):
         parser.add_argument("--" + name, type=Path, required=True)

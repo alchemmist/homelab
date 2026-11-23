@@ -80,7 +80,10 @@ def metrics(disk):
             cores.add((fields.get("physical id", "0"), fields["core id"]))
     threads = os.cpu_count() or 1
     cpu = f"{len(cores)} cores / {threads} threads" if cores else f"{threads} logical CPUs"
-    gib = lambda n: f"{n / 2**30:.1f}"
+
+    def gib(n) -> str:
+        return f"{n / 2**30:.1f}"
+
     return [
         ("OS", os_name),
         ("Kernel", platform.release()),
@@ -103,7 +106,8 @@ def render(config, portraits, stats, width=100, color=True, hyperlinks=False, lo
         ("Node", config["node"]),
         ("Role", role(config["labels"])),
         ("Internal IP", ip),
-    ] + stats
+        *stats,
+    ]
     entries += [("Description", config.get("description") or "Not set in Rancher")]
     entries += [("Monitoring", monitoring), ("Rancher", rancher)]
     entries += [(key, value) for key, value in config.get("contacts", {}).items() if value]
@@ -128,7 +132,10 @@ def render(config, portraits, stats, width=100, color=True, hyperlinks=False, lo
             info.extend(
                 textwrap.wrap(f"{clean(key)}: {clean(value)}", available, subsequent_indent="  ")
             )
-    tint = lambda s: f"\033[38;5;109m{s}\033[0m" if color else s
+
+    def tint(s):
+        return f"\033[38;5;109m{s}\033[0m" if color else s
+
     lines = [""]
     if side:
         for i in range(max(len(logo), len(info))):
@@ -158,7 +165,7 @@ def render(config, portraits, stats, width=100, color=True, hyperlinks=False, lo
     return "\n".join(lines)
 
 
-def main():
+def main() -> None:
     """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=ROOT / "config.json")

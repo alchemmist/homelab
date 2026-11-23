@@ -1,6 +1,8 @@
 """Guarded Open WebUI tool execution with validation and no-progress tracking."""
+
 import ast
 import asyncio
+import contextlib
 import functools
 import hashlib
 import json
@@ -88,10 +90,8 @@ async def bounded_fetch(params: dict[str, str]) -> str | dict[str, str]:
         return {"error": "fetch_url worker returned an invalid response. Try another source."}
     finally:
         if process.returncode is None:
-            try:
+            with contextlib.suppress(ProcessLookupError):
                 process.kill()
-            except ProcessLookupError:
-                pass
         await process.wait()
 
 
@@ -268,7 +268,7 @@ def repeat_guard_response(
 ) -> tuple[object, dict[str, str], object, str, object] | None:
     """Return the blocked response tuple, or None when the call is not a repeat."""
     recent = state.setdefault("recent", [])
-    projected = recent[-(REPEAT_HISTORY - 1) :] + [fingerprint]
+    projected = [*recent[-(REPEAT_HISTORY - 1) :], fingerprint]
     period = repeated_period(projected)
     if period:
         block = hashlib.sha256("\n".join(projected[-period:]).encode()).hexdigest()

@@ -6,6 +6,8 @@ from pathlib import Path
 from types import ModuleType
 from unittest.mock import patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -27,7 +29,7 @@ class ReadBoundaryTests(unittest.TestCase):
         repair = load("otel-store-read-boundary")
         arguments = ["store", "--max-time=-12h", "--consistency-delay=30m"]
         assert repair.unclamped(arguments) == ["store", "--consistency-delay=30m"]
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             repair.unclamped(["store", "--max-time=-1d"])
 
     def test_application_reader_has_no_ca_host_or_write_permissions(self) -> None:
@@ -58,6 +60,6 @@ class ReadBoundaryTests(unittest.TestCase):
                 "kube",
                 return_value={"status": {"allowed": False, "evaluationError": "unavailable"}},
             ),
-            self.assertRaises(ValueError),
+            pytest.raises(ValueError),
         ):
             pki.assess("secrets", "get", "otel-root-ca")

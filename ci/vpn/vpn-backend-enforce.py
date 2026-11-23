@@ -45,7 +45,8 @@ def client(stream: dict[str, object], password: str, port: int) -> dict[str, obj
         or not path
         or not path.startswith("/")
     ):
-        raise ValueError("Trojan backend transport drift")
+        msg = "Trojan backend transport drift"
+        raise ValueError(msg)
     return {
         "log": {"loglevel": "warning"},
         "inbounds": [
@@ -142,7 +143,8 @@ def require_unique_fixture(s: SessionLike, identity: ProbeIdentity) -> None:
             "SELECT COUNT(*) FROM clients WHERE email=? OR uuid=? OR sub_id=?",
             (identity["email"], identity["uuid"], identity["sub_id"]),
         ).fetchone()[0]:
-            raise ValueError("Fixture collision")
+            msg = "Fixture collision"
+            raise ValueError(msg)
 
 
 def stage_own_probe(
@@ -211,7 +213,8 @@ def wait_probe_ready(process: subprocess.Popen[bytes], port: int) -> None:
     """Wait until the own client listens on its reserved local port."""
     for attempt in range(40):
         if process.poll() is not None:
-            raise RuntimeError("Own Trojan client exited")
+            msg = "Own Trojan client exited"
+            raise RuntimeError(msg)
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=0.3):
                 return
@@ -257,7 +260,8 @@ def write_guard(
         ]
     if accept_existing:
         if guard.read_table() is None:
-            raise ValueError("Expected exact installed guard")
+            msg = "Expected exact installed guard"
+            raise ValueError(msg)
     else:
         guard.apply(s.state, guard_hash)
     after = publication.snapshot(
@@ -269,9 +273,11 @@ def write_guard(
     if baseline["before"] != cast("dict[object, object]", after) or baseline["json_before"] != cast(
         "dict[object, object]", json_after
     ):
-        raise ValueError("Publication changed through guard")
+        msg = "Publication changed through guard"
+        raise ValueError(msg)
     if target.semantic(target.configuration(s.database)) != target.semantic(baseline["pre"]):
-        raise ValueError("Proxy config changed during guard")
+        msg = "Proxy config changed during guard"
+        raise ValueError(msg)
     guard.persist(s.state)
 
 
@@ -302,13 +308,15 @@ def cleanup_fixture(
                 ).fetchall()
             if rows:
                 if rows != [(identity["uuid"], identity["sub_id"])]:
-                    raise ValueError("Fixture ownership mismatch")
+                    msg = "Fixture ownership mismatch"
+                    raise ValueError(msg)
                 s.call("POST", "/clients/del/" + identity["email"], {})
             with closing(sqlite3.connect(s.database.as_uri() + "?mode=ro", uri=True)) as c:
                 if c.execute(
                     "SELECT COUNT(*) FROM clients WHERE email=?", (identity["email"],)
                 ).fetchone()[0]:
-                    raise ValueError("Fixture cleanup incomplete")
+                    msg = "Fixture cleanup incomplete"
+                    raise ValueError(msg)
     finally:
         s.cleanup()
 
@@ -325,14 +333,16 @@ def apply(
     s = native.NativeSession(state)
     original = target.configuration(s.database)
     if h.digest(original) != config_hash or h.digest(guard.plan()) != guard_hash:
-        raise ValueError("Fresh approvals required")
+        msg = "Fresh approvals required"
+        raise ValueError(msg)
     trojan = [
         r
         for r in original["inbounds"]
         if r["port"] == 32087 and r["protocol"] == "trojan" and r["enable"]
     ]
     if len(trojan) != 1:
-        raise ValueError("Trojan target drift")
+        msg = "Trojan target drift"
+        raise ValueError(msg)
     identity: ProbeIdentity = {
         "email": s.state.name + "-probe",
         "uuid": str(uuid.uuid4()),
@@ -347,7 +357,8 @@ def apply(
     baseline: PublicationBaseline | None = None
     try:
         if target.semantic(target.configuration(s.database)) != target.semantic(original):
-            raise ValueError("Config changed opening session")
+            msg = "Config changed opening session"
+            raise ValueError(msg)
         h.save(s.state / "proxy-before-private.json", original)
         executable = s.state / "owned-xray-probe"
         shutil.copyfile(target.server_executable(), executable)
@@ -381,7 +392,8 @@ def apply(
         current = target.configuration(s.database)
         h.save(s.state / "proxy-after-private.json", current)
         if target.semantic(current) != target.semantic(original):
-            raise ValueError("Final proxy preservation failed")
+            msg = "Final proxy preservation failed"
+            raise ValueError(msg)
         result: dict[str, object] = {
             "guard_installed": True,
             "persistent_unit_active_enabled": True,
@@ -402,7 +414,7 @@ def apply(
         cleanup_fixture(process, log, fixture=fixture, s=s, identity=identity)
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--state", type=Path, required=True)
     p.add_argument("--apply", action="store_true")
@@ -457,6 +469,5 @@ if __name__ == "__main__":
                     )
         except (OSError, ValueError):
             pass
-        raise SystemExit(
-            "Backend enforcement stopped; inspect private receipts, never replay writes."
-        ) from None
+        msg = "Backend enforcement stopped; inspect private receipts, never replay writes."
+        raise SystemExit(msg) from None

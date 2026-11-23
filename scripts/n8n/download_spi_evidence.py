@@ -40,15 +40,18 @@ def _artifact_pieces(comments: list[_Comment], event_key: str) -> dict[_PartKey,
         )
         block = re.search(r"\n\n(?P<fence>`{4,})text\n(?P<data>.*?)\n(?P=fence)\n", body, re.DOTALL)
         if not header or not block:
-            raise ValueError("INVALID_ARTIFACT_COMMENT")
+            msg = "INVALID_ARTIFACT_COMMENT"
+            raise ValueError(msg)
         aid, name, part, total, checksum = header.groups()
         key = (aid, name, checksum, int(total))
         number = int(part)
         if not 1 <= number <= int(total) <= 100 or name in (".", ".."):
-            raise ValueError("INVALID_PART")
+            msg = "INVALID_PART"
+            raise ValueError(msg)
         pieces = grouped.setdefault(key, {})
         if number in pieces and pieces[number] != block["data"]:
-            raise ValueError("CONFLICTING_ARTIFACT_PART")
+            msg = "CONFLICTING_ARTIFACT_PART"
+            raise ValueError(msg)
         pieces[number] = block["data"]
     return grouped
 
@@ -58,10 +61,12 @@ def _assemble_artifacts(grouped: dict[_PartKey, dict[int, str]]) -> dict[str, by
     output = {}
     for (aid, name, checksum, total), pieces in grouped.items():
         if set(pieces) != set(range(1, total + 1)):
-            raise ValueError("MISSING_ARTIFACT_PART")
+            msg = "MISSING_ARTIFACT_PART"
+            raise ValueError(msg)
         data = "".join(pieces[n] for n in range(1, total + 1)).encode()
         if hashlib.sha256(data).hexdigest() != checksum:
-            raise ValueError("ARTIFACT_CHECKSUM_MISMATCH")
+            msg = "ARTIFACT_CHECKSUM_MISMATCH"
+            raise ValueError(msg)
         output[aid + "-" + name] = data
     return output
 
@@ -70,20 +75,24 @@ def _validate_manifest(output: dict[str, bytes], event_key: str) -> None:
     """Cross-check the embedded manifest against the assembled artifacts."""
     manifest = next((json.loads(v) for k, v in output.items() if k.startswith("MANIFEST-")), None)
     if not manifest or manifest.get("event_key") != event_key:
-        raise ValueError("MISSING_OR_WRONG_MANIFEST")
+        msg = "MISSING_OR_WRONG_MANIFEST"
+        raise ValueError(msg)
     for artifact in manifest["artifacts"]:
         key = artifact["id"] + "-" + artifact["name"]
         if artifact["stored_chars"] and key not in output:
-            raise ValueError("MISSING_MANIFEST_ARTIFACT")
+            msg = "MISSING_MANIFEST_ARTIFACT"
+            raise ValueError(msg)
         if key in output and hashlib.sha256(output[key]).hexdigest() != artifact["sha256"]:
-            raise ValueError("MANIFEST_CHECKSUM_MISMATCH")
+            msg = "MANIFEST_CHECKSUM_MISMATCH"
+            raise ValueError(msg)
 
 
 def reconstruct(comments: list[_Comment], event_key: str) -> dict[str, bytes]:
     grouped = _artifact_pieces(comments, event_key)
     output = _assemble_artifacts(grouped)
     if not output:
-        raise ValueError("NO_EVIDENCE_FOR_EVENT")
+        msg = "NO_EVIDENCE_FOR_EVENT"
+        raise ValueError(msg)
     _validate_manifest(output, event_key)
     return output
 
@@ -114,7 +123,8 @@ def main() -> None:
         path = args.output / name
         if path.exists():
             if path.is_symlink() or path.read_bytes() != data:
-                raise ValueError("EXISTING_OUTPUT_DIFFERS")
+                msg = "EXISTING_OUTPUT_DIFFERS"
+                raise ValueError(msg)
             continue
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, "wb") as stream:

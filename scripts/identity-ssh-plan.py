@@ -19,6 +19,7 @@ import urllib.parse
 import urllib.request
 import uuid
 from pathlib import Path
+from typing import Never
 
 ROOT = Path(__file__).resolve().parents[1]
 BINDINGS = ROOT / "deploy/identity/ssh-bindings.json"
@@ -37,13 +38,13 @@ class Refused(ValueError):
     """Safe error, deliberately excludes raw API responses/attributes/credentials."""
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     """Raise an error when a required condition is not met."""
     if not ok:
         raise Refused(message)
 
 
-def fields(obj, expected):
+def fields(obj, expected) -> None:
     """Perform the fields operation."""
     require(
         isinstance(obj, dict) and set(obj) == set(expected),
@@ -60,7 +61,8 @@ def canonical_uuid(value):
         )
         require(uuid.UUID(value).int != 0, "Nonzero UUID required")
     except (ValueError, AttributeError):
-        raise Refused("Canonical UUID required") from None
+        msg = "Canonical UUID required"
+        raise Refused(msg) from None
     return value
 
 
@@ -78,7 +80,8 @@ def read_json(path):
     try:
         return json.loads(Path(path).read_text(), object_pairs_hook=unique_pairs)
     except (OSError, ValueError):
-        raise Refused("Cannot read valid JSON input") from None
+        msg = "Cannot read valid JSON input"
+        raise Refused(msg) from None
 
 
 def bindings_map(document):
@@ -106,7 +109,7 @@ def bindings_map(document):
     return result
 
 
-def validate_history(current, histories):
+def validate_history(current, histories) -> None:
     """Perform the validate history operation."""
     for old in histories:
         for ident, name in bindings_map(old).items():
@@ -128,7 +131,8 @@ def binding_history():
                 text=True,
             ).stdout.strip()
         except (OSError, subprocess.SubprocessError):
-            raise Refused("Full Git checkout required for binding history") from None
+            msg = "Full Git checkout required for binding history"
+            raise Refused(msg) from None
 
     require(
         git("rev-parse", "--is-shallow-repository") == "false",
@@ -141,7 +145,8 @@ def binding_history():
         try:
             result.append(json.loads(git("show", revision + ":" + path)))
         except ValueError:
-            raise Refused("Invalid committed binding history") from None
+            msg = "Invalid committed binding history"
+            raise Refused(msg) from None
     return result
 
 
@@ -189,7 +194,7 @@ def validate_policy(policy, bindings):
     return policy
 
 
-def validate_transition(policy, histories):
+def validate_transition(policy, histories) -> None:
     """Previously managed hosts must remain explicit, including disabled tombstones."""
     current = {r["uuid"]: set(r["hosts"] + r["revoked_hosts"]) for r in policy["assignments"]}
     for old in histories:
@@ -237,7 +242,8 @@ def policy_history():
             for r in revisions
         ]
     except (OSError, ValueError, subprocess.SubprocessError):
-        raise Refused("Cannot verify assignment history") from None
+        msg = "Cannot verify assignment history"
+        raise Refused(msg) from None
 
 
 def public_keys(value):
@@ -275,7 +281,8 @@ def public_keys(value):
                     check=False,
                 )
         except (OSError, subprocess.SubprocessError):
-            raise Refused("OpenSSH public key parser unavailable") from None
+            msg = "OpenSSH public key parser unavailable"
+            raise Refused(msg) from None
         match = re.fullmatch(r"\d+ (SHA256:[A-Za-z0-9+/]+) .+\n?", parsed.stdout)
         require(parsed.returncode == 0 and match is not None, "OpenSSH rejected public key")
         fingerprint = match.group(1)
@@ -288,9 +295,10 @@ def public_keys(value):
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
-    def redirect_request(self, _req, _fp, _code, _msg, _headers, _newurl):
+    def redirect_request(self, _req, _fp, _code, _msg, _headers, _newurl) -> Never:
         """Refuse Authentik redirects instead of following them."""
-        raise Refused("Authentik redirect refused")
+        msg = "Authentik redirect refused"
+        raise Refused(msg)
 
 
 class Authentik:
@@ -339,9 +347,8 @@ class Authentik:
             require(len(raw) <= 1024 * 1024, "Authentik response too large")
             document = json.loads(raw)
         except (OSError, ValueError, urllib.error.URLError):
-            raise Refused(
-                "Authentik read failed (check TLS, token, permissions, API schema)"
-            ) from None
+            msg = "Authentik read failed (check TLS, token, permissions, API schema)"
+            raise Refused(msg) from None
         require(
             isinstance(document, dict) and isinstance(document.get("results"), list),
             "Invalid user API response",
@@ -424,7 +431,7 @@ def build_plan(bindings, policy, get_user):
     return payload, summary
 
 
-def export(path, payload, approval):
+def export(path, payload, approval) -> None:
     """Write the export output."""
     require(bool(payload["required_hosts"]), "Empty integration cannot be exported")
     review = digest(payload)
@@ -444,10 +451,11 @@ def export(path, payload, approval):
             json.dump(document, f, indent=2)
             f.write("\n")
     except OSError:
-        raise Refused("Export refused; use a new private output file") from None
+        msg = "Export refused; use a new private output file"
+        raise Refused(msg) from None
 
 
-def main(argv=None):
+def main(argv=None) -> int | None:
     """Run the command-line entry point."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -489,9 +497,10 @@ def main(argv=None):
             )
             get_user = api.user
         else:
-            get_user = lambda ident: (
-                None
-            )  # Disabled assignments deliberately need no IdP availability.
+
+            def get_user(ident) -> None:
+                return None  # Disabled assignments deliberately need no IdP availability.
+
         payload, summary = build_plan(bindings, policy, get_user)
         print(
             json.dumps(

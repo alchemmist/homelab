@@ -17,14 +17,14 @@ edges: dict[str, dict[str, list[list[dict[str, object]]]]] = {}
 
 
 def node(name: str, kind, version, params, x, y, credential=None) -> str:
-    out = dict(
-        id=str(uuid5(NAMESPACE_URL, "lms-certification/" + name)),
-        name=name,
-        type="n8n-nodes-base." + kind,
-        typeVersion=version,
-        position=[x, y],
-        parameters=params,
-    )
+    out = {
+        "id": str(uuid5(NAMESPACE_URL, "lms-certification/" + name)),
+        "name": name,
+        "type": "n8n-nodes-base." + kind,
+        "typeVersion": version,
+        "position": [x, y],
+        "parameters": params,
+    }
     if credential:
         typ, role = credential
         out["credentials"] = {typ: {"id": "REPLACE_" + role, "name": role}}

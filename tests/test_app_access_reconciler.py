@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 FILES = Path(__file__).resolve().parents[1] / "ansible/roles/authentik/files"
 sys.path.insert(0, str(FILES))
+import pytest
 import reconcile_app_access as access
 
 
@@ -123,9 +124,9 @@ class AppAccessTests(unittest.TestCase):
             with patch.object(access.urllib.request, "build_opener", return_value=fake):
                 api = access.api_for(root)
             assert api("GET", "providers/oauth2/3/") == {"pk": 3}
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 api("PATCH", "providers/oauth2/3/", {"client_secret": "not-allowed"})
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 api("POST", "core/users/", {})
 
     def test_default_scope_selection_does_not_cross_app_profiles(self) -> None:
@@ -148,8 +149,8 @@ class AppAccessTests(unittest.TestCase):
             }
         ]
         assert standard_scope_ids(scopes) == ["openid", "profile", "email"]
-        with self.assertRaises(RuntimeError):
-            standard_scope_ids(scopes + [scopes[0]])
+        with pytest.raises(RuntimeError):
+            standard_scope_ids([*scopes, scopes[0]])
 
     def test_new_registered_app_generates_group_without_hardcoded_allowlist(
         self,
@@ -203,7 +204,7 @@ class AppAccessTests(unittest.TestCase):
         ]:
             changed = copy.deepcopy(state)
             changed["core/groups/"][-1][field] = value
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 access.build_plan(changed, catalog)
 
     def test_policy_bypass_or_unknown_scope_refused_before_any_write(self) -> None:
@@ -216,12 +217,12 @@ class AppAccessTests(unittest.TestCase):
         ]:
             changed = copy.deepcopy(state)
             changed["policies/bindings/"][0][field] = value
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 access.build_plan(changed, catalog)
 
     def test_scoped_alias_preserves_identity_and_not_global_membership(self) -> None:
         """Alias mappings keep app-scoped identity without leaking groups."""
-        state, catalog = fixture()
+        state, _catalog = fixture()
         expression = access.profile_expression(
             state["propertymappings/provider/scope/"][0]["expression"],
             {"app-example-user": ["legacy-example-user"]},
@@ -242,7 +243,7 @@ class AppAccessTests(unittest.TestCase):
         ]
         assert [g.name for g in groups] == ["app-example-user"]
         assert "homelab-owner" not in namespace["mapping"]()["groups"]
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             access.group_expression({"app-example-user": ["homelab-owner"]})
 
     def test_apply_idempotent_and_preserves_people_and_owner(self) -> None:
@@ -273,7 +274,7 @@ class AppAccessTests(unittest.TestCase):
         api = FakeAPI(state)
         plan = access.build_plan(state, catalog)
         api.state["core/applications/"][0]["policy_engine_mode"] = "all"
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             access.execute(api, state, catalog, plan["sha256"], lambda *args: None)
         assert api.writes == []
 

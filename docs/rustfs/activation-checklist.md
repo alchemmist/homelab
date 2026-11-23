@@ -142,7 +142,7 @@ The exact existing admission groups are `homelab-owner` and
    existing n8n cross-namespace pattern). Verify this with real SNI, not assumption.
 7. Check actual discovery issuer/audience, S256 and client_secret_post; official
    1.0.4 RustFS flow automatically sends PKCE verifier and secret in token POST.
-   Authentik 2026.8.5 discovery advertises both. Perform **real browser** Authentik
+   Authentik 2026.8.6 discovery advertises both. Perform **real browser** Authentik
    owner/platform logins and native callback; verify signed ID claims/policy,
    expiry/logout/revocation and reject unaffiliated users. A decoded JWT alone is
    not proof of validated authentication. Do not edit existing memberships to test.

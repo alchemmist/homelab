@@ -117,7 +117,7 @@ def configure(bundle, cutover):
     return contract
 
 
-def run(bundle, output, cutover):
+def run(bundle, output, cutover) -> None:
     os.umask(0o077)
     output.mkdir(mode=0o700, exist_ok=True)
     current = kube("-n", NS, "get", "prometheus", PROM, "-o", "json")

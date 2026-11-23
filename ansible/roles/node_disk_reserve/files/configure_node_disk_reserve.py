@@ -17,7 +17,7 @@ KUBELET_CONFIG = Path("/var/lib/rancher/k3s/agent/etc/kubelet.conf.d/99-homelab-
 RESULT = Path("/var/lib/homelab/node-disk-reserve-result.json")
 
 
-def atomic_write(path, content, mode):
+def atomic_write(path, content, mode) -> None:
     """Execute the atomic_write operation."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".homelab-tmp")
@@ -32,12 +32,13 @@ def atomic_write(path, content, mode):
         temporary.unlink(missing_ok=True)
 
 
-def pause_folder(config_path, folder_id):
+def pause_folder(config_path, folder_id) -> bool:
     """Execute the pause_folder operation."""
     tree = ET.fromstring(config_path.read_bytes())
     folder = next((f for f in tree.findall("folder") if f.get("id") == folder_id), None)
     if folder is None:
-        raise RuntimeError(f"Missing Syncthing folder: {folder_id}")
+        msg = f"Missing Syncthing folder: {folder_id}"
+        raise RuntimeError(msg)
     paused = folder.find("paused")
     if paused is not None and paused.text == "true":
         return False
@@ -130,7 +131,7 @@ def apply(policy):
     }
 
 
-def main():
+def main() -> None:
     """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--policy", type=Path, required=True)

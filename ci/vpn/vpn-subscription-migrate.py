@@ -41,7 +41,8 @@ def select(config: dict[str, object]) -> dict[str, object]:
         raise TypeError(reason)
     rows = [r for r in inbounds if isinstance(r, dict) and r["port"] == 32063]
     if len(rows) != 1:
-        raise ValueError("Expected one legacy inbound")
+        msg = "Expected one legacy inbound"
+        raise ValueError(msg)
     row = rows[0]
     stream: dict[str, object] = json.loads(str(row["stream_settings"]))
     if (
@@ -50,9 +51,11 @@ def select(config: dict[str, object]) -> dict[str, object]:
         or stream.get("network") != "xhttp"
         or stream.get("security") not in (None, "", "none")
     ):
-        raise ValueError("Legacy transport drift")
+        msg = "Legacy transport drift"
+        raise ValueError(msg)
     if row.get("exclude_from_sub"):
-        raise ValueError("Already withdrawn; do not replay")
+        msg = "Already withdrawn; do not replay"
+        raise ValueError(msg)
     value: dict[str, object] = row
     return value
 
@@ -77,7 +80,8 @@ def payload(inbound: dict[str, object], expected_id: str) -> dict[str, object]:
         or stream.get("network") != "xhttp"
         or stream.get("security") not in (None, "", "none")
     ):
-        raise ValueError("API preimage drift")
+        msg = "API preimage drift"
+        raise ValueError(msg)
     obj["excludeFromSub"] = True
     obj.pop("clientStats", None)
     value: dict[str, object] = obj
@@ -95,7 +99,8 @@ def normalize(body: bytes) -> list[str]:
             continue
         parsed = urllib.parse.urlsplit(line)
         if not parsed.scheme or "://" not in line:
-            raise ValueError("Unexpected subscription format")
+            msg = "Unexpected subscription format"
+            raise ValueError(msg)
         query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
         if ("security", "reality") in query:
             query = [(k, v) for k, v in query if k != "sid"]
@@ -103,7 +108,8 @@ def normalize(body: bytes) -> list[str]:
             urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(sorted(query))))
         )
     if not result:
-        raise ValueError("Empty subscription")
+        msg = "Empty subscription"
+        raise ValueError(msg)
     return sorted(result)
 
 
@@ -171,15 +177,18 @@ def snapshot(
         "0.0.0.0",
         "::",
     ):
-        raise ValueError("Subscription listener drift")
+        msg = "Subscription listener drift"
+        raise ValueError(msg)
     prefix = settings["subJsonPath" if json_format else "subPath"]
     if not prefix.startswith("/") or any(x in prefix for x in ("?", "#", "..", "\\")):
-        raise ValueError("Unsafe subscription path")
+        msg = "Unsafe subscription path"
+        raise ValueError(msg)
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), native.NoRedirect())
     result: dict[str, list[object]] = {}
     for client_id, sub_id in rows:
         if not sub_id:
-            raise ValueError("Missing enabled subscription")
+            msg = "Missing enabled subscription"
+            raise ValueError(msg)
         suffix = "/" + prefix.strip("/") + "/" + urllib.parse.quote(sub_id, safe="")
         pair = []
         for label, origin in [
@@ -196,14 +205,17 @@ def snapshot(
             with opener.open(req, timeout=12) as r:
                 body = r.read(262145)
                 if r.status != 200 or len(body) > 262144:
-                    raise ValueError("Subscription response refused")
+                    msg = "Subscription response refused"
+                    raise ValueError(msg)
             links = normalize_json(json.loads(body)) if json_format else normalize(body)
             if not isinstance(links, list) or not links:
-                raise ValueError("Empty publication")
+                msg = "Empty publication"
+                raise ValueError(msg)
             h.save(directory / (str(client_id) + "-" + label + "-private.json"), links)
             pair.append(links)
         if pair[0] != pair[1]:
-            raise ValueError("Public/backend mismatch")
+            msg = "Public/backend mismatch"
+            raise ValueError(msg)
         result[str(client_id)] = pair[0]
     return result
 
@@ -212,7 +224,8 @@ def check_delta(
     before: dict[str, list[object]], after: dict[str, list[object]]
 ) -> dict[str, object]:
     if set(before) != set(after):
-        raise ValueError("Identity set changed")
+        msg = "Identity set changed"
+        raise ValueError(msg)
     affected = 0
     removed = 0
     for key, links in before.items():
@@ -229,11 +242,14 @@ def check_delta(
                 == "reality"
                 for u in expected
             ):
-                raise ValueError("Missing published REALITY replacement")
+                msg = "Missing published REALITY replacement"
+                raise ValueError(msg)
         if after[key] != expected:
-            raise ValueError("Unexpected subscription change")
+            msg = "Unexpected subscription change"
+            raise ValueError(msg)
     if affected != 7 or removed != 7:
-        raise ValueError("Affected population drift")
+        msg = "Affected population drift"
+        raise ValueError(msg)
     return {
         "identities": len(before),
         "affected": affected,
@@ -248,23 +264,28 @@ def apply(state: Path, session_hash: str, config_hash: str) -> dict[str, object]
     original = target.configuration(s.database)
     legacy = select(original)
     if h.digest(original) != config_hash:
-        raise ValueError("Fresh config approval required")
+        msg = "Fresh config approval required"
+        raise ValueError(msg)
     # Population/enabled replacement gate before credentials.
     summary = h.summarize(original)
     row = next(r for r in summary["inbounds"] if r["port"] == 32063)
     if row["client_links"] != 7 or row["links_with_existing_enabled_encrypted_alternative"] != 7:
-        raise ValueError("Replacement gate failed")
+        msg = "Replacement gate failed"
+        raise ValueError(msg)
     s.open(session_hash)
     try:
         if target.semantic(target.configuration(s.database)) != target.semantic(original):
-            raise ValueError("Config changed opening session")
+            msg = "Config changed opening session"
+            raise ValueError(msg)
         h.save(s.state / "proxy-before-private.json", original)
         before = snapshot(s.database, s.state, "subscriptions-before")
         json_before = snapshot(s.database, s.state, "json-before", json_format=True)
         if set(json_before) != set(before):
-            raise ValueError("JSON identity mismatch")
+            msg = "JSON identity mismatch"
+            raise ValueError(msg)
         if sum(sum(json_legacy(v) for v in rows) for rows in json_before.values()) != 7:
-            raise ValueError("JSON population drift")
+            msg = "JSON population drift"
+            raise ValueError(msg)
         # Verify exact publication diff prospectively, before making any write.
         prospective = {key: [u for u in links if not is_legacy(u)] for key, links in before.items()}
         check_delta(before, prospective)
@@ -272,19 +293,22 @@ def apply(state: Path, session_hash: str, config_hash: str) -> dict[str, object]
         rows = s.call("GET", "/inbounds/list")
         matches = [r for r in rows if r["id"] == legacy["id"]]
         if len(matches) != 1:
-            raise ValueError("Missing native inbound")
+            msg = "Missing native inbound"
+            raise ValueError(msg)
         dto = payload(matches[0], str(legacy["id"]))
         if target.semantic(pre) != target.semantic(original) or target.semantic(
             target.configuration(s.database)
         ) != target.semantic(original):
-            raise ValueError("Concurrent config change")
+            msg = "Concurrent config change"
+            raise ValueError(msg)
         for api_key, db_key in [
             ("settings", "settings"),
             ("streamSettings", "stream_settings"),
             ("sniffing", "sniffing"),
         ]:
             if target.json_field(matches[0][api_key]) != target.json_field(legacy[db_key]):
-                raise ValueError("API/DB drift")
+                msg = "API/DB drift"
+                raise ValueError(msg)
         h.save(
             s.state / "subscription-write-uncertain.json",
             {
@@ -298,15 +322,18 @@ def apply(state: Path, session_hash: str, config_hash: str) -> dict[str, object]
         current = target.configuration(s.database)
         h.save(s.state / "proxy-after-private.json", current)
         if target.semantic(current) != target.semantic(desired(original)):
-            raise ValueError("Unexpected native write delta")
+            msg = "Unexpected native write delta"
+            raise ValueError(msg)
         after = snapshot(s.database, s.state, "subscriptions-after")
         proof = check_delta(before, after)
         json_after = snapshot(s.database, s.state, "json-after", json_format=True)
         if set(json_before) != set(json_after):
-            raise ValueError("JSON identity set changed")
+            msg = "JSON identity set changed"
+            raise ValueError(msg)
         for key, rows in json_before.items():
             if json_after[key] != [v for v in rows if not json_legacy(v)]:
-                raise ValueError("Unexpected JSON publication delta")
+                msg = "Unexpected JSON publication delta"
+                raise ValueError(msg)
         proof["json_subscriptions_verified"] = True
         # Listener deliberately remains enabled; no artificial device acceptance.
         import socket
@@ -371,6 +398,5 @@ if __name__ == "__main__":
     try:
         main()
     except (OSError, ValueError, RuntimeError, ImportError, sqlite3.Error):
-        raise SystemExit(
-            "Subscription migration stopped; inspect private receipts, never blindly replay."
-        ) from None
+        msg = "Subscription migration stopped; inspect private receipts, never blindly replay."
+        raise SystemExit(msg) from None

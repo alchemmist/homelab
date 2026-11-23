@@ -8,9 +8,8 @@ import json
 import re
 import sys
 import tomllib
-from collections.abc import Iterable
 from pathlib import Path
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
 import yaml
 
@@ -23,6 +22,9 @@ from ci.quality.common import (
     use_project_tools,
     vendor_prefixes,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 class RuffPolicy(TypedDict):
@@ -207,7 +209,8 @@ def listed_ansible_rules() -> set[str]:
         if line.startswith("- "):
             found.add(line.split()[1])
     if len(found) < 40:
-        raise ValueError("ansible-lint rule catalog was not parsed")
+        msg = "ansible-lint rule catalog was not parsed"
+        raise ValueError(msg)
     return found
 
 
@@ -216,16 +219,20 @@ def verify_ruff_policy(data: StrictPolicy) -> None:
     ruff = tomllib.loads((ROOT / "ci/quality/ruff.toml").read_text())
     lint = ruff.get("lint", {})
     if "exclude" in ruff or "extend-exclude" in ruff or "exclude" in lint:
-        raise ValueError("Ruff exclude hides files")
+        msg = "Ruff exclude hides files"
+        raise ValueError(msg)
     if lint.get("select") != ["ALL"]:
-        raise ValueError("Ruff must select ALL")
+        msg = "Ruff must select ALL"
+        raise ValueError(msg)
     if "extend-ignore" in lint or lint.get("ignore") != data["ruff"]["ignore"]:
-        raise ValueError("Ruff ignore list drifted from the strict policy")
+        msg = "Ruff ignore list drifted from the strict policy"
+        raise ValueError(msg)
     if (
         "extend-per-file-ignores" in lint
         or lint.get("per-file-ignores") != data["ruff"]["perFileIgnores"]
     ):
-        raise ValueError("Ruff per-file ignores drifted")
+        msg = "Ruff per-file ignores drifted"
+        raise ValueError(msg)
 
 
 def verify_mypy_policy(data: StrictPolicy) -> None:
@@ -236,15 +243,19 @@ def verify_mypy_policy(data: StrictPolicy) -> None:
         or "disable_error_code" in mypy
         or "ignore_missing_imports" in mypy
     ):
-        raise ValueError("mypy strict mode drifted")
+        msg = "mypy strict mode drifted"
+        raise ValueError(msg)
     if "follow_imports" in mypy:
-        raise ValueError("mypy must not skip imports from the config file")
+        msg = "mypy must not skip imports from the config file"
+        raise ValueError(msg)
     for flag in data["mypy"]["extra"]:
         if f"{flag} = true" not in mypy:
-            raise ValueError("Missing mypy strict flag")
+            msg = "Missing mypy strict flag"
+            raise ValueError(msg)
     for code in data["mypy"]["errorCodes"]:
         if code not in mypy:
-            raise ValueError("Missing mypy error code")
+            msg = "Missing mypy error code"
+            raise ValueError(msg)
 
 
 def verify_yamllint_contract(data: StrictPolicy) -> None:
@@ -254,7 +265,8 @@ def verify_yamllint_contract(data: StrictPolicy) -> None:
     yamllint_rules = YamlLintConfig(file=str(ROOT / "ci/quality/yamllint.yaml")).rules
     for name, reason in data["yamllint"]["disabled"].items():
         if not isinstance(reason, str) or len(reason) < 20:
-            raise ValueError("Yamllint disable reason is missing")
+            msg = "Yamllint disable reason is missing"
+            raise ValueError(msg)
         if yamllint_rules[name] is not False:
             raise ValueError("Yamllint rule was not disabled: " + name)
     for name, options in data["yamllint"]["enabled"].items():
@@ -281,34 +293,42 @@ def verify_yamllint_text(data: StrictPolicy) -> None:
                 continue
             named = line.split(":", 1)[0].strip()
             if named not in disabled_names:
-                raise ValueError("Yamllint disables a rule that has no contract")
+                msg = "Yamllint disables a rule that has no contract"
+                raise ValueError(msg)
     yamllint = yaml.safe_load(yamllint_text)
     if yamllint["rules"]["truthy"]["allowed-values"] != ["true", "false"]:
-        raise ValueError("YAML truthy values drifted")
+        msg = "YAML truthy values drifted"
+        raise ValueError(msg)
     if yamllint["rules"]["truthy"].get("check-keys") is not False:
-        raise ValueError("YAML truthy key exception drifted")
+        msg = "YAML truthy key exception drifted"
+        raise ValueError(msg)
     if yamllint["rules"]["line-length"]["max"] != 100:
-        raise ValueError("YAML line length drifted from the repository length")
+        msg = "YAML line length drifted from the repository length"
+        raise ValueError(msg)
 
 
 def verify_ansible_policy(data: StrictPolicy) -> None:
     """Fail if the ansible-lint partition drifted from the policy."""
     ansible = yaml.safe_load((ROOT / "ci/quality/ansible-lint.yaml").read_text())
     if set(ansible) != {"profile", "offline", "strict", "enable_list"}:
-        raise ValueError("Ansible lint config has an unexpected key")
+        msg = "Ansible lint config has an unexpected key"
+        raise ValueError(msg)
     if (
         ansible["profile"] != "min"
         or ansible["offline"] is not True
         or ansible["strict"] is not True
     ):
-        raise ValueError("Ansible lint mode drifted")
+        msg = "Ansible lint mode drifted"
+        raise ValueError(msg)
     enable = set(ansible["enable_list"])
     excluded = set(data["ansible"]["excluded"])
     profile_min = set(data["ansible"]["profileMin"])
     if enable != set(data["ansible"]["enable"]):
-        raise ValueError("Ansible enable list drifted")
+        msg = "Ansible enable list drifted"
+        raise ValueError(msg)
     if enable & excluded or enable & profile_min or excluded & profile_min:
-        raise ValueError("Ansible rule partition overlaps")
+        msg = "Ansible rule partition overlaps"
+        raise ValueError(msg)
 
 
 def verify_ansible_catalog(data: StrictPolicy) -> None:
@@ -320,12 +340,12 @@ def verify_ansible_catalog(data: StrictPolicy) -> None:
     if catalog != enable | excluded | profile_min:
         missing = catalog - (enable | excluded | profile_min)
         extra = (enable | excluded | profile_min) - catalog
-        raise ValueError(
-            f"Ansible rule partition does not cover the installed catalog {missing or extra}"
-        )
+        msg = f"Ansible rule partition does not cover the installed catalog {missing or extra}"
+        raise ValueError(msg)
     unknown = discovered_ansible_rules() - catalog
     if unknown:
-        raise ValueError("Unreviewed ansible-lint rule")
+        msg = "Unreviewed ansible-lint rule"
+        raise ValueError(msg)
 
 
 def verify_kube_linter_policy(data: StrictPolicy) -> None:
@@ -333,30 +353,36 @@ def verify_kube_linter_policy(data: StrictPolicy) -> None:
     kube = yaml.safe_load((ROOT / "ci/quality/kube-linter.yaml").read_text())
     checks = kube["checks"]
     if checks.get("doNotAutoAddDefaults") is not False or "exclude" in checks:
-        raise ValueError("kube-linter defaults were disabled")
+        msg = "kube-linter defaults were disabled"
+        raise ValueError(msg)
     if checks["include"] != data["kubeLinter"]["include"]:
-        raise ValueError("kube-linter include list drifted")
+        msg = "kube-linter include list drifted"
+        raise ValueError(msg)
     omitted = set(data["kubeLinter"]["omitted"])
     if set(checks["include"]) & omitted:
-        raise ValueError("kube-linter include overlaps an omission")
+        msg = "kube-linter include overlaps an omission"
+        raise ValueError(msg)
 
 
 def verify_hadolint_policy() -> None:
     """Fail if hadolint strict threshold drifted."""
     hadolint = yaml.safe_load((ROOT / "ci/quality/hadolint.yaml").read_text())
     if hadolint.get("ignored") or hadolint.get("failure-threshold") != "style":
-        raise ValueError("hadolint strict threshold drifted")
+        msg = "hadolint strict threshold drifted"
+        raise ValueError(msg)
 
 
 def verify_vendor_provenance(data: StrictPolicy) -> None:
     """Fail if vendored tree provenance drifted."""
     vendors = json.loads((ROOT / "deploy/contracts/vendors.json").read_text())
     if sorted(tree["path"] for tree in vendors["trees"]) != sorted(data["vendorPaths"]):
-        raise ValueError("Vendor provenance drifted")
+        msg = "Vendor provenance drifted"
+        raise ValueError(msg)
     if [item.rstrip("/") for item in vendor_prefixes()] != [
         tree["path"] for tree in vendors["trees"]
     ]:
-        raise ValueError("Vendor prefix adapter drifted")
+        msg = "Vendor prefix adapter drifted"
+        raise ValueError(msg)
 
 
 def verify_secret_list(data: StrictPolicy) -> None:
@@ -364,58 +390,79 @@ def verify_secret_list(data: StrictPolicy) -> None:
     secret_path = ROOT / "ci/quality/secret-false-positives.json"
     digest = hashlib.sha256(secret_path.read_bytes()).hexdigest()
     if digest != data["reviewedExceptionDigest"]:
-        raise ValueError("Secret false-positive list changed without a policy review")
+        msg = "Secret false-positive list changed without a policy review"
+        raise ValueError(msg)
 
 
 def verify_quality_tooling() -> None:
     """Fail if debt regeneration or baseline acceptance returned."""
-    for name in [*(ROOT / "ci/quality").glob("check_*.py"), ROOT / "ci/quality/runner.py", ROOT / "ci/quality/charts.py"]:
+    for name in [
+        *(ROOT / "ci/quality").glob("check_*.py"),
+        ROOT / "ci/quality/runner.py",
+        ROOT / "ci/quality/charts.py",
+    ]:
         if "--record-debt" in (ROOT / name).read_text():
-            raise ValueError("Debt regeneration flag returned")
+            msg = "Debt regeneration flag returned"
+            raise ValueError(msg)
     common = (ROOT / "ci/quality/common.py").read_text()
     if "not in known" in common or "Baseline regeneration is forbidden" not in common:
-        raise ValueError("Debt baseline can decide success again")
+        msg = "Debt baseline can decide success again"
+        raise ValueError(msg)
 
 
 def verify_generated_publisher(data: StrictPolicy) -> None:
     """Fail if generated workflow trust or permissions drifted."""
     publisher = data["generatedWorkflows"]
     if publisher["trusted"] is not False or publisher["waiver"] is not False:
-        raise ValueError("Generated workflows were marked trusted")
+        msg = "Generated workflows were marked trusted"
+        raise ValueError(msg)
     if len(publisher["blocker"]) < 20:
-        raise ValueError("Generated workflow blocker is missing")
+        msg = "Generated workflow blocker is missing"
+        raise ValueError(msg)
     document = yaml.safe_load((ROOT / publisher["publisher"]).read_text())
     if document.get("on") != publisher["triggers"]:
-        raise ValueError("Generated publisher triggers drifted")
+        msg = "Generated publisher triggers drifted"
+        raise ValueError(msg)
     if document.get("permissions") != publisher["topPermissions"]:
-        raise ValueError("Generated publisher top permissions drifted")
+        msg = "Generated publisher top permissions drifted"
+        raise ValueError(msg)
     for job, permissions in publisher["jobs"].items():
         if document["jobs"][job].get("permissions") != permissions:
-            raise ValueError("Generated publisher job permissions drifted")
+            msg = "Generated publisher job permissions drifted"
+            raise ValueError(msg)
     header = (ROOT / publisher["publisher"]).read_text().splitlines()[0]
     if not header.startswith("# Generated by Quality Graph. DO NOT EDIT MANUALLY."):
-        raise ValueError("Generated publisher header drifted")
+        msg = "Generated publisher header drifted"
+        raise ValueError(msg)
 
 
 def verify_lint_scanner_text(data: StrictPolicy) -> None:
     """Fail if strict scanner invocation or coverage reporting drifted."""
     publisher = data["generatedWorkflows"]
-    lint_text = "\n".join((ROOT / "ci/quality" / name).read_text() for name in ("lint_support.py", "check_python.py", "check_workflow.py"))
+    lint_text = "\n".join(
+        (ROOT / "ci/quality" / name).read_text()
+        for name in ("lint_support.py", "check_python.py", "check_workflow.py")
+    )
     for needle in ("--enable=all", "--follow-imports=silent", "--persona", "auditor"):
         if needle not in lint_text:
-            raise ValueError("Strict linter invocation drifted")
+            msg = "Strict linter invocation drifted"
+            raise ValueError(msg)
     if "mypy coverage incomplete" not in lint_text:
-        raise ValueError("mypy can report a partial run as complete")
+        msg = "mypy can report a partial run as complete"
+        raise ValueError(msg)
     if (
         "returncode == 2 and not parsed" in lint_text
         or "returncode == 2 and duplicate" in lint_text
     ):
-        raise ValueError("mypy still accepts a fatal partial run")
+        msg = "mypy still accepts a fatal partial run"
+        raise ValueError(msg)
     if "quality-graph-publish" in lint_text or ".github/workflows" not in lint_text:
-        raise ValueError("workflow scanner special-cases or drops workflow files")
+        msg = "workflow scanner special-cases or drops workflow files"
+        raise ValueError(msg)
     for rule in publisher["zizmor"]:
         if rule in lint_text:
-            raise ValueError("zizmor rule is named in the scanner")
+            msg = "zizmor rule is named in the scanner"
+            raise ValueError(msg)
 
 
 def verify_pinned_tools() -> None:
@@ -423,7 +470,8 @@ def verify_pinned_tools() -> None:
     project = (ROOT / "pyproject.toml").read_text()
     for pin in ("mypy==2.4.1", "ruff==0.15.12", "ansible-lint==26.11.0", "yamllint==1.38.0"):
         if pin not in project:
-            raise ValueError("Pinned quality tool drifted")
+            msg = "Pinned quality tool drifted"
+            raise ValueError(msg)
 
 
 def verify_historical_debt() -> None:
@@ -431,7 +479,8 @@ def verify_historical_debt() -> None:
     for path in (ROOT / "ci/quality/debt").glob("*.json"):
         debt = json.loads(path.read_text())
         if debt.get("acceptance") is not False:
-            raise ValueError("Historical debt file is not marked non-accepting")
+            msg = "Historical debt file is not marked non-accepting"
+            raise ValueError(msg)
 
 
 def verify_configuration() -> None:

@@ -113,12 +113,15 @@ class DirectIpTest(unittest.TestCase):
             )
 
         e = panel(926)["targets"][0]["expr"]
-        ready = lambda value, samples=20: series(
-            "kube_node_status_condition",
-            value,
-            'node="socrat-4",condition="Ready",status="true"',
-            samples,
-        )
+
+        def ready(value, samples=20):
+            return series(
+                "kube_node_status_condition",
+                value,
+                'node="socrat-4",condition="Ready",status="true"',
+                samples,
+            )
+
         add(e, [ready(1)], 0)
         add(e, [ready(0)], 2)
         add(

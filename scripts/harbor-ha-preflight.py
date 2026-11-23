@@ -118,7 +118,8 @@ def check(policy, observation, otel, now=None):
     now = now or datetime.now(UTC)
     age = (now - datetime.fromisoformat(observation["collectedAt"])).total_seconds()
     if age < 0 or age > policy["maximumObservationAgeSeconds"]:
-        raise ValueError("Observation is stale or future-dated")
+        msg = "Observation is stale or future-dated"
+        raise ValueError(msg)
     results = {}
     for name, plan in policy["nodes"].items():
         node = observation["nodes"][name]
@@ -164,7 +165,7 @@ def check(policy, observation, otel, now=None):
     }
 
 
-def save_exclusive(path, obj):
+def save_exclusive(path, obj) -> None:
     """Write the save exclusive output."""
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as f:
@@ -172,7 +173,7 @@ def save_exclusive(path, obj):
         f.write("\n")
 
 
-def main():
+def main() -> int:
     """Run the command-line entry point."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["collect", "check"])

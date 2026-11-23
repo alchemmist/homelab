@@ -41,7 +41,8 @@ h = native.h
 
 def restore(state):
     if os.geteuid() != 0 or socket.gethostname() != "socrat-2":
-        raise ValueError("Requires VPS root")
+        msg = "Requires VPS root"
+        raise ValueError(msg)
     s = native.NativeSession(state)
     h.private_directory(s.state)
     fd = os.open(s.state / "lock", os.O_RDWR | os.O_NOFOLLOW)
@@ -106,13 +107,15 @@ def finish(s: SessionLike) -> dict[str, object]:
                     or rows[0][:2] != (owned["uuid"], owned["sub_id"])
                     or hashlib.sha256(rows[0][2].encode()).hexdigest() != owned["password_sha256"]
                 ):
-                    raise ValueError("Home fixture ownership mismatch")
+                    msg = "Home fixture ownership mismatch"
+                    raise ValueError(msg)
                 s.call("POST", "/clients/del/" + cast("str", owned["email"]), {})
             with closing(sqlite3.connect(s.database.as_uri() + "?mode=ro", uri=True)) as c:
                 if c.execute(
                     "SELECT COUNT(*) FROM clients WHERE email=?", (owned["email"],)
                 ).fetchone()[0]:
-                    raise ValueError("Fixture still exists")
+                    msg = "Fixture still exists"
+                    raise ValueError(msg)
     finally:
         s.cleanup()
     original = cast(
@@ -120,7 +123,8 @@ def finish(s: SessionLike) -> dict[str, object]:
         json.loads((s.state / "home-proxy-before-private.json").read_text()),
     )
     if target.semantic(target.configuration(s.database)) != target.semantic(original):
-        raise ValueError("Proxy preservation failed")
+        msg = "Proxy preservation failed"
+        raise ValueError(msg)
     for name in ["home-configs-private.json", "xray-probe"]:
         (s.state / name).unlink(missing_ok=True)
     proof: dict[str, object] = {
@@ -138,7 +142,8 @@ def require_public_endpoint(endpoint: str) -> None:
     import ipaddress
 
     if not ipaddress.ip_address(endpoint).is_global:
-        raise ValueError("Public probe endpoint required")
+        msg = "Public probe endpoint required"
+        raise ValueError(msg)
 
 
 def probe_rows(original: dict[str, object]) -> dict[int, dict[str, object]]:
@@ -156,7 +161,8 @@ def stage_fixture_identity(s: SessionLike, identity: ProbeIdentity) -> None:
             "SELECT COUNT(*) FROM clients WHERE email=? OR uuid=? OR sub_id=?",
             (identity["email"], identity["uuid"], identity["sub_id"]),
         ).fetchone()[0]:
-            raise ValueError("Fixture collision")
+            msg = "Fixture collision"
+            raise ValueError(msg)
     h.save(
         s.state / "home-fixture-private.json",
         {
@@ -193,7 +199,8 @@ def choose_inbound_ids(
     if include_all_vless:
         for port in (32083, 32084):
             if not rows[port]["enable"]:
-                raise ValueError("Additional VLESS transport unavailable")
+                msg = "Additional VLESS transport unavailable"
+                raise ValueError(msg)
             inbound_ids.append(rows[port]["id"])
     return inbound_ids
 
@@ -210,11 +217,13 @@ def add_udp_probe(
     context["client"].update(privateKey=private, publicKey=public, allowedIPsByInbound={})
     for port, label in [(32085, "wireguard")]:
         if not rows[port]["enable"]:
-            raise ValueError("UDP probe inbound unavailable")
+            msg = "UDP probe inbound unavailable"
+            raise ValueError(msg)
         server = cast("dict[str, object]", json.loads(cast("str", rows[port]["settings"])))
         candidate = "10.254.83.231/32"
         if candidate in h.canonical(original):
-            raise ValueError("Fixture address collision; stop")
+            msg = "Fixture address collision; stop"
+            raise ValueError(msg)
         cast("dict[str, object]", context["client"]["allowedIPsByInbound"])[
             str(rows[port]["id"])
         ] = [candidate]
@@ -222,19 +231,19 @@ def add_udp_probe(
         server_public = subprocess.check_output(
             ["wg", "pubkey"], input=cast("str", server["secretKey"]) + "\n", text=True
         ).strip()
-        settings = dict(
-            secretKey=private,
-            address=[candidate],
-            peers=[
+        settings = {
+            "secretKey": private,
+            "address": [candidate],
+            "peers": [
                 {
                     "publicKey": server_public,
                     "endpoint": endpoint + ":" + str(port),
                     "allowedIPs": ["0.0.0.0/0"],
                 }
             ],
-            noKernelTun=True,
-            mtu=1420,
-        )
+            "noKernelTun": True,
+            "mtu": 1420,
+        }
         context["udp_settings"][label] = settings
 
 
@@ -294,7 +303,8 @@ def prepare(
         h.save(s.state / "home-proxy-before-private.json", original)
         rows = probe_rows(original)
         if not all(rows[p]["enable"] for p in (32053, 32087)):
-            raise ValueError("Probe inbounds unavailable")
+            msg = "Probe inbounds unavailable"
+            raise ValueError(msg)
         identity: ProbeIdentity = {
             "email": s.state.name + "-probe",
             "uuid": str(uuid.uuid4()),
@@ -387,6 +397,5 @@ if __name__ == "__main__":
             s = native.NativeSession(a.state)
             print(h.canonical({"session_sha256": h.digest(s.preview()), "writes": 0}))
     except Exception:
-        raise SystemExit(
-            "Home native session stopped; inspect private receipts, no blind replay."
-        ) from None
+        msg = "Home native session stopped; inspect private receipts, no blind replay."
+        raise SystemExit(msg) from None

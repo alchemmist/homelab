@@ -47,7 +47,7 @@ def values(chart):
 class PlacementTests(unittest.TestCase):
     """Tests for PlacementTests."""
 
-    def test_monori_only_frontend_changes(self):
+    def test_monori_only_frontend_changes(self) -> None:
         new = values("monori")
         old = copy.deepcopy(new)
         old["frontNodeName"] = "socrat-0"
@@ -61,7 +61,7 @@ class PlacementTests(unittest.TestCase):
         assert pod["nodeSelector"] == {"kubernetes.io/hostname": "socrat-5"}
         assert "volumes" not in pod
 
-    def test_spi_only_queue_ui_changes_not_backend_jobs_rbac_or_network_policy(self):
+    def test_spi_only_queue_ui_changes_not_backend_jobs_rbac_or_network_policy(self) -> None:
         new = values("spi-triage")
         old = copy.deepcopy(new)
         old["queueUI"]["nodeName"] = "socrat-3"
@@ -78,7 +78,7 @@ class PlacementTests(unittest.TestCase):
         ]
         assert not pod["automountServiceAccountToken"]
 
-    def test_worker_single_recreate_no_pvc_auth_and_write_modes_preserved(self):
+    def test_worker_single_recreate_no_pvc_auth_and_write_modes_preserved(self) -> None:
         for folder, expected in [("blog-updates", "false"), ("wiki-openapi", "true")]:
             docs = list(yaml.safe_load_all((R / "deploy" / folder / "worker.yaml").read_text()))
             d = next(x for x in docs if x and x["kind"] == "Deployment")

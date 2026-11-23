@@ -14,7 +14,7 @@ CHARTS = (
     ("charts/netbird/Chart.yaml", "netbird", "0.1.0", "0.82.0"),
     ("charts/pr-agent/Chart.yaml", "pr-agent", "0.1.0", "0.49.0"),
     ("charts/syncthing/Chart.yaml", "syncthing", "0.2.0", "2.1.3"),
-    ("charts/x-ui/Chart.yaml", "x-ui", "0.3.1", "3.10.2"),
+    ("charts/x-ui/Chart.yaml", "x-ui", "0.3.1", "3.11.0"),
 )
 type LoaderType = type[yaml.SafeLoader | yaml.Loader]
 

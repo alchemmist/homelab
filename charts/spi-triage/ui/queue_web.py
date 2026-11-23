@@ -4,6 +4,7 @@ Cookies go only to the fixed TLS auth endpoint, never to the queue backend.
 Only two fixed operator routes; no worker token or caller identity is trusted.
 """
 
+import contextlib
 import http.client
 import http.server
 import json
@@ -27,7 +28,7 @@ TOKEN = ""
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
-    def redirect_request(self, *_args, **_kwargs):
+    def redirect_request(self, *_args, **_kwargs) -> None:
         """Refuse redirects so credentials are never forwarded."""
         return
 
@@ -35,20 +36,18 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 AUTH = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
 
-def expire(sock):
-    try:
+def expire(sock) -> None:
+    with contextlib.suppress(OSError):
         sock.shutdown(socket.SHUT_RDWR)
-    except OSError:
-        pass
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
     """HTTP handler serving the SPI queue web UI."""
 
-    def log_message(self, *_args):
+    def log_message(self, *_args) -> None:
         """Silence default request-line logging."""
 
-    def handle(self):
+    def handle(self) -> None:
         """Serve one request under a 20-second expiry timer."""
         timer = threading.Timer(20, expire, (self.request,))
         timer.daemon = True
@@ -59,11 +58,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         finally:
             timer.cancel()
 
-    def send_error(self, _code, _message=None, _explain=None):
+    def send_error(self, _code, _message=None, _explain=None) -> None:
         """Override error responses with a bare 400 to avoid leaking details."""
         self.send(400, b"", "text/plain")
 
-    def send(self, status, body, mime="application/json; charset=utf-8", location=None):
+    def send(self, status, body, mime="application/json; charset=utf-8", location=None) -> None:
         """Write a response from raw bytes with the given status and headers."""
         self.close_connection = True
         self.send_response(status)
@@ -84,10 +83,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if location:
             self.send_header("Location", location)
         self.end_headers()
-        try:
+        with contextlib.suppress(BrokenPipeError, ConnectionResetError):
             self.wfile.write(body)
-        except (BrokenPipeError, ConnectionResetError):
-            pass
 
     def valid_host(self):
         """Check that the request targets the expected public host."""
@@ -150,6 +147,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if not asset:
             return self.send(404, b"{}")
         self.send(200, Path(__file__).with_name(asset[0]).read_bytes(), asset[1])
+        return None
 
     def _auth_code(self, auth: int) -> str:
         if auth == 401:
@@ -225,7 +223,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except (ValueError, OSError, http.client.HTTPException):
             self.send(502, b'{"code":"QUEUE_UNAVAILABLE"}')
 
-    def do_OPTIONS(self):
+    def do_OPTIONS(self) -> None:
         """Reject OPTIONS requests with a 405."""
         self.send(405, b"{}")
 
@@ -250,14 +248,14 @@ class Server(http.server.ThreadingHTTPServer):
             self.slots.release()
             raise
 
-    def process_request_thread(self, request, client_address):
+    def process_request_thread(self, request, client_address) -> None:
         """Process an admitted request and always release its slot."""
         try:
             super().process_request_thread(request, client_address)
         finally:
             self.slots.release()
 
-    def handle_error(self, request, client_address):
+    def handle_error(self, request, client_address) -> None:
         """Swallow handler errors without echoing untrusted details to the log."""
 
 

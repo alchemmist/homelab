@@ -30,15 +30,18 @@ def replace_endpoint(text: str, target: str):
         if PEER not in keys:
             continue
         if keys != [PEER]:
-            raise ValueError("Ambiguous peer block")
+            msg = "Ambiguous peer block"
+            raise ValueError(msg)
         matches = list(re.finditer(r"(?m)^(Endpoint[ \t]*=[ \t]*)(\S+)([ \t]*)$", part))
         if len(matches) != 1 or matches[0].group(2) not in (DIRECT, RELAY):
-            raise ValueError("Unknown or ambiguous endpoint preimage")
+            msg = "Unknown or ambiguous endpoint preimage"
+            raise ValueError(msg)
         m = matches[0]
         parts[i] = part[: m.start(2)] + target + part[m.end(2) :]
         found += 1
     if found != 1:
-        raise ValueError("Expected exactly one peer1 block")
+        msg = "Expected exactly one peer1 block"
+        raise ValueError(msg)
     return "".join(parts)
 
 
@@ -46,7 +49,7 @@ def wg(*args: str):
     return subprocess.check_output(["wg", *args], text=True).strip()
 
 
-def atomic_write(data: bytes):
+def atomic_write(data: bytes) -> None:
     fd, name = tempfile.mkstemp(prefix=".homelab-wg15-", dir=CONFIG.parent)
     try:
         with os.fdopen(fd, "wb") as f:
@@ -65,36 +68,42 @@ def atomic_write(data: bytes):
             os.unlink(name)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=["apply", "rollback"])
     args = parser.parse_args()
     if os.geteuid() != 0:
-        raise RuntimeError("Root required, not a setuid helper")
+        msg = "Root required, not a setuid helper"
+        raise RuntimeError(msg)
     target = RELAY if args.mode == "apply" else DIRECT
     st = CONFIG.stat()
     if st.st_uid != 0 or stat.S_IMODE(st.st_mode) != 0o600:
-        raise RuntimeError("Unexpected config ownership/mode")
+        msg = "Unexpected config ownership/mode"
+        raise RuntimeError(msg)
     original = CONFIG.read_bytes()
     text = original.decode("utf-8")
     if re.search(r"(?mi)^SaveConfig\s*=\s*true\s*$", text):
-        raise RuntimeError("SaveConfig would override reviewed endpoint")
+        msg = "SaveConfig would override reviewed endpoint"
+        raise RuntimeError(msg)
     addresses = json.loads(
         subprocess.check_output(["ip", "-j", "-4", "addr", "show", "dev", "wg-socrat"])
     )
     if "10.250.0.41" not in [a["local"] for d in addresses for a in d["addr_info"]]:
-        raise RuntimeError("This command is restricted to node5")
+        msg = "This command is restricted to node5"
+        raise RuntimeError(msg)
     changed = replace_endpoint(text, target).encode("utf-8")
     allowed_before = wg("show", "wg-socrat", "allowed-ips")
     current = dict(l.split() for l in wg("show", "wg-socrat", "endpoints").splitlines())[PEER]
     if current not in (DIRECT, RELAY):
-        raise RuntimeError("Unreviewed runtime peer endpoint")
+        msg = "Unreviewed runtime peer endpoint"
+        raise RuntimeError(msg)
     BACKUP.mkdir(parents=True, mode=0o700, exist_ok=True)
     os.chmod(BACKUP, 0o700)
     preimage = BACKUP / "wg-socrat-before-private.conf"
     if args.mode == "apply" and not preimage.exists():
         if replace_endpoint(text, DIRECT).encode() != original:
-            raise RuntimeError("Missing original direct preimage")
+            msg = "Missing original direct preimage"
+            raise RuntimeError(msg)
         with preimage.open("xb") as f:
             os.chmod(preimage, 0o600)
             f.write(original)
@@ -106,7 +115,7 @@ def main():
         wg("set", "wg-socrat", "peer", PEER, "endpoint", target)
         # Establish the symmetric authenticated path so peer roaming cannot
         # silently leave the far end pointing at the previous transport.
-        for attempt in range(3):
+        for _attempt in range(3):
             subprocess.run(
                 ["ping", "-n", "-c", "10", "-i", "0.2", "-W", "1", "10.250.0.3"],
                 stdout=subprocess.DEVNULL,
@@ -121,9 +130,11 @@ def main():
                 break
             wg("set", "wg-socrat", "peer", PEER, "endpoint", target)
         else:
-            raise RuntimeError("Authenticated path did not settle on target")
+            msg = "Authenticated path did not settle on target"
+            raise RuntimeError(msg)
         if wg("show", "wg-socrat", "allowed-ips") != allowed_before:
-            raise RuntimeError("Unexpected concurrent peer/AllowedIPs change")
+            msg = "Unexpected concurrent peer/AllowedIPs change"
+            raise RuntimeError(msg)
     except Exception:
         atomic_write(original)
         wg("set", "wg-socrat", "peer", PEER, "endpoint", current)

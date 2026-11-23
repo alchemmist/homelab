@@ -4,6 +4,7 @@ import copy
 import unittest
 from unittest.mock import Mock
 
+import pytest
 import test_triage as f
 from core import Failure, digest
 from integrations import GitHub, Model
@@ -57,7 +58,7 @@ class SnapshotConsistencyTests(unittest.TestCase):
         m.match(f.event(), original, on_progress=lambda p: saved.append(copy.deepcopy(p)))
         proof = copy.deepcopy(saved[-1])
         m.call.reset_mock()
-        g, calls = self.transport(lambda r: r.append(dict(r[-1], number=62)), descending=True)
+        g, _calls = self.transport(lambda r: r.append(dict(r[-1], number=62)), descending=True)
         current = list(g.pages("/issues?state=open&sort=created&direction=desc"))
         # Page iteration keeps the padded duplicate header row: 62 rows, 61 unique.
         paged_rows = 62
@@ -82,14 +83,14 @@ class SnapshotConsistencyTests(unittest.TestCase):
         )
         old = baseline.Model(Mock(), "fake")
         old.call = Mock()
-        with self.assertRaises(Failure) as previous:
+        with pytest.raises(Failure) as previous:
             old.match(f.event(), current, proof)
-        assert previous.exception.code == "INVALID_MATCH_PROGRESS"
+        assert previous.value.code == "INVALID_MATCH_PROGRESS"
         old.call.assert_not_called()
         with self.assertLogs("integrations", level="WARNING") as logs:
-            with self.assertRaises(Failure) as e:
+            with pytest.raises(Failure) as e:
                 m.match(f.event(), current, proof)
-        assert e.exception.code == "GITHUB_SNAPSHOT_UNSTABLE"
+        assert e.value.code == "GITHUB_SNAPSHOT_UNSTABLE"
         assert "CURRENT_DUPLICATE" in "".join(logs.output)
         m.call.assert_not_called()
         assert proof == saved[-1]
@@ -131,9 +132,9 @@ class SnapshotConsistencyTests(unittest.TestCase):
         second[0]["updated_at"] = "changed"
         g.issues = Mock(side_effect=[first, second])
         g.comments = Mock()
-        with self.assertRaises(Failure) as e:
+        with pytest.raises(Failure) as e:
             g.snapshot()
-        assert e.exception.code == "GITHUB_SNAPSHOT_UNSTABLE"
+        assert e.value.code == "GITHUB_SNAPSHOT_UNSTABLE"
         # The unstable window is re-read exactly once before failing.
         snapshot_retries = 2
         assert g.issues.call_count == snapshot_retries
@@ -142,9 +143,9 @@ class SnapshotConsistencyTests(unittest.TestCase):
         """Verify bad schemas fail finitely."""
         g = GitHub(Mock(), "unused")
         g.request = Mock(return_value=[{"title": "[SPI] bad", "number": "secret"}])
-        with self.assertRaises(Failure) as e:
+        with pytest.raises(Failure) as e:
             g.snapshot()
-        assert e.exception.code == "INVALID_GITHUB_PAGE"
+        assert e.value.code == "INVALID_GITHUB_PAGE"
         assert g.request.call_count == 1
 
 
@@ -159,7 +160,7 @@ class PatientBudgetTests(unittest.TestCase):
         key = self.store.enqueue(f.event())["job_id"]
         self.store.claim()
         self.github.snapshot.side_effect = Failure("GITHUB_SNAPSHOT_UNSTABLE", retry_after=15)
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.run("match", key)
         self.model.match.assert_not_called()
         with self.store.db() as c:

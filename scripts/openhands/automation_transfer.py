@@ -22,11 +22,12 @@ from sqlalchemy.engine import Engine, make_url
 
 def ident(name):
     if not re.fullmatch(r"[a-z][a-z0-9_]*", name):
-        raise ValueError("Unexpected identifier")
+        msg = "Unexpected identifier"
+        raise ValueError(msg)
     return '"' + name + '"'
 
 
-def schema(url):
+def schema(url) -> None:
     # Native Alembic environment uses pg8000; install a validating SSLContext
     # instead of its limited string-mode adapter. No service/scheduler is run.
     parsed = make_url(url)
@@ -37,8 +38,9 @@ def schema(url):
     os.environ["AUTOMATION_CREATE_DATABASE_IF_MISSING"] = "false"
     ctx = ssl.create_default_context(cafile=os.environ["PGSSLROOTCERT"])
 
-    def tls(dialect, rec, args, kwargs):
-        assert dialect.driver == "pg8000" and kwargs["host"] == parsed.host
+    def tls(dialect, rec, args, kwargs) -> None:
+        assert dialect.driver == "pg8000"
+        assert kwargs["host"] == parsed.host
         kwargs["ssl_context"] = ctx
 
     event.listen(Engine, "do_connect", tls)
@@ -71,12 +73,13 @@ def cv(v, typ):
         return d
     if typ == "bool":
         if v not in (0, 1):
-            raise ValueError("Unexpected boolean")
+            msg = "Unexpected boolean"
+            raise ValueError(msg)
         return bool(v)
     return v
 
 
-async def transfer(url, source_path):
+async def transfer(url, source_path) -> None:
     conn = await asyncpg.connect(
         make_url(url)
         .difference_update_query(["ssl"])
@@ -93,7 +96,8 @@ async def transfer(url, source_path):
             src.execute("pragma integrity_check").fetchall() != [("ok",)]
             or src.execute("pragma foreign_key_check").fetchone()
         ):
-            raise ValueError("Source integrity check failed")
+            msg = "Source integrity check failed"
+            raise ValueError(msg)
         tables = {
             n
             for (n,) in src.execute(
@@ -114,7 +118,8 @@ async def transfer(url, source_path):
                 src.execute("select version_num from alembic_version").fetchall() != [("037",)]
                 or await dst.fetchval("select version_num from alembic_version") != "037"
             ):
-                raise ValueError("Revision mismatch")
+                msg = "Revision mismatch"
+                raise ValueError(msg)
             fk = await dst.fetch(
                 "select t.relname,p.relname from pg_constraint c "
                 "join pg_class t on t.oid=c.conrelid join pg_class p on p.oid=c.confrelid "
@@ -128,7 +133,8 @@ async def transfer(url, source_path):
                     if all(r[1] in done or r[1] == t for r in fk if r[0] == t)
                 ]
                 if not batch:
-                    raise ValueError("Dependency cycle")
+                    msg = "Dependency cycle"
+                    raise ValueError(msg)
                 for t in batch:
                     q = ident(t)
                     meta = await dst.fetch(
@@ -143,7 +149,10 @@ async def transfer(url, source_path):
                         raise ValueError(("Column mismatch", t, sn ^ set(names)))
                     cols = ",".join(map(ident, names))
                     sel = "SELECT " + cols + " FROM " + q
-                    normalize = lambda row: tuple(cv(v, k) for v, k in zip(row, types, strict=True))
+
+                    def normalize(row):
+                        return tuple(cv(v, k) for v, k in zip(row, types, strict=True))
+
                     expected = [normalize(r) for r in src.execute(sel)]
                     before = await dst.fetch(sel)
                     if before:
@@ -165,7 +174,8 @@ async def transfer(url, source_path):
                     done.add(t)
             seq = await dst.fetch("select sequencename from pg_sequences where schemaname='public'")
             if seq:
-                raise ValueError("Reseed identities before cutover")
+                msg = "Reseed identities before cutover"
+                raise ValueError(msg)
     finally:
         src.close()
         await dst.close()

@@ -48,12 +48,14 @@ with sync_playwright() as p:
         page.set_viewport_size({"width": width, "height": 960})
         page.wait_for_timeout(250)
         box = toggle.bounding_box()
-        assert abs(box["y"] - offset) < 1 and abs(width - box["x"] - box["width"] - offset) < 1
+        assert abs(box["y"] - offset) < 1
+        assert abs(width - box["x"] - box["width"] - offset) < 1
         assert box["width"] == box["height"] == 39
         icon = page.locator("ak-flow-inspector-button i")
         ic = icon.bounding_box()
         assert ic["width"] == ic["height"] == 18
-        assert abs(ic["x"] + 9 - box["x"] - 19.5) < 1 and abs(ic["y"] + 9 - box["y"] - 19.5) < 1
+        assert abs(ic["x"] + 9 - box["x"] - 19.5) < 1
+        assert abs(ic["y"] + 9 - box["y"] - 19.5) < 1
         assert "data:image/svg+xml" in icon.evaluate("e=>getComputedStyle(e).maskImage")
         print(
             "PASS: actual native magnifier, square hit target, centered 18px icon and viewport offset",
@@ -62,7 +64,8 @@ with sync_playwright() as p:
     page.set_viewport_size({"width": 1440, "height": 960})
     toggle.click()
     page.wait_for_timeout(1000)
-    assert statuses and statuses[-1] in [403, 404]
+    assert statuses
+    assert statuses[-1] in [403, 404]
     # Empty local layout box only: no native snapshots/history entries are forged.
     for width in [1440, 390]:
         page.set_viewport_size({"width": width, "height": 960})
@@ -72,9 +75,9 @@ with sync_playwright() as p:
    try{const s=getComputedStyle(box);return {max:s.maxBlockSize,overflow:s.overflowY,height:box.getBoundingClientRect().height}}
    finally{box.remove()}
   }""")
-        assert (
-            result["max"] == "none" and result["overflow"] == "visible" and result["height"] == 1000
-        )
+        assert result["max"] == "none"
+        assert result["overflow"] == "visible"
+        assert result["height"] == 1000
         print("PASS: Plan History natural height, no internal scrolling", width)
     page.set_viewport_size({"width": 1440, "height": 960})
     # Local-only native component probe, not an authentication response or permission grant.
@@ -91,26 +94,20 @@ with sync_playwright() as p:
         'e=>{const s=getComputedStyle(e);return {bg:s.backgroundColor,color:s.color,height:e.getBoundingClientRect().height,decoration:s.textDecorationLine,arrow:getComputedStyle(e,"::after").content,font:s.fontFamily}}'
     )
     print("Native redirect anchor style:", result)
-    assert (
-        result["bg"] == "rgba(0, 0, 0, 0)"
-        and result["color"] == "rgb(21, 34, 60)"
-        and result["height"] == 43
-    )
-    assert (
-        result["decoration"] == "none"
-        and result["arrow"] == '"→"'
-        and "QuietMono" in result["font"]
-    )
+    assert result["bg"] == "rgba(0, 0, 0, 0)"
+    assert result["color"] == "rgb(21, 34, 60)"
+    assert result["height"] == 43
+    assert result["decoration"] == "none"
+    assert result["arrow"] == '"→"'
+    assert "QuietMono" in result["font"]
     a.focus()
     assert a.evaluate("e=>e.getRootNode().activeElement===e")
     a.hover()
     page.wait_for_timeout(220)
     hover = a.evaluate("e=>getComputedStyle(e).backgroundColor")
     print("Native anchor hover:", hover)
-    assert (
-        hover.startswith("rgba(21, 34, 60,")
-        and 0.042 < float(hover.rsplit(",", 1)[1].rstrip(")")) < 0.049
-    )
+    assert hover.startswith("rgba(21, 34, 60,")
+    assert 0.042 < float(hover.rsplit(",", 1)[1].rstrip(")")) < 0.049
     assert a.evaluate('e=>getComputedStyle(e,"::after").transform') == "matrix(1, 0, 0, 1, 3, 0)"
     page.emulate_media(reduced_motion="reduce")
     page.wait_for_timeout(80)

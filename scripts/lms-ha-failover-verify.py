@@ -43,15 +43,18 @@ import json
 print(json.dumps(dict(host=urlsplit(Settings.from_env().database_url).hostname)))
 """)["host"]
 if host not in {"lms-postgres", "lms-postgres.lms.svc.cluster.local"}:
-    raise RuntimeError("Staging-only test refused: production is not on legacy endpoint")
+    msg_0 = "Staging-only test refused: production is not on legacy endpoint"
+    raise RuntimeError(msg_0)
 cluster = json.loads(kube("-n", "lms", "get", "cluster.postgresql.cnpg.io/lms-ha", "-o", "json"))
 if cluster["status"].get("readyInstances") != 3:
-    raise RuntimeError("Require three healthy instances")
+    msg_0 = "Require three healthy instances"
+    raise RuntimeError(msg_0)
 old = cluster["status"]["currentPrimary"]
 pod = json.loads(kube("-n", "lms", "get", "pod", old, "-o", "json"))
 node = pod["spec"]["nodeName"]
 if json.loads(kube("get", "node", node, "-o", "json"))["spec"].get("unschedulable"):
-    raise RuntimeError("Refusing to modify already cordoned node")
+    msg_0 = "Refusing to modify already cordoned node"
+    raise RuntimeError(msg_0)
 kube(
     "-n",
     "lms",
@@ -71,7 +74,7 @@ new = None
 try:
     kube("cordon", node)
     kube("-n", "lms", "delete", "pod", old, "--wait=true", "--timeout=60s")
-    for attempt in range(40):
+    for _attempt in range(40):
         c = json.loads(kube("-n", "lms", "get", "cluster.postgresql.cnpg.io/lms-ha", "-o", "json"))
         candidate = c["status"].get("currentPrimary")
         if candidate and candidate != old:
@@ -111,7 +114,8 @@ try:
                 pass
         time.sleep(3)
     if not new:
-        raise RuntimeError("Primary replacement / acknowledged-data probe timed out")
+        msg_0 = "Primary replacement / acknowledged-data probe timed out"
+        raise RuntimeError(msg_0)
     elapsed = round(time.monotonic() - began, 2)
 finally:
     kube("uncordon", node)

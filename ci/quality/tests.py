@@ -26,7 +26,8 @@ def main():
         not p.startswith("tests/") or not Path(p).name.startswith("test_") or ".." in Path(p).parts
         for p in paths
     ):
-        raise ValueError("Invalid test suite")
+        msg = "Invalid test suite"
+        raise ValueError(msg)
     output = ROOT / f"reports/tests-{args.suite}.xml"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.unlink(missing_ok=True)  # A failed setup must never admit yesterday's report.
@@ -57,11 +58,11 @@ def main():
         # socket under TMPDIR (https://github.com/ansible/ansible/issues/87031).
         # Unix-domain sockets are local IPC only, so allow them unconditionally.
         policy = (
-            '(version 1)(allow default)(deny network*)'
+            "(version 1)(allow default)(deny network*)"
             '(allow network-outbound (remote ip "localhost:*"))'
             '(allow network-bind network-inbound (local ip "localhost:*"))'
-            '(allow network-outbound (remote unix-socket))'
-            '(allow network-bind (local unix-socket))'
+            "(allow network-outbound (remote unix-socket))"
+            "(allow network-bind (local unix-socket))"
         )
         argv = ["/usr/bin/sandbox-exec", "-p", policy, *argv]
     elif args.isolate_network and platform.system() == "Linux":
@@ -88,7 +89,8 @@ def main():
             *argv,
         ]
     elif args.isolate_network:
-        raise ValueError("No loopback-only isolation available for this platform")
+        msg = "No loopback-only isolation available for this platform"
+        raise ValueError(msg)
     return subprocess.run(
         argv, cwd=ROOT, env=env, check=False, timeout=840 if args.suite == "cluster" else 240
     ).returncode

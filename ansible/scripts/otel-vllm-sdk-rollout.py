@@ -68,7 +68,7 @@ def trace_arguments(original):
             msg = "Unexpected existing tracing arguments; refuse overwrite"
             raise ValueError(msg)
         return list(original)
-    return list(original) + ["--otlp-traces-endpoint", ENDPOINT]
+    return [*list(original), "--otlp-traces-endpoint", ENDPOINT]
 
 
 def renewal_gate_passed(renewal) -> bool:
@@ -206,7 +206,7 @@ def wait_sdk_rollout(kube, receipt, fingerprint) -> bool:
     return False
 
 
-def run(output, apply, switcher_receipt=None):
+def run(output, apply, switcher_receipt=None) -> None:
     os.umask(0o077)
     controller = Path.home() / "Library/Application Support/homelab/otel-controller"
     if not output.resolve().is_relative_to(controller.resolve()):
@@ -353,9 +353,7 @@ def run(output, apply, switcher_receipt=None):
         print(json.dumps(receipt))
         return
     msg_0 = "Candidate readiness/drain pending; preimages retained, no force kill or destructive automatic rollback"
-    raise ValueError(
-        msg_0
-    )
+    raise ValueError(msg_0)
 
 
 if __name__ == "__main__":

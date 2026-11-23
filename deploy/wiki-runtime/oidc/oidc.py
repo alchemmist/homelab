@@ -25,7 +25,7 @@ class WikiStore(Protocol):
         ...
 
 
-def configure_store(store):
+def configure_store(store) -> None:
     """Install OIDC config; verify emergency owners exist before enabling."""
     store.oidc_enabled = bool(os.getenv("WIKI_OIDC_ISSUER"))
     store.local_owners = set(json.loads(os.getenv("WIKI_OIDC_LOCAL_OWNER_IDS", "[]")))
@@ -142,11 +142,11 @@ def request_role(
     if not admitted:
         message = "Application membership required"
         raise HTTPException(403, message)
-    role = max(admitted, key=lambda r: ("reader", "editor", "admin").index(r))
+    role = max(admitted, key=("reader", "editor", "admin").index)
     return overrides.get(cast("str", claims_dict["sub"]), role)
 
 
-def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
+def install_oidc(app, store, origin, prefix, cookie_path, session_seconds) -> None:
     """Mount the OIDC routes onto the given FastAPI application."""
     from authlib.integrations.starlette_client import OAuth
     from starlette.middleware.sessions import SessionMiddleware

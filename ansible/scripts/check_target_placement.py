@@ -101,7 +101,7 @@ def owned_by_current_revision(deployment, replica_sets, pods):
     return all(controller(pod, "ReplicaSet", owned) for pod in pods)
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--namespace", required=True)
@@ -123,7 +123,8 @@ def main():
     def get(kind, *extra):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            raise TimeoutError("Placement did not converge before deadline")
+            msg = "Placement did not converge before deadline"
+            raise TimeoutError(msg)
         command = [
             "kubectl",
             "--kubeconfig=" + args.kubeconfig,
@@ -153,29 +154,31 @@ def main():
             transport, capture_output=True, text=True, timeout=min(remaining, 25)
         )
         if result.returncode:
-            raise RuntimeError(
-                "Read-only Kubernetes inspection failed; inspect transport privately"
-            )
+            msg = "Read-only Kubernetes inspection failed; inspect transport privately"
+            raise RuntimeError(msg)
         return json.loads(result.stdout)
 
     while time.monotonic() < deadline:
         d = get("deployment", args.deployment)
         selector = d["spec"]["selector"]
         if selector.get("matchExpressions"):
-            raise ValueError("Complex selector unsupported; refusing partial ownership check")
+            msg = "Complex selector unsupported; refusing partial ownership check"
+            raise ValueError(msg)
         labels = ",".join(k + "=" + v for k, v in sorted(selector["matchLabels"].items()))
         pods = get("pods", "-l", labels)["items"]
         if converged(d, pods, args.node):
             # Validate ownership as well as labels. A manually labelled Pod is not proof.
             sets = get("replicasets", "-l", labels)["items"]
             if not owned_by_current_revision(d, sets, pods):
-                raise ValueError("Ready Pod not owned by target Deployment")
+                msg = "Ready Pod not owned by target Deployment"
+                raise ValueError(msg)
             print(
                 f"{args.deployment}: one Ready owned Pod on {args.node}; observed desired generation"
             )
             return
         time.sleep(min(2, max(0, deadline - time.monotonic())))
-    raise TimeoutError("Placement did not converge before deadline; not accepted")
+    msg = "Placement did not converge before deadline; not accepted"
+    raise TimeoutError(msg)
 
 
 if __name__ == "__main__":

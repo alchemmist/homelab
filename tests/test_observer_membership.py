@@ -6,8 +6,10 @@ import os
 import sqlite3
 import unittest
 from pathlib import Path
-from typing import TypedDict
+from typing import Never, TypedDict
 from unittest.mock import Mock, patch
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "deploy/platform/rancher/public-entry/files/observer_membership.py"
@@ -109,7 +111,7 @@ class MembershipTests(unittest.TestCase):
         ]:
             users, attrs, auth = fixture()
             change(attrs[0])
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 m.rancher_plan(users, attrs, auth, lambda *a: False)
 
     def test_unrelated_legacy_orphan_is_preserved_and_does_not_block_current_viewer(
@@ -127,7 +129,7 @@ class MembershipTests(unittest.TestCase):
             "GroupPrincipals": {},
         }
         before = copy.deepcopy(legacy_attr)
-        ops = m.rancher_plan([legacy_user] + users, [legacy_attr] + attrs, auth, lambda *a: False)
+        ops = m.rancher_plan([legacy_user, *users], [legacy_attr, *attrs], auth, lambda *a: False)
         assert len(ops) == 1
         assert ops[0][0] == "u-fixture"
         assert legacy_attr == before
@@ -136,10 +138,11 @@ class MembershipTests(unittest.TestCase):
         """Propagate an identity failure before any cache mutation is planned."""
         users, attrs, auth = fixture()
 
-        def failed(*_args):
-            raise RuntimeError("IdP unavailable")
+        def failed(*_args) -> Never:
+            msg = "IdP unavailable"
+            raise RuntimeError(msg)
 
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             m.rancher_plan(users, attrs, auth, failed)
 
     def test_wiki_module_matches_single_reviewed_controller_source(self) -> None:

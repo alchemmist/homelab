@@ -39,7 +39,8 @@ def configuration(database):
         with closing(sqlite3.connect(":memory:")) as snapshot:
             source.backup(snapshot)
             if snapshot.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
-                raise ValueError("Integrity check failed")
+                msg = "Integrity check failed"
+                raise ValueError(msg)
             return h.projection(snapshot)
 
 
@@ -66,14 +67,16 @@ def corrected(config):
     after = copy.deepcopy(config)
     rows = [r for r in after["inbounds"] if r["port"] == 32053]
     if len(rows) != 1:
-        raise ValueError("Unexpected target count")
+        msg = "Unexpected target count"
+        raise ValueError(msg)
     stream = json.loads(rows[0]["stream_settings"])
     reality = stream["realitySettings"]
     if (
         reality.get("serverNames") != ["www.yahoo.com"]
         or reality.get("target") != "www.intel.com:443"
     ):
-        raise ValueError("Target/SNI drift")
+        msg = "Target/SNI drift"
+        raise ValueError(msg)
     reality["target"] = "www.yahoo.com:443"
     rows[0]["stream_settings"] = h.canonical(stream)
     return after
@@ -89,15 +92,18 @@ def json_field(value):
 def api_payload(inbound):
     after = copy.deepcopy(inbound)
     if after.get("port") != 32053 or after.get("protocol") != "vless" or not after.get("enable"):
-        raise ValueError("Unexpected native inbound")
+        msg = "Unexpected native inbound"
+        raise ValueError(msg)
     stream = json_field(after["streamSettings"])
     if stream.get("security") != "reality" or stream.get("network") != "xhttp":
-        raise ValueError("Transport drift")
+        msg = "Transport drift"
+        raise ValueError(msg)
     if (
         stream["realitySettings"].get("serverNames") != ["www.yahoo.com"]
         or stream["realitySettings"].get("target") != "www.intel.com:443"
     ):
-        raise ValueError("API target drift")
+        msg = "API target drift"
+        raise ValueError(msg)
     stream["realitySettings"]["target"] = "www.yahoo.com:443"
     after["streamSettings"] = (
         h.canonical(stream) if isinstance(inbound["streamSettings"], str) else stream
@@ -110,10 +116,12 @@ def vless_client(stream, client_id, port):
     reality = stream["realitySettings"]
     public = (reality.get("settings") or {}).get("publicKey")
     if not public or not reality.get("shortIds"):
-        raise ValueError("Missing native client parameters")
+        msg = "Missing native client parameters"
+        raise ValueError(msg)
     xhttp = stream.get("xhttpSettings") or stream.get("splithttpSettings")
     if not xhttp or "path" not in xhttp:
-        raise ValueError("Missing XHTTP path")
+        msg = "Missing XHTTP path"
+        raise ValueError(msg)
     return {
         "log": {"loglevel": "warning"},
         "inbounds": [
@@ -179,7 +187,8 @@ def server_executable():
         except (FileNotFoundError, PermissionError, ProcessLookupError):
             pass
     if len(found) != 1:
-        raise ValueError("Expected one known running server executable")
+        msg = "Expected one known running server executable"
+        raise ValueError(msg)
     return found[0]
 
 
@@ -217,7 +226,8 @@ def transfer(port, state, phase):
         or not output.is_file()
         or output.stat().st_size != 65536
     ):
-        raise RuntimeError("Authenticated transfer failed; inspect private evidence")
+        msg = "Authenticated transfer failed; inspect private evidence"
+        raise RuntimeError(msg)
     proof = {
         "http_status": 200,
         "bytes": output.stat().st_size,
@@ -232,19 +242,22 @@ def transfer(port, state, phase):
 
 def apply(state, policy, session_hash, target_hash):
     if policy["realityCorrection"].get("apiApplyEnabled") is not True:
-        raise ValueError("API apply is disabled by source policy")
+        msg = "API apply is disabled by source policy"
+        raise ValueError(msg)
     s = session_module.NativeSession(state)
     original = configuration(s.database)
     plan = planner.build(original, policy)
     if plan["plan_sha256"] != target_hash or len(plan["operations"]) != 1:
-        raise ValueError("Target approval drift")
+        msg = "Target approval drift"
+        raise ValueError(msg)
     # Candidate must be validated before credentials or client state are written.
     context = ssl.create_default_context()
     context.set_alpn_protocols(["h2"])
     with socket.create_connection(("www.yahoo.com", 443), timeout=10) as raw:
         with context.wrap_socket(raw, server_hostname="www.yahoo.com") as tls:
             if tls.version() != "TLSv1.3" or tls.selected_alpn_protocol() != "h2":
-                raise ValueError("Candidate failed TLS/H2")
+                msg = "Candidate failed TLS/H2"
+                raise ValueError(msg)
     executable = server_executable()
     email = s.state.name + "-probe"
     fixture_id = str(uuid.uuid4())
@@ -256,7 +269,8 @@ def apply(state, policy, session_hash, target_hash):
     s.open(session_hash)
     try:
         if semantic(configuration(s.database)) != semantic(original):
-            raise ValueError("Proxy changed while opening session")
+            msg = "Proxy changed while opening session"
+            raise ValueError(msg)
         h.save(s.state / "target-plan.json", plan)
         h.save(s.state / "proxy-before-private.json", original)
         with closing(sqlite3.connect(s.database.as_uri() + "?mode=ro", uri=True)) as con:
@@ -264,7 +278,8 @@ def apply(state, policy, session_hash, target_hash):
                 "SELECT COUNT(*) FROM clients WHERE email=? OR uuid=? OR sub_id=?",
                 (email, fixture_id, sub_id),
             ).fetchone()[0]:
-                raise ValueError("Fixture collision")
+                msg = "Fixture collision"
+                raise ValueError(msg)
         target = next(r for r in original["inbounds"] if r["port"] == 32053)
         marker = {
             "email": email,
@@ -309,7 +324,8 @@ def apply(state, policy, session_hash, target_hash):
         )
         for _ in range(40):
             if proc.poll() is not None:
-                raise RuntimeError("Private acceptance client exited")
+                msg = "Private acceptance client exited"
+                raise RuntimeError(msg)
             try:
                 with socket.create_connection(("127.0.0.1", port), timeout=0.3):
                     break
@@ -322,11 +338,13 @@ def apply(state, policy, session_hash, target_hash):
         rows = s.call("GET", "/inbounds/list")
         matches = [r for r in rows if r["id"] == target["id"]]
         if len(matches) != 1:
-            raise ValueError("Native API target missing")
+            msg = "Native API target missing"
+            raise ValueError(msg)
         payload = api_payload(matches[0])
         prewrite = configuration(s.database)
         if semantic(before_api) != semantic(prewrite):
-            raise ValueError("Concurrent config change during API read")
+            msg = "Concurrent config change during API read"
+            raise ValueError(msg)
         db_target = next(r for r in prewrite["inbounds"] if r["id"] == target["id"])
         for api_key, db_key in (
             ("settings", "settings"),
@@ -334,7 +352,8 @@ def apply(state, policy, session_hash, target_hash):
             ("sniffing", "sniffing"),
         ):
             if json_field(matches[0][api_key]) != json_field(db_target[db_key]):
-                raise ValueError("API/DB projection mismatch")
+                msg = "API/DB projection mismatch"
+                raise ValueError(msg)
         h.save(s.state / "proxy-prewrite-private.json", prewrite)
         h.save(s.state / "target-write-uncertain.json", {"target_plan_sha256": target_hash})
         # Only one native write. An ambiguous response is not automatically retried.
@@ -342,7 +361,8 @@ def apply(state, policy, session_hash, target_hash):
         applied = True
         expected = corrected(prewrite)
         if semantic(configuration(s.database)) != semantic(expected):
-            raise RuntimeError("Unexpected API normalization/drift; inspect private data")
+            msg = "Unexpected API normalization/drift; inspect private data"
+            raise RuntimeError(msg)
         # Wait only on real local fallback readiness, not repeated external transfers.
         for attempt in range(40):
             try:
@@ -351,11 +371,13 @@ def apply(state, policy, session_hash, target_hash):
                 with socket.create_connection(("127.0.0.1", 32053), timeout=2) as raw:
                     with ctx.wrap_socket(raw, server_hostname="www.yahoo.com") as tls:
                         if tls.version() != "TLSv1.3" or tls.selected_alpn_protocol() != "h2":
-                            raise ValueError("Fallback TLS/H2 failed")
+                            msg = "Fallback TLS/H2 failed"
+                            raise ValueError(msg)
                 break
             except (OSError, ssl.SSLError) as exc:
                 if attempt == 39:
-                    raise RuntimeError("Fallback never converged") from exc
+                    msg = "Fallback never converged"
+                    raise RuntimeError(msg) from exc
                 time.sleep(0.5)
         after = transfer(port, s.state, "after")
         h.save(
@@ -387,20 +409,23 @@ def apply(state, policy, session_hash, target_hash):
                     ).fetchall()
                 if rows:
                     if rows != [(fixture_id, sub_id)]:
-                        raise ValueError("Fixture ownership mismatch")
+                        msg = "Fixture ownership mismatch"
+                        raise ValueError(msg)
                     s.call("POST", "/clients/del/" + email, {})
                 with closing(sqlite3.connect(s.database.as_uri() + "?mode=ro", uri=True)) as con:
                     if con.execute(
                         "SELECT COUNT(*) FROM clients WHERE email=?", (email,)
                     ).fetchone()[0]:
-                        raise ValueError("Fixture cleanup incomplete")
+                        msg = "Fixture cleanup incomplete"
+                        raise ValueError(msg)
         finally:
             s.cleanup()
     final = configuration(s.database)
     expected = corrected(original) if applied else original
     h.save(s.state / "proxy-after-private.json", final)
     if semantic(final) != semantic(expected):
-        raise RuntimeError("Final proxy preservation check failed")
+        msg = "Final proxy preservation check failed"
+        raise RuntimeError(msg)
     receipt = {
         "target_corrected": applied,
         "fixture_removed": True,
@@ -416,7 +441,7 @@ def apply(state, policy, session_hash, target_hash):
     return receipt
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", type=Path, required=True)
     parser.add_argument("--policy", type=Path, required=True)
@@ -465,6 +490,5 @@ if __name__ == "__main__":
         sqlite3.Error,
         subprocess.SubprocessError,
     ):
-        raise SystemExit(
-            "Target operation stopped; inspect private receipts before retrying. No automatic replay."
-        ) from None
+        msg = "Target operation stopped; inspect private receipts before retrying. No automatic replay."
+        raise SystemExit(msg) from None

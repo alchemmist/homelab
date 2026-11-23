@@ -64,7 +64,8 @@ def test_cas_guards_and_no_wholesale_replacement() -> None:
         "/data",
     ]
     assert all(x["op"] == "test" for x in p[:3])
-    assert p[3]["op"] == "add" and p[3]["path"] == "/data/" + m.KEY
+    assert p[3]["op"] == "add"
+    assert p[3]["path"] == "/data/" + m.KEY
 
 
 @pytest.mark.parametrize("address", ["109.120.141.97", "109.173.40.247", "::1", "bad"])

@@ -56,8 +56,7 @@ class Deploy(unittest.TestCase):
                     ["bash", str(script), "--apply", revision, str(values)],
                     cwd="/",
                     env=env,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    capture_output=True,
                 )
 
             assert run("0" * 40).returncode != 0

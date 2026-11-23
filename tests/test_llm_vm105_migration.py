@@ -256,9 +256,20 @@ class FourAppMigrationTests(unittest.TestCase):
                 assert any(m["name"] == "data" and m["readOnly"] for m in init["volumeMounts"])
                 if name == "open-webui":
                     assert "env" not in init
-                    assert {"name": "migration-db", "mountPath": "/run/migration-db", "readOnly": True} in init["volumeMounts"]
-                    assert any(v.get("secret") == {"secretName": "open-webui-postgres", "defaultMode": 292,
-                                                   "items": [{"key": "url", "path": "url"}]} for v in s["volumes"])
+                    assert {
+                        "name": "migration-db",
+                        "mountPath": "/run/migration-db",
+                        "readOnly": True,
+                    } in init["volumeMounts"]
+                    assert any(
+                        v.get("secret")
+                        == {
+                            "secretName": "open-webui-postgres",
+                            "defaultMode": 292,
+                            "items": [{"key": "url", "path": "url"}],
+                        }
+                        for v in s["volumes"]
+                    )
                     assert "/run/migration-db/url" in init["args"][0]
                 assert not s["automountServiceAccountToken"]
 
@@ -271,9 +282,7 @@ class FourAppMigrationTests(unittest.TestCase):
         assert s["nodeSelector"] == {"kubernetes.io/hostname": "socrat-0"}
         assert s["hostNetwork"] is True
         container = s["containers"][0]
-        assert container["ports"] == [
-            {"name": "http", "containerPort": 18080, "protocol": "TCP"}
-        ]
+        assert container["ports"] == [{"name": "http", "containerPort": 18080, "protocol": "TCP"}]
         for probe in ("startupProbe", "readinessProbe", "livenessProbe"):
             assert container[probe]["tcpSocket"] == {"host": "10.250.0.1", "port": 18080}
         cm = cast("ConfigMapDoc", obj(docs, "ConfigMap", "open-webui-gateway"))["data"][
@@ -298,13 +307,27 @@ class FourAppMigrationTests(unittest.TestCase):
         """Prove the terminal policy peer is emitted by the independently rendered WebUI chart."""
         terminal = render("open-terminal")
         webui = render("open-webui")
-        peer = cast("PolicyDoc", obj(terminal, "NetworkPolicy", "open-terminal-isolation"))["spec"]["ingress"][0]["from"][0]["podSelector"]["matchLabels"]
-        webui_pod = cast("DeploymentDoc", obj(webui, "Deployment", "open-webui"))["spec"]["template"]["spec"]
+        peer = cast("PolicyDoc", obj(terminal, "NetworkPolicy", "open-terminal-isolation"))["spec"][
+            "ingress"
+        ][0]["from"][0]["podSelector"]["matchLabels"]
+        webui_pod = cast("DeploymentDoc", obj(webui, "Deployment", "open-webui"))["spec"][
+            "template"
+        ]["spec"]
         assert peer
         assert webui_pod["nodeSelector"] == {"kubernetes.io/hostname": "socrat-5"}
-        rendered_labels = cast("dict[str, object]", cast("object", obj(webui, "Deployment", "open-webui"))["spec"]["template"]["metadata"]["labels"])
+        rendered_labels = cast(
+            "dict[str, object]",
+            cast("object", obj(webui, "Deployment", "open-webui"))["spec"]["template"]["metadata"][
+                "labels"
+            ],
+        )
         assert all(rendered_labels.get(key) == value for key, value in peer.items())
-        selector = cast("dict[str, object]", cast("object", obj(webui, "Deployment", "open-webui"))["spec"]["selector"]["matchLabels"])
+        selector = cast(
+            "dict[str, object]",
+            cast("object", obj(webui, "Deployment", "open-webui"))["spec"]["selector"][
+                "matchLabels"
+            ],
+        )
         assert all(selector.get(key) == value for key, value in peer.items())
 
     def test_idp_internal_tls_route_is_scoped_to_webui_pod(self) -> None:

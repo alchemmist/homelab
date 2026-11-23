@@ -24,7 +24,7 @@ def seed(root):
     return block
 
 
-def test_every_file_is_hashed(tmp_path):
+def test_every_file_is_hashed(tmp_path) -> None:
     b = seed(tmp_path)
     m = M.manifest(tmp_path)
     assert len(m["files"]) == 3
@@ -34,14 +34,14 @@ def test_every_file_is_hashed(tmp_path):
 
 
 @pytest.mark.parametrize("name", ["wal", "chunks/live-PVC", "other.json"])
-def test_unexpected_files_stop_release(tmp_path, name):
+def test_unexpected_files_stop_release(tmp_path, name) -> None:
     b = seed(tmp_path)
     (b / name).write_bytes(b"never unlink")
     with pytest.raises(AssertionError):
         M.shape(tmp_path)
 
 
-def test_link_and_wrong_meta_refused(tmp_path):
+def test_link_and_wrong_meta_refused(tmp_path) -> None:
     b = seed(tmp_path)
     link = b / "chunks/000002"
     link.symlink_to(b / "index")

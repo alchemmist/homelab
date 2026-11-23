@@ -29,25 +29,28 @@ class UpgradeSafety(unittest.TestCase):
         )
 
         objs = [x for x in yaml.safe_load_all(r) if x]
-        j = next(
+        # The completed 2026-11-19 cold backup Job stays retired (immutable spec):
+        # only its retained claim and sealed cold-config ConfigMap still render.
+        assert not [
             x
             for x in objs
             if x["kind"] == "Job" and x["metadata"]["name"] == "openhands-cold-backup-20261119"
+        ]
+        claim = next(
+            x
+            for x in objs
+            if x["kind"] == "PersistentVolumeClaim"
+            and x["metadata"]["name"] == "openhands-cold-backups"
         )
-        p = j["spec"]["template"]["spec"]
-        assert not p["automountServiceAccountToken"]
-        assert p["volumes"][0]["persistentVolumeClaim"] == {
-            "claimName": "data-openhands-0",
-            "readOnly": True,
-        }
-        assert p["volumes"][1]["persistentVolumeClaim"]["claimName"] == "openhands-cold-backups"
+        assert claim["metadata"]["annotations"]["argocd.argoproj.io/sync-options"] == (
+            "Prune=false,Delete=false"
+        )
         np = next(
             x
             for x in objs
             if x["kind"] == "NetworkPolicy" and x["metadata"]["name"] == "openhands-backup-pre142"
         )
         assert np["spec"]["egress"] == []
-        assert j["spec"]["template"]["metadata"]["labels"]["app"] == "openhands-backup-pre142"
         boundary = next(
             x
             for x in objs

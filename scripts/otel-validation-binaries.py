@@ -45,7 +45,7 @@ def request(repository, reference, token, kind):
     )
 
 
-def download_layer(repository, layer, token, stream):
+def download_layer(repository, layer, token, stream) -> None:
     """Download one layer blob into stream, verifying its size and digest."""
     digest = hashlib.sha256()
     size = 0
@@ -65,7 +65,7 @@ def download_layer(repository, layer, token, stream):
     stream.seek(0)
 
 
-def write_member(archive, member, target):
+def write_member(archive, member, target) -> None:
     """Copy one archive member to target with O_EXCL, after sanity checks."""
     if not member.isfile() or member.size > MAX_BINARY_BYTES:
         msg = "Unexpected image binary member"
@@ -120,7 +120,7 @@ def extract(image, name, output):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--lock", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)

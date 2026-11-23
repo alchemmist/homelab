@@ -147,7 +147,7 @@ def render(text, policy):
     return text
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--policy", type=Path, default=POLICY)

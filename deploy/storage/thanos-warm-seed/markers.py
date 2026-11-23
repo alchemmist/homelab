@@ -31,9 +31,7 @@ def batch(jobs: list[SeedJob]) -> list[tuple[str, int]]:
         log = kube("logs", "job/" + job["metadata"]["name"])
         if "all files verified" in log:
             verified.update(
-                re.findall(
-                    r"^verified block ([0-9A-Z]{26}) cumulative bytes", log, re.MULTILINE
-                )
+                re.findall(r"^verified block ([0-9A-Z]{26}) cumulative bytes", log, re.MULTILINE)
             )
     marks = json.loads(kube("exec", source_pod(), "--", "python3", "-c", SOURCE))
     out = []

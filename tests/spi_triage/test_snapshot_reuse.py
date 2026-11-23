@@ -5,6 +5,7 @@ import unittest
 from typing import Protocol, TypedDict
 from unittest.mock import Mock, patch
 
+import pytest
 import test_triage as f
 from core import Failure, digest
 from integrations import GitHub, Model
@@ -140,7 +141,7 @@ class ReviewReuseTests(unittest.TestCase):
             base_payload(*args, **kwargs), model="different-model"
         )
         m.call.reset_mock()
-        with self.assertRaisesRegex(Failure, "LLM_ACCOUNTING_CONTRACT_MISMATCH"):
+        with pytest.raises(Failure, match="LLM_ACCOUNTING_CONTRACT_MISMATCH"):
             m.match(f.event(), issues, proof)
         m.call.assert_not_called()  # Unknown model fails accounting, never trusts the old proof.
         m.payload = base_payload
@@ -155,7 +156,7 @@ class ReviewReuseTests(unittest.TestCase):
             else:
                 bad["snapshot"][0]["body"] = "changed"
             m.call.reset_mock()
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 m.match(f.event(), issues, bad)
             m.call.assert_not_called()
 
@@ -167,7 +168,7 @@ class ReviewReuseTests(unittest.TestCase):
         current[0]["updated_at"] = "second"
         saved = []
         m.call = Mock(side_effect=Failure("LLM_ADMISSION_DEFERRED"))
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             m.match(f.event(), current, proof, saved.append)
         assert len(saved[0]["reviews"]) == 5
         m.call = Mock(return_value=GOOD)
@@ -202,16 +203,17 @@ class ReviewReuseTests(unittest.TestCase):
         def choose(_task, data, _schema, _deadline) -> dict[str, object]:
             calls[0] += 1
             if calls[0] == 8:
-                raise Failure("LLM_ADMISSION_DEFERRED")
+                msg = "LLM_ADMISSION_DEFERRED"
+                raise Failure(msg)
             return dict(GOOD, issue_number=data["open_issues"][0]["number"])
 
         m.call = choose
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             m.match(f.event(), issues, on_progress=lambda p: saved.append(copy.deepcopy(p)))
         assert len(saved[-1]["selection"]["comparisons"]) == 1
         proof = copy.deepcopy(saved[-1])
         m.call = Mock(side_effect=Failure("LLM_ADMISSION_DEFERRED"))
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             m.match(f.event(), issues, proof, lambda p: saved.append(copy.deepcopy(p)))
         assert saved[-1]["selection"] == proof["selection"]
         m.call = Mock(
@@ -258,9 +260,9 @@ class EarlyFenceTests(unittest.TestCase):
             )
             self.github.open_signature.side_effect = None
             self.github.open_signature.return_value = "new"
-            with self.assertRaises(Failure) as e:
+            with pytest.raises(Failure) as e:
                 self.engine.run("analyze", key)
-            assert e.exception.code == "OPEN_SPI_CHANGED"
+            assert e.value.code == "OPEN_SPI_CHANGED"
             row = self.store.get(key)
             assert row["stage"] == 0
             assert row["state"] == "retry"
@@ -301,9 +303,9 @@ class EarlyFenceTests(unittest.TestCase):
         self.store.claim()
         self.store.save(key, 3, {"publication_backend": "legacy"}, intent='{"number":7}')
         job = self.store.get(key)
-        with self.assertRaises(Failure) as e:
+        with pytest.raises(Failure) as e:
             self.engine.invalidate_snapshot(key, job["result"], job)
-        assert e.exception.code == "WRITE_NEEDS_REVIEW"
+        assert e.value.code == "WRITE_NEEDS_REVIEW"
         assert self.store.get(key)["intent"] == job["intent"]
         for _ in range(8):
             self.store.fail(key, "OPEN_SPI_CHANGED")
@@ -435,7 +437,7 @@ class ChurnPublicationTests(unittest.TestCase):
                 assert self.store.claim()["job_id"] == key
                 if index:
                     before = model.call.call_count
-                    with self.assertRaisesRegex(Failure, "OPEN_SPI_CHANGED"):
+                    with pytest.raises(Failure, match="OPEN_SPI_CHANGED"):
                         engine.run("publish", key)
                     now[0] += 21
                     assert self.store.claim()["job_id"] == key

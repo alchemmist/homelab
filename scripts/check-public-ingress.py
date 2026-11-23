@@ -138,7 +138,7 @@ def check_dns(host):
     return valid
 
 
-def main():
+def main() -> int:
     """Run the command-line entry point."""
     parser = argparse.ArgumentParser(
         description="Check both public HTTPS entrances without depending on DNS propagation."

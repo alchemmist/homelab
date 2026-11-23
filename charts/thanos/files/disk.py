@@ -1,4 +1,5 @@
 """Report Prometheus data disk allocation per Thanos block directory."""
+
 import os
 import time
 from typing import cast
@@ -46,7 +47,9 @@ def rows(host_root) -> "list[tuple[str, str, int]]":
     storage = os.path.join(host_root, "rancher/k3s/storage")
     if os.path.isdir(storage):
         for name in sorted(os.listdir(storage)):
-            if os.environ.get("WARM_WORKSHOP") == "1" and name.endswith("_cattle-monitoring-system_thanos-warm-s1-candidate"):
+            if os.environ.get("WARM_WORKSHOP") == "1" and name.endswith(
+                "_cattle-monitoring-system_thanos-warm-s1-candidate"
+            ):
                 warm = os.path.join(storage, name, "workshop-s3")
                 if os.path.isdir(warm):
                     found.append(("warm", host_path(warm, host_root), directory_bytes(warm)))

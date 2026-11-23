@@ -361,7 +361,7 @@ def _apply_brand(
                 "brand_uuid": created["brand_uuid"],
                 "backup": str(backup_path),
                 "css_sha256": hashlib.sha256(css.encode()).hexdigest(),
-                "version": "2026.8.5",
+                "version": "2026.8.6",
             },
         )
     except Exception:
@@ -372,7 +372,7 @@ def _apply_brand(
     )
 
 
-def main():
+def main() -> None:
     """Prepare the theme assets, apply the reviewed brand, or restore it from backup."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
@@ -394,9 +394,9 @@ def main():
     headers = {"Authorization": "Bearer " + cast("str", credentials["AUTHENTIK_BOOTSTRAP_TOKEN"])}
     if (
         args.action != "rollback"
-        and api("GET", "admin/version/", headers).get("version_current") != "2026.8.5"
+        and api("GET", "admin/version/", headers).get("version_current") != "2026.8.6"
     ):
-        message = "Theme requires reviewed Authentik 2026.8.5; refusing version drift"
+        message = "Theme requires reviewed Authentik 2026.8.6; refusing version drift"
         raise RuntimeError(message)
     journal_path = args.root / "quiet-mono-brand-journal.json"
     if args.action == "rollback":

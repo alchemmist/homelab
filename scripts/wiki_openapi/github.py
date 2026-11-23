@@ -63,7 +63,8 @@ def _request(
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
             return None
-        raise GitHubError(f"GitHub {method} failed (HTTP {exc.code})") from None
+        msg = f"GitHub {method} failed (HTTP {exc.code})"
+        raise GitHubError(msg) from None
 
 
 class BotRepo:
@@ -78,7 +79,8 @@ class BotRepo:
                 _request(f"https://api.github.com/repos/{BOT}/commits/{after}"),
             )
             if not commit:
-                raise GitHubError("Commit not found")
+                msg = "Commit not found"
+                raise GitHubError(msg)
             return commit.get("files") or []
         require_sha(before)
         compared = cast(
@@ -86,22 +88,26 @@ class BotRepo:
             _request(f"https://api.github.com/repos/{BOT}/compare/{before}...{after}"),
         )
         if not compared:
-            raise GitHubError("Compare not found")
+            msg = "Compare not found"
+            raise GitHubError(msg)
         if len(compared.get("files") or []) >= 300:
-            raise GitHubError("Compare file list truncated")
+            msg = "Compare file list truncated"
+            raise GitHubError(msg)
         return compared.get("files") or []
 
     def text(self, sha: object, path: str) -> str:
         """Fetch one of the two allowed files at a commit SHA."""
         require_sha(sha)
         if path not in ("openapi.yaml", "scripts/render_wiki.py"):
-            raise GitHubError("Unexpected bot path")
+            msg = "Unexpected bot path"
+            raise GitHubError(msg)
         item = cast(
             "_Content | None",
             _request(f"https://api.github.com/repos/{BOT}/contents/{path}?ref={sha}"),
         )
         if not item or item.get("encoding") != "base64":
-            raise GitHubError("Bot file missing")
+            msg = "Bot file missing"
+            raise GitHubError(msg)
         return base64.b64decode(item["content"]).decode()
 
 
@@ -121,7 +127,8 @@ class Homelab:
         if item is None:
             return None, None
         if item.get("encoding") != "base64":
-            raise GitHubError("Unexpected page encoding")
+            msg = "Unexpected page encoding"
+            raise GitHubError(msg)
         return base64.b64decode(item["content"]).decode(), item["sha"]
 
     def propose(self, after: object, markdown: str) -> dict[str, object]:

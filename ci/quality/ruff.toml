@@ -11,3 +11,17 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 "tests/**/test_*.py" = ["D102", "D103"]
 # Pytest rewrites assertions in the tests tree (unchanged assertion policy).
 "**/tests/**" = ["S101"]
+# Tests load modules inside test functions to isolate runpy/importlib reloads
+# and invoke the real CLIs; the tree is intentionally not an importable package.
+"tests/**" = ["INP001", "PLC0415", "S603", "S607"]
+# CI console tools print their machine-readable progress to stdout.
+"ci/**" = ["INP001", "T201"]
+# Operational single-file programs below are deployed by copy (no package
+# layout makes sense): stdout is their CLI contract, subprocess/urllib calls on
+# reviewed fixed operands are their purpose, sys.path or bootstrap code can
+# precede imports, and one cohesive procedure is the documented interface.
+"scripts/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
+"ansible/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
+"charts/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
+"deploy/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
+"services/**" = ["INP001"]

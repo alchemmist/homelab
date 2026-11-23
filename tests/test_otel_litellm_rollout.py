@@ -9,6 +9,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -53,7 +55,7 @@ class LiteLLMRolloutTests(unittest.TestCase):
 
     def test_missing_existing_metrics_callback_is_rejected(self) -> None:
         """Reject a configuration that drops the Prometheus callback."""
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             load().configuration({"litellm_settings": {"callbacks": []}})
 
     def test_sdk_does_not_create_second_metrics_or_log_owner(self) -> None:
@@ -83,7 +85,7 @@ class LiteLLMRolloutTests(unittest.TestCase):
                 patch.object(module.Path, "home", return_value=home),
                 patch.object(module.BOOTSTRAP, "kube") as kube,
             ):
-                with self.assertRaisesRegex(ValueError, "renewable SDK credential reload"):
+                with pytest.raises(ValueError, match="renewable SDK credential reload"):
                     module.run(output, True)
                 kube.assert_not_called()
             assert not output.exists()

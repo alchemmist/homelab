@@ -56,7 +56,7 @@ private `authorization-flow-titles-original.json`; rollback checks identity.
 The other native messages/stages are not renamed by this.
 
 The language picker is hidden, including from Tab; Brand default en/light. But this is **not
-a hard enforcement of English on all old sessions**. The upstream precedence 2026.8.5:
+a hard enforcement of English on all old sessions**. The upstream precedence 2026.8.6:
 `?locale=` -> `sessionStorage["authentik:locale"]` -> hint -> navigator -> fallback.
 A fresh ru-browser was verified with an English UI; an old override/URL may win.
 CSS does not clear the browser storage, the user attributes were not forcibly rewritten.

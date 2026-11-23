@@ -54,7 +54,7 @@ def admin(method, path, data=None):
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
-    def redirect_request(self, *_args):
+    def redirect_request(self, *_args) -> None:
         """Refuse redirects so credentials are never forwarded."""
         return
 
@@ -154,7 +154,8 @@ try:
                     )
                     if not key:
                         print("TOTP challenge fields:", sorted(challenge.keys()))
-                        raise RuntimeError("TOTP setup format needs driver update")
+                        msg = "TOTP setup format needs driver update"
+                        raise RuntimeError(msg)
                     key = base64.b32decode(key.upper() + "=" * ((-len(key)) % 8))
                     h = hmac.new(
                         key, struct.pack(">Q", int(time.time()) // 30), hashlib.sha1
@@ -176,7 +177,8 @@ try:
                     else json.loads(body)
                 )
             else:
-                raise RuntimeError("Too many flow challenges")
+                msg = "Too many flow challenges"
+                raise RuntimeError(msg)
         else:
             status, headers, body = browser(urllib.parse.urljoin(base, target))
             if status in [301, 302, 303, 307]:
@@ -185,20 +187,25 @@ try:
                 _, _, body = browser("https://grafana.socrat.alchemmist.xyz/api/user")
                 profile = json.loads(body)
                 if profile.get("login") != username:
-                    raise RuntimeError("Unexpected Grafana identity")
+                    msg = "Unexpected Grafana identity"
+                    raise RuntimeError(msg)
                 if profile.get("isGrafanaAdmin"):
-                    raise RuntimeError("Observer unexpectedly received server-admin")
+                    msg = "Observer unexpectedly received server-admin"
+                    raise RuntimeError(msg)
                 _, _, body = browser("https://grafana.socrat.alchemmist.xyz/api/user/orgs")
                 if any(org.get("role") != "Viewer" for org in json.loads(body)):
-                    raise RuntimeError("Observer received unexpected organization rights")
+                    msg = "Observer received unexpected organization rights"
+                    raise RuntimeError(msg)
                 print(
                     "Grafana password + TOTP + consent + OIDC roundtrip passed; observer is Viewer, not admin"
                 )
                 break
             else:
-                raise RuntimeError("Unexpected final non-Grafana page")
+                msg = "Unexpected final non-Grafana page"
+                raise RuntimeError(msg)
     else:
-        raise RuntimeError("Too many redirects")
+        msg = "Too many redirects"
+        raise RuntimeError(msg)
 finally:
     admin("DELETE", "core/users/" + str(user["pk"]) + "/")
     print("Temporary Authentik acceptance identity removed")

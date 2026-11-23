@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import cast
 
 _spec = importlib.util.spec_from_file_location(
-    "panel_native", Path(__file__).with_name("vpn-panel-session.py")
+    "panel_native", Path(__file__).resolve().parents[1] / "ci/vpn/vpn-panel-session.py"
 )
 native = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(native)
@@ -101,20 +101,24 @@ def verify_transition(
 def payload(group: Mapping[str, object], old: str, new: str):
     result: dict[str, object] = copy.deepcopy(dict(group))
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", cast("str", result.get("groupId", ""))):
-        raise ValueError("Invalid host group identity")
+        msg = "Invalid host group identity"
+        raise ValueError(msg)
     hosts = result.get("hosts")
     if not isinstance(hosts, list) or not result.get("inboundIds"):
-        raise ValueError("Unexpected native host DTO")
+        msg = "Unexpected native host DTO"
+        raise ValueError(msg)
     for index, value in enumerate(hosts):
         if value == old:
             hosts[index] = new
         elif cast("str", value).startswith(old + ":"):
             port = cast("str", value)[len(old) + 1 :]
             if not port.isdigit() or not 0 < int(port) < 65536:
-                raise ValueError("Unexpected host port")
+                msg = "Unexpected host port"
+                raise ValueError(msg)
             hosts[index] = new + ":" + port
     if hosts == group["hosts"]:
-        raise ValueError("Native group does not contain the approved old address")
+        msg = "Native group does not contain the approved old address"
+        raise ValueError(msg)
     return result
 
 
@@ -122,12 +126,14 @@ def preview(state: str | Path, old: str, new: str):
     import ipaddress
 
     if old == new or not all(ipaddress.ip_address(v).is_global for v in (old, new)):
-        raise ValueError("Require distinct public literal addresses")
+        msg = "Require distinct public literal addresses"
+        raise ValueError(msg)
     session = native.NativeSession(state, worker_scope="admin")
     before = configuration(session.database)
     rows = [r for r in before["hosts"] if r["address"] == old]
     if not rows:
-        raise ValueError("No old-address rows; read acceptance instead of replaying")
+        msg = "No old-address rows; read acceptance instead of replaying"
+        raise ValueError(msg)
     return (
         session,
         before,
@@ -145,16 +151,19 @@ def preview(state: str | Path, old: str, new: str):
 def apply(state: str | Path, old: str, new: str, approval: str | None):
     session, before, plan = preview(state, old, new)
     if approval != h.digest(plan):
-        raise ValueError("Fresh approved migration hash required")
+        msg = "Fresh approved migration hash required"
+        raise ValueError(msg)
     session.open(h.digest(plan["session"]))
     try:
         if configuration(session.database) != before:
-            raise ValueError("Configuration drift after credential creation")
+            msg = "Configuration drift after credential creation"
+            raise ValueError(msg)
         groups = session.call("GET", "/hosts/list")
         targets = {r["group_id"] for r in before["hosts"] if r["address"] == old}
         chosen = [g for g in groups if g["groupId"] in targets]
         if len(chosen) != len(targets) or {g["groupId"] for g in chosen} != targets:
-            raise ValueError("Native group ownership mismatch")
+            msg = "Native group ownership mismatch"
+            raise ValueError(msg)
         candidates = [(g, payload(g, old, new)) for g in chosen]
         h.save(
             session.state / "host-migration-plan-private.json",
@@ -165,10 +174,12 @@ def apply(state: str | Path, old: str, new: str, approval: str | None):
             if canonical_projection(configuration(session.database)) != canonical_projection(
                 current
             ):
-                raise ValueError("Configuration drift before native host update")
+                msg = "Configuration drift before native host update"
+                raise ValueError(msg)
             fresh = session.call("GET", "/hosts/get/" + group["groupId"])
             if fresh != group:
-                raise ValueError("Native host DTO drift before update")
+                msg = "Native host DTO drift before update"
+                raise ValueError(msg)
             marker = session.state / ("host-uncertain-" + str(index) + ".json")
             h.save(
                 marker,
@@ -182,7 +193,8 @@ def apply(state: str | Path, old: str, new: str, approval: str | None):
             after = configuration(session.database)
             h.save(session.state / ("host-after-private-" + str(index) + ".json"), after)
             if not verify_transition(current, after, old, new, group["groupId"]):
-                raise RuntimeError("Native host invariant mismatch; stop, do not replay")
+                msg = "Native host invariant mismatch; stop, do not replay"
+                raise RuntimeError(msg)
             h.save(
                 session.state / ("host-verified-" + str(index) + ".json"),
                 {"group": group["groupId"], "invariants": True},
@@ -190,7 +202,8 @@ def apply(state: str | Path, old: str, new: str, approval: str | None):
             marker.unlink()
             current = after
         if not verify_transition(before, current, old, new):
-            raise RuntimeError("Final host invariants failed")
+            msg = "Final host invariants failed"
+            raise RuntimeError(msg)
         proof = {
             "host_rows_updated": plan["rows"],
             "groups_updated": plan["groups"],
@@ -231,6 +244,5 @@ if __name__ == "__main__":
                 )
             )
     except (OSError, ValueError, RuntimeError, ImportError, sqlite3.Error):
-        raise SystemExit(
-            "Host migration stopped; inspect private receipts and readback, never replay writes blindly."
-        ) from None
+        msg = "Host migration stopped; inspect private receipts and readback, never replay writes blindly."
+        raise SystemExit(msg) from None

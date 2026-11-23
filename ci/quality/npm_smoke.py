@@ -29,10 +29,12 @@ def smoke(group: str, directory: Path) -> None:
     for path in json.loads(lock.read_text())["packages"]:
         package = directory / path / "package.json"
         if not package.is_file():
-            raise ValueError(f"Locked package missing from {group} install: {path}")
+            msg = f"Locked package missing from {group} install: {path}"
+            raise ValueError(msg)
         manifest = json.loads(package.read_text())
         if {"preinstall", "install", "postinstall"}.intersection(manifest.get("scripts", {})):
-            raise ValueError(f"Install hook in installed {manifest['name']}")
+            msg = f"Install hook in installed {manifest['name']}"
+            raise ValueError(msg)
     if group == "argo":
         shutil.copy(ROOT / "tests/fixtures/npm/mcp-smoke.mjs", directory)
         run("node", "mcp-smoke.mjs")

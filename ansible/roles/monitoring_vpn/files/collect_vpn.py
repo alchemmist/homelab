@@ -17,6 +17,7 @@ Prometheus textfile metrics:
 """
 
 import argparse
+import contextlib
 import json
 import os
 import sqlite3
@@ -36,8 +37,7 @@ def peer_host(line):
         host = token.split("]", 1)[0].lstrip("[")
     else:
         host = token.rsplit(":", 1)[0]
-    if host.startswith("::ffff:"):
-        host = host[len("::ffff:") :]
+    host = host.removeprefix("::ffff:")
     return host
 
 
@@ -121,7 +121,7 @@ def active_users(counters, state, now, window):
     return sorted(email for email, when in last_active.items() if now - when <= window)
 
 
-def write_state(path, state):
+def write_state(path, state) -> None:
     """Execute the write_state operation."""
     handle, name = tempfile.mkstemp(dir=os.path.dirname(path) or ".", prefix=".vpn-state-")
     try:
@@ -130,10 +130,8 @@ def write_state(path, state):
         os.chmod(name, 0o644)
         os.replace(name, path)
     except BaseException:
-        try:
+        with contextlib.suppress(FileNotFoundError):
             os.unlink(name)
-        except FileNotFoundError:
-            pass
         raise
 
 
@@ -144,7 +142,7 @@ def write_metrics(
     success,
     registered=0,
     fallback_marker="/var/lib/homelab-vpn-failover/active",
-):
+) -> None:
     """Execute the write_metrics operation."""
     timestamp = time.time()
     lines = [
@@ -204,10 +202,8 @@ def write_metrics(
         os.chmod(name, 0o644)
         os.replace(name, path)
     except BaseException:
-        try:
+        with contextlib.suppress(FileNotFoundError):
             os.unlink(name)
-        except FileNotFoundError:
-            pass
         raise
 
 
@@ -225,7 +221,7 @@ def try_load_state(path):
 
 def collect(
     ports, metrics_url, metrics_timeout, window, output, state_path, xui_db="/etc/x-ui/x-ui.db"
-):
+) -> int:
     """Execute the collect operation."""
     try:
         streams = observe_streams(ports)

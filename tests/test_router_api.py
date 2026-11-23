@@ -10,6 +10,8 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 MODULE_PATH = (
     Path(__file__).resolve().parents[1] / "ansible/roles/home_ingress_ha/files/router_api.py"
 )
@@ -87,7 +89,8 @@ class SimulatedRouter(ROUTER.Router):
         if "deleteSelPortFw" in data:
             selectors = [key for key in data if key.startswith("select")]
             if len(selectors) != 1:
-                raise AssertionError("Deletion must target exactly one row")
+                msg = "Deletion must target exactly one row"
+                raise AssertionError(msg)
             self.rows.pop(int(selectors[0][6:]) - 1)
         elif data.get("addPortFwFlag") == "1":
             if (
@@ -96,14 +99,17 @@ class SimulatedRouter(ROUTER.Router):
                 and not self.failed
             ):
                 self.failed = True
-                raise OSError("Simulated target add failure")
+                msg = "Simulated target add failure"
+                raise OSError(msg)
             if data["WAN2"] != "ON" or data["protocol"] != "1":
-                raise AssertionError("Unexpected interface or protocol")
+                msg = "Unexpected interface or protocol"
+                raise AssertionError(msg)
             if (
                 data["fromPort"] != data["toPort"]
                 or data["externalFromPort"] != data["externalToPort"]
             ):
-                raise AssertionError("Port range unexpectedly changed")
+                msg = "Port range unexpectedly changed"
+                raise AssertionError(msg)
             self.rows.append(
                 forward(
                     data["ip"],
@@ -114,7 +120,8 @@ class SimulatedRouter(ROUTER.Router):
                 )
             )
         else:
-            raise AssertionError("Unexpected mutation")
+            msg = "Unexpected mutation"
+            raise AssertionError(msg)
         return "<html>Applied</html>"
 
 
@@ -166,7 +173,7 @@ class RouterApiTests(unittest.TestCase):
         """Second add failure restores both original web forwards."""
         router = SimulatedRouter(fail_add_port="443")
         original = copy.deepcopy(router.rows)
-        with self.assertRaisesRegex(OSError, "Simulated target add failure"):
+        with pytest.raises(OSError, match="Simulated target add failure"):
             self.apply(router)
         assert ROUTER.canonical(router.rows) == ROUTER.canonical(original)
         assert router.failed
@@ -181,7 +188,7 @@ class RouterApiTests(unittest.TestCase):
         current = copy.deepcopy(router.rows)
         with (
             patch.object(ROUTER.time, "sleep"),
-            self.assertRaisesRegex(RuntimeError, "expected state"),
+            pytest.raises(RuntimeError, match="expected state"),
         ):
             router.replace(expected, expected[0], dict(expected[0], ip="192.168.0.250"))
         assert router.mutations == []
@@ -208,7 +215,7 @@ class RouterApiTests(unittest.TestCase):
         """Unexpected https target refuses entire operation before http change."""
         router = SimulatedRouter()
         router.rows[1]["ip"] = "192.168.0.99"
-        with self.assertRaisesRegex(RuntimeError, "expected old state: 443"):
+        with pytest.raises(RuntimeError, match="expected old state: 443"):
             self.apply(router)
         assert router.mutations == []
 
@@ -219,7 +226,7 @@ class RouterApiTests(unittest.TestCase):
         router = SimulatedRouter()
         for row in router.rows[:2]:
             row["ip"] = "192.168.0.250"
-        with self.assertRaisesRegex(RuntimeError, "expected old state: 80"):
+        with pytest.raises(RuntimeError, match="expected old state: 80"):
             self.apply(router)
         assert router.mutations == []
 
@@ -241,11 +248,12 @@ class RouterApiTests(unittest.TestCase):
             response = request(path, data)
             if data and "deleteSelPortFw" in data and not lost:
                 lost = True
-                raise OSError("Delete response lost after apply")
+                msg = "Delete response lost after apply"
+                raise OSError(msg)
             return response
 
         with patch.object(router, "request", side_effect=lose_delete_response):
-            with self.assertRaisesRegex(OSError, "Delete response lost after apply"):
+            with pytest.raises(OSError, match="Delete response lost after apply"):
                 self.apply(router)
         assert ROUTER.canonical(router.rows) == ROUTER.canonical(existing_forwards())
         expected_mutation_count = 2
@@ -263,7 +271,8 @@ class RouterApiTests(unittest.TestCase):
             response = request(path, data)
             if data and data.get("addPortFwFlag") == "1" and not lost:
                 lost = True
-                raise OSError("Add response lost after apply")
+                msg = "Add response lost after apply"
+                raise OSError(msg)
             return response
 
         with patch.object(router, "request", side_effect=lose_add_response):
@@ -287,11 +296,12 @@ class RouterApiTests(unittest.TestCase):
             response = request(path, data)
             if data and "deleteSelPortFw" in data:
                 router.rows.append(forward("192.168.0.50", 9000, 9000, "TCP", "concurrent"))
-                raise OSError("Delete response lost with concurrent change")
+                msg = "Delete response lost with concurrent change"
+                raise OSError(msg)
             return response
 
         with patch.object(router, "request", side_effect=concurrent_change_after_delete):
-            with self.assertRaisesRegex(OSError, "Delete response lost with concurrent change"):
+            with pytest.raises(OSError, match="Delete response lost with concurrent change"):
                 self.apply(router)
         assert len(router.mutations) == 1
         assert any(row["comment"] == "concurrent" for row in router.rows)
@@ -299,9 +309,9 @@ class RouterApiTests(unittest.TestCase):
 
     def test_malformed_forward_table_is_rejected(self) -> None:
         """Malformed forward table is rejected."""
-        with self.assertRaisesRegex(ValueError, "Unexpected router forwarding table format"):
+        with pytest.raises(ValueError, match="Unexpected router forwarding table format"):
             ROUTER.parse_forwards('<tr><td>192.168.0.23</td><td><input name="select1"></td></tr>')
-        with self.assertRaisesRegex(ValueError, "Missing router forwarding table"):
+        with pytest.raises(ValueError, match="Missing router forwarding table"):
             ROUTER.parse_forwards("<html>Login required</html>")
 
 

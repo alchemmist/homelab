@@ -20,7 +20,8 @@ def inside(root, path):
     """Perform the inside operation."""
     path = path.resolve()
     if not path.is_relative_to(root.resolve()):
-        raise ValueError("Source pointer escapes repository")
+        msg = "Source pointer escapes repository"
+        raise ValueError(msg)
     return path
 
 
@@ -130,10 +131,12 @@ def applications(root, directory, repo):
     """Perform the applications operation."""
     base = inside(root, root / directory)
     if not base.is_dir():
-        raise ValueError("Missing Application directory")
+        msg = "Missing Application directory"
+        raise ValueError(msg)
     files = sorted(base.rglob("*.yaml"))
     if not files:
-        raise ValueError("Empty Application inventory")
+        msg = "Empty Application inventory"
+        raise ValueError(msg)
     names = set()
     values_by_owner = {}
     pointers = 0
@@ -188,12 +191,14 @@ def _current_values(
     source = inside(root, root / binding["source"])
     owner = ("argocd", binding["application"])
     if source not in active_values.get(owner, set()):
-        raise ValueError("Documented values are not consumed by their registered Application")
+        msg = "Documented values are not consumed by their registered Application"
+        raise ValueError(msg)
     value = yaml.safe_load(source.read_text())
     for key in binding["path"]:
         value = value[key]
     if not isinstance(value, str) or not value:
-        raise ValueError("Expected nonempty current-value pointer")
+        msg = "Expected nonempty current-value pointer"
+        raise ValueError(msg)
     for name in binding["documents"]:
         if "`" + value + "`" not in inside(root, root / name).read_text():
             raise ValueError("Current documentation value drift: " + name)
@@ -203,14 +208,16 @@ def check(root=ROOT):
     """Check the requested inputs."""
     c = json.loads((root / "deploy/contracts/source-pointers.json").read_text())
     if c["schemaVersion"] != 1:
-        raise ValueError("Unsupported source pointer schema")
+        msg = "Unsupported source pointer schema"
+        raise ValueError(msg)
     source = yaml.safe_load(inside(root, root / c["rootApplication"]).read_text())["spec"]["source"]
     if (
         source["repoURL"] != c["repoURL"]
         or source["path"] != c["applicationDirectory"]
         or source["targetRevision"] != "main"
     ):
-        raise ValueError("Root Application no longer owns the checked source directory")
+        msg = "Root Application no longer owns the checked source directory"
+        raise ValueError(msg)
     count, pointers, active_values = applications(root, c["applicationDirectory"], c["repoURL"])
     for name in c["documents"]:
         _document_links(root, name)

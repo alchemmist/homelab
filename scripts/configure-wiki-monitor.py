@@ -77,7 +77,7 @@ socket.on("connect", async () => {
 """
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="socrat-3")

@@ -4,6 +4,7 @@ import http.client
 import threading
 import unittest
 import urllib.error
+from typing import Never
 
 from tests.test_rustfs_gateway import BASE, g
 
@@ -19,7 +20,7 @@ class PrivateAuth(unittest.TestCase):
         reader.auth = g.ORIGIN + "/outpost.goauthentik.io/auth/nginx"
 
         class HTTP:
-            def open(self, *_args, **_kwargs):
+            def open(self, *_args, **_kwargs) -> Never:
                 raise self.error
 
         reader.http = HTTP()
@@ -38,9 +39,10 @@ class PrivateAuth(unittest.TestCase):
             def authorization(self, _cookie):
                 return self.status
 
-            def read(self, key):
+            def read(self, key) -> Never:
                 self.calls.append(key)
-                raise AssertionError("unauthorized object read")
+                msg = "unauthorized object read"
+                raise AssertionError(msg)
 
         reader = Reader()
         server = g.http.server.HTTPServer(("127.0.0.1", 0), g.Handler)

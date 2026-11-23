@@ -64,9 +64,7 @@ class SafeNginxLoggingTests(unittest.TestCase):
     def test_private_gateway_renders_declared_resource_budget(self) -> None:
         """The gateway Pod uses its chart's declared requests and limits."""
         gateway = next(
-            doc
-            for doc in self.render("private-gateway")
-            if doc and doc.get("kind") == "DaemonSet"
+            doc for doc in self.render("private-gateway") if doc and doc.get("kind") == "DaemonSet"
         )
         container = gateway["spec"]["template"]["spec"]["containers"][0]
         assert container["resources"] == {

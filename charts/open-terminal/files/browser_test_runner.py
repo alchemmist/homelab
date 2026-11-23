@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run a bounded browser test and clean up all of its child processes."""
+
 import argparse
 import ctypes
 import math
@@ -62,7 +63,7 @@ def send(identity: ProcessIdentity, sig: int) -> None:
 def reap() -> None:
     while True:
         try:
-            pid, status = os.waitpid(-1, os.WNOHANG)
+            pid, _status = os.waitpid(-1, os.WNOHANG)
         except ChildProcessError:
             return
         if pid == 0:

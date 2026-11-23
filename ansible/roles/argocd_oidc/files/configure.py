@@ -138,7 +138,7 @@ def run(args: list[str], *, input_text: str | None = None, check: bool = True) -
 
 def exec_authentik(code: str, input_text: str | None = None) -> dict:
     """Exec authentik."""
-    args = KUBECTL + ["-n", "identity", "exec"]
+    args = [*KUBECTL, "-n", "identity", "exec"]
     if input_text is not None:
         args.append("-i")
     args += ["deploy/authentik-server", "--", "python", "-c", code]
@@ -208,14 +208,14 @@ def main() -> None:
     desired = base64.b64encode(entry["client_secret"].encode()).decode()
     STAGE = "read-Argo-CD-runtime-secret"
     current = json.loads(
-        run(KUBECTL + ["-n", NAMESPACE, "get", "secret", "argocd-secret", "-o", "json"])
+        run([*KUBECTL, "-n", NAMESPACE, "get", "secret", "argocd-secret", "-o", "json"])
     )
     if current.get("data", {}).get(SECRET_KEY) != desired:
         patch = {"data": {SECRET_KEY: desired}}
         STAGE = "inject-OIDC-client-secret"
         run(
-            KUBECTL
-            + [
+            [
+                *KUBECTL,
                 "-n",
                 NAMESPACE,
                 "patch",
@@ -228,11 +228,11 @@ def main() -> None:
             input_text=json.dumps(patch),
         )
         STAGE = "restart-Argo-CD-server"
-        run(KUBECTL + ["-n", NAMESPACE, "rollout", "restart", "deployment/argo-cd-argocd-server"])
+        run([*KUBECTL, "-n", NAMESPACE, "rollout", "restart", "deployment/argo-cd-argocd-server"])
         STAGE = "wait-for-Argo-CD-server"
         run(
-            KUBECTL
-            + [
+            [
+                *KUBECTL,
                 "-n",
                 NAMESPACE,
                 "rollout",

@@ -23,11 +23,11 @@ def quantity(x):
 
 kube = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
 node = json.loads(
-    subprocess.check_output(kube + ["get", "node", "socrat-0", "-o", "json"], text=True)
+    subprocess.check_output([*kube, "get", "node", "socrat-0", "-o", "json"], text=True)
 )
 pods = json.loads(
     subprocess.check_output(
-        kube + ["get", "pods", "-A", "--field-selector=spec.nodeName=socrat-0", "-o", "json"],
+        [*kube, "get", "pods", "-A", "--field-selector=spec.nodeName=socrat-0", "-o", "json"],
         text=True,
     )
 )

@@ -49,7 +49,7 @@ def identity_expression(owner_uid, owner_email, user_uuids=(), user_group=None):
     )
 
 
-def main():
+def main() -> None:
     """Document the main operation."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("root", type=Path)
@@ -82,12 +82,10 @@ def main():
         r = subprocess.run(kube + arguments, input=data, capture_output=True, timeout=90)
         if r.returncode:
             msg = "Kubernetes operation failed; output suppressed to protect credentials"
-            raise RuntimeError(
-                msg
-            )
+            raise RuntimeError(msg)
         return r.stdout
 
-    def private(path, data, overwrite=False):
+    def private(path, data, overwrite=False) -> None:
         if path.exists() and not overwrite:
             return
         with open(path, "w", opener=lambda p, f: os.open(p, f, 0o600)) as out:
@@ -154,7 +152,7 @@ asyncio.run(main())
 
 def _require_versions(api: "ApiCall", container: object) -> None:
     """Refuse to run against unreviewed Authentik or LiteLLM versions."""
-    if cast("dict[str, object]", api("GET", "admin/version/"))["version_current"] != "2026.8.5":
+    if cast("dict[str, object]", api("GET", "admin/version/"))["version_current"] != "2026.8.6":
         msg = "Unreviewed Authentik version"
         raise RuntimeError(msg)
     if cast("dict[str, object]", container)["image"] != "ghcr.io/berriai/litellm:1.105.1":
@@ -308,9 +306,7 @@ def _default_scope_pks(api: "ApiCall") -> list[object]:
         ]
         if len(matches) != 1:
             msg = "Missing/ambiguous exact default scope; never mix app profile mappings"
-            raise RuntimeError(
-                msg
-            )
+            raise RuntimeError(msg)
         mappings.append(matches[0]["pk"])
     return mappings
 

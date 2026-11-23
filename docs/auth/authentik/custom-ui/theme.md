@@ -7,7 +7,7 @@ the real Socrat mask, the exact Wiki favicon, CourierCyr UI and bold Computer
 Modern for headings. No marketing panels/greetings. Production uses a fixed
 agreed lake; the random owner photo collection is not implemented.
 
-The browser keeps **native Authentik 2026.8.5**:
+The browser keeps **native Authentik 2026.8.6**:
 
 - `ak-flow-executor` executes server challenges;
 - native identification/password, TOTP/validation, consent and redirect stages;

@@ -95,7 +95,7 @@ def github(path, method="GET", data=None, auth=True):
     return response.json() if response.content else {}
 
 
-def save(run_id, **fields):
+def save(run_id, **fields) -> None:
     DB.execute(
         "UPDATE runs SET " + ",".join(key + "=?" for key in fields) + " WHERE id=?",
         [*fields.values(), run_id],
@@ -105,7 +105,7 @@ def save(run_id, **fields):
         logging.info("Run %s state=%s", run_id, fields["state"])
 
 
-def start_job(run, phase):
+def start_job(run, phase) -> None:
     run_id, lane, revision = run["id"], run["lane"], run["revision"]
     name = f"swe-{run_id}-{phase}"
     volumes: list[dict[str, object]] = [{"name": "work", "emptyDir": {"sizeLimit": "8Gi"}}]
@@ -267,7 +267,8 @@ def publish(run, result, review):
         if current["tree"]["sha"] != tree["sha"] or [p["sha"] for p in current["parents"]] != [
             run["revision"]
         ]:
-            raise ValueError("Existing candidate branch differs; refusing publication") from exc
+            msg = "Existing candidate branch differs; refusing publication"
+            raise ValueError(msg) from exc
     body = (
         "Automated by mini-swe-agent v2.4.6; owner approval required. No production access or merge.\n\n"
         + result["report"][:16000]
@@ -491,7 +492,7 @@ class Health(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
-    def log_message(self, *args):
+    def log_message(self, *args) -> None:
         """Suppress default request-line logging."""
 
 

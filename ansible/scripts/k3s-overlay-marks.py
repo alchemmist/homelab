@@ -26,9 +26,11 @@ def rules(interface, cidr, exists):
     """Perform the rules operation."""
     net = ipaddress.ip_network(cidr, strict=True)
     if net.version != 4 or not net.is_private or net.prefixlen < 16:
-        raise ValueError("Require a narrow private IPv4 pod network")
+        msg = "Require a narrow private IPv4 pod network"
+        raise ValueError(msg)
     if not re.fullmatch(r"[a-zA-Z0-9_.-]{1,15}", interface):
-        raise ValueError("Invalid overlay interface")
+        msg = "Invalid overlay interface"
+        raise ValueError(msg)
     prefix = f"delete table inet {TABLE}\n" if exists else ""
     return (
         prefix
@@ -111,7 +113,7 @@ def normalize(doc):
     return result
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--interface", default="flannel.1")
@@ -132,7 +134,8 @@ def main():
     )
     before_text = run("nft", "-s", "list", "table", "inet", TABLE).stdout if exists else ""
     if exists and not owned(before, before_text):
-        raise RuntimeError("Refusing to replace a foreign table")
+        msg = "Refusing to replace a foreign table"
+        raise RuntimeError(msg)
     batch = rules(args.interface, args.pod_cidr, exists)
     expected = normalize({"nftables": desired(args.interface, args.pod_cidr)})
     # Read-only kernel syntax/capability check, even when already converged.
@@ -150,9 +153,8 @@ def main():
         after = json.loads(run("nft", "-j", "list", "table", "inet", TABLE).stdout)
         (directory / "after.json").write_text(json.dumps(after, indent=2) + "\n")
         if normalize(after) != expected:
-            raise RuntimeError(
-                "Post-write verification failed: stop and inspect; do not retry blindly"
-            )
+            msg = "Post-write verification failed: stop and inspect; do not retry blindly"
+            raise RuntimeError(msg)
     print(
         json.dumps(
             {

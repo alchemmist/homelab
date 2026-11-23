@@ -204,7 +204,7 @@ def plan(state, batch, required, now, max_age=90, threshold=3):
     }
 
 
-def main():
+def main() -> None:
     """Execute main."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("input", type=Path)

@@ -19,8 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 VOLUME_FIELD_COUNT = 2
 BACKUP_DEADLINE_SECONDS = 2400
 IMAGE = (
-    "ghcr.io/openhands/agent-canvas:1.41.0@sha256:"
-    "dcae97b63c9845fd1d4313857af6b10fb5888324a154238c4795ef86233d227c"
+    "ghcr.io/openhands/agent-canvas:1.43.0@sha256:"
+    "bcdbb3fb9610f14eda67f39fc609f162ad8c3c28697d6ff3f4adae55c15c3f1d"
 )
 
 
@@ -170,7 +170,6 @@ def _assert_owner_inventory(documents: list[dict[str, object]]) -> None:
         ("Deployment", "openhands", "monori-publisher"),
         ("Deployment", "identity", "openhands-oidc"),
         ("Deployment", "identity", "openhands-oidc-sessions"),
-        ("Job", "openhands", "openhands-cold-backup-20261119"),
         ("Ingress", "identity", "openhands-oidc"),
         ("Certificate", "identity", "openhands-oidc-tls"),
     }
@@ -222,7 +221,6 @@ def _assert_owner_pods(documents: list[dict[str, object]]) -> None:
             "monori-publisher": ["publisher"],
             "openhands-oidc": ["oauth2-proxy"],
             "openhands-oidc-sessions": ["redis"],
-            "openhands-cold-backup-20261119": ["backup"],
         }
         containers = [_mapping(c) for c in _list(pod["containers"])]
         assert [c["name"] for c in containers] == names[role]
@@ -370,14 +368,22 @@ def _assert_owner_oidc_extensions(documents: list[dict[str, object]]) -> None:
     assert _get(pod, "securityContext", "fsGroup") == 65532
     keys = ["client-secret", "cookie-secret"]
     assert oauth["volumeMounts"] == [
-        {"name": "oauth-keys", "subPath": k, "mountPath": "/run/oidc-" + k, "readOnly": True} for k in keys
+        {"name": "oauth-keys", "subPath": k, "mountPath": "/run/oidc-" + k, "readOnly": True}
+        for k in keys
     ]
-    assert pod["volumes"] == [{"name": "oauth-keys", "secret": {
-        "secretName": "openhands-oidc", "defaultMode": 288,
-        "items": [{"key": k, "path": k} for k in keys],
-    }}]
+    assert pod["volumes"] == [
+        {
+            "name": "oauth-keys",
+            "secret": {
+                "secretName": "openhands-oidc",
+                "defaultMode": 288,
+                "items": [{"key": k, "path": k} for k in keys],
+            },
+        }
+    ]
     assert {_mapping(v)["name"] for v in _list(oauth["env"])} == {
-        "OAUTH2_PROXY_CLIENT_ID", "OAUTH2_PROXY_REDIS_PASSWORD"
+        "OAUTH2_PROXY_CLIENT_ID",
+        "OAUTH2_PROXY_REDIS_PASSWORD",
     }
     ingress = _named(documents, "Ingress", "openhands-oidc")
     assert ingress["spec"] == {
@@ -417,34 +423,12 @@ def _assert_owner_oidc_extensions(documents: list[dict[str, object]]) -> None:
 
 
 def _assert_owner_backup_declarations(documents: list[dict[str, object]]) -> None:
-    """Check the explicit owner backup declarations without executing its source."""
-    backup = _named(documents, "Job", "openhands-cold-backup-20261119")
-    assert _get(backup, "spec", "backoffLimit") == 0
-    assert _get(backup, "spec", "activeDeadlineSeconds") == BACKUP_DEADLINE_SECONDS
-    backup_pod = _get(backup, "spec", "template", "spec")
-    assert _get(backup_pod, "restartPolicy") == "Never"
-    assert _get(backup_pod, "volumes") == [
-        {
-            "name": "source",
-            "persistentVolumeClaim": {
-                "claimName": "data-openhands-0",
-                "readOnly": True,
-            },
-        },
-        {
-            "name": "backup",
-            "persistentVolumeClaim": {"claimName": "openhands-cold-backups"},
-        },
-        {"name": "config", "configMap": {"name": "openhands-cold-backup-20261119"}},
-        {"name": "tmp", "emptyDir": {"medium": "Memory", "sizeLimit": "128Mi"}},
-    ], "Backup source authority changed"
-    backup_container = _mapping(_list(_get(backup_pod, "containers"))[0])
-    assert backup_container["volumeMounts"] == [
-        {"name": "source", "mountPath": "/source", "readOnly": True},
-        {"name": "backup", "mountPath": "/backup"},
-        {"name": "config", "mountPath": "/config", "readOnly": True},
-        {"name": "tmp", "mountPath": "/tmp"},
-    ], "Backup source authority changed"
+    """Check the retained-claim/cold-config declarations and the retired one-shot Job."""
+    assert not [
+        d
+        for d in documents
+        if d.get("kind") == "Job" and _get(d, "metadata", "name") == "openhands-cold-backup-20261119"
+    ], "Completed 2026-11-19 cold backup Job must stay retired"
     for name, size in [
         ("openhands-cold-backups", "3Gi"),
         ("openhands-upgrade-backups", "1Gi"),
@@ -477,14 +461,19 @@ def _assert_owner_policy_declarations(documents: list[dict[str, object]]) -> Non
             for suffix in ("{{- end }}", "{{- if not .Values.retireFailedBackup }}"):
                 literal = literal.removesuffix(suffix).rstrip()
             # Resolve only the reviewed metadata header; policy bodies must remain literal.
-            literal = literal.replace("\nmetadata: {namespace: {{ $.Release.Namespace | quote }}, name:",
-                                      "\nmetadata: {namespace: openhands, name:", 1)
+            literal = literal.replace(
+                "\nmetadata: {namespace: {{ $.Release.Namespace | quote }}, name:",
+                "\nmetadata: {namespace: openhands, name:",
+                1,
+            )
             assert "{{" not in literal, "Policy template requires explicit review"
             declaration = _mapping(yaml.safe_load(literal))
             name = _get(declaration, "metadata", "name")
             assert isinstance(name, str)
             actual = _named(documents, "NetworkPolicy", name)
-            assert _get(actual, "metadata", "namespace") == _get(declaration, "metadata", "namespace")
+            assert _get(actual, "metadata", "namespace") == _get(
+                declaration, "metadata", "namespace"
+            )
             assert actual["spec"] == declaration["spec"], (
                 "Network policy differs from declared edges"
             )
@@ -828,30 +817,6 @@ def _violation_target(
         return simple[violation]
     if violation.startswith("oidc-"):
         return _oidc_target(violation, documents)
-    if violation.startswith("backup-"):
-        path = (
-            (
-                "spec",
-                "template",
-                "spec",
-                "volumes",
-                0,
-                "persistentVolumeClaim",
-                "readOnly",
-            )
-            if violation == "backup-volume-write"
-            else (
-                "spec",
-                "template",
-                "spec",
-                "containers",
-                0,
-                "volumeMounts",
-                0,
-                "readOnly",
-            )
-        )
-        return "openhands-cold-backup-20261119", "Job", path, False
     if violation == "duplicate-identity":
         documents.append(copy.deepcopy(_named(documents, "Ingress", "openhands-oidc")))
         return None
@@ -867,8 +832,6 @@ def _violation_target(
         "overlay-write",
         "database-ca-write",
         "publisher-write",
-        "backup-volume-write",
-        "backup-mount-write",
         "database-egress",
         "oidc-service-selector",
         "publisher-token",

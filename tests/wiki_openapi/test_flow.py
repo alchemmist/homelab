@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/wiki_openapi"))
+import pytest
 from engine import UnsafeInput, page_ok, select_closable, spec_changed
 from stages import stage
 
@@ -19,7 +20,7 @@ BEFORE = "b" * 40
 class Bot:
     """Test helper."""
 
-    def __init__(self, files):
+    def __init__(self, files) -> None:
         self._files = files
         self.calls = 0
 
@@ -36,7 +37,7 @@ class Bot:
 class Lab:
     """Test helper."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.closed = []
         self.page = "old"
 
@@ -61,14 +62,14 @@ class Lab:
             }
         ]
 
-    def close(self, number, survivor):
+    def close(self, number, survivor) -> None:
         self.closed.append((number, survivor))
 
 
 class Flow(unittest.TestCase):
     """Tests or helper for Flow."""
 
-    def test_ignores_other_branches_without_github(self):
+    def test_ignores_other_branches_without_github(self) -> None:
         bot = Bot([{"filename": "openapi.yaml"}])
         assert (
             stage(
@@ -80,12 +81,12 @@ class Flow(unittest.TestCase):
         )
         assert bot.calls == 0
 
-    def test_ignores_push_that_does_not_touch_the_spec(self):
+    def test_ignores_push_that_does_not_touch_the_spec(self) -> None:
         event = {"ref": "refs/heads/main", "before": BEFORE, "after": SHA}
         assert not spec_changed(event, [{"filename": "README.md"}])
         assert stage("check", event, bot=Bot([{"filename": "README.md"}])) == []
 
-    def test_render_and_pr_and_close(self):
+    def test_render_and_pr_and_close(self) -> None:
         event = {"ref": "refs/heads/main", "before": BEFORE, "after": SHA}
         checked = stage("check", event, bot=Bot([{"filename": "openapi.yaml"}]))
         rendered = stage("render", checked[0], bot=Bot([]))
@@ -103,10 +104,10 @@ class Flow(unittest.TestCase):
         assert lab.closed == [(OLDER_PR_NUMBER, CREATED_PR_NUMBER)]
         assert done[0]["closed"] == [4]
 
-    def test_model_cannot_close_unlisted_prs(self):
+    def test_model_cannot_close_unlisted_prs(self) -> None:
         assert select_closable({"close": [3, "4"]}, [{"number": 3}], None) == [3]
 
-    def test_dry_run_does_not_close(self):
+    def test_dry_run_does_not_close(self) -> None:
         lab = Lab()
         assert (
             stage(
@@ -119,8 +120,8 @@ class Flow(unittest.TestCase):
         )
         assert lab.closed == []
 
-    def test_bad_page_rejected(self):
-        with self.assertRaises(UnsafeInput):
+    def test_bad_page_rejected(self) -> None:
+        with pytest.raises(UnsafeInput):
             page_ok("hello")
 
 

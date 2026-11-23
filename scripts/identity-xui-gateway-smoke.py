@@ -89,7 +89,9 @@ bindings = [
     for b in api("GET", "policies/bindings/?page_size=1000")["results"]
     if b["target"] == app["pk"]
 ]
-assert len(bindings) == 1 and bindings[0]["group"] == owner["pk"] and not bindings[0].get("user")
+assert len(bindings) == 1
+assert bindings[0]["group"] == owner["pk"]
+assert not bindings[0].get("user")
 launch = app["meta_launch_url"]
 assert urllib.parse.urlparse(launch).hostname == "vpn.alchemmist.xyz"
 username = "xui-gateway-smoke-" + uuid.uuid4().hex[:10]
@@ -132,7 +134,7 @@ try:
         denials = []
         authorization_scopes = []
 
-        def observe(response):
+        def observe(response) -> None:
             """Perform the observe operation."""
             parsed = urllib.parse.urlparse(response.url)
             if (
@@ -190,7 +192,8 @@ try:
                     ).get("secret", [None])[0]
                 )
                 if not source:
-                    raise RuntimeError("Fixture-only TOTP setup challenge unavailable")
+                    msg = "Fixture-only TOTP setup challenge unavailable"
+                    raise RuntimeError(msg)
                 key = base64.b32decode(source.upper() + "=" * ((-len(source)) % 8))
                 sig = hmac.new(
                     key, struct.pack(">Q", int(time.time()) // 30), hashlib.sha1
@@ -214,7 +217,8 @@ try:
                 urllib.parse.urlparse(page.url).hostname == "vpn.alchemmist.xyz"
                 and page.locator("input[type=password]").count()
             ):
-                raise AssertionError("Non-owner reached native panel login without admission")
+                msg = "Non-owner reached native panel login without admission"
+                raise AssertionError(msg)
             page.wait_for_timeout(500)
         if not denied:
             text = page.locator("body").inner_text().lower()
@@ -276,7 +280,8 @@ try:
                 page.locator("ak-stage-consent button[name=continue]").click()
             page.wait_for_timeout(1000)
         else:
-            raise AssertionError("Explicit fixture admission did not reach native login")
+            msg = "Explicit fixture admission did not reach native login"
+            raise AssertionError(msg)
         cookies = context.cookies("https://vpn.alchemmist.xyz")
         proxy = [c for c in cookies if c["name"].startswith("authentik_proxy")]
         assert proxy and all(c["secure"] and c["httpOnly"] for c in proxy), (
@@ -358,7 +363,8 @@ try:
             ):
                 break
         else:
-            raise AssertionError("Native UI did not recover missing gateway session")
+            msg = "Native UI did not recover missing gateway session"
+            raise AssertionError(msg)
         assert 200 not in rejected, "Synthetic native credentials must never reach the backend"
         print(
             "PASS: actual native login submit handles 401 and returns via top-level SSO; no native password attempted",

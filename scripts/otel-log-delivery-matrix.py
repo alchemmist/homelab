@@ -51,7 +51,7 @@ def select_counts(document):
     return results
 
 
-def run(output):
+def run(output) -> None:
     os.umask(0o077)
     if os.geteuid() != 0:
         msg = "Root-only native client credential access required"

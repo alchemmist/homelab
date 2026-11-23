@@ -6,6 +6,7 @@ import time
 import unittest
 from unittest.mock import Mock, patch
 
+import pytest
 import test_triage as f
 from core import MATCH_SCHEMA, Failure, Store
 from integrations import REQUEST_DEADLINE, Model
@@ -77,7 +78,7 @@ class IntegrationTests(unittest.TestCase):
         assert self.store.get(self.key)["attempts"] == 1
         with self.store.db() as c:
             assert c.execute("select count(*) from job_failure_budget").fetchone()[0] == 0
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.run_v1("match", original)
 
     def test_finite_reference_error_retained_no_rewait(self) -> None:
@@ -85,14 +86,14 @@ class IntegrationTests(unittest.TestCase):
         self.data = self.engine.run_v1("match", self.data)
         self.data = self.engine.run_v1("collect", self.data)
         self.model.analyze.side_effect = Failure("LLM_INVALID_EVIDENCE_REFERENCE")
-        with self.assertRaisesRegex(Failure, "LLM_INVALID_EVIDENCE_REFERENCE"):
+        with pytest.raises(Failure, match="LLM_INVALID_EVIDENCE_REFERENCE"):
             self.engine.run_v1("analyze", self.data)
         job = self.store.get(self.key)
         assert job["state"] == "retry"
         assert job["stage"] == 2
         with self.store.db() as c:
             assert c.execute("select failures from job_failure_budget").fetchone()[0] == 1
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.claim(self.identity)
         self.github.request.assert_not_called()
 
@@ -105,14 +106,14 @@ class IntegrationTests(unittest.TestCase):
             {**waiting, "workflow_revision": "wrong"},
             waiting,
         ):
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 self.engine.run_v1("match", bad)
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.run("match", self.key)
         assert self.model.match.call_count == 1
         assert self.engine.claim(self.identity)["fence"] == waiting["fence"]
         for bad in ("0", "-1", "１２", "01", True, "9" * 33):
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 self.engine.claim({**self.identity, "execution_id": bad})
 
     def test_cancelled_wait_expiry_reclaims_progress_fences_old_execution(self) -> None:
@@ -125,9 +126,9 @@ class IntegrationTests(unittest.TestCase):
         fresh = self.engine.claim({**self.identity, "execution_id": "1235"})
         assert fresh["job_id"] == self.key
         assert fresh["stage"] == "analyze"
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.run_v1("analyze", waiting)
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.claim(self.identity)
         assert "evidence" in self.store.get(self.key)["result"]
 
@@ -321,7 +322,7 @@ class IntegrationTests(unittest.TestCase):
             future = pool.submit(self.engine.run_v1, "match", self.data)
             assert entered.wait(3)
             try:
-                with self.assertRaises(Failure):
+                with pytest.raises(Failure):
                     other_engine.run_v1("match", self.data)
             finally:
                 release.set()
@@ -331,7 +332,7 @@ class IntegrationTests(unittest.TestCase):
 
     def test_running_crash_no_blind_model_replay(self) -> None:
         """Verify running crashes never trigger blind model replays."""
-        _, owner = self.store.owners.begin("match", self.data, self.now)
+        _, _owner = self.store.owners.begin("match", self.data, self.now)
         restored = Store(self.store.path)
         assert restored.recover_on_start() == 0
         self.now += 1980
@@ -368,7 +369,7 @@ class ModelTimerTests(unittest.TestCase):
                 with store.db() as c:
                     row = c.execute("select * from llm_admission").fetchone()
                     assert row["expires"] > now + 1800
-                with self.assertRaises(Failure):
+                with pytest.raises(Failure):
                     store.reserve_llm(1, now=now + 661)
                 return {
                     "choices": [

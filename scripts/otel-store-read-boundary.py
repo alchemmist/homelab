@@ -85,7 +85,7 @@ def await_recovery(stamp: str, deadline: float) -> None:
         time.sleep(3)
 
 
-def run(output):
+def run(output) -> None:
     os.umask(0o077)
     output.mkdir(mode=0o700)
     status = {
@@ -139,7 +139,7 @@ def run(output):
             stamp: {"dedupTrue": query(stamp, True), "dedupFalse": query(stamp, False)}
             for stamp in stamps
         }
-        for stamp, result in after.items():
+        for _stamp, result in after.items():
             for rows in result.values():
                 if len(rows) != 1 or float(rows[0]["value"][1]) != 78:
                     msg = "Native historical series count changed or was doubled"

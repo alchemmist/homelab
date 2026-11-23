@@ -18,7 +18,7 @@ UID = "01M7ZFFHBY4QFR15BTCFKQQ6E6"
 
 
 class Bucket:
-    def __init__(self, res=3600000):
+    def __init__(self, res=3600000) -> None:
         self.meta = {
             "ulid": UID,
             "minTime": 0,
@@ -52,7 +52,7 @@ class Bucket:
         return len(v), hashlib.sha256(v).hexdigest()
 
 
-def test_reader_skips_wrong_resolution_and_marked_input(tmp_path):
+def test_reader_skips_wrong_resolution_and_marked_input(tmp_path) -> None:
     MOD.run(Bucket(300000), tmp_path)
     b = Bucket()
     b.obj["deletion-mark.json"] = b"{}"
@@ -60,7 +60,7 @@ def test_reader_skips_wrong_resolution_and_marked_input(tmp_path):
     assert list(tmp_path.iterdir()) == []
 
 
-def test_reader_never_replaces_different_existing_hour(tmp_path, monkeypatch):
+def test_reader_never_replaces_different_existing_hour(tmp_path, monkeypatch) -> None:
     from collections import namedtuple
 
     monkeypatch.setattr(
@@ -77,7 +77,7 @@ def test_reader_never_replaces_different_existing_hour(tmp_path, monkeypatch):
     assert list(tmp_path.iterdir()) == [p]
 
 
-def test_covered_successor_requires_resolution_labels_and_lineage():
+def test_covered_successor_requires_resolution_labels_and_lineage() -> None:
     a = Bucket().meta
     assert MOD.covers(a, a)
     for mutated in [

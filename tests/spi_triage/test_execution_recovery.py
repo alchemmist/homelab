@@ -6,6 +6,7 @@ import time
 import unittest
 from unittest.mock import Mock, patch
 
+import pytest
 import test_triage as f
 from core import OWNER_CONTEXT, REPORT_SCHEMA, Failure, Store
 from integrations import Model
@@ -61,7 +62,7 @@ class RepairTests(unittest.TestCase):
                     ),
                     patch.object(store, "finish_llm"),
                 ):
-                    with self.assertRaisesRegex(Failure, "LLM_ADMISSION_DEFERRED"):
+                    with pytest.raises(Failure, match="LLM_ADMISSION_DEFERRED"):
                         Model(http, "fake", store=store).call(
                             "analysis", data, REPORT_SCHEMA, time.monotonic() + 20
                         )
@@ -91,7 +92,7 @@ class RepairTests(unittest.TestCase):
                 # Conservative crash recovery: consumed repair cannot be repeated,
                 # even if its valid answer was lost before the report checkpoint.
                 store = Store(store.path)
-                with self.assertRaisesRegex(Failure, "LLM_INVALID_EVIDENCE_REFERENCE"):
+                with pytest.raises(Failure, match="LLM_INVALID_EVIDENCE_REFERENCE"):
                     Model(http, "fake", store=store).call(
                         "analysis", data, REPORT_SCHEMA, time.monotonic() + 20
                     )

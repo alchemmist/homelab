@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from typing import TypedDict
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
     "otel_registry", ROOT / "scripts/otel-source-registry.py"
@@ -216,7 +218,7 @@ class SourceRegistryTests(unittest.TestCase):
         ]
         for selector, attributes, expected in cases:
             assert REGISTRY.selected(selector, attributes) == expected
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             REGISTRY.selected({"matchExpressions": [{"key": "x", "operator": "unsupported"}]}, {})
 
     def test_unhealthy_or_missing_targets_block_inventory(self) -> None:
@@ -275,7 +277,7 @@ class SourceRegistryTests(unittest.TestCase):
         """Duplicate dashboard uid is rejected."""
         args = fixtures()
         args[-1]["items"].append(copy.deepcopy(args[-1]["items"][0]))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             REGISTRY.build(*args)
 
     def test_known_producers_complete_the_registry_not_cutover(self) -> None:

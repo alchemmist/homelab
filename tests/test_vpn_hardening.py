@@ -6,11 +6,15 @@ import io
 import json
 import os
 import sqlite3
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from types import ModuleType
 from unittest.mock import patch
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -24,7 +28,7 @@ RECEIVED_BYTES_SENTINEL = 40000
 
 def load(name: str, filename: str) -> ModuleType:
     """Test behavior for load."""
-    spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
+    spec = importlib.util.spec_from_file_location(name, ROOT / "ci/vpn" / filename)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -134,7 +138,7 @@ class HardeningTests(unittest.TestCase):
                     backup.execute("SELECT COUNT(*) FROM clients").fetchone()[0]
                     == FIXTURE_IDENTITY_COUNT
                 )
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 inventory.inspect(path, state)
             con.close()
 
@@ -145,12 +149,12 @@ class HardeningTests(unittest.TestCase):
             self.fixture(path).close()
             link = root / "link"
             link.symlink_to(path)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 inventory.inspect(link)
             state = root / "state"
             state.mkdir(mode=0o755)
             state.chmod(0o755)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 inventory.inspect(path, state)
 
     def test_rules_only_count_two_ports(self) -> None:
@@ -197,7 +201,7 @@ class HardeningTests(unittest.TestCase):
             ]
         }
         with patch.object(audit, "run", return_value=json.dumps(payload)):
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 audit.read_table()
 
     def test_nft_106_missing_comment_requires_exact_policy(self) -> None:
@@ -207,7 +211,7 @@ class HardeningTests(unittest.TestCase):
         objects[-1]["rule"]["expr"][-1]["counter"] = {"packets": 5, "bytes": 100}
         audit.validate_objects(objects)
         objects[-1]["rule"]["expr"].append({"drop": None})
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             audit.validate_objects(objects)
 
     def test_readback_finalizes_without_any_remote_write(self) -> None:
@@ -231,7 +235,7 @@ class HardeningTests(unittest.TestCase):
 
     def test_apply_refuses_wrong_host_and_bad_hash(self) -> None:
         with patch.object(audit.socket, "gethostname", return_value="socrat-0"):
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 audit.apply("bad", None)
         with tempfile.TemporaryDirectory() as tmp:
             state = Path(tmp).resolve() / "state"
@@ -247,9 +251,20 @@ class HardeningTests(unittest.TestCase):
                     patch.object(audit.helpers, "private_directory", side_effect=lambda _: state),
                 ):
                     state.mkdir(mode=0o700)
-                    with self.assertRaises(ValueError):
+                    with pytest.raises(ValueError):
                         audit.apply("wrong", state)
                     run.assert_not_called()
+
+    def test_cli_renders_expected_counter_policy(self) -> None:
+        """Exercise the real entrypoint, not just its importable main function."""
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "ci/vpn/vpn-backend-audit.py"), "--render"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert result.stdout.rstrip() == audit.rules().rstrip()
 
     def test_default_is_preview_and_render_is_offline(self) -> None:
         with (
@@ -284,18 +299,18 @@ class PathCheckTests(unittest.TestCase):
             "https://vpn.alchemmist.xyz/sub/secret",
             "https://wiki.socrat.alchemmist.xyz:444/",
         ):
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 probe.endpoint(url)
 
     def test_address_control_cannot_scan_arbitrary_destinations(self) -> None:
         probe = load("path_check_address", "vpn-path-check.py")
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             probe.check(
                 "https://wiki.socrat.alchemmist.xyz/",
                 "control",
                 control_address="192.0.2.1",
             )
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             probe.check(
                 "https://wiki.socrat.alchemmist.xyz/",
                 "control",
@@ -417,12 +432,12 @@ class RealityPlanTests(unittest.TestCase):
             stream = json.loads(_text(changed["inbounds"][0]["stream_settings"]))
             stream[field] = value
             changed["inbounds"][0]["stream_settings"] = json.dumps(stream)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 planner.build(changed, policy)
         stream = json.loads(_text(config["inbounds"][0]["stream_settings"]))
         stream["realitySettings"]["serverNames"] = ["www.sony.com"]
         config["inbounds"][0]["stream_settings"] = json.dumps(stream)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             planner.build(config, policy)
 
     def test_ambiguous_target_and_scope_changes_stop(self) -> None:
@@ -430,8 +445,8 @@ class RealityPlanTests(unittest.TestCase):
         stream = json.loads(_text(config["inbounds"][0]["stream_settings"]))
         stream["realitySettings"]["dest"] = "www.intel.com:443"
         config["inbounds"][0]["stream_settings"] = json.dumps(stream)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             planner.build(config, policy)
         policy["newVpsOrPublicIp"] = True
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             planner.build(config, policy)

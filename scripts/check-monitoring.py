@@ -34,7 +34,8 @@ def prometheus(host, endpoint, params=None):
         path += "?" + urllib.parse.urlencode(params)
     result = kubectl(host, "get", "--raw", path)
     if result.get("status") != "success":
-        raise RuntimeError("Prometheus API returned an unsuccessful result")
+        msg = "Prometheus API returned an unsuccessful result"
+        raise RuntimeError(msg)
     return result["data"]
 
 
@@ -45,7 +46,7 @@ def query(host, expression, timestamp=None):
     return prometheus(host, "query", params)["result"]
 
 
-def require(condition, description):
+def require(condition, description) -> None:
     if not condition:
         raise RuntimeError(description)
     print("PASS:", description)
@@ -516,7 +517,7 @@ def _persist_snapshots(host: str, args: argparse.Namespace, pvc_uids: dict[str, 
         )
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ssh-host", default="socrat-0")
     parser.add_argument("--grafana-url", default="https://grafana.socrat.alchemmist.xyz")

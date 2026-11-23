@@ -47,21 +47,21 @@ class KeepalivedStartupTest(unittest.TestCase):
     def test_existing_interface_starts_immediately(self) -> None:
         """Start without polling when the shared interface already exists."""
         result, attempts = self.run_wait(1)
-        self.assertEqual(result.returncode, 0)
-        self.assertEqual(attempts, 1)
+        assert result.returncode == 0
+        assert attempts == 1
 
     def test_late_interface_is_waited_for(self) -> None:
         """Keep polling until the shared interface finally appears."""
         result, attempts = self.run_wait(4)
-        self.assertEqual(result.returncode, 0)
-        self.assertEqual(attempts, 4)
+        assert result.returncode == 0
+        assert attempts == 4
 
     def test_missing_interface_fails_after_bounded_wait(self) -> None:
         """Fail after exactly sixty bounded attempts when it never appears."""
         result, attempts = self.run_wait(100)
-        self.assertEqual(result.returncode, 1)
-        self.assertEqual(attempts, 60)
-        self.assertIn("did not appear", result.stderr)
+        assert result.returncode == 1
+        assert attempts == 60
+        assert "did not appear" in result.stderr
 
     def test_service_retries_and_has_time_for_prestart(self) -> None:
         """Give keepalived bounded retries with room for the pre-start wait."""
@@ -73,9 +73,9 @@ class KeepalivedStartupTest(unittest.TestCase):
             "TimeoutStartSec=90s",
             "StartLimitIntervalSec=0",
         ):
-            self.assertIn(setting, override)
+            assert setting in override
         tasks = (ROLE / "tasks/main.yml").read_text()
-        self.assertIn("daemon_reload: true", tasks)
+        assert "daemon_reload: true" in tasks
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ from types import ModuleType
 from typing import Protocol, TypedDict, cast, override
 from unittest.mock import patch
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -163,17 +164,17 @@ class BindingTests(unittest.TestCase):
         added = {**current, OTHER: "another"}
         ssh.validate_history(added, [ledger()])
         for invalid in [{UUID: "another"}, {}, {OTHER: "guest"}]:
-            with self.subTest(invalid=invalid), self.assertRaises(ssh.Refused):
+            with self.subTest(invalid=invalid), pytest.raises(ssh.Refused):
                 ssh.validate_history(invalid, [ledger()])
         duplicate = ledger()
         cast("list[object]", duplicate["bindings"]).append({"uuid": OTHER, "name": "guest"})
-        with self.assertRaises(ssh.Refused):
+        with pytest.raises(ssh.Refused):
             ssh.bindings_map(duplicate)
 
     def test_missing_or_mutable_identity_and_reserved_names_rejected(self) -> None:
         """Reject mutable identities and reserved names."""
         for name in ["root", "alchemmist", "ghactions", "bad;cmd", "-option", "Aname"]:
-            with self.subTest(name=name), self.assertRaises(ssh.Refused):
+            with self.subTest(name=name), pytest.raises(ssh.Refused):
                 ssh.bindings_map(ledger(name))
         for ident in [
             "",
@@ -185,29 +186,29 @@ class BindingTests(unittest.TestCase):
                 continue  # UUID contains digits only, so upper() is unchanged.
             doc = ledger()
             cast("list[dict[str, object]]", doc["bindings"])[0]["uuid"] = ident
-            with self.subTest(ident=ident), self.assertRaises(ssh.Refused):
+            with self.subTest(ident=ident), pytest.raises(ssh.Refused):
                 ssh.bindings_map(doc)
         u = user()
         del u["uuid"]
-        with self.assertRaises(ssh.Refused):
+        with pytest.raises(ssh.Refused):
             plan(u=u)
         u = user()
         u["uuid"] = OTHER
-        with self.assertRaises(ssh.Refused):
+        with pytest.raises(ssh.Refused):
             plan(u=u)
 
     def test_never_matches_names_groups_or_attributes(self) -> None:
         """Never copy names, groups, or attributes into the plan."""
         payload, summary = plan()
         entry = payload["by_host"]["socrat-1"][0]
-        self.assertEqual(entry["name"], "guest")
-        self.assertEqual(entry["hosts"], ["socrat-1"])
-        self.assertFalse(entry["sudo"])
-        self.assertEqual(entry["groups"], [])
-        self.assertNotIn("arbitrary", json.dumps(payload))
-        self.assertNotIn("homelab-owner", json.dumps(payload))
-        self.assertTrue(cast("list[str]", summary[0]["fingerprints"])[0].startswith("SHA256:"))
-        self.assertEqual(entry["key_fingerprints"], summary[0]["fingerprints"])
+        assert entry["name"] == "guest"
+        assert entry["hosts"] == ["socrat-1"]
+        assert not entry["sudo"]
+        assert entry["groups"] == []
+        assert "arbitrary" not in json.dumps(payload)
+        assert "homelab-owner" not in json.dumps(payload)
+        assert cast("list[str]", summary[0]["fingerprints"])[0].startswith("SHA256:")
+        assert entry["key_fingerprints"] == summary[0]["fingerprints"]
 
     def test_policy_fields_hosts_and_uuid_fail_closed(self) -> None:
         """Fail closed on invalid policy fields, hosts, and UUIDs."""
@@ -227,20 +228,20 @@ class BindingTests(unittest.TestCase):
         ):
             p = policy()
             change(p)
-            with self.assertRaises(ssh.Refused):
+            with pytest.raises(ssh.Refused):
                 plan(p=p)
 
     def test_transition_requires_retained_revocation_tombstones(self) -> None:
         """Require retained revocation tombstones across transitions."""
         old = policy(hosts=["socrat-1", "socrat-2"])
-        with self.assertRaises(ssh.Refused):
+        with pytest.raises(ssh.Refused):
             ssh.validate_transition(policy(), [old])
         moved = policy(hosts=["socrat-1"], revoked=["socrat-2"])
         ssh.validate_transition(moved, [old])
-        with self.assertRaises(ssh.Refused):
+        with pytest.raises(ssh.Refused):
             ssh.validate_transition({"assignments": []}, [old])
         # The tombstone cannot vanish in a subsequent commit either.
-        with self.assertRaises(ssh.Refused):
+        with pytest.raises(ssh.Refused):
             ssh.validate_transition(policy(), [moved])
 
     def test_disabled_and_removed_hosts_need_no_live_identity(self) -> None:
@@ -254,12 +255,12 @@ class BindingTests(unittest.TestCase):
 
         payload, _ = ssh.build_plan(ssh.bindings_map(ledger()), p, unavailable)
         for entries in payload["by_host"].values():
-            self.assertEqual(entries[0]["state"], "disabled")
-            self.assertEqual(entries[0]["authorized_keys"], [])
-            self.assertEqual(entries[0]["key_fingerprints"], [])
+            assert entries[0]["state"] == "disabled"
+            assert entries[0]["authorized_keys"] == []
+            assert entries[0]["key_fingerprints"] == []
         payload, _ = plan(p=policy(revoked=["socrat-2"]))
-        self.assertEqual(payload["by_host"]["socrat-2"][0]["state"], "disabled")
-        self.assertEqual(payload["by_host"]["socrat-1"][0]["state"], "present")
+        assert payload["by_host"]["socrat-2"][0]["state"] == "disabled"
+        assert payload["by_host"]["socrat-1"][0]["state"] == "present"
 
     def test_inactive_service_and_missing_keys_refuse_active_export(self) -> None:
         """Refuse active export for inactive accounts or missing keys."""
@@ -275,7 +276,7 @@ class BindingTests(unittest.TestCase):
         ):
             u = user()
             u.update(update)
-            with self.subTest(update=update), self.assertRaises(ssh.Refused):
+            with self.subTest(update=update), pytest.raises(ssh.Refused):
                 plan(u=u)
 
 
@@ -310,10 +311,10 @@ class HistoryTests(unittest.TestCase):
                 patch.object(ssh, "POLICY", policy_path),
             ):
                 histories = ssh.binding_history()
-                self.assertEqual(histories, [ledger()])
-                with self.assertRaises(ssh.Refused):
+                assert histories == [ledger()]
+                with pytest.raises(ssh.Refused):
                     ssh.validate_history({UUID: "other"}, histories)
-                with self.assertRaises(ssh.Refused):
+                with pytest.raises(ssh.Refused):
                     ssh.validate_transition(policy(), ssh.policy_history())
                 moved = policy(revoked=["socrat-2"])
                 ssh.validate_transition(moved, ssh.policy_history())
@@ -322,7 +323,7 @@ class HistoryTests(unittest.TestCase):
                 patch.object(ssh, "ROOT", root),
                 patch.object(ssh, "BINDINGS", binding_path),
             ):
-                with self.assertRaisesRegex(ssh.Refused, "Shallow"):
+                with pytest.raises(ssh.Refused, match="Shallow"):
                     ssh.binding_history()
 
 
@@ -332,13 +333,12 @@ class KeyTests(unittest.TestCase):
     def test_real_openssh_parser_strips_comments_and_handles_two_tim_keys(self) -> None:
         """Parse the committed public keys with the real OpenSSH tooling."""
         keys, fingerprints = ssh.public_keys(TIM["authorized_keys"])
-        self.assertEqual(len(keys), 2)
-        self.assertEqual(len(set(fingerprints)), 2)
-        self.assertTrue(all(len(k.split()) == 2 for k in keys))
-        self.assertEqual(
-            ssh.public_keys([KEY + " ; $(touch /tmp/should-not-execute)"])[0],
-            [KEY.rsplit(" ", 1)[0]],
-        )
+        assert len(keys) == 2
+        assert len(set(fingerprints)) == 2
+        assert all(len(k.split()) == 2 for k in keys)
+        assert ssh.public_keys([KEY + " ; $(touch /tmp/should-not-execute)"])[0] == [
+            KEY.rsplit(" ", 1)[0]
+        ]
 
     def test_invalid_private_cert_options_multiline_and_fake_base64_rejected(
         self,
@@ -354,13 +354,13 @@ class KeyTests(unittest.TestCase):
             KEY.replace("ssh-ed25519 ", "ssh-ed25519-cert-v01@openssh.com ", 1),
             KEY.replace("ssh-ed25519 ", "ssh-rsa ", 1),
         ]:
-            with self.subTest(line=line[:24]), self.assertRaises(ssh.Refused):
+            with self.subTest(line=line[:24]), pytest.raises(ssh.Refused):
                 ssh.public_keys([line])
-        with self.assertRaises(ssh.Refused):
+        with pytest.raises(ssh.Refused):
             ssh.public_keys([KEY, KEY])
         with (
             patch.object(ssh.subprocess, "run", side_effect=FileNotFoundError),
-            self.assertRaises(ssh.Refused),
+            pytest.raises(ssh.Refused),
         ):
             ssh.public_keys([KEY])
 
@@ -392,23 +392,20 @@ class ApiTests(unittest.TestCase):
             )
 
         api.opener.open = opened
-        self.assertEqual(api.user(UUID)["uuid"], UUID)
+        assert api.user(UUID)["uuid"] == UUID
         req = seen[0]
-        self.assertEqual(req.get_method(), "GET")
-        self.assertIsNone(req.data)
-        self.assertEqual(
-            urllib.parse.parse_qs(urllib.parse.urlsplit(req.full_url).query)["uuid"],
-            [UUID],
-        )
-        with self.assertRaises(ssh.Refused):
+        assert req.get_method() == "GET"
+        assert req.data is None
+        assert urllib.parse.parse_qs(urllib.parse.urlsplit(req.full_url).query)["uuid"] == [UUID]
+        with pytest.raises(ssh.Refused):
             ssh.NoRedirect().redirect_request(req, None, 302, "", {}, "https://elsewhere.invalid")
         import ssl
 
         handler = next(
             h for h in api.opener.handlers if isinstance(h, ssh.urllib.request.HTTPSHandler)
         )
-        self.assertEqual(handler._context.verify_mode, ssl.CERT_REQUIRED)
-        self.assertTrue(handler._context.check_hostname)
+        assert handler._context.verify_mode == ssl.CERT_REQUIRED
+        assert handler._context.check_hostname
 
     def test_http_credentials_bad_tokens_and_incomplete_uuid_lookups_refused(
         self,
@@ -420,10 +417,10 @@ class ApiTests(unittest.TestCase):
             "https://auth.invalid/api/v3",
             "https://auth.invalid/#fragment",
         ]:
-            with self.assertRaises(ssh.Refused):
+            with pytest.raises(ssh.Refused):
                 ssh.Authentik(url, "fake")
         for token in [None, "", "token\nInjected: yes"]:
-            with self.assertRaises(ssh.Refused):
+            with pytest.raises(ssh.Refused):
                 ssh.Authentik("https://auth.invalid", token)
         for rows in [
             [],
@@ -431,9 +428,9 @@ class ApiTests(unittest.TestCase):
             [{**user(), "uuid": OTHER}],
             [{"uid": UUID}],
         ]:
-            with self.assertRaises(ssh.Refused):
+            with pytest.raises(ssh.Refused):
                 self.api({"results": rows, "pagination": {"next": None}}).user(UUID)
-        with self.assertRaises(ssh.Refused):
+        with pytest.raises(ssh.Refused):
             self.api({"results": [user()], "pagination": {"next": 2}}).user(UUID)
         api = self.api()
 
@@ -444,9 +441,9 @@ class ApiTests(unittest.TestCase):
             raise urllib.error.URLError(refusal)
 
         api.opener.open = exploding
-        with self.assertRaises(ssh.Refused) as caught:
+        with pytest.raises(ssh.Refused) as caught:
             api.user(UUID)
-        self.assertNotIn("sensitive", str(caught.exception))
+        assert "sensitive" not in str(caught.value)
 
 
 class ExportTests(unittest.TestCase):
@@ -457,23 +454,23 @@ class ExportTests(unittest.TestCase):
         payload, _ = plan()
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "ssh.json"
-            with self.assertRaises(ssh.Refused):
+            with pytest.raises(ssh.Refused):
                 ssh.export(path, payload, None)
-            self.assertFalse(path.exists())
+            assert not path.exists()
             ssh.export(path, payload, ssh.digest(payload))
-            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            assert path.stat().st_mode & 511 == 384
             data = json.loads(path.read_text())
-            self.assertEqual(data["homelab_authentik_ssh_payload"], payload)
-            self.assertNotIn("fake-test-token", path.read_text())
-            self.assertNotIn("email", path.read_text())
-            self.assertNotIn("attributes", path.read_text())
-            with self.assertRaises(ssh.Refused):
+            assert data["homelab_authentik_ssh_payload"] == payload
+            assert "fake-test-token" not in path.read_text()
+            assert "email" not in path.read_text()
+            assert "attributes" not in path.read_text()
+            with pytest.raises(ssh.Refused):
                 ssh.export(path, payload, ssh.digest(payload))
             changed = copy.deepcopy(payload)
             changed["required_hosts"].append("unreviewed")
-            with self.assertRaises(ssh.Refused):
+            with pytest.raises(ssh.Refused):
                 ssh.export(Path(d) / "new.json", changed, ssh.digest(payload))
-        with self.assertRaises(ssh.Refused):
+        with pytest.raises(ssh.Refused):
             ssh.export(ROOT / "unsafe-export.json", payload, ssh.digest(payload))
 
     def test_default_empty_plan_no_api_no_files_and_snapshots_never_export(
@@ -482,22 +479,22 @@ class ExportTests(unittest.TestCase):
         """Export nothing for the empty default plan."""
         with patch.object(ssh, "Authentik", side_effect=AssertionError("No API for empty policy")):
             with contextlib.redirect_stdout(io.StringIO()) as out:
-                self.assertEqual(ssh.main([]), 0)
-        self.assertEqual(json.loads(out.getvalue())["assignments"], [])
+                assert ssh.main([]) == 0
+        assert json.loads(out.getvalue())["assignments"] == []
         with (
             contextlib.redirect_stderr(io.StringIO()),
             contextlib.redirect_stdout(io.StringIO()),
         ):
-            self.assertEqual(ssh.main(["--snapshot", "/not-read", "--export", "/not-written"]), 1)
+            assert ssh.main(["--snapshot", "/not-read", "--export", "/not-written"]) == 1
 
     def test_duplicate_json_fields_fail_closed_without_value_echo(self) -> None:
         """Fail closed on duplicate JSON fields without echoing values."""
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "bad.json"
             path.write_text('{"uuid":"SECRET", "uuid":"OTHER"}')
-            with self.assertRaises(ssh.Refused) as error:
+            with pytest.raises(ssh.Refused) as error:
                 ssh.read_json(path)
-            self.assertNotIn("SECRET", str(error.exception))
+            assert "SECRET" not in str(error.value)
 
 
 class HostBindingTests(unittest.TestCase):
@@ -530,13 +527,13 @@ class HostBindingTests(unittest.TestCase):
             directory = Path(d) / "bindings"
             with patch.object(self.host.pwd, "getpwnam", side_effect=KeyError):
                 result = self.host.verify("guest", UUID, directory)
-                self.assertFalse(result["accountExists"])
-                self.assertFalse(directory.exists())
+                assert not result["accountExists"]
+                assert not directory.exists()
             with patch.object(self.host.pwd, "getpwnam", return_value=object()):
-                with self.assertRaisesRegex(ValueError, "Existing unbound"):
+                with pytest.raises(ValueError, match="Existing unbound"):
                     self.host.verify("guest", UUID, directory)
             for name in ["root", "alchemmist", "ghactions", "guest;id", "../guest"]:
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     self.host.verify(name, UUID, directory)
 
     def test_root_marker_is_immutable_private_and_not_symlink(self) -> None:
@@ -567,15 +564,15 @@ class HostBindingTests(unittest.TestCase):
                     return_value=SimpleNamespace(pw_dir="/home/guest", pw_shell="/bin/bash"),
                 ),
             ):
-                self.assertTrue(self.host.verify("guest", UUID, directory)["bindingVerified"])
-                with self.assertRaisesRegex(ValueError, "mismatch"):
+                assert self.host.verify("guest", UUID, directory)["bindingVerified"]
+                with pytest.raises(ValueError, match="mismatch"):
                     self.host.verify("guest", OTHER, directory)
                 marker.chmod(0o644)
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     self.host.verify("guest", UUID, directory)
                 marker.unlink()
                 marker.symlink_to(directory / "absent")
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     self.host.verify("guest", UUID, directory)
 
     def test_marked_nonstandard_home_rejected_before_key_writes(self) -> None:
@@ -607,7 +604,7 @@ class HostBindingTests(unittest.TestCase):
                     return_value=SimpleNamespace(pw_dir="/srv/guest", pw_shell="/bin/bash"),
                 ),
             ):
-                with self.assertRaisesRegex(ValueError, "Nonstandard passwd home"):
+                with pytest.raises(ValueError, match="Nonstandard passwd home"):
                     self.host.verify("guest", UUID, directory)
                 self.location.assert_not_called()
 
@@ -638,9 +635,8 @@ class HostBindingTests(unittest.TestCase):
             config = Path(d) / "sshd_config"
             config.write_text("# synthetic test config\n")
             with patch.object(self.host.subprocess, "run", return_value=response(settings)):
-                self.assertEqual(
-                    self.real_location("guest", config),
-                    Path("/home/guest/.ssh/authorized_keys"),
+                assert self.real_location("guest", config) == Path(
+                    "/home/guest/.ssh/authorized_keys"
                 )
             for field, value in [
                 ("authorizedkeysfile", ".ssh/authorized_keys .ssh/authorized_keys2"),
@@ -658,19 +654,19 @@ class HostBindingTests(unittest.TestCase):
                         "run",
                         return_value=response({**settings, field: value}),
                     ),
-                    self.assertRaises(ValueError),
+                    pytest.raises(ValueError),
                 ):
                     self.real_location("guest", config)
             included = Path(d) / "extra.conf"
             included.write_text("Match=Address 192.0.2.0/24\n AuthorizedKeysFile /srv/keys/%u\n")
             config.write_text("Include=" + str(included) + "\n")
-            with self.assertRaisesRegex(ValueError, "Contextual"):
+            with pytest.raises(ValueError, match="Contextual"):
                 self.real_location("guest", config)
             config.write_text("# config\n")
             with (
                 patch.object(self.host.subprocess, "run", return_value=response(settings)),
                 patch.object(Path, "is_symlink", return_value=True),
-                self.assertRaisesRegex(ValueError, "Symlink"),
+                pytest.raises(ValueError, match="Symlink"),
             ):
                 self.real_location("guest", config)
 
@@ -696,14 +692,14 @@ class HostBindingTests(unittest.TestCase):
             command = [ssh_path, "-T", "-f", str(config)]
             normal = subprocess.run(command, capture_output=True, text=True, check=True).stdout
             matched = subprocess.run(
-                command + ["-C", "user=guest,host=localhost,addr=127.0.0.1"],
+                [*command, "-C", "user=guest,host=localhost,addr=127.0.0.1"],
                 capture_output=True,
                 text=True,
                 check=True,
             ).stdout
-            self.assertIn("authorizedkeysfile .ssh/authorized_keys\n", normal)
-            self.assertIn("authorizedkeysfile /srv/old/%u.keys\n", matched)
-            with self.assertRaisesRegex(ValueError, "Unsupported SSH Include"):
+            assert "authorizedkeysfile .ssh/authorized_keys\n" in normal
+            assert "authorizedkeysfile /srv/old/%u.keys\n" in matched
+            with pytest.raises(ValueError, match="Unsupported SSH Include"):
                 self.host.reject_contextual_config(config)
             # Quoted hash, escaped hash and trailing-comment variants are also
             # outside our documented strict subset, never silently truncated.
@@ -713,7 +709,7 @@ class HostBindingTests(unittest.TestCase):
                 str(directory / "plain.conf") + " # comment",
             ]:
                 config.write_text(prefix + "Include " + argument + "\n")
-                with self.subTest(argument=argument), self.assertRaises(ValueError):
+                with self.subTest(argument=argument), pytest.raises(ValueError):
                     self.host.reject_contextual_config(config)
             plain = directory / "plain.conf"
             plain.write_text("# supported full-line comment\nPasswordAuthentication no\n")
@@ -721,7 +717,7 @@ class HostBindingTests(unittest.TestCase):
             self.host.reject_contextual_config(config)
             subprocess.run(command, capture_output=True, check=True)
             plain.write_text("Match User guest\n AuthorizedKeysFile /srv/old/%u.keys\n")
-            with self.assertRaisesRegex(ValueError, "Contextual"):
+            with pytest.raises(ValueError, match="Contextual"):
                 self.host.reject_contextual_config(config)
 
     def test_exact_fingerprints_rotation_and_disabled_zero_keys(self) -> None:
@@ -741,23 +737,18 @@ class HostBindingTests(unittest.TestCase):
                 ),
             ):
                 keyfile.write_text(KEY + "\n")
-                self.assertEqual(
-                    self.host.verify_keys("guest", UUID, "present", expected)["keyCount"],
-                    1,
-                )
+                assert self.host.verify_keys("guest", UUID, "present", expected)["keyCount"] == 1
                 # Rotation cannot pass while an old extra effective key remains.
                 keyfile.write_text("\n".join(TIM["authorized_keys"]) + "\n")
-                with self.assertRaisesRegex(ValueError, "fingerprints differ"):
+                with pytest.raises(ValueError, match="fingerprints differ"):
                     self.host.verify_keys("guest", UUID, "present", expected)
                 keyfile.write_text(KEY + "\n")
-                with self.assertRaisesRegex(ValueError, "fingerprints differ"):
+                with pytest.raises(ValueError, match="fingerprints differ"):
                     self.host.verify_keys("guest", UUID, "disabled", [])
                 keyfile.write_text("")
-                self.assertEqual(
-                    self.host.verify_keys("guest", UUID, "disabled", [])["keyCount"], 0
-                )
+                assert self.host.verify_keys("guest", UUID, "disabled", [])["keyCount"] == 0
                 keyfile.write_text('command="id" ' + KEY + "\n")
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     self.host.verify_keys("guest", UUID, "present", expected)
 
     def test_apply_lock_is_exclusive_and_spans_preflight_to_exact_verification(
@@ -767,29 +758,29 @@ class HostBindingTests(unittest.TestCase):
         play = yaml.safe_load((ROOT / "ansible/playbooks/authentik-ssh-users.yml").read_text())[0]
         outer = play["tasks"][-1]["block"]
         acquire, protected = outer
-        self.assertEqual(acquire["ansible.builtin.command"]["argv"][0], "mkdir")
-        self.assertNotIn("creates", acquire["ansible.builtin.command"])
-        self.assertNotIn("ignore_errors", acquire)
+        assert acquire["ansible.builtin.command"]["argv"][0] == "mkdir"
+        assert "creates" not in acquire["ansible.builtin.command"]
+        assert "ignore_errors" not in acquire
         tasks = protected["block"]
-        self.assertIn("Refuse adoption", tasks[0]["name"])
-        self.assertIn("exact effective key", tasks[-1]["name"])
+        assert "Refuse adoption" in tasks[0]["name"]
+        assert "exact effective key" in tasks[-1]["name"]
         role = next(t for t in tasks if "ansible.builtin.include_role" in t)
-        self.assertTrue(role["vars"]["homelab_authentik_ssh_scoped"])
+        assert role["vars"]["homelab_authentik_ssh_scoped"]
         user_tasks = yaml.safe_load((ROOT / "ansible/roles/users/tasks/main.yml").read_text())
         home = next(
             t["ansible.builtin.user"]["home"] for t in user_tasks if "ansible.builtin.user" in t
         )
-        self.assertIn("homelab_authentik_ssh_scoped | default(false)", home)
-        self.assertIn("else omit", home)  # manual users keep the previous home behavior
-        self.assertEqual(protected["always"][0]["ansible.builtin.command"]["argv"][0], "rmdir")
+        assert "homelab_authentik_ssh_scoped | default(false)" in home
+        assert "else omit" in home  # manual users keep the previous home behavior
+        assert protected["always"][0]["ansible.builtin.command"]["argv"][0] == "rmdir"
         # Exercise the actual lock primitives without remote/root writes. A competing
         # writer must fail, not skip acquisition and proceed with another UUID.
         with tempfile.TemporaryDirectory() as d:
             lock = Path(d) / "apply.lock"
             first = subprocess.run(["mkdir", "-m", "0700", str(lock)], capture_output=True)
             second = subprocess.run(["mkdir", "-m", "0700", str(lock)], capture_output=True)
-            self.assertEqual(first.returncode, 0)
-            self.assertNotEqual(second.returncode, 0)
+            assert first.returncode == 0
+            assert second.returncode != 0
             subprocess.run(["rmdir", str(lock)], check=True)
 
 
@@ -874,25 +865,25 @@ class AnsibleIntentTests(unittest.TestCase):
             ],
         ]:
             result = self.run_play(payload, *flags)
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn("changed=0", result.stdout)
-            self.assertIn("read-only-intent-check", result.stdout)
-            self.assertNotIn("Manage personal accounts", result.stdout)
-            self.assertNotIn(KEY.split()[1], result.stdout)
+            assert result.returncode == 0, result.stdout + result.stderr
+            assert "changed=0" in result.stdout
+            assert "read-only-intent-check" in result.stdout
+            assert "Manage personal accounts" not in result.stdout
+            assert KEY.split()[1] not in result.stdout
 
     def test_unknown_hosts_limits_overlap_and_unguarded_apply_refused(self) -> None:
         """Refuse unknown hosts, limits, and unguarded apply."""
         payload, _ = plan(p=policy(revoked=["socrat-2"]))
         result = self.run_play(payload, review="0" * 64)
-        self.assertNotEqual(result.returncode, 0, result.stdout)
+        assert result.returncode != 0, result.stdout
         result = self.run_play(payload, "--limit", "socrat-1")
-        self.assertNotEqual(result.returncode, 0, result.stdout)
+        assert result.returncode != 0, result.stdout
         result = self.run_play(payload, "--check", "-e", "homelab_authentik_ssh_apply=true")
-        self.assertNotEqual(result.returncode, 0, result.stdout)
+        assert result.returncode != 0, result.stdout
         payload, _ = plan(p=policy(hosts=["unknown-host"]))
-        self.assertNotEqual(self.run_play(payload).returncode, 0)
+        assert self.run_play(payload).returncode != 0
         payload, _ = ssh.build_plan(ssh.bindings_map(ledger("tim")), policy(), lambda ident: user())
-        self.assertNotEqual(self.run_play(payload, manual=True).returncode, 0)
+        assert self.run_play(payload, manual=True).returncode != 0
 
 
 if __name__ == "__main__":

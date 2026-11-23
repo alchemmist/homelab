@@ -203,7 +203,7 @@ def summarize(pods, journals):
     }
 
 
-def main():
+def main() -> int | None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ssh-host", default="socrat-0")
     parser.add_argument("--output", type=Path, required=True)

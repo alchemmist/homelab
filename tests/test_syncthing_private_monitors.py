@@ -88,7 +88,7 @@ class SyncthingMonitorMigrationTests(unittest.TestCase):
         """Leave an already migrated database unchanged when an unknown monitor appears."""
         MIGRATION.migrate(self.database, self.plan)
         before = self.read_rows()
-        plan = self.plan + [{"name": "Not configured", "url": "http://10.250.0.3:18444/healthz"}]
+        plan = [*self.plan, {"name": "Not configured", "url": "http://10.250.0.3:18444/healthz"}]
         assert not MIGRATION.migrate(self.database, plan)["changed"]
         assert self.read_rows() == before
         assert len(list((self.database.parent / "backups").glob("*.db"))) == 1

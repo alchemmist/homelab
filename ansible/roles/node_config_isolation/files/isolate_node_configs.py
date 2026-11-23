@@ -36,7 +36,8 @@ def inside(path, home):
     """Execute the inside operation."""
     resolved = path.resolve(strict=True)
     if resolved != home and home not in resolved.parents:
-        raise ValueError(f"Configuration target is outside account home: {path}")
+        msg = f"Configuration target is outside account home: {path}"
+        raise ValueError(msg)
     return resolved
 
 
@@ -47,23 +48,27 @@ def inspect_tree(path, home, ancestors=()):
     if stat.S_ISREG(mode):
         return path.is_symlink()
     if not stat.S_ISDIR(mode):
-        raise ValueError(f"Unsupported configuration file type: {path}")
+        msg = f"Unsupported configuration file type: {path}"
+        raise ValueError(msg)
     if resolved in ancestors:
-        raise ValueError(f"Configuration symlink cycle: {path}")
+        msg = f"Configuration symlink cycle: {path}"
+        raise ValueError(msg)
     linked = path.is_symlink()
     for child in sorted(path.iterdir()):
         linked = inspect_tree(child, home, (*ancestors, resolved)) or linked
     return linked
 
 
-def check_parents(path, home):
+def check_parents(path, home) -> None:
     """Execute the check_parents operation."""
     for parent in path.parents:
         if parent == home:
             return
         if parent.is_symlink():
-            raise ValueError(f"Configuration parent is a symlink: {parent}")
-    raise ValueError(f"Configuration path is outside account home: {path}")
+            msg = f"Configuration parent is a symlink: {parent}"
+            raise ValueError(msg)
+    msg = f"Configuration path is outside account home: {path}"
+    raise ValueError(msg)
 
 
 def isolate(home, check=False):
@@ -117,7 +122,7 @@ def isolate(home, check=False):
     return result
 
 
-def main():
+def main() -> None:
     """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--home", required=True)

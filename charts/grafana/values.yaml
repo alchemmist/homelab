@@ -1,8 +1,8 @@
 ---
 grafana:
   image:
-    tag: 13.2.4-distroless
-    sha: ae3d3add290adbe6a88412229f5d76fd7bb82743050881698642d3d62f277e35
+    tag: 13.3.1-distroless
+    sha: 54e297ac67e2b72572f926892f4e06074dc4f79f2a56ed9a9ca9a88a46f28733
   initChownData:
     image:
       sha: a46257e06c82ad85242d0d38077d0a52d9896389ca60a1a59d3463db586e5fa4

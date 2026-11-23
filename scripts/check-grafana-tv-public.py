@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 PUBLIC_TOKEN_LENGTH = 32
 
 
-def main():
+def main() -> None:
     """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
@@ -22,13 +22,12 @@ def main():
     a = p.parse_args()
     url = json.loads(Path(a.url_file).read_text())["startURL"]
     u = urlsplit(url)
-    assert (
-        u.scheme == "https"
-        and u.hostname == "grafana.socrat.alchemmist.xyz"
-        and u.path.startswith("/public-dashboards/")
-    )
+    assert u.scheme == "https"
+    assert u.hostname == "grafana.socrat.alchemmist.xyz"
+    assert u.path.startswith("/public-dashboards/")
     token = u.path.split("/")[2]
-    assert len(token) == PUBLIC_TOKEN_LENGTH and all(c in "0123456789abcdef" for c in token)
+    assert len(token) == PUBLIC_TOKEN_LENGTH
+    assert all(c in "0123456789abcdef" for c in token)
     expected_js = hashlib.sha256(
         (
             Path(__file__).resolve().parents[1]

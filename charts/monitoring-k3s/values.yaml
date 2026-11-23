@@ -248,7 +248,7 @@ updateWatch:
   targets:
     - id: openhands
       title: OpenHands Agent Canvas
-      current: 1.41.0
+      current: 1.43.0
       github: OpenHands/OpenHands
       namespace: openhands
       statefulset: openhands
@@ -262,14 +262,14 @@ updateWatch:
       container: open-webui
     - id: x-ui
       title: 3x-ui
-      current: 3.10.2
+      current: 3.11.0
       github: MHSanaei/3x-ui
       namespace: x-ui
       deployment: x-ui
       container: primary
     - id: open-terminal
       title: Open Terminal
-      current: 0.14.1
+      current: 0.17.22
       github: open-webui/open-terminal
     - id: n8n
       title: n8n
@@ -277,7 +277,7 @@ updateWatch:
       github: n8n-io/n8n
     - id: authentik
       title: Authentik
-      current: 2026.8.5
+      current: 2026.8.6
       github: goauthentik/authentik
     - id: litellm
       title: LiteLLM
@@ -302,11 +302,11 @@ updateWatch:
       github: syncthing/syncthing
     - id: traefik
       title: Traefik
-      current: 3.7.13
+      current: 3.7.19
       github: traefik/traefik
     - id: cert-manager
       title: cert-manager
-      current: 1.16.2
+      current: 1.21.3
       github: cert-manager/cert-manager
     - id: harbor
       title: Harbor
@@ -318,7 +318,7 @@ updateWatch:
       github: rancher/rancher
     - id: grafana
       title: Grafana
-      current: 13.2.4
+      current: 13.3.1
       github: grafana/grafana
     - id: pyroscope
       title: Pyroscope
@@ -333,7 +333,7 @@ updateWatch:
       github: thanos-io/thanos
     - id: netbird
       title: NetBird
-      current: 0.82.0
+      current: 0.83.2
       github: netbirdio/netbird
     - id: nvidia-device-plugin
       title: NVIDIA device plugin

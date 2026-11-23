@@ -40,7 +40,7 @@ does not migrate the user base and does not merge accounts by itself.
 ## 2. Actual placement
 
 - Public IdP: **https://auth.socrat.alchemmist.xyz/**.
-- Namespace `identity`, Authentik chart/app **2026.8.5**.
+- Namespace `identity`, Authentik chart/app **2026.8.6**.
 - One replica each of server and worker on `socrat-0`; PostgreSQL **17.11** there
   too.
 - PostgreSQL external to the chart: StatefulSet/Service `authentik-postgres`.

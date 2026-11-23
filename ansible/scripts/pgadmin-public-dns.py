@@ -16,7 +16,7 @@ NAME = "redis.socrat" if PROFILE == "redisinsight" else "pg.socrat"
 ROOT = Path(f"/var/lib/homelab-{PROFILE}-public-dns")
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     if not ok:
         raise RuntimeError(message)
 
@@ -42,12 +42,13 @@ def load(path, name):
         raise RuntimeError("Invalid DNS renderer: " + path.name) from None
 
 
-def stage_renderer(path, content):
+def stage_renderer(path, content) -> None:
     """Create a new inode exclusively; never follow/overwrite an existing path."""
     try:
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     except FileExistsError:
-        raise RuntimeError("Unexpected temporary renderer") from None
+        msg = "Unexpected temporary renderer"
+        raise RuntimeError(msg) from None
     with os.fdopen(fd, "wb") as stream:
         stream.write(content)
         stream.flush()
@@ -55,7 +56,7 @@ def stage_renderer(path, content):
         os.fsync(stream.fileno())
 
 
-def delta(old, new):
+def delta(old, new) -> None:
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         before = old.render(123, home, vps).splitlines()
         after = new.render(123, home, vps).splitlines()
@@ -70,7 +71,7 @@ def delta(old, new):
         )
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

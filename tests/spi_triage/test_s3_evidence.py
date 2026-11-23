@@ -12,6 +12,9 @@ from typing import Protocol, cast
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "charts/spi-triage/files"))
+import contextlib
+
+import pytest
 import s3_evidence as s
 
 KEY = "spi/v1/" + "a" * 64 + "/" + "b" * 64 + "/E001-test.json"
@@ -62,7 +65,7 @@ class ClientTests(unittest.TestCase):
                 for _ in range(24):
                     conn = s.HTTPConnection("unused.invalid", 9000, timeout=0.01)
                     conn.budget = 0.01
-                    with self.assertRaises(TimeoutError):
+                    with pytest.raises(TimeoutError):
                         conn.connect()
                     conn.close()
                 assert len(workers) == s.MAX_RESOLVERS
@@ -98,7 +101,7 @@ class ClientTests(unittest.TestCase):
     def test_conflict(self) -> None:
         """Verify mismatched objects are reported as conflicts."""
         c = self.client([(200, {}, b"bad")])
-        with self.assertRaises(s.StorageConflict):
+        with pytest.raises(s.StorageConflict):
             c.ensure_object(KEY, b"abc")
         assert len(self.calls) == 1
 
@@ -121,24 +124,24 @@ class ClientTests(unittest.TestCase):
         """Verify retryable statuses are mapped correctly."""
         for status in (408, 429, 500, 503):
             c = self.client([(status, {"Retry-After": "12"}, b"")])
-            with self.assertRaises(s.StorageTransient) as ctx:
+            with pytest.raises(s.StorageTransient) as ctx:
                 c.ensure_object(KEY, b"abc")
             hint_seconds = 12
-            assert ctx.exception.retry_after == hint_seconds
+            assert ctx.value.retry_after == hint_seconds
         for status in (301, 403, 401):
-            with self.assertRaises(s.StoragePermanent):
+            with pytest.raises(s.StoragePermanent):
                 self.client([(status, {}, b"")]).ensure_object(KEY, b"abc")
 
     def test_validation(self) -> None:
         """Verify origin validation rejects bad hosts and schemes."""
         for origin in ("http://localhost", s.ORIGIN + "/", s.ORIGIN + "?x=1"):
-            with self.assertRaises(s.StoragePermanent):
+            with pytest.raises(s.StoragePermanent):
                 s.S3Evidence("a", "b", origin=origin)
         for key in (KEY.upper(), KEY + "?a", KEY.replace("test", ".."), "/" + KEY):
-            with self.assertRaises(s.StoragePermanent):
+            with pytest.raises(s.StoragePermanent):
                 self.client([]).ensure_object(key, b"")
         for body in ("abc", bytearray(b"a"), b"x" * (s.MAX_BYTES + 1)):
-            with self.assertRaises(s.StoragePermanent):
+            with pytest.raises(s.StoragePermanent):
                 self.client([]).ensure_object(KEY, body)
 
     def test_readback(self) -> None:
@@ -147,7 +150,7 @@ class ClientTests(unittest.TestCase):
             (b"bad", s.StorageConflict),
             (b"x" * (s.MAX_BYTES + 1), s.StoragePermanent),
         ):
-            with self.assertRaises(error):
+            with pytest.raises(error):
                 self.client([(404, {}, b""), (200, {}, b""), (200, {}, body)]).ensure_object(
                     KEY, b"abc"
                 )
@@ -226,10 +229,8 @@ class ClientTests(unittest.TestCase):
         response = conn.getresponse()
         assert conn.deadline_timer.is_alive()
         try:
-            try:
+            with contextlib.suppress(OSError):
                 response.read(1000)
-            except OSError:
-                pass
         finally:
             response.close()
             conn.close()

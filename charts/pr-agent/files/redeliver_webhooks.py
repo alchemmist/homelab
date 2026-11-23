@@ -5,11 +5,11 @@ opened/synchronize, so a timed-out delivery drops the review. Failed deliveries
 that share a guid are retried until one of them succeeds, at most three times.
 """
 
+import http.client
 import json
 import os
 import socket
 import time
-import http.client
 from datetime import UTC, datetime
 
 import jwt
@@ -89,7 +89,7 @@ def main() -> None:
         kind = (latest.get("event"), latest.get("action"))
         if kind not in INTERESTING or len(attempts) >= MAX_ATTEMPTS:
             continue
-        delivered = datetime.fromisoformat(latest["delivered_at"].replace("Z", "+00:00"))
+        delivered = datetime.fromisoformat(latest["delivered_at"])
         if (now - delivered).total_seconds() < MIN_AGE_SECONDS:
             continue
         request("POST", f"/app/hook/deliveries/{latest['id']}/attempts", bearer)

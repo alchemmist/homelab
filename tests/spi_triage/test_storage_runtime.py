@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "charts/spi-triage/files"))
+import pytest
 import service
 import storage_runtime as runtime
 
@@ -64,9 +65,7 @@ class Runtime(unittest.TestCase):
                         target.chmod(0o600)
                         target.write_text(content)
                         target.chmod(mode)
-                        with self.assertRaisesRegex(
-                            RuntimeError, "^S3_WRITER_CONFIGURATION_INVALID$"
-                        ):
+                        with pytest.raises(RuntimeError, match="^S3_WRITER_CONFIGURATION_INVALID$"):
                             runtime.load_storage()
 
     def test_serve_wires_engine_before_dispatch(self) -> None:
@@ -97,7 +96,7 @@ class Runtime(unittest.TestCase):
                 },
             ),
         ):
-            with self.assertRaises(Stop):
+            with pytest.raises(Stop):
                 service.serve()
             assert engine.call_args.kwargs["storage"] is storage
             assert engine.call_args.kwargs["storage_backend"] == "legacy"
@@ -106,7 +105,7 @@ class Runtime(unittest.TestCase):
             patch.object(service, "Dispatcher") as dispatch,
             patch.object(service, "Store") as store,
         ):
-            with self.assertRaisesRegex(RuntimeError, "S3_WRITER_CONFIGURATION_INVALID"):
+            with pytest.raises(RuntimeError, match="S3_WRITER_CONFIGURATION_INVALID"):
                 service.serve()
             dispatch.assert_not_called()
             store.assert_not_called()

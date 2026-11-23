@@ -115,17 +115,17 @@ class Router:
             )
             self.verify(remaining)
             self.add(new)
-            return self.verify(remaining + [new])
+            return self.verify([*remaining, new])
         except Exception:
             current = self.forwards()
-            if canonical(current) == canonical(remaining + [new]):
+            if canonical(current) == canonical([*remaining, new]):
                 return current
             if canonical(current) == canonical(remaining):
                 self.add(old)
-                self.verify(remaining + [old])
+                self.verify([*remaining, old])
             raise
 
-    def add(self, row):
+    def add(self, row) -> None:
         """Add one enabled WAN2 TCP forward through the router form endpoint."""
         if row["protocol"] != "TCP" or row["wan"] != "Wan2" or row["status"] != "Enabled":
             msg = "Only enabled WAN2 TCP forwarding is supported"
@@ -150,7 +150,7 @@ class Router:
         )
 
 
-def main():
+def main() -> None:
     """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--router", default="192.168.0.1")

@@ -6,7 +6,7 @@ experiment. Authentik/MFA, owner admission, roles and recovery remain native.
 ## Cause and policy
 
 Argo CD v3.5.6 previously requested only openid/profile/email/groups. Authentik
-2026.8.5 issues a refresh token only with `offline_access`; configured eight-hour
+2026.8.6 issues a refresh token only with `offline_access`; configured eight-hour
 refresh validity and an allowed grant alone were insufficient. The five-minute
 ID token expired, forcing a visible authorize roundtrip despite a live IdP session.
 

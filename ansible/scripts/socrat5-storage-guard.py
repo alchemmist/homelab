@@ -25,7 +25,8 @@ class ManifestDoc(TypedDict):
 def require_expected_scope(docs: list[ManifestDoc]) -> None:
     """Refuse manifests outside the two owned admission-policy objects."""
     if [o["kind"] for o in docs] != list(KINDS) or any(o["metadata"]["name"] != NAME for o in docs):
-        raise ValueError("Unexpected scope")
+        msg = "Unexpected scope"
+        raise ValueError(msg)
 
 
 def apply_missing(
@@ -53,9 +54,11 @@ def apply_missing(
                     break
                 time.sleep(1)
             if "typeChecking" not in current.get("status", {}):
-                raise ValueError("CEL type checking not complete; binding not created")
+                msg = "CEL type checking not complete; binding not created"
+                raise ValueError(msg)
             if current.get("status", {}).get("typeChecking", {}).get("expressionWarnings"):
-                raise ValueError("CEL type warnings; binding not created")
+                msg = "CEL type warnings; binding not created"
+                raise ValueError(msg)
 
 
 def kub(args, document=None):
@@ -66,15 +69,16 @@ def kub(args, document=None):
             "kubectl",
             "--kubeconfig",
             "/etc/rancher/k3s/k3s.yaml",
-        ]
-        + args,
+            *args,
+        ],
         input=None if document is None else json.dumps(document),
         text=True,
         capture_output=True,
         timeout=30,
     )
     if p.returncode:
-        raise RuntimeError("Kubernetes operation failed; inspect privately, do not replay writes")
+        msg = "Kubernetes operation failed; inspect privately, do not replay writes"
+        raise RuntimeError(msg)
     return json.loads(p.stdout) if p.stdout.strip() else None
 
 
@@ -93,14 +97,16 @@ def canonical(spec):
     return s
 
 
-def validate_existing(want, have):
+def validate_existing(want, have) -> None:
     if have["metadata"].get("labels", {}).get("homelab.io/owner") != "socrat5-worker":
-        raise ValueError("Foreign ownership; refuse adoption")
+        msg = "Foreign ownership; refuse adoption"
+        raise ValueError(msg)
     if canonical(want["spec"]) != canonical(have["spec"]):
-        raise ValueError("Admission guard drift; explicit review/preimage/CAS required")
+        msg = "Admission guard drift; explicit review/preimage/CAS required"
+        raise ValueError(msg)
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(__doc__)
     p.add_argument("--manifest", type=Path, required=True)
     p.add_argument("--apply", action="store_true")
@@ -108,12 +114,13 @@ def main():
     docs = json.loads(args.manifest.read_text())
     require_expected_scope(docs)
     before = [kub(["get", o["kind"], NAME, "--ignore-not-found", "-o", "json"]) for o in docs]
-    for want, have in zip(docs, before):
+    for want, have in zip(docs, before, strict=False):
         if have:
             validate_existing(want, have)
-    missing = [o for o, have in zip(docs, before) if not have]
+    missing = [o for o, have in zip(docs, before, strict=False) if not have]
     if before[1] and not before[0]:
-        raise ValueError("Partial live binding: inspect first")
+        msg = "Partial live binding: inspect first"
+        raise ValueError(msg)
     if args.apply and missing:
         apply_missing(missing, before, docs)
     print(

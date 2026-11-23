@@ -5,6 +5,8 @@ import unittest
 from pathlib import Path
 from types import ModuleType
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -49,7 +51,7 @@ class LogDeliveryMatrixTests(unittest.TestCase):
         """Reject partial responses and non-finite or negative counts."""
         helper = module()
         for value in ["NaN", "inf", "-1"]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 helper.select_counts(
                     {
                         "status": "success",
@@ -59,7 +61,7 @@ class LogDeliveryMatrixTests(unittest.TestCase):
                         },
                     }
                 )
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             helper.select_counts(
                 {
                     "status": "success",
@@ -74,7 +76,7 @@ class LogDeliveryMatrixTests(unittest.TestCase):
             {"body": "private"},
             {"service_name": "https://user:password@example.invalid"},
         ]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 module().select_counts(
                     {
                         "status": "success",

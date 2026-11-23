@@ -18,6 +18,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "ansible/roles/authentik/files"))
+import pytest
 from app_iam import admission_groups
 
 
@@ -98,7 +99,7 @@ class FakeAuthentik:
                 **cast("dict[str, object]", payload),
             }
             if path == "core/groups/":
-                # Current 2026.8.5 GroupSerializer defaults, including M2M parents.
+                # Current 2026.8.6 GroupSerializer defaults, including M2M parents.
                 row = {
                     "attributes": {},
                     "is_superuser": False,
@@ -201,11 +202,9 @@ class IdentityTests(unittest.TestCase):
             self.configure(root, api)
             observer = next(g for g in api.data["core/groups/"] if g["name"] == "homelab-observer")
             harbor = next(a for a in api.data["core/applications/"] if a["slug"] == "harbor")
-            self.assertFalse(
-                any(
-                    b["target"] == harbor["pk"] and b["group"] == observer["pk"]
-                    for b in api.data["policies/bindings/"]
-                )
+            assert not any(
+                b["target"] == harbor["pk"] and b["group"] == observer["pk"]
+                for b in api.data["policies/bindings/"]
             )
             receipt = root / "observer-ready.json"
             receipt.write_text(
@@ -221,12 +220,12 @@ class IdentityTests(unittest.TestCase):
             )
             receipt.chmod(0o600)
             self.configure(root, api)
-            self.assertEqual(
+            assert (
                 sum(
                     b["target"] == harbor["pk"] and b["group"] == observer["pk"]
                     for b in api.data["policies/bindings/"]
-                ),
-                0,
+                )
+                == 0
             )
 
     def test_configuration_idempotent_and_mfa_required(self) -> None:
@@ -239,36 +238,33 @@ class IdentityTests(unittest.TestCase):
             clients = (root / "oidc-clients.json").read_bytes()
             owner = (root / "owner-login.json").read_bytes()
             self.configure(root, api)
-            self.assertEqual((root / "oidc-clients.json").read_bytes(), clients)
-            self.assertEqual((root / "owner-login.json").read_bytes(), owner)
-            self.assertEqual(len(api.data["core/users/"]), 1)
-            self.assertEqual(api.data["core/users/"][0]["username"], "alchemmist")
+            assert (root / "oidc-clients.json").read_bytes() == clients
+            assert (root / "owner-login.json").read_bytes() == owner
+            assert len(api.data["core/users/"]) == 1
+            assert api.data["core/users/"][0]["username"] == "alchemmist"
             privileged = [g["name"] for g in api.data["core/groups/"] if g["is_superuser"]]
-            self.assertEqual(privileged, ["homelab-owner"])
-            self.assertEqual(
-                api.data["stages/authenticator/validate/"][0]["not_configured_action"],
-                "configure",
+            assert privileged == ["homelab-owner"]
+            assert (
+                api.data["stages/authenticator/validate/"][0]["not_configured_action"]
+                == "configure"
             )
             for provider in api.data["providers/oauth2/"]:
-                self.assertEqual(provider["grant_types"], ["authorization_code", "refresh_token"])
+                assert provider["grant_types"] == ["authorization_code", "refresh_token"]
             grafana = next(
                 p for p in api.data["providers/oauth2/"] if p["name"] == "homelab-grafana"
             )
-            self.assertIn("offline_access", cast("list[str]", grafana["property_mappings"]))
-            self.assertEqual(len(api.data["core/applications/"]), 6)
-            self.assertEqual(
-                len(api.data["policies/bindings/"]),
-                sum(
-                    len(admission_groups(slug, service))
-                    for slug, service in json.loads((root / "services.json").read_text()).items()
-                    if slug != "litellm" and not service.get("managedBy")
-                ),
+            assert "offline_access" in cast("list[str]", grafana["property_mappings"])
+            assert len(api.data["core/applications/"]) == 6
+            assert len(api.data["policies/bindings/"]) == sum(
+                len(admission_groups(slug, service))
+                for slug, service in json.loads((root / "services.json").read_text()).items()
+                if slug != "litellm" and not service.get("managedBy")
             )
             for method, path, _body, query in api.requests:
                 if method == "GET" and path == "core/applications/":
-                    self.assertEqual(query["superuser_full_list"], ["true"])
-            self.assertEqual((root / "owner-login.json").stat().st_mode & 0o777, 0o600)
-            self.assertEqual((root / "oidc-clients.json").stat().st_mode & 0o777, 0o600)
+                    assert query["superuser_full_list"] == ["true"]
+            assert (root / "owner-login.json").stat().st_mode & 511 == 384
+            assert (root / "oidc-clients.json").stat().st_mode & 511 == 384
 
     def test_scoped_monori_replay_preserves_secret_and_requires_owner_binding(
         self,
@@ -310,59 +306,54 @@ class IdentityTests(unittest.TestCase):
                     return {"results": ["invalid row"]}
                 return api(method, path, payload)
 
-            with self.assertRaisesRegex(RuntimeError, "Malformed identity lookup"):
+            with pytest.raises(RuntimeError, match="Malformed identity lookup"):
                 configure_monori(root, malformed)
-            self.assertFalse((root / "monori-client-secret").exists())
+            assert not (root / "monori-client-secret").exists()
 
             def interrupted(method, path, payload=None):
                 if method == "PATCH" and path == "core/applications/monori/":
-                    raise RuntimeError("simulated interruption")
+                    msg = "simulated interruption"
+                    raise RuntimeError(msg)
                 return api(method, path, payload)
 
-            with self.assertRaisesRegex(RuntimeError, "simulated interruption"):
+            with pytest.raises(RuntimeError, match="simulated interruption"):
                 configure_monori(root, interrupted)
             sent = [
                 body
                 for method, path, body, _ in fake.requests
                 if (method, path) == ("POST", "providers/oauth2/")
             ]
-            self.assertEqual(len(sent), 1)
-            self.assertEqual(
-                sent[0]["redirect_uris"],
-                [
-                    {
-                        "matching_mode": "strict",
-                        "url": "https://monori.alchemmist.xyz/oidc/callback",
-                        "redirect_uri_type": "authorization",
-                    }
-                ],
-            )
+            assert len(sent) == 1
+            assert sent[0]["redirect_uris"] == [
+                {
+                    "matching_mode": "strict",
+                    "url": "https://monori.alchemmist.xyz/oidc/callback",
+                    "redirect_uri_type": "authorization",
+                }
+            ]
             secret_path = root / "monori-client-secret"
             secret = secret_path.read_text()
-            self.assertEqual(secret_path.stat().st_mode & 0o777, 0o600)
-            self.assertEqual(fake.data["providers/oauth2/"][0]["client_secret"], secret)
-            self.assertEqual(configure_monori(root, api), secret)
-            self.assertEqual(configure_monori(root, api), secret)
+            assert secret_path.stat().st_mode & 511 == 384
+            assert fake.data["providers/oauth2/"][0]["client_secret"] == secret
+            assert configure_monori(root, api) == secret
+            assert configure_monori(root, api) == secret
             writes = [(method, path) for method, path, _, _ in fake.requests if method != "GET"]
-            self.assertEqual(
-                writes,
-                [
-                    ("POST", "core/applications/"),
-                    ("POST", "policies/bindings/"),
-                    ("POST", "policies/bindings/"),
-                    ("POST", "providers/oauth2/"),
-                    ("PATCH", "core/applications/monori/"),
-                ],
-            )
+            assert writes == [
+                ("POST", "core/applications/"),
+                ("POST", "policies/bindings/"),
+                ("POST", "policies/bindings/"),
+                ("POST", "providers/oauth2/"),
+                ("PATCH", "core/applications/monori/"),
+            ]
             secret_path.write_text("x" * 64)
-            with self.assertRaisesRegex(RuntimeError, "Cannot verify retained Monori secret"):
+            with pytest.raises(RuntimeError, match="Cannot verify retained Monori secret"):
                 configure_monori(root, api)
             secret_path.write_text(secret)
             fake.data["policies/bindings/"][0]["group"] = "other"
-            with self.assertRaisesRegex(RuntimeError, "binding drift"):
+            with pytest.raises(RuntimeError, match="binding drift"):
                 configure_monori(root, api)
             (root / "monori-client-secret").unlink()
-            with self.assertRaisesRegex(RuntimeError, "Restore retained credentials"):
+            with pytest.raises(RuntimeError, match="Restore retained credentials"):
                 configure_monori(root, api)
 
     def test_scoped_monori_secret_apply_needs_no_shared_registry(self) -> None:
@@ -383,13 +374,13 @@ class IdentityTests(unittest.TestCase):
             ):
                 runpy.run_path(str(scripts / "integrate.py"), run_name="__main__")
             args, kwargs = command.call_args
-            self.assertIn("--server-side", args[0])
-            self.assertIn("--field-manager=monori-oidc", args[0])
-            self.assertNotIn("--force-conflicts", args[0])
-            self.assertEqual(
-                json.loads(kwargs["input"])["metadata"],
-                {"name": "monori-oidc", "namespace": "monori"},
-            )
+            assert "--server-side" in args[0]
+            assert "--field-manager=monori-oidc" in args[0]
+            assert "--force-conflicts" not in args[0]
+            assert json.loads(kwargs["input"])["metadata"] == {
+                "name": "monori-oidc",
+                "namespace": "monori",
+            }
 
     def test_existing_litellm_custom_scope_survives_foundation_replay(self) -> None:
         """Preserve the custom litellm scope across replays."""
@@ -409,8 +400,8 @@ class IdentityTests(unittest.TestCase):
             provider = next(
                 p for p in api.data["providers/oauth2/"] if p["name"] == "homelab-litellm"
             )
-            self.assertIn("litellm-identity", cast("list[str]", provider["property_mappings"]))
-            self.assertEqual(len(api.data["core/applications/"]), 7)
+            assert "litellm-identity" in cast("list[str]", provider["property_mappings"])
+            assert len(api.data["core/applications/"]) == 7
 
     def test_existing_owner_never_silently_taken_over(self) -> None:
         """Never take over an existing owner account."""
@@ -419,9 +410,9 @@ class IdentityTests(unittest.TestCase):
             self.setup_root(root)
             api = FakeAuthentik()
             api.data["core/users/"] = [{"pk": 42, "username": "alchemmist"}]
-            with self.assertRaisesRegex(RuntimeError, "already exists"):
+            with pytest.raises(RuntimeError, match="already exists"):
                 self.configure(root, api)
-            self.assertFalse(any(path.endswith("/set_password/") for _, path, _, _ in api.requests))
+            assert not any(path.endswith("/set_password/") for _, path, _, _ in api.requests)
 
     def test_missing_provider_credentials_refuses_rotation(self) -> None:
         """Refuse credential rotation when files are missing."""
@@ -431,7 +422,7 @@ class IdentityTests(unittest.TestCase):
             api = FakeAuthentik()
             self.configure(root, api)
             (root / "oidc-clients.json").unlink()
-            with self.assertRaisesRegex(RuntimeError, "refusing rotation"):
+            with pytest.raises(RuntimeError, match="refusing rotation"):
                 self.configure(root, api)
 
     def test_unexpected_owner_member_cannot_be_promoted(self) -> None:
@@ -444,48 +435,48 @@ class IdentityTests(unittest.TestCase):
             group = next(g for g in api.data["core/groups/"] if g["name"] == "homelab-owner")
             cast("list[object]", group["users"]).append(999)
             group["is_superuser"] = False
-            with self.assertRaisesRegex(RuntimeError, "Unexpected owner"):
+            with pytest.raises(RuntimeError, match="Unexpected owner"):
                 self.configure(root, api)
-            self.assertFalse(group["is_superuser"])
+            assert not group["is_superuser"]
 
     def test_runtime_is_not_a_cluster_administrator(self) -> None:
         """Keep the runtime service account out of cluster administration."""
         values = yaml.safe_load((ROOT / "deploy/authentik/values.yaml").read_text())
-        self.assertFalse(values["serviceAccount"]["create"])
+        assert not values["serviceAccount"]["create"]
         for name in ["server", "worker"]:
-            self.assertFalse(values[name]["automountServiceAccountToken"])
-            self.assertTrue(values[name]["resources"]["limits"]["memory"])
-        self.assertFalse(values["postgresql"]["enabled"])
-        self.assertNotIn("secret_key", values["authentik"])
+            assert not values[name]["automountServiceAccountToken"]
+            assert values[name]["resources"]["limits"]["memory"]
+        assert not values["postgresql"]["enabled"]
+        assert "secret_key" not in values["authentik"]
 
     def test_world_readable_primary_kubeconfig_not_reintroduced(self) -> None:
         """Keep the primary kubeconfig non-world-readable."""
         source = (ROOT / "ansible/roles/k3s_ha/templates/config.yaml.j2").read_text()
-        self.assertNotIn("'0644'", source)
-        self.assertIn("write-kubeconfig-group: alchemmist", source)
+        assert "'0644'" not in source
+        assert "write-kubeconfig-group: alchemmist" in source
         install = (ROOT / "ansible/playbooks/k3s.yml").read_text()
-        self.assertNotIn("--write-kubeconfig-mode 644", install)
+        assert "--write-kubeconfig-mode 644" not in install
 
     def test_personal_keys_replaced_not_appended(self) -> None:
         """Replace personal key sets instead of appending."""
         tasks = yaml.safe_load((ROOT / "ansible/roles/users/tasks/main.yml").read_text())
         key_task = next(t for t in tasks if "Replace managed key sets" in t["name"])
-        self.assertIn("ansible.builtin.copy", key_task)
-        self.assertNotIn("ansible.builtin.lineinfile", key_task)
-        self.assertIn("'disabled'", key_task["ansible.builtin.copy"]["content"])
+        assert "ansible.builtin.copy" in key_task
+        assert "ansible.builtin.lineinfile" not in key_task
+        assert "'disabled'" in key_task["ansible.builtin.copy"]["content"]
 
     def test_grafana_keeps_local_login_and_uses_secret_reference(self) -> None:
         """Keep local Grafana login with secret references."""
         v = yaml.safe_load((ROOT / "deploy/identity/grafana-oidc-values.yaml").read_text())[
             "grafana"
         ]
-        self.assertNotIn("GF_AUTH_DISABLE_LOGIN_FORM", v["env"])
-        self.assertEqual(v["env"]["GF_AUTH_GENERIC_OAUTH_AUTO_LOGIN"], "true")
-        self.assertEqual(v["env"]["GF_AUTH_ANONYMOUS_ENABLED"], "false")
-        self.assertNotIn("GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET", v["env"])
-        self.assertEqual(
-            v["envValueFrom"]["GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET"]["secretKeyRef"]["name"],
-            "socrat-authentik-grafana",
+        assert "GF_AUTH_DISABLE_LOGIN_FORM" not in v["env"]
+        assert v["env"]["GF_AUTH_GENERIC_OAUTH_AUTO_LOGIN"] == "true"
+        assert v["env"]["GF_AUTH_ANONYMOUS_ENABLED"] == "false"
+        assert "GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET" not in v["env"]
+        assert (
+            v["envValueFrom"]["GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET"]["secretKeyRef"]["name"]
+            == "socrat-authentik-grafana"
         )
 
 
@@ -502,18 +493,18 @@ class RolloutRegressionTests(unittest.TestCase):
             for slug, service in services.items()
             if not service.get("managedBy") or slug == "monori"
         }
-        self.assertEqual(len(managed), 8)
+        assert len(managed) == 8
         for slug, service in managed.items():
             data = (ROOT / "assets/service-icons" / f"{slug}.svg").read_bytes()
             digest = hashlib.sha256(data).hexdigest()
-            self.assertEqual(digest, manifest["files"][f"{slug}.svg"]["sha256"])
-            self.assertEqual(
-                service["icon"],
-                f"https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/{digest[:12]}-{slug}.svg",
+            assert digest == manifest["files"][f"{slug}.svg"]["sha256"]
+            assert (
+                service["icon"]
+                == f"https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/{digest[:12]}-{slug}.svg"
             )
             for node in ET.fromstring(data).iter():
-                self.assertNotIn(node.tag.split("}")[-1], ["script", "foreignObject"])
-                self.assertFalse(any(k.lower().startswith("on") for k in node.attrib))
+                assert node.tag.split("}")[-1] not in ["script", "foreignObject"]
+                assert not any(k.lower().startswith("on") for k in node.attrib)
 
     def test_reviewed_human_reconciliation_keeps_tim_non_privileged(self) -> None:
         """Keep the reviewed human non-privileged after replay."""
@@ -525,53 +516,49 @@ class RolloutRegressionTests(unittest.TestCase):
             helper.setup_reviewed(root, api)
             helper.configure(root, api)
             helper.configure(root, api)
-            self.assertEqual(len(api.data["core/users/"]), 2)
+            assert len(api.data["core/users/"]) == 2
             owner_group = next(g for g in api.data["core/groups/"] if g["name"] == "homelab-owner")
             tim = next(u for u in api.data["core/users/"] if u["username"] == "antropophag")
-            self.assertNotIn(owner_group["pk"], cast("list[object]", tim["groups"]))
-            self.assertNotIn(tim["pk"], cast("list[object]", owner_group["users"]))
-            self.assertEqual((root / "antropophag-login.json").stat().st_mode & 0o777, 0o600)
+            assert owner_group["pk"] not in cast("list[object]", tim["groups"])
+            assert tim["pk"] not in cast("list[object]", owner_group["users"])
+            assert (root / "antropophag-login.json").stat().st_mode & 511 == 384
 
     def test_n8n_native_login_and_machine_paths_have_no_idp_gate(self) -> None:
         """Keep n8n native paths free of identity gates."""
         services = json.loads((ROOT / "deploy/identity/services.json").read_text())
-        self.assertEqual(services["n8n"]["managedBy"], "native-n8n")
-        self.assertEqual(services["n8n"]["accessManagement"]["state"], "blocked")
-        self.assertNotIn("proxy", services["n8n"])
-        self.assertNotIn("redirect", services["n8n"])
-        self.assertNotIn("uptime-kuma", services)
+        assert services["n8n"]["managedBy"] == "native-n8n"
+        assert services["n8n"]["accessManagement"]["state"] == "blocked"
+        assert "proxy" not in services["n8n"]
+        assert "redirect" not in services["n8n"]
+        assert "uptime-kuma" not in services
         resources = list(
             yaml.safe_load_all((ROOT / "charts/n8n/templates/access.yaml").read_text())
         )
-        self.assertEqual(len(resources), 1)
+        assert len(resources) == 1
         machine = resources[0]
-        self.assertEqual(machine["metadata"]["namespace"], "automation")
+        assert machine["metadata"]["namespace"] == "automation"
         for path in machine["spec"]["rules"][0]["http"]["paths"]:
-            self.assertEqual(path["backend"]["service"]["name"], "n8n")
-            self.assertNotEqual(path["path"], "/")
-        self.assertTrue(
-            yaml.safe_load((ROOT / "charts/n8n/values.yaml").read_text())["ingress"]["enabled"]
-        )
-        self.assertNotIn(
-            "n8n-gateway", (ROOT / "ansible/roles/authentik/tasks/main.yml").read_text()
-        )
+            assert path["backend"]["service"]["name"] == "n8n"
+            assert path["path"] != "/"
+        assert yaml.safe_load((ROOT / "charts/n8n/values.yaml").read_text())["ingress"]["enabled"]
+        assert "n8n-gateway" not in (ROOT / "ansible/roles/authentik/tasks/main.yml").read_text()
 
     def test_owner_mapping_is_server_admin_only_for_owner_group(self) -> None:
         """Grant Grafana server admin only to the owner group."""
         env = yaml.safe_load((ROOT / "deploy/identity/grafana-oidc-values.yaml").read_text())[
             "grafana"
         ]["env"]
-        self.assertEqual(env["GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN"], "true")
-        self.assertEqual(
-            env["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"],
-            "contains(groups[*], 'homelab-owner') && 'GrafanaAdmin' || contains(groups[*], 'app-grafana-editor') && 'Editor' || (contains(groups[*], 'homelab-observer') || contains(groups[*], 'homelab-platform-operator') || contains(groups[*], 'homelab-project-maintainer') || contains(groups[*], 'app-grafana-viewer')) && 'Viewer' || ''",
+        assert env["GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN"] == "true"
+        assert (
+            env["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"]
+            == "contains(groups[*], 'homelab-owner') && 'GrafanaAdmin' || contains(groups[*], 'app-grafana-editor') && 'Editor' || (contains(groups[*], 'homelab-observer') || contains(groups[*], 'homelab-platform-operator') || contains(groups[*], 'homelab-project-maintainer') || contains(groups[*], 'app-grafana-viewer')) && 'Viewer' || ''"
         )
-        self.assertIn("offline_access", env["GF_AUTH_GENERIC_OAUTH_SCOPES"].split())
-        self.assertEqual(env["GF_AUTH_GENERIC_OAUTH_USE_REFRESH_TOKEN"], "true")
-        self.assertEqual(env["GF_AUTH_LOGIN_MAXIMUM_LIFETIME_DURATION"], "8h")
+        assert "offline_access" in env["GF_AUTH_GENERIC_OAUTH_SCOPES"].split()
+        assert env["GF_AUTH_GENERIC_OAUTH_USE_REFRESH_TOKEN"] == "true"
+        assert env["GF_AUTH_LOGIN_MAXIMUM_LIFETIME_DURATION"] == "8h"
         webui = json.loads((ROOT / "deploy/identity/open-webui-env.json").read_text())
-        self.assertEqual(webui["OAUTH_MERGE_ACCOUNTS_BY_EMAIL"], "False")
-        self.assertEqual(webui["OAUTH_ADMIN_ROLES"], "homelab-owner")
+        assert webui["OAUTH_MERGE_ACCOUNTS_BY_EMAIL"] == "False"
+        assert webui["OAUTH_ADMIN_ROLES"] == "homelab-owner"
 
     def test_sudo_listing_rc_zero_is_not_a_privilege_grant(self) -> None:
         """Treat an rc-zero sudo listing as no privilege grant."""
@@ -616,10 +603,10 @@ class RolloutRegressionTests(unittest.TestCase):
                     run_name="__main__",
                 )
             result = json.loads(output.getvalue())
-            self.assertFalse(result["hasSudoGrant"])
-            self.assertFalse(result["canReadAdminKubeconfig"])
-            self.assertEqual(result["pubkeyAuthentication"], "yes")
-            self.assertEqual(result["usePAM"], "yes")
+            assert not result["hasSudoGrant"]
+            assert not result["canReadAdminKubeconfig"]
+            assert result["pubkeyAuthentication"] == "yes"
+            assert result["usePAM"] == "yes"
 
 
 if __name__ == "__main__":

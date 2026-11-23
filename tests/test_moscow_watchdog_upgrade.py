@@ -43,13 +43,10 @@ def test_exact_atomic_upgrade_keeps_fence_and_state(env) -> None:
     m, candidate, dest = env
     before = (m.STATE / "state.json").read_bytes()
     m.install(candidate, m.sha(candidate.read_bytes()))
-    assert (
-        dest.read_bytes() == candidate.read_bytes()
-        and (m.ROOT / "before.py").read_bytes() == b"# old fixture\n"
-    )
-    assert (m.STATE / "fallback.active").exists() and (
-        m.STATE / "state.json"
-    ).read_bytes() == before
+    assert dest.read_bytes() == candidate.read_bytes()
+    assert (m.ROOT / "before.py").read_bytes() == b"# old fixture\n"
+    assert (m.STATE / "fallback.active").exists()
+    assert (m.STATE / "state.json").read_bytes() == before
     assert json.loads((m.ROOT / "accepted.json").read_text())["runtime_changed"] is False
     with pytest.raises(RuntimeError, match="drift"):
         m.install(candidate, m.sha(candidate.read_bytes()))
@@ -61,12 +58,13 @@ def test_conflicting_active_agent_refuses_without_mutation(env, monkeypatch) -> 
     monkeypatch.setattr(m, "unit", lambda _: True)
     with pytest.raises(RuntimeError, match="ownership"):
         m.install(candidate, m.sha(candidate.read_bytes()))
-    assert dest.read_bytes() == b"# old fixture\n" and not m.ROOT.exists()
+    assert dest.read_bytes() == b"# old fixture\n"
+    assert not m.ROOT.exists()
 
 
 def test_unknown_candidate_refused(env) -> None:
     """Refuse an unreviewed digest before creating a receipt or replacing the controller."""
-    m, candidate, dest = env
+    m, candidate, _dest = env
     with pytest.raises(RuntimeError, match="SHA"):
         m.install(candidate, "0" * 64)
     assert not m.ROOT.exists()
@@ -76,9 +74,13 @@ def test_repair_is_separate_explicit_phases_and_keeps_membership() -> None:
     """Keep return and failback as separate confirmed phases with no deletion."""
     source = (ROOT / "ansible/playbooks/moscow-watchdog-repair.yml").read_text()
     yaml.safe_load(source)
-    assert "moscow_watchdog_repair_confirmed" in source and 'default("preflight")' in source
-    assert "phase == 'return'" in source and "controller.stat.checksum == new_sha" in source
-    assert "failback" in source and "kubectl delete" not in source and "wg-quick" not in source
+    assert "moscow_watchdog_repair_confirmed" in source
+    assert 'default("preflight")' in source
+    assert "phase == 'return'" in source
+    assert "controller.stat.checksum == new_sha" in source
+    assert "failback" in source
+    assert "kubectl delete" not in source
+    assert "wg-quick" not in source
 
 
 def test_voter_json_items_is_key_not_dict_method() -> None:

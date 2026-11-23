@@ -14,6 +14,8 @@ from types import ModuleType
 from typing import Self
 from unittest.mock import patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 SECRET_FILE_COUNT = 4
@@ -62,7 +64,7 @@ class Provisioning(unittest.TestCase):
         equivalent["Statement"]["Action"] = "s3:*"
         assert b.canonical_policy(p) != b.canonical_policy(equivalent)
         equivalent["Statement"]["Principal"] = "*"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             b.canonical_policy(equivalent)
 
     def test_private_credentials(self) -> None:
@@ -72,11 +74,11 @@ class Provisioning(unittest.TestCase):
             put(path, {})
             b.private(path)
             path.chmod(0o644)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 b.private(path)
             link = Path(tmp) / "link"
             link.symlink_to(path)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 b.private(link)
 
     def test_bootstrap_resumes_and_is_idempotent(self) -> None:
@@ -147,14 +149,14 @@ class Provisioning(unittest.TestCase):
                 b.main()
             assert calls == []
             with (
-                patch("sys.argv", argv + ["--apply"]),
+                patch("sys.argv", [*argv, "--apply"]),
                 patch.object(b, "run", fake),
                 contextlib.redirect_stdout(io.StringIO()),
             ):
                 b.main()
             calls.clear()
             with (
-                patch("sys.argv", argv + ["--apply"]),
+                patch("sys.argv", [*argv, "--apply"]),
                 patch.object(b, "run", fake),
                 contextlib.redirect_stdout(io.StringIO()),
             ):
@@ -163,9 +165,9 @@ class Provisioning(unittest.TestCase):
             assert set(users) == {creds[x]["access"] for x in ("reader", "writer")}
             users[creds["reader"]["access"]]["policyName"] = "consoleAdmin"
             with (
-                patch("sys.argv", argv + ["--apply"]),
+                patch("sys.argv", [*argv, "--apply"]),
                 patch.object(b, "run", fake),
-                self.assertRaises(ValueError),
+                pytest.raises(ValueError),
             ):
                 b.main()
 
@@ -310,7 +312,7 @@ class Provisioning(unittest.TestCase):
             assert writes == []
             assert not (d / "rustfs-client.json").exists()
             with (
-                patch("sys.argv", argv + ["--apply"]),
+                patch("sys.argv", [*argv, "--apply"]),
                 patch.object(m.urllib.request, "build_opener", return_value=HTTP()),
                 contextlib.redirect_stdout(io.StringIO()),
             ):
@@ -322,7 +324,7 @@ class Provisioning(unittest.TestCase):
             assert LAUNCHER_PROVIDER_PK in tables["outposts/instances/"][0]["providers"]
             writes.clear()
             with (
-                patch("sys.argv", argv + ["--apply"]),
+                patch("sys.argv", [*argv, "--apply"]),
                 patch.object(m.urllib.request, "build_opener", return_value=HTTP()),
                 contextlib.redirect_stdout(io.StringIO()),
             ):
@@ -331,9 +333,9 @@ class Provisioning(unittest.TestCase):
             for code in (401, 403, 500):
                 detail_error[0] = code
                 with (
-                    patch("sys.argv", argv + ["--apply"]),
+                    patch("sys.argv", [*argv, "--apply"]),
                     patch.object(m.urllib.request, "build_opener", return_value=HTTP()),
-                    self.assertRaises(ValueError),
+                    pytest.raises(ValueError),
                 ):
                     m.main()
                 assert writes == []
@@ -348,17 +350,17 @@ class Provisioning(unittest.TestCase):
                 previous = callback[key]
                 callback[key] = value
                 with (
-                    patch("sys.argv", argv + ["--apply"]),
+                    patch("sys.argv", [*argv, "--apply"]),
                     patch.object(m.urllib.request, "build_opener", return_value=HTTP()),
-                    self.assertRaises(ValueError),
+                    pytest.raises(ValueError),
                 ):
                     m.main()
                 callback[key] = previous
             tables["core/applications/"][0]["policy_engine_mode"] = "all"
             with (
-                patch("sys.argv", argv + ["--apply"]),
+                patch("sys.argv", [*argv, "--apply"]),
                 patch.object(m.urllib.request, "build_opener", return_value=HTTP()),
-                self.assertRaises(ValueError),
+                pytest.raises(ValueError),
             ):
                 m.main()
 
@@ -402,5 +404,5 @@ class Provisioning(unittest.TestCase):
             [official, dict(official)],
             [dict(official, scope_name="groups")],
         ):
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 m.builtin_scope(rows, "profile")

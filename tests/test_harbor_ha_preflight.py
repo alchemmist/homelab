@@ -9,6 +9,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TypedDict, cast, override
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -83,45 +85,45 @@ class HarborHAPreflightTests(unittest.TestCase):
     def test_capacity_is_not_cutover_permission(self) -> None:
         """Allow a passing capacity report while cutover stays unauthorized."""
         result = self.check()
-        self.assertTrue(result["passed"])
-        self.assertFalse(result["cutoverAuthorized"])
+        assert result["passed"]
+        assert not result["cutoverAuthorized"]
 
     def test_physical_memory_blocks_despite_scheduler_room(self) -> None:
         """Block on physical memory even when the scheduler still has room."""
         self.observation["nodes"]["socrat-3"]["availableMemoryBytes"] = module.GIB
-        self.assertIn("physical-memory", self.check()["nodes"]["socrat-3"]["blockers"])
+        assert "physical-memory" in self.check()["nodes"]["socrat-3"]["blockers"]
 
     def test_scheduler_blocks_despite_free_host_memory(self) -> None:
         """Block on scheduler memory even when the host still has free RAM."""
         self.observation["nodes"]["socrat-3"]["requestedMemoryBytes"] = 23 * module.GIB
-        self.assertIn("scheduler-memory", self.check()["nodes"]["socrat-3"]["blockers"])
+        assert "scheduler-memory" in self.check()["nodes"]["socrat-3"]["blockers"]
 
     def test_otel_budget_is_not_spent_twice(self) -> None:
         """Keep the committed external budget instead of adding it twice."""
         self.observation["nodes"]["socrat-1"]["availableMemoryBytes"] = 6 * module.GIB
-        self.assertIn("physical-memory", self.check()["nodes"]["socrat-1"]["blockers"])
+        assert "physical-memory" in self.check()["nodes"]["socrat-1"]["blockers"]
 
     def test_higher_live_otel_budget_is_preserved(self) -> None:
         """Let a larger supplied component budget replace the committed floor."""
         self.otel = {"nodes": {"socrat-1": {"components": {"future": 30 * module.GIB}}}}
-        self.assertIn("physical-memory", self.check()["nodes"]["socrat-1"]["blockers"])
+        assert "physical-memory" in self.check()["nodes"]["socrat-1"]["blockers"]
 
     def test_disk_after_staging_preserves_reserve(self) -> None:
         """Block when disk left after staging falls below the reserve."""
         self.observation["nodes"]["socrat-1"]["diskAvailableBytes"] = 150 * module.GIB
-        self.assertIn("disk-reserve", self.check()["nodes"]["socrat-1"]["blockers"])
+        assert "disk-reserve" in self.check()["nodes"]["socrat-1"]["blockers"]
 
     def test_stale_and_future_observations_rejected(self) -> None:
         """Reject observations that are too old or dated after the check instant."""
         for seconds in [-901, 10]:
             self.observation["collectedAt"] = (self.now + timedelta(seconds=seconds)).isoformat()
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 self.check()
 
     def test_missing_node_is_not_ignored(self) -> None:
         """Refuse a policy node that the observation omitted."""
         del self.observation["nodes"]["socrat-3"]
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             self.check()
 
     def test_unhealthy_node_cordon_and_taint_block(self) -> None:
@@ -134,14 +136,14 @@ class HarborHAPreflightTests(unittest.TestCase):
         ]:
             baseline = copy.deepcopy(self.observation)
             cast("dict[str, object]", self.observation["nodes"]["socrat-3"])[key] = value
-            self.assertFalse(self.check()["passed"])
+            assert not self.check()["passed"]
             self.observation = baseline
 
     def test_quantity_units_and_conservative_init_accounting(self) -> None:
         """Parse binary quantities and count the largest init container."""
-        self.assertEqual(module.quantity("1Gi"), module.GIB)
-        self.assertEqual(module.quantity("1.5Gi"), int(1.5 * module.GIB))
-        self.assertEqual(module.quantity("1024Ki"), module.MIB)
+        assert module.quantity("1Gi") == module.GIB
+        assert module.quantity("1.5Gi") == int(1.5 * module.GIB)
+        assert module.quantity("1024Ki") == module.MIB
         pod = {
             "spec": {
                 "containers": [{"resources": {"requests": {"memory": "100Mi"}}}],
@@ -149,17 +151,17 @@ class HarborHAPreflightTests(unittest.TestCase):
                 "overhead": {"memory": "10Mi"},
             }
         }
-        self.assertEqual(module.requested_memory(pod), 310 * module.MIB)
+        assert module.requested_memory(pod) == 310 * module.MIB
 
     def test_reports_are_private_and_never_overwritten(self) -> None:
         """Create a private report and refuse to replace an existing file."""
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "report.json"
             module.save_exclusive(path, {"safe": True})
-            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
-            with self.assertRaises(FileExistsError):
+            assert path.stat().st_mode & 511 == 384
+            with pytest.raises(FileExistsError):
                 module.save_exclusive(path, {"overwrite": True})
-            self.assertEqual(json.loads(path.read_text()), {"safe": True})
+            assert json.loads(path.read_text()) == {"safe": True}
 
 
 if __name__ == "__main__":

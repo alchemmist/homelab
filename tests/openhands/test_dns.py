@@ -5,6 +5,8 @@ import types
 import unittest
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
     "openhands_dns", ROOT / "ansible/scripts/openhands-public-dns.py"
@@ -34,7 +36,7 @@ class DNSDelta(unittest.TestCase):
 
     def test_unrelated_record_rejected(self) -> None:
         """Verify any unrelated record change is rejected."""
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             guard.delta(
                 renderer(self.before),
                 renderer(self.source.replace('    "www",', '    "wrong-www",')),
@@ -42,7 +44,7 @@ class DNSDelta(unittest.TestCase):
 
     def test_changed_entrance_rejected(self) -> None:
         """Verify changes to the entrance record are rejected."""
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             guard.delta(
                 renderer(self.before),
                 renderer(self.source.replace("109.173.40.247", "203.0.113.1")),
@@ -50,7 +52,7 @@ class DNSDelta(unittest.TestCase):
 
     def test_missing_new_record_rejected(self) -> None:
         """Verify omitting the new record from the draft is rejected."""
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             guard.delta(renderer(self.before), renderer(self.before))
 
 

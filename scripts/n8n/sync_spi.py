@@ -48,14 +48,18 @@ def sync(relative) -> dict[str, object]:
         if not cursor:
             break
         if cursor in seen:
-            raise RuntimeError("Repeated workflow pagination cursor")
+            msg = "Repeated workflow pagination cursor"
+            raise RuntimeError(msg)
         seen.add(cursor)
     if len(matches) > 1:
-        raise RuntimeError("Ambiguous workflow name")
+        msg = "Ambiguous workflow name"
+        raise RuntimeError(msg)
     if relative == "docs/n8n/spi/triage-workflow.json" and not matches:
-        raise RuntimeError("Existing SPI triage workflow not found; refusing creation")
+        msg = "Existing SPI triage workflow not found; refusing creation"
+        raise RuntimeError(msg)
     if matches and matches[0]["active"]:
-        raise RuntimeError("Deactivate explicitly before syncing")
+        msg = "Deactivate explicitly before syncing"
+        raise RuntimeError(msg)
     result: dict[str, object] = api(
         "PUT" if matches else "POST",
         "workflows/" + cast("str", matches[0]["id"]) if matches else "workflows",

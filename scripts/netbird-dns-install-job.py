@@ -18,7 +18,8 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument("--expected-sha256", required=True)
 p.add_argument("--node", required=True, choices=["socrat-0", "socrat-1", "socrat-2"])
 a = p.parse_args()
-assert len(a.expected_sha256) == 64 and all(c in "0123456789abcdef" for c in a.expected_sha256)
+assert len(a.expected_sha256) == 64
+assert all(c in "0123456789abcdef" for c in a.expected_sha256)
 root = Path(__file__).resolve().parents[1]
 image = yaml.safe_load((root / "charts/x-ui/values.yaml").read_text())["instances"]["primary"][
     "image"

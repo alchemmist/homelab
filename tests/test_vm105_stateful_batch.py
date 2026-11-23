@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from collections.abc import Mapping
 
+import pytest
 import yaml
 
 R = pathlib.Path(__file__).resolve().parents[1]
@@ -74,9 +75,7 @@ def checkout(root: pathlib.Path, revision: str, *paths: str) -> pathlib.Path:
     """Extract only the Git inputs for an offline baseline render."""
     target = root / revision
     target.mkdir(exist_ok=True)
-    archive = subprocess.check_output(
-        ["git", "-C", str(R), "archive", revision, *paths]
-    )
+    archive = subprocess.check_output(["git", "-C", str(R), "archive", revision, *paths])
     subprocess.run(["tar", "-xf", "-", "-C", str(target)], input=archive, check=True)
     return target
 
@@ -191,12 +190,8 @@ def assert_monori_release_images(
         expected = image["repository"] + "@" + image["digest"]
         doc = _mapping(matches[0])
         pod = _mapping(_mapping(_mapping(doc["spec"])["template"])["spec"])
-        for container in _sequence(pod["containers"]) + _sequence(
-            pod.get("initContainers", [])
-        ):
-            assert _mapping(container)["image"] == expected, (
-                "Current Monori release image differs"
-            )
+        for container in _sequence(pod["containers"]) + _sequence(pod.get("initContainers", [])):
+            assert _mapping(container)["image"] == expected, "Current Monori release image differs"
 
 
 class StatefulBoundaries(unittest.TestCase):
@@ -222,26 +217,24 @@ class StatefulBoundaries(unittest.TestCase):
             # Do not freeze the SPI application version at the migration
             # date or revert a subsequent canonical release from main.
             if values is None:
-                raise AssertionError(f"{chart} requires a values file")
+                msg = f"{chart} requires a values file"
+                raise AssertionError(msg)
             image: dict[str, str] = yaml.safe_load((R / values).read_text())["image"]
-            self.assertEqual(set(image), {"repository", "tag", "digest"})
-            self.assertTrue(all(isinstance(value, str) for value in image.values()))
+            assert set(image) == {"repository", "tag", "digest"}
+            assert all(isinstance(value, str) for value in image.values())
             release_image = image
         if chart == "charts/monori":
             # The owner release is independent of the placement handoff.
             # Inject only before-render inputs; retain all current-render
             # image/strategy/PVC/identity and full payload comparisons.
             if values is None:
-                raise AssertionError(f"{chart} requires a values file")
-            images: dict[str, dict[str, str]] = yaml.safe_load(
-                (R / values).read_text()
-            )["images"]
-            self.assertEqual(set(images), {"front", "back", "sync"})
+                msg = f"{chart} requires a values file"
+                raise AssertionError(msg)
+            images: dict[str, dict[str, str]] = yaml.safe_load((R / values).read_text())["images"]
+            assert set(images) == {"front", "back", "sync"}
             for fields in images.values():
-                self.assertEqual(
-                    set(fields), {"repository", "tag", "digest", "fallback"}
-                )
-                self.assertTrue(all(isinstance(v, str) for v in fields.values()))
+                assert set(fields) == {"repository", "tag", "digest", "fallback"}
+                assert all(isinstance(v, str) for v in fields.values())
             monori_images = images
         return release_image, monori_images
 
@@ -255,9 +248,7 @@ class StatefulBoundaries(unittest.TestCase):
         pod.pop("nodeSelector", None)
         pod.pop("hostAliases", None)
         kept = [
-            c
-            for c in pod.get("initContainers", [])
-            if not c["name"].startswith("require-existing")
+            c for c in pod.get("initContainers", []) if not c["name"].startswith("require-existing")
         ]
         if kept:
             pod["initContainers"] = kept
@@ -285,24 +276,23 @@ class StatefulBoundaries(unittest.TestCase):
             x = copy.deepcopy(current)
             metadata = x["metadata"]
             assert isinstance(metadata, dict)
-            self.assertEqual(
-                metadata.pop("annotations"),
-                {"argocd.argoproj.io/sync-options": "Prune=false,Delete=false"},
-            )
-            self.assertEqual(x, old)
+            assert metadata.pop("annotations") == {
+                "argocd.argoproj.io/sync-options": "Prune=false,Delete=false"
+            }
+            assert x == old
             return
-        self.assertEqual(key[0], "Deployment")
-        self.assertIn(key[1], allowed)
+        assert key[0] == "Deployment"
+        assert key[1] in allowed
         x, y = copy.deepcopy(old), copy.deepcopy(current)
         spec = y["spec"]
         assert isinstance(spec, dict)
-        self.assertEqual(spec["replicas"], 1)
-        self.assertEqual(spec["strategy"], {"type": "Recreate"})
+        assert spec["replicas"] == 1
+        assert spec["strategy"] == {"type": "Recreate"}
         for o in [x, y]:
             self._strip_volatile_pod_fields(o)
-        self.assertEqual(x, y)
+        assert x == y
 
-    def test_only_intended_deployments_and_retention_annotation_change(self):
+    def test_only_intended_deployments_and_retention_annotation_change(self) -> None:
 
         cases = [
             (
@@ -370,39 +360,25 @@ class StatefulBoundaries(unittest.TestCase):
                     expected = historical(CUTOVERS[chart])
                     if chart == "charts/monori":
                         cache = current.pop(("Job", "monori-sync-image-cache"))
-                        annotations = _mapping(
-                            _mapping(cache["metadata"])["annotations"]
-                        )
-                        self.assertEqual(
-                            annotations["argocd.argoproj.io/hook"], "PreSync"
-                        )
-                        self.assertEqual(
-                            annotations["argocd.argoproj.io/sync-wave"], "-1"
-                        )
-                        cache_pod = _mapping(
-                            _mapping(_mapping(cache["spec"])["template"])["spec"]
-                        )
+                        annotations = _mapping(_mapping(cache["metadata"])["annotations"])
+                        assert annotations["argocd.argoproj.io/hook"] == "PreSync"
+                        assert annotations["argocd.argoproj.io/sync-wave"] == "-1"
+                        cache_pod = _mapping(_mapping(_mapping(cache["spec"])["template"])["spec"])
                         sync = current[("Deployment", "monori-sync")]
-                        sync_pod = _mapping(
-                            _mapping(_mapping(sync["spec"])["template"])["spec"]
-                        )
-                        self.assertEqual(
-                            cache_pod["nodeSelector"], sync_pod["nodeSelector"]
-                        )
-                        self.assertNotIn("volumes", cache_pod)
+                        sync_pod = _mapping(_mapping(_mapping(sync["spec"])["template"])["spec"])
+                        assert cache_pod["nodeSelector"] == sync_pod["nodeSelector"]
+                        assert "volumes" not in cache_pod
                         container = _mapping(_sequence(cache_pod["containers"])[0])
-                        self.assertEqual(
-                            container["image"],
-                            _mapping(_sequence(sync_pod["containers"])[0])["image"],
+                        assert (
+                            container["image"]
+                            == _mapping(_sequence(sync_pod["containers"])[0])["image"]
                         )
-                        self.assertEqual(
-                            container["command"], ["python", "-I", "-S", "-c", "pass"]
-                        )
+                        assert container["command"] == ["python", "-I", "-S", "-c", "pass"]
                         # Schema delivery also adds a pre-rollout Job and
                         # advances only the backend init check, not placement.
                         job = current.pop(("Job", "monori-schema"))
                         annotations = _mapping(_mapping(job["metadata"])["annotations"])
-                        self.assertEqual(annotations["argocd.argoproj.io/hook"], "PreSync")
+                        assert annotations["argocd.argoproj.io/hook"] == "PreSync"
                         backend = expected[("Deployment", "monori-back")]
                         template = _mapping(_mapping(backend["spec"])["template"])
                         pod = _mapping(template["spec"])
@@ -431,7 +407,7 @@ class StatefulBoundaries(unittest.TestCase):
                         ):
                             expected.pop(key, None)
                     compare_namespace_inputs(expected, chart, ns)
-                    self.assertEqual(current, expected)
+                    assert current == expected
                     after = historical(HANDOFF)
                 else:
                     compare_namespace_inputs(before, chart, ns)
@@ -441,31 +417,20 @@ class StatefulBoundaries(unittest.TestCase):
                     # hardening delta, not part of the original stateful move.
                     added_identity = ("ServiceAccount", "format-quorum")
                     service_account = _mapping(after[added_identity])
-                    self.assertFalse(
-                        service_account.get("automountServiceAccountToken", True)
-                    )
-                self.assertEqual(
-                    before.keys(),
-                    after.keys() - ({added_identity} if added_identity else set()),
+                    assert not service_account.get("automountServiceAccountToken", True)
+                assert before.keys() == after.keys() - (
+                    {added_identity} if added_identity else set()
                 )
                 for key, old in before.items():
                     if old != after[key]:
                         if chart == "charts/format-quorum" and key[0] == "Deployment":
                             old = copy.deepcopy(old)
-                            old_pod = _mapping(
-                                _mapping(_mapping(old["spec"])["template"])["spec"]
-                            )
+                            old_pod = _mapping(_mapping(_mapping(old["spec"])["template"])["spec"])
                             current_pod = _mapping(
-                                _mapping(_mapping(after[key]["spec"])["template"])[
-                                    "spec"
-                                ]
+                                _mapping(_mapping(after[key]["spec"])["template"])["spec"]
                             )
-                            self.assertEqual(
-                                current_pod.get("serviceAccountName"), "format-quorum"
-                            )
-                            self.assertFalse(
-                                current_pod.get("automountServiceAccountToken", True)
-                            )
+                            assert current_pod.get("serviceAccountName") == "format-quorum"
+                            assert not current_pod.get("automountServiceAccountToken", True)
                             old_pod["serviceAccountName"] = "format-quorum"
                             old_pod["automountServiceAccountToken"] = False
                         self._assert_changed_document(key, old, after[key], allowed)
@@ -487,7 +452,7 @@ class StatefulBoundaries(unittest.TestCase):
             "spi-triage",
             sqlite_with_retired_handoff=True,
         )
-        self.assertEqual(current, expected)
+        assert current == expected
 
     def test_all_new_claims_are_prebound_local_retained_and_node5_only(self) -> None:
         count = 0
@@ -500,9 +465,7 @@ class StatefulBoundaries(unittest.TestCase):
             "litellm-branding",
         ]:
             docs = list(
-                yaml.safe_load_all(
-                    (R / "deploy/storage" / (file + "-socrat5.yaml")).read_text()
-                )
+                yaml.safe_load_all((R / "deploy/storage" / (file + "-socrat5.yaml")).read_text())
             )
             for pv, pvc in zip(docs[::2], docs[1::2], strict=False):
                 count += 1
@@ -563,16 +526,12 @@ class CurrentMonoriRelease(unittest.TestCase):
 
     def test_current_image_mutation_is_not_hidden_by_historical_input(self) -> None:
         images = yaml.safe_load((R / "deploy/monori/values.yaml").read_text())["images"]
-        documents = render(
-            R, "charts/monori", "deploy/monori/values.yaml", "monori", "monori"
-        )
+        documents = render(R, "charts/monori", "deploy/monori/values.yaml", "monori", "monori")
         assert_monori_release_images(documents, images)
         changed = copy.deepcopy(documents)
         back = _mapping(changed[("Deployment", "monori-back")])
         pod = _mapping(_mapping(_mapping(back["spec"])["template"])["spec"])
         container = _mapping(_sequence(pod["containers"])[0])
         container["image"] = "unreviewed:latest"
-        with self.assertRaisesRegex(
-            AssertionError, "Current Monori release image differs"
-        ):
+        with pytest.raises(AssertionError, match="Current Monori release image differs"):
             assert_monori_release_images(changed, images)

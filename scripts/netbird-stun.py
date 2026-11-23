@@ -20,7 +20,8 @@ PIN = "sha256:a00afb5b4890de4df22bbe70379c6b316685dffee297d53cac1271dcb91fab93"
 def image():
     item = json.loads(LOCK.read_text())["images"]["stun"]
     if item["repository"] != "coturn/coturn" or item["tag"] != "4.7.0" or item["digest"] != PIN:
-        raise ValueError("reviewed official STUN image pin drift")
+        msg = "reviewed official STUN image pin drift"
+        raise ValueError(msg)
     return item["repository"] + ":" + item["tag"] + "@" + item["digest"]
 
 
@@ -107,7 +108,7 @@ def manifests():
     ]
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.parse_args()
     print(yaml.safe_dump_all(manifests(), sort_keys=False), end="")

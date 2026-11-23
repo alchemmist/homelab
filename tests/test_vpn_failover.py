@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 SOURCE = Path(__file__).resolve().parents[1] / "ansible/roles/vpn_failover/files/vpn_failover.py"
 
 # Named mirrors of the watchdog defaults asserted below.
@@ -24,7 +26,7 @@ SPEC.loader.exec_module(MODULE)
 class FakeWatchdog(MODULE.Watchdog):
     """Tests for FakeWatchdog."""
 
-    def __init__(self, directory):
+    def __init__(self, directory) -> None:
         super().__init__(
             {
                 "state_dir": directory,
@@ -51,18 +53,21 @@ class FakeWatchdog(MODULE.Watchdog):
     def health(self):
         return {"healthy": self.good, "errors": [] if self.good else ["unavailable"]}
 
-    def preflight(self):
+    def preflight(self) -> None:
         if self.invalid:
-            raise RuntimeError("Missing assets")
+            msg = "Missing assets"
+            raise RuntimeError(msg)
 
-    def fence(self):
+    def fence(self) -> None:
         self.events.append("fence")
         if self.stuck:
-            raise RuntimeError("Cannot fence")
+            msg = "Cannot fence"
+            raise RuntimeError(msg)
 
-    def guard(self):
+    def guard(self) -> None:
         if not (self.state / "active").exists() or self.stuck:
-            raise RuntimeError("Unsafe start")
+            msg = "Unsafe start"
+            raise RuntimeError(msg)
 
     def occupied(self):
         return self.ports
@@ -70,7 +75,7 @@ class FakeWatchdog(MODULE.Watchdog):
     def service_active(self, unit):
         return unit in self.running
 
-    def command(self, *args):
+    def command(self, *args) -> str:
         self.events.append(args)
         if args[1] == "start":
             self.running.add(args[2])
@@ -82,17 +87,17 @@ class FakeWatchdog(MODULE.Watchdog):
 class FailoverTests(unittest.TestCase):
     """Tests for FailoverTests."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.watchdog = FakeWatchdog(self.directory.name)
 
-    def test_boot_grace_avoids_failure_counting(self):
+    def test_boot_grace_avoids_failure_counting(self) -> None:
         self.watchdog.uptime = 20
         assert self.watchdog.tick() == {"mode": "grace"}
         assert not (self.watchdog.state / "failures.json").exists()
 
-    def test_four_failures_required_and_latch_persisted(self):
+    def test_four_failures_required_and_latch_persisted(self) -> None:
         for count in range(1, 4):
             assert self.watchdog.tick()["failures"] == count
             assert not self.watchdog.running
@@ -101,16 +106,16 @@ class FailoverTests(unittest.TestCase):
         assert self.watchdog.events[0] == "fence"
         assert self.watchdog.running == set(MODULE.NATIVE_UNITS)
 
-    def test_recovery_resets_consecutive_errors(self):
+    def test_recovery_resets_consecutive_errors(self) -> None:
         self.watchdog.tick()
         self.watchdog.good = True
         assert self.watchdog.tick()["failures"] == 0
         self.watchdog.good = False
         assert self.watchdog.tick()["failures"] == 1
 
-    def test_failed_fencing_preserves_latch_without_native_start(self):
+    def test_failed_fencing_preserves_latch_without_native_start(self) -> None:
         self.watchdog.stuck = True
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             self.watchdog.activate()
         assert (self.watchdog.state / "active").exists()
         assert not self.watchdog.running
@@ -118,54 +123,54 @@ class FailoverTests(unittest.TestCase):
         self.watchdog.tick()
         assert self.watchdog.running == set(MODULE.NATIVE_UNITS)
 
-    def test_missing_assets_do_not_fence_working_kubernetes(self):
+    def test_missing_assets_do_not_fence_working_kubernetes(self) -> None:
         self.watchdog.invalid = True
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             self.watchdog.activate()
         assert not (self.watchdog.state / "active").exists()
         assert self.watchdog.events == []
 
-    def test_occupied_ports_prevent_first_native_start(self):
+    def test_occupied_ports_prevent_first_native_start(self) -> None:
         self.watchdog.ports = [("tcp", 443)]
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             self.watchdog.activate()
         assert not self.watchdog.running
         assert (self.watchdog.state / "active").exists()
 
-    def test_healthy_fallback_does_not_automatically_fail_back(self):
+    def test_healthy_fallback_does_not_automatically_fail_back(self) -> None:
         self.watchdog.activate()
         self.watchdog.good = True
         self.watchdog.tick()
         assert (self.watchdog.state / "active").exists()
         assert self.watchdog.agent not in self.watchdog.running
 
-    def test_maintenance_inhibit_prevents_actions(self):
+    def test_maintenance_inhibit_prevents_actions(self) -> None:
         (self.watchdog.state / "inhibit").touch()
         assert self.watchdog.tick() == {"mode": "inhibited"}
         assert self.watchdog.events == []
 
-    def test_failback_keeps_fence_when_native_ports_remain(self):
+    def test_failback_keeps_fence_when_native_ports_remain(self) -> None:
         self.watchdog.activate()
         self.watchdog.ports = [("tcp", 443)]
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             self.watchdog.failback()
         assert (self.watchdog.state / "active").exists()
         assert self.watchdog.agent not in self.watchdog.running
 
-    def test_failback_releases_latch_after_stopping_native_and_adds_grace(self):
+    def test_failback_releases_latch_after_stopping_native_and_adds_grace(self) -> None:
         self.watchdog.activate()
         self.watchdog.failback()
         assert not (self.watchdog.state / "active").exists()
         assert self.watchdog.running == {self.watchdog.agent}
         assert self.watchdog.tick() == {"mode": "grace"}
 
-    def test_new_boot_resets_old_failures(self):
+    def test_new_boot_resets_old_failures(self) -> None:
         self.watchdog.write(
             "failures.json", {"boot_id": "old", "failures": 100, "grace_until": 999999}
         )
         assert self.watchdog.tick()["failures"] == 1
 
-    def test_partial_activation_does_not_restart_running_units(self):
+    def test_partial_activation_does_not_restart_running_units(self) -> None:
         self.watchdog.activate()
         self.watchdog.running.remove(MODULE.NATIVE_UNITS[-1])
         self.watchdog.events.clear()
@@ -175,17 +180,17 @@ class FailoverTests(unittest.TestCase):
             ("systemctl", "start", MODULE.NATIVE_UNITS[-1]),
         ]
 
-    def test_partial_activation_refuses_inactive_unit_port_conflict(self):
+    def test_partial_activation_refuses_inactive_unit_port_conflict(self) -> None:
         self.watchdog.activate()
         unit = MODULE.NATIVE_UNITS[-1]
         self.watchdog.running.remove(unit)
         self.watchdog.config["native_unit_ports"] = {unit: [{"protocol": "tcp", "port": 443}]}
         self.watchdog.ports = [("tcp", 443)]
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             self.watchdog.tick()
         assert unit not in self.watchdog.running
 
-    def test_unhealthy_active_native_services_restart_after_threshold(self):
+    def test_unhealthy_active_native_services_restart_after_threshold(self) -> None:
         self.watchdog.activate()
         self.watchdog.events.clear()
         self.watchdog.tick()
@@ -197,7 +202,7 @@ class FailoverTests(unittest.TestCase):
         assert self.watchdog.running == set(MODULE.NATIVE_UNITS)
         assert (self.watchdog.state / "active").exists()
 
-    def test_native_recovery_health_resets_restart_counter(self):
+    def test_native_recovery_health_resets_restart_counter(self) -> None:
         self.watchdog.activate()
         self.watchdog.tick()
         self.watchdog.good = True
@@ -205,7 +210,7 @@ class FailoverTests(unittest.TestCase):
         self.watchdog.good = False
         assert self.watchdog.tick()["failures"] == 1
 
-    def test_pidfd_signal_targets_verified_kubernetes_process(self):
+    def test_pidfd_signal_targets_verified_kubernetes_process(self) -> None:
         with (
             mock.patch.object(MODULE.os, "pidfd_open", return_value=91, create=True),
             mock.patch.object(MODULE.signal, "pidfd_send_signal", create=True) as send,
@@ -216,7 +221,7 @@ class FailoverTests(unittest.TestCase):
         send.assert_called_once_with(91, MODULE.signal.SIGTERM)
         close.assert_called_once_with(91)
 
-    def test_changed_process_cgroup_refuses_signal(self):
+    def test_changed_process_cgroup_refuses_signal(self) -> None:
         with (
             mock.patch.object(MODULE.os, "pidfd_open", return_value=91, create=True),
             mock.patch.object(MODULE.signal, "pidfd_send_signal", create=True) as send,
@@ -224,7 +229,7 @@ class FailoverTests(unittest.TestCase):
             mock.patch.object(
                 MODULE.Path, "read_text", return_value="0::/system.slice/ssh.service"
             ),
-            self.assertRaises(RuntimeError),
+            pytest.raises(RuntimeError),
         ):
             self.watchdog.terminate(123, MODULE.signal.SIGTERM)
         send.assert_not_called()
@@ -233,7 +238,7 @@ class FailoverTests(unittest.TestCase):
 class KubernetesFencingTests(unittest.TestCase):
     """Tests for KubernetesFencingTests."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.watchdog = MODULE.Watchdog(
@@ -252,15 +257,16 @@ class KubernetesFencingTests(unittest.TestCase):
             return "active" if args[2] in self.active else "inactive"
         if args[1] == "stop":
             self.active.discard(args[2])
+        return None
 
-    def test_fence_stops_both_installed_units(self):
+    def test_fence_stops_both_installed_units(self) -> None:
         with mock.patch.object(self.watchdog, "processes", return_value=[]):
             self.watchdog.fence()
         assert not self.active
         assert ("systemctl", "stop", "k3s-agent.service") in self.commands
         assert ("systemctl", "stop", "k3s.service") in self.commands
 
-    def test_missing_agent_is_ignored_but_server_is_stopped(self):
+    def test_missing_agent_is_ignored_but_server_is_stopped(self) -> None:
         self.loads["k3s-agent.service"] = "not-found"
         self.active = {"k3s.service"}
         with mock.patch.object(self.watchdog, "processes", return_value=[]):
@@ -268,30 +274,30 @@ class KubernetesFencingTests(unittest.TestCase):
         assert ("systemctl", "stop", "k3s-agent.service") not in self.commands
         assert not self.active
 
-    def test_active_server_blocks_native_even_when_agent_is_absent(self):
+    def test_active_server_blocks_native_even_when_agent_is_absent(self) -> None:
         (self.watchdog.state / "active").touch()
         self.loads["k3s-agent.service"] = "not-found"
         self.active = {"k3s.service"}
         with mock.patch.object(self.watchdog, "processes", return_value=[]):
-            with self.assertRaisesRegex(RuntimeError, "verified Kubernetes fencing"):
+            with pytest.raises(RuntimeError, match="verified Kubernetes fencing"):
                 self.watchdog.guard()
 
-    def test_unknown_load_state_fails_closed(self):
+    def test_unknown_load_state_fails_closed(self) -> None:
         self.loads["k3s.service"] = "error"
-        with self.assertRaisesRegex(RuntimeError, "Cannot verify systemd unit"):
+        with pytest.raises(RuntimeError, match="Cannot verify systemd unit"):
             self.watchdog.fence()
         assert not any(args[1] == "stop" for args in self.commands)
 
-    def test_fence_refuses_service_still_active(self):
+    def test_fence_refuses_service_still_active(self) -> None:
         with (
             mock.patch.object(self.watchdog, "service_active", return_value=True),
             mock.patch.object(self.watchdog, "processes") as processes,
         ):
-            with self.assertRaisesRegex(RuntimeError, "did not stop"):
+            with pytest.raises(RuntimeError, match="did not stop"):
                 self.watchdog.fence()
         processes.assert_not_called()
 
-    def test_server_and_agent_cgroups_are_both_fenced(self):
+    def test_server_and_agent_cgroups_are_both_fenced(self) -> None:
         for unit in self.watchdog.fenced_units:
             with (
                 self.subTest(unit=unit),
@@ -305,7 +311,7 @@ class KubernetesFencingTests(unittest.TestCase):
                 self.watchdog.terminate(123, MODULE.signal.SIGTERM)
                 send.assert_called_once_with(91, MODULE.signal.SIGTERM)
 
-    def test_failback_starts_only_configured_server(self):
+    def test_failback_starts_only_configured_server(self) -> None:
         (self.watchdog.state / "active").touch()
         with (
             mock.patch.object(self.watchdog, "processes", return_value=[]),
@@ -330,7 +336,7 @@ class ProbeDiagnosticsTests(unittest.TestCase):
             }
         )
 
-    def test_connect_failure_is_classified_without_exception_text(self):
+    def test_connect_failure_is_classified_without_exception_text(self) -> None:
         with mock.patch.object(
             MODULE.socket,
             "create_connection",
@@ -343,7 +349,7 @@ class ProbeDiagnosticsTests(unittest.TestCase):
         assert "sensitive" not in json.dumps(result)
         assert "private-route" not in json.dumps(result)
 
-    def test_rejected_upgrade_records_only_numeric_status(self):
+    def test_rejected_upgrade_records_only_numeric_status(self) -> None:
         context = mock.MagicMock()
         stream = context.wrap_socket.return_value.__enter__.return_value
         stream.recv.return_value = b"HTTP/1.1 403 Forbidden\r\n\r\nprivate data"
@@ -360,7 +366,7 @@ class ProbeDiagnosticsTests(unittest.TestCase):
 class CommandDeadlineTests(unittest.TestCase):
     """Tests for CommandDeadlineTests."""
 
-    def test_rejoining_kubernetes_has_separate_deadline(self):
+    def test_rejoining_kubernetes_has_separate_deadline(self) -> None:
         w = MODULE.Watchdog({})
         with mock.patch.object(MODULE.subprocess, "run") as run:
             run.return_value.stdout = ""
@@ -371,7 +377,7 @@ class CommandDeadlineTests(unittest.TestCase):
             w.command("systemctl", "start", "homelab-vpn-primary.service")
             assert run.call_args.kwargs["timeout"] == UNIT_COMMAND_TIMEOUT_SECONDS
 
-    def test_kubernetes_deadline_can_be_configured(self):
+    def test_kubernetes_deadline_can_be_configured(self) -> None:
         w = MODULE.Watchdog({"kubernetes_start_timeout_seconds": 240})
         with mock.patch.object(MODULE.subprocess, "run") as run:
             run.return_value.stdout = ""
@@ -382,12 +388,12 @@ class CommandDeadlineTests(unittest.TestCase):
 class HardeningTests(unittest.TestCase):
     """Tests for HardeningTests."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.w = FakeWatchdog(self.directory.name)
 
-    def test_recovery_during_confirmation_cancels_fencing(self):
+    def test_recovery_during_confirmation_cancels_fencing(self) -> None:
         self.w.health = mock.Mock(
             side_effect=[{"healthy": False, "errors": ["unavailable"]}] * 4
             + [{"healthy": True, "errors": []}]
@@ -400,7 +406,7 @@ class HardeningTests(unittest.TestCase):
         assert self.w.events == []
         assert not (self.w.state / "active").exists()
 
-    def test_all_confirmation_samples_must_remain_unhealthy(self):
+    def test_all_confirmation_samples_must_remain_unhealthy(self) -> None:
         self.w.health = mock.Mock(return_value={"healthy": False, "errors": ["unavailable"]})
         for _ in range(4):
             result = self.w.tick()
@@ -410,7 +416,7 @@ class HardeningTests(unittest.TestCase):
         )  # four + two confirms + native
         assert self.w.events[0] == "fence"
 
-    def test_native_warmup_does_not_count_startup_failures(self):
+    def test_native_warmup_does_not_count_startup_failures(self) -> None:
         self.w.config["native_start_grace_seconds"] = 30
         assert self.w.activate()["warming_up"]
         for _ in range(5):
@@ -419,7 +425,7 @@ class HardeningTests(unittest.TestCase):
         self.w.uptime += 31
         assert self.w.tick()["failures"] == 1
 
-    def test_native_restart_cancelled_if_confirmation_recovers(self):
+    def test_native_restart_cancelled_if_confirmation_recovers(self) -> None:
         self.w.activate()
         self.w.tick()
         self.w.tick()
@@ -432,40 +438,41 @@ class HardeningTests(unittest.TestCase):
         assert self.w.tick()["restart_cancelled"]
         assert not any(isinstance(e, tuple) and e[1] == "stop" for e in self.w.events)
 
-    def test_stale_agent_target_keeps_native_untouched(self):
+    def test_stale_agent_target_keeps_native_untouched(self) -> None:
         self.w.activate()
         self.w.events.clear()
         self.w.agent = "k3s-agent.service"
         self.w.service_installed = lambda unit: True
-        with self.assertRaisesRegex(RuntimeError, "Legacy agent"):
+        with pytest.raises(RuntimeError, match="Legacy agent"):
             self.w.failback()
         assert self.w.events == []
         assert (self.w.state / "active").exists()
 
-    def test_missing_target_keeps_native_untouched(self):
+    def test_missing_target_keeps_native_untouched(self) -> None:
         self.w.activate()
         self.w.events.clear()
         self.w.service_installed = lambda unit: False
-        with self.assertRaisesRegex(RuntimeError, "not installed"):
+        with pytest.raises(RuntimeError, match="not installed"):
             self.w.failback()
         assert self.w.events == []
 
-    def test_failed_kubernetes_start_restores_native_immediately(self):
+    def test_failed_kubernetes_start_restores_native_immediately(self) -> None:
         self.w.activate()
         command = self.w.command
 
         def failed(*args):
             if args == ("systemctl", "start", self.w.agent):
-                raise RuntimeError("start failed")
+                msg = "start failed"
+                raise RuntimeError(msg)
             return command(*args)
 
         self.w.command = failed
-        with self.assertRaisesRegex(RuntimeError, "start failed"):
+        with pytest.raises(RuntimeError, match="start failed"):
             self.w.failback()
         assert self.w.running == set(MODULE.NATIVE_UNITS)
         assert (self.w.state / "active").exists()
 
-    def test_failure_receipt_is_durable(self):
+    def test_failure_receipt_is_durable(self) -> None:
         self.w.tick()
         receipt = json.loads((self.w.state / "last_failure.json").read_text())
         assert receipt["mode"] == "kubernetes"
@@ -476,7 +483,7 @@ class HardeningTests(unittest.TestCase):
 class ServiceIdentityContractTests(unittest.TestCase):
     """Tests for ServiceIdentityContractTests."""
 
-    def test_python_and_ansible_defaults_use_current_server(self):
+    def test_python_and_ansible_defaults_use_current_server(self) -> None:
         assert MODULE.Watchdog({}).agent == "k3s.service"
         import yaml
 

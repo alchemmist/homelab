@@ -6,6 +6,8 @@ import unittest
 from pathlib import Path
 from typing import NotRequired, TypedDict, cast
 
+import pytest
+
 PATH = Path(__file__).resolve().parents[1] / "scripts/check-resource-budget.py"
 SPEC = importlib.util.spec_from_file_location("resource_budget", PATH)
 assert SPEC is not None
@@ -134,7 +136,7 @@ class BudgetTests(unittest.TestCase):
         ]:
             assert BUDGET.quantity(first) == BUDGET.quantity(second)
         for invalid in ["-1", "abc", "3MM"]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 BUDGET.quantity(invalid)
 
     def test_ordered_init_sidecars(self) -> None:
@@ -227,7 +229,7 @@ class BudgetTests(unittest.TestCase):
         for invalid in ["-1", "0", "invalid"]:
             expected = profiles()
             expected[0]["containers"]["app"]["requests"]["cpu"] = invalid
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 BUDGET.budget([pod()], nodes(), expected)
 
     def test_unknown_node_fails(self) -> None:

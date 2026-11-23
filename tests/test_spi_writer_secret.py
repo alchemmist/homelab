@@ -8,6 +8,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 spec = importlib.util.spec_from_file_location(
     "writer_helper",
     Path(__file__).resolve().parents[1] / "scripts/rustfs/spi_writer_secret.py",
@@ -36,9 +38,7 @@ class WriterSecret(unittest.TestCase):
                 with self.subTest(storage=malformed):
                     source.write_text(json.dumps(malformed))
                     source.chmod(0o600)
-                    with self.assertRaisesRegex(
-                        ValueError, "^SPI_WRITER_SECRET_PREPARATION_REFUSED$"
-                    ):
+                    with pytest.raises(ValueError, match="^SPI_WRITER_SECRET_PREPARATION_REFUSED$"):
                         helper.render(d)
                     assert not (d / "spi-evidence-writer.secret.json").exists()
 
@@ -57,7 +57,7 @@ class WriterSecret(unittest.TestCase):
                 p.chmod(0o600)
 
             put("storage.json", storage)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 helper.render(d)
             journal = {
                 storage[r]["access"]: hashlib.sha256(storage[r]["secret"].encode()).hexdigest()
@@ -77,13 +77,13 @@ class WriterSecret(unittest.TestCase):
                 json.loads(base64.b64decode(doc["data"]["credentials.json"])) == storage["writer"]
             )
             put("bootstrap-journal.json", {})
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 helper.render(d)
             put("bootstrap-journal.json", journal)
             put(p.name, {})
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 helper.render(d)
             storage["writer"] = storage["root"]
             put("storage.json", storage)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 helper.render(d)
