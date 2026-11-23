@@ -11,10 +11,14 @@ metadata:
 spec:
   activeDeadlineSeconds: 1800
   backoffLimit: 1
+  ttlSecondsAfterFinished: 3600
   template:
+    metadata:
+      labels: {maintenance: monori-schema}
     spec:
       nodeSelector: {kubernetes.io/hostname: {{ .Values.statefulNodeName | quote }}}
       restartPolicy: Never
+      serviceAccountName: monori
       automountServiceAccountToken: false
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -28,8 +32,11 @@ spec:
           imagePullPolicy: IfNotPresent
           command: [python, -I, -S, -c, pass]
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            seccompProfile: {type: RuntimeDefault}
             capabilities: {drop: [ALL]}
           resources:
             requests: {cpu: 5m, memory: 16Mi}

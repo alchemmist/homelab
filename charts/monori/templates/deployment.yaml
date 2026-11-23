@@ -17,6 +17,8 @@ spec:
   template:
     metadata: { labels: { app: monori-sync } }
     spec:
+      serviceAccountName: monori
+      automountServiceAccountToken: false
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- range .Values.imagePullSecrets }}
@@ -32,16 +34,42 @@ spec:
         args:
           - >-
             from pathlib import Path; assert Path('/app/data/.homelab-handoff-ready').is_file(), 'Verified sync data restore required'
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          seccompProfile: {type: RuntimeDefault}
+          capabilities: {drop: [ALL]}
+        resources:
+          requests: {cpu: 5m, memory: 32Mi}
+          limits: {cpu: 500m, memory: 128Mi}
         volumeMounts: [{name: data, mountPath: /app/data, readOnly: true}]
       {{- end }}
       containers:
       - name: sync
         image: {{ include "monori.image" .Values.images.sync }}
         imagePullPolicy: IfNotPresent
-        env: [{ name: MONORI_CONNECTOR_DEBUG, value: "1" }]
+        env:
+        - { name: MONORI_CONNECTOR_DEBUG, value: "1" }
+        - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
         ports: [{ name: http, containerPort: 8010 }]
-        volumeMounts: [{ name: data, mountPath: /app/data }]
+        readinessProbe: {httpGet: {path: /health, port: 8010}, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3}
+        livenessProbe: {httpGet: {path: /health, port: 8010}, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 3}
+        resources:
+          requests: {cpu: 100m, memory: 256Mi}
+          limits: {cpu: "2", memory: 1Gi}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          seccompProfile: {type: RuntimeDefault}
+          capabilities: {drop: [ALL]}
+        volumeMounts: [{name: data, mountPath: /app/data }, {name: tmp, mountPath: /tmp}]
       volumes:
+      - name: tmp
+        emptyDir: {sizeLimit: 64Mi}
       - name: data
         {{- if .Values.syncClaim }}
         persistentVolumeClaim: {claimName: {{ .Values.syncClaim | quote }}}
@@ -61,6 +89,8 @@ spec:
   template:
     metadata: { labels: { app: monori-back } }
     spec:
+      serviceAccountName: monori
+      automountServiceAccountToken: false
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- range .Values.imagePullSecrets }}
@@ -91,7 +121,17 @@ spec:
             with psycopg.connect(os.environ['MONORI_CONSOLE_DATABASE_URL'],connect_timeout=6) as c:
                 assert c.execute("SELECT current_user,has_schema_privilege('public','CREATE')").fetchone()==('monori_console',False)
         envFrom: [{secretRef: {name: monori-postgres}}]
-        volumeMounts: [{name: data, mountPath: /app/data, readOnly: true}, {name: pg-ca, mountPath: /pg-ca, readOnly: true}]
+        resources:
+          requests: {cpu: 5m, memory: 64Mi}
+          limits: {cpu: 500m, memory: 256Mi}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          seccompProfile: {type: RuntimeDefault}
+          capabilities: {drop: [ALL]}
+        volumeMounts: [{name: data, mountPath: /app/data, readOnly: true}, {name: tmp, mountPath: /tmp}, {name: pg-ca, mountPath: /pg-ca, readOnly: true}]
       {{- else if .Values.requireExistingData }}
       initContainers:
       - name: require-existing-back
@@ -100,7 +140,14 @@ spec:
         args:
           - >-
             from pathlib import Path; p=Path('/app/data/monori.db'); assert p.is_file() and p.open('rb').read(16)==b'SQLite format 3\x00', 'Existing finance database required'
-        volumeMounts: [{name: data, mountPath: /app/data, readOnly: true}]
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          seccompProfile: {type: RuntimeDefault}
+          capabilities: {drop: [ALL]}
+        volumeMounts: [{name: data, mountPath: /app/data, readOnly: true}, {name: tmp, mountPath: /tmp}]
       {{- end }}
       containers:
       - name: back
@@ -133,13 +180,27 @@ spec:
               optional: true
         {{- end }}
         ports: [{ name: http, containerPort: 8000 }]
+        readinessProbe: {httpGet: {path: /openapi.json, port: 8000}, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3}
+        livenessProbe: {httpGet: {path: /openapi.json, port: 8000}, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 3}
+        resources:
+          requests: {cpu: 100m, memory: 256Mi}
+          limits: {cpu: "2", memory: 1Gi}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          seccompProfile: {type: RuntimeDefault}
+          capabilities: {drop: [ALL]}
         volumeMounts:
         - {name: data, mountPath: /app/data}
+        - {name: tmp, mountPath: /tmp}
         {{- if .Values.postgresEnabled }}
         - {name: pg-ca, mountPath: /pg-ca, readOnly: true}
-        readinessProbe: {tcpSocket: {port: 8000}, periodSeconds: 4}
         {{- end }}
       volumes:
+      - name: tmp
+        emptyDir: {sizeLimit: 64Mi}
       {{- if .Values.postgresEnabled }}
       - {name: pg-ca, configMap: {name: pg-common-ca}}
       {{- end }}
@@ -159,6 +220,8 @@ spec:
   template:
     metadata: { labels: { app: monori } }
     spec:
+      serviceAccountName: monori
+      automountServiceAccountToken: false
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- range .Values.imagePullSecrets }}
@@ -166,8 +229,33 @@ spec:
         {{- end }}
       {{- end }}
       nodeSelector: { kubernetes.io/hostname: {{ .Values.frontNodeName | quote }} }
+      securityContext:
+        fsGroup: 101
       containers:
       - name: front
         image: {{ include "monori.image" .Values.images.front }}
         imagePullPolicy: IfNotPresent
         ports: [{ name: http, containerPort: 8000 }]
+        readinessProbe: {httpGet: {path: /, port: 8000}, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3}
+        livenessProbe: {httpGet: {path: /, port: 8000}, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 3}
+        resources:
+          requests: {cpu: 50m, memory: 64Mi}
+          limits: {cpu: 500m, memory: 256Mi}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 101
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          seccompProfile: {type: RuntimeDefault}
+          capabilities: {drop: [ALL]}
+        volumeMounts:
+        - {name: nginx-cache, mountPath: /var/cache/nginx}
+        - {name: run-dir, mountPath: /run}
+        - {name: tmp, mountPath: /tmp}
+      volumes:
+      - name: nginx-cache
+        emptyDir: {sizeLimit: 64Mi}
+      - name: run-dir
+        emptyDir: {sizeLimit: 16Mi}
+      - name: tmp
+        emptyDir: {sizeLimit: 16Mi}

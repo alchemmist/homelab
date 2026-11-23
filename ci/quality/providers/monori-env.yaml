@@ -1,0 +1,22 @@
+version: 1
+entries:
+  # Monori back container env-only configuration contract: the pinned app image
+  # (digest in deploy/monori/values.yaml, commit 716141e6...) reads all runtime
+  # secrets (monori-env, monori-postgres envFrom) from the environment and has
+  # no file-based configuration interface. Full evidence:
+  # docs/quality/monori-env-contracts.md.
+  - consumer: monori-0
+    kind: Deployment
+    namespace: monori
+    name: monori-back
+    checks: [read-secret-from-env-var]
+    evidence: docs/quality/monori-env-contracts.md
+  # Migration job entrypoint (charts/monori/files/schema_upgrade.py) calls
+  # psycopg.connect(os.environ['MIGRATION_URL']); the DATABASE_URL is bound from
+  # secret monori-pg-migrator via secretKeyRef env.
+  - consumer: monori-0
+    kind: Job
+    namespace: monori
+    name: monori-schema
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/monori-env-contracts.md
