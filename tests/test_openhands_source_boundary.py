@@ -19,8 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 VOLUME_FIELD_COUNT = 2
 BACKUP_DEADLINE_SECONDS = 2400
 IMAGE = (
-    "ghcr.io/openhands/agent-canvas:1.41.0@sha256:"
-    "dcae97b63c9845fd1d4313857af6b10fb5888324a154238c4795ef86233d227c"
+    "ghcr.io/openhands/agent-canvas:1.43.0@sha256:"
+    "bcdbb3fb9610f14eda67f39fc609f162ad8c3c28697d6ff3f4adae55c15c3f1d"
 )
 
 
