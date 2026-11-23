@@ -23,3 +23,17 @@ entries:
     name: rustfs-gateway
     checks: [env-value-from, read-secret-from-env-var]
     evidence: charts/rustfs/values-foundation-live.yaml
+  # gatus stores check results in the platform Postgres cluster. Its upstream
+  # binary interpolates the DSN from the container environment only
+  # (config/config.go:291 runs os.ExpandEnv over the raw config YAML, so the
+  # ${GATUS_DATABASE_URL} placeholder in charts/uptime-kuma/charts/gatus/files/
+  # config.yaml is resolved from the environment; v5.38.0 offers no file-backed
+  # input for storage.path). The DSN Secret "gatus-postgres" is provisioned
+  # out-of-band (kubectl-apply is forbidden here) by the same reviewed Secret
+  # flow the workload template names, so neither check is implementable for it.
+  - consumer: uptime-kuma-0
+    kind: Deployment
+    namespace: uptime-kuma
+    name: gatus
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: charts/uptime-kuma/charts/gatus/templates/workload.yaml
