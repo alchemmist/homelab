@@ -27,7 +27,7 @@ CHART_TEXT = {
         "name: traefik-edge\n"
         "description: VPS public ingress for cluster services and VPN endpoints\n"
         "version: 0.2.0\n"
-        "appVersion: 3.7.13\n"
+        "appVersion: 3.7.19\n"
         "...\n"
     ),
 }
