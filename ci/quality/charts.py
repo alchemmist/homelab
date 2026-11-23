@@ -326,6 +326,18 @@ RELEASE_PEERS = {
         ("litellm-0", [("Deployment", "litellm")]),
         ("vllm-0", [("Deployment", "vllm")]),
     ],
+    # The litellm proxy talks to in-cluster model backends (vllm service in the
+    # same namespace, venice-api and deeperseeker Deployments behind their
+    # Services), the shared platform postgres and the shared redis; its OIDC
+    # IdP is the authentik release. Load the real provider objects so the
+    # isolation NetworkPolicy egress selectors resolve instead of dangling.
+    "litellm-0": [
+        ("vllm-0", [("Service", "vllm"), ("Deployment", "vllm")]),
+        ("venice-api-0", [("Service", "venice-api"), ("Deployment", "venice-api")]),
+        ("deeperseeker-0", [("Service", "deeperseeker"), ("Deployment", "deeperseeker")]),
+        ("postgres-platform-0", [("Service", "pg-common-rw"), ("StatefulSet", "pg-common-1"), ("StatefulSet", "pg-common-2")]),
+        ("authentik-0", [("Service", "authentik-server"), ("Deployment", "authentik-server")]),
+    ],
     "open-terminal-0": ("open-webui-0", [("Deployment", "open-webui")]),
 }
 

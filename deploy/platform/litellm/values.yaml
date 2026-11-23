@@ -1,109 +1,199 @@
----
 db:
   database: litellm
   deployStandalone: false
   endpoint: pg-common-rw.postgres.svc.cluster.local
-  url:
-    postgresql://$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@$(DATABASE_HOST)/$(DATABASE_NAME)?sslmode=require&sslaccept=strict&sslcert=/etc/pg-common/ca.crt
   secret:
     name: litellm-pg-common
     passwordKey: password
     usernameKey: username
+  url: postgresql://$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@$(DATABASE_HOST)/$(DATABASE_NAME)?sslmode=require&sslaccept=strict&sslcert=/etc/pg-common/ca.crt
   useExisting: true
 envVars:
-  # Keep the original runtime schema-update fence even with the hook disabled.
-  DISABLE_SCHEMA_UPDATE: "true"
+  DISABLE_SCHEMA_UPDATE: 'true'
   FORWARDED_ALLOW_IPS: 127.0.0.1,10.42.0.0/16,10.250.0.0/24
-  LITELLM_TELEMETRY: "False"
+  LITELLM_TELEMETRY: 'False'
   PROXY_BASE_URL: https://llm.alchemmist.xyz
 environmentSecrets:
-  - litellm-env
+- litellm-env
 extraEnvVars:
-  - name: COORDINATION_REDIS_URL
-    valueFrom: {secretKeyRef: {name: redis-common-litellm, key: url}}
-  - name: VENICE_BRIDGE_API_KEY
-    valueFrom:
-      secretKeyRef:
-        name: venice-bridge-upstream
-        key: api-key
-  - name: VLLM_API_KEY
-    valueFrom:
-      secretKeyRef:
-        key: api-key
-        name: vllm-api
-  - name: DEEPSEEK_PROXY_API_KEY
-    valueFrom:
-      secretKeyRef:
-        key: api-key
-        name: deeperseeker-upstream
-  - name: GENERIC_CLIENT_ID
-    valueFrom:
-      secretKeyRef:
-        name: socrat-authentik-litellm
-        key: GENERIC_CLIENT_ID
-        optional: true
-  - name: GENERIC_CLIENT_SECRET
-    valueFrom:
-      secretKeyRef:
-        name: socrat-authentik-litellm
-        key: GENERIC_CLIENT_SECRET
-        optional: true
-  - name: GENERIC_AUTHORIZATION_ENDPOINT
-    valueFrom:
-      secretKeyRef:
-        name: socrat-authentik-litellm
-        key: GENERIC_AUTHORIZATION_ENDPOINT
-        optional: true
-  - name: GENERIC_TOKEN_ENDPOINT
-    valueFrom:
-      secretKeyRef:
-        name: socrat-authentik-litellm
-        key: GENERIC_TOKEN_ENDPOINT
-        optional: true
-  - name: GENERIC_USERINFO_ENDPOINT
-    valueFrom:
-      secretKeyRef:
-        name: socrat-authentik-litellm
-        key: GENERIC_USERINFO_ENDPOINT
-        optional: true
-  - name: GENERIC_SCOPE
-    valueFrom:
-      secretKeyRef:
-        name: socrat-authentik-litellm
-        key: GENERIC_SCOPE
-        optional: true
-  - name: GENERIC_CLIENT_USE_PKCE
-    valueFrom:
-      secretKeyRef:
-        name: socrat-authentik-litellm
-        key: GENERIC_CLIENT_USE_PKCE
-        optional: true
-  - name: GENERIC_USER_ID_ATTRIBUTE
-    valueFrom:
-      secretKeyRef:
-        name: socrat-authentik-litellm
-        key: GENERIC_USER_ID_ATTRIBUTE
-        optional: true
-  - name: GENERIC_USER_EMAIL_ATTRIBUTE
-    valueFrom:
-      secretKeyRef:
-        name: socrat-authentik-litellm
-        key: GENERIC_USER_EMAIL_ATTRIBUTE
-        optional: true
-  - name: GENERIC_USER_ROLE_ATTRIBUTE
-    valueFrom:
-      secretKeyRef:
-        name: socrat-authentik-litellm
-        key: GENERIC_USER_ROLE_ATTRIBUTE
-        optional: true
+- name: COORDINATION_REDIS_URL
+  valueFrom:
+    secretKeyRef:
+      key: url
+      name: redis-common-litellm
+- name: VENICE_BRIDGE_API_KEY
+  valueFrom:
+    secretKeyRef:
+      key: api-key
+      name: venice-bridge-upstream
+- name: VLLM_API_KEY
+  valueFrom:
+    secretKeyRef:
+      key: api-key
+      name: vllm-api
+- name: DEEPSEEK_PROXY_API_KEY
+  valueFrom:
+    secretKeyRef:
+      key: api-key
+      name: deeperseeker-upstream
+- name: GENERIC_CLIENT_ID
+  valueFrom:
+    secretKeyRef:
+      key: GENERIC_CLIENT_ID
+      name: socrat-authentik-litellm
+      optional: true
+- name: GENERIC_CLIENT_SECRET
+  valueFrom:
+    secretKeyRef:
+      key: GENERIC_CLIENT_SECRET
+      name: socrat-authentik-litellm
+      optional: true
+- name: GENERIC_AUTHORIZATION_ENDPOINT
+  valueFrom:
+    secretKeyRef:
+      key: GENERIC_AUTHORIZATION_ENDPOINT
+      name: socrat-authentik-litellm
+      optional: true
+- name: GENERIC_TOKEN_ENDPOINT
+  valueFrom:
+    secretKeyRef:
+      key: GENERIC_TOKEN_ENDPOINT
+      name: socrat-authentik-litellm
+      optional: true
+- name: GENERIC_USERINFO_ENDPOINT
+  valueFrom:
+    secretKeyRef:
+      key: GENERIC_USERINFO_ENDPOINT
+      name: socrat-authentik-litellm
+      optional: true
+- name: GENERIC_SCOPE
+  valueFrom:
+    secretKeyRef:
+      key: GENERIC_SCOPE
+      name: socrat-authentik-litellm
+      optional: true
+- name: GENERIC_CLIENT_USE_PKCE
+  valueFrom:
+    secretKeyRef:
+      key: GENERIC_CLIENT_USE_PKCE
+      name: socrat-authentik-litellm
+      optional: true
+- name: GENERIC_USER_ID_ATTRIBUTE
+  valueFrom:
+    secretKeyRef:
+      key: GENERIC_USER_ID_ATTRIBUTE
+      name: socrat-authentik-litellm
+      optional: true
+- name: GENERIC_USER_EMAIL_ATTRIBUTE
+  valueFrom:
+    secretKeyRef:
+      key: GENERIC_USER_EMAIL_ATTRIBUTE
+      name: socrat-authentik-litellm
+      optional: true
+- name: GENERIC_USER_ROLE_ATTRIBUTE
+  valueFrom:
+    secretKeyRef:
+      key: GENERIC_USER_ROLE_ATTRIBUTE
+      name: socrat-authentik-litellm
+      optional: true
+extraResources:
+- apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: litellm-isolation
+    namespace: llm
+  spec:
+    egress:
+    - ports:
+      - port: 5432
+        protocol: TCP
+      to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: postgres
+    - ports:
+      - port: 6379
+        protocol: TCP
+      to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: redis
+    - ports:
+      - port: 8000
+        protocol: TCP
+      to:
+      - podSelector:
+          matchLabels:
+            app: vllm
+    - ports:
+      - port: 8080
+        protocol: TCP
+      to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: venice-api
+    - ports:
+      - port: 4000
+        protocol: TCP
+      to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: deeperseeker
+    - ports:
+      - port: 443
+        protocol: TCP
+      - port: 9443
+        protocol: TCP
+      to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: identity
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: server
+    - ports:
+      - port: 53
+        protocol: UDP
+      - port: 53
+        protocol: TCP
+      to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+        podSelector:
+          matchLabels:
+            k8s-app: kube-dns
+    ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/name: traefik
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: cattle-monitoring-system
+      ports:
+      - port: 4000
+        protocol: TCP
+    podSelector:
+      matchLabels:
+        app.kubernetes.io/name: litellm
+    policyTypes:
+    - Ingress
+    - Egress
 fullnameOverride: litellm
+hostAliases:
+- hostnames:
+  - auth.socrat.alchemmist.xyz
+  ip: 10.43.218.222
 image:
   pullPolicy: IfNotPresent
   repository: harbor.socrat.alchemmist.xyz/homelab/litellm
-  tag:
-    eb6e7f61e4fa0fa1425461e4e92145c8eab73bef@sha256:b39c5a8cbb7b36d656bfb5be83960473ae34e246ff952cec73e736d982121b6d
+  tag: eb6e7f61e4fa0fa1425461e4e92145c8eab73bef@sha256:b39c5a8cbb7b36d656bfb5be83960473ae34e246ff952cec73e736d982121b6d
 imagePullSecrets:
-  - name: litellm-harbor-pull
+- name: litellm-harbor-pull
 ingress:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-http01
@@ -111,122 +201,124 @@ ingress:
   className: traefik
   enabled: true
   hosts:
-    - host: llm.alchemmist.xyz
-      paths:
-        - path: /
-          pathType: Prefix
+  - host: llm.alchemmist.xyz
+    paths:
+    - path: /
+      pathType: Prefix
   tls:
-    - hosts:
-        - llm.alchemmist.xyz
-      secretName: litellm-public-tls
+  - hosts:
+    - llm.alchemmist.xyz
+    secretName: litellm-public-tls
 masterkeySecretKey: LITELLM_MASTER_KEY
 masterkeySecretName: litellm-env
 migrationJob:
-  # Last migration succeeded and its Job was deleted; do not recreate it for placement.
-  # Chart fails closed on image changes until normal upgrade migrations are reviewed.
-  placementOnlyImage:
-    harbor.socrat.alchemmist.xyz/homelab/litellm:eb6e7f61e4fa0fa1425461e4e92145c8eab73bef@sha256:b39c5a8cbb7b36d656bfb5be83960473ae34e246ff952cec73e736d982121b6d
   enabled: false
   hooks:
     argocd:
       enabled: false
     helm:
       enabled: true
+  placementOnlyImage: harbor.socrat.alchemmist.xyz/homelab/litellm:eb6e7f61e4fa0fa1425461e4e92145c8eab73bef@sha256:b39c5a8cbb7b36d656bfb5be83960473ae34e246ff952cec73e736d982121b6d
   resources:
     limits:
-      cpu: "2"
+      cpu: '2'
       memory: 2Gi
     requests:
       cpu: 100m
       memory: 512Mi
-# Peer15 relay passed repeated native WG/Pod bulk tests; placement-only retry.
 nodeSelector:
   kubernetes.io/hostname: socrat-5
 numWorkers: 1
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
 proxy_config:
   general_settings:
-    coordination_redis: {namespace: litellm, url: os.environ/COORDINATION_REDIS_URL}
     cancel_on_disconnect: true
+    coordination_redis:
+      namespace: litellm
+      url: os.environ/COORDINATION_REDIS_URL
     disable_env_credential_login: true
     master_key: os.environ/LITELLM_MASTER_KEY
-    # UI "Logs" request/response bodies. Applies only to requests after rollout.
     store_model_in_db: true
     store_prompts_in_spend_logs: true
   litellm_settings:
     callbacks:
-      - prometheus
+    - prometheus
     num_retries: 0
     request_timeout: 7200
     require_auth_for_metrics_endpoint: true
   model_list:
-    - litellm_params:
-        api_base: http://vllm.llm.svc.cluster.local:8000/v1
-        api_key: os.environ/VLLM_API_KEY
-        model: openai/qwen3.8-27b
-        stream_timeout: 7200
-        timeout: 7200
-      model_info:
-        access_groups: [socrat-group-local]
-        input_cost_per_token: 0
-        max_input_tokens: 114688
-        max_output_tokens: 16384
-        output_cost_per_token: 0
-      model_name: qwen3.8-27b
-    # Four admitted calls = one browser generation plus at most three waiters.
-    # Browser adapter: one shared page, buffered SSE, approximate token usage.
-    # Zero synthetic price is not a measurement of Venice subscription credits.
-    - model_name: v-deepseek-uc
-      litellm_params:
-        model: openai/venice-agentic-deepseek-v4.1-flash-uncensored
-        api_base: http://venice-api.venice-api.svc.cluster.local:8080/v1
-        api_key: os.environ/VENICE_BRIDGE_API_KEY
-        timeout: 900
-        stream_timeout: 900
-        max_parallel_requests: 4
-        num_retries: 0
-      model_info:
-        access_groups: [socrat-group-external]
-        mode: chat
-        input_cost_per_token: 0
-        output_cost_per_token: 0
-    - model_name: o-deepseek
-      litellm_params:
-        model: openai/v4.1flash
-        api_base: http://deeperseeker.deeperseeker.svc.cluster.local:4000/v1
-        api_key: os.environ/DEEPSEEK_PROXY_API_KEY
-        timeout: 600
-        stream_timeout: 600
-        # One in flight and six calls a minute. Eight sat on the observed
-        # "too frequent" threshold for new web chats, with no room for a probe.
-        rpm: 6
-        max_parallel_requests: 1
-        max_retries: 0
-        num_retries: 0
-      model_info:
-        access_groups: [socrat-group-external]
-        mode: chat
-        max_input_tokens: 369228
-        max_output_tokens: 8192
-        input_cost_per_token: 0
-        output_cost_per_token: 0
+  - litellm_params:
+      api_base: http://vllm.llm.svc.cluster.local:8000/v1
+      api_key: os.environ/VLLM_API_KEY
+      model: openai/qwen3.8-27b
+      stream_timeout: 7200
+      timeout: 7200
+    model_info:
+      access_groups:
+      - socrat-group-local
+      input_cost_per_token: 0
+      max_input_tokens: 114688
+      max_output_tokens: 16384
+      output_cost_per_token: 0
+    model_name: qwen3.8-27b
+  - litellm_params:
+      api_base: http://venice-api.venice-api.svc.cluster.local:8080/v1
+      api_key: os.environ/VENICE_BRIDGE_API_KEY
+      max_parallel_requests: 4
+      model: openai/venice-agentic-deepseek-v4.1-flash-uncensored
+      num_retries: 0
+      stream_timeout: 900
+      timeout: 900
+    model_info:
+      access_groups:
+      - socrat-group-external
+      input_cost_per_token: 0
+      mode: chat
+      output_cost_per_token: 0
+    model_name: v-deepseek-uc
+  - litellm_params:
+      api_base: http://deeperseeker.deeperseeker.svc.cluster.local:4000/v1
+      api_key: os.environ/DEEPSEEK_PROXY_API_KEY
+      max_parallel_requests: 1
+      max_retries: 0
+      model: openai/v4.1flash
+      num_retries: 0
+      rpm: 6
+      stream_timeout: 600
+      timeout: 600
+    model_info:
+      access_groups:
+      - socrat-group-external
+      input_cost_per_token: 0
+      max_input_tokens: 369228
+      max_output_tokens: 8192
+      mode: chat
+      output_cost_per_token: 0
+    model_name: o-deepseek
 redis:
   enabled: false
-volumes:
-  - name: redis-common-ca
-    secret: {secretName: redis-common-litellm, items: [{key: ca.crt, path: ca.crt}]}
-  - name: pg-common-ca
-    secret: {secretName: pg-common-ca}
-volumeMounts:
-  - {name: redis-common-ca, mountPath: /etc/redis-common, readOnly: true}
-  - {name: pg-common-ca, mountPath: /etc/pg-common, readOnly: true}
 replicaCount: 1
 resources:
   limits:
-    cpu: "2"
+    cpu: '2'
     memory: 4Gi
   requests:
     cpu: 250m
     memory: 1Gi
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsGroup: 1000
+  runAsNonRoot: true
+  runAsUser: 1000
+  seccompProfile:
+    type: RuntimeDefault
 serviceAccount:
   automount: false
   create: true
@@ -236,9 +328,21 @@ strategy:
     maxUnavailable: 0
   type: RollingUpdate
 terminationGracePeriodSeconds: 7260
-
-# Exact in-Pod IdP name only, with normal certificate/SNI verification.
-hostAliases:
-  - ip: 10.43.218.222
-    hostnames: [auth.socrat.alchemmist.xyz]
-...
+testsEnabled: false
+volumeMounts:
+- mountPath: /etc/redis-common
+  name: redis-common-ca
+  readOnly: true
+- mountPath: /etc/pg-common
+  name: pg-common-ca
+  readOnly: true
+volumes:
+- name: redis-common-ca
+  secret:
+    items:
+    - key: ca.crt
+      path: ca.crt
+    secretName: redis-common-litellm
+- name: pg-common-ca
+  secret:
+    secretName: pg-common-ca

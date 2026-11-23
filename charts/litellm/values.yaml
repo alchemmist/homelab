@@ -1,3 +1,8 @@
+# Local divergence (homelab fork of BerriAI/litellm-helm): gate the helm-hook
+# test Pod manifests (templates/tests/*) behind an explicit toggle. Upstream
+# renders them unconditionally; Argo CD never runs `helm test`, and the quality
+# gate would otherwise harden throwaway test Pods like production workloads.
+testsEnabled: true
 # Default values for litellm.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.

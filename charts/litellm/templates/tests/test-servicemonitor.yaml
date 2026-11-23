@@ -1,3 +1,4 @@
+{{- if .Values.testsEnabled }}
 {{- if .Values.serviceMonitor.enabled }}
 apiVersion: v1
 kind: Pod
@@ -150,3 +151,4 @@ spec:
   restartPolicy: Never
 {{- end }}
 
+{{- end }}

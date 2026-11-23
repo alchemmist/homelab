@@ -1,0 +1,13 @@
+version: 1
+entries:
+  # LiteLLM proxy env-only configuration contract: the pinned upstream image
+  # consumes all runtime credentials through environment variables referenced
+  # as os.environ/<NAME> in proxy_config (master key, DB URL, redis
+  # coordination URL, model api keys, OIDC GENERIC_* bindings). Full evidence:
+  # docs/quality/litellm-env-contracts.md.
+  - consumer: litellm-0
+    kind: Deployment
+    namespace: llm
+    name: litellm
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/litellm-env-contracts.md
