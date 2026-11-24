@@ -69,7 +69,7 @@ spec:
     spec:
       automountServiceAccountToken: false
       hostAliases: [{ip: 10.43.218.222, hostnames: [auth.socrat.alchemmist.xyz]}]
-      securityContext: {runAsUser: 5050, runAsGroup: 5050, fsGroup: 5050, seccompProfile: {type: RuntimeDefault}}
+      securityContext: {runAsNonRoot: true, runAsUser: 5050, runAsGroup: 5050, fsGroup: 5050, seccompProfile: {type: RuntimeDefault}}
       # SharedServer rows deliberately omit the owner's sslrootcert. libpq then
       # needs its default trust file even when the server uses verify-full.
       initContainers:
@@ -85,14 +85,16 @@ spec:
       containers:
         - name: pgadmin
           image: dpage/pgadmin4:9.19@sha256:3591b3d02910dcd817dec6fcaa681c278ba6966945283dd0ea0042731c330c83
-          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          securityContext: {runAsNonRoot: true, allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
           ports: [{name: http, containerPort: 5050}]
           readinessProbe: {httpGet: {path: /misc/ping, port: http}}
+          livenessProbe: {httpGet: {path: /misc/ping, port: http}, periodSeconds: 20, timeoutSeconds: 5, failureThreshold: 3}
           resources: {requests: {cpu: 50m, memory: 192Mi}, limits: {memory: 768Mi}}
           env:
             - {name: PGADMIN_REPLACE_SERVERS_ON_STARTUP, value: "True"}
             - {name: PGADMIN_LISTEN_PORT, value: "5050"}
             - {name: PGADMIN_DISABLE_POSTFIX, value: "1"}
+            - {name: PGADMIN_CUSTOM_CONFIG_DISTRO_FILE, value: /tmp/config_distro.py}
             - {name: PGADMIN_DEFAULT_EMAIL, value: pgadmin-bootstrap@alchemmist.xyz}
             - {name: PGADMIN_DEFAULT_PASSWORD, valueFrom: {secretKeyRef: {name: pgadmin-bootstrap, key: password}}}
           volumeMounts:
@@ -104,6 +106,7 @@ spec:
             - {name: browser-auth, mountPath: /browser-auth, readOnly: true}
             - {name: cas, mountPath: /cnpg, readOnly: true}
             - {name: browser-trust, mountPath: /home/pgadmin/.postgresql, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
       volumes:
         - name: oidc
           secret:
@@ -111,6 +114,7 @@ spec:
             defaultMode: 288  # 0440, fsGroup 5050
             items: [{key: client-secret, path: client-secret}]
         - {name: browser-trust, emptyDir: {}}
+        - {name: tmp, emptyDir: {sizeLimit: 64Mi}}
         - {name: state, persistentVolumeClaim: {claimName: pgadmin-state}}
         - {name: config, configMap: {name: pgadmin-config-browser-v3}}
         - name: browser-auth

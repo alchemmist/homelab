@@ -1,0 +1,55 @@
+version: 1
+entries:
+  # CNPG instance pods and operator-managed prometheus are runtime-created; the
+  # policies select them correctly in the live cluster. Evidence:
+  # docs/quality/postgres-platform-contracts.md.
+  - consumer: postgres-platform-0
+    kind: NetworkPolicy
+    namespace: postgres
+    name: pg-common-ingress
+    checks: [dangling-networkpolicy, dangling-networkpolicypeer-podselector]
+    evidence: docs/quality/postgres-platform-contracts.md
+  - consumer: postgres-platform-0
+    kind: NetworkPolicy
+    namespace: postgres
+    name: pg-critical-ingress
+    checks: [dangling-networkpolicy, dangling-networkpolicypeer-podselector]
+    evidence: docs/quality/postgres-platform-contracts.md
+  - consumer: postgres-platform-0
+    kind: NetworkPolicy
+    namespace: postgres
+    name: pg-internal-ingress
+    checks: [dangling-networkpolicy, dangling-networkpolicypeer-podselector]
+    evidence: docs/quality/postgres-platform-contracts.md
+  - consumer: postgres-platform-0
+    kind: NetworkPolicy
+    namespace: postgres
+    name: pg-common-writer-service-probes
+    checks: [dangling-networkpolicy]
+    evidence: docs/quality/postgres-platform-contracts.md
+  - consumer: postgres-platform-0
+    kind: NetworkPolicy
+    namespace: postgres
+    name: pgadmin-database-access
+    checks: [dangling-networkpolicy]
+    evidence: docs/quality/postgres-platform-contracts.md
+  # Primary metrics Services scrape the runtime CNPG primary instance.
+  - consumer: postgres-platform-0
+    kind: Service
+    namespace: postgres
+    name: pg-common-primary-metrics
+    checks: [dangling-service]
+    evidence: docs/quality/postgres-platform-contracts.md
+  - consumer: postgres-platform-0
+    kind: Service
+    namespace: postgres
+    name: pg-critical-primary-metrics
+    checks: [dangling-service]
+    evidence: docs/quality/postgres-platform-contracts.md
+  # pgAdmin bootstrap password is env-only wiring from an out-of-band Secret.
+  - consumer: postgres-platform-0
+    kind: Deployment
+    namespace: postgres
+    name: pgadmin
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/postgres-platform-contracts.md
