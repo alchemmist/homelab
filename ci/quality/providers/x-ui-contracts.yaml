@@ -1,0 +1,12 @@
+version: 1
+entries:
+  # Host-network VPN gateway: root + NET_RAW/NET_ADMIN for iptables/fail2ban and
+  # the xray data plane, writable image filesystem for entrypoint-generated
+  # configuration/logs, and persistent host configuration/certificate stores.
+  # Evidence: docs/quality/x-ui-contracts.md.
+  - consumer: x-ui-0
+    kind: Deployment
+    namespace: x-ui
+    name: x-ui
+    checks: [host-network, run-as-non-root, drop-net-raw-capability, writable-host-mount, no-read-only-root-fs]
+    evidence: docs/quality/x-ui-contracts.md
