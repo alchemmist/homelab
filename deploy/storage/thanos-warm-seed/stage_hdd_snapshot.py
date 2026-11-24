@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, "/scripts")
-from hour_copy import Bucket  # noqa: E402
+from hour_copy import Bucket
 
 
 class LimitedWriter:
