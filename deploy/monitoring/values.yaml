@@ -62,7 +62,7 @@ kubelet:
           (192\.168\.0\.(23|24)|10\.250\.0\.5):10250;(apiserver|etcd|scheduler|workqueue|kubeproxy)_.*
       - action: drop
         sourceLabels: [instance, __name__]
-        regex: 10\.250\.0\.41:10250;(apiserver|etcd)_request_duration_seconds_(bucket|count|sum)
+        regex: 10\.250\.0\.41:10250;(apiserver|etcd)_request_duration_seconds_count
 prometheus:
   prometheusSpec:
     replicas: 1

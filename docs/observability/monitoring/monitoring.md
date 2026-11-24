@@ -245,4 +245,4 @@ warning about hypervisor CPU contention; it does not fix the hypervisor or chang
 host resources. Alert name, severity and graph routing remain unchanged; no
 silence or restart. Native regression: `python3 tests/test_socrat4_steal.py`.
 
-On socrat-5 the kubelet `/metrics` endpoint also exports the API and etcd request duration histograms. Keep those two families on `:6443` only: the 150 etcd and 116 API counter label sets matched the kubelet copy, with matching 30-minute increases to within 0.04%. This filter does not change retention or the hourly archive.
+On socrat-5 the kubelet `/metrics` endpoint also exports the API and etcd request duration histograms. Keep only the duplicated `_count` series on `:6443` (kubelet exports 24 bucket boundaries versus 10 on the API target; preserve the full histogram buckets): the 150 etcd and 116 API counter label sets matched the kubelet copy, with matching 30-minute increases to within 0.04%. This filter does not change retention or the hourly archive.

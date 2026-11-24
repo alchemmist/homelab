@@ -414,6 +414,6 @@ kube-prometheus-stack:
             - instance
             - __name__
         - action: drop
-          regex: 10\.250\.0\.41:10250;(apiserver|etcd)_request_duration_seconds_(bucket|count|sum)
+          regex: 10\.250\.0\.41:10250;(apiserver|etcd)_request_duration_seconds_count
           sourceLabels: [instance, __name__]
 ...
