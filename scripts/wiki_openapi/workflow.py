@@ -119,16 +119,12 @@ def render_page(after: object, bot: PageBot) -> str:
         return page_ok(target.read_text())
 
 
-def _check_stage(
-    payload: Mapping[str, object], bot: PageBot
-) -> list[Mapping[str, object]]:
+def _check_stage(payload: Mapping[str, object], bot: PageBot) -> list[Mapping[str, object]]:
     """Report the before/after SHAs when a main-branch push touched the spec."""
     event = payload.get("body", payload)
     if not isinstance(event, dict) or event.get("ref") != "refs/heads/main":
         return []
-    if not spec_changed(
-        event, bot.files(event.get("before", ""), event.get("after", ""))
-    ):
+    if not spec_changed(event, bot.files(event.get("before", ""), event.get("after", ""))):
         return []
     return [{"before": event["before"], "after": event["after"]}]
 
@@ -204,9 +200,7 @@ def stage(
     if name == "render":
         return [{"after": after, "markdown": render_page(after, bot)}]
     homelab = homelab or Homelab(
-        Path(os.environ.get("GITHUB_TOKEN_FILE", "/var/run/github/token"))
-        .read_text()
-        .strip()
+        Path(os.environ.get("GITHUB_TOKEN_FILE", "/var/run/github/token")).read_text().strip()
     )
     if name == "create-pr":
         return _create_pr_stage(payload, homelab, write=write)

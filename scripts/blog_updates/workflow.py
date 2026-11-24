@@ -25,9 +25,7 @@ from .core import (
 type Model = Callable[[str, object], object]
 
 
-def context_for(
-    event: PushEvent, github: GitHub
-) -> tuple[Context, Comparison, str] | None:
+def context_for(event: PushEvent, github: GitHub) -> tuple[Context, Comparison, str] | None:
     """Capture the push's compare, updates snapshot and model context."""
     if not validate_event(event):
         return None
@@ -98,9 +96,7 @@ def model(system: str, data: object) -> object:
         return json.loads(json.load(r)["choices"][0]["message"]["content"])
 
 
-def checked_model(
-    call_model: Model, prompt: str, data: object, context: Context
-) -> Decision:
+def checked_model(call_model: Model, prompt: str, data: object, context: Context) -> Decision:
     """Retry a rejected model answer once, then fail closed."""
     retry = False
     while True:
@@ -154,9 +150,7 @@ def _generate_stage(
         call_model, prompt, {"context": context, "selected": selection}, context
     )
     allowed = {
-        source_path
-        for entry in selection["entries"]
-        for source_path in entry["source_paths"]
+        source_path for entry in selection["entries"] for source_path in entry["source_paths"]
     }
     if any(
         source_path not in allowed

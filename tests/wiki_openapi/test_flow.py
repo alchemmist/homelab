@@ -156,9 +156,7 @@ class Flow(unittest.TestCase):
             assert first["number"] == OLDER_PR_NUMBER
             return {"close": [OLDER_PR_NUMBER, CREATED_PR_NUMBER, UNLISTED_PR_NUMBER]}
 
-        done = stage(
-            "close-older", created[0], homelab=lab, call_model=decide, write=True
-        )
+        done = stage("close-older", created[0], homelab=lab, call_model=decide, write=True)
         assert lab.closed == [(OLDER_PR_NUMBER, CREATED_PR_NUMBER)]
         assert done[0]["closed"] == [OLDER_PR_NUMBER]
 

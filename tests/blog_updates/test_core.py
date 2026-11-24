@@ -24,9 +24,7 @@ class EngineTests(unittest.TestCase):
     def test_missing_diff_fails(self) -> None:
         """Reject a text change that arrives without a diff."""
         with pytest.raises(e.UnsafeInputError):
-            e.prepare(
-                {"files": [{"filename": "site/layouts/index.html", "changes": 5}]}, ""
-            )
+            e.prepare({"files": [{"filename": "site/layouts/index.html", "changes": 5}]}, "")
 
     def test_large_file_list_fails(self) -> None:
         """Reject a file list above the fail-closed limit."""

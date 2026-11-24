@@ -125,9 +125,7 @@ class Homelab:
 
     def api(self, method: str, path: str, body: object = None) -> object:
         """Call the GitHub API on the pinned repository."""
-        return _request(
-            f"https://api.github.com/repos/{HOME}/{path}", self.token, method, body
-        )
+        return _request(f"https://api.github.com/repos/{HOME}/{path}", self.token, method, body)
 
     def read_page(self, ref: str = "main") -> tuple[str, str] | tuple[None, None]:
         """Read the generated wiki page content at the given ref."""
@@ -144,8 +142,7 @@ class Homelab:
         branch = branch_for(after)
         existing = cast(
             "list[_PullRequest]",
-            self.api("GET", f"pulls?state=open&head=alchemmist:{branch}&per_page=20")
-            or [],
+            self.api("GET", f"pulls?state=open&head=alchemmist:{branch}&per_page=20") or [],
         )
         if existing:
             return {
@@ -194,8 +191,7 @@ class Homelab:
         while page <= MAX_PR_PAGES:
             batch = cast(
                 "list[_PullRequest]",
-                self.api("GET", f"pulls?state=open&per_page={PR_PAGE_SIZE}&page={page}")
-                or [],
+                self.api("GET", f"pulls?state=open&per_page={PR_PAGE_SIZE}&page={page}") or [],
             )
             if not batch:
                 break

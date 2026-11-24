@@ -31,9 +31,7 @@ def run(
     prompt = Path(
         os.environ.get(
             "PROMPT_FILE",
-            str(
-                Path(__file__).absolute().parents[2] / "docs/n8n/blog-updates/prompt.md"
-            ),
+            str(Path(__file__).absolute().parents[2] / "docs/n8n/blog-updates/prompt.md"),
         )
     ).read_text()
     req = urllib.request.Request(
@@ -60,9 +58,7 @@ def run(
     )
     with urllib.request.urlopen(req, timeout=240) as response:
         answer = json.load(response)
-    decision = validate_decision(
-        json.loads(answer["choices"][0]["message"]["content"]), context
-    )
+    decision = validate_decision(json.loads(answer["choices"][0]["message"]["content"]), context)
     if not decision["should_update"]:
         return {"status": "skipped", "decision": decision}
     # Use the analyzed head commit's timestamp, never the model's invented date.

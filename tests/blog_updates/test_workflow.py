@@ -1,12 +1,15 @@
 """Tests for the blog updates stage helpers module."""
 
 import unittest
+from typing import TYPE_CHECKING
 
 import pytest
 
-from scripts.blog_updates import core as e
 from scripts.blog_updates.core import UnsafeInputError
 from scripts.blog_updates.workflow import checked_model
+
+if TYPE_CHECKING:
+    from scripts.blog_updates import core as e
 
 # checked_model retries a rejected model answer once, so a bad answer is seen twice.
 MODEL_CALL_CEILING = 2

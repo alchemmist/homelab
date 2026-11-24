@@ -35,9 +35,7 @@ def spec_changed(event: object, files: Iterable[object] | None) -> bool:
     before = event.get("before", "")
     if before != "0" * 40:
         require_sha(before)
-    return any(
-        isinstance(item, dict) and item.get("filename") == SPEC for item in files or []
-    )
+    return any(isinstance(item, dict) and item.get("filename") == SPEC for item in files or [])
 
 
 def branch_for(sha: object) -> str:
@@ -50,10 +48,7 @@ def page_ok(markdown: object) -> str:
     if not isinstance(markdown, str) or len(markdown) > MAX_PAGE_CHARS:
         msg = "Rendered page is missing or too large"
         raise UnsafeInputError(msg)
-    if (
-        not markdown.startswith("---\n")
-        or 'title: "Socrat Bot"' not in markdown.split("---", 2)[1]
-    ):
+    if not markdown.startswith("---\n") or 'title: "Socrat Bot"' not in markdown.split("---", 2)[1]:
         msg = "Rendered page lost its Socrat Bot front matter"
         raise UnsafeInputError(msg)
     if "POST /v1/messages" not in markdown:

@@ -66,9 +66,7 @@ def _sign_app_jwt(now: int) -> str:
         ).encode()
     )
     payload = header + "." + claims
-    signature_path = Path(
-        tempfile.mkstemp(prefix="wiki-broker-sig-", dir=SIGNATURE_DIR)[1]
-    )
+    signature_path = Path(tempfile.mkstemp(prefix="wiki-broker-sig-", dir=SIGNATURE_DIR)[1])
     try:
         subprocess.run(
             [
@@ -108,9 +106,7 @@ def request(
         method=method,
         headers={
             "Authorization": "Bearer " + token,
-            "Accept": "application/json"
-            if method == "PATCH"
-            else "application/vnd.github+json",
+            "Accept": "application/json" if method == "PATCH" else "application/vnd.github+json",
             "Content-Type": "application/merge-patch+json"
             if method == "PATCH"
             else "application/json",
@@ -133,9 +129,7 @@ def main() -> None:
     PHASE = "installation"
     installation = cast(
         "_Installation",
-        request(
-            "GET", "https://api.github.com/repos/alchemmist/homelab/installation", auth
-        ),
+        request("GET", "https://api.github.com/repos/alchemmist/homelab/installation", auth),
     )
     permissions = installation.get("permissions") or {}
     if (
@@ -181,9 +175,7 @@ def main() -> None:
         (root / "token").read_text(),
         {
             "data": {"token": base64.b64encode(grant["token"].encode()).decode()},
-            "metadata": {
-                "annotations": {"socrat.alchemmist.xyz/expires-at": grant["expires_at"]}
-            },
+            "metadata": {"annotations": {"socrat.alchemmist.xyz/expires-at": grant["expires_at"]}},
         },
         context,
     )
@@ -206,11 +198,7 @@ if __name__ == "__main__":
             phrase in detail.lower() for phrase in JWT_ERROR_PHRASES
         ):
             raise  # a failed openssl call unrelated to signing is a real bug
-        code = (
-            str(exc)
-            if isinstance(exc, (BrokerFailureError, ValueError))
-            else type(exc).__name__
-        )
+        code = str(exc) if isinstance(exc, (BrokerFailureError, ValueError)) else type(exc).__name__
         print(
             json.dumps(
                 {

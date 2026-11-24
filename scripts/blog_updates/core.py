@@ -127,8 +127,7 @@ def prepare(compare: Comparison, updates: str) -> Context | None:
     relevant = [
         f
         for f in files
-        if f["filename"] != UPDATES
-        and not f["filename"].startswith((".github/", "remark42/"))
+        if f["filename"] != UPDATES and not f["filename"].startswith((".github/", "remark42/"))
     ]
     if not relevant:
         return None
@@ -155,9 +154,7 @@ def prepare(compare: Comparison, updates: str) -> Context | None:
         if "patch" not in f and f.get("changes", 0) and not binary_asset:
             raise UnsafeInputError("Missing text diff: " + name)
         if binary_asset:
-            candidates.append(
-                {"filename": name, "status": f.get("status"), "binary_asset": True}
-            )
+            candidates.append({"filename": name, "status": f.get("status"), "binary_asset": True})
             continue
         fields: Mapping[str, object] = f
         candidates.append(
@@ -240,14 +237,11 @@ def render(updates: str, entries: Sequence[RenderedEntry], timestamp: str) -> st
     if stamp.tzinfo is None:
         msg = "Timestamp must include timezone"
         raise UnsafeInputError(msg)
-    display_stamp = stamp.astimezone(dt.timezone(dt.timedelta(hours=3))).strftime(
-        "%Y-%m-%d %H:%M"
-    )
+    display_stamp = stamp.astimezone(dt.timezone(dt.timedelta(hours=3))).strftime("%Y-%m-%d %H:%M")
     lines = [f"- [ ] *\\[{display_stamp}\\]* {e['text']}" for e in entries]
     # Prevent exact duplicate descriptions, including manually added ones.
     existing = {
-        re.sub(r"^- \[[ x]\] \*\\\[.*?\\\]\*\s*", "", line).strip()
-        for line in updates.splitlines()
+        re.sub(r"^- \[[ x]\] \*\\\[.*?\\\]\*\s*", "", line).strip() for line in updates.splitlines()
     }
     lines = [
         line

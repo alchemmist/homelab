@@ -1,7 +1,7 @@
 """Tests for the blog updates GitHub client module."""
 
 import unittest
-from typing import override, cast
+from typing import cast, override
 
 import pytest
 
