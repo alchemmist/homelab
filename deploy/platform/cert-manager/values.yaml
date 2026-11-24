@@ -10,7 +10,8 @@ affinity:
               operator: In
               values:
                 - socrat-0
-                - socrat-3
+                - socrat-1
+                - socrat-5
   podAntiAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
       - labelSelector:
@@ -31,7 +32,8 @@ cainjector:
                 operator: In
                 values:
                   - socrat-0
-                  - socrat-3
+                  - socrat-1
+                  - socrat-5
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         - labelSelector:
@@ -89,7 +91,8 @@ webhook:
                 operator: In
                 values:
                   - socrat-0
-                  - socrat-3
+                  - socrat-1
+                  - socrat-5
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         - labelSelector:

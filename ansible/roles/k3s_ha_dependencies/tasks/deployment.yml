@@ -122,9 +122,10 @@
 
         nodes = sorted(pod['spec']['nodeName'] for pod in ready)
 
-        expected = sorted(json.loads(sys.argv[4]))
+        allowed = set(json.loads(sys.argv[4]))
 
-        assert nodes == expected, (sys.argv[3], nodes, expected)
+        assert len(nodes) == 2 and len(set(nodes)) == 2 and set(nodes) <= allowed, (
+        sys.argv[3], nodes, sorted(allowed))
 
         assert deployment['status'].get('updatedReplicas') == 2, deployment['status']
 
