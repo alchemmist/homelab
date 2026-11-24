@@ -2,8 +2,8 @@
 replicaCount: 1
 image:
   repository: harbor.socrat.alchemmist.xyz/schoolbot/schoolbot
-  tag: unreleased
-  digest: ""
+  tag: 9d5bd21df59848bfd3ed2e9346f11ba92c4dc908
+  digest: sha256:c475e4b986b558c371ea14a47a7323c4d3bb8e6bcbbedaf1145661690e333ee7
   pullPolicy: IfNotPresent
 service:
   port: 80
@@ -23,10 +23,10 @@ cookieSecure: true
 adminUi: false
 updateMode: polling
 timezone: Europe/Moscow
-# CNPG creates role schoolbot and stores it in secret pg-internal-schoolbot
-# in namespace postgres. Copy username and password into schoolbot-env.
-# Percent-encode DATABASE_PASSWORD. Kubernetes inserts it into DATABASE_URL
-# and does not encode reserved characters.
+# The operator creates basic-auth Secret schoolbot-db in namespace postgres.
+# CNPG does not generate this password. Copy username and password into
+# schoolbot-env. Percent-encode DATABASE_PASSWORD: Kubernetes inserts it into
+# DATABASE_URL and does not encode reserved characters.
 database:
   host: pg-internal-rw.postgres.svc.cluster.local
   port: 5432

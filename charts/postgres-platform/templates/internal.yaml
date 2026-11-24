@@ -12,6 +12,11 @@ spec:
         ensure: present
         login: true
         passwordSecret: {name: pgadmin-browser-internal}
+      - name: schoolbot
+        ensure: present
+        login: true
+        comment: schoolbot application
+        passwordSecret: {name: schoolbot-db}
   enableSuperuserAccess: false
   bootstrap:
     initdb:
@@ -26,12 +31,6 @@ spec:
       kubernetes.io/hostname: socrat-5
   resources:
     requests: {cpu: 100m, memory: 256Mi}
-  managed:
-    roles:
-      - name: schoolbot
-        ensure: present
-        login: true
-        comment: schoolbot application
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Database
