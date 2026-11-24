@@ -1,0 +1,44 @@
+version: 1
+entries:
+  # statefulset.kubernetes.io/pod-name is attached to OpenHands runtime pods by
+  # the StatefulSet controller and cannot resolve offline. Evidence:
+  # docs/quality/openhands-contracts.md.
+  - consumer: openhands-0
+    kind: NetworkPolicy
+    namespace: openhands
+    name: automation-postgres-egress
+    checks: [dangling-networkpolicy]
+    evidence: docs/quality/openhands-contracts.md
+  - consumer: openhands-0
+    kind: NetworkPolicy
+    namespace: openhands
+    name: monori-publisher-canvas-out
+    checks: [dangling-networkpolicy]
+    evidence: docs/quality/openhands-contracts.md
+  - consumer: openhands-0
+    kind: NetworkPolicy
+    namespace: openhands
+    name: monori-publisher-canvas-in
+    checks: [dangling-networkpolicypeer-podselector]
+    evidence: docs/quality/openhands-contracts.md
+  # PreSync one-shot backup Job's runtime pod policy.
+  - consumer: openhands-0
+    kind: NetworkPolicy
+    namespace: openhands
+    name: openhands-backup-pre142
+    checks: [dangling-networkpolicy]
+    evidence: docs/quality/openhands-contracts.md
+  # OIDC proxy env-only credentials.
+  - consumer: openhands-0
+    kind: Deployment
+    namespace: identity
+    name: openhands-oidc
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/openhands-contracts.md
+  # Agent-canvas env-only database/encryption/session-key wiring.
+  - consumer: openhands-0
+    kind: StatefulSet
+    namespace: openhands
+    name: openhands
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/openhands-contracts.md

@@ -161,6 +161,7 @@ spec:
               {{- end }}
             {{- end }}
           {{- end }}
+            - {name: tmp, mountPath: /tmp}
           {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
@@ -180,6 +181,7 @@ spec:
       {{- end }}
       {{- if or .Values.unlimitedIterations (and .Values.persistence.enabled .Values.persistence.existingClaim) }}
       volumes:
+        - {name: tmp, emptyDir: {sizeLimit: 256Mi}}
         {{- if .Values.automationPostgres }}
         - {name: pg-ca, configMap: {name: pg-common-ca}}
         {{- end }}

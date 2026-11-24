@@ -1,77 +1,70 @@
----
+automationPostgres: true
+automationPostgresAccess: true
+coldBackup20261119: false
+config:
+  extraEnv:
+  - name: AGENT_CANVAS_ALLOW_LAN_SESSION_KEY
+    value: 'true'
+  - name: AUTOMATION_BASE_URL
+    value: http://127.0.0.1:8000
+  - name: XDG_CONFIG_HOME
+    value: /home/openhands/.openhands/config
+  - name: XDG_CACHE_HOME
+    value: /home/openhands/.openhands/cache
+  - name: XDG_DATA_HOME
+    value: /home/openhands/.openhands/data
 fullnameOverride: openhands
 image:
   repository: ghcr.io/openhands/agent-canvas
   tag: 1.43.0@sha256:bcdbb3fb9610f14eda67f39fc609f162ad8c3c28697d6ff3f4adae55c15c3f1d
-serviceAccount:
-  automountServiceAccountToken: false
-rbac:
+ingress:
   enabled: false
+monoriPublisher: true
 nodeSelector:
   kubernetes.io/hostname: socrat-5
+oidc:
+  enabled: true
+  hostAliases:
+  - hostnames:
+    - auth.socrat.alchemmist.xyz
+    ip: 10.43.218.222
+  image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.6@sha256:01da265f8e371e6d3043b97829e171f3e4d53f9dc3817be15fb4fc29c92fe2a6
+  sessionImage: docker.io/library/redis:8.2-alpine@sha256:da23c2478319ceb4903857d77a2fd7aa5137d9e9d4c8165dafbacedac6403e95
+persistence:
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+  size: 6Gi
+  storageClassName: local-path
+podSecurityContext:
+  fsGroup: 10001
+  runAsGroup: 10001
+  runAsNonRoot: true
+  runAsUser: 10001
+  seccompProfile:
+    type: RuntimeDefault
+rbac:
+  enabled: false
+replicaCount: 1
+resources:
+  limits:
+    cpu: '2'
+    ephemeral-storage: 6Gi
+    memory: 6Gi
+  requests:
+    cpu: 500m
+    ephemeral-storage: 1Gi
+    memory: 1Gi
+retireFailedBackup: true
 securityContext:
   allowPrivilegeEscalation: false
   capabilities:
-    drop: [ALL]
-podSecurityContext:
-  runAsNonRoot: true
-  runAsUser: 10001
-  runAsGroup: 10001
-  fsGroup: 10001
-  seccompProfile:
-    type: RuntimeDefault
-persistence:
-  size: 6Gi
-  storageClassName: local-path
-  annotations:
-    argocd.argoproj.io/sync-options: Prune=false,Delete=false
-resources:
-  requests:
-    cpu: 500m
-    memory: 1Gi
-    ephemeral-storage: 1Gi
-  limits:
-    cpu: "2"
-    memory: 6Gi
-    ephemeral-storage: 6Gi
-ingress:
-  enabled: false
-config:
-  extraEnv:
-    - name: AGENT_CANVAS_ALLOW_LAN_SESSION_KEY
-      value: "true"
-    # Local automation workers need key-authenticated loopback callbacks, not
-    # the public browser OIDC gate. Public UI still uses its same-origin proxy.
-    - name: AUTOMATION_BASE_URL
-      value: http://127.0.0.1:8000
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+serviceAccount:
+  automountServiceAccountToken: false
 statefulSet:
   persistentVolumeClaimRetentionPolicy:
     whenDeleted: Retain
     whenScaled: Retain
-
-# Public route terminates at standard Authentik OIDC, never directly at Canvas.
-oidc:
-  enabled: true
-  # Same existing S5 IdP route as SPI: retain public issuer/SNI/verified TLS,
-  # avoid the unreachable split-DNS HA VIP; no global/public DNS changes.
-  hostAliases:
-    - ip: 10.43.218.222  # Existing traefik.kube-system Service clusterIP.
-      hostnames: [auth.socrat.alchemmist.xyz]
-  image:
-    quay.io/oauth2-proxy/oauth2-proxy:v7.15.6@sha256:01da265f8e371e6d3043b97829e171f3e4d53f9dc3817be15fb4fc29c92fe2a6
-
-  sessionImage:
-    docker.io/library/redis:8.2-alpine@sha256:da23c2478319ceb4903857d77a2fd7aa5137d9e9d4c8165dafbacedac6403e95
-
-# QA-only publisher. Mutation reports and issue-509 writes are retired.
-monoriPublisher: true
-
-# Owner explicitly requested no iteration-count stop for main agents, task workers or goals.
 unlimitedIterations: true
-
-replicaCount: 1
-automationPostgres: true
-automationPostgresAccess: true
-coldBackup20261119: false
-retireFailedBackup: true
-...
