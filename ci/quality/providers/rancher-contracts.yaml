@@ -1,0 +1,29 @@
+version: 1
+entries:
+  # Rancher cluster-manager server: root + writable fs (entrypoint restores
+  # catalog git repos and k3s state), binds :80/:443, and requires cluster-admin
+  # on the local cluster it manages (upstream design). Evidence:
+  # docs/quality/rancher-contracts.md.
+  - consumer: rancher-0
+    kind: Deployment
+    namespace: cattle-system
+    name: rancher
+    checks: [run-as-non-root, no-read-only-root-fs, privileged-ports]
+    evidence: docs/quality/rancher-contracts.md
+  # Rancher requires cluster-admin on the cluster it manages (the chart's own
+  # clusterRoleBinding). Owner-reviewed exception for a cluster manager.
+  - consumer: rancher-0
+    kind: ClusterRoleBinding
+    namespace: ""
+    name: rancher
+    checks: [cluster-admin-role-binding]
+    evidence: docs/quality/rancher-contracts.md
+  # Rancher teardown RBAC (post-delete Job): delete secrets/services/etc and
+  # create cleanup jobs when uninstalling Rancher. Least privilege for an
+  # uninstaller. Evidence: docs/quality/rancher-contracts.md.
+  - consumer: rancher-0
+    kind: ClusterRoleBinding
+    namespace: ""
+    name: rancher-post-delete
+    checks: [access-to-secrets, access-to-create-pods]
+    evidence: docs/quality/rancher-contracts.md

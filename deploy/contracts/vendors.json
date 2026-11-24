@@ -36,15 +36,16 @@
         "templates/ingate/ingress.yaml": "47469881ccd47e26261ea2be26a3102f5deef779b68bc32a27a14fe25574cb04",
         "templates/ingate/issuer-letsEncrypt.yaml": "177e514cefc6b5e459d26a0d563b4a6352c450c02fa36ea9034fc1fa778b608f",
         "templates/ingate/issuer-rancher.yaml": "a8a1c376510f46d2714757f1e8ee61fa1c056b473e572f5fa63804cc4ca7d759",
+        "templates/networkpolicy.yaml": "8ddf78b351116f585b9413327e023320f27b40bf27dcf1dd89303ee7963b6b1d",
         "templates/post-delete-hook-cluster-role-binding.yaml": "282e3e800c627b6a2620feefdbeb4e65bb9d30860742e871b293f93dd9c89731",
         "templates/post-delete-hook-cluster-role.yaml": "3eec506ee45d7bb6b205f3015809c53211419533798b40b09da064f9175922ec",
         "templates/post-delete-hook-config-map.yaml": "14e59ceba5f06d4dd02771cc42606c420af658144efbbf41dc6a1cd42766eadd",
-        "templates/post-delete-hook-job.yaml": "fad8db27e38de62538cb208c54540d5ee387b7f1c6a921a2ab26ac0934490cf5",
+        "templates/post-delete-hook-job.yaml": "3557698a7950cdf1f89c27af64897b84089c378abb9391782f7152f15eb945a8",
         "templates/post-delete-hook-service-account.yaml": "e753bf054f014022169f79cea379c204e79bc29dbfaa8d87d216ab3edf74095b",
         "templates/pre-upgrade-hook-cluster-role-binding.yaml": "17b1af7bbcb455d9c79a16cae3d6f98cd8aa70b6f46757b8f526a6d0ea095389",
         "templates/pre-upgrade-hook-cluster-role.yaml": "55a045226ac9fb6c3e9c76b462254caf44185ffc498968b2491b9101c7375560",
         "templates/pre-upgrade-hook-config-map.yaml": "6a384f24f17dd371d7ef9fcce3e95397ce1dcea109b26ce7b5350f6a33990879",
-        "templates/pre-upgrade-hook-job.yaml": "03b8ff789ba754e94ad23f8682c6ecac6427066f6c6c1a3578efedc1b06d3893",
+        "templates/pre-upgrade-hook-job.yaml": "a87394c30d83d65302ea13a18c960abd722ab2a9dbb441ee5dafc5da0e7c3e54",
         "templates/pre-upgrade-hook-service-account.yaml": "2eb9299575461a905015fd5ca33bcb7766cdd4a0233ed05073467ecc0c8a95a5",
         "templates/priorityClass.yaml": "95d49f9dc882222220803a221c5f7f35d520de362882c4b3d19d270e179ae524",
         "templates/pvc.yaml": "3a3f6514a7c6ae857e92fe48b162bec3203456143e04d69d1928605d8d81e3c4",
@@ -55,7 +56,7 @@
         "values.yaml": "f3e512dbaf9a08c562bac15c0ac78d837f264d0e9a71f6469e489390acf5892c"
       },
       "path": "charts/rancher",
-      "provenanceNote": "Original package hashes and reversible local hostAliases patch verified separately by test_vm105_management.py. This inventory also detects extra files not listed in the upstream manifest.",
+      "provenanceNote": "Original package hashes and reversible local hostAliases patch verified separately by test_vm105_management.py. This inventory also detects extra files not listed in the upstream manifest. Sanctioned divergence: pre/post-delete hook Jobs run as non-root (uid 1000) with RO rootfs + resources + ttl, plus a release NetworkPolicy; the hooks are pure kubectl orchestration (scripts contain no host/root ops). Documented in docs/quality/rancher-contracts.md.",
       "reviewedCommit": "c621952be41db352e6928701f61947e0260cef67"
     },
     {
