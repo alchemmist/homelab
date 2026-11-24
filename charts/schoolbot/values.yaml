@@ -1,0 +1,40 @@
+---
+replicaCount: 1
+image:
+  repository: harbor.socrat.alchemmist.xyz/schoolbot/schoolbot
+  tag: 9d5bd21df59848bfd3ed2e9346f11ba92c4dc908
+  digest: sha256:c475e4b986b558c371ea14a47a7323c4d3bb8e6bcbbedaf1145661690e333ee7
+  pullPolicy: IfNotPresent
+service:
+  port: 80
+  targetPort: 8000
+ingress:
+  className: traefik
+  host: bot.sch1357.ru
+  tlsSecretName: schoolbot-tls
+  clusterIssuer: letsencrypt-http01
+resources:
+  requests: {cpu: 100m, memory: 256Mi}
+  limits: {memory: 768Mi}
+imagePullSecrets:
+  - schoolbot-harbor-pull
+publicBaseUrl: https://bot.sch1357.ru
+cookieSecure: true
+adminUi: false
+updateMode: polling
+timezone: Europe/Moscow
+# The operator creates basic-auth Secret schoolbot-db in namespace postgres.
+# CNPG does not generate this password. Copy username and password into
+# schoolbot-env. Percent-encode DATABASE_PASSWORD: Kubernetes inserts it into
+# DATABASE_URL and does not encode reserved characters.
+database:
+  host: pg-internal-rw.postgres.svc.cluster.local
+  port: 5432
+  name: schoolbot
+envSecretName: schoolbot-env
+podSecurity:
+  user: 10001
+  group: 10001
+attachments:
+  size: 5Gi
+...

@@ -1,0 +1,8 @@
+---
+apiVersion: v2
+name: schoolbot
+description: School MAX bot
+version: 0.1.0
+appVersion: unreleased
+type: application
+...

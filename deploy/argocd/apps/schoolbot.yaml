@@ -1,0 +1,28 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: schoolbot
+  namespace: argocd
+spec:
+  project: default
+  revisionHistoryLimit: 10
+  source:
+    repoURL: https://github.com/alchemmist/homelab.git
+    targetRevision: main
+    path: charts/schoolbot
+    helm:
+      releaseName: schoolbot
+      valueFiles:
+        - ../../deploy/schoolbot/values.yaml
+      parameters: []
+  destination:
+    namespace: schoolbot
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+...
