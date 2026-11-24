@@ -37,6 +37,8 @@ SSH на ноды для обычного релиза не нужен. Подк
 
 ## 1. Подготовить чарт и values в homelab
 
+**Для первого выката откройте pull request в ветку `main` репозитория [alchemmist/homelab](https://github.com/alchemmist/homelab), а не в репозиторий приложения.** В один PR включите Helm-чарт приложения (`charts/<app>/`), настройки для кластера (`deploy/<app>/values.yaml`), манифест Argo CD Application (`deploy/argocd/apps/<app>.yaml`) и запись в `deploy/mcp/service-audit.json`. Отправьте ссылку администратору кластера на ревью. Workflow сборки образа, напротив, добавляется в репозиторий самого приложения.
+
 Создайте:
 
 ```text
