@@ -194,7 +194,34 @@ def positive_setting(name: str, default: str) -> float:
     return value
 
 
+def _serve_health(port: int) -> None:
+    """Expose an unauthenticated process-liveness endpoint for kube probes."""
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    class _Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path in ("/healthz", "/health/ready", "/health/live"):
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                self.wfile.write(b"ok\n")
+            else:
+                self.send_error(404)
+
+        def log_message(self, *args):
+            return
+
+    HTTPServer(("0.0.0.0", port), _Handler).serve_forever()
+
+
 def main() -> Never:
+    import threading
+
+    threading.Thread(
+        target=_serve_health,
+        args=(int(os.environ.get("HEALTH_PORT", "8080")),),
+        daemon=True,
+    ).start()
     handler = logging.StreamHandler()
     handler.setFormatter(JsonFormatter())
     logging.basicConfig(level=logging.INFO, handlers=[handler])

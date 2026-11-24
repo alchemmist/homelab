@@ -51,6 +51,12 @@ spec:
       {{- end }}
       automountServiceAccountToken: false
       enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.nodeName }}
       {{- if and .Values.migrationStorage.enabled (eq .Values.claimName .Values.migrationStorage.name) }}
@@ -58,6 +64,16 @@ spec:
         - name: require-verified-migration
           image: {{ .Values.image | quote }}
           command: [python, -c]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile: {type: RuntimeDefault}
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 5m, memory: 32Mi}
+            limits: {cpu: 500m, memory: 128Mi}
           args:
             - "import pathlib,json; p=pathlib.Path('/data'); assert json.loads((p/'.homelab-vm105-migration-verified.json').read_text())['verified']; assert (p/'AGENTS.md').stat().st_size>0"
           volumeMounts:
@@ -67,6 +83,14 @@ spec:
         - name: open-terminal
           image: {{ .Values.image | quote }}
           imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile: {type: RuntimeDefault}
+            capabilities: {drop: [ALL]}
           env:
             - name: OPEN_TERMINAL_PACKAGES
               value: {{ join " " (.Values.systemPackages | default list) | quote }}
@@ -98,6 +122,7 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /home/user
+            - {name: tmp, mountPath: /tmp}
             {{- if .Values.browserCleanup.enabled }}
             - name: browser-cleanup
               mountPath: /usr/local/bin/homelab-browser-test
@@ -115,12 +140,19 @@ spec:
               value: {{ .Values.browserCleanup.pollSeconds | quote }}
             - name: BROWSER_GRACE_SECONDS
               value: {{ .Values.browserCleanup.graceSeconds | quote }}
+            - {name: HEALTH_PORT, value: "8080"}
           securityContext:
+            runAsNonRoot: true
             runAsUser: 1000
             runAsGroup: 1000
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile: {type: RuntimeDefault}
             capabilities:
               drop: [ALL]
+          ports: [{name: health, containerPort: 8080}]
+          livenessProbe: {httpGet: {path: /healthz, port: health}, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 3}
+          readinessProbe: {httpGet: {path: /health/ready, port: health}, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3}
           resources:
             requests:
               cpu: 5m
@@ -140,6 +172,7 @@ spec:
             name: open-terminal-browser-cleanup
             defaultMode: 0555
         {{- end }}
+        - {name: tmp, emptyDir: {sizeLimit: 512Mi}}
         - name: data
           persistentVolumeClaim:
             claimName: {{ .Values.claimName }}

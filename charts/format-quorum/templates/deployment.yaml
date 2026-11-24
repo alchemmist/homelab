@@ -19,6 +19,12 @@ spec:
     spec:
       serviceAccountName: {{ $.Release.Name | quote }}
       automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}
       {{- if .Values.imagePullSecrets }}
@@ -27,11 +33,36 @@ spec:
         - name: {{ . }}
         {{- end }}
       {{- end }}
-      {{- if .Values.requireExistingData }}
       initContainers:
+        - name: seed-configs
+          image: {{ .Values.image.repository }}@{{ .Values.image.digest }}
+          command: [/bin/sh, -ec]
+          args: ['cp -a /app/configs/. /config-store/']
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile: {type: RuntimeDefault}
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 5m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+          volumeMounts: [{name: config-store, mountPath: /config-store}]
+      {{- if .Values.requireExistingData }}
         - name: require-existing-format-data
           image: {{ .Values.image.repository }}@{{ .Values.image.digest }}
           command: [/bin/sh, -ec]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile: {type: RuntimeDefault}
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 5m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}
           args:
             - 'for p in /app/clang_versions /app/tests /app/config_history; do test -s "$p/.homelab-handoff-ready" || exit 1; done'
           volumeMounts:
@@ -49,6 +80,14 @@ spec:
           {{- end }}
           image: {{ $image | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile: {type: RuntimeDefault}
+            capabilities: {drop: [ALL]}
           ports:
             - containerPort: {{ .Values.service.targetPort }}
           env:
@@ -61,9 +100,15 @@ spec:
             - name: {{ $name }}
               mountPath: {{ $cfg.mountPath }}
 {{- end }}
+            - {name: config-store, mountPath: /app/configs}
+            - {name: tmp, mountPath: /tmp}
+          readinessProbe: {httpGet: {path: /, port: {{ .Values.service.targetPort }}}, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3}
+          livenessProbe: {httpGet: {path: /, port: {{ .Values.service.targetPort }}}, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 3}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
       volumes:
+        - {name: config-store, emptyDir: {sizeLimit: 64Mi}}
+        - {name: tmp, emptyDir: {sizeLimit: 64Mi}}
 {{- range $name, $cfg := .Values.persistence }}
         - name: {{ $name }}
           persistentVolumeClaim:
