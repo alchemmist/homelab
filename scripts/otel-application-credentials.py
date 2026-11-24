@@ -26,6 +26,8 @@ DESTINATIONS = {
     "lms": "lms",
     "wishlist": "wishlist",
 }
+SHA_ANNOTATION = "homelab.alchemmist.xyz/client-certificate-sha256"
+HTTP2_SETTINGS_ERROR = "Native authenticated HTTP2 SETTINGS were not received"
 OBSERVED_PHASE = {"stage": "bootstrap", "application": None}
 
 
@@ -131,7 +133,7 @@ def run():
                             )
                         header += chunk
                     if header[3] != 4:
-                        raise ValueError("Native authenticated HTTP2 SETTINGS were not received")
+                        raise ValueError(HTTP2_SETTINGS_ERROR)
         verified.append(app)
         certificate_hash = hashlib.sha256(base64.b64decode(data["tls.crt"])).hexdigest()
         OBSERVED_PHASE["stage"] = "mirror-named-client-leaf"
@@ -147,11 +149,7 @@ def run():
                 entry["secret"],
                 {
                     "data": data,
-                    "metadata": {
-                        "annotations": {
-                            "homelab.alchemmist.xyz/client-certificate-sha256": certificate_hash
-                        }
-                    },
+                    "metadata": {"annotations": {SHA_ANNOTATION: certificate_hash}},
                 },
             )
             updated.append(app)
@@ -161,7 +159,7 @@ def run():
             template = cast("dict[str, object]", spec["template"])
             metadata = cast("dict[str, object]", template.get("metadata", {}))
             annotations = cast("dict[str, object]", metadata.get("annotations", {}))
-            annotation = annotations.get("homelab.alchemmist.xyz/client-certificate-sha256")
+            annotation = annotations.get(SHA_ANNOTATION)
             if annotation != certificate_hash:
                 api(
                     entry["namespace"],
@@ -172,7 +170,7 @@ def run():
                             "template": {
                                 "metadata": {
                                     "annotations": {
-                                        "homelab.alchemmist.xyz/client-certificate-sha256": certificate_hash
+                                        SHA_ANNOTATION: certificate_hash,
                                     }
                                 }
                             }
