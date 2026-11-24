@@ -87,6 +87,12 @@ spec:
             summary: socrat-0 has less than 80 GiB free.
             description: The filesystem on socrat-0 has been under 80 GiB free for 15m. This is a warning. Raw blocks are not deleted because the disk is low.
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/socrat-0'
+        # Whole workshop filesystem, not a PVC growth estimate. No series if flat/growing free space.
+        - record: socrat:workshop_filesystem_days_until_50gib
+          expr: |
+            max(clamp_min(node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype=~"ext4|xfs"} - 50 * 1024^3, 0)
+              / (-deriv(node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype=~"ext4|xfs"}[24h]) > 0)
+              * on(instance) group_left(nodename) node_uname_info{job="node-exporter",nodename="socrat-1"}) / 86400
         - alert: ThanosWarmWorkshopDiskLow
           expr: |
             max(node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype=~"ext4|xfs"}

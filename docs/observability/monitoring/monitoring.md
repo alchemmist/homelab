@@ -246,3 +246,9 @@ host resources. Alert name, severity and graph routing remain unchanged; no
 silence or restart. Native regression: `python3 tests/test_socrat4_steal.py`.
 
 On socrat-5 the kubelet `/metrics` endpoint also exports the API and etcd request duration histograms. Keep only the duplicated `_count` series on `:6443` (kubelet exports 24 bucket boundaries versus 10 on the API target; preserve the full histogram buckets): the 150 etcd and 116 API counter label sets matched the kubelet copy, with matching 30-minute increases to within 0.04%. This filter does not change retention or the hourly archive.
+
+### Warm workshop migration gates (2026-11-24)
+
+The `local-hdd` candidate on socrat-5 is a rehearsal, not a live writer or a backup. Verify PV affinity, the mounted `/mnt/files` UUID and retained volume; a 300 GiB local-path request is not a disk quota. Test an independent restore of data and credentials. For the switch, reconcile object inventories, sizes and contents including markers at a quiescent boundary (all uploaders, compaction and tier marker writers). Keep only one writable bucket. Compare old/new Store answers with partial responses disabled and verify a new upload before retiring any source. Do not restart a shipper against an old snapshot after accepting new writes without first reconciling the delta.
+
+Seven days is a capacity objective, not a guarantee. Measure the full workshop filesystem to the 50 GiB reserve (24h slope; no forecast when free space is not declining). Monitor raw/5m growth as well as hourly backlog. Hourly source eligibility excludes deletion marks. Do not claim that a block was never copied merely because the cold shelf is offline. Require verified copy receipts or coverage on the returned shelf plus a historical query before reporting catch-up.
