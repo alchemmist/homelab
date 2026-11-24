@@ -36,7 +36,7 @@ spec:
         - name: preserve-native-oidc
           image: "{{ .Values.image.repository }}@{{ required "Pinned image digest required for native OIDC preservation" .Values.image.digest }}"
           command: [python, -c, "import shutil; shutil.copyfile('/app/runtime/oidc.py', '/observer-native/oidc.py')"]
-          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
           resources:
             requests: {cpu: 10m, memory: 32Mi}
             limits: {cpu: 100m, memory: 128Mi}
@@ -61,6 +61,15 @@ spec:
               assert p.is_file() and p.open('rb').read(16)==b'SQLite format 3\x00', 'Existing wiki accounts required';
               {{ end }}
               assert Path('/data/repository/.git').is_dir() and Path('/data/live/current').is_dir(), 'Existing repository/publication required'
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 5m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 128Mi}
           {{- if .Values.postgresEnabled }}
           envFrom: [{secretRef: {name: wiki-postgres}}]
           {{- end }}
@@ -79,8 +88,13 @@ spec:
         - name: wiki
           image: "{{ .Values.image.repository }}{{ if .Values.image.digest }}@{{ .Values.image.digest }}{{ else }}:{{ .Values.image.tag }}{{ end }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [/bin/sh, -ec]
+          args:
+            - export WIKI_BOOTSTRAP_SECRET_FILE="$WIKI_BOOTSTRAP_TOKEN_FILE"; cd /app/runtime; exec uvicorn app:app --host 0.0.0.0 --port 8080 --workers 1 --no-proxy-headers
           securityContext:
+            runAsNonRoot: true
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
           ports:
@@ -107,7 +121,7 @@ spec:
               value: {{ .Values.publicURL | quote }}
             - name: WIKI_PUBLIC
               value: {{ eq .Values.visibility "public" | quote }}
-            - name: WIKI_BOOTSTRAP_SECRET_FILE
+            - name: WIKI_BOOTSTRAP_TOKEN_FILE
               value: /run/secrets/bootstrap/token
             - name: GIT_REPOSITORY
               value: {{ .Values.git.repository | quote }}
@@ -146,6 +160,7 @@ spec:
             {{- end }}
             - name: data
               mountPath: /data
+            - {name: tmp, mountPath: /tmp}
             - name: bootstrap
               mountPath: /run/secrets/bootstrap
               readOnly: true
@@ -200,6 +215,7 @@ spec:
         - name: config
           configMap:
             name: {{ include "wiki.name" . }}
+        - {name: tmp, emptyDir: {sizeLimit: 64Mi}}
         - name: data
           persistentVolumeClaim:
             claimName: {{ default (include "wiki.name" .) .Values.persistence.existingClaim }}

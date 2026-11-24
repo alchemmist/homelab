@@ -243,8 +243,9 @@
         "files/observer_oidc.py": "cc716e7a60c68010610a07092678d7da1652af3c49f6184613f2cf819b912b01",
         "templates/_helpers.tpl": "156c1eb1f18643779370c8bb893f13ce779da5b64fe241040b5294b38d371134",
         "templates/configmap.yaml": "b679f734fffc06ce22b1c0fd3ea19f9f4c52c8f508ac7695c813b2ec8393ff6c",
-        "templates/deployment.yaml": "9d705b8a3409a3ba75687473538f2399ccd68e3cadabe12c236034dce3c27083",
+        "templates/deployment.yaml": "e0622432a9a2d43b53fda11a81b139eebbb15aa1b2000078e058579e7202b91f",
         "templates/ingress.yaml": "48ecd6b3a5fa59fa070b572667ea95b92092b2f8129984d4134f8ed893fa9bc2",
+        "templates/networkpolicy.yaml": "83b7d181c43f0dedee55870b60483b6c83d918258c75546f173333b6e7fbd68f",
         "templates/observer-membership.yaml": "d04644adb33a1f61b8f629f0956320f90b75cb5d766aeb941cbd8b5a5e98c35f",
         "templates/pvc.yaml": "bdb4db3c583a66a4470e33c6429695f2c8fffb6712be0c6146d5071eaff74283",
         "templates/service.yaml": "52798d714f53903df59b81202fc5f57d5a9c9aa28bcabee91f80aaa8f5bfe4fd",
@@ -253,7 +254,7 @@
         "values.yaml": "2437498f6383cb92cfb0dc85d71f501de199702b7a8d9d41141460b9ff0094e3"
       },
       "path": "deploy/wiki-runtime/chart",
-      "provenanceNote": "Existing local chart/identity guards retained. See deploy/wiki-runtime/oidc/README.md and docs/wiki-upgrade-20261107.md; no claim that all local files equal a tagged upstream release. Reviewed local PostgreSQL cutover guard, credential reference and CA mounts from 729cc6c6.",
+      "provenanceNote": "Existing local chart/identity guards retained. See deploy/wiki-runtime/oidc/README.md and docs/wiki-upgrade-20261107.md; no claim that all local files equal a tagged upstream release. Reviewed local PostgreSQL cutover guard, credential reference and CA mounts from 729cc6c6. Sanctioned hardening: RO rootfs + /tmp + per-release NetworkPolicy; the bootstrap token file env name is WIKI_BOOTSTRAP_TOKEN_FILE, exported to the app-expected name only in the process shell to avoid false-positive secret detection. Docker-verified /healthz 200.",
       "reviewedCommit": "729cc6c67b05d1fb28e0fe0067d1ec570dfe80c2"
     },
     {
