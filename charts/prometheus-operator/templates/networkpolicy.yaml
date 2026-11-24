@@ -1,0 +1,56 @@
+# Prometheus operator and admission hook isolation. All three talk to the
+# Kubernetes API; the operator also serves admission and metrics to the API
+# server and scraper.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ .Release.Namespace | quote }}, name: kube-prometheus-stack-operator-isolation}
+spec:
+  podSelector: {matchLabels: {app: kube-prometheus-stack-operator}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+      ports: [{protocol: TCP, port: 8443}]
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: cattle-monitoring-system}}
+      ports: [{protocol: TCP, port: 8080}]
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - to:
+        - ipBlock: {cidr: 0.0.0.0/0}
+      ports: [{protocol: TCP, port: 443}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ .Release.Namespace | quote }}, name: kube-prometheus-stack-admission-create-isolation}
+spec:
+  podSelector: {matchLabels: {app: kube-prometheus-stack-admission-create}}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - to:
+        - ipBlock: {cidr: 0.0.0.0/0}
+      ports: [{protocol: TCP, port: 443}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ .Release.Namespace | quote }}, name: kube-prometheus-stack-admission-patch-isolation}
+spec:
+  podSelector: {matchLabels: {app: kube-prometheus-stack-admission-patch}}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - to:
+        - ipBlock: {cidr: 0.0.0.0/0}
+      ports: [{protocol: TCP, port: 443}]

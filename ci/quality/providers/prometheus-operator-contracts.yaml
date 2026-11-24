@@ -1,0 +1,18 @@
+version: 1
+entries:
+  # Operator reconciliation creates Prometheus/Alertmanager/Thanos pods and
+  # reads the Secrets referenced by those workloads. Evidence:
+  # docs/quality/prometheus-operator-contracts.md.
+  - consumer: prometheus-operator-0
+    kind: ClusterRoleBinding
+    namespace: ""
+    name: kube-prometheus-stack-operator
+    checks: [access-to-create-pods, access-to-secrets]
+    evidence: docs/quality/prometheus-operator-contracts.md
+  # Admission webhook reads its serving certificate Secret.
+  - consumer: prometheus-operator-0
+    kind: RoleBinding
+    namespace: cattle-monitoring-system
+    name: kube-prometheus-stack-admission
+    checks: [access-to-secrets]
+    evidence: docs/quality/prometheus-operator-contracts.md
