@@ -67,7 +67,13 @@ spec:
               p=Path('/data/spi.sqlite');
               assert p.is_file() and p.open('rb').read(16)==b'SQLite format 3\x00', 'Existing SPI job database required'
               {{ end }}
-          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 5m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 128Mi}
           {{- if .Values.postgresEnabled }}
           envFrom: [{secretRef: {name: spi-triage-postgres}}]
           volumeMounts: [{name: pg-ca, mountPath: /pg-ca, readOnly: true}]

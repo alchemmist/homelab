@@ -1,0 +1,17 @@
+version: 1
+entries:
+  # GitHub App env-only credential wiring for the broker. Evidence:
+  # docs/quality/spi-triage-contracts.md.
+  - consumer: spi-triage-0
+    kind: CronJob
+    namespace: pr-agent
+    name: spi-github-broker
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/spi-triage-contracts.md
+  # Least-privilege patch on the single spi-github-installation token Secret.
+  - consumer: spi-triage-0
+    kind: RoleBinding
+    namespace: automation
+    name: spi-github-token-writer
+    checks: [access-to-secrets]
+    evidence: docs/quality/spi-triage-contracts.md

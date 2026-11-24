@@ -43,6 +43,8 @@ spec:
       activeDeadlineSeconds: 120
       backoffLimit: 2
       template:
+        metadata:
+          labels: {app: spi-github-broker}
         spec:
           affinity:
             {{- toYaml .Values.brokerAffinity | nindent 12 }}
