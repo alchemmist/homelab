@@ -1,0 +1,11 @@
+version: 1
+entries:
+  # Deeperseeker reads its admin and upstream API credentials from the
+  # environment; no file-based configuration interface exists. Evidence:
+  # docs/quality/deeperseeker-contracts.md.
+  - consumer: deeperseeker-0
+    kind: Deployment
+    namespace: deeperseeker
+    name: deeperseeker
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/deeperseeker-contracts.md
