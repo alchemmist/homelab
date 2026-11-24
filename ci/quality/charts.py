@@ -537,7 +537,13 @@ def provider_registry() -> ProviderRegistry:
                 "checks": tuple(raw.get("checks", ())),
                 "evidence": raw.get("evidence"),
             }
-            if any(not entry[key] for key in ("consumer", "kind", "namespace", "name", "evidence")):
+            # Cluster-scoped resources (RBAC, StorageClass, CRDs, Namespace, ...)
+            # carry no namespace in the rendered object, so kube-linter reports an
+            # empty one. Allow an intentionally-empty namespace for exactly those
+            # kinds so their evidence-backed contracts stay representable offline.
+            if any(not entry[key] for key in ("consumer", "kind", "name", "evidence")) or (
+                not entry["namespace"] and entry["kind"] not in MANIFEST_CLUSTER_SCOPED_KINDS
+            ):
                 raise ValueError("Incomplete provider registry entry in " + path.name)
             if not entry["checks"] or set(entry["checks"]) - REGISTRABLE_CHECKS:
                 message = "Non-registrable check in " + path.name + ": " + str(entry["name"])
