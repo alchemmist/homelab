@@ -1,0 +1,18 @@
+version: 1
+entries:
+  # PR Agent reads its LLM and GitHub App credentials from env via secretKeyRef;
+  # no file-based configuration channel exists. Evidence:
+  # docs/quality/pr-agent-contracts.md.
+  - consumer: pr-agent-0
+    kind: Deployment
+    namespace: pr-agent
+    name: pr-agent
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/pr-agent-contracts.md
+  # Redelivery worker uses the same GitHub App env-only contract.
+  - consumer: pr-agent-0
+    kind: CronJob
+    namespace: pr-agent
+    name: pr-agent-webhook-redelivery
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/pr-agent-contracts.md
