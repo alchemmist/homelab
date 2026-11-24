@@ -92,12 +92,41 @@ def write(path, body) -> None:
     os.replace(temporary, path)
 
 
+def _serve_health(port: int) -> None:
+    """Serve /healthz + /health/ready (both -> 200) for liveness/readiness probes.
+
+    The disk daemon is a periodic publisher with no request/response work of its
+    own, so a plain always-up health endpoint is the truthful probe target.
+    """
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    class _Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path in ("/healthz", "/health/ready", "/health/live"):
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                self.wfile.write(b"ok\n")
+            else:
+                self.send_error(404)
+
+        def log_message(self, *args):
+            return
+
+    HTTPServer(("0.0.0.0", port), _Handler).serve_forever()
+
+
 def main() -> None:
     """Keep the last complete sample if a compactor renames a file during the periodic walk."""
     node = os.environ["NODE_NAME"]
     host_root = os.environ.get("HOST_VAR_LIB", "/host/var/lib")
     output = os.environ.get("OUTPUT", "/textfile/socrat-metrics-disk.prom")
     interval = int(os.environ.get("INTERVAL_SECONDS", "30"))
+    import threading
+
+    threading.Thread(
+        target=_serve_health, args=(int(os.environ.get("HEALTH_PORT", "8080")),), daemon=True
+    ).start()
     while True:
         try:
             write(output, render(node, rows(host_root)))

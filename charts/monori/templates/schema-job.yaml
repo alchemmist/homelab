@@ -10,11 +10,13 @@ metadata:
 spec:
   activeDeadlineSeconds: 240
   backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
   template:
     metadata:
       labels: {maintenance: monori-schema}
     spec:
       restartPolicy: Never
+      serviceAccountName: monori
       automountServiceAccountToken: false
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -26,12 +28,26 @@ spec:
         - name: migrate
           image: {{ include "monori.image" .Values.images.back }}
           command: [/app/.venv/bin/python, -c]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile: {type: RuntimeDefault}
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
           args:
             - |
 {{ .Files.Get "files/schema_upgrade.py" | indent 14 }}
           env:
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
             - name: MIGRATION_URL
               valueFrom: {secretKeyRef: {name: monori-pg-migrator, key: DATABASE_URL}}
-          volumeMounts: [{name: pg-ca, mountPath: /pg-ca, readOnly: true}]
-      volumes: [{name: pg-ca, configMap: {name: pg-common-ca}}]
+          volumeMounts: [{name: pg-ca, mountPath: /pg-ca, readOnly: true}, {name: tmp, mountPath: /tmp}]
+      volumes:
+        - {name: tmp, emptyDir: {sizeLimit: 64Mi}}
+        - {name: pg-ca, configMap: {name: pg-common-ca}}
 {{- end }}

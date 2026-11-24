@@ -169,6 +169,12 @@ def control_loop(host: str) -> None:
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
+        if self.path in ("/healthz", "/health/ready", "/health/live"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"ok\n")
+            return
         if self.path != "/metrics":
             self.send_error(404)
             return

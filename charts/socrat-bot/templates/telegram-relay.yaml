@@ -79,6 +79,7 @@ spec:
           command: [nginx, -g, "daemon off;", -c, /config/nginx.conf]
           ports: [{name: tls, containerPort: 8443}]
           readinessProbe: {tcpSocket: {port: tls}, periodSeconds: 10}
+          livenessProbe: {tcpSocket: {port: tls}, periodSeconds: 20, failureThreshold: 3}
           resources: {requests: {cpu: 5m, memory: 12Mi}, limits: {memory: 48Mi}}
           securityContext:
             runAsNonRoot: true

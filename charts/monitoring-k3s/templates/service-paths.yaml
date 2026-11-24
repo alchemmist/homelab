@@ -78,6 +78,8 @@ spec:
           command: [python, -B, /probe/paths.py]
           env: [{name: SOURCE, value: {{ $source | quote }}}, {name: BOT_SERVICE_VIP, value: {{ $botVIP | quote }}}]
           ports: [{name: metrics, containerPort: 9119}]
+          livenessProbe: {httpGet: {path: /healthz, port: metrics}, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 3}
+          readinessProbe: {httpGet: {path: /health/ready, port: metrics}, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3}
           resources:
             requests: {cpu: 5m, memory: 24Mi}
             limits: {memory: 64Mi}

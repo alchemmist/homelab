@@ -1,0 +1,264 @@
+version: 1
+entries:
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace argocd (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: argocd
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace automation (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: automation
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace blog (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: blog
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace cats (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: cats
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace cattle-system (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: cattle-system
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace cattle-monitoring-system (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: cattle-monitoring-system
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace format-quorum (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: format-quorum
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace harbor (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: harbor
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace identity (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: identity
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace img-proxy (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: img-proxy
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace llm (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: llm
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace lms (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: lms
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace monori (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: monori
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace pr-agent (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: pr-agent
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace remark42 (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: remark42
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace socrat-bot (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: socrat-bot
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace socrat-home (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: socrat-home
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace syncthing (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: syncthing
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace umami (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: umami
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace venice-api (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: venice-api
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace uptime-kuma (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: uptime-kuma
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace wiki (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: wiki
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace wishlist (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: wishlist
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # TLS termination: the edge proxy's RoleBinding grants read-only Secret
+  # access in namespace traefik-edge (charts/traefik-edge/templates/rbac.yaml), read-only.
+  - consumer: traefik-edge-0
+    kind: RoleBinding
+    namespace: traefik-edge
+    name: traefik-edge
+    checks: [access-to-secrets]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # Architectural binding contract: the edge proxy takes over the node's
+  # public 80/443 (TCP + HTTP/3 UDP) listeners from the host itself
+  # (deploy/argocd/apps/traefik-edge.yaml, nodeSelector socrat-2). Verified
+  # docker run as uid 65532 with CAP_NET_BIND_SERVICE.
+  - consumer: traefik-edge-0
+    kind: Deployment
+    namespace: traefik-edge
+    name: traefik-edge
+    checks: [host-network, privileged-ports]
+    evidence: deploy/argocd/apps/traefik-edge.yaml
+  # Out-of-band backend: traefik-edge-panel is a selector-less Service whose
+  # only endpoint is the socrat-2 host process (10.250.0.2:18082); see
+  # docs/quality/traefik-edge-vpn-backends.md.
+  - consumer: traefik-edge-0
+    kind: Service
+    namespace: traefik-edge
+    name: traefik-edge-panel
+    checks: [dangling-service]
+    evidence: docs/quality/traefik-edge-vpn-backends.md
+  # Out-of-band backend: traefik-edge-subscriptions is a selector-less Service whose
+  # only endpoint is the socrat-2 host process (10.250.0.2:12096); see
+  # docs/quality/traefik-edge-vpn-backends.md.
+  - consumer: traefik-edge-0
+    kind: Service
+    namespace: traefik-edge
+    name: traefik-edge-subscriptions
+    checks: [dangling-service]
+    evidence: docs/quality/traefik-edge-vpn-backends.md
+  # Out-of-band backend: traefik-edge-subscriptions-json is a selector-less Service whose
+  # only endpoint is the socrat-2 host process (10.250.0.2:12096); see
+  # docs/quality/traefik-edge-vpn-backends.md.
+  - consumer: traefik-edge-0
+    kind: Service
+    namespace: traefik-edge
+    name: traefik-edge-subscriptions-json
+    checks: [dangling-service]
+    evidence: docs/quality/traefik-edge-vpn-backends.md
+  # Out-of-band backend: traefik-edge-trojan is a selector-less Service whose
+  # only endpoint is the socrat-2 host process (10.250.0.2:32087); see
+  # docs/quality/traefik-edge-vpn-backends.md.
+  - consumer: traefik-edge-0
+    kind: Service
+    namespace: traefik-edge
+    name: traefik-edge-trojan
+    checks: [dangling-service]
+    evidence: docs/quality/traefik-edge-vpn-backends.md
+
+  # private-gateway is a hostNetwork DaemonSet by design: each node's nginx
+  # must own the WireGuard interface address (10.250.0.x:18443) so the private
+  # mesh reaches the per-node virtual hosts; no Service/ClusterIP path can
+  # pin listeners to node addresses. The Argo CD Application below names the
+  # DaemonSet release.
+  - consumer: private-gateway-0
+    kind: DaemonSet
+    namespace: syncthing
+    name: private-gateway
+    checks: [host-network]
+    evidence: deploy/argocd/apps/private-gateway.yaml
+
+  # vpn-transit is the node-local WireGuard relay (socrat-2): it must own the
+  # host network to bind the node's VPN endpoint on 443, and 443 is a
+  # privileged port bound through the reviewed NET_BIND_SERVICE root
+  # contract (see charts.py PRIVILEGED_BIND_EXEMPT_CHECKS). The Argo CD
+  # Application below names the release.
+  - consumer: vpn-transit-0
+    kind: Deployment
+    namespace: vpn-transit
+    name: vpn-transit
+    checks: [host-network, privileged-ports]
+    evidence: deploy/argocd/apps/vpn-transit.yaml

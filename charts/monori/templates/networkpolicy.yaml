@@ -1,0 +1,94 @@
+# Monori release isolation:
+# - monori (front nginx): ingress from edge traefik only; egress DNS + back (resolves
+#   its upstream at startup via the in-namespace Service "back").
+# - monori-back: ingress from front (proxied /api/) and from traefik for direct
+#   host-paths if any; egress DNS, sync 8010, platform postgres 5432, identity
+#   authentik-server 443/9443 (OIDC issuer per deploy/monori/values.yaml).
+# - monori-sync: ingress from back (MONORI_SYNC_URL); egress DNS + public HTTPS for
+#   bank connector logins (dynamic external domains, private ranges excluded).
+# - Jobs (monori-schema, monori-sync-image-cache): egress DNS + platform postgres.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: monori-front-isolation }
+spec:
+  podSelector: {matchLabels: {app: monori}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+  - from:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+      podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
+    ports: [{protocol: TCP, port: 8000}]
+  egress:
+  - to:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: {{ $.Release.Namespace | quote }}}}
+    ports: [{protocol: TCP, port: 8000}]
+  - to:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+      podSelector: {matchLabels: {k8s-app: kube-dns}}
+    ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: monori-back-isolation }
+spec:
+  podSelector: {matchLabels: {app: monori-back}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+  - from:
+    - podSelector: {matchLabels: {app: monori}}
+    ports: [{protocol: TCP, port: 8000}]
+  egress:
+  - to:
+    - podSelector: {matchLabels: {app: monori-sync}}
+    ports: [{protocol: TCP, port: 8010}]
+  - to:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: postgres}}
+      podSelector: {matchLabels: {cnpg.io/cluster: pg-common}}
+    ports: [{protocol: TCP, port: 5432}]
+  {{- if .Values.oidc.enabled }}
+  - to:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: identity}}
+      podSelector: {matchLabels: {app.kubernetes.io/component: server}}
+    ports: [{protocol: TCP, port: 443}, {protocol: TCP, port: 9443}]
+  {{- end }}
+  - to:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+      podSelector: {matchLabels: {k8s-app: kube-dns}}
+    ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: monori-sync-isolation }
+spec:
+  podSelector: {matchLabels: {app: monori-sync}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+  - from:
+    - podSelector: {matchLabels: {app: monori-back}}
+    ports: [{protocol: TCP, port: 8010}]
+  egress:
+  # bank connector hosts are dynamic external domains; public HTTPS only
+  - to:
+    - ipBlock: {cidr: 0.0.0.0/0, except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10]}
+    ports: [{protocol: TCP, port: 443}]
+  - to:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+      podSelector: {matchLabels: {k8s-app: kube-dns}}
+    ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: monori-jobs-isolation }
+spec:
+  podSelector: {matchLabels: {maintenance: monori-schema}}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+  - to:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: postgres}}
+      podSelector: {matchLabels: {cnpg.io/cluster: pg-common}}
+    ports: [{protocol: TCP, port: 5432}]
+  - to:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+      podSelector: {matchLabels: {k8s-app: kube-dns}}
+    ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]

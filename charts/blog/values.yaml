@@ -27,4 +27,11 @@ nodeAffinity: {}
 
 podAntiAffinity:
   enabled: true
+
+
+# Ingress reaches this service only through the traefik-edge release.
+networkPolicy:
+  enabled: true
+  ingressFromNamespaces:
+    - traefik-edge
 ...

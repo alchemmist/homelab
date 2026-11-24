@@ -1,0 +1,12 @@
+version: 1
+entries:
+  # Socrat Bot env-only configuration contract: the pinned image reads all
+  # runtime credentials (DATABASE_URL, TELEGRAM_* tokens, INTERNAL_TOKEN) from
+  # the environment via secretKeyRef; no file-based config interface. Evidence:
+  # docs/quality/socrat-bot-contracts.md.
+  - consumer: socrat-bot-0
+    kind: Deployment
+    namespace: socrat-bot
+    name: socrat-bot
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/socrat-bot-contracts.md

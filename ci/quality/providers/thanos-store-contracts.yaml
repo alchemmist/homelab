@@ -1,0 +1,45 @@
+version: 1
+entries:
+  # thanos-disk host node-scanner: reads root-owned /var/lib (needs uid 0),
+  # writes node textfile metrics to a host path, periodic loop with no HTTP
+  # endpoint (hence no liveness/readiness probe). Full evidence:
+  # docs/quality/thanos-store-contracts.md.
+  - consumer: thanos-0
+    kind: DaemonSet
+    namespace: cattle-monitoring-system
+    name: thanos-disk
+    checks: [run-as-non-root, writable-host-mount]
+    evidence: docs/quality/thanos-store-contracts.md
+  # Local-disk thanos store: compactor writes its workspace to host /var/thanos/work.
+  - consumer: thanos-0
+    kind: Deployment
+    namespace: cattle-monitoring-system
+    name: thanos-compactor
+    checks: [writable-host-mount]
+    evidence: docs/quality/thanos-store-contracts.md
+  - consumer: thanos-0
+    kind: Deployment
+    namespace: cattle-monitoring-system
+    name: thanos-compactor-1h
+    checks: [writable-host-mount]
+    evidence: docs/quality/thanos-store-contracts.md
+  # store-1h and shelf-1h hold block data on the local shelf hostPath.
+  - consumer: thanos-0
+    kind: Deployment
+    namespace: cattle-monitoring-system
+    name: thanos-store-1h
+    checks: [writable-host-mount]
+    evidence: docs/quality/thanos-store-contracts.md
+  - consumer: thanos-0
+    kind: Deployment
+    namespace: cattle-monitoring-system
+    name: thanos-shelf-1h
+    checks: [writable-host-mount]
+    evidence: docs/quality/thanos-store-contracts.md
+  # cascade CronJob writes rawdata to the local 1h shelf hostPath.
+  - consumer: thanos-0
+    kind: CronJob
+    namespace: cattle-monitoring-system
+    name: thanos-cascade
+    checks: [writable-host-mount]
+    evidence: docs/quality/thanos-store-contracts.md

@@ -16,7 +16,8 @@ resources:
 
 service:
   port: 8080
-  targetPort: 80
+  # 8080: the docker-verified non-root server conf (server-configmap.yaml).
+  targetPort: 8080
 
 ingress:
   className: traefik

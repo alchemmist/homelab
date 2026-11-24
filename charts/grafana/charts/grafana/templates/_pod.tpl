@@ -206,6 +206,10 @@ initContainers:
     securityContext:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    ports:
+      - name: sidecar-health
+        containerPort: 8080
+        protocol: TCP
     volumeMounts:
       - name: sc-alerts-volume
         mountPath: "/etc/grafana/provisioning/alerting"
@@ -348,6 +352,10 @@ initContainers:
     securityContext:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    ports:
+      - name: sidecar-health
+        containerPort: 8080
+        protocol: TCP
     volumeMounts:
       - name: sc-datasources-volume
         mountPath: "/etc/grafana/provisioning/datasources"
@@ -440,6 +448,10 @@ initContainers:
     securityContext:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    ports:
+      - name: sidecar-health
+        containerPort: 8080
+        protocol: TCP
     volumeMounts:
       - name: sc-notifiers-volume
         mountPath: "/etc/grafana/provisioning/notifiers"
@@ -510,6 +522,10 @@ initContainers:
     securityContext:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    ports:
+      - name: sidecar-health
+        containerPort: 8080
+        protocol: TCP
     volumeMounts:
       - name: sc-plugins-volume
         mountPath: "/etc/grafana/provisioning/plugins"
@@ -656,6 +672,10 @@ initContainers:
     securityContext:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    ports:
+      - name: sidecar-health
+        containerPort: 8080
+        protocol: TCP
     volumeMounts:
       - name: sc-dashboard-volume
         mountPath: {{ .Values.sidecar.dashboards.folder | quote }}
@@ -796,6 +816,10 @@ containers:
     securityContext:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    ports:
+      - name: sidecar-health
+        containerPort: 8080
+        protocol: TCP
     volumeMounts:
       - name: sc-alerts-volume
         mountPath: "/etc/grafana/provisioning/alerting"
@@ -929,6 +953,10 @@ containers:
     securityContext:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    ports:
+      - name: sidecar-health
+        containerPort: 8080
+        protocol: TCP
     volumeMounts:
       - name: sc-dashboard-volume
         mountPath: {{ .Values.sidecar.dashboards.folder | quote }}
@@ -1058,6 +1086,10 @@ containers:
     securityContext:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    ports:
+      - name: sidecar-health
+        containerPort: 8080
+        protocol: TCP
     volumeMounts:
       - name: sc-datasources-volume
         mountPath: "/etc/grafana/provisioning/datasources"
@@ -1182,6 +1214,10 @@ containers:
     securityContext:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    ports:
+      - name: sidecar-health
+        containerPort: 8080
+        protocol: TCP
     volumeMounts:
       - name: sc-notifiers-volume
         mountPath: "/etc/grafana/provisioning/notifiers"
@@ -1306,6 +1342,10 @@ containers:
     securityContext:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    ports:
+      - name: sidecar-health
+        containerPort: 8080
+        protocol: TCP
     volumeMounts:
       - name: sc-plugins-volume
         mountPath: "/etc/grafana/provisioning/plugins"
@@ -1437,6 +1477,10 @@ containers:
     securityContext:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    ports:
+      - name: sidecar-health
+        containerPort: 8080
+        protocol: TCP
     volumeMounts:
       - name: sc-repositories-volume
         mountPath: "/tmp/repositories"

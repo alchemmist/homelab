@@ -1,0 +1,30 @@
+# Open WebUI isolation (namespace llm).
+# The open-webui server serves :8080 to the edge traefik and the gateway, reads
+# postgres (pg-common), and sends inference to litellm. The gateway is a
+# hostNetwork pod; the node firewall owns its boundary.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: open-webui-isolation}
+spec:
+  podSelector: {matchLabels: {app: open-webui}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
+      ports: [{protocol: TCP, port: 8080}]
+    - from:
+        - podSelector: {matchLabels: {app: open-webui-gateway}}
+      ports: [{protocol: TCP, port: 8080}]
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: postgres}}
+          podSelector: {matchLabels: {cnpg.io/cluster: pg-common}}
+      ports: [{protocol: TCP, port: 5432}]
+    - to:
+        - podSelector: {matchLabels: {app: open-webui-gateway}}
+      ports: [{protocol: TCP, port: 18080}]
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]

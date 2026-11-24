@@ -51,7 +51,13 @@ spec:
         image: {{ .Values.redis.internal.image.repository }}:{{ .Values.redis.internal.image.tag }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         {{- if not (empty .Values.containerSecurityContext) }}
-        securityContext: {{ .Values.containerSecurityContext | toYaml | nindent 10 }}
+        securityContext:
+          {{- $sc := deepCopy .Values.containerSecurityContext }}
+          {{- /* valkey.conf runs with daemonize no (stdout logging, no pidfile
+               write) and dir /var/lib/redis, which is the writable data PVC,
+               so the image filesystem can stay read-only. */}}
+          {{- $_ := set $sc "readOnlyRootFilesystem" true }}
+{{ toYaml $sc | indent 10 }}
         {{- end }}
         ports: [{containerPort: 6379}]
         livenessProbe:

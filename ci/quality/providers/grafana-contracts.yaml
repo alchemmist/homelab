@@ -1,0 +1,28 @@
+version: 1
+entries:
+  # Grafana main container env-only configuration contract: the pinned upstream
+  # image reads all runtime secrets (admin, DB password, renderer token, OIDC)
+  # from the environment via grafan.valueFrom/extraSecretMounts; no file-based
+  # config channel for these values. Evidence: docs/quality/grafana-contracts.md.
+  - consumer: grafana-0
+    kind: Deployment
+    namespace: cattle-monitoring-system
+    name: kube-prometheus-stack-grafana
+    checks: [env-value-from, read-secret-from-env-var, run-as-non-root]
+    evidence: docs/quality/grafana-contracts.md
+  # image-renderer AUTH_TOKEN read from the environment (no file config).
+  - consumer: grafana-0
+    kind: Deployment
+    namespace: cattle-monitoring-system
+    name: kube-prometheus-stack-grafana-image-renderer
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/grafana-contracts.md
+  # k8s-sidecar ClusterRole must read/watch ConfigMaps + Secrets to auto-provision
+  # dashboards/datasources (sidecars render RESOURCE: both). Least-privilege for
+  # the sidecar model: read verbs only, on exactly those two resources.
+  - consumer: grafana-0
+    kind: ClusterRoleBinding
+    namespace: ""
+    name: kube-prometheus-stack-grafana-clusterrolebinding
+    checks: [access-to-secrets]
+    evidence: docs/quality/grafana-contracts.md

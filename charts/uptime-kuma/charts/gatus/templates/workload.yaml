@@ -11,7 +11,18 @@ spec:
       annotations:
         checksum/config: {{ .Files.Get "files/config.yaml" | sha256sum | quote }}
     spec:
+      serviceAccountName: gatus
       automountServiceAccountToken: false
+      # Docker-verified against the pinned digest: the image is one static Go
+      # binary with no shell that writes only /tmp, and it serves 8080 for any
+      # numeric uid. So the pod runs unprivileged on a read-only root with /tmp
+      # as its only writable mount.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
       containers:
         - name: gatus
           image: docker.io/twinproduction/gatus@sha256:085ed63da963728965d00a3c78aa6167e3bf135218485b893201758e079e8415
@@ -22,17 +33,31 @@ spec:
           env:
             - name: GATUS_CONFIG_PATH
               value: /config/config.yaml
+            # The database DSN is interpolated into the mounted config by the
+            # upstream binary (config/config.go:291 runs os.ExpandEnv over the
+            # raw YAML, so ${GATUS_DATABASE_URL} resolves from the container
+            # environment); v5.38.0 offers no file-backed input for storage.path.
+            # This Secret env reference is therefore a verified upstream
+            # constraint, not a fixable manifest defect, and is registered in
+            # ci/quality/providers/g13-small.yaml with the upstream evidence.
             - name: GATUS_DATABASE_URL
               valueFrom: {secretKeyRef: {name: gatus-postgres, key: url}}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
           volumeMounts:
             - {name: config, mountPath: /config, readOnly: true}
             - {name: ca, mountPath: /pg-ca, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
           resources:
             requests: {cpu: 25m, memory: 64Mi}
             limits: {memory: 256Mi}
       volumes:
         - {name: config, configMap: {name: gatus-config}}
         - {name: ca, configMap: {name: pg-common-ca}}
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}
 ---
 apiVersion: v1
 kind: Service

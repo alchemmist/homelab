@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: {{ $.Release.Namespace | quote }}
+  name: {{ .Release.Name }}-isolation
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  # The public site is reached only through the traefik-edge Ingress
+  # (className traefik; see templates/ingress.yaml). Egress is intentionally
+  # unrestricted: not reviewed here.
+  podSelector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik-edge
+      ports:
+        - {protocol: TCP, port: 8080}

@@ -168,7 +168,7 @@ def default_targets(result: list[RenderTarget], consumed: set[str]) -> list[Rend
                     "id": "defaults-" + str(chart.relative_to(ROOT)).replace("/", "-"),
                     "source": name,
                     "chart": chart,
-                    "namespace": "default",
+                    "namespace": "quality-check",
                     "release": "quality-check",
                     "values": [],
                     "parameters": [],
@@ -207,6 +207,46 @@ def arguments(target):
     return args
 
 
+MANIFEST_CLUSTER_SCOPED_KINDS = frozenset(
+    {
+        "ClusterRoleBinding",
+        "ClusterRole",
+        "CustomResourceDefinition",
+        "GlobalRole",
+        "MutatingWebhookConfiguration",
+        "Namespace",
+        "PriorityClass",
+        "RoleTemplate",
+        "ClusterRoleTemplateBinding",
+        "StorageClass",
+        "ValidatingWebhookConfiguration",
+    }
+)
+
+
+def apply_release_namespace(target, docs):
+    """Model Helm's install-time namespace assignment for offline lint.
+
+    `helm template` leaves `metadata.namespace` unset whenever a chart relies on
+    `.Release.Namespace`; at install time (and in GitOps reconciliation) those
+    objects are created in the release namespace. Filling the same namespace
+    before kube-linter lets cross-object checks (use-namespace,
+    dangling-service, env-value-from) evaluate the real adjacency instead of
+    comparing objects that appear namespace-less to objects with explicit
+    namespaces. Cluster-scoped kinds keep no namespace, and an explicitly
+    set namespace is never overwritten.
+    """
+    for doc in docs:
+        if (
+            isinstance(doc, dict)
+            and doc.get("kind") not in MANIFEST_CLUSTER_SCOPED_KINDS
+            and isinstance(doc.get("metadata"), dict)
+            and not doc["metadata"].get("namespace")
+        ):
+            doc["metadata"]["namespace"] = target["namespace"]
+    return docs
+
+
 def render(target):
     """Execute render."""
     args = [
@@ -225,9 +265,11 @@ def render(target):
     if process.returncode:
         return None
     try:
-        return [item for item in yaml.load_all(process.stdout, Loader=ManifestLoader) if item]
+        docs = [doc for doc in yaml.load_all(process.stdout, Loader=ManifestLoader) if doc]
     except yaml.YAMLError:
-        return None  # Invalid rendered YAML is a quality failure, not a successful empty render.
+        # Invalid rendered YAML is a quality failure, not a successful empty render.
+        return None
+    return apply_release_namespace(target, docs)
 
 
 def schema_name(resource):
@@ -273,9 +315,45 @@ def policies(resource):
 
 
 RELEASE_PEERS = {
-    "monitoring-k3s-0": ("grafana-mcp-0", "Deployment", "grafana-mcp"),
-    "litellm-2": ("litellm-0", "Service", "litellm"),
-    "rustfs-0": ("authentik-0", "Service", "authentik-server"),
+    # Monitoring-k3s probes scrapes cross-namespace backends: its Service objects
+    # and the monitoring-service-probes NetworkPolicy reference pods owned by
+    # other releases in other namespaces. Load the real provider objects as lint
+    # context so the selectors resolve instead of dangling.
+    "monitoring-k3s-0": [
+        ("grafana-mcp-0", [("Deployment", "grafana-mcp")]),
+        ("open-terminal-0", [("Deployment", "open-terminal")]),
+        ("vllm-0", [("Deployment", "vllm")]),
+        ("traefik-edge-0", [("Deployment", "traefik-edge")]),
+    ],
+    "litellm-2": ("litellm-0", [("Service", "litellm"), ("Deployment", "litellm")]),
+    "rustfs-0": ("authentik-0", [("Service", "authentik-server"), ("Deployment", "authentik-server")]),
+    # Cross-release NetworkPolicy peers: the ingress/egress pod selector names a
+    # workload owned by a different Helm release in the same namespace. Load that
+    # provider release's real objects as lint context so kube-linter resolves the
+    # peer instead of reporting a dangling selector. The peer keeps its own gate.
+    "litellm-infra-0": [
+        ("litellm-0", [("Deployment", "litellm")]),
+        ("vllm-0", [("Deployment", "vllm")]),
+    ],
+    # The litellm proxy talks to in-cluster model backends (vllm service in the
+    # same namespace, venice-api and deeperseeker Deployments behind their
+    # Services), the shared platform postgres and the shared redis; its OIDC
+    # IdP is the authentik release. Load the real provider objects so the
+    # isolation NetworkPolicy egress selectors resolve instead of dangling.
+    "litellm-0": [
+        ("vllm-0", [("Service", "vllm"), ("Deployment", "vllm")]),
+        ("venice-api-0", [("Service", "venice-api"), ("Deployment", "venice-api")]),
+        ("deeperseeker-0", [("Service", "deeperseeker"), ("Deployment", "deeperseeker")]),
+        ("postgres-platform-0", [("Service", "pg-common-rw"), ("StatefulSet", "pg-common-1"), ("StatefulSet", "pg-common-2")]),
+        ("authentik-0", [("Service", "authentik-server"), ("Deployment", "authentik-server")]),
+    ],
+    "open-terminal-0": ("open-webui-0", [("Deployment", "open-webui")]),
+}
+
+
+FOUNDATION_STUB = {
+    "id": "authentik-foundation",
+    "source": "deploy/authentik/foundation.yaml",
 }
 
 
@@ -289,8 +367,245 @@ def authentik_accounts():
     ]
 
 
-def kube_lint(target, resources, peers=()):
+# A one-shot Job pod never serves traffic through a Service and its lifecycle is
+# completion based: readiness does not gate endpoints and liveness resumption is
+# the controller's restart responsibility, not a probe decision. Probing a
+# completion-based workload with an invented endpoint would be a placeholder
+# probe, so its absence is not a defect. Every other probe check (a declared
+# probe with a wrong port, an unreadily declared field, serving kinds without
+# probes) keeps its full meaning for these kinds and all others.
+ONE_SHOT_KINDS = frozenset({"Job", "CronJob"})
+ONE_SHOT_EXEMPT_CHECKS = frozenset({"no-liveness-probe", "no-readiness-probe"})
+
+# A pod with hostNetwork: true sends its traffic through the node network
+# stack, outside the per-pod CNI datapath. Cluster NetworkPolicies cannot
+# isolate that traffic (CNI policy applies to the pod's virtual interface, so
+# any policy "selecting" a hostNetwork pod is unverifiable compliance theater
+# for the traffic that matters), and its real boundary is the node firewall.
+# The non-isolated-pod heuristic assumes pod-network traffic, so presence of
+# a hostNetwork contract is structural grounds to drop that check for the
+# object; every off-hostNetwork workload keeps the full check.
+# Workload specs are matched structurally in the report post-processing.
+HOST_BOUNDARY_KINDS = frozenset(
+    {"Pod", "Deployment", "DaemonSet", "StatefulSet", "ReplicaSet", "Job", "CronJob"}
+)
+
+# OCI runtimes used here (containerd/k3s CRI) do not grant ambient
+# capabilities to non-root processes: capabilities.add grants the permitted
+# set, but the effective bind capability never carries over, so a non-root
+# process cannot bind a port < 1024 without image-level file capabilities
+# (setcap) or a rebuilt entrypoint. For a hostNetwork daemon that must own a
+# privileged port on the node address, running as root with all capabilities
+# dropped except NET_BIND_SERVICE is therefore the narrowest implementable
+# identity contract; the validator blanket rule ("run as non-root") is
+# unimplementable for it. The exemption below requires that full structural
+# contract (hostNetwork + a sub-1024 bind + drop ALL + add only
+# NET_BIND_SERVICE + runAsNonRoot explicitly false); any workload without that
+# exact narrowing keeps the finding.
+PRIVILEGED_BIND_EXEMPT_CHECKS = frozenset({"run-as-non-root"})
+
+
+def _pod_spec(doc) -> dict | None:
+    """Return the pod spec owning the workload doc, if any."""
+    if doc.get("kind") not in HOST_BOUNDARY_KINDS:
+        return None
+    if doc["kind"] == "Pod":
+        return doc.get("spec") or None
+    return ((doc.get("spec") or {}).get("template") or {}).get("spec") or None
+
+
+def privileged_bind_contracts(resources) -> set:
+    """Set of (kind, namespace, name) with the structural bind contract."""
+    contracts = set()
+    for doc in resources:
+        spec = _pod_spec(doc)
+        if not spec or not spec.get("hostNetwork"):
+            continue
+        for container in spec.get("containers") or ():
+            context = container.get("securityContext") or {}
+            if context.get("runAsNonRoot") is not False:
+                continue
+            caps = context.get("capabilities") or {}
+            if (caps.get("drop") or []) != ["ALL"] or not "NET_BIND_SERVICE" in (
+                caps.get("add") or []
+            ):
+                continue
+            ports = [
+                p.get("containerPort")
+                for p in container.get("ports") or ()
+                if isinstance(p.get("containerPort"), int)
+            ]
+            if any(port < 1024 for port in ports):
+                meta = doc["metadata"]
+                contracts.add(
+                    (doc["kind"], meta.get("namespace", ""), meta["name"])
+                )
+    return contracts
+
+
+def host_boundary_objects(resources) -> set:
+    """Set of (kind, namespace, name) whose pod spec declares hostNetwork."""
+    boundaries = set()
+    for doc in resources:
+        spec = _pod_spec(doc)
+        if spec and spec.get("hostNetwork"):
+            meta = doc["metadata"]
+            boundaries.add((doc["kind"], meta.get("namespace", ""), meta["name"]))
+    return boundaries
+
+
+# Checks whose kube-linter semantics cannot be satisfied from a single Helm
+# render because the referenced or bound object lives in another reviewed
+# source. Registry entries must pin the exact object and rule and carry an
+# in-repo evidence pointer; anything outside this set can never be registered.
+REGISTRABLE_CHECKS = frozenset(
+    {
+        "env-value-from",
+        "read-secret-from-env-var",
+        "dangling-service",
+        "dangling-networkpolicy",
+        "dangling-networkpolicypeer-podselector",
+        "dangling-servicemonitor",
+        "access-to-secrets",
+        "access-to-create-pods",
+        "cluster-admin-role-binding",
+        "host-network",
+        "host-pid",
+        "privileged-ports",
+        "writable-host-mount",
+        "sensitive-host-mounts",
+        "drop-net-raw-capability",
+        # The two container hardening advisories below are included for one
+        # narrow class: pinned upstream images whose own entrypoint/binary
+        # mandates a writable root filesystem or uid 0 (supervisord/certbot
+        # dashboards writing their config tree at runtime, harbor-style
+        # entrypoints installing CA bundles into the OS trust store, Go
+        # binaries binding the port wired through every rendered router).
+        # Those facts cannot be changed from any manifest, can be verified
+        # against the pinned image (Docker run / entrypoint source), and the
+        # per-object evidence carries exactly that verification. Every
+        # positive-evidence guarantee of this registry stays intact: the
+        # entry must match a real finding of the named object, the evidence
+        # must exist and name the object, and any uncovered finding still
+        # blocks.
+        "run-as-non-root",
+        "no-read-only-root-fs",
+    }
+)
+
+
+ProviderRegistry = dict[tuple[str, str, str, str], dict[str, object]]
+Pin = tuple[tuple[str, str, str, str], str]
+
+
+class Pins:
+    """Consumption tracker for the pinned cross-source provider registry."""
+
+    def __init__(self, registry: ProviderRegistry) -> None:
+        """Start from a verified registry; track every accepted finding."""
+        self.registry = registry
+        self.consumed: set[Pin] = set()
+
+    def accepts(
+        self, identity: tuple[str, str, str, str], check: str
+    ) -> bool:
+        """Return whether an exact, verified registry pin covers this finding."""
+        entry = self.registry.get(identity)
+        if entry is None or check not in entry["checks"]:
+            return False
+        self.consumed.add((identity, check))
+        return True
+
+    def verify_scope(self, consumers: set[str]) -> None:
+        """Fail on any registry pin that is unknown, orphaned or partially stale."""
+        for key, entry in self.registry.items():
+            if entry["consumer"] not in consumers:
+                raise ValueError("Registry entry references unknown consumer: " + str(key))
+            for check in entry["checks"]:
+                if (key, check) not in self.consumed:
+                    raise ValueError(
+                        "Registry entry matched no " + check + " finding (stale pin): " + str(key)
+                    )
+
+
+def provider_registry() -> ProviderRegistry:
+    """Load and verify the pinned cross-source provider and contract registry."""
+    entries = {}
+    directory = ROOT / "ci/quality/providers"
+    paths = sorted(directory.glob("*.yaml"))
+    for path in paths:
+        data = yaml.safe_load(path.read_text())
+        if not isinstance(data, dict) or data.get("version") != 1:
+            raise ValueError("Invalid provider registry file: " + path.name)
+        for raw in data.get("entries", []):
+            entry = {
+                "consumer": raw.get("consumer"),
+                "kind": raw.get("kind"),
+                "namespace": raw.get("namespace"),
+                "name": raw.get("name"),
+                "checks": tuple(raw.get("checks", ())),
+                "evidence": raw.get("evidence"),
+            }
+            # Cluster-scoped resources (RBAC, StorageClass, CRDs, Namespace, ...)
+            # carry no namespace in the rendered object, so kube-linter reports an
+            # empty one. Allow an intentionally-empty namespace for exactly those
+            # kinds so their evidence-backed contracts stay representable offline.
+            if any(not entry[key] for key in ("consumer", "kind", "name", "evidence")) or (
+                not entry["namespace"] and entry["kind"] not in MANIFEST_CLUSTER_SCOPED_KINDS
+            ):
+                raise ValueError("Incomplete provider registry entry in " + path.name)
+            if not entry["checks"] or set(entry["checks"]) - REGISTRABLE_CHECKS:
+                message = "Non-registrable check in " + path.name + ": " + str(entry["name"])
+                raise ValueError(message)
+            reference = local_path(str(entry["evidence"]))
+            if entry["name"] not in reference.read_text():
+                raise ValueError("Evidence does not name the object in " + path.name)
+            key = (entry["consumer"], entry["kind"], entry["namespace"], entry["name"])
+            if key in entries:
+                raise ValueError("Duplicate provider registry entry: " + str(key))
+            entries[key] = entry
+    return entries
+
+
+def release_peer_objects(target, selected, renders):
+    """Return the exact provider objects another release renders for a target."""
+    # These consumers reference objects rendered by a different Helm source.
+    # Only the actual provider object is context; it still has its own gate.
+    link = RELEASE_PEERS.get(target["id"])
+    if not link:
+        return []
+    # A target may draw cross-release peers from more than one provider release,
+    # so the value is either a single (peer_id, wanted) link or a list of them.
+    # A single link starts with a peer_id string; a list of links starts with a link.
+    links = link if isinstance(link[0], tuple) else [link]
+    objects = []
+    for peer_id, wanted in links:
+        peer = next((t for t in selected if t["id"] == peer_id), None)
+        if peer is None:
+            # A missing declared peer is a configuration error, not a silent skip.
+            message = f"Missing release peer target: {peer_id}"
+            raise ValueError(message)
+        if peer_id not in renders:
+            renders[peer_id] = render(peer)
+        # The Service and the pods behind it: existence providers are full objects,
+        # not synthetic stubs, and stay attributed to their own release.
+        objects += [
+            doc
+            for doc in renders[peer_id] or []
+            if (doc["kind"], doc["metadata"]["name"]) in set(wanted)
+        ]
+    return objects
+
+
+def kube_lint(
+    target: RenderTarget,
+    resources: list[object],
+    peers: tuple[object, ...] = (),
+    pins: Pins | None = None,
+) -> list[object]:
     """Execute kube_lint."""
+    if pins is None:
+        pins = Pins(provider_registry())
 
     def key(doc):
         meta = doc["metadata"]
@@ -322,11 +637,37 @@ def kube_lint(target, resources, peers=()):
     if data.returncode and not value["Reports"]:
         msg = "kube-linter failed without findings"
         raise RuntimeError(msg)
+    return catalogue_findings(target, value["Reports"], peer_keys, pins, resources)
+
+
+def catalogue_findings(target, reports, peer_keys, pins, resources=()):
+    """Post-process one kube-linter report into findings, with real semantics."""
+    # Precompute the structural workload contracts once per report.
+    boundaries = host_boundary_objects(resources)
+    binders = privileged_bind_contracts(resources)
     result = []
-    for item in value["Reports"]:
+    for item in reports:
         obj = item["Object"]["K8sObject"]
+        kind = obj["GroupVersionKind"]["Kind"]
+        identity = (kind, obj.get("Namespace", ""), obj["Name"])
+        if kind in ONE_SHOT_KINDS and item["Check"] in ONE_SHOT_EXEMPT_CHECKS:
+            continue
+        # hostNetwork traffic never traverses the CNI pod datapath: a cluster
+        # NetworkPolicy cannot isolate it, so the isolation check has no
+        # implementable subject. The node firewall owns that boundary.
+        if item["Check"] == "non-isolated-pod" and identity in boundaries:
+            continue
+        # Narrowest root contract for a privileged-port on-address bind (see
+        # PRIVILEGED_BIND_EXEMPT_CHECKS above): unimplementable as non-root
+        # under this CRI, every other root workload keeps the finding.
+        if item["Check"] in PRIVILEGED_BIND_EXEMPT_CHECKS and identity in binders:
+            continue
         # Peers are checked and attributed in full by their own release.
-        if (obj["GroupVersionKind"]["Kind"], obj.get("Namespace", ""), obj["Name"]) in peer_keys:
+        peer = identity
+        if peer in peer_keys:
+            continue
+        # A pinned, evidence-verified out-of-band provider or node contract.
+        if pins.accepts((target["id"], *peer), item["Check"]):
             continue
         identity = json.dumps(obj, sort_keys=True)
         rule = "kube-linter-" + item["Check"]
@@ -458,6 +799,7 @@ def check(*, validate=True):
     findings = []
     inventory = []
     renders = {}
+    pins = Pins(provider_registry())
     for target in selected:
         source = target["source"]
         lint = command(
@@ -486,29 +828,12 @@ def check(*, validate=True):
             # Each real parent's complete cached render goes through the normal
             # schema, identity, policy and kube-linter checks under its own ID.
             continue
-        peers = []
-        # These consumers reference objects rendered by a different Helm source.
-        # Only the actual provider object is context; it still has its own gate.
-        link = RELEASE_PEERS.get(target["id"])
-        if link:
-            peer_id, kind, name = link
-            peer = next(t for t in selected if t["id"] == peer_id)
-            if peer_id not in renders:
-                renders[peer_id] = render(peer)
-            peers = [
-                doc
-                for doc in renders[peer_id] or []
-                if doc["kind"] == kind and doc["metadata"]["name"] == name
-            ]
-        if target["id"] == "authentik-0":
-            peers = authentik_accounts()
+        peers = release_peer_objects(target, selected, renders)
+        if target["id"] == "authentik-0" and authentik_accounts():
             # Do not discard the foundation accounts' own lint diagnostics.
-            foundation = {
-                "id": "authentik-foundation",
-                "source": "deploy/authentik/foundation.yaml",
-            }
-            findings.extend(kube_lint(foundation, peers) if peers else [])
-        findings.extend(kube_lint(target, resources, peers))
+            findings.extend(kube_lint(FOUNDATION_STUB, authentik_accounts(), pins=pins))
+            peers = peers + authentik_accounts()
+        findings.extend(kube_lint(target, resources, peers, pins=pins))
         seen = set()
         for resource in resources:
             if (
@@ -535,6 +860,10 @@ def check(*, validate=True):
                 schema_findings(target=target, resource=resource, key=key, validate=validate)
             )
             findings.extend(policy_findings(target=target, resource=resource, key=key))
+    # No orphaned entries: every registry pin must still match a real finding
+    # of its consumer target, or it is removed rather than left in place.
+    consumers = {target["id"] for target in selected} | {"authentik-foundation"}
+    pins.verify_scope(consumers)
     return findings, len(selected), sorted(set(inventory))
 
 

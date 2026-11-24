@@ -11,6 +11,7 @@ metadata:
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
   backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
   template:
     metadata:
       name: {{ template "rancher.fullname" . }}-post-delete
@@ -27,7 +28,16 @@ spec:
           image: "{{ printf "%s%s" (include "defaultOrOverrideRegistry" (list . .Values.postDelete.image.registry)) .Values.postDelete.image.repository }}:{{ .Values.postDelete.image.tag }}"
           imagePullPolicy: {{ default "IfNotPresent" .Values.postDelete.pullPolicy }}
           securityContext:
-            runAsUser: 0
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile: {type: RuntimeDefault}
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 25m, memory: 64Mi}
+            limits: {cpu: "1", memory: 256Mi}
           command:
             - /scripts/post-delete-hook.sh
           volumeMounts:
