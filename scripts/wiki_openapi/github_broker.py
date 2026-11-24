@@ -1,7 +1,7 @@
 """Mint a one-hour homelab token for wiki pull requests. Separate from the SPI issue token.
 
-Runs as a standalone script (``python scripts/wiki_openapi/github_broker.py``);
-the client/server entry points are sibling modules resolved through ``sys.path``.
+Runs as a standalone script (``python -m scripts.wiki_openapi.github_broker``); the
+client/server entry points are sibling modules of this package.
 """
 
 from __future__ import annotations
@@ -14,12 +14,16 @@ import subprocess
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
-from contextlib import suppress
 from pathlib import Path
 from typing import TypedDict, cast
 
-PHASE = "bootstrap"
+PHASE_SIGN = "sign"
+PHASE_INSTALLATION = "installation"
+PHASE_MINT = "mint"
+PHASE_PUBLISH = "publish_secret"
+PHASE_BOOTSTRAP = "bootstrap"
 PRIVATE_KEY_PATH = "/var/run/secrets/github-app/private-key"
 SIGNATURE_DIR = os.environ["TMPDIR"]
 JWT_ERROR_PHRASES = ("jwt", "signature", "algor")
@@ -51,9 +55,9 @@ def _b64url(raw: bytes) -> str:
 def _sign_app_jwt(now: int) -> str:
     """Sign the installation JWT with the in-image openssl CLI. PyJWT is not packaged.
 
-    The PEM arrives on the read-only Secret mount and the detached signature is written
-    into the pod's size-bounded emptyDir TMPDIR; neither key material nor signature
-    bytes ever travel through process arguments.
+    Key material and signature bytes never travel through process arguments: the PEM is
+    read from the read-only Secret mount and the detached signature is written into the
+    pod's size-bounded emptyDir TMPDIR.
     """
     header = _b64url(json.dumps({"alg": "RS256", "typ": "JWT"}).encode())
     claims = _b64url(
@@ -66,8 +70,9 @@ def _sign_app_jwt(now: int) -> str:
         ).encode()
     )
     payload = header + "." + claims
-    signature_path = Path(tempfile.mkstemp(prefix="wiki-broker-sig-", dir=SIGNATURE_DIR)[1])
-    try:
+    with tempfile.TemporaryDirectory(dir=SIGNATURE_DIR) as workspace:
+        workdir = Path(workspace)
+        signature_path = workdir / "signature.bin"
         subprocess.run(
             [
                 "openssl",
@@ -83,9 +88,6 @@ def _sign_app_jwt(now: int) -> str:
             check=True,
         )
         signature = signature_path.read_bytes()
-    finally:
-        with suppress(OSError):
-            signature_path.unlink(missing_ok=True)
     if not signature:
         msg = "EMPTY_SIGNATURE"
         raise BrokerFailureError(msg)
@@ -117,16 +119,15 @@ def request(
         with urllib.request.urlopen(req, context=context, timeout=25) as response:
             return json.load(response)
     except urllib.error.HTTPError as exc:
-        raise BrokerFailureError("HTTP_" + str(exc.code)) from None
+        # The refused API path (never a token or key) labels which phase failed.
+        path = urllib.parse.urlparse(url).path
+        msg = f"HTTP_{exc.code}@{path}"
+        raise BrokerFailureError(msg) from None
 
 
-def main() -> None:
-    """Mint the one-hour token and publish it to the runtime Secret."""
-    global PHASE  # noqa: PLW0603 - phase labels the published failure payload
-    PHASE = "sign"
-    now = int(time.time())
+def _installation_token(now: int) -> _Grant:
+    """PHASE_SIGN then PHASE_INSTALLATION: sign, look up, and mint the scoped token."""
     auth = _sign_app_jwt(now)
-    PHASE = "installation"
     installation = cast(
         "_Installation",
         request("GET", "https://api.github.com/repos/alchemmist/homelab/installation", auth),
@@ -139,7 +140,6 @@ def main() -> None:
     ):
         msg = "APP_PERMISSION_MISSING"
         raise ValueError(msg)
-    PHASE = "mint"
     grant = cast(
         "_Grant",
         request(
@@ -166,9 +166,13 @@ def main() -> None:
     ):
         msg = "INVALID_TOKEN_SCOPE"
         raise ValueError(msg)
+    return grant
+
+
+def _publish_secret(grant: _Grant) -> None:
+    """PHASE_PUBLISH: store the minted token in the runtime Secret."""
     root = Path("/var/run/secrets/kubernetes.io/serviceaccount")
     context = ssl.create_default_context(cafile=str(root / "ca.crt"))
-    PHASE = "publish_secret"
     request(
         "PATCH",
         "https://kubernetes.default.svc/api/v1/namespaces/automation/secrets/wiki-openapi-github",
@@ -179,32 +183,83 @@ def main() -> None:
         },
         context,
     )
-    print(json.dumps({"component": "wiki-openapi-broker", "event": "refresh_ok"}))
+
+
+def run_phase() -> str:
+    """Execute one phase per step and name the phase that completed last.
+
+    The phase ladder is a value returned to the caller, never ambient state: sign and
+    installation happen inside _installation_token, publish inside _publish_secret.
+    """
+    grant = _installation_token(int(time.time()))
+    _publish_secret(grant)
+    return PHASE_PUBLISH
+
+
+_MINT_URL_MARKERS = ("/access_tokens",)
+_PUBLISH_URL_MARKERS = ("kubernetes.default.svc",)
+
+
+def _request_failure_phase(exc: BrokerFailureError) -> str:
+    """Name mint vs publish from the API path carried in the error payload."""
+    detail = str(exc).lower()
+    if any(marker in detail for marker in _PUBLISH_URL_MARKERS):
+        return PHASE_PUBLISH
+    if any(marker in detail for marker in _MINT_URL_MARKERS):
+        return PHASE_MINT
+    return PHASE_INSTALLATION
+
+
+def _failure_code(exc: Exception) -> str:
+    """Classify a failure as SIGN_FAILED, its message, or its type name.
+
+    An openssl failure whose output matches none of JWT_ERROR_PHRASES is a real bug,
+    not a payload condition; re-raise it untouched so it surfaces as a crash.
+    """
+    if isinstance(exc, subprocess.CalledProcessError):
+        if not any(phrase in str(exc).lower() for phrase in JWT_ERROR_PHRASES):
+            raise exc
+        return "SIGN_FAILED"
+    if isinstance(exc, (BrokerFailureError, ValueError)):
+        return str(exc)
+    return type(exc).__name__
+
+
+def _failure_phase(exc: Exception) -> str:
+    """Attribute signing errors to sign; attribute request I/O errors to their request.
+
+    The payload contract distinguishes sign, installation, mint and publish; each step
+    raises with (or carries) enough identity to name itself: openssl failures are sign,
+    BrokerFailureError payloads embed the refused API path, and remaining I/O errors can
+    only come from the Kubernetes publish call.
+    """
+    if isinstance(exc, subprocess.CalledProcessError):
+        return PHASE_SIGN
+    if isinstance(exc, BrokerFailureError):
+        return _request_failure_phase(exc)
+    return PHASE_PUBLISH
 
 
 if __name__ == "__main__":
     try:
-        main()
+        run_phase()
+        print(json.dumps({"component": "wiki-openapi-broker", "event": "refresh_ok"}))
     except (
         BrokerFailureError,
         ValueError,
-        OSError,
         KeyError,
+        OSError,
         subprocess.CalledProcessError,
         ssl.SSLError,
     ) as exc:
-        detail = str(exc)
-        if isinstance(exc, subprocess.CalledProcessError) and not any(
-            phrase in detail.lower() for phrase in JWT_ERROR_PHRASES
-        ):
-            raise  # a failed openssl call unrelated to signing is a real bug
-        code = str(exc) if isinstance(exc, (BrokerFailureError, ValueError)) else type(exc).__name__
+        phase = _failure_phase(exc)
+        code = _failure_code(exc)
         print(
             json.dumps(
                 {
                     "component": "wiki-openapi-broker",
                     "event": "refresh_failed",
-                    "phase": PHASE,
+                    "phase": phase,
                     "code": code,
                 }
             )

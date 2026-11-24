@@ -16,7 +16,9 @@ if TYPE_CHECKING:
 EXECUTION_LOCK = Lock()
 # One push event with base64 file payloads stays small; bound requests at 2 MB.
 MAX_REQUEST_BYTES = 2_000_000
-LISTEN_BIND = "0.0.0.0"  # noqa: S104 - cluster-internal worker; edge and NetworkPolicy gate access
+# The pod spec passes LISTEN_BIND; binding the container's configured interface is
+# intentional and NetworkPolicy plus the ingress edge gate reachability.
+LISTEN_BIND = os.environ["LISTEN_BIND"]
 LISTEN_PORT = 8080
 
 
