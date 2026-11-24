@@ -216,6 +216,16 @@ spec:
             timeoutSeconds: {{ .timeoutSeconds }}
             successThreshold: {{ .successThreshold }}
             failureThreshold: {{ .failureThreshold }}
+          readinessProbe:
+            httpGet:
+              port: http-healthz
+              path: /readyz
+              scheme: HTTP
+            initialDelaySeconds: {{ .initialDelaySeconds }}
+            periodSeconds: {{ .periodSeconds }}
+            timeoutSeconds: {{ .timeoutSeconds }}
+            successThreshold: {{ .successThreshold }}
+            failureThreshold: {{ .failureThreshold }}
           {{- end }}
           {{- end }}
       {{- if .Values.extraContainers }}

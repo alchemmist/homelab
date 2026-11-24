@@ -1,0 +1,47 @@
+version: 1
+entries:
+  # cert-manager controllers read/write cert Secrets by design (their entire
+  # function). Each grant is least-privilege for the cert-manager role.
+  # Evidence: docs/quality/cert-manager-contracts.md.
+  - consumer: cert-manager-0
+    kind: ClusterRoleBinding
+    namespace: ""
+    name: cert-manager-cainjector
+    checks: [access-to-secrets]
+    evidence: docs/quality/cert-manager-contracts.md
+  - consumer: cert-manager-0
+    kind: ClusterRoleBinding
+    namespace: ""
+    name: cert-manager-controller-issuers
+    checks: [access-to-secrets]
+    evidence: docs/quality/cert-manager-contracts.md
+  - consumer: cert-manager-0
+    kind: ClusterRoleBinding
+    namespace: ""
+    name: cert-manager-controller-clusterissuers
+    checks: [access-to-secrets]
+    evidence: docs/quality/cert-manager-contracts.md
+  - consumer: cert-manager-0
+    kind: ClusterRoleBinding
+    namespace: ""
+    name: cert-manager-controller-certificates
+    checks: [access-to-secrets]
+    evidence: docs/quality/cert-manager-contracts.md
+  - consumer: cert-manager-0
+    kind: ClusterRoleBinding
+    namespace: ""
+    name: cert-manager-controller-orders
+    checks: [access-to-secrets]
+    evidence: docs/quality/cert-manager-contracts.md
+  - consumer: cert-manager-0
+    kind: ClusterRoleBinding
+    namespace: ""
+    name: cert-manager-controller-challenges
+    checks: [access-to-secrets, access-to-create-pods]
+    evidence: docs/quality/cert-manager-contracts.md
+  - consumer: cert-manager-0
+    kind: RoleBinding
+    namespace: cert-manager
+    name: cert-manager-webhook:dynamic-serving
+    checks: [access-to-secrets]
+    evidence: docs/quality/cert-manager-contracts.md

@@ -1,45 +1,42 @@
----
-image:
-  digest: sha256:9b262e9493ab3e0daebc2c9cfbddc6df68b9ac91afc036a759584f3d49d607e5
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
       nodeSelectorTerms:
-        - matchExpressions:
-            - key: kubernetes.io/hostname
-              operator: In
-              values:
-                - socrat-0
-                - socrat-3
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - socrat-0
+          - socrat-3
   podAntiAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
-      - labelSelector:
-          matchLabels:
-            app.kubernetes.io/component: controller
-            app.kubernetes.io/instance: cert-manager
-            app.kubernetes.io/name: cert-manager
-        topologyKey: kubernetes.io/hostname
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: controller
+          app.kubernetes.io/instance: cert-manager
+          app.kubernetes.io/name: cert-manager
+      topologyKey: kubernetes.io/hostname
 cainjector:
-  image:
-    digest: sha256:165691f631d61931a27e4fbbb82bbed8205431d0446b3c14d170081aeff75f0a
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
-          - matchExpressions:
-              - key: kubernetes.io/hostname
-                operator: In
-                values:
-                  - socrat-0
-                  - socrat-3
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - socrat-0
+            - socrat-3
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
-        - labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: cainjector
-              app.kubernetes.io/instance: cert-manager
-              app.kubernetes.io/name: cainjector
-          topologyKey: kubernetes.io/hostname
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: cainjector
+            app.kubernetes.io/instance: cert-manager
+            app.kubernetes.io/name: cainjector
+        topologyKey: kubernetes.io/hostname
+  image:
+    digest: sha256:165691f631d61931a27e4fbbb82bbed8205431d0446b3c14d170081aeff75f0a
   replicaCount: 2
   resources:
     limits:
@@ -55,7 +52,16 @@ cainjector:
 crds:
   enabled: true
 extraArgs:
-  - --acme-http01-solver-nameservers=1.1.1.1:53,9.9.9.9:53
+- --acme-http01-solver-nameservers=1.1.1.1:53,9.9.9.9:53
+image:
+  digest: sha256:9b262e9493ab3e0daebc2c9cfbddc6df68b9ac91afc036a759584f3d49d607e5
+livenessProbe:
+  enabled: true
+  failureThreshold: 8
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 15
 replicaCount: 2
 resources:
   limits:
@@ -72,32 +78,33 @@ startupapicheck:
     requests:
       cpu: 10m
       memory: 32Mi
+  ttlSecondsAfterFinished: 3600
 strategy:
   rollingUpdate:
     maxSurge: 1
     maxUnavailable: 1
   type: RollingUpdate
 webhook:
-  image:
-    digest: sha256:fc2845cc042ab57c8b98c5ff62462d50dcd5d8d3302f9e6875cd05042ce1020b
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
-          - matchExpressions:
-              - key: kubernetes.io/hostname
-                operator: In
-                values:
-                  - socrat-0
-                  - socrat-3
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - socrat-0
+            - socrat-3
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
-        - labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: webhook
-              app.kubernetes.io/instance: cert-manager
-              app.kubernetes.io/name: webhook
-          topologyKey: kubernetes.io/hostname
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: webhook
+            app.kubernetes.io/instance: cert-manager
+            app.kubernetes.io/name: webhook
+        topologyKey: kubernetes.io/hostname
+  image:
+    digest: sha256:fc2845cc042ab57c8b98c5ff62462d50dcd5d8d3302f9e6875cd05042ce1020b
   replicaCount: 2
   resources:
     limits:
@@ -110,4 +117,3 @@ webhook:
       maxSurge: 1
       maxUnavailable: 1
     type: RollingUpdate
-...
