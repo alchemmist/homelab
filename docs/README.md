@@ -11,6 +11,7 @@ Choose the narrowest route that answers the question. Nothing below is required 
 | Why was this design chosen? | [Accepted decisions](decisions/) |
 | What was actually tested, and when? | [Incidents](records/incidents/) or [handoffs](records/handoffs/); neither is a current operating procedure |
 | Is this change allowed or safe? | [Operational boundaries](platform/operational-boundaries.md) and [repository checks](quality/README.md) |
+| What is the plan for independent public web entrances? | [HOME, Moscow and NL ingress rollout plan](plans/independent-public-ingress.md) |
 | Is this a proposal rather than an accepted change? | [Research and proposals](research/) |
 
 The [public wiki](../wiki/README.md) has a separate audience and publication process.
