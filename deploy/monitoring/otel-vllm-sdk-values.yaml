@@ -2,7 +2,7 @@
 otel:
   enabled: true
   endpoint: https://10.250.0.3:44318/v1/traces
-  sourceConfigMap: vllm-otel-source-fac326dd47cf5b7e
+  sourceConfigMap: vllm-otel-source-17d3befabdf4f3ba
   environment:
     PYTHONPATH: /etc/otel-source
     PYTHONDONTWRITEBYTECODE: "1"
