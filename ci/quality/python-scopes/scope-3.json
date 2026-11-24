@@ -1,4 +1,4 @@
 {
-  "include": ["scripts/vpn-*.py", "ansible/scripts/vpn-*.py"],
+  "include": ["ci/vpn/vpn-*.py", "ansible/scripts/vpn-*.py"],
   "rules": ["PLW1510"]
 }

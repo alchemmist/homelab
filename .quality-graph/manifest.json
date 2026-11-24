@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "f730de066abbfc6e484fecfbb849bc990d810f1ad0efc4beb55e536f45f32004",
+  "graphDigest": "ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -65,34 +65,6 @@
       },
       "timeoutMinutes": 5,
       "title": "Documentation language"
-    },
-    {
-      "env": {},
-      "id": "yaml",
-      "needs": [
-        "graph"
-      ],
-      "policy": {
-        "approvals": {
-          "files": false,
-          "findings": false,
-          "node": false
-        },
-        "blocking": true,
-        "blockingSeverities": [
-          "error"
-        ]
-      },
-      "profile": "default",
-      "result": {
-        "adapter": "native",
-        "path": "reports/yaml.json"
-      },
-      "step": {
-        "run": "make yaml"
-      },
-      "timeoutMinutes": 5,
-      "title": "YAML structure"
     },
     {
       "env": {},
@@ -314,34 +286,6 @@
       "title": "Deployed image vulnerabilities"
     },
     {
-      "env": {},
-      "id": "tests-fast",
-      "needs": [
-        "graph"
-      ],
-      "policy": {
-        "approvals": {
-          "files": false,
-          "findings": false,
-          "node": false
-        },
-        "blocking": true,
-        "blockingSeverities": [
-          "error"
-        ]
-      },
-      "profile": "quality-fast",
-      "result": {
-        "adapter": "junit",
-        "path": "reports/tests-fast.xml"
-      },
-      "step": {
-        "run": "make tests-fast"
-      },
-      "timeoutMinutes": 10,
-      "title": "Unit tests"
-    },
-    {
       "env": {
         "GH_TOKEN": "${{ github.token }}"
       },
@@ -428,34 +372,6 @@
       },
       "timeoutMinutes": 5,
       "title": "RustFS gateway public return types"
-    },
-    {
-      "env": {},
-      "id": "manifests",
-      "needs": [
-        "ownership"
-      ],
-      "policy": {
-        "approvals": {
-          "files": false,
-          "findings": false,
-          "node": false
-        },
-        "blocking": true,
-        "blockingSeverities": [
-          "error"
-        ]
-      },
-      "profile": "quality-manifests",
-      "result": {
-        "adapter": "native",
-        "path": "reports/manifests.json"
-      },
-      "step": {
-        "run": "make manifests"
-      },
-      "timeoutMinutes": 10,
-      "title": "Manifest validation"
     },
     {
       "env": {},

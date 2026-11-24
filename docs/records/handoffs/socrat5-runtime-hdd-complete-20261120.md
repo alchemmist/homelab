@@ -55,9 +55,8 @@ Downtime was longer than originally hoped; do not describe it as instantaneous.
 - Day-2 owner: `ansible/playbooks/socrat-5-runtime-storage.yml`; refuses an
   unmigrated node, persists accepted bind/guard only, reloads systemd without
   restarting services. It is NOT a data migration/bootstrap playbook.
-- `scripts/socrat5-runtime-boot-migrate.py` is a one-node historical cutover tool,
-  with protected state, new-boot and source identity gates. Never replay `prepare`
-  against an existing destination or label its live pre-copy a backup.
+- The one-time boot helper was retired after acceptance. Do not repeat the copy
+  against the existing destination; the live pre-copy was not a backup.
 
 ## Post-reboot transport correction
 

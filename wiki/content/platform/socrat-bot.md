@@ -257,7 +257,7 @@ username без символа @. Его может не быть, тогда о
 
 ### AlertImage
 
-- `data_base64`: string, обязательно — Canonical strict base64; decoded limit 4 MiB, matching PNG/JPEG signature required.
+- `data_base64`: string, обязательно — Строгая каноническая кодировка base64; после декодирования — не более 4 МиБ. Сигнатура должна соответствовать PNG или JPEG.
 - `mime_type`: string, обязательно
 - `filename`: string
 
@@ -267,7 +267,7 @@ username без символа @. Его может не быть, тогда о
 - `labels`: object
 - `annotations`: object
 - `fingerprint`: string
-- `spi_episode`: string — Authoritative SPI episode digest. Creates an immutable episode-specific card key; firing/resolved share it, later firings use a new key.
+- `spi_episode`: string — Эталонный хеш эпизода SPI. По нему создаётся неизменяемый ключ карточки: события `firing` и `resolved` одного эпизода используют общий ключ, следующее срабатывание — новый.
 
 ### Card
 
@@ -286,18 +286,18 @@ username без символа @. Его может не быть, тогда о
 - `label`: string
 - `key`: string — Ключ карточки, если он уже известен.
 - `alert`: Alert
-- `revision`: integer — Monotonic desired-link revision; stale revisions return409. Requires expected_copies.
-- `expected_copies`: список object — Optional atomic guard: all listed chat/message identities must still belong to this card, otherwise409.
+- `revision`: integer — Монотонно растущая ревизия ссылки. Для устаревшей ревизии сервер возвращает 409. Требуется `expected_copies`.
+- `expected_copies`: список object — Необязательная атомарная проверка: все указанные пары чата и сообщения должны по-прежнему относиться к карточке, иначе сервер вернёт 409.
 
 ### CardLinkResult
 
 - `key`: string
 - `updated`: список object
-- `pending`: список object — Copies not acknowledged by Telegram; retry even on HTTP200.
+- `pending`: список object — Копии без подтверждения Telegram. Повторите попытку даже при ответе HTTP 200.
 
 ### SentMessage
 
-- `attachments`: список object — Present when retained images exist; text copies do not imply photo success. Slots are zero-based. Pending includes failed/disabled recipients; no bytes are exposed.
+- `attachments`: список object — Поле есть, если сохранены изображения. Доставка текста не подтверждает доставку фото. Нумерация слотов начинается с нуля. В `pending` входят получатели со сбоем доставки и отключённые получатели; содержимое файлов не передаётся.
 - `id`: integer
 - `chat_id`: integer
 - `replayed`: boolean
@@ -340,5 +340,5 @@ username без символа @. Его может не быть, тогда о
 
 - `telegram_id`: integer, обязательно
 - `username`: string
-- `admin_level`: integer — Assigned authority tier; lower numbers have higher authority.
-- `receive_level`: integer — New firing delivery threshold, greater than or equal to admin_level.
+- `admin_level`: integer — Уровень полномочий: чем меньше число, тем выше полномочия.
+- `receive_level`: integer — Порог доставки новых срабатываний, не ниже `admin_level`.

@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import cast
 
 _spec = importlib.util.spec_from_file_location(
-    "panel_native", Path(__file__).with_name("vpn-panel-session.py")
+    "panel_native", Path(__file__).resolve().parents[1] / "ci/vpn/vpn-panel-session.py"
 )
 native = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(native)
