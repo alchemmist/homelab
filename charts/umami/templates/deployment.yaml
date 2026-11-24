@@ -7,10 +7,28 @@ spec:
   template:
     metadata: { labels: { app: umami } }
     spec:
+      serviceAccountName: umami
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
       nodeSelector: { kubernetes.io/hostname: {{ .Values.nodeName | quote }} }
       containers:
       - name: umami
         image: {{ .Values.umamiImage }}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: {drop: [ALL]}
+        resources:
+          requests: {cpu: 100m, memory: 256Mi}
+          limits: {cpu: "1", memory: 768Mi}
         envFrom: [{ secretRef: { name: {{ .Values.secretName }} } }]
         env:
         - name: DATABASE_URL
@@ -21,6 +39,7 @@ spec:
         ports: [{ name: http, containerPort: 3000 }]
         volumeMounts:
         - { name: pg-ca, mountPath: /etc/pg-common, readOnly: true }
+        - {name: tmp, mountPath: /tmp}
         livenessProbe:
           httpGet: { path: /api/heartbeat, port: http }
           periodSeconds: 10
@@ -28,5 +47,6 @@ spec:
           httpGet: { path: /api/heartbeat, port: http }
           periodSeconds: 5
       volumes:
+      - {name: tmp, emptyDir: {sizeLimit: 64Mi}}
       - name: pg-ca
         configMap: { name: pg-common-ca }

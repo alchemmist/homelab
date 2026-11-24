@@ -1,0 +1,11 @@
+version: 1
+entries:
+  # Umami reads its database DSN and application secret bundle from the
+  # environment; no file-based configuration interface exists. Evidence:
+  # docs/quality/umami-contracts.md.
+  - consumer: umami-0
+    kind: Deployment
+    namespace: umami
+    name: umami
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/umami-contracts.md
