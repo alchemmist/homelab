@@ -1,0 +1,22 @@
+# Venice browser bridge: API consumers are the litellm proxy and the scraper.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: venice-api-isolation}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: {{ $.Chart.Name }}, app.kubernetes.io/instance: {{ $.Release.Name }}}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: llm}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: litellm}}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.targetPort }}
+  egress:
+    - to:
+        - ipBlock: {cidr: 0.0.0.0/0}
+      ports: [{protocol: TCP, port: 443}]
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]

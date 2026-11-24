@@ -1,0 +1,19 @@
+version: 1
+entries:
+  # Venice bridge API_KEY is read from secret venice-api-env via the service's
+  # env-only configuration interface. Evidence: docs/quality/venice-api-contracts.md.
+  - consumer: venice-api-0
+    kind: Deployment
+    namespace: venice-api
+    name: venice-api
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/venice-api-contracts.md
+  # Candidate bridge has the same env-only API_KEY contract. Candidate Chrome
+  # keeps its writable image filesystem for the intentionally sandboxed
+  # persistent browser runtime (documented verification limitation).
+  - consumer: venice-api-0
+    kind: Deployment
+    namespace: venice-api
+    name: venice-browser-candidate
+    checks: [env-value-from, read-secret-from-env-var, no-read-only-root-fs]
+    evidence: docs/quality/venice-api-contracts.md
