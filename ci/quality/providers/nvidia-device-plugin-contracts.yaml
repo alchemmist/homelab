@@ -1,0 +1,11 @@
+version: 1
+entries:
+  # Node GPU driver: root opens host NVIDIA devices and creates the kubelet
+  # device-plugin socket in the required writable host directory. Evidence:
+  # docs/quality/nvidia-device-plugin-contracts.md.
+  - consumer: nvidia-device-plugin-0
+    kind: DaemonSet
+    namespace: kube-system
+    name: nvidia-device-plugin
+    checks: [run-as-non-root, writable-host-mount]
+    evidence: docs/quality/nvidia-device-plugin-contracts.md

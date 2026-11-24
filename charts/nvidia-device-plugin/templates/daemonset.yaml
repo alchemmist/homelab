@@ -39,15 +39,28 @@ spec:
               value: compute,utility
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
+          livenessProbe:
+            exec:
+              command: [/bin/sh, -ec, 'test -S /var/lib/kubelet/device-plugins/nvidia.sock']
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command: [/bin/sh, -ec, 'test -S /var/lib/kubelet/device-plugins/nvidia.sock']
+            periodSeconds: 10
+            failureThreshold: 3
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - name: device-plugin
               mountPath: /var/lib/kubelet/device-plugins
+            - {name: tmp, mountPath: /tmp}
       volumes:
+        - {name: tmp, emptyDir: {sizeLimit: 16Mi}}
         - name: device-plugin
           hostPath:
             path: /var/lib/kubelet/device-plugins
