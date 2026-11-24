@@ -340,6 +340,11 @@ RELEASE_PEERS = {
     # Services), the shared platform postgres and the shared redis; its OIDC
     # IdP is the authentik release. Load the real provider objects so the
     # isolation NetworkPolicy egress selectors resolve instead of dangling.
+    # LMS OIDC peer lives in the identity release; load its real Service and
+    # Deployment so the release NetworkPolicy's egress selector resolves offline.
+    "lms-0": [
+        ("authentik-0", [("Service", "authentik-server"), ("Deployment", "authentik-server")]),
+    ],
     "litellm-0": [
         ("vllm-0", [("Service", "vllm"), ("Deployment", "vllm")]),
         ("venice-api-0", [("Service", "venice-api"), ("Deployment", "venice-api")]),

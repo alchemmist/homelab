@@ -1,0 +1,11 @@
+version: 1
+entries:
+  # LMS reads its database DSN and OIDC client credentials from env via
+  # secretKeyRef; no file-based configuration interface exists. Evidence:
+  # docs/quality/lms-contracts.md.
+  - consumer: lms-0
+    kind: Deployment
+    namespace: lms
+    name: lms
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/lms-contracts.md
