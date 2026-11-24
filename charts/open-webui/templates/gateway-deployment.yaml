@@ -21,12 +21,25 @@ spec:
       enableServiceLinks: false
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: {type: RuntimeDefault}
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.gateway.nodeName | default .Values.nodeName | quote }}
       containers:
         - name: nginx
           image: {{ .Values.gateway.image | quote }}
           imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile: {type: RuntimeDefault}
+            capabilities: {drop: [ALL]}
           ports:
             - name: http
               containerPort: {{ .Values.gateway.port }}
@@ -53,7 +66,16 @@ spec:
             - name: config
               mountPath: /etc/nginx/conf.d
               readOnly: true
+            - {name: nginx-cache, mountPath: /var/cache/nginx}
+            - {name: run-dir, mountPath: /run}
+            - {name: tmp, mountPath: /tmp}
       volumes:
         - name: config
           configMap:
             name: open-webui-gateway
+        - name: nginx-cache
+          emptyDir: {sizeLimit: 64Mi}
+        - name: run-dir
+          emptyDir: {sizeLimit: 16Mi}
+        - name: tmp
+          emptyDir: {sizeLimit: 16Mi}

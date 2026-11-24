@@ -1,0 +1,24 @@
+version: 1
+entries:
+  # Open WebUI server (pinned upstream v0.12.3-slim): start.sh + the app write
+  # static asset files into the image-owned /app/backend/open_webui/static dir,
+  # which is root-owned - so the server needs root + a writable root filesystem
+  # (Docker-verified: RO rootfs and uid 1000 both fail on the static writes).
+  # Runtime secrets are read from the env (DATABASE_URL, OPENAI_API_KEY,
+  # WEBUI_SECRET_KEY via secretKeyRef); the image has no file-based config for
+  # them. Evidence: docs/quality/open-webui-contracts.md.
+  - consumer: open-webui-0
+    kind: Deployment
+    namespace: llm
+    name: open-webui
+    checks: [env-value-from, read-secret-from-env-var, run-as-non-root, no-read-only-root-fs]
+    evidence: docs/quality/open-webui-contracts.md
+  # Gateway nginx is a host-network pod: it binds the host address
+  # 10.250.0.1:18080 on a specific node, outside the CNI pod datapath. The node
+  # firewall owns that boundary. Evidence: docs/quality/open-webui-contracts.md.
+  - consumer: open-webui-0
+    kind: Deployment
+    namespace: llm
+    name: open-webui-gateway
+    checks: [host-network]
+    evidence: docs/quality/open-webui-contracts.md
