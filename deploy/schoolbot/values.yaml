@@ -10,7 +10,7 @@ service:
   targetPort: 8000
 ingress:
   className: traefik
-  host: bot.sch1357.ru
+  host: inform.sch1357.ru
   tlsSecretName: schoolbot-tls
   clusterIssuer: letsencrypt-http01
 resources:
@@ -18,7 +18,7 @@ resources:
   limits: {memory: 768Mi}
 imagePullSecrets:
   - schoolbot-harbor-pull
-publicBaseUrl: https://bot.sch1357.ru
+publicBaseUrl: https://inform.sch1357.ru
 cookieSecure: true
 adminUi: false
 updateMode: polling
