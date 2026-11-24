@@ -106,9 +106,35 @@ def periodic(context) -> None:
         sleep(30 - ((monotonic() - start) % 30))
 
 
+def _serve_health(port: int) -> None:
+    """Unauthenticated health endpoint for the periodic prober."""
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    class _Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path in ("/healthz", "/health/ready", "/health/live"):
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                self.wfile.write(b"ok\n")
+            else:
+                self.send_error(404)
+
+        def log_message(self, *args):
+            return
+
+    HTTPServer(("0.0.0.0", port), _Handler).serve_forever()
+
+
 if __name__ == "__main__":
     tls = ssl.create_default_context()
     if sys.argv[1:] == ["--periodic"]:
+        import threading
+        import os
+
+        threading.Thread(
+            target=_serve_health, args=(int(os.environ.get("HEALTH_PORT", "8080")),), daemon=True
+        ).start()
         periodic(tls)
     else:
         for sample in batch(tls):
