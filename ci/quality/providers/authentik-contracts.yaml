@@ -1,0 +1,18 @@
+version: 1
+entries:
+  # Authentik server reads its secret key and database/redis credentials from
+  # env via the chart's secret bindings. Evidence:
+  # docs/quality/authentik-contracts.md.
+  - consumer: authentik-0
+    kind: Deployment
+    namespace: identity
+    name: authentik-server
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/authentik-contracts.md
+  # Worker has the same environment-only runtime credential contract.
+  - consumer: authentik-0
+    kind: Deployment
+    namespace: identity
+    name: authentik-worker
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/authentik-contracts.md

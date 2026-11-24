@@ -1,4 +1,128 @@
----
+additionalObjects:
+- apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: authentik-server-isolation
+    namespace: identity
+  spec:
+    egress:
+    - ports:
+      - port: 5432
+        protocol: TCP
+      to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: postgres
+        podSelector:
+          matchLabels:
+            cnpg.io/cluster: pg-critical
+    - ports:
+      - port: 6379
+        protocol: TCP
+      to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: redis
+    - ports:
+      - port: 53
+        protocol: UDP
+      - port: 53
+        protocol: TCP
+      to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+        podSelector:
+          matchLabels:
+            k8s-app: kube-dns
+    - ports:
+      - port: 443
+        protocol: TCP
+      to:
+      - ipBlock:
+          cidr: 0.0.0.0/0
+    ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/name: traefik
+      ports:
+      - port: 9000
+        protocol: TCP
+      - port: 9443
+        protocol: TCP
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: cattle-monitoring-system
+      ports:
+      - port: 9300
+        protocol: TCP
+    podSelector:
+      matchLabels:
+        app.kubernetes.io/component: server
+    policyTypes:
+    - Ingress
+    - Egress
+- apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: authentik-worker-isolation
+    namespace: identity
+  spec:
+    egress:
+    - ports:
+      - port: 5432
+        protocol: TCP
+      to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: postgres
+        podSelector:
+          matchLabels:
+            cnpg.io/cluster: pg-critical
+    - ports:
+      - port: 6379
+        protocol: TCP
+      to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: redis
+    - ports:
+      - port: 53
+        protocol: UDP
+      - port: 53
+        protocol: TCP
+      to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+        podSelector:
+          matchLabels:
+            k8s-app: kube-dns
+    - ports:
+      - port: 443
+        protocol: TCP
+      to:
+      - ipBlock:
+          cidr: 0.0.0.0/0
+    ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: cattle-monitoring-system
+      ports:
+      - port: 9300
+        protocol: TCP
+    podSelector:
+      matchLabels:
+        app.kubernetes.io/component: worker
+    policyTypes:
+    - Ingress
+    - Egress
 authentik:
   error_reporting:
     enabled: false
@@ -8,69 +132,100 @@ authentik:
 geoip:
   enabled: false
 global:
-  env:
-    - {name: AUTHENTIK_POSTGRESQL__HOST, value: pg-critical-rw.postgres.svc.cluster.local}
-    - {name: AUTHENTIK_POSTGRESQL__SSLMODE, value: verify-full}
-    - {name: AUTHENTIK_POSTGRESQL__SSLROOTCERT, value: /etc/pg-critical/ca.crt}
-    - name: AUTHENTIK_POSTGRESQL__PASSWORD
-      valueFrom: {secretKeyRef: {name: authentik-pg-critical, key: password}}
   deploymentStrategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
     type: RollingUpdate
-    rollingUpdate: {maxUnavailable: 1, maxSurge: 1}
+  env:
+  - name: AUTHENTIK_POSTGRESQL__HOST
+    value: pg-critical-rw.postgres.svc.cluster.local
+  - name: AUTHENTIK_POSTGRESQL__SSLMODE
+    value: verify-full
+  - name: AUTHENTIK_POSTGRESQL__SSLROOTCERT
+    value: /etc/pg-critical/ca.crt
+  - name: AUTHENTIK_POSTGRESQL__PASSWORD
+    valueFrom:
+      secretKeyRef:
+        key: password
+        name: authentik-pg-critical
   image:
     digest: sha256:da89d8338a3b1889800eb033fd61f8d43f7aa9a1c5a042cb5e03d891b1f0c56c
     tag: 2026.8.6
-  # Do not bypass pressure, maintenance or other administrative taints.
-  tolerations:
-    - {key: homelab.io/bootstrap, operator: Equal, value: "true", effect: NoSchedule}
   securityContext:
     fsGroup: 1000
+  tolerations:
+  - effect: NoSchedule
+    key: homelab.io/bootstrap
+    operator: Equal
+    value: 'true'
   volumeMounts:
-    - {name: pg-critical-ca, mountPath: /etc/pg-critical, readOnly: true}
+  - mountPath: /etc/pg-critical
+    name: pg-critical-ca
+    readOnly: true
+  - mountPath: /tmp
+    name: tmp
   volumes:
-    - {name: pg-critical-ca, secret: {secretName: pg-critical-ca}}
+  - name: pg-critical-ca
+    secret:
+      secretName: pg-critical-ca
+  - emptyDir:
+      sizeLimit: 128Mi
+    name: tmp
 postgresql:
   enabled: false
 server:
-  # Both platform manifests of the pinned image start as numeric UID 1000.
-  containerSecurityContext:
-    runAsNonRoot: true
-  # Base64 JSON: {"options":"-c jit=off"}. Avoid compiling the wide
-  # identification-stage source lookup on each web request. Web sessions only.
-  env:
-    - {name: AUTHENTIK_POSTGRESQL__CONN_OPTIONS, value: eyJvcHRpb25zIjoiLWMgaml0PW9mZiJ9}
-  # Remove a slow backend from routing on the normal readiness budget. Avoid
-  # recycling its warm workers during a transient shared latency spike.
-  livenessProbe:
-    timeoutSeconds: 8
-    failureThreshold: 9
   affinity:
-    nodeAffinity: &preferredNodes
+    nodeAffinity: &id001
       preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 80
-          preference:
-            matchExpressions:
-              - {key: kubernetes.io/hostname, operator: In, values: [socrat-0, socrat-1, socrat-5]}
+      - preference:
+          matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - socrat-0
+            - socrat-1
+            - socrat-5
+        weight: 80
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
-        - topologyKey: kubernetes.io/hostname
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: authentik
-              app.kubernetes.io/component: server
-  pdb: {enabled: true, minAvailable: 2}
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: server
+            app.kubernetes.io/instance: authentik
+        topologyKey: kubernetes.io/hostname
   automountServiceAccountToken: false
+  containerSecurityContext: &id002
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: true
+    runAsGroup: 1000
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  env:
+  - name: AUTHENTIK_POSTGRESQL__CONN_OPTIONS
+    value: eyJvcHRpb25zIjoiLWMgaml0PW9mZiJ9
   ingress:
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt-http01
     enabled: true
     hosts:
-      - auth.socrat.alchemmist.xyz
+    - auth.socrat.alchemmist.xyz
     ingressClassName: traefik
     tls:
-      - hosts:
-          - auth.socrat.alchemmist.xyz
-        secretName: authentik-tls
+    - hosts:
+      - auth.socrat.alchemmist.xyz
+      secretName: authentik-tls
+  livenessProbe:
+    failureThreshold: 9
+    timeoutSeconds: 8
+  pdb:
+    enabled: true
+    minAvailable: 2
   replicas: 3
   resources:
     limits:
@@ -84,20 +239,20 @@ server:
 serviceAccount:
   create: false
 worker:
-  # Both platform manifests of the pinned image start as numeric UID 1000.
-  containerSecurityContext:
-    runAsNonRoot: true
   affinity:
-    nodeAffinity: *preferredNodes
+    nodeAffinity: *id001
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
-        - topologyKey: kubernetes.io/hostname
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: authentik
-              app.kubernetes.io/component: worker
-  pdb: {enabled: true, minAvailable: 1}
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: worker
+            app.kubernetes.io/instance: authentik
+        topologyKey: kubernetes.io/hostname
   automountServiceAccountToken: false
+  containerSecurityContext: *id002
+  pdb:
+    enabled: true
+    minAvailable: 1
   replicas: 2
   resources:
     limits:
@@ -108,4 +263,3 @@ worker:
       ephemeral-storage: 256Mi
       memory: 768Mi
   serviceAccountName: identity-runtime
-...
