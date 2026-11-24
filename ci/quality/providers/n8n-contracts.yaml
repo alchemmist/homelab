@@ -1,0 +1,11 @@
+version: 1
+entries:
+  # n8n reads its database credentials and workflow encryption key from env;
+  # no file-based configuration interface exists. Evidence:
+  # docs/quality/n8n-contracts.md.
+  - consumer: n8n-0
+    kind: Deployment
+    namespace: automation
+    name: n8n
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/n8n-contracts.md

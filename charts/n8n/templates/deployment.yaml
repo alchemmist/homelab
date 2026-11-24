@@ -115,7 +115,9 @@ spec:
             - name: http
               containerPort: 5678
           securityContext:
+            runAsNonRoot: true
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
           resources:
@@ -139,6 +141,8 @@ spec:
               readOnly: true
             - name: data
               mountPath: /home/node/.n8n
+            - {name: n8n-cache, mountPath: /home/node/.cache}
+            - {name: tmp, mountPath: /tmp}
         {{- if .Values.serviceVpn.enabled }}
         - name: service-vpn
           image: {{ .Values.serviceVpn.image | quote }}
@@ -150,6 +154,12 @@ spec:
             initialDelaySeconds: 3
             periodSeconds: 10
             timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: [/bin/sh, -ec, "nc -z -w 2 127.0.0.1 18443 && nc -z -w 2 127.0.0.1 18444"]
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
