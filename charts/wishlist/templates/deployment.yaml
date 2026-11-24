@@ -28,6 +28,12 @@ spec:
         - name: {{ . }}
         {{- end }}
       {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.nodeName }}
       {{- with .Values.hostAliases }}
@@ -44,6 +50,16 @@ spec:
               import os, psycopg
               with psycopg.connect(os.environ['WISHLIST_DATABASE_URL'], connect_timeout=5) as c:
                   assert c.execute('SELECT EXISTS(SELECT FROM users)').fetchone()[0]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile: {type: RuntimeDefault}
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 5m, memory: 32Mi}
+            limits: {cpu: 500m, memory: 128Mi}
           env:
             - name: WISHLIST_DATABASE_URL
               valueFrom: {secretKeyRef: {name: wishlist-postgres, key: url}}
@@ -54,6 +70,16 @@ spec:
         - name: require-existing-wishlist
           image: {{ .Values.image.repository }}@{{ .Values.image.digest }}
           command: [python, -c]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile: {type: RuntimeDefault}
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 5m, memory: 32Mi}
+            limits: {cpu: 500m, memory: 128Mi}
           args:
             - >-
               import os;
@@ -69,6 +95,13 @@ spec:
         - name: wishlist
           image: {{ .Values.image.repository }}{{ if .Values.image.digest }}@{{ .Values.image.digest }}{{ else }}:{{ .Values.image.tag }}{{ end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile: {type: RuntimeDefault}
+            capabilities: {drop: [ALL]}
           ports:
             - name: http
               containerPort: {{ .Values.service.targetPort }}
@@ -109,6 +142,8 @@ spec:
             - secretRef:
                 name: wishlist-secrets
                 optional: true
+          readinessProbe: {httpGet: {path: /, port: http}, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3}
+          livenessProbe: {httpGet: {path: /, port: http}, periodSeconds: 20, timeoutSeconds: 3, failureThreshold: 3}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
           volumeMounts:
@@ -119,6 +154,7 @@ spec:
               mountPath: /data
             - name: media-cache
               mountPath: /data/media-cache
+            - {name: tmp, mountPath: /tmp}
           {{- if .Values.observability.enabled }}
             - name: otel-client
               mountPath: /etc/otel-client
@@ -131,6 +167,7 @@ spec:
         - name: media-cache
           emptyDir:
             sizeLimit: 2Gi
+        - {name: tmp, emptyDir: {sizeLimit: 64Mi}}
       {{- if .Values.observability.enabled }}
         - name: otel-client
           secret:

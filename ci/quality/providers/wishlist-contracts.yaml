@@ -1,0 +1,11 @@
+version: 1
+entries:
+  # Wishlist reads its database DSN and application session/API secrets from the
+  # environment; no file-based configuration interface exists. Evidence:
+  # docs/quality/wishlist-contracts.md.
+  - consumer: wishlist-0
+    kind: Deployment
+    namespace: wishlist
+    name: wishlist
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/wishlist-contracts.md
