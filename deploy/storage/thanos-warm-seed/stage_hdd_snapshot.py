@@ -24,11 +24,21 @@ class LimitedWriter:
         time.sleep(max(0, self.started + self.size / (12 * 2**20) - time.monotonic()))
 
 
+def retry_connection(call):
+    for attempt in range(6):
+        try:
+            return call()
+        except (ConnectionError, TimeoutError):
+            if attempt == 5:
+                raise
+            time.sleep(2**attempt)
+
+
 def main():
-    dest = Path("/candidate/precopy-v1")
+    dest = Path("/candidate") / ("precopy-" + os.environ["HOSTNAME"])
     dest.mkdir(exist_ok=False)  # never replace a prior attempt
     bucket = Bucket(json.loads(Path("/s3/objstore.yml").read_bytes())["config"])
-    objects = bucket.listing()
+    objects = retry_connection(bucket.listing)
     fs = os.statvfs(dest)
     if fs.f_bavail * fs.f_frsize < sum(objects.values()) + 100 * 2**30:
         raise OSError("insufficient disk reserve")
@@ -41,7 +51,12 @@ def main():
             target = tree / key
             target.parent.mkdir(parents=True, exist_ok=True)
             with tempfile.NamedTemporaryFile(dir=target.parent) as temp:
-                proof = bucket.read(key, sink=LimitedWriter(temp), absent=True)
+                def transfer():
+                    temp.seek(0)
+                    temp.truncate()
+                    return bucket.read(key, sink=LimitedWriter(temp), absent=True)
+
+                proof = retry_connection(transfer)
                 if proof is None:
                     missing += 1  # concurrent expiry; report, never propagate deletion
                     continue
