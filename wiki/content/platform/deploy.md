@@ -188,6 +188,6 @@ Action меняет image tag/digest в существующих values, ком�
 
 Не синкайте/пруньте посторонние приложения ради своего релиза. Общая деградация — повод остановить rollout и перейти к incident procedure.
 
-## When a Harbor release upload appears stuck
+## Что делать, если загрузка образа в Harbor кажется зависшей
 
-A slow blob upload can spend minutes inside a single registry `PATCH` even when Harbor pods are Ready. Check whether the original publish job is still progressing before starting another one. Report the job URL, UTC interval, observed bytes and client network; omit credentials and upload-session URLs. A fast push from the cluster does not establish that the GitHub runner path is healthy. [November measurements and open investigation](https://github.com/alchemmist/homelab/issues/558).
+При медленном соединении один запрос `PATCH` на загрузку слоя может занимать несколько минут, даже если все поды Harbor находятся в состоянии `Ready`. Прежде чем запускать сборку повторно, проверьте, передаёт ли данные исходная задача публикации. Для разбора укажите ссылку на задачу, интервал времени в UTC, число переданных байтов и сеть, из которой шла загрузка. Не передавайте учётные данные и ссылки на сессию загрузки. Быстрая отправка из кластера не исключает проблем на пути от GitHub Actions до Harbor. [Ноябрьские замеры и ход расследования](https://github.com/alchemmist/homelab/issues/558).

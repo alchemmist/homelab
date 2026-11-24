@@ -1245,3 +1245,24 @@ def test_documentation_language_scope_and_locations(tmp_path, monkeypatch) -> No
         ("README", 1),
     ]
     assert all(not f["location"]["path"].endswith(".json") for f in findings)
+
+
+def test_wiki_language_checks_prose_but_allows_technical_examples(tmp_path, monkeypatch) -> None:
+    from ci.quality import check_docs_language as language
+
+    monkeypatch.setattr(language, "ROOT", tmp_path)
+    name = "wiki/content/platform/guide.md"
+    path = tmp_path / name
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        "---\ntitle: How to deploy\nweight: 10\n---\n"
+        "## Harbor\n\nПроверьте Harbor и `the example command`.\n\n"
+        "[Ссылка](https://example.org/how-to-deploy).\n\n"
+        "~~~~sh\nHere is an English example.\n~~~\nThis is still code.\n~~~~\n\n"
+        "## When an upload appears stuck\n\n"
+        "Русский текст. Check the original publish job.\n",
+        encoding="utf-8",
+    )
+    findings, count = language.check([name])
+    assert count == 1
+    assert [item["location"]["startLine"] for item in findings] == [2, 17, 19]
