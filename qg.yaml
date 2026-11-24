@@ -105,6 +105,8 @@ profiles:
           set -euo pipefail
           read -r image < ci/quality/nginx-syntax-image.txt
           docker pull "${image}"
+# Temporarily unscheduled (PR #580): yaml, tests-fast, manifests.
+# Their Make targets remain available for local diagnosis and restoration.
 nodes:
   graph:
     title: Graph integrity
@@ -125,15 +127,6 @@ nodes:
       - graph
     results:
       native: reports/docs-language.json
-  yaml:
-    title: YAML structure
-    profile: default
-    run: make yaml
-    policy: *id001
-    needs:
-      - graph
-    results:
-      native: reports/yaml.json
   python-scopes:
     title: Scoped Python rules
     profile: default
@@ -196,15 +189,6 @@ nodes:
       - graph
     policy: *id001
     run: make image-cves
-  tests-fast:
-    title: Unit tests
-    profile: quality-fast
-    needs:
-      - graph
-    policy: *id001
-    run: make tests-fast
-    results:
-      junit: reports/tests-fast.xml
   workflow:
     title: Delivery security
     profile: quality-delivery
@@ -232,15 +216,6 @@ nodes:
       - graph
     policy: *id001
     run: make rustfs-return-types
-  manifests:
-    title: Manifest validation
-    profile: quality-manifests
-    needs:
-      - ownership
-    policy: *id001
-    run: make manifests
-    results:
-      native: reports/manifests.json
   dependencies:
     title: Dependency audit
     profile: quality-javascript

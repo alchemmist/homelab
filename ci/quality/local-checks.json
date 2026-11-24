@@ -12,5 +12,26 @@
     "results": {
       "junit": "reports/tests-cluster.xml"
     }
+  },
+  "yaml": {
+    "title": "YAML structure",
+    "run": "make yaml",
+    "results": {
+      "native": "reports/yaml.json"
+    }
+  },
+  "tests-fast": {
+    "title": "Unit tests",
+    "run": "make tests-fast",
+    "results": {
+      "junit": "reports/tests-fast.xml"
+    }
+  },
+  "manifests": {
+    "title": "Manifest validation",
+    "run": "make manifests",
+    "results": {
+      "native": "reports/manifests.json"
+    }
   }
 }
