@@ -183,3 +183,30 @@
   ansible.builtin.debug:
     var: wg_socrat_addr.stdout_lines
 ...
+
+- name: Install wg-socrat endpoint pin
+  ansible.builtin.copy:
+    src: wg-socrat-pin-endpoints.py
+    dest: /usr/local/libexec/wg-socrat-pin-endpoints
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install wg-socrat endpoint pin units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - wg-socrat-pin-endpoints.service
+    - wg-socrat-pin-endpoints.timer
+  register: wg_socrat_pin_units
+
+- name: Enable wg-socrat endpoint pin timer
+  ansible.builtin.systemd:
+    name: wg-socrat-pin-endpoints.timer
+    enabled: true
+    state: started
+    daemon_reload: true
