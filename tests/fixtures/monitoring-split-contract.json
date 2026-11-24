@@ -10,7 +10,7 @@
   },
   "ClusterRole//kube-prometheus-stack-grafana-clusterrole": {
     "owner": "grafana",
-    "normalizedSha256": "d3df01baa5473d2bdb5a1d0679a42bb06dcfb554c73f607274f5701c8b0f7cd5"
+    "normalizedSha256": "00e99bc08924e9d26d7a96d5058181f9b4321d3ca0d82bf7f01a0fb8ebccf10c"
   },
   "ClusterRole//kube-prometheus-stack-kube-state-metrics": {
     "owner": "kube-state-metrics",
@@ -28,7 +28,7 @@
   },
   "ClusterRoleBinding//kube-prometheus-stack-grafana-clusterrolebinding": {
     "owner": "grafana",
-    "normalizedSha256": "654149edc712b52603facc450d88fa8ad40c14328cb488238f02941b2ebc06bf"
+    "normalizedSha256": "ab8b53730682184349e654d29717510813827ec1b4ccd4d96fd7b9e2c5b71dd9"
   },
   "ClusterRoleBinding//kube-prometheus-stack-kube-state-metrics": {
     "owner": "kube-state-metrics",
@@ -46,12 +46,12 @@
     "normalizedSha256": "a8cd13484bb9f86562f9cd8efe78fdb90da38b189c109871e6914b2c3c3461bb"
   },
   "ConfigMap/cattle-monitoring-system/kube-prometheus-stack-grafana": {
-    "normalizedSha256": "c7e863ccc8c985ad371d50166e872340cfbe4672692f8030280d6ef7d28c7db5",
+    "normalizedSha256": "bfe63196594c2613063b95af8b395058644078e7efc499621faacf3578eaa4ac",
     "owner": "grafana"
   },
   "ConfigMap/cattle-monitoring-system/kube-prometheus-stack-grafana-config-dashboards": {
     "owner": "grafana",
-    "normalizedSha256": "51b7535808c8899b52e41f0499ffead7f2bc9a1f737f2a737af91828256da2e5"
+    "normalizedSha256": "9ee2e574b9de9d0636363a55913850bf2acc2cd4d3a532b7978fb5a4f059c1de"
   },
   "ConfigMap/cattle-monitoring-system/kube-prometheus-stack-grafana-datasource": {
     "owner": "grafana",
@@ -132,7 +132,7 @@
     "normalizedSha256": "b1eab39dc781a9df0d05156859aa83a89f3724988a7575bc6ef7b472400bc914"
   },
   "Deployment/cattle-monitoring-system/kube-prometheus-stack-grafana": {
-    "normalizedSha256": "542fade0778740c58d8905bccd7910bf7d85da67f2fbe90e2899eda7d2941f17",
+    "normalizedSha256": "95befe4b67a20bdf2b2c4e47529ff069601256b23d37b6768e472c25a16da9e8",
     "owner": "grafana"
   },
   "Deployment/cattle-monitoring-system/kube-prometheus-stack-kube-state-metrics": {
@@ -359,7 +359,7 @@
   },
   "Service/cattle-monitoring-system/kube-prometheus-stack-grafana": {
     "owner": "grafana",
-    "normalizedSha256": "bb25b8602365adcced8594b65435fedf6667a0888b02dd43ddfafd03382697dc"
+    "normalizedSha256": "8fe4d73604a497fca88393cc02ceda9a1bfc4da0822b26386b35228884e5c378"
   },
   "Service/cattle-monitoring-system/kube-prometheus-stack-kube-state-metrics": {
     "owner": "kube-state-metrics",
@@ -415,7 +415,7 @@
   },
   "ServiceAccount/cattle-monitoring-system/kube-prometheus-stack-grafana": {
     "owner": "grafana",
-    "normalizedSha256": "2c2673fe6707b4eb0b1df0ce4fc0ffef328f94f0c4cc7c2b68de4c8bbd367ef8"
+    "normalizedSha256": "1fce54af2fe45459ea695211b268aff7d58923346438a20f1e013776c9282a7f"
   },
   "ServiceAccount/cattle-monitoring-system/kube-prometheus-stack-kube-state-metrics": {
     "owner": "kube-state-metrics",
@@ -453,7 +453,7 @@
   },
   "ServiceMonitor/cattle-monitoring-system/kube-prometheus-stack-grafana": {
     "owner": "grafana",
-    "normalizedSha256": "a1560910da877884b7f0b7354ccbe9992819486239aacb0c52deb5fa2b6d92e1"
+    "normalizedSha256": "4267499aad149f0b1df52060c01e53254749ae09992fe335cc31ca26d1d7378f"
   },
   "ServiceMonitor/cattle-monitoring-system/kube-prometheus-stack-kube-state-metrics": {
     "owner": "kube-state-metrics",
