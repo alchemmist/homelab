@@ -189,3 +189,20 @@ spec:
             summary: Software update check failed.
             description: '{{ `{{ $labels.app }}` }} could not be compared with its upstream version source for 6 hours. No update notification is emitted for that application until the lookup succeeds.'
 {{- end }}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: monitoring-update-watch-isolation}
+spec:
+  podSelector: {matchLabels: {app: monitoring-update-watch}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: {{ $.Release.Namespace | quote }}}}
+      ports: [{protocol: TCP, port: 8080}]
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]

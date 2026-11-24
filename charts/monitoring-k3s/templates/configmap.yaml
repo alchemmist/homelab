@@ -25,6 +25,7 @@ data:
           proxy_read_timeout 10s;
           proxy_set_header Authorization "";
         }
+        location = /healthz { return 200; }
         location / { return 404; }
       }
     }

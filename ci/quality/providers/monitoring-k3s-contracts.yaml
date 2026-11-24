@@ -1,0 +1,47 @@
+version: 1
+entries:
+  # Argo CD app-controller metrics: the backend is rendered by the remote
+  # argo-cd upstream Helm chart, not an offline local chart. Evidence:
+  # docs/quality/monitoring-k3s-contracts.md.
+  - consumer: monitoring-k3s-0
+    kind: Service
+    namespace: argocd
+    name: socrat-argocd-metrics
+    checks: [dangling-service]
+    evidence: docs/quality/monitoring-k3s-contracts.md
+  # OTLP receiver targets the operator-created prometheus pod (runtime only).
+  - consumer: monitoring-k3s-0
+    kind: Service
+    namespace: cattle-monitoring-system
+    name: socrat-tv-otlp-receiver
+    checks: [dangling-service]
+    evidence: docs/quality/monitoring-k3s-contracts.md
+  # etcd-metrics is an Endpoints-only Service (no selector) scraping per-node
+  # etcd by explicit IP; host-network proxy DaemonSet reaches host-bound etcd.
+  - consumer: monitoring-k3s-0
+    kind: Service
+    namespace: cattle-monitoring-system
+    name: monitoring-etcd-metrics
+    checks: [dangling-service]
+    evidence: docs/quality/monitoring-k3s-contracts.md
+  - consumer: monitoring-k3s-0
+    kind: DaemonSet
+    namespace: cattle-monitoring-system
+    name: monitoring-etcd-metrics
+    checks: [host-network]
+    evidence: docs/quality/monitoring-k3s-contracts.md
+  # kube-system traefik edge ingress metrics backend (out-of-band).
+  - consumer: monitoring-k3s-0
+    kind: Service
+    namespace: kube-system
+    name: monitoring-traefik-metrics
+    checks: [dangling-service]
+    evidence: docs/quality/monitoring-k3s-contracts.md
+  # blackbox direct-public-IP prober originates probes from the node's public
+  # address on the host network.
+  - consumer: monitoring-k3s-0
+    kind: Deployment
+    namespace: cattle-monitoring-system
+    name: socrat-public-ip-probes
+    checks: [host-network]
+    evidence: docs/quality/monitoring-k3s-contracts.md

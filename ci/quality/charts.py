@@ -315,7 +315,16 @@ def policies(resource):
 
 
 RELEASE_PEERS = {
-    "monitoring-k3s-0": ("grafana-mcp-0", [("Deployment", "grafana-mcp")]),
+    # Monitoring-k3s probes scrapes cross-namespace backends: its Service objects
+    # and the monitoring-service-probes NetworkPolicy reference pods owned by
+    # other releases in other namespaces. Load the real provider objects as lint
+    # context so the selectors resolve instead of dangling.
+    "monitoring-k3s-0": [
+        ("grafana-mcp-0", [("Deployment", "grafana-mcp")]),
+        ("open-terminal-0", [("Deployment", "open-terminal")]),
+        ("vllm-0", [("Deployment", "vllm")]),
+        ("traefik-edge-0", [("Deployment", "traefik-edge")]),
+    ],
     "litellm-2": ("litellm-0", [("Service", "litellm"), ("Deployment", "litellm")]),
     "rustfs-0": ("authentik-0", [("Service", "authentik-server"), ("Deployment", "authentik-server")]),
     # Cross-release NetworkPolicy peers: the ingress/egress pod selector names a

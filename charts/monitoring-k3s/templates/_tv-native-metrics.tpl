@@ -65,7 +65,11 @@ exporters:
       queue_size: 100
     retry_on_failure:
       max_elapsed_time: 60s
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
 service:
+  extensions: [health_check]
   pipelines:
     metrics:
       receivers: [prometheus]
