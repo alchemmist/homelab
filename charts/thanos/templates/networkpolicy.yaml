@@ -1,0 +1,152 @@
+# Release isolation for the Thanos monitoring tier (namespace
+# cattle-monitoring-system). Internal pods talk to each other over grpc
+# (10901) / http (10902), the scrapers reach the :10902 / :8080 endpoints, and
+# write-only/host-bind daemons need only the peers that call them.
+#
+# Operator-managed prometheus pod (kube-prometheus-stack) is scoped by its
+# namespace (cattle-monitoring-system) rather than the runtime
+# operator.prometheus.io/name pod label, which no offline render produces.
+
+{{- define "thanos.namespace" -}}
+namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: {{ $.Release.Namespace | quote }}}}
+{{- end -}}
+
+# Store gateways serve grpc + http to query/compactor and the scraper.
+{{- range $name, $component := .Values.components }}
+{{- $five := has $name (list "thanos-store-5m" "thanos-compactor-5m") }}
+{{- if or (hasPrefix "thanos-store" $name) (hasPrefix "thanos-compactor" $name) }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: {{ $.Release.Namespace | quote }}
+  name: {{ $name }}-isolation
+spec:
+  podSelector: {matchLabels: {app: {{ $name }}}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    {{- if and (hasPrefix "thanos-compactor" $name) (not $five) }}
+    - from:
+        - podSelector: {matchLabels: {app: thanos-cascade}}
+      ports: [{protocol: TCP, port: 10902}]
+    {{- end }}
+    - from:
+        - {{ include "thanos.namespace" $ }}
+      ports:
+        - {protocol: TCP, port: 10901}
+        - {protocol: TCP, port: 10902}
+  egress:
+    - to:
+        - {{ include "thanos.namespace" $ }}
+      ports:
+        - {protocol: TCP, port: 10901}
+        - {protocol: TCP, port: 10902}
+        - {protocol: TCP, port: 8080}
+        - {protocol: TCP, port: 9000}
+    - to:
+        - podSelector: {matchLabels: {app: thanos-warm-api}}
+      ports: [{protocol: TCP, port: 9000}]
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+{{ end -}}
+{{ end -}}
+---
+# Query gateway: spread across two nodes, serves the scraper and grpc consumers.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: thanos-query-isolation}
+spec:
+  podSelector: {matchLabels: {app: thanos-query}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - {{ include "thanos.namespace" $ }}
+      ports: [{protocol: TCP, port: 10902}]
+  egress:
+    - to:
+        - {{ include "thanos.namespace" $ }}
+      ports:
+        - {protocol: TCP, port: 10901}
+        - {protocol: TCP, port: 10902}
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+
+# Shelf HTTP store: serves the cascade/store/compactor uploads and the scraper.
+{{- range $name, $shelf := .Values.shelves }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: {{ $name }}-isolation}
+spec:
+  podSelector: {matchLabels: {app: {{ $name }}}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - {{ include "thanos.namespace" $ }}
+      ports: [{protocol: TCP, port: 8080}]
+  egress:
+    - to:
+        - {{ include "thanos.namespace" $ }}
+      ports:
+        - {protocol: TCP, port: 10901}
+        - {protocol: TCP, port: 10902}
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+{{- end }}
+
+# Disk host-scanner: only reads host /var/lib and writes the node textfile;
+# no network peers, so isolate ingress (already handled by hostPath reads).
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: thanos-disk-isolation}
+spec:
+  podSelector: {matchLabels: {app: thanos-disk}}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+
+# Warm candidate volume check: no network, complete-and-exit Job.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: thanos-warm-volume-check-isolation}
+spec:
+  podSelector: {matchLabels: {app: thanos-warm-s1-volume-check}}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress: []
+
+# Hourly/raw cascade CronJob: ships blocks between shelves and the workshop,
+# reads/writes local host rawdata; egress to shelves, stores, compactor and
+# the warm object-store API. No inbound traffic.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: thanos-cascade-isolation}
+spec:
+  podSelector: {matchLabels: {app: thanos-cascade}}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - {{ include "thanos.namespace" $ }}
+      ports:
+        - {protocol: TCP, port: 10901}
+        - {protocol: TCP, port: 10902}
+        - {protocol: TCP, port: 8080}
+        - {protocol: TCP, port: 9000}
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]

@@ -19,7 +19,10 @@ metadata:
 spec:
   backoffLimit: 1
   activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 3600
   template:
+    metadata:
+      labels: {app: thanos-warm-s1-volume-check}
     spec:
       automountServiceAccountToken: false
       restartPolicy: Never
