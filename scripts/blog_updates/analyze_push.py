@@ -8,13 +8,19 @@ import urllib.request
 from collections.abc import Mapping
 from pathlib import Path
 
-from engine import PushEvent, prepare, render, validate_decision, validate_event
-from github import GitHub
+from .client import GitHub
+from .core import PushEvent, prepare, render, validate_decision, validate_event
 
 
 def run(
-    event: PushEvent, github: GitHub, llm_url: str, llm_key: str, write: bool = False
+    event: PushEvent,
+    github: GitHub,
+    llm_url: str,
+    llm_key: str,
+    *,
+    publish: bool = False,
 ) -> Mapping[str, object]:
+    """Analyze one push and report, or publish, the proposed updates entry."""
     if not validate_event(event):
         return {"status": "ignored"}
     compare = github.compare(event["before"], event["after"])
@@ -25,7 +31,9 @@ def run(
     prompt = Path(
         os.environ.get(
             "PROMPT_FILE",
-            str(Path(__file__).absolute().parents[2] / "docs/n8n/blog-updates/prompt.md"),
+            str(
+                Path(__file__).absolute().parents[2] / "docs/n8n/blog-updates/prompt.md"
+            ),
         )
     ).read_text()
     req = urllib.request.Request(
@@ -52,7 +60,9 @@ def run(
     )
     with urllib.request.urlopen(req, timeout=240) as response:
         answer = json.load(response)
-    decision = validate_decision(json.loads(answer["choices"][0]["message"]["content"]), context)
+    decision = validate_decision(
+        json.loads(answer["choices"][0]["message"]["content"]), context
+    )
     if not decision["should_update"]:
         return {"status": "skipped", "decision": decision}
     # Use the analyzed head commit's timestamp, never the model's invented date.
@@ -62,7 +72,7 @@ def run(
         msg = "Missing head commit metadata"
         raise ValueError(msg)
     content = render(updates, decision["entries"], head["commit"]["committer"]["date"])
-    if not write:
+    if not publish:
         return {"status": "dry_run", "decision": decision, "proposed_updates": content}
     return github.propose(event["after"], content, decision["reason"])
 
@@ -82,7 +92,7 @@ if __name__ == "__main__":
                 GitHub(a.github_key.read_text().strip()),
                 a.llm_url,
                 a.llm_key.read_text().strip(),
-                a.write,
+                publish=a.write,
             ),
             ensure_ascii=False,
             indent=2,

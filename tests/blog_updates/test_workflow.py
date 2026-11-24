@@ -1,13 +1,12 @@
 """Tests for the blog updates stage helpers module."""
 
-import sys
 import unittest
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/blog_updates"))
 import pytest
-from engine import UnsafeInput
-from stages import checked_model
+
+from scripts.blog_updates import core as e
+from scripts.blog_updates.core import UnsafeInputError
+from scripts.blog_updates.workflow import checked_model
 
 # checked_model retries a rejected model answer once, so a bad answer is seen twice.
 MODEL_CALL_CEILING = 2
@@ -25,21 +24,29 @@ class ModelBoundaryTests(unittest.TestCase):
             "entries": [{"text": "New poem.", "source_paths": ["a"]}],
         }
 
-        def model(prompt, data) -> object:
+        def model(prompt: str, data: object) -> object:
             calls.append(prompt)
+            del data  # the stub only records prompts
             return {"extra": True} if len(calls) == 1 else valid
 
-        assert checked_model(model, "prompt", {}, {"files": [{"filename": "a"}]}) == valid
+        context: e.Context = {
+            "files": [{"filename": "a"}],
+            "recent_updates": "",
+            "commits": [],
+        }
+        assert checked_model(model, "prompt", {}, context) == valid
         assert len(calls) == MODEL_CALL_CEILING
 
     def test_bad_output_stays_rejected(self) -> None:
         """Verify malformed stage output stays rejected across retries."""
         calls = []
 
-        def model(prompt, data) -> object:
+        def model(prompt: str, data: object) -> object:
+            del prompt, data  # the stub always answers with a malformed payload
             calls.append(1)
             return []
 
-        with pytest.raises(UnsafeInput):
-            checked_model(model, "prompt", {}, {"files": []})
+        context: e.Context = {"files": [], "recent_updates": "", "commits": []}
+        with pytest.raises(UnsafeInputError):
+            checked_model(model, "prompt", {}, context)
         assert len(calls) == MODEL_CALL_CEILING

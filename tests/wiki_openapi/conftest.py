@@ -1,15 +1,17 @@
-"""Make the wiki_openapi suite bind its own generic module names.
+"""Make the wiki_openapi suite import its scripts as a package.
 
-Test collection imports ``tests/blog_updates`` suites first; those cache
-``engine``, ``stages`` and ``github`` from ``scripts/blog_updates`` in
-``sys.modules``. Purge the leaked names and put this suite's script
-directory on the path so ``tests/wiki_openapi/test_flow.py`` always
-imports the wiki_openapi implementations regardless of collection order.
+Test collection runs this nested suite from the repository root without
+putting the repository root on sys.path. Insert it so scripts.wiki_openapi
+resolves as a package under one canonical module name, and purge the old
+flat names that earlier revisions cached so a stale module can never
+shadow the package implementation.
 """
 
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/wiki_openapi"))
-for _leaked in ("engine", "stages", "github"):
+_ROOT = str(Path(__file__).resolve().parents[2])
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+for _leaked in ("engine", "stages", "github", "client", "workflow"):
     sys.modules.pop(_leaked, None)

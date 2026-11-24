@@ -7,23 +7,28 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import cast
 
-from engine import (
+from .client import GitHub
+from .core import (
+    MAX_ENTRIES,
+    MAX_ENTRY_CHARS,
     Comparison,
     Context,
     Decision,
     PushEvent,
-    UnsafeInput,
+    UnsafeInputError,
     prepare,
     render,
     validate_decision,
     validate_event,
 )
-from github import GitHub
 
 type Model = Callable[[str, object], object]
 
 
-def context_for(event: PushEvent, github: GitHub) -> tuple[Context, Comparison, str] | None:
+def context_for(
+    event: PushEvent, github: GitHub
+) -> tuple[Context, Comparison, str] | None:
+    """Capture the push's compare, updates snapshot and model context."""
     if not validate_event(event):
         return None
     comparison = github.compare(event["before"], event["after"])
@@ -33,6 +38,7 @@ def context_for(event: PushEvent, github: GitHub) -> tuple[Context, Comparison, 
 
 
 def model(system: str, data: object) -> object:
+    """Ask the cluster LiteLLM endpoint for one strict-schema decision."""
     req = urllib.request.Request(
         "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
         data=json.dumps(
@@ -55,7 +61,7 @@ def model(system: str, data: object) -> object:
                                 "reason": {"type": "string"},
                                 "entries": {
                                     "type": "array",
-                                    "maxItems": 5,
+                                    "maxItems": MAX_ENTRIES,
                                     "items": {
                                         "type": "object",
                                         "additionalProperties": False,
@@ -63,7 +69,7 @@ def model(system: str, data: object) -> object:
                                         "properties": {
                                             "text": {
                                                 "type": "string",
-                                                "maxLength": 240,
+                                                "maxLength": MAX_ENTRY_CHARS,
                                             },
                                             "source_paths": {
                                                 "type": "array",
@@ -92,17 +98,23 @@ def model(system: str, data: object) -> object:
         return json.loads(json.load(r)["choices"][0]["message"]["content"])
 
 
-def checked_model(call_model: Model, prompt: str, data: object, context: Context) -> Decision:
+def checked_model(
+    call_model: Model, prompt: str, data: object, context: Context
+) -> Decision:
+    """Retry a rejected model answer once, then fail closed."""
     retry = False
     while True:
         try:
             return validate_decision(call_model(prompt, data), context)
-        except (UnsafeInput, json.JSONDecodeError):
+        except (UnsafeInputError, json.JSONDecodeError):
             if retry:
                 message = "Model response failed validation after two attempts"
-                raise UnsafeInput(message) from None
+                raise UnsafeInputError(message) from None
             retry = True
-            prompt += "\nPrevious response failed validation. Return only the exact JSON schema, plain text without URLs or Markdown, and supplied changed file paths."
+            prompt += (
+                "\nPrevious response failed validation. Return only the exact JSON schema,"
+                " plain text without URLs or Markdown, and supplied changed file paths."
+            )
 
 
 def _validate_stage(
@@ -110,7 +122,11 @@ def _validate_stage(
 ) -> list[Mapping[str, object]]:
     """Select only worthwhile announcements for the later stages."""
     prompt = Path(os.environ["PROMPT_FILE"]).read_text()
-    prompt += "\nThis is the VALIDATION stage. Select only worthwhile announcements. Entry text is a concise factual outline for a separate writer, not a final publication. Return the specified JSON schema."
+    prompt += (
+        "\nThis is the VALIDATION stage. Select only worthwhile announcements. Entry text is a"
+        " concise factual outline for a separate writer, not a final publication. Return the"
+        " specified JSON schema."
+    )
     decision = checked_model(call_model, prompt, context, context)
     if not decision["should_update"]:
         return []
@@ -128,14 +144,27 @@ def _generate_stage(
     if not selection["should_update"]:
         return []
     prompt = Path(os.environ["PROMPT_FILE"]).read_text()
-    prompt += "\nThis is the GENERATION stage. Write final concise English announcement entries ONLY for the selected changes. Do not add other topics. Keep source_paths within the selected source_paths. Use the specified JSON schema; you may omit an unsupported selected item."
+    prompt += (
+        "\nThis is the GENERATION stage. Write final concise English announcement entries ONLY"
+        " for the selected changes. Do not add other topics. Keep source_paths within the"
+        " selected source_paths. Use the specified JSON schema; you may omit an unsupported"
+        " selected item."
+    )
     decision = checked_model(
         call_model, prompt, {"context": context, "selected": selection}, context
     )
-    allowed = {p for e in selection["entries"] for p in e["source_paths"]}
-    if any(p not in allowed for e in decision["entries"] for p in e["source_paths"]):
+    allowed = {
+        source_path
+        for entry in selection["entries"]
+        for source_path in entry["source_paths"]
+    }
+    if any(
+        source_path not in allowed
+        for entry in decision["entries"]
+        for source_path in entry["source_paths"]
+    ):
         message = "Generation introduced an unselected source"
-        raise UnsafeInput(message)
+        raise UnsafeInputError(message)
     if not decision["should_update"]:
         return []
     return [{"event": event, "decision": decision}]
@@ -146,8 +175,10 @@ def stage(
     payload: Mapping[str, object],
     github: GitHub | None = None,
     call_model: Model | None = None,
-    write: bool = False,
+    *,
+    publish: bool = False,
 ) -> list[Mapping[str, object]]:
+    """Run exactly one workflow stage for the given payload."""
     github = github or GitHub(os.environ["GITHUB_TOKEN"])
     call_model = call_model or model
     event = cast("PushEvent", payload if name == "validate" else payload["event"])
@@ -161,18 +192,18 @@ def stage(
         return _generate_stage(call_model, payload, event, context)
     if name != "create-pr":
         message = "Unknown stage"
-        raise UnsafeInput(message)
+        raise UnsafeInputError(message)
     decision = validate_decision(payload["decision"], context)
     if not decision["should_update"]:
         return []
     head = next((c for c in comparison["commits"] if c["sha"] == event["after"]), None)
     if not head:
         message = "Missing head commit"
-        raise UnsafeInput(message)
+        raise UnsafeInputError(message)
     content = render(updates, decision["entries"], head["commit"]["committer"]["date"])
     if content == updates:
         return [{"status": "no_change"}]
-    return _publish(github.propose, decision, event["after"], content, write=write)
+    return _publish(github.propose, decision, event["after"], content, publish=publish)
 
 
 def _publish(
@@ -181,10 +212,10 @@ def _publish(
     event_after: str,
     content: str,
     *,
-    write: bool,
+    publish: bool,
 ) -> list[Mapping[str, object]]:
     """Report a dry run or propose the rendered announcement upstream."""
-    if not write:
+    if not publish:
         return [
             {
                 "status": "dry_run",

@@ -22,7 +22,9 @@ for name, namespace, directory, pattern in maps:
         "metadata": {"name": name, "namespace": namespace},
         "data": {p.name: p.read_text() for p in sorted(directory.glob(pattern))},
     }
-    subprocess.run(["kubectl", "apply", "-f", "-"], input=json.dumps(obj), text=True, check=True)
+    subprocess.run(
+        ["kubectl", "apply", "-f", "-"], input=json.dumps(obj), text=True, check=True
+    )
 subprocess.run(
     ["kubectl", "apply", "-f", str(base / "deploy/wiki-openapi/worker.yaml")],
     check=True,

@@ -1,16 +1,20 @@
 """One stage per n8n node. Rendering uses the generator committed next to the spec."""
 
+from __future__ import annotations
+
 import json
 import os
 import subprocess
 import tempfile
 import urllib.request
-from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
-from engine import UnsafeInput, page_ok, select_closable, spec_changed
-from github import BotRepo, Homelab
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable, Mapping, Sequence
+
+from .client import BotRepo, Homelab
+from .engine import UnsafeInputError, page_ok, select_closable, spec_changed
 
 
 class PageBot(Protocol):
@@ -46,6 +50,7 @@ class WikiRepo(Protocol):
 
 
 def model(system: str, data: object) -> object:
+    """Ask the cluster LLM which automation pull requests are superseded."""
     request = urllib.request.Request(
         "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
         data=json.dumps(
@@ -85,6 +90,7 @@ def model(system: str, data: object) -> object:
 
 
 def render_page(after: object, bot: PageBot) -> str:
+    """Fetch the committed renderer and regenerate the wiki page in a sandbox."""
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         (root / "openapi.yaml").write_text(bot.text(after, "openapi.yaml"))
@@ -105,49 +111,55 @@ def render_page(after: object, bot: PageBot) -> str:
             capture_output=True,
             text=True,
             timeout=30,
+            check=False,
         )
         if run.returncode:
             msg = "Wiki renderer failed"
-            raise UnsafeInput(msg)
+            raise UnsafeInputError(msg)
         return page_ok(target.read_text())
 
 
-def stage(
-    name: str,
-    payload: Mapping[str, object],
-    bot: PageBot | None = None,
-    homelab: WikiRepo | None = None,
-    call_model: Callable[[str, object], object] | None = None,
-    *,
-    write: bool = False,
+def _check_stage(
+    payload: Mapping[str, object], bot: PageBot
 ) -> list[Mapping[str, object]]:
-    bot = bot or BotRepo()
-    if name == "check":
-        event = payload.get("body", payload)
-        if not isinstance(event, dict) or event.get("ref") != "refs/heads/main":
-            return []
-        if not spec_changed(event, bot.files(event.get("before", ""), event.get("after", ""))):
-            return []
-        return [{"before": event["before"], "after": event["after"]}]
+    """Report the before/after SHAs when a main-branch push touched the spec."""
+    event = payload.get("body", payload)
+    if not isinstance(event, dict) or event.get("ref") != "refs/heads/main":
+        return []
+    if not spec_changed(
+        event, bot.files(event.get("before", ""), event.get("after", ""))
+    ):
+        return []
+    return [{"before": event["before"], "after": event["after"]}]
+
+
+def _create_pr_stage(
+    payload: Mapping[str, object],
+    homelab: WikiRepo,
+    *,
+    write: bool,
+) -> list[Mapping[str, object]]:
+    """Open the wiki refresh pull request (or report what it would do)."""
     after = payload.get("after")
-    if name == "render":
-        return [{"after": after, "markdown": render_page(after, bot)}]
-    homelab = homelab or Homelab(
-        Path(os.environ.get("GITHUB_TOKEN_FILE", "/var/run/github/token")).read_text().strip()
-    )
-    if name == "create-pr":
-        markdown = page_ok(payload.get("markdown"))
-        if not write:
-            return [{"after": after, "status": "dry_run"}]
-        result = homelab.propose(after, markdown)
-        if not isinstance(result, dict):
-            msg = "GitHub proposal returned invalid data"
-            raise UnsafeInput(msg)
-        result["after"] = after
-        return [result]
-    if name != "close-older":
-        msg = "Unknown stage"
-        raise UnsafeInput(msg)
+    markdown = page_ok(payload.get("markdown"))
+    if not write:
+        return [{"after": after, "status": "dry_run"}]
+    result = homelab.propose(after, markdown)
+    if not isinstance(result, dict):
+        msg = "GitHub proposal returned invalid data"
+        raise UnsafeInputError(msg)
+    result["after"] = after
+    return [result]
+
+
+def _close_older_stage(
+    payload: Mapping[str, object],
+    homelab: WikiRepo,
+    call_model: Callable[[str, object], object] | None,
+    *,
+    write: bool,
+) -> list[Mapping[str, object]]:
+    """Close superseded automation pull requests chosen by the model."""
     if not write or payload.get("status") == "dry_run":
         return []
     keep = payload.get("number")
@@ -173,3 +185,32 @@ def stage(
             homelab.api("PATCH", f"pulls/{number}", {"state": "closed"})
         closed.append(number)
     return [{**payload, "closed": closed}]
+
+
+def stage(
+    name: str,
+    payload: Mapping[str, object],
+    bot: PageBot | None = None,
+    homelab: WikiRepo | None = None,
+    call_model: Callable[[str, object], object] | None = None,
+    *,
+    write: bool = False,
+) -> list[Mapping[str, object]]:
+    """Run one n8n node of the wiki refresh flow."""
+    bot = bot or BotRepo()
+    if name == "check":
+        return _check_stage(payload, bot)
+    after = payload.get("after")
+    if name == "render":
+        return [{"after": after, "markdown": render_page(after, bot)}]
+    homelab = homelab or Homelab(
+        Path(os.environ.get("GITHUB_TOKEN_FILE", "/var/run/github/token"))
+        .read_text()
+        .strip()
+    )
+    if name == "create-pr":
+        return _create_pr_stage(payload, homelab, write=write)
+    if name != "close-older":
+        msg = "Unknown stage"
+        raise UnsafeInputError(msg)
+    return _close_older_stage(payload, homelab, call_model, write=write)

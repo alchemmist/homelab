@@ -85,11 +85,8 @@ spec:
                     secretKeyRef:
                       name: pr-agent
                       key: github-app-id
-                - name: GITHUB_PRIVATE_KEY
-                  valueFrom:
-                    secretKeyRef:
-                      name: pr-agent
-                      key: github-private-key
+                - name: TMPDIR
+                  value: /tmp
               resources:
                 requests:
                   cpu: 10m
@@ -106,10 +103,25 @@ spec:
                 - name: code
                   mountPath: /app/wiki_openapi
                   readOnly: true
+                - name: github-app-key
+                  mountPath: /var/run/secrets/github-app
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
           volumes:
             - name: code
               configMap:
                 name: wiki-openapi-broker-code
+            - name: github-app-key
+              secret:
+                secretName: pr-agent
+                defaultMode: 256
+                items:
+                  - key: github-private-key
+                    path: private-key
+            - name: tmp
+              emptyDir:
+                sizeLimit: 1Mi
 ...
 ---
 apiVersion: apps/v1

@@ -15,6 +15,14 @@ UPDATES = "site/content/updates.md"
 MAX_FILES = 200
 MAX_INPUT_BYTES = 120_000
 MAX_ENTRIES = 5
+# GitHub compare answers carry at most this many files and commits per page.
+COMPARE_PAGE_LIMIT = 100
+# GitHub returns at most this many files in one compare response.
+MAX_COMPARE_FILES = 300
+# A model entry is a one-line announcement; 240 characters bound it.
+MAX_ENTRY_CHARS = 240
+# GitHub refuses a compare beyond 1000 commits; reject below the API cliff.
+MAX_COMPARE_COMMITS = 1_000
 
 
 class PushEvent(TypedDict, total=False):
@@ -87,37 +95,40 @@ class Decision(TypedDict):
     entries: list[Entry]
 
 
-class UnsafeInput(ValueError):
+class UnsafeInputError(ValueError):
     """Value error raised on unsafe blog update input."""
 
 
 def validate_event(event: PushEvent) -> bool:
+    """Accept only a forward push of the reviewed repository branch."""
     if event.get("repository", {}).get("full_name") != REPO:
         msg = "Unexpected repository"
-        raise UnsafeInput(msg)
+        raise UnsafeInputError(msg)
     if event.get("ref") != "refs/heads/main" or event.get("deleted"):
         return False
     sha_keys: tuple[Literal["before"], Literal["after"]] = ("before", "after")
     for key in sha_keys:
         if not re.fullmatch(r"[0-9a-f]{40}", event.get(key, "")):
             msg = "Invalid commit SHA"
-            raise UnsafeInput(msg)
+            raise UnsafeInputError(msg)
         if event[key] == "0" * 40:
             msg = "Branch creation/deletion needs manual review"
-            raise UnsafeInput(msg)
+            raise UnsafeInputError(msg)
     return True
 
 
 def prepare(compare: Comparison, updates: str) -> Context | None:
+    """Build the model context from a compare and the updates snapshot."""
     files = compare.get("files", [])
     if not files or len(files) > MAX_FILES:
         msg = "Missing or oversized file list; do not silently truncate"
-        raise UnsafeInput(msg)
+        raise UnsafeInputError(msg)
     # Github compare is limited to 300 files. Lower limit makes truncation fail closed.
     relevant = [
         f
         for f in files
-        if f["filename"] != UPDATES and not f["filename"].startswith((".github/", "remark42/"))
+        if f["filename"] != UPDATES
+        and not f["filename"].startswith((".github/", "remark42/"))
     ]
     if not relevant:
         return None
@@ -142,9 +153,11 @@ def prepare(compare: Comparison, updates: str) -> Context | None:
             )
         )
         if "patch" not in f and f.get("changes", 0) and not binary_asset:
-            raise UnsafeInput("Missing text diff: " + name)
+            raise UnsafeInputError("Missing text diff: " + name)
         if binary_asset:
-            candidates.append({"filename": name, "status": f.get("status"), "binary_asset": True})
+            candidates.append(
+                {"filename": name, "status": f.get("status"), "binary_asset": True}
+            )
             continue
         fields: Mapping[str, object] = f
         candidates.append(
@@ -171,7 +184,7 @@ def prepare(compare: Comparison, updates: str) -> Context | None:
     }
     if len(json.dumps(context, ensure_ascii=False).encode()) > MAX_INPUT_BYTES:
         msg = "Analysis exceeds budget; manual review required"
-        raise UnsafeInput(msg)
+        raise UnsafeInputError(msg)
     return context
 
 
@@ -179,30 +192,30 @@ def validate_decision(raw: object, context: Context) -> Decision:
     """Model chooses a description, never a path to write or arbitrary Markdown."""
     if not isinstance(raw, dict) or set(raw) != {"should_update", "reason", "entries"}:
         msg = "Unexpected model schema"
-        raise UnsafeInput(msg)
+        raise UnsafeInputError(msg)
     if type(raw["should_update"]) is not bool or not isinstance(raw["reason"], str):
         msg = "Invalid decision types"
-        raise UnsafeInput(msg)
+        raise UnsafeInputError(msg)
     entries = raw["entries"]
     if not isinstance(entries, list) or len(entries) > MAX_ENTRIES:
         msg = "Invalid entries"
-        raise UnsafeInput(msg)
+        raise UnsafeInputError(msg)
     if bool(entries) != raw["should_update"]:
         msg = "Inconsistent decision"
-        raise UnsafeInput(msg)
+        raise UnsafeInputError(msg)
     paths = {f["filename"] for f in context["files"]}
     for entry in entries:
         if not isinstance(entry, dict) or set(entry) != {"text", "source_paths"}:
             msg = "Invalid entry schema"
-            raise UnsafeInput(msg)
+            raise UnsafeInputError(msg)
         text = entry["text"]
-        if not isinstance(text, str) or not 1 <= len(text) <= 240:
+        if not isinstance(text, str) or not 1 <= len(text) <= MAX_ENTRY_CHARS:
             msg = "Invalid entry length"
-            raise UnsafeInput(msg)
+            raise UnsafeInputError(msg)
         # All formatting is performed by code. No links supplied by model.
         if any(c in text for c in "\n\r<>[]`\\") or re.search(r"https?://", text):
             msg = "Unsafe Markdown"
-            raise UnsafeInput(msg)
+            raise UnsafeInputError(msg)
         sources = entry["source_paths"]
         if (
             not isinstance(sources, list)
@@ -210,29 +223,37 @@ def validate_decision(raw: object, context: Context) -> Decision:
             or not all(isinstance(p, str) and p in paths for p in sources)
         ):
             msg = "Unsubstantiated entry"
-            raise UnsafeInput(msg)
+            raise UnsafeInputError(msg)
     return cast("Decision", raw)
 
 
 def render(updates: str, entries: Sequence[RenderedEntry], timestamp: str) -> str:
+    """Insert freshly rendered entries below the updates front matter."""
     if not updates.startswith("---\n"):
         msg = "Missing front matter"
-        raise UnsafeInput(msg)
+        raise UnsafeInputError(msg)
     end = updates.find("\n---\n", 4)
     if end == -1:
         msg = "Unterminated front matter"
-        raise UnsafeInput(msg)
+        raise UnsafeInputError(msg)
     stamp = dt.datetime.fromisoformat(timestamp)
     if stamp.tzinfo is None:
         msg = "Timestamp must include timezone"
-        raise UnsafeInput(msg)
-    display_stamp = stamp.astimezone(dt.timezone(dt.timedelta(hours=3))).strftime("%Y-%m-%d %H:%M")
+        raise UnsafeInputError(msg)
+    display_stamp = stamp.astimezone(dt.timezone(dt.timedelta(hours=3))).strftime(
+        "%Y-%m-%d %H:%M"
+    )
     lines = [f"- [ ] *\\[{display_stamp}\\]* {e['text']}" for e in entries]
     # Prevent exact duplicate descriptions, including manually added ones.
     existing = {
-        re.sub(r"^- \[[ x]\] \*\\\[.*?\\\]\*\s*", "", l).strip() for l in updates.splitlines()
+        re.sub(r"^- \[[ x]\] \*\\\[.*?\\\]\*\s*", "", line).strip()
+        for line in updates.splitlines()
     }
-    lines = [l for l, e in zip(lines, entries, strict=True) if e["text"].strip() not in existing]
+    lines = [
+        line
+        for line, entry in zip(lines, entries, strict=True)
+        if entry["text"].strip() not in existing
+    ]
     if not lines:
         return updates
     offset = end + len("\n---\n")

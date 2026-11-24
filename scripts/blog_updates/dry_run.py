@@ -7,7 +7,7 @@ import subprocess
 import urllib.request
 from pathlib import Path
 
-from engine import REPO, UPDATES, Comparison, prepare, validate_decision
+from .core import REPO, UPDATES, Comparison, prepare, validate_decision
 
 p = argparse.ArgumentParser()
 p.add_argument("before")
@@ -19,7 +19,10 @@ a = p.parse_args()
 
 
 def gh_compare(path: str) -> Comparison:
-    comparison: Comparison = json.loads(subprocess.check_output(["gh", "api", path], text=True))
+    """Load one GitHub compare response through the gh CLI."""
+    comparison: Comparison = json.loads(
+        subprocess.check_output(["gh", "api", path], text=True)
+    )
     return comparison
 
 
@@ -37,7 +40,9 @@ elif not a.litellm_url:
 else:
     if not a.key_file:
         p.error("--key-file required with --litellm-url")
-    prompt = (Path(__file__).resolve().parents[2] / "docs/n8n/blog-updates/prompt.md").read_text()
+    prompt = (
+        Path(__file__).resolve().parents[2] / "docs/n8n/blog-updates/prompt.md"
+    ).read_text()
     body = {
         "model": a.model,
         "temperature": 0.1,
@@ -59,4 +64,6 @@ else:
     with urllib.request.urlopen(req, timeout=180) as response:
         result = json.load(response)
     decision = json.loads(result["choices"][0]["message"]["content"])
-    print(json.dumps(validate_decision(decision, context), ensure_ascii=False, indent=2))
+    print(
+        json.dumps(validate_decision(decision, context), ensure_ascii=False, indent=2)
+    )

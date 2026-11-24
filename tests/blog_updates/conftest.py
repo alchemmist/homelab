@@ -1,12 +1,17 @@
-"""Make the blog_updates suite bind its own generic module names.
+"""Make the blog_updates suite import its scripts as a package.
 
-Test collection order decides whether ``engine``, ``stages`` or ``github``
-already cached a different script tree's module (``tests/wiki_openapi``
-uses the same names). Purge the leaked names so this directory's test
-modules always import the blog_updates implementations.
+Test collection runs this nested suite from the repository root without
+putting the repository root on sys.path. Insert it so scripts.blog_updates
+resolves as a package under one canonical module name, and purge the old
+flat names that earlier revisions cached so a stale module can never
+shadow the package implementation.
 """
 
 import sys
+from pathlib import Path
 
-for _leaked in ("engine", "stages", "github"):
+_ROOT = str(Path(__file__).resolve().parents[2])
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+for _leaked in ("engine", "stages", "github", "core", "client", "workflow"):
     sys.modules.pop(_leaked, None)

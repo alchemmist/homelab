@@ -6,10 +6,15 @@ import urllib.error
 import urllib.request
 from typing import TypedDict, cast
 
-from engine import MARKER, PAGE, branch_for, require_sha
+from .engine import MARKER, PAGE, branch_for, require_sha
 
 BOT = "alchemmist/socrat-bot"
 HOME = "alchemmist/homelab"
+HTTP_NOT_FOUND = 404
+MAX_COMPARE_FILES = 300
+MAX_PR_PAGES = 5
+PR_PAGE_SIZE = 50
+PR_BODY_PREVIEW_CHARS = 800
 
 
 class GitHubError(Exception):
@@ -61,7 +66,7 @@ def _request(
             raw = response.read()
             return json.loads(raw) if raw else {}
     except urllib.error.HTTPError as exc:
-        if exc.code == 404:
+        if exc.code == HTTP_NOT_FOUND:
             return None
         msg = f"GitHub {method} failed (HTTP {exc.code})"
         raise GitHubError(msg) from None
@@ -90,7 +95,7 @@ class BotRepo:
         if not compared:
             msg = "Compare not found"
             raise GitHubError(msg)
-        if len(compared.get("files") or []) >= 300:
+        if len(compared.get("files") or []) >= MAX_COMPARE_FILES:
             msg = "Compare file list truncated"
             raise GitHubError(msg)
         return compared.get("files") or []
@@ -115,11 +120,14 @@ class Homelab:
     """GitHub client for the homelab wiki repository."""
 
     def __init__(self, token: str) -> None:
+        """Bind the client to one short-lived broker token."""
         self.token = token
 
     def api(self, method: str, path: str, body: object = None) -> object:
         """Call the GitHub API on the pinned repository."""
-        return _request(f"https://api.github.com/repos/{HOME}/{path}", self.token, method, body)
+        return _request(
+            f"https://api.github.com/repos/{HOME}/{path}", self.token, method, body
+        )
 
     def read_page(self, ref: str = "main") -> tuple[str, str] | tuple[None, None]:
         """Read the generated wiki page content at the given ref."""
@@ -136,7 +144,8 @@ class Homelab:
         branch = branch_for(after)
         existing = cast(
             "list[_PullRequest]",
-            self.api("GET", f"pulls?state=open&head=alchemmist:{branch}&per_page=20") or [],
+            self.api("GET", f"pulls?state=open&head=alchemmist:{branch}&per_page=20")
+            or [],
         )
         if existing:
             return {
@@ -168,9 +177,12 @@ class Homelab:
                     "title": "docs: refresh Socrat Bot wiki page",
                     "head": branch,
                     "base": "main",
-                    "body": "Regenerated `wiki/content/platform/socrat-bot.md` from the current socrat-bot OpenAPI spec.\n\n"
-                    f"Source commit: https://github.com/{BOT}/commit/{after}\n\n"
-                    "Human review required. No auto-merge.\n\n" + MARKER,
+                    "body": (
+                        "Regenerated `wiki/content/platform/socrat-bot.md` from the "
+                        "current socrat-bot OpenAPI spec.\n\n"
+                        f"Source commit: https://github.com/{BOT}/commit/{after}\n\n"
+                        "Human review required. No auto-merge.\n\n" + MARKER
+                    ),
                 },
             ),
         )
@@ -179,10 +191,11 @@ class Homelab:
     def automation_prs(self, keep: object) -> list[dict[str, object]]:
         """List automation PRs other than the one to keep."""
         found, page = [], 1
-        while page <= 5:
+        while page <= MAX_PR_PAGES:
             batch = cast(
                 "list[_PullRequest]",
-                self.api("GET", f"pulls?state=open&per_page=50&page={page}") or [],
+                self.api("GET", f"pulls?state=open&per_page={PR_PAGE_SIZE}&page={page}")
+                or [],
             )
             if not batch:
                 break
@@ -197,11 +210,11 @@ class Homelab:
                         {
                             "number": pr["number"],
                             "title": pr["title"],
-                            "body": (pr.get("body") or "")[:800],
+                            "body": (pr.get("body") or "")[:PR_BODY_PREVIEW_CHARS],
                             "url": pr["html_url"],
                         }
                     )
-            if len(batch) < 50:
+            if len(batch) < PR_PAGE_SIZE:
                 break
             page += 1
         return found
@@ -212,7 +225,10 @@ class Homelab:
             "POST",
             f"issues/{number}/comments",
             {
-                "body": f"Superseded by #{survivor}. The wiki page is regenerated from the current OpenAPI spec, so this proposal is stale."
+                "body": (
+                    f"Superseded by #{survivor}. The wiki page is regenerated from the "
+                    "current OpenAPI spec, so this proposal is stale."
+                )
             },
         )
         self.api("PATCH", f"pulls/{number}", {"state": "closed"})
