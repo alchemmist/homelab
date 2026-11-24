@@ -240,6 +240,25 @@ def add_moscow_edge_probe(scrape):
     return result
 
 
+def select_native_scrape_cost(scrape):
+    """Limit only Grafana internal metrics and verified socrat-5 duplicate counters."""
+    result = copy.deepcopy(scrape)
+    prefix = "serviceMonitor/cattle-monitoring-system/kube-prometheus-stack-"
+    for job in result["scrape_configs"]:
+        if job["job_name"] == prefix + "grafana/0":
+            job["scrape_interval"] = "15s"
+        if job["job_name"] == prefix + "kubelet/0":
+            rule = {
+                "source_labels": ["instance", "__name__"],
+                "regex": r"10\.250\.0\.41:10250;(apiserver|etcd)_request_duration_seconds_count",
+                "action": "drop",
+            }
+            rules = job.setdefault("metric_relabel_configs", [])
+            if not any(all(existing.get(k) == v for k, v in rule.items()) for existing in rules):
+                rules.append(rule)
+    return result
+
+
 def add_logging_self_monitoring(scrape):
     """Add only the native owner's authenticated Loki target, idempotently."""
     result = copy.deepcopy(scrape)
@@ -488,7 +507,7 @@ def compile_config(source, targets, monitors=None):
     outputs["cluster"] = add_pg_platform_scrape(
         refresh_public_edge_probe(add_logging_self_monitoring(outputs["cluster"]))
     )
-    outputs["cluster"] = add_service_path_scrape(outputs["cluster"])
+    outputs["cluster"] = select_native_scrape_cost(add_service_path_scrape(outputs["cluster"]))
     outputs = escape_literals(outputs)
     contract["dollarEscaping"] = (
         "literal Prometheus dollars escaped before Collector confmap resolution"

@@ -2,13 +2,15 @@
 k3s_ha_dependencies_kubeconfig: /etc/rancher/k3s/k3s.yaml
 k3s_ha_dependencies_nodes:
   - socrat-0
-  - socrat-3
-# Separate HOME/worker-site DNS replicas; NL transport is not a DNS dependency.
-# Scoped 2026-11-12 recovery acceptance is documented separately; do not replay
-# this whole role to repair a single DNS endpoint.
+  - socrat-1
+  - socrat-5
+# Two replicas, three eligible home nodes. Losing any one node still leaves a
+# place for the replacement. socrat-3 is a worker that can disappear; socrat-2
+# is too small for these control-plane addons.
 k3s_ha_dependencies_coredns_nodes:
   - socrat-0
-  - socrat-3
+  - socrat-1
+  - socrat-5
 k3s_ha_dependencies_deployments:
   - namespace: kube-system
     name: coredns

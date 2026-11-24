@@ -7,10 +7,11 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_future_dns_placement_uses_two_sites_without_nl_dependency() -> None:
-    """Require CoreDNS on socrat-0 and socrat-3 with no NL site dependency."""
+def test_future_dns_placement_uses_home_nodes_without_nl_dependency() -> None:
+    """Keep CoreDNS on stable home nodes, with a spare so one node loss still schedules."""
     d = yaml.safe_load((ROOT / "ansible/roles/k3s_ha_dependencies/defaults/main.yml").read_text())
-    assert d["k3s_ha_dependencies_coredns_nodes"] == ["socrat-0", "socrat-3"]
+    assert d["k3s_ha_dependencies_coredns_nodes"] == ["socrat-0", "socrat-1", "socrat-5"]
+    assert d["k3s_ha_dependencies_nodes"] == ["socrat-0", "socrat-1", "socrat-5"]
     assert d["k3s_ha_dependencies_manifest_servers"] == [
         "socrat-0",
         "socrat-1",
