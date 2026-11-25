@@ -35,8 +35,8 @@ class Remark42ChartRenderTests(unittest.TestCase):
         for name in ("livenessProbe", "readinessProbe"):
             probe = container[name]
             assert probe["httpGet"] == {"path": "/ping", "port": "http"}
-        assert "hostNetwork" not in pod
-        assert "nodeSelector" not in pod
+        assert pod["hostNetwork"] == True
+        assert pod["nodeSelector"]["kubernetes.io/hostname"] == "socrat-2"
 
     def test_existing_data_and_service_contract_remains_intact(self) -> None:
         deployment = next(obj for obj in self.objects if obj["kind"] == "Deployment")
