@@ -182,8 +182,6 @@
 - name: Print wg-socrat address
   ansible.builtin.debug:
     var: wg_socrat_addr.stdout_lines
-...
-
 - name: Install wg-socrat endpoint pin
   ansible.builtin.copy:
     src: wg-socrat-pin-endpoints.py
