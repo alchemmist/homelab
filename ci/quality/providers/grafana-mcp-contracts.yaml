@@ -1,0 +1,11 @@
+version: 1
+entries:
+  # MCP server reads its Grafana API token and client bearer token from the
+  # environment; no file-based configuration interface exists. Evidence:
+  # docs/quality/grafana-mcp-contracts.md.
+  - consumer: grafana-mcp-0
+    kind: Deployment
+    namespace: cattle-monitoring-system
+    name: grafana-mcp
+    checks: [env-value-from, read-secret-from-env-var]
+    evidence: docs/quality/grafana-mcp-contracts.md
