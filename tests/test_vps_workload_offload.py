@@ -18,7 +18,7 @@ class VPSWorkloadOffloadTests(unittest.TestCase):
         ]
         by_owner = {(p["namespace"], p["ownerPattern"]): p for p in profiles}
         assert by_owner["img-proxy", r"^img\-proxy-[a-z0-9]+$"]["nodeSelector"] == {
-            "kubernetes.io/hostname": "socrat-2"
+            "kubernetes.io/hostname": "socrat-1"
         }
         for owner in (
             r"^metrics\-server-[a-z0-9]+$",
@@ -86,7 +86,7 @@ class VPSWorkloadOffloadTests(unittest.TestCase):
     def test_image_proxy_helm_values_require_vps_placement(self) -> None:
         """Require the image-proxy chart to select the VPS node."""
         values = yaml.safe_load((ROOT / "charts/img-proxy/values.yaml").read_text())
-        assert values["nodeSelector"] == {"kubernetes.io/hostname": "socrat-2"}
+        assert values["nodeSelector"] == {"kubernetes.io/hostname": "socrat-1"}
         deployment = (ROOT / "charts/img-proxy/templates/deployment.yaml").read_text()
         assert "with .Values.nodeSelector" in deployment
 
