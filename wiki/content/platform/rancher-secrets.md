@@ -12,13 +12,13 @@ weight: 51
 - Если `schoolbot-env` **уже есть**, откройте меню **⋮ → Edit Config** и перейдите к заполнению полей. Сохраните существующие ключи.
 - Если его **нет** и у вас есть право создания, нажмите **Create → Opaque**. Тип `Registry` предназначен для скачивания образов (`schoolbot-harbor-pull`), а `TLS Certificate` — для сертификата. Их менять не нужно.
 
-![Экран выбора типа секрета в Rancher: для переменных приложения выберите Opaque.](/images/rancher-secrets/type.png)
+![Экран выбора типа секрета в Rancher: для переменных приложения выберите Opaque.](https://rustfs.socrat.alchemmist.xyz/public/wiki/rancher-secrets/type-4ba17f8b5cbb.png)
 
 ## Заполнить форму
 
 Проверьте **Namespace**: `schoolbot`. В **Name** укажите `schoolbot-env`. На вкладке **Data** нажимайте **Add** для каждой пары: в **Key** — точное имя переменной, в **Value** — её значение. Кодировать в base64 или обрамлять значение кавычками не нужно. На снимке показана одна строка с **учебным** значением `DEMO-ONLY`: не используйте его при запуске.
 
-![Форма Rancher с пространством имён schoolbot, именем schoolbot-env и примером строки на вкладке Data.](/images/rancher-secrets/data.png)
+![Форма Rancher с пространством имён schoolbot, именем schoolbot-env и примером строки на вкладке Data.](https://rustfs.socrat.alchemmist.xyz/public/wiki/rancher-secrets/data-2351ed418c02.png)
 
 Текущий [Deployment Schoolbot](https://github.com/alchemmist/homelab/blob/main/charts/schoolbot/templates/deployment.yaml) читает **все шесть ключей из одного Secret**:
 
