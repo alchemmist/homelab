@@ -2,6 +2,7 @@
 image: "ghcr.io/umputun/remark42:v1.18.0@sha256:\
   00a803ffdde34e8f239eef3e46adbeac44b9ef1a2f366e8b86b413d6908f3ac3"
 storage: 1Gi
+nodeName: socrat-2
 host: remark42.alchemmist.xyz
 secretName: remark42-env
 tlsSecret: remark42-tls
