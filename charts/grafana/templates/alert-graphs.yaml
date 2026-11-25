@@ -148,8 +148,15 @@ spec:
           podSelector:
             matchLabels:
               app: spi-triage
-        # The existing bot uses hostNetwork; pod selectors alone cannot identify it.
-        # Exact node source /32 entries require separate verified CNI acceptance.
+        # Bot left hostNetwork when Telegram moved to the relay. Its pod identity
+        # is the only stable source; the /32 below remains the old flannel SNAT.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: socrat-bot
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: socrat-bot
+              app.kubernetes.io/component: bot
         {{- range .Values.alertGraphs.botSourceCIDRs }}
         - ipBlock:
             cidr: {{ . | quote }}
