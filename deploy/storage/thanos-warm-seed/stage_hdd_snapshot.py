@@ -8,8 +8,6 @@ import tempfile
 import time
 from pathlib import Path
 
-sys.path.insert(0, "/scripts")
-from hour_copy import Bucket  # noqa: E402
 
 
 class LimitedWriter:
@@ -35,6 +33,9 @@ def retry_connection(call):
 
 
 def main():
+    sys.path.insert(0, "/scripts")
+    from hour_copy import Bucket
+
     dest = Path("/candidate") / ("precopy-" + os.environ["HOSTNAME"])
     dest.mkdir(exist_ok=False)  # never replace a prior attempt
     bucket = Bucket(json.loads(Path("/s3/objstore.yml").read_bytes())["config"])
