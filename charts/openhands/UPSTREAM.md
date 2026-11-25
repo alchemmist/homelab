@@ -1,7 +1,7 @@
 # Upstream provenance
 
-Vendored from OpenHands/OpenHands tag v1.41.0, helm/agent-canvas.
-Official release: https://github.com/OpenHands/OpenHands/releases/tag/v1.41.0
+Vendored from OpenHands/OpenHands tag v1.43.0, helm/agent-canvas.
+Official release: https://github.com/OpenHands/OpenHands/releases/tag/v1.43.0
 All upstream chart files are unchanged. Local addition: templates/socrat-safety.yaml.
 Overrides: deploy/openhands/values.yaml. Official public GHCR image, immutable digest;
 no custom UI, host Docker socket, host paths, Kubernetes RBAC or serviceaccount token.

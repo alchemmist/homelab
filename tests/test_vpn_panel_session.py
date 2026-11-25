@@ -18,7 +18,7 @@ SESSION_FILE_MODE = 0o600
 EXPECTED_FAILURE_THRESHOLD = 4
 LEGACY_ENDPOINT_COUNT = 2
 spec = importlib.util.spec_from_file_location(
-    "panel_session", ROOT / "scripts/vpn-panel-session.py"
+    "panel_session", ROOT / "ci/vpn/vpn-panel-session.py"
 )
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
@@ -197,7 +197,7 @@ class TargetHelperTests(unittest.TestCase):
 
     def module(self):
         spec = importlib.util.spec_from_file_location(
-            "target_apply", ROOT / "scripts/vpn-reality-apply.py"
+            "target_apply", ROOT / "ci/vpn/vpn-reality-apply.py"
         )
         result = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(result)
@@ -287,7 +287,7 @@ class SubscriptionMigrationTests(unittest.TestCase):
 
     def module(self):
         spec = importlib.util.spec_from_file_location(
-            "sub_migrate", ROOT / "scripts/vpn-subscription-migrate.py"
+            "sub_migrate", ROOT / "ci/vpn/vpn-subscription-migrate.py"
         )
         m = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(m)
@@ -376,7 +376,7 @@ class BackendGuardTests(unittest.TestCase):
     """Tests for BackendGuardTests."""
 
     def module(self, filename):
-        spec = importlib.util.spec_from_file_location("backend_test", ROOT / "scripts" / filename)
+        spec = importlib.util.spec_from_file_location("backend_test", ROOT / "ci/vpn" / filename)
         m = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(m)
         return m
@@ -491,7 +491,7 @@ class HomeProbeTests(unittest.TestCase):
 
     def module(self):
         spec = importlib.util.spec_from_file_location(
-            "home_probe", ROOT / "scripts/vpn-home-probe.py"
+            "home_probe", ROOT / "ci/vpn/vpn-home-probe.py"
         )
         m = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(m)
@@ -507,7 +507,7 @@ class HomeProbeTests(unittest.TestCase):
                 m.exclusive(p, {"overwrite": True})
 
     def test_probe_limits_destination_and_avoids_global_network_writes(self) -> None:
-        text = (ROOT / "scripts/vpn-home-probe.py").read_text()
+        text = (ROOT / "ci/vpn/vpn-home-probe.py").read_text()
         assert "65536" in text
         assert "socks5h://127.0.0.1:" in text
         for forbidden in [
@@ -524,7 +524,7 @@ class LegacyRetirementTests(unittest.TestCase):
 
     def module(self):
         spec = importlib.util.spec_from_file_location(
-            "retire", ROOT / "scripts/vpn-legacy-retire.py"
+            "retire", ROOT / "ci/vpn/vpn-legacy-retire.py"
         )
         m = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(m)

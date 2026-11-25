@@ -13,7 +13,31 @@ title: Как задеплоить сервис на кластере
 
 SSH на ноды для обычного релиза не нужен. Подключение GitHub, registry и secrets выполняется отдельно от браузерного SSO.
 
+### Создать проект и двух роботов в Harbor
+
+Для **нового сервиса** администратор Harbor создаёт отдельный приватный проект: **Projects → New Project** → имя `<app>` → не включать **Public**. Проект — граница прав робота. Например, в `harbor.socrat.alchemmist.xyz/schoolbot/schoolbot` первый `schoolbot` — проект, второй — репозиторий образов. Репозиторий появится при первом push. Не копируйте путь `homelab/blog` из существующего сервиса: робот нового проекта не сможет туда писать.
+
+В **Projects → `<app>` → Robot Accounts → New Robot Account** администратор проекта создаёт две отдельные учётные записи:
+
+| Робот | Разрешения в этом проекте | Где используется |
+| --- | --- | --- |
+| `ci` | Repository: **Pull + Push**, без Delete | GitHub Actions собирает и публикует образ |
+| `cluster-pull` | Repository: **только Pull** | Kubernetes скачивает образ для запуска Pod |
+
+При создании каждого робота сохраните выданные данные через **Export to File** в защищённом месте. Используйте полное поле `name`, включая префикс и `$`, и поле `secret`, а не имя человека или его пароль Authentik. Согласуйте срок действия и ответственного за ротацию. Не кладите экспорт в Git, чат, issue или логи.
+
+В **репозитории самого сервиса** откройте **Settings → Secrets and variables → Actions → New repository secret**. Создайте два секрета из экспорта **робота `ci`**:
+
+| Имя GitHub secret | Значение |
+| --- | --- |
+| `HARBOR_USERNAME` | Поле `name`, например `robot$schoolbot+ci`. Вставить как есть, без кавычек и экранирования. |
+| `HARBOR_PASSWORD` | Поле `secret` этого же робота. |
+
+Личный вход разработчика в Harbor и доступ CI независимы. Для push из Actions разработчику не нужны Project Admin, локальный Docker или kubeconfig. Администратор передаёт данные pull-робота оператору кластера отдельно: они не нужны workflow сборки.
+
 ## 1. Подготовить чарт и values в homelab
+
+**Для первого выката откройте pull request в ветку `main` репозитория [alchemmist/homelab](https://github.com/alchemmist/homelab), а не в репозиторий приложения.** В один PR включите Helm-чарт приложения (`charts/<app>/`), настройки для кластера (`deploy/<app>/values.yaml`), манифест Argo CD Application (`deploy/argocd/apps/<app>.yaml`) и запись в `deploy/mcp/service-audit.json`. Отправьте ссылку администратору кластера на ревью. Workflow сборки образа, напротив, добавляется в репозиторий самого приложения.
 
 Создайте:
 
@@ -31,7 +55,7 @@ deploy/argocd/apps/<app>.yaml
 
 ```yaml
 image:
-  repository: harbor.socrat.alchemmist.xyz/homelab/<app>
+  repository: harbor.socrat.alchemmist.xyz/<app>/<app>
   tag: "<FULL_SOURCE_COMMIT_SHA>"
   digest: "sha256:<EXISTING_IMAGE_DIGEST>"
   pullPolicy: IfNotPresent
@@ -45,7 +69,14 @@ imagePullSecrets:
 image: "{{ .Values.image.repository }}{{ if .Values.image.digest }}@{{ .Values.image.digest }}{{ else }}:{{ .Values.image.tag }}{{ end }}"
 ```
 
-Secrets не коммитятся в открытом виде и не передаются в wiki/issue. Согласованный оператор создаёт namespace-scoped pull Secret типа `kubernetes.io/dockerconfigjson` от Harbor robot с pull-only правами, а также app Secrets. Chart ссылается на них, но не регенерирует действующие пароли при upgrade.
+Secrets не коммитятся в открытом виде и не передаются в wiki/issue. Согласованный оператор создаёт namespace-scoped pull Secret типа `kubernetes.io/dockerconfigjson` от Harbor robot с pull-only правами, а также app Secrets. Chart ссылается на них, но не регенерирует действующие пароли при upgrade. [Как заполнить Secret в Rancher: пример Schoolbot со снимками экрана]({{< relref "platform/rancher-secrets.md" >}}).
+
+**Первый релиз, до мержа PR:**
+
+1. В репозитории сервиса запустите workflow из §3 **только до `Build and push` включительно**, без `Deploy to Socrat`. Для этого достаточно двух Harbor secrets. Убедитесь, что push прошёл в нужный проект.
+2. Впишите полный SHA **коммита сервиса** и digest **этой сборки** в `charts/<app>/values.yaml` и `deploy/<app>/values.yaml`. Проверьте `helm lint charts/<app> -f deploy/<app>/values.yaml` и `helm template <app> charts/<app> -f deploy/<app>/values.yaml`: итоговый Deployment должен ссылаться на `<repository>@sha256:…`, а не на `:unreleased`.
+3. Оператор заранее создаёт namespace и `<app>-harbor-pull` из данных **pull-робота** для `harbor.socrat.alchemmist.xyz`, а также все Secret и ключи, на которые ссылается Deployment. `CreateNamespace=true` не создаёт секреты. Для managed role CloudNativePG с парольной аутентификацией укажите `passwordSecret.name`, подготовьте соответствующий basic-auth Secret в namespace БД и согласуйте учётные данные с Secret приложения. Одно `login: true` пароль не выдаёт.
+4. Для публичного HTTPS проверьте, что домен разрешается извне в адрес ingress до выпуска HTTP-01 сертификата. Для нового Application добавьте запись с `decision` и `reason` в `deploy/mcp/service-audit.json`; это учёт приложения, не требование подключать MCP.
 
 ## 2. Добавить Application
 
@@ -85,7 +116,7 @@ spec:
 
 ## 3. Настроить CI репозитория сервиса
 
-Оператор настраивает secrets `HARBOR_USERNAME`, `HARBOR_PASSWORD` от scoped push robot и `HOMELAB_DEPLOY_KEY` для release action. Последний сейчас **SSH write deploy key**, а не обычный GitHub API token; параметр action исторически называется `token`.
+**После первого успешного выката запросите `HOMELAB_DEPLOY_KEY` у администратора кластера (`alchemmist`).** После согласования приватная часть ключа сохраняется в Actions secrets доверенного репозитория сервиса под этим именем. Не пересылайте её через PR или чат. Этот ключ нужен только шагу `Deploy to Socrat`, не для Harbor push, скачивания образа Pod или первого мержа. Это **SSH write deploy key**, а не обычный GitHub API token; параметр action исторически называется `token`.
 
 Write deploy key даёт широкую запись в homelab. Не выдавайте его каждому админу и не добавляйте в недоверенный workflow: возможность менять такой workflow равна возможности извлечь ключ. Расширение числа workflow maintainers требует отдельного решения о GitHub App/branch protection. Не копируйте ключ владельца.
 
@@ -116,7 +147,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: harbor.socrat.alchemmist.xyz/homelab/<app>:${{ github.sha }}
+          tags: harbor.socrat.alchemmist.xyz/<app>/<app>:${{ github.sha }}
       - name: Deploy to Socrat
         uses: alchemmist/deploy-to-socrat@v1
         with:
@@ -148,6 +179,7 @@ Action меняет image tag/digest в существующих values, ком�
 
 | Симптом | Где искать |
 | --- | --- |
+| `missing deploy key` после успешного push | Образ уже опубликован. Для первого релиза пропустите `Deploy to Socrat`; для последующих запросите `HOMELAB_DEPLOY_KEY` у администратора. |
 | Harbor push denied | Scope/срок push robot, адрес проекта и имя образа |
 | `Permission denied (publickey)` у releaser | Release deploy key/transport; не обходить ручным helm upgrade |
 | Git обновился, Argo ещё старый | Poll/refresh и состояние repo-server, не второй deploy из CI |
@@ -158,6 +190,6 @@ Action меняет image tag/digest в существующих values, ком�
 
 Не синкайте/пруньте посторонние приложения ради своего релиза. Общая деградация — повод остановить rollout и перейти к incident procedure.
 
-## When a Harbor release upload appears stuck
+## Что делать, если загрузка образа в Harbor кажется зависшей
 
-A slow blob upload can spend minutes inside a single registry `PATCH` even when Harbor pods are Ready. Check whether the original publish job is still progressing before starting another one. Report the job URL, UTC interval, observed bytes and client network; omit credentials and upload-session URLs. A fast push from the cluster does not establish that the GitHub runner path is healthy. [November measurements and open investigation](https://github.com/alchemmist/homelab/issues/558).
+При медленном соединении один запрос `PATCH` на загрузку слоя может занимать несколько минут, даже если все поды Harbor находятся в состоянии `Ready`. Прежде чем запускать сборку повторно, проверьте, передаёт ли данные исходная задача публикации. Для разбора укажите ссылку на задачу, интервал времени в UTC, число переданных байтов и сеть, из которой шла загрузка. Не передавайте учётные данные и ссылки на сессию загрузки. Быстрая отправка из кластера не исключает проблем на пути от GitHub Actions до Harbor. [Ноябрьские замеры и ход расследования](https://github.com/alchemmist/homelab/issues/558).

@@ -7,13 +7,13 @@ ROOT = Path("/usr/local/lib/python3.13/site-packages/openhands/sdk/conversation"
 PATCHES = (
     (
         "impl/local_conversation.py",
-        "1a272a4c714652a554bbd602cfe825a5044c412b1da7101e5e02403b4c413854",
+        "01a206776c6bc8902d59b7caf53379771d2cf7f5d5be79b7d8435c0eb1474871",
         "if iteration >= self.max_iteration_per_run:",
         6,
     ),
     (
         "goal/controller.py",
-        "eb6922cd87a46fb78c28a47906fe0e01010bad9bea00d048eadbacaa3f82af43",
+        "651761b919dc3cc5e4f58c5e9cfc2e1890cc096ea0478bf3ce5e2c3fa42df1a9",
         "if self.iteration >= self.max_iterations:",
         1,
     ),

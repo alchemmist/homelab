@@ -10,18 +10,18 @@ oidc:
 images:
   front:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
-    tag: 716141e6d9c6a9b04b8e5da9c9393a4a5b1018c2
-    digest: sha256:ac9b121749fb8479f21cfb3ddd6872ee379e63b479705c0b51e0d5db4da9083a
+    tag: 6f26bb37f4e73aea5f2b6619c6234bb6c9784a8f
+    digest: sha256:52d7f499521958d36108c640a42b96bea3d8ae33c80273e66daa51c3ad53a203
     fallback: ghcr.io/alchemmist/homelab-monori-front:latest
   back:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
-    tag: 716141e6d9c6a9b04b8e5da9c9393a4a5b1018c2
-    digest: sha256:08d3a78b49e07f966a08a948f32a6b7f86fbb169265aceb992f6e23e0891f6c5
+    tag: 6f26bb37f4e73aea5f2b6619c6234bb6c9784a8f
+    digest: sha256:3d904fcdb07dbccf860ba9f8710b850bcf16aadcfbc90196a6cfebc67b538421
     fallback: ghcr.io/alchemmist/homelab-monori-back:latest
   sync:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
-    tag: 716141e6d9c6a9b04b8e5da9c9393a4a5b1018c2
-    digest: sha256:50b4cbff899042ca5fc03acad3b4d7380308c4ae55c0303e9da320f908b311f4
+    tag: 6f26bb37f4e73aea5f2b6619c6234bb6c9784a8f
+    digest: sha256:f9a8c6d6acf6a5e44eb6a597ababa0931ca9065aa2b3e025b84e094c1857a7e1
     fallback: ghcr.io/alchemmist/homelab-monori-sync:latest
 
 imagePullSecrets:

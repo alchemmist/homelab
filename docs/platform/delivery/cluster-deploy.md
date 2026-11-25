@@ -45,7 +45,7 @@ The expected chain:
 The image:
 
 ```text
-harbor.socrat.alchemmist.xyz/homelab/<app>:<git-sha>
+harbor.socrat.alchemmist.xyz/<app>/<app>:<git-sha>
 ```
 
 The pod gets `repository@sha256:...` if `image.digest` is non-empty. The tag
@@ -256,8 +256,9 @@ Application and values.
 1. A chart in `charts/<app>`. In the Deployment template a single image: if
    `image.digest` is set, use `repository@digest`, otherwise `repository:tag`.
 2. `deploy/<app>/values.yaml` with root `image.repository`, `image.tag`,
-   `image.digest`. Before the first release the digest is empty; the tag is an
-   image that can already be rolled out. The same keys in
+   `image.digest`. Before merging the first auto-sync Application, build and push to the
+   dedicated private Harbor project using its CI robot. Pin that build’s full
+   source SHA and existing digest in both values files. The same keys in
    `charts/<app>/values.yaml` if the file exists. The Application must read
    `deploy/<app>/values.yaml` via `helm.valueFiles`.
 3. In the namespace — a pull Secret from the project's Harbor robot, with a
@@ -268,9 +269,9 @@ Application and values.
    itself. Do not create it manually in the UI.
 5. Wait for `Synced`. The first render must match what already runs, or it is
    a deliberate first rollout.
-6. In the service's CI, put the `HOMELAB_DEPLOY_KEY` secret with the same
-   private key and add the step from the section above. Push the image to
-`harbor.socrat.alchemmist.xyz/homelab/<app>`.
+6. After the first rollout, request `HOMELAB_DEPLOY_KEY` from the cluster
+   administrator for the trusted service repository and enable the release step. Push the image to
+`harbor.socrat.alchemmist.xyz/<app>/<app>`.
 7. Check the `socrat-releaser` commit in `homelab`, then `Synced/Healthy` and
    live HTTP. On a cold node health may lag by the pull time.
 
@@ -296,7 +297,7 @@ Deployment references it: the next pod restart would be unable to download it.
 3. `kubectl -n argocd get application <app>` shows `Synced` on this commit and
    then `Healthy`.
 4. The Deployment image equals
-   `harbor.socrat.alchemmist.xyz/homelab/<app>@sha256:...`.
+   `harbor.socrat.alchemmist.xyz/<app>/<app>@sha256:...`.
 5. `spec.source.helm.parameters` is empty.
 6. The service's live HTTP responds.
 

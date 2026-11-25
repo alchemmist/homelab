@@ -34,7 +34,9 @@ class _ScrapeJob(TypedDict, total=False):
     authorization: NotRequired[dict[str, object]]
 
 
-_Source = TypedDict("_Source", {"global": dict[str, object], "scrape_configs": list[_ScrapeJob]})
+_Source = TypedDict(
+    "_Source", {"global": dict[str, object], "scrape_configs": list[_ScrapeJob]}
+)
 
 
 class _Targets(TypedDict):
@@ -102,7 +104,9 @@ class ScrapeConfigTests(unittest.TestCase):
         job = {
             "job_name": "serviceMonitor/cattle-monitoring-system/monitoring-service-probes/26",
             "params": {"module": ["tcp_connect"], "target": ["192.0.2.1:443"]},
-            "relabel_configs": [{"target_label": "service_id", "replacement": "edge-vps"}],
+            "relabel_configs": [
+                {"target_label": "service_id", "replacement": "edge-vps"}
+            ],
         }
         other = {"job_name": "unrelated", "params": {"target": ["192.0.2.1:443"]}}
         original = {"scrape_configs": [job, other]}
@@ -121,16 +125,18 @@ class ScrapeConfigTests(unittest.TestCase):
 
     def test_moscow_job_does_not_reuse_frozen_numeric_endpoint_indices(self) -> None:
         """Moscow job does not reuse frozen numeric endpoint indices."""
-        targets = yaml.safe_load((SCRAPE.ROOT / "charts/monitoring-k3s/values.yaml").read_text())[
-            "serviceProbes"
-        ]["targets"]
+        targets = yaml.safe_load(
+            (SCRAPE.ROOT / "charts/monitoring-k3s/values.yaml").read_text()
+        )["serviceProbes"]["targets"]
         index = 1 + next(i for i, t in enumerate(targets) if t["id"] == "edge-moscow")
         prefix = "serviceMonitor/cattle-monitoring-system/monitoring-service-probes/"
         old = {"job_name": prefix + str(index), "params": {"target": ["legacy:443"]}}
         vps = {
             "job_name": prefix + "26",
             "params": {"module": ["tcp_connect"], "target": ["109.120.141.60:443"]},
-            "relabel_configs": [{"target_label": "service_id", "replacement": "edge-vps"}],
+            "relabel_configs": [
+                {"target_label": "service_id", "replacement": "edge-vps"}
+            ],
         }
         original = {"scrape_configs": [vps, old]}
         result = SCRAPE.add_moscow_edge_probe(original)
@@ -145,7 +151,8 @@ class ScrapeConfigTests(unittest.TestCase):
         outputs, contract = SCRAPE.compile_config(source, targets)
         cluster = outputs["cluster"]["scrape_configs"][0]
         assert (
-            cluster["kubernetes_sd_configs"] == before["scrape_configs"][0]["kubernetes_sd_configs"]
+            cluster["kubernetes_sd_configs"]
+            == before["scrape_configs"][0]["kubernetes_sd_configs"]
         )
         assert (
             cluster["metric_relabel_configs"]
@@ -163,7 +170,8 @@ class ScrapeConfigTests(unittest.TestCase):
             assert "relabel_configs" not in job
             assert job["static_configs"][0]["targets"] == ["127.0.0.1:19100"]
             assert (
-                job["static_configs"][0]["labels"] == targets["activeTargets"][index + 1]["labels"]
+                job["static_configs"][0]["labels"]
+                == targets["activeTargets"][index + 1]["labels"]
             )
         assert contract["excludedEmptyPools"] == ["empty-pool"]
         assert contract["legacyTargetIdentityAliasesRequireAcceptance"]
@@ -228,14 +236,19 @@ class ScrapeConfigTests(unittest.TestCase):
     ) -> None:
         """Validation assets are inert and do not mutate the real config."""
         document = {
-            "authorization": {"credentials_file": "/etc/otel/source-auth/ns/name/token"},
-            "tls_config": {"ca_file": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"},
+            "authorization": {
+                "credentials_file": "/etc/otel/source-auth/ns/name/token"
+            },
+            "tls_config": {
+                "ca_file": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+            },
             "replacement": "$$1",
         }
         before = copy.deepcopy(document)
         result = SCRAPE.validation_config(document)
         assert (
-            result["authorization"]["credentials_file"] == "${env:OTEL_VALIDATION_ASSET_DIR}/token"
+            result["authorization"]["credentials_file"]
+            == "${env:OTEL_VALIDATION_ASSET_DIR}/token"
         )
         assert result["tls_config"]["ca_file"] == "${env:OTEL_TLS_DIR}/ca.crt"
         assert result["replacement"] == "$$1"
@@ -247,3 +260,20 @@ class ScrapeConfigTests(unittest.TestCase):
             SCRAPE.assets({"credentials_file": "/etc/otel/source-auth/../outside"})
         with pytest.raises(ValueError):
             SCRAPE.assets({"credentials_file": "/etc/shadow"})
+
+
+def test_native_scrape_cost_is_scoped_and_idempotent():
+    base = "serviceMonitor/cattle-monitoring-system/kube-prometheus-stack-"
+    src = {
+        "scrape_configs": [
+            {"job_name": base + n, "scrape_interval": "5s"}
+            for n in ("kubelet/0", "kubelet/1", "apiserver/0", "grafana/0")
+        ]
+    }
+    result = SCRAPE.select_native_scrape_cost(src)
+    assert SCRAPE.select_native_scrape_cost(result) == result
+    kube, cadvisor, api, grafana = result["scrape_configs"]
+    assert [cadvisor, api] == src["scrape_configs"][1:3]
+    assert kube["metric_relabel_configs"][0]["regex"].endswith("_count")
+    assert grafana["scrape_interval"] == "15s"
+    assert src["scrape_configs"][-1]["scrape_interval"] == "5s"

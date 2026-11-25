@@ -1,6 +1,6 @@
 ---
 image:
-  digest: sha256:0eec9c89554011c9aa16eea88ab89a91b32dc8d6eb96307b7fc2dcd6bbbc7fcf
+  digest: sha256:9b262e9493ab3e0daebc2c9cfbddc6df68b9ac91afc036a759584f3d49d607e5
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
@@ -22,7 +22,7 @@ affinity:
         topologyKey: kubernetes.io/hostname
 cainjector:
   image:
-    digest: sha256:593abc7bf8b926d6fcb9c63b91504ad85e1379b25056aa5dee90b35505ab3211
+    digest: sha256:165691f631d61931a27e4fbbb82bbed8205431d0446b3c14d170081aeff75f0a
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
@@ -67,7 +67,7 @@ resources:
     memory: 128Mi
 startupapicheck:
   image:
-    digest: sha256:ee42be19c579e5a80eab13758cc64001ae421effbd8b07030e729d33b29d3952
+    digest: sha256:6b9e17adc075c80c0c5cb1f901654f0efa4c5d4b1a8b369985ac67f5bbb0b8d2
   resources:
     limits:
       memory: 128Mi
@@ -81,7 +81,7 @@ strategy:
   type: RollingUpdate
 webhook:
   image:
-    digest: sha256:64c4d5dd55d7d00e5b162e21887f9bffbf1e531ee0668eaf801fae9bd54e536d
+    digest: sha256:fc2845cc042ab57c8b98c5ff62462d50dcd5d8d3302f9e6875cd05042ce1020b
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:

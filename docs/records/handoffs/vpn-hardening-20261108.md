@@ -32,7 +32,7 @@ panel-managed SQLite. Argo owns the container and edge resources, **not** inboun
 
 ### Consistent inventory and backup
 
-`scripts/vpn-hardening-inventory.py` opens SQLite in `mode=ro`, uses the backup API
+`ci/vpn/vpn-hardening-inventory.py` opens SQLite in `mode=ro`, uses the backup API
 for a consistent snapshot including WAL, and performs integrity checks. It does
 **not** use `immutable=1` on the live database, which could miss WAL state.
 
@@ -48,7 +48,7 @@ Full backup contains credentials: never attach it or its rows to an issue.
 
 ### Passive backend counters, not enforcement
 
-`scripts/vpn-backend-audit.py` defaults to preview; `--render` is offline. Explicit
+`ci/vpn/vpn-backend-audit.py` defaults to preview; `--render` is offline. Explicit
 root-on-socrat-2 apply requires the exact fresh plan hash and private state. It
 installs only `inet homelab_xui_backend_audit`, input policy **accept**, with twelve
 interface counters for TCP12096/32087. No reject/drop/NAT/packet logging, panel
@@ -81,8 +81,8 @@ the primary pod are healthy, container restarts0. The Xray **child** reload from
 native inbound save is distinct from a pod/node/K3s restart.
 
 `deploy/vpn-hardening/policy.json` enables the explicitly gated executor.
-`scripts/vpn-reality-plan.py` stays pure/read-only; the post-change plan is a no-op.
-`scripts/vpn-reality-apply.py` requires fresh session and target hashes, backup and
+`ci/vpn/vpn-reality-plan.py` stays pure/read-only; the post-change plan is a no-op.
+`ci/vpn/vpn-reality-apply.py` requires fresh session and target hashes, backup and
 version/preimage checks. It posts only the target change and checks the whole
 semantic configuration, including all original client/host/binding data. It never
 writes SQL or silently replays an ambiguous API mutation.
@@ -109,7 +109,7 @@ subscriptions/device refresh were not exercised or claimed from that comparison.
 
 #### Temporary machine credential lifecycle
 
-`scripts/vpn-panel-session.py` uses collision-checked, separately named credentials.
+`ci/vpn/vpn-panel-session.py` uses collision-checked, separately named credentials.
 Native CLI issuance is authorized **only for a new unique bootstrap name**, never
 `install`, `cli-fallback`, an empty name or a pre-existing token. Its plaintext goes
 directly to an exclusive0600 private file. A TTL-limited cleanup admin token30min
@@ -128,7 +128,7 @@ was used to obtain access.
 
 ### Bounded path diagnostics
 
-`scripts/vpn-path-check.py` makes one HTTPS attempt with explicit stage reporting:
+`ci/vpn/vpn-path-check.py` makes one HTTPS attempt with explicit stage reporting:
 DNS → TCP → verified TLS → HTTP/complete transfer. It never retries, rotates IPs,
 stops workloads or claims it authenticated a VPN tunnel. It preserves corporate
 VPN/DNS/routes. Per-connection controls are limited to the two existing approved
@@ -142,7 +142,7 @@ cannot pass the complete-success-above32KiB check. No threshold alert is inferre
 Example from an already-approved vantage, without installing an agent there:
 
 ```sh
-python3 scripts/vpn-path-check.py --vantage approved-fixed-ISP-ASN \
+python3 ci/vpn/vpn-path-check.py --vantage approved-fixed-ISP-ASN \
   --url https://wiki.socrat.alchemmist.xyz/ --address 109.120.141.97
 ```
 
@@ -230,7 +230,7 @@ publication. The following native change is now applied: TCP32063 remains enable
 but **`excludeFromSub=true`**. Only this field changed. No listener/client/host/binding
 was deleted and no key, UUID or subscription URL changed.
 
-`scripts/vpn-subscription-migrate.py` previews by default and requires fresh machine
+`ci/vpn/vpn-subscription-migrate.py` previews by default and requires fresh machine
 session and configuration hashes, pinned versions/pod, native backup, full config
 preimages and publication proof before the one native inbound API update. Before
 and after, **all16** enabled subscriptions were fetched through both loopback and
@@ -281,7 +281,7 @@ other firewall table, TV profile or panel guard was changed. The ACCEPT-only aud
 table is still present separately; it is not the enforcing mechanism. The public
 interface/IPv4 were freshly checked. No guessed overlay source allowlist was used.
 
-`scripts/vpn-backend-enforce.py` requires fresh session/config/guard approvals,
+`ci/vpn/vpn-backend-enforce.py` requires fresh session/config/guard approvals,
 backup, owned native fixture and complete before/after proof. A fresh own Trojan
 identity authenticated through public-hostname **TLS443/WebSocket**, certificate
 verification enabled, and downloaded65536 bytes before guard installation. After

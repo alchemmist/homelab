@@ -5,6 +5,8 @@ metadata: {name: thanos-hour-copy}
 data:
   hour_copy.py: |
 {{ .Files.Get "files/hour_copy.py" | indent 4 }}
+  hour_pending.py: |
+{{ .Files.Get "files/hour_pending.py" | indent 4 }}
   tier.py: |
 {{ .Files.Get "files/tier.py" | indent 4 }}
 ---
@@ -46,4 +48,42 @@ spec:
             - {name: s3, secret: {secretName: thanos-warm-tier-marker, items: [{key: objstore.yml, path: objstore.yml}]}}
             - {name: trust, secret: {secretName: thanos-warm-api-tls, items: [{key: ca.crt, path: ca.crt}]}}
             - {name: hour, hostPath: {path: /var/lib/socrat-thanos-1h, type: Directory}}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: thanos-hour-inventory, labels: {app: thanos-cascade}}
+spec:
+  schedule: '*/15 * * * *'
+  timeZone: Europe/Moscow
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 7200
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 3600
+      backoffLimit: 0
+      template:
+        metadata: {labels: {app: thanos-cascade}}
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: Never
+          nodeSelector: {kubernetes.io/hostname: socrat-1}
+          securityContext: {runAsNonRoot: false, runAsUser: 0, runAsGroup: 2000, seccompProfile: {type: RuntimeDefault}}
+          containers:
+            - name: cascade
+              image: python@sha256:cb33f7f771ecec2ef1225cf39b159591a040391bd73e4c01f00fdfc4c47611d2
+              command: [python3, -B, /scripts/hour_pending.py]
+              resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {cpu: '1', memory: 256Mi}}
+              securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+              volumeMounts:
+                - {name: script, mountPath: /scripts, readOnly: true}
+                - {name: s3, mountPath: /s3, readOnly: true}
+                - {name: trust, mountPath: /trust, readOnly: true}
+                - {name: textfile, mountPath: /textfile}
+          volumes:
+            - {name: script, configMap: {name: thanos-hour-copy}}
+            - {name: s3, secret: {secretName: thanos-warm-store-reader, items: [{key: objstore.yml, path: objstore.yml}]}}
+            - {name: trust, secret: {secretName: thanos-warm-api-tls, items: [{key: ca.crt, path: ca.crt}]}}
+            - {name: textfile, hostPath: {path: /var/lib/node_exporter/textfile_collector, type: Directory}}
 {{- end }}

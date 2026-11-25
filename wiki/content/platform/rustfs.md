@@ -1,153 +1,68 @@
 ---
-title: "RustFS evidence foundation"
+title: "RustFS: хранение материалов SPI"
 weight: 30
 ---
 
-Практическое руководство: [S3-хранилище: что это и как пользоваться]({{< relref "platform/s3-storage.md" >}}). Ниже — датированная история внедрения; ранние ограничения не являются описанием текущего состояния.
+Практическое руководство: [S3-хранилище: что это и как пользоваться]({{< relref "platform/s3-storage.md" >}}). Ниже — история внедрения. Ограничения ранних этапов не описывают текущее состояние.
 
-## Current state (2026-11-05)
+## Состояние на 5 ноября 2026 года
 
-Private RustFS foundation and protected reader are deployed through the dedicated
-manual-sync Argo Application. SPI backend/publisher remains unchanged. Public
-console/evidence ingress is **disabled**, not accepted for production browser use.
+Приватное хранилище RustFS и защищённый сервис чтения развёрнуты через отдельное приложение Argo CD с ручной синхронизацией. Серверная часть SPI и механизм публикации не менялись. Публичный вход в консоль и к материалам на этом этапе был **выключен**; доступ из браузера ещё не был принят в эксплуатацию.
 
-The full operator evidence/runbook is repository
-`docs/rustfs/live-foundation-20261105.md`; activation/rollback checklist is
-`docs/rustfs/activation-checklist.md`. These include exact source/runtime/image
-revisions, backup verification references, tests and limitations.
+Отчёт оператора — `docs/rustfs/live-foundation-20261105.md`, порядок включения и отката — `docs/rustfs/activation-checklist.md`. Там указаны версии исходников, запущенного кода и образов, результаты проверки резервных копий и ограничения тестов.
 
-Actual storage PUT/GET bytes, scoped IAM denials, nonroot startup, retained PV,
-controlled restart persistence and native OIDC authorization redirect/PKCE passed.
-This does not prove real human SSO, STS issuance or authenticated browser download.
-No personal cookies/tokens or fabricated identities were used.
+Проверены запись и чтение байтов (PUT/GET), отказы IAM при нехватке прав, запуск без root, сохранение данных на PV после перезапуска и перенаправление OIDC с PKCE. Эти проверки не подтверждают вход реального пользователя, выдачу STS или скачивание из авторизованного браузера. Личные токены, файлы cookie и вымышленные учётные записи не использовались.
 
-Private consistent SPI SQLite backup was taken before deployment and verified
-header/integrity/foreign keys; IDs/state/intents/attempts were not reset or edited.
-No incident/model/Telegram/GitHub tests or changes to original workloads occurred.
+До развёртывания сделали согласованную копию SQLite SPI, проверили заголовок, целостность и внешние ключи. Идентификаторы, состояния, намерения и счётчики попыток не меняли. Тесты инцидентов, моделей, Telegram и GitHub не запускали; исходные рабочие нагрузки не изменяли.
 
-Single-node retained local storage is not HA or an independent backup. Its20Gi
-PVC request is not an enforced filesystem quota. Runtime memory limit stays4Gi;
-explicit2Gi reservation is Burstable and carries overcommit/eviction risk.
+Локальный том на одном узле с политикой `Retain` не обеспечивает отказоустойчивость и не заменяет независимую резервную копию. Запрос PVC на 20 ГиБ — не квота файловой системы. При запросе памяти 2 ГиБ и лимите 4 ГиБ класс пода — `Burstable`: при нехватке памяти возможно вытеснение.
 
-## Publication still gated
+## Что требовалось перед открытием доступа
 
-- Existing secure sudo/become mechanism is needed for additive two-record Knot DNS
-  deployment on the authoritative hosts; source is prepared, hosts not changed.
-- Shared edge currently has one host-network replica with Recreate strategy and
-  automatic Argo sync. A namespace-watch change would restart the VPS entrance;
-  parent must coordinate safe ingress cutover/maintenance before publishing it.
-- Only then enable tracked browser routes, verify certificates/SNI and real
-  owner/platform MFA/native OIDC/session, reject unaffiliated users, and verify
-  authenticated fixture download/hash/size and deployed slow-peer behavior.
+- Добавить две записи Knot DNS на авторитетных серверах через согласованный механизм `sudo`/`become`. Изменения были подготовлены, но ещё не применены.
+- Согласовать окно переключения: на общем входном узле VPS работала одна реплика в сети хоста со стратегией `Recreate` и автосинхронизацией Argo. Изменение списка наблюдаемых пространств имён перезапустило бы входную точку.
+- Только затем включить маршруты для браузера, проверить сертификаты и SNI, вход владельца и оператора через MFA/OIDC, отказ постороннему пользователю, размер и хеш скачанного контрольного файла, а также поведение при медленном соединении.
 
-Do not switch SPI while these gates remain open, widen IAM to make errors vanish,
-or expose raw S3/root login outside the protected console. Root recovery remains
-private. Preserve retained data/fixtures and private credential journals on rollback.
+До этих проверок нельзя переключать SPI, расширять IAM для обхода ошибок или открывать прямой доступ к S3 и вход под root вне защищённой консоли. Доступ для восстановления остаётся закрытым. При откате сохраняются данные, контрольные файлы и закрытые журналы учётных данных.
 
-## Dedicated SPI writer runtime (source complete; activation gated)
+## Отдельная учётная запись SPI для записи
 
-`storage_runtime.py` is called by `service.serve` before Store recovery or dispatch.
-`SPI_EVIDENCE_BACKEND=legacy|s3` selects only new unlocked jobs; durable job backend
-locks remain authoritative. OFF without `SPI_S3_WRITER_FILE` is unchanged. OFF
-with retained credentials loads the S3 client for already-S3-locked jobs. ON
-requires `/s3-writer/credentials.json`, an at-most-8192-byte JSON object containing
-only `access` and `secret`. Invalid/missing files stop startup, never fall back.
-Projected Secret symlinks and root:fsGroup1000 mode0440 are supported; public
-read or group write is rejected. No credentials in env, argv, logs or repr.
+`service.serve` вызывает `storage_runtime.py` до восстановления хранилища и распределения задач. `SPI_EVIDENCE_BACKEND=legacy|s3` выбирает хранилище только для новых, ещё не закреплённых задач. У уже закреплённой задачи выбор не меняется. При выключенном S3 без `SPI_S3_WRITER_FILE` поведение прежнее; при сохранённых учётных данных клиент S3 обслуживает ранее закреплённые задачи. Для включения нужен `/s3-writer/credentials.json`: объект JSON до 8192 байт только с полями `access` и `secret`. Если файл отсутствует или некорректен, запуск останавливается без переключения на другой режим. Поддерживаются символьные ссылки проецируемого Secret и права `0440` с владельцем root и группой `fsGroup` 1000. Чтение для всех или запись для группы запрещены. Учётные данные не передаются через переменные окружения, аргументы запуска, логи или `repr`.
 
-Offline provisioning: `python3 scripts/rustfs/spi_writer_secret.py --private-dir PRIVATE_DIRECTORY`
-reads existing private `storage.json` and `bootstrap-journal.json`; it does not
-bootstrap anything or call APIs. It verifies distinct root/reader/writer access
-and secret values and exact journal ownership hashes. Only writer credentials
-are serialized into `automation/spi-evidence-writer`, key `credentials.json`.
-Output is private0600, exclusive-create, idempotent only on exact match; drift
-is refused. Never print or commit the output. Separate authorized review/apply
-must install only that writer Secret, not root/reader credentials or broader IAM.
+Команда `python3 scripts/rustfs/spi_writer_secret.py --private-dir PRIVATE_DIRECTORY` работает без сети: читает имеющиеся закрытые `storage.json` и `bootstrap-journal.json`, не вызывает API и не инициализирует хранилище. Она проверяет, что данные root, читателя и писателя различны и совпадают с контрольными хешами журнала. В Secret `automation/spi-evidence-writer`, ключ `credentials.json`, попадают только данные писателя. Файл создаётся с правами `0600`, без перезаписи; повторный запуск допускается лишь при точном совпадении. Не выводите файл на экран и не добавляйте его в Git. Для установки Secret нужно отдельное согласование; права IAM не расширяются.
 
-Rollout sequence (not executed by this source change):
-1. Independent source/security review and live gates first. Keep evidence OFF.
-   BEFORE any push, take a fresh consistent SQLite backup using SQLite backup
-   API (not a raw copy of a WAL-active database), verify restore/integrity and
-   record immutable byte counts/SHA256 checkpoints. SPI is auto-synced on push.
-2. Review measured inventory of pending/locked legacy jobs and ambiguous primary
-   intents. Legacy-only locked continuations retain their original backend;
-   resolve review states without resetting queues, leases or retry budgets.
-3. Provision only the writer Secret offline, review its metadata privately, then
-   separately authorize apply. Enable only SPI automation/app=spi-triage to
-   RustFS namespace/app=rustfs TCP9000 AND-selector peers; no broad RBAC.
-4. Before activation, independently prove live RustFS conditional create/race,
-   immutable readback byte/SHA, and ambiguity reconciliation semantics. Offline
-   tests do NOT claim those live semantics. Observe patient retries and independent
-   storage/LLM budgets; allow their bounded retry windows, never force resets.
-5. Activate new-job S3 selection only after consistent inventory and gates pass.
-   Capture immutable per-artifact and manifest byte/SHA checkpoints before publish.
-   Never use a dump fallback or overwrite a conflicting object.
-6. Roll back new-job selection with `s3Evidence.enabled=false` and
-   `s3Evidence.retainCredentials=true`, retaining Secret mount and exact network
-   peers while S3-locked jobs continue. Do not remove credentials until measured
-   inventory proves no S3 continuations need them.
+Порядок включения (само изменение исходников его не выполняло):
 
-Historical comments and the existing downloader remain available. Standalone
-Retain storage is not HA, quota enforcement, or an independent backup. Original
-workflow/credential IDs, PVC/encryption and calendar/Yandex/blog WRITE_ENABLED=false
-are unchanged. No live RustFS conditional semantics have been tested by this phase.
+1. Провести независимое ревью исходников и безопасности; хранение материалов в S3 пока оставить выключенным. **До отправки в Git** сделать свежую согласованную копию через SQLite Backup API, а не копировать файл активной базы с WAL. Проверить восстановление и целостность, зафиксировать размеры и SHA-256. SPI автоматически синхронизируется после push.
+2. Проверить ожидающие и закреплённые задачи старого хранилища и неоднозначные состояния основной публикации. Продолжения закреплённых задач остаются в старом хранилище; не сбрасывать очереди, аренды и лимиты попыток.
+3. Подготовить без сети только Secret писателя, проверить метаданные в закрытом контуре и отдельно согласовать применение. Разрешить TCP 9000 только от `automation` с `app=spi-triage` к RustFS с `app=rustfs`; селекторы пространства имён и пода должны выполняться одновременно. Не расширять RBAC.
+4. На работающем RustFS проверить условное создание при конкурирующих запросах, совпадение байтов и SHA при чтении и обработку неоднозначного результата. Локальные тесты этого не доказывают. Дождаться штатных повторов в пределах отдельных лимитов хранилища и LLM, не сбрасывать их принудительно.
+5. Включить S3 для новых задач только после сверки очереди и завершения проверок. Перед публикацией зафиксировать размеры и SHA артефактов и манифеста. Не подменять результат дампом и не перезаписывать конфликтующий объект.
+6. Для отката выбора новых задач задать `s3Evidence.enabled=false` и `s3Evidence.retainCredentials=true`. Сохранить монтирование Secret и точечные сетевые разрешения, пока проверка очереди не подтвердит, что задачам-продолжениям S3 больше не нужен.
 
+Исторические комментарии и прежний механизм скачивания сохранены. Идентификаторы процессов и учётных данных, PVC, шифрование и `WRITE_ENABLED=false` для календаря, Яндекса и блога не менялись. На этом этапе поведение условных операций на работающем RustFS ещё не проверялось.
 
-## Natural S3 publication acceptance — COMPLETED (6 November 2026)
+## Штатная публикация в S3 подтверждена 6 ноября 2026 года
 
-This supersedes the earlier pending-natural-publication gate, not historical
-OFF/ON observations. Real completed job
-`8670f2cafead0c31fcae610e583ecebc54b5e7124c11178ea320fe231e577f41`
-has exactly one primary marker at
-https://github.com/alchemmist/homelab/issues/38#issuecomment-6686850025 .
-Canonical manifest:
-https://spi-evidence.socrat.alchemmist.xyz/spi/v1/8670f2cafead0c31fcae610e583ecebc54b5e7124c11178ea320fe231e577f41/52689870254b295cdddb20312d84ade226c277082c9dea2fdcbf45b1c1d84479/manifest.json
+Эта проверка закрыла вопрос о первой штатной публикации, но не меняет результатов прежних наблюдений с выключенным и включённым S3. У завершённой задачи `8670f2cafead0c31fcae610e583ecebc54b5e7124c11178ea320fe231e577f41` ровно одна [основная отметка публикации](https://github.com/alchemmist/homelab/issues/38#issuecomment-6686850025). Доступен [эталонный манифест](https://spi-evidence.socrat.alchemmist.xyz/spi/v1/8670f2cafead0c31fcae610e583ecebc54b5e7124c11178ea320fe231e577f41/52689870254b295cdddb20312d84ade226c277082c9dea2fdcbf45b1c1d84479/manifest.json).
 
-Renderer correction `637118ed9f2f4bcd40f69088ff6f9733bdbf9efc` is deployed;
-runtime evidence_bundle.py SHA256
-`997b864cf45a2ee9edf412b7107b8c50d3f666f3714fd5538f77018d576fea81`,
-backend `s3`, deployment Ready; Argo readback Synced/Healthy at
-`20258f437238a0248625c9bcbc866dc7104e8635` before this docs-only commit.
-The existing own App comment was repaired with one supported body-only PATCH,
-exactly eight bucket-prefix removals, no new publication. Original body SHA256
-`e817ade6f50bb21a0102aea2b80cab2347a1d0da693c6f29776446701f0136e8`;
-repaired full-readback SHA256
-`87dddbfada45fbb0d2ecf80fcd047d14bde8eae2eabe5a97ce2c261497c7a6c8`.
-The earlier conditional PATCH returned400 (cause not established). GitHub does
-not generally support conditional unsafe requests: correction used fresh exact
-body/updated_at/fingerprint preflight and postreadback, no If-Match or
-If-Unmodified-Since. This is NOT atomic CAS; a small concurrent-edit race remains.
+Развёрнуто исправление формирования ссылок `637118ed9f2f4bcd40f69088ff6f9733bdbf9efc`. SHA-256 рабочего `evidence_bundle.py`: `997b864cf45a2ee9edf412b7107b8c50d3f666f3714fd5538f77018d576fea81`. Хранилище — `s3`, Deployment готов; до изменения документации Argo показывал `Synced/Healthy` на `20258f437238a0248625c9bcbc866dc7104e8635`.
 
-Fresh deployed Reader GETs proved exact original ASCII bytes, size and SHA256
-for manifest plus all7 artifacts against durable storage receipts; no PUT,
-ensure_object or reupload. Manifest 9,417 bytes, SHA256
-`52689870254b295cdddb20312d84ade226c277082c9dea2fdcbf45b1c1d84479`;
-7 artifacts,5 missing entries,0 truncated artifacts. All8 canonical URLs tested
-with verified TLS on BOTH109.173.40.247 and109.120.141.97 (64 requests): anonymous
-HTML302 only to the fixed-origin auth start with exact return URI; API and forged
-groups401/empty; obsolete bucket-prefixed HTML paths401/empty, not aliases.
-Telegram desired/applied revision2/2 remains verified, attempts1, error null;
-this is delivery acknowledgement, not proof of human viewing.
+В существующем комментарии приложения одним `PATCH` изменили только текст: удалили восемь префиксов бакета без новой публикации. SHA-256 исходного текста — `e817ade6f50bb21a0102aea2b80cab2347a1d0da693c6f29776446701f0136e8`, после повторного чтения — `87dddbfada45fbb0d2ecf80fcd047d14bde8eae2eabe5a97ce2c261497c7a6c8`. Предыдущий условный `PATCH` вернул 400; причина не установлена. GitHub не гарантирует условные операции записи. Поэтому перед изменением сверили текст, `updated_at` и контрольный отпечаток, а после — повторно прочли результат. `If-Match` и `If-Unmodified-Since` не использовали; оставался небольшой риск параллельной правки.
 
-The previously authorized logical queue purge retained119 cancelled tombstones;
-all119 IDs/intents/results still match the private pre-renderer backup. It was
-not physical deletion or successful processing; active queue was not reset,
-replayed or reselected. The runtime remains S3 ON. No baseline/45min observation
-or infrastructure tests were rerun for this bounded correction.
+Через работающий сервис чтения сверили исходные ASCII-байты, размеры и SHA-256 манифеста и семи артефактов с подтверждениями хранилища. Повторных загрузок, `PUT` и `ensure_object` не было. Манифест: 9417 байт, SHA-256 `52689870254b295cdddb20312d84ade226c277082c9dea2fdcbf45b1c1d84479`; семь артефактов, пять отсутствующих записей, усечённых артефактов нет. Восемь URL проверены с TLS на обоих адресах, `109.173.40.247` и `109.120.141.97` (64 запроса). Анонимный HTML-запрос получал 302 только на фиксированный адрес начала входа с точным обратным URI. Запросы к API и запросы с подставными группами получали 401 с пустым ответом. Устаревшие пути с префиксом бакета тоже вернули 401 без тела: это не псевдонимы. Для Telegram подтверждены ожидаемая и применённая ревизии 2/2, одна попытка, ошибки нет. Это подтверждение доставки, не просмотра человеком.
 
-Prior nativeOIDC human login and verified45-byte download are attributed earlier
-evidence, not a new session test. Human logout/outsider-session tests were NOT
-performed here. Console GetOnly is not upload/admin access. Standalone Retain is
-not HA or an independent backup. No network/IAM/DNS/shared-edge/PVC/workflow,
-calendar/blog, Telegram test, model invocation or other comment change occurred.
+При ранее согласованной логической очистке сохранились 119 записей об отмене. Их идентификаторы, намерения и результаты совпали с закрытой копией до исправления ссылок. Записи физически не удаляли и не считали успешно обработанными; активную очередь не сбрасывали и не запускали заново. S3 остался включённым. Исходные замеры, 45-минутное наблюдение и инфраструктурные тесты для этой правки не повторяли.
 
-## Checking public downloads
+Вход человека через OIDC и скачивание проверенного файла размером 45 байт подтверждены ранее, не в этой сессии. Выход из учётной записи и сессию постороннего пользователя здесь не проверяли. Право `GetOnly` в консоли не даёт прав на загрузку и администрирование. Том `Retain` не заменяет отказоустойчивость и резервную копию. Сеть, IAM, DNS, общий входной узел, PVC, рабочие процессы, календарь и блог не меняли; тесты Telegram и вызовы модели не выполняли, других комментариев не редактировали.
 
-A public object under `/public/` should not redirect to sign-in. Test a known public object, not the bucket directory: an anonymous directory listing may be denied even when the file is readable.
+## Как проверить скачивание публичного файла
+
+Запрос объекта под `/public/` не должен перенаправлять на вход. Проверяйте заведомо публичный **файл**, а не каталог бакета: анонимный просмотр списка может быть запрещён, даже когда файл доступен.
 
 ```sh
 curl --silent --show-error --connect-timeout 5 --max-time 15 --range 0-1023 --dump-header - --output /dev/null \
   'https://rustfs.socrat.alchemmist.xyz/public/<known-public-object>'
 ```
 
-For an object larger than 1 KiB, expect `206 Partial Content` and `Content-Range: bytes 0-1023/<total>`, without an OIDC redirect. The console and private data **must not** become anonymous. If only one network fails, report the time, network, hostname and status (or TCP/TLS timeout); do not send credentials or signed URLs. [Regional access investigation (#557)](https://github.com/alchemmist/homelab/issues/557).
+Для файла больше 1 КиБ ожидайте `206 Partial Content` и `Content-Range: bytes 0-1023/<total>` без перенаправления в OIDC. Консоль и закрытые данные **не должны** становиться общедоступными. Если проблема только в одной сети, сообщите время, сеть, имя хоста и статус ответа (или тайм-аут TCP/TLS); не отправляйте учётные данные и подписанные ссылки. [Разбор региональных проблем с доступом](https://github.com/alchemmist/homelab/issues/557).

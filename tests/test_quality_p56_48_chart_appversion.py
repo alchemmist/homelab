@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Whole-file locks. Only the appVersion quote style was allowed to change.
 CHART_TEXT = {
     "charts/open-terminal/Chart.yaml": (
-        "---\napiVersion: v2\nname: open-terminal\nversion: 0.1.0\nappVersion: 0.14.1\n...\n"
+        "---\napiVersion: v2\nname: open-terminal\nversion: 0.1.0\nappVersion: 0.17.22\n...\n"
     ),
     "charts/pyroscope/Chart.yaml": (
         "---\n"
@@ -27,7 +27,7 @@ CHART_TEXT = {
         "name: traefik-edge\n"
         "description: VPS public ingress for cluster services and VPN endpoints\n"
         "version: 0.2.0\n"
-        "appVersion: 3.7.13\n"
+        "appVersion: 3.7.19\n"
         "...\n"
     ),
 }
