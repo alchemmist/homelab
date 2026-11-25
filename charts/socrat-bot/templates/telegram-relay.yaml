@@ -104,7 +104,10 @@ spec:
           image: ghcr.io/mhsanaei/3x-ui@sha256:1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b
           command: [/app/bin/xray-linux-amd64]
           args: [run, -c, /vpn-runtime/client.json]
-          readinessProbe: {tcpSocket: {port: 18443}, initialDelaySeconds: 2, periodSeconds: 10}
+          readinessProbe:
+            exec: {command: [python3, -c, "import socket; socket.create_connection(('127.0.0.1',18443),2).close()"]}
+            initialDelaySeconds: 2
+            periodSeconds: 10
           securityContext:
             runAsUser: 65532
             runAsGroup: 65532

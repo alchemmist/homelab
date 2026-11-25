@@ -36,7 +36,7 @@ spec:
         command: [/app/bin/xray-linux-amd64]
         args: [run, -c, /vpn-runtime/client.json]
         readinessProbe:
-          tcpSocket: {port: 18443}
+          exec: {command: [python3, -c, "import socket; socket.create_connection(('127.0.0.1',18443),2).close()"]}
           initialDelaySeconds: 2
           periodSeconds: 10
         securityContext:
