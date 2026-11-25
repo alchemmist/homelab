@@ -39,10 +39,10 @@ OWNERS.update({name: ("charts/" + name, "kube-prometheus-stack") for name in COM
 
 
 @cache
-def render(path, release) -> list[dict[str, object]]:
+def render(path, release, *options: str) -> list[dict[str, object]]:
     """Render a monitoring chart with helm and return its claimable documents."""
     text = subprocess.check_output(
-        ["helm", "template", release, str(ROOT / path), "-n", NS, "--include-crds"],
+        ["helm", "template", release, str(ROOT / path), "-n", NS, "--include-crds", *options],
         text=True,
     )
     docs: list[dict[str, object]] = [
@@ -139,7 +139,10 @@ def test_existing_resources_have_one_service_owner_and_preserved_payload() -> No
             continue
         owner, d = actual[k]
         assert owner == expected["owner"], k
-        assert digest(normalized(d)) == expected.get("normalizedSha256", expected["sha256"]), k
+        digest_value = (
+            expected["normalizedSha256"] if "normalizedSha256" in expected else expected["sha256"]
+        )
+        assert digest(normalized(d)) == digest_value, k
 
 
 def test_grafana_native_sso_and_no_anonymous_access_are_declarative() -> None:
@@ -189,7 +192,13 @@ def test_grafana_native_sso_and_no_anonymous_access_are_declarative() -> None:
 
 def test_each_backend_owns_its_config_without_changing_config_bytes() -> None:
     for name in ("loki", "tempo"):
-        docs = render("charts/" + name, name)
+        # Contract-era payload shape: the loki local storage phase used the reviewed
+        # host path before the verified NFS/shared-PVC phases took over.
+        docs = render(
+            "charts/" + name,
+            name,
+            *("--set-string", "storagePhase=local") if name == "loki" else (),
+        )
         config = next(d for d in docs if d["kind"] == "ConfigMap")
         assert _mapping(config["metadata"])["name"] == "otel-" + name + "-config"
         assert (
@@ -203,9 +212,17 @@ def test_each_backend_owns_its_config_without_changing_config_bytes() -> None:
             _mapping(volumes["config"]["configMap"])["name"] == _mapping(config["metadata"])["name"]
         )
         assert _mapping(volumes["tls"]["secret"])["secretName"] == "otel-tls-backends"
-        assert (
-            _mapping(volumes["data"]["hostPath"])["path"] == "/var/lib/private/homelab-otel-" + name
-        )
+        if name == "loki":
+            assert (
+                _mapping(volumes["data"]["hostPath"])["path"]
+                == "/var/lib/private/homelab-otel-loki"
+            )
+        else:
+            # Tempo moved to its reviewed shared claim after the split snapshot.
+            assert (
+                _mapping(volumes["data"]["persistentVolumeClaim"])["claimName"]
+                == "tempo-s1-candidate"
+            )
         assert not any(d["kind"] in ("Certificate", "Secret") for d in docs)
 
 

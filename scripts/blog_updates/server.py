@@ -7,13 +7,19 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Lock
 from typing import TYPE_CHECKING, override
 
-from engine import UnsafeInput
-from stages import stage
+from .core import UnsafeInputError
+from .workflow import stage
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
 EXECUTION_LOCK = Lock()
+# One push event with base64 file payloads stays small; bound requests at 2 MB.
+MAX_REQUEST_BYTES = 2_000_000
+# The pod spec passes LISTEN_BIND; binding the container's configured interface is
+# intentional and NetworkPolicy plus the ingress edge gate reachability.
+LISTEN_BIND = os.environ["LISTEN_BIND"]
+LISTEN_PORT = 8080
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -42,7 +48,7 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             return
         length = int(self.headers.get("Content-Length", "0"))
-        if not 0 < length <= 2_000_000:
+        if not 0 < length <= MAX_REQUEST_BYTES:
             self.send_response(413)
             self.end_headers()
             return
@@ -53,12 +59,12 @@ class Handler(BaseHTTPRequestHandler):
                 result = stage(
                     self.path[1:],
                     event,
-                    write=os.environ.get("WRITE_ENABLED") == "true",
+                    publish=os.environ.get("WRITE_ENABLED") == "true",
                 )
             self.send_response(200)
         except (ValueError, KeyError, TypeError, RuntimeError, OSError) as exc:
             result = {"status": "error", "type": type(exc).__name__}
-            if isinstance(exc, UnsafeInput):
+            if isinstance(exc, UnsafeInputError):
                 result["reason"] = str(exc)
             self.send_response(422)
         self.send_header("Content-Type", "application/json")
@@ -66,4 +72,10 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(result).encode())
 
 
-ThreadingHTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+def serve() -> None:
+    """Bind every pod interface and serve until the process is stopped."""
+    ThreadingHTTPServer((LISTEN_BIND, LISTEN_PORT), Handler).serve_forever()
+
+
+if __name__ == "__main__":
+    serve()

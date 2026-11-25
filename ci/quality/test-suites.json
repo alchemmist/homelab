@@ -303,9 +303,6 @@
     "tests/test_wireguard_tcp_transport.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
     "tests/test_xui_auth_gateway.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
     "tests/test_xui_workload.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
-    "tests/blog_updates/test_engine.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling.",
-    "tests/blog_updates/test_github.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling.",
-    "tests/blog_updates/test_stages.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling.",
     "tests/n8n/test_calendar.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling.",
     "tests/spi_triage/test_analysis_reference_contract.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling.",
     "tests/spi_triage/test_card_correlation.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling.",
@@ -336,6 +333,9 @@
     "tests/spi_triage/test_wait_integration.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling.",
     "tests/wiki_openapi/test_flow.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling.",
     "tests/openhands/test_loop.py": "Owner source synchronized from main; imports an operational provisioning/validation entrypoint. Not imported or run in this source-only mission. Pending bounded offline interface/isolation review; not passed or runtime acceptance.",
-    "tests/openhands/test_oidc.py": "Owner source synchronized from main; imports an operational provisioning/validation entrypoint. Not imported or run in this source-only mission. Pending bounded offline interface/isolation review; not passed or runtime acceptance."
+    "tests/openhands/test_oidc.py": "Owner source synchronized from main; imports an operational provisioning/validation entrypoint. Not imported or run in this source-only mission. Pending bounded offline interface/isolation review; not passed or runtime acceptance.",
+    "tests/blog_updates/test_core.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling.",
+    "tests/blog_updates/test_client.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling.",
+    "tests/blog_updates/test_workflow.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling."
   }
 }

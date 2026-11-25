@@ -118,10 +118,10 @@ class HostMetricsCanaryTests(unittest.TestCase):
     def test_outage_proof_uses_raw_range_vector_not_query_range_lookback(self) -> None:
         """The outage proof uses a raw range vector, not query-range lookback."""
         text = (ROOT / "ansible/scripts/otel-host-metrics-canary.py").read_text()
-        assert "query(root, 'up[10m]')" in text
+        assert "query(root, 'up[10m]')" in text or 'query(root, "up[10m]")' in text
         assert "stops < float(timestamp) < restart" in text
         assert "RuntimeMaxSec=900" in text
-        assert "'User=65534'" in text
+        assert "'User=65534'" in text or '"User=65534"' in text
         assert "queueSaturationOrFullHighWaterVerified" in text
 
     def test_native_contract_is_fresh_and_content_bound(self) -> None:

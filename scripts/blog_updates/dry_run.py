@@ -7,7 +7,7 @@ import subprocess
 import urllib.request
 from pathlib import Path
 
-from engine import REPO, UPDATES, Comparison, prepare, validate_decision
+from .core import REPO, UPDATES, Comparison, prepare, validate_decision
 
 p = argparse.ArgumentParser()
 p.add_argument("before")
@@ -19,6 +19,7 @@ a = p.parse_args()
 
 
 def gh_compare(path: str) -> Comparison:
+    """Load one GitHub compare response through the gh CLI."""
     comparison: Comparison = json.loads(subprocess.check_output(["gh", "api", path], text=True))
     return comparison
 

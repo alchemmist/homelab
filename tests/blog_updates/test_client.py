@@ -1,27 +1,28 @@
 """Tests for the blog updates GitHub client module."""
 
-import sys
 import unittest
-from pathlib import Path
-from typing import cast
+from typing import cast, override
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/blog_updates"))
 import pytest
-from engine import UnsafeInput
-from github import GitHub
+
+from scripts.blog_updates.client import GitHub
+from scripts.blog_updates.core import UnsafeInputError
 
 
 class Fake(GitHub):
     """In-memory GitHub stub recording API calls."""
 
-    def __init__(self, existing=None, main=None) -> None:
+    def __init__(self, existing: object = None, main: str | None = None) -> None:
+        """Script the stub with canned PR listings and a main-SHA."""
+        super().__init__("test-token")
         self.calls: list[tuple[str, str, object]] = []
 
         self.existing = existing or []
         self.main = main or "a" * 40
 
-    def api(self, method, path, body=None):
-        """Record a call and return the scripted next response."""
+    @override
+    def api(self, method: str, path: str, body: object = None) -> object:
+        """Record a call and return the scripted next response (no network)."""
         self.calls.append((method, path, body))
         if path.startswith("pulls?"):
             return self.existing
@@ -31,8 +32,10 @@ class Fake(GitHub):
             return {"html_url": "https://github.com/alchemmist/blog/pull/1"}
         return {}
 
-    def read_updates(self, _ref):
+    @override
+    def read_updates(self, _ref: str) -> tuple[str, str]:
         """Return the scripted updates file for any ref."""
+        del _ref  # one snapshot is scripted for every ref
         return "original", "file-sha"
 
 
@@ -48,7 +51,7 @@ class WriterTests(unittest.TestCase):
     def test_advanced_main_refused(self) -> None:
         """Verify staging work never targets the main branch."""
         g = Fake(main="b" * 40)
-        with pytest.raises(UnsafeInput):
+        with pytest.raises(UnsafeInputError):
             g.propose("a" * 40, "new", "why")
         assert all(c[0] == "GET" for c in g.calls)
 

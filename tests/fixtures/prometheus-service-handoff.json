@@ -285,7 +285,7 @@
   },
   "ServiceMonitor/cattle-monitoring-system/kube-prometheus-stack-kubelet": {
     "owner": "prometheus",
-    "sha256": "8fa2c9501ef8d767af2722ea37cae0c4986f6e65c5204d1b33b8c68fcd382b7d"
+    "sha256": "edcc06307525c4ef6d62bf9de2fe6506bc3a08dffc26b9116aa29f7171d9682c"
   },
   "ServiceMonitor/cattle-monitoring-system/kube-prometheus-stack-operator": {
     "owner": "prometheus-operator",

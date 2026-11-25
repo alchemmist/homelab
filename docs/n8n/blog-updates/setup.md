@@ -5,9 +5,9 @@
 - `docs/n8n/blog-updates/workflow.json`: Exactly four visible nodes: GitHub Push → LiteLLM validation →
   LiteLLM generation → PR creation. Each stage has its own authenticated internal
   worker endpoint. The native GitHub Trigger verifies signatures before forwarding.
-- `scripts/blog_updates/engine.py`: event/diff/model validation and Markdown rendering.
-- `scripts/blog_updates/github.py`: compare pagination, snapshot reads, PR writer.
-- `scripts/blog_updates/run.py`: analyze push using Qwen via LiteLLM; dry-run default.
+- `scripts/blog_updates/core.py`: event/diff/model validation and Markdown rendering.
+- `scripts/blog_updates/client.py`: compare pagination, snapshot reads, PR writer.
+- `scripts/blog_updates/analyze_push.py`: analyze push using Qwen via LiteLLM; dry-run default.
 - `scripts/blog_updates/server.py`: serialized internal executor, token authentication.
 - `deploy/blog-updates/worker.yaml`: pinned Python image, nonroot, read-only root,
   no service-account token, ClusterIP only, `WRITE_ENABLED=false`.
@@ -101,7 +101,7 @@ timeout (execution 64). vLLM had one active request, queueing and approximately
 explicit non-thinking mode and a 1000-token output cap. Each inference call has a
 360-second timeout; n8n HTTP nodes allow 900 seconds, covering a bounded retry of
 invalid JSON/schema output. Persistent bad output still fails closed; transport
-errors are not silently swallowed. Controlled UnsafeInput errors include a reason.
+errors are not silently swallowed. Controlled UnsafeInputError errors include a reason.
 
 Positive signed historical push execution 69 succeeded through all four stages,
 returning the expected poem announcement with status dry_run. Thirteen local tests

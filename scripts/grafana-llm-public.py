@@ -141,7 +141,10 @@ def main() -> None:
             need(a.approve_plan_hash == digest, "Fresh exact plan approval required")
             (STATE / "before.json").write_text(json.dumps(context))
             (STATE / "uncertain.json").write_text(json.dumps({"plan_hash": digest}))
-            code, _after = api("POST", endpoint, desired)
+            code, after = api("POST", endpoint, desired)
+            # The POST reply is not the durable record: the verified GET readback
+            # is written to after.json below, so `after` is dropped on purpose.
+            del after
             need(
                 code in [200, 201],
                 "Public share create failed; no fallback to anonymous Viewer",

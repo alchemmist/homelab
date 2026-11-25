@@ -60,7 +60,7 @@ def _unit_list(value: object) -> list[str]:
 
 
 def _port_set(value: object) -> set[int]:
-    items = value if isinstance(value, list) else []
+    items = value if isinstance(value, (list, set, frozenset, tuple)) else []
     return {int(p) for p in items if isinstance(p, int)}
 
 

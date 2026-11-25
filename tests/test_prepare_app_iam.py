@@ -289,7 +289,7 @@ class PreparationTests(unittest.TestCase):
             lambda: self.api.data["core/users/"][0].update(is_active=False),
             lambda: self.api.data["core/applications/"][0].update(policy_engine_mode="all"),
             lambda: self.api.data["core/applications/"][0].update(provider=999),
-            self.api.data["core/applications/"].pop,
+            lambda: self.api.data["core/applications/"].pop(),
         ]
         for change in changes:
             self.api.data = copy.deepcopy(baseline)

@@ -8,13 +8,19 @@ import urllib.request
 from collections.abc import Mapping
 from pathlib import Path
 
-from engine import PushEvent, prepare, render, validate_decision, validate_event
-from github import GitHub
+from .client import GitHub
+from .core import PushEvent, prepare, render, validate_decision, validate_event
 
 
 def run(
-    event: PushEvent, github: GitHub, llm_url: str, llm_key: str, write: bool = False
+    event: PushEvent,
+    github: GitHub,
+    llm_url: str,
+    llm_key: str,
+    *,
+    publish: bool = False,
 ) -> Mapping[str, object]:
+    """Analyze one push and report, or publish, the proposed updates entry."""
     if not validate_event(event):
         return {"status": "ignored"}
     compare = github.compare(event["before"], event["after"])
@@ -62,7 +68,7 @@ def run(
         msg = "Missing head commit metadata"
         raise ValueError(msg)
     content = render(updates, decision["entries"], head["commit"]["committer"]["date"])
-    if not write:
+    if not publish:
         return {"status": "dry_run", "decision": decision, "proposed_updates": content}
     return github.propose(event["after"], content, decision["reason"])
 
@@ -82,7 +88,7 @@ if __name__ == "__main__":
                 GitHub(a.github_key.read_text().strip()),
                 a.llm_url,
                 a.llm_key.read_text().strip(),
-                a.write,
+                publish=a.write,
             ),
             ensure_ascii=False,
             indent=2,

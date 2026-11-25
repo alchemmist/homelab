@@ -19,7 +19,6 @@ spec:
     metadata:
       annotations:
         checksum/loki-config: {{ .Files.Get "files/loki.yaml" | sha256sum }}
-        checksum/loki-rules: {{ .Files.Get "files/rules/fake/deeperseeker-web-chats.yaml" | sha256sum }}
       labels:
         app: otel-loki
         app.kubernetes.io/part-of: otel-backends
@@ -103,9 +102,6 @@ spec:
           mountPath: /var/lib/otel
         - name: marker-tmp
           mountPath: /tmp
-        - name: loki-rules
-          mountPath: /etc/otel/loki-rules/fake
-          readOnly: true
       volumes:
       - name: marker-tmp
         emptyDir:
@@ -124,9 +120,6 @@ spec:
             path: server.crt
           - key: tls.key
             path: server.key
-      - name: loki-rules
-        configMap:
-          name: otel-loki-deeperseeker-rules
       - name: data
 {{- if eq $phase "shared" }}
         persistentVolumeClaim:

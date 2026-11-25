@@ -2,7 +2,7 @@
 otel:
   enabled: true
   # Offline candidate only: the rollout still requires exact source and renewal evidence.
-  sourceConfigMap: open-webui-otel-source-db64939ea06bcd6e
+  sourceConfigMap: open-webui-otel-source-81f439038b6ceed4
   environment:
     PYTHONPATH: /etc/otel-source:/app/backend
     PYTHONDONTWRITEBYTECODE: "1"

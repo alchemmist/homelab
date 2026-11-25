@@ -6,25 +6,27 @@ import os
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from pathlib import Path
+from typing import IO, TypeVar
 
 sys.path.insert(0, "/scripts")
-from hour_copy import Bucket  # noqa: E402
+from hour_copy import Bucket
 
 
 class LimitedWriter:
-    def __init__(self, stream):
+    def __init__(self, stream: IO[bytes]) -> None:
         self.stream = stream
         self.started = time.monotonic()
         self.size = 0
 
-    def write(self, data):
+    def write(self, data: bytes) -> None:
         self.stream.write(data)
         self.size += len(data)
         time.sleep(max(0, self.started + self.size / (12 * 2**20) - time.monotonic()))
 
 
-def retry_connection(call):
+def retry_connection(call: Callable[[], _T]) -> _T:
     for attempt in range(6):
         try:
             return call()
@@ -34,7 +36,7 @@ def retry_connection(call):
             time.sleep(2**attempt)
 
 
-def main():
+def main() -> None:
     dest = Path("/candidate") / ("precopy-" + os.environ["HOSTNAME"])
     dest.mkdir(exist_ok=False)  # never replace a prior attempt
     bucket = Bucket(json.loads(Path("/s3/objstore.yml").read_bytes())["config"])
@@ -51,7 +53,8 @@ def main():
             target = tree / key
             target.parent.mkdir(parents=True, exist_ok=True)
             with tempfile.NamedTemporaryFile(dir=target.parent) as temp:
-                def transfer():
+
+                def transfer() -> tuple[int, str] | None:
                     temp.seek(0)
                     temp.truncate()
                     return bucket.read(key, sink=LimitedWriter(temp), absent=True)

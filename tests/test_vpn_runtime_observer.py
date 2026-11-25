@@ -25,23 +25,51 @@ def test_relay_latch_is_not_sufficient_and_split_brain_unknown() -> None:
             "fallback_marker": marker,
         }
 
-    assert m.classify(p, state("kubernetes", True, False, False), True, [False], False) == 0
-    assert m.classify(p, state("native", False, True, True), False, [True], True) == 1
-    assert m.classify(p, state("native", True, True, True), True, [True], True) == -1
-    assert m.classify(p, state("native", False, False, True), False, [False], True) == -1
-    assert m.classify(p, state("kubernetes", True, False, False), False, [False], False) == -1
     assert (
-        m.classify(p, state("transition-to-native", False, False, True), False, [False], True) == -1
+        m.classify(
+            p, state("kubernetes", True, False, False), agent=True, native=[False], marker=False
+        )
+        == 0
+    )
+    assert (
+        m.classify(p, state("native", False, True, True), agent=False, native=[True], marker=True)
+        == 1
+    )
+    assert (
+        m.classify(p, state("native", True, True, True), agent=True, native=[True], marker=True)
+        == -1
+    )
+    assert (
+        m.classify(p, state("native", False, False, True), agent=False, native=[False], marker=True)
+        == -1
+    )
+    assert (
+        m.classify(
+            p, state("kubernetes", True, False, False), agent=False, native=[False], marker=False
+        )
+        == -1
+    )
+    assert (
+        m.classify(
+            p,
+            state("transition-to-native", False, False, True),
+            agent=False,
+            native=[False],
+            marker=True,
+        )
+        == -1
     )
 
 
 def test_backend_requires_native_both_units_and_server_ownership() -> None:
     """Test behavior for test_backend_requires_native_both_units_and_server_ownership."""
     p = m.PROFILES["socrat-2"]
-    assert m.classify(p, {"mode": "kubernetes"}, True, [False, False], False) == 0
-    assert m.classify(p, {"mode": "fallback"}, False, [True, True], True) == 1
-    assert m.classify(p, {"mode": "fallback"}, False, [True, False], True) == -1
-    assert m.classify(p, {"mode": "fallback"}, True, [True, True], True) == -1
+    assert (
+        m.classify(p, {"mode": "kubernetes"}, agent=True, native=[False, False], marker=False) == 0
+    )
+    assert m.classify(p, {"mode": "fallback"}, agent=False, native=[True, True], marker=True) == 1
+    assert m.classify(p, {"mode": "fallback"}, agent=False, native=[True, False], marker=True) == -1
+    assert m.classify(p, {"mode": "fallback"}, agent=True, native=[True, True], marker=True) == -1
 
 
 def test_socket_observation_does_not_call_established_sessions_off(
