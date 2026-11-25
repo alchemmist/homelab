@@ -21,3 +21,8 @@
     reverse_proxy @subscriptions 127.0.0.1:12096
     reverse_proxy 127.0.0.1:18082
 }
+
+bot.socrat.alchemmist.xyz {
+    tls /etc/homelab-vpn-failover/bot.crt /etc/homelab-vpn-failover/bot.key
+    reverse_proxy 192.168.0.23:80
+}
