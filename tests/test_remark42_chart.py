@@ -35,14 +35,17 @@ class Remark42ChartRenderTests(unittest.TestCase):
         for name in ("livenessProbe", "readinessProbe"):
             probe = container[name]
             assert probe["httpGet"] == {"path": "/ping", "port": "http"}
-        assert pod["hostNetwork"] == True
-        assert pod["nodeSelector"]["kubernetes.io/hostname"] == "socrat-2"
+        assert "hostNetwork" not in pod
+        assert "nodeSelector" not in pod
 
     def test_existing_data_and_service_contract_remains_intact(self) -> None:
         deployment = next(obj for obj in self.objects if obj["kind"] == "Deployment")
         pod = deployment["spec"]["template"]["spec"]
         container = pod["containers"][0]
-        assert pod["volumes"][0]["hostPath"] == {"path": "/srv/remark42", "type": "Directory"}
+        assert pod["volumes"][0]["persistentVolumeClaim"] == {"claimName": "remark42-data"}
+        claim = next(obj for obj in self.objects if obj["kind"] == "PersistentVolumeClaim")
+        assert claim["spec"]["storageClassName"] == "nfs-shared"
+        assert claim["spec"]["accessModes"] == ["ReadWriteOnce"]
         assert [(mount["mountPath"], mount["subPath"]) for mount in container["volumeMounts"]] == [
             ("/srv/var", "data"),
             ("/srv/web/remark.css", "remark42/custom.css"),

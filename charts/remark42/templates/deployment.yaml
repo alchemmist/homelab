@@ -9,11 +9,7 @@ spec:
   template:
     metadata: { labels: { app: remark42 } }
     spec:
-      hostNetwork: true
-      dnsPolicy: Default
       automountServiceAccountToken: false
-      nodeSelector:
-        kubernetes.io/hostname: {{ .Values.nodeName | quote }}
       containers:
       - name: remark42
         image: {{ .Values.image }}
@@ -36,4 +32,4 @@ spec:
         resources: {{ toYaml .Values.resources | nindent 10 }}
       volumes:
       - name: data
-        hostPath: { path: {{ .Values.hostPath | quote }}, type: Directory }
+        persistentVolumeClaim: { claimName: remark42-data }
