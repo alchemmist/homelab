@@ -9,16 +9,24 @@ weight: 51
 
 Войдите через Authentik, откройте кластер **Socrat** и в проводнике кластера выберите пространство имён **schoolbot**, затем **Storage → Secrets**. Не выбирайте **Project Secrets**: секрет нужен только одному приложению. Роли наблюдателя недостаточно для записи. Если кнопки создания или редактирования нет, попросите оператора подготовить `schoolbot-env` и выдать доступ к конкретному объекту, а не ко всем секретам кластера.
 
+![Список секретов: ① выберите пространство имён schoolbot, ② откройте Storage → Secrets, ③ нажмите Create.](https://rustfs.socrat.alchemmist.xyz/public/wiki/rancher-secrets/navigation-5460d82cf9fb.png)
+
+Список секретов: ① выберите пространство имён schoolbot, ② откройте Storage → Secrets, ③ нажмите Create. [Открыть в полном размере](https://rustfs.socrat.alchemmist.xyz/public/wiki/rancher-secrets/navigation-5460d82cf9fb.png).
+
 - Если `schoolbot-env` **уже есть**, откройте меню **⋮ → Edit Config** и перейдите к заполнению полей. Сохраните существующие ключи.
 - Если его **нет** и у вас есть право создания, нажмите **Create → Opaque**. Тип `Registry` предназначен для скачивания образов (`schoolbot-harbor-pull`), а `TLS Certificate` — для сертификата. Их менять не нужно.
 
-![Экран выбора типа секрета в Rancher: для переменных приложения выберите Opaque.](https://rustfs.socrat.alchemmist.xyz/public/wiki/rancher-secrets/type-4ba17f8b5cbb.png)
+![Выбор типа: ① нажмите Opaque.](https://rustfs.socrat.alchemmist.xyz/public/wiki/rancher-secrets/type-df296bd1e817.png)
+
+Выбор типа: ① нажмите Opaque. [Открыть в полном размере](https://rustfs.socrat.alchemmist.xyz/public/wiki/rancher-secrets/type-df296bd1e817.png).
 
 ## Заполнить форму
 
 Проверьте **Namespace**: `schoolbot`. В **Name** укажите `schoolbot-env`. На вкладке **Data** нажимайте **Add** для каждой пары: в **Key** — точное имя переменной, в **Value** — её значение. Кодировать в base64 или обрамлять значение кавычками не нужно. На снимке показана одна строка с **учебным** значением `DEMO-ONLY`: не используйте его при запуске.
 
-![Форма Rancher с пространством имён schoolbot, именем schoolbot-env и примером строки на вкладке Data.](https://rustfs.socrat.alchemmist.xyz/public/wiki/rancher-secrets/data-2351ed418c02.png)
+![Форма: ① имя секрета, ② ключ, ③ значение, ④ создание после заполнения всех строк.](https://rustfs.socrat.alchemmist.xyz/public/wiki/rancher-secrets/data-d335010d1c14.png)
+
+Форма: ① имя секрета, ② ключ, ③ значение, ④ создание после заполнения всех строк. [Открыть в полном размере](https://rustfs.socrat.alchemmist.xyz/public/wiki/rancher-secrets/data-d335010d1c14.png).
 
 Текущий [Deployment Schoolbot](https://github.com/alchemmist/homelab/blob/main/charts/schoolbot/templates/deployment.yaml) читает **все шесть ключей из одного Secret**:
 
