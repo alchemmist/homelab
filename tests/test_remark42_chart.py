@@ -31,17 +31,20 @@ class Remark42ChartRenderTests(unittest.TestCase):
         deployment = next(obj for obj in self.objects if obj["kind"] == "Deployment")
         pod = deployment["spec"]["template"]["spec"]
         assert not pod["automountServiceAccountToken"]
-        container = pod["containers"][0]
+        container = next(item for item in pod["containers"] if item["name"] == "remark42")
         for name in ("livenessProbe", "readinessProbe"):
             probe = container[name]
             assert probe["httpGet"] == {"path": "/ping", "port": "http"}
-        assert pod["hostNetwork"] == True
-        assert pod["nodeSelector"]["kubernetes.io/hostname"] == "socrat-2"
+        assert "hostNetwork" not in pod
+        assert pod["nodeSelector"]["kubernetes.io/hostname"] == "socrat-1"
+        env = {item["name"]: item["value"] for item in container["env"]}
+        assert env["HTTPS_PROXY"] == "http://127.0.0.1:18443"
+        assert env["NO_PROXY"] == "127.0.0.1,localhost"
 
     def test_existing_data_and_service_contract_remains_intact(self) -> None:
         deployment = next(obj for obj in self.objects if obj["kind"] == "Deployment")
         pod = deployment["spec"]["template"]["spec"]
-        container = pod["containers"][0]
+        container = next(item for item in pod["containers"] if item["name"] == "remark42")
         assert pod["volumes"][0]["persistentVolumeClaim"] == {"claimName": "remark42-data"}
         claim = next(obj for obj in self.objects if obj["kind"] == "PersistentVolumeClaim")
         assert claim["spec"]["storageClassName"] == "nfs-shared"

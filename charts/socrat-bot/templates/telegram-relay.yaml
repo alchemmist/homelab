@@ -1,4 +1,14 @@
 {{- if .Values.telegramRelay.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ $.Release.Namespace | quote }}
+  name: socrat-telegram-relay-vpn
+  annotations: {argocd.argoproj.io/sync-wave: "-2"}
+data:
+  prepare.py: |
+{{ .Files.Get "service-vpn/prepare.py" | indent 4 }}
+---
 # Private fixed upstream, not a CONNECT proxy. The bot still verifies Telegram's
 # certificate itself; no credentials, TLS keys or HTTP bodies reach nginx logs.
 apiVersion: v1
@@ -18,8 +28,7 @@ data:
       resolver_timeout 3s;
       server {
         listen 8443;
-        set $upstream api.telegram.org:443;
-        proxy_pass $upstream;
+        proxy_pass 127.0.0.1:18443;
         proxy_connect_timeout 5s;
         proxy_timeout 120s;
       }
@@ -45,7 +54,7 @@ spec:
       ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
     - to:
         - ipBlock: {cidr: 0.0.0.0/0, except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 127.0.0.0/8]}
-      ports: [{protocol: TCP, port: 443}]
+      ports: [{protocol: TCP, port: 443}, {protocol: TCP, port: 32053}]
 ---
 apiVersion: v1
 kind: Service
@@ -72,8 +81,39 @@ spec:
       labels: {app: socrat-telegram-relay}
     spec:
       automountServiceAccountToken: false
-      nodeSelector: {kubernetes.io/hostname: socrat-2}
+      securityContext: {fsGroup: 65532}
+      nodeSelector: {kubernetes.io/hostname: socrat-1}
+      initContainers:
+        - name: prepare-service-vpn
+          image: ghcr.io/mhsanaei/3x-ui@sha256:1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b
+          command: [python3, /vpn-script/prepare.py]
+          env: [{name: VPN_DOOR, value: api.telegram.org}]
+          securityContext:
+            runAsUser: 65532
+            runAsGroup: 65532
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources: {requests: {cpu: 20m, memory: 32Mi}, limits: {cpu: 200m, memory: 128Mi}}
+          volumeMounts:
+            - {name: service-vpn-script, mountPath: /vpn-script, readOnly: true}
+            - {name: service-vpn-identity, mountPath: /vpn-identity, readOnly: true}
+            - {name: service-vpn-runtime, mountPath: /vpn-runtime}
       containers:
+        - name: service-vpn
+          image: ghcr.io/mhsanaei/3x-ui@sha256:1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b
+          command: [/app/bin/xray-linux-amd64]
+          args: [run, -c, /vpn-runtime/client.json]
+          readinessProbe: {tcpSocket: {port: 18443}, initialDelaySeconds: 2, periodSeconds: 10}
+          securityContext:
+            runAsUser: 65532
+            runAsGroup: 65532
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources: {requests: {cpu: 20m, memory: 32Mi}, limits: {cpu: 200m, memory: 128Mi}}
+          volumeMounts:
+            - {name: service-vpn-runtime, mountPath: /vpn-runtime, readOnly: true}
         - name: stream
           image: docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311
           command: [nginx, -g, "daemon off;", -c, /config/nginx.conf]
@@ -95,4 +135,10 @@ spec:
           configMap: {name: socrat-telegram-relay}
         - name: tmp
           emptyDir: {medium: Memory, sizeLimit: 1Mi}
+        - name: service-vpn-identity
+          secret: {secretName: socrat-telegram-relay-vpn, defaultMode: 0440}
+        - name: service-vpn-runtime
+          emptyDir: {medium: Memory, sizeLimit: 1Mi}
+        - name: service-vpn-script
+          configMap: {name: socrat-telegram-relay-vpn}
 {{- end }}

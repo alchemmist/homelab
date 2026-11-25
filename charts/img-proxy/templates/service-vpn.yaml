@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ $.Release.Namespace | quote }}
+  name: img-proxy-service-vpn
+data:
+  prepare.py: |
+{{ .Files.Get "service-vpn/prepare.py" | indent 4 }}

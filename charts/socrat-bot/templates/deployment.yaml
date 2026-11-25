@@ -41,6 +41,8 @@ spec:
       hostAliases:
         - ip: {{ $.Values.telegramRelay.clusterIP | quote }}
           hostnames: [api.telegram.org]
+      nodeSelector:
+        kubernetes.io/hostname: socrat-1
       affinity:
         podAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
