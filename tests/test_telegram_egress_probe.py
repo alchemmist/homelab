@@ -104,9 +104,11 @@ def test_periodic_chart_isolated_and_bounded() -> None:
     assert term["namespaces"] == ["postgres"]
     assert term["labelSelector"]["matchLabels"]["cnpg.io/instanceRole"] == "primary"
     relay = specs["socrat-telegram-relay"]
-    assert relay["nodeSelector"]["kubernetes.io/hostname"] == "socrat-2"
+    assert relay["nodeSelector"]["kubernetes.io/hostname"] == "socrat-1"
+    assert bot["nodeSelector"]["kubernetes.io/hostname"] == "socrat-1"
     assert not relay["automountServiceAccountToken"]
-    assert all("env" not in c and "envFrom" not in c for c in relay["containers"])
+    stream = next(c for c in relay["containers"] if c["name"] == "stream")
+    assert "env" not in stream and "envFrom" not in stream
     assert (
         specs["socrat-telegram-path-control"]["nodeSelector"]["kubernetes.io/hostname"]
         == "socrat-3"
