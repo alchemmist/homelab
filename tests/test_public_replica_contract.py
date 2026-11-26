@@ -38,17 +38,19 @@ def test_every_replica_is_the_same_except_placement_and_local_a() -> None:
         (dep,) = [doc for doc in docs if doc["kind"] == "Deployment"]
         pod = dep["spec"]["template"]["spec"]
         assert pod["automountServiceAccountToken"] is False
-        assert [c["name"] for c in pod["containers"] if any(
-            m["name"] == "api" for m in c.get("volumeMounts", [])
-        )] == ["traefik"]
+        assert [
+            c["name"]
+            for c in pod["containers"]
+            if any(m["name"] == "api" for m in c.get("volumeMounts", []))
+        ] == ["traefik"]
         (dns,) = [c for c in pod["containers"] if c["name"] == "coredns"]
         (service,) = [d["spec"] for d in docs if d["kind"] == "Service"]
         port = dns["readinessProbe"]["tcpSocket"]["port"]
         assert f":{port} {{" in cm["data"]["Corefile"]
         assert service["type"] == "ClusterIP"
-        assert {(p["protocol"], p["port"], p["targetPort"]) for p in service["ports"]} == {
-            ("TCP", 53, port), ("UDP", 53, port)
-        }
+        assert {
+            (p["protocol"], p["port"], p["targetPort"]) for p in service["ports"]
+        } == {("TCP", 53, port), ("UDP", 53, port)}
         assert pod.pop("nodeSelector") == {"kubernetes.io/hostname": instance["node"]}
         dep["spec"]["template"]["metadata"].pop("annotations")
         expected = {

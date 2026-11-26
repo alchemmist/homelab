@@ -32,7 +32,10 @@ zone serial/content parity and DNS delegation must be reviewed before activation
 Before staging, check `kubectl -n <namespace> get configmap kube-root-ca.crt`
 and wait for namespace initialization. Do not make the CA projection optional.
 Use distinct release names when staging multiple instances in a cluster; use a
-permitted probe Pod for private checks. The template is a web/DNS candidate, not an implementation of the public VPN cutover.
+permitted probe Pod for private checks. Only Ingresses explicitly labeled `homelab.alchemmist.xyz/public-web=true` qualify.
+Do not install until every ordinary path owner has opted in, fixed transport
+Ingresses remain unlabeled, and referenced middleware is discoverable. This selector
+does not restrict Secret reads. The template is a web/DNS candidate, not an implementation of the public VPN cutover.
 
 ## Single surviving public IP: acceptance for every service
 

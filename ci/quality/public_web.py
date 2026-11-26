@@ -43,7 +43,6 @@ def replica_values(catalog: dict, instance: dict, serial: int) -> dict:
     return {"instance": instance, "publications": publications, "zoneFile": zone}
 
 
-
 def main() -> None:
     """Print private-stage Helm values for one inventory entry; never change production."""
     catalog = yaml.safe_load(CATALOG.read_text())
