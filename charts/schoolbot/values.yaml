@@ -2,8 +2,8 @@
 replicaCount: 1
 image:
   repository: harbor.socrat.alchemmist.xyz/schoolbot/schoolbot
-  tag: 9d5bd21df59848bfd3ed2e9346f11ba92c4dc908
-  digest: sha256:c475e4b986b558c371ea14a47a7323c4d3bb8e6bcbbedaf1145661690e333ee7
+  tag: 9d729a27b4d2ec6937f0fa27e1bb7137538947ce
+  digest: sha256:ee7546e52aa27f9a37b833ce0425aeb8991e0997cae874a64f28f1d7bd3f71fb
   pullPolicy: IfNotPresent
 service:
   port: 80
@@ -20,8 +20,7 @@ imagePullSecrets:
   - schoolbot-harbor-pull
 publicBaseUrl: https://inform.sch1357.ru
 cookieSecure: true
-# UI is only under adminUiPath. Sync after the image digest reads ADMIN_UI_PATH,
-# otherwise the panel opens at the site root.
+# UI is only under adminUiPath. The pinned image reads ADMIN_UI_PATH.
 adminUi: true
 adminUiPath: /flvbybcnhfnbdyfzgfytkm
 updateMode: polling
