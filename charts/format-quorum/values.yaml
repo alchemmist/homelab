@@ -11,6 +11,7 @@ service:
   port: 80
   targetPort: 3000
 ingress:
+  publicWeb: false
   className: traefik
   host: fq.alchemmist.xyz
   tlsSecretName: format-quorum-tls
