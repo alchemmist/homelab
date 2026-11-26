@@ -105,6 +105,7 @@ def test_rehearsal_admission_changes_only_the_controller_peer() -> None:
     (policy,) = [doc for doc in enabled if doc["kind"] == "NetworkPolicy"]
     (rule,) = policy["spec"]["ingress"]
     assert rule["ports"] == [{"protocol": "TCP", "port": 8080}]
+    assert len(rule["from"]) == 2
     assert rule["from"].pop() == {
         "namespaceSelector": {
             "matchLabels": {"kubernetes.io/metadata.name": "public-entry"}
