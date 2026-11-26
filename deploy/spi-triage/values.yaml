@@ -4,6 +4,7 @@ serviceClusterIP: 10.43.194.185  # Native SPI RPC contract; preserves existing S
 tokenAccountingMode: local-qwen-v1
 durableWaitEnabled: true
 llmMinuteTokens: 30000
+llmRetryModel: v-deepseek-uc  # Approved external fallback for SPI incident context.
 s3Evidence:
   publicOrigin: https://rustfs.socrat.alchemmist.xyz
   enabled: true
