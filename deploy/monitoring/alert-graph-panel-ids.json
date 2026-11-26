@@ -198,6 +198,10 @@
       "SocratApiScrapeUnavailable": 3,
       "SocratServicePathDiverged": 5
     },
+    "alerts-9da470212339d0fc": {
+      "SocratWireGuardMeshProbesIncomplete": 1,
+      "SocratWireGuardPeerUnreachable": 3
+    },
     "alerts-9e50577fca7fb4a0": {
       "ConfigReloaderSidecarErrors": 1
     },
