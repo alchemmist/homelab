@@ -8,6 +8,7 @@ host: vpn.alchemmist.xyz
 ingressClass: traefik
 createIngressClass: false
 publishIngressStatus: false
+# Generated from deploy/public-web/entrances.yaml: uv run python -m ci.quality.public_web
 watchNamespaces:
   - argocd
   - automation

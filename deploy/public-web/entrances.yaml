@@ -1,0 +1,99 @@
+---
+# Target eligibility is independent of controller deployment and DNS ownership.
+defaultEntrances: [home, nl, moscow]
+# Current NL discovery grants. Change only after namespace and Secret review.
+nlWatchNamespaces:
+  - argocd
+  - automation
+  - blog
+  - cats
+  - cattle-system
+  - cattle-monitoring-system
+  - format-quorum
+  - harbor
+  - identity
+  - img-proxy
+  - llm
+  - lms
+  - monori
+  - pr-agent
+  - remark42
+  - socrat-bot
+  - socrat-home
+  - syncthing
+  - umami
+  - venice-api
+  - uptime-kuma
+  - wiki
+  - wishlist
+  - traefik-edge
+hosts:
+  argocd:
+    argocd.socrat.alchemmist.xyz: {dns: managed}
+  automation:
+    n8n.socrat.alchemmist.xyz: {dns: managed}
+    spi.socrat.alchemmist.xyz: {dns: managed}
+  blog:
+    alchemmist.xyz: {dns: managed}
+    www.alchemmist.xyz: {dns: managed}
+  cats:
+    cats.alchemmist.xyz: {dns: managed}
+  cattle-system:
+    rancher.socrat.alchemmist.xyz: {dns: managed}
+  cattle-monitoring-system:
+    grafana-mcp.socrat.alchemmist.xyz: {dns: managed}
+  format-quorum:
+    fq.alchemmist.xyz: {dns: managed}
+  harbor:
+    harbor.socrat.alchemmist.xyz: {dns: managed}
+  identity:
+    auth.socrat.alchemmist.xyz: {dns: managed}
+    grafana.socrat.alchemmist.xyz: {dns: managed}
+    netbird-relay-vps.socrat.alchemmist.xyz: {entrances: [nl], dns: static}
+    netbird.socrat.alchemmist.xyz: {dns: managed}
+    openhands.socrat.alchemmist.xyz: {dns: managed}
+    rustfs.socrat.alchemmist.xyz: {dns: managed}
+    spi-evidence.socrat.alchemmist.xyz: {dns: managed}
+  img-proxy:
+    img.alchemmist.xyz: {dns: managed}
+  llm:
+    chat.alchemmist.xyz: {dns: managed}
+    litellm.socrat.alchemmist.xyz: {dns: managed}
+    llm.alchemmist.xyz: {dns: managed}
+    llm.socrat.alchemmist.xyz: {dns: managed}
+    search.socrat.alchemmist.xyz: {dns: managed}
+  lms:
+    lms.alchemmist.xyz: {dns: managed}
+  monori:
+    monori.alchemmist.xyz: {entrances: [home, moscow], dns: managed, nlTransit: true}
+  pr-agent:
+    pr-agent.socrat.alchemmist.xyz: {dns: managed}
+  remark42:
+    remark42.alchemmist.xyz: {dns: managed}
+  socrat-bot:
+    bot.socrat.alchemmist.xyz: {dns: managed}
+  socrat-home:
+    socrat.alchemmist.xyz: {dns: managed}
+  syncthing:
+    0.socrat.alchemmist.xyz: {dns: managed}
+    1.socrat.alchemmist.xyz: {dns: managed}
+  umami:
+    umami.alchemmist.xyz: {dns: managed}
+  venice-api:
+    venice.socrat.alchemmist.xyz: {dns: managed}
+  uptime-kuma:
+    kuma.socrat.alchemmist.xyz: {dns: managed}
+    status.alchemmist.xyz: {dns: managed}
+  wiki:
+    wiki.socrat.alchemmist.xyz: {dns: managed}
+  wishlist:
+    wishlist.alchemmist.xyz: {dns: managed}
+  traefik-edge:
+    vpn.alchemmist.xyz: {entrances: [], dns: static, route: vpn-transit, nlTransit: true}
+  schoolbot:
+    bot.sch1357.ru: {entrances: [], dns: external, route: reserved}
+    inform.sch1357.ru: {dns: external}
+  rustfs:
+    rustfs.socrat.alchemmist.xyz: {dns: managed}
+    socrat.alchemmist.xyz: {dns: managed}
+...
