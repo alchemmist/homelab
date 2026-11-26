@@ -37,17 +37,11 @@ def replica_values(catalog: dict, instance: dict, serial: int) -> dict:
         raise ValueError("Managed web host outside the authoritative zone")
     owners = {"@" if host == ZONE else host.removesuffix("." + ZONE) for host in managed}
     # Pure offline baseline. Never probe, write or invoke the live Knot publisher.
-    baseline = runpy.run_path(str(ROOT / "ansible/scripts/public_dns_zone.py"))["render"](
-        serial, True, True
+    zone = runpy.run_path(str(ROOT / "ansible/scripts/public_dns_zone.py"))["render"](
+        serial, True, True, web_answers=dict.fromkeys(owners, address)
     )
-    lines = []
-    for line in baseline.splitlines():
-        parts = line.split()
-        if len(parts) >= 3 and parts[0] in owners and parts[1:3] == ["IN", "A"]:
-            continue
-        lines.append(line)
-    lines.extend(f"{owner} IN A {address}" for owner in sorted(owners))
-    return {"instance": instance, "publications": publications, "zoneFile": "\n".join(lines) + "\n"}
+    return {"instance": instance, "publications": publications, "zoneFile": zone}
+
 
 
 def main() -> None:
