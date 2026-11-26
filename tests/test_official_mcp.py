@@ -20,13 +20,9 @@ def module(name: str) -> types.ModuleType:
     return m
 
 
-def test_optional_pi_example_has_no_inline_credentials_and_blocks_pending_clients() -> (
-    None
-):
+def test_optional_pi_example_has_no_inline_credentials_and_blocks_pending_clients() -> None:
     """Require disabled pending clients and command-backed credential headers."""
-    config = json.loads((ROOT / "deploy/mcp/examples/pi-mcp.json").read_text())[
-        "mcpServers"
-    ]
+    config = json.loads((ROOT / "deploy/mcp/examples/pi-mcp.json").read_text())["mcpServers"]
     assert set(config) == {
         "socrat-grafana",
         "argocd",
@@ -136,9 +132,7 @@ def test_package_lock_and_release_checksums_are_pinned() -> None:
     lock = json.loads((ROOT / "deploy/mcp/clients/package-lock.json").read_text())
     assert lock["packages"][""]["dependencies"] == p["dependencies"]
     assert all(
-        v.get("integrity")
-        for k, v in lock["packages"].items()
-        if k.startswith("node_modules/")
+        v.get("integrity") for k, v in lock["packages"].items() if k.startswith("node_modules/")
     )
     m = module("setup-official-mcp")
     assert m.VERSION == "0.18.0"
