@@ -287,3 +287,50 @@ def test_default_authority_rehearsal_has_no_kubernetes_or_backend_identity() -> 
             (53, "TCP"),
             (53, "UDP"),
         }
+
+
+def test_gitops_dns_bundle_matches_private_chart_without_public_or_api_access() -> None:
+    from ci.quality.private_dns_fleet import NAMESPACE, OUTPUT, render
+
+    assert OUTPUT.read_text() == render()
+    resources = list(yaml.safe_load_all(OUTPUT.read_text()))
+    inventory = yaml.safe_load(CATALOG.read_text())["replicas"]
+    assert len(resources) == 4 * len(inventory)
+    assert all(r["metadata"]["namespace"] == NAMESPACE for r in resources)
+    for name, node in inventory.items():
+        release = "authority-" + name
+        docs = {
+            r["kind"]: r
+            for r in resources
+            if r["metadata"]["name"]
+            in {release, release + "-stage", release + "-dns", release + "-probe"}
+        }
+        assert set(docs) == {"NetworkPolicy", "ConfigMap", "Service", "Deployment"}
+        pod = docs["Deployment"]["spec"]["template"]["spec"]
+        assert pod["nodeSelector"] == {"kubernetes.io/hostname": node["node"]}
+        assert len(pod["containers"]) == 1 and pod["containers"][0]["name"] == "coredns"
+        assert pod["automountServiceAccountToken"] is False
+        policy = docs["NetworkPolicy"]["spec"]
+        assert (
+            set(policy["policyTypes"]) == {"Ingress", "Egress"}
+            and policy["egress"] == []
+        )
+        assert policy["ingress"] == [
+            {
+                "from": [
+                    {
+                        "podSelector": {
+                            "matchLabels": {
+                                "homelab.alchemmist.xyz/public-entry-probe": "true"
+                            }
+                        }
+                    }
+                ]
+            }
+        ]
+        assert docs["Service"]["spec"]["type"] == "ClusterIP"
+    app = yaml.safe_load(
+        (ROOT / "deploy/argocd/apps/private-dns-fleet.yaml").read_text()
+    )["spec"]
+    assert ROOT / app["source"]["path"] == OUTPUT.parent
+    assert app["destination"]["namespace"] == NAMESPACE
