@@ -65,7 +65,7 @@ hosts:
   lms:
     lms.alchemmist.xyz: {dns: managed}
   monori:
-    monori.alchemmist.xyz: {entrances: [home, moscow], dns: managed}
+    monori.alchemmist.xyz: {entrances: [home, moscow], dns: managed, nlTransit: true}
   pr-agent:
     pr-agent.socrat.alchemmist.xyz: {dns: managed}
   remark42:
@@ -89,7 +89,7 @@ hosts:
   wishlist:
     wishlist.alchemmist.xyz: {dns: managed}
   traefik-edge:
-    vpn.alchemmist.xyz: {entrances: [], dns: static, route: vpn-transit}
+    vpn.alchemmist.xyz: {entrances: [], dns: static, route: vpn-transit, nlTransit: true}
   schoolbot:
     bot.sch1357.ru: {entrances: [], dns: external, route: reserved}
     inform.sch1357.ru: {dns: external}
