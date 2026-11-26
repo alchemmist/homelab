@@ -49,7 +49,10 @@ def test_every_replica_is_the_same_except_placement_and_local_a() -> None:
         port = dns["readinessProbe"]["tcpSocket"]["port"]
         assert f":{port} {{" in cm["data"]["Corefile"]
         assert service["type"] == "ClusterIP"
-        assert service["selector"] == dep["spec"]["template"]["metadata"]["labels"]
+        labels = dep["spec"]["template"]["metadata"]["labels"]
+        assert service["selector"] == {"app.kubernetes.io/instance": "entry"}
+        assert service["selector"].items() <= labels.items()
+        assert labels["homelab.alchemmist.xyz/public-entry-controller"] == "true"
         assert {
             (p["protocol"], p["port"], p["targetPort"]) for p in service["ports"]
         } == {("TCP", 53, port), ("UDP", 53, port)}

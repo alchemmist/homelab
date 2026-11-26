@@ -82,6 +82,14 @@ spec:
           podSelector:
             matchLabels:
               app.kubernetes.io/name: traefik
+{{- if .Values.allowPublicEntryPeer }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: public-entry
+          podSelector:
+            matchLabels:
+              homelab.alchemmist.xyz/public-entry-controller: 'true'
+{{- end }}
       ports:
         - {protocol: TCP, port: 8080}
   egress:
