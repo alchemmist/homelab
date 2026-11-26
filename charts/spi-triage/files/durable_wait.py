@@ -136,6 +136,12 @@ class WaitOwners:
             if not row:
                 c.execute('INSERT INTO workflow_empty_claim VALUES(?,?)',(execution_id,revision))
                 return {'status': 'empty', 'job_id': '', 'contract': 1}
+            if row['stage'] >= len(STAGES):
+                # Publish already finished. Leaving stage 4 queued makes claim
+                # sort this row first and IndexError, which 500s every wake.
+                c.execute("UPDATE jobs SET state='complete',lease=0,updated=? WHERE id=? AND state IN ('queued','retry')",(now,row['id']))
+                c.execute('INSERT INTO workflow_empty_claim VALUES(?,?)',(execution_id,revision))
+                return {'status':'empty','job_id':'','contract':1}
             c.execute("UPDATE jobs SET state='processing',lease=?,attempts=attempts+1,updated=? WHERE id=?",
                       (now+WAIT_GRACE_SECONDS, now, row['id']))
             c.execute("DELETE FROM workflow_wait_owner WHERE job_id=? AND phase IN ('failed','revoked')",(row['id'],))

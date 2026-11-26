@@ -1,0 +1,131 @@
+# Release isolation for the Thanos monitoring tier (namespace
+# cattle-monitoring-system). Internal pods talk to each other over grpc
+# (10901) / http (10902), the scrapers reach the :10902 / :8080 endpoints, and
+# write-only/host-bind daemons need only the peers that call them.
+
+{{- define "thanos.namespace" -}}
+namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: {{ $.Release.Namespace | quote }}}}
+{{- end -}}
+
+{{- range $name, $component := .Values.components }}
+{{- if or (hasPrefix "thanos-store" $name) (hasPrefix "thanos-compactor" $name) }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: {{ $.Release.Namespace | quote }}
+  name: {{ $name }}-isolation
+spec:
+  podSelector: {matchLabels: {app: {{ $name }}}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - {{ include "thanos.namespace" $ }}
+      ports:
+        - {protocol: TCP, port: 10901}
+        - {protocol: TCP, port: 10902}
+  egress:
+    - to:
+        - {{ include "thanos.namespace" $ }}
+      ports:
+        - {protocol: TCP, port: 10901}
+        - {protocol: TCP, port: 10902}
+        - {protocol: TCP, port: 8080}
+        - {protocol: TCP, port: 9000}
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+{{- end }}
+{{- end }}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: thanos-query-isolation}
+spec:
+  podSelector: {matchLabels: {app: thanos-query}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - {{ include "thanos.namespace" $ }}
+      ports: [{protocol: TCP, port: 10902}]
+  egress:
+    - to:
+        - {{ include "thanos.namespace" $ }}
+      ports:
+        - {protocol: TCP, port: 10901}
+        - {protocol: TCP, port: 10902}
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+
+{{- range $name, $shelf := .Values.shelves }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: {{ $name }}-isolation}
+spec:
+  podSelector: {matchLabels: {app: {{ $name }}}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - {{ include "thanos.namespace" $ }}
+      ports: [{protocol: TCP, port: 8080}]
+  egress:
+    - to:
+        - {{ include "thanos.namespace" $ }}
+      ports:
+        - {protocol: TCP, port: 10901}
+        - {protocol: TCP, port: 10902}
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+{{- end }}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: thanos-disk-isolation}
+spec:
+  podSelector: {matchLabels: {app: thanos-disk}}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: thanos-warm-volume-check-isolation}
+spec:
+  podSelector: {matchLabels: {app: thanos-warm-s1-volume-check}}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress: []
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {namespace: {{ $.Release.Namespace | quote }}, name: thanos-cascade-isolation}
+spec:
+  podSelector: {matchLabels: {app: thanos-cascade}}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - {{ include "thanos.namespace" $ }}
+      ports:
+        - {protocol: TCP, port: 10901}
+        - {protocol: TCP, port: 10902}
+        - {protocol: TCP, port: 8080}
+        - {protocol: TCP, port: 9000}
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]

@@ -6,25 +6,24 @@ import os
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from pathlib import Path
-
-sys.path.insert(0, "/scripts")
-from hour_copy import Bucket  # noqa: E402
+from typing import BinaryIO
 
 
 class LimitedWriter:
-    def __init__(self, stream):
+    def __init__(self, stream: BinaryIO) -> None:
         self.stream = stream
         self.started = time.monotonic()
         self.size = 0
 
-    def write(self, data):
+    def write(self, data: bytes) -> None:
         self.stream.write(data)
         self.size += len(data)
         time.sleep(max(0, self.started + self.size / (12 * 2**20) - time.monotonic()))
 
 
-def retry_connection(call):
+def retry_connection(call: Callable[[], tuple[int, str] | None]) -> tuple[int, str] | None:
     for attempt in range(6):
         try:
             return call()
@@ -32,13 +31,19 @@ def retry_connection(call):
             if attempt == 5:
                 raise
             time.sleep(2**attempt)
+    return None
 
 
-def main():
+def main() -> None:
+    sys.path.insert(0, "/scripts")
+    from hour_copy import Bucket
+
     dest = Path("/candidate") / ("precopy-" + os.environ["HOSTNAME"])
     dest.mkdir(exist_ok=False)  # never replace a prior attempt
     bucket = Bucket(json.loads(Path("/s3/objstore.yml").read_bytes())["config"])
     objects = retry_connection(bucket.listing)
+    if objects is None:
+        raise OSError("object listing failed")
     fs = os.statvfs(dest)
     if fs.f_bavail * fs.f_frsize < sum(objects.values()) + 100 * 2**30:
         raise OSError("insufficient disk reserve")
@@ -51,7 +56,7 @@ def main():
             target = tree / key
             target.parent.mkdir(parents=True, exist_ok=True)
             with tempfile.NamedTemporaryFile(dir=target.parent) as temp:
-                def transfer():
+                def transfer() -> tuple[int, str] | None:
                     temp.seek(0)
                     temp.truncate()
                     return bucket.read(key, sink=LimitedWriter(temp), absent=True)
@@ -67,7 +72,7 @@ def main():
                 if proof != (size, digest):
                     raise ValueError("object changed or failed readback: " + key)
                 os.link(temp.name, target)
-            journal.write(json.dumps([key, *proof]) + "\n")
+            journal.write(json.dumps([key, *proof]) + chr(10))
             journal.flush()
             copied += size
         os.fsync(journal.fileno())
