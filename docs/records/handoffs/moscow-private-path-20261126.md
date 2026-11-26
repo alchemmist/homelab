@@ -37,3 +37,35 @@ was used. The probes were deleted; neither DNS nor public ports were modified.
   confirmation concerned the old **public** path, not this private path.
 - The blog check is not an all-service or DNS-failover result. Do not advertise
   Moscow for ordinary hostnames or declare a survivor scenario passed from it.
+
+## Follow-up: UDP source observation and isolated authentication
+
+On 26 November the private Traefik Service and both relays were Ready. A
+short-lived tokenless probe on socrat-4 sent small synthetic datagrams to the
+**private frontend**, not the relay IP or public entrance. NL conntrack was
+sampled read-only for UDP flows to 10.250.0.2:32085/32086 from 10.250.0.40.
+Only aggregate differences are reported; no packet capture or profile was used.
+
+| Probe | New matching tuples on 32085 | On 32086 |
+| --- | ---: | ---: |
+| Allowed, two UDP sockets to 32085 | 2 | 0 |
+| Allowed, three sockets to 32086, single snapshot | 0 | 2 |
+| Denied, two sockets to 32086 | 0 | 0 |
+| Same Pod relabeled allowed, two sockets to 32086 | 0 | 2 |
+
+These are concurrent flow observations, not packet delivery percentages. The
+repeat with the label change supports the expected source identity on the UDP
+path. There was no verified reply, VPN handshake or authenticated payload in
+this exercise. An extra repeat on 32085 timed out in the harness and was not
+counted. Probe Pods were removed; no NL access rules or listeners changed.
+
+Separately, a disposable 3x-ui 3.11.0 Pod with a fresh database, no Service,
+no host networking and deny-all network policy was tested on socrat-1. A new
+short-lived Shadowsocks identity was created via its native API. The fixture
+allowed only the local echo test destination for the test route. Authenticated
+TCP and UDP payloads matched the nonce; a wrong credential failed both, the
+correct credential passed again, and neither worked after native client removal.
+The namespace was removed. This was not the Moscow/NL topology and did not use
+production clients, keys or panel state. In particular it is not acceptance of
+production WireGuard or AmneziaWG. Do not combine the independent fixture and
+one-way flow observations into an end-to-end pass or a public cutover decision.
