@@ -12,7 +12,7 @@
       notify: Restart peer35 relay
     - name: Install peer35 unit
       ansible.builtin.copy:
-        src: ../files/wg-peer35-relay.service
+        src: wg-peer35-relay.service
         dest: /etc/systemd/system/homelab-wg-peer35-relay.service
         mode: '0644'
       notify: Restart peer35 relay
@@ -38,6 +38,7 @@
       ansible.builtin.file:
         path: /var/lib/node_exporter/textfile_collector
         state: directory
+        mode: '0755'
     - name: Install directed mesh probe
       ansible.builtin.copy:
         src: ../scripts/wg-mesh-probe.py
