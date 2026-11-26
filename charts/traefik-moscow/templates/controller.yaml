@@ -1,0 +1,75 @@
+{{- if .Values.rehearsal }}
+{{- if not .Values.moscowWatchNamespaces }}{{ fail "explicit Moscow Ingress namespaces required" }}{{ end }}
+{{- if ne .Release.Namespace "traefik-moscow" }}{{ fail "use the fenced traefik-moscow namespace" }}{{ end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: traefik-moscow, namespace: traefik-moscow}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app.kubernetes.io/name: traefik-moscow}}
+  template:
+    metadata: {labels: {app.kubernetes.io/name: traefik-moscow}}
+    spec:
+      serviceAccountName: traefik-moscow
+      hostNetwork: false
+      nodeSelector: {kubernetes.io/hostname: socrat-4}
+      tolerations:
+        - {key: homelab.io/bootstrap, operator: Equal, value: "true", effect: NoSchedule}
+      securityContext: {runAsNonRoot: true, runAsUser: 65532, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: traefik
+          image: {{ .Values.image | quote }}
+          args:
+            - --providers.kubernetesingress=true
+            - --providers.kubernetesingress.ingressclass=traefik
+            - --providers.kubernetesingress.namespaces={{ join "," .Values.moscowWatchNamespaces }}
+            - --providers.kubernetescrd=true
+            - --providers.kubernetescrd.namespaces=vpn-transit
+            - --providers.kubernetescrd.ingressclass=traefik-moscow
+            - --providers.kubernetescrd.labelselector=homelab.alchemmist.xyz/moscow-rehearsal=true
+            - --providers.kubernetescrd.disableclusterscoperesources=true
+            - --providers.kubernetescrd.allowcrossnamespace=false
+            - --providers.kubernetescrd.allowexternalnameservices=false
+            - --entrypoints.web.address=:8080/tcp
+            - --entrypoints.web.asdefault=true
+            - --entrypoints.websecure.address=:8443/tcp
+            - --entrypoints.websecure.asdefault=true
+            - --entrypoints.websecure.http.tls=true
+            - --entrypoints.health.address=:19090/tcp
+            - --ping=true
+            - --ping.entrypoint=health
+{{- range $net, $ports := dict "tcp" (list 32053 32083 32084) "udp" (list 443 32085 32086) }}
+{{- range $ports }}
+            - --entrypoints.{{ $net }}-{{ . }}.address=:{{ ternary 8443 . (eq . 443) }}/{{ $net }}
+{{- end }}
+{{- end }}
+          readinessProbe: {httpGet: {path: /ping, port: 19090}}
+          resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {memory: 192Mi}}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: traefik-moscow, namespace: traefik-moscow}
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/name: traefik-moscow}
+  ports:
+    - {name: web, port: 80, targetPort: 8080}
+    - {name: websecure, port: 443, targetPort: 8443}
+{{- range $net, $ports := dict "TCP" (list 32053 32083 32084) "UDP" (list 443 32085 32086) }}
+{{- range $ports }}
+    - {name: {{ lower $net }}-{{ . }}, port: {{ . }}, targetPort: {{ ternary 8443 . (eq . 443) }}, protocol: {{ $net }}}
+{{- end }}
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: private-probes, namespace: traefik-moscow}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: traefik-moscow}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {matchLabels: {homelab.alchemmist.xyz/moscow-probe: "true"}}
+{{- end }}
