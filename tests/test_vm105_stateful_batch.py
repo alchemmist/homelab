@@ -1,6 +1,7 @@
 """Offline source boundaries. No kube/credentials/workflow/model calls."""
 
 import copy
+import json
 import pathlib
 import subprocess
 import tempfile
@@ -142,6 +143,15 @@ def expect_spi_cutover(
         for g in map(_mapping, _sequence(pod["initContainers"]))
         if g["name"] == "require-existing-spi"
     ]
+    # #590 adds a reviewed, storage-independent bot patch in both DB modes.
+    (worker,) = [w for w in map(_mapping, _sequence(pod["containers"])) if w["name"] == "worker"]
+    patch = json.loads((R / "tests/fixtures/spi-retarget-bot-init.json").read_text())
+    pod["initContainers"] = [{**patch, "image": worker["image"]}, *_sequence(pod["initContainers"])]
+    pod["volumes"] = [*_sequence(pod["volumes"]), {"name": "bot-base", "emptyDir": {}}]
+    worker["volumeMounts"] = [*_sequence(worker["volumeMounts"]), {
+        "name": "bot-base", "mountPath": "/app/telegram_delivery.py",
+        "subPath": "telegram_delivery.py", "readOnly": True,
+    }]
     if not postgres:
         return
 
@@ -161,7 +171,6 @@ def expect_spi_cutover(
         {"name": "pg-ca", "configMap": {"name": "pg-common-ca"}},
         *_sequence(pod["volumes"]),
     ]
-    (worker,) = [w for w in map(_mapping, _sequence(pod["containers"])) if w["name"] == "worker"]
     worker["envFrom"] = [*_sequence(worker["envFrom"]), pg_secret]
     mounts = _sequence(worker["volumeMounts"])
     # e4b09e31 keeps graph files accessible, not the SQLite DB at the PVC root.
