@@ -14,6 +14,18 @@ uv run python -m ci.quality.public_web home --serial 2026112601 | \
   helm template entry deploy/public-web/replica -n public-entry -f -
 ```
 
+The default private stage renders **DNS only**: one CoreDNS container, ConfigMap,
+ClusterIP and an ingress NetworkPolicy. No API token, RBAC bindings or backend
+controller identity are needed to check UDP/TCP authoritative answers. This is a
+migration stage for the whole replica, not per-location publication policy. The
+same self-IP zones are used in both stages. To inspect the full **offline** web
+candidate, add `--set stage=web-and-dns` to `helm template`; do not install that
+stage pending Secret scope review. In a read-only Pod reference audit, 23 of 25
+candidate namespaces had an image pull Secret or environment Secret reference.
+Ingress labels do not restrict the controller's namespace-wide Secret reads.
+This is a lower bound, not clearance for the remaining namespaces. No Secret
+objects or payloads were needed to identify this blocker.
+
 Each authoritative zone contains the same names. Only managed ordinary web A
 records contain this replica's public IP. Baseline authority/glue, mail, TXT,
 static and other non-catalog records remain unchanged. DNS for school names is

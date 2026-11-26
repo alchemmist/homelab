@@ -1,4 +1,6 @@
 {{- if .Values.instance }}
+{{- if not (has .Values.stage (list "dns-only" "web-and-dns")) }}{{ fail "invalid private stage" }}{{ end }}
+{{- $web := eq .Values.stage "web-and-dns" }}
 {{- $zoneKey := "db.alchemmist.xyz" }}
 {{- $scope := keys .Values.publications | sortAlpha }}
 {{- if not $scope }}{{ fail "publications required" }}{{ end }}
@@ -13,6 +15,7 @@ data:
     }
   {{ $zoneKey }}: |
 {{ required "zoneFile required" .Values.zoneFile | indent 4 }}
+{{- if $web }}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -52,6 +55,7 @@ kind: ClusterRoleBinding
 metadata: {name: {{ .Release.Name }}-{{ .Release.Namespace }}}
 subjects: [{kind: ServiceAccount, name: {{ .Release.Name }}, namespace: {{ .Release.Namespace }}}]
 roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: {{ .Release.Name }}-{{ .Release.Namespace }}}
+{{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -82,12 +86,16 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if $web }}
         homelab.alchemmist.xyz/public-entry-controller: 'true'
+{{- end }}
       annotations: {homelab.alchemmist.xyz/zone-hash: {{ sha256sum .Values.zoneFile | quote }}}
     spec:
       nodeSelector: {kubernetes.io/hostname: {{ .Values.instance.node | quote }}}
       tolerations: [{key: homelab.io/bootstrap, operator: Equal, value: 'true', effect: NoSchedule}]
+{{- if $web }}
       serviceAccountName: {{ .Release.Name }}
+{{- end }}
       automountServiceAccountToken: false
       securityContext: {runAsNonRoot: true, runAsUser: 65532, seccompProfile: {type: RuntimeDefault}}
       containers:
@@ -98,6 +106,7 @@ spec:
           resources: {requests: {cpu: 20m, memory: 32Mi}, limits: {memory: 96Mi}}
           securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL], add: [NET_BIND_SERVICE]}}
           volumeMounts: [{name: dns, mountPath: /etc/coredns, readOnly: true}]
+{{- if $web }}
         - name: traefik
           image: rancher/mirrored-library-traefik@sha256:aa942a00bce033c909bf1f7e861d93761be4b31a035f10d2410d33e38a8f41cf
           args:
@@ -119,13 +128,16 @@ spec:
           resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {memory: 192Mi}}
           securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
           volumeMounts: [{name: api, mountPath: /var/run/secrets/kubernetes.io/serviceaccount, readOnly: true}]
+{{- end }}
       volumes:
         - name: dns
           configMap: {name: {{ .Release.Name }}-dns}
+{{- if $web }}
         - name: api
           projected:
             sources:
               - serviceAccountToken: {path: token}
               - configMap: {name: kube-root-ca.crt, items: [{key: ca.crt, path: ca.crt}]}
               - downwardAPI: {items: [{path: namespace, fieldRef: {fieldPath: metadata.namespace}}]}
+{{- end }}
 {{- end }}
