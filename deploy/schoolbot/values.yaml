@@ -1,8 +1,8 @@
 ---
 image:
   repository: harbor.socrat.alchemmist.xyz/schoolbot/schoolbot
-  tag: 9d5bd21df59848bfd3ed2e9346f11ba92c4dc908
-  digest: sha256:c475e4b986b558c371ea14a47a7323c4d3bb8e6bcbbedaf1145661690e333ee7
+  tag: 72f11289b9401b80fe62e5a91c5ad9596daafb73
+  digest: sha256:037868390bb8adcbfddc37c9152655b272ede5756cac9c70db901c2ae88b5d23
   pullPolicy: IfNotPresent
 replicaCount: 1
 service:
@@ -20,7 +20,9 @@ imagePullSecrets:
   - schoolbot-harbor-pull
 publicBaseUrl: https://inform.sch1357.ru
 cookieSecure: true
-adminUi: false
+# UI is only under adminUiPath. The pinned image reads ADMIN_UI_PATH.
+adminUi: true
+adminUiPath: /flvbybcnhfnbdyfzgfytkm
 updateMode: polling
 timezone: Europe/Moscow
 # The operator creates basic-auth Secret schoolbot-db in namespace postgres.
