@@ -207,3 +207,25 @@ middleware, all catalog paths or a public survivor. In particular the live
 RustFS forward-auth address is **itself a public hostname**; its resolution and
 return path still need independent survivor testing. Do not infer the result
 from finding the Middleware CRD or reaching Argo.
+
+A subsequent three-node RustFS rehearsal isolated the **server-side** forward-auth
+hop. Each tokenless, loopback-only Traefik mapped just the live RustFS hostname
+to `127.0.0.1` inside its own Pod. Egress allowed only Authentik's private
+HTTP Service/endpoint ports, not DNS or any public entrance. The file fixture
+kept the real middleware HTTPS address, `trustForwardHeader: false`, host and
+outpost-prefix priority, with a disposable TLS trust anchor. A local marker
+replaced the console, so even a failed test could not grant console access.
+
+| Request on each of HOME, NL and Moscow | Result |
+| --- | --- |
+| Fixture-only unprotected control | 200 with exact marker body |
+| `/outpost.goauthentik.io/ping` | 204 from real outpost route |
+| Anonymous `/` through forward-auth | 302 to `auth.socrat.alchemmist.xyz/application/o/authorize/`, never marker |
+| Same middleware address without trust in the disposable certificate | 500, never marker |
+
+No redirect was followed, nor were cookies, redirect parameters or credentials
+recorded. Temporary namespace deleted. This demonstrates a way to keep the
+middleware self-call on the surviving web process without weakening TLS. It is
+not evidence the current public controllers use that resolution, the browser
+can finish login through the surviving entrance, or RustFS enforces object ACLs.
+Do not append fixture routes or trust anchors to a production listener.
