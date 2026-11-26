@@ -99,7 +99,9 @@ def test_rendered_password_service_network_policy_is_minimal() -> None:
 
 
 def test_rehearsal_admission_changes_only_the_controller_peer() -> None:
+    baseline = _render()
     enabled = _render("--set", "allowPublicEntryPeer=true")
+    assert baseline != enabled
     (policy,) = [doc for doc in enabled if doc["kind"] == "NetworkPolicy"]
     (rule,) = policy["spec"]["ingress"]
     assert rule["ports"] == [{"protocol": "TCP", "port": 8080}]
@@ -111,4 +113,4 @@ def test_rehearsal_admission_changes_only_the_controller_peer() -> None:
             "matchLabels": {"homelab.alchemmist.xyz/public-entry-controller": "true"}
         },
     }
-    assert enabled == _render()
+    assert enabled == baseline
