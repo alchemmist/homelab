@@ -7,9 +7,14 @@ Pods; repeat access checks against the actual workloads after reconciliation.
 There is deliberately no public mode or DNS cutover switch.
 
 The opt-in render schedules a non-root Traefik in the Pod network on socrat-4.
-Only the approved blog namespace is watched for normal Ingress, including its
-existing TLS Secret. This is a first test backend, not a restriction on which
-public sites can eventually use Moscow. Only labeled Moscow-class CRDs in
+Normal Ingress discovery is limited to `blog`, `cats` and `format-quorum` for
+private web acceptance. Each owner retains its Ingress and TLS Secret. The last
+two namespaces each had one public Ingress and only TLS, registry pull and Helm
+release Secret types at preflight. Namespace Secret discovery includes those
+non-TLS objects too; it is not a per-certificate read grant. This wave does not
+add CRD watches or status writers. Run the existing private probe with
+`--all-sites <private-service-ip>` to verify all four exact hostnames. A page
+check does not prove persistent backend availability after a node outage. Only labeled Moscow-class CRDs in
 `vpn-transit` supply VPN routes; the relay ClusterIP is used for both transports.
 Raw TCP/80 is not forwarded. On shared TCP/443 only the exact VPN SNI goes to
 the old backend; other HTTPS uses ordinary Ingress. UDP/443 is VPN, not HTTP/3.

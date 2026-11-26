@@ -30,9 +30,13 @@ def test_no_public_or_host_fallback(value: str) -> None:
         (200, b"default backend", False),
     ],
 )
-def test_probe_contract(status: int, body: bytes, expected: bool) -> None:
+@pytest.mark.parametrize(
+    "host", ["www.alchemmist.xyz", "cats.alchemmist.xyz", "fq.alchemmist.xyz"]
+)
+def test_probe_contract(status: int, body: bytes, expected: bool, host: str) -> None:
     """Preserve the requested hostname for SNI and HTTP while dialing the private IP."""
-    host = "www.alchemmist.xyz"
+    if body == PROBE.TITLE:
+        body = PROBE.TITLES[host]
     with (
         patch.object(PROBE.socket, "create_connection") as dial,
         patch.object(PROBE.ssl, "create_default_context") as context,
@@ -48,6 +52,6 @@ def test_probe_contract(status: int, body: bytes, expected: bool) -> None:
             dial.return_value.__enter__.return_value, server_hostname=host
         )
         assert (
-            b"Host: www.alchemmist.xyz\r\n"
+            f"Host: {host}\r\n".encode("ascii")
             in wrap.return_value.__enter__.return_value.sendall.call_args.args[0]
         )

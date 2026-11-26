@@ -2,7 +2,7 @@
 # Target eligibility is independent of controller deployment and DNS ownership.
 defaultEntrances: [home, nl, moscow]
 # Current NL discovery grants. Change only after namespace and Secret review.
-moscowWatchNamespaces: [blog]
+moscowWatchNamespaces: [blog, cats, format-quorum]
 # Production NL discovery remains independent of this private rehearsal.
 nlWatchNamespaces:
   - argocd

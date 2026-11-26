@@ -1,5 +1,6 @@
 """Render both Moscow Applications together without touching the cluster."""
 
+import pytest
 import yaml
 
 from ci.quality.charts import ROOT, argocd_targets, render
@@ -47,11 +48,16 @@ def test_moscow_private_rehearsal() -> None:
     }
     assert "--entrypoints.websecure.http.tls=true" in args
     catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())
-    assert catalog["moscowWatchNamespaces"] == ["blog"]
-    assert "--providers.kubernetesingress.namespaces=blog" in args
+    assert catalog["moscowWatchNamespaces"] == ["blog", "cats", "format-quorum"]
+    assert "--providers.kubernetesingress.namespaces=blog,cats,format-quorum" in args
     assert "--providers.kubernetescrd.namespaces=vpn-transit" in args
     roles = [d for d in docs if d["kind"] == "Role"]
-    assert {d["metadata"]["namespace"] for d in roles} == {"blog", "vpn-transit"}
+    assert {d["metadata"]["namespace"] for d in roles} == {
+        "blog",
+        "cats",
+        "format-quorum",
+        "vpn-transit",
+    }
     for role in roles:
         assert all(set(r["verbs"]) <= {"get", "list", "watch"} for r in role["rules"])
     (svc,) = [d["spec"] for d in docs if d["kind"] == "Service"]
@@ -113,15 +119,24 @@ def test_moscow_private_rehearsal() -> None:
     assert routed == sockets - {("TCP", 80)}
 
 
-def test_blog_ingress_uses_its_existing_tls_secret() -> None:
-    """Render the backend Application: an entrypoint default certificate is not enough."""
+@pytest.mark.parametrize(
+    "namespace,expected_hosts,secret",
+    [
+        ("blog", {"alchemmist.xyz", "www.alchemmist.xyz"}, "blog-tls"),
+        ("cats", {"cats.alchemmist.xyz"}, "cats-tls"),
+        ("format-quorum", {"fq.alchemmist.xyz"}, "format-quorum-tls"),
+    ],
+)
+def test_canary_ingress_tls(
+    namespace: str, expected_hosts: set[str], secret: str
+) -> None:
+    """Render the actual applications; an entrypoint default certificate is not enough."""
     targets, _ = argocd_targets()
-    (blog,) = [t for t in targets if t["release"] == "blog"]
-    (ingress,) = [d for d in render(blog) if d["kind"] == "Ingress"]
+    (target,) = [t for t in targets if t["release"] == namespace]
+    (ingress,) = [d for d in render(target) if d["kind"] == "Ingress"]
     spec = ingress["spec"]
-    assert ingress["metadata"]["namespace"] == "blog"
+    assert ingress["metadata"]["namespace"] == namespace
     assert spec["ingressClassName"] == "traefik"
-    hosts = {rule["host"] for rule in spec["rules"]}
-    assert hosts == {"alchemmist.xyz", "www.alchemmist.xyz"}
+    assert {rule["host"] for rule in spec["rules"]} == expected_hosts
     (tls,) = spec["tls"]
-    assert set(tls["hosts"]) == hosts and tls["secretName"] == "blog-tls"
+    assert set(tls["hosts"]) == expected_hosts and tls["secretName"] == secret

@@ -6,8 +6,15 @@ import ipaddress
 import socket
 import ssl
 
-HOSTS = ("alchemmist.xyz", "www.alchemmist.xyz")
+BLOG_HOSTS = ("alchemmist.xyz", "www.alchemmist.xyz")
 TITLE = b"<title>Personal blog of Anton Grishin</title>"
+
+
+TITLES = {
+    **dict.fromkeys(BLOG_HOSTS, TITLE),
+    "cats.alchemmist.xyz": b"<title>Funny cats</title>",
+    "fq.alchemmist.xyz": b"<title>FQ</title>",
+}
 
 
 def service_ip(value: str) -> str:
@@ -30,16 +37,23 @@ def probe(host: str, address: str) -> bool:
             )
             with http.client.HTTPResponse(secured) as response:
                 response.begin()
-                return response.status == http.HTTPStatus.OK and TITLE in response.read(256 * 1024)
+                return response.status == http.HTTPStatus.OK and TITLES[
+                    host
+                ] in response.read(256 * 1024)
 
 
 def main() -> int:
     """Return failure for either hostname without logging response bodies or secrets."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("service_ip", type=service_ip)
+    parser.add_argument(
+        "--all-sites",
+        action="store_true",
+        help="check every reviewed private web canary",
+    )
     args = parser.parse_args()
     ok = True
-    for host in HOSTS:
+    for host in TITLES if args.all_sites else BLOG_HOSTS:
         try:
             passed = probe(host, args.service_ip)
         except (OSError, http.client.HTTPException) as error:
