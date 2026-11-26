@@ -122,6 +122,25 @@ listener, host port or public Service in this experiment.
   real traffic. Restart loops, clock behavior, missing/invalid snapshots and
   established client connections need separate treatment before adoption.
 
+## Matching key does not authorize the leaf SAN set
+
+The fixture provider next compared the decoded leaf SAN set to the exact
+approved DNS SAN set for that **source**, before including either its PEM or
+its routers in a snapshot. A matching key with only `outside.invalid` was
+withdrawn; so was a matching key covering the expected primary name **plus**
+`extra.invalid`. For both injections the intended SNI and the unapproved SNI
+were rejected at handshake (not an HTTP 404). Restoring the approved pair
+restored the exact fingerprint and HTTP marker without restarting. A second
+independent multi-SAN source remained valid: 30/30 fresh sampled TLS and HTTP
+checks across its names passed. The source retained only named GET access;
+both disposable namespaces were deleted. No production leaf/key was fetched.
+
+This is evidence for provider-side SAN authorization, not an assertion that
+Traefik alone enforces it. The fixture's test-only certificate decoder is not
+a production parser. Production code must validate the leaf actually served,
+use an audited parser, and bind the expected names to reviewed source ownership,
+not just infer authorization from the presented certificate.
+
 ## Gates before any real web deployment
 
 - The existing `kubernetesIngress` informer still needs list/watch. This proof
@@ -133,7 +152,7 @@ listener, host port or public Service in this experiment.
   semantics, not just a successful TLS handshake.
 - Preserve the two-source withdrawal and rotation checks above. Still test
   a production freshness policy with an explicit availability budget, complete source-container loss,
-  matching key pairs with the wrong SANs and polling load at full catalog size.
+  and polling load at full catalog size. Retain the wrong/extra SAN regression checks.
   An unreachable HTTP provider is not equivalent to a valid withdrawal snapshot.
 - Test with reserved synthetic inputs on each candidate node before granting a
   production name. Do not copy TLS Secrets, add cluster-wide Secret access, or
