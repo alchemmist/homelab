@@ -6,6 +6,7 @@ from collections import defaultdict
 from itertools import combinations
 
 import yaml
+
 from ci.quality.public_web import CATALOG
 
 LABEL = "homelab.alchemmist.xyz/public-web"
