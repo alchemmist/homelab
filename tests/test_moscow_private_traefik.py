@@ -26,6 +26,11 @@ def test_moscow_private_rehearsal() -> None:
         "http3" in a or "ingressendpoint" in a or "insecureskipverify" in a.lower()
         for a in args
     )
+    assert {arg for arg in args if ".asdefault=" in arg} == {
+        "--entrypoints.web.asdefault=true",
+        "--entrypoints.websecure.asdefault=true",
+    }
+    assert "--entrypoints.websecure.http.tls=true" in args
     catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())
     assert catalog["moscowWatchNamespaces"] == ["blog"]
     assert "--providers.kubernetesingress.namespaces=blog" in args
@@ -65,6 +70,7 @@ def test_moscow_private_rehearsal() -> None:
         assert dest["name"] == relay_service["metadata"]["name"] and dest["nativeLB"]
         proto = d["kind"][-3:]
         port = dest["port"]
+        assert (proto, port) not in routed
         routed.add((proto, port))
         if (proto, port) == ("TCP", 443):
             assert route["match"] == "HostSNI(`vpn.alchemmist.xyz`)"
