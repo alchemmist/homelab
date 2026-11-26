@@ -42,6 +42,32 @@ of the snapshot differences was sufficient, nor invalidate already-established
 connections. All temporary Pods, permissions and synthetic keys were removed
 with their namespaces. No production Secret was read for this experiment.
 
+## Two sources and a multi-name certificate
+
+Two further disposable runs used two independent source Secrets and separate
+single-name `get` Roles/RoleBindings. One synthetic leaf covered one name;
+the other covered two. The loopback HTTP provider returned one strict-SNI
+snapshot, omitting only a source whose named read returned 403 or 404. A local
+fixture backend returned a distinct expected body for each Host. The checks
+used fresh trusted TLS connections, exact leaf fingerprints, HTTP 200 and
+body equality; an HTTP error was not counted as successful withdrawal.
+
+- Revoking the first binding caused that hostname to be rejected during TLS
+  negotiation (unrecognized SNI). The other hostname and alias continued to
+  serve the exact original certificate and their own HTTP bodies.
+- Restoring the binding restored the first route without a restart. Rotation
+  then served the replacement leaf and rejected the old trust anchor.
+- In the second run, replacing the first source with a certificate and an
+  unrelated private key failed closed for that name. Replacing it with the
+  valid pair restored it. Deletion again withdrew only that source.
+- Repeated fresh probes of the unaffected names during these transitions
+  passed 16/16 in the first run and 22/22 in the second. This is sampled
+  availability, not a guarantee that no connection could have failed.
+- Revoking the second binding finally rejected **both** names on its SAN list.
+
+Neither business middleware nor real application authorization was exercised.
+All certificate material was disposable; the real Schoolbot key was not read.
+
 ## Gates before any real web deployment
 
 - The existing `kubernetesIngress` informer still needs list/watch. This proof
@@ -51,10 +77,10 @@ with their namespaces. No production Secret was read for this experiment.
   preserve path priorities, explicit auth middleware, backend TLS verification,
   source references and exclusion of private routes. Compare with production
   semantics, not just a successful TLS handshake.
-- Exercise two names with distinct keys and a multi-name certificate. Removing
-  or revoking one source must stop serving that key **without disabling the
-  unaffected host**. Verify invalid/mismatched replacement material, API outage,
-  recovery, bounded staleness, listener restarts and incremental renewal load.
+- Preserve the two-source withdrawal and rotation checks above. Still test an
+  unreachable API, source-container failure, bounded staleness, cold starts,
+  matching key pairs with the wrong SANs and polling load at full catalog size.
+  An unreachable HTTP provider is not equivalent to a valid withdrawal snapshot.
 - Test with reserved synthetic inputs on each candidate node before granting a
   production name. Do not copy TLS Secrets, add cluster-wide Secret access, or
   treat the observed distinct failure for `inform.sch1357.ru` on NL/Moscow as
