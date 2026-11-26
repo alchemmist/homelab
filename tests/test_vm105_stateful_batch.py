@@ -145,6 +145,10 @@ def expect_spi_cutover(
     ]
     # #590 adds a reviewed, storage-independent bot patch in both DB modes.
     (worker,) = [w for w in map(_mapping, _sequence(pod["containers"])) if w["name"] == "worker"]
+    env = _sequence(worker["env"])
+    index = next(i for i, item in enumerate(env) if _mapping(item)["name"] == "SPI_LLM_MINUTE_TOKENS")
+    env.insert(index, {"name": "SPI_LLM_RETRY_MODEL", "value": "v-deepseek-uc"})
+    worker["env"] = env
     patch = json.loads((R / "tests/fixtures/spi-retarget-bot-init.json").read_text())
     pod["initContainers"] = [{**patch, "image": worker["image"]}, *_sequence(pod["initContainers"])]
     pod["volumes"] = [*_sequence(pod["volumes"]), {"name": "bot-base", "emptyDir": {}}]
