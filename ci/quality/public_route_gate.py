@@ -36,7 +36,17 @@ def findings(catalog: dict, items: list[dict]) -> list[str]:
                     issues.add(f"unexpected selected host: {ns}/{name} {host}")
                 continue
             seen.add((ns, host))
-            for path in rule.get("http", {}).get("paths", []):
+            paths = rule.get("http", {}).get("paths", [])
+            if not paths:
+                issues.add(f"missing paths: {ns}/{name} {host}")
+            for path in paths:
+                if not path.get("path") or path.get("pathType") not in {
+                    "Exact",
+                    "Prefix",
+                    "ImplementationSpecific",
+                }:
+                    issues.add(f"invalid path or pathType: {ns}/{name} {host}")
+                    continue
                 key = (host, path["path"], path["pathType"])
                 owners[key].add(f"{ns}/{name}")
             if not selected or spec.get("ingressClassName") != "traefik":

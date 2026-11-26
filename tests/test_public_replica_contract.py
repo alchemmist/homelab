@@ -154,3 +154,6 @@ def test_route_gate_checks_every_owner_not_just_host_presence() -> None:
         )
         == 3
     )
+
+    del root["spec"]["rules"][0]["http"]["paths"][0]["pathType"]
+    assert findings(catalog, [root]) == ["invalid path or pathType: app/root web.test"]
