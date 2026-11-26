@@ -26,6 +26,8 @@ def test_every_replica_is_the_same_except_placement_and_local_a() -> None:
                 "template",
                 "entry",
                 str(ROOT / "deploy/public-web/replica"),
+                "--set",
+                "stage=web-and-dns",
                 "-n",
                 "public-entry",
                 "-f",
@@ -244,3 +246,44 @@ def test_existing_reviewed_owner_label(value: str, eligible: bool) -> None:
     assert (
         not findings({"hosts": {"example": {"app.example": {}}}}, [owner])
     ) is eligible
+
+
+def test_default_authority_rehearsal_has_no_kubernetes_or_backend_identity() -> None:
+    catalog = yaml.safe_load(CATALOG.read_text())
+    for instance in catalog["replicas"].values():
+        values = replica_values(catalog, instance, 2026112601)
+        args = [
+            "helm",
+            "template",
+            "entry",
+            str(ROOT / "deploy/public-web/replica"),
+            "-f",
+            "-",
+        ]
+        docs = list(
+            yaml.safe_load_all(
+                subprocess.check_output(args, input=json.dumps(values), text=True)
+            )
+        )
+        assert sorted(d["kind"] for d in docs) == [
+            "ConfigMap",
+            "Deployment",
+            "NetworkPolicy",
+            "Service",
+        ]
+        (dep,) = [d for d in docs if d["kind"] == "Deployment"]
+        pod = dep["spec"]["template"]["spec"]
+        assert (
+            "homelab.alchemmist.xyz/public-entry-controller"
+            not in dep["spec"]["template"]["metadata"]["labels"]
+        )
+        assert pod["automountServiceAccountToken"] is False
+        assert "serviceAccountName" not in pod and not pod.get("hostNetwork")
+        assert [v["name"] for v in pod["volumes"]] == ["dns"]
+        assert [c["name"] for c in pod["containers"]] == ["coredns"]
+        (service,) = [d["spec"] for d in docs if d["kind"] == "Service"]
+        assert service["type"] == "ClusterIP"
+        assert {(p["port"], p["protocol"]) for p in service["ports"]} == {
+            (53, "TCP"),
+            (53, "UDP"),
+        }
