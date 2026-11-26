@@ -60,7 +60,6 @@ def test_unknown_survivor_lists_valid_entries(monkeypatch, capsys) -> None:
     with pytest.raises(SystemExit) as exc:
         audit.main()
     assert exc.value.code == 2
-    assert (
-        "Unknown survivor 'nl-only'; choose from home, nl, moscow"
-        in capsys.readouterr().err
-    )
+    message, _, choices = capsys.readouterr().err.strip().rpartition("; choose from ")
+    assert "Unknown survivor 'nl-only'" in message
+    assert set(choices.split(", ")) == set(audit.ENTRIES)
