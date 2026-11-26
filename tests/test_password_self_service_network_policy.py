@@ -50,6 +50,7 @@ def test_rendered_password_service_network_policy_is_minimal() -> None:
 
     ingress = spec["ingress"]
     assert len(ingress) == 1
+    assert len(ingress[0]["from"]) == 1
     traefik_peer = ingress[0]["from"][0]
     assert traefik_peer["namespaceSelector"]["matchLabels"] == {
         "kubernetes.io/metadata.name": "kube-system"
