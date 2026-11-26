@@ -62,6 +62,8 @@ resolved URL; do not store its signed query in Git. Do not “clean” checksum-
 sensitive line endings with a global formatter: `.gitattributes` preserves the
 needed asset bytes.
 
+> **Current login backgrounds:** see the [wallpaper gallery and RustFS runbook](../../../applications/authentik-wallpapers/README.md). The Nature picker and its acceptance receipts below are historical, not the live selection path.
+
 ## 14. Random backgrounds from the Nature dotfiles
 
 As of 2026-11-01 the owner provided `~/code/dotfiles/wallpapers/nature/images`:

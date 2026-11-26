@@ -20,6 +20,7 @@ The [public wiki](../wiki/README.md) has a separate audience and publication pro
 
 | Task | Reference |
 | --- | --- |
+| Authentik login wallpapers, image quality and RustFS media delivery | [Gallery architecture and runbook](applications/authentik-wallpapers/README.md) |
 | Network onboarding, devices, JWT policies and node agents | [NetBird](network/netbird/README.md), [DNS](network/public-entry/public-dns.md) |
 | Foreign egress for applications on Russian nodes | [Service VPN: dedicated 3x-ui client and subscription](network/vpn-egress/service-vpn-egress.md) |
 | Moscow VPN frontend, NL backend, retained clients and known limits | [Production setup and history](network/vpn-egress/vpn-hardening.md), [acceptance and incident](records/handoffs/vpn-production-cutover-20261109.md) |

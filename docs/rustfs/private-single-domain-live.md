@@ -1,5 +1,7 @@
 # Private RustFS browser domain — live edge, 2026-11-07
 
+For the separate wallpaper bucket and public Authentik media path, see [Authentik wallpapers](../applications/authentik-wallpapers/README.md). Wallpaper bytes do not pass through the SPI evidence Reader.
+
 ## Current browser endpoints
 
 - Console: **https://rustfs.socrat.alchemmist.xyz/**
