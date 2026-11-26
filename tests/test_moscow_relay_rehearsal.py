@@ -59,10 +59,15 @@ def test_private_rehearsal_never_takes_public_sockets() -> None:
     )
     assert baseline["outbounds"][0].pop("sendThrough") == "10.250.0.40"
     assert config == baseline
-    ports = {
+    sockets = [
         (i["settings"]["allowedNetwork"].upper(), int(port))
         for i in config["inbounds"]
         for port in i["port"].split(",")
+    ]
+    ports = set(sockets)
+    assert len(sockets) == len(ports), "Duplicate listener within one transport"
+    assert ports == {("TCP", p) for p in (80, 443, 32053, 32083, 32084)} | {
+        ("UDP", p) for p in (443, 32085, 32086)
     }
     assert {(p["protocol"], p["targetPort"]) for p in service["ports"]} == ports
     policy = stage["NetworkPolicy", "vpn-transit-rehearsal"]["spec"]
