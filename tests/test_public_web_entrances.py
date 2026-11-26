@@ -88,6 +88,43 @@ def test_ordinary_hosts_inherit_all_entrances(namespace: str, host: str) -> None
     )
 
 
+def test_effective_nl_discovery_scope() -> None:
+    """Check production Helm overrides cannot widen the watch or namespace RBAC."""
+    targets, _ = argocd_targets()
+    nl_targets = [
+        target for target in targets if target["chart"] == ROOT / "charts/traefik-edge"
+    ]
+    assert nl_targets
+    for target in nl_targets:
+        docs = render(target)
+        assert docs is not None
+        release = target["release"]
+        approved = set(REGISTRY["nlWatchNamespaces"])
+        for kind in ("Role", "RoleBinding"):
+            assert {
+                d["metadata"]["namespace"]
+                for d in docs
+                if d["kind"] == kind and d["metadata"]["name"] == release
+            } == approved
+        (deployment,) = [
+            d
+            for d in docs
+            if d["kind"] == "Deployment" and d["metadata"]["name"] == release
+        ]
+        (controller,) = [
+            c
+            for c in deployment["spec"]["template"]["spec"]["containers"]
+            if c["name"] == "traefik"
+        ]
+        prefix = "--providers.kubernetesingress.namespaces="
+        (scope,) = [
+            arg.removeprefix(prefix)
+            for arg in controller["args"]
+            if arg.startswith(prefix)
+        ]
+        assert set(scope.split(",")) == approved
+
+
 def test_public_ingresses() -> None:
     """Inspect local Argo charts with their actual release names and production values."""
     targets, _ = argocd_targets()
