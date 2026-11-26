@@ -9,6 +9,7 @@ service:
   port: 80
   targetPort: 8080
 ingress:
+  publicWeb: false
   className: traefik
   hosts:
     - alchemmist.xyz
