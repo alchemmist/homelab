@@ -10,13 +10,18 @@ def test_moscow_private_rehearsal() -> None:
     targets, _ = argocd_targets()
     (moscow,) = [t for t in targets if t["release"] == "traefik-moscow"]
     (relay,) = [t for t in targets if t["release"] == "vpn-transit"]
-    assert render({**moscow, "inline_values": {}}) == []
+    # No values files, valuesObject or --set parameters: exercise bare chart defaults.
+    no_overrides = {"values": [], "inline_values": {}, "parameters": []}
+    assert render({**moscow, **no_overrides}) == []
     docs = render(moscow)
     backend = render(relay)
-    baseline = render({**relay, "inline_values": {}})
-    assert baseline and len(baseline) == 1
-    assert baseline[0] in backend  # The existing public owner must not roll.
     assert docs and backend
+    baseline = render({**relay, **no_overrides})
+    assert baseline and len(baseline) == 1
+    (legacy,) = baseline
+    assert (legacy["kind"], legacy["metadata"]["name"]) == ("Deployment", "vpn-transit")
+    assert legacy["spec"]["template"]["spec"]["hostNetwork"] is True
+    assert legacy in backend  # The existing public owner must not roll.
     (deployment,) = [d for d in docs if d["kind"] == "Deployment"]
     template = deployment["spec"]["template"]
     pod = template["spec"]
