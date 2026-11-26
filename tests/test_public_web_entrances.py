@@ -32,7 +32,7 @@ def check_ingress(doc: dict, fallback: str) -> None:
         allowed = {
             host
             for host, p in CAT[ns].items()
-            if p.get("route") != "reserved"
+            if p.get("route", "web") in {"web", "vpn-transit"}
             and (
                 ns not in WATCH
                 or "nl" in p.get("entrances", REGISTRY["defaultEntrances"])
@@ -64,6 +64,7 @@ def test_catalog_scope() -> None:
             assert set(policy.get("entrances", REGISTRY["defaultEntrances"])) <= set(
                 REGISTRY["defaultEntrances"]
             )
+            assert policy.get("route", "web") in {"web", "reserved", "vpn-transit"}
             assert policy["dns"] in {"static", "managed", "external"}
     assert not CAT["traefik-edge"]["vpn.alchemmist.xyz"]["entrances"]
     assert CAT["schoolbot"]["bot.sch1357.ru"]["dns"] == "external"
