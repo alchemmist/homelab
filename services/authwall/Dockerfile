@@ -7,4 +7,4 @@ COPY ui /app/ui
 ENV PYTHONPATH=/app/src
 USER 1000
 EXPOSE 8080
-CMD ["python", "-m", "wallpapers.server"]
+CMD ["python", "-m", "authwall.server"]

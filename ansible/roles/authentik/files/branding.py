@@ -174,7 +174,7 @@ def _verify_nature_responses(
                 message = "Random Nature response failed verification"
                 raise RuntimeError(message)
         urls["NATURE_RANDOM_" + variant.upper()] = url
-    scene_url = BASE + "/wallpapers/scene.css"
+    scene_url = BASE + "/authwall/scene.css"
     with urllib.request.urlopen(scene_url, timeout=60) as response:
         if (response.headers.get_content_type() != "text/css"
                 or response.headers.get("Cache-Control") != "no-store"

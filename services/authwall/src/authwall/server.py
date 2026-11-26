@@ -17,14 +17,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 
-from wallpapers.db import new_id, open_db
-from wallpapers import responsive
+from authwall.db import new_id, open_db
+from authwall import responsive
 import re
-from wallpapers.optimize import derivatives, full_webp
-from wallpapers.store import notify_n8n, open_store
+from authwall.optimize import derivatives, full_webp
+from authwall.store import notify_n8n, open_store
 
 UI = Path(__file__).resolve().parents[2] / "ui"
-PREFIX = "/wallpapers"
+PREFIX = "/authwall"
 
 
 def source_key(wallpaper_id: str) -> str:
@@ -133,7 +133,7 @@ def _files(body: bytes, content_type: str) -> list[tuple[str, bytes]]:
 
 PUBLIC_PREFIXES = (PREFIX + "/scene.css", PREFIX + "/media/", PREFIX + "/internal/")
 _AUTH_CACHE: dict[str, tuple[float, set[str]]] = {}
-GALLERY_GROUPS = frozenset({"homelab-owner", "homelab-owners", "app-wallpapers-manager"})
+GALLERY_GROUPS = frozenset({"homelab-owner", "homelab-owners", "app-authwall-manager"})
 
 
 def _public(path: str) -> bool:

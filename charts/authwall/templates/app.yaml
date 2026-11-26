@@ -1,14 +1,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: authentik-wallpapers
+  name: authwall
 spec:
   replicas: {{ .Values.replicas }}
   selector:
-    matchLabels: {app: authentik-wallpapers}
+    matchLabels: {app: authwall}
   template:
     metadata:
-      labels: {app: authentik-wallpapers}
+      labels: {app: authwall}
     spec:
       automountServiceAccountToken: false
       containers:
@@ -16,7 +16,7 @@ spec:
           image: {{ .Values.image }}
           ports: [{name: http, containerPort: 8080}]
           envFrom:
-            - secretRef: {name: authentik-wallpapers}
+            - secretRef: {name: authwall}
           readinessProbe:
             httpGet: {path: /healthz, port: http}
           resources:
@@ -32,21 +32,21 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: authentik-wallpapers
+  name: authwall
 spec:
-  selector: {app: authentik-wallpapers}
+  selector: {app: authwall}
   ports: [{name: http, port: 80, targetPort: http}]
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: authentik-wallpapers
+  name: authwall
 spec:
   rules:
     - host: {{ .Values.host }}
       http:
         paths:
-          - path: /wallpapers
+          - path: /authwall
             pathType: Prefix
             backend:
-              service: {name: authentik-wallpapers, port: {name: http}}
+              service: {name: authwall, port: {name: http}}

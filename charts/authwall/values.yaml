@@ -1,0 +1,3 @@
+image: harbor.socrat.alchemmist.xyz/homelab/authwall:0.2.0
+host: auth.socrat.alchemmist.xyz
+replicas: 1

@@ -43,4 +43,4 @@ def rules(i, manifest):
 
 def rule(i,tag,w,h,prefix,native=False):
     query = '(orientation: portrait)' if native else ','.join(f'{prefix}(max-resolution:{d}dppx) and (max-width:{w/d:g}px) and (max-height:{h/d:g}px)' for d in (1,1.5,2,3,4))
-    return f'@media {query}{{body::before{{--wp-photo:url("/wallpapers/media/{i}-{tag}.webp")}}}}\n'
+    return f'@media {query}{{body::before{{--wp-photo:url("/authwall/media/{i}-{tag}.webp")}}}}\n'
