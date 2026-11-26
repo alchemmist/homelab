@@ -96,7 +96,6 @@ spec:
               app.kubernetes.io/component: server
       ports:
         # Authentik Service HTTP is 80; its selected server endpoints listen on 9000.
-        - {protocol: TCP, port: 80}
         - {protocol: TCP, port: 9000}
     - to:
         - namespaceSelector:

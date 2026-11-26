@@ -63,7 +63,7 @@ def test_rendered_password_service_network_policy_is_minimal() -> None:
         "app.kubernetes.io/component": "server",
     }
     assert len(authentik["to"]) == 1
-    assert _ports([authentik]) == {("TCP", 80), ("TCP", 9000)}
+    assert _ports([authentik]) == {("TCP", 9000)}
     assert dns["to"][0]["namespaceSelector"]["matchLabels"] == {
         "kubernetes.io/metadata.name": "kube-system"
     }
