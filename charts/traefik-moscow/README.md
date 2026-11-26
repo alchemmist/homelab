@@ -1,8 +1,9 @@
 # Private Moscow ingress rehearsal
 
-Both production Applications remain opted out. A merge does not start either
-private workload or grant discovery. When enabled later, their NetworkPolicies
-have an earlier sync wave than the Pods; ordering does not prove enforcement.
+The production Applications now opt into the **private** rehearsal after the
+[Moscow NetworkPolicy preflight](../../docs/records/handoffs/moscow-policy-preflight-20261126.md).
+Chart defaults remain inactive. The policies have an earlier sync wave than the
+Pods; repeat access checks against the actual workloads after reconciliation.
 There is deliberately no public mode or DNS cutover switch.
 
 The opt-in render schedules a non-root Traefik in the Pod network on socrat-4.
