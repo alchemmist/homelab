@@ -166,3 +166,6 @@ def test_route_gate_checks_every_owner_not_just_host_presence() -> None:
     assert findings(catalog, [parent, ingress("child", "web.test", "/foo/bar", True)])[
         0
     ].startswith("review intersecting paths:")
+
+    stale = ingress("stale", "typo.test", "/", True)
+    assert "unexpected selected host: app/stale typo.test" in findings(catalog, [stale])
