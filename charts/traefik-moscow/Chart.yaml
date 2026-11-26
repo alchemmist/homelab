@@ -1,0 +1,7 @@
+---
+apiVersion: v2
+name: traefik-moscow
+version: 0.1.0
+appVersion: 3.7.19
+description: Private Moscow ingress rehearsal with no public listeners
+...

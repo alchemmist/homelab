@@ -1,0 +1,74 @@
+{{- if .Values.rehearsal }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: {{ $.Release.Namespace | quote }}
+  name: traefik-moscow
+{{- range $namespace := (append .Values.moscowWatchNamespaces "vpn-transit" | uniq) }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: traefik-moscow
+  namespace: {{ $namespace }}
+rules:
+  - apiGroups: [""]
+    resources: [services, endpoints, secrets]
+    verbs: [get, list, watch]
+  - apiGroups: [discovery.k8s.io]
+    resources: [endpointslices]
+    verbs: [get, list, watch]
+{{- if ne $namespace "vpn-transit" }}
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses]
+    verbs: [get, list, watch]
+{{- end }}
+{{- if eq $namespace "vpn-transit" }}
+  - apiGroups: [traefik.io]
+    resources: [ingressroutes, ingressroutetcps, ingressrouteudps, middlewares, middlewaretcps, serverstransports, serverstransporttcps, tlsoptions, tlsstores, traefikservices]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [configmaps]
+    verbs: [get, list, watch]
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: traefik-moscow
+  namespace: {{ $namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: traefik-moscow
+    namespace: {{ $.Release.Namespace }}
+roleRef:
+  kind: Role
+  name: traefik-moscow
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: traefik-moscow-{{ .Release.Namespace }}
+rules:
+  - apiGroups: [networking.k8s.io]
+    resources: [ingressclasses]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [nodes]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: traefik-moscow-{{ .Release.Namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: traefik-moscow
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: traefik-moscow-{{ .Release.Namespace }}
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
