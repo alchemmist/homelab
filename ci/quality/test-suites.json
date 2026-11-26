@@ -125,6 +125,7 @@
       "tests/test_traffic_light_models.py"
     ],
     "medium": [
+      "tests/test_public_web_entrances.py",
       "tests/openhands/test_upgrade.py",
       "tests/test_alert_graph_inventory.py",
       "tests/test_alert_graphs_chart.py",

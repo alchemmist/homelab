@@ -1,0 +1,71 @@
+---
+# Namespace -> exact application-owned Ingress host -> publication policy.
+argocd:
+  argocd.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+automation:
+  n8n.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+  spi.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+blog:
+  alchemmist.xyz: {entrances: [home, nl], dns: managed}
+  www.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+cats:
+  cats.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+cattle-system:
+  rancher.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+cattle-monitoring-system:
+  grafana-mcp.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+format-quorum:
+  fq.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+harbor:
+  harbor.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+identity:
+  auth.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+  grafana.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+  netbird-relay-vps.socrat.alchemmist.xyz: {entrances: [nl], dns: static}
+  netbird.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+  openhands.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+  rustfs.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+  spi-evidence.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+img-proxy:
+  img.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+llm:
+  chat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+  litellm.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+  llm.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+  llm.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+  search.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+lms:
+  lms.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+monori:
+  monori.alchemmist.xyz: {entrances: [home, moscow], dns: managed, nlException: moscow-transit}
+pr-agent:
+  pr-agent.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+remark42:
+  remark42.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+socrat-bot:
+  bot.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+socrat-home:
+  socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+syncthing:
+  0.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+  1.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+umami:
+  umami.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+venice-api:
+  venice.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+uptime-kuma:
+  kuma.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+  status.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+wiki:
+  wiki.socrat.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+wishlist:
+  wishlist.alchemmist.xyz: {entrances: [home, nl], dns: managed}
+traefik-edge:
+  vpn.alchemmist.xyz: {entrances: [], dns: static, nlException: vpn-transit}
+schoolbot:
+  bot.sch1357.ru: {entrances: [], dns: external, note: reserved-not-routed}
+  inform.sch1357.ru: {entrances: [home], dns: external}
+rustfs:
+  rustfs.socrat.alchemmist.xyz: {entrances: [home], dns: managed, note: home-only-routes}
+  socrat.alchemmist.xyz: {entrances: [home], dns: managed, note: home-only-routes}
+...
