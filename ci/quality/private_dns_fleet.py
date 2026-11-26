@@ -61,9 +61,9 @@ def main() -> int:
     args = parser.parse_args()
     content = render()
     if args.check:
-        return int(not OUTPUT.exists() or OUTPUT.read_text() != content)
+        return int(not OUTPUT.exists() or OUTPUT.read_text(encoding="utf-8") != content)
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(content)
+    OUTPUT.write_text(content, encoding="utf-8")
     return 0
 
 
