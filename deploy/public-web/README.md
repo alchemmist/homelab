@@ -229,3 +229,14 @@ middleware self-call on the surviving web process without weakening TLS. It is
 not evidence the current public controllers use that resolution, the browser
 can finish login through the surviving entrance, or RustFS enforces object ACLs.
 Do not append fixture routes or trust anchors to a production listener.
+
+For the anonymous client-side continuation, the same private listener also
+served the Authentik hostname. A bounded GET client connected exclusively to
+that Pod's local port-forward for **both** hosts, preserving SNI, trust and Host
+on every hop. It followed only HTTPS redirects to those two exact authorities;
+no cookies were replayed and no form was submitted. HOME, NL and Moscow each
+returned `302 /` (RustFS), `302 /application/o/authorize/` (Authentik), then
+`200 /if/flow/default-authentication-flow/` with the Authentik flow executor
+in the HTML. No query strings or response headers were recorded. This adds
+same-entry reachability of the login document, not browser asset loading,
+credential validation, callback completion, object access or public failover.
