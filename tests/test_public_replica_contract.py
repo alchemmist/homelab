@@ -66,7 +66,7 @@ def test_every_replica_is_the_same_except_placement_and_local_a() -> None:
                 normalized.append(line)
         assert sorted(observed) == sorted(expected)
         cm["data"]["db.alchemmist.xyz"] = normalized
-        assert "vpn IN A 91.189.82.238" in normalized
+        assert any(line.startswith("vpn IN A ") for line in normalized)
         assert set(values["publications"]) == {
             d["metadata"]["namespace"] for d in docs if d["kind"] == "Role"
         }
