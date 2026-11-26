@@ -105,6 +105,10 @@ spec:
             {{- end }}
             - name: SPI_DURABLE_WAIT_ENABLED
               value: {{ .Values.durableWaitEnabled | quote }}
+            {{- with .Values.llmRetryModel }}
+            - name: SPI_LLM_RETRY_MODEL
+              value: {{ . | quote }}
+            {{- end }}
             - name: SPI_LLM_MINUTE_TOKENS
               value: {{ .Values.llmMinuteTokens | quote }}
             - name: SPI_TOKEN_ACCOUNTING_MODE
