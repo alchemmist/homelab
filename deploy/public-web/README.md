@@ -240,3 +240,20 @@ returned `302 /` (RustFS), `302 /application/o/authorize/` (Authentik), then
 in the HTML. No query strings or response headers were recorded. This adds
 same-entry reachability of the login document, not browser asset loading,
 credential validation, callback completion, object access or public failover.
+
+RustFS object baseline: the published wiki image
+`/public/wiki/rancher-secrets/type-fbebfdb07632.png` returned 200 via each
+public IP with verified SNI, 121274 bytes, PNG signature and the SHA-256 prefix
+from the wiki filename. Anonymous `Range: bytes=0-7` returned 206, the exact
+PNG signature and `Content-Range: bytes 0-7/121274` on all three. No signed
+URL, cookies or bucket enumeration. This is current-path evidence only.
+
+The analogous closed, tokenless per-node rehearsal **did not pass**. With
+fixture egress scoped to the direct RustFS and public-reader Service/endpoint
+ports, both full and range GETs returned 502 on every node. Fixture-only
+response markers identified the direct priority-160 router when both owners
+were present, and the reader when selected alone on a control hostname. Thus
+selection is observable independently of successful backend admission. Do not
+claim the closed web replica serves objects or enable either peer on this basis;
+first verify intended identity, pod-to-endpoint admission and return traffic.
+No private-object ACL result or authenticated operation was inferred.
