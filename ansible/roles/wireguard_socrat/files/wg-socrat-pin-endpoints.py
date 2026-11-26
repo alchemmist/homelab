@@ -9,6 +9,7 @@ free to roam. The config file is not rewritten.
 
 import json
 import re
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -45,12 +46,65 @@ def runtime_endpoints(text: str) -> dict[str, str]:
     return found
 
 
-def drifts(configured: dict[str, str], runtime: dict[str, str]) -> list[tuple[str, str, str | None]]:
+def drifts(
+    configured: dict[str, str], runtime: dict[str, str]
+) -> list[tuple[str, str, str | None]]:
     return [
         (key, want, runtime.get(key))
         for key, want in configured.items()
         if runtime.get(key) != want
     ]
+
+
+def home_underlay(wanted):
+    """Prefer direct WG transport only on worker 3's verified home Wi-Fi LAN."""
+    if (
+        socket.gethostname().split(".")[0] != "socrat-3"
+        or "109.173.40.247:51830" not in wanted.values()
+    ):
+        return
+
+    def ip(*args):
+        return json.loads(subprocess.check_output(["ip", "-j", *args], text=True))
+
+    dev = "wlp1s0"
+    gateway = "192.168.0.1"
+    home = any(
+        r.get("dev") == dev and r.get("gateway") == gateway
+        for r in ip("route", "show", "default")
+    ) and any(
+        r.get("lladdr", "").lower() == "48:29:e4:83:22:f0" and r.get("dev") == dev
+        for r in ip("neigh", "show", "to", gateway)
+    )
+    if not home:
+        return  # retain configured WAN endpoint; source route applies only to LAN UDP
+    subnet = "192.168.0.23/32"
+    subprocess.run(
+        ["ip", "route", "replace", "table", "183", subnet, "dev", dev], check=True
+    )
+    rules = ip("rule", "show")
+    if not any(r.get("priority") == 30183 for r in rules):
+        subprocess.run(
+            [
+                "ip",
+                "rule",
+                "add",
+                "pref",
+                "30183",
+                "to",
+                subnet,
+                "ipproto",
+                "udp",
+                "dport",
+                "51830",
+                "lookup",
+                "183",
+            ],
+            check=True,
+        )
+    for peer, endpoint in wanted.items():
+        if endpoint == "109.173.40.247:51830":
+            wanted[peer] = "192.168.0.23:51830"
 
 
 def main() -> None:
@@ -59,6 +113,7 @@ def main() -> None:
         print(json.dumps({"reset": 0, "skipped": "SaveConfig"}))
         return
     wanted = configured_endpoints(text)
+    home_underlay(wanted)
     current = runtime_endpoints(
         subprocess.check_output(["wg", "show", INTERFACE, "endpoints"], text=True)
     )

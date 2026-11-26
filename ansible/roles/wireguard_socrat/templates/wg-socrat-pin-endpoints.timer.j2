@@ -2,10 +2,9 @@
 Description=Restore configured wg-socrat peer endpoints
 
 [Timer]
-OnBootSec=20s
+OnActiveSec=5s
 OnUnitActiveSec=20s
 AccuracySec=5s
-Persistent=true
 
 [Install]
 WantedBy=timers.target
