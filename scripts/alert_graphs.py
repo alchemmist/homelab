@@ -330,6 +330,11 @@ def build(rules, panel_ids=None):
                 "legend": {"displayMode": "table", "placement": "bottom"},
             },
         }
+        if (owner, name) == ("monitoring-k3s", "SocratWireGuardMeshProbesIncomplete"):
+            # Directions and fresh sources are distinct counts with different limits.
+            # A shared horizontal threshold misrepresents both series.
+            panel["fieldConfig"]["defaults"].pop("thresholds")
+            panel["description"] += " Expected: 30 directed paths and six fresh sources."
         dashboard["panels"].append(panel)
         state = {
             **panel,

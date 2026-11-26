@@ -289,4 +289,12 @@ alertGraphAnnotations:
     {"version":1,"graphs":[{"id":"primary","title":"SocratVPNFallbackActive","dashboard_uid":"alerts-5ff273a38f679e5c","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratVPNFallbackActive
     / rule
     evaluations","dashboard_uid":"alerts-5ff273a38f679e5c","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}
+  SocratWireGuardMeshProbesIncomplete: >-
+    {"version":1,"graphs":[{"id":"primary","title":"SocratWireGuardMeshProbesIncomplete","dashboard_uid":"alerts-9da470212339d0fc","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratWireGuardMeshProbesIncomplete
+    / rule
+    evaluations","dashboard_uid":"alerts-9da470212339d0fc","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}
+  SocratWireGuardPeerUnreachable: >-
+    {"version":1,"graphs":[{"id":"primary","title":"SocratWireGuardPeerUnreachable","dashboard_uid":"alerts-9da470212339d0fc","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratWireGuardPeerUnreachable
+    / rule
+    evaluations","dashboard_uid":"alerts-9da470212339d0fc","panel_id":4,"variables":{},"before_seconds":7200,"after_seconds":300}]}
 ...
