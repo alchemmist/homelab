@@ -65,7 +65,10 @@ spec:
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-metadata: {name: private-probes, namespace: traefik-moscow}
+metadata:
+  name: private-probes
+  namespace: traefik-moscow
+  annotations: {argocd.argoproj.io/sync-wave: "-1"}
 spec:
   podSelector: {matchLabels: {app.kubernetes.io/name: traefik-moscow}}
   policyTypes: [Ingress]

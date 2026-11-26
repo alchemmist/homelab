@@ -6,14 +6,35 @@ from ci.quality.charts import ROOT, argocd_targets, render
 
 
 def test_moscow_private_rehearsal() -> None:
-    """Check default inactivity, isolation, effective watches and the entire VPN path."""
+    """Check the effective opt-ins, fallback defaults, isolation and the entire VPN path."""
     targets, _ = argocd_targets()
     (moscow,) = [t for t in targets if t["release"] == "traefik-moscow"]
     (relay,) = [t for t in targets if t["release"] == "vpn-transit"]
-    assert render(moscow) == []
-    docs = render({**moscow, "inline_values": {"rehearsal": True}})
-    backend = render({**relay, "inline_values": {"podRehearsal": True}})
+    # No values files, valuesObject or --set parameters: exercise bare chart defaults.
+    no_overrides = {"values": [], "inline_values": {}, "parameters": []}
+    assert render({**moscow, **no_overrides}) == []
+    assert render(moscow) == []  # Deployment is gated on Moscow policy evidence.
+    docs = render(
+        {**moscow, "inline_values": {**moscow["inline_values"], "rehearsal": True}}
+    )
+    backend = render(
+        {**relay, "inline_values": {**relay["inline_values"], "podRehearsal": True}}
+    )
     assert docs and backend
+    baseline = render({**relay, **no_overrides})
+    assert baseline and len(baseline) == 1
+    assert render(relay) == baseline
+    (legacy,) = baseline
+    assert (legacy["kind"], legacy["metadata"]["name"]) == ("Deployment", "vpn-transit")
+    assert legacy["spec"]["template"]["spec"]["hostNetwork"] is True
+    matching = [
+        d
+        for d in backend
+        if d["kind"] == legacy["kind"]
+        and d["metadata"]["namespace"] == legacy["metadata"]["namespace"]
+        and d["metadata"]["name"] == legacy["metadata"]["name"]
+    ]
+    assert matching == [legacy]  # Exactly one public owner, with unchanged content.
     (deployment,) = [d for d in docs if d["kind"] == "Deployment"]
     template = deployment["spec"]["template"]
     pod = template["spec"]

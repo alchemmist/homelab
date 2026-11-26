@@ -1,8 +1,8 @@
 # Private Moscow ingress rehearsal
 
-The Argo Application is registered, but its default chart emits no resources.
-The root Application may create the namespace; merging this chart does not
-start a controller, grant discovery or enable the companion VPN relay.
+Both production Applications remain opted out. A merge does not start either
+private workload or grant discovery. When enabled later, their NetworkPolicies
+have an earlier sync wave than the Pods; ordering does not prove enforcement.
 There is deliberately no public mode or DNS cutover switch.
 
 The opt-in render schedules a non-root Traefik in the Pod network on socrat-4.
@@ -34,4 +34,21 @@ No status writes, published IP, NodePort, host socket or external LB.
    the opt-ins: both child Applications have prune disabled. Verify private
    Roles, bindings, routes, Pods and Services are gone and the legacy owner remains.
 
-See the [capacity preflight and private client procedure](../../docs/records/handoffs/moscow-private-rehearsal-20261126.md) before enabling the pair.
+See the [dated pre-resize capacity preflight and private client procedure](../../docs/records/handoffs/moscow-private-rehearsal-20261126.md) before enabling the pair.
+
+After the 26 November resize, socrat-4 reported 4015936 Ki RAM, 3360576 Ki
+allocatable and two CPUs. Existing requests/limits were 96/288 Mi; projected
+overlap is 208/672 Mi. The old capacity hold is superseded, not the required
+client, image-pull and policy checks. Before merging the opt-ins, confirm the
+original authenticated TCP/UDP path after reboot and CNI enforcement on Moscow.
+After sync verify both private Pods and the unchanged public relay, then run
+positive and negative checks from same-node and cross-node clients. Stop on a
+policy failure; do not publish DNS or hand over public sockets.
+
+Before enabling either production opt-in, use a disposable, non-sensitive test
+listener pinned to socrat-4, not the real relay or controller. From permitted
+and non-permitted Pods on Moscow and on another node, test the same TCP and UDP
+sockets. Require successful application replies in the positive controls, no
+replies in the denied controls, and a repeated successful positive control.
+Record node placement, policy selectors and outcomes without credentials; remove
+the temporary resources. Missing or inconclusive evidence keeps both opt-ins off.
