@@ -6,7 +6,7 @@ import pytest
 import yaml
 
 from ci.quality.charts import ManifestLoader, argocd_targets, render
-from ci.quality.public_web import CATALOG, ROOT, VALUES, namespace_block
+from ci.quality.public_web import CATALOG, ROOT, VALUES, namespace_block, update_scope
 
 REGISTRY = yaml.load(CATALOG.read_text(), Loader=ManifestLoader)
 CAT = REGISTRY["hosts"]
@@ -168,3 +168,20 @@ def test_unknown_namespace_fails() -> None:
             },
             "blog-extra",
         )
+
+
+@pytest.mark.parametrize(
+    "block",
+    [
+        "watchNamespaces:",
+        "watchNamespaces: []",
+        "watchNamespaces: ['example']",
+        "watchNamespaces:\n    - 'example'",
+    ],
+)
+def test_scope_round_trip(block: str) -> None:
+    """Preserve adjacent YAML and regenerate canonical scope idempotently."""
+    original = f"# watchNamespaces:\n{block}\nnext: true\n"
+    updated = update_scope(original)
+    assert updated == "# watchNamespaces:\n" + namespace_block() + "next: true\n"
+    assert update_scope(updated) == updated
