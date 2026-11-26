@@ -14,7 +14,8 @@ spec:
     path: charts/n8n
     helm:
       releaseName: n8n
-      parameters: []
+      parameters:
+        - {name: ingress.publicWeb, value: 'true'}
   destination:
     namespace: automation
     server: https://kubernetes.default.svc

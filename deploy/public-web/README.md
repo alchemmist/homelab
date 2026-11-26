@@ -151,3 +151,18 @@ Delete the probe afterward. Do not use these ClusterIPs for cluster DNS or deleg
 anything to them. To retire the rehearsal, remove the bounded Argo application
 via review; its resource finalizer removes its managed objects. Confirm cleanup
 before deleting the dedicated namespace. No public fallback needs switching.
+
+After the private DNS fleet is ready, use a dedicated disposable probe Pod
+(with `dig` on PATH, no API token, and the approved probe label) in
+`public-dns-rehearsal`. From the operator checkout run:
+
+```sh
+uv run python -m ci.quality.private_dns_answers PROBE_POD_NAME
+```
+
+This read-only positive check resolves the private Service IPs from Kubernetes,
+not public DNS, and submits all managed ordinary names over both UDP and TCP to
+each authority. It requires a complete authoritative, non-recursive answer with
+exactly the expected IP per question. It does not create, relabel or delete the
+probe. An execution error is not evidence of a policy denial. Record separate
+same-Pod deny/reallow results and clean up the probe after the exercise.
