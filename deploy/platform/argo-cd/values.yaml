@@ -118,6 +118,8 @@ repoServer:
       memory: 256Mi
 server:
   ingress:
+    labels:
+      homelab.alchemmist.xyz/public-web: 'true'
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt-http01
     controller: generic

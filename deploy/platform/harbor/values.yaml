@@ -55,6 +55,8 @@ existingSecretAdminPassword: harbor-bootstrap
 existingSecretSecretKey: harbor-bootstrap
 expose:
   ingress:
+    labels:
+      homelab.alchemmist.xyz/public-web: 'true'
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt-http01
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
