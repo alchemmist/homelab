@@ -431,6 +431,12 @@ class StatefulBoundaries(unittest.TestCase):
                     {added_identity} if added_identity else set()
                 )
                 for key, old in before.items():
+                    if chart == "charts/format-quorum" and key == ("Ingress", "format-quorum"):
+                        expected_ingress = copy.deepcopy(old)
+                        labels = _mapping(expected_ingress["metadata"]).setdefault("labels", {})
+                        _mapping(labels)["homelab.alchemmist.xyz/public-web"] = "true"
+                        assert after[key] == expected_ingress
+                        continue
                     if old != after[key]:
                         if chart == "charts/format-quorum" and key[0] == "Deployment":
                             old = copy.deepcopy(old)
