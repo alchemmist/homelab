@@ -20,7 +20,10 @@ imagePullSecrets:
   - schoolbot-harbor-pull
 publicBaseUrl: https://inform.sch1357.ru
 cookieSecure: true
-adminUi: false
+# UI is only under adminUiPath. Sync after the image digest reads ADMIN_UI_PATH,
+# otherwise the panel opens at the site root.
+adminUi: true
+adminUiPath: /flvbybcnhfnbdyfzgfytkm
 updateMode: polling
 timezone: Europe/Moscow
 # The operator creates basic-auth Secret schoolbot-db in namespace postgres.

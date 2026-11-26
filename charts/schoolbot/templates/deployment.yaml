@@ -45,6 +45,8 @@ spec:
               value: {{ .Values.cookieSecure | quote }}
             - name: ADMIN_UI
               value: {{ .Values.adminUi | quote }}
+            - name: ADMIN_UI_PATH
+              value: {{ .Values.adminUiPath | default "" | quote }}
             - name: UPDATE_MODE
               value: {{ .Values.updateMode | quote }}
             - name: TIMEZONE
