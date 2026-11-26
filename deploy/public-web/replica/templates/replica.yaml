@@ -53,6 +53,16 @@ metadata: {name: {{ .Release.Name }}-{{ .Release.Namespace }}}
 subjects: [{kind: ServiceAccount, name: {{ .Release.Name }}, namespace: {{ .Release.Namespace }}}]
 roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: {{ .Release.Name }}-{{ .Release.Namespace }}}
 ---
+apiVersion: v1
+kind: Service
+metadata: {name: {{ .Release.Name }}-probe, namespace: {{ .Release.Namespace }}}
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/instance: {{ .Release.Name }}}
+  ports:
+    - {name: dns-tcp, port: 53, targetPort: 1053, protocol: TCP}
+    - {name: dns-udp, port: 53, targetPort: 1053, protocol: UDP}
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata: {name: {{ .Release.Name }}-stage, namespace: {{ .Release.Namespace }}}
