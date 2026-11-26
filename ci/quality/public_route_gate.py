@@ -3,9 +3,9 @@
 import json
 import sys
 from collections import defaultdict
+from itertools import combinations
 
 import yaml
-
 from ci.quality.public_web import CATALOG
 
 LABEL = "homelab.alchemmist.xyz/public-web"
@@ -56,6 +56,22 @@ def findings(catalog: dict, items: list[dict]) -> list[str]:
     for key, names in owners.items():
         if len(names) > 1:
             issues.add(f"overlapping owners: {' '.join(key)}: {', '.join(sorted(names))}")
+    for (left, ls), (right, rs) in combinations(sorted(owners.items()), 2):
+        if left[0] != right[0] or len(ls | rs) == 1:
+            continue
+
+        def covers(parent: tuple, child: tuple) -> bool:
+            if parent[2] == "ImplementationSpecific":
+                return True  # Controller-specific semantics require owner review.
+            if parent[2] == "Exact":
+                return parent[1] == child[1]
+            prefix = parent[1].rstrip("/")
+            return child[1].rstrip("/") == prefix or child[1].startswith(prefix + "/")
+
+        if covers(left, right) or covers(right, left):
+            issues.add(
+                f"review intersecting paths: {' '.join(left)} | {' '.join(right)}: {', '.join(sorted(ls | rs))}"
+            )
     return sorted(issues)
 
 

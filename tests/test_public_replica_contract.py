@@ -157,3 +157,12 @@ def test_route_gate_checks_every_owner_not_just_host_presence() -> None:
 
     del root["spec"]["rules"][0]["http"]["paths"][0]["pathType"]
     assert findings(catalog, [root]) == ["invalid path or pathType: app/root web.test"]
+
+    parent = ingress("parent", "web.test", "/foo", True)
+    parent["spec"]["rules"][0]["http"]["paths"][0]["pathType"] = "Prefix"
+    assert not findings(
+        catalog, [parent, ingress("other", "web.test", "/foobar", True)]
+    )
+    assert findings(catalog, [parent, ingress("child", "web.test", "/foo/bar", True)])[
+        0
+    ].startswith("review intersecting paths:")
