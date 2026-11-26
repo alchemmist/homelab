@@ -87,7 +87,7 @@ only the fixture egress, both Pods served the replacement leaf and expected
 HTTP body. An open socket is not a suitable cold-start acceptance check.
 
 These are observation windows and sampled recovery times, not expiration bounds
-or reliability targets. No source-enforced lease was tested. The default HTTP
+or reliability targets. Those runs had no freshness lease. The default HTTP
 provider retaining its last snapshot preserves availability but can also retain
 a rotated or revoked key while disconnected. A producer-only timeout cannot
 withdraw a snapshot from an unreachable consumer. A production design must
@@ -95,6 +95,32 @@ separately address cold start, validity under a control-plane partition and
 what actually stops *new* client connections when a freshness limit expires;
 readiness alone does not fence a host-bound listener. Do not fence VPN traffic
 as a side effect of a web/TLS freshness check.
+
+## Listener-side fence experiment (not a production policy)
+
+A separate disposable run used an **eight-second experimental freshness
+lease** and the same two synthetic keys. The local source atomically refreshed
+an in-memory timestamp on producing a successful config response; no key was
+written to that shared volume. A supervisor in the tokenless Traefik container
+read the timestamp and stopped only its private web listener after expiry. It
+checked source freshness before starting a new process. There was no VPN
+listener, host port or public Service in this experiment.
+
+- With API egress denied, and independently with the source HTTP listener
+  stopped, we rotated the first fixture key out of band. Unlike the unfenced
+  runs, actual fresh TCP connects were refused. Three repeat connects also
+  failed. From the start of checking after fault confirmation and rotation,
+  the observations including repeats took 10.5 s and 10.6 s, respectively.
+  These are not measured deadlines from the last authorization decision.
+- After restoring the respective dependency, fresh TLS verified the new leaf
+  and application body, the alias still verified, and old trust failed.
+  Those recovery checks completed in 4.8 s and 4.6 s respectively.
+- This fence is **replica-wide**, not per-certificate: it also sacrifices sites
+  whose backend and certificate could still have worked. It is not appropriate
+  to select an eight-second production limit from this experiment. A produced
+  config is not proof that Traefik applied every router; recovery must verify
+  real traffic. Restart loops, clock behavior, missing/invalid snapshots and
+  established client connections need separate treatment before adoption.
 
 ## Gates before any real web deployment
 
@@ -106,7 +132,7 @@ as a side effect of a web/TLS freshness check.
   source references and exclusion of private routes. Compare with production
   semantics, not just a successful TLS handshake.
 - Preserve the two-source withdrawal and rotation checks above. Still test
-  an enforceable staleness bound at the listener, complete source-container loss,
+  a production freshness policy with an explicit availability budget, complete source-container loss,
   matching key pairs with the wrong SANs and polling load at full catalog size.
   An unreachable HTTP provider is not equivalent to a valid withdrawal snapshot.
 - Test with reserved synthetic inputs on each candidate node before granting a
