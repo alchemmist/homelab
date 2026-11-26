@@ -170,6 +170,35 @@ these timings or the experimental eight-second fence: measured scan durations
 alone exceeded eight seconds. Separate refresh completion, consumer apply and
 key withdrawal in the production freshness design.
 
+## Three concurrently polling replicas, one shared synthetic catalog
+
+Each candidate node ran its own key reader and Traefik, reading the **same**
+35 named fixture Secrets. One rotation changed the last two-SAN key for all
+three. To limit the combined request rate, this run paused 800 ms per named
+GET per source (at most 1.25 starts/s per reader on average during a scan;
+requests can align). Poll interval 55 s, timeout 50 s. Both rounds overlapped
+across all three nodes. Each completed round used 105 exact GETs; 210 across
+the two recorded rounds, with no Secret list/watch. Serialized snapshots were
+33109 bytes per replica. Kubernetes `/readyz` returned `ok` before and after;
+this is not a control-plane performance or saturation benchmark.
+
+| Node | Scan 1 / scan 2 (s) | First fresh rotated alias observed after acknowledged write (s) |
+| --- | --- | --- |
+| HOME | 29.25 / 29.65 | 69.82 |
+| NL | 38.22 / 35.02 | 87.32 |
+| Moscow | 30.77 / 30.12 | 76.78 |
+
+All 37 fresh TLS fingerprints and per-host HTTP markers passed on every node
+before and after rotation; the old trust failed on all three. These are sample
+observations, not a maximum convergence time. The 55 s interval was not the
+end-to-end refresh period: in this run the gap between successive **completed**
+scans on each node was approximately 55 s plus the following scan duration.
+Do not dimension listener fencing against the nominal interval alone. This
+single rotation with short fixture chains and one owner namespace does not set
+a production load budget, validate ongoing API latency, or settle per-source
+withdrawal during a partial scan. Neither a timing nor an RBAC change to the
+live fleet was made.
+
 ## Gates before any real web deployment
 
 - The existing `kubernetesIngress` informer still needs list/watch. This proof
@@ -181,7 +210,7 @@ key withdrawal in the production freshness design.
   semantics, not just a successful TLS handshake.
 - Preserve the two-source withdrawal and rotation checks above. Still test
   a production freshness policy with an explicit availability budget, complete source-container loss,
-  and the aggregate API budget under concurrent refresh. Retain the wrong/extra SAN regression checks.
+  and sustained production API and latency budgets beyond the bounded concurrent run. Retain the wrong/extra SAN regression checks.
   An unreachable HTTP provider is not equivalent to a valid withdrawal snapshot.
 - Test with reserved synthetic inputs on each candidate node before granting a
   production name. Do not copy TLS Secrets, add cluster-wide Secret access, or
