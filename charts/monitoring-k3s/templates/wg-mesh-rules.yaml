@@ -13,6 +13,9 @@ spec:
           for: 2m
           labels: {severity: warning}
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratWireGuardPeerUnreachable" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: 'wg-socrat path {{ "{{ $labels.source }}" }} → {{ "{{ $labels.target }}" }} is unreachable.'
         - alert: SocratWireGuardMeshProbesIncomplete
           # Six production nodes yield 30 unique non-self directions.
@@ -20,4 +23,7 @@ spec:
           for: 2m
           labels: {severity: warning}
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratWireGuardMeshProbesIncomplete" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: The wg-socrat all-pairs check is missing or stale on one or more nodes.
