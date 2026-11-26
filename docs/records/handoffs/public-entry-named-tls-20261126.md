@@ -199,6 +199,32 @@ a production load budget, validate ongoing API latency, or settle per-source
 withdrawal during a partial scan. Neither a timing nor an RBAC change to the
 live fleet was made.
 
+## A later failed read can mask an earlier explicit denial
+
+Two single-node, closed catalog-size runs on HOME (35 sources, 37 names).
+The fixture Role lost only `get` on source 15. The source confirmed the API
+actually returned 403 for that exact name; other named GETs remained allowed.
+After 22 attempted reads the fixture injected a local failure **before** the
+GET for source 22. No Kubernetes server fault or real key was involved.
+
+- **Abort the snapshot:** the HTTP provider returned 503. Fresh trusted TLS
+  and expected HTTP bodies still passed for **all 37**, including the name
+  already explicitly denied. Thus even an observed revocation did not reach
+  Traefik. Removing the later fault (keeping the 403) allowed the next valid
+  snapshot to withdraw the revoked SNI: strict handshake rejection observed
+  11.74 s after clearing the fault, with the other 36 names intact.
+- **Complete a nonempty snapshot without either unavailable source:** both
+  affected SNIs were strictly rejected, and all 35 other names passed. Removing
+  the transient fault restored that name only (36 passing); the explicit 403
+  still caused handshake rejection. Restoring its exact GET returned all 37.
+
+Treat explicit denial as independent of unrelated read failures. Omitting a
+transiently failing source also withdraws its healthy website, so do not infer
+that policy is universally preferable: specify outage scope, freshness and
+availability budgets explicitly. Neither approach delivers a withdrawal when
+Traefik cannot receive a snapshot. These were isolated tests, not a persistent
+revocation ledger or proof across a config-source restart.
+
 ## Gates before any real web deployment
 
 - The existing `kubernetesIngress` informer still needs list/watch. This proof
