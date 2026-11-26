@@ -87,6 +87,10 @@ def test_every_replica_is_the_same_except_placement_and_local_a() -> None:
             d["metadata"]["namespace"] for d in docs if d["kind"] == "Role"
         }
         (controller,) = [c for c in pod["containers"] if c["name"] == "traefik"]
+        assert (
+            "--providers.kubernetesingress.labelselector=homelab.alchemmist.xyz/public-web in (true,reviewed)"
+            in controller["args"]
+        )
         prefix = "--providers.kubernetesingress.namespaces="
         (scope,) = [
             arg.removeprefix(prefix)
@@ -212,3 +216,28 @@ def test_http01_selector_labels_only_catalogued_web_challenges() -> None:
     assert fallback == {"http01": {"ingress": {"ingressClassName": "traefik"}}}
     assert isinstance(scoped["selector"]["dnsNames"], list)
     assert render_issuer({"hosts": {}})["spec"]["acme"]["solvers"] == [fallback]
+
+
+@pytest.mark.parametrize(
+    "value,eligible",
+    [("reviewed", True), ("true", True), ("false", False), ("", False)],
+)
+def test_existing_reviewed_owner_label(value: str, eligible: bool) -> None:
+    """Respect both explicit owner markers, never just the label's presence."""
+    from ci.quality.public_route_gate import LABEL, findings
+
+    owner = {
+        "metadata": {"namespace": "example", "name": "app", "labels": {LABEL: value}},
+        "spec": {
+            "ingressClassName": "traefik",
+            "rules": [
+                {
+                    "host": "app.example",
+                    "http": {"paths": [{"path": "/", "pathType": "Prefix"}]},
+                }
+            ],
+        },
+    }
+    assert (
+        not findings({"hosts": {"example": {"app.example": {}}}}, [owner])
+    ) is eligible
