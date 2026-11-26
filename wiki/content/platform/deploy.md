@@ -69,7 +69,7 @@ imagePullSecrets:
 image: "{{ .Values.image.repository }}{{ if .Values.image.digest }}@{{ .Values.image.digest }}{{ else }}:{{ .Values.image.tag }}{{ end }}"
 ```
 
-Secrets не коммитятся в открытом виде и не передаются в wiki/issue. Согласованный оператор создаёт namespace-scoped pull Secret типа `kubernetes.io/dockerconfigjson` от Harbor robot с pull-only правами, а также app Secrets. Chart ссылается на них, но не регенерирует действующие пароли при upgrade.
+Secrets не коммитятся в открытом виде и не передаются в wiki/issue. Согласованный оператор создаёт namespace-scoped pull Secret типа `kubernetes.io/dockerconfigjson` от Harbor robot с pull-only правами, а также app Secrets. Chart ссылается на них, но не регенерирует действующие пароли при upgrade. [Как заполнить Secret в Rancher: пример Schoolbot со снимками экрана]({{< relref "platform/rancher-secrets.md" >}}).
 
 **Первый релиз, до мержа PR:**
 

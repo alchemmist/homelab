@@ -9,14 +9,53 @@ spec:
   template:
     metadata: { labels: { app: remark42 } }
     spec:
-      hostNetwork: true
-      dnsPolicy: Default
+      securityContext: {fsGroup: 1001}
       automountServiceAccountToken: false
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.nodeName | quote }}
+      initContainers:
+      - name: prepare-service-vpn
+        image: {{ .Values.serviceVpn.image | quote }}
+        command: [python3, /vpn-script/prepare.py]
+        securityContext:
+          runAsUser: 1001
+          runAsGroup: 1001
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: {drop: [ALL]}
+        resources:
+          requests: {cpu: 20m, memory: 32Mi}
+          limits: {cpu: 200m, memory: 128Mi}
+        volumeMounts:
+        - {name: service-vpn-script, mountPath: /vpn-script, readOnly: true}
+        - {name: service-vpn-identity, mountPath: /vpn-identity, readOnly: true}
+        - {name: service-vpn-runtime, mountPath: /vpn-runtime}
       containers:
+      - name: service-vpn
+        image: {{ .Values.serviceVpn.image | quote }}
+        command: [/app/bin/xray-linux-amd64]
+        args: [run, -c, /vpn-runtime/client.json]
+        readinessProbe:
+          exec: {command: [python3, -c, "import socket; socket.create_connection(('127.0.0.1',18443),2).close()"]}
+          initialDelaySeconds: 2
+          periodSeconds: 10
+        securityContext:
+          runAsUser: 1001
+          runAsGroup: 1001
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: {drop: [ALL]}
+        resources:
+          requests: {cpu: 20m, memory: 32Mi}
+          limits: {cpu: 200m, memory: 128Mi}
+        volumeMounts:
+        - {name: service-vpn-runtime, mountPath: /vpn-runtime, readOnly: true}
       - name: remark42
         image: {{ .Values.image }}
+        env:
+        - {name: HTTP_PROXY, value: http://127.0.0.1:18443}
+        - {name: HTTPS_PROXY, value: http://127.0.0.1:18443}
+        - {name: NO_PROXY, value: "127.0.0.1,localhost"}
         ports: [{ name: http, containerPort: 8080 }]
         livenessProbe:
           httpGet: { path: /ping, port: http }
@@ -36,4 +75,10 @@ spec:
         resources: {{ toYaml .Values.resources | nindent 10 }}
       volumes:
       - name: data
-        hostPath: { path: {{ .Values.hostPath | quote }}, type: Directory }
+        persistentVolumeClaim: { claimName: remark42-data }
+      - name: service-vpn-identity
+        secret: {secretName: {{ .Values.serviceVpn.secretName | quote }}, defaultMode: 0440}
+      - name: service-vpn-runtime
+        emptyDir: {medium: Memory, sizeLimit: 1Mi}
+      - name: service-vpn-script
+        configMap: {name: remark42-service-vpn}

@@ -30,7 +30,44 @@ spec:
       nodeSelector:
 {{ toYaml . | indent 8 }}
 {{- end }}
+      initContainers:
+        - name: prepare-service-vpn
+          image: {{ .Values.serviceVpn.image | quote }}
+          command: [python3, /vpn-script/prepare.py]
+          env: [{name: VPN_DOOR, value: images.weserv.nl}]
+          securityContext:
+            runAsUser: 101
+            runAsGroup: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 128Mi}
+          volumeMounts:
+            - {name: service-vpn-script, mountPath: /vpn-script, readOnly: true}
+            - {name: service-vpn-identity, mountPath: /vpn-identity, readOnly: true}
+            - {name: service-vpn-runtime, mountPath: /vpn-runtime}
       containers:
+        - name: service-vpn
+          image: {{ .Values.serviceVpn.image | quote }}
+          command: [/app/bin/xray-linux-amd64]
+          args: [run, -c, /vpn-runtime/client.json]
+          readinessProbe:
+            exec: {command: [python3, -c, "import socket; socket.create_connection(('127.0.0.1',18443),2).close()"]}
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          securityContext:
+            runAsUser: 101
+            runAsGroup: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 128Mi}
+          volumeMounts:
+            - {name: service-vpn-runtime, mountPath: /vpn-runtime, readOnly: true}
         - name: nginx
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -64,3 +101,9 @@ spec:
         - name: config
           configMap:
             name: {{ .Release.Name }}-nginx
+        - name: service-vpn-identity
+          secret: {secretName: {{ .Values.serviceVpn.secretName | quote }}, defaultMode: 0440}
+        - name: service-vpn-runtime
+          emptyDir: {medium: Memory, sizeLimit: 1Mi}
+        - name: service-vpn-script
+          configMap: {name: img-proxy-service-vpn}

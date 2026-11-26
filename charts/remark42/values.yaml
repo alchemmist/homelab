@@ -1,8 +1,11 @@
 ---
 image: "ghcr.io/umputun/remark42:v1.18.0@sha256:\
   00a803ffdde34e8f239eef3e46adbeac44b9ef1a2f366e8b86b413d6908f3ac3"
-hostPath: /srv/remark42
-nodeName: socrat-2
+storage: 1Gi
+nodeName: socrat-1
+serviceVpn:
+  image: ghcr.io/mhsanaei/3x-ui@sha256:1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b
+  secretName: remark42-service-vpn
 host: remark42.alchemmist.xyz
 secretName: remark42-env
 tlsSecret: remark42-tls
@@ -10,4 +13,3 @@ clusterIssuer: letsencrypt-http01
 resources:
   requests: {cpu: 50m, memory: 128Mi}
   limits: {memory: 512Mi}
-...

@@ -26,8 +26,9 @@ data:
       }
 
       location / {
-        proxy_pass https://images.weserv.nl;
+        proxy_pass https://127.0.0.1:18443;
         proxy_ssl_server_name on;
+        proxy_ssl_name images.weserv.nl;
         proxy_set_header Host images.weserv.nl;
         proxy_set_header User-Agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36";
         proxy_set_header Accept "image/webp,image/apng,image/*,*/*;q=0.8";

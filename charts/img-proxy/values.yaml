@@ -2,7 +2,10 @@
 replicaCount: 1
 
 nodeSelector:
-  kubernetes.io/hostname: socrat-2
+  kubernetes.io/hostname: socrat-1
+serviceVpn:
+  image: ghcr.io/mhsanaei/3x-ui@sha256:1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b
+  secretName: img-proxy-service-vpn
 
 image:
   repository: nginx

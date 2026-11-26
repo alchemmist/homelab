@@ -1,0 +1,8 @@
+[Unit]
+Description=Restore configured wg-socrat peer endpoints
+After=wg-quick@wg-socrat.service
+Requires=wg-quick@wg-socrat.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/wg-socrat-pin-endpoints

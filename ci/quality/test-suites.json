@@ -187,6 +187,7 @@
       "tests/test_vm105_renderer_lms_litellm.py",
       "tests/test_vm105_stateful_batch.py",
       "tests/test_wiki_socrat0_placement.py",
+      "tests/test_wg_socrat_pin_endpoints.py",
       "tests/test_wishlist_vm105.py",
       "tests/test_x_ui_manifest.py"
     ],

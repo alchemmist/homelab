@@ -24,7 +24,7 @@ def test_rendered_img_proxy_identity_and_dependency_free_probes() -> None:
     pod = deployment["spec"]["template"]["spec"]
     assert pod["serviceAccountName"] == "img-proxy"
     assert pod["automountServiceAccountToken"] is False
-    container = pod["containers"][0]
+    container = next(item for item in pod["containers"] if item["name"] == "nginx")
     assert pod["securityContext"]["runAsUser"] == pod["securityContext"]["fsGroup"] == 101
     assert container["securityContext"]["readOnlyRootFilesystem"] is True
     writable = {
@@ -44,4 +44,5 @@ def test_rendered_img_proxy_identity_and_dependency_free_probes() -> None:
         "location /", maxsplit=1
     )[0]
     assert "proxy_pass" not in health_location
-    assert "proxy_pass https://images.weserv.nl;" in nginx
+    assert "proxy_pass https://127.0.0.1:18443;" in nginx
+    assert "proxy_ssl_name images.weserv.nl;" in nginx
