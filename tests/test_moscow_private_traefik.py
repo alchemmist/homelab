@@ -76,3 +76,17 @@ def test_moscow_private_rehearsal() -> None:
             if proto == "TCP":
                 assert route["match"] == "HostSNI(`*`)"
     assert routed == sockets - {("TCP", 80)}
+
+
+def test_blog_ingress_uses_its_existing_tls_secret() -> None:
+    """Render the backend Application: an entrypoint default certificate is not enough."""
+    targets, _ = argocd_targets()
+    (blog,) = [t for t in targets if t["release"] == "blog"]
+    (ingress,) = [d for d in render(blog) if d["kind"] == "Ingress"]
+    spec = ingress["spec"]
+    assert ingress["metadata"]["namespace"] == "blog"
+    assert spec["ingressClassName"] == "traefik"
+    hosts = {rule["host"] for rule in spec["rules"]}
+    assert hosts == {"alchemmist.xyz", "www.alchemmist.xyz"}
+    (tls,) = spec["tls"]
+    assert set(tls["hosts"]) == hosts and tls["secretName"] == "blog-tls"
