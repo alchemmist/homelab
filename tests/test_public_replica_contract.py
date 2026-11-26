@@ -5,6 +5,7 @@ import subprocess
 
 import pytest
 import yaml
+from jinja2 import Environment
 
 from ci.quality.public_web import CATALOG, ROOT, replica_values
 
@@ -169,3 +170,32 @@ def test_route_gate_checks_every_owner_not_just_host_presence() -> None:
 
     stale = ingress("stale", "typo.test", "/", True)
     assert "unexpected selected host: app/stale typo.test" in findings(catalog, [stale])
+
+
+def test_http01_selector_labels_only_catalogued_web_challenges() -> None:
+    """Render the bootstrap issuer, retaining its unlabeled default solver."""
+    plays = yaml.safe_load((ROOT / "ansible/playbooks/k3s.yml").read_text())
+    (task,) = [
+        t
+        for play in plays
+        for t in play.get("tasks", [])
+        if t.get("name") == "Create Let's Encrypt ClusterIssuer"
+    ]
+    catalog = yaml.safe_load(CATALOG.read_text())
+    env = Environment(autoescape=False)
+    env.filters["to_json"] = json.dumps
+    shell = env.from_string(task["ansible.builtin.shell"]).render(
+        issuer_catalog=catalog, letsencrypt_email="test@example.org"
+    )
+    issuer = yaml.safe_load(shell.split("apply -f -\n", 1)[1].split("\nEOF", 1)[0])
+    scoped, fallback = issuer["spec"]["acme"]["solvers"]
+    assert set(scoped["selector"]["dnsNames"]) == {
+        host
+        for hosts in catalog["hosts"].values()
+        for host, policy in hosts.items()
+        if policy.get("route", "web") == "web"
+    }
+    assert scoped["http01"]["ingress"]["ingressTemplate"]["metadata"]["labels"] == {
+        "homelab.alchemmist.xyz/public-web": "true"
+    }
+    assert fallback == {"http01": {"ingress": {"ingressClassName": "traefik"}}}

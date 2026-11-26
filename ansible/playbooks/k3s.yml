@@ -301,9 +301,17 @@
       args:
         executable: /bin/bash
     - name: Create Let's Encrypt ClusterIssuer
+      vars:
+        issuer_catalog: "{{ lookup('ansible.builtin.file', playbook_dir + '/../../deploy/public-web/entrances.yaml') | from_yaml }}"
       ansible.builtin.shell: |
         set -o pipefail
         set -eu
+        {% set public = namespace(names=[]) %}
+        {% for hosts in issuer_catalog.hosts.values() %}
+        {% for name, policy in hosts.items() if policy.get('route', 'web') == 'web' %}
+        {% set public.names = public.names + [name] %}
+        {% endfor %}
+        {% endfor %}
         cat <<'EOF' | k3s kubectl apply -f -
         apiVersion: cert-manager.io/v1
         kind: ClusterIssuer
@@ -316,6 +324,17 @@
             privateKeySecretRef:
               name: letsencrypt-http01-account-key
             solvers:
+        {% if public.names %}
+              - selector:
+                  dnsNames: {{ public.names | unique | sort | to_json }}
+                http01:
+                  ingress:
+                    ingressClassName: traefik
+                    ingressTemplate:
+                      metadata:
+                        labels:
+                          homelab.alchemmist.xyz/public-web: 'true'
+        {% endif %}
               - http01:
                   ingress:
                     ingressClassName: traefik

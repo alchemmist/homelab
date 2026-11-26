@@ -93,3 +93,10 @@ is not acceptance of TLS, middleware, dependencies or Secret grants.
 The gate reports exact duplicates separately from intersecting path patterns.
 Nested prefixes are often intentional: review backend/auth ownership rather than
 removing a more-specific path or broadly opting in the whole namespace.
+
+Before HTTP-01 acceptance, verify the effective `letsencrypt-http01` issuer
+matches the reviewed bootstrap task. Only exact ordinary catalog names select
+its labeled solver; the default solver stays unlabeled. Merging the playbook
+does not run it. Existing certificates or a locally rendered challenge do not
+prove renewal: use a separately approved canary and confirm external HTTP-01
+validation before handing over ports or DNS.
