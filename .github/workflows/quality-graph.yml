@@ -38,7 +38,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd
+          graph-digest: 2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -83,7 +83,7 @@ jobs:
           adapter: native
           report-path: reports/docs-language.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd
+          graph-digest: 2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -130,7 +130,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd
+          graph-digest: 2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -177,7 +177,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd
+          graph-digest: 2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -196,7 +196,7 @@ jobs:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - graph
+      - python-scopes
     timeout-minutes: 5
   deploy-i001:
     name: Python import order (I001) and unused CI/script/test imports (F401)
@@ -224,7 +224,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd
+          graph-digest: 2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -243,7 +243,7 @@ jobs:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - graph
+      - python-scopes
     timeout-minutes: 5
   secrets:
     name: Credential hygiene
@@ -272,7 +272,7 @@ jobs:
           adapter: native
           report-path: reports/secrets.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd
+          graph-digest: 2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -322,7 +322,7 @@ jobs:
           adapter: native
           report-path: reports/javascript.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd
+          graph-digest: 2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -373,7 +373,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd
+          graph-digest: 2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -392,7 +392,9 @@ jobs:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - graph
+      - python-scopes
+      - scripts-q000
+      - deploy-i001
     timeout-minutes: 10
   docker:
     name: Container recipes
@@ -421,7 +423,7 @@ jobs:
           adapter: native
           report-path: reports/docker.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd
+          graph-digest: 2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -469,7 +471,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd
+          graph-digest: 2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -488,7 +490,7 @@ jobs:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - graph
+      - docker
     timeout-minutes: 15
   workflow:
     name: Delivery security
@@ -519,7 +521,7 @@ jobs:
           adapter: native
           report-path: reports/workflow.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd
+          graph-digest: 2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -538,7 +540,8 @@ jobs:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - graph
+      - secrets
+      - shell
     env:
       GH_TOKEN: ${{ github.token }}
     timeout-minutes: 5
@@ -570,7 +573,7 @@ jobs:
           adapter: native
           report-path: reports/shell.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd
+          graph-digest: 2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -617,7 +620,7 @@ jobs:
           adapter: exit-code
           report-path: ""
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd
+          graph-digest: 2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -636,7 +639,8 @@ jobs:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - graph
+      - deploy-i001
+      - scripts-q000
     timeout-minutes: 5
   dependencies:
     name: Dependency audit
@@ -667,7 +671,7 @@ jobs:
           adapter: native
           report-path: reports/dependencies.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd
+          graph-digest: 2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -687,6 +691,7 @@ jobs:
         run: exit "${EXIT_CODE:-2}"
     needs:
       - ownership
+      - javascript
     timeout-minutes: 5
   tests-medium:
     name: Integration tests
@@ -726,7 +731,7 @@ jobs:
           adapter: junit
           report-path: reports/tests-medium.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd
+          graph-digest: 2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -746,6 +751,9 @@ jobs:
         run: exit "${EXIT_CODE:-2}"
     needs:
       - ownership
+      - docker
+      - workflow
+      - shell
     timeout-minutes: 10
   ansible:
     name: Playbook safety
@@ -774,7 +782,7 @@ jobs:
           adapter: native
           report-path: reports/ansible.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd
+          graph-digest: 2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305
           approval-findings: "false"
           approval-files: "false"
           approval-node: "false"
@@ -794,5 +802,6 @@ jobs:
         run: exit "${EXIT_CODE:-2}"
     needs:
       - ownership
+      - shell
     timeout-minutes: 5
 ...
