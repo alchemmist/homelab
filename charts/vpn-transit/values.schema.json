@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["legacyPortOwner", "podRehearsal", "replicas"],
+  "properties": {
+    "legacyPortOwner": {"type": "string", "enum": ["serving", "parked"]},
+    "podRehearsal": {"type": "boolean"},
+    "replicas": {"type": "integer", "minimum": 0, "maximum": 1}
+  },
+  "if": {"properties": {"legacyPortOwner": {"const": "parked"}}},
+  "then": {"properties": {"podRehearsal": {"const": true}, "replicas": {"const": 1}}}
+}
