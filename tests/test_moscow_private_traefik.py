@@ -69,7 +69,21 @@ def test_moscow_private_rehearsal() -> None:
         (dest,) = route["services"]
         assert dest["name"] == relay_service["metadata"]["name"] and dest["nativeLB"]
         proto = d["kind"][-3:]
-        port = dest["port"]
+        (backend_port,) = [
+            p for p in relay_service["spec"]["ports"] if p["name"] == dest["port"]
+        ]
+        assert backend_port["protocol"] == proto
+        port = backend_port["port"]
+        (frontend,) = [
+            p
+            for p in svc["ports"]
+            if (p.get("protocol", "TCP"), p["port"]) == (proto, port)
+        ]
+        (entry,) = d["spec"]["entryPoints"]
+        assert (
+            f"--entrypoints.{entry}.address=:{frontend['targetPort']}/{proto.lower()}"
+            in args
+        )
         assert (proto, port) not in routed
         routed.add((proto, port))
         if (proto, port) == ("TCP", 443):

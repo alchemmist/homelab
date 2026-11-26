@@ -12,7 +12,7 @@ metadata:
 spec:
   entryPoints: [{{ if and (eq $net "TCP") (eq . 443) }}websecure{{ else }}{{ lower $net }}-{{ . }}{{ end }}]
   routes:
-    - services: [{name: vpn-transit, port: {{ . }}, nativeLB: true}]
+    - services: [{name: vpn-transit, port: {{ lower $net }}-{{ . }}, nativeLB: true}]
 {{- if eq $net "TCP" }}
       match: {{ if eq . 443 }}HostSNI(`vpn.alchemmist.xyz`){{ else }}HostSNI(`*`){{ end }}
 {{- if eq . 443 }}
