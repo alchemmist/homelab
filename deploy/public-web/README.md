@@ -29,6 +29,8 @@ roll out sites. The HOME VIP is not a Pod address: `socrat-0` is an inventory
 placement for rendering, not a change of the HA owner. Inventory, backend reachability,
 Secret-read scope (including shared namespaces), dynamic middleware dependencies,
 zone serial/content parity and DNS delegation must be reviewed before activation.
+Before staging, check `kubectl -n <namespace> get configmap kube-root-ca.crt`
+and wait for namespace initialization. Do not make the CA projection optional.
 Use distinct release names when staging multiple instances in a cluster; use a
 permitted probe Pod for private checks. The template is a web/DNS candidate, not an implementation of the public VPN cutover.
 
