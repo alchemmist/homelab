@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 import runpy
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -532,7 +533,21 @@ class RolloutRegressionTests(unittest.TestCase):
         assert "redirect" not in services["n8n"]
         assert "uptime-kuma" not in services
         resources = list(
-            yaml.safe_load_all((ROOT / "charts/n8n/templates/access.yaml").read_text())
+            yaml.safe_load_all(
+                subprocess.check_output(
+                    [
+                        "helm",
+                        "template",
+                        "n8n",
+                        str(ROOT / "charts/n8n"),
+                        "-n",
+                        "automation",
+                        "--show-only",
+                        "templates/access.yaml",
+                    ],
+                    text=True,
+                )
+            )
         )
         assert len(resources) == 1
         machine = resources[0]
@@ -540,8 +555,13 @@ class RolloutRegressionTests(unittest.TestCase):
         for path in machine["spec"]["rules"][0]["http"]["paths"]:
             assert path["backend"]["service"]["name"] == "n8n"
             assert path["path"] != "/"
-        assert yaml.safe_load((ROOT / "charts/n8n/values.yaml").read_text())["ingress"]["enabled"]
-        assert "n8n-gateway" not in (ROOT / "ansible/roles/authentik/tasks/main.yml").read_text()
+        assert yaml.safe_load((ROOT / "charts/n8n/values.yaml").read_text())["ingress"][
+            "enabled"
+        ]
+        assert (
+            "n8n-gateway"
+            not in (ROOT / "ansible/roles/authentik/tasks/main.yml").read_text()
+        )
 
     def test_owner_mapping_is_server_admin_only_for_owner_group(self) -> None:
         """Grant Grafana server admin only to the owner group."""

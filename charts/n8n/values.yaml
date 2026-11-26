@@ -26,6 +26,7 @@ resources:
     cpu: "1"
     memory: 1Gi
 ingress:
+  publicWeb: false
   enabled: true
 
 tolerations: []

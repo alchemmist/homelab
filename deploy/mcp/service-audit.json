@@ -247,6 +247,11 @@
       "connector": "socrat-grafana"
     },
     {
+      "application": "traefik-moscow",
+      "decision": "infrastructure-covered",
+      "reason": "Private ingress rehearsal, not a separate business API. Inspect desired state and telemetry through the existing platform tools; no new agent connector or credentials."
+    },
+    {
       "application": "traefik-edge",
       "decision": "infrastructure-covered",
       "reason": "Controller/exporter/instrumentation/gateway, not a separate agent-facing business API. Read desired/live state with Argo CD and telemetry with Grafana; no MCP per YAML/controller sidecar."
