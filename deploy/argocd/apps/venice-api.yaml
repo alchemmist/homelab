@@ -14,7 +14,8 @@ spec:
       releaseName: venice-api
       valueFiles:
         - ../../deploy/venice-api/values.yaml
-      parameters: []
+      parameters:
+        - {name: publicWeb, value: 'true'}
   destination:
     server: https://kubernetes.default.svc
     namespace: venice-api

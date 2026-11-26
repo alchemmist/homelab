@@ -17,7 +17,8 @@ spec:
       releaseName: socrat-bot
       valueFiles:
         - ../../deploy/socrat-bot/values.yaml
-      parameters: []
+      parameters:
+        - {name: publicWeb, value: 'true'}
   destination:
     namespace: socrat-bot
     server: https://kubernetes.default.svc

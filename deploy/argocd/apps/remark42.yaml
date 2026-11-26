@@ -14,7 +14,8 @@ spec:
     path: charts/remark42
     helm:
       releaseName: remark42
-      parameters: []
+      parameters:
+        - {name: publicWeb, value: 'true'}
   destination:
     namespace: remark42
     server: https://kubernetes.default.svc

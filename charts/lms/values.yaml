@@ -1,4 +1,5 @@
 ---
+publicWeb: false
 replicaCount: 1
 image:
   repository: ghcr.io/alchemmist/lms
