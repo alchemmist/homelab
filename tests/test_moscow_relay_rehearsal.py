@@ -4,6 +4,7 @@ import json
 import subprocess
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -89,3 +90,34 @@ def test_private_rehearsal_never_takes_public_sockets() -> None:
             ]
         }
     ]
+
+
+def test_parking_and_restoring_only_changes_legacy_replica_count() -> None:
+    """Keep both objects tracked even when Argo pruning is disabled."""
+    serving = objects("--set", "podRehearsal=true")
+    parked = objects("--set", "podRehearsal=true,legacyPortOwner=parked")
+    legacy = ("Deployment", "vpn-transit")
+    relay = ("Deployment", "vpn-transit-rehearsal")
+    assert parked[relay]["spec"]["replicas"] == 1
+    assert parked[legacy]["spec"]["replicas"] == 0
+    parked[legacy]["spec"]["replicas"] = 1
+    assert (
+        parked
+        == serving
+        == objects("--set", "podRehearsal=true,legacyPortOwner=serving")
+    )
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        "legacyPortOwner=parked",
+        "legacyPortOwner=parked,podRehearsal=true,replicas=0",
+        "legacyPortOwner=typo",
+        "replicas=2",
+    ],
+)
+def test_invalid_owner_states_fail_to_render(values: str) -> None:
+    """Reject missing replacement backends and unknown or competing owner states."""
+    with pytest.raises(subprocess.CalledProcessError):
+        objects("--set", values)

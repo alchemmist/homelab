@@ -1,6 +1,8 @@
 ---
 # Moscow is a Kubernetes worker again. Native systemd remains fenced fallback.
 # Return uses moscow-return-worker.yml; never start competing port owners.
+# Do not change in the live Application outside the fenced handoff window.
+legacyPortOwner: serving
 podRehearsal: false
 replicas: 1
 nodeName: socrat-4

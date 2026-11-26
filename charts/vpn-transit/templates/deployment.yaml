@@ -7,7 +7,7 @@ metadata:
   namespace: {{ $.Release.Namespace | quote }}
   name: {{ $name }}
 spec:
-  replicas: {{ $.Values.replicas }}
+  replicas: {{ ternary 0 $.Values.replicas (and (not $stage) (eq $.Values.legacyPortOwner "parked")) }}
   strategy: {type: Recreate}
   selector:
     matchLabels: {app.kubernetes.io/name: {{ $name }}}
