@@ -113,6 +113,20 @@ spec:
               value: {{ .Values.webhookUrl }}
             - name: N8N_SECURE_COOKIE
               value: 'true'
+            {{- if .Values.sso }}
+            {{- if .Values.sso.oidc }}
+            {{- if .Values.sso.oidc.enabled }}
+            - name: N8N_SSO_OIDC_ISSUER_URL
+              value: {{ .Values.sso.oidc.issuerUrl | default "https://auth.socrat.alchemmist.xyz/application/o/n8n/" | quote }}
+            - name: N8N_SSO_OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.sso.oidc.secretName | default "socrat-authentik-n8n" | quote }}, key: client-id}
+            - name: N8N_SSO_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.sso.oidc.secretName | default "socrat-authentik-n8n" | quote }}, key: client-secret}
+            {{- end }}
+            {{- end }}
+            {{- end }}
             - name: GENERIC_TIMEZONE
               value: Europe/Moscow
             - name: TZ
