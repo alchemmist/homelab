@@ -36,3 +36,8 @@ an ordinary hostname does not grant a new controller access to Secrets or publis
 an IP. Expand controller discovery only after review; publish an eligible IP only
 after its route is verified. This stage neither declares Moscow ready nor changes
 the production DNS health algorithm.
+
+A hostname may have distinct path owners. In particular `socrat-home` owns
+`/` on `socrat.alchemmist.xyz`, while the existing `rustfs-public-files` Ingress
+in `rustfs` owns `/public/` there. DNS selects the entrance, not the path owner.
+Listing both namespace/host pairs does not add `rustfs` to the NL watch.
