@@ -26,7 +26,7 @@ def findings(catalog: dict, items: list[dict]) -> list[str]:
     for item in items:
         meta, spec = item["metadata"], item["spec"]
         ns, name = meta["namespace"], meta["name"]
-        selected = meta.get("labels", {}).get(LABEL) == "true"
+        selected = meta.get("labels", {}).get(LABEL) in {"true", "reviewed"}
         rules = spec.get("rules", [])
         if selected and (not rules or "defaultBackend" in spec):
             issues.add(f"unexpected default route: {ns}/{name}")
