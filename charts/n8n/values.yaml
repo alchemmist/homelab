@@ -10,6 +10,8 @@ database:
 postgresCaConfigMap: pg-common-ca
 replicaCount: 1
 image: ghcr.io/alchemmist/n8n@sha256:0ffba3a289722fc216ee5e135c3acaeb4b3484e267aeba42df9c8f2e39e831df
+imagePullSecrets:
+  - ghcr-pull
 nodeName: socrat-5
 secretName: n8n-secrets
 persistence:
@@ -26,7 +28,6 @@ resources:
     cpu: "1"
     memory: 1Gi
 ingress:
-  publicWeb: false
   enabled: true
 
 tolerations: []
