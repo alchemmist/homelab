@@ -166,3 +166,20 @@ each authority. It requires a complete authoritative, non-recursive answer with
 exactly the expected IP per question. It does not create, relabel or delete the
 probe. An execution error is not evidence of a policy denial. Record separate
 same-Pod deny/reallow results and clean up the probe after the exercise.
+
+### Inventory backend dependencies separately from TLS source ownership
+
+```sh
+kubectl get ingress,service,endpointslice.discovery.k8s.io,middleware.traefik.io,serverstransport.traefik.io -A -o json | uv run python -m ci.quality.public_backend_contract
+```
+
+This read-only report keeps every ordinary owner/path row, named or numbered
+Service port, upstream scheme, explicit priority, ordered middleware references
+and ServersTransport reference. It checks for a ready non-terminating address
+on an EndpointSlice advertising that Service port. It does not fetch Secrets,
+create routes, or assume a `Ready` endpoint is reachable from an ingress Pod.
+All catalog owners are included, even ones not yet opted in. Missing or ambiguous
+references are blockers; never replace a missing auth middleware with a bare
+route or downgrade an HTTPS or h2c backend to HTTP. The report is not a full
+Traefik config compiler: it does not certify application auth, middleware bodies,
+traffic, port reachability or the winner of overlapping routes.
