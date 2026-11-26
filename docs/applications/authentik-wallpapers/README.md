@@ -1,6 +1,6 @@
 # Authentik login wallpapers: gallery, RustFS and responsive delivery
 
-**To change the login background set**, open [the gallery](https://auth.socrat.alchemmist.xyz/wallpapers/), sign in as an owner, and toggle a tile. There is no theme release or ConfigMap update. Turning a picture off removes it from future selections; it does not repaint an already-open login page or revoke a downloaded image. Only upload photos suitable for public display.
+**To change the login background set**, open [the gallery](https://auth.socrat.alchemmist.xyz/wallpapers/), sign in as an owner or wallpaper manager, and toggle a tile. There is no theme release or ConfigMap update. Turning a picture off removes it from future selections; it does not repaint an already-open login page or revoke a downloaded image. Only upload photos suitable for public display.
 
 ## Who owns what
 
@@ -12,7 +12,9 @@
 | RustFS / `authentik-wallpapers` | Original bytes, rendered WebPs and per-photo variant index. Private S3 access; no browser bucket credentials or listing. Not the SPI evidence gateway or RustFS admin console. |
 | `automation/n8n` | One [workflow](../../../services/authentik-wallpapers/n8n/derivatives-v2.json) per upload. The execution link is for tracing; acceptance of the webhook is **not** proof that files exist. |
 
-**Access boundary.** The owner UI/API checks the Authentik session via `/api/v3/core/users/me/` (`homelab-owner`, also accepts `homelab-owners`); the group lookup is cached for 60 seconds. Anonymous gallery navigation starts SSO with `next=/wallpapers/`. The login page cannot require SSO to paint itself: `scene.css` and derivative media URLs are intentionally public. Inactive is a selection flag, not an access control. Originals have no public source route. Internal processing uses `X-Wallpaper-Token`, not a browser session.
+**Access boundary.** The owner UI/API checks the Authentik session via `/api/v3/core/users/me/` (`homelab-owner`, `homelab-owners` or `app-wallpapers-manager`); the group lookup is cached for 60 seconds. Anonymous gallery navigation starts SSO with `next=/wallpapers/`. The login page cannot require SSO to paint itself: `scene.css` and derivative media URLs are intentionally public. Inactive is a selection flag, not an access control. Originals have no public source route. Internal processing uses `X-Wallpaper-Token`, not a browser session.
+
+**Delegate gallery management:** in Authentik Admin → Directory → Groups, open `app-wallpapers-manager`, then add or remove the user under Users. This grants upload, activation and permanent deletion of any gallery photo, not Authentik administration. Membership changes can take up to 60 seconds to reach the gallery. Do not add users to `homelab-owner` for this purpose.
 
 ## From upload to ready
 
@@ -59,4 +61,4 @@ The owner grid selects for the **tile**, not the viewport. A new item starts wit
   ```
 
 - **Rebuild/restore:** preserve DB IDs, flags and originals together. Render from `sources/`, verify staged type/dimensions and bytes before replacement, record execution links, then remove staging objects. Never publish the bucket or grant console access to fix a media error. Keep credentials out of Git; verify bucket-scoped credentials rather than assuming historical bootstrap credentials were scoped.
-- **Redeployment caveat:** the initial deployment and Brand cutover included live changes. The checked-in chart is not sufficient evidence of production parity (its default image predates responsive streaming). Compare live image, ingress, secrets by reference, policies, workflow and Brand before reinstalling. Do not reapply the retired workflow or legacy Nature import as a routine recovery step.
+- **Redeployment caveat:** the initial deployment and Brand cutover included live changes. The checked-in chart is not sufficient evidence of production parity. Compare live image, ingress, secrets by reference, policies, workflow and Brand before reinstalling. Do not reapply the retired workflow or legacy Nature import as a routine recovery step.

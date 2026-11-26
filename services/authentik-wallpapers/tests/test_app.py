@@ -66,6 +66,18 @@ class WallpaperTests(unittest.TestCase):
         full = urllib.request.urlopen(self.base + f"/wallpapers/media/{wallpaper_id}.webp").read()
         self.assertTrue(full.startswith(b"RIFF"))
 
+    def test_gallery_delegation(self) -> None:
+        from unittest.mock import patch
+
+        for group, status in [("app-wallpapers-manager", 200), ("homelab-owner", 200), ("homelab-observer", 403)]:
+            with self.subTest(group=group), patch("wallpapers.server.groups_from_authentik", return_value={group}):
+                try:
+                    with urllib.request.urlopen(self.base + "/wallpapers/api/items") as response:
+                        actual = response.status
+                except urllib.error.HTTPError as exc:
+                    actual = exc.code
+                self.assertEqual(actual, status)
+
     def test_gallery_requires_owner_group(self) -> None:
         os.environ["WALLPAPER_AUTH"] = "on"
 
