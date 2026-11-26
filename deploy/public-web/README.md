@@ -73,3 +73,23 @@ Treat missing opt-ins and overlapping host/path/type tuples as review items,
 not a batch labeling instruction. Verify backend identity, routing priority,
 authentication and middleware with each owner. Matching this inventory alone
 is not acceptance of TLS, middleware, dependencies or Secret grants.
+
+### Ownership findings before staging (read-only snapshot)
+
+- Both exact `/change-password` variants on `auth.socrat.alchemmist.xyz` have
+  the chart-owned `identity/password-self-service` at explicit priority 160,
+  targeting `password-self-service:80`. The Ansible-owned
+  `identity/socrat-password-self-service` has priority 150 and targets
+  `authentik-server:80` with a redirect middleware in `identity`. Do not add
+  a namespace-wide CRD grant merely to reproduce that lower-priority fallback.
+  Verify the intended login flow with an authorized test session before opt-in.
+- `/public/` on `rustfs.socrat.alchemmist.xyz` has both `rustfs-public-files`
+  (priority 160, `rustfs:9000`) and `identity/rustfs-public-reader` (155,
+  `rustfs-public-reader:80`). The former also owns the same path on
+  `socrat.alchemmist.xyz`. Priority only ranks routers that a given controller
+  actually discovers; it does not demonstrate equivalent access controls. Verify
+  both public object reads and denial of non-public objects before adopting either.
+
+The gate reports exact duplicates separately from intersecting path patterns.
+Nested prefixes are often intentional: review backend/auth ownership rather than
+removing a more-specific path or broadly opting in the whole namespace.
