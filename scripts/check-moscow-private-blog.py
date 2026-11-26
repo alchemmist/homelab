@@ -30,7 +30,7 @@ def probe(host: str, address: str) -> bool:
             )
             with http.client.HTTPResponse(secured) as response:
                 response.begin()
-                return response.status == 200 and TITLE in response.read(256 * 1024)
+                return response.status == http.HTTPStatus.OK and TITLE in response.read(256 * 1024)
 
 
 def main() -> int:
