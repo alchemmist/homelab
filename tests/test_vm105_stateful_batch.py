@@ -347,6 +347,11 @@ class StatefulBoundaries(unittest.TestCase):
 
                 def historical(revision: str):
                     root = checkout(pathlib.Path(self.tmp.name), revision, *paths)
+                    if chart == "deploy/wiki-runtime/chart" and revision == CUTOVERS[chart]:
+                        # Isolate the approved mirror update including Helm's ConfigMap checksum.
+                        # Use the independent canonical source, never the actual rendered payload.
+                        source = R / "deploy/platform/rancher/public-entry/files/observer_membership.py"
+                        (root / chart / "files/observer_membership.py").write_bytes(source.read_bytes())
                     return render(
                         root,
                         chart,
