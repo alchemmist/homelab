@@ -68,6 +68,34 @@ body equality; an HTTP error was not counted as successful withdrawal.
 Neither business middleware nor real application authorization was exercised.
 All certificate material was disposable; the real Schoolbot key was not read.
 
+## Control-plane loss is not explicit revocation
+
+The next runs isolated *only* the disposable reader namespace. No real API
+server, node network, ingress controller or VPN was stopped. The fixture
+backend continued on loopback. The operator replaced the first synthetic
+Secret through a separate API connection after confirming the fault.
+
+| Injected fault | Evidence on fresh TLS + HTTP connections | After restoring the source |
+| --- | --- | --- |
+| Removed API egress in the fixture policy; the HTTP provider endpoint returned 503 | 10/10 alternating original-first/unchanged-alias samples passed over 15.1 s after rotation. Trust in the replacement alone did not work. | Verified replacement leaf and expected body, unaffected alias and rejection of the old trust anchor within 10.6 s of beginning recovery checks. |
+| Stopped only the fixture HTTP configuration listener; confirmed connection refused, while backend kept serving | Same 10/10 result over 14.6 s, including the old leaf on the rotated name. | Same recovery checks completed in 7.2 s. |
+
+In a separate API-isolation run a **new** Pod with the same spec had a listening
+TCP socket but could not establish trusted TLS for either the previous or new
+certificate. The warm Pod still served the old configuration. After restoring
+only the fixture egress, both Pods served the replacement leaf and expected
+HTTP body. An open socket is not a suitable cold-start acceptance check.
+
+These are observation windows and sampled recovery times, not expiration bounds
+or reliability targets. No source-enforced lease was tested. The default HTTP
+provider retaining its last snapshot preserves availability but can also retain
+a rotated or revoked key while disconnected. A producer-only timeout cannot
+withdraw a snapshot from an unreachable consumer. A production design must
+separately address cold start, validity under a control-plane partition and
+what actually stops *new* client connections when a freshness limit expires;
+readiness alone does not fence a host-bound listener. Do not fence VPN traffic
+as a side effect of a web/TLS freshness check.
+
 ## Gates before any real web deployment
 
 - The existing `kubernetesIngress` informer still needs list/watch. This proof
@@ -77,8 +105,8 @@ All certificate material was disposable; the real Schoolbot key was not read.
   preserve path priorities, explicit auth middleware, backend TLS verification,
   source references and exclusion of private routes. Compare with production
   semantics, not just a successful TLS handshake.
-- Preserve the two-source withdrawal and rotation checks above. Still test an
-  unreachable API, source-container failure, bounded staleness, cold starts,
+- Preserve the two-source withdrawal and rotation checks above. Still test
+  an enforceable staleness bound at the listener, complete source-container loss,
   matching key pairs with the wrong SANs and polling load at full catalog size.
   An unreachable HTTP provider is not equivalent to a valid withdrawal snapshot.
 - Test with reserved synthetic inputs on each candidate node before granting a
