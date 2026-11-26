@@ -27,12 +27,18 @@ def check_reply(output: str, names: list[str], address: str) -> None:
             or {"tc", "ra"}.intersection(flags[1].split())
         ):
             raise ValueError(f"{name}: not a complete authoritative response")
+        _, qmark, rest = block.partition(";; QUESTION SECTION:")
+        qtext, amark, atext = rest.partition(";; ANSWER SECTION:")
+        if not qmark or not amark:
+            raise ValueError(f"{name}: missing question or answer section")
         question = [
-            s[1:].split()
-            for s in block.splitlines()
-            if s.startswith(";") and not s.startswith(";;")
+            line[1:].split()
+            for line in qtext.splitlines()
+            if line.startswith(";") and not line.startswith(";;")
         ]
-        answers = [s.split() for s in block.splitlines() if s.strip() and not s.startswith(";")][1:]
+        answers = [
+            line.split() for line in atext.splitlines() if line.strip() and not line.startswith(";")
+        ]
         if question != [[name + ".", "IN", "A"]] or len(answers) != 1:
             raise ValueError(f"{name}: unexpected question or answer count")
         answer = answers[0]
