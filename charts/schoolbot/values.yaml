@@ -2,8 +2,8 @@
 replicaCount: 1
 image:
   repository: harbor.socrat.alchemmist.xyz/schoolbot/schoolbot
-  tag: 9d729a27b4d2ec6937f0fa27e1bb7137538947ce
-  digest: sha256:ee7546e52aa27f9a37b833ce0425aeb8991e0997cae874a64f28f1d7bd3f71fb
+  tag: 72f11289b9401b80fe62e5a91c5ad9596daafb73
+  digest: sha256:037868390bb8adcbfddc37c9152655b272ede5756cac9c70db901c2ae88b5d23
   pullPolicy: IfNotPresent
 service:
   port: 80
