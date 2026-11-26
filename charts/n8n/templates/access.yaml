@@ -5,7 +5,7 @@ kind: Ingress
 metadata:
   name: n8n-machine-endpoints
   namespace: automation
-{{- if $.Values.ingress.publicWeb }}
+{{- if and $.Values.ingress.enabled $.Values.ingress.publicWeb }}
   labels:
     homelab.alchemmist.xyz/public-web: 'true'
 {{- end }}

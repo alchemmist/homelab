@@ -166,6 +166,10 @@ def test_native_n8n_mcp_is_exact_service_owned_without_bypassing_ui() -> None:
             "homelab.alchemmist.xyz/public-web": "true"
         }
     assert docs == baseline
+    disabled = yaml.safe_load_all(subprocess.check_output([*cmd, "--set", "ingress.enabled=false"], text=True))
+    remaining = [doc for doc in disabled if doc and doc["kind"] == "Ingress"]
+    assert [doc["metadata"]["name"] for doc in remaining] == ["n8n-machine-endpoints"]
+    assert "homelab.alchemmist.xyz/public-web" not in remaining[0]["metadata"].get("labels", {})
     machine = ingresses["n8n-machine-endpoints"]
     assert machine["metadata"]["name"] == "n8n-machine-endpoints"
     assert machine["metadata"]["namespace"] == "automation"
