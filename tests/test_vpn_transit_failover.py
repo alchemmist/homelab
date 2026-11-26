@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 import pathlib
+import subprocess
 import tarfile
 from types import ModuleType
 from typing import Protocol, Self
@@ -156,7 +157,9 @@ def test_image_determinism_and_binary_integrity(tmp_path, monkeypatch) -> None:
 
 def test_deployment_single_host_no_api_token_and_native_boot_fence() -> None:
     """Keep one host, no API token, and a boot fence that does not start the agent."""
-    s = (ROOT / "charts/vpn-transit/templates/deployment.yaml").read_text()
+    s = subprocess.check_output(
+        ["helm", "template", "vpn-transit", str(ROOT / "charts/vpn-transit")], text=True
+    )
     assert "type: Recreate" in s
     assert "hostNetwork: true" in s
     assert "automountServiceAccountToken: false" in s
@@ -168,8 +171,8 @@ def test_deployment_single_host_no_api_token_and_native_boot_fence() -> None:
     assert "ExecCondition=+/usr/bin/test -e" in play
     assert "state: started" not in play  # prepare never steals live ports
     controller = (ROOT / "ansible/scripts/vpn-transit-failover.py").read_text()
-    assert "AGENT='k3s-agent.service'" in controller
-    assert "'k3s.service'" not in controller
+    assert module("vpn-transit-failover").AGENT == "k3s-agent.service"
+    assert "k3s.service" not in controller
     assert "flock" in controller
     assert "fsync" in controller
     assert "free_ports()" in controller
@@ -191,7 +194,7 @@ def test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse() -> None:
                 challenger.bind(("0.0.0.0", port))
                 challenger.listen(1)
     source = (ROOT / "ansible/scripts/vpn-transit-failover.py").read_text()
-    assert "if typ==socket.SOCK_STREAM:s.setsockopt" in source
+    assert "iftyp==socket.SOCK_STREAM:s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)" in "".join(source.split())
 
 
 def test_machine_https_exception_is_exact_not_a_human_acl_relaxation() -> None:

@@ -1,6 +1,7 @@
 ---
 # Moscow is a Kubernetes worker again. Native systemd remains fenced fallback.
 # Return uses moscow-return-worker.yml; never start competing port owners.
+podRehearsal: false
 replicas: 1
 nodeName: socrat-4
 image: localhost/homelab/vpn-transit:a27e3f95ab6ce270
