@@ -126,7 +126,7 @@ def monori_https(address, port, timeout):
     return result.returncode == 0 and result.stdout == "200"
 
 
-def render(serial, home_up, vps_up, *, monori_health=None):
+def render(serial, home_up, vps_up, *, monori_health=None, web_answers=None):
     """Execute render."""
     addresses = healthy_addresses(home_up, vps_up)
     lines = [
@@ -144,6 +144,8 @@ def render(serial, home_up, vps_up, *, monori_health=None):
     for value in TXT:
         lines.append(f'@ IN TXT "{value}"')
     for name in FAILOVER:
+        if web_answers and name in web_answers:
+            continue
         # Preserve the existing production LMS/OIDC primary/standby policy.
         selected = [HOME] if home_up and name in {"lms", "auth.socrat"} else addresses
         if name == "monori":
@@ -155,6 +157,10 @@ def render(serial, home_up, vps_up, *, monori_health=None):
     for name in sorted(STATIC_A):
         for address in STATIC_A[name]:
             lines.append(f"{name} IN A {address}")
+    for name, address in sorted((web_answers or {}).items()):
+        if name in STATIC_A:
+            raise ValueError("Web record conflicts with fixed infrastructure record")
+        lines.append(f"{name} IN A {address}")
     lines.append("")
     return "\n".join(lines)
 

@@ -5,9 +5,6 @@ image:
   digest: sha256:037868390bb8adcbfddc37c9152655b272ede5756cac9c70db901c2ae88b5d23
   pullPolicy: IfNotPresent
 replicaCount: 1
-# Temporary placement: the socrat-3 to socrat-5 database path is unreachable.
-nodeSelector:
-  kubernetes.io/hostname: socrat-0
 service:
   port: 80
   targetPort: 8000

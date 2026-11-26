@@ -9,6 +9,7 @@ import json
 import select
 import signal
 import socket
+import sys
 import time
 
 FRONT = ("10.250.0.1", 51835)
@@ -77,4 +78,10 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    if sys.argv[1:] == ["--peer35"]:
+        FRONT = ("10.250.0.1", 51837)
+        BACK = ("10.250.0.1", 51838)
+        TARGET = ("10.250.0.5", 51830)
+    elif sys.argv[1:]:
+        raise SystemExit("Unknown relay profile")
     main()

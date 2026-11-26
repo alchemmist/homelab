@@ -1,0 +1,86 @@
+---
+- name: Install private peer35 ciphertext relay
+  hosts: socrat-0
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Install isolated relay executable
+      ansible.builtin.copy:
+        src: ../scripts/wg-peer15-relay.py
+        dest: /usr/local/libexec/homelab-wg-peer35-relay.py
+        mode: '0755'
+      notify: Restart peer35 relay
+    - name: Install peer35 unit
+      ansible.builtin.copy:
+        src: ../files/wg-peer35-relay.service
+        dest: /etc/systemd/system/homelab-wg-peer35-relay.service
+        mode: '0644'
+      notify: Restart peer35 relay
+    - name: Enable private relay
+      ansible.builtin.systemd_service:
+        name: homelab-wg-peer35-relay.service
+        daemon_reload: true
+        enabled: true
+        state: started
+  handlers:
+    - name: Restart peer35 relay
+      ansible.builtin.systemd_service:
+        name: homelab-wg-peer35-relay.service
+        daemon_reload: true
+        state: restarted
+
+- name: Check every directed wg-socrat path from its actual source
+  hosts: Socrat
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Ensure textfile collector directory exists
+      ansible.builtin.file:
+        path: /var/lib/node_exporter/textfile_collector
+        state: directory
+    - name: Install directed mesh probe
+      ansible.builtin.copy:
+        src: ../scripts/wg-mesh-probe.py
+        dest: /usr/local/libexec/wg-mesh-probe.py
+        mode: '0755'
+    - name: Install inventory-derived probe unit
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/wg-mesh-probe.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Check all remote peers through wg-socrat
+          After=wg-quick@wg-socrat.service
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/bin/python3 /usr/local/libexec/wg-mesh-probe.py {{ inventory_hostname }} {% for name, peer in wg_socrat_nodes | dictsort if name != inventory_hostname %} {{ name }}={{ peer.address }}{% endfor %}
+
+          NoNewPrivileges=true
+          CapabilityBoundingSet=CAP_NET_RAW
+          ProtectSystem=strict
+          ReadWritePaths=/var/lib/node_exporter/textfile_collector
+          ProtectHome=true
+    - name: Install mesh probe timer
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/wg-mesh-probe.timer
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Measure mesh reachability every minute
+          [Timer]
+          OnBootSec=30s
+          OnUnitActiveSec=60s
+          AccuracySec=5s
+          [Install]
+          WantedBy=timers.target
+    - name: Enable timer
+      ansible.builtin.systemd_service:
+        name: wg-mesh-probe.timer
+        enabled: true
+        daemon_reload: true
+        state: started
+    - name: Verify probe runs now
+      ansible.builtin.systemd_service:
+        name: wg-mesh-probe.service
+        state: started
+...

@@ -1,0 +1,129 @@
+{{- if .Values.instance }}
+{{- $zoneKey := "db.alchemmist.xyz" }}
+{{- $scope := keys .Values.publications | sortAlpha }}
+{{- if not $scope }}{{ fail "publications required" }}{{ end }}
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: {{ .Release.Name }}-dns, namespace: {{ .Release.Namespace }}}
+data:
+  Corefile: |
+    alchemmist.xyz:1053 {
+        errors
+        file /etc/coredns/{{ $zoneKey }} alchemmist.xyz
+    }
+  {{ $zoneKey }}: |
+{{ required "zoneFile required" .Values.zoneFile | indent 4 }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: {{ .Release.Name }}, namespace: {{ .Release.Namespace }}}
+{{- range $scope }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: {{ $.Release.Name }}, namespace: {{ . }}}
+rules:
+  - {apiGroups: [''], resources: [services, endpoints, secrets], verbs: [get, list, watch]}
+  - {apiGroups: [discovery.k8s.io], resources: [endpointslices], verbs: [get, list, watch]}
+  - {apiGroups: [networking.k8s.io], resources: [ingresses], verbs: [get, list, watch]}
+{{- if eq . "argocd" }}
+  - {apiGroups: [''], resources: [configmaps], verbs: [get, list, watch]}
+  - apiGroups: [traefik.io]
+    resources: [ingressroutes, ingressroutetcps, ingressrouteudps, middlewares, middlewaretcps, serverstransports, serverstransporttcps, tlsoptions, tlsstores, traefikservices]
+    verbs: [get, list, watch]
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: {{ $.Release.Name }}, namespace: {{ . }}}
+subjects: [{kind: ServiceAccount, name: {{ $.Release.Name }}, namespace: {{ $.Release.Namespace }}}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: {{ $.Release.Name }}}
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: {name: {{ .Release.Name }}-{{ .Release.Namespace }}}
+rules:
+  - {apiGroups: [networking.k8s.io], resources: [ingressclasses], verbs: [get, list, watch]}
+  - {apiGroups: [''], resources: [nodes], verbs: [get, list, watch]}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: {name: {{ .Release.Name }}-{{ .Release.Namespace }}}
+subjects: [{kind: ServiceAccount, name: {{ .Release.Name }}, namespace: {{ .Release.Namespace }}}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: {{ .Release.Name }}-{{ .Release.Namespace }}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: {{ .Release.Name }}-probe, namespace: {{ .Release.Namespace }}}
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/instance: {{ .Release.Name }}}
+  ports:
+    - {name: dns-tcp, port: 53, targetPort: 1053, protocol: TCP}
+    - {name: dns-udp, port: 53, targetPort: 1053, protocol: UDP}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: {{ .Release.Name }}-stage, namespace: {{ .Release.Namespace }}}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/instance: {{ .Release.Name }}}}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{podSelector: {matchLabels: {homelab.alchemmist.xyz/public-entry-probe: 'true'}}}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: {{ .Release.Name }}, namespace: {{ .Release.Namespace }}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app.kubernetes.io/instance: {{ .Release.Name }}}}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/instance: {{ .Release.Name }}}
+      annotations: {homelab.alchemmist.xyz/zone-hash: {{ sha256sum .Values.zoneFile | quote }}}
+    spec:
+      nodeSelector: {kubernetes.io/hostname: {{ .Values.instance.node | quote }}}
+      tolerations: [{key: homelab.io/bootstrap, operator: Equal, value: 'true', effect: NoSchedule}]
+      serviceAccountName: {{ .Release.Name }}
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 65532, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: coredns
+          image: docker.io/rancher/mirrored-coredns-coredns@sha256:7efd3c635b03efd68c4e8398fc45f0d993d0e9ab016f72c1cefb0fd6d01aa286
+          args: [-conf, /etc/coredns/Corefile]
+          readinessProbe: {tcpSocket: {port: 1053}}
+          resources: {requests: {cpu: 20m, memory: 32Mi}, limits: {memory: 96Mi}}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL], add: [NET_BIND_SERVICE]}}
+          volumeMounts: [{name: dns, mountPath: /etc/coredns, readOnly: true}]
+        - name: traefik
+          image: rancher/mirrored-library-traefik@sha256:aa942a00bce033c909bf1f7e861d93761be4b31a035f10d2410d33e38a8f41cf
+          args:
+            - --providers.kubernetesingress.labelselector=homelab.alchemmist.xyz/public-web=true
+            - --providers.kubernetesingress=true
+            - --providers.kubernetesingress.namespaces={{ join "," $scope }}
+            - --providers.kubernetesingress.ingressclass=traefik
+            - --providers.kubernetescrd=true
+            - --providers.kubernetescrd.namespaces=argocd
+            - --providers.kubernetescrd.labelselector=homelab.alchemmist.xyz/edge-transport=argocd
+            - --providers.kubernetescrd.ingressclass=traefik
+            - --providers.kubernetescrd.disableclusterscoperesources=true
+            - --providers.kubernetescrd.allowcrossnamespace=false
+            - --providers.kubernetescrd.allowexternalnameservices=false
+            - --entrypoints.web.address=:8080
+            - --entrypoints.websecure.address=:8443
+            - --entrypoints.websecure.http.tls=true
+          readinessProbe: {tcpSocket: {port: 8080}}
+          resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {memory: 192Mi}}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          volumeMounts: [{name: api, mountPath: /var/run/secrets/kubernetes.io/serviceaccount, readOnly: true}]
+      volumes:
+        - name: dns
+          configMap: {name: {{ .Release.Name }}-dns}
+        - name: api
+          projected:
+            sources:
+              - serviceAccountToken: {path: token}
+              - configMap: {name: kube-root-ca.crt, items: [{key: ca.crt, path: ca.crt}]}
+              - downwardAPI: {items: [{path: namespace, fieldRef: {fieldPath: metadata.namespace}}]}
+{{- end }}

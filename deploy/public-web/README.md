@@ -1,53 +1,48 @@
-# Public web entrances
+# One public web replica contract
 
-`entrances.yaml` maps each application namespace and exact Ingress hostname to
-its permitted public entrances. It is an inventory and a PR check, not a DNS
-writer, admission webhook or independent authorization layer. Paths, backend
-Services, authentication, TLS Secrets and certificates remain with their owners.
-HOME still serves internal routes; this catalog does not filter the HOME controller.
+`entrances.yaml` contains inventory (node placement and public IP only) and a
+single namespace/host publication catalog. A replica label never selects sites,
+permissions or a DNS policy. The shared chart in `replica/` renders authoritative
+CoreDNS plus Traefik. Ingress class, discovery, verified Argo transport and RBAC
+are the same across instances. Routes, paths, certificates and authentication
+remain app-owned. External zone ownership changes who publishes DNS, not ingress.
 
-`dns: managed` refers to the existing zone health policy, `static` to a fixed
-record, and `external` to a separately administered zone. An empty entrance
-list never authorizes an ordinary web entrance. Monori reaches NL only behind
-Moscow transit; the VPN host has its own legacy routes, not a new web grant.
-Schoolbot currently routes `inform.sch1357.ru`; the plan's `bot.sch1357.ru` is
-reserved, not an alias. Neither entry adds schoolbot to the NL Secret watch.
+Render a candidate, without applying it:
 
-For a change, edit the catalog, regenerate the chart projection with
-`uv run python -m ci.quality.public_web`, and run
-`uv run pytest -q tests/test_public_web_entrances.py`. Review the resulting
-namespace diff: a new NL namespace grants discovery of **all** its Secrets
-and Ingresses. Do not add mixed private namespaces to publish a single route.
-The generated list feeds both the existing controller arguments and its RBAC.
-Its order is retained to avoid an unnecessary rollout. CRD discovery and
-Ingress status ownership are separate and unchanged. DNS publication and
-real-client acceptance require the subsequent rollout gates in the plan.
+```sh
+uv run python -m ci.quality.public_web home --serial 2026112601 | \
+  helm template entry deploy/public-web/replica -n public-entry -f -
+```
 
-## Eligibility is not readiness
+Each authoritative zone contains the same names. Only managed ordinary web A
+records contain this replica's public IP. Baseline authority/glue, mail, TXT,
+static and other non-catalog records remain unchanged. DNS for school names is
+external. VPN and the fixed NetBird relay have distinct transport ownership, not
+site-specific web inclusion. Monori is ordinary web in the target; verify the
+known regional constraint before promoting a replica, not by hiding its route.
 
-Ordinary hosts inherit `defaultEntrances: [home, nl, moscow]`. After acceptance,
-Moscow alone may serve the blog if HOME and NL are down and a healthy blog
-backend is reachable. A per-host `entrances` override is an explicit exception,
-not a snapshot of which controllers exist today. External DNS ownership does
-not restrict the eligible entrances.
-
-`nlWatchNamespaces` records today's separately approved discovery grants. Adding
-an ordinary hostname does not grant a new controller access to Secrets or publish
-an IP. Expand controller discovery only after review; publish an eligible IP only
-after its route is verified. This stage neither declares Moscow ready nor changes
-the production DNS health algorithm.
-
-A hostname may have distinct path owners. In particular `socrat-home` owns
-`/` on `socrat.alchemmist.xyz`, while the existing `rustfs-public-files` Ingress
-in `rustfs` owns `/public/` there. DNS selects the entrance, not the path owner.
-Listing both namespace/host pairs does not add `rustfs` to the NL watch.
+**Migration boundary:** no Application installs the new chart. No host bindings,
+Service publication, new live Secret grants, Knot/registrar changes or VPN port
+handoff in this change. The older NL release and the blog-only Moscow probe keep
+their frozen runtime configurations until replacement; do not extend them to
+roll out sites. The HOME VIP is not a Pod address: `socrat-0` is an inventory
+placement for rendering, not a change of the HA owner. Inventory, backend reachability,
+Secret-read scope (including shared namespaces), dynamic middleware dependencies,
+zone serial/content parity and DNS delegation must be reviewed before activation.
+Before staging, check `kubectl -n <namespace> get configmap kube-root-ca.crt`
+and wait for namespace initialization. Do not make the CA projection optional.
+Use distinct release names when staging multiple instances in a cluster; use a
+permitted probe Pod for private checks. Only Ingresses explicitly labeled `homelab.alchemmist.xyz/public-web=true` qualify.
+Do not install until every ordinary path owner has opted in, fixed transport
+Ingresses remain unlabeled, and referenced middleware is discoverable. This selector
+does not restrict Secret reads. The template is a web/DNS candidate, not an implementation of the public VPN cutover.
 
 ## Single surviving public IP: acceptance for every service
 
 `uv run python -m ci.quality.public_survivors` prints the offline service matrix.
 Each catalog namespace/host gets HOME-only, NL-only and Moscow-only cases, even
 when several owners share a name. `unverified` means eligible, not healthy.
-Policy exclusions and VPN constraints are gaps relative to universal failover;
+Fixed transport and VPN constraints are gaps relative to universal failover;
 a reserved hostname is not a live service. The matrix does not grant access.
 
 During an authorized single-entrance exercise, after DNS convergence, run e.g.
@@ -67,3 +62,41 @@ surviving public IP, not merely that its IPv4 subset matches. An additional
 IPv6 address fails this particular exercise. Exit 1 means lookup failure or
 an address mismatch. Exit 2 means the requested case is unknown or not eligible
 (e.g. a reserved hostname); the lookup was not attempted.
+
+Before opting in route owners, run the read-only inventory gate:
+
+```sh
+kubectl get ingress -A -o json | uv run python -m ci.quality.public_route_gate
+```
+
+Treat missing opt-ins and overlapping host/path/type tuples as review items,
+not a batch labeling instruction. Verify backend identity, routing priority,
+authentication and middleware with each owner. Matching this inventory alone
+is not acceptance of TLS, middleware, dependencies or Secret grants.
+
+### Ownership findings before staging (read-only snapshot)
+
+- Both exact `/change-password` variants on `auth.socrat.alchemmist.xyz` have
+  the chart-owned `identity/password-self-service` at explicit priority 160,
+  targeting `password-self-service:80`. The Ansible-owned
+  `identity/socrat-password-self-service` has priority 150 and targets
+  `authentik-server:80` with a redirect middleware in `identity`. Do not add
+  a namespace-wide CRD grant merely to reproduce that lower-priority fallback.
+  Verify the intended login flow with an authorized test session before opt-in.
+- `/public/` on `rustfs.socrat.alchemmist.xyz` has both `rustfs-public-files`
+  (priority 160, `rustfs:9000`) and `identity/rustfs-public-reader` (155,
+  `rustfs-public-reader:80`). The former also owns the same path on
+  `socrat.alchemmist.xyz`. Priority only ranks routers that a given controller
+  actually discovers; it does not demonstrate equivalent access controls. Verify
+  both public object reads and denial of non-public objects before adopting either.
+
+The gate reports exact duplicates separately from intersecting path patterns.
+Nested prefixes are often intentional: review backend/auth ownership rather than
+removing a more-specific path or broadly opting in the whole namespace.
+
+Before HTTP-01 acceptance, verify the effective `letsencrypt-http01` issuer
+matches the reviewed bootstrap task. Only exact ordinary catalog names select
+its labeled solver; the default solver stays unlabeled. Merging the playbook
+does not run it. Existing certificates or a locally rendered challenge do not
+prove renewal: use a separately approved canary and confirm external HTTP-01
+validation before handing over ports or DNS.

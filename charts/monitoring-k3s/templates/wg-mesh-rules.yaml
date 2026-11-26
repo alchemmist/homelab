@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: socrat-wg-mesh
+  labels:
+    release: {{ .Values.prometheusRelease }}
+spec:
+  groups:
+    - name: socrat.wireguard.mesh
+      rules:
+        - alert: SocratWireGuardPeerUnreachable
+          expr: max by (source, target) (socrat_wg_mesh_reachable) == 0
+          for: 2m
+          labels: {severity: warning}
+          annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratWireGuardPeerUnreachable" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: 'wg-socrat path {{ "{{ $labels.source }}" }} → {{ "{{ $labels.target }}" }} is unreachable.'
+        - alert: SocratWireGuardMeshProbesIncomplete
+          # Six production nodes yield 30 unique non-self directions.
+          expr: (count(max by (source,target) (socrat_wg_mesh_reachable)) or vector(0)) < 30 or (count(max by (source) (socrat_wg_mesh_checked_seconds) > time() - 180) or vector(0)) < 6
+          for: 2m
+          labels: {severity: warning}
+          annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratWireGuardMeshProbesIncomplete" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: The wg-socrat all-pairs check is missing or stale on one or more nodes.

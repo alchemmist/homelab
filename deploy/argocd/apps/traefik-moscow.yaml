@@ -14,7 +14,6 @@ spec:
     path: charts/traefik-moscow
     helm:
       releaseName: traefik-moscow
-      valueFiles: [../../deploy/public-web/entrances.yaml]
       valuesObject: {rehearsal: true}
       parameters: []
   destination:

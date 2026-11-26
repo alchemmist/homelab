@@ -1,0 +1,6 @@
+---
+apiVersion: v2
+name: public-entry
+version: 0.1.0
+description: Common authoritative DNS and HTTP ingress replica, private-stage render
+...

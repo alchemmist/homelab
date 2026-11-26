@@ -1,34 +1,9 @@
 ---
-# Target eligibility is independent of controller deployment and DNS ownership.
-defaultEntrances: [home, nl, moscow]
-# Current NL discovery grants. Change only after namespace and Secret review.
-moscowWatchNamespaces: [blog]
-# Production NL discovery remains independent of this private rehearsal.
-nlWatchNamespaces:
-  - argocd
-  - automation
-  - blog
-  - cats
-  - cattle-system
-  - cattle-monitoring-system
-  - format-quorum
-  - harbor
-  - identity
-  - img-proxy
-  - llm
-  - lms
-  - monori
-  - pr-agent
-  - remark42
-  - socrat-bot
-  - socrat-home
-  - syncthing
-  - umami
-  - venice-api
-  - uptime-kuma
-  - wiki
-  - wishlist
-  - traefik-edge
+# Labels identify inventory entries, never web policy. Node placement is for staging.
+replicas:
+  home: {node: socrat-0, publicIP: 109.173.40.247}
+  nl: {node: socrat-2, publicIP: 109.120.141.60}
+  moscow: {node: socrat-4, publicIP: 91.189.82.238}
 hosts:
   argocd:
     argocd.socrat.alchemmist.xyz: {dns: managed}
@@ -51,7 +26,7 @@ hosts:
   identity:
     auth.socrat.alchemmist.xyz: {dns: managed}
     grafana.socrat.alchemmist.xyz: {dns: managed}
-    netbird-relay-vps.socrat.alchemmist.xyz: {entrances: [nl], dns: static}
+    netbird-relay-vps.socrat.alchemmist.xyz: {dns: static, route: fixed-relay}
     netbird.socrat.alchemmist.xyz: {dns: managed}
     openhands.socrat.alchemmist.xyz: {dns: managed}
     rustfs.socrat.alchemmist.xyz: {dns: managed}
@@ -67,7 +42,7 @@ hosts:
   lms:
     lms.alchemmist.xyz: {dns: managed}
   monori:
-    monori.alchemmist.xyz: {entrances: [home, moscow], dns: managed, nlTransit: true}
+    monori.alchemmist.xyz: {dns: managed}
   pr-agent:
     pr-agent.socrat.alchemmist.xyz: {dns: managed}
   remark42:
@@ -91,9 +66,9 @@ hosts:
   wishlist:
     wishlist.alchemmist.xyz: {dns: managed}
   traefik-edge:
-    vpn.alchemmist.xyz: {entrances: [], dns: static, route: vpn-transit, nlTransit: true}
+    vpn.alchemmist.xyz: {dns: static, route: vpn-transit}
   schoolbot:
-    bot.sch1357.ru: {entrances: [], dns: external, route: reserved}
+    bot.sch1357.ru: {dns: external, route: reserved}
     inform.sch1357.ru: {dns: external}
   rustfs:
     rustfs.socrat.alchemmist.xyz: {dns: managed}

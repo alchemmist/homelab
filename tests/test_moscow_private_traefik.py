@@ -1,8 +1,6 @@
 """Render both Moscow Applications together without touching the cluster."""
 
-import yaml
-
-from ci.quality.charts import ROOT, argocd_targets, render
+from ci.quality.charts import argocd_targets, render
 
 
 def test_moscow_private_rehearsal() -> None:
@@ -46,8 +44,6 @@ def test_moscow_private_rehearsal() -> None:
         "--entrypoints.websecure.asdefault=true",
     }
     assert "--entrypoints.websecure.http.tls=true" in args
-    catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())
-    assert catalog["moscowWatchNamespaces"] == ["blog"]
     assert "--providers.kubernetesingress.namespaces=blog" in args
     assert "--providers.kubernetescrd.namespaces=vpn-transit" in args
     roles = [d for d in docs if d["kind"] == "Role"]
