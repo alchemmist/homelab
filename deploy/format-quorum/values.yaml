@@ -1,4 +1,6 @@
 ---
+ingress:
+  publicWeb: true
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/format-quorum
   tag: 74b7e85886ab1d299c5083369c738fed2f807f9e

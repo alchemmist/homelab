@@ -3,6 +3,10 @@ kind: Ingress
 metadata:
   namespace: {{ $.Release.Namespace | quote }}
   name: {{ .Release.Name }}
+{{- if $.Values.ingress.publicWeb }}
+  labels:
+    homelab.alchemmist.xyz/public-web: 'true'
+{{- end }}
   annotations:
     cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer }}
 spec:
