@@ -184,10 +184,13 @@ def test_http01_selector_labels_only_catalogued_web_challenges() -> None:
     catalog = yaml.safe_load(CATALOG.read_text())
     env = Environment(autoescape=False)
     env.filters["to_json"] = json.dumps
-    shell = env.from_string(task["ansible.builtin.shell"]).render(
-        issuer_catalog=catalog, letsencrypt_email="test@example.org"
-    )
-    issuer = yaml.safe_load(shell.split("apply -f -\n", 1)[1].split("\nEOF", 1)[0])
+    def render_issuer(inventory: dict) -> dict:
+        shell = env.from_string(task["ansible.builtin.shell"]).render(
+            issuer_catalog=inventory, letsencrypt_email="test@example.org"
+        )
+        return yaml.safe_load(shell.split("apply -f -\n", 1)[1].split("\nEOF", 1)[0])
+
+    issuer = render_issuer(catalog)
     scoped, fallback = issuer["spec"]["acme"]["solvers"]
     assert set(scoped["selector"]["dnsNames"]) == {
         host
@@ -199,3 +202,5 @@ def test_http01_selector_labels_only_catalogued_web_challenges() -> None:
         "homelab.alchemmist.xyz/public-web": "true"
     }
     assert fallback == {"http01": {"ingress": {"ingressClassName": "traefik"}}}
+    assert isinstance(scoped["selector"]["dnsNames"], list)
+    assert render_issuer({"hosts": {}})["spec"]["acme"]["solvers"] == [fallback]
