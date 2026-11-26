@@ -72,4 +72,7 @@ def test_moscow_private_rehearsal() -> None:
             assert d["spec"]["entryPoints"] == ["websecure"]
         else:
             assert d["spec"]["entryPoints"] == [f"{proto.lower()}-{port}"]
+            assert "tls" not in d["spec"] and "middlewares" not in route
+            if proto == "TCP":
+                assert route["match"] == "HostSNI(`*`)"
     assert routed == sockets - {("TCP", 80)}
