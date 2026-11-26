@@ -164,10 +164,11 @@ def main() -> None:
         sql,
     )
     after, _ = rows_sql()
-    ok = FEATURES_KEY in after and "'oidc'" in after + kubectl(
+    method = kubectl(
         "exec", "-n", PG_NS, PG_POD, "--", "psql", "-U", "postgres", "-d", PG_DB, "-At", "-c",
         "SELECT value FROM settings WHERE key='" + METHOD_KEY + "';",
-    )
+    ).strip()
+    ok = FEATURES_KEY in after and method == "oidc"
     print(json.dumps({"applied": bool(ok), "snapshot": str(snap)}))
 
 
