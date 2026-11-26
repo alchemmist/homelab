@@ -53,3 +53,5 @@ sockets. Require successful application replies in the positive controls, no
 replies in the denied controls, and a repeated successful positive control.
 Record node placement, policy selectors and outcomes without credentials; remove
 the temporary resources. Missing or inconclusive evidence keeps both opt-ins off.
+
+[Live private path results and outstanding VPN gates](../../docs/records/handoffs/moscow-private-path-20261126.md)
