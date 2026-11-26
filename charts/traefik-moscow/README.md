@@ -33,3 +33,5 @@ No status writes, published IP, NodePort, host socket or external LB.
 4. To retire the rehearsal, explicitly remove only its resources after disabling
    the opt-ins: both child Applications have prune disabled. Verify private
    Roles, bindings, routes, Pods and Services are gone and the legacy owner remains.
+
+See the [capacity preflight and private client procedure](../../docs/records/handoffs/moscow-private-rehearsal-20261126.md) before enabling the pair.
