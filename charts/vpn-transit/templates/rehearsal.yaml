@@ -1,6 +1,15 @@
 {{- if .Values.podRehearsal }}
 {{- $tcp := list 80 443 32053 32083 32084 }}
 {{- $udp := list 443 32085 32086 }}
+{{- $inbounds := list }}
+{{- range $net, $ports := dict "tcp" $tcp "udp" $udp }}
+{{- $settings := dict "rewriteAddress" "10.250.0.2" "allowedNetwork" $net "followRedirect" false }}
+{{- $in := dict "tag" (printf "vpn-%s" $net) "listen" "0.0.0.0" "protocol" "tunnel" "port" (join "," $ports) "settings" $settings }}
+{{- if eq $net "tcp" }}
+{{- $_ := set $in "sniffing" (dict "enabled" false) }}
+{{- end }}
+{{- $inbounds = append $inbounds $in }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -11,11 +20,7 @@ data:
   user.json: |
     {
       "log": {"loglevel": "warning"},
-      "inbounds": [
-        {{- range $i, $net := list "tcp" "udp" }}
-        {{ if $i }},{{ end }}{"tag":"vpn-{{ $net }}","listen":"0.0.0.0","protocol":"tunnel","port":"{{ join "," (ternary $tcp $udp (eq $net "tcp")) }}","settings":{"rewriteAddress":"10.250.0.2","allowedNetwork":"{{ $net }}","followRedirect":false}{{ if eq $net "tcp" }},"sniffing":{"enabled":false}{{ end }}}
-        {{- end }}
-      ],
+      "inbounds": {{ mustToJson $inbounds }},
       "outbounds": [{"tag":"fixed-destination","protocol":"freedom"}]
     }
 ---
