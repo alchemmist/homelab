@@ -5,6 +5,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -115,3 +116,10 @@ def test_rehearsal_admission_changes_only_the_controller_peer() -> None:
         },
     }
     assert enabled == baseline
+
+
+@pytest.mark.parametrize("value", ["true", "false", "1"])
+def test_peer_flag_rejects_strings(value: str) -> None:
+    with pytest.raises(subprocess.CalledProcessError) as exc:
+        _render("--set-string", f"allowPublicEntryPeer={value}")
+    assert "allowPublicEntryPeer" in exc.value.stderr

@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["allowPublicEntryPeer"],
+  "properties": {"allowPublicEntryPeer": {"type": "boolean"}}
+}
