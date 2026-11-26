@@ -183,3 +183,27 @@ references are blockers; never replace a missing auth middleware with a bare
 route or downgrade an HTTPS or h2c backend to HTTP. The report is not a full
 Traefik config compiler: it does not certify application auth, middleware bodies,
 traffic, port reachability or the winner of overlapping routes.
+
+A closed rehearsal used the same pinned Traefik and identical **fixture** file
+provider config on `socrat-0`, `socrat-2`, and `socrat-4`. Each tokenless Pod
+bound only loopback; no public Service, host port, real frontend key or API
+RBAC. A temporary namespace egress policy admitted only the Argo and NetBird
+Service/endpoint TCP destinations. Fresh trusted frontend connections on **each**
+node produced:
+
+| Real upstream through fixture Traefik | Result |
+| --- | --- |
+| Argo HTTPS, verified production `serverName`, `/api/version` | 200 and nonempty version field |
+| Same transport, `/api/v1/applications`, no credentials | 401 and application error code 16; no list retrieved |
+| Same destination and path as version check but deliberately wrong backend TLS name | 500, no version response; frontend trust still valid |
+| NetBird Management over h2c, unary `GetServerKey` | Native gRPC OK with nonempty reply; no key bytes logged |
+| NetBird Signal path over h2c, nonexistent diagnostic RPC | Native gRPC UNIMPLEMENTED with unknown method/service detail; not a Signal stream test |
+
+The file provider used a supported YAML filename; the preliminary `.json`
+fixture did not establish trusted frontend TLS and was not counted. All temporary
+namespaces were deleted. This rehearsal covers backend transports and native
+anonymous Argo denial, not application login, VPN traffic, external browser
+middleware, all catalog paths or a public survivor. In particular the live
+RustFS forward-auth address is **itself a public hostname**; its resolution and
+return path still need independent survivor testing. Do not infer the result
+from finding the Middleware CRD or reaching Argo.
