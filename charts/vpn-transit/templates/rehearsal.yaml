@@ -1,0 +1,62 @@
+{{- if .Values.podRehearsal }}
+{{- $tcp := list 80 443 32053 32083 32084 }}
+{{- $udp := list 443 32085 32086 }}
+{{- $inbounds := list }}
+{{- range $net, $ports := dict "tcp" $tcp "udp" $udp }}
+{{- $settings := dict "rewriteAddress" "10.250.0.2" "allowedNetwork" $net "followRedirect" false }}
+{{- $in := dict "tag" (printf "vpn-%s" $net) "listen" "0.0.0.0" "protocol" "tunnel" "port" (join "," $ports) "settings" $settings }}
+{{- if eq $net "tcp" }}
+{{- $_ := set $in "sniffing" (dict "enabled" false) }}
+{{- end }}
+{{- $inbounds = append $inbounds $in }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vpn-transit-rehearsal
+  namespace: {{ .Release.Namespace }}
+immutable: true
+data:
+  user.json: |
+    {
+      "log": {"loglevel": "warning"},
+      "inbounds": {{ mustToJson $inbounds }},
+      "outbounds": [{"tag":"fixed-destination","protocol":"freedom"}]
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vpn-transit
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/name: vpn-transit-rehearsal}
+  ports:
+{{- range $net, $ports := dict "TCP" $tcp "UDP" $udp }}
+{{- range $ports }}
+    - {name: {{ lower $net }}-{{ . }}, protocol: {{ $net }}, port: {{ . }}, targetPort: {{ . }}}
+{{- end }}
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vpn-transit-rehearsal
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: vpn-transit-rehearsal}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: traefik-moscow}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: traefik-moscow}}
+  egress:
+    - to: [{ipBlock: {cidr: 10.250.0.2/32}}]
+      ports:
+{{- range $net, $ports := dict "TCP" $tcp "UDP" $udp }}
+{{- range $ports }}
+        - {protocol: {{ $net }}, port: {{ . }}}
+{{- end }}
+{{- end }}
+{{- end }}
