@@ -49,11 +49,6 @@ serviceVpn:
   image:
     ghcr.io/mhsanaei/3x-ui@sha256:1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b
 
-sso:
-  oidc:
-    # Authentik provider "homelab-n8n" (client socrat-n8n) provisioned by
-    # scripts/provision-n8n-oidc.py; credentials in automation/socrat-authentik-n8n.
-    # n8n still requires native invitations (no JIT); OIDC only replaces the login form.
-    enabled: true
-    issuerUrl: https://auth.socrat.alchemmist.xyz/application/o/n8n/
-    secretName: socrat-authentik-n8n
+# OIDC: n8n 1.x stores SSO config in its database (settings key features.oidc),
+# set via Settings -> SSO owner UI. Authentik identity is provisioned by
+# scripts/provision-n8n-oidc.py; credentials: kubectl -n automation get secret socrat-authentik-n8n.

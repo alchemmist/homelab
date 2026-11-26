@@ -39,8 +39,24 @@ and delivers credentials to Secret `automation/socrat-authentik-n8n`
 (`client-id`, `client-secret`). It never prints the secret.
 Existing provider/client drift is a STOP; never a reset or adoption.
 
+## Activation (n8n side)
+
+n8n 1.x does **not** read `N8N_SSO_OIDC_*` environment variables: the OIDC
+client config lives in the n8n database (settings key `features.oidc`) and is
+owned by the instance owner. Enabling is a one-time owner action in the UI:
+
+1. Read the credentials (never paste them into chat/PRs):
+   `kubectl -n automation get secret socrat-authentik-n8n -o jsonpath='{.data}' | base64 -d` per key.
+2. Open <https://n8n.socrat.alchemmist.xyz> → Settings → SSO → OpenID Connect.
+3. Discovery endpoint: `https://auth.socrat.alchemmist.xyz/application/o/n8n/.well-known/openid-configuration`.
+4. Client ID `socrat-n8n` + the client secret from the Secret. Save.
+
+Password login stays available; the stored secret is encrypted with
+`N8N_ENCRYPTION_KEY`. Equivalently, an owner session can
+`POST /rest/sso/oidc/config` with `{discoveryEndpoint, clientId, clientSecret, loginEnabled: true}`.
+
 ## Kubernetes wiring
 
-`charts/n8n` renders `N8N_SSO_OIDC_ISSUER_URL` / `_CLIENT_ID` / `_CLIENT_SECRET`
-from `sso.oidc.*` values (see `charts/n8n/values.yaml`). Flip `sso.oidc.enabled`
-to disable without removing the identity.
+No chart env is needed for OIDC; the values file only documents the recipe and
+the credential Secret. `socrat-authentik-n8n` is the operator-visible copy of
+provisioner credentials (chart mounts nothing).
