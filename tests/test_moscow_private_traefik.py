@@ -6,13 +6,16 @@ from ci.quality.charts import ROOT, argocd_targets, render
 
 
 def test_moscow_private_rehearsal() -> None:
-    """Check default inactivity, isolation, effective watches and the entire VPN path."""
+    """Check the effective opt-ins, fallback defaults, isolation and the entire VPN path."""
     targets, _ = argocd_targets()
     (moscow,) = [t for t in targets if t["release"] == "traefik-moscow"]
     (relay,) = [t for t in targets if t["release"] == "vpn-transit"]
-    assert render(moscow) == []
-    docs = render({**moscow, "inline_values": {"rehearsal": True}})
-    backend = render({**relay, "inline_values": {"podRehearsal": True}})
+    assert render({**moscow, "inline_values": {}}) == []
+    docs = render(moscow)
+    backend = render(relay)
+    baseline = render({**relay, "inline_values": {}})
+    assert baseline and len(baseline) == 1
+    assert baseline[0] in backend  # The existing public owner must not roll.
     assert docs and backend
     (deployment,) = [d for d in docs if d["kind"] == "Deployment"]
     template = deployment["spec"]["template"]
