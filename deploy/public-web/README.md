@@ -129,6 +129,29 @@ writer. No opt-in, namespace creation or changes to the existing ingress owner
 are part of this preparation. Test allowed and denied traffic and the anonymous
 login redirect before adopting the route. A real password change is not a probe.
 
+### Rehearse the three private authorities through Argo CD
+
+`private-dns-fleet` consumes only the generated `private-dns-fleet/resources.yaml`
+from Git. Regenerate with `uv run python -m ci.quality.private_dns_fleet`; use
+`--check` to verify drift. Each inventory node gets one private ClusterIP and a
+CoreDNS Pod with no Kubernetes API token. The policies allow inbound traffic
+only from labeled probe Pods in `public-dns-rehearsal` and deny all egress.
+The earlier policy sync wave is ordering, not proof of enforcement.
+This egress denial applies to the DNS-only fleet. The offline `web-and-dns`
+render has an ingress-only policy: it does not restrict outbound connections.
+Traefik needs the API and approved backends; review that separate egress scope
+before considering a web deployment. Do not promote by flipping the stage.
+
+After reconciliation, inspect placement, readiness and Service endpoints. From a
+disposable tokenless probe in that namespace with label
+`homelab.alchemmist.xyz/public-entry-probe=true`, query each Service's **IP** on
+TCP and UDP 53. Verify AA, exact self-IP answers and unchanged infrastructure
+records; remove the probe label and repeat to verify denial from the same Pod.
+Delete the probe afterward. Do not use these ClusterIPs for cluster DNS or delegate
+anything to them. To retire the rehearsal, remove the bounded Argo application
+via review; its resource finalizer removes its managed objects. Confirm cleanup
+before deleting the dedicated namespace. No public fallback needs switching.
+
 After the private DNS fleet is ready, use a dedicated disposable probe Pod
 (with `dig` on PATH, no API token, and the approved probe label) in
 `public-dns-rehearsal`. From the operator checkout run:

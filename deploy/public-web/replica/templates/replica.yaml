@@ -69,10 +69,18 @@ spec:
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-metadata: {name: {{ .Release.Name }}-stage, namespace: {{ .Release.Namespace }}}
+metadata:
+  name: {{ .Release.Name }}-stage
+  namespace: {{ .Release.Namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: '-1'}
 spec:
   podSelector: {matchLabels: {app.kubernetes.io/instance: {{ .Release.Name }}}}
+{{- if $web }}
   policyTypes: [Ingress]
+{{- else }}
+  policyTypes: [Ingress, Egress]
+  egress: []
+{{- end }}
   ingress:
     - from: [{podSelector: {matchLabels: {homelab.alchemmist.xyz/public-entry-probe: 'true'}}}]
 ---

@@ -247,6 +247,11 @@
       "connector": "socrat-grafana"
     },
     {
+      "application": "private-dns-fleet",
+      "decision": "infrastructure-covered",
+      "reason": "Isolated authoritative DNS rehearsal; no new agent connector, API token or public endpoint."
+    },
+    {
       "application": "traefik-moscow",
       "decision": "infrastructure-covered",
       "reason": "Private ingress rehearsal, not a separate business API. Inspect desired state and telemetry through the existing platform tools; no new agent connector or credentials."
