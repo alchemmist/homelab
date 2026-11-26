@@ -59,3 +59,5 @@ persistent pod-overlay boundary guard and its live acceptance are documented in
 [`docs/platform/kubernetes/k3s-networkpolicy-overlay-marks.md`](../../docs/platform/kubernetes/k3s-networkpolicy-overlay-marks.md).
 Audit this guard after host NetBird or overlay changes; do not use S3 HTTP403 as
 proof of packet isolation. This does not require changing administrators' clients.
+
+`images/dashboard/Dockerfile` is an optional security rebuild of the upstream dashboard, not the source of a homelab service. The deployed image is selected separately in the deployment values.

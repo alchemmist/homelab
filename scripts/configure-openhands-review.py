@@ -5,7 +5,7 @@ import pathlib
 import subprocess
 
 root = pathlib.Path(__file__).resolve().parents[1]
-source = (root / "services/openhands/mcp/monori_github_read.py").read_bytes()
+source = (root / "deploy/openhands/integration/mcp/monori_github_read.py").read_bytes()
 digest = hashlib.sha256(source).hexdigest()
 path = "/home/openhands/.openhands/tools/monori-review/" + digest + ".py"
 cmd = ["kubectl", "-n", "openhands", "exec", "-i", "openhands-0", "--", "python", "-Ic"]
