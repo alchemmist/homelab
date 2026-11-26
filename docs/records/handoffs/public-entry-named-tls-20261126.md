@@ -141,6 +141,35 @@ a production parser. Production code must validate the leaf actually served,
 use an audited parser, and bind the expected names to reviewed source ownership,
 not just infer authorization from the presented certificate.
 
+## Synthetic catalog-size scans, one replica at a time
+
+35 disposable named Secrets, 37 distinct DNS names including two aliases, one
+fixture owner namespace. Sequential exact GETs with a deliberate 250 ms pause
+per request limited one reader to at most four starts/s. No list/watch, key
+cache, production certificate access or public socket. Each run used a fresh
+fixture, scanning on the actual candidate node, not three concurrent readers.
+Fresh trusted TLS, expected fingerprint and host-specific HTTP body passed for
+all 37 names before and after rotating the final multi-SAN source. Previous
+trust failed. Observed results with a 30 s poll interval and 25 s poll timeout:
+
+| Node | Completed scan durations (s) | Seconds from acknowledged replacement to first observed new alias |
+| --- | --- | --- |
+| HOME | 9.82, 11.41 | 36.32 |
+| NL | 20.69, 15.67 | 41.55 |
+| Moscow | 15.57, 11.48 | 36.42 |
+
+Each reported scan completed 35 GETs and produced 35 certificate entries,
+about 33 kB serialized with short synthetic leaves. Three independent full
+scans would cost **105 named GETs per round**; these measurements do not prove
+API capacity under simultaneous load, production chain sizes, a 24-namespace
+RBAC layout, or a maximum revocation time. The earlier HOME attempt with a
+15 s poll interval and no explicit poll timeout did not converge; its exact
+cause was not measured. The first Moscow Pod lacked the placement toleration
+and did not become ready; no TLS result is attributed to it. Do not roll out
+these timings or the experimental eight-second fence: measured scan durations
+alone exceeded eight seconds. Separate refresh completion, consumer apply and
+key withdrawal in the production freshness design.
+
 ## Gates before any real web deployment
 
 - The existing `kubernetesIngress` informer still needs list/watch. This proof
@@ -152,7 +181,7 @@ not just infer authorization from the presented certificate.
   semantics, not just a successful TLS handshake.
 - Preserve the two-source withdrawal and rotation checks above. Still test
   a production freshness policy with an explicit availability budget, complete source-container loss,
-  and polling load at full catalog size. Retain the wrong/extra SAN regression checks.
+  and the aggregate API budget under concurrent refresh. Retain the wrong/extra SAN regression checks.
   An unreachable HTTP provider is not equivalent to a valid withdrawal snapshot.
 - Test with reserved synthetic inputs on each candidate node before granting a
   production name. Do not copy TLS Secrets, add cluster-wide Secret access, or
