@@ -91,7 +91,8 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
         peers = group["wg_socrat_peer_endpoints"]
         assert peers["socrat-5"]["socrat-2"] == peers["socrat-0"]["socrat-2"]
         assert peers["socrat-5"]["socrat-2"] == "91.189.82.238:51832"
-        assert peers["socrat-5"]["socrat-3"] == "46.8.146.172:46559"
+        assert peers["socrat-5"]["socrat-3"] == "10.250.0.1:51837"
+        assert peers["socrat-3"]["socrat-5"] == "10.250.0.1:51838"
 
     def test_unprivileged_exporter_can_traverse_fresh_parent_directories(self) -> None:
         """Keep parent directories traversable for the unprivileged exporter."""

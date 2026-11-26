@@ -1,0 +1,29 @@
+[Unit]
+Description=Fixed keyless WireGuard ciphertext transport between socrat-5 and socrat-3 via socrat-0
+Wants=network-online.target
+After=network-online.target wg-quick@wg-socrat.service
+Requires=wg-quick@wg-socrat.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/libexec/homelab-wg-peer35-relay.py --peer35
+DynamicUser=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_UNIX
+IPAddressDeny=any
+IPAddressAllow=10.250.0.41/32 10.250.0.5/32
+MemoryMax=32M
+Restart=on-failure
+RestartSec=2s
+TimeoutStopSec=5s
+
+[Install]
+WantedBy=multi-user.target
