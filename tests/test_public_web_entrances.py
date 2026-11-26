@@ -18,23 +18,31 @@ def check_ingress(doc: dict, fallback: str) -> None:
     if doc.get("kind") != "Ingress":
         return
     ns = doc["metadata"].get("namespace", fallback)
-    if ns not in WATCH and ns not in CAT:
-        return
     spec = doc["spec"]
-    allowed = {
-        host
-        for host, p in CAT[ns].items()
-        if p.get("route") != "reserved"
-        and (
-            ns not in WATCH
-            or "nl" in p.get("entrances", REGISTRY["defaultEntrances"])
-            or (ns, host)
-            in {
-                ("monori", "monori.alchemmist.xyz"),
-                ("traefik-edge", "vpn.alchemmist.xyz"),
-            }
-        )
-    }
+    if ns not in CAT:
+        # These private application routes exist on HOME; never grant an NL watch.
+        private = {
+            ("postgres", "pgadmin"): "pg.socrat.alchemmist.xyz",
+            ("redis", "redisinsight"): "redis.socrat.alchemmist.xyz",
+        }
+        key = (ns, doc["metadata"].get("name"))
+        assert ns not in WATCH and key in private, ("undeclared ingress", key)
+        allowed = {private[key]}
+    else:
+        allowed = {
+            host
+            for host, p in CAT[ns].items()
+            if p.get("route") != "reserved"
+            and (
+                ns not in WATCH
+                or "nl" in p.get("entrances", REGISTRY["defaultEntrances"])
+                or (ns, host)
+                in {
+                    ("monori", "monori.alchemmist.xyz"),
+                    ("traefik-edge", "vpn.alchemmist.xyz"),
+                }
+            )
+        }
     assert "defaultBackend" not in spec and spec.get("rules"), (ns, doc["metadata"])
     for rule in spec["rules"]:
         assert rule.get("host") in allowed, (ns, rule.get("host"))
@@ -109,4 +117,17 @@ def test_unlisted_hosts_fail(host: str | None) -> None:
         check_ingress(
             {"kind": "Ingress", "metadata": {}, "spec": {"rules": [{"host": host}]}},
             "blog",
+        )
+
+
+def test_unknown_namespace_fails() -> None:
+    """A renamed or new namespace must not silently bypass host validation."""
+    with pytest.raises(AssertionError, match="undeclared ingress"):
+        check_ingress(
+            {
+                "kind": "Ingress",
+                "metadata": {},
+                "spec": {"rules": [{"host": "alchemmist.xyz"}]},
+            },
+            "blog-extra",
         )
