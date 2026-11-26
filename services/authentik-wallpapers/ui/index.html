@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wallpapers</title>
+<link rel="icon" href="/wallpapers/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/wallpapers/style.css">
+<script src="/wallpapers/app.js" defer></script>
+</head>
+<body>
+<main>
+  <h1>Wallpapers</h1>
+  <p class="lede">Click a picture to include it in the Authentik login rotation. Processing runs in the background.</p>
+  <div class="photo-field" role="group" aria-label="Add wallpapers">
+    <input id="file" aria-label="Wallpaper" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" tabindex="-1">
+    <button id="choose" class="photo-source" type="button">
+      <span class="photo-plus" aria-hidden="true">+</span><span>Files</span>
+    </button>
+    <button id="paste" class="photo-source" type="button" title="Paste an image, or press Ctrl+V / ⌘V here">
+      <span>Paste</span>
+    </button>
+  </div>
+  <p id="photo-status" role="status"></p>
+  <p id="empty" hidden>No wallpapers yet.</p>
+  <section id="grid" aria-label="Wallpaper gallery"></section>
+</main>
+<div id="save-progress" aria-label="Upload queue" hidden>
+  <div class="save-progress-heading"><span class="save-spinner" aria-hidden="true"></span><svg class="save-check" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg><span id="save-status" role="status" aria-live="polite"></span></div>
+  <ul id="queue"></ul>
+  <p id="notice" role="alert"></p>
+  <button id="dismiss-progress" type="button" aria-label="Dismiss notification" hidden>×</button>
+</div>
+</body>
+</html>

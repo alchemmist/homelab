@@ -417,14 +417,14 @@ def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatc
 def test_nonsecret_tokenizer_exception_cannot_hide_other_values(tmp_path, monkeypatch) -> None:
     from ci.quality import check_docker as lint
 
-    p = tmp_path / "services/spi-tokenizer/Dockerfile"
+    p = tmp_path / "services/spi/tokenizer/Dockerfile"
     p.parent.mkdir(parents=True)
     p.write_text("ENV TOKENIZERS_PARALLELISM=false RAYON_NUM_THREADS=1 PYTHONPATH=/app")
     monkeypatch.setattr(lint, "ROOT", tmp_path)
     item = {"code": "DL3064", "line": 1}
-    assert lint.nonsecret_tokenizer_option("services/spi-tokenizer/Dockerfile", item)
+    assert lint.nonsecret_tokenizer_option("services/spi/tokenizer/Dockerfile", item)
     p.write_text("ENV TOKENIZERS_PARALLELISM=credential")
-    assert not lint.nonsecret_tokenizer_option("services/spi-tokenizer/Dockerfile", item)
+    assert not lint.nonsecret_tokenizer_option("services/spi/tokenizer/Dockerfile", item)
 
 
 def test_graph_is_cost_layered_and_titles_are_semantic() -> None:

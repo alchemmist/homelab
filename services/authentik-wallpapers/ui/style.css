@@ -1,0 +1,62 @@
+body{margin:0;background:#fff;color:#202020;font:16px/1.6 Georgia,serif}
+main{max-width:1100px;margin:0 auto;padding:32px 20px 64px}
+h1{font-weight:normal;font-size:32px;margin:0 0 8px}
+.lede{margin:0 0 20px;color:#555}
+button{font:inherit;color:inherit;background:#fff;border:1px solid #ccc;border-radius:4px;padding:8px 14px;cursor:pointer}
+.photo-field{display:grid;grid-template-columns:1fr 1fr;gap:8px;position:relative;max-width:420px}
+.photo-field input{position:absolute;width:1px;height:1px;opacity:0}
+.photo-source{display:flex;align-items:center;justify-content:center;gap:8px;min-height:64px;border:1px dashed #bbb;background:#fafafa}
+.photo-plus{font-size:22px;line-height:1}
+#photo-status{min-height:1.4em;font:12px/1.5 'Courier New',monospace;color:#666}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:12px}
+.card{display:flex;flex-direction:column;width:100%;padding:0;border:1px solid #e4e4e4;background:#f7f7f7;text-align:left;overflow:hidden}
+.card .frame{display:block;position:relative;width:100%;aspect-ratio:16/10;background:#ddd center/cover no-repeat}
+.card .hq{position:absolute;inset:0;background:center/cover no-repeat;opacity:0}
+.card .hq.shown{opacity:1}
+.card img{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.card figcaption{display:block;padding:8px 10px;font:12px/1.4 'Courier New',monospace}
+.card{cursor:pointer}
+.card .frame{position:relative}
+.card .frame::after{content:"";position:absolute;inset:0;z-index:1;background:rgba(0,0,0,.68);pointer-events:none}
+.card.active .frame::after{opacity:0}
+.card small{display:block;color:#777}
+#save-progress{position:fixed;z-index:30;left:12px;top:50%;width:min(285px,calc(100vw - 24px));margin:0;box-sizing:border-box;transform:translate(-115%,-50%) scale(.96);opacity:0;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .25s ease;background:#fcfcfcf5;backdrop-filter:blur(16px);border:1px solid #dedede;border-radius:18px;padding:15px 17px;box-shadow:0 6px 28px #00000012;pointer-events:none}
+#save-progress[data-open]{transform:translate(0,-50%) scale(1);opacity:1}
+#save-progress[data-open]{pointer-events:auto}
+#save-progress a{color:inherit;padding:8px 4px;display:inline-block}
+#save-progress .save-progress-heading{display:flex;align-items:center;gap:8px;font:12px/1.45 'Courier New',monospace;font-weight:bold;min-height:24px}
+.save-spinner{width:14px;height:14px;border:2px solid #ccc;border-top-color:#202020;border-radius:50%;animation:spin .8s linear infinite}
+.save-check{display:none;width:16px;height:16px;stroke:#202020;stroke-width:2}
+#save-progress[data-state=success]{width:140px}
+#save-progress[data-state=success] .save-spinner,#save-progress[data-state=success] #queue,#save-progress[data-state=success] #notice{display:none}
+#save-progress[data-state=success] .save-check{display:block}
+#queue{list-style:none;margin:10px 0 0;padding:0;font:11px/1.45 'Courier New',monospace}
+#queue li{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-top:1px solid #eee}
+#notice{margin:6px 0 0;font:11px/1.5 'Courier New',monospace;color:#a33}
+#notice:empty{display:none}
+#dismiss-progress{position:absolute;right:7px;top:5px;border:0;background:transparent;padding:2px 5px;font:18px/1 monospace;color:#777;pointer-events:auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){#save-progress{transition:none}.save-spinner{animation:none}}
+@media(max-width:700px){
+  main{padding:20px 14px calc(28px + env(safe-area-inset-bottom))}
+  h1{font-size:26px}
+  .lede{font-size:15px}
+  .photo-field{max-width:none}
+  .photo-source{min-height:56px}
+  #grid{grid-template-columns:1fr 1fr;gap:8px}
+  .card figcaption{padding:6px 8px;overflow-wrap:anywhere}
+  #save-progress{left:12px;right:12px;top:auto;bottom:calc(12px + env(safe-area-inset-bottom));width:auto;transform:translateY(130%)}
+  #save-progress[data-open]{transform:none;opacity:1}
+  #save-progress[data-state=success]{width:auto}
+}
+
+.card{position:relative}
+.trash{position:absolute;right:8px;bottom:8px;z-index:2;width:18px;height:18px;padding:0;border:0;background:transparent;color:#202020;display:grid;place-items:center}
+.trash svg{width:16px;height:16px}
+.trash .warn{fill:currentColor}
+.trash .warn{display:none}
+.card[data-confirm='1'] .trash{background:transparent;border:0;color:#f5c518}
+.card[data-confirm='1'] .trash .bin{display:none}
+.card[data-confirm='1'] .trash .warn{display:block}
+.confirm-tip{display:none;position:fixed;z-index:80;width:190px;padding:8px 10px;background:#fff;border:1px solid #dedede;border-radius:12px;box-shadow:0 8px 24px #0000001a;font:12px/1.4 'Courier New',monospace}
+.card[data-confirm='1'] .confirm-tip{display:block}

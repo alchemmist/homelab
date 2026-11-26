@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authentik-wallpapers
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels: {app: authentik-wallpapers}
+  template:
+    metadata:
+      labels: {app: authentik-wallpapers}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: app
+          image: {{ .Values.image }}
+          ports: [{name: http, containerPort: 8080}]
+          envFrom:
+            - secretRef: {name: authentik-wallpapers}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+          resources:
+            requests: {cpu: 20m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: authentik-wallpapers
+spec:
+  selector: {app: authentik-wallpapers}
+  ports: [{name: http, port: 80, targetPort: http}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: authentik-wallpapers
+spec:
+  rules:
+    - host: {{ .Values.host }}
+      http:
+        paths:
+          - path: /wallpapers
+            pathType: Prefix
+            backend:
+              service: {name: authentik-wallpapers, port: {name: http}}
