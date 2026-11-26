@@ -37,6 +37,10 @@ def test_every_replica_is_the_same_except_placement_and_local_a() -> None:
         (cm,) = [doc for doc in docs if doc["kind"] == "ConfigMap"]
         (dep,) = [doc for doc in docs if doc["kind"] == "Deployment"]
         pod = dep["spec"]["template"]["spec"]
+        assert pod["automountServiceAccountToken"] is False
+        assert [c["name"] for c in pod["containers"] if any(
+            m["name"] == "api" for m in c.get("volumeMounts", [])
+        )] == ["traefik"]
         (dns,) = [c for c in pod["containers"] if c["name"] == "coredns"]
         (service,) = [d["spec"] for d in docs if d["kind"] == "Service"]
         port = dns["readinessProbe"]["tcpSocket"]["port"]
