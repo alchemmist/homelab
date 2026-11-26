@@ -46,8 +46,10 @@ def main() -> int:
         return 0
     ns, host, entry = args.dns
     state = rows.get((ns, host, entry))
+    if state is None:
+        parser.error(f"Unknown matrix case: {ns}/{host} at {entry}")
     if state not in {"unverified", "dedicated VPN path"}:
-        parser.error(f"Not a published candidate: {state or 'unknown case'}")
+        parser.error(f"Matrix case is not eligible for a DNS check: {state} ({ns}/{host} at {entry})")
     try:
         actual = dns_view(host)
     except OSError as exc:

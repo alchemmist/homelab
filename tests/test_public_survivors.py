@@ -36,3 +36,17 @@ def test_dns_requires_only_survivor(monkeypatch, answers: set[str], code: int) -
     )
     monkeypatch.setattr(audit, "dns_view", lambda host: answers)
     assert audit.main() == code
+
+
+def test_reserved_case_is_not_queried(monkeypatch, capsys) -> None:
+    """A known but unpublished case is a usage error, not a failed DNS lookup."""
+    monkeypatch.setattr(
+        sys, "argv", ["audit", "--dns", "schoolbot", "bot.sch1357.ru", "home"]
+    )
+    monkeypatch.setattr(
+        audit, "dns_view", lambda host: pytest.fail("unexpected DNS lookup")
+    )
+    with pytest.raises(SystemExit) as exc:
+        audit.main()
+    assert exc.value.code == 2
+    assert "not eligible for a DNS check: reserved" in capsys.readouterr().err

@@ -61,3 +61,9 @@ Record time, survivor, client vantage, operation and outcome without credentials
 Distinguish a public ingress outage from loss of the backend nodes or data stores;
 never mark the latter verified based on the former. No command here changes DNS,
 creates an outage or marks a service accepted.
+
+For `--dns`, exit 0 means the client's complete address set equals the one
+surviving public IP, not merely that its IPv4 subset matches. An additional
+IPv6 address fails this particular exercise. Exit 1 means lookup failure or
+an address mismatch. Exit 2 means the requested case is unknown or not eligible
+(e.g. a reserved hostname); the lookup was not attempted.
