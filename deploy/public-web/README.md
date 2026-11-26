@@ -102,3 +102,17 @@ its labeled solver; the default solver stays unlabeled. Merging the playbook
 does not run it. Existing certificates or a locally rendered challenge do not
 prove renewal: use a separately approved canary and confirm external HTTP-01
 validation before handing over ports or DNS.
+
+### Backend admission for the password route
+
+The legacy HOME controller reaches `password-self-service` on its Service and
+Pod addresses; the legacy NL host-network controller was refused on both. Do
+not grant a node IP or the whole cluster access. For the Pod-network candidate,
+reserve the `public-entry` namespace exclusively for the platform controller: review
+who can create or relabel Pods, run workloads or exec there before enabling the
+backend chart's `allowPublicEntryPeer`. Keep untrusted probe clients outside that
+trust boundary. The opt-in admits only labeled controller Pods in that namespace
+on backend TCP/8080. Pod labels are not a security boundary against a namespace
+writer. No opt-in, namespace creation or changes to the existing ingress owner
+are part of this preparation. Test allowed and denied traffic and the anonymous
+login redirect before adopting the route. A real password change is not a probe.
