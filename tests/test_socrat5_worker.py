@@ -87,8 +87,8 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
 
     def test_only_worker5_nl_endpoint_changes_to_existing_relay(self) -> None:
         """Keep worker5's NL endpoint pinned to the existing relay."""
-        group = yaml.safe_load((ROOT / "ansible/inventory/group_vars/Socrat.yml").read_text())
-        peers = group["wg_socrat_peer_endpoints"]
+        group = yaml.safe_load((ROOT / "ansible/inventory/group_vars/Socrat/cluster.yml").read_text())
+        peers = group["wg_socrat_peer_endpoint_overrides"]
         assert peers["socrat-5"]["socrat-2"] == peers["socrat-0"]["socrat-2"]
         assert peers["socrat-5"]["socrat-2"] == "91.189.82.238:51832"
         assert peers["socrat-5"]["socrat-3"] == "10.250.0.1:51837"
@@ -119,8 +119,10 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
         """Keep password tasks private and leave SSH policy untouched."""
         play = yaml.safe_load((ROOT / "ansible/playbooks/socrat-5-headless.yml").read_text())[0]
         users = [t for t in play["pre_tasks"] if "ansible.builtin.user" in t]
+        owners = yaml.safe_load((ROOT / "ansible/inventory/group_vars/Socrat/users.yml").read_text())
+        assert owners["homelab_owner_account"]["name"] == "alchemmist"
         assert {t["ansible.builtin.user"]["name"] for t in users} == {
-            "alchemmist",
+            "{{ homelab_owner_account.name }}",
             "root",
         }
         assert all(t["no_log"] for t in users)
