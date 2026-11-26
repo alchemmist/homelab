@@ -41,7 +41,6 @@ def inventory(catalog: dict, objects: list[dict]) -> dict:
             errors.add(
                 f"{ns}/{obj['metadata'].get('name', '<unnamed>')}: mixed ordinary and undeclared hosts"
             )
-            continue
         for tls in spec.get("tls", []):
             for host in tls.get("hosts", []):
                 if (ns, host) in owners and tls.get("secretName"):
