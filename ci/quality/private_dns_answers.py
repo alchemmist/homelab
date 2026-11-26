@@ -105,7 +105,7 @@ def main() -> None:
                 timeout=30,
                 check=True,
             )
-            check_reply(result.stdout, names, entry["publicIP"])
+            check_reply(result.stdout, names, str(ipaddress.IPv4Address(entry["publicIP"])))
             print(f"{label} {transport}: {len(names)} authoritative self-IP answers")
 
 
