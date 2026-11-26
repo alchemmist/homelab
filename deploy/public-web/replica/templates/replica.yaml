@@ -1,4 +1,5 @@
 {{- if .Values.instance }}
+{{- $zoneKey := "db.alchemmist.xyz" }}
 {{- $scope := keys .Values.publications | sortAlpha }}
 {{- if not $scope }}{{ fail "publications required" }}{{ end }}
 apiVersion: v1
@@ -8,9 +9,9 @@ data:
   Corefile: |
     alchemmist.xyz:1053 {
         errors
-        file /etc/coredns/db.alchemmist.xyz alchemmist.xyz
+        file /etc/coredns/{{ $zoneKey }} alchemmist.xyz
     }
-  db.alchemmist.xyz: |
+  {{ $zoneKey }}: |
 {{ required "zoneFile required" .Values.zoneFile | indent 4 }}
 ---
 apiVersion: v1
