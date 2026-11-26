@@ -137,6 +137,10 @@ from Git. Regenerate with `uv run python -m ci.quality.private_dns_fleet`; use
 CoreDNS Pod with no Kubernetes API token. The policies allow inbound traffic
 only from labeled probe Pods in `public-dns-rehearsal` and deny all egress.
 The earlier policy sync wave is ordering, not proof of enforcement.
+This egress denial applies to the DNS-only fleet. The offline `web-and-dns`
+render has an ingress-only policy: it does not restrict outbound connections.
+Traefik needs the API and approved backends; review that separate egress scope
+before considering a web deployment. Do not promote by flipping the stage.
 
 After reconciliation, inspect placement, readiness and Service endpoints. From a
 disposable tokenless probe in that namespace with label
