@@ -1,9 +1,8 @@
 # Private Moscow ingress rehearsal
 
-The chart is inert by default. The production Argo Applications explicitly opt
-into the **private rehearsal only**: merging those values starts two Pod-network
-workloads and their discovery grants. Their NetworkPolicies have an earlier sync
-wave than the Pods; ordering alone does not demonstrate data-plane enforcement.
+Both production Applications remain opted out. A merge does not start either
+private workload or grant discovery. When enabled later, their NetworkPolicies
+have an earlier sync wave than the Pods; ordering does not prove enforcement.
 There is deliberately no public mode or DNS cutover switch.
 
 The opt-in render schedules a non-root Traefik in the Pod network on socrat-4.
@@ -45,3 +44,11 @@ original authenticated TCP/UDP path after reboot and CNI enforcement on Moscow.
 After sync verify both private Pods and the unchanged public relay, then run
 positive and negative checks from same-node and cross-node clients. Stop on a
 policy failure; do not publish DNS or hand over public sockets.
+
+Before enabling either production opt-in, use a disposable, non-sensitive test
+listener pinned to socrat-4, not the real relay or controller. From permitted
+and non-permitted Pods on Moscow and on another node, test the same TCP and UDP
+sockets. Require successful application replies in the positive controls, no
+replies in the denied controls, and a repeated successful positive control.
+Record node placement, policy selectors and outcomes without credentials; remove
+the temporary resources. Missing or inconclusive evidence keeps both opt-ins off.

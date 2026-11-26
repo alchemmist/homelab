@@ -14,7 +14,6 @@ spec:
     path: charts/vpn-transit
     helm:
       releaseName: vpn-transit
-      valuesObject: {podRehearsal: true}
       parameters: []
   destination:
     namespace: vpn-transit

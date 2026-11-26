@@ -13,11 +13,17 @@ def test_moscow_private_rehearsal() -> None:
     # No values files, valuesObject or --set parameters: exercise bare chart defaults.
     no_overrides = {"values": [], "inline_values": {}, "parameters": []}
     assert render({**moscow, **no_overrides}) == []
-    docs = render(moscow)
-    backend = render(relay)
+    assert render(moscow) == []  # Deployment is gated on Moscow policy evidence.
+    docs = render(
+        {**moscow, "inline_values": {**moscow["inline_values"], "rehearsal": True}}
+    )
+    backend = render(
+        {**relay, "inline_values": {**relay["inline_values"], "podRehearsal": True}}
+    )
     assert docs and backend
     baseline = render({**relay, **no_overrides})
     assert baseline and len(baseline) == 1
+    assert render(relay) == baseline
     (legacy,) = baseline
     assert (legacy["kind"], legacy["metadata"]["name"]) == ("Deployment", "vpn-transit")
     assert legacy["spec"]["template"]["spec"]["hostNetwork"] is True
