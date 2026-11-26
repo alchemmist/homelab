@@ -37,6 +37,14 @@ def test_every_replica_is_the_same_except_placement_and_local_a() -> None:
         (cm,) = [doc for doc in docs if doc["kind"] == "ConfigMap"]
         (dep,) = [doc for doc in docs if doc["kind"] == "Deployment"]
         pod = dep["spec"]["template"]["spec"]
+        (dns,) = [c for c in pod["containers"] if c["name"] == "coredns"]
+        (service,) = [d["spec"] for d in docs if d["kind"] == "Service"]
+        port = dns["readinessProbe"]["tcpSocket"]["port"]
+        assert f":{port} {{" in cm["data"]["Corefile"]
+        assert service["type"] == "ClusterIP"
+        assert {(p["protocol"], p["port"], p["targetPort"]) for p in service["ports"]} == {
+            ("TCP", 53, port), ("UDP", 53, port)
+        }
         assert pod.pop("nodeSelector") == {"kubernetes.io/hostname": instance["node"]}
         dep["spec"]["template"]["metadata"].pop("annotations")
         expected = {
