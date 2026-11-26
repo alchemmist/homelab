@@ -1,7 +1,7 @@
 {
   "uid": "socrat-metrics",
   "title": "Metrics",
-  "description": "OTel → Prometheus on socrat-0 → warm S3 on socrat-1 → verified hourly moves on socrat-3. The legacy 5m NFS shelf is separate.",
+  "description": "Сейчас: Prometheus и основной компактор на socrat-0, рабочий бакет на socrat-1, перелив часовых блоков на socrat-3. Цель (ещё не включена): socrat-0 → socrat-3 для raw, 5m и 1h, без socrat-5.",
   "tags": [
     "Primary"
   ],
@@ -306,13 +306,28 @@
   },
   "panels": [
     {
+      "id": 63,
+      "type": "text",
+      "title": "Маршрут метрик: сейчас и после переноса",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 4
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Сейчас:** сбор и основная обработка — `socrat-0`; рабочий бакет — `socrat-1`; в архив на `socrat-3` переливаются только **1h**. Архив 5m на NFS отдельный.\n\n**После миграции (ещё не включено):** сбор, обработка и буфер — `socrat-0` → архив **raw / 5m / 1h** на `socrat-3`. `socrat-5` в маршруте не нужен."
+      }
+    },
+    {
       "id": 1,
       "type": "row",
       "title": "OTel ingest → Prometheus · socrat-0",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 0,
+        "y": 4,
         "w": 24,
         "h": 1
       },
@@ -329,7 +344,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 1,
+        "y": 5,
         "w": 6,
         "h": 3
       },
@@ -392,7 +407,7 @@
       },
       "gridPos": {
         "x": 6,
-        "y": 1,
+        "y": 5,
         "w": 6,
         "h": 3
       },
@@ -455,7 +470,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 1,
+        "y": 5,
         "w": 6,
         "h": 3
       },
@@ -518,7 +533,7 @@
       },
       "gridPos": {
         "x": 18,
-        "y": 1,
+        "y": 5,
         "w": 6,
         "h": 3
       },
@@ -581,7 +596,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 4,
+        "y": 8,
         "w": 6,
         "h": 3
       },
@@ -644,7 +659,7 @@
       },
       "gridPos": {
         "x": 6,
-        "y": 4,
+        "y": 8,
         "w": 6,
         "h": 3
       },
@@ -724,7 +739,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 4,
+        "y": 8,
         "w": 12,
         "h": 3
       },
@@ -783,7 +798,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 7,
+        "y": 11,
         "w": 24,
         "h": 1
       },
@@ -800,7 +815,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 12,
         "w": 8,
         "h": 4
       },
@@ -864,7 +879,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 8,
+        "y": 12,
         "w": 8,
         "h": 4
       },
@@ -928,7 +943,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 8,
+        "y": 12,
         "w": 8,
         "h": 4
       },
@@ -1009,7 +1024,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 12,
+        "y": 16,
         "w": 16,
         "h": 8
       },
@@ -1064,7 +1079,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 12,
+        "y": 16,
         "w": 8,
         "h": 8
       },
@@ -1115,7 +1130,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 20,
+        "y": 24,
         "w": 24,
         "h": 1
       },
@@ -1132,7 +1147,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 21,
+        "y": 25,
         "w": 24,
         "h": 6
       },
@@ -1256,7 +1271,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 27,
+        "y": 31,
         "w": 24,
         "h": 11
       },
@@ -1304,15 +1319,205 @@
     {
       "id": 20,
       "type": "row",
-      "title": "Hourly copy · socrat-1 → socrat-3",
+      "title": "Действующий перелив · только 1h · socrat-1 → socrat-3",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 46,
+        "y": 50,
         "w": 24,
         "h": 1
       },
       "panels": []
+    },
+    {
+      "id": 60,
+      "title": "Часовые блоки в ожидании",
+      "type": "stat",
+      "description": "Верхняя оценка: включает скопированные, но ещё не подтверждённые блоки.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 51,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(socrat_warm_hour_pending_upper_bytes) and on() (time() - max(socrat_warm_hour_inventory_timestamp_seconds) < 1800)",
+          "legendFormat": "Часовые блоки в ожидании",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "Нет свежих данных",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 61,
+      "title": "Возраст старейшего блока",
+      "type": "stat",
+      "description": "Возраст от создания блока, не возраст наблюдений.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 51,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(socrat_warm_hour_oldest_upper_seconds) and on() (time() - max(socrat_warm_hour_inventory_timestamp_seconds) < 1800)",
+          "legendFormat": "Возраст старейшего блока",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "Нет свежих данных",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 62,
+      "title": "Давность инвентаризации",
+      "type": "stat",
+      "description": "Инвентаризация каждые 15 минут. При возрасте более 30 минут объём и возраст очереди скрыты.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 51,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - max(socrat_warm_hour_inventory_timestamp_seconds)",
+          "legendFormat": "Давность инвентаризации",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "Нет свежих данных",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1800
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
     },
     {
       "id": 21,
@@ -1325,7 +1530,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 47,
+        "y": 55,
         "w": 6,
         "h": 3
       },
@@ -1388,7 +1593,7 @@
       },
       "gridPos": {
         "x": 6,
-        "y": 47,
+        "y": 55,
         "w": 6,
         "h": 3
       },
@@ -1451,7 +1656,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 47,
+        "y": 55,
         "w": 6,
         "h": 3
       },
@@ -1528,7 +1733,7 @@
       },
       "gridPos": {
         "x": 18,
-        "y": 47,
+        "y": 55,
         "w": 6,
         "h": 3
       },
@@ -1598,7 +1803,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 50,
+        "y": 58,
         "w": 12,
         "h": 8
       },
@@ -1660,7 +1865,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 50,
+        "y": 58,
         "w": 12,
         "h": 8
       },
@@ -1715,7 +1920,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 58,
+        "y": 66,
         "w": 24,
         "h": 8
       },
@@ -1773,7 +1978,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 66,
+        "y": 74,
         "w": 24,
         "h": 1
       },
@@ -1790,7 +1995,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 38,
+        "y": 42,
         "w": 24,
         "h": 7
       },
@@ -1883,7 +2088,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 67,
+        "y": 75,
         "w": 4,
         "h": 2
       },
@@ -1966,7 +2171,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 67,
+        "y": 75,
         "w": 4,
         "h": 2
       },
@@ -2049,7 +2254,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 67,
+        "y": 75,
         "w": 4,
         "h": 2
       },
@@ -2132,7 +2337,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 67,
+        "y": 75,
         "w": 4,
         "h": 2
       },
@@ -2215,7 +2420,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 67,
+        "y": 75,
         "w": 4,
         "h": 2
       },
@@ -2298,7 +2503,7 @@
       },
       "gridPos": {
         "x": 20,
-        "y": 67,
+        "y": 75,
         "w": 4,
         "h": 2
       },
@@ -2381,7 +2586,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 69,
+        "y": 77,
         "w": 4,
         "h": 2
       },
@@ -2464,7 +2669,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 69,
+        "y": 77,
         "w": 4,
         "h": 2
       },
@@ -2547,7 +2752,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 69,
+        "y": 77,
         "w": 4,
         "h": 2
       },
@@ -2630,7 +2835,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 69,
+        "y": 77,
         "w": 4,
         "h": 2
       },
