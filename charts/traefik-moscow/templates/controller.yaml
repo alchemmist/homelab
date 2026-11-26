@@ -1,5 +1,5 @@
 {{- if .Values.rehearsal }}
-{{- if not .Values.moscowWatchNamespaces }}{{ fail "explicit Moscow Ingress namespaces required" }}{{ end }}
+{{- if not .Values.watchNamespaces }}{{ fail "explicit Moscow Ingress namespaces required" }}{{ end }}
 {{- if ne .Release.Namespace "traefik-moscow" }}{{ fail "use the fenced traefik-moscow namespace" }}{{ end }}
 apiVersion: apps/v1
 kind: Deployment
@@ -23,7 +23,7 @@ spec:
           args:
             - --providers.kubernetesingress=true
             - --providers.kubernetesingress.ingressclass=traefik
-            - --providers.kubernetesingress.namespaces={{ join "," .Values.moscowWatchNamespaces }}
+            - --providers.kubernetesingress.namespaces={{ join "," .Values.watchNamespaces }}
             - --providers.kubernetescrd=true
             - --providers.kubernetescrd.namespaces=vpn-transit
             - --providers.kubernetescrd.ingressclass=traefik-moscow

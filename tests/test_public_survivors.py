@@ -13,8 +13,8 @@ def test_all_route_owners_have_three_cases() -> None:
     catalog = yaml.safe_load(audit.CATALOG.read_text())
     rows = audit.cases(catalog)
     assert len(rows) == 3 * sum(len(hosts) for hosts in catalog["hosts"].values())
-    assert rows["monori", "monori.alchemmist.xyz", "nl"] == "policy exclusion"
-    assert rows["traefik-edge", "vpn.alchemmist.xyz", "home"] == "no VPN entrance"
+    assert rows["monori", "monori.alchemmist.xyz", "nl"] == "unverified"
+    assert rows["traefik-edge", "vpn.alchemmist.xyz", "home"] == "dedicated VPN path"
     assert rows["schoolbot", "bot.sch1357.ru", "moscow"] == "reserved"
     for ns in ("socrat-home", "rustfs"):
         assert rows[ns, "socrat.alchemmist.xyz", "moscow"] == "unverified"

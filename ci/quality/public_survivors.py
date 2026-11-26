@@ -7,7 +7,9 @@ import yaml
 
 from ci.quality.public_web import CATALOG
 
-ENTRIES = {"home": "109.173.40.247", "nl": "109.120.141.60", "moscow": "91.189.82.238"}
+ENTRIES = {
+    name: item["publicIP"] for name, item in yaml.safe_load(CATALOG.read_text())["replicas"].items()
+}
 
 
 def cases(catalog: dict) -> dict[tuple[str, str, str], str]:
@@ -15,13 +17,13 @@ def cases(catalog: dict) -> dict[tuple[str, str, str], str]:
     rows = {}
     for ns, hosts in catalog["hosts"].items():
         for host, policy in hosts.items():
-            for entry in ENTRIES:
+            for entry in catalog["replicas"]:
                 if policy.get("route") == "reserved":
                     state = "reserved"
                 elif policy.get("route") == "vpn-transit":
-                    state = "dedicated VPN path" if entry == "moscow" else "no VPN entrance"
-                elif entry not in policy.get("entrances", catalog["defaultEntrances"]):
-                    state = "policy exclusion"
+                    state = "dedicated VPN path"
+                elif policy.get("route") == "fixed-relay":
+                    state = "fixed relay"
                 else:
                     state = "unverified"
                 rows[ns, host, entry] = state
@@ -50,8 +52,10 @@ def main() -> int:
     state = rows.get((ns, host, entry))
     if state is None:
         parser.error(f"Unknown matrix case: {ns}/{host} at {entry}")
-    if state not in {"unverified", "dedicated VPN path"}:
-        parser.error(f"Matrix case is not eligible for a DNS check: {state} ({ns}/{host} at {entry})")
+    if state != "unverified":
+        parser.error(
+            f"Matrix case is not eligible for a DNS check: {state} ({ns}/{host} at {entry})"
+        )
     try:
         actual = dns_view(host)
     except OSError as exc:
