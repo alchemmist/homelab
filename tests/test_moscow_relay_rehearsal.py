@@ -31,9 +31,10 @@ def objects(*args: str) -> dict:
 def test_private_rehearsal_never_takes_public_sockets() -> None:
     """The ordinary release is unchanged even when the second relay is rendered."""
     legacy = ("Deployment", "vpn-transit")
-    assert set(objects()) == {legacy}
+    default = objects()
+    assert set(default) == {legacy}
     stage = objects("--set", "podRehearsal=true")
-    assert stage[legacy] == objects()[legacy]
+    assert stage[legacy] == default[legacy]
     template = stage["Deployment", "vpn-transit-rehearsal"]["spec"]["template"]
     pod = template["spec"]
     assert pod["hostNetwork"] is False and pod["automountServiceAccountToken"] is False
