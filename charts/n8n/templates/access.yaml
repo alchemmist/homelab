@@ -5,6 +5,10 @@ kind: Ingress
 metadata:
   name: n8n-machine-endpoints
   namespace: automation
+{{- if $.Values.ingress.publicWeb }}
+  labels:
+    homelab.alchemmist.xyz/public-web: 'true'
+{{- end }}
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: 'true'

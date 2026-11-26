@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 import runpy
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -110,8 +111,12 @@ class FakeAuthentik:
                 }
                 row["pk"] = "group-" + str(row["pk"])
             if path == "core/users/":
-                known = json.loads((ROOT / "deploy/identity/account-mappings.json").read_text())
-                row["uuid"] = known.get(row["username"], {}).get("idpUserUuid", "test-new-subject")
+                known = json.loads(
+                    (ROOT / "deploy/identity/account-mappings.json").read_text()
+                )
+                row["uuid"] = known.get(row["username"], {}).get(
+                    "idpUserUuid", "test-new-subject"
+                )
                 row["is_superuser"] = False
                 for g in self.data["core/groups/"]:
                     if g["pk"] in payload.get("groups", []):
@@ -149,7 +154,9 @@ class IdentityTests(unittest.TestCase):
         (root / "credentials.json").write_text(
             json.dumps({"AUTHENTIK_BOOTSTRAP_TOKEN": "fake-test-token"})
         )
-        (root / "services.json").write_text((ROOT / "deploy/identity/services.json").read_text())
+        (root / "services.json").write_text(
+            (ROOT / "deploy/identity/services.json").read_text()
+        )
         (root / "observer-profile.json").write_bytes(
             (ROOT / "deploy/identity/observer/profile.json").read_bytes()
         )
@@ -172,8 +179,12 @@ class IdentityTests(unittest.TestCase):
         """Add the restored reviewed user on top of a configured root."""
         # Restored current identities, not speculative/future users.
         self.configure(root, api)
-        accounts = json.loads((ROOT / "deploy/identity/account-mappings.json").read_text())
-        observer = next(g for g in api.data["core/groups/"] if g["name"] == "homelab-observer")
+        accounts = json.loads(
+            (ROOT / "deploy/identity/account-mappings.json").read_text()
+        )
+        observer = next(
+            g for g in api.data["core/groups/"] if g["name"] == "homelab-observer"
+        )
         api.data["core/users/"].append(
             {
                 "pk": 6,
@@ -200,8 +211,12 @@ class IdentityTests(unittest.TestCase):
             api = FakeAuthentik()
             (root / "observer-ready.json").unlink()
             self.configure(root, api)
-            observer = next(g for g in api.data["core/groups/"] if g["name"] == "homelab-observer")
-            harbor = next(a for a in api.data["core/applications/"] if a["slug"] == "harbor")
+            observer = next(
+                g for g in api.data["core/groups/"] if g["name"] == "homelab-observer"
+            )
+            harbor = next(
+                a for a in api.data["core/applications/"] if a["slug"] == "harbor"
+            )
             assert not any(
                 b["target"] == harbor["pk"] and b["group"] == observer["pk"]
                 for b in api.data["policies/bindings/"]
@@ -242,22 +257,31 @@ class IdentityTests(unittest.TestCase):
             assert (root / "owner-login.json").read_bytes() == owner
             assert len(api.data["core/users/"]) == 1
             assert api.data["core/users/"][0]["username"] == "alchemmist"
-            privileged = [g["name"] for g in api.data["core/groups/"] if g["is_superuser"]]
+            privileged = [
+                g["name"] for g in api.data["core/groups/"] if g["is_superuser"]
+            ]
             assert privileged == ["homelab-owner"]
             assert (
                 api.data["stages/authenticator/validate/"][0]["not_configured_action"]
                 == "configure"
             )
             for provider in api.data["providers/oauth2/"]:
-                assert provider["grant_types"] == ["authorization_code", "refresh_token"]
+                assert provider["grant_types"] == [
+                    "authorization_code",
+                    "refresh_token",
+                ]
             grafana = next(
-                p for p in api.data["providers/oauth2/"] if p["name"] == "homelab-grafana"
+                p
+                for p in api.data["providers/oauth2/"]
+                if p["name"] == "homelab-grafana"
             )
             assert "offline_access" in cast("list[str]", grafana["property_mappings"])
             assert len(api.data["core/applications/"]) == 6
             assert len(api.data["policies/bindings/"]) == sum(
                 len(admission_groups(slug, service))
-                for slug, service in json.loads((root / "services.json").read_text()).items()
+                for slug, service in json.loads(
+                    (root / "services.json").read_text()
+                ).items()
                 if slug != "litellm" and not service.get("managedBy")
             )
             for method, path, _body, query in api.requests:
@@ -337,7 +361,11 @@ class IdentityTests(unittest.TestCase):
             assert fake.data["providers/oauth2/"][0]["client_secret"] == secret
             assert configure_monori(root, api) == secret
             assert configure_monori(root, api) == secret
-            writes = [(method, path) for method, path, _, _ in fake.requests if method != "GET"]
+            writes = [
+                (method, path)
+                for method, path, _, _ in fake.requests
+                if method != "GET"
+            ]
             assert writes == [
                 ("POST", "core/applications/"),
                 ("POST", "policies/bindings/"),
@@ -346,7 +374,9 @@ class IdentityTests(unittest.TestCase):
                 ("PATCH", "core/applications/monori/"),
             ]
             secret_path.write_text("x" * 64)
-            with pytest.raises(RuntimeError, match="Cannot verify retained Monori secret"):
+            with pytest.raises(
+                RuntimeError, match="Cannot verify retained Monori secret"
+            ):
                 configure_monori(root, api)
             secret_path.write_text(secret)
             fake.data["policies/bindings/"][0]["group"] = "other"
@@ -398,9 +428,13 @@ class IdentityTests(unittest.TestCase):
             self.configure(root, api)
             self.configure(root, api)
             provider = next(
-                p for p in api.data["providers/oauth2/"] if p["name"] == "homelab-litellm"
+                p
+                for p in api.data["providers/oauth2/"]
+                if p["name"] == "homelab-litellm"
             )
-            assert "litellm-identity" in cast("list[str]", provider["property_mappings"])
+            assert "litellm-identity" in cast(
+                "list[str]", provider["property_mappings"]
+            )
             assert len(api.data["core/applications/"]) == 7
 
     def test_existing_owner_never_silently_taken_over(self) -> None:
@@ -412,7 +446,9 @@ class IdentityTests(unittest.TestCase):
             api.data["core/users/"] = [{"pk": 42, "username": "alchemmist"}]
             with pytest.raises(RuntimeError, match="already exists"):
                 self.configure(root, api)
-            assert not any(path.endswith("/set_password/") for _, path, _, _ in api.requests)
+            assert not any(
+                path.endswith("/set_password/") for _, path, _, _ in api.requests
+            )
 
     def test_missing_provider_credentials_refuses_rotation(self) -> None:
         """Refuse credential rotation when files are missing."""
@@ -432,7 +468,9 @@ class IdentityTests(unittest.TestCase):
             self.setup_root(root)
             api = FakeAuthentik()
             self.configure(root, api)
-            group = next(g for g in api.data["core/groups/"] if g["name"] == "homelab-owner")
+            group = next(
+                g for g in api.data["core/groups/"] if g["name"] == "homelab-owner"
+            )
             cast("list[object]", group["users"]).append(999)
             group["is_superuser"] = False
             with pytest.raises(RuntimeError, match="Unexpected owner"):
@@ -459,7 +497,9 @@ class IdentityTests(unittest.TestCase):
 
     def test_personal_keys_replaced_not_appended(self) -> None:
         """Replace personal key sets instead of appending."""
-        tasks = yaml.safe_load((ROOT / "ansible/roles/users/tasks/main.yml").read_text())
+        tasks = yaml.safe_load(
+            (ROOT / "ansible/roles/users/tasks/main.yml").read_text()
+        )
         key_task = next(t for t in tasks if "Replace managed key sets" in t["name"])
         assert "ansible.builtin.copy" in key_task
         assert "ansible.builtin.lineinfile" not in key_task
@@ -467,15 +507,17 @@ class IdentityTests(unittest.TestCase):
 
     def test_grafana_keeps_local_login_and_uses_secret_reference(self) -> None:
         """Keep local Grafana login with secret references."""
-        v = yaml.safe_load((ROOT / "deploy/identity/grafana-oidc-values.yaml").read_text())[
-            "grafana"
-        ]
+        v = yaml.safe_load(
+            (ROOT / "deploy/identity/grafana-oidc-values.yaml").read_text()
+        )["grafana"]
         assert "GF_AUTH_DISABLE_LOGIN_FORM" not in v["env"]
         assert v["env"]["GF_AUTH_GENERIC_OAUTH_AUTO_LOGIN"] == "true"
         assert v["env"]["GF_AUTH_ANONYMOUS_ENABLED"] == "false"
         assert "GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET" not in v["env"]
         assert (
-            v["envValueFrom"]["GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET"]["secretKeyRef"]["name"]
+            v["envValueFrom"]["GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET"]["secretKeyRef"][
+                "name"
+            ]
             == "socrat-authentik-grafana"
         )
 
@@ -517,8 +559,12 @@ class RolloutRegressionTests(unittest.TestCase):
             helper.configure(root, api)
             helper.configure(root, api)
             assert len(api.data["core/users/"]) == 2
-            owner_group = next(g for g in api.data["core/groups/"] if g["name"] == "homelab-owner")
-            tim = next(u for u in api.data["core/users/"] if u["username"] == "antropophag")
+            owner_group = next(
+                g for g in api.data["core/groups/"] if g["name"] == "homelab-owner"
+            )
+            tim = next(
+                u for u in api.data["core/users/"] if u["username"] == "antropophag"
+            )
             assert owner_group["pk"] not in cast("list[object]", tim["groups"])
             assert tim["pk"] not in cast("list[object]", owner_group["users"])
             assert (root / "antropophag-login.json").stat().st_mode & 511 == 384
@@ -532,7 +578,21 @@ class RolloutRegressionTests(unittest.TestCase):
         assert "redirect" not in services["n8n"]
         assert "uptime-kuma" not in services
         resources = list(
-            yaml.safe_load_all((ROOT / "charts/n8n/templates/access.yaml").read_text())
+            yaml.safe_load_all(
+                subprocess.check_output(
+                    [
+                        "helm",
+                        "template",
+                        "n8n",
+                        str(ROOT / "charts/n8n"),
+                        "-n",
+                        "automation",
+                        "--show-only",
+                        "templates/access.yaml",
+                    ],
+                    text=True,
+                )
+            )
         )
         assert len(resources) == 1
         machine = resources[0]
@@ -540,14 +600,19 @@ class RolloutRegressionTests(unittest.TestCase):
         for path in machine["spec"]["rules"][0]["http"]["paths"]:
             assert path["backend"]["service"]["name"] == "n8n"
             assert path["path"] != "/"
-        assert yaml.safe_load((ROOT / "charts/n8n/values.yaml").read_text())["ingress"]["enabled"]
-        assert "n8n-gateway" not in (ROOT / "ansible/roles/authentik/tasks/main.yml").read_text()
+        assert yaml.safe_load((ROOT / "charts/n8n/values.yaml").read_text())["ingress"][
+            "enabled"
+        ]
+        assert (
+            "n8n-gateway"
+            not in (ROOT / "ansible/roles/authentik/tasks/main.yml").read_text()
+        )
 
     def test_owner_mapping_is_server_admin_only_for_owner_group(self) -> None:
         """Grant Grafana server admin only to the owner group."""
-        env = yaml.safe_load((ROOT / "deploy/identity/grafana-oidc-values.yaml").read_text())[
-            "grafana"
-        ]["env"]
+        env = yaml.safe_load(
+            (ROOT / "deploy/identity/grafana-oidc-values.yaml").read_text()
+        )["grafana"]["env"]
         assert env["GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN"] == "true"
         assert (
             env["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"]

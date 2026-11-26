@@ -20,9 +20,13 @@ def module(name: str) -> types.ModuleType:
     return m
 
 
-def test_optional_pi_example_has_no_inline_credentials_and_blocks_pending_clients() -> None:
+def test_optional_pi_example_has_no_inline_credentials_and_blocks_pending_clients() -> (
+    None
+):
     """Require disabled pending clients and command-backed credential headers."""
-    config = json.loads((ROOT / "deploy/mcp/examples/pi-mcp.json").read_text())["mcpServers"]
+    config = json.loads((ROOT / "deploy/mcp/examples/pi-mcp.json").read_text())[
+        "mcpServers"
+    ]
     assert set(config) == {
         "socrat-grafana",
         "argocd",
@@ -132,7 +136,9 @@ def test_package_lock_and_release_checksums_are_pinned() -> None:
     lock = json.loads((ROOT / "deploy/mcp/clients/package-lock.json").read_text())
     assert lock["packages"][""]["dependencies"] == p["dependencies"]
     assert all(
-        v.get("integrity") for k, v in lock["packages"].items() if k.startswith("node_modules/")
+        v.get("integrity")
+        for k, v in lock["packages"].items()
+        if k.startswith("node_modules/")
     )
     m = module("setup-official-mcp")
     assert m.VERSION == "0.18.0"
@@ -141,9 +147,28 @@ def test_package_lock_and_release_checksums_are_pinned() -> None:
 
 def test_native_n8n_mcp_is_exact_service_owned_without_bypassing_ui() -> None:
     """Keep the native n8n UI and an exact machine MCP path on the same service."""
-    docs = list(yaml.safe_load_all((ROOT / "charts/n8n/templates/access.yaml").read_text()))
-    assert len(docs) == 1
-    machine = docs[0]
+    app = yaml.safe_load((ROOT / "deploy/argocd/apps/n8n.yaml").read_text())["spec"]
+    helm = app["source"]["helm"]
+    cmd = [
+        "helm",
+        "template",
+        helm["releaseName"],
+        str(ROOT / app["source"]["path"]),
+        "-n",
+        app["destination"]["namespace"],
+    ]
+    baseline = list(yaml.safe_load_all(subprocess.check_output(cmd, text=True)))
+    for param in helm["parameters"]:
+        cmd.extend(["--set", f"{param['name']}={param['value']}"])
+    docs = list(yaml.safe_load_all(subprocess.check_output(cmd, text=True)))
+    ingresses = {d["metadata"]["name"]: d for d in docs if d and d["kind"] == "Ingress"}
+    assert set(ingresses) == {"n8n", "n8n-machine-endpoints"}
+    for ingress in ingresses.values():
+        assert ingress["metadata"].pop("labels") == {
+            "homelab.alchemmist.xyz/public-web": "true"
+        }
+    assert docs == baseline
+    machine = ingresses["n8n-machine-endpoints"]
     assert machine["metadata"]["name"] == "n8n-machine-endpoints"
     assert machine["metadata"]["namespace"] == "automation"
     # 57767f73 deliberately retired the external IdP proxy: UI is native n8n,
@@ -153,7 +178,10 @@ def test_native_n8n_mcp_is_exact_service_owned_without_bypassing_ui() -> None:
     assert "name: n8n" in ui
     assert "tls:" in ui
     assert "websecure" in ui
-    assert "N8N_SECURE_COOKIE" in (ROOT / "charts/n8n/templates/deployment.yaml").read_text()
+    assert (
+        "N8N_SECURE_COOKIE"
+        in (ROOT / "charts/n8n/templates/deployment.yaml").read_text()
+    )
     paths = machine["spec"]["rules"][0]["http"]["paths"]
     mcp = [p for p in paths if p["path"] == "/mcp-server/http"]
     assert len(mcp) == 1

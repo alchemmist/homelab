@@ -4,6 +4,10 @@ kind: Ingress
 metadata:
   namespace: {{ $.Release.Namespace | quote }}
   name: n8n
+{{- if $.Values.ingress.publicWeb }}
+  labels:
+    homelab.alchemmist.xyz/public-web: 'true'
+{{- end }}
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-http01
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
