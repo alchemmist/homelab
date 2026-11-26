@@ -17,7 +17,8 @@ spec:
       valueFiles:
         - ../../deploy/lms/values.yaml
         - alert-graphs.values.yaml
-      parameters: []
+      parameters:
+        - {name: publicWeb, value: 'true'}
   destination:
     namespace: lms
     server: https://kubernetes.default.svc

@@ -14,7 +14,8 @@ spec:
     path: charts/umami
     helm:
       releaseName: umami
-      parameters: []
+      parameters:
+        - {name: publicWeb, value: 'true'}
   destination:
     namespace: umami
     server: https://kubernetes.default.svc

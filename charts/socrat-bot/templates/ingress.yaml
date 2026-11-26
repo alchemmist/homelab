@@ -4,6 +4,9 @@ metadata:
   namespace: {{ $.Release.Namespace | quote }}
   name: socrat-bot
   labels:
+{{- if .Values.publicWeb }}
+    homelab.alchemmist.xyz/public-web: 'true'
+{{- end }}
     app.kubernetes.io/name: socrat-bot
     app.kubernetes.io/instance: {{ .Release.Name }}
   annotations:
