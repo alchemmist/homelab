@@ -80,6 +80,8 @@ def check(names: list[str]) -> tuple[list[Finding], int]:
     count = 0
     for name in names:
         path = Path(name)
+        if path.parts[:2] == ("docs", "plans"):
+            continue  # Plans, including nested READMEs, may use any language.
         wiki = path.parts[:2] == ("wiki", "content") and path.suffix.lower() == ".md"
         if not wiki and "docs" not in path.parts[:-1] and not README.fullmatch(path.name):
             continue

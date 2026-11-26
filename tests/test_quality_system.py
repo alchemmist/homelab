@@ -1229,6 +1229,9 @@ def test_documentation_language_scope_and_locations(tmp_path, monkeypatch) -> No
         "docs/data.tsv": "English\n\u0401",
         "service/readme.RST": "\u044f",
         "README": "\u0451",
+        "docs/plans/network.md": "План изменений",
+        "docs/plans/network/README.md": "Русский and English",
+        "docs/plans-extra/guide.md": "Проверка границы",
         "docs/guide.md": "Caf\u00e9",
         "src/service.py": "\u0410",
         "docs/n8n/workflow.json": "\u044f",
@@ -1238,11 +1241,12 @@ def test_documentation_language_scope_and_locations(tmp_path, monkeypatch) -> No
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
     findings, count = language.check(list(files))
-    assert count == 4
+    assert count == 5
     assert [(f["location"]["path"], f["location"]["startLine"]) for f in findings] == [
         ("docs/data.tsv", 2),
         ("service/readme.RST", 1),
         ("README", 1),
+        ("docs/plans-extra/guide.md", 1),
     ]
     assert all(not f["location"]["path"].endswith(".json") for f in findings)
 
