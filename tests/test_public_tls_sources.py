@@ -103,9 +103,17 @@ def test_mixed_route_reports_conflict_and_withholds_rules() -> None:
     mixed = copy.deepcopy(ING)
     mixed["metadata"]["name"] = "mixed"
     mixed["spec"]["rules"].append({"host": "unknown.test"})
-    report = inventory(CAT, [mixed, PATH, CERT, CERT])
+    report = inventory(CAT, [mixed, PATH, CERT])
     assert "site/mixed: mixed ordinary and undeclared hosts" in report["errors"]
     assert report["hostSources"] == {"app.test": "site/site-tls"}
-    assert "app.test: expected one Certificate writer, found 2" in report["errors"]
+    assert report["errors"] == ["site/mixed: mixed ordinary and undeclared hosts"]
     assert not any(e.startswith("missing route owner") for e in report["errors"])
+    assert not report["namedGetRules"]
+
+
+def test_duplicate_certificate_writer_is_an_independent_blocker() -> None:
+    second = copy.deepcopy(CERT)
+    second["metadata"]["name"] = "other-writer"
+    report = inventory(CAT, [ING, PATH, CERT, second])
+    assert report["errors"] == ["app.test: expected one Certificate writer, found 2"]
     assert not report["namedGetRules"]
