@@ -125,6 +125,7 @@
       "tests/test_traffic_light_models.py"
     ],
     "medium": [
+      "tests/test_public_survivors.py",
       "tests/test_moscow_blog_probe.py",
       "tests/test_moscow_private_traefik.py",
       "tests/test_moscow_relay_rehearsal.py",

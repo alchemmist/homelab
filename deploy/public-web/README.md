@@ -41,3 +41,29 @@ A hostname may have distinct path owners. In particular `socrat-home` owns
 `/` on `socrat.alchemmist.xyz`, while the existing `rustfs-public-files` Ingress
 in `rustfs` owns `/public/` there. DNS selects the entrance, not the path owner.
 Listing both namespace/host pairs does not add `rustfs` to the NL watch.
+
+## Single surviving public IP: acceptance for every service
+
+`uv run python -m ci.quality.public_survivors` prints the offline service matrix.
+Each catalog namespace/host gets HOME-only, NL-only and Moscow-only cases, even
+when several owners share a name. `unverified` means eligible, not healthy.
+Policy exclusions and VPN constraints are gaps relative to universal failover;
+a reserved hostname is not a live service. The matrix does not grant access.
+
+During an authorized single-entrance exercise, after DNS convergence, run e.g.
+`uv run python -m ci.quality.public_survivors --dns blog alchemmist.xyz moscow`
+from an ordinary external client without a VPN or resolver overrides. This checks
+only that the client's effective addresses contain the surviving IP and no others.
+A forced-IP check cannot satisfy this gate. Repeat from independent resolvers.
+Then use the normal URL, validate trusted TLS, and exercise each owner's real
+route (including authentication, storage or the appropriate TCP/UDP VPN profile).
+Record time, survivor, client vantage, operation and outcome without credentials.
+Distinguish a public ingress outage from loss of the backend nodes or data stores;
+never mark the latter verified based on the former. No command here changes DNS,
+creates an outage or marks a service accepted.
+
+For `--dns`, exit 0 means the client's complete address set equals the one
+surviving public IP, not merely that its IPv4 subset matches. An additional
+IPv6 address fails this particular exercise. Exit 1 means lookup failure or
+an address mismatch. Exit 2 means the requested case is unknown or not eligible
+(e.g. a reserved hostname); the lookup was not attempted.
