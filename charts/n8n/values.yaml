@@ -52,3 +52,7 @@ serviceVpn:
 # OIDC: n8n 1.x stores SSO config in its database (settings key features.oidc),
 # set via Settings -> SSO owner UI. Authentik identity is provisioned by
 # scripts/provision-n8n-oidc.py; credentials: kubectl -n automation get secret socrat-authentik-n8n.
+authentikPublicAlias:
+  enabled: true
+  ip: 109.173.40.247
+  host: auth.socrat.alchemmist.xyz
