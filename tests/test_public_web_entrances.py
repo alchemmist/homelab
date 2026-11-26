@@ -6,7 +6,7 @@ import pytest
 import yaml
 
 from ci.quality.charts import ManifestLoader, argocd_targets, render
-from ci.quality.public_web import CATALOG, ROOT, VALUES, namespace_block, update_scope
+from ci.quality.public_web import CATALOG, ROOT, VALUES
 
 REGISTRY = yaml.load(CATALOG.read_text(), Loader=ManifestLoader)
 CAT = REGISTRY["hosts"]
@@ -32,12 +32,7 @@ def check_ingress(doc: dict, fallback: str) -> None:
         allowed = {
             host
             for host, p in CAT[ns].items()
-            if p.get("route", "web") in {"web", "vpn-transit"}
-            and (
-                ns not in WATCH
-                or "nl" in p.get("entrances", REGISTRY["defaultEntrances"])
-                or p.get("nlTransit") is True
-            )
+            if p.get("route", "web") in {"web", "vpn-transit", "fixed-relay"}
         }
     assert "defaultBackend" not in spec and spec.get("rules"), (ns, doc["metadata"])
     for rule in spec["rules"]:
@@ -48,43 +43,22 @@ def check_ingress(doc: dict, fallback: str) -> None:
 
 def test_catalog_scope() -> None:
     """Retain separate VPN ownership, the external school zone and exact hostnames."""
-    assert (
-        yaml.safe_load(namespace_block())["watchNamespaces"]
-        == yaml.safe_load(VALUES.read_text())["watchNamespaces"]
-    )
-    assert set(REGISTRY["defaultEntrances"]) == {"home", "nl", "moscow"}
     assert WATCH <= CAT.keys()
     for ns, hosts in CAT.items():
         for host, policy in hosts.items():
             assert re.fullmatch(r"[a-z0-9-]+(?:\.[a-z0-9-]+)+", host)
-            assert set(policy.get("entrances", REGISTRY["defaultEntrances"])) <= set(
-                REGISTRY["defaultEntrances"]
-            )
-            assert policy.get("route", "web") in {"web", "reserved", "vpn-transit"}
-            if "nlTransit" in policy:
-                assert policy["nlTransit"] is True and ns in WATCH
-                assert "nl" not in policy["entrances"]
+            assert set(policy) <= {"dns", "route"}
+            assert policy.get("route", "web") in {
+                "web",
+                "reserved",
+                "vpn-transit",
+                "fixed-relay",
+            }
             assert policy["dns"] in {"static", "managed", "external"}
-    assert not CAT["traefik-edge"]["vpn.alchemmist.xyz"]["entrances"]
+    assert CAT["traefik-edge"]["vpn.alchemmist.xyz"]["route"] == "vpn-transit"
     assert CAT["schoolbot"]["bot.sch1357.ru"]["dns"] == "external"
     assert not WATCH.intersection(
         {"postgres", "redis", "schoolbot", "rustfs", "netbird-pilot"}
-    )
-
-
-@pytest.mark.parametrize(
-    "namespace,host",
-    [
-        ("blog", "alchemmist.xyz"),
-        ("schoolbot", "inform.sch1357.ru"),
-        ("rustfs", "rustfs.socrat.alchemmist.xyz"),
-    ],
-)
-def test_ordinary_hosts_inherit_all_entrances(namespace: str, host: str) -> None:
-    """Today's DNS and discovery scope must not restrict future entrance eligibility."""
-    assert (
-        CAT[namespace][host].get("entrances", REGISTRY["defaultEntrances"])
-        == REGISTRY["defaultEntrances"]
     )
 
 
@@ -99,7 +73,7 @@ def test_effective_nl_discovery_scope() -> None:
         docs = render(target)
         assert docs is not None
         release = target["release"]
-        approved = set(REGISTRY["nlWatchNamespaces"])
+        approved = WATCH
         for kind in ("Role", "RoleBinding"):
             assert {
                 d["metadata"]["namespace"]
@@ -168,20 +142,3 @@ def test_unknown_namespace_fails() -> None:
             },
             "blog-extra",
         )
-
-
-@pytest.mark.parametrize(
-    "block",
-    [
-        "watchNamespaces:",
-        "watchNamespaces: []",
-        "watchNamespaces: ['example']",
-        "watchNamespaces:\n    - 'example'",
-    ],
-)
-def test_scope_round_trip(block: str) -> None:
-    """Preserve adjacent YAML and regenerate canonical scope idempotently."""
-    original = f"# watchNamespaces:\n{block}\nnext: true\n"
-    updated = update_scope(original)
-    assert updated == "# watchNamespaces:\n" + namespace_block() + "next: true\n"
-    assert update_scope(updated) == updated

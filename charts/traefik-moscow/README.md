@@ -1,4 +1,7 @@
-# Private Moscow ingress rehearsal
+# Legacy private Moscow ingress rehearsal
+
+Frozen migration fixture. Do not add application namespaces here. New public
+replicas use the [common contract](../../deploy/public-web/README.md).
 
 The production Applications now opt into the **private** rehearsal after the
 [Moscow NetworkPolicy preflight](../../docs/records/handoffs/moscow-policy-preflight-20261126.md).
