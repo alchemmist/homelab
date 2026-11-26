@@ -303,47 +303,12 @@
     - name: Create Let's Encrypt ClusterIssuer
       vars:
         issuer_catalog: "{{ lookup('ansible.builtin.file', playbook_dir + '/../../deploy/public-web/entrances.yaml') | from_yaml }}"
-      ansible.builtin.shell: |
-        set -o pipefail
-        set -eu
-        {% set public = namespace(names=[]) %}
-        {% for hosts in issuer_catalog.hosts.values() %}
-        {% for name, policy in hosts.items() if policy.get('route', 'web') == 'web' %}
-        {% set public.names = public.names + [name] %}
-        {% endfor %}
-        {% endfor %}
-        cat <<'EOF' | k3s kubectl apply -f -
-        apiVersion: cert-manager.io/v1
-        kind: ClusterIssuer
-        metadata:
-          name: letsencrypt-http01
-        spec:
-          acme:
-            email: {{ letsencrypt_email }}
-            server: https://acme-v02.api.letsencrypt.org/directory
-            privateKeySecretRef:
-              name: letsencrypt-http01-account-key
-            solvers:
-        {% if public.names %}
-              - selector:
-                  dnsNames: {{ public.names | unique | sort | to_json }}
-                http01:
-                  ingress:
-                    ingressClassName: traefik
-                    ingressTemplate:
-                      metadata:
-                        labels:
-                          homelab.alchemmist.xyz/public-web: 'true'
-        {% endif %}
-              - http01:
-                  ingress:
-                    ingressClassName: traefik
-        EOF
+      ansible.builtin.command:
+        argv: [k3s, kubectl, apply, -f, '-']
+        stdin: "{{ lookup('ansible.builtin.template', 'public-http01-issuer.yaml.j2') }}"
       register: issuer_apply
       changed_when: "'created' in issuer_apply.stdout or 'configured' in issuer_apply.stdout"
       tags: [cert_manager_issuer]
-      args:
-        executable: /bin/bash
 
     - name: Create homepage namespace
       ansible.builtin.command: k3s kubectl create namespace socrat-home

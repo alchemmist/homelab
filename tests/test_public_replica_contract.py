@@ -184,11 +184,19 @@ def test_http01_selector_labels_only_catalogued_web_challenges() -> None:
     catalog = yaml.safe_load(CATALOG.read_text())
     env = Environment(autoescape=False)
     env.filters["to_json"] = json.dumps
+
     def render_issuer(inventory: dict) -> dict:
-        shell = env.from_string(task["ansible.builtin.shell"]).render(
-            issuer_catalog=inventory, letsencrypt_email="test@example.org"
+        name = "public-http01-issuer.yaml.j2"
+        assert (
+            task["ansible.builtin.command"]["stdin"]
+            == "{{ lookup('ansible.builtin.template', '" + name + "') }}"
         )
-        return yaml.safe_load(shell.split("apply -f -\n", 1)[1].split("\nEOF", 1)[0])
+        template = (ROOT / "ansible/playbooks/templates" / name).read_text()
+        return yaml.safe_load(
+            env.from_string(template).render(
+                issuer_catalog=inventory, letsencrypt_email="test@example.org"
+            )
+        )
 
     issuer = render_issuer(catalog)
     scoped, fallback = issuer["spec"]["acme"]["solvers"]

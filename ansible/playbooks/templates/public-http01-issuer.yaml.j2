@@ -1,0 +1,31 @@
+{% set public = namespace(names=[]) %}
+{% for hosts in issuer_catalog.hosts.values() %}
+{% for name, policy in hosts.items() if policy.get('route', 'web') == 'web' %}
+{% set public.names = public.names + [name] %}
+{% endfor %}
+{% endfor %}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-http01
+spec:
+  acme:
+    email: {{ letsencrypt_email }}
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-http01-account-key
+    solvers:
+{% if public.names %}
+      - selector:
+          dnsNames: {{ public.names | unique | sort | to_json }}
+        http01:
+          ingress:
+            ingressClassName: traefik
+            ingressTemplate:
+              metadata:
+                labels:
+                  homelab.alchemmist.xyz/public-web: 'true'
+{% endif %}
+      - http01:
+          ingress:
+            ingressClassName: traefik
