@@ -32,7 +32,7 @@ if worker is None:
  master=get('llm','litellm-env')['LITELLM_MASTER_KEY']
  svc=json.loads(subprocess.check_output(k+['-n','llm','get','svc','litellm','-o','json'],stderr=subprocess.DEVNULL))['spec']
  url='http://'+svc['clusterIP']+':'+str(svc['ports'][0]['port'])+'/key/generate'
- body={'key_alias':'socrat-spi-triage','models':['qwen3.8-27b'],'rpm_limit':3,'tpm_limit':30000,'max_parallel_requests':1,'metadata':{'purpose':'read-only incident triage'}}
+ body={'key_alias':'socrat-spi-triage','models':['qwen3.8-27b','v-deepseek-uc'],'rpm_limit':3,'tpm_limit':30000,'max_parallel_requests':1,'metadata':{'purpose':'read-only incident triage'}}
  with urllib.request.urlopen(urllib.request.Request(url,data=json.dumps(body).encode(),headers={'Authorization':'Bearer '+master,'Content-Type':'application/json'}),timeout=30)as r:key=json.load(r)['key']
  worker={'WORKER_TOKEN':secrets.token_urlsafe(40),'LITELLM_KEY':key,'GRAFANA_TOKEN':get('cattle-monitoring-system','grafana-mcp-credentials')['grafana-token']}
  put('automation','spi-triage',worker)
