@@ -31,7 +31,9 @@ CERT = {
     "kind": "Certificate",
     "metadata": {"namespace": "site", "generation": 1},
     "spec": {"secretName": "site-tls", "dnsNames": ["app.test"]},
-    "status": {"conditions": [{"type": "Ready", "status": "True", "observedGeneration": 1}]},
+    "status": {
+        "conditions": [{"type": "Ready", "status": "True", "observedGeneration": 1}]
+    },
 }
 
 
@@ -95,3 +97,13 @@ def test_two_ingresses_can_share_one_multiname_certificate() -> None:
     )
     cert["spec"]["dnsNames"].append("private.test")
     assert not inventory(catalog, [owner, cert, PATH, alias])["namedGetRules"]
+
+
+def test_mixed_route_reports_conflict_and_withholds_rules() -> None:
+    mixed = copy.deepcopy(ING)
+    mixed["metadata"]["name"] = "mixed"
+    mixed["spec"]["rules"].append({"host": "unknown.test"})
+    report = inventory(CAT, [mixed, PATH, CERT])
+    assert "site/mixed: mixed ordinary and undeclared hosts" in report["errors"]
+    assert not any(e.startswith("missing route owner") for e in report["errors"])
+    assert not report["namedGetRules"]

@@ -33,9 +33,15 @@ def inventory(catalog: dict, objects: list[dict]) -> dict:
         if spec.get("ingressClassName") != "traefik":
             continue
         declared = {rule.get("host") for rule in spec.get("rules", [])}
-        if not declared or not all((ns, host) in owners for host in declared):
+        ordinary = {(ns, host) for host in declared if (ns, host) in owners}
+        if not ordinary:
             continue
-        routes.update((ns, host) for host in declared)
+        routes.update(ordinary)
+        if len(ordinary) != len(declared):
+            errors.add(
+                f"{ns}/{obj['metadata'].get('name', '<unnamed>')}: mixed ordinary and undeclared hosts"
+            )
+            continue
         for tls in spec.get("tls", []):
             for host in tls.get("hosts", []):
                 if (ns, host) in owners and tls.get("secretName"):
