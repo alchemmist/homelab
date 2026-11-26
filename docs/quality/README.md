@@ -4,18 +4,22 @@
 
 ## What runs here
 
-Our [graph declaration](../../qg.yaml) defines 18 blocking nodes. Read `needs` as a prerequisite, not a suggested order:
+Our [graph declaration](../../qg.yaml) defines 16 blocking nodes. Read `needs` as a prerequisite, not a suggested order. Cheap checks fan out from `graph`; later nodes join several of those branches, the same shape as the monori review flow and the lazy-tmux packaging gate.
 
 | Prerequisite | Nodes | What they check |
 | --- | --- | --- |
 | None | `graph` | Generated workflows and manifest match their sources; repository contracts, strict policy and selected Python checks pass. |
-| `graph` | `docs-language` | Flags Russian alphabet characters by file and line in tracked text under `docs/` and in README files anywhere in the tree. Files under `docs/plans/`, including nested READMEs, may use any language. Existing in-scope content blocks too; there is no baseline. In reader-facing `wiki/content/**/*.md`, the same gate flags English prose instead. It checks sentences and headings heuristically, not product names, URLs, inline examples or fenced code; it is not a general language detector. |
-| `graph` | `yaml`, `javascript`, `shell`, `workflow`, `docker`, `secrets` | YAML structure, JavaScript syntax, shell scripts, GitHub Actions security, container recipes and credential findings. |
-| `graph` | `python-scopes`, `scripts-q000`, `deploy-i001`, `rustfs-return-types` | Selected Ruff rules on specific paths: declared scopes, quotes and docstrings, import order and unused imports, and public return types in the RustFS gateway. This is not the full Python audit. |
-| `graph` | `image-cves`, `tests-fast`, `ownership` | Trivy scans [selected deployed images](../../ci/quality/image_cves.py), the fast suite exercises repository code, and ownership checks verify infrastructure contracts, source pointers, operational entrypoints, vendor boundaries and alert definitions. |
-| `ownership` | `ansible`, `dependencies`, `tests-medium` | Playbook safety, dependency audits and integration tests. These three wait for `ownership`, not for every sibling of `ownership`. |
+| `graph` | `docs-language`, `javascript`, `shell`, `docker`, `secrets`, `python-scopes` | Documentation language, JavaScript syntax, shell scripts, container recipes, credential findings, and the declared Ruff scopes. |
+| `python-scopes` | `scripts-q000`, `deploy-i001` | Quotes and docstrings (Q000, D300), then import order (I001) and unused imports (F401). |
+| `deploy-i001` and `scripts-q000` | `rustfs-return-types` | Public return types in the RustFS gateway, after the shared Python static gates. |
+| `python-scopes`, `scripts-q000`, `deploy-i001` | `ownership` | Infrastructure contracts, source pointers, operational entrypoints, vendor boundaries and alert definitions. |
+| `docker` | `image-cves` | Trivy scans [selected deployed images](../../ci/quality/image_cves.py) after their recipes pass. |
+| `secrets` and `shell` | `workflow` | GitHub Actions security after credential hygiene and shell safety. |
+| `ownership` and `shell` | `ansible` | Playbook safety. |
+| `ownership` and `javascript` | `dependencies` | Dependency audit, including the JavaScript lockfile smoke check. |
+| `ownership`, `docker`, `workflow`, `shell` | `tests-medium` | Integration tests after the contracts, images, delivery workflow and shell gates. |
 
-The full `python`, `manifests` and `tests-cluster` checks are [outside this graph](../../ci/quality/local-checks.json). `make check` includes them. A green PR graph does not certify a Kind run, a production rollout or checks that were skipped.
+`yaml`, `tests-fast`, `manifests`, the full `python` audit and `tests-cluster` stay [outside this graph](../../ci/quality/local-checks.json). `make check` includes them. A green PR graph does not certify a Kind run, a production rollout or checks that were skipped.
 
 ## From declaration to PR result
 

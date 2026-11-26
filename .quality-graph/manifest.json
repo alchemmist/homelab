@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "ad4ea84e3c473a2cbb3af01bd7fdd695ec4a961776d260fd3f35148a87ce1bfd",
+  "graphDigest": "2bd72cabf753e5f787e6a0a9b19bd079dd0b74b3c4900efae6b321cf811ca305",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -97,7 +97,7 @@
       "env": {},
       "id": "scripts-q000",
       "needs": [
-        "graph"
+        "python-scopes"
       ],
       "policy": {
         "approvals": {
@@ -124,7 +124,7 @@
       "env": {},
       "id": "deploy-i001",
       "needs": [
-        "graph"
+        "python-scopes"
       ],
       "policy": {
         "approvals": {
@@ -207,7 +207,9 @@
       "env": {},
       "id": "ownership",
       "needs": [
-        "graph"
+        "python-scopes",
+        "scripts-q000",
+        "deploy-i001"
       ],
       "policy": {
         "approvals": {
@@ -262,7 +264,7 @@
       "env": {},
       "id": "image-cves",
       "needs": [
-        "graph"
+        "docker"
       ],
       "policy": {
         "approvals": {
@@ -291,7 +293,8 @@
       },
       "id": "workflow",
       "needs": [
-        "graph"
+        "secrets",
+        "shell"
       ],
       "policy": {
         "approvals": {
@@ -350,7 +353,8 @@
       "env": {},
       "id": "rustfs-return-types",
       "needs": [
-        "graph"
+        "deploy-i001",
+        "scripts-q000"
       ],
       "policy": {
         "approvals": {
@@ -377,7 +381,8 @@
       "env": {},
       "id": "dependencies",
       "needs": [
-        "ownership"
+        "ownership",
+        "javascript"
       ],
       "policy": {
         "approvals": {
@@ -405,7 +410,10 @@
       "env": {},
       "id": "tests-medium",
       "needs": [
-        "ownership"
+        "ownership",
+        "docker",
+        "workflow",
+        "shell"
       ],
       "policy": {
         "approvals": {
@@ -433,7 +441,8 @@
       "env": {},
       "id": "ansible",
       "needs": [
-        "ownership"
+        "ownership",
+        "shell"
       ],
       "policy": {
         "approvals": {

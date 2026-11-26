@@ -138,14 +138,14 @@ nodes:
     title: Python CI, script and test quotes (Q000, D300)
     profile: default
     needs:
-      - graph
+      - python-scopes
     policy: *id001
     run: make scripts-q000
   deploy-i001:
     title: Python import order (I001) and unused CI/script/test imports (F401)
     profile: default
     needs:
-      - graph
+      - python-scopes
     policy: *id001
     run: make deploy-i001
   secrets:
@@ -170,7 +170,9 @@ nodes:
     title: Ownership contracts
     profile: quality-helm
     needs:
-      - graph
+      - python-scopes
+      - scripts-q000
+      - deploy-i001
     policy: *id001
     run: make ownership
   docker:
@@ -186,14 +188,15 @@ nodes:
     title: Deployed image vulnerabilities
     profile: quality-images
     needs:
-      - graph
+      - docker
     policy: *id001
     run: make image-cves
   workflow:
     title: Delivery security
     profile: quality-delivery
     needs:
-      - graph
+      - secrets
+      - shell
     policy: *id001
     run: make workflow
     env:
@@ -213,7 +216,8 @@ nodes:
     title: RustFS gateway public return types
     profile: default
     needs:
-      - graph
+      - deploy-i001
+      - scripts-q000
     policy: *id001
     run: make rustfs-return-types
   dependencies:
@@ -221,6 +225,7 @@ nodes:
     profile: quality-javascript
     needs:
       - ownership
+      - javascript
     policy: *id001
     run: make dependencies
     results:
@@ -232,6 +237,9 @@ nodes:
     policy: *id001
     needs:
       - ownership
+      - docker
+      - workflow
+      - shell
     results:
       junit: reports/tests-medium.xml
   ansible:
@@ -241,6 +249,7 @@ nodes:
     policy: *id001
     needs:
       - ownership
+      - shell
     results:
       native: reports/ansible.json
 ...

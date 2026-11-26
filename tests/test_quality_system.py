@@ -432,35 +432,25 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
 
     graph = yaml.safe_load((ROOT / "qg.yaml").read_text())["nodes"]
     assert len({n["title"] for n in graph.values()}) == len(graph)
-    first_layer = {
-        "docs-language",
-        "yaml",
-        "python-scopes",
-        "scripts-q000",
-        "deploy-i001",
-        "javascript",
-        "secrets",
-        "ownership",
-        "docker",
-        "workflow",
-        "tests-fast",
-        "shell",
-        "rustfs-return-types",
-        "image-cves",
+    needs = {
+        "docs-language": ["graph"],
+        "javascript": ["graph"],
+        "shell": ["graph"],
+        "docker": ["graph"],
+        "secrets": ["graph"],
+        "python-scopes": ["graph"],
+        "scripts-q000": ["python-scopes"],
+        "deploy-i001": ["python-scopes"],
+        "rustfs-return-types": ["deploy-i001", "scripts-q000"],
+        "ownership": ["python-scopes", "scripts-q000", "deploy-i001"],
+        "image-cves": ["docker"],
+        "workflow": ["secrets", "shell"],
+        "ansible": ["ownership", "shell"],
+        "dependencies": ["ownership", "javascript"],
+        "tests-medium": ["ownership", "docker", "workflow", "shell"],
     }
-    assert set(graph) == {
-        "graph",
-        *first_layer,
-        "manifests",
-        "tests-medium",
-        "ansible",
-        "dependencies",
-    }
-    assert graph["dependencies"]["needs"] == ["ownership"]
+    assert set(graph) == {"graph", *needs}
     assert graph["dependencies"]["policy"]["blocking"] is True
-    assert graph["manifests"]["needs"] == ["ownership"]
-    assert graph["manifests"]["policy"]["blocking"] is True
-    assert graph["tests-medium"]["needs"] == ["ownership"]
     assert graph["tests-medium"]["policy"]["blocking"] is True
     makefile = (ROOT / "Makefile").read_text()
     for name, node in graph.items():
@@ -477,8 +467,8 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
         "blocking": True,
         "approvals": {"files": False, "findings": False, "node": False},
     }
-    for name in first_layer:
-        assert graph[name]["needs"] == ["graph"]
+    for name, prerequisites in needs.items():
+        assert graph[name]["needs"] == prerequisites
         assert graph[name]["policy"] == policy
     assert "uv run python -m ci.quality.strict_guard" in recipe("graph")
     assert recipe("python-scopes") == "uv run --locked python -m ci.quality.python_scopes"
@@ -496,17 +486,9 @@ def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
             assert module.main() == 1
         run.assert_called_once_with(codes, roots.split())
     assert recipe("tests-medium") == "uv run python -m ci.quality.tests medium --isolate-network"
-    assert graph["ansible"]["needs"] == ["ownership"]
     assert graph["ansible"]["policy"]["blocking"] is True
-    assert graph["yaml"]["profile"] == "default"
-    assert recipe("yaml") == "uv run python -m ci.quality.check_yaml"
-    assert graph["yaml"]["results"] == {"native": "reports/yaml.json"}
-    assert graph["yaml"]["policy"] == {
-        "blocking": True,
-        "approvals": {"findings": False, "files": False, "node": False},
-    }
     local = json.loads((ROOT / "ci/quality/local-checks.json").read_text())
-    assert set(local) == {"python", "tests-cluster"}
+    assert set(local) == {"python", "tests-cluster", "yaml", "tests-fast", "manifests"}
 
 
 def test_shell_policy_finds_extensionless_scripts_and_inline_steps(
