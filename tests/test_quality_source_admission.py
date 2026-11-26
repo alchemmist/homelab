@@ -148,7 +148,7 @@ def test_docker_filename_variants_are_admitted(name: str, *, expected: bool) -> 
 def test_docker_adapter_transports_each_source_and_keeps_findings(tmp_path: Path) -> None:
     """The owning adapter sends old and new paths to hadolint with no build effects."""
     sources = [
-        "services/spi-tokenizer/Dockerfile",
+        "services/spi/tokenizer/Dockerfile",
         "services/fixture/worker.Dockerfile",
     ]
     for source in sources:

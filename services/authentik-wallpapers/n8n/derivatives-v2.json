@@ -1,0 +1,288 @@
+{
+  "name": "Wallpaper derivatives v2",
+  "active": false,
+  "nodes": [
+    {
+      "id": "2ae6cadb-6573-4039-968a-0fe604f01711",
+      "name": "Wallpaper upload",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wallpaper-derivatives-v2",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode"
+      },
+      "webhookId": "2faec20c-9980-4c0a-827e-25c7d6a62ba4",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "wallpaperHeaderV2",
+          "name": "Wallpaper upload token"
+        }
+      }
+    },
+    {
+      "id": "93a450f3-e943-480c-aa6b-fc599e779e3e",
+      "name": "Return execution link",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {executionUrl: \"https://n8n.socrat.alchemmist.xyz/workflow/\" + $workflow.id + \"/executions/\" + $execution.id} }}"
+      }
+    },
+    {
+      "id": "3c1d9721-aa38-4dc9-ae6d-38a16e34f00f",
+      "name": "Read original from RustFS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        400,
+        0
+      ],
+      "parameters": {
+        "url": "={{ $('Wallpaper upload').first().json.body.sourceUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "c6c06476-6dcb-49b5-981b-90c673fc4d08",
+      "name": "Both WebPs stored",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1040,
+        0
+      ],
+      "parameters": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "5a04afdc-7cd2-4a11-8f03-d4b761ca0107",
+      "name": "Full WebP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        600,
+        -140
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://authentik-wallpapers.identity.svc.cluster.local/wallpapers/internal/lossless",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {id: $('Wallpaper upload').first().json.body.id} }}",
+        "options": {
+          "timeout": 240000,
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "wallpaperHeaderV2",
+          "name": "Wallpaper upload token"
+        }
+      }
+    },
+    {
+      "id": "d2a757d9-97f2-4f65-aa08-01582767e13c",
+      "name": "Store full in RustFS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        820,
+        -140
+      ],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('Wallpaper upload').first().json.body.fullPutUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "image/webp"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      }
+    },
+    {
+      "id": "77d90aeb-8a39-4312-8b94-e7680901d4fc",
+      "name": "Preview WebP",
+      "type": "n8n-nodes-base.editImage",
+      "typeVersion": 1,
+      "position": [
+        600,
+        140
+      ],
+      "parameters": {
+        "operation": "multiStep",
+        "operations": {
+          "operations": [
+            {
+              "operation": "resize",
+              "width": 640,
+              "height": 640,
+              "resizeOption": "onlyIfLarger"
+            },
+            {
+              "operation": "blur",
+              "blur": 0,
+              "sigma": 0.4
+            }
+          ]
+        },
+        "options": {
+          "format": "webp",
+          "quality": 62
+        }
+      }
+    },
+    {
+      "id": "f8f421da-2334-4abe-b07e-479d46431e4a",
+      "name": "Store preview in RustFS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        820,
+        140
+      ],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('Wallpaper upload').first().json.body.previewPutUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "image/webp"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Wallpaper upload": {
+      "main": [
+        [
+          {
+            "node": "Return execution link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return execution link": {
+      "main": [
+        [
+          {
+            "node": "Read original from RustFS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read original from RustFS": {
+      "main": [
+        [
+          {
+            "node": "Full WebP",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Preview WebP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Full WebP": {
+      "main": [
+        [
+          {
+            "node": "Store full in RustFS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store full in RustFS": {
+      "main": [
+        [
+          {
+            "node": "Both WebPs stored",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preview WebP": {
+      "main": [
+        [
+          {
+            "node": "Store preview in RustFS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store preview in RustFS": {
+      "main": [
+        [
+          {
+            "node": "Both WebPs stored",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveExecutionProgress": false
+  },
+  "id": "wallpaperWebpV002"
+}

@@ -8,8 +8,6 @@
       "tests/test_swe_mini_retirement.py",
       "tests/openhands/test_dns.py",
       "tests/openhands/test_ready.py",
-      "tests/swe_mini/test_policy.py",
-      "tests/swe_mini/test_queue.py",
       "tests/test_alert_graph_panel_ids.py",
       "tests/test_app_access_reconciler.py",
       "tests/test_authentik_automation.py",

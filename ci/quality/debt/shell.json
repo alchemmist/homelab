@@ -5,7 +5,7 @@
   "findings": [
     {
       "id": "b08e356a0b85511d20ca56547f7532334b44cb256f42aec774e25109e13c3fbe.1",
-      "path": "services/spi-tokenizer/build-local.sh",
+      "path": "services/spi/tokenizer/build-local.sh",
       "rule": "SC1007"
     },
     {
