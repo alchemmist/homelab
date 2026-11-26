@@ -21,7 +21,14 @@ def test_moscow_private_rehearsal() -> None:
     (legacy,) = baseline
     assert (legacy["kind"], legacy["metadata"]["name"]) == ("Deployment", "vpn-transit")
     assert legacy["spec"]["template"]["spec"]["hostNetwork"] is True
-    assert legacy in backend  # The existing public owner must not roll.
+    matching = [
+        d
+        for d in backend
+        if d["kind"] == legacy["kind"]
+        and d["metadata"]["namespace"] == legacy["metadata"]["namespace"]
+        and d["metadata"]["name"] == legacy["metadata"]["name"]
+    ]
+    assert matching == [legacy]  # Exactly one public owner, with unchanged content.
     (deployment,) = [d for d in docs if d["kind"] == "Deployment"]
     template = deployment["spec"]["template"]
     pod = template["spec"]
