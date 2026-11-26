@@ -45,6 +45,8 @@ def main() -> int:
             print("\t".join([ns, host, *(rows[ns, host, entry] for entry in ENTRIES)]))
         return 0
     ns, host, entry = args.dns
+    if entry not in ENTRIES:
+        parser.error(f"Unknown survivor {entry!r}; choose from {', '.join(ENTRIES)}")
     state = rows.get((ns, host, entry))
     if state is None:
         parser.error(f"Unknown matrix case: {ns}/{host} at {entry}")

@@ -50,3 +50,17 @@ def test_reserved_case_is_not_queried(monkeypatch, capsys) -> None:
         audit.main()
     assert exc.value.code == 2
     assert "not eligible for a DNS check: reserved" in capsys.readouterr().err
+
+
+def test_unknown_survivor_lists_valid_entries(monkeypatch, capsys) -> None:
+    """Explain survivor spelling errors before attempting a lookup."""
+    monkeypatch.setattr(
+        sys, "argv", ["audit", "--dns", "blog", "alchemmist.xyz", "nl-only"]
+    )
+    with pytest.raises(SystemExit) as exc:
+        audit.main()
+    assert exc.value.code == 2
+    assert (
+        "Unknown survivor 'nl-only'; choose from home, nl, moscow"
+        in capsys.readouterr().err
+    )
