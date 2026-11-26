@@ -8,7 +8,8 @@ import yaml
 from ci.quality.charts import ManifestLoader, argocd_targets, render
 from ci.quality.public_web import CATALOG, ROOT, VALUES, namespace_block
 
-CAT = yaml.load(CATALOG.read_text(), Loader=ManifestLoader)
+REGISTRY = yaml.load(CATALOG.read_text(), Loader=ManifestLoader)
+CAT = REGISTRY["hosts"]
 WATCH = set(yaml.safe_load(VALUES.read_text())["watchNamespaces"])
 
 
@@ -23,8 +24,16 @@ def check_ingress(doc: dict, fallback: str) -> None:
     allowed = {
         host
         for host, p in CAT[ns].items()
-        if (p["entrances"] or p.get("nlException"))
-        and (ns not in WATCH or "nl" in p["entrances"] or p.get("nlException"))
+        if p.get("route") != "reserved"
+        and (
+            ns not in WATCH
+            or "nl" in p.get("entrances", REGISTRY["defaultEntrances"])
+            or (ns, host)
+            in {
+                ("monori", "monori.alchemmist.xyz"),
+                ("traefik-edge", "vpn.alchemmist.xyz"),
+            }
+        )
     }
     assert "defaultBackend" not in spec and spec.get("rules"), (ns, doc["metadata"])
     for rule in spec["rules"]:
@@ -39,20 +48,35 @@ def test_catalog_scope() -> None:
         yaml.safe_load(namespace_block())["watchNamespaces"]
         == yaml.safe_load(VALUES.read_text())["watchNamespaces"]
     )
+    assert set(REGISTRY["defaultEntrances"]) == {"home", "nl", "moscow"}
+    assert WATCH <= CAT.keys()
     for ns, hosts in CAT.items():
         for host, policy in hosts.items():
             assert re.fullmatch(r"[a-z0-9-]+(?:\.[a-z0-9-]+)+", host)
-            assert set(policy["entrances"]) <= {"home", "moscow", "nl"}
+            assert set(policy.get("entrances", REGISTRY["defaultEntrances"])) <= set(
+                REGISTRY["defaultEntrances"]
+            )
             assert policy["dns"] in {"static", "managed", "external"}
-            if "nlException" in policy:
-                assert (ns, policy["nlException"]) in {
-                    ("monori", "moscow-transit"),
-                    ("traefik-edge", "vpn-transit"),
-                }
     assert not CAT["traefik-edge"]["vpn.alchemmist.xyz"]["entrances"]
     assert CAT["schoolbot"]["bot.sch1357.ru"]["dns"] == "external"
     assert not WATCH.intersection(
         {"postgres", "redis", "schoolbot", "rustfs", "netbird-pilot"}
+    )
+
+
+@pytest.mark.parametrize(
+    "namespace,host",
+    [
+        ("blog", "alchemmist.xyz"),
+        ("schoolbot", "inform.sch1357.ru"),
+        ("rustfs", "rustfs.socrat.alchemmist.xyz"),
+    ],
+)
+def test_ordinary_hosts_inherit_all_entrances(namespace: str, host: str) -> None:
+    """Today's DNS and discovery scope must not restrict future entrance eligibility."""
+    assert (
+        CAT[namespace][host].get("entrances", REGISTRY["defaultEntrances"])
+        == REGISTRY["defaultEntrances"]
     )
 
 

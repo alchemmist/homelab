@@ -12,13 +12,7 @@ VALUES = ROOT / "charts/traefik-edge/values.yaml"
 def namespace_block() -> str:
     """Emit one watch list shared by the ingress provider and its RoleBindings."""
     catalog = yaml.safe_load(CATALOG.read_text())
-    namespaces = [
-        ns
-        for ns, hosts in catalog.items()
-        if any(
-            "nl" in policy["entrances"] or policy.get("nlException") for policy in hosts.values()
-        )
-    ]
+    namespaces = catalog["nlWatchNamespaces"]
     return "watchNamespaces:\n" + "".join(f"  - {ns}\n" for ns in namespaces)
 
 
