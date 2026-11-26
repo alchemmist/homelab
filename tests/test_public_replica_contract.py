@@ -112,3 +112,45 @@ def test_replica_cannot_override_host_or_namespace_scope() -> None:
         replica_values(
             catalog, {**catalog["replicas"]["home"], "watchNamespaces": ["blog"]}, 1
         )
+
+
+def test_route_gate_checks_every_owner_not_just_host_presence() -> None:
+    """Reject missing owner opt-in, overlapping rules and accidental fixed relay selection."""
+    from ci.quality.public_route_gate import LABEL, findings
+
+    catalog = {
+        "hosts": {"app": {"web.test": {}, "fixed.test": {"route": "fixed-relay"}}}
+    }
+
+    def ingress(name: str, host: str, path: str, selected: bool) -> dict:
+        return {
+            "metadata": {
+                "namespace": "app",
+                "name": name,
+                "labels": {LABEL: str(selected).lower()},
+            },
+            "spec": {
+                "ingressClassName": "traefik",
+                "rules": [
+                    {
+                        "host": host,
+                        "http": {"paths": [{"path": path, "pathType": "Exact"}]},
+                    }
+                ],
+            },
+        }
+
+    root = ingress("root", "web.test", "/", True)
+    extra = ingress("extra", "web.test", "/other", True)
+    fixed = ingress("relay", "fixed.test", "/", False)
+    assert not findings(catalog, [root, extra, fixed])
+    extra["metadata"]["labels"] = {}
+    fixed["metadata"]["labels"][LABEL] = "true"
+    assert (
+        len(
+            findings(
+                catalog, [root, extra, fixed, ingress("copy", "web.test", "/", True)]
+            )
+        )
+        == 3
+    )

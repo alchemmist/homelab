@@ -62,3 +62,14 @@ surviving public IP, not merely that its IPv4 subset matches. An additional
 IPv6 address fails this particular exercise. Exit 1 means lookup failure or
 an address mismatch. Exit 2 means the requested case is unknown or not eligible
 (e.g. a reserved hostname); the lookup was not attempted.
+
+Before opting in route owners, run the read-only inventory gate:
+
+```sh
+kubectl get ingress -A -o json | uv run python -m ci.quality.public_route_gate
+```
+
+Treat missing opt-ins and overlapping host/path/type tuples as review items,
+not a batch labeling instruction. Verify backend identity, routing priority,
+authentication and middleware with each owner. Matching this inventory alone
+is not acceptance of TLS, middleware, dependencies or Secret grants.
