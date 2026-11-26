@@ -225,6 +225,27 @@ availability budgets explicitly. Neither approach delivers a withdrawal when
 Traefik cannot receive a snapshot. These were isolated tests, not a persistent
 revocation ledger or proof across a config-source restart.
 
+## Source restart after real denial but before snapshot delivery
+
+A closed HOME run separated the tokenless marker backend/observer from the
+key-bearing source. On an actual 403 for fixture source 15 the generator wrote
+only a test synchronization marker and exited with status 19 **before returning
+a snapshot**. Kubernetes restarted that container once; the restarted generator
+waited on a test barrier before listening. The Pod UID stayed the same and
+Traefik and the marker backend had zero restarts. The observer did not mount
+the API token. No snapshot, PEM or production data was saved in the barrier.
+
+With the restarted source held, two complete fresh sweeps of 37 names still
+verified the previous fingerprints and HTTP bodies, including the revoked SNI.
+After releasing the barrier the source re-read the still-effective denial;
+strict rejection of that name was observed 18.86 s after release. The other 36
+still verified. Restoring the one named GET restored all 37. This measures one
+interleaving, not a revocation deadline. In particular recovery relied on the
+denial **still being present**. A denial marker or successful source restart is
+not consumer acknowledgement. A design requiring bounded withdrawal must test
+its consumer fence and recovery separately; do not persist key-bearing
+snapshots just to survive generator restarts.
+
 ## Gates before any real web deployment
 
 - The existing `kubernetesIngress` informer still needs list/watch. This proof
