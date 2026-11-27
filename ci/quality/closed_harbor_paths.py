@@ -8,6 +8,7 @@ of the host across providers. Never publish a partial result on rejection.
 import sys
 
 import yaml
+
 from ci.quality.public_path_rule import source_priority
 from ci.quality.public_web import CATALOG, ROOT
 
