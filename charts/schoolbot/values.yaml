@@ -1,4 +1,5 @@
 ---
+publicWebHost: ""  # Exact owner opt-in; an override of the route host does not inherit it.
 replicaCount: 1
 nodeSelector: {}
 image:
