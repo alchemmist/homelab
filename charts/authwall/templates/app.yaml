@@ -10,6 +10,15 @@ spec:
     metadata:
       labels: {app: authwall}
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: kubernetes.io/hostname, operator: NotIn, values: [socrat-2]}
+      # Permit the bootstrap pool, not unhealthy or maintenance-tainted nodes.
+      tolerations:
+        - {key: homelab.io/bootstrap, operator: Equal, value: "true", effect: NoSchedule}
       automountServiceAccountToken: false
       containers:
         - name: app
