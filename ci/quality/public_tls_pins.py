@@ -49,6 +49,8 @@ def compare(catalog: dict, items: list[dict]) -> dict:
         if item["kind"] != "Certificate":
             continue
         spec = item["spec"]
+        if not isinstance(spec.get("secretName"), str) or not spec["secretName"]:
+            continue  # inventory recorded the malformed writer and blocked the whole plan
         ref = f"{item['metadata']['namespace']}/{spec['secretName']}"
         if ref not in bindings:
             continue

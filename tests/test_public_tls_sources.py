@@ -335,3 +335,14 @@ def test_pin_plan_checks_exact_requested_identity_set(field, value):
         and "site/site-tls: requested SAN set differs from reviewed source"
         in result["errors"]
     )
+
+
+def test_missing_writer_destination_is_localized_and_blocks_all_reads():
+    from ci.quality.public_tls_pins import compare
+
+    cert = copy.deepcopy(CERT)
+    del cert["spec"]["secretName"]
+    cert["metadata"]["name"] = "broken-writer"
+    result = compare(CAT, [ING, PATH, cert])
+    assert result["sources"] == {}
+    assert "site/broken-writer: Certificate missing secretName" in result["errors"]

@@ -28,7 +28,11 @@ def inventory(catalog: dict, objects: list[dict]) -> dict:
         ns = obj["metadata"]["namespace"]
         spec = obj["spec"]
         if kind == "Certificate":
-            writers[ns, spec["secretName"]].append(obj)
+            dest = spec.get("secretName")
+            if not isinstance(dest, str) or not dest:
+                errors.add(f"{ns}/{obj['metadata'].get('name', '<unnamed>')}: Certificate missing secretName")
+                continue
+            writers[ns, dest].append(obj)
             continue
         if spec.get("ingressClassName") != "traefik":
             continue
