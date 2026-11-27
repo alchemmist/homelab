@@ -29,7 +29,7 @@ const base = 'https://auth.socrat.alchemmist.xyz';
       await photo;
       assert.equal(await page.locator('html').getAttribute('lang'), 'en');
       assert.equal(new URL(page.url()).searchParams.get('locale'), 'en');
-      await page.getByRole('button', { name: 'Log in', exact: true }).waitFor();
+      await page.getByRole('button', { name: /^Log in\b/i }).waitFor();
       assert.equal(await card.evaluate(el => el.offsetHeight), cold);
       await page.keyboard.press('Tab');
       await pwd.focus();
