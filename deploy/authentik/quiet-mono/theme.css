@@ -29,6 +29,8 @@
 :host(:is([part='challenge'],ak-stage-authenticator-validate-code)) .pf-c-form__label-required{display:none}
 :host(:is([part='challenge'],ak-stage-authenticator-validate-code)) input.pf-c-form-control{height:43px!important;min-width:0;width:100%;padding:10px 12px!important;font:400 13px/1.5 QuietMono,monospace!important;color:#15223c!important;background:rgba(255,255,255,.43)!important;border:1px solid #b9c0c7!important;border-radius:0!important;box-shadow:none!important;outline:none!important;transition:none!important}
 :host(:is([part='challenge'],ak-stage-authenticator-validate-code)) input.pf-c-form-control:is(:hover,:focus,:focus-visible){border-color:#b9c0c7!important;box-shadow:none!important;outline:none!important}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) input.pf-c-form-control:focus-visible{outline:2px solid #344767!important;outline-offset:2px}
+@media(max-width:700px){:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) input.pf-c-form-control{font-size:16px!important}}
 :host(:is([part='challenge'],ak-stage-authenticator-validate-code)) input.pf-c-form-control[aria-invalid='true']{border-color:#9d3838!important}
 :host(:is([part='challenge'],ak-stage-authenticator-validate-code)) input::placeholder{color:#657181!important;font-style:normal!important;opacity:1}
 :host(:is([part='challenge'],ak-stage-authenticator-validate-code)) .pf-c-form__group.pf-m-action{margin-top:5px!important}

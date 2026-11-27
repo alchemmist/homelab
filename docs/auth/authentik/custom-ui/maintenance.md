@@ -65,3 +65,5 @@ review; a source diff of native components/parts/locale/redirect/inspector; stag
 both edges, 320/390/desktop, password eye, invalid input, Tab, MFA, consent, anchor,
 inspector denial, reduced motion and the owner existing-session check. Do not lift the version
 guard before this check. After push, separately verify the actual rollout.
+
+After applying a theme, run `node scripts/check-authentik-login.cjs` from the repository root with Playwright available to Node and Chrome installed. The anonymous smoke test covers cold layout, keyboard focus, mobile field sizing, Russian locale overrides, an unavailable wallpaper service and the native pending state. It never submits the login form.
