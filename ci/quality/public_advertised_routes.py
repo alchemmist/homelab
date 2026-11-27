@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import yaml
 
+from ci.quality import openhands_public_auth
 from ci.quality.public_dns_snapshot import observe, questions
 from ci.quality.public_web import CATALOG
 
@@ -23,6 +24,7 @@ WIKI = "wiki.socrat.alchemmist.xyz"
 ARGO = "argocd.socrat.alchemmist.xyz"
 HARBOR = "harbor.socrat.alchemmist.xyz"
 PATHS = {
+    openhands_public_auth.HOST: "/",
     BLOG: "/",
     VENICE: "/v1/models",
     MONORI: "/api/auth/me",
@@ -46,6 +48,8 @@ def unique_fields(pairs):
 
 
 def check(host, ip):
+    if host == openhands_public_auth.HOST:
+        return openhands_public_auth.check(ip)
     for path in (PATHS[host], *ADDITIONAL.get(host, ())):
         outcome = _path(host, ip, path)
         if outcome != "matched":
