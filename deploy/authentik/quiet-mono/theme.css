@@ -137,7 +137,9 @@ body:has(.pf-c-page__drawer .pf-c-login)::before{content:'';position:fixed;inset
 .pf-c-page__drawer .pf-c-login__main-body{padding:0!important;margin:0!important}
 .pf-c-page__drawer .pf-c-title.pf-m-3xl{font:700 31px/1.12 QuietSerif,Georgia,serif!important;letter-spacing:-.5px;color:#15223c!important;margin:0!important;overflow-wrap:anywhere}
 .pf-c-page__drawer .pf-c-form{gap:20px!important;font:400 13px/1.65 QuietMono,monospace;color:#15223c}
-.pf-c-page__drawer .pf-c-title.pf-m-lg{font:400 14px/1.6 QuietMono,monospace!important;color:#9d3838;display:flex;align-items:baseline;gap:10px}
+.pf-c-page__drawer .pf-c-title.pf-m-lg{font:400 14px/1.6 QuietMono,monospace!important;color:#843a36;display:flex;align-items:flex-start;gap:10px;margin:0}
+.pf-c-page__drawer .pf-c-title.pf-m-lg > .pf-icon-error-circle-o{flex:none;font-size:14px!important;line-height:1.6!important;margin:0!important}
+.pf-c-page__drawer .pf-c-title.pf-m-lg > span{min-width:0;overflow-wrap:anywhere}
 .pf-c-page__drawer .ak-c-form-static{background:rgba(255,255,255,.35)!important;border:1px solid #d4d8d9;border-radius:0!important;padding:10px 12px!important;gap:12px;flex-wrap:wrap}
 .pf-c-page__drawer .ak-c-form-static .primary-content{display:flex;align-items:center;gap:10px;min-width:0}
 .pf-c-page__drawer .ak-c-form-static .username{overflow-wrap:anywhere;min-width:0}

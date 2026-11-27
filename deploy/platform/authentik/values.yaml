@@ -1,4 +1,35 @@
 ---
+additionalObjects:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata: {name: authentik-ui-language-v1}
+    immutable: true
+    data:
+      ui_language.py: |
+        from authentik.root.settings import *  # retain the pinned upstream settings
+        from django.http import HttpResponseRedirect
+
+        # Server-rendered errors and API messages use their English source text,
+        # independent of Accept-Language, the language cookie or user preferences.
+        USE_I18N = False
+        LANGUAGE_CODE = "en"
+
+        def english_ui(get_response):
+            def middleware(request):
+                # The Lit UI gives ?locale precedence over sessionStorage and the browser.
+                # Only normalize document GETs, never provider callbacks or stage submissions.
+                if (request.method == "GET" and request.path_info.startswith("/if/")
+                        and request.GET.getlist("locale") != ["en"]):
+                    query = request.GET.copy()
+                    query.setlist("locale", ["en"])
+                    # Query-only Location keeps the same origin/path, including any mount prefix.
+                    response = HttpResponseRedirect("?" + query.urlencode())
+                    response["Cache-Control"] = "no-store"
+                    return response
+                return get_response(request)
+            return middleware
+
+        MIDDLEWARE = [*MIDDLEWARE, "authentik.root.ui_language.english_ui"]
 authentik:
   error_reporting:
     enabled: false
@@ -37,7 +68,14 @@ server:
     runAsNonRoot: true
   # Base64 JSON: {"options":"-c jit=off"}. Avoid compiling the wide
   # identification-stage source lookup on each web request. Web sessions only.
+  # Server-only: leave background jobs and notification delivery untouched.
+  volumes:
+    - name: ui-language
+      configMap: {name: authentik-ui-language-v1}
+  volumeMounts:
+    - {name: ui-language, mountPath: /authentik/root/ui_language.py, subPath: ui_language.py, readOnly: true}
   env:
+    - {name: DJANGO_SETTINGS_MODULE, value: authentik.root.ui_language}
     - {name: AUTHENTIK_POSTGRESQL__CONN_OPTIONS, value: eyJvcHRpb25zIjoiLWMgaml0PW9mZiJ9}
   # Remove a slow backend from routing on the normal readiness budget. Avoid
   # recycling its warm workers during a transient shared latency spike.
