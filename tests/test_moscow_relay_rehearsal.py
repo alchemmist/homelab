@@ -121,3 +121,14 @@ def test_invalid_owner_states_fail_to_render(values: str) -> None:
     """Reject missing replacement backends and unknown or competing owner states."""
     with pytest.raises(subprocess.CalledProcessError):
         objects("--set", values)
+
+
+def test_tls_flow_requires_both_exact_steps_on_same_new_socket():
+    from ci.quality.moscow_blog_relay import matches
+
+    opened = {i: 100 for i in range(5)}
+    first = {i: 151 for i in (0, 1, 2, 3)}
+    second = {0: 212, 1: 212, 2: 211, 4: 212}
+    assert matches({0: 0}, opened, first, second, 51, 61) == {1}
+    second[3] = 212
+    assert matches({0: 0}, opened, first, second, 51, 61) == {1, 3}
