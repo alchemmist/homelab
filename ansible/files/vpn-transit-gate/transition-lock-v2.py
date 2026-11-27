@@ -3,8 +3,8 @@
 
 import fcntl
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 
 def serve(directory: Path, owner: str, incoming, outgoing) -> int:
