@@ -138,7 +138,17 @@ class N8nOtelLogBridge(unittest.TestCase):
                 check=True,
             )
 
+        enabled = subprocess.run(
+            ["helm", "template", "n8n", str(ROOT / "charts" / "n8n")],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
         assert "n8n-otel-log-bridge" not in disabled().stdout
+        # A bridge-script edit must roll the pod: the configmap is checksummed
+        # into the pod template whenever the sidecar is rendered.
+        assert "checksum/otel-log-bridge:" in enabled.stdout
+        assert "checksum/otel-log-bridge:" not in disabled().stdout
         deploy = yaml.safe_load((ROOT / "deploy" / "n8n" / "values.yaml").read_text())
         assert deploy["otelLogBridge"] == {
             "enabled": True,

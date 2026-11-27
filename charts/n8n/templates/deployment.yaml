@@ -21,6 +21,9 @@ spec:
         {{- end }}
         checksum/service-vpn-script: {{ include (print $.Template.BasePath "/service-vpn.yaml") . | sha256sum }}
         checksum/yandex-extension: {{ include (print $.Template.BasePath "/yandex-extension.yaml") . | sha256sum }}
+        {{- if .Values.otelLogBridge.enabled }}
+        checksum/otel-log-bridge: {{ include (print $.Template.BasePath "/otel-log-bridge.yaml") . | sha256sum }}
+        {{- end }}
       labels:
         app: n8n
     spec:
