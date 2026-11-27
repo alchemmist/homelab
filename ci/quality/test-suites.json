@@ -140,6 +140,7 @@
       "tests/test_public_backend_contract.py",
       "tests/test_public_survivors.py",
       "tests/test_public_dns_snapshot.py",
+      "tests/test_public_advertised_routes.py",
       "tests/test_moscow_blog_probe.py",
       "tests/test_moscow_private_traefik.py",
       "tests/test_moscow_relay_rehearsal.py",
