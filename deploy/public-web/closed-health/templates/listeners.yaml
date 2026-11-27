@@ -22,6 +22,7 @@
 {{- $argo := and (kindIs "bool" .Values.closedArgo) .Values.closedArgo (deepEqual (dig "argocd" "argocd.socrat.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "argocd-server-tls")) -}}
 {{- $img := and (kindIs "bool" .Values.closedImg) .Values.closedImg (deepEqual (dig "img-proxy" "img.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "img-proxy-tls")) -}}
 {{- $umami := and (kindIs "bool" .Values.closedUmami) .Values.closedUmami (deepEqual (dig "umami" "umami.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "umami-tls")) -}}
+{{- $remark42 := and (kindIs "bool" .Values.closedRemark) .Values.closedRemark (deepEqual (dig "remark42" "remark42.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "remark42-tls")) -}}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -190,6 +191,25 @@ spec:
   egress: []
 {{- end }}
 ---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: closed-health-remark42
+  namespace: {{ .Release.Namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: '-1'}
+spec:
+  podSelector: {matchLabels: {app: closed-health}}
+  policyTypes: [Egress]
+{{- if $remark42 }}
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: remark42}}
+          podSelector: {matchLabels: {app: remark42}}
+      ports: [{port: 8080, protocol: TCP}]
+{{- else }}
+  egress: []
+{{- end }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata: {name: closed-health, namespace: {{ .Release.Namespace }}}
@@ -221,6 +241,20 @@ data:
           loadBalancer:
             passHostHeader: true
             servers: [{url: 'http://umami.umami.svc.cluster.local:80'}]
+{{- end }}
+{{- if $remark42 }}
+  remark42.yaml: |
+    http:
+      routers:
+        remark42:
+          entryPoints: [closed]
+          rule: 'Host(`remark42.alchemmist.xyz`) && PathPrefix(`/`)'
+          service: remark42
+      services:
+        remark42:
+          loadBalancer:
+            passHostHeader: true
+            servers: [{url: 'http://remark42.remark42.svc.cluster.local:80'}]
 {{- end }}
 {{- if $argo }}
   argocd.yaml: |
