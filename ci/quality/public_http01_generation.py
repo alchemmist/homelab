@@ -5,6 +5,10 @@ or authority to contact the ACME server. Never log the input objects.
 """
 
 import re
+from ipaddress import IPv4Network
+from zlib import adler32
+
+from ci.quality.closed_root_backend import verified_pod_servers
 
 _API = "acme.cert-manager.io/v1"
 _TOKEN = re.compile(r"[A-Za-z0-9_-]{22,256}")
@@ -96,3 +100,81 @@ def same_presentation(
         )
     except (AttributeError, KeyError, TypeError):
         return False
+
+
+def solver_destination(
+    expected: tuple[str, str, str, str],
+    challenge: dict | None,
+    ingress: dict,
+    service: dict,
+    pod: dict,
+    slices: list[dict],
+    pod_network: IPv4Network,
+) -> str | None:
+    """Return only one verified Pod URL, never a NodePort, ClusterIP or arbitrary Service.
+
+    Controller labels are consistency checks rather than cryptographic ownership.
+    Unknown/incomplete, stale or duplicate observations yield no destination.
+    """
+    if not same_presentation(expected, challenge, ingress, service, pod):
+        return None
+    try:
+        spec = service["spec"]
+        ports = spec["ports"]
+        ns, _, _, host = expected
+        labels = {
+            "acme.cert-manager.io/http01-solver": "true",
+            "acme.cert-manager.io/http-domain": str(adler32(host.encode("ascii"))),
+            "acme.cert-manager.io/http-token": str(
+                adler32(challenge["spec"]["token"].encode("ascii"))
+            ),
+        }
+        if spec.get("selector") != labels or any(
+            any(obj["metadata"].get("labels", {}).get(k) != v for k, v in labels.items())
+            for obj in (ingress, service, pod)
+        ):
+            return None
+        if (
+            spec.get("type") not in ("ClusterIP", "NodePort")
+            or spec.get("clusterIP") in (None, "None")
+            or spec.get("publishNotReadyAddresses")
+            or len(ports) != 1
+        ):
+            return None
+        port = ports[0]
+        if (
+            port.get("name") != "http"
+            or port.get("protocol", "TCP") != "TCP"
+            or port.get("port") != 8089
+            or port.get("targetPort") != 8089
+            or port.get("appProtocol") is not None
+        ):
+            return None
+        if len(slices) != 1:
+            return None
+        sl = slices[0]
+        sm = sl["metadata"]
+        (ep,) = sl["endpoints"]
+        (sp,) = sl["ports"]
+        if (
+            sl["apiVersion"] != "discovery.k8s.io/v1"
+            or sm.get("deletionTimestamp") is not None
+            or not sm.get("uid")
+            or ep.get("conditions", {}).get("serving") is False
+            or ep.get("targetRef", {}).get("namespace") != ns
+            or sp.get("appProtocol") is not None
+        ):
+            return None
+        (result,) = verified_pod_servers(
+            ns,
+            service["metadata"]["name"],
+            service["metadata"]["uid"],
+            labels,
+            8089,
+            slices,
+            [pod],
+            pod_network,
+        )
+        return result["url"]
+    except (AttributeError, KeyError, TypeError, ValueError):
+        return None

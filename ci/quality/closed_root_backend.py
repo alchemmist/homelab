@@ -54,6 +54,11 @@ def servers(
         or not 1 <= target <= 65535
     ):
         raise ValueError("unreviewed backend protocol or target")
+    return verified_pod_servers(ns, name, uid, selector, target, slices, pods, pod_network)
+
+
+def verified_pod_servers(ns, name, uid, selector, target, slices, pods, pod_network):
+    """Common ready Pod verification after the caller validates its Service contract."""
     by_uid = {}
     for pod in pods:
         pm = pod["metadata"]
