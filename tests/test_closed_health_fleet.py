@@ -39,7 +39,7 @@ def test_effective_health_fleet():
             d
             for d in yaml.safe_load_all(raw)
             if d.get("metadata", {}).get("name")
-            not in {"closed-health-argocd", "closed-health-img"}
+            not in {"closed-health-argocd", "closed-health-img", "closed-health-umami"}
         ]
 
     assert app["destination"]["namespace"] == "public-health-staging"
@@ -787,6 +787,79 @@ def test_img_only_reaches_the_reviewed_nginx_listener():
             "loadBalancer": {
                 "passHostHeader": True,
                 "servers": [{"url": "http://img-proxy.img-proxy.svc.cluster.local:80"}],
+            }
+        }
+    }
+    pol["egress"] = []
+    assert active == render("--set", "false") == render("--set-string", "true")
+
+
+def test_umami_only_reaches_the_reviewed_http_listener():
+
+    catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())
+    docs = owner_render(owner="umami")
+    admit = lambda rows: eligible(rows, catalog, owner="umami")
+    assert admit(docs)
+    rows = deepcopy(docs)
+    deployment = next(d for d in rows if d["kind"] == "Deployment")
+    deployment["spec"]["template"]["spec"]["containers"][0]["ports"][0][
+        "containerPort"
+    ] = 3001
+    assert not admit(rows)
+    assert not admit([*docs, deepcopy(docs[-1])])
+    args = [
+        "helm",
+        "template",
+        "closed-health",
+        str(ROOT / "deploy/public-web/closed-health"),
+        "-n",
+        "public-health-staging",
+        "-f",
+        str(ROOT / "deploy/public-web/entrances.yaml"),
+    ]
+
+    def render(flag, val):
+        return {
+            (d["kind"], d["metadata"]["name"]): d
+            for d in yaml.safe_load_all(
+                subprocess.check_output([*args, flag, "closedUmami=" + val])
+            )
+            if d
+        }
+
+    active = render("--set", "true")
+    pol = active["NetworkPolicy", "closed-health-umami"]["spec"]
+    assert pol["egress"] == [
+        {
+            "to": [
+                {
+                    "namespaceSelector": {
+                        "matchLabels": {"kubernetes.io/metadata.name": "umami"}
+                    },
+                    "podSelector": {
+                        "matchLabels": {
+                            "app": "umami",
+                        }
+                    },
+                }
+            ],
+            "ports": [{"port": 3000, "protocol": "TCP"}],
+        }
+    ]
+    dynamic = yaml.safe_load(
+        active["ConfigMap", "closed-health"]["data"].pop("umami.yaml")
+    )["http"]
+    assert dynamic["routers"] == {
+        "umami": {
+            "entryPoints": ["closed"],
+            "rule": "Host(`umami.alchemmist.xyz`) && PathPrefix(`/`)",
+            "service": "umami",
+        }
+    } and dynamic["services"] == {
+        "umami": {
+            "loadBalancer": {
+                "passHostHeader": True,
+                "servers": [{"url": "http://umami.umami.svc.cluster.local:80"}],
             }
         }
     }
