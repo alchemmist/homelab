@@ -3,8 +3,8 @@
 # where ingress.enabled is false. This file remains only as the retired Fleet bundle's values.
 image:
   repository: harbor.socrat.alchemmist.xyz/n8n/n8n
-  tag: 994a1eb3d8c04b303061b8abd555bf3fa81a23cb
-  digest: sha256:fb011be7cafe421b0bd78bf3faf15f07194cad7fbd0f17be7e3c4cc4431845c5
+  tag: 444db57644c734c8c45a4d621888540d597fdbf5
+  digest: sha256:34bb222fb111ffd12c63859cd9b7567d94264b859b1e52ce3967207a637c5755
 nodeName: socrat-1
 secretName: n8n-secrets
 persistence:
