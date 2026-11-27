@@ -7,8 +7,10 @@ import importlib.util
 import io
 import threading
 import unittest
+import urllib.request
 from email.message import Message
 from pathlib import Path
+from typing import ClassVar, Protocol, Self
 
 import pytest
 
@@ -16,9 +18,26 @@ spec = importlib.util.spec_from_file_location(
     "gateway",
     Path(__file__).resolve().parents[1] / "services/rustfs_gateway/gateway.py",
 )
+if spec is None or spec.loader is None:
+    msg = "Gateway module under test is not loadable"
+    raise RuntimeError(msg)
 g = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(g)
 BASE = "/spi/v1/" + "a" * 64 + "/" + "b" * 64 + "/"
+
+
+class _Responder(Protocol):
+    """Callable shape of the local gateway request helper."""
+
+    def __call__(
+        self,
+        path: str,
+        headers: dict[str, str] | None = None,
+        method: str = "GET",
+    ) -> tuple[int, dict[str, str], bytes]:
+        """Issue one HTTP request against the local gateway server."""
+        ...
+
 
 UNAUTHORIZED_STATUS = 401
 MISDIRECTED_REQUEST_STATUS = 421
@@ -46,7 +65,10 @@ class Tests(unittest.TestCase):
             "E001-é",
             "manifest.json/",
         ]:
-            with self.subTest(tail=tail), pytest.raises(ValueError):
+            with (
+                self.subTest(tail=tail),
+                pytest.raises(ValueError, match="invalid key"),
+            ):
                 g.valid_key(BASE + tail)
 
     def test_sign_vector(self) -> None:
@@ -56,7 +78,7 @@ class Tests(unittest.TestCase):
             "http://rustfs:9000/spi-evidence/a",
             "AKID",
             "secret",
-            datetime.datetime(2026, 1, 2, 3, 4, 5),
+            datetime.datetime(2026, 1, 2, 3, 4, 5, tzinfo=datetime.UTC),
         )
         assert headers["x-amz-date"] == "20260102T030405Z"
         assert headers["x-amz-content-sha256"] == hashlib.sha256(b"").hexdigest()
@@ -68,7 +90,7 @@ class Tests(unittest.TestCase):
                 "http://rustfs:9000/spi-evidence/b",
                 "AKID",
                 "secret",
-                datetime.datetime(2026, 1, 2, 3, 4, 5),
+                datetime.datetime(2026, 1, 2, 3, 4, 5, tzinfo=datetime.UTC),
             )["Authorization"]
         )
         for url in [
@@ -76,7 +98,7 @@ class Tests(unittest.TestCase):
             "http://user@rustfs/a",
             "http://rustfs/a#frag",
         ]:
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="invalid upstream"):
                 g.sign("GET", url, "a", "b")
 
     def test_bounded(self) -> None:
@@ -97,17 +119,31 @@ class Tests(unittest.TestCase):
             r = Response(body)
             r.headers = Message()
             r.headers["Content-Length"] = length
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match=r"invalid length|length mismatch"):
                 g.bounded(r)
+
+    def require_legacy_not_found(self, request: _Responder) -> None:
+        """Assert the legacy hostname answers 404 without Location for bad paths."""
+        for path in [
+            "/",
+            "/other",
+            BASE + "manifest.json?token=secret",
+            BASE + "%2e%2e/a",
+            BASE + "E001-a%2fb",
+            "//evil.invalid/" + BASE,
+        ]:
+            status, headers, _ = request(path, {"Host": g.LEGACY_HOST})
+            assert status == NOT_FOUND_STATUS
+            assert "Location" not in headers
 
     def test_http_auth_and_exact_bytes(self) -> None:
         class Reader:
-            calls = []
+            calls: ClassVar[list[object]] = []
 
-            def authorization(self, cookie) -> int:
+            def authorization(self, cookie: object) -> int:
                 return 200 if cookie == "valid=1" else 401
 
-            def read(self, key) -> bytes:
+            def read(self, key: object) -> bytes:
                 self.calls.append(key)
                 return b'{"x":1}\n'
 
@@ -118,9 +154,14 @@ class Tests(unittest.TestCase):
         worker.start()
         try:
 
-            def request(path, headers={}, method="GET"):
-                conn = http.client.HTTPConnection(*server.server_address, timeout=2)
-                conn.request(method, path, headers={"Host": g.HOST, **headers})
+            def request(
+                path: str,
+                headers: dict[str, str] | None = None,
+                method: str = "GET",
+            ) -> tuple[int, dict[str, str], bytes]:
+                host, port = server.server_address
+                conn = http.client.HTTPConnection(host, port, timeout=2)
+                conn.request(method, path, headers={"Host": g.HOST} | (headers or {}))
                 response = conn.getresponse()
                 data = response.read()
                 result = (response.status, dict(response.getheaders()), data)
@@ -172,17 +213,7 @@ class Tests(unittest.TestCase):
                 assert status == PERMANENT_REDIRECT_STATUS
                 assert headers["Location"] == g.ORIGIN + BASE + "E001-safe.json"
                 assert body == b""
-            for path in [
-                "/",
-                "/other",
-                BASE + "manifest.json?token=secret",
-                BASE + "%2e%2e/a",
-                BASE + "E001-a%2fb",
-                "//evil.invalid/" + BASE,
-            ]:
-                status, headers, _ = request(path, {"Host": g.LEGACY_HOST})
-                assert status == NOT_FOUND_STATUS
-                assert "Location" not in headers
+            self.require_legacy_not_found(request)
             assert reader.calls == []
             assert request("/bad", {"Cookie": "valid=1"})[0] == NOT_FOUND_STATUS
             status, headers, data = request(BASE + "manifest.json", {"Cookie": "valid=1"})
@@ -232,16 +263,16 @@ class Integrity(unittest.TestCase):
         assert reader.read(prefix + "/E001-safe.json") == file
         assert reader.read(prefix + "/manifest.json") == manifest
         objects[prefix + "/E001-safe.json"] = b"changed"
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="artifact hash mismatch"):
             reader.read(prefix + "/E001-safe.json")
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="unlisted file"):
             reader.read(prefix + "/E002-other.json")
         objects[prefix + "/manifest.json"] = b"{}"
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"manifest (?:hash|identity) mismatch"):
             reader.read(prefix + "/manifest.json")
 
     def test_redirect_denied(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="redirect denied"):
             g.NoRedirect().redirect_request(None, None, 302, "", {}, "http://evil/")
 
     def test_trusted_auth_response(self) -> None:
@@ -249,17 +280,23 @@ class Integrity(unittest.TestCase):
         from unittest.mock import patch
 
         class Response:
-            status = 204
-            headers = {"X-authentik-groups": "homelab-owner|other"}
+            status: ClassVar[int] = 204
 
-            def __enter__(self):
+            def __init__(self) -> None:
+                self.headers = {"X-authentik-groups": "homelab-owner|other"}
+
+            def __enter__(self) -> Self:
                 return self
 
-            def __exit__(self, *args):
+            def __exit__(self, *args: object) -> None:
                 pass
 
         class HTTP:
-            def open(self, req, timeout):
+            request: urllib.request.Request
+
+            def open(self, req: object, timeout: object) -> "Response":
+                assert isinstance(req, urllib.request.Request)
+                assert isinstance(timeout, int)
                 self.request = req
                 return response
 
@@ -285,10 +322,10 @@ class Integrity(unittest.TestCase):
     def test_signing_against_openssl_canonical_vector(self) -> None:
         import subprocess
 
-        def sha(data):
+        def sha(data: bytes) -> str:
             return hashlib.sha256(data).hexdigest()
 
-        def hmac_openssl(key, data):
+        def hmac_openssl(key: bytes, data: bytes) -> bytes:
             return subprocess.check_output(
                 [
                     "openssl",
@@ -325,7 +362,7 @@ class Integrity(unittest.TestCase):
             "http://rustfs:9000/spi-evidence/é a",
             "AKID",
             "secret",
-            datetime.datetime(2026, 1, 2, 3, 4, 5),
+            datetime.datetime(2026, 1, 2, 3, 4, 5, tzinfo=datetime.UTC),
         )
         assert actual["Authorization"].endswith("Signature=" + expected)
 
@@ -355,7 +392,10 @@ class PreservedPreviewTests(unittest.TestCase):
             "bytes=2-1",
             "Bytes=0-1",
         ]:
-            with pytest.raises(ValueError):
+            with pytest.raises(
+                ValueError,
+                match=r"invalid range|empty suffix|unsatisfiable range",
+            ):
                 g.byte_range(value, 8)
         assert g.byte_range("bytes=-2", 8) == (6, 7)
         assert g.byte_range("bytes=2-", 8) == (2, 7)
@@ -387,5 +427,5 @@ class PreservedPreviewTests(unittest.TestCase):
         reader.object = lambda key: objects[key]
         assert reader.read(prefix + "/E001-image.png") == body
         objects[prefix + "/E001-image.png"] = b"corrupt"
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="artifact hash mismatch"):
             reader.read(prefix + "/E001-image.png")
