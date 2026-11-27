@@ -174,9 +174,10 @@ key withdrawal in the production freshness design.
 
 Each candidate node ran its own key reader and Traefik, reading the **same**
 35 named fixture Secrets. One rotation changed the last two-SAN key for all
-three. To limit the combined request rate, this run paused 800 ms per named
-GET per source (at most 1.25 starts/s per reader on average during a scan;
-requests can align). Poll interval 55 s, timeout 50 s. Both rounds overlapped
+three. To limit the combined request rate, each reader paused 800 ms **before every GET**, including the first and
+last: 35 pauses = 28 s of pacing per scan, plus fetch and processing time.
+The 1.25 starts/s ceiling applies per reader, not to all three readers;
+their requests can align. Poll interval 55 s, timeout 50 s. Both rounds overlapped
 across all three nodes. Each completed round used 105 exact GETs; 210 across
 the two recorded rounds, with no Secret list/watch. Serialized snapshots were
 33109 bytes per replica. Kubernetes `/readyz` returned `ok` before and after;
