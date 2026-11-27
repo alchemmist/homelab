@@ -39,3 +39,25 @@ superseded rounds, and expiry at the exact deadline. This does not cover saved
 process images/clock rollback, a compromised authority, multi-worker coherence,
 a pause after the last check, or bytes already written. No production trust,
 timing budget or real issuance is implied. No keys or account data were used.
+
+## Bind renewal to the namespace scan
+
+`ScannedSlot.refresh` starts its ticket **before** page one of `scan_namespace`
+and accepts the resulting single-slot grant only for the same UID, exact
+Host/token rule and verified backend URL. It does not accept a precompiled
+snapshot argument. A complete scan without that exact presentation revokes;
+a raised/incomplete scan cancels only its outstanding ticket. No later result
+can move the deadline to its receipt time. This is a single-slot fixture,
+not a plan to rescan a whole namespace separately for every production token.
+The callbacks still must read fresh authoritative data; correlation cannot
+make an untrusted reader truthful. Separate resource lists are not atomic.
+
+An operator rehearsal seeded a slot using synthetic observations, then
+injected a second-page 410. The previous witness remained unchanged and was
+absent after its original three-second fixture window, without renewal. A
+fresh synthetic admission followed by a real terminal empty Challenge LIST
+in a disposable namespace removed the slot without child lookups. No real
+Challenge, issuer or account was created. Unit controls also exercise child
+read interruption, a late complete scan and a new ready destination IP not
+renewing the old address. These are gate-state observations, not listener
+handshakes or public issuance.

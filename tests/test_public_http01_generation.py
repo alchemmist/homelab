@@ -432,3 +432,79 @@ def test_interrupted_scan_never_emits_partial_or_empty_withdrawal(fault):
         )
     assert err.value.__context__ is None and "sensitive" not in str(err.value)
     assert len(resolved) == int(fault == "child")
+
+
+def test_namespace_scan_renews_only_original_slot_after_terminal_page(monkeypatch):
+    from ipaddress import IPv4Network
+
+    from ci.quality.public_http01_lease_scan import ScannedSlot
+    from ci.quality.public_http01_scan import IncompleteScan
+    from services.public_entry import solver_lease
+
+    tick = [100]
+    monkeypatch.setattr(solver_lease.time, "monotonic_ns", lambda: tick[0])
+    a = destination_fixture()
+    expected, ch, *children = a
+    ns, _, uid, host = expected
+    net = IPv4Network("10.42.0.0/16")
+    slot = ScannedSlot(ns, host, uid, ch["spec"]["token"], "http://10.42.2.9:8089", 10)
+
+    def run(final, child=lambda _: children):
+        def read(namespace, cursor):
+            assert namespace == ns
+            return list_page([ch], cursor="next") if not cursor else final()
+
+        return slot.refresh(frozenset({host}), read, child, net)
+
+    assert run(list_page)
+    original = slot.witness()
+    assert original is not None
+    tick[0] = 108
+    with pytest.raises(IncompleteScan):
+        run(lambda: (410, {}))
+    assert slot.witness() == original
+
+    def interrupted(_):
+        raise TimeoutError
+
+    with pytest.raises(IncompleteScan):
+        run(list_page, interrupted)
+    tick[0] = 110
+    assert slot.witness() is None
+    assert run(list_page)
+
+    def late():
+        tick[0] += 10
+        return list_page()
+
+    assert not run(late) and slot.witness() is None
+    assert run(list_page)
+    assert (
+        not slot.refresh(frozenset({host}), lambda *_: list_page(), interrupted, net)
+        and slot.witness() is None
+    )
+
+
+def test_new_verified_address_cannot_renew_a_slot_for_an_old_backend():
+    from ipaddress import IPv4Network
+
+    from ci.quality.public_http01_lease_scan import ScannedSlot
+
+    expected, ch, ing, svc, pod, slices = destination_fixture()
+    ns, _, uid, host = expected
+    slot = ScannedSlot(
+        ns, host, uid, ch["spec"]["token"], "http://10.42.2.9:8089", 10**10
+    )
+
+    def run():
+        return slot.refresh(
+            frozenset({host}),
+            lambda *_: list_page([ch]),
+            lambda _: (ing, svc, pod, slices),
+            IPv4Network("10.42.0.0/16"),
+        )
+
+    assert run()
+    pod["status"]["podIP"] = "10.42.2.11"
+    slices[0]["endpoints"][0]["addresses"] = ["10.42.2.11"]
+    assert not run() and slot.witness() is None
