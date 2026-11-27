@@ -93,3 +93,21 @@ def test_closed_schoolbot_probe_only_uses_loopback(monkeypatch):
     )
     monkeypatch.setattr(sys, "argv", ["health", "--local-port", "10443"])
     assert health.main() == 1 and calls == [("127.0.0.1", 10443)]
+
+
+@pytest.mark.parametrize(("length", "ok"), [(11, True), (12, False), (100000, False)])
+def test_schoolbot_body_must_match_advertised_length(length, ok):
+    import http.client
+    import io
+    from unittest.mock import Mock
+
+    from ci.quality.schoolbot_entry_health import response_healthy
+
+    sock = Mock()
+    sock.makefile.return_value = io.BytesIO(
+        f"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {length}\r\n\r\n".encode()
+        + b'{"ok":true}'
+    )
+    with http.client.HTTPResponse(sock) as response:
+        response.begin()
+        assert response_healthy(response) is ok

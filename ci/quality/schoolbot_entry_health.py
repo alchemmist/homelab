@@ -36,6 +36,24 @@ def healthy(status: int, content_type: str, body: bytes) -> bool:
     return isinstance(doc, dict) and doc.get("ok") is True
 
 
+def response_healthy(resp: http.client.HTTPResponse) -> bool:
+    """Do not accept a valid-looking JSON prefix of a truncated response."""
+    length = resp.getheader("Content-Length")
+    if length is not None:
+        if (
+            not length.isascii()
+            or not length.isdecimal()
+            or len(length) > 10
+            or int(length) > LIMIT
+            or resp.getheader("Transfer-Encoding") is not None
+        ):
+            return False
+    body = resp.read(LIMIT + 1)
+    if length is not None and len(body) != int(length):
+        return False
+    return healthy(resp.status, resp.getheader("Content-Type", ""), body)
+
+
 def probe(ip: str, port: int) -> str:
     phase = "tcp"
     try:
@@ -53,9 +71,7 @@ def probe(ip: str, port: int) -> str:
                     resp.begin()
                     if resp.status != 200:
                         return f"http-{resp.status}"
-                    if not healthy(
-                        resp.status, resp.getheader("Content-Type", ""), resp.read(LIMIT + 1)
-                    ):
+                    if not response_healthy(resp):
                         return "unexpected-health-response"
                     return "trusted-tls-and-health-ok"
     except ssl.SSLCertVerificationError as exc:
