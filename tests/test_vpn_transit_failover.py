@@ -517,3 +517,18 @@ def test_agent_exception_requires_live_same_boot_warming(ctl, monkeypatch, tmp_p
     assert c.agent_allowed()
     c.permit.touch()
     assert not c.agent_allowed()
+
+
+def test_manual_return_cannot_bypass_busy_shared_lock(ctl, monkeypatch):
+    m, c = ctl
+    c.config["warm_return_enabled"] = True
+    m.atomic(c.marker, {})
+    c.save(mode="native")
+    monkeypatch.setattr(c, "prerequisites", lambda: None)
+    monkeypatch.setattr(c, "warm_return", lambda: None)
+    monkeypatch.setattr(
+        m, "run", lambda *_a, **_k: pytest.fail("must not touch native relay")
+    )
+    with pytest.raises(RuntimeError, match="deferred"):
+        c.failback()
+    assert c.marker.exists()

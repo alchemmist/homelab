@@ -348,6 +348,11 @@ class Controller:
         self.prerequisites()
         assert self.marker.exists()
         assert self.state["mode"] == "native"
+        if self.config.get("warm_return_enabled"):
+            self.warm_return()
+            if self.state["mode"] != "kubernetes":
+                raise RuntimeError("Coordinated return deferred; native relay retained")
+            return
         self.save(mode="transition-to-kubernetes", healthy=False)
         try:
             run(["systemctl", "stop", NATIVE])
@@ -434,6 +439,19 @@ class Controller:
             return
         if self.permit.exists() or not self.permit.parent.is_dir():
             return
+        available = int(
+            pathlib.Path("/proc/meminfo")
+            .read_text()
+            .split("MemAvailable:")[1]
+            .split()[0]
+        )
+        disk = os.statvfs("/var/lib/rancher/k3s")
+        if (
+            available < 256 * 1024
+            or disk.f_bavail * disk.f_frsize < 2 * 1024**3
+            or os.getloadavg()[0] > (os.cpu_count() or 1)
+        ):
+            return
         probe(self.config, host="10.250.0.2", source=("10.250.0.40", 0))
         self.witness()
         self.save(mode="warming", warming_boot=boot_id(), failures=0)
@@ -444,10 +462,9 @@ class Controller:
                 if lock.poll() is not None:
                     raise RuntimeError("Lost independent transition lock")
                 owners = pod_processes()
-                if (
-                    len(owners) == 1
-                    and os.readlink(f"/proc/{owners[0]['pid']}/exe")
-                    == "/run/relay-gate"
+                if len(owners) == 1 and os.path.samefile(
+                    f"/proc/{owners[0]['pid']}/exe",
+                    "/usr/local/libexec/vpn-transit-gate",
                 ):
                     break
                 time.sleep(0.5)
