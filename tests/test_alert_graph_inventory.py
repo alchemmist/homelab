@@ -38,7 +38,10 @@ class AlertGraphInventoryTests(unittest.TestCase):
             (ROOT / "docs/observability/monitoring/alert-graphs.inventory.json").read_text()
         )
         # Includes Service-path divergence and distinct absent/down API scrapes.
-        expected_source_rule_count = 221
+        expected_source_rule_count = 223
+        assert {r["alert"] for r in rows if r["group"] == "socrat.worker.power"} == {
+            "Socrat3OnBattery", "Socrat3BatteryLow",
+        }
         assert {r["alert"] for r in rows if r["alert"].startswith("SocratWireGuard")} >= {
             "SocratWireGuardMeshProbesIncomplete",
             "SocratWireGuardPeerUnreachable",

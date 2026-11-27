@@ -109,6 +109,10 @@
     "alerts-5ff273a38f679e5c": {
       "SocratVPNFallbackActive": 1
     },
+    "alerts-66f1b5bc6e33676b": {
+      "Socrat3BatteryLow": 1,
+      "Socrat3OnBattery": 3
+    },
     "alerts-671a8f11c7fffa70": {
       "SPI Telegram links pending": 1,
       "SPI triage jobs require operator review": 3,

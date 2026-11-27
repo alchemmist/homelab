@@ -9,6 +9,14 @@ alertGraphAnnotations:
     {"version":1,"graphs":[{"id":"primary","title":"KubeNodePressure","dashboard_uid":"alerts-78cc217981bbb8aa","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"KubeNodePressure
     / rule
     evaluations","dashboard_uid":"alerts-78cc217981bbb8aa","panel_id":4,"variables":{},"before_seconds":7200,"after_seconds":300}]}
+  Socrat3BatteryLow: >-
+    {"version":1,"graphs":[{"id":"primary","title":"Socrat3BatteryLow","dashboard_uid":"alerts-66f1b5bc6e33676b","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"Socrat3BatteryLow
+    / rule
+    evaluations","dashboard_uid":"alerts-66f1b5bc6e33676b","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}
+  Socrat3OnBattery: >-
+    {"version":1,"graphs":[{"id":"primary","title":"Socrat3OnBattery","dashboard_uid":"alerts-66f1b5bc6e33676b","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"Socrat3OnBattery
+    / rule
+    evaluations","dashboard_uid":"alerts-66f1b5bc6e33676b","panel_id":4,"variables":{},"before_seconds":7200,"after_seconds":300}]}
   SocratApiScrapeMissing: >-
     {"version":1,"graphs":[{"id":"primary","title":"SocratApiScrapeMissing","dashboard_uid":"alerts-9b2750a20f4596c3","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratApiScrapeMissing
     / rule
