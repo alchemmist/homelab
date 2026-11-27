@@ -310,7 +310,9 @@ def test_malformed_service_port_is_not_a_ready_target():
     catalog, objects = fixture()
     del objects[1]["spec"]["ports"][0]["port"]
     report = inventory(catalog, objects)
-    assert not report["routes"] and any("cannot resolve Service port" in e for e in report["errors"])
+    assert not report["routes"] and any(
+        "malformed Service port" in e for e in report["errors"]
+    )
 
 
 def test_named_target_uses_slice_resolution_not_frontend_port():
@@ -318,4 +320,15 @@ def test_named_target_uses_slice_resolution_not_frontend_port():
     objects[1]["spec"]["ports"][0]["targetPort"] = "tls-listener"
     assert not inventory(catalog, objects)["errors"]
     objects[2]["ports"][0]["name"] = "tls-listener"
-    assert inventory(catalog, objects)["errors"]  # Must name Service port, not targetPort.
+    assert inventory(catalog, objects)[
+        "errors"
+    ]  # Must name Service port, not targetPort.
+
+
+def test_malformed_duplicate_port_cannot_disappear_during_name_lookup():
+    catalog, objects = fixture()
+    objects[1]["spec"]["ports"].append({"name": "secure", "port": "443"})
+    report = inventory(catalog, objects)
+    assert not report["routes"] and any(
+        "malformed Service port" in e for e in report["errors"]
+    )

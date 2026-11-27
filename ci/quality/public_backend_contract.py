@@ -129,12 +129,17 @@ def inventory(catalog: dict, items: list[dict]) -> dict:
                     errors.add(f"{ident}: missing or non-ClusterIP Service {backend}")
                     continue
                 selector = target.get("port", {})
+                declared_ports = svc["spec"].get("ports", [])
+                if any(
+                    type(p.get("port")) is not int or not 1 <= p["port"] <= 65535
+                    for p in declared_ports
+                ):
+                    errors.add(f"{ident}: malformed Service port on {backend}")
+                    continue
                 ports = [
                     p
-                    for p in svc["spec"].get("ports", [])
-                    if type(p.get("port")) is int
-                    and 1 <= p["port"] <= 65535
-                    and p.get("protocol", "TCP") == "TCP"
+                    for p in declared_ports
+                    if p.get("protocol", "TCP") == "TCP"
                     and (
                         selector == {"number": p["port"]}
                         or (p.get("name") and selector == {"name": p["name"]})
