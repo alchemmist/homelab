@@ -24,7 +24,7 @@ shellcheck --norc --enable=all --format=json \
   ansible/roles/desktop_environment/files/layout-listener.sh \
   ansible/roles/desktop_panel/files/battery-degradation.sh \
   ansible/roles/starship/files/arc_state.sh \
-  services/spi-tokenizer/build-local.sh \
+  services/spi/tokenizer/build-local.sh \
   ansible/roles/wiki_editor_client/files/wiki-editor-resolver.sh \
   scripts/rustfs/deploy.sh
 ```
@@ -80,7 +80,7 @@ Suppression scan of the ten scripts plus the new test: 0 hits.
 | `ansible/roles/desktop_environment/files/layout-listener.sh` | 5 | Signal remains `-SIGRTMIN+5 waybar`. Comparison stays a quoted string test. |
 | `ansible/roles/desktop_panel/files/battery-degradation.sh` | 6 | Awk program bytes are unchanged. No matching device still calls `upower -i` with no device argument. One device path is now one argument, including a path that contains a space. Fixture full/design 50/100 still prints `50`. |
 | `ansible/roles/starship/files/arc_state.sh` | 7 | `arc` failure and an empty sequencer still exit 0 with no symbol. Unknown sequencer values still use the existing rebase symbol. |
-| `services/spi-tokenizer/build-local.sh` | 17 | `CDPATH='' cd` is the same empty assignment as `CDPATH= cd`. `${1:?usage: build-local.sh /private/assets}` and `set -eu` stay. The script was not executed. |
+| `services/spi/tokenizer/build-local.sh` | 17 | `CDPATH='' cd` is the same empty assignment as `CDPATH= cd`. `${1:?usage: build-local.sh /private/assets}` and `set -eu` stay. The script was not executed. |
 | `ansible/roles/wiki_editor_client/files/wiki-editor-resolver.sh` | 20 | Braces only. Existing resolver fixtures passed. |
 | `scripts/rustfs/deploy.sh` | 4 | Dirty, untracked, and ignored inputs still exit 2 before Helm. A wrong head still prints usage and exits 2. Short-circuit is preserved: dirty skips `ls-files`, untracked skips the ignored query, and a bad argc skips `rev-parse`. `dirname` failure stays ignored; `cd`/`pwd` failure still aborts under `set -euo pipefail`. |
 

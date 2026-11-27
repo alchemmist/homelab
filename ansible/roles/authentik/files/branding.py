@@ -174,15 +174,12 @@ def _verify_nature_responses(
                 message = "Random Nature response failed verification"
                 raise RuntimeError(message)
         urls["NATURE_RANDOM_" + variant.upper()] = url
-    scene_url = BASE + "/-/quiet-mono/v1/nature/scene.css"
+    scene_url = BASE + "/wallpapers/scene.css"
     with urllib.request.urlopen(scene_url, timeout=60) as response:
-        if (
-            hashlib.sha256(response.read()).hexdigest()
-            not in _nature_photo_hashes(theme, assets, "sceneCss")
-            or response.headers.get("Cache-Control") != "no-store"
-        ):
-            message = "Random scene CSS verification failed"
-            raise RuntimeError(message)
+        if (response.headers.get_content_type() != "text/css"
+                or response.headers.get("Cache-Control") != "no-store"
+                or b"body::before" not in response.read()):
+            raise RuntimeError("Wallpaper service scene CSS verification failed")
     urls["NATURE_SCENE"] = scene_url
 
 

@@ -25,7 +25,7 @@ FIXED_SHELL = (
     "ansible/roles/desktop_environment/files/layout-listener.sh",
     "ansible/roles/desktop_panel/files/battery-degradation.sh",
     "ansible/roles/starship/files/arc_state.sh",
-    "services/spi-tokenizer/build-local.sh",
+    "services/spi/tokenizer/build-local.sh",
     "ansible/roles/wiki_editor_client/files/wiki-editor-resolver.sh",
     "scripts/rustfs/deploy.sh",
 )
@@ -35,7 +35,7 @@ RESET = "\033[0m"
 BATTERY = ROOT / "ansible/roles/desktop_panel/files/battery-degradation.sh"
 MENU = ROOT / "ansible/roles/debian_laptop/files/sway/homelab-sway-menu"
 ARC_STATE = ROOT / "ansible/roles/starship/files/arc_state.sh"
-BUILD_LOCAL = ROOT / "services/spi-tokenizer/build-local.sh"
+BUILD_LOCAL = ROOT / "services/spi/tokenizer/build-local.sh"
 DEPLOY = ROOT / "scripts/rustfs/deploy.sh"
 SUDO = ROOT / "ansible/files/socrat-sudo"
 HISTORICAL_BATTERY = """

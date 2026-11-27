@@ -2,9 +2,7 @@
 
 The owner requested permanent removal of the Monori maintenance queue from Socrat,
 not an image upgrade. Git no longer declares an Application, chart, values,
-credential provisioning script or release workflow for it. Do not deploy the
-retained `services/swe-mini` source. Its queue/policy tests and dependency scanning
-remain in scope. [PR #462](https://github.com/alchemmist/homelab/pull/462) was
+credential provisioning script or release workflow for it. The retired service source and its queue/policy tests were removed as well. [PR #462](https://github.com/alchemmist/homelab/pull/462) was
 closed without merging: its lock audit findings are **not** resolved by retirement.
 The former deployment instructions and November 17–18 acceptance receipts remain
 in Git history. They are not a recovery procedure.

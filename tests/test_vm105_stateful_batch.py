@@ -138,6 +138,7 @@ def expect_spi_cutover(
     # The pinned render already includes the pg-common:5432 egress peer.
     deployment = _mapping(expected["Deployment", "spi-triage"]["spec"])
     pod = _mapping(_mapping(deployment["template"])["spec"])
+    pod["terminationGracePeriodSeconds"] = 1860
     (guard,) = [
         g
         for g in map(_mapping, _sequence(pod["initContainers"]))

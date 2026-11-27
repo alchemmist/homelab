@@ -38,6 +38,8 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      # An accepted stage may run for 1800s; allow its response and checkpoint to flush.
+      terminationGracePeriodSeconds: 1860
       serviceAccountName: spi-evidence-reader
       automountServiceAccountToken: true
       enableServiceLinks: false

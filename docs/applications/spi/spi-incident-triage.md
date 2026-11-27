@@ -12,7 +12,11 @@ The source-extraction checkpoint below is historical. It does not mean productio
 The owner requested **one complete service with backend and frontend**. The earlier
 frontend-only extraction was a scope mistake, not the final architecture.
 
-### Canonical repository and package
+### Current source
+
+The complete production application now lives in `services/spi/` in homelab. Build its Dockerfile with that directory as context. The following extraction notes are historical.
+
+### Previous repository and package
 
 Public source: **[alchemmist/spi-triage](https://github.com/alchemmist/spi-triage)**,
 commit `0eb490d1216e5a5126d7a0862a84728f81c077f1`. The same GitHub repository was
@@ -1058,7 +1062,7 @@ restart. Read-only assets and installed library are required. Byte-bound default
 regression with 24 live Models completed without OOM at 276436 KiB peak, but is
 **not accepted**: three missing-tool test errors and one byte-bound-specific test
 expectation remain; seven installed-reference historic oracles and legal packaging
-are unfinished. See services/spi-tokenizer/README.md. No live activation or
+are unfinished. See services/spi/tokenizer/README.md. No live activation or
 throughput improvement is claimed; rollback retains database/cache/budget and
 selects the prior image with byte-bound-v1, never refunds.
 
@@ -1102,7 +1106,7 @@ https://huggingface.co/RedHatAI/Qwen3.8-27B-INT4/resolve/91bd022d5b49442a868bc35
 - tokenizer.json SHA256 06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523
 - chat_template.jinja SHA256 c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041
 - tokenizer_config.json SHA256 5f7aa0d810000c4a0940b35c8f16e56c3439260fccc13a321826ebc3ccf2501f
-- tokenizers 0.22.2 musllinux wheel SHA256 38337540fbbddff8e999d59970f3c6f35a82de10053206a7562f1ea02d046fa5; immutable public wheel URL in services/spi-tokenizer/wheel-url.txt.
+- tokenizers 0.22.2 musllinux wheel SHA256 38337540fbbddff8e999d59970f3c6f35a82de10053206a7562f1ea02d046fa5; immutable public wheel URL in services/spi/tokenizer/wheel-url.txt.
 
 Reservation is exact supported rendered prompt count + full response-format
 UTF-8 bytes + 256 allowance + explicit completion cap (2500 or 768), not exact
@@ -1149,10 +1153,10 @@ This proves synthetic effective admission, not live throughput or a card ETA.
 ### Packaging and operations
 
 Build is deliberately a strict verified preloaded asset context, not a universal
-fetch script: sh services/spi-tokenizer/build-local.sh /path/to/verified/assets.
+fetch script: sh services/spi/tokenizer/build-local.sh /path/to/verified/assets.
 No repeat 20MB download is required. Build/runtime pins and wheel are unchanged.
 Matching immutable upstream tokenizers LICENSE and Rust LICENSE pointer are
-preserved in services/spi-tokenizer/legal and copied into the internal image.
+preserved in services/spi/tokenizer/legal and copied into the internal image.
 Commit f383101a26663708484cac0727792aad74f78234 (v0.22.2) recursive upstream tree
 contains no NOTICE; none invented. See legal/PROVENANCE.md for exact public URLs,
 hashes, model Apache-2.0 declaration/attribution and canonical Apache license.

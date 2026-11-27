@@ -200,7 +200,7 @@ def main() -> None:
         Path(__file__)
         .resolve()
         .parents[1]
-        .joinpath("services/openhands/READY_TO_REVIEW.md")
+        .joinpath("deploy/openhands/integration/READY_TO_REVIEW.md")
         .read_text()
     )
     settings = {

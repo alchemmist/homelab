@@ -1,6 +1,0 @@
-mini-swe-agent==2.4.6
-kubernetes==37.0.3
-PyJWT[crypto]==2.15.1
-requests==2.34.2
-playwright==1.62.0
-uv==0.13.9

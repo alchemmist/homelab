@@ -70,7 +70,7 @@ in the diagnostic browser; do not assume that proves all SDK telemetry is disabl
 - GitOps pod replacement preserved native profile activation, owner key, earlier
   conversation history and workspace proof; no copied SWE model key remains in env.
 - Publication, remote-CI follow-up and per-comment reply/resolve integration are
-  NOT connected. `services/openhands/READY_TO_REVIEW.md` is policy, not enforcement.
+  NOT connected. `deploy/openhands/integration/READY_TO_REVIEW.md` is policy, not enforcement.
   `scripts/openhands-pr-ready.py` is a read-only fail-closed audit, not an orchestrator.
 
 ## Public entrance: standard Authentik OIDC; public DNS/TLS accepted
@@ -213,7 +213,7 @@ callback/UI acceptance remains pending until actually observed after this repair
 Owner reports Skip reached the main Canvas UI. Native active agent profile is now
 `socrat-the-loop` (`b8cb1891-7251-47a3-96a6-ec38d238ae89`), backed by the existing
 Venice-only `socrat-deepseek` profile, no additional secrets/integrations. Policy:
-[THE_LOOP.md](../../../services/openhands/THE_LOOP.md). `scripts/configure-openhands-loop.py`
+[THE_LOOP.md](../../../deploy/openhands/integration/THE_LOOP.md). `scripts/configure-openhands-loop.py`
 installs the official filesystem MCP 2.4.0 using the tracked npm integrity lock,
 `--ignore-scripts`, scoped only to `/home/openhands/workspace/the-loop-demo`.
 MCP returned 16 tools, read TASK.md in the actual coding run, and rejected an
@@ -248,7 +248,7 @@ INACTIVE, daily 08:00 Europe/Moscow (05:00 UTC), timeout300s, keep_alive false.
 `scripts/configure-openhands-schedule.py` defaults GET-only; --apply creates/updates
 only the matching owned schedule, always paused, never dispatches model work, and
 refuses duplicates, incomplete listing, drift and active runs. Applied twice with
-one schedule remaining. Source template: `services/openhands/the-loop-demo/schedule.json`.
+one schedule remaining. Source template: `deploy/openhands/integration/the-loop-demo/schedule.json`.
 Internal callback base is loopback8000, not browser OIDC; public auth stays enabled.
 
 Private loopback Playwright diagnostic independently reopened the persisted coding
