@@ -65,6 +65,6 @@ class ActivityTest(unittest.TestCase):
     def test_read_only_and_no_execution_payloads(self) -> None:
         """Require the exporter source to stay read-only and free of payload prints."""
         source = PATH.read_text()
-        assert "'includeData': 'false'" in source
+        assert '"includeData": "false"' in source
         assert "method=" not in source
         assert "print(" not in source

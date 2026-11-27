@@ -47,7 +47,7 @@ class Worker5MigrationTest(unittest.TestCase):
         cls.docs = list(
             yaml.safe_load_all(
                 subprocess.check_output(
-                    ["helm", "template", "n8n", str(ROOT / "charts/n8n")], text=True
+                    ["helm", "template", "n8n", str(ROOT / "charts/n8n"), "--set", "queue.enabled=false"], text=True
                 )
             )
         )
