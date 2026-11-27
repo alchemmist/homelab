@@ -61,3 +61,30 @@ Challenge, issuer or account was created. Unit controls also exercise child
 read interruption, a late complete scan and a new ready destination IP not
 renewing the old address. These are gate-state observations, not listener
 handshakes or public issuance.
+
+## Scan interruption observed through the running listener
+
+In an internal Docker network two stock acmesolvers, Traefik and an ordinary
+marker stayed live. Both exact paths went through the gate using the actual
+`ScannedSlot.refresh` and request-time witness checks. A loopback fixture API
+served Kubernetes-shaped pages and child observations over HTTP, not a real
+Kubernetes API or CA. No grant bodies, challenge paths, or tokens were logged.
+Only the first slot was refreshed in the fault stages; this does not model an
+atomic namespace-wide update. Initial fixture windows were 35 s and 180 s.
+
+| First slot scan | Fresh exact-path responses (first / second) | Control |
+| --- | --- | --- |
+| Cold; then both slots independently complete two pages | 410/410; then 200/200 | Correct distinct solver bodies after admission. |
+| First page valid, second returned HTTP 410 | 200/200 before original expiry | No child read; witness unchanged. API 410 is not a client-side withdrawal. |
+| Both pages valid, first child connection closed without a response | 200/200 before original expiry | One child lookup attempted; witness unchanged. |
+| No further successful refresh before the first deadline | 410/200 | First solver fetch count stayed at three; second went from three to four. |
+| Complete fresh scan; then terminal empty LIST for the first slot | 200/200; then 410/200 | Empty result required no child reads; final solver counts four and six. |
+
+Each sweep also checked ordinary `/`, a near miss returning the ordinary
+marker, and wrong Host returning 404. The ordinary file checksum did not
+change. A preliminary run with a shorter window failed a pre-expiry assertion;
+it was not counted as passing evidence. The successful run establishes sampled
+listener behavior, not a latency bound or a recommendation for production
+leases. Next integration concern: refreshing all slots from one complete,
+consistent namespace observation, without reopening a removed slot or letting
+one consumer see results from a superseded round.
