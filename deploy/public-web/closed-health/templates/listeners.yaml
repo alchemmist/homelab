@@ -19,6 +19,7 @@
 {{- end -}}
 {{- $status := and (kindIs "bool" .Values.closedStatus) .Values.closedStatus (deepEqual (dig "uptime-kuma" "status.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "uptime-kuma-tls")) -}}
 {{- $redirect := and (kindIs "bool" .Values.closedStatusRedirect) .Values.closedStatusRedirect (deepEqual (dig "uptime-kuma" "kuma.socrat.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "public-web-kuma-admin-tls")) -}}
+{{- $argo := and (kindIs "bool" .Values.closedArgo) .Values.closedArgo (deepEqual (dig "argocd" "argocd.socrat.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "argocd-server-tls")) -}}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -130,10 +131,48 @@ spec:
   egress: []
 {{- end }}
 ---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: closed-health-argocd
+  namespace: {{ .Release.Namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: '-1'}
+spec:
+  podSelector: {matchLabels: {app: closed-health}}
+  policyTypes: [Egress]
+{{- if $argo }}
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: argocd}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: argocd-server, app.kubernetes.io/instance: argo-cd}}
+      ports: [{port: 8080, protocol: TCP}]
+{{- else }}
+  egress: []
+{{- end }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata: {name: closed-health, namespace: {{ .Release.Namespace }}}
 data:
+{{- if $argo }}
+  argocd.yaml: |
+    http:
+      routers:
+        argocd:
+          entryPoints: [closed]
+          rule: 'Host(`argocd.socrat.alchemmist.xyz`) && PathPrefix(`/`)'
+          service: argocd
+      services:
+        argocd:
+          loadBalancer:
+            passHostHeader: true
+            serversTransport: argocd-verified-tls
+            servers: [{url: 'https://argo-cd-argocd-server.argocd.svc.cluster.local:443'}]
+      serversTransports:
+        argocd-verified-tls:
+          serverName: argocd.socrat.alchemmist.xyz
+          insecureSkipVerify: false
+{{- end }}
   dynamic.yaml: |
     http:
       routers:
