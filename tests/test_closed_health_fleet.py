@@ -877,3 +877,19 @@ def test_selected_app_only_reaches_its_reviewed_http_listener(app, bit, port):
     }
     pol["egress"] = []
     assert active == render("--set", "false") == render("--set-string", "true")
+
+
+def test_schoolbot_sample_requires_complete_json_http_response():
+    from ci.quality.closed_schoolbot_samples import classify
+
+    raw = b'HTTP/1.0 200 OK\r\nContent-Type: application/json\r\nContent-Length: 11\r\n\r\n{"ok":true}'
+    assert classify(raw) == "healthy"
+    for bad in (
+        b"",
+        raw[:-1],
+        raw.replace(b"200 OK", b"504 Gateway Timeout"),
+        raw.replace(b"application/json", b"text/html"),
+        raw.replace(b"true", b"null"),
+        b"x" * 8193,
+    ):
+        assert classify(bad) != "healthy"
