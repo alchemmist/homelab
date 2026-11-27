@@ -117,3 +117,45 @@ def test_duplicate_certificate_writer_is_an_independent_blocker() -> None:
     report = inventory(CAT, [ING, PATH, CERT, second])
     assert report["errors"] == ["app.test: expected one Certificate writer, found 2"]
     assert not report["namedGetRules"]
+
+
+def test_healthy_observed_alias_cannot_redirect_a_reviewed_secret_pin():
+    from ci.quality.public_tls_pins import compare
+
+    catalog = copy.deepcopy(CAT)
+    catalog["hosts"]["site"]["app.test"]["tlsSourceName"] = "site-tls"
+    items = copy.deepcopy([ING, PATH, CERT])
+    assert compare(catalog, items) == {
+        "sources": {"site/site-tls": ["app.test"]},
+        "errors": [],
+    }
+    items[0]["spec"]["tls"][0]["secretName"] = "unreviewed"
+    items[2]["spec"]["secretName"] = "unreviewed"
+    assert not inventory(catalog, items)[
+        "errors"
+    ]  # Internally consistent, not independently approved.
+    assert compare(catalog, items) == {
+        "sources": {},
+        "errors": ["app.test: observed source differs from reviewed pin"],
+    }
+
+
+@pytest.mark.parametrize(
+    "change", ["missing", "ambiguous", "non-web", "namespace-path"]
+)
+def test_no_partial_or_cross_namespace_reader_plan(change):
+    from ci.quality.public_tls_pins import compare
+
+    catalog = copy.deepcopy(CAT)
+    site = catalog["hosts"]["site"]["app.test"]
+    site["tlsSourceName"] = "site-tls"
+    if change == "missing":
+        del site["tlsSourceName"]
+    elif change == "ambiguous":
+        catalog["hosts"]["files"]["app.test"]["tlsSourceName"] = "another"
+    elif change == "non-web":
+        catalog["hosts"]["transit"]["vpn.test"]["tlsSourceName"] = "nope"
+    else:
+        site["tlsSourceName"] = "other/site-tls"
+    report = compare(catalog, [ING, PATH, CERT])
+    assert report["errors"] and not report["sources"]

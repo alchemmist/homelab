@@ -69,7 +69,7 @@ hosts:
     vpn.alchemmist.xyz: {dns: static, route: vpn-transit}
   schoolbot:
     bot.sch1357.ru: {dns: external, route: reserved}
-    inform.sch1357.ru: {dns: external}
+    inform.sch1357.ru: {dns: external, tlsSourceName: schoolbot-tls}
   rustfs:
     rustfs.socrat.alchemmist.xyz: {dns: managed}
     socrat.alchemmist.xyz: {dns: managed}

@@ -207,3 +207,21 @@ selection plus a nonempty strict-SNI sentinel snapshot rejected all three;
 restoration recovered all three. Only disposable key material in container
 tmpfs was used. This does not admit production routes or address the case
 where the consumer cannot receive the snapshot.
+
+### Pin source names independently of observed objects
+
+`uv run python -m ci.quality.public_tls_pins` accepts the same Ingress and
+Certificate JSON list as the TLS inventory. A consistent pair of live objects
+is not independent approval to fetch a newly referenced key. `tlsSourceName`
+may appear on exactly one ordinary namespace/host owner per DNS name and
+identifies a Secret **only in that namespace**. Other path owners need no key
+pin. The comparison emits no reader plan if any ordinary host has a missing,
+ambiguous, malformed or mismatched pin or if the inventory has errors. It does
+not render or apply RBAC, read Secrets, or change DNS ownership.
+
+The first pin is the existing Schoolbot route's `schoolbot/schoolbot-tls`.
+The fleet plan intentionally remains blocked until the other sources have been
+independently reviewed. Never bootstrap the pins by copying audit output into
+Git wholesale. A name pin is not proof of the key bytes, the authority of a
+namespace writer or successful TLS delivery; validate leaf material and test
+the listener independently. The private DNS stage needs neither pins nor keys.
