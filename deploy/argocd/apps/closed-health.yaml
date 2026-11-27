@@ -12,7 +12,7 @@ spec:
     repoURL: https://github.com/alchemmist/homelab.git
     targetRevision: main
     path: deploy/public-web/closed-health
-    helm: {valueFiles: [../entrances.yaml]}
+    helm: {valueFiles: [../../blog/values.yaml, ../entrances.yaml]}
   destination:
     namespace: public-health-staging
     server: https://kubernetes.default.svc
