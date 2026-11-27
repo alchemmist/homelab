@@ -152,3 +152,17 @@ on bytes already in flight. Under prolonged isolation the second slot would
 also lose its authorization at its own deadline; this run did not wait for
 that deadline. Do not infer independent DNS, public issuance, application
 survival or VPN failover from this control-plane partition.
+
+A follow-up kept the third consumer disconnected beyond **both** deadlines
+(30 s and 48 s in this run). After the first expiry, a second failed API
+read on the disconnected consumer did not extend the surviving slot. The
+two connected consumers renewed only that slot. At a sweep after 52 s the
+connected exact pairs were both 410/200, the isolated pair was 410/410, and
+all ordinary controls still passed. Solver fetch counts on the isolated
+consumer stayed at two and three, unchanged from before the second expiry.
+Reconnecting the control network **without** a scan still produced 410/410
+and no additional solver reads. A fresh remaining-only scan restored just
+the second slot; only a later two-task scan restored both. These are sampled
+responses on one Docker host, not a 48 s production guarantee. A partition
+long enough to expire a valid grant can deny a legitimate HTTP-01 validation;
+ordinary service availability is not proof that ACME can renew there.
