@@ -1,4 +1,5 @@
 {{- if and .Values.oidc .Values.oidc.enabled }}
+{{- $host := "openhands.socrat.alchemmist.xyz" }}
 {{- if .Values.ingress.enabled }}
 {{- fail "OIDC requires the native unprotected ingress to remain disabled" }}
 {{- end }}
@@ -125,6 +126,10 @@ kind: Ingress
 metadata:
   name: openhands-oidc
   namespace: identity
+  {{- if eq (default "" .Values.oidc.publicWebHost) $host }}
+  labels:
+    homelab.alchemmist.xyz/public-web: 'true'
+  {{- end }}
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: 'true'
@@ -134,10 +139,10 @@ metadata:
 spec:
   ingressClassName: traefik
   tls:
-    - hosts: [openhands.socrat.alchemmist.xyz]
+    - hosts: [{{ $host }}]
       secretName: openhands-oidc-tls
   rules:
-    - host: openhands.socrat.alchemmist.xyz
+    - host: {{ $host }}
       http:
         paths:
           - path: /

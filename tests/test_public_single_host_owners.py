@@ -51,3 +51,61 @@ def test_owner_opt_in_changes_only_one_ingress_label(app, field, replacement):
     assert changed["tls"][0]["hosts"] == [replacement]
     for docs in [replaced, render(release=False)]:
         assert LABEL not in ingress(docs)["metadata"].get("labels", {})
+
+
+def test_openhands_selects_the_oidc_proxy_not_the_native_ingress():
+    app = yaml.safe_load((ROOT / "deploy/argocd/apps/openhands.yaml").read_text())[
+        "spec"
+    ]
+    src = app["source"]
+    chart = ROOT / src["path"]
+    helm = src["helm"]
+    args = [
+        "helm",
+        "template",
+        helm["releaseName"],
+        str(chart),
+        "-n",
+        app["destination"]["namespace"],
+    ]
+    for file in helm["valueFiles"]:
+        args.extend(["-f", str(chart / file)])
+
+    def run(*opts):
+        return subprocess.run(
+            args + list(opts), capture_output=True, text=True, check=False
+        )
+
+    def render(*opts):
+        result = run(*opts)
+        assert result.returncode == 0
+        return [r for r in yaml.safe_load_all(result.stdout) if r]
+
+    def owner(docs):
+        (ing,) = [r for r in docs if r["kind"] == "Ingress"]
+        return ing
+
+    selected = render()
+    ing = owner(selected)
+    assert (
+        ing["metadata"]["namespace"] == "identity"
+        and ing["metadata"]["name"] == "openhands-oidc"
+    )
+    host = "openhands.socrat.alchemmist.xyz"
+    (rule,) = ing["spec"]["rules"]
+    (route,) = rule["http"]["paths"]
+    assert rule["host"] == host and route == {
+        "path": "/",
+        "pathType": "Prefix",
+        "backend": {"service": {"name": "openhands-oidc", "port": {"number": 4180}}},
+    }
+    assert ing["metadata"].pop("labels") == {LABEL: "true"}
+    ann = ing["metadata"]["annotations"]
+    assert all(
+        ann["traefik.ingress.kubernetes.io/router.observability." + field] == "false"
+        for field in ("accesslogs", "tracing")
+    )
+    for pin in ["", "other.invalid"]:
+        assert render("--set-string", "oidc.publicWebHost=" + pin) == selected
+    invalid = run("--set", "ingress.enabled=true")
+    assert invalid.returncode and "native unprotected ingress" in invalid.stderr
