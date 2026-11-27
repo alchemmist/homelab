@@ -1,0 +1,653 @@
+{
+  "id": 669071642517504,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#56D2D9",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0,
+          "noValue": "Waiting for samples",
+          "unit": "ops",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "maxDataPoints": 360,
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(cnpg_pg_stat_database_xact_commit_total{pg_cluster=\"pg-common\",pg_role=\"primary\"}[1m]))",
+          "legendFormat": "pg-common",
+          "refId": "A"
+        }
+      ],
+      "title": "PG-COMMON / TRANSACTIONS / s",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#56D2D9",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0,
+          "noValue": "Waiting for samples",
+          "unit": "short",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 5
+      },
+      "id": 2,
+      "maxDataPoints": 360,
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(cnpg_backends_total{pg_cluster=\"pg-common\",pg_role=\"primary\",datname!=\"\"})",
+          "legendFormat": "pg-common",
+          "refId": "A"
+        }
+      ],
+      "title": "PG-COMMON / CONNECTIONS",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#56D2D9",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0,
+          "noValue": "Waiting for samples",
+          "unit": "ops",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 0,
+        "y": 9
+      },
+      "id": 3,
+      "maxDataPoints": 360,
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(cnpg_pg_stat_database_tup_inserted_total{pg_cluster=\"pg-common\",pg_role=\"primary\"}[1m])) + sum(rate(cnpg_pg_stat_database_tup_updated_total{pg_cluster=\"pg-common\",pg_role=\"primary\"}[1m])) + sum(rate(cnpg_pg_stat_database_tup_deleted_total{pg_cluster=\"pg-common\",pg_role=\"primary\"}[1m]))",
+          "legendFormat": "pg-common",
+          "refId": "A"
+        }
+      ],
+      "title": "PG-COMMON / ROW MUTATIONS / s",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#56D2D9",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0,
+          "noValue": "Waiting for samples",
+          "unit": "percent",
+          "max": 100,
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 14
+      },
+      "id": 4,
+      "maxDataPoints": 360,
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(cnpg_pg_stat_database_blks_hit_total{pg_cluster=\"pg-common\",pg_role=\"primary\"}[1m])) / (sum(rate(cnpg_pg_stat_database_blks_hit_total{pg_cluster=\"pg-common\",pg_role=\"primary\"}[1m])) + sum(rate(cnpg_pg_stat_database_blks_read_total{pg_cluster=\"pg-common\",pg_role=\"primary\"}[1m])))",
+          "legendFormat": "pg-common",
+          "refId": "A"
+        }
+      ],
+      "title": "PG-COMMON / BUFFER CACHE / %",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#B877D9",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0,
+          "noValue": "Waiting for samples",
+          "unit": "ops",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "id": 11,
+      "maxDataPoints": 360,
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(cnpg_pg_stat_database_xact_commit_total{pg_cluster=\"pg-critical\",pg_role=\"primary\"}[1m]))",
+          "legendFormat": "pg-critical",
+          "refId": "A"
+        }
+      ],
+      "title": "PG-CRITICAL / TRANSACTIONS / s",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#B877D9",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0,
+          "noValue": "Waiting for samples",
+          "unit": "short",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 5
+      },
+      "id": 12,
+      "maxDataPoints": 360,
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(cnpg_backends_total{pg_cluster=\"pg-critical\",pg_role=\"primary\",datname!=\"\"})",
+          "legendFormat": "pg-critical",
+          "refId": "A"
+        }
+      ],
+      "title": "PG-CRITICAL / CONNECTIONS",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#B877D9",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0,
+          "noValue": "Waiting for samples",
+          "unit": "ops",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 8,
+        "y": 9
+      },
+      "id": 13,
+      "maxDataPoints": 360,
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(cnpg_pg_stat_database_tup_inserted_total{pg_cluster=\"pg-critical\",pg_role=\"primary\"}[1m])) + sum(rate(cnpg_pg_stat_database_tup_updated_total{pg_cluster=\"pg-critical\",pg_role=\"primary\"}[1m])) + sum(rate(cnpg_pg_stat_database_tup_deleted_total{pg_cluster=\"pg-critical\",pg_role=\"primary\"}[1m]))",
+          "legendFormat": "pg-critical",
+          "refId": "A"
+        }
+      ],
+      "title": "PG-CRITICAL / ROW MUTATIONS / s",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#B877D9",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0,
+          "noValue": "Waiting for samples",
+          "unit": "percent",
+          "max": 100,
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 14
+      },
+      "id": 14,
+      "maxDataPoints": 360,
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(cnpg_pg_stat_database_blks_hit_total{pg_cluster=\"pg-critical\",pg_role=\"primary\"}[1m])) / (sum(rate(cnpg_pg_stat_database_blks_hit_total{pg_cluster=\"pg-critical\",pg_role=\"primary\"}[1m])) + sum(rate(cnpg_pg_stat_database_blks_read_total{pg_cluster=\"pg-critical\",pg_role=\"primary\"}[1m])))",
+          "legendFormat": "pg-critical",
+          "refId": "A"
+        }
+      ],
+      "title": "PG-CRITICAL / BUFFER CACHE / %",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#FFB357",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0,
+          "noValue": "Waiting for samples",
+          "unit": "ops",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "id": 21,
+      "maxDataPoints": 360,
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(cnpg_pg_stat_database_xact_commit_total{pg_cluster=\"pg-internal\",pg_role=\"primary\"}[1m]))",
+          "legendFormat": "pg-internal",
+          "refId": "A"
+        }
+      ],
+      "title": "PG-INTERNAL / TRANSACTIONS / s",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#FFB357",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0,
+          "noValue": "Waiting for samples",
+          "unit": "short",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 5
+      },
+      "id": 22,
+      "maxDataPoints": 360,
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(cnpg_backends_total{pg_cluster=\"pg-internal\",pg_role=\"primary\",datname!=\"\"})",
+          "legendFormat": "pg-internal",
+          "refId": "A"
+        }
+      ],
+      "title": "PG-INTERNAL / CONNECTIONS",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#FFB357",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0,
+          "noValue": "Waiting for samples",
+          "unit": "ops",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 16,
+        "y": 9
+      },
+      "id": 23,
+      "maxDataPoints": 360,
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(cnpg_pg_stat_database_tup_inserted_total{pg_cluster=\"pg-internal\",pg_role=\"primary\"}[1m])) + sum(rate(cnpg_pg_stat_database_tup_updated_total{pg_cluster=\"pg-internal\",pg_role=\"primary\"}[1m])) + sum(rate(cnpg_pg_stat_database_tup_deleted_total{pg_cluster=\"pg-internal\",pg_role=\"primary\"}[1m]))",
+          "legendFormat": "pg-internal",
+          "refId": "A"
+        }
+      ],
+      "title": "PG-INTERNAL / ROW MUTATIONS / s",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#FFB357",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0,
+          "noValue": "Waiting for samples",
+          "unit": "percent",
+          "max": 100,
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 14
+      },
+      "id": 24,
+      "maxDataPoints": 360,
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(cnpg_pg_stat_database_blks_hit_total{pg_cluster=\"pg-internal\",pg_role=\"primary\"}[1m])) / (sum(rate(cnpg_pg_stat_database_blks_hit_total{pg_cluster=\"pg-internal\",pg_role=\"primary\"}[1m])) + sum(rate(cnpg_pg_stat_database_blks_read_total{pg_cluster=\"pg-internal\",pg_role=\"primary\"}[1m])))",
+          "legendFormat": "pg-internal",
+          "refId": "A"
+        }
+      ],
+      "title": "PG-INTERNAL / BUFFER CACHE / %",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": [
+    "socrat",
+    "tablet",
+    "public-safe"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": true
+  },
+  "timezone": "browser",
+  "title": "SOCRAT / PostgreSQL Live",
+  "uid": "socrat-tablet-pulse",
+  "version": 5
+}

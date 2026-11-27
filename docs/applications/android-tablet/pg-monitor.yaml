@@ -1,0 +1,41 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  labels:
+    homelab.alchemmist.xyz/scrape-owner: retired-legacy-prometheus
+  name: tablet-postgres-pulse
+  namespace: cattle-monitoring-system
+spec:
+  namespaceSelector:
+    matchNames:
+    - postgres
+  podMetricsEndpoints:
+  - interval: 15s
+    metricRelabelings:
+    - action: keep
+      regex: cnpg_(pg_stat_database_(xact_commit|xact_rollback|blks_hit|blks_read|tup_inserted|tup_updated|tup_deleted|deadlocks|temp_bytes)|backends_total|pg_database_size_bytes|pg_replication_lag)
+      sourceLabels:
+      - __name__
+    - action: replace
+      regex: (cnpg_pg_stat_database_(xact_commit|xact_rollback|blks_hit|blks_read|tup_inserted|tup_updated|tup_deleted|deadlocks|temp_bytes))
+      replacement: ${1}_total
+      sourceLabels:
+      - __name__
+      targetLabel: __name__
+    port: metrics
+    relabelings:
+    - sourceLabels:
+      - __meta_kubernetes_pod_label_cnpg_io_cluster
+      targetLabel: pg_cluster
+    - sourceLabels:
+      - __meta_kubernetes_pod_label_role
+      targetLabel: pg_role
+    scrapeTimeout: 10s
+  selector:
+    matchExpressions:
+    - key: cnpg.io/cluster
+      operator: In
+      values:
+      - pg-common
+      - pg-critical
+      - pg-internal
