@@ -13,6 +13,7 @@ POLICY = "ci/quality/n8n-workflow-policy.json"
 
 
 def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """Reject duplicate JSON keys, which would silently mask policy drift."""
     result = {}
     for key, value in pairs:
         if key in result:
@@ -23,10 +24,12 @@ def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
 
 
 def load(path: Path) -> object:
+    """Load one JSON document while rejecting duplicate keys."""
     return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique_object)
 
 
 def inside(root: Path, name: str) -> Path:
+    """Resolve a policy-declared path, refusing absolute, parent and symlink escapes."""
     relative = Path(name)
     if relative.is_absolute() or ".." in relative.parts:
         msg = "policy paths must be repository-relative"
@@ -215,7 +218,8 @@ def _finish_scan(root: Path, state: _ScanState, context: _ScanContext, *, fix: b
     return 0
 
 
-def run(root: Path, fix: bool = False) -> int:
+def run(root: Path, *, fix: bool = False) -> int:
+    """Run the offline workflow failure-policy scan, optionally applying reviewed repairs."""
     root = root.resolve()
     context = _load_policy(root)
     files = _collect_workflow_files(root, context.policy)
@@ -225,6 +229,7 @@ def run(root: Path, fix: bool = False) -> int:
 
 
 def main() -> int:
+    """Parse flags and run the offline failure-policy scan."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--fix",
@@ -234,7 +239,7 @@ def main() -> int:
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     args = parser.parse_args()
     try:
-        return run(args.root, args.fix)
+        return run(args.root, fix=args.fix)
     except (ValueError, OSError):
         print(
             "Workflow policy/configuration error; no automatic repair. Check paths and JSON.",

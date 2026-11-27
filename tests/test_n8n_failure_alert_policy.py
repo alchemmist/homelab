@@ -80,7 +80,7 @@ class WorkflowPolicyTests(unittest.TestCase):
             contextlib.redirect_stdout(io.StringIO()),
             contextlib.redirect_stderr(io.StringIO()),
         ):
-            exit_code: int = policy.run(self.root, fix)
+            exit_code: int = policy.run(self.root, fix=fix)
         return exit_code
 
     def test_check_fails_without_writing_and_fix_only_adds_setting(self) -> None:
