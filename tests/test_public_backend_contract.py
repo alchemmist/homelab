@@ -125,3 +125,29 @@ def test_missing_dependencies_fail_the_gate(fault: str) -> None:
     else:
         ing["spec"]["rules"][0]["http"]["paths"] = []
     assert inventory(catalog, objects)["errors"]
+
+
+def test_closed_path_rules_do_not_widen_segment_or_exact_matches() -> None:
+    from ci.quality.public_path_rule import path_rule
+
+    host = "site.test"
+    assert (
+        path_rule(host, "/public/", "Prefix")
+        == path_rule(host, "/public", "Prefix")
+        == "Host(`site.test`) && (Path(`/public`) || PathPrefix(`/public/`))"
+    )
+    assert (
+        path_rule(host, "/change-password/", "Exact")
+        == "Host(`site.test`) && Path(`/change-password/`)"
+    )
+    assert path_rule(host, "/", "Prefix") == "Host(`site.test`) && PathPrefix(`/`)"
+    for name, path, kind in [
+        ("*.test", "/", "Prefix"),
+        ("site.test", "/public//x", "Prefix"),
+        ("site.test", "/public/../x", "Prefix"),
+        ("site.test", "/x?query", "Exact"),
+        ("site.test", "/x`", "Exact"),
+        ("site.test", "/x", "ImplementationSpecific"),
+    ]:
+        with pytest.raises(ValueError):
+            path_rule(name, path, kind)

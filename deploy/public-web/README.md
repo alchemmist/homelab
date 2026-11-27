@@ -257,3 +257,14 @@ selection is observable independently of successful backend admission. Do not
 claim the closed web replica serves objects or enable either peer on this basis;
 first verify intended identity, pod-to-endpoint admission and return traffic.
 No private-object ACL result or authenticated operation was inferred.
+
+`ci/quality/public_path_rule.py` generates one **closed-fixture matcher**, not
+a deployable router. Prefix `/public/` matches `/public`, `/public/` and a
+child segment, not `/publicity` or `/public-file`. Exact paths keep their
+trailing slash and case. Unknown path types and unsupported literals fail
+rather than silently broadening discovery. In a loopback-only, network-isolated
+Traefik rehearsal, ten fresh requests selected the expected distinct backend
+markers or the unknown-host 404, including both exact password paths and their
+unmatched child. Fixture priorities were explicit. Generated rule **length**
+must not silently change implicit priorities relative to another owner; route
+selection, auth and middleware parity remain separate deployment gates.
