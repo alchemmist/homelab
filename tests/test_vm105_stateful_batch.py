@@ -149,9 +149,23 @@ def expect_spi_cutover(
     env = _sequence(worker["env"])
     index = next(i for i, item in enumerate(env) if _mapping(item)["name"] == "SPI_LLM_MINUTE_TOKENS")
     env.insert(index, {"name": "SPI_LLM_RETRY_MODEL", "value": "v-deepseek-uc"})
+    # de1e94948 selects the scoped HTTPS client in both storage modes.
+    index = next(
+        i for i, item in enumerate(env) if _mapping(item)["name"] == "WRITE_ENABLED"
+    )
+    env.insert(
+        index,
+        {
+            "name": "BOT_INTERNAL_TOKEN",
+            "valueFrom": {"secretKeyRef": {"name": "spi-bot-api", "key": "token"}},
+        },
+    )
     worker["env"] = env
     patch = json.loads((R / "tests/fixtures/spi-retarget-bot-init.json").read_text())
-    pod["initContainers"] = [{**patch, "image": worker["image"]}, *_sequence(pod["initContainers"])]
+    pod["initContainers"] = [
+        {**patch, "image": worker["image"]},
+        *_sequence(pod["initContainers"]),
+    ]
     pod["volumes"] = [*_sequence(pod["volumes"]), {"name": "bot-base", "emptyDir": {}}]
     worker["volumeMounts"] = [*_sequence(worker["volumeMounts"]), {
         "name": "bot-base", "mountPath": "/app/telegram_delivery.py",
