@@ -31,6 +31,9 @@ spec:
         {{- $prefix := ternary "primary" "compat" (eq $name "primary") }}
         - name: {{ $name }}
           image: {{ $instance.image | quote }}
+          {{- if $.Values.warmReturnGate }}
+          command: ["/bin/sh", "-ec", 'until test -f /run/vpn-owner/cluster; do sleep 0.2; done; exec /app/DockerEntrypoint.sh', "--"]
+          {{- end }}
           imagePullPolicy: IfNotPresent
           securityContext:
             capabilities:
@@ -71,6 +74,11 @@ spec:
             periodSeconds: 3
             failureThreshold: 3
           volumeMounts:
+            {{- if $.Values.warmReturnGate }}
+            - name: vpn-owner
+              mountPath: /run/vpn-owner
+              readOnly: true
+            {{- end }}
             - name: {{ $name }}-db
               mountPath: /etc/x-ui
             - name: {{ $name }}-cert
@@ -86,6 +94,12 @@ spec:
         {{- end }}
         {{- end }}
       volumes:
+        {{- if $.Values.warmReturnGate }}
+        - name: vpn-owner
+          hostPath:
+            path: /var/lib/homelab-vpn-owner
+            type: Directory
+        {{- end }}
         {{- range $name, $instance := .Values.instances }}
         {{- if or (not (hasKey $instance "enabled")) $instance.enabled }}
         - name: {{ $name }}-db

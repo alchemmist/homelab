@@ -1,0 +1,1 @@
+../../../tools/watchdog/compat/transition-lock-v1.sh

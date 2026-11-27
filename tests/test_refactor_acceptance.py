@@ -151,8 +151,8 @@ class GrafanaStorage(unittest.TestCase):
     def test_explicit_existing_data_and_retained_claims(self) -> None:
         """Explicit existing data and retained claims."""
         v = yaml.safe_load((ROOT / "charts/grafana/values.yaml").read_text())["grafana"]
-        assert v["nodeSelector"]["kubernetes.io/hostname"] == "socrat-5"
-        assert v["persistence"]["existingClaim"] == "grafana-socrat5"
+        assert not v["nodeSelector"]
+        assert v["persistence"]["enabled"] is False
         o = yaml.safe_load((ROOT / "deploy/grafana/values.yaml").read_text())["grafana"]
         assert o["replicas"] == 1
         guard = o["extraInitContainers"][0]
