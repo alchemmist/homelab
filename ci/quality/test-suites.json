@@ -126,8 +126,10 @@
     "medium": [
       "tests/test_public_replica_contract.py",
       "tests/test_private_dns_answers.py",
+      "tests/test_public_single_host_owners.py",
       "tests/test_public_tls_sources.py",
       "tests/test_public_tls_material.py",
+      "tests/test_public_backend_contract.py",
       "tests/test_public_survivors.py",
       "tests/test_moscow_blog_probe.py",
       "tests/test_moscow_private_traefik.py",

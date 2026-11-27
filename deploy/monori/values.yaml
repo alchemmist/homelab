@@ -1,4 +1,5 @@
 ---
+publicWebHost: monori.alchemmist.xyz
 oidc:
   enabled: true
   onlyUserIds: [1, 3]

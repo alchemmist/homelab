@@ -3,6 +3,10 @@ kind: Ingress
 metadata:
   namespace: {{ $.Release.Namespace | quote }}
   name: monori
+{{- if and .Values.publicWebHost (eq .Values.publicWebHost .Values.host) }}
+  labels:
+    homelab.alchemmist.xyz/public-web: 'true'
+{{- end }}
   annotations: { cert-manager.io/cluster-issuer: {{ .Values.clusterIssuer | quote }} }
 spec:
   ingressClassName: traefik
