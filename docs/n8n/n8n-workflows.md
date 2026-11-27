@@ -1,3 +1,21 @@
+## CURRENT 27Nov — n8n binary data lives in RustFS (in-cluster S3)
+
+Execution attachments no longer grow the PVC: `N8N_DEFAULT_BINARY_DATA_MODE=s3`
+against `rustfs.rustfs.svc.cluster.local:9000` (path-style, http in-cluster),
+bucket `n8n-binary`. Provisioned offline by the new
+`scripts/rustfs/n8n_objectstore.py` following the spi-evidence-writer pattern:
+dedicated machine user `n8n` (never root/SPI identities), ownership journal,
+credentials only through mc stdin, private state in
+`~/.config/homelab/n8n-objectstore/`. Policy is GetObject+PutObject on
+`n8n-binary/*` plus ListBucket on the bucket (n8n's startup checkConnection
+issues HeadBucket; without it the pod CrashLoops with a useless SDK
+"UnknownError") — deletions stay delegated to S3 lifecycle, the writer cannot
+rm, and cross-bucket/admin operations are denied (all verified live). The
+rendered automation-namespace Secret `n8n-s3-storage` (flat accessKey/
+accessSecret keys for secretKeyRef) predates the chart rollout, so n8n never
+started without credentials. End-to-end verified from the running pod via the
+AWS SDK: HeadBucket OK, Put/Get roundtrip `rustfs-e2e`.
+
 ## CURRENT 27Nov — Source Control to GitHub + log streaming to otel-loki LIVE
 
 Two enterprise features activated on the fork (license gates removed earlier):
