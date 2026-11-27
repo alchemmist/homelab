@@ -166,3 +166,43 @@ def test_review_model_contract_rejects_drift(field: str, bad_value: str) -> None
     )
     with pytest.raises(AssertionError):
         _review_model_contract(rendered)
+
+
+def test_release_selects_only_existing_webhook_owner() -> None:
+    """Preserve signature verification, image and redelivery; never trigger a webhook."""
+    app = yaml.safe_load((ROOT / "deploy/argocd/apps/pr-agent.yaml").read_text())
+    helm = app["spec"]["source"]["helm"]
+
+    def render(*settings: str) -> list[dict]:
+        args = [
+            "helm",
+            "template",
+            helm["releaseName"],
+            str(CHART),
+            "-n",
+            app["spec"]["destination"]["namespace"],
+        ]
+        for setting in settings:
+            args.extend(["--set-string", setting])
+        return list(yaml.safe_load_all(subprocess.check_output(args, text=True)))
+
+    settings = [p["name"] + "=" + p["value"] for p in helm["parameters"]]
+    baseline = render(*[s for s in settings if not s.startswith("publicWebHost=")])
+    active = render(*settings)
+
+    def ingress(docs):
+        return next(d for d in docs if d and d["kind"] == "Ingress")
+
+    owner = ingress(active)
+    (rule,) = owner["spec"]["rules"]
+    catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())
+    assert [p["value"] for p in helm["parameters"] if p["name"] == "publicWebHost"] == [rule["host"]]
+    assert catalog["hosts"]["pr-agent"][rule["host"]].get("route", "web") == "web"
+    labels = ingress(baseline)["metadata"].setdefault("labels", {})
+    assert "homelab.alchemmist.xyz/public-web" not in labels
+    labels["homelab.alchemmist.xyz/public-web"] = "true"
+    assert active == baseline
+    mismatched = [s for s in settings if not s.startswith("host=")]
+    replaced = ingress(render(*mismatched, "host=unreviewed.invalid"))
+    assert [r["host"] for r in replaced["spec"]["rules"]] == ["unreviewed.invalid"]
+    assert "homelab.alchemmist.xyz/public-web" not in replaced["metadata"].get("labels", {})

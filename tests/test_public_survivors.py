@@ -63,3 +63,82 @@ def test_unknown_survivor_lists_valid_entries(monkeypatch, capsys) -> None:
     message, _, choices = capsys.readouterr().err.strip().rpartition("; choose from ")
     assert "Unknown survivor 'nl-only'" in message
     assert set(choices.split(", ")) == set(audit.ENTRIES)
+
+
+@pytest.mark.parametrize(
+    ("status", "ct", "body", "valid"),
+    [
+        (200, "application/json; charset=utf-8", b'{"ok":true}', True),
+        (302, "application/json", b'{"ok":true}', False),
+        (200, "text/html", b'{"ok":true}', False),
+        (200, "application/json", b'{"ok":1}', False),
+        (200, "application/json", b'{"ok":false,"ok":true}', False),
+        (200, "application/json", b'{"ok":true}' + b" " * 8192, False),
+    ],
+)
+def test_schoolbot_anonymous_payload(status, ct, body, valid):
+    from ci.quality.schoolbot_entry_health import healthy
+
+    assert healthy(status, ct, body) is valid
+
+
+def test_closed_schoolbot_probe_only_uses_loopback(monkeypatch, tmp_path):
+    from ci.quality import schoolbot_entry_health as health
+
+    catalog = tmp_path / "catalog.yaml"
+    catalog.write_text(
+        yaml.safe_dump({"hosts": {"schoolbot": {health.HOST: {"dns": "external"}}}})
+    )
+    monkeypatch.setattr(health, "CATALOG", catalog)
+    calls = []
+    monkeypatch.setattr(
+        health,
+        "probe",
+        lambda ip, port: calls.append((ip, port)) or "tls-verification-failed-18",
+    )
+    monkeypatch.setattr(sys, "argv", ["health", "--local-port", "10443"])
+    assert health.main() == 1 and calls == [("127.0.0.1", 10443)]
+
+
+@pytest.mark.parametrize(("length", "ok"), [(11, True), (12, False), (100000, False)])
+def test_schoolbot_body_must_match_advertised_length(length, ok):
+    import http.client
+    import io
+    from unittest.mock import Mock
+
+    from ci.quality.schoolbot_entry_health import response_healthy
+
+    sock = Mock()
+    sock.makefile.return_value = io.BytesIO(
+        f"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {length}\r\n\r\n".encode()
+        + b'{"ok":true}'
+    )
+    with http.client.HTTPResponse(sock) as response:
+        response.begin()
+        assert response_healthy(response) is ok
+
+
+def test_no_length_short_read_does_not_hide_following_body():
+    from unittest.mock import Mock
+
+    from ci.quality.schoolbot_entry_health import response_healthy
+
+    response = Mock(status=200)
+    response.getheader.side_effect = lambda name, default=None: (
+        "application/json" if name == "Content-Type" else default
+    )
+    response.read.side_effect = [b'{"ok":true}', b"x"]
+    assert not response_healthy(response)
+
+
+@pytest.mark.parametrize("bad", ["null", "hosts: []", "hosts: {schoolbot: {}}"])
+def test_missing_schoolbot_policy_is_a_cli_error(monkeypatch, tmp_path, bad):
+    from ci.quality import schoolbot_entry_health as health
+
+    f = tmp_path / "catalog.yaml"
+    f.write_text(bad)
+    monkeypatch.setattr(health, "CATALOG", f)
+    monkeypatch.setattr(sys, "argv", ["health", "--public"])
+    with pytest.raises(SystemExit) as e:
+        health.main()
+    assert e.value.code == 2
