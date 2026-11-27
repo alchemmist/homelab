@@ -6,7 +6,7 @@
 | Use the standalone recovery path | [WireGuard administrative access](wireguard/wireguard-admin-access-plan.md) |
 | Trace a public request into the cluster | [Authoritative DNS](public-entry/public-dns.md) and [HTTPS ingress](public-entry/public-ingress.md) |
 | Route an application's outbound requests through a VPN | [Service VPN egress](vpn-egress/service-vpn-egress.md) |
-| Recover the VPN used by clients | [VPN failover](vpn-egress/vpn-failover.md) |
+| Recover the VPN used by clients | [Two-node VPN watchdog and recovery](vpn-egress/watchdog.md) |
 | Look up a router address assignment | [LAN static mappings](lan/router-static-mappings.md) |
 
 The dated checkpoints below describe the network at the time of each change; use the task guides above for operating instructions.

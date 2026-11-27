@@ -1,5 +1,8 @@
 # Independent VPN recovery on socrat-2
 
+**Current watchdog operations:** see the [two-node watchdog runbook](watchdog.md). Earlier sticky-native/manual-return descriptions below refer to the previous deployment or to configurations with warm return disabled. Do not use a historical manual failback as the normal warm-return procedure.
+
+
 The optional `vpn_failover` role prepares native systemd recovery for the primary 3x-ui configuration plus Caddy on `socrat-2`. The normal runtime is the Kubernetes `x-ui` Deployment in namespace `x-ui` with only the `primary` container. A short Python process runs from a systemd timer every 30 seconds after the previous check finishes; no additional daemon or container runs while the VPN is healthy.
 
 Install from `ansible/`:
