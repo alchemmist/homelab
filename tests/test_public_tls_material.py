@@ -357,3 +357,11 @@ def test_witness_rejects_out_of_scope_pin_before_probing():
 
     with pytest.raises(ValueError, match="scope"):
         observe(443, NAMES, {"other.invalid": "0" * 64})
+
+
+@pytest.mark.parametrize("host", ["a..b", "a.invalid.", ".invalid"])
+def test_witness_rejects_empty_hostname_labels(host):
+    from services.public_entry.tls_witness import observe
+
+    with pytest.raises(ValueError, match="identity"):
+        observe(443, frozenset({host}), {})
