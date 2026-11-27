@@ -1,4 +1,5 @@
 ---
+publicWebHost: inform.sch1357.ru
 image:
   repository: harbor.socrat.alchemmist.xyz/schoolbot/schoolbot
   tag: 72f11289b9401b80fe62e5a91c5ad9596daafb73

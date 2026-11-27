@@ -378,6 +378,11 @@ class StatefulBoundaries(unittest.TestCase):
                     # without injecting historical values into the current chart.
                     expected = historical(CUTOVERS[chart])
                     if chart == "charts/monori":
+                        # The ordinary web owner adds exactly one Ingress label.
+                        # Keep the historical placement and all real workloads intact.
+                        meta = _mapping(expected[("Ingress", "monori")]["metadata"])
+                        assert "labels" not in meta
+                        meta["labels"] = {"homelab.alchemmist.xyz/public-web": "true"}
                         cache = current.pop(("Job", "monori-sync-image-cache"))
                         annotations = _mapping(_mapping(cache["metadata"])["annotations"])
                         assert annotations["argocd.argoproj.io/hook"] == "PreSync"
