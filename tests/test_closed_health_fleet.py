@@ -45,6 +45,7 @@ def test_effective_health_fleet():
                 "closed-health-img",
                 "closed-health-umami",
                 "closed-health-remark42",
+                "closed-health-venice-api",
             }
         ]
 
@@ -804,7 +805,11 @@ def test_img_only_reaches_the_reviewed_nginx_listener():
 
 @pytest.mark.parametrize(
     ("app", "bit", "port"),
-    [("umami", "closedUmami", 3000), ("remark42", "closedRemark", 8080)],
+    [
+        ("umami", "closedUmami", 3000),
+        ("remark42", "closedRemark", 8080),
+        ("venice-api", "closedVenice", 8080),
+    ],
 )
 def test_selected_app_only_reaches_its_reviewed_http_listener(app, bit, port):
 
@@ -812,12 +817,17 @@ def test_selected_app_only_reaches_its_reviewed_http_listener(app, bit, port):
     docs = owner_render(owner=app)
     admit = lambda rows: eligible(rows, catalog, owner=app)
     assert admit(docs)
+    venice = app == "venice-api"
+    peer = "venice-browser-candidate" if venice else app
+    host = "venice.socrat.alchemmist.xyz" if venice else f"{app}.alchemmist.xyz"
     rows = deepcopy(docs)
-    deployment = next(d for d in rows if d["kind"] == "Deployment")
+    deployment = next(
+        d for d in rows if d["kind"] == "Deployment" and d["metadata"]["name"] == peer
+    )
     next(
         c
         for c in deployment["spec"]["template"]["spec"]["containers"]
-        if c["name"] == app
+        if c["name"] == ("bridge" if venice else app)
     )["ports"][0]["containerPort"] = 3001
     assert not admit(rows)
     assert not admit([*docs, deepcopy(docs[-1])])
@@ -852,7 +862,7 @@ def test_selected_app_only_reaches_its_reviewed_http_listener(app, bit, port):
                     },
                     "podSelector": {
                         "matchLabels": {
-                            "app": app,
+                            "app": peer,
                         }
                     },
                 }
@@ -866,14 +876,18 @@ def test_selected_app_only_reaches_its_reviewed_http_listener(app, bit, port):
     assert dynamic["routers"] == {
         app: {
             "entryPoints": ["closed"],
-            "rule": f"Host(`{app}.alchemmist.xyz`) && PathPrefix(`/`)",
+            "rule": f"Host(`{host}`) && PathPrefix(`/`)",
             "service": app,
         }
     } and dynamic["services"] == {
         app: {
             "loadBalancer": {
                 "passHostHeader": True,
-                "servers": [{"url": f"http://{app}.{app}.svc.cluster.local:80"}],
+                "servers": [
+                    {
+                        "url": f"http://{app}.{app}.svc.cluster.local:{8080 if venice else 80}"
+                    }
+                ],
             }
         }
     }

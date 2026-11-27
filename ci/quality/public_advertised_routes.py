@@ -13,10 +13,11 @@ from concurrent.futures import ThreadPoolExecutor
 import yaml
 
 from ci.quality.public_dns_snapshot import observe, questions
-from ci.quality.public_web import CATALOG, MONORI, eligible_sites
+from ci.quality.public_web import CATALOG
 
 BLOG = "www.alchemmist.xyz"
 VENICE = "venice.socrat.alchemmist.xyz"
+MONORI = "monori.alchemmist.xyz"
 PATHS = {BLOG: "/", VENICE: "/v1/models", MONORI: "/api/auth/me"}
 DENIALS = {VENICE: "Missing bearer token", MONORI: "Not authenticated"}
 LIMIT = 131072
@@ -91,11 +92,6 @@ def verdict(before, after, routes):
     return "advertised-paths-matched"
 
 
-def route_peers(host, ips):
-    # NL may answer authoritative DNS for Monori; it is not a permitted web destination.
-    return tuple(ips[s] for s in eligible_sites(host))
-
-
 def main():
     catalog = yaml.safe_load(CATALOG.read_text())
     ips = {s: str(ipaddress.IPv4Address(d["publicIP"])) for s, d in catalog["replicas"].items()}
@@ -112,9 +108,8 @@ def main():
 
         before = dns()
         routes = {
-            h: dict(zip(peers, pool.map(lambda ip: check(h, ip), peers), strict=True))
+            h: dict(zip(ips.values(), pool.map(lambda ip: check(h, ip), ips.values()), strict=True))
             for h in PATHS
-            for peers in [route_peers(h, ips)]
         }
         after = dns()
     cases = {

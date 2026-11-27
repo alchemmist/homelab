@@ -1,3 +1,28 @@
+## CURRENT 27Nov — Source Control to GitHub + log streaming to otel-loki LIVE
+
+Two enterprise features activated on the fork (license gates removed earlier):
+
+**Git sync (Source Control).** Settings → Source Control connects to the private
+`alchemmist/n8n-workflows` repo (branch `main`) over SSH. The key pair lives only
+in the n8n database; the public half is the read-write deploy key
+`n8n-deploy-key`. Initial push commit `6f7b95c0` carries all workflows, tags,
+variables and credential stubs without secret material. Public key reference:
+`~/.config/homelab/n8n/git-source-control.json` (no private key on disk).
+
+**Log streaming to otel-loki.** n8n UI Log Streaming destination (Webhook →
+`http://127.0.0.1:9123/event`, workflow started/success/failed + node
+executions + audit events) feeds the in-pod `otel-log-bridge` sidecar added in
+chart `charts/n8n` (`f27c7fe04`; probe widened `f8b76f9d8`). The stdlib-only
+bridge converts each event to one Loki entry (labels `job=n8n`,
+`source=n8n-log-streaming`, `event`, `workflow_id`) and pushes over the
+homelab otel PKI: dedicated client leaf `otel-app-tls-n8n` mirrored into the
+automation namespace by the existing `otel-application-credentials` CronJob.
+The target Secret had to be bootstrapped once manually (resourceNames-scoped
+GET 403s on a missing Secret); the mirror keeps it in sync afterwards and the
+bridge reloads its SSL context after leaf rotation, so no deployment reload is
+wired. End-to-end verified inside the cluster with real events
+(`n8n.workflow.started`, executionId 90718, workflow "Socrat Alerts").
+
 ## CURRENT: 17Nov — SSH-egress replaced by VPN-as-service
 
 The owner rejected separate SSH tunnels as the application egress architecture.

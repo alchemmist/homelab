@@ -66,12 +66,30 @@ def push_to_loki(stream_labels, line, timestamp_ns):
         response.read()
 
 
+def event_labels(event):
+    """Map a n8n log-streaming event to Loki stream labels.
+
+    n8n sends `eventName` and nests `workflowId` inside `payload`; keep the
+    event-shaped fallbacks for forwards-compatibility.
+    """
+    payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+    return {
+        "job": "n8n",
+        "source": "n8n-log-streaming",
+        "event": str(event.get("eventName", event.get("event", "unknown")))[:64],
+        "workflow_id": str(
+            event.get("workflowId", payload.get("workflowId", ""))
+        )[:64]
+        or "none",
+    }
+
+
 class Handler(BaseHTTPRequestHandler):
     """Convert n8n log-streaming events into Loki entries."""
 
     protocol_version = "HTTP/1.1"
 
-    def do_POST(self) -> None:
+    def do_POST(self):
         if self.path not in ("/event", "/event/"):
             self.send_response(404)
             self.end_headers()
@@ -80,12 +98,7 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
             body = self.rfile.read(length)
             event = json.loads(body)
-            labels = {
-                "job": "n8n",
-                "source": "n8n-log-streaming",
-                "event": str(event.get("event", "unknown"))[:64],
-                "workflow_id": str(event.get("workflowId", event.get("id", "")))[:64] or "none",
-            }
+            labels = event_labels(event)
             timestamp_ns = str(time.time_ns())
             push_to_loki(labels, json.dumps(event, separators=(",", ":")), timestamp_ns)
             self.send_response(200)

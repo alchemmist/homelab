@@ -8,12 +8,12 @@ import subprocess
 
 import yaml
 
-from ci.quality.public_web import CATALOG, eligible_sites
+from ci.quality.public_web import CATALOG
 
 NAMESPACE = "public-dns-rehearsal"
 
 
-def check_reply(output: str, names: list[str], address: str, *, regional=None) -> None:
+def check_reply(output: str, names: list[str], address: str) -> None:
     """Check the question, authoritative status and complete answer of every response."""
     blocks = output.split(";; ->>HEADER<<- ")[1:]
     if len(blocks) != len(names):
@@ -39,21 +39,16 @@ def check_reply(output: str, names: list[str], address: str, *, regional=None) -
         answers = [
             line.split() for line in atext.splitlines() if line.strip() and not line.startswith(";")
         ]
-        allowed = (regional or {}).get(name, {address})
-        if question != [[name + ".", "IN", "A"]] or not answers:
-            raise ValueError(f"{name}: unexpected question or empty answer")
-        found = set()
-        for answer in answers:
-            if (
-                len(answer) != 5
-                or answer[0] != name + "."
-                or not answer[1].isdigit()
-                or answer[2:4] != ["IN", "A"]
-                or answer[4] not in allowed
-                or answer[4] in found
-            ):
-                raise ValueError(f"{name}: answer violates replica or regional policy")
-            found.add(answer[4])
+        if question != [[name + ".", "IN", "A"]] or len(answers) != 1:
+            raise ValueError(f"{name}: unexpected question or answer count")
+        answer = answers[0]
+        if (
+            len(answer) != 5
+            or answer[0] != name + "."
+            or not answer[1].isdigit()
+            or answer[2:] != ["IN", "A", address]
+        ):
+            raise ValueError(f"{name}: answer does not equal the replica address")
 
 
 KUBE = ["kubectl", "--context=Socrat", "--namespace", NAMESPACE]
@@ -82,25 +77,19 @@ def main() -> int:
     for label, entry in catalog["replicas"].items():
         for transport in ("udp", "tcp"):
             try:
-                regional = {
-                    name: {catalog["replicas"][s]["publicIP"] for s in eligible_sites(name)}
-                    for name in names
-                    if label not in eligible_sites(name)
-                }
-                check_case(args.pod, label, entry, names, transport, regional)
+                check_case(args.pod, label, entry, names, transport)
             except (subprocess.SubprocessError, ValueError, KeyError) as exc:
                 # Do not print dig bodies or mistake an incomplete batch for success.
                 print(f"{label} {transport}: not verified ({type(exc).__name__})", flush=True)
                 failures += 1
             else:
                 print(
-                    f"{label} {transport}: {len(names) - len(regional)} self-IP, {len(regional)} regional RRsets",
-                    flush=True,
+                    f"{label} {transport}: {len(names)} authoritative self-IP answers", flush=True
                 )
     return int(failures != 0)
 
 
-def check_case(pod, label, entry, names, transport, regional):
+def check_case(pod, label, entry, names, transport):
     svc = json.loads(
         subprocess.check_output(
             [*KUBE, "get", "service", f"authority-{label}-probe", "-o", "json"], timeout=15
@@ -151,9 +140,7 @@ def check_case(pod, label, entry, names, transport, regional):
         timeout=30,
         check=True,
     )
-    check_reply(
-        result.stdout, names, str(ipaddress.IPv4Address(entry["publicIP"])), regional=regional
-    )
+    check_reply(result.stdout, names, str(ipaddress.IPv4Address(entry["publicIP"])))
 
 
 if __name__ == "__main__":

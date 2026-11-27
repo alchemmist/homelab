@@ -138,7 +138,17 @@ class N8nOtelLogBridge(unittest.TestCase):
                 check=True,
             )
 
+        enabled = subprocess.run(
+            ["helm", "template", "n8n", str(ROOT / "charts" / "n8n")],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
         assert "n8n-otel-log-bridge" not in disabled().stdout
+        # A bridge-script edit must roll the pod: the configmap is checksummed
+        # into the pod template whenever the sidecar is rendered.
+        assert "checksum/otel-log-bridge:" in enabled.stdout
+        assert "checksum/otel-log-bridge:" not in disabled().stdout
         deploy = yaml.safe_load((ROOT / "deploy" / "n8n" / "values.yaml").read_text())
         assert deploy["otelLogBridge"] == {
             "enabled": True,
@@ -158,6 +168,27 @@ class N8nOtelLogBridge(unittest.TestCase):
         source = (ROOT / BRIDGE_REL).read_text()
         assert '"/loki/api/v1/push"' in source
         assert "job" in source and "n8n" in source
+
+    def test_labels_read_n8n_event_shape(self) -> None:
+        """n8n log-streaming events nest workflowId in payload and use eventName."""
+        module = load_bridge()
+        labels = module.event_labels(
+            {
+                "id": "evt-id",
+                "eventName": "n8n.workflow.started",
+                "payload": {"workflowId": "wf123", "executionId": "90718"},
+            }
+        )
+        assert labels == {
+            "job": "n8n",
+            "source": "n8n-log-streaming",
+            "event": "n8n.workflow.started",
+            "workflow_id": "wf123",
+        }
+        legacy = module.event_labels({"event": "evt", "workflowId": "wf9"})
+        assert legacy["event"] == "evt"
+        assert legacy["workflow_id"] == "wf9"
+        assert module.event_labels({})["workflow_id"] == "none"
 
     def test_pki_and_mirror_registration(self) -> None:
         """n8n is registered in the otel PKI and the mirror destinations."""

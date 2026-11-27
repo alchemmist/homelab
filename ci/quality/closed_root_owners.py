@@ -41,6 +41,15 @@ ROOTS = {
         )
         for app in ("lms", "wishlist")
     },
+    "venice-api": (
+        "venice-api",
+        "venice-api",
+        "venice.socrat.alchemmist.xyz",
+        "venice-api-tls",
+        8080,
+        8080,
+        {"app": "venice-browser-candidate"},
+    ),
     "remark42": (
         "remark42",
         "remark42",
@@ -143,6 +152,42 @@ def eligible(items, catalog, *, owner=APP):
                 != expected[key]
             ):
                 return False
+    if owner == "venice-api":
+        # Only bridge HTTP, never browser control or egress. A switch back to
+        # the legacy Deployment needs a separate review rather than a fallback.
+        candidate = "venice-browser-candidate"
+        reviewed = {
+            (
+                "Deployment",
+                candidate,
+            ): "4430a4c9ff1d1c7d34c0a98c9b643f6b65d279536058a6a48232203b0b7463d5",
+            (
+                "Deployment",
+                name,
+            ): "a5368ef5565848ea7879f09381b4908f24984e80d6e5c78139fdafb256409336",
+            (
+                "NetworkPolicy",
+                candidate,
+            ): "3cc89643dcaa890398f1cbd1c4ad5a210a22c0a433d03040b5027f91ed5dbec4",
+        }
+        keys = [(d["kind"], d["metadata"]["name"]) for d in items]
+        if len(keys) != 8 or set(keys) != set(reviewed) | {
+            ("Ingress", name),
+            ("Service", name),
+            ("ServiceAccount", name),
+            ("StorageClass", "venice-browser-retain"),
+            ("PersistentVolumeClaim", "venice-browser-profile"),
+        }:
+            return False
+        for key, d in zip(keys, items, strict=True):
+            if (
+                key in reviewed
+                and hashlib.sha256(
+                    json.dumps(d, sort_keys=True, separators=(",", ":")).encode()
+                ).hexdigest()
+                != reviewed[key]
+            ):
+                return False
     if owner == "umami" and sorted((d["kind"], d["metadata"]["name"]) for d in items) != [
         ("Deployment", name),
         ("Ingress", name),
@@ -176,7 +221,7 @@ def eligible(items, catalog, *, owner=APP):
         target_port == "http" and owner != "remark42" or owner in {"lms", "blog"}
     ) and not _named_runtime(items, ns, name, selector, host, wiki=wiki):
         return False
-    port = {"name": "http"} if wiki else {"number": 80}
+    port = {"name": "http"} if wiki else {"number": svc_port}
     # Validate the complete owner Ingress. Only www is emitted by the closed chart.
     source_hosts = ["alchemmist.xyz", host] if owner == "blog" else [host]
     return (
@@ -291,7 +336,7 @@ def owner_render(*, owner=APP):
         files = []
     params = src.get("helm", {}).get("parameters", [])
     reviewed_params = [[]]
-    if owner in {"lms", "wishlist", "img-proxy", "umami", "remark42"}:
+    if owner in {"lms", "wishlist", "img-proxy", "umami", "remark42", "venice-api"}:
         reviewed_params.extend([[{"name": "publicWeb", "value": v}] for v in ("true", "false")])
     if (
         params not in reviewed_params
@@ -329,6 +374,7 @@ def render():
             ("closedFormatQuorum", APP),
             ("closedWiki", "wiki-runtime"),
             ("closedMonori", "monori"),
+            ("closedVenice", "venice-api"),
             ("closedRemark", "remark42"),
             ("closedUmami", "umami"),
             ("closedImg", "img-proxy"),
