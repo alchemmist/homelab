@@ -186,3 +186,18 @@ def test_sweep_never_claims_writer_approval_or_a_rotated_match(
         assert "wire" not in doc
     else:
         assert set(doc["wire"].values()) == {"trusted-match"}
+
+
+def test_validated_issuance_without_independent_approval_cannot_read_a_key(issued):
+    from services.public_entry.tls_issued_refresh import issued_refresh
+
+    cat, c, r, t, pin = issued
+    anchor = audit.issuance_anchor("wiki", cat, [c], [r], t)
+    assert anchor.sha256 == pin
+    scope = {anchor.source: anchor.hosts}
+    result = issued_refresh(
+        scope, {}, lambda _: anchor, lambda _: pytest.fail("unapproved named GET"), t
+    )
+    assert not result.material and result.withdrawn == {
+        anchor.source: "no-writer-approval"
+    }

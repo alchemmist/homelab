@@ -54,3 +54,16 @@ withdrawal or a real-key Schoolbot test of the proposed common replica.
 Default witness trust uses system CA roots and hostname verification. The
 expected leaf fingerprint is an additional equality check, never a substitute
 for certificate trust. A different trusted leaf is not an acknowledgment.
+
+`tls_issued_refresh.issued_refresh()` composes a separate caller-supplied
+writer approval (exact source, certificate UID and alias set), an independently
+validated issuance witness and one exact TLS Secret GET. No approval is created
+by the library. An unapproved source, invalid/ambiguous ownership or missing
+initial issuance never triggers that key read. The leaf in the selected bytes
+must equal the issued fingerprint, and the Certificate and CertificateRequest
+UIDs/opaque versions must still match on the second observation. Failure omits
+the source and all its aliases; other independently valid sources can survive.
+This returns an in-memory batch, not persistent revocation, a freshness lease,
+a global cross-source transaction, or a listener acknowledgment. A runtime
+would still need bounded reads, an independently trusted approval source and
+consumer-visible fencing. No production grant or runtime wiring is included.

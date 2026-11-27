@@ -28,16 +28,22 @@ def _reject() -> Never:
     raise MaterialRejected("TLS source rejected")
 
 
+def valid_dns_name(name: str) -> bool:
+    """Only a concrete, lower-case DNS name can enter the reviewed SNI set."""
+    return (
+        isinstance(name, str)
+        and 0 < len(name) <= 253
+        and all(_LABEL.fullmatch(label) for label in name.split("."))
+    )
+
+
 def leaf_identity(
     chain_pem: bytes, key_pem: bytes, names: frozenset[str], now: datetime
 ) -> str:
     """Return only the authorized leaf SHA-256; reject a malformed or unapproved pair."""
     if not names or now.utcoffset() is None:
         _reject()
-    if not all(
-        0 < len(n) <= 253 and all(_LABEL.fullmatch(p) for p in n.split("."))
-        for n in names
-    ):
+    if not all(valid_dns_name(n) for n in names):
         _reject()
     if len(chain_pem) > 128 * 1024 or len(key_pem) > 32 * 1024:
         _reject()
