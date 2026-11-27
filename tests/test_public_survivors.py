@@ -120,6 +120,7 @@ def test_schoolbot_body_must_match_advertised_length(length, ok):
 
 def test_no_length_short_read_does_not_hide_following_body():
     from unittest.mock import Mock
+
     from ci.quality.schoolbot_entry_health import response_healthy
 
     response = Mock(status=200)
