@@ -1,0 +1,40 @@
+#!/bin/sh
+set -eu
+[ "$(hostname -s)" = socrat-5 ] || exit 1
+D=/var/lib/mos-vm105-watch
+install -d -m700 "$D"
+cd "$D"
+exec 9>lock; flock -n 9 || exit 0
+# Touch 'hold' before maintenance. No forced stops or Proxmox operations.
+[ ! -e hold ] || { echo maintenance; exit; }
+mountpoint -q /mnt/files || { echo disk-not-mounted; exit; }
+now=$(date +%s); up=$(cut -d. -f1 /proc/uptime)
+[ "$up" -ge 600 ] || { echo boot-grace; exit; }
+K=/usr/local/bin/k3s
+api() { timeout 5 "$K" kubectl --server="https://$1:6443" --request-timeout=3s get --raw=/readyz 2>/dev/null; }
+node() { timeout 5 "$K" kubectl --server="https://$1:6443" --request-timeout=3s get node socrat-5 -o 'jsonpath={.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null; }
+readval() { if [ -f "$1" ]; then cat "$1"; else echo 0; fi; }
+save() { echo "$2" > "$1.tmp"; mv "$1.tmp" "$1"; }
+if systemctl is-active --quiet k3s && [ "$(api 127.0.0.1)" = ok ] && [ "$(node 127.0.0.1)" = True ]; then
+ rm -f failures lastbad attempts action
+ since=$(readval healthy); [ "$since" -gt 0 ] || save healthy "$now"
+ if [ "$since" -gt 0 ] && [ $((now-since)) -ge 1800 ]; then rm -f rebooted; fi
+ echo k3s-and-node-ready; exit
+fi
+rm -f healthy
+last=$(readval lastbad); n=$(readval failures)
+[ $((now-last)) -ge 150 ] || { echo awaiting-next-probe; exit; }
+[ $((now-last)) -le 420 ] || n=0
+n=$((n+1)); save failures "$n"; save lastbad "$now"
+[ "$n" -ge 3 ] || { echo failure-$n; exit; }
+[ ! -e rebooted ] || { echo reboot-latched; exit; }
+[ $((now-$(readval action))) -ge 600 ] || { echo recovery-grace; exit; }
+# Require an independent working API before disrupting a control-plane node.
+peer=''; for h in 10.250.0.1 10.250.0.3; do if [ "$(api "$h")" = ok ]; then peer=$h; break; fi; done
+[ -n "$peer" ] || { echo cluster-unreachable-no-action; exit; }
+a=$(readval attempts)
+if [ "$a" -lt 3 ]; then
+ save attempts $((a+1)); save action "$now"; systemctl restart --no-block k3s; echo k3s-restart-$((a+1)); exit
+fi
+[ "$(node "$peer")" = False ] || [ "$(node "$peer")" = Unknown ] || { echo peer-not-confirming-outage; exit; }
+save rebooted "$now"; sync; systemctl reboot; echo guest-reboot-requested

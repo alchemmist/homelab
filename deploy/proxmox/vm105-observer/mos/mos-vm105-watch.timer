@@ -1,0 +1,7 @@
+[Unit]
+Description=Poll VM105 every three minutes
+[Timer]
+OnActiveSec=10s
+OnUnitInactiveSec=3min
+[Install]
+WantedBy=timers.target

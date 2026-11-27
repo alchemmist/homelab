@@ -1,0 +1,6 @@
+[Unit]
+Description=Record Proxmox and VM105 health independent of Kubernetes
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/vm105-observer
+TimeoutStartSec=50

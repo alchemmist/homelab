@@ -20,6 +20,7 @@ The [public wiki](../wiki/README.md) has a separate audience and publication pro
 
 | Task | Reference |
 | --- | --- |
+| VM105 / socrat-5: MOS watchdog, K3s restart and guest reboot | [VM105 recovery runbook](platform/kubernetes/vm105-watchdog.md) |
 | Authentik login wallpapers, image quality and RustFS media delivery | [Gallery architecture and runbook](applications/authwall/README.md) |
 | Network onboarding, devices, JWT policies and node agents | [NetBird](network/netbird/README.md), [DNS](network/public-entry/public-dns.md) |
 | Foreign egress for applications on Russian nodes | [Service VPN: dedicated 3x-ui client and subscription](network/vpn-egress/service-vpn-egress.md) |
