@@ -159,6 +159,27 @@ class N8nOtelLogBridge(unittest.TestCase):
         assert '"/loki/api/v1/push"' in source
         assert "job" in source and "n8n" in source
 
+    def test_labels_read_n8n_event_shape(self) -> None:
+        """n8n log-streaming events nest workflowId in payload and use eventName."""
+        module = load_bridge()
+        labels = module.event_labels(
+            {
+                "id": "evt-id",
+                "eventName": "n8n.workflow.started",
+                "payload": {"workflowId": "wf123", "executionId": "90718"},
+            }
+        )
+        assert labels == {
+            "job": "n8n",
+            "source": "n8n-log-streaming",
+            "event": "n8n.workflow.started",
+            "workflow_id": "wf123",
+        }
+        legacy = module.event_labels({"event": "evt", "workflowId": "wf9"})
+        assert legacy["event"] == "evt"
+        assert legacy["workflow_id"] == "wf9"
+        assert module.event_labels({})["workflow_id"] == "none"
+
     def test_pki_and_mirror_registration(self) -> None:
         """n8n is registered in the otel PKI and the mirror destinations."""
         pki = list(
