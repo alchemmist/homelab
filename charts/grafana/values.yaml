@@ -164,16 +164,10 @@ grafana:
     users:
       allow_sign_up: false
       default_theme: dark
-  nodeSelector:
-    kubernetes.io/hostname: socrat-5
+  # Application data lives in pg-common; the former local PV stays retained.
+  nodeSelector: {}
   persistence:
-    existingClaim: grafana-socrat5
-    accessModes:
-      - ReadWriteOnce
-    enabled: true
-    size: 1Gi
-    storageClassName: local-path
-    type: pvc
+    enabled: false
   podAnnotations:
     homelab.alchemmist.xyz/dashboard-language: en
   replicas: 1
