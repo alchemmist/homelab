@@ -1,4 +1,9 @@
-"""Inventory the backend and middleware dependencies of every ordinary public Ingress."""
+"""Inventory backend and middleware dependencies of every ordinary public Ingress.
+
+Rows are diagnostic even on errors: a missing middleware can leave a partial
+middlewareBodies list. Never consume routes alone or use a nonempty errors
+report to compile or publish a snapshot.
+"""
 
 import hashlib
 import json
