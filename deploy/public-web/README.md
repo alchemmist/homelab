@@ -377,3 +377,16 @@ its port *name* identifies the Service port, not the named container port.
 Different Pods can resolve the same named target to different numbers. The
 audit does not independently inspect Pod specs or probe those sockets. A
 numeric target (including the implicit Service port default) must match exactly.
+
+### Schoolbot: use the same HTTPS acceptance check before and after staging
+
+`uv run python -m ci.quality.schoolbot_entry_health --public` forces each
+catalog IPv4 but preserves the real SNI and Host. `--local-port PORT` instead
+uses only `127.0.0.1:PORT` for a pre-established port-forward to the private
+**HTTPS controller listener**, not the Schoolbot backend. Neither invocation
+reads Secrets, accepts an insecure TLS mode, follows redirects, or prints
+headers/body. No network request by default. Success requires trusted frontend
+TLS, HTTP 200 and a bounded JSON object with boolean `ok: true`. A TLS failure
+prevents sending the HTTP request. The external name remains owner-controlled;
+`bot.sch1357.ru` is never probed. A passing health response does not prove DNS,
+user login, database operations, or independence from another public entrance.
