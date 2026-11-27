@@ -151,6 +151,18 @@ def validate(api, owner, settings, provider, app, journal, extra_groups=()) -> N
         )
 
 
+def pgadmin_reader_binding(api, app):
+    reader = iam.one(api, "core/groups/", "name", "pgadmin-reader")
+    if not reader:
+        return {}
+    check(
+        reader["is_superuser"] is False and all(not reader[k] for k in ("roles", "parents", "children")),
+        "Unexpected privileged pgAdmin reader group",
+    )
+    bindings = api.rows("policies/bindings/?target=" + str(app["pk"]))
+    return {"pgadmin-reader": reader["pk"]} if any(b.get("group") == reader["pk"] for b in bindings) else {}
+
+
 def main(namespace="postgres", extra_bindings=lambda api, app: {}) -> None:
     slug = APP["slug"]
     secret_name = slug + "-oidc"
@@ -309,7 +321,7 @@ def main(namespace="postgres", extra_bindings=lambda api, app: {}) -> None:
 
 if __name__ == "__main__":
     try:
-        main()
+        main(extra_bindings=pgadmin_reader_binding)
     except (
         OSError,
         RuntimeError,

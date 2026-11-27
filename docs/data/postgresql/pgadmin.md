@@ -2,10 +2,10 @@
 
 `pg.socrat.alchemmist.xyz` → Traefik → `postgres/pgadmin` (one replica, persistent settings).
 Native OAuth2 only, provider `homelab-pgadmin`, strict `/oauth2/authorize` callback,
-`homelab-owner` binding and matching group claim. The bootstrap account has no local web login.
+`homelab-owner` or `pgadmin-reader` binding and matching group claim. The bootstrap account has no local web login.
 PostgreSQL login is separate from Authentik: use an authorized database role, not the bootstrap password.
 Shared server definitions use the three CNPG `-rw` Services and per-cluster CA certificates.
-Owner-only shared connections use `pgadmin_browser`, a non-admin CNPG-managed login per cluster.
+Shared reader connections use `pgadmin_browser`, a non-admin CNPG-managed login per cluster.
 Provision distinct Kubernetes basic-auth Secrets `pgadmin-browser-{common,critical,internal}`
 (username `pgadmin_browser`, independently generated passwords) before deploying. The named
 password helper accepts only OAuth2 and the exact database hosts, port and login. Keep the
@@ -23,7 +23,9 @@ DNS is HOME-only: the VPS ingress does not watch namespace `postgres`. Do not gr
 
 Non-owner SharedServer rows omit the owner's CA filename. Keep `verify-full`; the init container builds libpq's default `root.crt` from only the three public CNPG CA certificates. Roll pgAdmin when a cluster CA rotates. Verify a connection **without** supplying `sslrootcert`, using the shared login and its password helper.
 
-## Access as of 22 November 2026
+Readers use the same read-only database connections as owners. Grant or revoke the personal account in the `pgadmin-reader` group, then start a fresh SSO session. No writer or UI administrator rights are conferred.
+
+## Historical verification as of 22 November 2026
 
 **Active:** Authentik admits `homelab-owner`; all three shared connections use `pgadmin_browser`. PostgreSQL sees that shared role, not the SSO username. SQL privileges determine data access, not the user's pgAdmin administrator status.
 
