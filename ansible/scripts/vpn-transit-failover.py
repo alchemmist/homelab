@@ -279,8 +279,9 @@ class Controller:
         except (RuntimeError, subprocess.TimeoutExpired):
             if active(AGENT):
                 raise
-        if self.config.get("warm_return_enabled"):
+        if self.permit.parent.is_dir():
             self.permit.unlink(missing_ok=True)
+        if self.config.get("warm_return_enabled"):
             self.save(return_boot=boot_id(), return_after=time.monotonic() + 1800)
         atomic(self.marker, {"reason": reason, "at": time.time()})
         self.save(mode="transition-to-native", healthy=False)
@@ -358,6 +359,8 @@ class Controller:
             run(["systemctl", "stop", NATIVE])
             assert not active(NATIVE)
             free_ports()
+            if self.permit.parent.is_dir():
+                atomic(self.permit, {"owner": "kubernetes"})
             self.marker.unlink()
             fd = os.open(ROOT, os.O_DIRECTORY)
             os.fsync(fd)
