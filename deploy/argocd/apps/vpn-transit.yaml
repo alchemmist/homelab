@@ -14,7 +14,7 @@ spec:
     path: charts/vpn-transit
     helm:
       releaseName: vpn-transit
-      valuesObject: {podRehearsal: true}
+      valuesObject: {podRehearsal: true, warmReturnGate: true}
       parameters: []
   destination:
     namespace: vpn-transit

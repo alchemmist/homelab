@@ -26,7 +26,11 @@ def test_moscow_private_rehearsal() -> None:
         and d["metadata"]["namespace"] == legacy["metadata"]["namespace"]
         and d["metadata"]["name"] == legacy["metadata"]["name"]
     ]
-    assert matching == [legacy]  # Exactly one public owner, with unchanged content.
+    # Rehearsal must not alter the single public owner; compare with the
+    # same production gate enabled, without any rehearsal resources.
+    gated = render({**relay, **no_overrides, "inline_values": {"warmReturnGate": True}})
+    assert matching == gated and len(gated) == 1
+    assert matching[0]["spec"]["template"]["spec"]["containers"][0]["command"] == ["/run/relay-gate"]
     (deployment,) = [d for d in docs if d["kind"] == "Deployment"]
     template = deployment["spec"]["template"]
     pod = template["spec"]

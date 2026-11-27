@@ -17,7 +17,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 def module(name: str) -> ModuleType:
     """Test behavior for module."""
-    s = importlib.util.spec_from_file_location(name, ROOT / "ansible/scripts" / f"{name}.py")
+    s = importlib.util.spec_from_file_location(
+        name, ROOT / "ansible/scripts" / f"{name}.py"
+    )
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
     return m
@@ -194,12 +196,17 @@ def test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse() -> None:
                 challenger.bind(("0.0.0.0", port))
                 challenger.listen(1)
     source = (ROOT / "ansible/scripts/vpn-transit-failover.py").read_text()
-    assert "iftyp==socket.SOCK_STREAM:s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)" in "".join(source.split())
+    assert (
+        "iftyp==socket.SOCK_STREAM:s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)"
+        in "".join(source.split())
+    )
 
 
 def test_machine_https_exception_is_exact_not_a_human_acl_relaxation() -> None:
     """Keep the machine passthrough exact and the role default empty."""
-    host = yaml.safe_load((ROOT / "ansible/inventory/host_vars/socrat-2.yml").read_text())
+    host = yaml.safe_load(
+        (ROOT / "ansible/inventory/host_vars/socrat-2.yml").read_text()
+    )
     defaults = yaml.safe_load(
         (ROOT / "ansible/roles/wireguard_private_web/defaults/main.yml").read_text()
     )
@@ -208,7 +215,9 @@ def test_machine_https_exception_is_exact_not_a_human_acl_relaxation() -> None:
     assert host["public_dns_extra_listen"] == ["10.250.0.2@5354"]
 
 
-def test_late_native_health_reconciles_without_replaying_lifecycle(ctl, monkeypatch) -> None:
+def test_late_native_health_reconciles_without_replaying_lifecycle(
+    ctl, monkeypatch
+) -> None:
     """Test behavior for test_late_native_health_reconciles_without_replaying_lifecycle."""
     m, c = ctl
     m.atomic(c.marker, {"reason": "four failures"})
@@ -230,15 +239,21 @@ def test_late_native_health_reconciles_without_replaying_lifecycle(ctl, monkeypa
     assert len(list(m.ROOT.glob("*-native-reconciled.json"))) == 1
 
 
-@pytest.mark.parametrize(("native", "healthy"), [(False, True), (True, False), (False, False)])
-def test_unhealthy_native_transition_stays_fenced(ctl, monkeypatch, native, healthy) -> None:
+@pytest.mark.parametrize(
+    ("native", "healthy"), [(False, True), (True, False), (False, False)]
+)
+def test_unhealthy_native_transition_stays_fenced(
+    ctl, monkeypatch, native, healthy
+) -> None:
     """Test behavior for test_unhealthy_native_transition_stays_fenced."""
     m, c = ctl
     m.atomic(c.marker, {})
     c.save(mode="transition-to-native", failures=4)
     monkeypatch.setattr(m, "active", lambda unit: native if unit == m.NATIVE else False)
     monkeypatch.setattr(c, "healthy", lambda: healthy)
-    monkeypatch.setattr(c, "prerequisites", lambda: pytest.fail("no transition acceptance"))
+    monkeypatch.setattr(
+        c, "prerequisites", lambda: pytest.fail("no transition acceptance")
+    )
     c.tick()
     assert c.state["mode"] == "transition-to-native"
     assert not c.state["healthy"]
@@ -277,7 +292,9 @@ def test_late_native_acceptance_requires_prerequisites(ctl, monkeypatch) -> None
     assert c.marker.exists()
 
 
-def test_native_primary_requires_healthy_fenced_native_and_is_sticky(ctl, monkeypatch) -> None:
+def test_native_primary_requires_healthy_fenced_native_and_is_sticky(
+    ctl, monkeypatch
+) -> None:
     """Test behavior for test_native_primary_requires_healthy_fenced_native_and_is_sticky."""
     m, c = ctl
     monkeypatch.setattr(c, "prerequisites", lambda: None)
@@ -301,7 +318,9 @@ def test_native_primary_requires_healthy_fenced_native_and_is_sticky(ctl, monkey
     assert c.marker.exists()
 
 
-def test_unhealthy_primary_never_restarts_agent_or_releases_fence(ctl, monkeypatch) -> None:
+def test_unhealthy_primary_never_restarts_agent_or_releases_fence(
+    ctl, monkeypatch
+) -> None:
     """Test behavior for test_unhealthy_primary_never_restarts_agent_or_releases_fence."""
     m, c = ctl
     monkeypatch.setattr(c, "prerequisites", lambda: None)
@@ -309,7 +328,9 @@ def test_unhealthy_primary_never_restarts_agent_or_releases_fence(ctl, monkeypat
     c.save(mode="native-primary")
     monkeypatch.setattr(m, "active", lambda unit: unit == m.NATIVE)
     monkeypatch.setattr(c, "healthy", lambda: False)
-    monkeypatch.setattr(m, "run", lambda *_a, **_k: pytest.fail("must not change lifecycle"))
+    monkeypatch.setattr(
+        m, "run", lambda *_a, **_k: pytest.fail("must not change lifecycle")
+    )
     c.tick()
     assert not c.state["healthy"]
     assert c.marker.exists()
@@ -322,8 +343,10 @@ def test_unhealthy_primary_never_restarts_agent_or_releases_fence(ctl, monkeypat
     [
         (True, True, False, False, "upstream-or-path-unhealthy"),
         (True, True, True, True, "local-path-failed-upstream-healthy"),
-        (True, False, False, True, "local-listener-failed"),
-        (False, True, False, True, "local-agent-inactive"),
+        (True, False, False, False, "upstream-or-path-unhealthy"),
+        (True, False, True, True, "local-listener-failed"),
+        (False, True, False, False, "upstream-or-path-unhealthy"),
+        (False, True, True, True, "local-agent-inactive"),
     ],
 )
 def test_failure_scope_uses_direct_upstream_not_api(
@@ -348,7 +371,9 @@ def test_failure_scope_uses_direct_upstream_not_api(
     assert d["scope"] == scope
 
 
-def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatch) -> None:
+def test_upstream_failure_never_fences_worker_or_releases_marker(
+    ctl, monkeypatch
+) -> None:
     """Test behavior for test_upstream_failure_never_fences_worker_or_releases_marker."""
     m, c = ctl
     monkeypatch.setattr(m, "boot_id", lambda: "boot")
@@ -362,7 +387,9 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatc
     monkeypatch.setattr(
         c,
         "activate",
-        lambda _why: pytest.fail("must not fence healthy local listeners for upstream failure"),
+        lambda _why: pytest.fail(
+            "must not fence healthy local listeners for upstream failure"
+        ),
     )
     for _ in range(12):
         c.tick()
@@ -415,7 +442,9 @@ def test_boot_grace_never_refreshes_old_green_health_or_carries_failure_count(
     assert c.state["failures"] == 0
 
 
-def test_failed_websocket_diagnostic_does_not_store_private_path(ctl, monkeypatch) -> None:
+def test_failed_websocket_diagnostic_does_not_store_private_path(
+    ctl, monkeypatch
+) -> None:
     """Test failed websocket diagnostics avoid private paths."""
     m, c = ctl
 
@@ -443,3 +472,118 @@ def test_failed_websocket_diagnostic_does_not_store_private_path(ctl, monkeypatc
     assert c.last_probe["http_status"] == 403
     assert c.last_probe["stage"] == "websocket"
     assert "/test" not in json.dumps(c.last_probe)
+
+
+def test_native_cooldown_and_retry_backoff(ctl, monkeypatch):
+    m, c = ctl
+    c.config["warm_return_enabled"] = True
+    c.save(mode="native")
+    m.atomic(c.marker, {})
+    monkeypatch.setattr(m, "active", lambda unit: unit == m.NATIVE)
+    monkeypatch.setattr(c, "healthy", lambda: True)
+    monkeypatch.setattr(m, "boot_id", lambda: "boot")
+    calls = []
+    monkeypatch.setattr(c, "warm_return", lambda: calls.append(1))
+    for now in (15, 1814, 1815, 1816):
+        monkeypatch.setattr(m.time, "monotonic", lambda: now)
+        c.tick()
+    assert calls == [1]
+    assert c.state["return_after"] == 3615
+
+
+def test_interrupted_warm_return_recovers_before_monitoring(ctl, monkeypatch):
+    m, c = ctl
+    c.config["warm_return_enabled"] = True
+    c.save(mode="warming")
+    m.atomic(c.marker, {})
+    calls = []
+    monkeypatch.setattr(c, "activate", calls.append)
+    c.tick()
+    assert calls == ["recover interrupted warm return"]
+
+
+def test_agent_exception_requires_live_same_boot_warming(ctl, monkeypatch, tmp_path):
+    m, c = ctl
+    monkeypatch.setattr(type(c), "permit", property(lambda _: tmp_path / "permit"))
+    monkeypatch.setattr(m, "boot_id", lambda: "this-boot")
+    monkeypatch.setattr(m, "active", lambda unit: unit == m.NATIVE)
+    c.config["warm_return_enabled"] = True
+    m.atomic(c.marker, {})
+    c.save(mode="native")
+    assert not c.agent_allowed()
+    c.save(mode="warming", warming_boot="old")
+    assert not c.agent_allowed()
+    c.save(warming_boot="this-boot")
+    assert c.agent_allowed()
+    c.permit.touch()
+    assert not c.agent_allowed()
+
+
+def test_manual_return_cannot_bypass_busy_shared_lock(ctl, monkeypatch):
+    m, c = ctl
+    c.config["warm_return_enabled"] = True
+    m.atomic(c.marker, {})
+    c.save(mode="native")
+    monkeypatch.setattr(c, "prerequisites", lambda: None)
+    monkeypatch.setattr(c, "warm_return", lambda: None)
+    monkeypatch.setattr(
+        m, "run", lambda *_a, **_k: pytest.fail("must not touch native relay")
+    )
+    with pytest.raises(RuntimeError, match="deferred"):
+        c.failback()
+    assert c.marker.exists()
+
+
+@pytest.mark.parametrize("reply", [b"", b"LOC"])
+def test_witness_denial_and_partial_response_preserve_native(ctl, monkeypatch, reply):
+    import sys
+
+    m, c = ctl
+    c.config["warm_return_enabled"] = True
+    m.atomic(c.marker, {})
+    c.save(mode="native")
+    real_popen = subprocess.Popen
+    monkeypatch.setattr(c, "prerequisites", lambda: None)
+    monkeypatch.setattr(
+        m.subprocess,
+        "Popen",
+        lambda _argv, **kw: real_popen(
+            [sys.executable, "-c", f"import os; os.write(1, {reply!r})"], **kw
+        ),
+    )
+    monkeypatch.setattr(c, "_handoff", lambda *_: pytest.fail("lock was not granted"))
+    with pytest.raises(RuntimeError, match="deferred"):
+        c.failback()
+    assert c.marker.exists() and c.state["mode"] == "native"
+    assert list(m.ROOT.glob("*-return-deferred.json"))
+
+
+def test_witness_partition_requires_reconciliation(tmp_path):
+    import io
+
+    spec = importlib.util.spec_from_file_location(
+        "witness_lock", ROOT / "ansible/files/vpn-transit-gate/transition-lock-v2.py"
+    )
+    lock = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(lock)
+    output = io.BytesIO()
+    assert lock.serve(tmp_path, "socrat-4", io.BytesIO(b""), output) != 0
+    assert output.getvalue() == b"LOCKED\n"
+    assert (tmp_path / "transition.claim").read_text() == "socrat-4\n"
+    output = io.BytesIO()
+    assert lock.serve(tmp_path, "socrat-2", io.BytesIO(b"COMMIT\n"), output) != 0
+    assert output.getvalue() == b""
+
+
+@pytest.mark.parametrize("verb", [b"COMMIT\n", b"ABORT\n"])
+def test_witness_explicit_release(tmp_path, verb):
+    import io
+
+    spec = importlib.util.spec_from_file_location(
+        "witness_lock", ROOT / "ansible/files/vpn-transit-gate/transition-lock-v2.py"
+    )
+    lock = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(lock)
+    for owner in ("socrat-2", "socrat-4"):
+        assert lock.serve(tmp_path, owner, io.BytesIO(verb), io.BytesIO()) == 0
+    assert not (tmp_path / "transition.claim").exists()

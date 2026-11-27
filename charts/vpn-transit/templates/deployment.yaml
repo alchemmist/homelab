@@ -29,6 +29,9 @@ spec:
         - name: relay
           image: {{ $.Values.image | quote }}
           imagePullPolicy: Never
+          {{- if and $.Values.warmReturnGate (not $stage) }}
+          command: [/run/relay-gate]
+          {{- end }}
           args: [run, -config, /etc/relay/user.json]
           ports:
             - name: https
@@ -52,8 +55,18 @@ spec:
           resources:
 {{ toYaml $.Values.resources | indent 12 }}
           volumeMounts:
+            {{- if and $.Values.warmReturnGate (not $stage) }}
+            - {name: gate, mountPath: /run/relay-gate, readOnly: true}
+            - {name: owner, mountPath: /run/vpn-owner, readOnly: true}
+            {{- end }}
             - {name: user-config, mountPath: /etc/relay/user.json, {{ if $stage }}subPath: user.json, {{ end }}readOnly: true}
       volumes:
+        {{- if and $.Values.warmReturnGate (not $stage) }}
+        - name: gate
+          hostPath: {path: /usr/local/libexec/vpn-transit-gate, type: File}
+        - name: owner
+          hostPath: {path: /var/lib/homelab-vpn-transit/port-owner, type: Directory}
+        {{- end }}
         - name: user-config
 {{- if $stage }}
           configMap: {name: vpn-transit-rehearsal}
