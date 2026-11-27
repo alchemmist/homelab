@@ -52,6 +52,24 @@ def test_reserved_case_is_not_queried(monkeypatch, capsys) -> None:
     assert "not eligible for a DNS check: reserved" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize("entry", ["home", "nl", "moscow"])
+def test_schoolbot_external_authority_is_not_a_self_ip_case(monkeypatch, entry):
+    """Even a HOME-only client match must not certify DNS we do not publish."""
+    from ci.quality.public_web import replica_values
+
+    catalog = yaml.safe_load(audit.CATALOG.read_text())
+    host = "inform.sch1357.ru"
+    assert audit.cases(catalog)["schoolbot", host, entry] == "external DNS; not a self-IP case"
+    values = replica_values(catalog, catalog["replicas"][entry], 42)
+    assert host in values["publications"]["schoolbot"]
+    assert "sch1357.ru" not in values["zoneFile"]
+    monkeypatch.setattr(sys, "argv", ["audit", "--dns", "schoolbot", host, entry])
+    monkeypatch.setattr(audit, "dns_view", lambda _: pytest.fail("unexpected lookup"))
+    with pytest.raises(SystemExit) as exc:
+        audit.main()
+    assert exc.value.code == 2
+
+
 def test_unknown_survivor_lists_valid_entries(monkeypatch, capsys) -> None:
     """Explain survivor spelling errors before attempting a lookup."""
     monkeypatch.setattr(
