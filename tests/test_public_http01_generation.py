@@ -432,3 +432,145 @@ def test_interrupted_scan_never_emits_partial_or_empty_withdrawal(fault):
         )
     assert err.value.__context__ is None and "sensitive" not in str(err.value)
     assert len(resolved) == int(fault == "child")
+
+
+def test_namespace_scan_renews_only_original_slot_after_terminal_page(monkeypatch):
+    from ipaddress import IPv4Network
+
+    from ci.quality.public_http01_lease_scan import ScannedSlot
+    from ci.quality.public_http01_scan import IncompleteScan
+    from services.public_entry import solver_lease
+
+    tick = [100]
+    monkeypatch.setattr(solver_lease.time, "monotonic_ns", lambda: tick[0])
+    a = destination_fixture()
+    expected, ch, *children = a
+    ns, _, uid, host = expected
+    net = IPv4Network("10.42.0.0/16")
+    slot = ScannedSlot(ns, host, uid, ch["spec"]["token"], "http://10.42.2.9:8089", 10)
+
+    def run(final, child=lambda _: children):
+        def read(namespace, cursor):
+            assert namespace == ns
+            return list_page([ch], cursor="next") if not cursor else final()
+
+        return slot.refresh(frozenset({host}), read, child, net)
+
+    assert run(list_page)
+    original = slot.witness()
+    assert original is not None
+    tick[0] = 108
+    with pytest.raises(IncompleteScan):
+        run(lambda: (410, {}))
+    assert slot.witness() == original
+
+    def interrupted(_):
+        raise TimeoutError
+
+    with pytest.raises(IncompleteScan):
+        run(list_page, interrupted)
+    tick[0] = 110
+    assert slot.witness() is None
+    assert run(list_page)
+
+    def late():
+        tick[0] += 10
+        return list_page()
+
+    assert not run(late) and slot.witness() is None
+    assert run(list_page)
+    assert (
+        not slot.refresh(frozenset({host}), lambda *_: list_page(), interrupted, net)
+        and slot.witness() is None
+    )
+
+
+def test_new_verified_address_cannot_renew_a_slot_for_an_old_backend():
+    from ipaddress import IPv4Network
+
+    from ci.quality.public_http01_lease_scan import ScannedSlot
+
+    expected, ch, ing, svc, pod, slices = destination_fixture()
+    ns, _, uid, host = expected
+    slot = ScannedSlot(
+        ns, host, uid, ch["spec"]["token"], "http://10.42.2.9:8089", 10**10
+    )
+
+    def run():
+        return slot.refresh(
+            frozenset({host}),
+            lambda *_: list_page([ch]),
+            lambda _: (ing, svc, pod, slices),
+            IPv4Network("10.42.0.0/16"),
+        )
+
+    assert run()
+    pod["status"]["podIP"] = "10.42.2.11"
+    slices[0]["endpoints"][0]["addresses"] = ["10.42.2.11"]
+    assert not run() and slot.witness() is None
+
+
+@pytest.mark.parametrize("newer_finishes", [True, False])
+def test_one_namespace_scan_cannot_resurrect_a_slot_from_an_older_inflight_round(
+    newer_finishes,
+):
+    from concurrent.futures import ThreadPoolExecutor
+    from ipaddress import IPv4Network
+    from threading import Event
+
+    from ci.quality.public_http01_lease_scan import NamespaceGate, Presentation
+    from ci.quality.public_http01_scan import IncompleteScan
+
+    rows = [destination_fixture(k, k * 43) for k in ("a", "b")]
+    net = IPv4Network("10.42.0.0/16")
+    slots = tuple(
+        Presentation(
+            "owner",
+            r[0][3],
+            r[0][2],
+            r[1]["spec"]["token"],
+            "http://10.42.2.9:8089",
+            10**11,
+        )
+        for r in rows
+    )
+    gate = NamespaceGate("owner", slots)
+    calls = []
+
+    def children(ch):
+        calls.append(ch["metadata"]["uid"])
+        return rows[int(ch["metadata"]["uid"] == "b")][2:]
+
+    def both(ns, cursor):
+        return list_page([rows[int(bool(cursor))][1]], "" if cursor else "more")
+
+    assert gate.refresh(both, children, net) and calls == ["a", "b"]
+    original = [gate.witness(s) for s in slots]
+    assert all(original)
+    entered, release = Event(), Event()
+
+    def blocked(ns, cursor):
+        if cursor:
+            entered.set()
+            assert release.wait(5)
+        return both(ns, cursor)
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        old = pool.submit(gate.refresh, blocked, children, net)
+        try:
+            assert entered.wait(5)
+            if newer_finishes:
+                assert gate.refresh(lambda *_: list_page([rows[1][1]]), children, net)
+                after = [gate.witness(s) for s in slots]
+                assert (
+                    after[0] is None
+                    and after[1] is not None
+                    and after[1] != original[1]
+                )
+            else:
+                with pytest.raises(IncompleteScan):
+                    gate.refresh(lambda *_: (410, {}), children, net)
+                after = original
+        finally:
+            release.set()
+        assert old.result(5) is False and [gate.witness(s) for s in slots] == after
