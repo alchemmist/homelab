@@ -72,7 +72,8 @@ def test_effective_health_fleet():
         (container,) = spec["containers"]
         assert not container.get("ports")
         assert [a for a in container["args"] if a.startswith("--entrypoints")] == [
-            "--entrypoints.closed.address=127.0.0.1:8181"
+            "--entrypoints.closed.address=127.0.0.1:8181",
+            "--entrypoints.pulse.address=127.0.0.1:8182",
         ]
         assert [a for a in container["args"] if a.startswith("--providers")] == [
             "--providers.file.directory=/route"

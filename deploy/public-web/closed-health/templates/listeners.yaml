@@ -5,6 +5,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: closed-health
+  namespace: {{ .Release.Namespace }}
   annotations: {argocd.argoproj.io/sync-wave: '-1'}
 spec:
   podSelector: {matchLabels: {app: closed-health}}
@@ -22,7 +23,7 @@ spec:
 ---
 apiVersion: v1
 kind: ConfigMap
-metadata: {name: closed-health}
+metadata: {name: closed-health, namespace: {{ .Release.Namespace }}}
 data:
   dynamic.yaml: |
     http:
@@ -39,7 +40,7 @@ data:
 ---
 apiVersion: apps/v1
 kind: Deployment
-metadata: {name: closed-health-{{ $name }}}
+metadata: {name: closed-health-{{ $name }}, namespace: {{ $.Release.Namespace }}}
 spec:
   replicas: 1
   selector: {matchLabels: {app: closed-health, entrance: {{ $name }}}}
@@ -59,9 +60,15 @@ spec:
           args:
             - --entrypoints.closed.address=127.0.0.1:8181
             - --providers.file.directory=/route
+            - --entrypoints.pulse.address=127.0.0.1:8182
+            - --ping.entrypoint=pulse
             - --api=false
             - --log.level=ERROR
             - --serverstransport.forwardingtimeouts.dialtimeout=3s
+          livenessProbe:
+            exec: {command: [wget, -q, -O, /dev/null, 'http://127.0.0.1:8182/ping']}
+            periodSeconds: 30
+            timeoutSeconds: 3
           readinessProbe:
             exec: {command: [sh, -ec, 'wget -q -O /dev/null --header="Host: inform.sch1357.ru" http://127.0.0.1:8181/api/health']}
             periodSeconds: 30
