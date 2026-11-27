@@ -37,6 +37,10 @@
       "ci/vpn/vpn-home-nl-udp-probe.py": [
         "S101"
       ],
+      "ci/vpn/vpn-subscription-migrate.py": [
+        "S104",
+        "S310"
+      ],
       "scripts/**": [
         "INP001",
         "T201",

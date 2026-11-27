@@ -28,6 +28,11 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # The pinned hostname/timeout asserts are the reviewed hard stops whose exact
 # AST the probe tests pin structurally.
 "ci/vpn/vpn-home-nl-udp-probe.py" = ["S101"]
+# Subscription migration: the subListen allow-list audits the panel's
+# historical wildcard binding (retiring it is out of this change's scope),
+# and the subscription fetches go to the two reviewed constant origins with
+# an explicit scheme allowlist.
+"ci/vpn/vpn-subscription-migrate.py" = ["S104", "S310"]
 # Operational single-file programs below are deployed by copy (no package
 # layout makes sense): stdout is their CLI contract, subprocess/urllib calls on
 # reviewed fixed operands are their purpose, sys.path or bootstrap code can
