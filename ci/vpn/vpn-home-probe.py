@@ -7,6 +7,7 @@ Only temporary loopback SOCKS proxies and a single64KiB request per protocol.
 
 import argparse
 import hashlib
+import ipaddress
 import json
 import os
 import socket
@@ -17,7 +18,8 @@ from pathlib import Path
 from typing import cast
 
 
-def exclusive(path, value) -> None:
+def exclusive(path: Path, value: object) -> None:
+    """Write one proof/trace file privately, refusing overwrite and symlinks."""
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(value, f)
@@ -25,7 +27,14 @@ def exclusive(path, value) -> None:
         os.fsync(f.fileno())
 
 
-def network(endpoint="91.189.82.238"):
+DEFAULT_PROBE_ENDPOINT = "91.189.82.238"
+LISTENER_ATTEMPTS = 40
+PROOF_BYTES = 65536
+
+
+def network(endpoint: str = DEFAULT_PROBE_ENDPOINT) -> dict[str, object]:
+    """Snapshot the approved home WAN route and its global network state hashes."""
+    # S603/S607: read-only ip route inspection on the approved home host.
     r = subprocess.run(
         ["ip", "-j", "route", "get", endpoint],
         check=False,
@@ -36,10 +45,11 @@ def network(endpoint="91.189.82.238"):
     if r.returncode:
         msg = "Route read failed"
         raise ValueError(msg)
-    rows = json.loads(r.stdout)
+    rows: list[dict[str, object]] = json.loads(r.stdout)
     if len(rows) != 1 or rows[0].get("dev") != "eno1" or rows[0].get("gateway") != "192.168.0.1":
         msg = "Not approved home WAN route"
         raise ValueError(msg)
+    # S603/S607: read-only main routing-table snapshot on the approved home host.
     main = subprocess.run(
         ["ip", "-j", "route", "show", "table", "main"],
         check=False,
@@ -59,8 +69,6 @@ def network(endpoint="91.189.82.238"):
 
 def require_global_endpoint(endpoint: str) -> None:
     """Refuse private or otherwise non-global probe endpoints."""
-    import ipaddress
-
     if not ipaddress.ip_address(endpoint).is_global:
         msg = "Public probe endpoint required"
         raise ValueError(msg)
@@ -138,7 +146,7 @@ def reserve_port() -> int:
 
 def wait_listener(process: subprocess.Popen[bytes], port: int) -> None:
     """Wait for the local SOCKS listener, failing if the client exits first."""
-    for attempt in range(40):
+    for attempt in range(LISTENER_ATTEMPTS):
         if process.poll() is not None:
             msg = "Own home client exited"
             raise RuntimeError(msg)
@@ -146,13 +154,14 @@ def wait_listener(process: subprocess.Popen[bytes], port: int) -> None:
             with socket.create_connection(("127.0.0.1", port), timeout=0.3):
                 return
         except OSError:
-            if attempt == 39:
+            if attempt == LISTENER_ATTEMPTS - 1:
                 raise
             time.sleep(0.25)
 
 
 def require_nl_egress(port: int) -> None:
     """Prove the tunnel egresses from the pinned Netherlands IPv4 address."""
+    # S603/S607: the reviewed fixed curl egress check through the own tunnel.
     egress = subprocess.run(
         [
             "curl",
@@ -196,6 +205,7 @@ def transfer_and_verify(state: Path, label: str, port: int) -> dict[str, object]
         "%{http_code} %{size_download}",
         "https://speed.cloudflare.com/__down?bytes=65536",
     ]
+    # S603/S607: the reviewed single bounded transfer through the own tunnel.
     r = subprocess.run(
         args,
         check=False,
@@ -208,12 +218,12 @@ def transfer_and_verify(state: Path, label: str, port: int) -> dict[str, object]
         state / (label + "-curl-private.json"),
         {"returncode": r.returncode, "stdout": r.stdout, "stderr": r.stderr},
     )
-    if r.returncode or r.stdout.strip() != "200 65536" or body.stat().st_size != 65536:
+    if r.returncode or r.stdout.strip() != "200 65536" or body.stat().st_size != PROOF_BYTES:
         msg = "Home tunnel transfer failed"
         raise RuntimeError(msg)
     proof: dict[str, object] = {
         "http_status": 200,
-        "bytes": 65536,
+        "bytes": PROOF_BYTES,
         "sha256": hashlib.sha256(body.read_bytes()).hexdigest(),
         "egress_ipv4": "109.120.141.60",
     }
@@ -236,6 +246,7 @@ def probe_label(
     logpath = state / (label + "-log-private.txt")
     fd = os.open(logpath, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as log:
+        # S603: the checksum-pinned own xray copy from the private state directory.
         process = subprocess.Popen(
             [str(binary), "run", "-c", str(path)], stdout=log, stderr=subprocess.STDOUT
         )
@@ -253,14 +264,19 @@ def probe_label(
             path.unlink(missing_ok=True)
 
 
-def run(state, approved_binary, endpoint="91.189.82.238"):
+def run(
+    state: Path,
+    approved_binary: str,
+    endpoint: str = DEFAULT_PROBE_ENDPOINT,
+) -> dict[str, object]:
+    """Run both prepared protocols once and prove home WAN and NL egress facts."""
     require_global_endpoint(endpoint)
     require_home_host()
     require_private_state(state)
     binary, configs = require_pinned_runtime(state, approved_binary)
-    prepared = json.loads(configs.read_text())
+    prepared: dict[str, dict[str, object]] = json.loads(configs.read_text())
     before = network(endpoint)
-    proofs = {}
+    proofs: dict[str, object] = {}
     require_literal_endpoints(prepared, endpoint)
     try:
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -268,8 +284,8 @@ def run(state, approved_binary, endpoint="91.189.82.238"):
             public = r.read(64).decode().strip()
         exclusive(state / "source-address-private.json", {"actual_public_ip": public})
         expected_home_source = public == "109.173.40.247"
-        for label in prepared:
-            proofs[label] = probe_label(state, label, prepared[label], binary)
+        for label, prepared_config in prepared.items():
+            proofs[label] = probe_label(state, label, prepared_config, binary)
         after = network(endpoint)
         if before != after:
             msg = "Network state changed during home probe"
@@ -301,6 +317,6 @@ if __name__ == "__main__":
     a = p.parse_args()
     try:
         print(json.dumps(run(a.state, a.approved_binary_sha256, endpoint=a.endpoint)))
-    except Exception:
+    except Exception as error:
         msg = "Home probe stopped; inspect private evidence; no global network changes requested."
-        raise SystemExit(msg) from None
+        raise SystemExit(msg) from error
