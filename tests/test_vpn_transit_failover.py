@@ -556,3 +556,34 @@ def test_witness_denial_and_partial_response_preserve_native(ctl, monkeypatch, r
         c.failback()
     assert c.marker.exists() and c.state["mode"] == "native"
     assert list(m.ROOT.glob("*-return-deferred.json"))
+
+
+def test_witness_partition_requires_reconciliation(tmp_path):
+    import io
+
+    spec = importlib.util.spec_from_file_location(
+        "witness_lock", ROOT / "ansible/files/vpn-transit-gate/transition-lock-v2.py"
+    )
+    lock = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(lock)
+    output = io.BytesIO()
+    assert lock.serve(tmp_path, "socrat-4", io.BytesIO(b""), output) != 0
+    assert output.getvalue() == b"LOCKED\n"
+    assert (tmp_path / "transition.claim").read_text() == "socrat-4\n"
+    output = io.BytesIO()
+    assert lock.serve(tmp_path, "socrat-2", io.BytesIO(b"COMMIT\n"), output) != 0
+    assert output.getvalue() == b""
+
+
+@pytest.mark.parametrize("verb", [b"COMMIT\n", b"ABORT\n"])
+def test_witness_explicit_release(tmp_path, verb):
+    import io
+
+    spec = importlib.util.spec_from_file_location(
+        "witness_lock", ROOT / "ansible/files/vpn-transit-gate/transition-lock-v2.py"
+    )
+    lock = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(lock)
+    for owner in ("socrat-2", "socrat-4"):
+        assert lock.serve(tmp_path, owner, io.BytesIO(verb), io.BytesIO()) == 0
+    assert not (tmp_path / "transition.claim").exists()
