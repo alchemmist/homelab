@@ -12,8 +12,8 @@ postgresCaConfigMap: pg-common-ca
 replicaCount: 1
 image:
   repository: harbor.socrat.alchemmist.xyz/n8n/n8n
-  tag: 1.123.87-socrat
-  digest: sha256:0ffba3a289722fc216ee5e135c3acaeb4b3484e267aeba42df9c8f2e39e831df
+  tag: 994a1eb3d8c04b303061b8abd555bf3fa81a23cb
+  digest: sha256:fb011be7cafe421b0bd78bf3faf15f07194cad7fbd0f17be7e3c4cc4431845c5
 imagePullSecrets:
   - n8n-harbor-pull
 nodeName: socrat-5
