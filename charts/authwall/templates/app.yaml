@@ -46,7 +46,7 @@ spec:
     - host: {{ .Values.host }}
       http:
         paths:
-          - path: /authwall
+          - path: /wallpapers
             pathType: Prefix
             backend:
               service: {name: authwall, port: {name: http}}

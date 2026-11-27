@@ -36,7 +36,7 @@ function renderQueue() {
 }
 
 async function refreshJobs() {
-  const response = await fetch("/authwall/api/items");
+  const response = await fetch("/wallpapers/api/items");
   const data = await response.json();
   const byId = new Map(data.items.map((item) => [item.id, item]));
   for (const job of jobs.values()) {
@@ -88,7 +88,7 @@ function pumpSharp() {
 }
 
 function cardFor(item) {
-  const blur = previews.get(item.id) || `/authwall/media/${item.id}-blur.webp?v=2`;
+  const blur = previews.get(item.id) || `/wallpapers/media/${item.id}-blur.webp?v=2`;
   const button = document.createElement("div");
   button.className = "card";
   button.dataset.id = item.id;
@@ -131,7 +131,7 @@ function draw(items) {
       const frame = card.querySelector(".frame");
       const needed = Math.max(frame.clientWidth, frame.clientHeight * item.width / item.height) * (window.devicePixelRatio || 1);
       const width = [480, 768, 1280, 1920, 2560].find(w => w >= needed && w < item.width);
-      sharpPending.push([frame, `/authwall/media/${item.id}${width ? `-w${width}` : ""}.webp`]);
+      sharpPending.push([frame, `/wallpapers/media/${item.id}${width ? `-w${width}` : ""}.webp`]);
       pumpSharp();
     }
     anchor = card;
@@ -139,7 +139,7 @@ function draw(items) {
 }
 
 async function load() {
-  const response = await fetch("/authwall/api/items");
+  const response = await fetch("/wallpapers/api/items");
   draw((await response.json()).items);
 }
 
@@ -155,7 +155,7 @@ async function upload(files) {
   renderQueue();
   const body = new FormData();
   for (const file of list) body.append("file", file, file.name || "pasted.webp");
-  const response = await fetch("/authwall/api/upload", { method: "POST", body });
+  const response = await fetch("/wallpapers/api/upload", { method: "POST", body });
   if (!response.ok) {
     local.forEach((job) => { job.state = "failed"; });
     renderQueue();
@@ -210,7 +210,7 @@ function closeConfirms(except) {
 
 async function removeCard(card) {
   const id = card.dataset.id;
-  const response = await fetch(`/authwall/api/items/${id}/delete`, { method: "POST" });
+  const response = await fetch(`/wallpapers/api/items/${id}/delete`, { method: "POST" });
   if (!response.ok) return;
   upgraded.delete(id);
   previews.delete(id);
@@ -235,7 +235,7 @@ $("#grid").onclick = (event) => {
   const active = card.dataset.active !== "true";
   card.dataset.active = String(active);
   card.classList.toggle("active", active);
-  fetch(`/authwall/api/items/${card.dataset.id}/active`, {
+  fetch(`/wallpapers/api/items/${card.dataset.id}/active`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ active }),
