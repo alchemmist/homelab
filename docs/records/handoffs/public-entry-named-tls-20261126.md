@@ -202,6 +202,11 @@ live fleet was made.
 ## A later failed read can mask an earlier explicit denial
 
 Two single-node, closed catalog-size runs on HOME (35 sources, 37 names).
+Sources 0 and 34 each owned two names; the other 33 sources (including 15
+and 22) each owned one. Thus a complete snapshot had 35 sources / 37 names.
+With both single-name sources omitted it had 33 sources / 35 names, then
+34 / 36 after restoring source 22, then 35 / 37 after restoring source 15.
+The earlier aborted snapshot did not replace the previously applied 35 / 37.
 The fixture Role lost only `get` on source 15. The source confirmed the API
 actually returned 403 for that exact name; other named GETs remained allowed.
 After 22 attempted reads the fixture injected a local failure **before** the
