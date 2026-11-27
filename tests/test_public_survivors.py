@@ -13,7 +13,11 @@ def test_all_route_owners_have_three_cases() -> None:
     catalog = yaml.safe_load(audit.CATALOG.read_text())
     rows = audit.cases(catalog)
     assert len(rows) == 3 * sum(len(hosts) for hosts in catalog["hosts"].values())
-    assert rows["monori", "monori.alchemmist.xyz", "nl"] == "unverified"
+    assert rows["monori", "monori.alchemmist.xyz", "nl"].startswith(
+        "regional DNS exclusion"
+    )
+    for site in ("home", "moscow"):
+        assert rows["monori", "monori.alchemmist.xyz", site] == "unverified"
     assert rows["traefik-edge", "vpn.alchemmist.xyz", "home"] == "dedicated VPN path"
     assert rows["schoolbot", "bot.sch1357.ru", "moscow"] == "reserved"
     for ns in ("socrat-home", "rustfs"):
@@ -59,7 +63,10 @@ def test_schoolbot_external_authority_is_not_a_self_ip_case(monkeypatch, entry):
 
     catalog = yaml.safe_load(audit.CATALOG.read_text())
     host = "inform.sch1357.ru"
-    assert audit.cases(catalog)["schoolbot", host, entry] == "external DNS; not a self-IP case"
+    assert (
+        audit.cases(catalog)["schoolbot", host, entry]
+        == "external DNS; not a self-IP case"
+    )
     values = replica_values(catalog, catalog["replicas"][entry], 42)
     assert host in values["publications"]["schoolbot"]
     assert "sch1357.ru" not in values["zoneFile"]
@@ -160,3 +167,17 @@ def test_missing_schoolbot_policy_is_a_cli_error(monkeypatch, tmp_path, bad):
     with pytest.raises(SystemExit) as e:
         health.main()
     assert e.value.code == 2
+
+
+def test_forbidden_regional_self_ip_cannot_pass_even_if_dns_would_match(monkeypatch):
+    monkeypatch.setattr(
+        sys, "argv", ["audit", "--dns", "monori", "monori.alchemmist.xyz", "nl"]
+    )
+    monkeypatch.setattr(
+        audit,
+        "dns_view",
+        lambda _: pytest.fail("forbidden survivor must not query DNS"),
+    )
+    with pytest.raises(SystemExit) as exc:
+        audit.main()
+    assert exc.value.code == 2

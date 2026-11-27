@@ -47,7 +47,8 @@ def test_all_sites_attempted_without_partial_success(monkeypatch, capsys, failed
 
     seen = []
 
-    def run(pod, label, entry, names, transport):
+    def run(pod, label, entry, names, transport, regional):
+        assert set(regional) == ({"monori.alchemmist.xyz"} if label == "nl" else set())
         assert (
             pod == "fixture"
             and "inform.sch1357.ru" not in names
@@ -70,3 +71,17 @@ def test_all_sites_attempted_without_partial_success(monkeypatch, capsys, failed
         (label, t) for label in ("home", "nl", "moscow") for t in ("udp", "tcp")
     }
     assert capsys.readouterr().out.count("not verified") == int(failed is not None)
+
+
+def test_regional_authority_is_not_a_web_destination():
+    regional = {"example.test": {"192.0.2.1", "192.0.2.3"}}
+    args = (["example.test"], "192.0.2.2")
+    check_reply(REPLY, *args, regional=regional)
+    check_reply(REPLY + "example.test. 60 IN A 192.0.2.3\n", *args, regional=regional)
+    for bad in (
+        REPLY.replace("192.0.2.1", "192.0.2.2"),
+        REPLY + "example.test. 60 IN A 192.0.2.2\n",
+        REPLY + "example.test. 60 IN A 192.0.2.1\n",
+    ):
+        with pytest.raises(ValueError):
+            check_reply(bad, *args, regional=regional)
