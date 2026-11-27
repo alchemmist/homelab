@@ -1,0 +1,28 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: socrat-3-power
+  labels:
+    release: {{ .Values.prometheusRelease }}
+spec:
+  groups:
+    - name: socrat.worker.power
+      rules:
+        - alert: Socrat3OnBattery
+          expr: |
+            (max by(instance) (node_power_supply_online{job="node-exporter",power_supply="ADP1"}) == 0)
+            and on(instance) node_uname_info{job="node-exporter",nodename="socrat-3"}
+          for: 2m
+          labels: {severity: warning, node: socrat-3}
+          annotations:
+            summary: socrat-3 is running on battery.
+            description: Check the AC adapter, cable and outlet on the hourly metrics archive worker.
+        - alert: Socrat3BatteryLow
+          expr: |
+            (min by(instance) (node_power_supply_capacity{job="node-exporter",power_supply="BAT1"}) <= 20)
+            and on(instance) node_uname_info{job="node-exporter",nodename="socrat-3"}
+          for: 2m
+          labels: {severity: critical, node: socrat-3}
+          annotations:
+            summary: socrat-3 battery is at or below 20 percent.
+            description: Restore stable external power and verify that the battery is charging.
