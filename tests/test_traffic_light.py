@@ -3,6 +3,7 @@
 import json
 import unittest
 from pathlib import Path
+from typing import TypedDict, override
 
 ROOT = Path(__file__).resolve().parents[1]
 DASHBOARD = ROOT / "charts/monitoring-k3s/dashboards/traffic-light.json"
@@ -25,26 +26,123 @@ LOCAL_AI_PANEL_ID = 930
 DISK_IO_PANEL_ID = 23
 
 
-def load():
-    return json.loads(DASHBOARD.read_text())
+class _GridPos(TypedDict):
+    """Integer grid rectangle of one dashboard panel."""
+
+    x: int
+    y: int
+    w: int
+    h: int
 
 
-def panel_by_id(dashboard, panel_id):
+class _MappingRow(TypedDict):
+    """Value-mapping row carrying per-value render options."""
+
+    options: dict[str, dict[str, object]]
+
+
+class _PanelDefaults(TypedDict, total=False):
+    """fieldConfig.defaults slice pinned by the layout tests."""
+
+    displayName: str
+    mappings: list[_MappingRow]
+    min: int
+    max: int
+    unit: str
+    thresholds: dict[str, object]
+    custom: dict[str, object]
+
+
+class _FieldConfig(TypedDict):
+    """fieldConfig slice of one dashboard panel."""
+
+    defaults: _PanelDefaults
+
+
+class _Target(TypedDict, total=False):
+    """Query target row of one dashboard panel."""
+
+    expr: str
+    instant: bool
+    range: bool
+    refId: str
+    format: str
+    legendFormat: str
+
+
+class _PanelOptions(TypedDict, total=False):
+    """options slice pinned by the layout tests."""
+
+    legend: dict[str, bool]
+    orientation: str
+    displayMode: str
+    valueMode: str
+    namePlacement: str
+    textMode: str
+    showUnfilled: bool
+    sizing: str
+    minVizWidth: int
+    minVizHeight: int
+    wideLayout: bool
+
+
+class _TransformRow(TypedDict):
+    """Transformation row carrying nested per-kind options."""
+
+    options: dict[str, list[dict[str, object]]]
+
+
+class _Panel(TypedDict, total=False):
+    """Dashboard panel row shape pinned by the layout tests."""
+
+    id: int
+    gridPos: _GridPos
+    title: str
+    type: str
+    description: str
+    transparent: bool
+    interval: str
+    maxDataPoints: int
+    targets: list[_Target]
+    options: _PanelOptions
+    fieldConfig: _FieldConfig
+    transformations: list[_TransformRow]
+    timeFrom: str
+    hideTimeOverride: bool
+
+
+class _Dashboard(TypedDict):
+    """Traffic light dashboard fixture root."""
+
+    panels: list[_Panel]
+    time: dict[str, str]
+    templating: dict[str, object]
+
+
+def load() -> _Dashboard:
+    """Load the committed traffic light dashboard."""
+    result: _Dashboard = json.loads(DASHBOARD.read_text())
+    return result
+
+
+def panel_by_id(dashboard: _Dashboard, panel_id: int) -> _Panel:
+    """Return the dashboard panel with the given id."""
     return next(item for item in dashboard["panels"] if item.get("id") == panel_id)
 
 
-def cells(grid):
+def cells(grid: _GridPos) -> list[tuple[int, int]]:
     """Grid cells covered by a panel."""
-    x = int(grid["x"])
-    y = int(grid["y"])
-    w = int(grid["w"])
-    h = int(grid["h"])
+    x = grid["x"]
+    y = grid["y"]
+    w = grid["w"]
+    h = grid["h"]
     return [(cx, cy) for cx in range(x, x + w) for cy in range(y, y + h)]
 
 
 class TrafficLightLayoutTest(unittest.TestCase):
     """Tests for TrafficLightLayoutTest."""
 
+    @override
     def setUp(self) -> None:
         self.dashboard = load()
 
@@ -81,7 +179,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
             assert isinstance(grid["h"], int), f"panel {panel['id']} fractional h"
 
     def test_panels_fill_the_tv_grid_without_holes_or_overlaps(self) -> None:
-        occupied = {}
+        occupied: dict[tuple[int, int], object] = {}
         for panel in self.dashboard["panels"]:
             grid = panel["gridPos"]
             assert grid["x"] + grid["w"] <= TV_GRID_COLUMNS
@@ -154,10 +252,11 @@ class TrafficLightLayoutTest(unittest.TestCase):
 class TrafficLightQueriesTest(unittest.TestCase):
     """Tests for TrafficLightQueriesTest."""
 
+    @override
     def setUp(self) -> None:
         self.dashboard = load()
 
-    def node_panel(self, node):
+    def node_panel(self, node: str) -> _Panel:
         digit = node.rsplit("-", 1)[1]
         return panel_by_id(
             self.dashboard,
@@ -275,9 +374,9 @@ class TrafficLightQueriesTest(unittest.TestCase):
         approved = json.loads(
             (ROOT / "tests/fixtures/traffic-light-approved-resources.json").read_text()
         )
-        for panel_id, expected in approved.items():
+        for panel_id, approved_row in approved.items():
             actual = dict(panel_by_id(self.dashboard, int(panel_id)))
-            expected = dict(expected)
+            expected = dict(approved_row)
             # Approved TMP-1: fixed top labels; metrics, capacity and geometry retained.
             actual.pop("gridPos")
             expected.pop("gridPos")
@@ -352,7 +451,10 @@ class TrafficLightQueriesTest(unittest.TestCase):
     def test_vpn_fraction_tiles_are_removed(self) -> None:
         ids = {panel["id"] for panel in self.dashboard["panels"]}
         assert ids.isdisjoint(REMOVED_VPN_FRACTION_TILE_IDS)
-        names = {item.get("name") for item in self.dashboard.get("templating", {}).get("list", [])}
+        templating = self.dashboard.get("templating", {})
+        listed = templating.get("list", [])
+        assert isinstance(listed, list)
+        names = {item.get("name") for item in listed}
         assert "vpn_now" not in names
 
     def test_new_panels_have_an_english_description(self) -> None:
