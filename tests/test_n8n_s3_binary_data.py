@@ -25,7 +25,7 @@ class N8nS3BinaryData(unittest.TestCase):
         assert "print" in source
         # CLI args come from argparse only; credentials reach mc through stdin.
         assert "sys.argv" not in source
-        assert 'stdin=(access + ' in source
+        assert "stdin=(access + " in source
         subprocess.run(
             ["python3", "-m", "py_compile", str(SCRIPT)], check=True, capture_output=True
         )
