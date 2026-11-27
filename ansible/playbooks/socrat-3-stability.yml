@@ -23,6 +23,32 @@
           - "'SP5100 TCO' in host_watchdog.stdout"
           - host_watchdog.stdout_lines[-1] | trim == '60'
 
+    - name: Reject the retired ramoops drop-in before future GRUB regeneration
+      ansible.builtin.stat:
+        path: /etc/default/grub.d/99-ramoops.cfg
+      register: unsafe_ramoops_dropin
+
+    - name: Require the known-good boot configuration
+      ansible.builtin.assert:
+        that: not unsafe_ramoops_dropin.stat.exists
+        fail_msg: Disable 99-ramoops.cfg and regenerate GRUB before rebooting.
+
+    - name: Create logind policy directory
+      ansible.builtin.file:
+        path: /etc/systemd/logind.conf.d
+        state: directory
+        mode: "0755"
+
+    - name: Keep this always-on worker awake with the lid closed
+      ansible.builtin.copy:
+        dest: /etc/systemd/logind.conf.d/90-socrat-worker.conf
+        mode: "0644"
+        content: |
+          [Login]
+          HandleLidSwitch=ignore
+          HandleLidSwitchExternalPower=ignore
+          HandleLidSwitchDocked=ignore
+
     - name: Install the C2 idle guard
       ansible.builtin.copy:
         dest: /usr/local/sbin/homelab-disable-c2

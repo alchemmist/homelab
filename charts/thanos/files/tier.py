@@ -5,6 +5,7 @@ import json
 import os
 import time
 from pathlib import Path
+from urllib.error import URLError
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
@@ -55,7 +56,15 @@ def get(url):
 
 def loaded(store):
     """Index loaded blocks by ULID, rejecting an inventory that reports a Store error."""
-    d = get("http://" + store + ":10902/api/v1/blocks?view=loaded")
+    for attempt in range(13):
+        try:
+            d = get("http://" + store + ":10902/api/v1/blocks?view=loaded")
+            break
+        except URLError as exc:
+            if not isinstance(exc.reason, ConnectionRefusedError) or attempt == 12:
+                raise
+            print(f"{store}: connection refused; retrying inventory in 10s", flush=True)
+            time.sleep(10)
     if d.get("err"):
         msg = "Store cannot load its inventory"
         raise OSError(msg)

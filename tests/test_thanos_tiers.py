@@ -90,3 +90,18 @@ def test_gaps_and_unrelated_lineage() -> None:
     b["minTime"] -= 1
     b["compaction"]["sources"] = [IDS[2]]
     assert not T.encloses(b, a, T.FIVE)
+
+
+def test_store_refusal_is_retried_before_reading_inventory(monkeypatch):
+    calls = []
+
+    def read(url):
+        calls.append(url)
+        if len(calls) == 1:
+            raise T.URLError(ConnectionRefusedError())
+        return {"blocks": []}
+
+    monkeypatch.setattr(T, "get", read)
+    monkeypatch.setattr(T.time, "sleep", lambda _: None)
+    assert T.loaded("store") == {}
+    assert len(calls) == 2
