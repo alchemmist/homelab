@@ -327,6 +327,38 @@ creates no Kubernetes Deployment/PVC and does not compete with selfHeal.
 The GitHub Git Operations incident has cleared. Local SSH authentication and `git ls-remote` work again. End-to-end LMS run **41811725828** succeeded on the final retry: robot commit **76e9902** recorded `sha256:9890519389652cdd8c8436a76f81be6bc81131174a728144ab268c4150a80167`; live Deployment uses that GHCR digest and its rollout completed. Earlier failed attempts are not successful releases. LMS remains on GHCR intentionally during HA ownership work.
 
 
+## n8n fork delivery from the private Harbor project — 2026-11-27
+
+The private `alchemmist/n8n` fork ships through the same single entry point.
+Its `socrat-cd.yml` builds the monorepo (serialized turbo, 5 GiB Node heap),
+runs the image build in buildx with a GHA layer cache (`scope=n8n-image`,
+`mode=max`), smoke-tests `/healthz/readiness`, pushes a git-SHA tag to
+`harbor.socrat.alchemmist.xyz/n8n/n8n`, and then invokes
+`alchemmist/deploy-to-socrat@v1` to write the new digest into
+`deploy/n8n/values.yaml` and `charts/n8n/values.yaml`. Argo applies it;
+nothing in CI touches Argo or Helm directly.
+
+Registry access follows the one-project-per-service rule: Harbor project `n8n`
+(id 5, private) with robot `$n8n+ci` (push+pull, CI secret) and robot
+`$n8n+pull` (pull-only) for the cluster. Robot secrets live outside Git and
+are mirrored to `automation/n8n-harbor-pull` (`kubernetes.io/dockerconfigjson`),
+referenced by `imagePullSecrets` in the chart. Robot accounts expire after 90
+days; rotate them and update the two secrets (GitHub Actions and the
+namespace Secret) in the same maintenance window.
+
+Two operational lessons from the first runs. The n8n image compile
+(isolated-vm rebuilt for musl) takes ~2h on a 2-vCPU runner, so the Dockerfile
+builds it standalone from a pinned version — that layer is cacheable and later
+releases reuse it in minutes. The stock runner image also ran out of disk
+(worker died with `No space left on device`, which also eats the raw job
+logs); the workflow now drops the preinstalled Android/.NET/GHC SDKs and prunes
+pnpm/docker state before the image build. The first green run was
+`alchemmist/n8n` run 46037236582 -> digest
+`sha256:fb011be7cafe421b0bd78bf3faf15f07194cad7fbd0f17be7e3c4cc4431845c5`;
+`n8n` reported `Synced/Healthy` and `/healthz` returned 200 after the rollout.
+The previous live digest (`sha256:0ffba3a2...831df`) was mirrored into the
+Harbor project first, so the registry switch itself changed no image bytes.
+
 ## Public entrances belong to the applications — 2026-11-07
 
 **The separate Argo Application `public-web-entry` was removed from Git and
