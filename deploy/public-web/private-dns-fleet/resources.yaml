@@ -395,7 +395,7 @@ data:
   db.alchemmist.xyz: |
     $ORIGIN alchemmist.xyz.
     $TTL 60
-    @ IN SOA ns1.alchemmist.xyz. hostmaster.alchemmist.xyz. (2026112601 60 30 604800 60)
+    @ IN SOA ns1.alchemmist.xyz. hostmaster.alchemmist.xyz. (2026112701 60 30 604800 60)
     @ IN NS ns1.alchemmist.xyz.
     @ IN NS ns2.alchemmist.xyz.
     @ IN NS ns3.alchemmist.xyz.
@@ -440,7 +440,7 @@ data:
     llm IN A 109.120.141.60
     llm.socrat IN A 109.120.141.60
     lms IN A 109.120.141.60
-    monori IN A 109.120.141.60
+    monori IN A 109.173.40.247
     n8n.socrat IN A 109.120.141.60
     netbird.socrat IN A 109.120.141.60
     openhands.socrat IN A 109.120.141.60
@@ -493,7 +493,7 @@ spec:
       labels:
         app.kubernetes.io/instance: authority-nl
       annotations:
-        homelab.alchemmist.xyz/zone-hash: ddc21c4d25203964dd8004c2c596cc78bc9fb474e7182d3185eb1b26b497158a
+        homelab.alchemmist.xyz/zone-hash: 629101df7f0efc06c3de42e0e1e1e2171d7ba6504d695312ce93f1b42c902488
     spec:
       nodeSelector:
         kubernetes.io/hostname: socrat-2

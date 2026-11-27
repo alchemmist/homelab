@@ -423,3 +423,8 @@ reader. The actual inventory must still match the reviewed plan exactly. Never b
 Git wholesale. A name pin is not proof of the key bytes, the authority of a
 namespace writer or successful TLS delivery; validate leaf material and test
 the listener independently. The private DNS stage needs neither pins nor keys.
+
+Monori is a regional exception to private self-IP rendering: only reviewed HOME
+and Moscow instances may return their own IP for it. NL and new unreviewed
+instances return the fixed HOME fixture address instead. This is not a live
+health choice or a configuration for the production Knot publisher.

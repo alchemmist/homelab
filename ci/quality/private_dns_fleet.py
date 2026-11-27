@@ -31,7 +31,9 @@ def render() -> str:
     catalog = yaml.safe_load(CATALOG.read_text())
     documents = []
     for name, instance in sorted(catalog["replicas"].items()):
-        values = replica_values(catalog, instance, SERIAL)
+        # Advance only the changed private zone; do not roll healthy neighbors.
+        serial = 2026112701 if name == "nl" else SERIAL
+        values = replica_values(catalog, instance, serial)
         values["stage"] = "dns-only"
         raw = subprocess.check_output(
             [

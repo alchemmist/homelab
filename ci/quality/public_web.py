@@ -44,9 +44,17 @@ def replica_values(catalog: dict, instance: dict, serial: int) -> dict:
     if any(host != ZONE and not host.endswith("." + ZONE) for host in managed):
         raise ValueError("Managed web host outside the authoritative zone")
     owners = {"@" if host == ZONE else host.removesuffix("." + ZONE) for host in managed}
+    answers = dict.fromkeys(owners, address)
+    if MONORI in managed:
+        # Unknown future entrances are not implicitly approved for the regional host.
+        allowed = [catalog["replicas"][site] for site in eligible_sites(MONORI)]
+        if instance not in allowed:
+            answers[MONORI.removesuffix("." + ZONE)] = str(
+                ipaddress.IPv4Address(allowed[0]["publicIP"])
+            )
     # Pure offline baseline. Never probe, write or invoke the live Knot publisher.
     zone = runpy.run_path(str(ROOT / "ansible/scripts/public_dns_zone.py"))["render"](
-        serial, True, True, web_answers=dict.fromkeys(owners, address)
+        serial, True, True, web_answers=answers
     )
     return {"instance": instance, "publications": publications, "zoneFile": zone}
 

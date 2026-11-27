@@ -80,7 +80,13 @@ def test_every_replica_is_the_same_except_placement_and_local_a() -> None:
                 else None
             )
             if host in expected and fields[1:3] == ["IN", "A"]:
-                assert fields[3:] == [instance["publicIP"]]
+                expected_ip = instance["publicIP"]
+                if (
+                    host == "monori.alchemmist.xyz"
+                    and instance != catalog["replicas"]["moscow"]
+                ):
+                    expected_ip = catalog["replicas"]["home"]["publicIP"]
+                assert fields[3:] == [expected_ip]
                 observed.append(host)
                 normalized.append(f"{host} SELF")
             else:
