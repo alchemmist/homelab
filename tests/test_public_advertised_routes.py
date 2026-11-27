@@ -163,3 +163,27 @@ def test_selfip_requires_all_direct_routes(monkeypatch, broken):
         ),
     )
     assert checks.main() == int(broken)
+
+
+@pytest.mark.parametrize(
+    "fault", [None, "same", "cross", "ambiguous", "missing", "unknown"]
+)
+def test_tls_domain_requires_positive_and_negative_controls(fault):
+    from ci.quality.blog_tls_path import correlated
+
+    rows = {
+        "a": {"a": "resumed", "b": "full-handshake"},
+        "b": {"a": "full-handshake", "b": "resumed"},
+        "s": {"a": "resumed", "b": "full-handshake"},
+    }
+    if fault == "same":
+        rows["a"]["a"] = "full-handshake"
+    elif fault == "cross":
+        rows["a"]["b"] = "resumed"
+    elif fault == "ambiguous":
+        rows["s"]["b"] = "resumed"
+    elif fault == "missing":
+        del rows["s"]["a"]
+    elif fault == "unknown":
+        rows["s"]["b"] = "unverified"
+    assert correlated(rows, ["a", "b"], ["s"]) == ({} if fault else {"s": "a"})
