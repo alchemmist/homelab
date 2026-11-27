@@ -11,14 +11,13 @@ import json
 import select
 import socket
 import ssl
-import subprocess
 import time
 from collections.abc import Iterable
 
 import yaml
 
 from ci.quality.closed_root_backend import entries, plain, view
-from ci.quality.common import command
+from ci.quality.common import command, spawn
 from ci.quality.public_web import CATALOG
 
 HOST = "www.alchemmist.xyz"
@@ -101,9 +100,7 @@ def _loopback_forward(stack: contextlib.ExitStack) -> tuple[str, int]:
     tunnel += ["-o", "ControlMaster=no"]
     tunnel += ["-o", "ControlPath=none"]
     tunnel += ["-N", "-L", SSH_FORWARD_TARGET.format(port=local), "socrat-2"]
-    # S603/S607: a live reviewed ssh forwarder operand (no partial-path shell),
-    # mirroring the audited forwarders this probe exists to exercise.
-    proc = subprocess.Popen(tunnel, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    proc = spawn(tunnel, capture=False)
     stack.callback(proc.wait, 5)
     stack.callback(proc.terminate)
     deadline = time.monotonic() + 8
@@ -131,8 +128,7 @@ def _pod_forward(stack: contextlib.ExitStack, row: tuple[str, str, str, int]) ->
         POD_SCOPE_PREFIX + name,
         ":" + str(port),
     ]
-    # S603: the reviewed kubectl forward operand, same audited gate as inventory().
-    proc = subprocess.Popen(forwarded, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    proc = spawn(forwarded, capture=True)
     stack.callback(proc.wait, 5)
     stack.callback(proc.terminate)
     if proc.stdout is None:

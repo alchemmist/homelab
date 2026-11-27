@@ -27,6 +27,9 @@
         "INP001",
         "T201"
       ],
+      "ci/quality/common.py": [
+        "S603"
+      ],
       "scripts/**": [
         "INP001",
         "T201",

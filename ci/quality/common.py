@@ -83,6 +83,23 @@ def command(
     return process
 
 
+def spawn(
+    argv: Sequence[str | os.PathLike[str]],
+    *,
+    capture: bool,
+) -> subprocess.Popen[bytes]:
+    """Start one reviewed long-running tool (forwarder/prober) with a fixed argv, never a shell.
+
+    The caller keeps the handle and terminates it via an ExitStack callback;
+    stderr is never exposed because it can contain Secret values.
+    """
+    return subprocess.Popen(
+        argv,
+        stdout=subprocess.PIPE if capture else subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
 def tracked() -> list[str]:
     """Return sorted regular files tracked by git, rejecting paths outside the repository."""
     names = command(["git", "ls-files", "-z"]).stdout.split("\0")
