@@ -115,3 +115,40 @@ renew or replace the previous witnesses in that case either.
 This serializes commits **only in one gate process**. The HTTP API and child
 observations were fixture data. No cross-resource transaction, multi-worker
 consensus, authoritative CA observation or sustained API load was tested.
+
+## Three independent consumers with one control-plane partition
+
+Three separate Traefik processes and gate processes (independent in-memory
+tables and local clocks) shared a synthetic HTTP API on an internal Docker
+control network. A separate internal data network carried requests to the two
+stock solvers. Each ordinary marker was local to its replica. No host ports,
+cluster addresses, VPN peers or real ACME account were used. These are three
+logical consumers on one Docker host, **not** geographical survivor tests.
+
+After each consumer admitted both paths from the same two-page inventory,
+the third consumer's network namespace was disconnected from the API bridge
+only. The API was changed to report just the second task. The two connected
+consumers each completed one page and one child lookup; the disconnected one
+failed its first page and performed no child lookup. With both solvers alive:
+
+| Fresh HTTP sweep | First consumer | Second consumer | Disconnected consumer |
+| --- | --- | --- | --- |
+| Before withdrawal | 200/200 | 200/200 | 200/200 |
+| After connected consumers saw withdrawal | 410/200 | 410/200 | **200/200** |
+| After the first local budget elapsed | 410/200 | 410/200 | **410/200** |
+| After control-network reconnect and fresh remaining-only scan | 410/200 | 410/200 | 410/200 |
+| After a new two-task inventory and three successful scans | 200/200 | 200/200 | 200/200 |
+
+Pairs refer to the two distinct exact paths. Successful bodies were compared
+to their respective solver responses; refusals contained neither. The lagging
+consumer fetched the first backend twice (baseline and the stale sweep), not
+again on expiry. All ordinary roots, adjacent paths and wrong-host controls
+kept their expected results; all three ordinary configuration files remained
+byte-identical. Containers and both networks were removed.
+
+The fixture used 30 s and 180 s windows. This demonstrates bounded local age
+**at the sampled request checks**, not simultaneous withdrawal or a hard limit
+on bytes already in flight. Under prolonged isolation the second slot would
+also lose its authorization at its own deadline; this run did not wait for
+that deadline. Do not infer independent DNS, public issuance, application
+survival or VPN failover from this control-plane partition.
