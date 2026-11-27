@@ -390,3 +390,36 @@ TLS, HTTP 200 and a bounded JSON object with boolean `ok: true`. A TLS failure
 prevents sending the HTTP request. The external name remains owner-controlled;
 `bot.sch1357.ru` is never probed. A passing health response does not prove DNS,
 user login, database operations, or independence from another public entrance.
+
+### Pin source names independently of observed objects
+
+`uv run python -m ci.quality.public_tls_pins` accepts the same Ingress and
+Certificate JSON list as the TLS inventory. A consistent pair of live objects
+is not independent approval to fetch a newly referenced key. `tlsSourceName`
+may appear on exactly one ordinary namespace/host owner per DNS name and
+identifies a Secret **only in that namespace**. Other path owners need no key
+pin. The comparison emits no reader plan if any ordinary host has a missing,
+ambiguous, malformed or mismatched pin or if the inventory has errors. It does
+not render or apply RBAC, read Secrets, or change DNS ownership.
+
+Offline review covers all 37 ordinary names, with exactly one namespace-local
+pin each and 35 distinct sources (blog apex/www and the two RustFS aliases
+share pairs). Local Helm renders check both referencing routes and the unique
+issuance request: an issuer-annotated Ingress or an explicit Certificate, not
+every Ingress that uses the key. In particular `llm/litellm` requests issuance;
+`llm/litellm-branding` only reuses `litellm-public-tls`. Private Certificates
+in `syncthing` covering public alias names do not authorize that namespace as
+their public key source. The fixed NetBird VPS relay remains excluded.
+
+For Argo CD, repeat the independently verified external chart render with
+`helm pull argo/argo-cd --version 10.11.6` (official Argo Helm repository),
+then `uv run python -m ci.quality.public_argocd_tls argo-cd-10.11.6.tgz`.
+The checker verifies the reviewed archive digest **before** invoking Helm;
+CI checks the declared version, inputs and pin without downloading a chart.
+Rancher uses the Kubernetes version from the repository k3s defaults, not
+Helm's possibly newer synthetic default. None of these offline checks establishes
+live writer readiness, route admission, served TLS or permission to grant a
+reader. The actual inventory must still match the reviewed plan exactly. Never bootstrap the pins by copying audit output into
+Git wholesale. A name pin is not proof of the key bytes, the authority of a
+namespace writer or successful TLS delivery; validate leaf material and test
+the listener independently. The private DNS stage needs neither pins nor keys.

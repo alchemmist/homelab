@@ -47,7 +47,13 @@ def test_catalog_scope() -> None:
     for ns, hosts in CAT.items():
         for host, policy in hosts.items():
             assert re.fullmatch(r"[a-z0-9-]+(?:\.[a-z0-9-]+)+", host)
-            assert set(policy) <= {"dns", "route"}
+            assert set(policy) <= {"dns", "route", "tlsSourceName"}
+            if "tlsSourceName" in policy:
+                assert policy.get("route", "web") == "web"
+                assert len(policy["tlsSourceName"]) <= 253 and all(
+                    re.fullmatch(r"[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?", label)
+                    for label in policy["tlsSourceName"].split(".")
+                )
             assert policy.get("route", "web") in {
                 "web",
                 "reserved",

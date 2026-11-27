@@ -6,70 +6,70 @@ replicas:
   moscow: {node: socrat-4, publicIP: 91.189.82.238}
 hosts:
   argocd:
-    argocd.socrat.alchemmist.xyz: {dns: managed}
+    argocd.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: argocd-server-tls}
   automation:
-    n8n.socrat.alchemmist.xyz: {dns: managed}
-    spi.socrat.alchemmist.xyz: {dns: managed}
+    n8n.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: n8n-public-tls}
+    spi.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: spi-queue-tls}
   blog:
-    alchemmist.xyz: {dns: managed}
-    www.alchemmist.xyz: {dns: managed}
+    alchemmist.xyz: {dns: managed, tlsSourceName: blog-tls}
+    www.alchemmist.xyz: {dns: managed, tlsSourceName: blog-tls}
   cats:
-    cats.alchemmist.xyz: {dns: managed}
+    cats.alchemmist.xyz: {dns: managed, tlsSourceName: cats-tls}
   cattle-system:
-    rancher.socrat.alchemmist.xyz: {dns: managed}
+    rancher.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: public-web-rancher-tls}
   cattle-monitoring-system:
-    grafana-mcp.socrat.alchemmist.xyz: {dns: managed}
+    grafana-mcp.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: public-web-grafana-mcp-tls}
   format-quorum:
-    fq.alchemmist.xyz: {dns: managed}
+    fq.alchemmist.xyz: {dns: managed, tlsSourceName: format-quorum-tls}
   harbor:
-    harbor.socrat.alchemmist.xyz: {dns: managed}
+    harbor.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: harbor-tls}
   identity:
-    auth.socrat.alchemmist.xyz: {dns: managed}
-    grafana.socrat.alchemmist.xyz: {dns: managed}
+    auth.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: authentik-tls}
+    grafana.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: public-web-grafana-tls}
     netbird-relay-vps.socrat.alchemmist.xyz: {dns: static, route: fixed-relay}
-    netbird.socrat.alchemmist.xyz: {dns: managed}
-    openhands.socrat.alchemmist.xyz: {dns: managed}
-    rustfs.socrat.alchemmist.xyz: {dns: managed}
-    spi-evidence.socrat.alchemmist.xyz: {dns: managed}
+    netbird.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: netbird-pilot-tls}
+    openhands.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: openhands-oidc-tls}
+    rustfs.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: rustfs-browser-tls}
+    spi-evidence.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: rustfs-browser-tls}
   img-proxy:
-    img.alchemmist.xyz: {dns: managed}
+    img.alchemmist.xyz: {dns: managed, tlsSourceName: img-proxy-tls}
   llm:
-    chat.alchemmist.xyz: {dns: managed}
-    litellm.socrat.alchemmist.xyz: {dns: managed}
-    llm.alchemmist.xyz: {dns: managed}
-    llm.socrat.alchemmist.xyz: {dns: managed}
-    search.socrat.alchemmist.xyz: {dns: managed}
+    chat.alchemmist.xyz: {dns: managed, tlsSourceName: open-webui-tls}
+    litellm.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: public-web-litellm-alias-tls}
+    llm.alchemmist.xyz: {dns: managed, tlsSourceName: litellm-public-tls}
+    llm.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: public-web-webui-alias-tls}
+    search.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: public-web-search-tls}
   lms:
-    lms.alchemmist.xyz: {dns: managed}
+    lms.alchemmist.xyz: {dns: managed, tlsSourceName: lms-tls}
   monori:
-    monori.alchemmist.xyz: {dns: managed}
+    monori.alchemmist.xyz: {dns: managed, tlsSourceName: monori-tls}
   pr-agent:
-    pr-agent.socrat.alchemmist.xyz: {dns: managed}
+    pr-agent.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: pr-agent-tls}
   remark42:
-    remark42.alchemmist.xyz: {dns: managed}
+    remark42.alchemmist.xyz: {dns: managed, tlsSourceName: remark42-tls}
   socrat-bot:
-    bot.socrat.alchemmist.xyz: {dns: managed}
+    bot.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: socrat-bot-tls}
   socrat-home:
-    socrat.alchemmist.xyz: {dns: managed}
+    socrat.alchemmist.xyz: {dns: managed, tlsSourceName: socrat-home-tls}
   syncthing:
-    0.socrat.alchemmist.xyz: {dns: managed}
-    1.socrat.alchemmist.xyz: {dns: managed}
+    0.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: public-web-syncthing-0-tls}
+    1.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: public-web-syncthing-1-tls}
   umami:
-    umami.alchemmist.xyz: {dns: managed}
+    umami.alchemmist.xyz: {dns: managed, tlsSourceName: umami-tls}
   venice-api:
-    venice.socrat.alchemmist.xyz: {dns: managed}
+    venice.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: venice-api-tls}
   uptime-kuma:
-    kuma.socrat.alchemmist.xyz: {dns: managed}
-    status.alchemmist.xyz: {dns: managed}
+    kuma.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: public-web-kuma-admin-tls}
+    status.alchemmist.xyz: {dns: managed, tlsSourceName: uptime-kuma-tls}
   wiki:
-    wiki.socrat.alchemmist.xyz: {dns: managed}
+    wiki.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: wiki-tls}
   wishlist:
-    wishlist.alchemmist.xyz: {dns: managed}
+    wishlist.alchemmist.xyz: {dns: managed, tlsSourceName: wishlist-tls}
   traefik-edge:
     vpn.alchemmist.xyz: {dns: static, route: vpn-transit}
   schoolbot:
     bot.sch1357.ru: {dns: external, route: reserved}
-    inform.sch1357.ru: {dns: external}
+    inform.sch1357.ru: {dns: external, tlsSourceName: schoolbot-tls}
   rustfs:
     rustfs.socrat.alchemmist.xyz: {dns: managed}
     socrat.alchemmist.xyz: {dns: managed}
