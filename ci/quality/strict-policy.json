@@ -30,6 +30,13 @@
       "ci/quality/common.py": [
         "S603"
       ],
+      "ci/vpn/**": [
+        "S603",
+        "S607"
+      ],
+      "ci/vpn/vpn-home-nl-udp-probe.py": [
+        "S101"
+      ],
       "scripts/**": [
         "INP001",
         "T201",

@@ -20,6 +20,14 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # execution site every ci tool routes through (fixed argv, no shell, bounded,
 # failure output never published). All other modules must use command()/spawn().
 "ci/quality/common.py" = ["S603"]
+# Copy-deployed VPN operational programs (persist() ships these single files
+# to hosts without a repo checkout): reviewed fixed-operand subprocess calls
+# are their documented function, and routing them through ci.quality.common
+# would break the single-file deployment contract.
+"ci/vpn/**" = ["S603", "S607"]
+# The pinned hostname/timeout asserts are the reviewed hard stops whose exact
+# AST the probe tests pin structurally.
+"ci/vpn/vpn-home-nl-udp-probe.py" = ["S101"]
 # Operational single-file programs below are deployed by copy (no package
 # layout makes sense): stdout is their CLI contract, subprocess/urllib calls on
 # reviewed fixed operands are their purpose, sys.path or bootstrap code can
