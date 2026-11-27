@@ -1,0 +1,73 @@
+{{- $catalog := required "entrance catalog required" .Values.replicas -}}
+{{- if ne (dig "schoolbot" "inform.sch1357.ru" "tlsSourceName" "" .Values.hosts) "schoolbot-tls" }}{{ fail "expected ordinary Schoolbot owner" }}{{ end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: closed-health
+  annotations: {argocd.argoproj.io/sync-wave: '-1'}
+spec:
+  podSelector: {matchLabels: {app: closed-health}}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: schoolbot}}
+          podSelector: {matchLabels: {app.kubernetes.io/instance: schoolbot, app.kubernetes.io/name: schoolbot}}
+      ports: [{port: 8000, protocol: TCP}]
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: closed-health}
+data:
+  dynamic.yaml: |
+    http:
+      routers:
+        health:
+          entryPoints: [closed]
+          rule: 'Host(`inform.sch1357.ru`) && Method(`GET`) && Path(`/api/health`)'
+          service: schoolbot
+      services:
+        schoolbot:
+          loadBalancer:
+            servers: [{url: 'http://schoolbot.schoolbot.svc.cluster.local:80'}]
+{{- range $name, $instance := $catalog }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: closed-health-{{ $name }}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: closed-health, entrance: {{ $name }}}}
+  template:
+    metadata: {labels: {app: closed-health, entrance: {{ $name }}}}
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector: {kubernetes.io/hostname: {{ $instance.node }}}
+      {{- if eq $name "moscow" }}
+      tolerations: [{key: homelab.io/bootstrap, operator: Equal, value: 'true', effect: NoSchedule}]
+      {{- end }}
+      securityContext: {runAsNonRoot: true, runAsUser: 65532, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: listener
+          image: rancher/mirrored-library-traefik@sha256:aa942a00bce033c909bf1f7e861d93761be4b31a035f10d2410d33e38a8f41cf
+          args:
+            - --entrypoints.closed.address=127.0.0.1:8181
+            - --providers.file.directory=/route
+            - --api=false
+            - --log.level=ERROR
+            - --serverstransport.forwardingtimeouts.dialtimeout=3s
+          readinessProbe:
+            exec: {command: [sh, -ec, 'wget -q -O /dev/null --header="Host: inform.sch1357.ru" http://127.0.0.1:8181/api/health']}
+            periodSeconds: 30
+            timeoutSeconds: 8
+          resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 128Mi}}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          volumeMounts: [{name: routes, mountPath: /route, readOnly: true}]
+      volumes: [{name: routes, configMap: {name: closed-health}}]
+{{- end }}
