@@ -1,0 +1,5 @@
+---
+apiVersion: v2
+name: closed-health
+version: 0.1.0
+description: Loopback-only Schoolbot health listeners for private entrance staging

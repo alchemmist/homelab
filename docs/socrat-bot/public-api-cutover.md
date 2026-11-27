@@ -1,5 +1,9 @@
 # Scoped bot API cutover
 
+Production uses the [English token console](https://bot.socrat.alchemmist.xyz/) and the scoped `/api/v1` API. Sign in through Authentik as a member of **either** `socrat-bot-admin` or `homelab-owner`. Basic login is retired. SPI and both n8n alert workflows use separate grants; legacy handlers are disabled. For issue, rotation and revocation see the [operator guide](https://github.com/alchemmist/socrat-bot/blob/main/docs/public-api.md).
+
+## Cutover and recovery procedure
+
 Do not enable these switches on a bot image without API grants (migration 0026).
 Keep `/telegram/webhook` and webhook secrets unchanged. Probe `/healthz` privately;
 monitoring probes are not business API clients. Never publish a prefix route for `/`.
