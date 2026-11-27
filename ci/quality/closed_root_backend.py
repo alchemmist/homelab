@@ -115,7 +115,9 @@ def servers(
             ):
                 raise ValueError("endpoint does not match an admitted ready Pod")
             addresses = ep.get("addresses", [])
-            if not status.get("podIP") or len(addresses) != 1 or addresses[0] != status["podIP"]:
+            if not status.get("podIP"):
+                raise ValueError("missing observed Pod IP")
+            if len(addresses) != 1 or addresses[0] != status["podIP"]:
                 raise ValueError("endpoint and Pod IP disagree")
             ip = IPv4Address(addresses[0])
             if (

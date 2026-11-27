@@ -416,6 +416,10 @@ def test_closed_backend_uses_schoolbot_owner_service_and_verified_pod_destinatio
         )
 
     assert build(svc, sl, pod) == [{"url": f"http://{addr}:8000"}]
+    missing_ip = copy.deepcopy(pod)
+    del missing_ip["status"]["podIP"]
+    with pytest.raises(ValueError, match="missing observed Pod IP"):
+        build(svc, sl, missing_ip)
     with pytest.raises(ValueError, match="duplicate Pod UID"):
         servers(svc, [sl], [pod, pod], expected=(ns, "schoolbot", 80), pod_network=IPv4Network("10.42.0.0/16"))
     for case in (
