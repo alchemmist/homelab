@@ -50,8 +50,23 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
-      {{- if .Values.serviceVpn.enabled }}
       initContainers:
+        # Pin the controller ABI; an image upgrade requires reviewing this narrow guard.
+        - name: oidc-only-login
+          image: {{ .Values.image | quote }}
+          command: [node, -e]
+          args:
+            - |
+              const fs = require('fs'), crypto = require('crypto');
+              const src = fs.readFileSync('/usr/local/lib/node_modules/n8n/dist/controllers/auth.controller.js', 'utf8');
+              if (crypto.createHash('sha256').update(src).digest('hex') !== '12fd77c59ecc35d68690bb5e02b3e943605105c90865d973b995bc8b33f971a5') throw Error('Review n8n password handler before upgrade');
+              const marker = 'async login(req, res, payload) {';
+              if (src.split(marker).length !== 2) throw Error('Unexpected n8n password handler');
+              fs.writeFileSync('/guard/auth.controller.js', src.replace(marker, marker + " throw new forbidden_error_1.ForbiddenError('Use Authentik OIDC');"));
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {cpu: 200m, memory: 96Mi}}
+          volumeMounts: [{name: login-guard, mountPath: /guard}]
+      {{- if .Values.serviceVpn.enabled }}
         - name: prepare-service-vpn
           image: {{ .Values.image | quote }}
           command: [node, /vpn-script/prepare.js]
@@ -147,6 +162,7 @@ spec:
               port: http
             initialDelaySeconds: 30
           volumeMounts:
+            - {name: login-guard, mountPath: /usr/local/lib/node_modules/n8n/dist/controllers/auth.controller.js, subPath: auth.controller.js, readOnly: true}
             {{- if .Values.postgresCaConfigMap }}
             - {name: pg-common-ca, mountPath: /etc/pg-common, readOnly: true}
             {{- end }}
@@ -177,6 +193,7 @@ spec:
             - {name: service-vpn-runtime, mountPath: /vpn-runtime, readOnly: true}
         {{- end }}
       volumes:
+        - {name: login-guard, emptyDir: {sizeLimit: 1Mi}}
         {{- if .Values.postgresCaConfigMap }}
         - name: pg-common-ca
           configMap: {name: {{ .Values.postgresCaConfigMap | quote }}}
