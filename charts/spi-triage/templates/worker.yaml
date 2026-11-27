@@ -61,8 +61,11 @@ spec:
               from pathlib import Path
               text = Path("/app/telegram_delivery.py").read_text()
               {{- if .Values.publicBotApi }}
-              for old in ("http://10.250.0.2:8082", "http://socrat-bot.socrat-bot.svc:8080"):
-                  text = text.replace(old, "https://bot.socrat.alchemmist.xyz/api")
+              bases = ("BASE='http://10.250.0.2:8082'", "BASE='http://socrat-bot.socrat-bot.svc:8080'")
+              matches = [line for line in text.splitlines() if line.startswith("BASE=")]
+              if len(matches) != 1 or matches[0] not in bases or "Request(BASE+path," not in text:
+                  raise SystemExit("unexpected bot URL construction")
+              text = text.replace(matches[0], "BASE='https://bot.socrat.alchemmist.xyz/api'", 1)
               old = "'X-Internal-Token':self.token"
               if old not in text or "https://bot.socrat.alchemmist.xyz/api" not in text:
                   raise SystemExit("unexpected bot client format")
