@@ -1,14 +1,56 @@
 """Inventory the backend and middleware dependencies of every ordinary public Ingress."""
 
+import hashlib
 import json
 import sys
 from collections import defaultdict
+from urllib.parse import urlsplit
 
 import yaml
 
 from ci.quality.public_web import CATALOG
 
 PREFIX = "traefik.ingress.kubernetes.io/"
+
+
+def _fingerprint(spec: dict) -> str:
+    """Detect body drift without including CRD payloads in reports."""
+    return hashlib.sha256(
+        json.dumps(spec, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
+def _middleware_kind(spec: dict) -> str | None:
+    """Recognize just the two self-contained owner shapes rehearsed so far."""
+    if set(spec) == {"forwardAuth"}:
+        body = spec["forwardAuth"]
+        if not isinstance(body, dict) or set(body) != {"address", "trustForwardHeader"}:
+            return None
+        if body["trustForwardHeader"] is not False or not isinstance(body["address"], str):
+            return None
+        try:
+            url = urlsplit(body["address"])
+            if (
+                url.scheme == "https"
+                and url.hostname
+                and url.username is None
+                and not url.query
+                and not url.fragment
+                and url.path.startswith("/")
+            ):
+                return "forwardAuth"
+        except ValueError:
+            return None
+    if set(spec) == {"redirectRegex"}:
+        body = spec["redirectRegex"]
+        if (
+            isinstance(body, dict)
+            and set(body) == {"regex", "replacement", "permanent"}
+            and type(body["permanent"]) is bool
+            and all(isinstance(body[k], str) and body[k] for k in ("regex", "replacement"))
+        ):
+            return "redirectRegex"
+    return None
 
 
 def inventory(catalog: dict, items: list[dict]) -> dict:
@@ -54,9 +96,17 @@ def inventory(catalog: dict, items: list[dict]) -> dict:
                 continue
             seen.add((ns, host))
             ident = f"{ns}/{name} {host}"
+            middleware_bodies = []
             for mw in middlewares:
                 if len(crds["Middleware", mw]) != 1:
                     errors.add(f"{ident}: middleware missing or ambiguous: {mw}")
+                    continue
+                body = crds["Middleware", mw][0]["spec"]
+                kind = _middleware_kind(body)
+                if not kind:
+                    errors.add(f"{ident}: unreviewed middleware body: {mw}")
+                    continue
+                middleware_bodies.append({"ref": mw, "kind": kind, "sha256": _fingerprint(body)})
             paths = rule.get("http", {}).get("paths", [])
             if not paths:
                 errors.add(f"{ident}: missing HTTP paths")
@@ -97,16 +147,21 @@ def inventory(catalog: dict, items: list[dict]) -> dict:
                 if scheme not in {"http", "https", "h2c"}:
                     errors.add(f"{ident}: unsupported backend scheme")
                 transport = sa.get(PREFIX + "service.serverstransport")
+                transport_digest = None
                 if transport:
                     matches = crds["ServersTransport", transport]
                     if (
                         len(matches) != 1
-                        or matches[0]["spec"].get("insecureSkipVerify", False)
+                        or set(matches[0]["spec"]) - {"serverName", "insecureSkipVerify"}
+                        or scheme != "https"
+                        or matches[0]["spec"].get("insecureSkipVerify", False) is not False
                         or not matches[0]["spec"].get("serverName")
                     ):
                         errors.add(
                             f"{ident}: missing, ambiguous or unverified backend transport {transport}"
                         )
+                    else:
+                        transport_digest = _fingerprint(matches[0]["spec"])
                 ready = any(
                     any(
                         p.get("name", "") == port.get("name", "")
@@ -137,6 +192,8 @@ def inventory(catalog: dict, items: list[dict]) -> dict:
                         "scheme": scheme,
                         "transport": transport,
                         "middlewares": middlewares,
+                        "middlewareBodies": middleware_bodies,
+                        "transportDigest": transport_digest,
                         "priority": ann.get(PREFIX + "router.priority"),
                         "readyEndpoint": ready,
                     }

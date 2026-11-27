@@ -62,7 +62,16 @@ def fixture() -> tuple[dict, list[dict]]:
         ing,
         service,
         slices,
-        item("Middleware", "guard", spec={"forwardAuth": {}}),
+        item(
+            "Middleware",
+            "guard",
+            spec={
+                "forwardAuth": {
+                    "address": "https://site.test/auth",
+                    "trustForwardHeader": False,
+                }
+            },
+        ),
         item(
             "ServersTransport",
             "verified",
@@ -235,3 +244,39 @@ def test_host_compilation_does_not_return_fallback_without_blocked_specific_rout
     with pytest.raises(ValueError, match="scope review"):
         unchanged_host_matchers("site.test", paths, source_strict=False)
     assert len(unchanged_host_matchers("site.test", paths, source_strict=True)) == 2
+
+
+def test_same_ref_body_changes_are_visible_without_dumping_contents():
+    catalog, objects = fixture()
+    before = inventory(catalog, objects)
+    assert not before["errors"]
+    objects[3]["spec"]["forwardAuth"]["address"] = "https://site.test/other-auth"
+    objects[4]["spec"]["serverName"] = "other.test"
+    after = inventory(catalog, objects)
+    assert not after["errors"]
+    old, new = before["routes"][0], after["routes"][0]
+    assert (
+        old["middlewareBodies"] != new["middlewareBodies"]
+        and old["transportDigest"] != new["transportDigest"]
+    )
+    assert (
+        old["middlewares"] == new["middlewares"]
+        and old["transport"] == new["transport"]
+    )
+    assert "other-auth" not in str(after) and "other.test" not in str(after)
+
+
+@pytest.mark.parametrize(
+    "change", ["trust", "chain", "transport-option", "middleware-option"]
+)
+def test_unrehearsed_crd_shapes_block_route_comparison(change):
+    catalog, objects = fixture()
+    if change == "trust":
+        objects[3]["spec"]["forwardAuth"]["trustForwardHeader"] = True
+    elif change == "chain":
+        objects[3]["spec"] = {"chain": {"middlewares": [{"name": "unknown"}]}}
+    elif change == "middleware-option":
+        objects[3]["spec"]["forwardAuth"]["authResponseHeaders"] = ["X-Fixture"]
+    else:
+        objects[4]["spec"]["rootCAsSecrets"] = ["some-ca"]
+    assert inventory(catalog, objects)["errors"]

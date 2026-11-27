@@ -316,3 +316,17 @@ HOME's Ansible role preserves unrelated live HelmChartConfig values, so its
 inputs alone cannot certify the live arguments. Moscow's old restricted
 private rehearsal is not a third independent public web policy. None of these
 observations substitutes for the running controllers' effective config.
+
+The backend inventory also fingerprints the **ordered referenced CRD bodies**,
+not just their names. A middleware or transport can change under the same
+name: compare the captured source body digest with the reviewed body used in
+the candidate. The report does not include URL, regex or replacement contents.
+The recognized shapes are deliberately narrow: explicit HTTPS forward-auth
+without trusting forwarded headers, a single redirect-regex middleware, and an
+HTTPS transport with a verification name and no verification bypass. Other
+options, including chained middleware and CA Secret references, require their
+own dependency and authorization review; the report blocks rather than losing
+them in translation. Recognition is not approval of the address, regex, or TLS
+name and is not proof of equivalent runtime behavior. The offline unified-origin
+RustFS chart's `rustfs-browser-auth` was recognized as `forwardAuth`; no live
+CRD was fetched or changed for this check.
