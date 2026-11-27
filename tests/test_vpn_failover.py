@@ -9,7 +9,10 @@ from unittest import mock
 
 import pytest
 
-SOURCE = Path(__file__).resolve().parents[1] / "ansible/roles/vpn_failover/files/vpn_failover.py"
+SOURCE = (
+    Path(__file__).resolve().parents[1]
+    / "ansible/roles/vpn_failover/files/vpn_failover.py"
+)
 
 # Named mirrors of the watchdog defaults asserted below.
 WEBSOCKET_FORBIDDEN_STATUS = 403
@@ -44,6 +47,9 @@ class FakeWatchdog(MODULE.Watchdog):
         self.ports = []
         self.invalid = False
 
+    def processes(self):
+        return []
+
     def service_installed(self, unit):
         return unit == self.agent
 
@@ -51,7 +57,15 @@ class FakeWatchdog(MODULE.Watchdog):
         return "boot-one", self.uptime
 
     def health(self):
-        return {"healthy": self.good, "errors": [] if self.good else ["unavailable"]}
+        return {
+            "healthy": self.good,
+            "errors": []
+            if self.good
+            else [
+                "TCP listener unavailable: 32087",
+                "Public VPN TLS/WebSocket handshake failed",
+            ],
+        }
 
     def preflight(self) -> None:
         if self.invalid:
@@ -184,7 +198,9 @@ class FailoverTests(unittest.TestCase):
         self.watchdog.activate()
         unit = MODULE.NATIVE_UNITS[-1]
         self.watchdog.running.remove(unit)
-        self.watchdog.config["native_unit_ports"] = {unit: [{"protocol": "tcp", "port": 443}]}
+        self.watchdog.config["native_unit_ports"] = {
+            unit: [{"protocol": "tcp", "port": 443}]
+        }
         self.watchdog.ports = [("tcp", 443)]
         with pytest.raises(RuntimeError):
             self.watchdog.tick()
@@ -196,7 +212,8 @@ class FailoverTests(unittest.TestCase):
         self.watchdog.tick()
         self.watchdog.tick()
         assert not any(
-            isinstance(event, tuple) and event[1] == "stop" for event in self.watchdog.events
+            isinstance(event, tuple) and event[1] == "stop"
+            for event in self.watchdog.events
         )
         assert self.watchdog.tick()["restarted"]
         assert self.watchdog.running == set(MODULE.NATIVE_UNITS)
@@ -215,7 +232,9 @@ class FailoverTests(unittest.TestCase):
             mock.patch.object(MODULE.os, "pidfd_open", return_value=91, create=True),
             mock.patch.object(MODULE.signal, "pidfd_send_signal", create=True) as send,
             mock.patch.object(MODULE.os, "close") as close,
-            mock.patch.object(MODULE.Path, "read_text", return_value="0::/kubepods/pod-one"),
+            mock.patch.object(
+                MODULE.Path, "read_text", return_value="0::/kubepods/pod-one"
+            ),
         ):
             self.watchdog.terminate(123, MODULE.signal.SIGTERM)
         send.assert_called_once_with(91, MODULE.signal.SIGTERM)
@@ -301,8 +320,12 @@ class KubernetesFencingTests(unittest.TestCase):
         for unit in self.watchdog.fenced_units:
             with (
                 self.subTest(unit=unit),
-                mock.patch.object(MODULE.os, "pidfd_open", return_value=91, create=True),
-                mock.patch.object(MODULE.signal, "pidfd_send_signal", create=True) as send,
+                mock.patch.object(
+                    MODULE.os, "pidfd_open", return_value=91, create=True
+                ),
+                mock.patch.object(
+                    MODULE.signal, "pidfd_send_signal", create=True
+                ) as send,
                 mock.patch.object(MODULE.os, "close"),
                 mock.patch.object(
                     MODULE.Path, "read_text", return_value="0::/system.slice/" + unit
@@ -354,11 +377,15 @@ class ProbeDiagnosticsTests(unittest.TestCase):
         stream = context.wrap_socket.return_value.__enter__.return_value
         stream.recv.return_value = b"HTTP/1.1 403 Forbidden\r\n\r\nprivate data"
         with (
-            mock.patch.object(MODULE.ssl, "create_default_context", return_value=context),
+            mock.patch.object(
+                MODULE.ssl, "create_default_context", return_value=context
+            ),
             mock.patch.object(MODULE.socket, "create_connection"),
         ):
             result = self.watchdog().health()
-        assert result["websocket_diagnostics"]["http_status"] == WEBSOCKET_FORBIDDEN_STATUS
+        assert (
+            result["websocket_diagnostics"]["http_status"] == WEBSOCKET_FORBIDDEN_STATUS
+        )
         assert result["websocket_diagnostics"]["stage"] == "websocket_response"
         assert "private data" not in json.dumps(result)
 
@@ -382,7 +409,9 @@ class CommandDeadlineTests(unittest.TestCase):
         with mock.patch.object(MODULE.subprocess, "run") as run:
             run.return_value.stdout = ""
             w.command("systemctl", "start", "k3s-agent.service")
-            assert run.call_args.kwargs["timeout"] == CONFIGURED_K3S_START_TIMEOUT_SECONDS
+            assert (
+                run.call_args.kwargs["timeout"] == CONFIGURED_K3S_START_TIMEOUT_SECONDS
+            )
 
 
 class HardeningTests(unittest.TestCase):
@@ -393,9 +422,59 @@ class HardeningTests(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.w = FakeWatchdog(self.directory.name)
 
+    def test_tls_timeout_only_stays_unhealthy_without_fencing(self) -> None:
+        timeout = {
+            "healthy": False,
+            "errors": ["Public VPN TLS/WebSocket handshake failed"],
+            "websocket_diagnostics": {
+                "stage": "tls_handshake",
+                "exception": "TimeoutError",
+            },
+        }
+        self.w.health = mock.Mock(return_value=timeout)
+        for _ in range(8):
+            result = self.w.tick()
+            assert not result["healthy"] and result["failures"] == 0
+        self.w.health.side_effect = [
+            {
+                "healthy": False,
+                "errors": [
+                    "TCP listener unavailable: 32087",
+                    "Public VPN TLS/WebSocket handshake failed",
+                ],
+            }
+        ] * 4 + [timeout]
+        for _ in range(4):
+            result = self.w.tick()
+        assert result["activation_cancelled"] and not self.w.events
+
+    def test_live_k3s_is_allowed_to_repair_dead_workload(self):
+        self.w.running.add(self.w.agent)
+        for _ in range(8):
+            assert self.w.tick()["failures"] == 0
+        assert not self.w.events
+
+    def test_return_window_survives_restart(self):
+        self.w.activate()
+        assert self.w.return_window() == 1800
+        other = FakeWatchdog(self.directory.name)
+        other.uptime += 1799
+        assert other.return_window() == 1
+        other.uptime += 2
+        assert other.return_window() == 0
+
     def test_recovery_during_confirmation_cancels_fencing(self) -> None:
         self.w.health = mock.Mock(
-            side_effect=[{"healthy": False, "errors": ["unavailable"]}] * 4
+            side_effect=[
+                {
+                    "healthy": False,
+                    "errors": [
+                        "TCP listener unavailable: 32087",
+                        "Public VPN TLS/WebSocket handshake failed",
+                    ],
+                }
+            ]
+            * 4
             + [{"healthy": True, "errors": []}]
         )
         for _ in range(3):
@@ -407,7 +486,15 @@ class HardeningTests(unittest.TestCase):
         assert not (self.w.state / "active").exists()
 
     def test_all_confirmation_samples_must_remain_unhealthy(self) -> None:
-        self.w.health = mock.Mock(return_value={"healthy": False, "errors": ["unavailable"]})
+        self.w.health = mock.Mock(
+            return_value={
+                "healthy": False,
+                "errors": [
+                    "TCP listener unavailable: 32087",
+                    "Public VPN TLS/WebSocket handshake failed",
+                ],
+            }
+        )
         for _ in range(4):
             result = self.w.tick()
         assert result["mode"] == "fallback"
@@ -431,7 +518,13 @@ class HardeningTests(unittest.TestCase):
         self.w.tick()
         self.w.health = mock.Mock(
             side_effect=[
-                {"healthy": False, "errors": ["unavailable"]},
+                {
+                    "healthy": False,
+                    "errors": [
+                        "TCP listener unavailable: 32087",
+                        "Public VPN TLS/WebSocket handshake failed",
+                    ],
+                },
                 {"healthy": True, "errors": []},
             ]
         )
@@ -477,7 +570,9 @@ class HardeningTests(unittest.TestCase):
         receipt = json.loads((self.w.state / "last_failure.json").read_text())
         assert receipt["mode"] == "kubernetes"
         assert not receipt["healthy"]
-        assert (self.w.state / "last_failure.json").stat().st_mode & 0o777 == STATE_FILE_MODE
+        assert (
+            self.w.state / "last_failure.json"
+        ).stat().st_mode & 0o777 == STATE_FILE_MODE
 
 
 class ServiceIdentityContractTests(unittest.TestCase):
@@ -500,3 +595,74 @@ class ServiceIdentityContractTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StagedReturnTests(unittest.TestCase):
+    steps = (
+        "hold_cluster_vpn_and_ingress start_cluster verify_cluster_ready_and_native_path "
+        "prepare_images_and_verify_holds stop_native verify_native_released "
+        "release_cluster_workloads verify_external_cluster_tunnel"
+    ).split()
+    rollback = ["fence_cluster_and_verify_release", "ensure_native_running"]
+
+    def test_staged_protocol_and_faults(self):
+        with tempfile.TemporaryDirectory() as directory:
+            watchdog = FakeWatchdog(directory)
+            for failure in [None, *self.steps]:
+                with self.subTest(failure=failure):
+                    backend = mock.Mock(spec=self.steps + self.rollback)
+                    if failure is None:
+                        watchdog.rehearse_warm_failback(backend)
+                        expected = self.steps
+                    else:
+                        getattr(backend, failure).side_effect = RuntimeError(failure)
+                        with self.assertRaises(RuntimeError):
+                            watchdog.rehearse_warm_failback(backend)
+                        expected = self.steps[: self.steps.index(failure) + 1]
+                        if failure != self.steps[0]:
+                            expected += self.rollback
+                    assert [call[0] for call in backend.mock_calls] == expected
+
+    def test_uncertain_fence_never_starts_native_writer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            backend = mock.Mock(spec=self.steps + self.rollback)
+            backend.verify_external_cluster_tunnel.side_effect = RuntimeError("timeout")
+            backend.fence_cluster_and_verify_release.side_effect = RuntimeError("busy")
+            with self.assertRaisesRegex(RuntimeError, "busy"):
+                FakeWatchdog(directory).rehearse_warm_failback(backend)
+            backend.ensure_native_running.assert_not_called()
+
+
+class ReturnTransactionTests(unittest.TestCase):
+    def test_interrupted_handoff_precedes_inhibit_and_timer(self):
+        with tempfile.TemporaryDirectory() as d:
+            w = FakeWatchdog(d)
+            w.write("warming", {})
+            w.write("inhibit", {})
+            with mock.patch.object(
+                w, "cancel_warm_return", return_value={"mode": "fallback"}
+            ) as rollback:
+                assert w.tick()["mode"] == "fallback"
+                rollback.assert_called_once_with()
+
+    def test_timer_dispatches_only_after_cooldown_and_healthy_native(self):
+        with tempfile.TemporaryDirectory() as d:
+            w = FakeWatchdog(d)
+            w.config["warm_return_enabled"] = True
+            w.write("active", {})
+            with (
+                mock.patch.object(
+                    w, "activate", return_value={"healthy": True}
+                ) as native,
+                mock.patch.object(
+                    w, "warm_return", return_value={"mode": "kubernetes"}
+                ) as attempt,
+            ):
+                assert w.tick()["return_cooldown_seconds"] == 1800
+                w.uptime += 1800
+                native.return_value = {"healthy": False}
+                w.tick()
+                attempt.assert_not_called()
+                native.return_value = {"healthy": True}
+                assert w.tick()["mode"] == "kubernetes"
+                attempt.assert_called_once_with()
