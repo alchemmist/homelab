@@ -75,6 +75,10 @@ spec:
     - from:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
           podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
+{{- if .Values.browserRoutes.allowPublicEntryReaderPeer }}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: public-entry}}
+          podSelector: {matchLabels: {homelab.alchemmist.xyz/public-entry-controller: 'true'}}
+{{- end }}
         - ipBlock: {cidr: 10.250.0.2/32} # NL host-network Traefik
         - ipBlock: {cidr: 10.42.0.0/32} # socrat-2 flannel.1 source to remote pods
       ports: [{port: 8080, protocol: TCP}]
