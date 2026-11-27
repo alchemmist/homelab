@@ -286,7 +286,7 @@ username без символа @. Его может не быть, тогда о
 - `labels`: object
 - `annotations`: object
 - `fingerprint`: string
-- `spi_episode`: string — Authoritative SPI episode digest. Creates an immutable episode-specific card key; firing/resolved share it, later firings use a new key.
+- `spi_episode`: string — Хэш эпизода SPI задаёт неизменяемый ключ карточки. Уведомления о срабатывании и разрешении одного эпизода используют общий ключ; следующее срабатывание получает новый.
 
 ### Card
 
@@ -305,8 +305,8 @@ username без символа @. Его может не быть, тогда о
 - `label`: string
 - `key`: string — Ключ карточки, если он уже известен.
 - `alert`: Alert
-- `revision`: integer — Monotonic desired-link revision; stale revisions return409. Requires expected_copies.
-- `expected_copies`: список object — Optional atomic guard: all listed chat/message identities must still belong to this card, otherwise409.
+- `revision`: integer — Номер версии ссылки должен расти. Устаревшая версия возвращает `409`. Требуется `expected_copies`.
+- `expected_copies`: список object — Необязательная атомарная проверка: все указанные пары чата и сообщения должны по-прежнему относиться к этой карточке, иначе запрос вернёт `409`.
 
 ### CardLinkResult
 
@@ -316,7 +316,7 @@ username без символа @. Его может не быть, тогда о
 
 ### SentMessage
 
-- `attachments`: список object — Present when retained images exist; text copies do not imply photo success. Slots are zero-based. Pending includes failed/disabled recipients; no bytes are exposed.
+- `attachments`: список object — Поле присутствует, если сохранены изображения. Наличие текстовой копии не подтверждает доставку фото. Нумерация слотов начинается с нуля. В список ожидающих также входят отключённые получатели и получатели с ошибкой доставки. Сами изображения не возвращаются.
 - `id`: integer
 - `chat_id`: integer
 - `replayed`: boolean
@@ -359,5 +359,5 @@ username без символа @. Его может не быть, тогда о
 
 - `telegram_id`: integer, обязательно
 - `username`: string
-- `admin_level`: integer — Assigned authority tier; lower numbers have higher authority.
-- `receive_level`: integer — New firing delivery threshold, greater than or equal to admin_level.
+- `admin_level`: integer — Уровень полномочий: чем меньше число, тем выше полномочия.
+- `receive_level`: integer — Порог доставки новых срабатываний. Значение не может быть меньше `admin_level`.
