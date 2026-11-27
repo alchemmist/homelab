@@ -38,6 +38,14 @@ def plain(value: object) -> str:
     return value
 
 
+def whole(value: object) -> int:
+    """Runtime narrowing of a caller-supplied field to a true integer."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        expected_int = "expected an integer field"
+        raise TypeError(expected_int)
+    return value
+
+
 def servers(
     service: Obj,
     slices: list[Obj],
