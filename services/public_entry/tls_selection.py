@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from services.public_entry.tls_material import MaterialRejected, leaf_identity
+from services.public_entry.tls_material import MaterialRejectedError, leaf_identity
 
 Source = tuple[str, str]  # Namespace and Secret name; not a flattened identifier.
 
@@ -37,6 +37,6 @@ def select_sources(
             continue
         try:
             accepted[ref] = leaf_identity(pair.chain, pair.key, names, now)
-        except MaterialRejected:
+        except MaterialRejectedError:
             continue
     return accepted

@@ -1,6 +1,8 @@
 """Only ephemeral TLS material; never use cluster access in these tests."""
 
+from base64 import b64encode
 from collections.abc import Callable, Iterator
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import NamedTuple, Never
@@ -11,7 +13,13 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
-from services.public_entry.tls_material import MaterialRejected, leaf_identity
+from services.public_entry.tls_issued_refresh import (
+    ApprovedScope,
+    IssuedLeaf,
+    issued_refresh,
+)
+from services.public_entry.tls_material import MaterialRejectedError, leaf_identity
+from services.public_entry.tls_refresh import Refresh
 
 NOW = datetime.now(UTC)
 NAMES = frozenset({"one.invalid", "two.invalid"})
@@ -148,7 +156,7 @@ def test_bad_source_is_rejected_without_parser_or_material_in_diagnostics(fault:
         names = frozenset({"*.invalid"})
     elif fault == "naive":
         now = now.replace(tzinfo=None)
-    with pytest.raises(MaterialRejected, match=r"^TLS source rejected$") as exc:
+    with pytest.raises(MaterialRejectedError, match=r"^TLS source rejected$") as exc:
         leaf_identity(chain, secret, names, now)
     assert exc.value.__context__ is None
 
@@ -156,7 +164,7 @@ def test_bad_source_is_rejected_without_parser_or_material_in_diagnostics(fault:
 def test_matching_dns_entries_do_not_authorize_a_uri_identity() -> None:
     extra = Extras(extra_sans=(x509.UniformResourceIdentifier("urn:fixture:other"),))
     key, leaf = pair(extras=extra)
-    with pytest.raises(MaterialRejected):
+    with pytest.raises(MaterialRejectedError):
         leaf_identity(pem(leaf), private(key), NAMES, NOW)
 
 
@@ -196,7 +204,7 @@ def test_rsa_public_key_identity_uses_the_complete_key() -> None:
         leaf_identity(pem(leaf), private(sk), NAMES, NOW) == leaf.fingerprint(hashes.SHA256()).hex()
     )
     other = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    with pytest.raises(MaterialRejected):
+    with pytest.raises(MaterialRejectedError):
         leaf_identity(pem(leaf), private(other), NAMES, NOW)
 
 
@@ -206,7 +214,7 @@ def test_rsa_same_modulus_with_different_exponent_is_not_the_leaf_key() -> None:
     other_public = rsa.RSAPublicNumbers(3, n).public_key()
     issuer, ca = pair(ca=True)
     _, leaf = pair(signer=issuer, material=Material(key=sk, subject_public=other_public))
-    with pytest.raises(MaterialRejected):
+    with pytest.raises(MaterialRejectedError):
         leaf_identity(pem(leaf) + pem(ca), private(sk), NAMES, NOW)
 
 
@@ -412,129 +420,202 @@ def test_witness_timeout_does_not_acknowledge_withdrawal(monkeypatch: pytest.Mon
     assert tls_witness.observe(443, NAMES, {}) == dict.fromkeys(NAMES, "timeout")
 
 
-def test_issuance_binding_never_implies_writer_approval_or_reuses_a_denied_source() -> None:
-    import base64
-    from dataclasses import replace
+ANOTHER_SOURCE = ("one", "tls")
+NEIGHBOR_SOURCE = ("two", "tls")
 
-    from services.public_entry.tls_issued_refresh import (
-        ApprovedScope,
-        IssuedLeaf,
-        issued_refresh,
+
+@dataclass
+class IssuanceCase:
+    """Mutable issued-leaf fixture state; every test rebuilds it from scratch."""
+
+    pins: dict[Ref, frozenset[str]]
+    grants: dict[Ref, ApprovedScope]
+    anchors: dict[Ref, IssuedLeaf | None]
+    docs: dict[Ref, tuple[int, dict[str, object] | None]]
+    reads: list[Ref]
+    observations: list[Ref]
+
+
+def _issue(case: IssuanceCase, ref: Ref) -> tuple[IssuedLeaf, tuple[int, dict[str, object]]]:
+    """Build one reviewed anchor/Secret pair for a pinned source."""
+    key, cert = pair(case.pins[ref])
+    fingerprint = cert.fingerprint(hashes.SHA256()).hex()
+    anchor = IssuedLeaf(
+        ref,
+        case.pins[ref],
+        "cert-" + ref[0],
+        "rv-A",
+        "req-" + ref[0],
+        "rv-B",
+        fingerprint,
     )
-    from services.public_entry.tls_refresh import Refresh
+    doc: dict[str, object] = {
+        "kind": "Secret",
+        "apiVersion": "v1",
+        "type": "kubernetes.io/tls",
+        "metadata": {"namespace": ref[0], "name": ref[1]},
+        "data": {
+            "tls.crt": b64encode(pem(cert)).decode(),
+            "tls.key": b64encode(private(key)).decode(),
+        },
+    }
+    return anchor, (200, doc)
 
-    a, b = ("one", "tls"), ("two", "tls")
-    pins = {a: NAMES, b: frozenset({"neighbor.invalid"})}
-    grants: dict[Ref, ApprovedScope] = {}
-    anchors: dict[Ref, IssuedLeaf | None] = {}
-    docs: dict[Ref, tuple[int, dict[str, object] | None]] = {}
-    reads: list[Ref] = []
-    observations: list[Ref] = []
 
-    def issue(ref: Ref) -> tuple[IssuedLeaf, tuple[int, dict[str, object]]]:
-        k, c = pair(pins[ref])
-        fingerprint = c.fingerprint(hashes.SHA256()).hex()
-        anchor = IssuedLeaf(
-            ref,
-            pins[ref],
-            "cert-" + ref[0],
-            "rv-A",
-            "req-" + ref[0],
-            "rv-B",
-            fingerprint,
-        )
-        doc: dict[str, object] = {
-            "kind": "Secret",
-            "apiVersion": "v1",
-            "type": "kubernetes.io/tls",
-            "metadata": {"namespace": ref[0], "name": ref[1]},
-            "data": {
-                "tls.crt": base64.b64encode(pem(c)).decode(),
-                "tls.key": base64.b64encode(private(k)).decode(),
-            },
-        }
-        return anchor, (200, doc)
+def _new_case() -> IssuanceCase:
+    """Build the two pinned sources with current anchors and readable documents."""
+    case = IssuanceCase(
+        {ANOTHER_SOURCE: NAMES, NEIGHBOR_SOURCE: frozenset({"neighbor.invalid"})},
+        {},
+        {},
+        {},
+        [],
+        [],
+    )
+    for ref in case.pins:
+        case.anchors[ref], case.docs[ref] = _issue(case, ref)
+    return case
 
-    for ref in pins:
-        anchors[ref], docs[ref] = issue(ref)
 
-    def observe(ref: Ref) -> IssuedLeaf | None:
-        observations.append(ref)
-        return anchors[ref]
+def _observe(case: IssuanceCase, ref: Ref) -> IssuedLeaf | None:
+    """Record the sweep probe and answer with the case's current anchor."""
+    case.observations.append(ref)
+    return case.anchors[ref]
 
-    def get(ref: Ref) -> tuple[int, object]:
-        reads.append(ref)
-        return docs[ref]
 
-    def run(obs: Callable[[Ref], IssuedLeaf | None] = observe) -> Refresh:
-        reads.clear()
-        observations.clear()
-        return issued_refresh(pins, grants, obs, get, NOW)
+def _fetch(case: IssuanceCase, ref: Ref) -> tuple[int, object]:
+    """Record the credential-less read and answer with the case's document."""
+    case.reads.append(ref)
+    return case.docs[ref]
 
-    def assert_only_b(result: Refresh, why: str) -> None:
-        assert set(result.material) == set(result.hosts)
-        assert set(result.material) == set(result.fingerprints)
-        assert set(result.fingerprints) == {b}
-        assert result.withdrawn == {a: why}
 
-    def assert_withdrawn_issuance(before: IssuedLeaf | None, why: str) -> None:
-        anchors[a] = before
-        assert_only_b(run(), why)
-        assert reads == [b]
+def _refresh(case: IssuanceCase, obs: Callable[[Ref], IssuedLeaf | None] | None = None) -> Refresh:
+    """Run one refresh sweep with fresh read/observation records."""
+    case.reads.clear()
+    case.observations.clear()
+    observer: Callable[[Ref], IssuedLeaf | None] = (
+        (lambda ref: _observe(case, ref)) if obs is None else obs
+    )
+    return issued_refresh(case.pins, case.grants, observer, lambda ref: _fetch(case, ref), NOW)
 
-    assert run().withdrawn == {a: "no-writer-approval", b: "no-writer-approval"}
-    assert reads == observations == []
-    grants.update(
+
+def _grant_reviewed(case: IssuanceCase) -> None:
+    """Approve exactly the anchors currently presented by the sources."""
+    case.grants.update(
         {
-            ref: ApprovedScope(w.certificate_uid, w.hosts)
-            for ref, w in anchors.items()
-            if w is not None
+            ref: ApprovedScope(anchor.certificate_uid, anchor.hosts)
+            for ref, anchor in case.anchors.items()
+            if anchor is not None
         }
     )
-    assert set(run().material) == {a, b}
-    assert reads == [a, b]
-    assert observations == [a, a, b, b]
-    original = anchors[a]
-    rotation, newdoc = issue(a)
-    docs[a] = newdoc
-    assert_only_b(run(), "issued-leaf-mismatch")
-    anchors[a] = rotation
-    assert set(run().material) == {a, b}
-    stale_samples = [
+
+
+def _assert_only_neighbor(result: Refresh, why: str) -> None:
+    """Withhold the first source for exactly `why` while the neighbor stands."""
+    assert set(result.material) == set(result.hosts)
+    assert set(result.material) == set(result.fingerprints)
+    assert set(result.fingerprints) == {NEIGHBOR_SOURCE}
+    assert result.withdrawn == {ANOTHER_SOURCE: why}
+
+
+def test_issuance_binding_requires_independent_writer_approval() -> None:
+    case = _new_case()
+    result = _refresh(case)
+    assert result.withdrawn == {
+        ANOTHER_SOURCE: "no-writer-approval",
+        NEIGHBOR_SOURCE: "no-writer-approval",
+    }
+    assert case.reads == []
+    assert case.observations == []
+    _grant_reviewed(case)
+    assert set(_refresh(case).material) == {ANOTHER_SOURCE, NEIGHBOR_SOURCE}
+    assert case.reads == [ANOTHER_SOURCE, NEIGHBOR_SOURCE]
+    assert case.observations == [
+        ANOTHER_SOURCE,
+        ANOTHER_SOURCE,
+        NEIGHBOR_SOURCE,
+        NEIGHBOR_SOURCE,
+    ]
+
+
+def test_issued_leaf_rotation_rebinds_only_on_the_current_anchor() -> None:
+    case = _new_case()
+    _grant_reviewed(case)
+    rotation, newdoc = _issue(case, ANOTHER_SOURCE)
+    case.docs[ANOTHER_SOURCE] = newdoc
+    _assert_only_neighbor(_refresh(case), "issued-leaf-mismatch")
+    case.anchors[ANOTHER_SOURCE] = rotation
+    assert set(_refresh(case).material) == {ANOTHER_SOURCE, NEIGHBOR_SOURCE}
+
+
+def _rotated_case() -> tuple[IssuanceCase, IssuedLeaf, IssuedLeaf]:
+    """Build a case where the first source rotated and both sources are approved."""
+    case = _new_case()
+    _grant_reviewed(case)
+    original = case.anchors[ANOTHER_SOURCE]
+    assert original is not None
+    rotation, newdoc = _issue(case, ANOTHER_SOURCE)
+    case.docs[ANOTHER_SOURCE] = newdoc
+    case.anchors[ANOTHER_SOURCE] = rotation
+    return case, rotation, original
+
+
+def test_stale_anchors_are_not_current_issuance() -> None:
+    case, rotation, _original = _rotated_case()
+    for before in (
         None,
-        replace(rotation, source=b),
+        replace(rotation, source=NEIGHBOR_SOURCE),
         replace(rotation, hosts=frozenset({"one.invalid"})),
         replace(rotation, certificate_uid="replacement"),
         replace(rotation, request_version=""),
-    ]
-    for before in stale_samples:
-        assert_withdrawn_issuance(before, "no-current-issuance")
-    anchors[a] = rotation
-    changed_samples = [
+    ):
+        case.anchors[ANOTHER_SOURCE] = before
+        _assert_only_neighbor(_refresh(case), "no-current-issuance")
+        assert case.reads == [NEIGHBOR_SOURCE]
+
+
+def test_issuance_change_during_sweep_withdraws_the_changed_source() -> None:
+    case, rotation, original = _rotated_case()
+    for after in (
         None,
         original,
         replace(rotation, request_version="after"),
         replace(rotation, certificate_version="after"),
         replace(rotation, request_uid="other"),
-    ]
-    for after in changed_samples:
-        it = iter((rotation, after))
+    ):
+        rotation_iter = iter((rotation, after))
 
-        def swap(ref: Ref, _it: Iterator[IssuedLeaf | None] = it) -> IssuedLeaf | None:
-            return next(_it) if ref == a else anchors[b]
+        def swap(ref: Ref, _it: Iterator[IssuedLeaf | None] = rotation_iter) -> IssuedLeaf | None:
+            """Answer the source's anchor, then the (possibly changed) re-read."""
+            return next(_it) if ref == ANOTHER_SOURCE else case.anchors[NEIGHBOR_SOURCE]
 
-        assert_only_b(run(swap), "issuance-changed")
-        assert reads == [a, b]
-    docs[a] = (403, None)
-    assert_only_b(run(), "denied")
-    assert observations == [a, b, b]
-    docs[a] = newdoc
-    grants[a] = ApprovedScope(rotation.certificate_uid, frozenset({"one.invalid"}))
-    assert_only_b(run(), "no-writer-approval")
-    assert reads == [b]
-    pins[("unapproved", "tls")] = NAMES
-    assert run().withdrawn[a] == "invalid-ownership"
-    assert reads == [b]
+        _assert_only_neighbor(_refresh(case, swap), "issuance-changed")
+        assert case.reads == [ANOTHER_SOURCE, NEIGHBOR_SOURCE]
+
+
+def test_denied_or_narrowed_grants_are_never_reused_as_approval() -> None:
+    case, rotation, _original = _rotated_case()
+    newdoc = case.docs[ANOTHER_SOURCE]
+    case.docs[ANOTHER_SOURCE] = (403, None)
+    _assert_only_neighbor(_refresh(case), "denied")
+    assert case.observations == [ANOTHER_SOURCE, NEIGHBOR_SOURCE, NEIGHBOR_SOURCE]
+    case.docs[ANOTHER_SOURCE] = newdoc
+    case.grants[ANOTHER_SOURCE] = ApprovedScope(
+        rotation.certificate_uid, frozenset({"one.invalid"})
+    )
+    _assert_only_neighbor(_refresh(case), "no-writer-approval")
+    assert case.reads == [NEIGHBOR_SOURCE]
+
+
+def test_unapproved_source_pin_is_invalid_ownership() -> None:
+    case, rotation, _original = _rotated_case()
+    case.grants[ANOTHER_SOURCE] = ApprovedScope(
+        rotation.certificate_uid, frozenset({"one.invalid"})
+    )
+    case.pins[("unapproved", "tls")] = NAMES
+    result = _refresh(case)
+    assert result.withdrawn[ANOTHER_SOURCE] == "invalid-ownership"
+    assert case.reads == [NEIGHBOR_SOURCE]
 
 
 def test_malformed_approved_name_never_triggers_sensitive_io() -> None:
