@@ -30,10 +30,19 @@ def test_effective_health_fleet():
         "closedFormatQuorum=true,closedWiki=true",  # exercise enabled and withdrawn shapes even after an owner opt-out
     ]
     assert app["destination"]["namespace"] == "public-health-staging"
-    policy, config, *deployments = yaml.safe_load_all(subprocess.check_output(args))
+    policy, wiki_policy, config, *deployments = yaml.safe_load_all(
+        subprocess.check_output(args)
+    )
     assert policy["kind"] == "NetworkPolicy" and policy["spec"]["ingress"] == []
     peers = []
-    for rule in policy["spec"]["egress"]:
+    assert wiki_policy["spec"]["podSelector"] == policy["spec"]["podSelector"]
+    assert wiki_policy["spec"]["policyTypes"] == ["Egress"]
+    assert len(wiki_policy["spec"]["egress"]) == 1
+    for rule in [
+        *policy["spec"]["egress"][:-1],
+        *wiki_policy["spec"]["egress"],
+        policy["spec"]["egress"][-1],
+    ]:
         (peer,) = rule["to"]
         peers.append(
             (
@@ -155,9 +164,10 @@ def test_effective_health_fleet():
         ("--set-json", 'ingress.hosts=["alchemmist.xyz"]'),
         ("--set", "service.targetPort=9999"),
     ):
-        blocked_policy, blocked_config, *unchanged = yaml.safe_load_all(
+        blocked_policy, still_wiki, blocked_config, *unchanged = yaml.safe_load_all(
             subprocess.check_output([*args, *overrides])
         )
+        assert still_wiki == wiki_policy
         assert unchanged == deployments
         assert blocked_policy["spec"]["egress"] == [
             policy["spec"]["egress"][0],
@@ -168,7 +178,7 @@ def test_effective_health_fleet():
             "routers": {k: v for k, v in http["routers"].items() if k != "www-blog"},
             "services": {k: v for k, v in http["services"].items() if k != "www-blog"},
         }
-    policy_off, config_off, *unchanged = yaml.safe_load_all(
+    policy_off, separate_wiki, config_off, *unchanged = yaml.safe_load_all(
         subprocess.check_output(
             [
                 *args[:-2],
@@ -188,12 +198,11 @@ def test_effective_health_fleet():
         assert after[section] == {
             k: v for k, v in http[section].items() if k != "format-quorum"
         }
-    policy_off, config_off, *unchanged = yaml.safe_load_all(
+    policy_off, separate_wiki, config_off, *unchanged = yaml.safe_load_all(
         subprocess.check_output([*args, "--set", "closedWiki=false"])
     )
-    assert unchanged == deployments and policy_off["spec"]["egress"] == [
-        r for i, r in enumerate(policy["spec"]["egress"]) if i != 3
-    ]
+    assert unchanged == deployments and policy_off == policy
+    assert separate_wiki["spec"] == {**wiki_policy["spec"], "egress": []}
     off = yaml.safe_load(config_off["data"]["dynamic.yaml"])["http"]
     for section in ("routers", "services"):
         assert off[section] == {k: v for k, v in http[section].items() if k != "wiki"}
