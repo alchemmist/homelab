@@ -201,3 +201,28 @@ def test_validated_issuance_without_independent_approval_cannot_read_a_key(issue
     assert not result.material and result.withdrawn == {
         anchor.source: "no-writer-approval"
     }
+
+
+def test_private_issuer_must_be_pinned_independently_of_objects(issued):
+    from services.public_entry.tls_issuance import validated_anchor
+
+    _, c, r, t, fp = issued
+    ns, pin, _, sans = audit.OWNERS["wiki"]
+    ref = (ns, pin)
+    names = frozenset(sans)
+    local = {**audit.ISSUER, "kind": "Issuer", "name": "fixture-ca"}
+    c["spec"]["issuerRef"] = local.copy()
+    r["spec"]["issuerRef"] = local.copy()
+    assert validated_anchor(ref, names, local, [c], [r], t).sha256 == fp
+    for wrong in (
+        audit.ISSUER,
+        {**local, "group": "other.invalid"},
+        {**local, "name": "other"},
+        {**local, "kind": "ClusterIssuer"},
+    ):
+        with pytest.raises(audit.NoEvidence):
+            validated_anchor(ref, names, wrong, [c], [r], t)
+    del r["status"]["certificate"]
+    with pytest.raises(audit.NoEvidence, match="^incomplete-public-material$") as exc:
+        validated_anchor(ref, names, local, [c], [r], t)
+    assert exc.value.__context__ is None
