@@ -187,3 +187,63 @@ def test_tls_domain_requires_positive_and_negative_controls(fault):
     elif fault == "unknown":
         rows["s"]["b"] = "unverified"
     assert correlated(rows, ["a", "b"], ["s"]) == ({} if fault else {"s": "a"})
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        None,
+        "wrong-realm",
+        "registry-open",
+        "slash-redirect",
+        "ping-drift",
+        "anonymous-list",
+        "wrong-version",
+    ],
+)
+def test_native_auth_and_slash_boundaries_on_same_peer(monkeypatch, fault):
+    results = {
+        "/v2/": b'{"errors":[{"code":"UNAUTHORIZED"}]}\n401 application/json\n'
+        + checks.CHALLENGE,
+        "/v2": b"<title>Harbor</title>\n200 text/html",
+        "/api/v2.0/ping": b"Pong\n200 text/plain",
+        "/api/version": b'{"Version":"v3.2.1+abc"}\n200 application/json',
+        "/api/v1/applications": b'{"code":16,"error":"no session information","message":"no session information"}\n401 application/json',
+    }
+    cases = {
+        "wrong-realm": (
+            "/v2/",
+            results["/v2/"].replace(b"harbor.socrat", b"other.socrat"),
+        ),
+        "registry-open": ("/v2/", results["/v2/"].replace(b"401", b"200")),
+        "slash-redirect": ("/v2", b"\n301 text/html"),
+        "ping-drift": ("/api/v2.0/ping", b"OK\n200 text/plain"),
+        "anonymous-list": (
+            "/api/v1/applications",
+            results["/api/v1/applications"].replace(b"{", b'{"items":[],'),
+        ),
+        "wrong-version": (
+            "/api/version",
+            b'{"Version":"unknown"}\n200 application/json',
+        ),
+    }
+    if fault:
+        p, value = cases[fault]
+        results[p] = value
+
+    def run(args, **kw):
+        from urllib.parse import urlsplit
+
+        url = urlsplit(args[-1])
+        assert args[args.index("--resolve") + 1] == url.hostname + ":443:192.0.2.1"
+        assert ("%header{www-authenticate}" in args[-2]) == (url.path == "/v2/")
+        assert "--location" not in args
+        return subprocess.CompletedProcess(args, 0, results[url.path], b"")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    h = checks.check(checks.HARBOR, "192.0.2.1")
+    a = checks.check(checks.ARGO, "192.0.2.1")
+    assert (h == "matched") == (
+        fault not in ("wrong-realm", "registry-open", "slash-redirect", "ping-drift")
+    )
+    assert (a == "matched") == (fault not in ("anonymous-list", "wrong-version"))
