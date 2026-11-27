@@ -9,7 +9,9 @@ database:
   secretName: n8n-postgres
 postgresCaConfigMap: pg-common-ca
 replicaCount: 1
-image: docker.io/n8nio/n8n@sha256:624a1f10f37119a73eca34c0cbd358668aebf0068d320ad5eae584f9d35aa314
+image: ghcr.io/alchemmist/n8n@sha256:0ffba3a289722fc216ee5e135c3acaeb4b3484e267aeba42df9c8f2e39e831df
+imagePullSecrets:
+  - ghcr-pull
 nodeName: socrat-5
 secretName: n8n-secrets
 persistence:
@@ -26,7 +28,6 @@ resources:
     cpu: "1"
     memory: 1Gi
 ingress:
-  publicWeb: false
   enabled: true
 
 tolerations: []
@@ -47,4 +48,11 @@ serviceVpn:
   secretName: n8n-service-vpn
   image:
     ghcr.io/mhsanaei/3x-ui@sha256:1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b
-...
+
+# OIDC: n8n 1.x stores SSO config in its database (settings key features.oidc),
+# set via Settings -> SSO owner UI. Authentik identity is provisioned by
+# scripts/provision-n8n-oidc.py; credentials: kubectl -n automation get secret socrat-authentik-n8n.
+authentikPublicAlias:
+  enabled: true
+  ip: 109.173.40.247
+  host: auth.socrat.alchemmist.xyz

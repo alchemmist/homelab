@@ -9,7 +9,7 @@ from http.server import ThreadingHTTPServer
 
 from PIL import Image
 
-from wallpapers.server import App, make_handler
+from authwall.server import App, make_handler
 
 
 def png() -> bytes:
@@ -23,8 +23,8 @@ class WallpaperTests(unittest.TestCase):
         os.environ.pop("N8N_WEBHOOK_URL", None)
         os.environ.pop("RUSTFS_ENDPOINT", None)
         os.environ["WALLPAPER_AUTH"] = "off"
-        os.environ["WALLPAPER_SQLITE"] = f"/tmp/wallpapers-{uuid.uuid4().hex}.sqlite"
-        os.environ["WALLPAPER_DIR"] = f"/tmp/wallpapers-files-{threading.get_ident()}"
+        os.environ["WALLPAPER_SQLITE"] = f"/tmp/authwall-{uuid.uuid4().hex}.sqlite"
+        os.environ["WALLPAPER_DIR"] = f"/tmp/authwall-files-{threading.get_ident()}"
         self.app = App()
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(self.app))
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
@@ -69,8 +69,8 @@ class WallpaperTests(unittest.TestCase):
     def test_gallery_delegation(self) -> None:
         from unittest.mock import patch
 
-        for group, status in [("app-wallpapers-manager", 200), ("homelab-owner", 200), ("homelab-observer", 403)]:
-            with self.subTest(group=group), patch("wallpapers.server.groups_from_authentik", return_value={group}):
+        for group, status in [("app-authwall-manager", 200), ("homelab-owner", 200), ("homelab-observer", 403)]:
+            with self.subTest(group=group), patch("authwall.server.groups_from_authentik", return_value={group}):
                 try:
                     with urllib.request.urlopen(self.base + "/wallpapers/api/items") as response:
                         actual = response.status

@@ -1,5 +1,5 @@
 [project]
-name = "authentik-wallpapers"
+name = "authwall"
 version = "0.1.0"
 description = "Gallery and public scenes for Authentik login wallpapers"
 requires-python = ">=3.12"

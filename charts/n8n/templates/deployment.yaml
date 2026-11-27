@@ -23,6 +23,22 @@ spec:
     spec:
       automountServiceAccountToken: false
       enableServiceLinks: false
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.authentikPublicAlias }}
+      {{- if .Values.authentikPublicAlias.enabled }}
+      # Node socrat-5 blocks pod egress to the split-horizon LAN VIP (192.168.0.250)
+      # for auth.socrat.alchemmist.xyz; the public ingress IP is reachable instead.
+      hostAliases:
+        - ip: {{ .Values.authentikPublicAlias.ip }}
+          hostnames:
+            - {{ .Values.authentikPublicAlias.host }}
+      {{- end }}
+      {{- end }}
       tolerations:
         {{- toYaml .Values.tolerations | nindent 8 }}
       nodeSelector:

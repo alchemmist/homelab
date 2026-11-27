@@ -91,7 +91,7 @@ class S3Store(Store):
 def open_store() -> Store:
     if os.environ.get("RUSTFS_ENDPOINT"):
         return S3Store()
-    root = Path(os.environ.get("WALLPAPER_DIR", "/tmp/authentik-wallpapers"))
+    root = Path(os.environ.get("WALLPAPER_DIR", "/tmp/authwall"))
     return DirStore(root)
 
 

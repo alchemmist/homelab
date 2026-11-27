@@ -3,12 +3,12 @@ COPY build/ /build/
 RUN python /build/fetch_assets.py /downloads
 
 FROM python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8 AS runtime
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 TOKENIZERS_PARALLELISM=false RAYON_NUM_THREADS=1 PYTHONPATH=/app
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 RAYON_NUM_THREADS=1 PYTHONPATH=/app
 COPY --from=assets /downloads/ /opt/spi-tokenizer/
 COPY build/LICENSE-2.0.txt /opt/spi-tokenizer/LICENSE-2.0.txt
 COPY build/MODEL-README.md /opt/spi-tokenizer/README.md
 COPY build/legal/ /opt/spi-tokenizer/legal/
-RUN python -m pip install --no-index --no-deps /opt/spi-tokenizer/*.whl && rm /opt/spi-tokenizer/*.whl
+RUN python -m pip install --no-cache-dir --no-index --no-deps /opt/spi-tokenizer/*.whl && rm /opt/spi-tokenizer/*.whl
 COPY build/library_manifest.py /tmp/library_manifest.py
 RUN python /tmp/library_manifest.py && rm /tmp/library_manifest.py
 RUN python -m pip install --no-cache-dir "psycopg[binary]==3.2.13"
@@ -25,8 +25,8 @@ CMD ["python", "-B", "/app/service.py"]
 
 # Node is an offline contract-test dependency, never part of the release image.
 FROM runtime AS test
-USER root
-RUN apk add --no-cache nodejs
+USER 0
+RUN apk add --no-cache nodejs=24.22.3-r0
 COPY backend/ /workspace/backend/
 COPY frontend/ /workspace/frontend/
 COPY integrations/ /workspace/integrations/
