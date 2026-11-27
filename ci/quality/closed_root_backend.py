@@ -6,18 +6,49 @@ public listener, API client, endpoint discovery grant or executable CLI.
 
 from ipaddress import IPv4Address, IPv4Network
 
+Obj = dict[str, object]
+
+MSG_NOT_A_MAPPING = "observation is not a mapping"
+MSG_NOT_A_LIST = "observation is not a list"
+MSG_NOT_A_STRING = "expected a string field"
+
+MIN_TARGET_PORT = 1
+MAX_TARGET_PORT = 65535
+HTTPS_PORT = 443
+
+
+def view(obj: object) -> Obj:
+    """Runtime narrowing of caller-supplied observations to a mapping."""
+    if not isinstance(obj, dict):
+        raise TypeError(MSG_NOT_A_MAPPING)
+    return obj
+
+
+def entries(obj: object) -> list[object]:
+    """Runtime narrowing of caller-supplied observations to a list."""
+    if not isinstance(obj, list):
+        raise TypeError(MSG_NOT_A_LIST)
+    return obj
+
+
+def plain(value: object) -> str:
+    """Runtime narrowing of a caller-supplied field to a string."""
+    if not isinstance(value, str):
+        raise TypeError(MSG_NOT_A_STRING)
+    return value
+
 
 def servers(
-    service: dict,
-    slices: list[dict],
-    pods: list[dict],
+    service: Obj,
+    slices: list[Obj],
+    pods: list[Obj],
     *,
     expected: tuple[str, str, int],
     pod_network: IPv4Network,
-) -> list[dict]:
+) -> list[Obj]:
     """Accept ordinary numeric HTTP targets only; never trust an address on its own."""
     ns, name, number = expected
-    meta, spec = service["metadata"], service["spec"]
+    meta, spec = view(service["metadata"]), view(service["spec"])
     uid = meta.get("uid")
     selector = spec.get("selector")
     if (
@@ -28,55 +59,77 @@ def servers(
         or spec.get("type", "ClusterIP") != "ClusterIP"
         or spec.get("clusterIP") in (None, "None")
     ):
-        raise ValueError("expected selector-backed ClusterIP Service")
+        wrong_service = "expected selector-backed ClusterIP Service"
+        raise ValueError(wrong_service)
     if (
         any(
             k.startswith("traefik.ingress.kubernetes.io/service.")
-            for k in meta.get("annotations", {})
+            for k in view(meta.get("annotations", {}))
         )
         or spec.get("publishNotReadyAddresses")
         or spec.get("internalTrafficPolicy", "Cluster") != "Cluster"
         or spec.get("sessionAffinity", "None") != "None"
     ):
-        raise ValueError("unsupported backend semantics")
+        bad_semantics = "unsupported backend semantics"
+        raise ValueError(bad_semantics)
     ports = [
-        p for p in spec["ports"] if p.get("port") == number and p.get("protocol", "TCP") == "TCP"
+        view(p)
+        for p in entries(spec["ports"])
+        if view(p).get("port") == number and view(p).get("protocol", "TCP") == "TCP"
     ]
     if len(ports) != 1:
-        raise ValueError("ambiguous or missing HTTP Service port")
+        bad_port_count = "ambiguous or missing HTTP Service port"
+        raise ValueError(bad_port_count)
     port = ports[0]
     target = port.get("targetPort", number)
     if (
         port.get("name") != "http"
-        or number == 443
+        or number == HTTPS_PORT
         or port.get("appProtocol") not in (None, "http")
         or type(target) is not int
-        or not 1 <= target <= 65535
+        or not MIN_TARGET_PORT <= target <= MAX_TARGET_PORT
     ):
-        raise ValueError("unreviewed backend protocol or target")
+        scope_error = "unreviewed backend protocol or target"
+        raise ValueError(scope_error)
     return verified_pod_servers(ns, name, uid, selector, target, slices, pods, pod_network)
 
 
-def verified_pod_servers(ns, name, uid, selector, target, slices, pods, pod_network):
-    """Common ready Pod verification after the caller validates its Service contract."""
-    by_uid = {}
+def verified_pod_servers(
+    ns: str,
+    name: str,
+    uid: object,
+    selector: object,
+    target: int,
+    slices: list[Obj],
+    pods: list[Obj],
+    pod_network: IPv4Network,
+) -> list[Obj]:
+    """Verify every presented slice endpoint against a ready Pod of the Service."""
+    by_uid: dict[object, Obj] = {}
     for pod in pods:
-        pm = pod["metadata"]
+        pm = view(pod["metadata"])
         if pod.get("kind") != "Pod" or pm.get("namespace") != ns or not pm.get("uid"):
             continue
         if pm["uid"] in by_uid:
-            raise ValueError("duplicate Pod UID in backend observations")
+            duplicate_pod = "duplicate Pod UID in backend observations"
+            raise ValueError(duplicate_pod)
         by_uid[pm["uid"]] = pod
-    urls = set()
+    urls: set[str] = set()
     for sl in slices:
-        sm = sl["metadata"]
-        labels = sm.get("labels", {})
+        sm = view(sl["metadata"])
+        labels = view(sm.get("labels", {}))
         if sm.get("namespace") != ns or labels.get("kubernetes.io/service-name") != name:
-            raise ValueError("unexpected slice in scoped Service observations")
+            foreign_slice = "unexpected slice in scoped Service observations"
+            raise ValueError(foreign_slice)
         controllers = [
-            (r.get("apiVersion"), r.get("kind"), r.get("name"), r.get("uid"))
-            for r in sm.get("ownerReferences", [])
-            if r.get("controller") is True
+            (
+                view(r).get("apiVersion"),
+                view(r).get("kind"),
+                view(r).get("name"),
+                view(r).get("uid"),
+            )
+            for r in entries(sm.get("ownerReferences", []))
+            if view(r).get("controller") is True
         ]
         if (
             sl.get("kind") != "EndpointSlice"
@@ -85,46 +138,53 @@ def verified_pod_servers(ns, name, uid, selector, target, slices, pods, pod_netw
             or labels.get("endpointslice.kubernetes.io/managed-by")
             != "endpointslice-controller.k8s.io"
         ):
-            raise ValueError("unverified EndpointSlice provenance")
+            bad_provenance = "unverified EndpointSlice provenance"
+            raise ValueError(bad_provenance)
         matches = [
-            p
-            for p in sl.get("ports", [])
-            if p.get("name") == "http" and p.get("protocol", "TCP") == "TCP"
+            view(p)
+            for p in entries(sl.get("ports", []))
+            if view(p).get("name") == "http" and view(p).get("protocol", "TCP") == "TCP"
         ]
         if len(matches) != 1 or matches[0].get("port") != target:
-            raise ValueError("unexpected EndpointSlice port")
-        for ep in sl.get("endpoints", []):
-            conditions = ep.get("conditions", {})
+            bad_port = "unexpected EndpointSlice port"
+            raise ValueError(bad_port)
+        for node in entries(sl.get("endpoints", [])):
+            ep = view(node)
+            conditions = view(ep.get("conditions", {}))
             if conditions.get("ready") is not True or conditions.get("terminating") is True:
                 continue
-            ref = ep.get("targetRef", {})
+            ref = view(ep.get("targetRef", {}))
             p = by_uid.get(ref.get("uid"))
             if (
                 not p
                 or ref.get("kind") != "Pod"
                 or ref.get("namespace") != ns
-                or ref.get("name") != p["metadata"]["name"]
+                or ref.get("name") != view(p["metadata"]).get("name")
             ):
-                raise ValueError("unverified endpoint target")
-            pm = p["metadata"]
-            status = p.get("status", {})
+                bad_target = "unverified endpoint target"
+                raise ValueError(bad_target)
+            pm = view(p["metadata"])
+            status = view(p.get("status", {}))
             if (
                 status.get("phase") != "Running"
                 or pm.get("deletionTimestamp")
-                or p["spec"].get("hostNetwork")
-                or any(pm.get("labels", {}).get(k) != v for k, v in selector.items())
+                or view(p["spec"]).get("hostNetwork")
+                or any(view(pm.get("labels", {})).get(k) != v for k, v in view(selector).items())
                 or not any(
-                    c.get("type") == "Ready" and c.get("status") == "True"
-                    for c in status.get("conditions", [])
+                    view(c).get("type") == "Ready" and view(c).get("status") == "True"
+                    for c in entries(status.get("conditions", []))
                 )
             ):
-                raise ValueError("endpoint does not match an admitted ready Pod")
-            addresses = ep.get("addresses", [])
+                nonready = "endpoint does not match an admitted ready Pod"
+                raise ValueError(nonready)
+            addresses = entries(ep.get("addresses", []))
             if not status.get("podIP"):
-                raise ValueError("missing observed Pod IP")
+                no_ip = "missing observed Pod IP"
+                raise ValueError(no_ip)
             if len(addresses) != 1 or addresses[0] != status["podIP"]:
-                raise ValueError("endpoint and Pod IP disagree")
-            ip = IPv4Address(addresses[0])
+                ip_conflict = "endpoint and Pod IP disagree"
+                raise ValueError(ip_conflict)
+            ip = IPv4Address(plain(addresses[0]))
             if (
                 ip not in pod_network
                 or ip.is_loopback
@@ -132,8 +192,10 @@ def verified_pod_servers(ns, name, uid, selector, target, slices, pods, pod_netw
                 or ip.is_unspecified
                 or ip.is_link_local
             ):
-                raise ValueError("endpoint outside approved Pod address range")
+                bad_range = "endpoint outside approved Pod address range"
+                raise ValueError(bad_range)
             urls.add(f"http://{ip}:{target}")
     if not urls:
-        raise ValueError("no verified ready Pod endpoints")
+        empty_backend = "no verified ready Pod endpoints"
+        raise ValueError(empty_backend)
     return [{"url": url} for url in sorted(urls)]
