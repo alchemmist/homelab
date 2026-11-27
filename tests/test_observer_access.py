@@ -8,17 +8,24 @@ import io
 import json
 import tempfile
 import unittest
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, override
 from unittest.mock import patch
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
+EXPECTED_AUTHENTIK_WRITES = 4
+EXPECTED_HARBOR_DELETES = 3
+HARBOR_DELETES_AFTER_GATE = 1
+READY_RECEIPT_MODE = 0o600
 SPEC = importlib.util.spec_from_file_location(
     "observer_plan", ROOT / "scripts/observer-access-plan.py"
 )
+if SPEC is None or SPEC.loader is None:
+    message = "observer plan module under test is not loadable"
+    raise RuntimeError(message)
 plan = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(plan)
 POLICY = json.loads((ROOT / "deploy/identity/observer/profile.json").read_text())
@@ -73,6 +80,26 @@ def _strings(value: object) -> list[str]:
     """Read a JSON array that the contracts already keep all-string."""
     assert isinstance(value, list)
     return [item for item in value if isinstance(item, str)]
+
+
+def _mapping(value: object) -> dict[str, object]:
+    """Read a JSON object as an assert-verified mapping view."""
+    assert isinstance(value, dict)
+    result: dict[str, object] = value
+    return result
+
+
+def _set(row: object, key: str, *, value: object) -> None:
+    """Set one key of an assert-verified JSON mapping."""
+    mapping = _mapping(row)
+    mapping[key] = value
+
+
+def _objects(value: object) -> list[object]:
+    """Read a JSON array as an assert-verified list of objects."""
+    assert isinstance(value, list)
+    result: list[object] = value
+    return result
 
 
 def _binding_pk(binding: dict[str, object]) -> str:
@@ -326,7 +353,7 @@ class ObserverPolicyTests(unittest.TestCase):
         assert "password" not in text
         assert all(o["path"] != "core/groups/group-id/" for o in operations)
         assert sum(o["system"] == "harbor" and o["method"] == "POST" for o in operations) == 0
-        assert sum(o["system"] == "authentik" for o in operations) == 4
+        assert sum(o["system"] == "authentik" for o in operations) == (EXPECTED_AUTHENTIK_WRITES)
 
     def test_harbor_gate_removes_only_exact_owned_guest_and_observer_admission(
         self,
@@ -358,8 +385,12 @@ class ObserverPolicyTests(unittest.TestCase):
             }
         ]
         ops = plan.build(state, POLICY)
-        assert sum(o["system"] == "harbor" and o["method"] == "DELETE" for o in ops) == 3
-        assert sum(o["system"] == "authentik" and o["method"] == "DELETE" for o in ops) == 1
+        assert sum(o["system"] == "harbor" and o["method"] == "DELETE" for o in ops) == (
+            EXPECTED_HARBOR_DELETES
+        )
+        assert sum(o["system"] == "authentik" and o["method"] == "DELETE" for o in ops) == (
+            HARBOR_DELETES_AFTER_GATE
+        )
         converge(state, ops)
         assert plan.build(state, POLICY) == []
 
@@ -409,69 +440,148 @@ class ObserverPolicyTests(unittest.TestCase):
 
     def test_reject_dangerous_live_drift(self) -> None:
         """Dangerous live drift is rejected."""
-        mutations = [
-            lambda s: s["groups"][0].update(is_superuser=True),
-            lambda s: s["groups"][0].update(roles=["idp-read-role"]),
-            lambda s: s["groups"][0].update(parents=["idp-admin-group"]),
-            lambda s: s["rancherLoginRole"].update(newUserDefault=False),
-            lambda s: s["rancherLoginRole"].update(inheritedClusterRoles=["admin"]),
-            lambda s: s["rancherLoginRole"]["rules"].append(
-                {"apiGroups": [""], "resources": ["secrets"], "verbs": ["get"]}
+        drift_cases: list[tuple[Callable[[Snapshot], None], str]] = [
+            (lambda s: s["groups"][0].update(is_superuser=True), "IdP administration"),
+            (
+                lambda s: s["groups"][0].update(roles=["idp-read-role"]),
+                "IdP administration",
             ),
-            lambda s: s["rancherClusterRole"].update(roleTemplateNames=["cluster-member"]),
-            lambda s: s["rancherClusterRole"].update(external=True),
-            lambda s: s["rancherClusterRole"]["rules"].append(
-                {"apiGroups": [""], "resources": ["secrets"], "verbs": ["get"]}
+            (
+                lambda s: s["groups"][0].update(parents=["idp-admin-group"]),
+                "IdP administration",
             ),
-            lambda s: s["rancherClusterRole"]["rules"][0].update(verbs=["*"]),
-            lambda s: s["rancherClusterRole"]["rules"][0].update(resources=["*"]),
-            lambda s: s["rancherGroupBinding"].update(userName="a-human"),
-            lambda s: s["rancherGroupBinding"].update(
-                groupPrincipalName="genericoidc_group://other"
+            (lambda s: s["rancherLoginRole"].update(newUserDefault=False), "not active"),
+            (
+                lambda s: s["rancherLoginRole"].update(inheritedClusterRoles=["admin"]),
+                "Hidden login inheritance",
             ),
-            lambda s: s["rancherGroupBinding"].update(clusterName="other"),
-            lambda s: s["rancherAuth"].update(accessMode="unrestricted"),
-            lambda s: s["rancherAuth"].update(groupsClaim="untrusted"),
-            lambda s: s["harbor"].update(oidcAdminGroup="homelab-observer"),
-            lambda s: s["harbor"]["projects"]["homelab"].append(
-                {"entity_type": "g", "entity_name": "homelab-observer", "role_id": 1}
+            (
+                lambda s: _objects(s["rancherLoginRole"]["rules"]).append(
+                    {"apiGroups": [""], "resources": ["secrets"], "verbs": ["get"]}
+                ),
+                "specification drift: rules",
             ),
-            lambda s: s["apps"][0].update(policy_engine_mode="all"),
-            lambda s: s["bindings"].append(
-                {"target": "legacy-open-webui", "enabled": True, "group": "group-id"}
+            (
+                lambda s: s["rancherClusterRole"].update(roleTemplateNames=["cluster-member"]),
+                "Unexpected role inheritance",
             ),
-            lambda s: s["bindings"].append(
-                {
-                    "target": "app-grafana",
-                    "enabled": True,
-                    "group": "group-id",
-                    "negate": True,
-                }
+            (
+                lambda s: s["rancherClusterRole"].update(external=True),
+                "Unexpected role inheritance",
             ),
-            lambda s: s["globalRoles"].append(
-                {"metadata": {"name": "unknown"}, "newUserDefault": True}
+            (
+                lambda s: _objects(s["rancherClusterRole"]["rules"]).append(
+                    {"apiGroups": [""], "resources": ["secrets"], "verbs": ["get"]}
+                ),
+                "Sensitive reader grant",
+            ),
+            (
+                lambda s: _mapping(_objects(s["rancherClusterRole"]["rules"])[0]).update(
+                    verbs=["*"]
+                ),
+                "not a bounded reader",
+            ),
+            (
+                lambda s: _mapping(_objects(s["rancherClusterRole"]["rules"])[0]).update(
+                    resources=["*"]
+                ),
+                "not a bounded reader",
+            ),
+            (
+                lambda s: s["rancherGroupBinding"].update(userName="a-human"),
+                "must not be per-user",
+            ),
+            (
+                lambda s: s["rancherGroupBinding"].update(
+                    groupPrincipalName="genericoidc_group://other"
+                ),
+                "must not be per-user",
+            ),
+            (
+                lambda s: s["rancherGroupBinding"].update(clusterName="other"),
+                "must not be per-user",
+            ),
+            (
+                lambda s: s["rancherAuth"].update(accessMode="unrestricted"),
+                "reviewed restricted provider",
+            ),
+            (
+                lambda s: s["rancherAuth"].update(groupsClaim="untrusted"),
+                "reviewed restricted provider",
+            ),
+            (
+                lambda s: _set(s["harbor"], "oidcAdminGroup", value="homelab-observer"),
+                "Harbor OIDC mapping drift",
+            ),
+            (
+                lambda s: s["harbor"]["projects"]["homelab"].append(
+                    {"entity_type": "g", "entity_name": "homelab-observer", "role_id": 1}
+                ),
+                "no silent downgrade",
+            ),
+            (
+                lambda s: s["apps"][0].update(policy_engine_mode="all"),
+                "Unexpected native app",
+            ),
+            (
+                lambda s: s["bindings"].append(
+                    {"target": "legacy-open-webui", "enabled": True, "group": "group-id"}
+                ),
+                "migrate legacy admission",
+            ),
+            (
+                lambda s: s["bindings"].append(
+                    {
+                        "target": "app-grafana",
+                        "enabled": True,
+                        "group": "group-id",
+                        "negate": True,
+                    }
+                ),
+                "Complex app admission",
+            ),
+            (
+                lambda s: s["globalRoles"].append(
+                    {"metadata": {"name": "unknown"}, "newUserDefault": True}
+                ),
+                "Unknown default grant",
             ),
         ]
-        for change in mutations:
-            with self.subTest(change=mutations.index(change)):
+        for i, (change, refusal) in enumerate(drift_cases):
+            with self.subTest(case=i, refusal=refusal):
                 state = fixture()
                 change(state)
-                with pytest.raises(ValueError):
+                with pytest.raises(ValueError, match=refusal):
                     plan.build(state, POLICY)
 
     def test_reject_policy_scope_widening(self) -> None:
         """Policy scope widening is rejected."""
-        for mutation in [
-            lambda p: p["nativeAdmission"].append("litellm"),
-            lambda p: p["harbor"]["projects"].append("other-project"),
-            lambda p: p["harbor"].update(roleId=1),
-            lambda p: p["rancher"].update(humanSessionMinutes=960),
-            lambda p: p["rancher"].update(denyExtCredentialMinting=False),
-            lambda p: p["rancher"].update(groupPrincipal="genericoidc_group://homelab-owner"),
-        ]:
+        widening_cases: list[tuple[Callable[[dict[str, object]], None], str]] = [
+            (lambda p: _objects(p["nativeAdmission"]).append("litellm"), "Unreviewed app scope"),
+            (
+                lambda p: _objects(_mapping(p["harbor"])["projects"]).append("other-project"),
+                "Unreviewed project scope",
+            ),
+            (lambda p: _set(p["harbor"], "roleId", value=1), "reviewed Harbor Guest policy"),
+            (
+                lambda p: _set(p["rancher"], "humanSessionMinutes", value=960),
+                "Unreviewed session/token policy",
+            ),
+            (
+                lambda p: _set(p["rancher"], "denyExtCredentialMinting", value=False),
+                "Unreviewed session/token policy",
+            ),
+            (
+                lambda p: _set(
+                    p["rancher"], "groupPrincipal", value="genericoidc_group://homelab-owner"
+                ),
+                "Unreviewed principal/cluster",
+            ),
+        ]
+        for mutation, refusal in widening_cases:
             policy = copy.deepcopy(POLICY)
             mutation(policy)
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match=refusal):
                 plan.build(fixture(), policy)
 
     def test_native_reconciler_retains_but_never_opens_group_admission(self) -> None:
@@ -480,6 +590,9 @@ class ObserverPolicyTests(unittest.TestCase):
             "observer_admission",
             ROOT / "ansible/roles/identity_integrations/files/observer_admission.py",
         )
+        if spec is None or spec.loader is None:
+            message = "observer admission module under test is not loadable"
+            raise RuntimeError(message)
         guard = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(guard)
         state = fixture()
@@ -510,14 +623,14 @@ class ObserverPolicyTests(unittest.TestCase):
 
     def test_malformed_snapshot_is_a_clear_validation_error(self) -> None:
         """A malformed snapshot is a clear validation error."""
-        snapshots: list[tuple[object, object]] = [
-            ({}, POLICY),
-            (None, POLICY),
-            (fixture(), {}),
-            (fixture(), None),
+        malformed_cases: list[tuple[object, object, str]] = [
+            ({}, POLICY, "missing field or incorrect nested structure"),
+            (None, POLICY, "state and policy must be objects"),
+            (fixture(), {}, "missing field or incorrect nested structure"),
+            (fixture(), None, "state and policy must be objects"),
         ]
-        for state, policy in snapshots:
-            with pytest.raises(ValueError):
+        for state, policy, refusal in malformed_cases:
+            with pytest.raises(ValueError, match=refusal):
                 plan.build(state, policy)
 
     def test_harbor_group_type_and_native_entity_id_are_verified(self) -> None:
@@ -568,6 +681,7 @@ class ObserverPolicyTests(unittest.TestCase):
 class BootstrapSafetyTests(unittest.TestCase):
     """Guard observer bootstrap safety against dangerous actions."""
 
+    @override
     def setUp(self) -> None:
         """Load the observer bootstrap module."""
         spec = importlib.util.spec_from_file_location(
@@ -594,14 +708,22 @@ class BootstrapSafetyTests(unittest.TestCase):
         self.credentials.chmod(0o600)
         self.state = fixture()
         self.calls: list[tuple[object, object, object]] = []
+        self.fail_writes = False
         outer = self
 
         class FakeClient:
-            def __init__(self, credentials) -> None:
-                pass
+            """API client double that records calls and converges state."""
 
-            def call(self, system, method, path, body=None) -> None:
+            def __init__(self, credentials: object) -> None:
+                _ = credentials
+
+            def call(
+                self, system: object, method: object, path: object, body: object = None
+            ) -> None:
                 outer.calls.append((system, method, path))
+                if outer.fail_writes:
+                    message = "simulated uncertain write"
+                    raise RuntimeError(message)
                 converge(
                     outer.state,
                     [{"system": system, "method": method, "path": path, "body": body}],
@@ -616,7 +738,7 @@ class BootstrapSafetyTests(unittest.TestCase):
             patch.object(
                 self.bootstrap,
                 "snapshot",
-                side_effect=lambda *args: copy.deepcopy(self.state),
+                side_effect=lambda *_args: copy.deepcopy(self.state),
             ),
             patch(
                 "sys.argv",
@@ -638,15 +760,16 @@ class BootstrapSafetyTests(unittest.TestCase):
 
     def test_api_paths_are_scoped_and_reject_traversal(self) -> None:
         """API paths are scoped and reject traversal."""
-        for system, path in [
-            ("authentik", "../../etc/passwd"),
-            ("harbor", "/etc/passwd"),
-            ("harbor", "/api/v2.0/projects/../robots"),
-            ("harbor", "/api/v2.0/projects/%252e%252e/robots"),
-            ("kubernetes", "//other.example/api"),
-            ("authentik", "https://other.example/core/users/"),
-        ]:
-            with self.subTest(path=path), pytest.raises(ValueError):
+        rejected_cases: list[tuple[object, str, str]] = [
+            ("authentik", "../../etc/passwd", "Unsafe API path traversal"),
+            ("harbor", "/etc/passwd", "API path outside reviewed namespace"),
+            ("harbor", "/api/v2.0/projects/../robots", "Unsafe API path traversal"),
+            ("harbor", "/api/v2.0/projects/%252e%252e/robots", "Unsafe API path traversal"),
+            ("kubernetes", "//other.example/api", "Unsafe API path$"),
+            ("authentik", "https://other.example/core/users/", "Unsafe API path$"),
+        ]
+        for system, path, refusal in rejected_cases:
+            with self.subTest(path=path), pytest.raises(ValueError, match=refusal):
                 self.bootstrap.validate_path(system, path)
         for system, path in [
             ("authentik", "core/users/?username=antropophag&page=1"),
@@ -667,7 +790,7 @@ class BootstrapSafetyTests(unittest.TestCase):
         )
         assert header.startswith("Basic ")
         assert path == "/api/v2.0/configurations"
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Invalid native Harbor machine credential"):
             self.bootstrap.harbor_authorization({"harborJobserviceSecret": ""})
 
     def test_foundation_ready_path_preserves_explicit_trusted_owner(self) -> None:
@@ -714,18 +837,16 @@ class BootstrapSafetyTests(unittest.TestCase):
         assert plan.build(self.state, POLICY) == []
         assert not (self.root / "state/uncertain.json").exists()
         ready = self.root / "observer-ready.json"
-        assert ready.stat().st_mode & 511 == 384
+        assert ready.stat().st_mode & 511 == READY_RECEIPT_MODE
         assert json.loads(ready.read_text())["nativeObserverReady"]
         for receipt in (self.root / "state").glob("*/before.json"):
-            assert receipt.stat().st_mode & 511 == 384
+            assert receipt.stat().st_mode & 511 == READY_RECEIPT_MODE
 
     def test_failed_write_leaves_uncertain_stop_and_no_blind_retry(self) -> None:
         """A failed write leaves an uncertain stop with no blind retry."""
         approved = self.run_main()["plan_hash"]
         assert isinstance(approved, str)
-        self.fake_client.call = lambda *args: (_ for _ in ()).throw(
-            RuntimeError("simulated uncertain write")
-        )
+        self.fail_writes = True
         with pytest.raises(RuntimeError, match="uncertain"):
             self.run_main("--apply", "--approve-plan-hash", approved)
         assert (self.root / "state/uncertain.json").exists()
@@ -734,7 +855,79 @@ class BootstrapSafetyTests(unittest.TestCase):
         assert not (self.root / "observer-ready.json").exists()
 
 
+def _chat_binding(pk: str, group: str) -> dict[str, object]:
+    """Return one Chat admission binding row for the migration fixture."""
+    return {
+        "pk": pk,
+        "target": "chat-app",
+        "group": group,
+        "enabled": True,
+        "negate": False,
+        "policy": None,
+        "user": None,
+        "failure_result": False,
+    }
+
+
+class _FakeChatClient:
+    """API client double used by the legacy chat migration tests."""
+
+    def __init__(self, owner: "LegacyChatMigrationTests") -> None:
+        self.owner = owner
+
+    def rows(self, path: str) -> list[dict[str, object]]:
+        """Return the fixture rows for an API read."""
+        state = self.owner.state
+        if path.startswith("core/groups/"):
+            return copy.deepcopy(state["groups"])
+        if path.startswith("core/applications/"):
+            return [copy.deepcopy(state["app"])]
+        if path.startswith("policies/bindings/"):
+            return copy.deepcopy(state["bindings"])
+        if path.startswith("core/users/"):
+            return copy.deepcopy(state["users"])
+        msg = "Unexpected API read"
+        raise AssertionError(msg)
+
+    def call(self, system: object, method: object, path: str, body: object = None) -> object:
+        """Apply one API mutation against the shared fixture state."""
+        state = self.owner.state
+        self.owner.calls.append((system, method, path, body))
+        if method == "POST" and path == "core/groups/":
+            new_group: dict[str, object] = {"pk": "new-chat-group", "users": []}
+            assert isinstance(body, dict)
+            new_group.update(body)
+            state["groups"].append(new_group)
+        elif method == "POST" and path.endswith("/add_user/"):
+            chat_user_groups = state["users"][0]["groups"]
+            assert isinstance(chat_user_groups, list)
+            chat_user_groups.append("new-chat-group")
+            group_members = state["groups"][-1]["users"]
+            assert isinstance(group_members, list)
+            group_members.append(92)
+        elif method == "POST" and path == "policies/bindings/":
+            new_binding: dict[str, object] = {"pk": "new-binding"}
+            assert isinstance(body, dict)
+            new_binding.update(body)
+            state["bindings"].append(new_binding)
+        elif method == "DELETE":
+            state["bindings"] = [b for b in state["bindings"] if b["pk"] != path.split("/")[-2]]
+        elif method == "GET" and path.startswith("core/users/"):
+            return copy.deepcopy(state["users"][0])
+        elif method == "GET" and path.startswith("policies/bindings/"):
+            return copy.deepcopy(
+                next(b for b in state["bindings"] if b["pk"] == path.split("/")[-2])
+            )
+        else:
+            msg = "Unexpected API mutation"
+            raise AssertionError(msg)
+        return None
+
+
 class LegacyChatMigrationTests(unittest.TestCase):
+    """Validate the one-time legacy chat observer migration."""
+
+    @override
     def setUp(self) -> None:
         """Load the chat migration module and fixture state."""
         spec = importlib.util.spec_from_file_location(
@@ -745,19 +938,6 @@ class LegacyChatMigrationTests(unittest.TestCase):
             raise RuntimeError(message)
         self.migration = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.migration)
-
-        def binding(pk, group):
-            return {
-                "pk": pk,
-                "target": "chat-app",
-                "group": group,
-                "enabled": True,
-                "negate": False,
-                "policy": None,
-                "user": None,
-                "failure_result": False,
-            }
-
         self.state: ChatState = {
             "users": [
                 {
@@ -778,55 +958,12 @@ class LegacyChatMigrationTests(unittest.TestCase):
                 "policy_engine_mode": "any",
             },
             "bindings": [
-                binding("owner-binding", "owner"),
-                binding("old-observer-binding", "observer"),
+                _chat_binding("owner-binding", "owner"),
+                _chat_binding("old-observer-binding", "observer"),
             ],
         }
         self.calls: list[tuple[object, object, str, object]] = []
-        outer = self
-
-        class FakeClient:
-            def rows(self, path):
-                if path.startswith("core/groups/"):
-                    return copy.deepcopy(outer.state["groups"])
-                if path.startswith("core/applications/"):
-                    return [copy.deepcopy(outer.state["app"])]
-                if path.startswith("policies/bindings/"):
-                    return copy.deepcopy(outer.state["bindings"])
-                if path.startswith("core/users/"):
-                    return copy.deepcopy(outer.state["users"])
-                msg = "Unexpected API read"
-                raise AssertionError(msg)
-
-            def call(self, system, method, path, body=None):
-                outer.calls.append((system, method, path, body))
-                if method == "POST" and path == "core/groups/":
-                    outer.state["groups"].append({"pk": "new-chat-group", "users": [], **body})
-                elif method == "POST" and path.endswith("/add_user/"):
-                    chat_user_groups = outer.state["users"][0]["groups"]
-                    assert isinstance(chat_user_groups, list)
-                    chat_user_groups.append("new-chat-group")
-                    group_members = outer.state["groups"][-1]["users"]
-                    assert isinstance(group_members, list)
-                    group_members.append(92)
-                elif method == "POST" and path == "policies/bindings/":
-                    outer.state["bindings"].append({"pk": "new-binding", **body})
-                elif method == "DELETE":
-                    outer.state["bindings"] = [
-                        b for b in outer.state["bindings"] if b["pk"] != path.split("/")[-2]
-                    ]
-                elif method == "GET" and path.startswith("core/users/"):
-                    return copy.deepcopy(outer.state["users"][0])
-                elif method == "GET" and path.startswith("policies/bindings/"):
-                    return copy.deepcopy(
-                        next(b for b in outer.state["bindings"] if b["pk"] == path.split("/")[-2])
-                    )
-                else:
-                    msg = "Unexpected API mutation"
-                    raise AssertionError(msg)
-                return None
-
-        self.client = FakeClient()
+        self.client = _FakeChatClient(self)
 
     def test_one_time_migration_preserves_native_subject_and_owner_then_converges(
         self,
@@ -856,18 +993,31 @@ class LegacyChatMigrationTests(unittest.TestCase):
 
     def test_unreviewed_observer_or_subject_change_stops_before_writes(self) -> None:
         """Unreviewed observer or subject changes stop before writes."""
-        for modify in [
-            lambda s: s["groups"][0]["users"].append(94),
-            lambda s: s["users"][0].update(uuid="changed"),
-            lambda s: s["users"].append(
-                {"username": "danila", "uuid": "unreviewed", "pk": 94, "groups": []}
+        unreviewed_cases: list[tuple[Callable[[ChatState], None], str]] = [
+            (
+                lambda s: _objects(s["groups"][0]["users"]).append(94),
+                "audit native chat preservation first",
             ),
-            lambda s: s["app"].update(policy_engine_mode="all"),
-            lambda s: s["bindings"][0].update(negate=True),
-        ]:
+            (lambda s: s["users"][0].update(uuid="changed"), "Unreviewed user snapshot"),
+            (
+                lambda s: s["users"].append(
+                    {"username": "danila", "uuid": "unreviewed", "pk": 94, "groups": []}
+                ),
+                "Unreviewed user snapshot",
+            ),
+            (
+                lambda s: s["app"].update(policy_engine_mode="all"),
+                "Unexpected native chat application",
+            ),
+            (
+                lambda s: s["bindings"][0].update(negate=True),
+                "Complex/unsafe legacy chat policy",
+            ),
+        ]
+        for modify, refusal in unreviewed_cases:
             state = copy.deepcopy(self.state)
             modify(state)
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match=refusal):
                 self.migration.build(state, POLICY)
             assert self.calls == []
 
