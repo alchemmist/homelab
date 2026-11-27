@@ -999,3 +999,41 @@ def test_blog_render_drift_withholds_www(drift):
     else:
         docs.append(deepcopy(dep))
     assert not eligible(docs, catalog, owner="blog")
+
+
+def test_tcp_resolver_changes_only_closed_pod_resolver_options():
+    chart = ROOT / "deploy/public-web/closed-health"
+    args = [
+        "helm",
+        "template",
+        "closed-health",
+        str(chart),
+        "-n",
+        "public-health-staging",
+    ]
+    for f in (
+        "deploy/blog/values.yaml",
+        "deploy/public-web/closed-root-owners.yaml",
+        "deploy/public-web/entrances.yaml",
+    ):
+        args += ["-f", str(ROOT / f)]
+
+    def render(*opts):
+        return [
+            d for d in yaml.safe_load_all(subprocess.check_output([*args, *opts])) if d
+        ]
+
+    default = render()
+    assert default == render("--set", "useTcpResolver=false")
+    candidate = render("--set", "useTcpResolver=true")
+    deploys = [d for d in candidate if d["kind"] == "Deployment"]
+    assert len(deploys) == 3
+    for d in deploys:
+        assert d["spec"]["template"]["spec"].pop("dnsConfig") == {
+            "options": [{"name": "use-vc"}]
+        }
+    assert candidate == default
+    bad = subprocess.run(
+        [*args, "--set-string", "useTcpResolver=true"], capture_output=True
+    )
+    assert bad.returncode and b"useTcpResolver must be a boolean" in bad.stderr

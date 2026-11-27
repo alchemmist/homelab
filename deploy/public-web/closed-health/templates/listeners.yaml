@@ -1,5 +1,7 @@
 {{- $catalog := required "entrance catalog required" .Values.replicas -}}
 {{- if ne (dig "schoolbot" "inform.sch1357.ru" "tlsSourceName" "" .Values.hosts) "schoolbot-tls" }}{{ fail "expected ordinary Schoolbot owner" }}{{ end }}
+{{- $dnsTCP := .Values.useTcpResolver -}}
+{{- if and (hasKey .Values "useTcpResolver") (not (kindIs "bool" $dnsTCP)) }}{{ fail "useTcpResolver must be a boolean" }}{{ end -}}
 {{- $host := "www.alchemmist.xyz" -}}
 {{- $ing := .Values.ingress | default dict -}}
 {{- $svc := .Values.service | default dict -}}
@@ -376,6 +378,10 @@ spec:
     spec:
       automountServiceAccountToken: false
       enableServiceLinks: false
+      {{- if $dnsTCP }}
+      dnsConfig:
+        options: [{name: use-vc}]
+      {{- end }}
       nodeSelector: {kubernetes.io/hostname: {{ $instance.node }}}
       {{- if eq $name "moscow" }}
       tolerations: [{key: homelab.io/bootstrap, operator: Equal, value: 'true', effect: NoSchedule}]
