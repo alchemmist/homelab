@@ -166,3 +166,14 @@ each authority. It requires a complete authoritative, non-recursive answer with
 exactly the expected IP per question. It does not create, relabel or delete the
 probe. An execution error is not evidence of a policy denial. Record separate
 same-Pod deny/reallow results and clean up the probe after the exercise.
+
+`services/public_entry/tls_material.py` is an **offline** validation primitive,
+not a deployed provider. Given a single source's already-authorized DNS names,
+PEM chain, matching key and timezone-aware time, it returns only the leaf
+fingerprint. It rejects wrong or extra SANs, additional non-DNS SANs, invalid
+time windows, unsupported or mismatched keys and malformed/unrelated chain
+entries. It does not authorize a Kubernetes read, look up a trust root, certify
+client trust, or apply a snapshot. In particular, an otherwise valid self-signed
+fixture can pass this source check and still fail an ordinary browser. Do not
+feed live keys to CI or persist the arguments. Run the synthetic regression
+with `uv run pytest -q tests/test_public_tls_material.py`.

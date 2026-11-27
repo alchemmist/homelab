@@ -8,6 +8,7 @@ dependencies = []
 dev = [
   "ansible-core==2.22.0",
   "ansible-lint==26.11.0",
+  "cryptography==50.0.2",
   "jsonschema==4.26.0",
   "mypy==2.4.1",
   "pip-audit==2.10.0",
