@@ -4386,7 +4386,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by(status) (socrat_n8n_starts_window{window=\"300\",status=~\"success|error|other\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
+          "expr": "max by(status) (cnpg_n8n_activity_starts{job=\"n8n-activity-db\"} and (time() - timestamp(cnpg_n8n_activity_starts{job=\"n8n-activity-db\"}) < 90)) or on(status) (max by(status) (socrat_n8n_starts_window{window=\"300\",status=~\"success|error|other\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90))",
           "format": "time_series",
           "instant": false,
           "legendFormat": "{{status}}",

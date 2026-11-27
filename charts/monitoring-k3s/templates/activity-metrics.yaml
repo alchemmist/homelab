@@ -144,6 +144,10 @@ spec:
       ports:
         - port: 9189
   egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: postgres}}
+          podSelector: {matchLabels: {cnpg.io/cluster: pg-common, cnpg.io/instanceRole: primary}}
+      ports: [{port: 9187, protocol: TCP}]
 {{- if .Values.publicIpProbes.enabled }}
     - to:
         - ipBlock:

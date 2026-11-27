@@ -9,6 +9,15 @@ receivers:
           scrape_timeout: 5s
           static_configs:
             - targets: [127.0.0.1:9189]
+        - job_name: n8n-activity-db
+          scrape_interval: 15s
+          scrape_timeout: 5s
+          static_configs:
+            - targets: [pg-common-primary-metrics.postgres.svc:9187]
+          metric_relabel_configs:
+            - source_labels: [__name__]
+              regex: cnpg_n8n_activity_starts
+              action: keep
         - job_name: wishlist
           scrape_interval: 15s
           scrape_timeout: 5s

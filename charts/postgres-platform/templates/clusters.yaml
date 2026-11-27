@@ -18,6 +18,11 @@ metadata:
 spec:
   instances: {{ ternary 3 2 (eq $tier "critical") }}
   imageName: {{ $.Values.imageName | quote }}
+  {{- if eq $tier "common" }}
+  monitoring:
+    customQueriesConfigMap:
+      - {name: pg-common-n8n-activity, key: queries}
+  {{- end }}
   managed:
     roles:
       - name: pgadmin_browser
