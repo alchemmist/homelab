@@ -36,6 +36,8 @@ def test_owner_opt_in_changes_only_one_ingress_label(app, field, replacement):
     catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())[
         "hosts"
     ][app]
+    release_values = yaml.safe_load((ROOT / "deploy" / app / "values.yaml").read_text())
+    assert release_values["publicWebHost"] == host
     assert catalog[host].get("route", "web") == "web"
     assert owner["spec"]["tls"][0]["hosts"] == [host]
     expected = render("--set-string", "publicWebHost=")
