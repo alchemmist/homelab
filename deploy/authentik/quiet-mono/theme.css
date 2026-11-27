@@ -8,6 +8,12 @@
 :host(ak-flow-executor) .pf-c-login{display:flex!important;flex-direction:column;align-items:center;justify-content:center;min-height:100svh!important;box-sizing:border-box!important;padding:48px 28px!important;background:transparent!important;gap:0;isolation:isolate}
 :host(ak-flow-executor) .pf-c-login::before,:host(ak-flow-executor) .pf-c-login::after{display:none!important}
 :host(ak-flow-executor) .pf-c-login__main{display:block!important;position:relative!important;align-self:center!important;grid-area:auto!important;width:354px!important;max-width:100%!important;padding:30px 30px 24px!important;margin:0!important;border:1px solid rgba(255,255,255,.78)!important;border-radius:3px!important;background:rgba(255,254,250,.86)!important;box-shadow:0 18px 65px -30px rgba(17,32,38,.4)!important;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);color:#15223c!important}
+/* Keep native busy feedback and click interception without tinting the card. */
+:host(ak-flow-executor) [part="main"] > ak-loading-overlay{--ak-c-loading-overlay--BackgroundColor:transparent}
+/* Reserve the combined sign-in form's footprint while its native challenge loads.
+   A minimum, not a fixed height: validation messages and wrapped text can grow. */
+:host(ak-flow-executor[slug="default-authentication-flow"]) .pf-c-login__main:has(ak-flow-card,ak-stage-identification){min-block-size:404px}
+@media(max-width:700px){:host(ak-flow-executor[slug="default-authentication-flow"]) .pf-c-login__main:has(ak-flow-card,ak-stage-identification){min-block-size:401px}}
 :host(ak-flow-executor) .pf-c-login__main-header.pf-c-brand{display:flex!important;align-items:center;justify-content:flex-start;gap:12px;padding:0!important;margin:0 0 27px!important;min-height:39px!important}
 :host(ak-flow-executor) .branding-logo{width:auto!important;height:39px!important;max-width:26px!important;margin:0!important;object-fit:contain}
 :host(ak-flow-executor) .pf-c-brand::after{content:'Socrat';font:400 21px/1 QuietMono,'Courier New',monospace;letter-spacing:-1px;color:#15223c}
