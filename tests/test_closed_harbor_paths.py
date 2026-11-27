@@ -1,14 +1,17 @@
+import subprocess
 from copy import deepcopy
 
 import pytest
 import yaml
 
-from ci.quality.closed_harbor_paths import CATALOG, HOST, compile_fixture, owner_render
+from ci.quality.closed_harbor_paths import CATALOG, HOST, compile_fixture, owner_command
 
 
 @pytest.fixture(scope="module")
 def inputs():
-    return owner_render(), yaml.safe_load(CATALOG.read_text())
+    return [
+        d for d in yaml.safe_load_all(subprocess.check_output(owner_command())) if d
+    ], yaml.safe_load(CATALOG.read_text())
 
 
 def test_literal_prefix_and_native_tls_only(inputs):

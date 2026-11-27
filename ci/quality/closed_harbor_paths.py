@@ -5,10 +5,9 @@ The caller must separately establish both the original prefix mode and exclusivi
 of the host across providers. Never publish a partial result on rejection.
 """
 
-import subprocess
+import sys
 
 import yaml
-
 from ci.quality.public_path_rule import source_priority
 from ci.quality.public_web import CATALOG, ROOT
 
@@ -26,7 +25,8 @@ ANNOTATIONS = {
 FILES = ["../../deploy/platform/harbor/values.yaml", "../../deploy/platform/harbor/pg-common.yaml"]
 
 
-def owner_render():
+def owner_command() -> list[str]:
+    """Return the exact offline Helm command after checking the Argo release inputs."""
     app = yaml.safe_load((ROOT / "deploy/argocd/apps/harbor.yaml").read_text())
     src = app["spec"]["source"]
     if (
@@ -41,20 +41,23 @@ def owner_render():
             "helm": {"releaseName": "harbor", "valueFiles": FILES},
         }
     ):
-        raise ValueError("unexpected Harbor release inputs")
+        message = "unexpected Harbor release inputs"
+        raise ValueError(message)
     chart = ROOT / src["path"]
     args = ["helm", "template", "harbor", str(chart), "-n", "harbor"]
     for f in FILES:
         args += ["-f", str(chart / f)]
-    return [d for d in yaml.safe_load_all(subprocess.check_output(args)) if d]
+    return args
 
 
-def compile_fixture(objects, catalog, *, source_strict):
+def compile_fixture(objects: list[dict], catalog: dict, *, source_strict: bool) -> dict:
+    """Reject the entire host when any reviewed path or destination changes."""
     if source_strict is not False or catalog["hosts"].get("harbor", {}).get(HOST) != {
         "dns": "managed",
         "tlsSourceName": "harbor-tls",
     }:
-        raise ValueError("unreviewed Harbor host or prefix mode")
+        message = "unreviewed Harbor host or prefix mode"
+        raise ValueError(message)
     ings = [d for d in objects if d["kind"] == "Ingress"]
     expected = [
         {
@@ -65,7 +68,8 @@ def compile_fixture(objects, catalog, *, source_strict):
         for p, target in PATHS.items()
     ]
     if len(ings) != 1:
-        raise ValueError("unexpected Harbor ingress set")
+        message = "unexpected Harbor ingress set"
+        raise ValueError(message)
     ing = ings[0]
     meta = ing["metadata"]
     spec = ing["spec"]
@@ -81,7 +85,8 @@ def compile_fixture(objects, catalog, *, source_strict):
             "rules": [{"host": HOST, "http": {"paths": expected}}],
         }
     ):
-        raise ValueError("Harbor routing or TLS contract changed")
+        message = "Harbor routing or TLS contract changed"
+        raise ValueError(message)
     services = {}
     for target in ("core", "portal"):
         name = "harbor-" + target
@@ -96,7 +101,8 @@ def compile_fixture(objects, catalog, *, source_strict):
             or rows[0]["metadata"].get("annotations")
             or rows[0]["spec"] != {"ports": [port], "selector": selector}
         ):
-            raise ValueError("unreviewed Harbor Service")
+            message = "unreviewed Harbor Service"
+            raise ValueError(message)
         services[name] = {
             "loadBalancer": {
                 "passHostHeader": True,
@@ -117,10 +123,10 @@ def compile_fixture(objects, catalog, *, source_strict):
 
 
 if __name__ == "__main__":
-    print(
-        yaml.safe_dump(
-            compile_fixture(
-                owner_render(), yaml.safe_load(CATALOG.read_text()), source_strict=False
-            )
-        )
+    owner_command()
+    # Feed the output of owner_command() on stdin; never accept live keys.
+    render = [obj for obj in yaml.safe_load_all(sys.stdin) if obj]
+    yaml.safe_dump(
+        compile_fixture(render, yaml.safe_load(CATALOG.read_text()), source_strict=False),
+        sys.stdout,
     )
