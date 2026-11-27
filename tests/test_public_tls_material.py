@@ -288,3 +288,65 @@ def test_truncated_http_response_after_denial_does_not_cancel_completed_batch():
         c: "invalid-response",
     }
     assert not result.hosts and not result.material
+
+
+def test_loopback_listener_witness_distinguishes_withdrawal_from_trust_and_connection_failure(
+    tmp_path,
+):
+    import socket
+    import ssl
+    import threading
+
+    from services.public_entry.tls_witness import observe
+
+    key, cert = pair()
+    kp = tmp_path / "key"
+    cp = tmp_path / "cert"
+    kp.write_bytes(private(key))
+    cp.write_bytes(pem(cert))
+    server = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    server.load_cert_chain(cp, kp)
+    client = ssl.create_default_context(cafile=str(cp))
+    fp = cert.fingerprint(hashes.SHA256()).hex()
+    gone = "gone.invalid"
+    left, right = sorted(NAMES)
+    seen = []
+
+    def sni(sock, host, context):
+        seen.append(host)
+        if host == gone:
+            return ssl.ALERT_DESCRIPTION_UNRECOGNIZED_NAME
+        return None
+
+    server.sni_callback = sni
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen()
+        listener.settimeout(3)
+        port = listener.getsockname()[1]
+
+        def accept():
+            for _ in range(7):
+                raw, _ = listener.accept()
+                with raw:
+                    try:
+                        with server.wrap_socket(raw, server_side=True):
+                            pass
+                    except ssl.SSLError:
+                        pass
+
+        worker = threading.Thread(target=accept, daemon=True)
+        worker.start()
+        scope = NAMES | {gone}
+        assert observe(port, scope, {left: fp}, trust=client) == {
+            left: "trusted-match",
+            right: "unexpected-leaf",
+            gone: "strict-rejection",
+        }
+        assert observe(
+            port, scope, {left: "0" * 64, right: fp, gone: fp}, trust=client
+        ) == {left: "different-leaf", right: "trusted-match", gone: "missing-leaf"}
+        assert observe(port, frozenset({left}), {}) == {left: "untrusted-leaf"}
+        worker.join(4)
+        assert not worker.is_alive() and len(seen) == 7
+    assert observe(port, NAMES, {}) == {name: "unreachable" for name in NAMES}
