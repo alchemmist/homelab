@@ -106,7 +106,7 @@ def test_invalid_owner_states_fail_to_render(values: str) -> None:
         objects("--set", values)
 
 
-def test_tls_flow_requires_both_exact_steps_on_same_new_socket():
+def test_tls_flow_requires_both_exact_steps_on_same_new_socket() -> None:
     from ci.quality.moscow_blog_relay import matches
 
     opened = {i: 100 for i in range(5)}
@@ -117,7 +117,7 @@ def test_tls_flow_requires_both_exact_steps_on_same_new_socket():
     assert matches({0: 0}, opened, first, second, 51, 61) == {1, 3}
 
 
-def test_www_split_fixture_is_exact_and_rejects_widened_owner_rules():
+def test_www_split_fixture_is_exact_and_rejects_widened_owner_rules() -> None:
     from ci.quality.moscow_www_split import VPN, WWW, fixture
 
     def render(release, chart, namespace, *extra):

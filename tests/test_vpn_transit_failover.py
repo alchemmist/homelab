@@ -6,6 +6,7 @@ import json
 import pathlib
 import subprocess
 import tarfile
+from pathlib import Path
 from types import ModuleType
 from typing import Protocol, Self
 
@@ -55,7 +56,7 @@ class TransitController(Protocol):
 
 
 @pytest.fixture
-def ctl(tmp_path, monkeypatch) -> tuple[ModuleType, TransitController]:
+def ctl(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[ModuleType, TransitController]:
     """Test behavior for ctl."""
     m = module("vpn-transit-failover")
     monkeypatch.setattr(m, "ROOT", tmp_path)
@@ -65,7 +66,7 @@ def ctl(tmp_path, monkeypatch) -> tuple[ModuleType, TransitController]:
     return m, m.Controller()
 
 
-def test_no_api_only_failover_and_failure_threshold(ctl, monkeypatch) -> None:
+def test_no_api_only_failover_and_failure_threshold(ctl, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test behavior for test_no_api_only_failover_and_failure_threshold."""
     m, c = ctl
     monkeypatch.setattr(m, "boot_id", lambda: "test-boot")
@@ -89,7 +90,7 @@ def test_no_api_only_failover_and_failure_threshold(ctl, monkeypatch) -> None:
     assert c.state["grace_until"] == 0
 
 
-def test_prepared_and_native_are_sticky(ctl, monkeypatch) -> None:
+def test_prepared_and_native_are_sticky(ctl, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test behavior for test_prepared_and_native_are_sticky."""
     m, c = ctl
     calls = []
@@ -114,7 +115,7 @@ def test_uncertain_transition_never_replays(ctl) -> None:
         c.tick()
 
 
-def test_unknown_port_owner_blocks_native_start(ctl, monkeypatch) -> None:
+def test_unknown_port_owner_blocks_native_start(ctl, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test behavior for test_unknown_port_owner_blocks_native_start."""
     m, c = ctl
     calls = []
@@ -136,7 +137,9 @@ def test_unknown_port_owner_blocks_native_start(ctl, monkeypatch) -> None:
     assert ["systemctl", "start", m.NATIVE] not in calls
 
 
-def test_image_determinism_and_binary_integrity(tmp_path, monkeypatch) -> None:
+def test_image_determinism_and_binary_integrity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test behavior for test_image_determinism_and_binary_integrity."""
     m = module("vpn-transit-image")
     binary = tmp_path / "binary"
@@ -211,7 +214,9 @@ def test_machine_https_exception_is_exact_not_a_human_acl_relaxation() -> None:
     assert host["public_dns_extra_listen"] == ["10.250.0.2@5354"]
 
 
-def test_late_native_health_reconciles_without_replaying_lifecycle(ctl, monkeypatch) -> None:
+def test_late_native_health_reconciles_without_replaying_lifecycle(
+    ctl, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test behavior for test_late_native_health_reconciles_without_replaying_lifecycle."""
     m, c = ctl
     m.atomic(c.marker, {"reason": "four failures"})
@@ -234,7 +239,9 @@ def test_late_native_health_reconciles_without_replaying_lifecycle(ctl, monkeypa
 
 
 @pytest.mark.parametrize(("native", "healthy"), [(False, True), (True, False), (False, False)])
-def test_unhealthy_native_transition_stays_fenced(ctl, monkeypatch, native, healthy) -> None:
+def test_unhealthy_native_transition_stays_fenced(
+    ctl, monkeypatch: pytest.MonkeyPatch, native: bool, healthy: bool
+) -> None:
     """Test behavior for test_unhealthy_native_transition_stays_fenced."""
     m, c = ctl
     m.atomic(c.marker, {})
@@ -248,7 +255,7 @@ def test_unhealthy_native_transition_stays_fenced(ctl, monkeypatch, native, heal
     assert c.marker.exists()
 
 
-def test_late_native_acceptance_refuses_active_agent(ctl, monkeypatch) -> None:
+def test_late_native_acceptance_refuses_active_agent(ctl, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test behavior for test_late_native_acceptance_refuses_active_agent."""
     m, c = ctl
     m.atomic(c.marker, {})
@@ -261,7 +268,9 @@ def test_late_native_acceptance_refuses_active_agent(ctl, monkeypatch) -> None:
     assert c.marker.exists()
 
 
-def test_late_native_acceptance_requires_prerequisites(ctl, monkeypatch) -> None:
+def test_late_native_acceptance_requires_prerequisites(
+    ctl, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test behavior for test_late_native_acceptance_requires_prerequisites."""
     m, c = ctl
     m.atomic(c.marker, {})
@@ -280,7 +289,9 @@ def test_late_native_acceptance_requires_prerequisites(ctl, monkeypatch) -> None
     assert c.marker.exists()
 
 
-def test_native_primary_requires_healthy_fenced_native_and_is_sticky(ctl, monkeypatch) -> None:
+def test_native_primary_requires_healthy_fenced_native_and_is_sticky(
+    ctl, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test behavior for test_native_primary_requires_healthy_fenced_native_and_is_sticky."""
     m, c = ctl
     monkeypatch.setattr(c, "prerequisites", lambda: None)
@@ -304,7 +315,9 @@ def test_native_primary_requires_healthy_fenced_native_and_is_sticky(ctl, monkey
     assert c.marker.exists()
 
 
-def test_unhealthy_primary_never_restarts_agent_or_releases_fence(ctl, monkeypatch) -> None:
+def test_unhealthy_primary_never_restarts_agent_or_releases_fence(
+    ctl, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test behavior for test_unhealthy_primary_never_restarts_agent_or_releases_fence."""
     m, c = ctl
     monkeypatch.setattr(c, "prerequisites", lambda: None)
@@ -332,7 +345,13 @@ def test_unhealthy_primary_never_restarts_agent_or_releases_fence(ctl, monkeypat
     ],
 )
 def test_failure_scope_uses_direct_upstream_not_api(
-    ctl, monkeypatch, agent, listeners, upstream, recover, scope
+    ctl,
+    monkeypatch: pytest.MonkeyPatch,
+    agent: bool,
+    listeners: bool,
+    upstream: bool,
+    recover: bool,
+    scope: str,
 ) -> None:
     """Test behavior for test_failure_scope_uses_direct_upstream_not_api."""
     m, c = ctl
@@ -353,7 +372,9 @@ def test_failure_scope_uses_direct_upstream_not_api(
     assert d["scope"] == scope
 
 
-def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatch) -> None:
+def test_upstream_failure_never_fences_worker_or_releases_marker(
+    ctl, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test behavior for test_upstream_failure_never_fences_worker_or_releases_marker."""
     m, c = ctl
     monkeypatch.setattr(m, "boot_id", lambda: "boot")
@@ -388,7 +409,7 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatc
     assert len(calls) == 1
 
 
-def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch) -> None:
+def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test behavior for test_probe_failure_records_stage_not_private_path."""
     m, c = ctl
 
@@ -404,7 +425,7 @@ def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch) -> None:
 
 
 def test_boot_grace_never_refreshes_old_green_health_or_carries_failure_count(
-    ctl, monkeypatch
+    ctl, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Test boot grace resets stale health."""
     m, c = ctl
@@ -420,7 +441,9 @@ def test_boot_grace_never_refreshes_old_green_health_or_carries_failure_count(
     assert c.state["failures"] == 0
 
 
-def test_failed_websocket_diagnostic_does_not_store_private_path(ctl, monkeypatch) -> None:
+def test_failed_websocket_diagnostic_does_not_store_private_path(
+    ctl, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test failed websocket diagnostics avoid private paths."""
     m, c = ctl
 
@@ -450,7 +473,7 @@ def test_failed_websocket_diagnostic_does_not_store_private_path(ctl, monkeypatc
     assert "/test" not in json.dumps(c.last_probe)
 
 
-def test_native_cooldown_and_retry_backoff(ctl, monkeypatch):
+def test_native_cooldown_and_retry_backoff(ctl, monkeypatch: pytest.MonkeyPatch) -> None:
     m, c = ctl
     c.config["warm_return_enabled"] = True
     c.save(mode="native")
@@ -467,7 +490,9 @@ def test_native_cooldown_and_retry_backoff(ctl, monkeypatch):
     assert c.state["return_after"] == 3615
 
 
-def test_interrupted_warm_return_recovers_before_monitoring(ctl, monkeypatch):
+def test_interrupted_warm_return_recovers_before_monitoring(
+    ctl, monkeypatch: pytest.MonkeyPatch
+) -> None:
     m, c = ctl
     c.config["warm_return_enabled"] = True
     c.save(mode="warming")
@@ -478,7 +503,9 @@ def test_interrupted_warm_return_recovers_before_monitoring(ctl, monkeypatch):
     assert calls == ["recover interrupted warm return"]
 
 
-def test_agent_exception_requires_live_same_boot_warming(ctl, monkeypatch, tmp_path):
+def test_agent_exception_requires_live_same_boot_warming(
+    ctl, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     m, c = ctl
     monkeypatch.setattr(type(c), "permit", property(lambda _: tmp_path / "permit"))
     monkeypatch.setattr(m, "boot_id", lambda: "this-boot")
@@ -495,7 +522,7 @@ def test_agent_exception_requires_live_same_boot_warming(ctl, monkeypatch, tmp_p
     assert not c.agent_allowed()
 
 
-def test_manual_return_cannot_bypass_busy_shared_lock(ctl, monkeypatch):
+def test_manual_return_cannot_bypass_busy_shared_lock(ctl, monkeypatch: pytest.MonkeyPatch) -> None:
     m, c = ctl
     c.config["warm_return_enabled"] = True
     m.atomic(c.marker, {})
@@ -509,7 +536,9 @@ def test_manual_return_cannot_bypass_busy_shared_lock(ctl, monkeypatch):
 
 
 @pytest.mark.parametrize("reply", [b"", b"LOC"])
-def test_witness_denial_and_partial_response_preserve_native(ctl, monkeypatch, reply):
+def test_witness_denial_and_partial_response_preserve_native(
+    ctl, monkeypatch: pytest.MonkeyPatch, reply: bytes
+) -> None:
     import sys
 
     m, c = ctl
@@ -532,7 +561,7 @@ def test_witness_denial_and_partial_response_preserve_native(ctl, monkeypatch, r
     assert list(m.ROOT.glob("*-return-deferred.json"))
 
 
-def test_witness_partition_requires_reconciliation(tmp_path):
+def test_witness_partition_requires_reconciliation(tmp_path: Path) -> None:
     import io
 
     spec = importlib.util.spec_from_file_location(
@@ -550,7 +579,7 @@ def test_witness_partition_requires_reconciliation(tmp_path):
 
 
 @pytest.mark.parametrize("verb", [b"COMMIT\n", b"ABORT\n"])
-def test_witness_explicit_release(tmp_path, verb):
+def test_witness_explicit_release(tmp_path: Path, verb: bytes) -> None:
     import io
 
     spec = importlib.util.spec_from_file_location(

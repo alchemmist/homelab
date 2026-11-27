@@ -174,7 +174,6 @@ class N8nOtelLogBridge(unittest.TestCase):
 
     def test_loki_push_format(self) -> None:
         """The push payload matches the Loki streams JSON contract."""
-        module = load_bridge()
         source = (ROOT / BRIDGE_REL).read_text()
         assert '"/loki/api/v1/push"' in source
         assert "job" in source and "n8n" in source

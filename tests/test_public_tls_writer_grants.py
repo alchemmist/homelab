@@ -39,7 +39,7 @@ def fixture(names, namespace="school"):
     return role, binding
 
 
-def test_cluster_role_obeys_binding_namespace_and_named_verb_limits():
+def test_cluster_role_obeys_binding_namespace_and_named_verb_limits() -> None:
     role, b = fixture(["pin"])
     (r,) = grants("school", "pin", [role, b])
     assert r["verbs"] == ["delete", "patch", "update"]
@@ -56,7 +56,7 @@ def test_cluster_role_obeys_binding_namespace_and_named_verb_limits():
         grants("school", "pin", [b])
 
 
-def test_local_role_cannot_be_resolved_from_another_namespace():
+def test_local_role_cannot_be_resolved_from_another_namespace() -> None:
     role, b = fixture([])
     b["roleRef"]["kind"] = "Role"
     role["kind"] = "Role"
@@ -68,7 +68,7 @@ def test_local_role_cannot_be_resolved_from_another_namespace():
     assert not grants("school", "pin", [role, b])
 
 
-def test_report_deduplicates_verb_union_without_revealing_names():
+def test_report_deduplicates_verb_union_without_revealing_names() -> None:
     from ci.quality.public_tls_writer_triage import summarize
 
     local = {"kind": "ServiceAccount", "name": "private-subject"}
@@ -104,7 +104,7 @@ def test_report_deduplicates_verb_union_without_revealing_names():
         summarize([dict(rows[0], binding=["ClusterRoleBinding", None, "one"])], set(), "")
 
 
-def test_requester_requires_unique_current_owned_revision():
+def test_requester_requires_unique_current_owned_revision() -> None:
     from ci.quality.public_tls_writer_triage import requester_for
 
     cert = {

@@ -14,7 +14,7 @@ def inputs():
     ], yaml.safe_load(CATALOG.read_text())
 
 
-def test_literal_prefix_and_native_tls_only(inputs):
+def test_literal_prefix_and_native_tls_only(inputs) -> None:
     http = compile_fixture(*inputs, source_strict=False)["http"]
     routers = http["routers"]
     assert len(routers) == 5 and set(http["services"]) == {
@@ -49,7 +49,7 @@ def test_literal_prefix_and_native_tls_only(inputs):
         "catalog",
     ],
 )
-def test_no_partial_portal_fallback(inputs, drift):
+def test_no_partial_portal_fallback(inputs, drift: str) -> None:
     docs, catalog = deepcopy(inputs)
     ing = next(d for d in docs if d["kind"] == "Ingress")
     paths = ing["spec"]["rules"][0]["http"]["paths"]

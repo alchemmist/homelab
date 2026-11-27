@@ -48,7 +48,9 @@ from ci.quality import public_advertised_routes as checks
         (checks.VENICE, "401 text/html", b"<html/>", "unexpected-application-response"),
     ],
 )
-def test_fresh_anonymous_fixed_peer(monkeypatch, host, status, body, want):
+def test_fresh_anonymous_fixed_peer(
+    monkeypatch: pytest.MonkeyPatch, host, status, body, want
+) -> None:
     def run(args, **kwargs):
         assert (
             args[:4] == ["curl", "--disable", "--noproxy", "*"]
@@ -65,7 +67,7 @@ def test_fresh_anonymous_fixed_peer(monkeypatch, host, status, body, want):
     assert checks.check(host, "192.0.2.1") == want
 
 
-def test_no_dns_derived_connection_or_partial_acceptance():
+def test_no_dns_derived_connection_or_partial_acceptance() -> None:
     routes = {"192.0.2.1": "matched", "192.0.2.2": "tls-handshake-failed"}
     good = {"A": ["192.0.2.1"], "AAAA": []}
     bad = {"A": list(routes), "AAAA": []}
@@ -82,7 +84,9 @@ def test_no_dns_derived_connection_or_partial_acceptance():
         assert checks.verdict(d, d, routes) != "advertised-paths-matched"
 
 
-def test_legacy_home_only_dns_must_not_skip_direct_monori_checks(monkeypatch, capsys):
+def test_legacy_home_only_dns_must_not_skip_direct_monori_checks(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     import json
 
     import yaml
@@ -125,7 +129,9 @@ def test_legacy_home_only_dns_must_not_skip_direct_monori_checks(monkeypatch, ca
         ),
     ],
 )
-def test_wiki_anonymous_contract(monkeypatch, body, expected):
+def test_wiki_anonymous_contract(
+    monkeypatch: pytest.MonkeyPatch, body: bytes, expected: str
+) -> None:
     monkeypatch.setattr(
         subprocess,
         "run",
@@ -135,7 +141,7 @@ def test_wiki_anonymous_contract(monkeypatch, body, expected):
 
 
 @pytest.mark.parametrize("broken", [False, True])
-def test_selfip_requires_all_direct_routes(monkeypatch, broken):
+def test_selfip_requires_all_direct_routes(monkeypatch: pytest.MonkeyPatch, broken: bool) -> None:
     monkeypatch.setattr(
         checks,
         "check",
@@ -153,7 +159,7 @@ def test_selfip_requires_all_direct_routes(monkeypatch, broken):
 
 
 @pytest.mark.parametrize("fault", [None, "same", "cross", "ambiguous", "missing", "unknown"])
-def test_tls_domain_requires_positive_and_negative_controls(fault):
+def test_tls_domain_requires_positive_and_negative_controls(fault: None | str) -> None:
     from ci.quality.blog_tls_path import correlated
 
     rows = {

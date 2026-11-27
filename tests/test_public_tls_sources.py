@@ -1,6 +1,7 @@
 """Test exact TLS ownership independently of controller placement and selected probe sites."""
 
 import copy
+from pathlib import Path
 
 import pytest
 
@@ -115,7 +116,7 @@ def test_duplicate_certificate_writer_is_an_independent_blocker() -> None:
     assert not report["namedGetRules"]
 
 
-def test_healthy_observed_alias_cannot_redirect_a_reviewed_secret_pin():
+def test_healthy_observed_alias_cannot_redirect_a_reviewed_secret_pin() -> None:
     from ci.quality.public_tls_pins import compare
 
     catalog = copy.deepcopy(CAT)
@@ -137,7 +138,7 @@ def test_healthy_observed_alias_cannot_redirect_a_reviewed_secret_pin():
 
 
 @pytest.mark.parametrize("change", ["missing", "ambiguous", "non-web", "namespace-path"])
-def test_no_partial_or_cross_namespace_reader_plan(change):
+def test_no_partial_or_cross_namespace_reader_plan(change: str) -> None:
     from ci.quality.public_tls_pins import compare
 
     catalog = copy.deepcopy(CAT)
@@ -210,7 +211,7 @@ def _release_tls_objects(app):
                 yield d["metadata"].get("namespace", ns), d
 
 
-def test_reviewed_tls_pins_agree_with_separately_rendered_releases():
+def test_reviewed_tls_pins_agree_with_separately_rendered_releases() -> None:
     """Verify each reference, route owner and unique issuance request independently."""
     from collections import defaultdict
 
@@ -270,7 +271,7 @@ def test_reviewed_tls_pins_agree_with_separately_rendered_releases():
         assert writers[ns, key] == [("ClusterIssuer", "letsencrypt-http01", sans)]
 
 
-def test_unreviewed_external_chart_is_rejected_before_helm(tmp_path):
+def test_unreviewed_external_chart_is_rejected_before_helm(tmp_path: Path) -> None:
     from ci.quality.public_argocd_tls import verify
 
     wrong = tmp_path / "not-chart.tgz"
@@ -280,7 +281,9 @@ def test_unreviewed_external_chart_is_rejected_before_helm(tmp_path):
 
 
 @pytest.mark.parametrize("payload", ["[]", "{}", '{"items":null}', '{"items":[{}]}', "invalid"])
-def test_pin_cli_rejects_malformed_input_without_dump(payload, monkeypatch, capsys):
+def test_pin_cli_rejects_malformed_input_without_dump(
+    payload: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     import io
     import json
 
@@ -302,7 +305,7 @@ def test_pin_cli_rejects_malformed_input_without_dump(payload, monkeypatch, caps
         ("ipAddresses", ["192.0.2.1"]),
     ],
 )
-def test_pin_plan_checks_exact_requested_identity_set(field, value):
+def test_pin_plan_checks_exact_requested_identity_set(field: str, value: list[str]) -> None:
     from ci.quality.public_tls_pins import compare
 
     catalog = copy.deepcopy(CAT)
@@ -317,7 +320,7 @@ def test_pin_plan_checks_exact_requested_identity_set(field, value):
     )
 
 
-def test_missing_writer_destination_is_localized_and_blocks_all_reads():
+def test_missing_writer_destination_is_localized_and_blocks_all_reads() -> None:
     from ci.quality.public_tls_pins import compare
 
     cert = copy.deepcopy(CERT)

@@ -93,7 +93,7 @@ def issued():
     return catalog, cert, req, now, leaf.fingerprint(hashes.SHA256()).hex()
 
 
-def test_current_issued_leaf(issued):
+def test_current_issued_leaf(issued) -> None:
     cat, c, r, t, pin = issued
     assert audit.evidence("wiki", cat, [c], [r], t) == (
         "cert-uid",
@@ -123,7 +123,7 @@ def test_current_issued_leaf(issued):
         "empty-version",
     ],
 )
-def test_incomplete_or_mismatched_evidence(issued, fault):
+def test_incomplete_or_mismatched_evidence(issued, fault: str) -> None:
     cat, c, r, t, _ = issued
     reqs = [r]
     if fault == "catalog":
@@ -167,7 +167,9 @@ def test_incomplete_or_mismatched_evidence(issued, fault):
 
 
 @pytest.mark.parametrize("changed", [False, True])
-def test_sweep_never_claims_writer_approval_or_a_rotated_match(monkeypatch, capsys, changed):
+def test_sweep_never_claims_writer_approval_or_a_rotated_match(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], changed: bool
+) -> None:
     monkeypatch.setattr(sys, "argv", ["audit", "wiki"])
     anchor = ("u", "c1", "r", "r1", "a" * 64)
     obs = iter((anchor, ("u", "c2", "r", "r1", "a" * 64) if changed else anchor))
@@ -182,7 +184,7 @@ def test_sweep_never_claims_writer_approval_or_a_rotated_match(monkeypatch, caps
         assert set(doc["wire"].values()) == {"trusted-match"}
 
 
-def test_validated_issuance_without_independent_approval_cannot_read_a_key(issued):
+def test_validated_issuance_without_independent_approval_cannot_read_a_key(issued) -> None:
     from services.public_entry.tls_issued_refresh import issued_refresh
 
     cat, c, r, t, pin = issued
@@ -195,7 +197,7 @@ def test_validated_issuance_without_independent_approval_cannot_read_a_key(issue
     assert not result.material and result.withdrawn == {anchor.source: "no-writer-approval"}
 
 
-def test_private_issuer_must_be_pinned_independently_of_objects(issued):
+def test_private_issuer_must_be_pinned_independently_of_objects(issued) -> None:
     from services.public_entry.tls_issuance import validated_anchor
 
     _, c, r, t, fp = issued
@@ -220,7 +222,7 @@ def test_private_issuer_must_be_pinned_independently_of_objects(issued):
     assert exc.value.__context__ is None
 
 
-def test_blog_date_correlation_is_not_issuance_or_approval():
+def test_blog_date_correlation_is_not_issuance_or_approval() -> None:
     from ci.quality.blog_validity_baseline import measure
 
     t = datetime.now(UTC)

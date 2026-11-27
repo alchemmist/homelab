@@ -177,7 +177,7 @@ if __name__ == "__main__":
     ],
 )
 def test_explicit_plan_preserves_comparison_and_fails_closed(
-    rc, stdout, stderr, expected, capsys
+    rc: int, stdout: str, stderr: str, expected: None | str, capsys: pytest.CaptureFixture[str]
 ) -> None:
     rendered = subprocess.CompletedProcess(["helm", "template"], 0, "same\n", "")
     installed = subprocess.CompletedProcess(["helm", "get"], rc, stdout, stderr)

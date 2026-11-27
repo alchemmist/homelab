@@ -25,7 +25,7 @@ def response(body, headers=b"", status=200):
     return r
 
 
-def test_exact_json_and_framing():
+def test_exact_json_and_framing() -> None:
     hdr = b"Content-Type: application/json\r\n"
     body = b'{"formatted":"result"}'
     expected = {"formatted": "result"}
@@ -43,7 +43,7 @@ def test_exact_json_and_framing():
         assert not matches(r, 200, expected)
 
 
-def test_only_fixed_loopback_actions(monkeypatch):
+def test_only_fixed_loopback_actions(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = []
 
     class Connection:

@@ -249,7 +249,7 @@ class ScrapeConfigTests(unittest.TestCase):
             SCRAPE.assets({"credentials_file": "/etc/shadow"})
 
 
-def test_native_scrape_cost_is_scoped_and_idempotent():
+def test_native_scrape_cost_is_scoped_and_idempotent() -> None:
     base = "serviceMonitor/cattle-monitoring-system/kube-prometheus-stack-"
     src = {
         "scrape_configs": [

@@ -83,7 +83,7 @@ def test_all_current_applications_are_audited_with_reason() -> None:
 
 
 def test_official_launchers_pin_read_only_and_do_not_override_tool_allowlist(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Pin read-only launcher args and reject an unknown server name."""
     m = module("run-official-mcp")
@@ -101,7 +101,7 @@ def test_official_launchers_pin_read_only_and_do_not_override_tool_allowlist(
         m.command("unknown")
 
 
-def test_secret_reader_rejects_symlink_and_unsafe_mode(tmp_path) -> None:
+def test_secret_reader_rejects_symlink_and_unsafe_mode(tmp_path: Path) -> None:
     """Accept only a mode 0600 regular file and reject links or multiline text."""
     m = module("mcp-credential")
     p = tmp_path / "key"

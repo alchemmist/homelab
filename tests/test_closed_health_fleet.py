@@ -12,7 +12,7 @@ from ci.quality.closed_root_owners import eligible, owner_render
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_effective_health_fleet():
+def test_effective_health_fleet() -> None:
     app = yaml.safe_load((ROOT / "deploy/argocd/apps/closed-health.yaml").read_text())["spec"]
     chart = ROOT / app["source"]["path"]
     blog, fq, values = app["source"]["helm"]["valueFiles"]
@@ -424,14 +424,13 @@ def test_effective_health_fleet():
     assert placement == {k: v["node"] for k, v in catalog["replicas"].items()}
 
 
-def test_format_quorum_admission_matches_owner_release():
+def test_format_quorum_admission_matches_owner_release() -> None:
     from ci.quality.closed_root_owners import OUTPUT, render
 
     assert OUTPUT.read_text() == render()
 
 
-def test_format_quorum_withdraws_unreviewed_owner_changes():
-
+def test_format_quorum_withdraws_unreviewed_owner_changes() -> None:
     from ci.quality.closed_root_owners import APP, CATALOG, eligible
 
     command = [
@@ -467,8 +466,7 @@ def test_format_quorum_withdraws_unreviewed_owner_changes():
     assert not eligible([*rows, {"kind": "HTTPRoute"}], catalog)
 
 
-def test_wiki_requires_public_runtime_and_unmodified_named_backend():
-
+def test_wiki_requires_public_runtime_and_unmodified_named_backend() -> None:
     from ci.quality.closed_root_owners import CATALOG, eligible, owner_render
 
     rows = owner_render(owner="wiki-runtime")
@@ -518,8 +516,7 @@ def test_wiki_requires_public_runtime_and_unmodified_named_backend():
     assert not eligible([r for r in yaml.safe_load_all(raw) if r], catalog, owner="wiki-runtime")
 
 
-def test_monori_front_only_no_shared_port_authorization():
-
+def test_monori_front_only_no_shared_port_authorization() -> None:
     from ci.quality.closed_root_owners import CATALOG, eligible, owner_render
 
     rows = owner_render(owner="monori")
@@ -556,8 +553,7 @@ def test_monori_front_only_no_shared_port_authorization():
         assert not eligible(changed, catalog, owner="monori")
 
 
-def test_lms_and_wishlist_reject_side_channels_and_unselected_routes():
-
+def test_lms_and_wishlist_reject_side_channels_and_unselected_routes() -> None:
     from ci.quality.closed_root_owners import CATALOG, eligible, owner_render
 
     catalog = yaml.safe_load(CATALOG.read_text())
@@ -593,7 +589,7 @@ def test_lms_and_wishlist_reject_side_channels_and_unselected_routes():
             assert not eligible(changed, catalog, owner=app)
 
 
-def test_argo_uses_only_the_verified_https_upstream_or_withdraws_completely():
+def test_argo_uses_only_the_verified_https_upstream_or_withdraws_completely() -> None:
     app = yaml.safe_load((ROOT / "deploy/argocd/apps/closed-health.yaml").read_text())["spec"]
     src = app["source"]
     chart = ROOT / src["path"]
@@ -671,8 +667,7 @@ def test_argo_uses_only_the_verified_https_upstream_or_withdraws_completely():
     assert active == render("--set", "false") == render("--set-string", "true")
 
 
-def test_img_only_reaches_the_reviewed_nginx_listener():
-
+def test_img_only_reaches_the_reviewed_nginx_listener() -> None:
     catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())
     docs = owner_render(owner="img-proxy")
     admit = lambda rows: eligible(rows, catalog, owner="img-proxy")
@@ -753,8 +748,9 @@ def test_img_only_reaches_the_reviewed_nginx_listener():
         ("venice-api", "closedVenice", 8080),
     ],
 )
-def test_selected_app_only_reaches_its_reviewed_http_listener(app, bit, port):
-
+def test_selected_app_only_reaches_its_reviewed_http_listener(
+    app: str, bit: str, port: int
+) -> None:
     catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())
     docs = owner_render(owner=app)
     admit = lambda rows: eligible(rows, catalog, owner=app)
@@ -831,7 +827,7 @@ def test_selected_app_only_reaches_its_reviewed_http_listener(app, bit, port):
     assert active == render("--set", "false") == render("--set-string", "true")
 
 
-def test_schoolbot_sample_requires_complete_json_http_response():
+def test_schoolbot_sample_requires_complete_json_http_response() -> None:
     from ci.quality.closed_schoolbot_samples import classify
 
     raw = b'HTTP/1.0 200 OK\r\nContent-Type: application/json\r\nContent-Length: 11\r\n\r\n{"ok":true}'
@@ -856,7 +852,9 @@ def test_schoolbot_sample_requires_complete_json_http_response():
         ("listener", None),
     ],
 )
-def test_schoolbot_phases_report_only_fixed_target_timing(monkeypatch, mode, query):
+def test_schoolbot_phases_report_only_fixed_target_timing(
+    monkeypatch: pytest.MonkeyPatch, mode: str, query: None | str
+) -> None:
     import io
 
     from ci.quality import schoolbot_phase_probe as probe
@@ -920,7 +918,7 @@ def test_schoolbot_phases_report_only_fixed_target_timing(monkeypatch, mode, que
         "second-workload",
     ],
 )
-def test_blog_render_drift_withholds_www(drift):
+def test_blog_render_drift_withholds_www(drift: str) -> None:
     catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())
     docs = owner_render(owner="blog")
     assert eligible(docs, catalog, owner="blog")
@@ -949,7 +947,7 @@ def test_blog_render_drift_withholds_www(drift):
     assert not eligible(docs, catalog, owner="blog")
 
 
-def test_tcp_resolver_changes_only_closed_pod_resolver_options():
+def test_tcp_resolver_changes_only_closed_pod_resolver_options() -> None:
     chart = ROOT / "deploy/public-web/closed-health"
     args = [
         "helm",

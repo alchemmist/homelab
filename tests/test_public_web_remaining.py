@@ -154,7 +154,7 @@ def test_grafana_only_reviewed_env_changes() -> None:
         ("GF_AUTH_OAUTH_ALLOW_INSECURE_EMAIL_LOOKUP", "true"),
     ],
 )
-def test_grafana_drift_stops(key, value) -> None:
+def test_grafana_drift_stops(key: str, value: str) -> None:
     m = module("grafana-public-sso")
     d = grafana()
     next(e for e in d["spec"]["template"]["spec"]["containers"][1]["env"] if e["name"] == key)[

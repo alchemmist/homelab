@@ -251,7 +251,7 @@ def test_rancher_projection_rejects_incorrect_wave(wave: str) -> None:
 
 
 @pytest.mark.parametrize("violation", ["payload", "checksum", "token", "image"])
-def test_live_grafana_input_projection_rejects_mutations(violation) -> None:
+def test_live_grafana_input_projection_rejects_mutations(violation: str) -> None:
     """A passing baseline is required; normalization must not hide other changes."""
     OwnershipTests().test_every_transferred_payload_is_identical_to_reviewed_pre_migration_render()
     resources = copy.deepcopy(render("grafana"))

@@ -7,7 +7,7 @@ import yaml
 from ci.quality import public_dns_single_name as audit
 
 
-def test_legacy_digest_accepts_one_owner_only():
+def test_legacy_digest_accepts_one_owner_only() -> None:
     cat = yaml.safe_load(audit.CATALOG.read_text())
     serial = 42
     render = runpy.run_path(str(audit.ROOT / "ansible/scripts/public_dns_zone.py"))["render"]
@@ -25,7 +25,7 @@ def test_legacy_digest_accepts_one_owner_only():
         audit.rehearse(cat, "home", serial, digest)
 
 
-def test_reject_unrelated_or_duplicate_records():
+def test_reject_unrelated_or_duplicate_records() -> None:
     old = "www IN A 192.0.2.1\n@ IN MX 10 mail\n"
     new = old.replace("192.0.2.1", "192.0.2.2")
     for drift in (
@@ -38,7 +38,7 @@ def test_reject_unrelated_or_duplicate_records():
             audit.delta(old, drift, "192.0.2.2", 1)
 
 
-def test_preserve_order_and_do_not_infer_unique_health_from_identical_bytes():
+def test_preserve_order_and_do_not_infer_unique_health_from_identical_bytes() -> None:
     cat = yaml.safe_load(audit.CATALOG.read_text())
     render = runpy.run_path(str(audit.ROOT / "ansible/scripts/public_dns_zone.py"))["render"]
     legacy = render(42, True, True, monori_health=(False, False))
@@ -54,7 +54,9 @@ def test_preserve_order_and_do_not_infer_unique_health_from_identical_bytes():
         )
 
 
-def test_dns_rehearsal_rejects_changed_owner_before_matching_known_bytes(monkeypatch):
+def test_dns_rehearsal_rejects_changed_owner_before_matching_known_bytes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     cat = yaml.safe_load(audit.CATALOG.read_text())
     docs = audit.owner_render(owner="blog")
     ing = next(d for d in docs if d["kind"] == "Ingress")

@@ -141,7 +141,7 @@ class FakeAPI:
         return Response(detail)
 
 
-def run(tmp_path, api, expected=None) -> None:
+def run(tmp_path: Path, api, expected=None) -> None:
     """Test behavior for run."""
     shutil.copytree(ASSETS, tmp_path / "service-icons")
     (tmp_path / "credentials.json").write_text(
@@ -156,7 +156,7 @@ def run(tmp_path, api, expected=None) -> None:
         runpy.run_path(str(SCRIPT), run_name="__main__")
 
 
-def test_updates_only_icons_and_keeps_unmanaged_app(tmp_path) -> None:
+def test_updates_only_icons_and_keeps_unmanaged_app(tmp_path: Path) -> None:
     """Test behavior for test_updates_only_icons_and_keeps_unmanaged_app."""
     api = FakeAPI()
     before = copy.deepcopy(api.apps)
@@ -172,7 +172,7 @@ def test_updates_only_icons_and_keeps_unmanaged_app(tmp_path) -> None:
     assert len(list(tmp_path.glob("portal-icons-receipt-*.json"))) == 1
 
 
-def test_reviewed_uid_mismatch_stops_before_any_patch(tmp_path) -> None:
+def test_reviewed_uid_mismatch_stops_before_any_patch(tmp_path: Path) -> None:
     """Test behavior for test_reviewed_uid_mismatch_stops_before_any_patch."""
     api = FakeAPI()
     expected = copy.deepcopy(list(api.apps.values()))
@@ -183,7 +183,7 @@ def test_reviewed_uid_mismatch_stops_before_any_patch(tmp_path) -> None:
     assert not (tmp_path / "portal-icons-uncertain.json").exists()
 
 
-def test_uncertain_prior_run_cannot_be_replayed(tmp_path) -> None:
+def test_uncertain_prior_run_cannot_be_replayed(tmp_path: Path) -> None:
     """Test behavior for test_uncertain_prior_run_cannot_be_replayed."""
     api = FakeAPI()
     (tmp_path / "portal-icons-uncertain.json").write_text("{}")
@@ -192,7 +192,7 @@ def test_uncertain_prior_run_cannot_be_replayed(tmp_path) -> None:
     assert not api.patches
 
 
-def test_served_checksum_mismatch_leaves_review_marker(tmp_path) -> None:
+def test_served_checksum_mismatch_leaves_review_marker(tmp_path: Path) -> None:
     """Test behavior for test_served_checksum_mismatch_leaves_review_marker."""
     api = FakeAPI()
     api.content[next(iter(api.content))] = b"not-the-pinned-svg"
@@ -202,7 +202,7 @@ def test_served_checksum_mismatch_leaves_review_marker(tmp_path) -> None:
     assert (tmp_path / "portal-icons-uncertain.json").exists()
 
 
-def test_property_mapping_membership_change_is_not_ignored(tmp_path) -> None:
+def test_property_mapping_membership_change_is_not_ignored(tmp_path: Path) -> None:
     """Test behavior for test_property_mapping_membership_change_is_not_ignored."""
     api = FakeAPI()
     expected = copy.deepcopy(list(api.apps.values()))

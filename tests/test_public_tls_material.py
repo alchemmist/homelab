@@ -1,6 +1,7 @@
 """Only ephemeral TLS material; never use cluster access in these tests."""
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from cryptography import x509
@@ -57,7 +58,7 @@ def private(k):
     )
 
 
-def test_exact_leaf_and_linked_chain():
+def test_exact_leaf_and_linked_chain() -> None:
     issuer, ca = pair(ca=True)
     key, leaf = pair(signer=issuer)
     assert (
@@ -86,7 +87,7 @@ def test_exact_leaf_and_linked_chain():
         "naive",
     ],
 )
-def test_bad_source_is_rejected_without_parser_or_material_in_diagnostics(fault):
+def test_bad_source_is_rejected_without_parser_or_material_in_diagnostics(fault: str) -> None:
     key, c = pair(
         {"one.invalid"}
         if fault == "missing"
@@ -129,13 +130,13 @@ def test_bad_source_is_rejected_without_parser_or_material_in_diagnostics(fault)
     assert exc.value.__context__ is None
 
 
-def test_matching_dns_entries_do_not_authorize_a_uri_identity():
+def test_matching_dns_entries_do_not_authorize_a_uri_identity() -> None:
     key, leaf = pair(extra_sans=(x509.UniformResourceIdentifier("urn:fixture:other"),))
     with pytest.raises(MaterialRejected):
         leaf_identity(pem(leaf), private(key), NAMES, NOW)
 
 
-def test_completed_refresh_admits_only_independent_owned_sources():
+def test_completed_refresh_admits_only_independent_owned_sources() -> None:
     from services.public_entry.tls_selection import SourceMaterial, select_sources
 
     left, right, stranger = ("one", "tls"), ("two", "tls"), ("unreviewed", "tls")
@@ -164,7 +165,7 @@ def test_completed_refresh_admits_only_independent_owned_sources():
     assert "PRIVATE KEY" not in repr(first)
 
 
-def test_rsa_public_key_identity_uses_the_complete_key():
+def test_rsa_public_key_identity_uses_the_complete_key() -> None:
     sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     _, leaf = pair(key=sk)
     assert (
@@ -175,7 +176,7 @@ def test_rsa_public_key_identity_uses_the_complete_key():
         leaf_identity(pem(leaf), private(other), NAMES, NOW)
 
 
-def test_rsa_same_modulus_with_different_exponent_is_not_the_leaf_key():
+def test_rsa_same_modulus_with_different_exponent_is_not_the_leaf_key() -> None:
     sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     n = sk.public_key().public_numbers().n
     other_public = rsa.RSAPublicNumbers(3, n).public_key()
@@ -185,7 +186,7 @@ def test_rsa_same_modulus_with_different_exponent_is_not_the_leaf_key():
         leaf_identity(pem(leaf) + pem(ca), private(sk), NAMES, NOW)
 
 
-def test_exact_refresh_does_not_lose_a_denial_on_later_failure_or_refetch_keys():
+def test_exact_refresh_does_not_lose_a_denial_on_later_failure_or_refetch_keys() -> None:
     import base64
 
     from services.public_entry.tls_refresh import refresh
@@ -242,7 +243,7 @@ def test_exact_refresh_does_not_lose_a_denial_on_later_failure_or_refetch_keys()
     assert "PRIVATE KEY" not in repr(initial) and "sensitive-fixture" not in str(partial.withdrawn)
 
 
-def test_ambiguous_ownership_is_not_fetched_even_when_one_key_would_validate():
+def test_ambiguous_ownership_is_not_fetched_even_when_one_key_would_validate() -> None:
     from services.public_entry.tls_refresh import refresh
 
     owners = {
@@ -262,7 +263,7 @@ def test_ambiguous_ownership_is_not_fetched_even_when_one_key_would_validate():
     )
 
 
-def test_truncated_http_response_after_denial_does_not_cancel_completed_batch():
+def test_truncated_http_response_after_denial_does_not_cancel_completed_batch() -> None:
     from http.client import IncompleteRead
     from json import JSONDecodeError
 
@@ -287,8 +288,8 @@ def test_truncated_http_response_after_denial_does_not_cancel_completed_batch():
 
 
 def test_loopback_listener_witness_distinguishes_withdrawal_from_trust_and_connection_failure(
-    tmp_path,
-):
+    tmp_path: Path,
+) -> None:
     import socket
     import ssl
     import threading
@@ -350,7 +351,7 @@ def test_loopback_listener_witness_distinguishes_withdrawal_from_trust_and_conne
     assert observe(port, NAMES, {}) == {name: "unreachable" for name in NAMES}
 
 
-def test_witness_rejects_out_of_scope_pin_before_probing():
+def test_witness_rejects_out_of_scope_pin_before_probing() -> None:
     from services.public_entry.tls_witness import observe
 
     with pytest.raises(ValueError, match="scope"):
@@ -358,14 +359,14 @@ def test_witness_rejects_out_of_scope_pin_before_probing():
 
 
 @pytest.mark.parametrize("host", ["a..b", "a.invalid.", ".invalid"])
-def test_witness_rejects_empty_hostname_labels(host):
+def test_witness_rejects_empty_hostname_labels(host: str) -> None:
     from services.public_entry.tls_witness import observe
 
     with pytest.raises(ValueError, match="identity"):
         observe(443, frozenset({host}), {})
 
 
-def test_witness_timeout_does_not_acknowledge_withdrawal(monkeypatch):
+def test_witness_timeout_does_not_acknowledge_withdrawal(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.public_entry import tls_witness
 
     def stall(*args, **kwargs):
@@ -375,7 +376,7 @@ def test_witness_timeout_does_not_acknowledge_withdrawal(monkeypatch):
     assert tls_witness.observe(443, NAMES, {}) == {host: "timeout" for host in NAMES}
 
 
-def test_issuance_binding_never_implies_writer_approval_or_reuses_a_denied_source():
+def test_issuance_binding_never_implies_writer_approval_or_reuses_a_denied_source() -> None:
     import base64
     from dataclasses import replace
 
@@ -482,7 +483,7 @@ def test_issuance_binding_never_implies_writer_approval_or_reuses_a_denied_sourc
     assert run().withdrawn[a] == "invalid-ownership" and reads == [b]
 
 
-def test_malformed_approved_name_never_triggers_sensitive_io():
+def test_malformed_approved_name_never_triggers_sensitive_io() -> None:
     from services.public_entry.tls_issued_refresh import ApprovedScope, issued_refresh
 
     ref = ("fixture", "tls")

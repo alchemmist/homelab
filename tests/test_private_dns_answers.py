@@ -40,7 +40,9 @@ def test_not_acceptance(result: str) -> None:
 
 
 @pytest.mark.parametrize("failed", [None, ("home", "udp"), ("nl", "tcp")])
-def test_all_sites_attempted_without_partial_success(monkeypatch, capsys, failed):
+def test_all_sites_attempted_without_partial_success(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], failed
+) -> None:
     import sys
 
     from ci.quality import private_dns_answers as audit

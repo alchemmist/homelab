@@ -113,7 +113,7 @@ jobs:
     assert python_directive_lines(source) == {9, 18, 22, 25}
 
 
-def test_failed_tools_are_not_quality_approvals(tmp_path) -> None:
+def test_failed_tools_are_not_quality_approvals(tmp_path: Path) -> None:
     out = tmp_path / "result.json"
     failure(out, RuntimeError("DO NOT ECHO SECRET PAYLOAD"))
     value = json.loads(out.read_text())
@@ -121,7 +121,9 @@ def test_failed_tools_are_not_quality_approvals(tmp_path) -> None:
     assert "SECRET PAYLOAD" not in out.read_text()
 
 
-def test_ci_cannot_automatically_record_debt(tmp_path, monkeypatch) -> None:
+def test_ci_cannot_automatically_record_debt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("CI", "true")
     with pytest.raises(ValueError):
         report(
@@ -167,14 +169,14 @@ def test_native_command_test_directory_does_not_accept_failed_processes(tmp_path
     assert payload not in str(error.value)
 
 
-def test_new_findings_fail_and_resolved_debt_does_not_hide_them(tmp_path) -> None:
+def test_new_findings_fail_and_resolved_debt_does_not_hide_them(tmp_path: Path) -> None:
     f = finding("RULE", "tests/test_quality_system.py", 1, "message", "new context")
     with patch("ci.quality.common.ROOT", tmp_path):
         assert report("test", [f], 1, tmp_path / "out.json")
         assert json.loads((tmp_path / "out.json").read_text())["failureKind"] == "quality"
 
 
-def test_recorded_debt_identity_cannot_mark_a_finding_passed(tmp_path) -> None:
+def test_recorded_debt_identity_cannot_mark_a_finding_passed(tmp_path: Path) -> None:
     f = finding("RULE", "tests/test_quality_system.py", 1, "message", "visible context")
     debt = tmp_path / "ci/quality/debt"
     debt.mkdir(parents=True)
@@ -201,7 +203,7 @@ def test_recorded_debt_identity_cannot_mark_a_finding_passed(tmp_path) -> None:
         assert payload["findings"][0]["id"] == f["id"] + ".1"
 
 
-def test_unmarked_debt_file_cannot_act_as_a_baseline(tmp_path) -> None:
+def test_unmarked_debt_file_cannot_act_as_a_baseline(tmp_path: Path) -> None:
     debt = tmp_path / "ci/quality/debt"
     debt.mkdir(parents=True)
     (debt / "python.json").write_text(
@@ -293,14 +295,14 @@ def test_scalar_equals_is_valid_kubernetes_yaml() -> None:
     assert yaml.load("expr: =", Loader=charts.ManifestLoader) == {"expr": "="}
 
 
-def test_installer_rejects_escaping_binary_name(tmp_path) -> None:
+def test_installer_rejects_escaping_binary_name(tmp_path: Path) -> None:
     from ci.quality import install_tools
 
     with pytest.raises(ValueError):
         install_tools.install({"name": "../escape"}, tmp_path)
 
 
-def test_native_producer_payload_matches_released_quality_graph_schema(tmp_path) -> None:
+def test_native_producer_payload_matches_released_quality_graph_schema(tmp_path: Path) -> None:
     import jsonschema
 
     from ci.quality.common import command
@@ -382,14 +384,16 @@ def test_network_namespace_preserves_locked_tool_path(
 @pytest.mark.parametrize(
     "image", ["example:latest", "example@sha256:short", "example@sha256:not-a-digest"]
 )
-def test_image_digest_must_be_real_sha256_shape(image) -> None:
+def test_image_digest_must_be_real_sha256_shape(image: str) -> None:
     resource = {"kind": "Pod", "spec": {"containers": [{"name": "test", "image": image}]}}
     assert any(rule == "image-digest" for rule, _ in charts.policies(resource))
     resource["spec"]["containers"][0]["image"] = "example@sha256:" + "a" * 64
     assert not charts.policies(resource)
 
 
-def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatch) -> None:
+def test_dependency_audit_uses_installed_environment_and_deduplicates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from types import SimpleNamespace
 
     from ci.quality import check_dependencies as lint
@@ -414,7 +418,9 @@ def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatc
     assert len(calls) == 1
 
 
-def test_nonsecret_tokenizer_exception_cannot_hide_other_values(tmp_path, monkeypatch) -> None:
+def test_nonsecret_tokenizer_exception_cannot_hide_other_values(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from ci.quality import check_docker as lint
 
     p = tmp_path / "services/spi/tokenizer/Dockerfile"
@@ -557,14 +563,14 @@ def _infra_files():
     return names
 
 
-def _copy_rels(tmp_path, names) -> None:
+def _copy_rels(tmp_path: Path, names) -> None:
     for name in names:
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / name, target)
 
 
-def test_new_issuer_alias_is_invisible_to_the_registered_list(tmp_path) -> None:
+def test_new_issuer_alias_is_invisible_to_the_registered_list(tmp_path: Path) -> None:
     """A new alias must fail even when every previously registered consumer still matches."""
     from ci.quality import boundaries
 
@@ -583,7 +589,7 @@ def test_new_issuer_alias_is_invisible_to_the_registered_list(tmp_path) -> None:
         boundaries.check(tmp_path)
 
 
-def test_mesh_address_drift_fails_the_inventory_contract(tmp_path) -> None:
+def test_mesh_address_drift_fails_the_inventory_contract(tmp_path: Path) -> None:
     """Changing a mesh address without the inventory is a boundary failure."""
     import yaml
 
@@ -607,7 +613,7 @@ def test_mesh_address_drift_fails_the_inventory_contract(tmp_path) -> None:
         infra.check(tmp_path)
 
 
-def test_relay_lan_target_drift_fails(tmp_path) -> None:
+def test_relay_lan_target_drift_fails(tmp_path: Path) -> None:
     """The relay target must stay on the canonical mesh address, not a substituted LAN value."""
     import yaml
 
@@ -623,7 +629,7 @@ def test_relay_lan_target_drift_fails(tmp_path) -> None:
         infra.check(tmp_path)
 
 
-def test_duplicate_issuer_alias_fails(tmp_path) -> None:
+def test_duplicate_issuer_alias_fails(tmp_path: Path) -> None:
     """A second issuer alias inside a registered consumer is still a scope failure."""
     import yaml
 
@@ -637,7 +643,7 @@ def test_duplicate_issuer_alias_fails(tmp_path) -> None:
         infra.check(tmp_path)
 
 
-def _pointer_fixture(tmp_path, document) -> None:
+def _pointer_fixture(tmp_path: Path, document) -> None:
     import yaml
 
     chart = tmp_path / "charts/demo"
@@ -693,7 +699,7 @@ def _pointer_fixture(tmp_path, document) -> None:
     (tmp_path / "deploy/contracts/source-pointers.json").write_text(json.dumps(contract))
 
 
-def test_duplicate_application_owner_fails(tmp_path) -> None:
+def test_duplicate_application_owner_fails(tmp_path: Path) -> None:
     """Two Application manifests with one identity are competing deployment owners."""
     import yaml
 
@@ -705,7 +711,7 @@ def test_duplicate_application_owner_fails(tmp_path) -> None:
         pointers.check(tmp_path)
 
 
-def test_authoritative_claim_drift_fails(tmp_path) -> None:
+def test_authoritative_claim_drift_fails(tmp_path: Path) -> None:
     """Documentation that drops the current value is not an authoritative claim."""
     pointers = _load_checker("check_source_pointers.py")
     _pointer_fixture(tmp_path, "Current image is `demo-image-1`.\n")
@@ -734,7 +740,7 @@ def _retired_play():
     ]
 
 
-def _entrypoint_fixture(tmp_path) -> None:
+def _entrypoint_fixture(tmp_path: Path) -> None:
     import yaml
 
     app = tmp_path / "deploy/argocd/apps/demo.yaml"
@@ -758,7 +764,7 @@ def _entrypoint_fixture(tmp_path) -> None:
     (tmp_path / "deploy/contracts/operational-entrypoints.json").write_text(json.dumps(contract))
 
 
-def test_unclassified_helm_provisioning_fails(tmp_path) -> None:
+def test_unclassified_helm_provisioning_fails(tmp_path: Path) -> None:
     """A new literal Helm entrypoint is competing provisioning until it is classified."""
     ops = _load_checker("check_operational_entrypoints.py")
     _entrypoint_fixture(tmp_path)
@@ -770,7 +776,7 @@ def test_unclassified_helm_provisioning_fails(tmp_path) -> None:
         ops.check(tmp_path)
 
 
-def test_retired_entrypoint_must_keep_refusing(tmp_path) -> None:
+def test_retired_entrypoint_must_keep_refusing(tmp_path: Path) -> None:
     """Removing the refusal task re-opens a retired provisioning path."""
     import yaml
 
@@ -783,7 +789,7 @@ def test_retired_entrypoint_must_keep_refusing(tmp_path) -> None:
         ops.check(tmp_path)
 
 
-def test_vendor_byte_drift_fails(tmp_path) -> None:
+def test_vendor_byte_drift_fails(tmp_path: Path) -> None:
     """A changed vendored byte is drift, not a silent member of the trusted set."""
     vendor = _load_checker("check_vendor_contracts.py")
     tree = tmp_path / "vendor/demo"
@@ -812,7 +818,9 @@ def test_vendor_byte_drift_fails(tmp_path) -> None:
         vendor.check(tmp_path)
 
 
-def test_mypy_syntax_error_does_not_hide_another_file(tmp_path, monkeypatch) -> None:
+def test_mypy_syntax_error_does_not_hide_another_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A syntax fatal must not erase type findings from the other owned file."""
     from ci.quality import check_python as lint
     from ci.quality import common
@@ -835,7 +843,7 @@ def test_mypy_syntax_error_does_not_hide_another_file(tmp_path, monkeypatch) -> 
     assert "python-syntax" in rules
 
 
-def test_generated_publisher_findings_are_not_waived(tmp_path) -> None:
+def test_generated_publisher_findings_are_not_waived(tmp_path: Path) -> None:
     """Auditor findings on the generated publisher stay visible and untrusted."""
     from ci.quality.common import command, use_project_tools
 
@@ -878,7 +886,9 @@ jobs:
         assert rule not in lint_text
 
 
-def test_new_suppression_marker_is_reported(tmp_path, monkeypatch) -> None:
+def test_new_suppression_marker_is_reported(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A newly added suppression marker is a finding, not configuration success."""
     from ci.quality import strict_guard
 
@@ -1203,7 +1213,9 @@ def test_existing_main_push_regression_cannot_be_deferred(omitted: str) -> None:
             contracts.require_retained_push_tests(scheduled - {omitted})
 
 
-def test_documentation_language_scope_and_locations(tmp_path, monkeypatch) -> None:
+def test_documentation_language_scope_and_locations(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from ci.quality import check_docs_language as language
 
     monkeypatch.setattr(language, "ROOT", tmp_path)
@@ -1233,7 +1245,9 @@ def test_documentation_language_scope_and_locations(tmp_path, monkeypatch) -> No
     assert all(not f["location"]["path"].endswith(".json") for f in findings)
 
 
-def test_wiki_language_checks_prose_but_allows_technical_examples(tmp_path, monkeypatch) -> None:
+def test_wiki_language_checks_prose_but_allows_technical_examples(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from ci.quality import check_docs_language as language
 
     monkeypatch.setattr(language, "ROOT", tmp_path)

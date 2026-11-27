@@ -61,7 +61,7 @@ def fixture(uid):
 
 
 @pytest.mark.parametrize("index", [2, 3, 4])
-def test_same_name_recreation_never_reuses_an_old_child(index):
+def test_same_name_recreation_never_reuses_an_old_child(index: int) -> None:
     before = fixture("first")
     after = list(fixture("next"))
     assert same_presentation(*before) and same_presentation(*after)
@@ -89,7 +89,7 @@ def test_same_name_recreation_never_reuses_an_old_child(index):
         "default",
     ],
 )
-def test_inactive_or_unrelated_observations_cannot_present(fault):
+def test_inactive_or_unrelated_observations_cannot_present(fault: str) -> None:
     expected, ch, ing, svc, pod = fixture("current")
     r = ing["spec"]
     path = r["rules"][0]["http"]["paths"][0]
@@ -214,7 +214,7 @@ def destination_fixture(uid="now", token=None):
         "not-ready",
     ],
 )
-def test_only_verified_solver_pod_address_is_admitted(fault):
+def test_only_verified_solver_pod_address_is_admitted(fault: str) -> None:
     from ipaddress import IPv4Network
 
     from ci.quality.public_http01_generation import solver_destination
@@ -256,7 +256,7 @@ def test_only_verified_solver_pod_address_is_admitted(fault):
     )
 
 
-def test_closed_snapshot_never_encodes_empty_services_on_withdrawal():
+def test_closed_snapshot_never_encodes_empty_services_on_withdrawal() -> None:
     from ipaddress import IPv4Network
 
     from ci.quality.public_http01_generation import closed_solver_snapshot
@@ -292,7 +292,7 @@ def test_closed_snapshot_never_encodes_empty_services_on_withdrawal():
     assert closed_solver_snapshot(*inputs, network) == withdrawn
 
 
-def test_batch_withdrawal_is_local_and_ambiguous_claims_never_choose_a_winner():
+def test_batch_withdrawal_is_local_and_ambiguous_claims_never_choose_a_winner() -> None:
     from ipaddress import IPv4Network
 
     from ci.quality.public_http01_generation import closed_solver_batch
@@ -323,7 +323,7 @@ def list_page(items=(), cursor="", version="opaque-rv"):
     }
 
 
-def test_scan_completes_pagination_before_resolving_children_or_emitting_empty_file():
+def test_scan_completes_pagination_before_resolving_children_or_emitting_empty_file() -> None:
     from ipaddress import IPv4Network
 
     from ci.quality.public_http01_scan import scan_namespace
@@ -379,7 +379,7 @@ def test_scan_completes_pagination_before_resolving_children_or_emitting_empty_f
         "child",
     ],
 )
-def test_interrupted_scan_never_emits_partial_or_empty_withdrawal(fault):
+def test_interrupted_scan_never_emits_partial_or_empty_withdrawal(fault: str) -> None:
     from ipaddress import IPv4Network
 
     from ci.quality.public_http01_scan import IncompleteScan, scan_namespace
@@ -428,7 +428,9 @@ def test_interrupted_scan_never_emits_partial_or_empty_withdrawal(fault):
     assert len(resolved) == int(fault == "child")
 
 
-def test_namespace_scan_renews_only_original_slot_after_terminal_page(monkeypatch):
+def test_namespace_scan_renews_only_original_slot_after_terminal_page(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from ipaddress import IPv4Network
 
     from ci.quality.public_http01_lease_scan import ScannedSlot
@@ -479,7 +481,7 @@ def test_namespace_scan_renews_only_original_slot_after_terminal_page(monkeypatc
     )
 
 
-def test_new_verified_address_cannot_renew_a_slot_for_an_old_backend():
+def test_new_verified_address_cannot_renew_a_slot_for_an_old_backend() -> None:
     from ipaddress import IPv4Network
 
     from ci.quality.public_http01_lease_scan import ScannedSlot
@@ -504,8 +506,8 @@ def test_new_verified_address_cannot_renew_a_slot_for_an_old_backend():
 
 @pytest.mark.parametrize("newer_finishes", [True, False])
 def test_one_namespace_scan_cannot_resurrect_a_slot_from_an_older_inflight_round(
-    newer_finishes,
-):
+    newer_finishes: bool,
+) -> None:
     from concurrent.futures import ThreadPoolExecutor
     from ipaddress import IPv4Network
     from threading import Event

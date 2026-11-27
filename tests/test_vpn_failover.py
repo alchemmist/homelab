@@ -430,13 +430,13 @@ class HardeningTests(unittest.TestCase):
             result = self.w.tick()
         assert result["activation_cancelled"] and not self.w.events
 
-    def test_live_k3s_is_allowed_to_repair_dead_workload(self):
+    def test_live_k3s_is_allowed_to_repair_dead_workload(self) -> None:
         self.w.running.add(self.w.agent)
         for _ in range(8):
             assert self.w.tick()["failures"] == 0
         assert not self.w.events
 
-    def test_return_window_survives_restart(self):
+    def test_return_window_survives_restart(self) -> None:
         self.w.activate()
         assert self.w.return_window() == 1800
         other = FakeWatchdog(self.directory.name)
@@ -585,7 +585,7 @@ class StagedReturnTests(unittest.TestCase):
     ).split()
     rollback = ["fence_cluster_and_verify_release", "ensure_native_running"]
 
-    def test_staged_protocol_and_faults(self):
+    def test_staged_protocol_and_faults(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             watchdog = FakeWatchdog(directory)
             for failure in [None, *self.steps]:
@@ -603,7 +603,7 @@ class StagedReturnTests(unittest.TestCase):
                             expected += self.rollback
                     assert [call[0] for call in backend.mock_calls] == expected
 
-    def test_uncertain_fence_never_starts_native_writer(self):
+    def test_uncertain_fence_never_starts_native_writer(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             backend = mock.Mock(spec=self.steps + self.rollback)
             backend.verify_external_cluster_tunnel.side_effect = RuntimeError("timeout")
@@ -614,7 +614,7 @@ class StagedReturnTests(unittest.TestCase):
 
 
 class ReturnTransactionTests(unittest.TestCase):
-    def test_interrupted_handoff_precedes_inhibit_and_timer(self):
+    def test_interrupted_handoff_precedes_inhibit_and_timer(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             w = FakeWatchdog(d)
             w.write("warming", {})
@@ -625,7 +625,7 @@ class ReturnTransactionTests(unittest.TestCase):
                 assert w.tick()["mode"] == "fallback"
                 rollback.assert_called_once_with()
 
-    def test_timer_dispatches_only_after_cooldown_and_healthy_native(self):
+    def test_timer_dispatches_only_after_cooldown_and_healthy_native(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             w = FakeWatchdog(d)
             w.config["warm_return_enabled"] = True

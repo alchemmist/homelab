@@ -20,7 +20,7 @@ EMPTY = (
 )
 
 
-def test_address_and_nodata():
+def test_address_and_nodata() -> None:
     assert (
         snap.addresses(A, HOST, "A") == ["192.0.2.1"] and snap.addresses(EMPTY, HOST, "AAAA") == []
     )
@@ -43,12 +43,12 @@ def test_address_and_nodata():
         EMPTY + "www.alchemmist.xyz. 60 IN AAAA ::1",
     ],
 )
-def test_reject_incomplete_or_wrong_rrset(bad):
+def test_reject_incomplete_or_wrong_rrset(bad) -> None:
     with pytest.raises(ValueError):
         snap.addresses(bad, HOST, "A")
 
 
-def test_exact_managed_names():
+def test_exact_managed_names() -> None:
     cat = yaml.safe_load(snap.CATALOG.read_text())
     names = snap.questions(cat)
     assert (
@@ -65,7 +65,9 @@ def test_exact_managed_names():
 @pytest.mark.parametrize(
     "mode,expected", [("self", 0), ("dual", 1), ("incomplete", 1), ("ipv6", 1)]
 )
-def test_cli_only_accepts_full_self_ip_observation(monkeypatch, mode, expected):
+def test_cli_only_accepts_full_self_ip_observation(
+    monkeypatch: pytest.MonkeyPatch, mode: str, expected: int
+) -> None:
     def observe(site, ip, names):
         rows = {h + "/" + t: {"A": [ip], "AAAA": []} for h in names for t in ("udp", "tcp")}
         if site == "nl" and mode != "self":

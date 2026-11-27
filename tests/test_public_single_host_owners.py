@@ -17,7 +17,9 @@ LABEL = "homelab.alchemmist.xyz/public-web"
         ("monori", "host", "private.invalid"),
     ],
 )
-def test_owner_opt_in_changes_only_one_ingress_label(app, field, replacement):
+def test_owner_opt_in_changes_only_one_ingress_label(
+    app: str, field: str, replacement: str
+) -> None:
     def render(*options, release=True):
         args = ["helm", "template", app, str(ROOT / "charts" / app), "-n", app]
         if release:
@@ -49,7 +51,7 @@ def test_owner_opt_in_changes_only_one_ingress_label(app, field, replacement):
         assert LABEL not in ingress(docs)["metadata"].get("labels", {})
 
 
-def test_openhands_selects_the_oidc_proxy_not_the_native_ingress():
+def test_openhands_selects_the_oidc_proxy_not_the_native_ingress() -> None:
     app = yaml.safe_load((ROOT / "deploy/argocd/apps/openhands.yaml").read_text())["spec"]
     src = app["source"]
     chart = ROOT / src["path"]

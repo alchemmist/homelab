@@ -1,7 +1,9 @@
+import pytest
+
 from services.public_entry import solver_lease
 
 
-def test_cold_restart_rejects_old_replies_even_with_same_uid_and_open_round():
+def test_cold_restart_rejects_old_replies_even_with_same_uid_and_open_round() -> None:
     first = solver_lease.SolverLease(10**10)
     old = first.begin()
     assert first.complete(old, "same")
@@ -14,8 +16,8 @@ def test_cold_restart_rejects_old_replies_even_with_same_uid_and_open_round():
 
 
 def test_abort_supersession_and_slow_results_never_extend_the_original_deadline(
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     tick = [100]
     monkeypatch.setattr(solver_lease.time, "monotonic_ns", lambda: tick[0])
     slot = solver_lease.SolverLease(10)
@@ -35,7 +37,7 @@ def test_abort_supersession_and_slow_results_never_extend_the_original_deadline(
     assert not slot.complete(slow, "one") and slot.witness("one") is None
 
 
-def test_in_flight_witness_changes_on_denial_and_on_same_uid_readmission():
+def test_in_flight_witness_changes_on_denial_and_on_same_uid_readmission() -> None:
     slot = solver_lease.SolverLease(10**10)
     t = slot.begin()
     assert slot.complete(t, "same")

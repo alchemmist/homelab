@@ -122,7 +122,9 @@ class NativeOIDC(unittest.TestCase):
             self.provider = old
 
 
-def test_read_only_plan_and_stale_approval_stop_before_delivery(tmp_path, monkeypatch, capsys):
+def test_read_only_plan_and_stale_approval_stop_before_delivery(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     """Use only a temporary journal directory and a synthetic, read-only API."""
     calls = []
 

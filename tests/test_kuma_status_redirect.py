@@ -41,7 +41,7 @@ def test_proxy_rejects_unsafe_mutations(rendered_policy: str, old: str, new: str
         assert_read_only_status_policy(rendered_policy.replace(old, new))
 
 
-def test_exact_status_owner_label_preserves_readonly_proxy_and_legacy_redirect():
+def test_exact_status_owner_label_preserves_readonly_proxy_and_legacy_redirect() -> None:
     import subprocess
 
     import yaml
@@ -112,7 +112,7 @@ def test_exact_status_owner_label_preserves_readonly_proxy_and_legacy_redirect()
     assert invalid.returncode and "read-only policy proxy" in invalid.stderr
 
 
-def test_closed_status_requires_reviewed_policy_and_keeps_host_decisions_independent():
+def test_closed_status_requires_reviewed_policy_and_keeps_host_decisions_independent() -> None:
     from copy import deepcopy
 
     import yaml
@@ -154,7 +154,7 @@ def test_closed_status_requires_reviewed_policy_and_keeps_host_decisions_indepen
         assert admission(clone, catalog) == no
 
 
-def test_spread_changes_only_proxy_placement_not_gatus_or_any_route():
+def test_spread_changes_only_proxy_placement_not_gatus_or_any_route() -> None:
     import subprocess
 
     import yaml

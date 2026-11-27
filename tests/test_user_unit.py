@@ -16,7 +16,7 @@ UNIT = "caffeine-lid-inhibit.service"
 
 
 @pytest.fixture
-def desktop(tmp_path):
+def desktop(tmp_path: Path):
     # Execute the actual role task with a synthetic home; not a repository play or inventory.
     (task,) = yaml.safe_load((ROLE / "tasks/caffeine.yml").read_text())
     user = pwd.getpwuid(os.geteuid()).pw_name
@@ -134,7 +134,7 @@ def test_user_unit_converges_before_continuation_and_leaves_handlers_queued(desk
 
 
 def test_failed_reload_blocks_later_tasks_and_retries_with_unchanged_bytes(
-    desktop, tmp_path
+    desktop, tmp_path: Path
 ) -> None:
     dest, run = desktop
     target = tmp_path / "overridden-unit"
