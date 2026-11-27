@@ -104,7 +104,8 @@ def servers(
             pm = p["metadata"]
             status = p.get("status", {})
             if (
-                pm.get("deletionTimestamp")
+                status.get("phase") != "Running"
+                or pm.get("deletionTimestamp")
                 or p["spec"].get("hostNetwork")
                 or any(pm.get("labels", {}).get(k) != v for k, v in selector.items())
                 or not any(
@@ -114,7 +115,7 @@ def servers(
             ):
                 raise ValueError("endpoint does not match an admitted ready Pod")
             addresses = ep.get("addresses", [])
-            if len(addresses) != 1 or addresses[0] != status.get("podIP"):
+            if not status.get("podIP") or len(addresses) != 1 or addresses[0] != status["podIP"]:
                 raise ValueError("endpoint and Pod IP disagree")
             ip = IPv4Address(addresses[0])
             if (

@@ -369,7 +369,7 @@ def test_closed_backend_uses_schoolbot_owner_service_and_verified_pod_destinatio
             "labels": selector.copy(),
         },
         "spec": {},
-        "status": {"podIP": addr, "conditions": [{"type": "Ready", "status": "True"}]},
+        "status": {"phase": "Running", "podIP": addr, "conditions": [{"type": "Ready", "status": "True"}]},
     }
     sl = {
         "kind": "EndpointSlice",
@@ -422,6 +422,7 @@ def test_closed_backend_uses_schoolbot_owner_service_and_verified_pod_destinatio
         "ref",
         "address",
         "port",
+        "phase",
         "unready",
         "wrong-service",
         "wrong-owner",
@@ -439,6 +440,8 @@ def test_closed_backend_uses_schoolbot_owner_service_and_verified_pod_destinatio
             ep["addresses"] = ["10.42.8.10"]
         elif case == "port":
             slice_["ports"][0]["port"] = 80
+        elif case == "phase":
+            pod_["status"]["phase"] = "Succeeded"
         elif case == "unready":
             pod_["status"]["conditions"] = []
         elif case == "wrong-service":
