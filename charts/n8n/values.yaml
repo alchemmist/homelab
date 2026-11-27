@@ -78,6 +78,39 @@ s3BinaryData:
   bucket: n8n-binary
   region: us-east-1
 
+queue:
+  # Queue mode with multi-main: N8N_EXECUTIONS_MODE=queue +
+  # N8N_MULTI_MAIN_SETUP_ENABLED=true. Requires the redis-common platform
+  # (namespace redis): dedicated ACL user `n8n`, key/channel prefix `n8n:*`,
+  # TLS against redis-common-haproxy. The automation-namespace Secret
+  # redis-common-n8n (password + ca.crt) is provisioned by
+  # deploy/platform/redis-common/onboard-n8n.py before activation.
+  enabled: true
+  multimain:
+    # A second main is meaningless without queue mode; enforced by a template
+    # fail.
+    extraReplica: true
+    # Mains are pinned to exactly these nodes; required pod anti-affinity
+    # spreads one main per node. The legacy PVC stays on the first node.
+    mainNodes: [socrat-5, socrat-0]
+  worker:
+    replicas: 1
+    nodeName: socrat-1
+    concurrency: 10
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+  redis:
+    secretName: redis-common-n8n
+    username: n8n
+    host: redis-common-haproxy.redis.svc.cluster.local
+    port: 6379
+    tls: true
+
 otelLogBridge:
   enabled: true
   secretName: otel-app-tls-n8n

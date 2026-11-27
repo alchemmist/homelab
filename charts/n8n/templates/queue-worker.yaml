@@ -1,0 +1,210 @@
+{{- if .Values.queue.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: {{ $.Release.Namespace | quote }}
+  name: n8n-worker
+spec:
+  replicas: {{ .Values.queue.worker.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+  selector:
+    matchLabels:
+      app: n8n-worker
+  template:
+    metadata:
+      labels:
+        app: n8n-worker
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.queue.worker.nodeName }}
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: node-ca-bundle
+          image: {{ include "n8n.image" . | quote }}
+          command: [sh, -ec]
+          args:
+            - cat /etc/pg-common/ca.crt /etc/redis-common/ca.crt > /etc/node-ca/bundle.pem
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {cpu: 200m, memory: 96Mi}}
+          volumeMounts:
+            - {name: node-ca, mountPath: /etc/node-ca}
+            {{- if .Values.postgresCaConfigMap }}
+            - {name: pg-common-ca, mountPath: /etc/pg-common, readOnly: true}
+            {{- end }}
+            - {name: redis-common-n8n, mountPath: /etc/redis-common, readOnly: true}
+      containers:
+        - name: worker
+          image: {{ include "n8n.image" . | quote }}
+          command: [n8n, worker]
+          args: [--concurrency={{ .Values.queue.worker.concurrency }}]
+          env:
+            {{- if .Values.database.postgresEnabled }}
+            - {name: DB_TYPE, value: postgresdb}
+            - {name: DB_POSTGRESDB_HOST, value: pg-common-rw.postgres.svc.cluster.local}
+            - {name: DB_POSTGRESDB_DATABASE, value: n8n}
+            - {name: DB_POSTGRESDB_SSL_ENABLED, value: 'true'}
+            - {name: DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED, value: 'true'}
+            - name: DB_POSTGRESDB_SSL_CA
+              valueFrom:
+                configMapKeyRef: {name: {{ required "postgresCaConfigMap required for PostgreSQL" .Values.postgresCaConfigMap | quote }}, key: ca.crt}
+            - name: DB_POSTGRESDB_USER
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.database.secretName | quote }}, key: username}
+            - name: DB_POSTGRESDB_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.database.secretName | quote }}, key: password}
+            {{- end }}
+            {{- if .Values.postgresCaConfigMap }}
+            - name: NODE_EXTRA_CA_CERTS
+              value: /etc/node-ca/bundle.pem
+            {{- else }}
+            - name: NODE_EXTRA_CA_CERTS
+              value: /etc/redis-common/ca.crt
+            {{- end }}
+            {{- if .Values.googleTransportEnabled }}
+            - name: NODE_OPTIONS
+              value: '--require=/opt/n8n/yandex-extension/google-transport-preload.js'
+            {{- else if .Values.googleDnsEnabled }}
+            - name: NODE_OPTIONS
+              value: '--require=/opt/n8n/yandex-extension/google-dns-preload.js'
+            {{- end }}
+            {{- if .Values.serviceVpn.enabled }}
+            - name: N8N_GOOGLE_SERVICE_VPN
+              value: '1'
+            {{- end }}
+            - name: EXECUTIONS_TIMEOUT_MAX
+              value: '21600'
+            - name: N8N_CUSTOM_EXTENSIONS
+              value: /opt/n8n/yandex-extension
+            - name: N8N_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: encryption-key
+            - name: N8N_DIAGNOSTICS_ENABLED
+              value: 'false'
+            {{- if .Values.s3BinaryData.enabled }}
+            - name: N8N_DEFAULT_BINARY_DATA_MODE
+              value: s3
+            - name: N8N_AVAILABLE_BINARY_DATA_MODES
+              value: filesystem,s3
+            - name: N8N_EXTERNAL_STORAGE_S3_HOST
+              value: {{ .Values.s3BinaryData.host }}
+            - name: N8N_EXTERNAL_STORAGE_S3_PROTOCOL
+              value: {{ .Values.s3BinaryData.protocol }}
+            - name: N8N_EXTERNAL_STORAGE_S3_FORCE_PATH_STYLE
+              value: 'true'
+            - name: N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME
+              value: {{ .Values.s3BinaryData.bucket }}
+            - name: N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION
+              value: {{ .Values.s3BinaryData.region }}
+            - name: N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.s3BinaryData.secretName | quote }}, key: accessKey}
+            - name: N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.s3BinaryData.secretName | quote }}, key: accessSecret}
+            {{- end }}
+            {{- include "n8n.queueEnv" (dict "root" .) | nindent 12 }}
+            - {name: QUEUE_HEALTH_CHECK_ACTIVE, value: 'true'}
+            - {name: QUEUE_HEALTH_CHECK_PORT, value: '9230'}
+            - name: GENERIC_TIMEZONE
+              value: Europe/Moscow
+            - name: TZ
+              value: Europe/Moscow
+          ports:
+            - name: healthcheck
+              containerPort: 9230
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            {{- toYaml .Values.queue.worker.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: healthcheck
+            initialDelaySeconds: 20
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthcheck
+            initialDelaySeconds: 60
+          volumeMounts:
+            - {name: node-ca, mountPath: /etc/node-ca, readOnly: true}
+            {{- if .Values.postgresCaConfigMap }}
+            - {name: pg-common-ca, mountPath: /etc/pg-common, readOnly: true}
+            {{- end }}
+            - {name: redis-common-n8n, mountPath: /etc/redis-common, readOnly: true}
+            - name: yandex-extension
+              mountPath: /opt/n8n/yandex-extension
+              readOnly: true
+            - name: data
+              mountPath: /home/node/.n8n
+        {{- if .Values.serviceVpn.enabled }}
+        - name: service-vpn
+          image: {{ .Values.serviceVpn.image | quote }}
+          command: [/app/bin/xray-linux-amd64]
+          args: [run, -c, /vpn-runtime/client.json]
+          readinessProbe:
+            exec:
+              command: [/bin/sh, -ec, "nc -z -w 2 127.0.0.1 18443 && nc -z -w 2 127.0.0.1 18444"]
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {cpu: 500m, memory: 128Mi}
+          volumeMounts:
+            - {name: service-vpn-runtime, mountPath: /vpn-runtime, readOnly: true}
+        {{- end }}
+      volumes:
+        {{- if .Values.postgresCaConfigMap }}
+        - name: pg-common-ca
+          configMap: {name: {{ .Values.postgresCaConfigMap | quote }}}
+        {{- end }}
+        {{- if .Values.serviceVpn.enabled }}
+        - name: service-vpn-identity
+          secret:
+            secretName: {{ .Values.serviceVpn.secretName }}
+            defaultMode: 0440
+        - name: service-vpn-runtime
+          emptyDir: {medium: Memory, sizeLimit: 1Mi}
+        - name: service-vpn-script
+          configMap:
+            name: n8n-service-vpn-script
+        {{- end }}
+        - name: yandex-extension
+          configMap:
+            name: n8n-yandex-extension
+        - {name: data, emptyDir: {sizeLimit: 512Mi}}
+        - {name: node-ca, emptyDir: {sizeLimit: 1Mi}}
+        - name: redis-common-n8n
+          secret:
+            secretName: {{ .Values.queue.redis.secretName | quote }}
+            defaultMode: 0440
+{{- end }}
