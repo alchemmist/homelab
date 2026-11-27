@@ -17,7 +17,7 @@ Installation preserves the pinned primary image filesystem under `/opt/homelab-v
 
 The watchdog checks the configured primary TCP VPN listeners and performs a certificate-validated TLS/WebSocket upgrade through local port 443 using the public VPN hostname and exact Trojan route. This detects missing listeners and a broken public Trojan ingress. It does not perform an authenticated VPN request or validate UDP tunnels end to end. Panel availability, the status page and Kubernetes API connectivity are not failure triggers.
 
-Four consecutive unhealthy checks reach the recovery threshold. Before fencing, two additional checks separated by one second must remain unhealthy; any success cancels activation and resets the counter. A healthy check resets the counter. There is a 180-second grace period after VPS boot; check durations add to the nominal two-minute detection window. An unavailable home control plane alone does not trigger recovery while the VPN keeps working.
+In Kubernetes mode, an isolated TLS-handshake timeout with all configured TCP listeners reachable is reported unhealthy and recorded, but clears the fencing counter and cancels pending fencing. Repetition of that signal alone never switches runtimes; investigate sustained TLS-only outages manually. Native-mode restart policy is unchanged. Four consecutive fencing-eligible checks reach the recovery threshold. Before fencing, two additional checks separated by one second must remain unhealthy; any success cancels activation and resets the counter. A healthy check resets the counter. There is a 180-second grace period after VPS boot; check durations add to the nominal two-minute detection window. An unavailable home control plane alone does not trigger recovery while the VPN keeps working.
 
 Before switching, the watchdog verifies required local files and checks the configured live primary SQLite database read-only. It durably writes `/var/lib/homelab-vpn-failover/active`, stops both `k3s.service` and `k3s-agent.service`, and terminates remaining Kubernetes and k3s service cgroup processes. **This stops all Kubernetes pods on the VPS**, including Traefik and the status page. Home nodes are not stopped. It does not run `k3s-killall.sh` or flush network rules.
 
@@ -129,5 +129,16 @@ a recovered sample cancels the restart. Counters are reset during warm-up.
 diagnostics; no exception text, response bodies or private URLs are stored.
 
 These measures reduce transient-trigger risk; they do not prove the original
-handshake errors were false positives. A sustained confirmed TLS/WebSocket failure
+handshake errors were false positives. Other sustained confirmed TLS/WebSocket failures
 can still intentionally fence this entire VPS. Automatic failback remains disabled.
+
+### Optional external validation and separate coordination
+
+The dedicated `socrat-0-watchdog-trojan` identity belongs to the `Socrat`
+3x-ui group. The witness on socrat-0 supplements mandatory node-local probes:
+SSH transport unavailability is recorded, not treated as a VPN failure. A
+reachable witness reporting a failed tunnel still rejects the handoff. Never
+reuse a human subscription. The shared transition coordinator runs separately
+on socrat-1. Both controllers require its lock; never replace a busy or
+unreachable coordinator with an independent local lock. This separation does
+not remove Kubernetes quorum requirements.

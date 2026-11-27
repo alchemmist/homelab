@@ -1,2 +1,7 @@
 [Unit]
+{% if vpn_failover_warm_return | default(false) and item == vpn_failover_k3s_unit %}
+ConditionPathExists=|!{{ vpn_failover_state }}/active
+ConditionPathExists=|{{ vpn_failover_state }}/warming
+{% else %}
 ConditionPathExists=!{{ vpn_failover_state }}/active
+{% endif %}

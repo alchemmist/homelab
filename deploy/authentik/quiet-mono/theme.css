@@ -97,7 +97,8 @@ ak-drawer#flow-drawer::part(drawer-content){transition:flex-basis 180ms cubic-be
 
 /* ak-drawer is a plain LitElement, so use its exported parts from global Brand CSS. */
 /* One early native body layer: no second random photo on the late-created drawer. */
-/* Authwall's important image wins while available; use independent static assets otherwise. */
+/* Authwall's important scene image wins when available. If its CSS cannot
+   load, use the independently served theme photo instead of a flat color. */
 body::before{background-color:#68776f;background-image:url('__ASSET_LAKE__');background-size:cover!important;background-position:center!important}
 @media(max-width:700px){body::before{background-image:url('__ASSET_LAKE_MOBILE__')}}
 ak-drawer#flow-drawer{min-height:100svh;background:transparent!important}

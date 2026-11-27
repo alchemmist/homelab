@@ -33,6 +33,14 @@
     - /etc/homelab-vpn-failover
     - /var/cache/homelab-vpn-failover
 
+- name: Install independent witness client without enabling warm return
+  ansible.builtin.copy:
+    src: homelab-vpn-external-probe
+    dest: /usr/local/sbin/homelab-vpn-external-probe
+    owner: root
+    group: root
+    mode: '0700'
+
 - name: Inspect existing monitoring timer
   homelab_systemd_probe:
     units: [homelab-vpn-watchdog.timer]

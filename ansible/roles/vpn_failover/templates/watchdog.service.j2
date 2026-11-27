@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/python3 /usr/local/sbin/homelab-vpn-failover tick
-TimeoutStartSec=240s
+TimeoutStartSec={{ (vpn_failover_kubernetes_start_timeout_seconds | int) + 300 }}s
 Nice=10
 IOSchedulingClass=idle
 UMask=0077
