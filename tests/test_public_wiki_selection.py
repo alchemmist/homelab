@@ -32,6 +32,9 @@ def test_wiki_owner_label_only_on_public_exact_host():
         return item
 
     assert not any(d["kind"] == "Ingress" for d in render("--set", "ingress.enabled=false"))
+    for flag, value in [("--set-string", "*.invalid"), ("--set", "true")]:
+        invalid = subprocess.run(args + [flag, "publicWebHost=" + value], capture_output=True)
+        assert invalid.returncode and b"publicWebHost" in invalid.stderr
     key = "homelab.alchemmist.xyz/public-web"
     current = render()
     item = ingress(current)
