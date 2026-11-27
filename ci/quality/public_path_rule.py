@@ -17,12 +17,17 @@ MSG_NON_ROOT_PREFIX = "non-root character prefix requires explicit scope review"
 MSG_EMPTY_INVENTORY = "empty public host path inventory"
 
 
-def path_rule(host: str, path: str, kind: str) -> str:
+def path_rule(host: str, path: object, kind: str) -> str:
     """Keep Kubernetes element-wise Prefix semantics; refuse unsupported literals."""
     if not 0 < len(host) <= DNS_MAX_LENGTH or not all(_LABEL.fullmatch(s) for s in host.split(".")):
         reason = MSG_UNSUPPORTED_DNS
         raise ValueError(reason)
-    if not path.startswith("/") or "//" in path or kind not in {"Prefix", "Exact"}:
+    if (
+        not isinstance(path, str)
+        or not path.startswith("/")
+        or "//" in path
+        or kind not in {"Prefix", "Exact"}
+    ):
         reason = MSG_UNSUPPORTED_PATH
         raise ValueError(reason)
     segments = path.strip("/").split("/") if path != "/" else []
