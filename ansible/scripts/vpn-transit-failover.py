@@ -424,7 +424,7 @@ class Controller:
                 if not select.select([lock.stdout], [], [], 5)[0]:
                     self.receipt("return-deferred", reason="witness-lock-timeout")
                     return
-                if lock.stdout.readline() != b"LOCKED\n":
+                if os.read(lock.stdout.fileno(), 7) != b"LOCKED\n":
                     self.receipt("return-deferred", reason="witness-lock-not-granted", ssh_status=lock.poll())
                     return
                 self._handoff(lock)
