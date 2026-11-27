@@ -2,7 +2,7 @@
 # Not referenced by deploy/argocd/apps/n8n.yaml. That Application renders charts/n8n,
 # where ingress.enabled is false. This file remains only as the retired Fleet bundle's values.
 image:
-  repository: ghcr.io/alchemmist/n8n
+  repository: harbor.socrat.alchemmist.xyz/n8n/n8n
   tag: 1.123.87-socrat
   digest: sha256:0ffba3a289722fc216ee5e135c3acaeb4b3484e267aeba42df9c8f2e39e831df
 nodeName: socrat-1
