@@ -213,9 +213,11 @@ spec:
             limits: {cpu: 200m, memory: 96Mi}
           readinessProbe:
             exec:
-              command: [python3, -c, "import socket,os; socket.create_connection(('127.0.0.1', int(os.environ['BRIDGE_PORT'])), timeout=2).close()"]
+              command: [python3, -c, {{ printf "import socket; socket.create_connection(('127.0.0.1', %d), timeout=2).close()" (int .Values.otelLogBridge.port) | quote }}]
             initialDelaySeconds: 5
             periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
           volumeMounts:
             - {name: otel-log-bridge-script, mountPath: /bridge, readOnly: true}
             - {name: otel-log-bridge-tls, mountPath: /etc/otel-tls, readOnly: true}
