@@ -36,11 +36,11 @@
       "application": "wiki-runtime"
     },
     {
-      "source": "charts/grafana/values.yaml",
+      "source": "deploy/grafana/values.yaml",
       "path": [
         "grafana",
-        "persistence",
-        "existingClaim"
+        "env",
+        "GF_DATABASE_HOST"
       ],
       "documents": [
         "docs/platform/kubernetes/workload-placement.md"
