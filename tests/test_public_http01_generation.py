@@ -250,3 +250,39 @@ def test_only_verified_solver_pod_address_is_admitted(fault):
     assert solver_destination(
         expected, ch, ing, svc, pod, slices, IPv4Network("10.42.0.0/16")
     ) == ("http://10.42.2.9:8089" if fault == "none" else None)
+
+
+def test_closed_snapshot_never_encodes_empty_services_on_withdrawal():
+    from ipaddress import IPv4Network
+
+    from ci.quality.public_http01_generation import closed_solver_snapshot
+
+    inputs = list(destination_fixture())
+    network = IPv4Network("10.42.0.0/16")
+    baseline = closed_solver_snapshot(*inputs, network)
+    http = baseline["http"]
+    assert http["services"] == {
+        "solver": {"loadBalancer": {"servers": [{"url": "http://10.42.2.9:8089"}]}}
+    }
+    proof = http["routers"]["proof"]
+    assert (
+        proof["rule"]
+        == f"Host(`probe.invalid`) && Path(`/.well-known/acme-challenge/{inputs[1]['spec']['token']}`)"
+        and proof["observability"] == {"accessLogs": False, "tracing": False}
+    )
+    inputs[-1][0]["endpoints"][0]["targetRef"]["uid"] = "stale"
+    withdrawn = closed_solver_snapshot(*inputs, network)
+    assert withdrawn == {
+        "http": {
+            "routers": {
+                "sentinel": {
+                    "rule": "Host(`sentinel.invalid`)",
+                    "entryPoints": ["closed"],
+                    "service": "noop@internal",
+                }
+            }
+        }
+    }
+    assert baseline["http"]["routers"].keys() == {"proof", "sentinel"}
+    inputs[1] = None
+    assert closed_solver_snapshot(*inputs, network) == withdrawn

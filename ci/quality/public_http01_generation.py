@@ -9,6 +9,7 @@ from ipaddress import IPv4Network
 from zlib import adler32
 
 from ci.quality.closed_root_backend import verified_pod_servers
+from ci.quality.public_path_rule import path_rule
 
 _API = "acme.cert-manager.io/v1"
 _TOKEN = re.compile(r"[A-Za-z0-9_-]{22,256}")
@@ -178,3 +179,36 @@ def solver_destination(
         return result["url"]
     except (AttributeError, KeyError, TypeError, ValueError):
         return None
+
+
+def closed_solver_snapshot(expected, challenge, ingress, service, pod, slices, pod_network) -> dict:
+    """Build one isolated HTTP-only fixture, never replace a shared provider with it.
+
+    Inputs are complete observations for exactly one independently approved
+    presentation. Output may contain the challenge path: do not log it.
+    No publishing, polling or consumer acknowledgment takes place here.
+    """
+    routers = {
+        "sentinel": {
+            "rule": "Host(`sentinel.invalid`)",
+            "entryPoints": ["closed"],
+            "service": "noop@internal",
+        }
+    }
+    http = {"routers": routers}
+    dest = solver_destination(expected, challenge, ingress, service, pod, slices, pod_network)
+    if dest is not None:
+        try:
+            rule = path_rule(
+                expected[3], "/.well-known/acme-challenge/" + challenge["spec"]["token"], "Exact"
+            )
+        except ValueError:
+            return {"http": http}
+        routers["proof"] = {
+            "rule": rule,
+            "entryPoints": ["closed"],
+            "service": "solver",
+            "observability": {"accessLogs": False, "tracing": False},
+        }
+        http["services"] = {"solver": {"loadBalancer": {"servers": [{"url": dest}]}}}
+    return {"http": http}
