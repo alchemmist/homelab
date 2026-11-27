@@ -270,7 +270,7 @@ class NativeSession:
 
     def _require_owned(self, kind: str) -> None:
         """Fail if a freshly issued credential is not owned by this session."""
-        if self._owned(kind) is None:
+        if self.owned(kind) is None:
             msg = "Bootstrap ownership missing"
             raise RuntimeError(msg)
 
@@ -281,7 +281,7 @@ class NativeSession:
             raise RuntimeError(msg)
         return self.base
 
-    def _owned(self, kind: str) -> "dict[str, object] | None":
+    def owned(self, kind: str) -> "dict[str, object] | None":
         expected = self.credentials[kind]
         rows = [r for r in token_rows(self.database) if r["id"] == expected["id"]]
         if not rows:
@@ -297,7 +297,7 @@ class NativeSession:
         return row
 
     def _delete(self, kind: str, actor: str) -> None:
-        row = self._owned(kind)
+        row = self.owned(kind)
         if row is not None:
             request(
                 self._require_open(),
@@ -306,7 +306,7 @@ class NativeSession:
                 "/setting/apiTokens/delete/" + str(row["id"]),
                 {"expectedScope": row["scope"]},
             )
-        if self._owned(kind) is not None:
+        if self.owned(kind) is not None:
             msg = "Credential deletion did not converge"
             raise RuntimeError(msg)
 
@@ -345,7 +345,7 @@ class NativeSession:
             "token": token_value,
         }
         self._save_credential(kind, credential)
-        if self._owned(kind) is None:
+        if self.owned(kind) is None:
             msg = "Missing created credential"
             raise RuntimeError(msg)
 
@@ -432,7 +432,7 @@ class NativeSession:
         if path.startswith("/setting/"):
             msg = "Worker cannot use administrative token endpoints"
             raise ValueError(msg)
-        if self._owned("worker") is None:
+        if self.owned("worker") is None:
             msg = "Worker credential unavailable"
             raise RuntimeError(msg)
         return request(
