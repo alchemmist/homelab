@@ -1,18 +1,18 @@
 # Authentik login wallpapers: gallery, RustFS and responsive delivery
 
-**To change the login background set**, open [the gallery](https://auth.socrat.alchemmist.xyz/authwall/), sign in as an owner or wallpaper manager, and toggle a tile. There is no theme release or ConfigMap update. Turning a picture off removes it from future selections; it does not repaint an already-open login page or revoke a downloaded image. Only upload photos suitable for public display.
+**To change the login background set**, open [the gallery](https://auth.socrat.alchemmist.xyz/wallpapers/), sign in as an owner or wallpaper manager, and toggle a tile. There is no theme release or ConfigMap update. Turning a picture off removes it from future selections; it does not repaint an already-open login page or revoke a downloaded image. Only upload photos suitable for public display.
 
 ## Who owns what
 
 | Component | Responsibility |
 | --- | --- |
-| Authentik Brand / quiet-mono | Imports `/authwall/scene.css`. The Brand neither picks a photo nor limits its resolution. |
+| Authentik Brand / quiet-mono | Imports `/wallpapers/scene.css`. The Brand neither picks a photo nor limits its resolution. |
 | `identity/authwall` | Same-origin gallery, owner API, public scene selection and media streaming. [Application and UI](../../../services/authwall/) live in homelab. |
 | `pg-common` / `authentik_wallpapers` | One row per photo: ID, filename, active flag, processing state, dimensions, error and n8n execution link. Not an image store. |
 | RustFS / `authentik-wallpapers` (persistent bucket) | Original bytes, rendered WebPs and per-photo variant index. Private S3 access; no browser bucket credentials or listing. Not the SPI evidence gateway or RustFS admin console. |
 | `automation/n8n` | One [workflow](../../../services/authwall/n8n/derivatives-v2.json) per upload. The execution link is for tracing; acceptance of the webhook is **not** proof that files exist. |
 
-**Access boundary.** The owner UI/API checks the Authentik session via `/api/v3/core/users/me/` (`homelab-owner`, `homelab-owners` or `app-authwall-manager`); the group lookup is cached for 60 seconds. Anonymous gallery navigation starts SSO with `next=/authwall/`. The login page cannot require SSO to paint itself: `scene.css` and derivative media URLs are intentionally public. Inactive is a selection flag, not an access control. Originals have no public source route. Internal processing uses `X-Wallpaper-Token`, not a browser session.
+**Access boundary.** The owner UI/API checks the Authentik session via `/api/v3/core/users/me/` (`homelab-owner`, `homelab-owners` or `app-authwall-manager`); the group lookup is cached for 60 seconds. Anonymous gallery navigation starts SSO with `next=/wallpapers/`. The login page cannot require SSO to paint itself: `scene.css` and derivative media URLs are intentionally public. Inactive is a selection flag, not an access control. Originals have no public source route. Internal processing uses `X-Wallpaper-Token`, not a browser session.
 
 **Delegate gallery management:** in Authentik Admin → Directory → Groups, open `app-authwall-manager`, then add or remove the user under Users. This grants upload, activation and permanent deletion of any gallery photo, not Authentik administration. Membership changes can take up to 60 seconds to reach the gallery. Do not add users to `homelab-owner` for this purpose.
 
@@ -38,7 +38,7 @@
 
 The owner grid selects for the **tile**, not the viewport. A new item starts with its local preview, existing items with their blur. Sharp downloads start only when ready, with bounded concurrency, timeouts and retries. A separate sharp layer appears after decoding; the blur stays behind it. Tiles toggle on click; only inactive images darken. Desktop and mobile share the English UI; mobile uses two columns and a bottom upload queue. Permanent deletion is a separate two-click action; leaving the control cancels confirmation. Deletion is intended to remove the row and associated objects; do not treat it as instant eviction from browser caches.
 
-`/authwall/media/` streams RustFS responses in 64 KiB chunks and permits public caching for one day. Streaming improves **time to first byte**, not the number of bytes to download or decode. Scene choices stay fresh independently of file caching. Replacing bytes under an existing ID can leave cached old media until expiry.
+`/wallpapers/media/` streams RustFS responses in 64 KiB chunks and permits public caching for one day. Streaming improves **time to first byte**, not the number of bytes to download or decode. Scene choices stay fresh independently of file caching. Replacing bytes under an existing ID can leave cached old media until expiry.
 
 ## How we got here
 
@@ -55,9 +55,9 @@ The owner grid selects for the **tile**, not the viewport. A new item starts wit
 
   ```sh
   base=https://auth.socrat.alchemmist.xyz
-  curl -fsS -D /tmp/scene.headers "$base/authwall/scene.css" -o /tmp/scene.css
+  curl -fsS -D /tmp/scene.headers "$base/wallpapers/scene.css" -o /tmp/scene.css
   # Use the exact media path seen in Network, not the inline thumbnail:
-  curl -fsS -o /dev/null -w 'status=%{http_code} first=%{time_starttransfer} total=%{time_total} bytes=%{size_download}\n' "$base/authwall/media/<id>-w1920.webp"
+  curl -fsS -o /dev/null -w 'status=%{http_code} first=%{time_starttransfer} total=%{time_total} bytes=%{size_download}\n' "$base/wallpapers/media/<id>-w1920.webp"
   ```
 
 - **Rebuild/restore:** preserve DB IDs, flags and originals together. Render from `sources/`, verify staged type/dimensions and bytes before replacement, record execution links, then remove staging objects. Never publish the bucket or grant console access to fix a media error. Keep credentials out of Git; verify bucket-scoped credentials rather than assuming historical bootstrap credentials were scoped.

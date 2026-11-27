@@ -42,7 +42,7 @@ class WallpaperTests(unittest.TestCase):
             "Content-Type: image/png\r\n\r\n"
         ).encode() + png() + f"\r\n--{boundary}--\r\n".encode()
         req = urllib.request.Request(
-            self.base + "/authwall/api/upload",
+            self.base + "/wallpapers/api/upload",
             data=body,
             headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
             method="POST",
@@ -54,16 +54,16 @@ class WallpaperTests(unittest.TestCase):
         self.assertEqual(row["status"], "ready")
         urllib.request.urlopen(
             urllib.request.Request(
-                self.base + f"/authwall/api/items/{wallpaper_id}/active",
+                self.base + f"/wallpapers/api/items/{wallpaper_id}/active",
                 data=b'{"active": true}',
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
         ).read()
-        css = urllib.request.urlopen(self.base + "/authwall/scene.css?seed=login").read().decode()
+        css = urllib.request.urlopen(self.base + "/wallpapers/scene.css?seed=login").read().decode()
         self.assertIn(wallpaper_id, css)
         self.assertIn("data:image/webp;base64,", css)
-        full = urllib.request.urlopen(self.base + f"/authwall/media/{wallpaper_id}.webp").read()
+        full = urllib.request.urlopen(self.base + f"/wallpapers/media/{wallpaper_id}.webp").read()
         self.assertTrue(full.startswith(b"RIFF"))
 
     def test_gallery_delegation(self) -> None:
@@ -72,7 +72,7 @@ class WallpaperTests(unittest.TestCase):
         for group, status in [("app-authwall-manager", 200), ("homelab-owner", 200), ("homelab-observer", 403)]:
             with self.subTest(group=group), patch("authwall.server.groups_from_authentik", return_value={group}):
                 try:
-                    with urllib.request.urlopen(self.base + "/authwall/api/items") as response:
+                    with urllib.request.urlopen(self.base + "/wallpapers/api/items") as response:
                         actual = response.status
                 except urllib.error.HTTPError as exc:
                     actual = exc.code
@@ -87,15 +87,15 @@ class WallpaperTests(unittest.TestCase):
 
         opener = urllib.request.build_opener(NoRedirect)
         try:
-            opener.open(self.base + "/authwall/")
+            opener.open(self.base + "/wallpapers/")
         except urllib.error.HTTPError as exc:
             self.assertEqual(exc.code, 302)
             self.assertIn("if/flow/default-authentication-flow", exc.headers["Location"])
         else:
             self.fail("anonymous gallery was allowed")
-        css = urllib.request.urlopen(self.base + "/authwall/scene.css").read()
+        css = urllib.request.urlopen(self.base + "/wallpapers/scene.css").read()
         self.assertIn(b"body::before", css)
-        denied = urllib.request.Request(self.base + "/authwall/api/items")
+        denied = urllib.request.Request(self.base + "/wallpapers/api/items")
         try:
             urllib.request.urlopen(denied)
         except urllib.error.HTTPError as exc:
