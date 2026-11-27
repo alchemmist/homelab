@@ -82,9 +82,14 @@ def test_schoolbot_anonymous_payload(status, ct, body, valid):
     assert healthy(status, ct, body) is valid
 
 
-def test_closed_schoolbot_probe_only_uses_loopback(monkeypatch):
+def test_closed_schoolbot_probe_only_uses_loopback(monkeypatch, tmp_path):
     from ci.quality import schoolbot_entry_health as health
 
+    catalog = tmp_path / "catalog.yaml"
+    catalog.write_text(
+        yaml.safe_dump({"hosts": {"schoolbot": {health.HOST: {"dns": "external"}}}})
+    )
+    monkeypatch.setattr(health, "CATALOG", catalog)
     calls = []
     monkeypatch.setattr(
         health,
@@ -116,16 +121,23 @@ def test_schoolbot_body_must_match_advertised_length(length, ok):
 def test_no_length_short_read_does_not_hide_following_body():
     from unittest.mock import Mock
     from ci.quality.schoolbot_entry_health import response_healthy
-    response=Mock(status=200)
-    response.getheader.side_effect=lambda name,default=None: "application/json" if name=="Content-Type" else default
-    response.read.side_effect=[b'{"ok":true}', b'x']
+
+    response = Mock(status=200)
+    response.getheader.side_effect = lambda name, default=None: (
+        "application/json" if name == "Content-Type" else default
+    )
+    response.read.side_effect = [b'{"ok":true}', b"x"]
     assert not response_healthy(response)
 
 
-@pytest.mark.parametrize("bad",["null","hosts: []","hosts: {schoolbot: {}}"])
-def test_missing_schoolbot_policy_is_a_cli_error(monkeypatch,tmp_path,bad):
+@pytest.mark.parametrize("bad", ["null", "hosts: []", "hosts: {schoolbot: {}}"])
+def test_missing_schoolbot_policy_is_a_cli_error(monkeypatch, tmp_path, bad):
     from ci.quality import schoolbot_entry_health as health
-    f=tmp_path/'catalog.yaml';f.write_text(bad);monkeypatch.setattr(health,'CATALOG',f)
-    monkeypatch.setattr(sys,'argv',['health','--public'])
-    with pytest.raises(SystemExit) as e:health.main()
-    assert e.value.code==2
+
+    f = tmp_path / "catalog.yaml"
+    f.write_text(bad)
+    monkeypatch.setattr(health, "CATALOG", f)
+    monkeypatch.setattr(sys, "argv", ["health", "--public"])
+    with pytest.raises(SystemExit) as e:
+        health.main()
+    assert e.value.code == 2
