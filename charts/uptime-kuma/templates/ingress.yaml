@@ -3,6 +3,13 @@ kind: Ingress
 metadata:
   name: uptime-kuma
   namespace: {{ .Release.Namespace | quote }}
+{{- if and .Values.publicStatusHost (eq .Values.host .Values.publicStatusHost) }}
+{{- if not .Values.publicEntry.kumaPolicyProxy.enabled }}
+{{- fail "public status discovery requires the read-only policy proxy" }}
+{{- end }}
+  labels:
+    homelab.alchemmist.xyz/public-web: 'true'
+{{- end }}
   annotations:
     cert-manager.io/cluster-issuer: {{ .Values.clusterIssuer | quote }}
 spec:
