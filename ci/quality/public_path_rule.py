@@ -8,22 +8,27 @@ import re
 
 _LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?")
 _SEGMENT = re.compile(r"[A-Za-z0-9._~-]+")
+DNS_MAX_LENGTH = 253
+MSG_UNSUPPORTED_DNS = "unsupported public DNS name"
+MSG_UNSUPPORTED_PATH = "unsupported public path or path type"
+MSG_UNSUPPORTED_SEGMENT = "unsupported public path segment"
+MSG_UNCONFIRMED_PRIORITY = "unconfirmed original priority or prefix mode"
+MSG_NON_ROOT_PREFIX = "non-root character prefix requires explicit scope review"
+MSG_EMPTY_INVENTORY = "empty public host path inventory"
 
 
 def path_rule(host: str, path: str, kind: str) -> str:
     """Keep Kubernetes element-wise Prefix semantics; refuse unsupported literals."""
-    if not 0 < len(host) <= 253 or not all(_LABEL.fullmatch(s) for s in host.split(".")):
-        raise ValueError("unsupported public DNS name")
-    if (
-        not isinstance(path, str)
-        or not path.startswith("/")
-        or "//" in path
-        or kind not in {"Prefix", "Exact"}
-    ):
-        raise ValueError("unsupported public path or path type")
+    if not 0 < len(host) <= DNS_MAX_LENGTH or not all(_LABEL.fullmatch(s) for s in host.split(".")):
+        reason = MSG_UNSUPPORTED_DNS
+        raise ValueError(reason)
+    if not path.startswith("/") or "//" in path or kind not in {"Prefix", "Exact"}:
+        reason = MSG_UNSUPPORTED_PATH
+        raise ValueError(reason)
     segments = path.strip("/").split("/") if path != "/" else []
     if any(not _SEGMENT.fullmatch(s) or s in {".", ".."} for s in segments):
-        raise ValueError("unsupported public path segment")
+        reason = MSG_UNSUPPORTED_SEGMENT
+        raise ValueError(reason)
     authority = f"Host(`{host}`)"
     if kind == "Exact":
         return f"{authority} && Path(`{path}`)"
@@ -34,7 +39,7 @@ def path_rule(host: str, path: str, kind: str) -> str:
 
 
 def source_priority(
-    host: str, path: str, kind: str, *, strict_prefix: bool, declared: int = 0
+    host: str, path: str, kind: str, *, strict_prefix: object, declared: object = 0
 ) -> int:
     """Reproduce v3.7.19 Ingress priority for this restricted ASCII matcher subset.
 
@@ -44,7 +49,8 @@ def source_priority(
     """
     rule = path_rule(host, path, kind)
     if type(strict_prefix) is not bool or type(declared) is not int:
-        raise ValueError("unconfirmed original priority or prefix mode")
+        reason = MSG_UNCONFIRMED_PRIORITY
+        raise ValueError(reason)
     if declared:
         return declared
     if kind == "Prefix" and not strict_prefix:
@@ -55,7 +61,7 @@ def source_priority(
 
 
 def unchanged_path_matcher(
-    host: str, path: str, kind: str, *, source_strict: bool, declared: int = 0
+    host: str, path: str, kind: str, *, source_strict: object, declared: object = 0
 ) -> tuple[str, int]:
     """Compile only a provably equivalent single matcher with original precedence.
 
@@ -67,12 +73,13 @@ def unchanged_path_matcher(
     if kind == "Prefix" and path != "/" and not source_strict:
         # With a trailing slash the segment matcher adds the slashless base;
         # without one the character matcher accepts same-segment extensions.
-        raise ValueError("non-root character prefix requires explicit scope review")
+        reason = MSG_NON_ROOT_PREFIX
+        raise ValueError(reason)
     return path_rule(host, path, kind), priority
 
 
 def unchanged_host_matchers(
-    host: str, paths: list[tuple[str, str, int]], *, source_strict: bool
+    host: str, paths: list[tuple[str, str, int]], *, source_strict: object
 ) -> tuple[tuple[str, int], ...]:
     """Return all matchers or none via exception, never a partial catch-all.
 
@@ -80,7 +87,8 @@ def unchanged_host_matchers(
     router is installed, and this does not address cross-host dependencies.
     """
     if not paths:
-        raise ValueError("empty public host path inventory")
+        reason = MSG_EMPTY_INVENTORY
+        raise ValueError(reason)
     return tuple(
         unchanged_path_matcher(host, path, kind, declared=priority, source_strict=source_strict)
         for path, kind, priority in paths
