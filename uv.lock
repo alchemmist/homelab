@@ -553,6 +553,7 @@ source = { virtual = "." }
 dev = [
     { name = "ansible-core" },
     { name = "ansible-lint" },
+    { name = "cryptography" },
     { name = "jsonschema" },
     { name = "mypy" },
     { name = "pip-audit" },
@@ -574,6 +575,7 @@ dev = [
 dev = [
     { name = "ansible-core", specifier = "==2.22.0" },
     { name = "ansible-lint", specifier = "==26.11.0" },
+    { name = "cryptography", specifier = "==50.0.2" },
     { name = "jsonschema", specifier = "==4.26.0" },
     { name = "mypy", specifier = "==2.4.1" },
     { name = "pip-audit", specifier = "==2.10.0" },
