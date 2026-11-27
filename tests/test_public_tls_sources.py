@@ -294,3 +294,13 @@ def test_unreviewed_external_chart_is_rejected_before_helm(tmp_path):
     wrong.write_bytes(b"fixture")
     with pytest.raises(ValueError, match="unreviewed Argo CD chart"):
         verify(wrong)
+
+
+@pytest.mark.parametrize("payload", ["[]", "{}", '{"items":null}', '{"items":[{}]}', "invalid"])
+def test_pin_cli_rejects_malformed_input_without_dump(payload,monkeypatch,capsys):
+    import io
+    import json
+    from ci.quality import public_tls_pins as pins
+    monkeypatch.setattr(pins.sys,"stdin",io.StringIO(payload))
+    assert pins.main()==1
+    assert json.loads(capsys.readouterr().out)=={"sources":{},"errors":["invalid catalog or Kubernetes List input"]}

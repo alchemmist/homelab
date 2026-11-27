@@ -49,7 +49,15 @@ def compare(catalog: dict, items: list[dict]) -> dict:
 
 
 def main() -> int:
-    report = compare(yaml.safe_load(CATALOG.read_text()), json.load(sys.stdin)["items"])
+    try:
+        batch = json.load(sys.stdin)
+        if not isinstance(batch, dict) or not isinstance(batch.get("items"), list):
+            raise ValueError("expected a Kubernetes List envelope")
+        report = compare(yaml.safe_load(CATALOG.read_text()), batch["items"])
+    except (KeyError, TypeError, ValueError, AttributeError, yaml.YAMLError):
+        # Never echo input values, exception text or a non-empty partial plan.
+        report = {"sources": {}, "errors": ["invalid catalog or Kubernetes List input"]}
+
     print(json.dumps(report, indent=2))
     return int(bool(report["errors"]))
 
