@@ -430,6 +430,10 @@ class StatefulBoundaries(unittest.TestCase):
                             ("PersistentVolumeClaim", "litellm-postgres"),
                         ):
                             expected.pop(key, None)
+                    if chart == "deploy/wiki-runtime/chart":
+                        wiki = expected["Ingress", "wiki-runtime-wiki"]
+                        assert wiki["spec"]["rules"][0]["host"] == "wiki.socrat.alchemmist.xyz"
+                        wiki["metadata"].setdefault("labels", {})["homelab.alchemmist.xyz/public-web"] = "true"
                     compare_namespace_inputs(expected, chart, ns)
                     assert current == expected
                     after = historical(HANDOFF)
