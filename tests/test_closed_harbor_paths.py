@@ -79,3 +79,64 @@ def test_no_partial_portal_fallback(inputs, drift):
         catalog["hosts"]["harbor"].pop(HOST)
     with pytest.raises(ValueError):
         compile_fixture(docs, catalog, source_strict=False)
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        None,
+        "broader-root",
+        "callback-prefix",
+        "extra-path",
+        "port",
+        "selector",
+        "backend",
+        "annotation",
+        "no-opt-in",
+        "mode",
+        "tls",
+    ],
+)
+def test_socrat_bot_exact_set_or_no_fixture(fault):
+    from ci.quality import closed_socrat_bot_paths as bot
+
+    docs = bot.render()
+    catalog = yaml.safe_load(bot.CATALOG.read_text())
+    (ing,) = [d for d in docs if d["kind"] == "Ingress"]
+    (svc,) = [
+        d for d in docs if d["kind"] == "Service" and d["metadata"]["name"] == bot.NS
+    ]
+    paths = ing["spec"]["rules"][0]["http"]["paths"]
+    if fault == "broader-root":
+        paths[1]["pathType"] = "Prefix"
+    elif fault == "callback-prefix":
+        paths[2]["pathType"] = "Prefix"
+    elif fault == "extra-path":
+        paths.append(paths[-1])
+    elif fault == "port":
+        svc["spec"]["ports"][0]["targetPort"] = 8080
+    elif fault == "selector":
+        del svc["spec"]["selector"]["app.kubernetes.io/component"]
+    elif fault == "backend":
+        paths[0]["backend"]["service"]["name"] = "socrat-telegram-relay"
+    elif fault == "annotation":
+        ing["metadata"]["annotations"][
+            "traefik.ingress.kubernetes.io/router.priority"
+        ] = "1"
+    elif fault == "no-opt-in":
+        ing["metadata"]["labels"]["homelab.alchemmist.xyz/public-web"] = "false"
+    elif fault == "tls":
+        ing["spec"]["tls"][0]["secretName"] = "other"
+    if fault:
+        with pytest.raises(ValueError):
+            bot.fixture(docs, catalog, strict=fault == "mode")
+        return
+    config = bot.fixture(docs, catalog, strict=False)["http"]
+    assert len(config["routers"]) == 5 and set(config["services"]) == {"bot"}
+    assert config["routers"]["bot-root"]["rule"].endswith(" && Path(`/`)")
+    assert config["routers"]["bot-telegram"]["rule"].endswith(
+        " && PathPrefix(`/telegram`)"
+    )
+    assert config["routers"]["bot-oauth-callback"]["rule"].endswith(
+        " && Path(`/oauth/callback`)"
+    )
