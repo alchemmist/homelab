@@ -26,6 +26,7 @@ git:
   sshSecret: ""
 service:
   port: 8080
+publicWebHost: ""
 ingress:
   enabled: false
   className: ""

@@ -83,6 +83,7 @@ siteConfig: >
   [params.docs.editor]
 
   enabled = true
+publicWebHost: wiki.socrat.alchemmist.xyz
 ingress:
   enabled: true
   className: traefik
