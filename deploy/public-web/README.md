@@ -184,6 +184,30 @@ list/watch informer. Do not bind them and fall back to wildcard access when
 discovery fails. Do not copy private keys. Certificate status is not a live TLS
 handshake, an authorization check or evidence of a healthy backend.
 
+`services/public_entry/tls_material.py` is an **offline** validation primitive,
+not a deployed provider. Given a single source's already-authorized DNS names,
+PEM chain, matching key and timezone-aware time, it returns only the leaf
+fingerprint. It rejects wrong or extra SANs, additional non-DNS SANs, invalid
+time windows, unsupported or mismatched keys and malformed/unrelated chain
+entries. It does not authorize a Kubernetes read, look up a trust root, certify
+client trust, or apply a snapshot. In particular, an otherwise valid self-signed
+fixture can pass this source check and still fail an ordinary browser. Do not
+feed live keys to CI or persist the arguments. Run the synthetic regression
+with `uv run pytest -q tests/test_public_tls_material.py`.
+
+`tls_selection.select_sources()` validates a completed batch independently by
+(namespace, Secret name). An invalid or missing pair withdraws every alias of
+that source; overlapping ownership rejects both sources even if only one key
+was readable. Its result contains references and fingerprints, not private keys.
+A network-isolated local Traefik file-provider rehearsal built the fixture
+certificates **and** routers from that same selection. Fresh TLS and HTTP on
+three names passed initially; a wrong key withdrew both names of one source
+while the independent site's fingerprint and body stayed correct. An empty
+selection plus a nonempty strict-SNI sentinel snapshot rejected all three;
+restoration recovered all three. Only disposable key material in container
+tmpfs was used. This does not admit production routes or address the case
+where the consumer cannot receive the snapshot.
+
 ### Schoolbot: use the same HTTPS acceptance check before and after staging
 
 `uv run python -m ci.quality.schoolbot_entry_health --public` forces each
