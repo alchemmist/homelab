@@ -107,6 +107,59 @@ def test_legacy_home_only_dns_must_not_skip_direct_monori_checks(monkeypatch, ca
             },
         ),
     )
-    assert checks.main() == 0
+    assert checks.main() == 1
     assert {ip for host, ip in called if host == checks.MONORI} == ips
     assert set(json.loads(capsys.readouterr().out)["https"][checks.MONORI]) == ips
+
+
+@pytest.mark.parametrize(
+    "body,expected",
+    [
+        (b'{"user":null,"writable":false,"bootstrap_required":false}', "matched"),
+        (
+            b'{"user":null,"writable":0,"bootstrap_required":false}',
+            "unexpected-application-response",
+        ),
+        (
+            b'{"writable":false,"bootstrap_required":false}',
+            "unexpected-application-response",
+        ),
+        (
+            b'{"user":null,"writable":true,"writable":false,"bootstrap_required":false}',
+            "unexpected-application-response",
+        ),
+    ],
+)
+def test_wiki_anonymous_contract(monkeypatch, body, expected):
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *a, **kw: subprocess.CompletedProcess(
+            [], 0, body + b"\n200 application/json", b""
+        ),
+    )
+    assert checks.check(checks.WIKI, "192.0.2.1") == expected
+
+
+@pytest.mark.parametrize("broken", [False, True])
+def test_selfip_requires_all_direct_routes(monkeypatch, broken):
+    monkeypatch.setattr(
+        checks,
+        "check",
+        lambda host, ip: (
+            "tls-handshake-failed" if broken and host == checks.WIKI else "matched"
+        ),
+    )
+    monkeypatch.setattr(
+        checks,
+        "observe",
+        lambda site, ip, hosts: (
+            site,
+            {
+                h + "/" + p: {"A": [ip], "AAAA": []}
+                for h in hosts
+                for p in ("tcp", "udp")
+            },
+        ),
+    )
+    assert checks.main() == int(broken)
