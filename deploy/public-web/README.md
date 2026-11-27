@@ -183,3 +183,16 @@ prevent emission of candidate rules. The report is not applied: the exact-name
 list/watch informer. Do not bind them and fall back to wildcard access when
 discovery fails. Do not copy private keys. Certificate status is not a live TLS
 handshake, an authorization check or evidence of a healthy backend.
+
+### Schoolbot: use the same HTTPS acceptance check before and after staging
+
+`uv run python -m ci.quality.schoolbot_entry_health --public` forces each
+catalog IPv4 but preserves the real SNI and Host. `--local-port PORT` instead
+uses only `127.0.0.1:PORT` for a pre-established port-forward to the private
+**HTTPS controller listener**, not the Schoolbot backend. Neither invocation
+reads Secrets, accepts an insecure TLS mode, follows redirects, or prints
+headers/body. No network request by default. Success requires trusted frontend
+TLS, HTTP 200 and a bounded JSON object with boolean `ok: true`. A TLS failure
+prevents sending the HTTP request. The external name remains owner-controlled;
+`bot.sch1357.ru` is never probed. A passing health response does not prove DNS,
+user login, database operations, or independence from another public entrance.

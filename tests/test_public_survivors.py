@@ -63,3 +63,33 @@ def test_unknown_survivor_lists_valid_entries(monkeypatch, capsys) -> None:
     message, _, choices = capsys.readouterr().err.strip().rpartition("; choose from ")
     assert "Unknown survivor 'nl-only'" in message
     assert set(choices.split(", ")) == set(audit.ENTRIES)
+
+
+@pytest.mark.parametrize(
+    ("status", "ct", "body", "valid"),
+    [
+        (200, "application/json; charset=utf-8", b'{"ok":true}', True),
+        (302, "application/json", b'{"ok":true}', False),
+        (200, "text/html", b'{"ok":true}', False),
+        (200, "application/json", b'{"ok":1}', False),
+        (200, "application/json", b'{"ok":false,"ok":true}', False),
+        (200, "application/json", b'{"ok":true}' + b" " * 8192, False),
+    ],
+)
+def test_schoolbot_anonymous_payload(status, ct, body, valid):
+    from ci.quality.schoolbot_entry_health import healthy
+
+    assert healthy(status, ct, body) is valid
+
+
+def test_closed_schoolbot_probe_only_uses_loopback(monkeypatch):
+    from ci.quality import schoolbot_entry_health as health
+
+    calls = []
+    monkeypatch.setattr(
+        health,
+        "probe",
+        lambda ip, port: calls.append((ip, port)) or "tls-verification-failed-18",
+    )
+    monkeypatch.setattr(sys, "argv", ["health", "--local-port", "10443"])
+    assert health.main() == 1 and calls == [("127.0.0.1", 10443)]
