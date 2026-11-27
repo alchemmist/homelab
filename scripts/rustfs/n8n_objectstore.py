@@ -40,7 +40,14 @@ IDENTITY_POLICY = {
             "Effect": "Allow",
             "Action": ["s3:GetObject", "s3:PutObject"],
             "Resource": [f"arn:aws:s3:::{BUCKET}/*"],
-        }
+        },
+        {
+            # n8n's startup checkConnection issues a HeadBucket before the first
+            # object operation; deletions stay delegated to S3 lifecycle.
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": [f"arn:aws:s3:::{BUCKET}"],
+        },
     ],
 }
 
@@ -190,6 +197,9 @@ def verify_existing_policy(mc: Command, tmp: Path, policy_names: set[str]) -> No
         path = tmp / "n8n-binary.existing.json"
         mc("admin", "policy", "info", "store", POLICY_NAME, "--policy-file", str(path))
         actual = json.loads(path.read_text())
+        # rustfs nests the document under "policy" next to bookkeeping fields.
+        if isinstance(actual, dict) and isinstance(actual.get("policy"), dict):
+            actual = actual["policy"]
         if canonical_policy(actual) != canonical_policy(IDENTITY_POLICY):
             raise ValueError("existing policy mismatch; no overwrite")
 

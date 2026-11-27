@@ -41,6 +41,10 @@ class N8nS3BinaryData(unittest.TestCase):
         policy = module.IDENTITY_POLICY
         assert policy["Statement"][0]["Action"] == ["s3:GetObject", "s3:PutObject"]
         assert policy["Statement"][0]["Resource"] == ["arn:aws:s3:::n8n-binary/*"]
+        # n8n's startup checkConnection needs HeadBucket/ListBucket on the bucket.
+        assert policy["Statement"][1]["Action"] == ["s3:ListBucket"]
+        assert policy["Statement"][1]["Resource"] == ["arn:aws:s3:::n8n-binary"]
+        assert len(policy["Statement"]) == 2
         assert module.BUCKET == "n8n-binary"
 
     def test_render_secret_shape(self) -> None:
