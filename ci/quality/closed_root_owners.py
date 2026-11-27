@@ -20,6 +20,15 @@ OUTPUT = ROOT / "deploy/public-web/closed-root-owners.yaml"
 # Namespace, resource name, approved host, pin, Service port, upstream port,
 # target Pod selector. This table is reviewed; a new label cannot add entries.
 ROOTS = {
+    "blog": (
+        "blog",
+        "blog",
+        "www.alchemmist.xyz",
+        "blog-tls",
+        80,
+        8080,
+        {"app.kubernetes.io/name": "blog", "app.kubernetes.io/instance": "blog"},
+    ),
     **{
         app: (
             app,
@@ -140,6 +149,13 @@ def eligible(items, catalog, *, owner=APP):
         ("Service", name),
     ]:
         return False
+    if owner == "blog" and sorted((d["kind"], d["metadata"]["name"]) for d in items) != [
+        ("Deployment", name),
+        ("Ingress", name),
+        ("Service", name),
+        ("ServiceAccount", name),
+    ]:
+        return False
     owners = [d for d in items if d["kind"] == "Ingress"]
     services = [d for d in items if d["kind"] == "Service" and d["metadata"]["name"] == name]
     if (
@@ -156,11 +172,13 @@ def eligible(items, catalog, *, owner=APP):
         for d in (ing, svc)
     ):
         return False
-    if (target_port == "http" and owner != "remark42" or owner == "lms") and not _named_runtime(
-        items, ns, name, selector, host, wiki=wiki
-    ):
+    if (
+        target_port == "http" and owner != "remark42" or owner in {"lms", "blog"}
+    ) and not _named_runtime(items, ns, name, selector, host, wiki=wiki):
         return False
     port = {"name": "http"} if wiki else {"number": 80}
+    # Validate the complete owner Ingress. Only www is emitted by the closed chart.
+    source_hosts = ["alchemmist.xyz", host] if owner == "blog" else [host]
     return (
         ing["apiVersion"] == "networking.k8s.io/v1"
         and svc["apiVersion"] == "v1"
@@ -170,10 +188,10 @@ def eligible(items, catalog, *, owner=APP):
         and ing["spec"]
         == {
             "ingressClassName": "traefik",
-            "tls": [{"hosts": [host], "secretName": pin}],
+            "tls": [{"hosts": source_hosts, "secretName": pin}],
             "rules": [
                 {
-                    "host": host,
+                    "host": source_host,
                     "http": {
                         "paths": [
                             {
@@ -184,6 +202,7 @@ def eligible(items, catalog, *, owner=APP):
                         ]
                     },
                 }
+                for source_host in source_hosts
             ],
         }
         and not svc["metadata"].get("annotations")
@@ -229,6 +248,8 @@ def _named_runtime(items, ns, name, selector, host, *, wiki):
     if template["metadata"]["labels"] != selector or pod.get("hostNetwork") or len(containers) != 1:
         return False
     c = containers[0]
+    if ns == "blog":
+        return c["name"] == name and c.get("ports") == [{"containerPort": 8080}]
     if ns == "umami":
         return (
             c["name"] == name
@@ -304,6 +325,7 @@ def render():
     bits = {
         k: eligible(owner_render(owner=w), catalog, owner=w)
         for k, w in [
+            ("closedBlog", "blog"),
             ("closedFormatQuorum", APP),
             ("closedWiki", "wiki-runtime"),
             ("closedMonori", "monori"),

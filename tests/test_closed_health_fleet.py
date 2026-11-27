@@ -208,6 +208,8 @@ def test_effective_health_fleet():
     assert svc["metadata"]["name"] == "blog" and svc["spec"]["selector"] == peers[1][1]
     assert svc["spec"]["ports"] == [{"name": "http", "port": 80, "targetPort": 8080}]
     for overrides in (
+        ("--set", "closedBlog=false"),
+        ("--set-string", "closedBlog=true"),
         ("--set", "ingress.publicWeb=false"),
         ("--set-string", "ingress.publicWeb=true"),
         ("--set", "ingress.className=private"),
@@ -955,3 +957,45 @@ def test_schoolbot_phases_report_only_fixed_target_timing(monkeypatch, mode, que
         assert probe.sample(mode, vip)["outcome"] == "unexpected-dns"
     with pytest.raises(ValueError):
         probe.sample(mode, "127.0.0.1")
+
+
+@pytest.mark.parametrize(
+    "drift",
+    [
+        "narrow",
+        "middleware",
+        "alias",
+        "no-opt-in",
+        "selector",
+        "port",
+        "second-container",
+        "second-workload",
+    ],
+)
+def test_blog_render_drift_withholds_www(drift):
+    catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())
+    docs = owner_render(owner="blog")
+    assert eligible(docs, catalog, owner="blog")
+    ing = next(d for d in docs if d["kind"] == "Ingress")
+    svc = next(d for d in docs if d["kind"] == "Service")
+    dep = next(d for d in docs if d["kind"] == "Deployment")
+    containers = dep["spec"]["template"]["spec"]["containers"]
+    if drift == "narrow":
+        ing["spec"]["rules"][1]["http"]["paths"][0]["path"] = "/articles"
+    elif drift == "middleware":
+        ing["metadata"]["annotations"][
+            "traefik.ingress.kubernetes.io/router.middlewares"
+        ] = "blog-login"
+    elif drift == "alias":
+        ing["spec"]["rules"][0]["host"] = "other.alchemmist.xyz"
+    elif drift == "no-opt-in":
+        ing["metadata"]["labels"].clear()
+    elif drift == "selector":
+        svc["spec"]["selector"].pop("app.kubernetes.io/instance")
+    elif drift == "port":
+        containers[0]["ports"][0]["containerPort"] = 9000
+    elif drift == "second-container":
+        containers.append({"name": "sidecar"})
+    else:
+        docs.append(deepcopy(dep))
+    assert not eligible(docs, catalog, owner="blog")
