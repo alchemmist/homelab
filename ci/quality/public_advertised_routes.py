@@ -7,6 +7,7 @@ a DNS answer. Unknown IPv4/IPv6 evidence is reported without following it.
 
 import ipaddress
 import json
+import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 
@@ -19,7 +20,20 @@ BLOG = "www.alchemmist.xyz"
 VENICE = "venice.socrat.alchemmist.xyz"
 MONORI = "monori.alchemmist.xyz"
 WIKI = "wiki.socrat.alchemmist.xyz"
-PATHS = {BLOG: "/", VENICE: "/v1/models", MONORI: "/api/auth/me", WIKI: "/api/auth/me"}
+ARGO = "argocd.socrat.alchemmist.xyz"
+HARBOR = "harbor.socrat.alchemmist.xyz"
+PATHS = {
+    BLOG: "/",
+    VENICE: "/v1/models",
+    MONORI: "/api/auth/me",
+    WIKI: "/api/auth/me",
+    ARGO: "/api/v1/applications",
+    HARBOR: "/v2/",
+}
+ADDITIONAL = {ARGO: ("/api/version",), HARBOR: ("/v2", "/api/v2.0/ping")}
+CHALLENGE = (
+    b'Bearer realm="https://harbor.socrat.alchemmist.xyz/service/token",service="harbor-registry"'
+)
 DENIALS = {VENICE: "Missing bearer token", MONORI: "Not authenticated"}
 LIMIT = 131072
 
@@ -32,7 +46,16 @@ def unique_fields(pairs):
 
 
 def check(host, ip):
-    url = f"https://{host}{PATHS[host]}"
+    for path in (PATHS[host], *ADDITIONAL.get(host, ())):
+        outcome = _path(host, ip, path)
+        if outcome != "matched":
+            return outcome
+    return "matched"
+
+
+def _path(host, ip, path):
+    url = f"https://{host}{path}"
+    registry = host == HARBOR and path == "/v2/"
     args = [
         "curl",
         "--disable",
@@ -52,7 +75,8 @@ def check(host, ip):
         "--header",
         "Accept-Encoding: identity",
         "--write-out",
-        "\\n%{response_code} %{content_type}",
+        "\\n%{response_code} %{content_type}"
+        + ("\\n%header{www-authenticate}" if registry else ""),
         url,
     ]
     try:
@@ -67,7 +91,12 @@ def check(host, ip):
             60: "tls-verification-failed",
             63: "oversize",
         }.get(r.returncode, "transfer-failed")
-    body, marker, metadata = r.stdout.rpartition(b"\n")
+    output = r.stdout
+    if registry:
+        output, sep, challenge = output.rpartition(b"\n")
+        if not sep or challenge != CHALLENGE:
+            return "unexpected-registry-challenge"
+    body, marker, metadata = output.rpartition(b"\n")
     code, _, ct = metadata.partition(b" ")
     mime = ct.partition(b";")[0].lower().strip()
     if not marker or len(body) > LIMIT:
@@ -79,9 +108,45 @@ def check(host, ip):
         and b"<title>Personal blog of Anton Grishin</title>" in body
     ):
         return "matched"
-    if mime == b"application/json" and (host in DENIALS or host == WIKI):
+    if host == HARBOR and code == b"200":
+        if path == "/v2" and mime == b"text/html" and b"<title>Harbor</title>" in body:
+            return "matched"
+        if path == "/api/v2.0/ping" and mime == b"text/plain" and body == b"Pong":
+            return "matched"
+    if mime == b"application/json" and (host in DENIALS or host in (WIKI, ARGO, HARBOR)):
         try:
             data = json.loads(body, object_pairs_hook=unique_fields)
+            if host == ARGO and isinstance(data, dict):
+                if (
+                    path == "/api/version"
+                    and code == b"200"
+                    and isinstance(data.get("Version"), str)
+                    and re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][\w.+-]+)?", data["Version"])
+                ):
+                    return "matched"
+                if (
+                    path == PATHS[ARGO]
+                    and code == b"401"
+                    and data
+                    == {
+                        "error": "no session information",
+                        "message": "no session information",
+                        "code": 16,
+                    }
+                    and type(data["code"]) is int
+                ):
+                    return "matched"
+            if (
+                registry
+                and code == b"401"
+                and isinstance(data, dict)
+                and set(data) == {"errors"}
+                and isinstance(data["errors"], list)
+                and len(data["errors"]) == 1
+                and isinstance(data["errors"][0], dict)
+                and data["errors"][0].get("code") == "UNAUTHORIZED"
+            ):
+                return "matched"
             if host in DENIALS and code == b"401" and data == {"detail": DENIALS[host]}:
                 return "matched"
             if (
