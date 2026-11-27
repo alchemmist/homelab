@@ -1,4 +1,5 @@
 ---
+workflowConfigRevision: bot-scoped-api-1
 # Enable only after asserted global natural n8n/SPI drain. False renders the original runtime
 # exactly.
 googleDnsEnabled: false
