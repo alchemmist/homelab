@@ -47,3 +47,36 @@ def source_priority(
     # In this validated ASCII subset double quotes in the Kubernetes provider
     # and backticks in the file provider have identical UTF-8 lengths.
     return len(rule.encode("ascii"))
+
+
+def unchanged_path_matcher(
+    host: str, path: str, kind: str, *, source_strict: bool, declared: int = 0
+) -> tuple[str, int]:
+    """Compile only a provably equivalent single matcher with original precedence.
+
+    No witness sampling or priority override proves equality of path sets. A
+    caller must block the host on failure, not drop the row and let a catch-all
+    take it. This does not establish parity of a whole router or tied owners.
+    """
+    priority = source_priority(host, path, kind, strict_prefix=source_strict, declared=declared)
+    if kind == "Prefix" and path != "/" and not source_strict:
+        # With a trailing slash the segment matcher adds the slashless base;
+        # without one the character matcher accepts same-segment extensions.
+        raise ValueError("non-root character prefix requires explicit scope review")
+    return path_rule(host, path, kind), priority
+
+
+def unchanged_host_matchers(
+    host: str, paths: list[tuple[str, str, int]], *, source_strict: bool
+) -> tuple[tuple[str, int], ...]:
+    """Return all matchers or none via exception, never a partial catch-all.
+
+    Input is the caller's complete owner-approved path set for one host. No
+    router is installed, and this does not address cross-host dependencies.
+    """
+    if not paths:
+        raise ValueError("empty public host path inventory")
+    return tuple(
+        unchanged_path_matcher(host, path, kind, declared=priority, source_strict=source_strict)
+        for path, kind, priority in paths
+    )

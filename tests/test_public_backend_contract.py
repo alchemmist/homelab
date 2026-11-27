@@ -205,3 +205,33 @@ def test_path_diff_reports_winning_auth_owner_and_ties_not_just_http_service():
     assert not path_diff(rows, source_strict=True)
     rows.append({**rows[1], "owner": "site/other"})
     assert any(len(f["candidate"]) == 2 for f in path_diff(rows, source_strict=True))
+
+
+@pytest.mark.parametrize("path", ["/public/", "/api/v1"])
+@pytest.mark.parametrize("priority", [0, 160])
+def test_closed_compiler_refuses_non_equivalent_prefix_even_with_priority(
+    path, priority
+):
+    from ci.quality.public_path_rule import unchanged_path_matcher
+
+    with pytest.raises(ValueError, match="scope review"):
+        unchanged_path_matcher(
+            "site.test", path, "Prefix", source_strict=False, declared=priority
+        )
+    strict = unchanged_path_matcher(
+        "site.test", path, "Prefix", source_strict=True, declared=priority
+    )
+    assert strict[1] == (priority or len(strict[0]))
+    for kind, unchanged in [("Exact", path), ("Prefix", "/")]:
+        assert unchanged_path_matcher(
+            "site.test", unchanged, kind, source_strict=False
+        ) == unchanged_path_matcher("site.test", unchanged, kind, source_strict=True)
+
+
+def test_host_compilation_does_not_return_fallback_without_blocked_specific_route():
+    from ci.quality.public_path_rule import unchanged_host_matchers
+
+    paths = [("/", "Prefix", 10), ("/public/", "Prefix", 155)]
+    with pytest.raises(ValueError, match="scope review"):
+        unchanged_host_matchers("site.test", paths, source_strict=False)
+    assert len(unchanged_host_matchers("site.test", paths, source_strict=True)) == 2

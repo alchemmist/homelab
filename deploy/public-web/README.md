@@ -300,3 +300,19 @@ segment-prefix source produced none. The machine and UI Ingress can point to
 the same Service: comparing only service names would miss the difference. These
 are conditional comparisons, not claims about live n8n reachability or an
 actual authentication bypass. No synthetic webhook or callback was sent.
+
+`unchanged_host_matchers()` is an all-or-error gate for a **complete supplied
+host path set**. Unknown mode is not eligible. In character mode a non-root
+prefix ending in `/` gains the slashless base on rewrite; a non-root prefix
+without `/` loses same-segment extensions. Both require scope review even if
+no sampled winner changes or an explicit priority exists. Do not silently drop
+the blocked rule and install the remaining catch-all. Root prefixes and exact
+paths do not have this particular difference. Middleware, backend, TLS owner,
+conflicting owners and tied priorities are independent gates.
+
+Repository-only evidence: the legacy NL `traefik-edge` default Helm render at
+this revision uses the pinned image and does not pass the strict-prefix flag.
+HOME's Ansible role preserves unrelated live HelmChartConfig values, so its
+inputs alone cannot certify the live arguments. Moscow's old restricted
+private rehearsal is not a third independent public web policy. None of these
+observations substitutes for the running controllers' effective config.
