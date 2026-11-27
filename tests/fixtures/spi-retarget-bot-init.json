@@ -6,7 +6,7 @@
     "-c"
   ],
   "args": [
-    "from pathlib import Path\ntext = Path(\"/app/telegram_delivery.py\").read_text()\nold = \"http://10.250.0.2:8082\"\nnew = \"http://socrat-bot.socrat-bot.svc:8080\"\nif old not in text and new not in text:\n    raise SystemExit(\"telegram bot base not found\")\nPath(\"/patch/telegram_delivery.py\").write_text(text.replace(old, new, 1))\n"
+    "from pathlib import Path\ntext = Path(\"/app/telegram_delivery.py\").read_text()\nbases = (\"BASE='http://10.250.0.2:8082'\", \"BASE='http://socrat-bot.socrat-bot.svc:8080'\")\nmatches = [line for line in text.splitlines() if line.startswith(\"BASE=\")]\nif len(matches) != 1 or matches[0] not in bases or \"Request(BASE+path,\" not in text:\n    raise SystemExit(\"unexpected bot URL construction\")\ntext = text.replace(matches[0], \"BASE='https://bot.socrat.alchemmist.xyz/api'\", 1)\nold = \"'X-Internal-Token':self.token\"\nif old not in text or \"https://bot.socrat.alchemmist.xyz/api\" not in text:\n    raise SystemExit(\"unexpected bot client format\")\nPath(\"/patch/telegram_delivery.py\").write_text(text.replace(old, \"'Authorization':'Bearer '+self.token\"))\n"
   ],
   "securityContext": {
     "allowPrivilegeEscalation": false,

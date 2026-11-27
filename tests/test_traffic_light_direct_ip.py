@@ -71,9 +71,21 @@ class DirectIpTest(unittest.TestCase):
             "91.189.82.238:443",
         }
         assert all(j["static_configs"][0]["targets"] == ["192.168.0.23:19116"] for j in direct)
+        (activity,) = [j for j in jobs if j["job_name"] == "n8n-activity-db"]
+        assert activity["static_configs"] == [
+            {"targets": ["pg-common-primary-metrics.postgres.svc:9187"]}
+        ]
+        assert activity["metric_relabel_configs"] == [
+            {
+                "source_labels": ["__name__"],
+                "regex": "cnpg_n8n_activity_starts",
+                "action": "keep",
+            }
+        ]
         assert native["exporters"]["otlp"]["tls"]["cert_file"] == "/tls/tls.crt"
         assert {j["job_name"] for j in jobs if j not in direct} == {
             "socrat-n8n-activity",
+            "n8n-activity-db",
             "socrat-argocd",
             "wishlist",
         }
