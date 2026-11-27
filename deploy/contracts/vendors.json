@@ -248,12 +248,12 @@
         "templates/pvc.yaml": "bdb4db3c583a66a4470e33c6429695f2c8fffb6712be0c6146d5071eaff74283",
         "templates/service.yaml": "52798d714f53903df59b81202fc5f57d5a9c9aa28bcabee91f80aaa8f5bfe4fd",
         "templates/static.yaml": "f754333d3103003beb5096e0078877021e11f084ea1553a63187ce295d0556b2",
-        "values.schema.json": "ecbc361bc7007fa3c2965d06c9d6ad793fdfc5ef96d74381337f4f1a628a787d",
+        "values.schema.json": "48a6cbec8c715eabf89febe70b2b55d67767c1d463c5d054dba35bc801686513",
         "values.yaml": "6e0b73b6985f8aa0631c549ee09eafaecfa4760e7cf49fa3bb148c6bbdc81b19"
       },
       "path": "deploy/wiki-runtime/chart",
-      "provenanceNote": "Existing local chart/identity guards retained. See deploy/wiki-runtime/oidc/README.md and docs/wiki-upgrade-20261107.md; no claim that all local files equal a tagged upstream release. Reviewed local PostgreSQL cutover guard, credential reference and CA mounts from 729cc6c6. Exact public wiki hostname selection delta at 2c23f16a3; private releases stay unselected.",
-      "reviewedCommit": "2c23f16a30dd9b18e9c476e46d117d1825301234"
+      "provenanceNote": "Existing local chart/identity guards retained. See deploy/wiki-runtime/oidc/README.md and docs/wiki-upgrade-20261107.md; no claim that all local files equal a tagged upstream release. Reviewed local PostgreSQL cutover guard, credential reference and CA mounts from 729cc6c6. Exact public wiki hostname selection delta at 2c23f16a3; private releases stay unselected. Validate the local hostname pin in values.schema.json.",
+      "reviewedCommit": "f7aacd8f2cb0713773836709f192a9ca0b05a82c"
     },
     {
       "basis": "reviewed-git-baseline",

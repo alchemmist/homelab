@@ -9,12 +9,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_wiki_owner_label_only_on_public_exact_host():
-    src = yaml.safe_load((ROOT / "deploy/argocd/apps/wiki-runtime.yaml").read_text())[
+    app = yaml.safe_load((ROOT / "deploy/argocd/apps/wiki-runtime.yaml").read_text())[
         "spec"
-    ]["source"]
+    ]
+    src = app["source"]
     chart = ROOT / src["path"]
     release = src["helm"]
-    args = ["helm", "template", release["releaseName"], str(chart), "-n", "wiki"]
+    args = ["helm", "template", release["releaseName"], str(chart), "-n", app["destination"]["namespace"]]
     for file in release["valueFiles"]:
         args.extend(["-f", str(chart / file)])
 
