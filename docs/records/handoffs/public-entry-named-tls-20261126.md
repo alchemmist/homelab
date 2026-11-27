@@ -159,7 +159,8 @@ trust failed. Observed results with a 30 s poll interval and 25 s poll timeout:
 | Moscow | 15.57, 11.48 | 36.42 |
 
 Each reported scan completed 35 GETs and produced 35 certificate entries,
-about 33 kB serialized with short synthetic leaves. Three independent full
+33109 bytes on HOME and NL and 33117 bytes on Moscow (about 33 decimal kB)
+with independently generated short synthetic leaves. Three independent full
 scans would cost **105 named GETs per round**; these measurements do not prove
 API capacity under simultaneous load, production chain sizes, a 24-namespace
 RBAC layout, or a maximum revocation time. The earlier HOME attempt with a
