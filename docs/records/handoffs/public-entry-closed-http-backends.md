@@ -52,3 +52,23 @@ controller configuration on three placements. It does **not** prove browser
 trust for the real hostname, normal route discovery, authenticated access,
 a database operation, or survival with the other entrances removed. The
 synthetic trust root was scoped to the probe, never added to system trust.
+
+### Egress peer negative control
+
+A second disposable run kept each controller Pod UID, verified target and TLS
+fixture unchanged across three stages. Only the **namespace selector** on the
+fixture egress rule changed: Schoolbot, then the unrelated fixture namespace,
+then Schoolbot again. The Pod selector and TCP/8000 were unchanged. No policy
+in `schoolbot` was modified. Backend idle connection reuse was disabled and
+the dial timeout bounded at two seconds for this experiment, so an established
+backend connection could not hide a bad selector. Each client used fresh TLS.
+
+| Fixture egress peer | HOME health | NL health | Moscow health | Neighbor path |
+| --- | --- | --- | --- | --- |
+| Correct namespace and Pod labels | 200, `ok: true` | 200, `ok: true` | 200, `ok: true` | 404 on all three |
+| Same labels, wrong namespace | 502 | 502 | 502 | 404 on all three |
+| Correct namespace restored | 200, `ok: true` | 200, `ok: true` | 200, `ok: true` | 404 on all three |
+
+The neighboring route staying at 404 over verified fixture TLS distinguishes
+upstream isolation from losing the listener. These are **source-side egress**
+observations, not destination ingress authorization or production identity.
