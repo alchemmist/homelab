@@ -11,7 +11,7 @@ import contextlib
 import ipaddress
 import json
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import yaml
 
@@ -51,14 +51,16 @@ class _IssuerRoute(TypedDict):
     consumers: list[_IssuerConsumer]
 
 
-def load(path):
-    return yaml.safe_load(path.read_text())
+def load(path: Path) -> object:
+    """Load one YAML document offline; callers own the shape narrowing."""
+    return cast("object", yaml.safe_load(path.read_text()))
 
 
-def scalar_node(node, key):
+def scalar_node(node: yaml.Node, key: str) -> yaml.ScalarNode:
+    """Return the one registered scalar stored under key; refuse missing fields."""
     for k, value in node.value:
         if k.value == key:
-            return value
+            return cast("yaml.ScalarNode", value)
     raise ValueError("Missing registered YAML field: " + key)
 
 
@@ -66,8 +68,12 @@ def _validate_mesh(
     mesh_path: Path, inventory_path: Path, ssh_from_public: list[str]
 ) -> dict[str, _MeshNode]:
     """Cross-check mesh registry membership, addresses and SSH endpoints."""
-    mesh: dict[str, _MeshNode] = load(mesh_path)["wg_socrat_nodes"]
-    hosts: dict[str, dict[str, object]] = load(inventory_path)["all"]["children"]["Socrat"]["hosts"]
+    mesh = cast("dict[str, dict[str, _MeshNode]]", load(mesh_path))["wg_socrat_nodes"]
+    inventory = cast(
+        "dict[str, dict[str, dict[str, dict[str, dict[str, dict[str, object]]]]]]",
+        load(inventory_path),
+    )
+    hosts: dict[str, dict[str, object]] = inventory["all"]["children"]["Socrat"]["hosts"]
     if set(mesh) != set(hosts):
         msg = "Inventory/mesh node membership drift"
         raise ValueError(msg)
@@ -103,8 +109,10 @@ def _relay_topology(
 ) -> dict[str, tuple[str, int]]:
     """Derive the fixed relay five-hop topology from the mesh registry."""
     r = _assert_literals(root / relay["relayScript"])
-    lan = load(root / relay["frontHostVars"])["homelab_ssh_private_host"]
-    target_lan = load(root / relay["targetHostVars"])["homelab_ssh_private_host"]
+    lan = cast("dict[str, str]", load(root / relay["frontHostVars"]))["homelab_ssh_private_host"]
+    target_lan = cast("dict[str, str]", load(root / relay["targetHostVars"]))[
+        "homelab_ssh_private_host"
+    ]
     target_ip, target_port = mesh[relay["targetNode"]]["endpoint"].rsplit(":", 1)
     expected = {
         "FRONT": (mesh[relay["frontNode"]]["address"], relay["frontPort"]),
@@ -157,10 +165,11 @@ def _relay_sandbox(root: Path, relay: _RelayContract, expected: dict[str, tuple[
 
 def _relay_hardening(root: Path, relay: _RelayContract) -> None:
     """Require the relay playbook to preflight against the mesh registry."""
-    playbook = load(root / relay["installPlaybook"])
+    playbook = cast("list[dict[str, object]]", load(root / relay["installPlaybook"]))
+    tasks = cast("list[dict[str, object]]", playbook[0]["tasks"])
     assertion = next(
-        t["ansible.builtin.assert"]["that"]
-        for t in playbook[0]["tasks"]
+        cast("list[str]", cast("dict[str, object]", t["ansible.builtin.assert"])["that"])
+        for t in tasks
         if t.get("name") == "Validate relay mesh identity without reading WG keys"
     )
     if not any(
@@ -180,6 +189,8 @@ def _check_consumer(
         raise ValueError(msg)
     text = target.read_text()
     value, tree = yaml.safe_load(text), yaml.compose(text)
+    if tree is None:
+        raise TypeError("Expected a YAML document: " + consumer["file"])
     for key in consumer["path"]:
         value, tree = value[key], scalar_node(tree, key)
     matches = [
@@ -256,7 +267,8 @@ def _validate_relay(root: Path, relay: _RelayContract, mesh: dict[str, _MeshNode
     _relay_hardening(root, relay)
 
 
-def check(root=ROOT, write=False):
+def check(root: Path = ROOT, *, write: bool = False) -> int:
+    """Check the registered mesh, relay and issuer-transport contracts offline."""
     c = json.loads((root / "deploy/contracts/infrastructure.json").read_text())
     if c["schemaVersion"] != 1:
         msg = "Unsupported contract schema"
@@ -271,6 +283,7 @@ def check(root=ROOT, write=False):
 
 
 def main() -> None:
+    """Parse CLI arguments and run the offline contract checks."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--write",
@@ -279,9 +292,8 @@ def main() -> None:
     )
     args = parser.parse_args()
     count = check(write=args.write)
-    print(
-        f"Infrastructure contracts OK: mesh inventory, fixed relay and {count} scoped issuer consumers"
-    )
+    banner = f"Infrastructure contracts OK: mesh inventory, fixed relay and {count} "
+    print(banner + "scoped issuer consumers")
 
 
 if __name__ == "__main__":
