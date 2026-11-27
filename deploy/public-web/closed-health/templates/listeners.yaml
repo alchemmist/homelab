@@ -1,5 +1,10 @@
 {{- $catalog := required "entrance catalog required" .Values.replicas -}}
 {{- if ne (dig "schoolbot" "inform.sch1357.ru" "tlsSourceName" "" .Values.hosts) "schoolbot-tls" }}{{ fail "expected ordinary Schoolbot owner" }}{{ end }}
+{{- $host := "www.alchemmist.xyz" -}}
+{{- $ing := .Values.ingress | default dict -}}
+{{- $svc := .Values.service | default dict -}}
+{{- $pin := dig "blog" $host (dict) .Values.hosts -}}
+{{- $blog := and (eq (get $pin "dns") "managed") (eq (get $pin "tlsSourceName") "blog-tls") (or (not (hasKey $pin "route")) (eq (get $pin "route") "web")) (kindIs "bool" $ing.publicWeb) $ing.publicWeb (eq $ing.className "traefik") (kindIs "slice" $ing.hosts) (has $host $ing.hosts) (eq $ing.tlsSecretName "blog-tls") (eq (toJson $svc.port) "80") (eq (toJson $svc.targetPort) "8080") -}}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -16,6 +21,12 @@ spec:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: schoolbot}}
           podSelector: {matchLabels: {app.kubernetes.io/instance: schoolbot, app.kubernetes.io/name: schoolbot}}
       ports: [{port: 8000, protocol: TCP}]
+{{- if $blog }}
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: blog}}
+          podSelector: {matchLabels: {app.kubernetes.io/instance: blog, app.kubernetes.io/name: blog}}
+      ports: [{port: 8080, protocol: TCP}]
+{{- end }}
     - to:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
           podSelector: {matchLabels: {k8s-app: kube-dns}}
@@ -32,7 +43,18 @@ data:
           entryPoints: [closed]
           rule: 'Host(`inform.sch1357.ru`) && Method(`GET`) && Path(`/api/health`)'
           service: schoolbot
+{{- if $blog }}
+        www-blog:
+          entryPoints: [closed]
+          rule: 'Host(`{{ $host }}`) && PathPrefix(`/`)'
+          service: www-blog
+{{- end }}
       services:
+{{- if $blog }}
+        www-blog:
+          loadBalancer:
+            servers: [{url: 'http://blog.blog.svc.cluster.local:80'}]
+{{- end }}
         schoolbot:
           loadBalancer:
             servers: [{url: 'http://schoolbot.schoolbot.svc.cluster.local:80'}]
