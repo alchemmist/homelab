@@ -10,6 +10,8 @@
 :host(ak-flow-executor) .pf-c-login__main{display:block!important;position:relative!important;align-self:center!important;grid-area:auto!important;width:354px!important;max-width:100%!important;padding:30px 30px 24px!important;margin:0!important;border:1px solid rgba(255,255,255,.78)!important;border-radius:3px!important;background:rgba(255,254,250,.86)!important;box-shadow:0 18px 65px -30px rgba(17,32,38,.4)!important;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);color:#15223c!important}
 /* Keep native busy feedback and click interception without tinting the card. */
 :host(ak-flow-executor) [part="main"] > ak-loading-overlay{--ak-c-loading-overlay--BackgroundColor:transparent}
+/* Hide the submitted content without collapsing the card. */
+:host(ak-flow-executor) [part="main"]:has(> ak-loading-overlay) > :not(ak-loading-overlay){visibility:hidden!important}
 /* Reserve the combined sign-in form's footprint while its native challenge loads.
    A minimum, not a fixed height: validation messages and wrapped text can grow. */
 :host(ak-flow-executor[slug="default-authentication-flow"]) .pf-c-login__main:has(ak-flow-card,ak-stage-identification){min-block-size:404px}
@@ -93,7 +95,9 @@ ak-drawer#flow-drawer::part(drawer-content){transition:flex-basis 180ms cubic-be
 
 /* ak-drawer is a plain LitElement, so use its exported parts from global Brand CSS. */
 /* One early native body layer: no second random photo on the late-created drawer. */
-body::before{background-color:#68776f;background-size:cover!important;background-position:center!important}
+/* Authwall's important image wins while available; use independent static assets otherwise. */
+body::before{background-color:#68776f;background-image:url('__ASSET_LAKE__');background-size:cover!important;background-position:center!important}
+@media(max-width:700px){body::before{background-image:url('__ASSET_LAKE_MOBILE__')}}
 ak-drawer#flow-drawer{min-height:100svh;background:transparent!important}
 
 
