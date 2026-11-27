@@ -31,6 +31,7 @@ def test_wiki_owner_label_only_on_public_exact_host():
         (item,) = [d for d in docs if d["kind"] == "Ingress"]
         return item
 
+    assert not any(d["kind"] == "Ingress" for d in render("--set", "ingress.enabled=false"))
     key = "homelab.alchemmist.xyz/public-web"
     current = render()
     item = ingress(current)
