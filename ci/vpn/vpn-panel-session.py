@@ -274,6 +274,10 @@ class NativeSession:
             msg = "Bootstrap ownership missing"
             raise RuntimeError(msg)
 
+    def require_owned(self, kind: str) -> None:
+        """Public rebind of the ownership gate for sibling session restores."""
+        self._require_owned(kind)
+
     def _require_open(self) -> str:
         """Return the opened panel API base, refusing an unopened session."""
         if self.base is None:
