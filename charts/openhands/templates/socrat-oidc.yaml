@@ -1,5 +1,11 @@
 {{- if and .Values.oidc .Values.oidc.enabled }}
 {{- $host := "openhands.socrat.alchemmist.xyz" }}
+{{- if and (hasKey .Values.oidc "allowPublicEntryPeer") (not (kindIs "bool" .Values.oidc.allowPublicEntryPeer)) }}
+{{- fail "oidc.allowPublicEntryPeer must be boolean" }}
+{{- end }}
+{{- if and .Values.oidc.allowPublicEntryPeer (ne (default "" .Values.oidc.publicWebHost) $host) }}
+{{- fail "OpenHands controller peer requires the selected OIDC hostname" }}
+{{- end }}
 {{- if .Values.ingress.enabled }}
 {{- fail "OIDC requires the native unprotected ingress to remain disabled" }}
 {{- end }}
@@ -173,6 +179,10 @@ spec:
         # VPS hostNetwork Traefik selects flannel.1 src10.42.0.0 for S5 pods
         # (verified with ip route get); namespace peers cannot match this source.
         - ipBlock: {cidr: 10.42.0.0/32}
+{{- if .Values.oidc.allowPublicEntryPeer }}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: public-entry}}
+          podSelector: {matchLabels: {homelab.alchemmist.xyz/public-entry-controller: 'true'}}
+{{- end }}
       ports: [{port: 4180, protocol: TCP}]
   egress:
     - to:

@@ -109,3 +109,31 @@ def test_openhands_selects_the_oidc_proxy_not_the_native_ingress():
         assert render("--set-string", "oidc.publicWebHost=" + pin) == selected
     invalid = run("--set", "ingress.enabled=true")
     assert invalid.returncode and "native unprotected ingress" in invalid.stderr
+
+    peer_opts = ("--set", "oidc.allowPublicEntryPeer=true")
+    assert render("--set", "oidc.allowPublicEntryPeer=false") == render()
+    permitted = render(*peer_opts)
+    (policy,) = [
+        d
+        for d in permitted
+        if d["kind"] == "NetworkPolicy"
+        and d["metadata"].get("namespace") == "identity"
+        and d["metadata"]["name"] == "openhands-oidc"
+    ]
+    assert policy["spec"]["podSelector"] == {"matchLabels": {"app": "openhands-oidc"}}
+    (incoming,) = policy["spec"]["ingress"]
+    assert incoming["ports"] == [{"port": 4180, "protocol": "TCP"}]
+    assert incoming["from"].pop() == {
+        "namespaceSelector": {
+            "matchLabels": {"kubernetes.io/metadata.name": "public-entry"}
+        },
+        "podSelector": {
+            "matchLabels": {"homelab.alchemmist.xyz/public-entry-controller": "true"}
+        },
+    }
+    assert permitted == render()
+    for value in ("true", "false"):
+        bad = run("--set-string", "oidc.allowPublicEntryPeer=" + value)
+        assert bad.returncode and "must be boolean" in bad.stderr
+    wrong = run(*peer_opts, "--set-string", "oidc.publicWebHost=other.invalid")
+    assert wrong.returncode and "requires the selected OIDC hostname" in wrong.stderr
