@@ -14,14 +14,6 @@ VALUES = ROOT / "charts/traefik-edge/values.yaml"  # Legacy controller migration
 ZONE = "alchemmist.xyz"
 
 
-MONORI = "monori.alchemmist.xyz"
-
-
-def eligible_sites(host: str) -> tuple[str, ...]:
-    """Web destinations only; the regional exception never excludes a DNS authority."""
-    return ("home", "moscow") if host == MONORI else ("home", "nl", "moscow")
-
-
 def replica_values(catalog: dict, instance: dict, serial: int) -> dict:
     """Keep authority, mail and transport RRs; replace managed web A records only."""
     if set(instance) != {"node", "publicIP"}:

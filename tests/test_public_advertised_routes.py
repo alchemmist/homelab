@@ -82,10 +82,31 @@ def test_no_dns_derived_connection_or_partial_acceptance():
         assert checks.verdict(d, d, routes) != "advertised-paths-matched"
 
 
-def test_monori_regional_denial_is_not_a_reason_to_contact_nl():
-    ips = {"home": "192.0.2.1", "nl": "192.0.2.2", "moscow": "192.0.2.3"}
-    peers = checks.route_peers(checks.MONORI, ips)
-    assert peers == (ips["home"], ips["moscow"])
-    routes = {ip: "matched" for ip in peers}
-    nl = {"A": [ips["nl"]], "AAAA": []}
-    assert checks.verdict(nl, nl, routes) == "outside-reviewed-entrances"
+def test_legacy_home_only_dns_must_not_skip_direct_monori_checks(monkeypatch, capsys):
+    import json
+
+    import yaml
+
+    ips = {
+        v["publicIP"]
+        for v in yaml.safe_load(checks.CATALOG.read_text())["replicas"].values()
+    }
+    called = []
+    monkeypatch.setattr(
+        checks, "check", lambda host, ip: called.append((host, ip)) or "matched"
+    )
+    monkeypatch.setattr(
+        checks,
+        "observe",
+        lambda site, ip, hosts: (
+            site,
+            {
+                h + "/" + p: {"A": ["109.173.40.247"], "AAAA": []}
+                for h in hosts
+                for p in ("tcp", "udp")
+            },
+        ),
+    )
+    assert checks.main() == 0
+    assert {ip for host, ip in called if host == checks.MONORI} == ips
+    assert set(json.loads(capsys.readouterr().out)["https"][checks.MONORI]) == ips
