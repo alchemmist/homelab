@@ -24,9 +24,7 @@ def objects(*args: str) -> dict:
         ],
         text=True,
     )
-    return {
-        (d["kind"], d["metadata"]["name"]): d for d in yaml.safe_load_all(output) if d
-    }
+    return {(d["kind"], d["metadata"]["name"]): d for d in yaml.safe_load_all(output) if d}
 
 
 def test_private_rehearsal_never_takes_public_sockets() -> None:
@@ -45,19 +43,10 @@ def test_private_rehearsal_never_takes_public_sockets() -> None:
         {"name": "user-config", "configMap": {"name": "vpn-transit-rehearsal"}}
     ]
     service = stage["Service", "vpn-transit"]["spec"]
-    assert (
-        service["type"] == "ClusterIP"
-        and service["selector"] == template["metadata"]["labels"]
-    )
-    assert (
-        service["selector"] != stage[legacy]["spec"]["template"]["metadata"]["labels"]
-    )
-    config = json.loads(
-        stage["ConfigMap", "vpn-transit-rehearsal"]["data"]["user.json"]
-    )
-    baseline = json.loads(
-        (ROOT / "deploy/vpn-hardening/moscow-transit.json").read_text()
-    )
+    assert service["type"] == "ClusterIP" and service["selector"] == template["metadata"]["labels"]
+    assert service["selector"] != stage[legacy]["spec"]["template"]["metadata"]["labels"]
+    config = json.loads(stage["ConfigMap", "vpn-transit-rehearsal"]["data"]["user.json"])
+    baseline = json.loads((ROOT / "deploy/vpn-hardening/moscow-transit.json").read_text())
     assert baseline["outbounds"][0].pop("sendThrough") == "10.250.0.40"
     assert config == baseline
     sockets = [
@@ -83,9 +72,7 @@ def test_private_rehearsal_never_takes_public_sockets() -> None:
                     "namespaceSelector": {
                         "matchLabels": {"kubernetes.io/metadata.name": "traefik-moscow"}
                     },
-                    "podSelector": {
-                        "matchLabels": {"app.kubernetes.io/name": "traefik-moscow"}
-                    },
+                    "podSelector": {"matchLabels": {"app.kubernetes.io/name": "traefik-moscow"}},
                 }
             ]
         }
@@ -101,11 +88,7 @@ def test_parking_and_restoring_only_changes_legacy_replica_count() -> None:
     assert parked[relay]["spec"]["replicas"] == 1
     assert parked[legacy]["spec"]["replicas"] == 0
     parked[legacy]["spec"]["replicas"] = 1
-    assert (
-        parked
-        == serving
-        == objects("--set", "podRehearsal=true,legacyPortOwner=serving")
-    )
+    assert parked == serving == objects("--set", "podRehearsal=true,legacyPortOwner=serving")
 
 
 @pytest.mark.parametrize(
@@ -182,9 +165,7 @@ def test_www_split_fixture_is_exact_and_rejects_widened_owner_rules():
         {"address": "127.0.0.1:19443"}
     ]
     assert "10.250.0.2" not in json.dumps(out)
-    b["metadata"]["annotations"]["traefik.ingress.kubernetes.io/router.middlewares"] = (
-        "unreviewed"
-    )
+    b["metadata"]["annotations"]["traefik.ingress.kubernetes.io/router.middlewares"] = "unreviewed"
     with pytest.raises(ValueError):
         fixture(route, b, s)
     del b["metadata"]["annotations"]["traefik.ingress.kubernetes.io/router.middlewares"]

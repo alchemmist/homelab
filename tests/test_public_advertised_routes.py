@@ -87,14 +87,9 @@ def test_legacy_home_only_dns_must_not_skip_direct_monori_checks(monkeypatch, ca
 
     import yaml
 
-    ips = {
-        v["publicIP"]
-        for v in yaml.safe_load(checks.CATALOG.read_text())["replicas"].values()
-    }
+    ips = {v["publicIP"] for v in yaml.safe_load(checks.CATALOG.read_text())["replicas"].values()}
     called = []
-    monkeypatch.setattr(
-        checks, "check", lambda host, ip: called.append((host, ip)) or "matched"
-    )
+    monkeypatch.setattr(checks, "check", lambda host, ip: called.append((host, ip)) or "matched")
     monkeypatch.setattr(
         checks,
         "observe",
@@ -134,9 +129,7 @@ def test_wiki_anonymous_contract(monkeypatch, body, expected):
     monkeypatch.setattr(
         subprocess,
         "run",
-        lambda *a, **kw: subprocess.CompletedProcess(
-            [], 0, body + b"\n200 application/json", b""
-        ),
+        lambda *a, **kw: subprocess.CompletedProcess([], 0, body + b"\n200 application/json", b""),
     )
     assert checks.check(checks.WIKI, "192.0.2.1") == expected
 
@@ -146,28 +139,20 @@ def test_selfip_requires_all_direct_routes(monkeypatch, broken):
     monkeypatch.setattr(
         checks,
         "check",
-        lambda host, ip: (
-            "tls-handshake-failed" if broken and host == checks.WIKI else "matched"
-        ),
+        lambda host, ip: "tls-handshake-failed" if broken and host == checks.WIKI else "matched",
     )
     monkeypatch.setattr(
         checks,
         "observe",
         lambda site, ip, hosts: (
             site,
-            {
-                h + "/" + p: {"A": [ip], "AAAA": []}
-                for h in hosts
-                for p in ("tcp", "udp")
-            },
+            {h + "/" + p: {"A": [ip], "AAAA": []} for h in hosts for p in ("tcp", "udp")},
         ),
     )
     assert checks.main() == int(broken)
 
 
-@pytest.mark.parametrize(
-    "fault", [None, "same", "cross", "ambiguous", "missing", "unknown"]
-)
+@pytest.mark.parametrize("fault", [None, "same", "cross", "ambiguous", "missing", "unknown"])
 def test_tls_domain_requires_positive_and_negative_controls(fault):
     from ci.quality.blog_tls_path import correlated
 

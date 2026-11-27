@@ -13,9 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_effective_health_fleet():
-    app = yaml.safe_load((ROOT / "deploy/argocd/apps/closed-health.yaml").read_text())[
-        "spec"
-    ]
+    app = yaml.safe_load((ROOT / "deploy/argocd/apps/closed-health.yaml").read_text())["spec"]
     chart = ROOT / app["source"]["path"]
     blog, fq, values = app["source"]["helm"]["valueFiles"]
     catalog = yaml.safe_load((chart / values).read_text())
@@ -196,9 +194,7 @@ def test_effective_health_fleet():
     assert ing["spec"]["ingressClassName"] == "traefik"
     assert ing["metadata"]["labels"]["homelab.alchemmist.xyz/public-web"] == "true"
     assert set(ing["metadata"]["annotations"]) == {"cert-manager.io/cluster-issuer"}
-    (www,) = [
-        rule for rule in ing["spec"]["rules"] if rule["host"] == "www.alchemmist.xyz"
-    ]
+    (www,) = [rule for rule in ing["spec"]["rules"] if rule["host"] == "www.alchemmist.xyz"]
     assert www["http"]["paths"] == [
         {
             "path": "/",
@@ -240,17 +236,15 @@ def test_effective_health_fleet():
             "routers": {k: v for k, v in http["routers"].items() if k != "www-blog"},
             "services": {k: v for k, v in http["services"].items() if k != "www-blog"},
         }
-    policy_off, separate_wiki, separate_monori, lm, wl, st, config_off, *unchanged = (
-        other_objects(
-            subprocess.check_output(
-                [
-                    *args[:-2],
-                    "--set",
-                    "closedWiki=true,closedMonori=true,closedLms=true,closedWishlist=true,closedStatus=true,closedStatusRedirect=true",
-                    "--set-string",
-                    "closedFormatQuorum=true",
-                ]
-            )
+    policy_off, separate_wiki, separate_monori, lm, wl, st, config_off, *unchanged = other_objects(
+        subprocess.check_output(
+            [
+                *args[:-2],
+                "--set",
+                "closedWiki=true,closedMonori=true,closedLms=true,closedWishlist=true,closedStatus=true,closedStatusRedirect=true",
+                "--set-string",
+                "closedFormatQuorum=true",
+            ]
         )
     )
     assert unchanged == deployments
@@ -259,11 +253,9 @@ def test_effective_health_fleet():
     ]
     after = yaml.safe_load(config_off["data"]["dynamic.yaml"])["http"]
     for section in ("routers", "services"):
-        assert after[section] == {
-            k: v for k, v in http[section].items() if k != "format-quorum"
-        }
-    policy_off, separate_wiki, separate_monori, lm, wl, st, config_off, *unchanged = (
-        other_objects(subprocess.check_output([*args, "--set", "closedWiki=false"]))
+        assert after[section] == {k: v for k, v in http[section].items() if k != "format-quorum"}
+    policy_off, separate_wiki, separate_monori, lm, wl, st, config_off, *unchanged = other_objects(
+        subprocess.check_output([*args, "--set", "closedWiki=false"])
     )
     assert unchanged == deployments and policy_off == policy
     assert separate_wiki["spec"] == {**wiki_policy["spec"], "egress": []}
@@ -288,9 +280,7 @@ def test_effective_health_fleet():
         ],
     }
     assert http["services"]["monori"] == {
-        "loadBalancer": {
-            "servers": [{"url": "http://monori.monori.svc.cluster.local:80"}]
-        }
+        "loadBalancer": {"servers": [{"url": "http://monori.monori.svc.cluster.local:80"}]}
     }
     pol, wp, mp, lm, wl, st, cm, *ds = other_objects(
         subprocess.check_output([*args, "--set", "closedMonori=false"])
@@ -330,18 +320,14 @@ def test_effective_health_fleet():
             ],
         }
         assert http["services"][a] == {
-            "loadBalancer": {
-                "servers": [{"url": f"http://{a}.{a}.svc.cluster.local:80"}]
-            }
+            "loadBalancer": {"servers": [{"url": f"http://{a}.{a}.svc.cluster.local:80"}]}
         }
         (
             *policies,
             cm,
         ) = [
             d
-            for d in other_objects(
-                subprocess.check_output([*args, "--set", bit + "=false"])
-            )
+            for d in other_objects(subprocess.check_output([*args, "--set", bit + "=false"]))
             if d["kind"] != "Deployment"
         ]
         for off, on in zip(
@@ -356,9 +342,7 @@ def test_effective_health_fleet():
             ],
             strict=True,
         ):
-            assert off == (
-                {**on, "spec": {**on["spec"], "egress": []}} if on == grant else on
-            )
+            assert off == ({**on, "spec": {**on["spec"], "egress": []}} if on == grant else on)
         assert yaml.safe_load(cm["data"]["dynamic.yaml"])["http"] == {
             section: {k: v for k, v in http[section].items() if k != a}
             for section in ("routers", "services")
@@ -371,13 +355,9 @@ def test_effective_health_fleet():
                 "to": [
                     {
                         "namespaceSelector": {
-                            "matchLabels": {
-                                "kubernetes.io/metadata.name": "uptime-kuma"
-                            }
+                            "matchLabels": {"kubernetes.io/metadata.name": "uptime-kuma"}
                         },
-                        "podSelector": {
-                            "matchLabels": {"app": "public-web-kuma-proxy"}
-                        },
+                        "podSelector": {"matchLabels": {"app": "public-web-kuma-proxy"}},
                     }
                 ],
                 "ports": [{"port": 8080, "protocol": "TCP"}],
@@ -387,9 +367,7 @@ def test_effective_health_fleet():
     assert http["services"]["status-policy"] == {
         "loadBalancer": {
             "passHostHeader": True,
-            "servers": [
-                {"url": "http://public-web-kuma-proxy.uptime-kuma.svc.cluster.local:80"}
-            ],
+            "servers": [{"url": "http://public-web-kuma-proxy.uptime-kuma.svc.cluster.local:80"}],
         }
     }
     for status, redirect in [(False, True), (True, False), (False, False)]:
@@ -411,9 +389,7 @@ def test_effective_health_fleet():
             wishlist_policy,
         ]
         assert sp["spec"] == (
-            status_policy["spec"]
-            if status or redirect
-            else {**status_policy["spec"], "egress": []}
+            status_policy["spec"] if status or redirect else {**status_policy["spec"], "egress": []}
         )
         after = yaml.safe_load(cm["data"]["dynamic.yaml"])["http"]
         remove = set()
@@ -421,13 +397,9 @@ def test_effective_health_fleet():
             remove.add("status")
         if not redirect:
             remove.add("status-redirect")
-        assert after["routers"] == {
-            k: v for k, v in http["routers"].items() if k not in remove
-        }
+        assert after["routers"] == {k: v for k, v in http["routers"].items() if k not in remove}
         assert after["services"] == {
-            k: v
-            for k, v in http["services"].items()
-            if k != "status-policy" or status or redirect
+            k: v for k, v in http["services"].items() if k != "status-policy" or status or redirect
         }
     placement = {}
     for deployment in deployments:
@@ -439,9 +411,7 @@ def test_effective_health_fleet():
             "kubernetes.io/hostname"
         ]
         assert not spec.get("hostNetwork") and not spec["automountServiceAccountToken"]
-        assert spec["volumes"] == [
-            {"name": "routes", "configMap": {"name": "closed-health"}}
-        ]
+        assert spec["volumes"] == [{"name": "routes", "configMap": {"name": "closed-health"}}]
         (container,) = spec["containers"]
         assert not container.get("ports")
         assert [a for a in container["args"] if a.startswith("--entrypoints")] == [
@@ -545,9 +515,7 @@ def test_wiki_requires_public_runtime_and_unmodified_named_backend():
             "visibility=private",
         ]
     )
-    assert not eligible(
-        [r for r in yaml.safe_load_all(raw) if r], catalog, owner="wiki-runtime"
-    )
+    assert not eligible([r for r in yaml.safe_load_all(raw) if r], catalog, owner="wiki-runtime")
 
 
 def test_monori_front_only_no_shared_port_authorization():
@@ -570,9 +538,9 @@ def test_monori_front_only_no_shared_port_authorization():
         (
             "Ingress",
             "monori",
-            lambda d: d["spec"]["rules"][0]["http"]["paths"][0]["backend"][
-                "service"
-            ].update(name="monori-sync"),
+            lambda d: d["spec"]["rules"][0]["http"]["paths"][0]["backend"]["service"].update(
+                name="monori-sync"
+            ),
         ),
         (
             "Deployment",
@@ -584,13 +552,7 @@ def test_monori_front_only_no_shared_port_authorization():
         ("Ingress", "monori", lambda d: d["metadata"].pop("labels", None)),
     ]:
         changed = deepcopy(rows)
-        change(
-            next(
-                d
-                for d in changed
-                if d["kind"] == kind and d["metadata"]["name"] == name
-            )
-        )
+        change(next(d for d in changed if d["kind"] == kind and d["metadata"]["name"] == name))
         assert not eligible(changed, catalog, owner="monori")
 
 
@@ -604,9 +566,7 @@ def test_lms_and_wishlist_reject_side_channels_and_unselected_routes():
         for kind, mutate in [
             (
                 "Ingress",
-                lambda d: d["metadata"]["labels"].pop(
-                    "homelab.alchemmist.xyz/public-web", None
-                ),
+                lambda d: d["metadata"]["labels"].pop("homelab.alchemmist.xyz/public-web", None),
             ),
             (
                 "Ingress",
@@ -623,26 +583,18 @@ def test_lms_and_wishlist_reject_side_channels_and_unselected_routes():
             ),
             (
                 "Deployment",
-                lambda d: d["spec"]["template"]["spec"]["containers"][0]["ports"][
-                    0
-                ].update(containerPort=8001),
+                lambda d: d["spec"]["template"]["spec"]["containers"][0]["ports"][0].update(
+                    containerPort=8001
+                ),
             ),
         ]:
             changed = deepcopy(rows)
-            mutate(
-                next(
-                    d
-                    for d in changed
-                    if d["kind"] == kind and d["metadata"]["name"] == app
-                )
-            )
+            mutate(next(d for d in changed if d["kind"] == kind and d["metadata"]["name"] == app))
             assert not eligible(changed, catalog, owner=app)
 
 
 def test_argo_uses_only_the_verified_https_upstream_or_withdraws_completely():
-    app = yaml.safe_load((ROOT / "deploy/argocd/apps/closed-health.yaml").read_text())[
-        "spec"
-    ]
+    app = yaml.safe_load((ROOT / "deploy/argocd/apps/closed-health.yaml").read_text())["spec"]
     src = app["source"]
     chart = ROOT / src["path"]
     args = [
@@ -671,9 +623,7 @@ def test_argo_uses_only_the_verified_https_upstream_or_withdraws_completely():
         {
             "to": [
                 {
-                    "namespaceSelector": {
-                        "matchLabels": {"kubernetes.io/metadata.name": "argocd"}
-                    },
+                    "namespaceSelector": {"matchLabels": {"kubernetes.io/metadata.name": "argocd"}},
                     "podSelector": {
                         "matchLabels": {
                             "app.kubernetes.io/name": "argocd-server",
@@ -688,9 +638,7 @@ def test_argo_uses_only_the_verified_https_upstream_or_withdraws_completely():
     assert policy["policyTypes"] == ["Egress"] and policy["podSelector"] == {
         "matchLabels": {"app": "closed-health"}
     }
-    content = yaml.safe_load(
-        active["ConfigMap", "closed-health"]["data"].pop("argocd.yaml")
-    )
+    content = yaml.safe_load(active["ConfigMap", "closed-health"]["data"].pop("argocd.yaml"))
     assert content == {
         "http": {
             "routers": {
@@ -706,9 +654,7 @@ def test_argo_uses_only_the_verified_https_upstream_or_withdraws_completely():
                         "passHostHeader": True,
                         "serversTransport": "argocd-verified-tls",
                         "servers": [
-                            {
-                                "url": "https://argo-cd-argocd-server.argocd.svc.cluster.local:443"
-                            }
+                            {"url": "https://argo-cd-argocd-server.argocd.svc.cluster.local:443"}
                         ],
                     }
                 }
@@ -737,9 +683,9 @@ def test_img_only_reaches_the_reviewed_nginx_listener():
         ("ConfigMap", "img-proxy-service-vpn"),
     ]:
         rows = deepcopy(docs)
-        next(d for d in rows if (d["kind"], d["metadata"]["name"]) == (kind, name))[
-            "metadata"
-        ]["labels"] = {"changed": "true"}
+        next(d for d in rows if (d["kind"], d["metadata"]["name"]) == (kind, name))["metadata"][
+            "labels"
+        ] = {"changed": "true"}
         assert not admit(rows)
     assert not admit([*docs, deepcopy(docs[-1])])
     args = [
@@ -756,9 +702,7 @@ def test_img_only_reaches_the_reviewed_nginx_listener():
     def render(flag, val):
         return {
             (d["kind"], d["metadata"]["name"]): d
-            for d in yaml.safe_load_all(
-                subprocess.check_output([*args, flag, "closedImg=" + val])
-            )
+            for d in yaml.safe_load_all(subprocess.check_output([*args, flag, "closedImg=" + val]))
             if d
         }
 
@@ -782,9 +726,7 @@ def test_img_only_reaches_the_reviewed_nginx_listener():
             "ports": [{"port": 8080, "protocol": "TCP"}],
         }
     ]
-    dynamic = yaml.safe_load(
-        active["ConfigMap", "closed-health"]["data"].pop("img.yaml")
-    )["http"]
+    dynamic = yaml.safe_load(active["ConfigMap", "closed-health"]["data"].pop("img.yaml"))["http"]
     assert dynamic["routers"] == {
         "img": {
             "entryPoints": ["closed"],
@@ -845,9 +787,7 @@ def test_selected_app_only_reaches_its_reviewed_http_listener(app, bit, port):
     def render(flag, val):
         return {
             (d["kind"], d["metadata"]["name"]): d
-            for d in yaml.safe_load_all(
-                subprocess.check_output([*args, flag, bit + "=" + val])
-            )
+            for d in yaml.safe_load_all(subprocess.check_output([*args, flag, bit + "=" + val]))
             if d
         }
 
@@ -857,9 +797,7 @@ def test_selected_app_only_reaches_its_reviewed_http_listener(app, bit, port):
         {
             "to": [
                 {
-                    "namespaceSelector": {
-                        "matchLabels": {"kubernetes.io/metadata.name": app}
-                    },
+                    "namespaceSelector": {"matchLabels": {"kubernetes.io/metadata.name": app}},
                     "podSelector": {
                         "matchLabels": {
                             "app": peer,
@@ -870,9 +808,9 @@ def test_selected_app_only_reaches_its_reviewed_http_listener(app, bit, port):
             "ports": [{"port": port, "protocol": "TCP"}],
         }
     ]
-    dynamic = yaml.safe_load(
-        active["ConfigMap", "closed-health"]["data"].pop(f"{app}.yaml")
-    )["http"]
+    dynamic = yaml.safe_load(active["ConfigMap", "closed-health"]["data"].pop(f"{app}.yaml"))[
+        "http"
+    ]
     assert dynamic["routers"] == {
         app: {
             "entryPoints": ["closed"],
@@ -884,9 +822,7 @@ def test_selected_app_only_reaches_its_reviewed_http_listener(app, bit, port):
             "loadBalancer": {
                 "passHostHeader": True,
                 "servers": [
-                    {
-                        "url": f"http://{app}.{app}.svc.cluster.local:{8080 if venice else 80}"
-                    }
+                    {"url": f"http://{app}.{app}.svc.cluster.local:{8080 if venice else 80}"}
                 ],
             }
         }
@@ -962,9 +898,7 @@ def test_schoolbot_phases_report_only_fixed_target_timing(monkeypatch, mode, que
     r = probe.sample(mode, vip)
     assert r.pop("outcome") == "healthy"
     assert lookups == ([query] if query else [])
-    assert set(r) == {"tcp_ms", "headers_ms", "body_ms"} | (
-        {"dns_ms"} if query else set()
-    )
+    assert set(r) == {"tcp_ms", "headers_ms", "body_ms"} | ({"dns_ms"} if query else set())
     assert all(v >= 0 for v in r.values())
     if query:
         monkeypatch.setattr(probe.socket, "getaddrinfo", lambda *args: [])
@@ -997,9 +931,9 @@ def test_blog_render_drift_withholds_www(drift):
     if drift == "narrow":
         ing["spec"]["rules"][1]["http"]["paths"][0]["path"] = "/articles"
     elif drift == "middleware":
-        ing["metadata"]["annotations"][
-            "traefik.ingress.kubernetes.io/router.middlewares"
-        ] = "blog-login"
+        ing["metadata"]["annotations"]["traefik.ingress.kubernetes.io/router.middlewares"] = (
+            "blog-login"
+        )
     elif drift == "alias":
         ing["spec"]["rules"][0]["host"] = "other.alchemmist.xyz"
     elif drift == "no-opt-in":
@@ -1033,9 +967,7 @@ def test_tcp_resolver_changes_only_closed_pod_resolver_options():
         args += ["-f", str(ROOT / f)]
 
     def render(*opts):
-        return [
-            d for d in yaml.safe_load_all(subprocess.check_output([*args, *opts])) if d
-        ]
+        return [d for d in yaml.safe_load_all(subprocess.check_output([*args, *opts])) if d]
 
     default = render()
     assert default == render("--set", "useTcpResolver=false")
@@ -1043,11 +975,7 @@ def test_tcp_resolver_changes_only_closed_pod_resolver_options():
     deploys = [d for d in candidate if d["kind"] == "Deployment"]
     assert len(deploys) == 3
     for d in deploys:
-        assert d["spec"]["template"]["spec"].pop("dnsConfig") == {
-            "options": [{"name": "use-vc"}]
-        }
+        assert d["spec"]["template"]["spec"].pop("dnsConfig") == {"options": [{"name": "use-vc"}]}
     assert candidate == default
-    bad = subprocess.run(
-        [*args, "--set-string", "useTcpResolver=true"], capture_output=True
-    )
+    bad = subprocess.run([*args, "--set-string", "useTcpResolver=true"], capture_output=True)
     assert bad.returncode and b"useTcpResolver must be a boolean" in bad.stderr

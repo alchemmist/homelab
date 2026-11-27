@@ -22,9 +22,7 @@ def test_owner_opt_in_changes_only_one_ingress_label(app, field, replacement):
         args = ["helm", "template", app, str(ROOT / "charts" / app), "-n", app]
         if release:
             args += ["-f", str(ROOT / "deploy" / app / "values.yaml")]
-        return list(
-            yaml.safe_load_all(subprocess.check_output([*args, *options], text=True))
-        )
+        return list(yaml.safe_load_all(subprocess.check_output([*args, *options], text=True)))
 
     def ingress(docs):
         (row,) = [r for r in docs if r and r["kind"] == "Ingress"]
@@ -33,9 +31,7 @@ def test_owner_opt_in_changes_only_one_ingress_label(app, field, replacement):
     active = render()
     owner = ingress(active)
     (host,) = [r["host"] for r in owner["spec"]["rules"]]
-    catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())[
-        "hosts"
-    ][app]
+    catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())["hosts"][app]
     release_values = yaml.safe_load((ROOT / "deploy" / app / "values.yaml").read_text())
     assert release_values["publicWebHost"] == host
     assert catalog[host].get("route", "web") == "web"
@@ -54,9 +50,7 @@ def test_owner_opt_in_changes_only_one_ingress_label(app, field, replacement):
 
 
 def test_openhands_selects_the_oidc_proxy_not_the_native_ingress():
-    app = yaml.safe_load((ROOT / "deploy/argocd/apps/openhands.yaml").read_text())[
-        "spec"
-    ]
+    app = yaml.safe_load((ROOT / "deploy/argocd/apps/openhands.yaml").read_text())["spec"]
     src = app["source"]
     chart = ROOT / src["path"]
     helm = src["helm"]
@@ -72,9 +66,7 @@ def test_openhands_selects_the_oidc_proxy_not_the_native_ingress():
         args.extend(["-f", str(chart / file)])
 
     def run(*opts):
-        return subprocess.run(
-            args + list(opts), capture_output=True, text=True, check=False
-        )
+        return subprocess.run(args + list(opts), capture_output=True, text=True, check=False)
 
     def render(*opts):
         result = run(*opts)
@@ -88,8 +80,7 @@ def test_openhands_selects_the_oidc_proxy_not_the_native_ingress():
     selected = render()
     ing = owner(selected)
     assert (
-        ing["metadata"]["namespace"] == "identity"
-        and ing["metadata"]["name"] == "openhands-oidc"
+        ing["metadata"]["namespace"] == "identity" and ing["metadata"]["name"] == "openhands-oidc"
     )
     host = "openhands.socrat.alchemmist.xyz"
     (rule,) = ing["spec"]["rules"]
@@ -126,12 +117,8 @@ def test_openhands_selects_the_oidc_proxy_not_the_native_ingress():
     assert policy["spec"]["policyTypes"] == ["Ingress"]
     (peer,) = incoming["from"]
     assert peer == {
-        "namespaceSelector": {
-            "matchLabels": {"kubernetes.io/metadata.name": "public-entry"}
-        },
-        "podSelector": {
-            "matchLabels": {"homelab.alchemmist.xyz/public-entry-controller": "true"}
-        },
+        "namespaceSelector": {"matchLabels": {"kubernetes.io/metadata.name": "public-entry"}},
+        "podSelector": {"matchLabels": {"homelab.alchemmist.xyz/public-entry-controller": "true"}},
     }
     policy["spec"]["ingress"] = []
     assert permitted == render()

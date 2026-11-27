@@ -40,7 +40,8 @@ class AlertGraphInventoryTests(unittest.TestCase):
         # Includes Service-path divergence and distinct absent/down API scrapes.
         expected_source_rule_count = 223
         assert {r["alert"] for r in rows if r["group"] == "socrat.worker.power"} == {
-            "Socrat3OnBattery", "Socrat3BatteryLow",
+            "Socrat3OnBattery",
+            "Socrat3BatteryLow",
         }
         assert {r["alert"] for r in rows if r["alert"].startswith("SocratWireGuard")} >= {
             "SocratWireGuardMeshProbesIncomplete",

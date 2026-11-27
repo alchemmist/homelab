@@ -53,11 +53,7 @@ def test_no_partial_portal_fallback(inputs, drift):
     docs, catalog = deepcopy(inputs)
     ing = next(d for d in docs if d["kind"] == "Ingress")
     paths = ing["spec"]["rules"][0]["http"]["paths"]
-    svc = next(
-        d
-        for d in docs
-        if d["kind"] == "Service" and d["metadata"]["name"] == "harbor-core"
-    )
+    svc = next(d for d in docs if d["kind"] == "Service" and d["metadata"]["name"] == "harbor-core")
     meta = ing["metadata"]
     if drift == "neighbor":
         docs.append(deepcopy(ing))

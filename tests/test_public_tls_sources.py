@@ -31,9 +31,7 @@ CERT = {
     "kind": "Certificate",
     "metadata": {"namespace": "site", "generation": 1},
     "spec": {"secretName": "site-tls", "dnsNames": ["app.test"]},
-    "status": {
-        "conditions": [{"type": "Ready", "status": "True", "observedGeneration": 1}]
-    },
+    "status": {"conditions": [{"type": "Ready", "status": "True", "observedGeneration": 1}]},
 }
 
 
@@ -92,9 +90,7 @@ def test_two_ingresses_can_share_one_multiname_certificate() -> None:
         "spec": {"ingressClassName": "traefik", "rules": [{"host": "alias.test"}]},
     }
     report = inventory(catalog, [owner, cert, PATH, alias])
-    assert (
-        not report["errors"] and report["hostSources"]["alias.test"] == "site/site-tls"
-    )
+    assert not report["errors"] and report["hostSources"]["alias.test"] == "site/site-tls"
     cert["spec"]["dnsNames"].append("private.test")
     assert not inventory(catalog, [owner, cert, PATH, alias])["namedGetRules"]
 
@@ -140,9 +136,7 @@ def test_healthy_observed_alias_cannot_redirect_a_reviewed_secret_pin():
     }
 
 
-@pytest.mark.parametrize(
-    "change", ["missing", "ambiguous", "non-web", "namespace-path"]
-)
+@pytest.mark.parametrize("change", ["missing", "ambiguous", "non-web", "namespace-path"])
 def test_no_partial_or_cross_namespace_reader_plan(change):
     from ci.quality.public_tls_pins import compare
 
@@ -168,9 +162,7 @@ def _release_tls_objects(app):
 
     from ci.quality.public_web import ROOT
 
-    spec = yaml.safe_load((ROOT / "deploy/argocd/apps" / f"{app}.yaml").read_text())[
-        "spec"
-    ]
+    spec = yaml.safe_load((ROOT / "deploy/argocd/apps" / f"{app}.yaml").read_text())["spec"]
     sources = spec.get("sources") or [spec["source"]]
     repo = "https://github.com/alchemmist/homelab.git"
     ns = spec["destination"]["namespace"]
@@ -192,9 +184,7 @@ def _release_tls_objects(app):
         assert set(helm) <= {"releaseName", "parameters", "valueFiles"}
         args = ["helm", "template", helm.get("releaseName", app), str(chart), "-n", ns]
         if chart.name == "rancher":
-            defaults = yaml.safe_load(
-                (ROOT / "ansible/roles/k3s_ha/defaults/main.yml").read_text()
-            )
+            defaults = yaml.safe_load((ROOT / "ansible/roles/k3s_ha/defaults/main.yml").read_text())
             args.extend(
                 [
                     "--kube-version",
@@ -203,9 +193,7 @@ def _release_tls_objects(app):
             )
         for f in helm.get("valueFiles", []):
             if f.startswith("$values/"):
-                assert any(
-                    s.get("ref") == "values" and s["repoURL"] == repo for s in sources
-                )
+                assert any(s.get("ref") == "values" and s["repoURL"] == repo for s in sources)
                 file = ROOT / f.removeprefix("$values/")
             else:
                 file = chart / f
@@ -261,9 +249,7 @@ def test_reviewed_tls_pins_agree_with_separately_rendered_releases():
                 for host in tls["hosts"]:
                     if policy.get(ns, {}).get(host, {}).get("route", "web") == "web":
                         refs.add((ns, host, tls["secretName"]))
-                issuer = meta.get("annotations", {}).get(
-                    "cert-manager.io/cluster-issuer"
-                )
+                issuer = meta.get("annotations", {}).get("cert-manager.io/cluster-issuer")
                 if issuer:
                     writers[ns, tls["secretName"]].append(
                         ("ClusterIssuer", issuer, frozenset(tls["hosts"]))
@@ -274,10 +260,7 @@ def test_reviewed_tls_pins_agree_with_separately_rendered_releases():
     external = owner()
     assert refs | {external} == pinned
     ordinary = {
-        h
-        for hosts in policy.values()
-        for h, p in hosts.items()
-        if p.get("route", "web") == "web"
+        h for hosts in policy.values() for h, p in hosts.items() if p.get("route", "web") == "web"
     }
     assert {h for _, h, _ in pinned} == ordinary and len(pinned) == len(ordinary)
     pinned = refs
@@ -296,9 +279,7 @@ def test_unreviewed_external_chart_is_rejected_before_helm(tmp_path):
         verify(wrong)
 
 
-@pytest.mark.parametrize(
-    "payload", ["[]", "{}", '{"items":null}', '{"items":[{}]}', "invalid"]
-)
+@pytest.mark.parametrize("payload", ["[]", "{}", '{"items":null}', '{"items":[{}]}', "invalid"])
 def test_pin_cli_rejects_malformed_input_without_dump(payload, monkeypatch, capsys):
     import io
     import json
@@ -332,8 +313,7 @@ def test_pin_plan_checks_exact_requested_identity_set(field, value):
     result = compare(catalog, [ING, PATH, cert])
     assert (
         result["sources"] == {}
-        and "site/site-tls: requested SAN set differs from reviewed source"
-        in result["errors"]
+        and "site/site-tls: requested SAN set differs from reviewed source" in result["errors"]
     )
 
 
@@ -346,7 +326,10 @@ def test_missing_writer_destination_is_localized_and_blocks_all_reads():
     catalog = copy.deepcopy(CAT)
     catalog["hosts"]["site"]["app.test"]["tlsSourceName"] = "site-tls"
     result = compare(catalog, [ING, PATH, cert])
-    assert result == {"sources": {}, "errors": [
-        "app.test: expected one Certificate writer, found 0",
-        "site/broken-writer: Certificate missing secretName",
-    ]}
+    assert result == {
+        "sources": {},
+        "errors": [
+            "app.test: expected one Certificate writer, found 0",
+            "site/broken-writer: Certificate missing secretName",
+        ],
+    }

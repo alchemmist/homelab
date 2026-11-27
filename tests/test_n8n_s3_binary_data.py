@@ -55,9 +55,7 @@ class N8nS3BinaryData(unittest.TestCase):
         spec.loader.exec_module(module)
         import base64
 
-        doc = module.render_secret(
-            {"n8n": {"access": "a" * 20, "secret": "b" * 20}}
-        )
+        doc = module.render_secret({"n8n": {"access": "a" * 20, "secret": "b" * 20}})
         assert doc["metadata"] == {
             "name": "n8n-s3-storage",
             "namespace": "automation",
@@ -65,7 +63,12 @@ class N8nS3BinaryData(unittest.TestCase):
         assert set(doc["data"]) == {"accessKey", "accessSecret"}
         for key, value in doc["data"].items():
             decoded = base64.b64decode(value).decode()
-            assert key == "accessKey" and decoded == "a" * 20 or key == "accessSecret" and decoded == "b" * 20
+            assert (
+                key == "accessKey"
+                and decoded == "a" * 20
+                or key == "accessSecret"
+                and decoded == "b" * 20
+            )
 
     def test_chart_wires_s3_envs_only_when_enabled(self) -> None:
         """Enabled renders the S3 env block; disabled renders nothing."""

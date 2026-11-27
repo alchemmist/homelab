@@ -32,21 +32,15 @@ def test_all_route_owners_have_three_cases() -> None:
 )
 def test_dns_requires_only_survivor(monkeypatch, answers: set[str], code: int) -> None:
     """A dead second address, IPv6 alternative or empty result cannot pass this gate."""
-    monkeypatch.setattr(
-        sys, "argv", ["audit", "--dns", "blog", "alchemmist.xyz", "moscow"]
-    )
+    monkeypatch.setattr(sys, "argv", ["audit", "--dns", "blog", "alchemmist.xyz", "moscow"])
     monkeypatch.setattr(audit, "dns_view", lambda host: answers)
     assert audit.main() == code
 
 
 def test_reserved_case_is_not_queried(monkeypatch, capsys) -> None:
     """A known but unpublished case is a usage error, not a failed DNS lookup."""
-    monkeypatch.setattr(
-        sys, "argv", ["audit", "--dns", "schoolbot", "bot.sch1357.ru", "home"]
-    )
-    monkeypatch.setattr(
-        audit, "dns_view", lambda host: pytest.fail("unexpected DNS lookup")
-    )
+    monkeypatch.setattr(sys, "argv", ["audit", "--dns", "schoolbot", "bot.sch1357.ru", "home"])
+    monkeypatch.setattr(audit, "dns_view", lambda host: pytest.fail("unexpected DNS lookup"))
     with pytest.raises(SystemExit) as exc:
         audit.main()
     assert exc.value.code == 2
@@ -73,9 +67,7 @@ def test_schoolbot_external_authority_is_not_a_self_ip_case(monkeypatch, entry):
 
 def test_unknown_survivor_lists_valid_entries(monkeypatch, capsys) -> None:
     """Explain survivor spelling errors before attempting a lookup."""
-    monkeypatch.setattr(
-        sys, "argv", ["audit", "--dns", "blog", "alchemmist.xyz", "nl-only"]
-    )
+    monkeypatch.setattr(sys, "argv", ["audit", "--dns", "blog", "alchemmist.xyz", "nl-only"])
     with pytest.raises(SystemExit) as exc:
         audit.main()
     assert exc.value.code == 2
@@ -105,9 +97,7 @@ def test_closed_schoolbot_probe_only_uses_loopback(monkeypatch, tmp_path):
     from ci.quality import schoolbot_entry_health as health
 
     catalog = tmp_path / "catalog.yaml"
-    catalog.write_text(
-        yaml.safe_dump({"hosts": {"schoolbot": {health.HOST: {"dns": "external"}}}})
-    )
+    catalog.write_text(yaml.safe_dump({"hosts": {"schoolbot": {health.HOST: {"dns": "external"}}}}))
     monkeypatch.setattr(health, "CATALOG", catalog)
     calls = []
     monkeypatch.setattr(

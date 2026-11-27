@@ -13,9 +13,7 @@ PROBE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(PROBE)
 
 
-@pytest.mark.parametrize(
-    "value", ["91.189.82.238", "alchemmist.xyz", "127.0.0.1", "10.250.0.40"]
-)
+@pytest.mark.parametrize("value", ["91.189.82.238", "alchemmist.xyz", "127.0.0.1", "10.250.0.40"])
 def test_no_public_or_host_fallback(value: str) -> None:
     """The client only accepts the private Service address supplied by the operator."""
     with pytest.raises(ValueError):
@@ -44,9 +42,7 @@ def test_probe_contract(status: int, body: bytes, expected: bool) -> None:
         assert PROBE.probe(host, "10.43.1.2") is expected
         dial.assert_called_once_with(("10.43.1.2", 443), timeout=5)
         wrap = context.return_value.wrap_socket
-        wrap.assert_called_once_with(
-            dial.return_value.__enter__.return_value, server_hostname=host
-        )
+        wrap.assert_called_once_with(dial.return_value.__enter__.return_value, server_hostname=host)
         assert (
             b"Host: www.alchemmist.xyz\r\n"
             in wrap.return_value.__enter__.return_value.sendall.call_args.args[0]

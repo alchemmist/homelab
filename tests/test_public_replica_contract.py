@@ -55,9 +55,10 @@ def test_every_replica_is_the_same_except_placement_and_local_a() -> None:
         assert service["selector"] == {"app.kubernetes.io/instance": "entry"}
         assert service["selector"].items() <= labels.items()
         assert labels["homelab.alchemmist.xyz/public-entry-controller"] == "true"
-        assert {
-            (p["protocol"], p["port"], p["targetPort"]) for p in service["ports"]
-        } == {("TCP", 53, port), ("UDP", 53, port)}
+        assert {(p["protocol"], p["port"], p["targetPort"]) for p in service["ports"]} == {
+            ("TCP", 53, port),
+            ("UDP", 53, port),
+        }
         assert pod.pop("nodeSelector") == {"kubernetes.io/hostname": instance["node"]}
         dep["spec"]["template"]["metadata"].pop("annotations")
         expected = {
@@ -71,11 +72,7 @@ def test_every_replica_is_the_same_except_placement_and_local_a() -> None:
         for line in cm["data"]["db.alchemmist.xyz"].splitlines():
             fields = line.split()
             host = (
-                (
-                    "alchemmist.xyz"
-                    if fields[:1] == ["@"]
-                    else fields[0] + ".alchemmist.xyz"
-                )
+                ("alchemmist.xyz" if fields[:1] == ["@"] else fields[0] + ".alchemmist.xyz")
                 if fields
                 else None
             )
@@ -98,14 +95,12 @@ def test_every_replica_is_the_same_except_placement_and_local_a() -> None:
         )
         prefix = "--providers.kubernetesingress.namespaces="
         (scope,) = [
-            arg.removeprefix(prefix)
-            for arg in controller["args"]
-            if arg.startswith(prefix)
+            arg.removeprefix(prefix) for arg in controller["args"] if arg.startswith(prefix)
         ]
         assert set(scope.split(",")) == set(values["publications"])
-        assert {
-            d["metadata"]["namespace"] for d in docs if d["kind"] == "RoleBinding"
-        } == set(scope.split(","))
+        assert {d["metadata"]["namespace"] for d in docs if d["kind"] == "RoleBinding"} == set(
+            scope.split(",")
+        )
         assert not {"postgres", "redis", "netbird-pilot"}.intersection(scope.split(","))
         assert "inform.sch1357.ru" in values["publications"]["schoolbot"]
         assert "bot.sch1357.ru" not in values["publications"]["schoolbot"]
@@ -119,18 +114,14 @@ def test_replica_cannot_override_host_or_namespace_scope() -> None:
     """Inventory entries only supply placement and IP."""
     catalog = yaml.safe_load(CATALOG.read_text())
     with pytest.raises(ValueError, match="only node and publicIP"):
-        replica_values(
-            catalog, {**catalog["replicas"]["home"], "watchNamespaces": ["blog"]}, 1
-        )
+        replica_values(catalog, {**catalog["replicas"]["home"], "watchNamespaces": ["blog"]}, 1)
 
 
 def test_route_gate_checks_every_owner_not_just_host_presence() -> None:
     """Reject missing owner opt-in, overlapping rules and accidental fixed relay selection."""
     from ci.quality.public_route_gate import LABEL, findings
 
-    catalog = {
-        "hosts": {"app": {"web.test": {}, "fixed.test": {"route": "fixed-relay"}}}
-    }
+    catalog = {"hosts": {"app": {"web.test": {}, "fixed.test": {"route": "fixed-relay"}}}}
 
     def ingress(name: str, host: str, path: str, selected: bool) -> dict:
         return {
@@ -156,23 +147,14 @@ def test_route_gate_checks_every_owner_not_just_host_presence() -> None:
     assert not findings(catalog, [root, extra, fixed])
     extra["metadata"]["labels"] = {}
     fixed["metadata"]["labels"][LABEL] = "true"
-    assert (
-        len(
-            findings(
-                catalog, [root, extra, fixed, ingress("copy", "web.test", "/", True)]
-            )
-        )
-        == 3
-    )
+    assert len(findings(catalog, [root, extra, fixed, ingress("copy", "web.test", "/", True)])) == 3
 
     del root["spec"]["rules"][0]["http"]["paths"][0]["pathType"]
     assert findings(catalog, [root]) == ["invalid path or pathType: app/root web.test"]
 
     parent = ingress("parent", "web.test", "/foo", True)
     parent["spec"]["rules"][0]["http"]["paths"][0]["pathType"] = "Prefix"
-    assert not findings(
-        catalog, [parent, ingress("other", "web.test", "/foobar", True)]
-    )
+    assert not findings(catalog, [parent, ingress("other", "web.test", "/foobar", True)])
     assert findings(catalog, [parent, ingress("child", "web.test", "/foo/bar", True)])[
         0
     ].startswith("review intersecting paths:")
@@ -243,9 +225,7 @@ def test_existing_reviewed_owner_label(value: str, eligible: bool) -> None:
             ],
         },
     }
-    assert (
-        not findings({"hosts": {"example": {"app.example": {}}}}, [owner])
-    ) is eligible
+    assert (not findings({"hosts": {"example": {"app.example": {}}}}, [owner])) is eligible
 
 
 def test_default_authority_rehearsal_has_no_kubernetes_or_backend_identity() -> None:
@@ -261,9 +241,7 @@ def test_default_authority_rehearsal_has_no_kubernetes_or_backend_identity() -> 
             "-",
         ]
         docs = list(
-            yaml.safe_load_all(
-                subprocess.check_output(args, input=json.dumps(values), text=True)
-            )
+            yaml.safe_load_all(subprocess.check_output(args, input=json.dumps(values), text=True))
         )
         assert sorted(d["kind"] for d in docs) == [
             "ConfigMap",
@@ -311,26 +289,19 @@ def test_gitops_dns_bundle_matches_private_chart_without_public_or_api_access() 
         assert len(pod["containers"]) == 1 and pod["containers"][0]["name"] == "coredns"
         assert pod["automountServiceAccountToken"] is False
         policy = docs["NetworkPolicy"]["spec"]
-        assert (
-            set(policy["policyTypes"]) == {"Ingress", "Egress"}
-            and policy["egress"] == []
-        )
+        assert set(policy["policyTypes"]) == {"Ingress", "Egress"} and policy["egress"] == []
         assert policy["ingress"] == [
             {
                 "from": [
                     {
                         "podSelector": {
-                            "matchLabels": {
-                                "homelab.alchemmist.xyz/public-entry-probe": "true"
-                            }
+                            "matchLabels": {"homelab.alchemmist.xyz/public-entry-probe": "true"}
                         }
                     }
                 ]
             }
         ]
         assert docs["Service"]["spec"]["type"] == "ClusterIP"
-    app = yaml.safe_load(
-        (ROOT / "deploy/argocd/apps/private-dns-fleet.yaml").read_text()
-    )["spec"]
+    app = yaml.safe_load((ROOT / "deploy/argocd/apps/private-dns-fleet.yaml").read_text())["spec"]
     assert ROOT / app["source"]["path"] == OUTPUT.parent
     assert app["destination"]["namespace"] == NAMESPACE

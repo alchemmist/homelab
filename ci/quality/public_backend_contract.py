@@ -69,7 +69,12 @@ def _observability(annotations: dict) -> tuple[dict, bool]:
         if folded != prefix[:-1] and not folded.startswith(prefix):
             continue
         field = fields.get(folded.removeprefix(prefix))
-        if not field or field in settings or not isinstance(value, str) or value not in ("true", "false"):
+        if (
+            not field
+            or field in settings
+            or not isinstance(value, str)
+            or value not in ("true", "false")
+        ):
             valid = False
             continue
         settings[field] = value == "true"

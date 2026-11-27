@@ -38,9 +38,7 @@ def issued():
         .add_extension(san, False)
         .sign(key, hashes.SHA256())
     )
-    enc = lambda x: base64.b64encode(
-        x.public_bytes(serialization.Encoding.PEM)
-    ).decode()
+    enc = lambda x: base64.b64encode(x.public_bytes(serialization.Encoding.PEM)).decode()
     catalog = {"hosts": {ns: {host: {"dns": "managed", "tlsSourceName": pin}}}}
     meta = {
         "uid": "cert-uid",
@@ -56,9 +54,7 @@ def issued():
         "spec": {"dnsNames": [host], "secretName": pin, "issuerRef": audit.ISSUER},
         "status": {
             "revision": 1,
-            "conditions": [
-                {"type": "Ready", "status": "True", "observedGeneration": 1}
-            ],
+            "conditions": [{"type": "Ready", "status": "True", "observedGeneration": 1}],
             "notBefore": start.isoformat(),
             "notAfter": end.isoformat(),
         },
@@ -171,9 +167,7 @@ def test_incomplete_or_mismatched_evidence(issued, fault):
 
 
 @pytest.mark.parametrize("changed", [False, True])
-def test_sweep_never_claims_writer_approval_or_a_rotated_match(
-    monkeypatch, capsys, changed
-):
+def test_sweep_never_claims_writer_approval_or_a_rotated_match(monkeypatch, capsys, changed):
     monkeypatch.setattr(sys, "argv", ["audit", "wiki"])
     anchor = ("u", "c1", "r", "r1", "a" * 64)
     obs = iter((anchor, ("u", "c2", "r", "r1", "a" * 64) if changed else anchor))
@@ -198,9 +192,7 @@ def test_validated_issuance_without_independent_approval_cannot_read_a_key(issue
     result = issued_refresh(
         scope, {}, lambda _: anchor, lambda _: pytest.fail("unapproved named GET"), t
     )
-    assert not result.material and result.withdrawn == {
-        anchor.source: "no-writer-approval"
-    }
+    assert not result.material and result.withdrawn == {anchor.source: "no-writer-approval"}
 
 
 def test_private_issuer_must_be_pinned_independently_of_objects(issued):

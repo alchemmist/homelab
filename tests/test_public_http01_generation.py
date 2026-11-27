@@ -50,9 +50,7 @@ def fixture(uid):
                         {
                             "path": "/.well-known/acme-challenge/" + token,
                             "pathType": "ImplementationSpecific",
-                            "backend": {
-                                "service": {"name": "svc", "port": {"number": 8089}}
-                            },
+                            "backend": {"service": {"name": "svc", "port": {"number": 8089}}},
                         }
                     ]
                 },
@@ -130,9 +128,7 @@ def destination_fixture(uid="now", token=None):
     expected, ch, ing, svc, pod = fixture(uid)
     if token is not None:
         ch["spec"]["token"] = token
-        ing["spec"]["rules"][0]["http"]["paths"][0]["path"] = (
-            "/.well-known/acme-challenge/" + token
-        )
+        ing["spec"]["rules"][0]["http"]["paths"][0]["path"] = "/.well-known/acme-challenge/" + token
         ns, _, _, host = expected
         expected = (ns, "challenge-" + uid, uid, host)
         ch["metadata"]["name"] = expected[1]
@@ -150,9 +146,7 @@ def destination_fixture(uid="now", token=None):
     svc["spec"] = {
         "type": "NodePort",
         "clusterIP": "10.43.22.11",
-        "ports": [
-            {"name": "http", "port": 8089, "targetPort": 8089, "nodePort": 32123}
-        ],
+        "ports": [{"name": "http", "port": 8089, "targetPort": 8089, "nodePort": 32123}],
         "selector": selector,
     }
     pod["spec"] = {}
@@ -257,9 +251,9 @@ def test_only_verified_solver_pod_address_is_admitted(fault):
         ch["metadata"]["uid"] = "next"
     if fault == "not-ready":
         pod["status"]["conditions"] = []
-    assert solver_destination(
-        expected, ch, ing, svc, pod, slices, IPv4Network("10.42.0.0/16")
-    ) == ("http://10.42.2.9:8089" if fault == "none" else None)
+    assert solver_destination(expected, ch, ing, svc, pod, slices, IPv4Network("10.42.0.0/16")) == (
+        "http://10.42.2.9:8089" if fault == "none" else None
+    )
 
 
 def test_closed_snapshot_never_encodes_empty_services_on_withdrawal():
@@ -492,9 +486,7 @@ def test_new_verified_address_cannot_renew_a_slot_for_an_old_backend():
 
     expected, ch, ing, svc, pod, slices = destination_fixture()
     ns, _, uid, host = expected
-    slot = ScannedSlot(
-        ns, host, uid, ch["spec"]["token"], "http://10.42.2.9:8089", 10**10
-    )
+    slot = ScannedSlot(ns, host, uid, ch["spec"]["token"], "http://10.42.2.9:8089", 10**10)
 
     def run():
         return slot.refresh(
@@ -562,11 +554,7 @@ def test_one_namespace_scan_cannot_resurrect_a_slot_from_an_older_inflight_round
             if newer_finishes:
                 assert gate.refresh(lambda *_: list_page([rows[1][1]]), children, net)
                 after = [gate.witness(s) for s in slots]
-                assert (
-                    after[0] is None
-                    and after[1] is not None
-                    and after[1] != original[1]
-                )
+                assert after[0] is None and after[1] is not None and after[1] != original[1]
             else:
                 with pytest.raises(IncompleteScan):
                     gate.refresh(lambda *_: (410, {}), children, net)

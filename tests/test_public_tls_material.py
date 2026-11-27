@@ -35,9 +35,7 @@ def pair(
         .not_valid_before(NOW - timedelta(minutes=5))
         .not_valid_after(NOW + timedelta(hours=1))
         .add_extension(
-            x509.SubjectAlternativeName(
-                [*(x509.DNSName(n) for n in names), *extra_sans]
-            ),
+            x509.SubjectAlternativeName([*(x509.DNSName(n) for n in names), *extra_sans]),
             critical=False,
         )
         .add_extension(x509.BasicConstraints(ca, None), critical=True)
@@ -159,9 +157,9 @@ def test_completed_refresh_admits_only_independent_owned_sources():
         {**both, left: second},
     ):
         assert select_sources(owners, mats, NOW) == {right: wanted[right]}
-    assert select_sources(
-        {**owners, stranger: frozenset({"alias.invalid"})}, both, NOW
-    ) == {right: wanted[right]}
+    assert select_sources({**owners, stranger: frozenset({"alias.invalid"})}, both, NOW) == {
+        right: wanted[right]
+    }
     assert select_sources(owners, both, NOW) == wanted
     assert "PRIVATE KEY" not in repr(first)
 
@@ -170,8 +168,7 @@ def test_rsa_public_key_identity_uses_the_complete_key():
     sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     _, leaf = pair(key=sk)
     assert (
-        leaf_identity(pem(leaf), private(sk), NAMES, NOW)
-        == leaf.fingerprint(hashes.SHA256()).hex()
+        leaf_identity(pem(leaf), private(sk), NAMES, NOW) == leaf.fingerprint(hashes.SHA256()).hex()
     )
     other = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     with pytest.raises(MaterialRejected):
@@ -242,9 +239,7 @@ def test_exact_refresh_does_not_lose_a_denial_on_later_failure_or_refetch_keys()
     assert scan().fingerprints == initial.fingerprints
     replies[refs[0]][1]["metadata"]["deletionTimestamp"] = "2026-01-01T00:00:00Z"
     assert scan().withdrawn == {refs[0]: "invalid-response"}
-    assert "PRIVATE KEY" not in repr(initial) and "sensitive-fixture" not in str(
-        partial.withdrawn
-    )
+    assert "PRIVATE KEY" not in repr(initial) and "sensitive-fixture" not in str(partial.withdrawn)
 
 
 def test_ambiguous_ownership_is_not_fetched_even_when_one_key_would_validate():
@@ -282,9 +277,7 @@ def test_truncated_http_response_after_denial_does_not_cancel_completed_batch():
             raise IncompleteRead(b"private fixture bytes")
         raise JSONDecodeError("bad reply", "private fixture bytes", 0)
 
-    result = refresh(
-        {ref: frozenset({ref[1] + ".invalid"}) for ref in (a, b, c)}, read, NOW
-    )
+    result = refresh({ref: frozenset({ref[1] + ".invalid"}) for ref in (a, b, c)}, read, NOW)
     assert dict(result.withdrawn) == {
         a: "denied",
         b: "unavailable",
@@ -346,9 +339,11 @@ def test_loopback_listener_witness_distinguishes_withdrawal_from_trust_and_conne
             right: "unexpected-leaf",
             gone: "strict-rejection",
         }
-        assert observe(
-            port, scope, {left: "0" * 64, right: fp, gone: fp}, trust=client
-        ) == {left: "different-leaf", right: "trusted-match", gone: "missing-leaf"}
+        assert observe(port, scope, {left: "0" * 64, right: fp, gone: fp}, trust=client) == {
+            left: "different-leaf",
+            right: "trusted-match",
+            gone: "missing-leaf",
+        }
         assert observe(port, frozenset({left}), {}) == {left: "untrusted-leaf"}
         worker.join(4)
         assert not worker.is_alive() and len(seen) == 7
@@ -439,22 +434,16 @@ def test_issuance_binding_never_implies_writer_approval_or_reuses_a_denied_sourc
         return issued_refresh(pins, grants, obs, get, NOW)
 
     def assert_only_b(result, why):
-        assert set(result.material) == set(result.hosts) == set(
-            result.fingerprints
-        ) == {b} and result.withdrawn == {a: why}
+        assert set(result.material) == set(result.hosts) == set(result.fingerprints) == {
+            b
+        } and result.withdrawn == {a: why}
 
     assert (
         run().withdrawn == {a: "no-writer-approval", b: "no-writer-approval"}
         and reads == observations == []
     )
-    grants.update(
-        {ref: ApprovedScope(w.certificate_uid, w.hosts) for ref, w in anchors.items()}
-    )
-    assert (
-        set(run().material) == {a, b}
-        and reads == [a, b]
-        and observations == [a, a, b, b]
-    )
+    grants.update({ref: ApprovedScope(w.certificate_uid, w.hosts) for ref, w in anchors.items()})
+    assert set(run().material) == {a, b} and reads == [a, b] and observations == [a, a, b, b]
     original = anchors[a]
     rotation, newdoc = issue(a)
     docs[a] = newdoc
@@ -480,9 +469,7 @@ def test_issuance_binding_never_implies_writer_approval_or_reuses_a_denied_sourc
         replace(rotation, request_uid="other"),
     ]:
         it = iter((rotation, after))
-        assert_only_b(
-            run(lambda ref: next(it) if ref == a else anchors[b]), "issuance-changed"
-        )
+        assert_only_b(run(lambda ref: next(it) if ref == a else anchors[b]), "issuance-changed")
         assert reads == [a, b]
     docs[a] = (403, None)
     assert_only_b(run(), "denied")

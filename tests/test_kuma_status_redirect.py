@@ -33,9 +33,7 @@ def test_public_read_only_status_and_legacy_https_redirect(
         ("location / { return 404; }", "location / { proxy_pass http://kuma; }"),
     ],
 )
-def test_proxy_rejects_unsafe_mutations(
-    rendered_policy: str, old: str, new: str
-) -> None:
+def test_proxy_rejects_unsafe_mutations(rendered_policy: str, old: str, new: str) -> None:
     """Mutate the real policy only after passing the positive control."""
     assert_read_only_status_policy(rendered_policy)
     assert old in rendered_policy
@@ -50,9 +48,7 @@ def test_exact_status_owner_label_preserves_readonly_proxy_and_legacy_redirect()
 
     from tests.public_entry_contract import ROOT
 
-    app = yaml.safe_load((ROOT / "deploy/argocd/apps/uptime-kuma.yaml").read_text())[
-        "spec"
-    ]
+    app = yaml.safe_load((ROOT / "deploy/argocd/apps/uptime-kuma.yaml").read_text())["spec"]
     src = app["source"]
     helm = src["helm"]
     base = [
@@ -101,14 +97,12 @@ def test_exact_status_owner_label_preserves_readonly_proxy_and_legacy_redirect()
         "port": {"number": 80},
     }
     retained = [p for p in helm["parameters"] if p["name"] != "host"]
-    assert [p["value"] for p in retained if p["name"] == "publicStatusHost"] == [
-        rule["host"]
-    ]
+    assert [p["value"] for p in retained if p["name"] == "publicStatusHost"] == [rule["host"]]
     mismatched = parameters(omit={"host"})
     changed = reader(docs([*mismatched, "--set-string", "host=other.invalid"]))
-    assert changed["spec"]["rules"][0][
-        "host"
-    ] == "other.invalid" and key not in changed["metadata"].get("labels", {})
+    assert changed["spec"]["rules"][0]["host"] == "other.invalid" and key not in changed[
+        "metadata"
+    ].get("labels", {})
     invalid = subprocess.run(
         [*base, *options, "--set", "publicEntry.kumaPolicyProxy.enabled=false"],
         capture_output=True,
@@ -146,20 +140,14 @@ def test_closed_status_requires_reviewed_policy_and_keeps_host_decisions_indepen
         ),
     ]:
         clone = deepcopy(docs)
-        change(
-            next(
-                d for d in clone if d["kind"] == kind and d["metadata"]["name"] == name
-            )
-        )
+        change(next(d for d in clone if d["kind"] == kind and d["metadata"]["name"] == name))
         assert admission(clone, catalog) == no
     for host, key in [
         (NS, "closedStatus"),
         ("kuma-admin-browser", "closedStatusRedirect"),
     ]:
         clone = deepcopy(docs)
-        ing = next(
-            d for d in clone if d["kind"] == "Ingress" and d["metadata"]["name"] == host
-        )
+        ing = next(d for d in clone if d["kind"] == "Ingress" and d["metadata"]["name"] == host)
         ing["metadata"]["labels"].clear()
         assert admission(clone, catalog) == {**yes, key: False}
         ing["spec"]["rules"][0]["host"] = "*.alchemmist.xyz"

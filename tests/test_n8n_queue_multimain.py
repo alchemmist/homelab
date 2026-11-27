@@ -45,11 +45,12 @@ class N8nQueueMultimain(unittest.TestCase):
         enabled = render([])
         worker = next(d for d in enabled if d["metadata"].get("name") == "n8n-worker")
         main = next(
-            d
-            for d in enabled
-            if d["kind"] == "Deployment" and d["metadata"]["name"] == "n8n"
+            d for d in enabled if d["kind"] == "Deployment" and d["metadata"]["name"] == "n8n"
         )
-        main_env = {e["name"]: e.get("value") for e in main["spec"]["template"]["spec"]["containers"][0]["env"]}
+        main_env = {
+            e["name"]: e.get("value")
+            for e in main["spec"]["template"]["spec"]["containers"][0]["env"]
+        }
         assert main_env["N8N_EXECUTIONS_MODE"] == "queue"
         assert main_env["N8N_MULTI_MAIN_SETUP_ENABLED"] == "true"
         worker_env = {
@@ -77,9 +78,7 @@ class N8nQueueMultimain(unittest.TestCase):
     def test_multimain_topology(self):
         enabled = render([])
         main = next(
-            d
-            for d in enabled
-            if d["kind"] == "Deployment" and d["metadata"]["name"] == "n8n"
+            d for d in enabled if d["kind"] == "Deployment" and d["metadata"]["name"] == "n8n"
         )
         assert main["spec"]["replicas"] == 2
         assert main["spec"]["strategy"]["type"] == "RollingUpdate"
@@ -87,7 +86,9 @@ class N8nQueueMultimain(unittest.TestCase):
         anti = spec["affinity"]["podAntiAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"]
         assert anti[0]["topologyKey"] == "kubernetes.io/hostname"
         assert anti[0]["labelSelector"]["matchLabels"] == {"app": "n8n"}
-        node_aff = spec["affinity"]["nodeAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"]
+        node_aff = spec["affinity"]["nodeAffinity"][
+            "requiredDuringSchedulingIgnoredDuringExecution"
+        ]
         expr = node_aff["nodeSelectorTerms"][0]["matchExpressions"][0]
         assert expr["operator"] == "In"
         assert sorted(expr["values"]) == ["socrat-0", "socrat-5"]
@@ -103,9 +104,7 @@ class N8nQueueMultimain(unittest.TestCase):
     def test_main_bundles_cas_for_redis_tls(self):
         enabled = render([])
         main = next(
-            d
-            for d in enabled
-            if d["kind"] == "Deployment" and d["metadata"]["name"] == "n8n"
+            d for d in enabled if d["kind"] == "Deployment" and d["metadata"]["name"] == "n8n"
         )
         spec = main["spec"]["template"]["spec"]
         bundle = next(c for c in spec["initContainers"] if c["name"] == "node-ca-bundle")
@@ -123,9 +122,7 @@ class N8nQueueMultimain(unittest.TestCase):
         assert "service-vpn" in names, "Google-facing nodes execute on workers"
         env = {e["name"]: e for e in spec["containers"][0]["env"]}
         assert env["N8N_CUSTOM_EXTENSIONS"]["value"] == "/opt/n8n/yandex-extension"
-        assert (
-            env["N8N_ENCRYPTION_KEY"]["valueFrom"]["secretKeyRef"]["name"] == "n8n-secrets"
-        )
+        assert env["N8N_ENCRYPTION_KEY"]["valueFrom"]["secretKeyRef"]["name"] == "n8n-secrets"
         assert (
             env["N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY"]["valueFrom"]["secretKeyRef"]["name"]
             == "n8n-s3-storage"
@@ -160,4 +157,6 @@ class N8nQueueMultimain(unittest.TestCase):
         ]
         assert len(n8n_entries) == 2
         for e in n8n_entries:
-            assert e["namespaceSelector"]["matchLabels"]["kubernetes.io/metadata.name"] == "automation"
+            assert (
+                e["namespaceSelector"]["matchLabels"]["kubernetes.io/metadata.name"] == "automation"
+            )

@@ -39,7 +39,9 @@ class LoopSetup(unittest.TestCase):
 
     def test_schedule_is_paused_bounded_and_uses_pinned_image_sdk(self) -> None:
         """Verify the schedule is paused, bounded and pinned image/SDK."""
-        c = json.loads((ROOT / "deploy/openhands/integration/the-loop-demo/schedule.json").read_text())
+        c = json.loads(
+            (ROOT / "deploy/openhands/integration/the-loop-demo/schedule.json").read_text()
+        )
         assert not c["enabled"]
         assert not c["keep_alive"]
         assert c["timeout"] == 300

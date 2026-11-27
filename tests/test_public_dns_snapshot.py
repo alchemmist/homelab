@@ -22,12 +22,9 @@ EMPTY = (
 
 def test_address_and_nodata():
     assert (
-        snap.addresses(A, HOST, "A") == ["192.0.2.1"]
-        and snap.addresses(EMPTY, HOST, "AAAA") == []
+        snap.addresses(A, HOST, "A") == ["192.0.2.1"] and snap.addresses(EMPTY, HOST, "AAAA") == []
     )
-    multi = (
-        A.replace("ANSWER: 1", "ANSWER: 2") + "www.alchemmist.xyz. 60 IN A 192.0.2.2\n"
-    )
+    multi = A.replace("ANSWER: 1", "ANSWER: 2") + "www.alchemmist.xyz. 60 IN A 192.0.2.2\n"
     assert snap.addresses(multi, HOST, "A") == ["192.0.2.1", "192.0.2.2"]
 
 
@@ -70,9 +67,7 @@ def test_exact_managed_names():
 )
 def test_cli_only_accepts_full_self_ip_observation(monkeypatch, mode, expected):
     def observe(site, ip, names):
-        rows = {
-            h + "/" + t: {"A": [ip], "AAAA": []} for h in names for t in ("udp", "tcp")
-        }
+        rows = {h + "/" + t: {"A": [ip], "AAAA": []} for h in names for t in ("udp", "tcp")}
         if site == "nl" and mode != "self":
             rows[HOST + "/tcp"] = {
                 "dual": {"A": [ip, "192.0.2.1"], "AAAA": []},

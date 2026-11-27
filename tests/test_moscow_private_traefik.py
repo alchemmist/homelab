@@ -30,7 +30,9 @@ def test_moscow_private_rehearsal() -> None:
     # same production gate enabled, without any rehearsal resources.
     gated = render({**relay, **no_overrides, "inline_values": {"warmReturnGate": True}})
     assert matching == gated and len(gated) == 1
-    assert matching[0]["spec"]["template"]["spec"]["containers"][0]["command"] == ["/run/relay-gate"]
+    assert matching[0]["spec"]["template"]["spec"]["containers"][0]["command"] == [
+        "/run/relay-gate"
+    ]
     (deployment,) = [d for d in docs if d["kind"] == "Deployment"]
     template = deployment["spec"]["template"]
     pod = template["spec"]
@@ -40,8 +42,7 @@ def test_moscow_private_rehearsal() -> None:
     assert all("hostPort" not in p for p in container.get("ports", []))
     args = container["args"]
     assert not any(
-        "http3" in a or "ingressendpoint" in a or "insecureskipverify" in a.lower()
-        for a in args
+        "http3" in a or "ingressendpoint" in a or "insecureskipverify" in a.lower() for a in args
     )
     assert {arg for arg in args if ".asdefault=" in arg} == {
         "--entrypoints.web.asdefault=true",
@@ -55,9 +56,7 @@ def test_moscow_private_rehearsal() -> None:
     for role in roles:
         assert all(set(r["verbs"]) <= {"get", "list", "watch"} for r in role["rules"])
     (svc,) = [d["spec"] for d in docs if d["kind"] == "Service"]
-    assert (
-        svc["type"] == "ClusterIP" and svc["selector"] == template["metadata"]["labels"]
-    )
+    assert svc["type"] == "ClusterIP" and svc["selector"] == template["metadata"]["labels"]
     (relay_policy,) = [d["spec"] for d in backend if d["kind"] == "NetworkPolicy"]
     (peer,) = relay_policy["ingress"][0]["from"]
     assert (
@@ -73,32 +72,20 @@ def test_moscow_private_rehearsal() -> None:
         if d["kind"] not in {"IngressRouteTCP", "IngressRouteUDP"}:
             continue
         assert d["metadata"]["namespace"] == relay_service["metadata"]["namespace"]
-        assert (
-            d["metadata"]["annotations"]["kubernetes.io/ingress.class"]
-            == "traefik-moscow"
-        )
-        assert (
-            d["metadata"]["labels"]["homelab.alchemmist.xyz/moscow-rehearsal"] == "true"
-        )
+        assert d["metadata"]["annotations"]["kubernetes.io/ingress.class"] == "traefik-moscow"
+        assert d["metadata"]["labels"]["homelab.alchemmist.xyz/moscow-rehearsal"] == "true"
         (route,) = d["spec"]["routes"]
         (dest,) = route["services"]
         assert dest["name"] == relay_service["metadata"]["name"] and dest["nativeLB"]
         proto = d["kind"][-3:]
-        (backend_port,) = [
-            p for p in relay_service["spec"]["ports"] if p["name"] == dest["port"]
-        ]
+        (backend_port,) = [p for p in relay_service["spec"]["ports"] if p["name"] == dest["port"]]
         assert backend_port["protocol"] == proto
         port = backend_port["port"]
         (frontend,) = [
-            p
-            for p in svc["ports"]
-            if (p.get("protocol", "TCP"), p["port"]) == (proto, port)
+            p for p in svc["ports"] if (p.get("protocol", "TCP"), p["port"]) == (proto, port)
         ]
         (entry,) = d["spec"]["entryPoints"]
-        assert (
-            f"--entrypoints.{entry}.address=:{frontend['targetPort']}/{proto.lower()}"
-            in args
-        )
+        assert f"--entrypoints.{entry}.address=:{frontend['targetPort']}/{proto.lower()}" in args
         assert (proto, port) not in routed
         routed.add((proto, port))
         if (proto, port) == ("TCP", 443):

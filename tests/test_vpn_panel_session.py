@@ -17,9 +17,7 @@ EXPECTED_UPSTREAM_PORT = 443
 SESSION_FILE_MODE = 0o600
 EXPECTED_FAILURE_THRESHOLD = 4
 LEGACY_ENDPOINT_COUNT = 2
-spec = importlib.util.spec_from_file_location(
-    "panel_session", ROOT / "ci/vpn/vpn-panel-session.py"
-)
+spec = importlib.util.spec_from_file_location("panel_session", ROOT / "ci/vpn/vpn-panel-session.py")
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 

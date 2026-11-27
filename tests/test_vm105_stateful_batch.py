@@ -147,12 +147,12 @@ def expect_spi_cutover(
     # #590 adds a reviewed, storage-independent bot patch in both DB modes.
     (worker,) = [w for w in map(_mapping, _sequence(pod["containers"])) if w["name"] == "worker"]
     env = _sequence(worker["env"])
-    index = next(i for i, item in enumerate(env) if _mapping(item)["name"] == "SPI_LLM_MINUTE_TOKENS")
+    index = next(
+        i for i, item in enumerate(env) if _mapping(item)["name"] == "SPI_LLM_MINUTE_TOKENS"
+    )
     env.insert(index, {"name": "SPI_LLM_RETRY_MODEL", "value": "v-deepseek-uc"})
     # de1e94948 selects the scoped HTTPS client in both storage modes.
-    index = next(
-        i for i, item in enumerate(env) if _mapping(item)["name"] == "WRITE_ENABLED"
-    )
+    index = next(i for i, item in enumerate(env) if _mapping(item)["name"] == "WRITE_ENABLED")
     env.insert(
         index,
         {
@@ -167,10 +167,15 @@ def expect_spi_cutover(
         *_sequence(pod["initContainers"]),
     ]
     pod["volumes"] = [*_sequence(pod["volumes"]), {"name": "bot-base", "emptyDir": {}}]
-    worker["volumeMounts"] = [*_sequence(worker["volumeMounts"]), {
-        "name": "bot-base", "mountPath": "/app/telegram_delivery.py",
-        "subPath": "telegram_delivery.py", "readOnly": True,
-    }]
+    worker["volumeMounts"] = [
+        *_sequence(worker["volumeMounts"]),
+        {
+            "name": "bot-base",
+            "mountPath": "/app/telegram_delivery.py",
+            "subPath": "telegram_delivery.py",
+            "readOnly": True,
+        },
+    ]
     if not postgres:
         return
 
@@ -369,8 +374,12 @@ class StatefulBoundaries(unittest.TestCase):
                     if chart == "deploy/wiki-runtime/chart" and revision == CUTOVERS[chart]:
                         # Isolate the approved mirror update including Helm's ConfigMap checksum.
                         # Use the independent canonical source, never the actual rendered payload.
-                        source = R / "deploy/platform/rancher/public-entry/files/observer_membership.py"
-                        (root / chart / "files/observer_membership.py").write_bytes(source.read_bytes())
+                        source = (
+                            R / "deploy/platform/rancher/public-entry/files/observer_membership.py"
+                        )
+                        (root / chart / "files/observer_membership.py").write_bytes(
+                            source.read_bytes()
+                        )
                     return render(
                         root,
                         chart,
@@ -447,7 +456,9 @@ class StatefulBoundaries(unittest.TestCase):
                     if chart == "deploy/wiki-runtime/chart":
                         wiki = expected["Ingress", "wiki-runtime-wiki"]
                         assert wiki["spec"]["rules"][0]["host"] == "wiki.socrat.alchemmist.xyz"
-                        wiki["metadata"].setdefault("labels", {})["homelab.alchemmist.xyz/public-web"] = "true"
+                        wiki["metadata"].setdefault("labels", {})[
+                            "homelab.alchemmist.xyz/public-web"
+                        ] = "true"
                     compare_namespace_inputs(expected, chart, ns)
                     assert current == expected
                     after = historical(HANDOFF)

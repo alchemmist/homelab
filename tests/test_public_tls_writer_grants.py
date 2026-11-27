@@ -101,9 +101,7 @@ def test_report_deduplicates_verb_union_without_revealing_names():
         "requesterDirectServiceAccountVerbs"
     ]
     with pytest.raises(ValueError, match="unscoped"):
-        summarize(
-            [dict(rows[0], binding=["ClusterRoleBinding", None, "one"])], set(), ""
-        )
+        summarize([dict(rows[0], binding=["ClusterRoleBinding", None, "one"])], set(), "")
 
 
 def test_requester_requires_unique_current_owned_revision():
@@ -114,9 +112,7 @@ def test_requester_requires_unique_current_owned_revision():
         "spec": {"secretName": "pin", "issuerRef": {"name": "issuer"}},
         "status": {
             "revision": 3,
-            "conditions": [
-                {"type": "Ready", "status": "True", "observedGeneration": 2}
-            ],
+            "conditions": [{"type": "Ready", "status": "True", "observedGeneration": 2}],
         },
     }
     owner = {
@@ -141,9 +137,7 @@ def test_requester_requires_unique_current_owned_revision():
         [
             dict(
                 req,
-                metadata=dict(
-                    req["metadata"], ownerReferences=[dict(owner, uid="old")]
-                ),
+                metadata=dict(req["metadata"], ownerReferences=[dict(owner, uid="old")]),
             )
         ],
         [

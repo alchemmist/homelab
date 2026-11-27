@@ -9,10 +9,7 @@ from unittest import mock
 
 import pytest
 
-SOURCE = (
-    Path(__file__).resolve().parents[1]
-    / "ansible/roles/vpn_failover/files/vpn_failover.py"
-)
+SOURCE = Path(__file__).resolve().parents[1] / "ansible/roles/vpn_failover/files/vpn_failover.py"
 
 # Named mirrors of the watchdog defaults asserted below.
 WEBSOCKET_FORBIDDEN_STATUS = 403
@@ -198,9 +195,7 @@ class FailoverTests(unittest.TestCase):
         self.watchdog.activate()
         unit = MODULE.NATIVE_UNITS[-1]
         self.watchdog.running.remove(unit)
-        self.watchdog.config["native_unit_ports"] = {
-            unit: [{"protocol": "tcp", "port": 443}]
-        }
+        self.watchdog.config["native_unit_ports"] = {unit: [{"protocol": "tcp", "port": 443}]}
         self.watchdog.ports = [("tcp", 443)]
         with pytest.raises(RuntimeError):
             self.watchdog.tick()
@@ -212,8 +207,7 @@ class FailoverTests(unittest.TestCase):
         self.watchdog.tick()
         self.watchdog.tick()
         assert not any(
-            isinstance(event, tuple) and event[1] == "stop"
-            for event in self.watchdog.events
+            isinstance(event, tuple) and event[1] == "stop" for event in self.watchdog.events
         )
         assert self.watchdog.tick()["restarted"]
         assert self.watchdog.running == set(MODULE.NATIVE_UNITS)
@@ -232,9 +226,7 @@ class FailoverTests(unittest.TestCase):
             mock.patch.object(MODULE.os, "pidfd_open", return_value=91, create=True),
             mock.patch.object(MODULE.signal, "pidfd_send_signal", create=True) as send,
             mock.patch.object(MODULE.os, "close") as close,
-            mock.patch.object(
-                MODULE.Path, "read_text", return_value="0::/kubepods/pod-one"
-            ),
+            mock.patch.object(MODULE.Path, "read_text", return_value="0::/kubepods/pod-one"),
         ):
             self.watchdog.terminate(123, MODULE.signal.SIGTERM)
         send.assert_called_once_with(91, MODULE.signal.SIGTERM)
@@ -320,12 +312,8 @@ class KubernetesFencingTests(unittest.TestCase):
         for unit in self.watchdog.fenced_units:
             with (
                 self.subTest(unit=unit),
-                mock.patch.object(
-                    MODULE.os, "pidfd_open", return_value=91, create=True
-                ),
-                mock.patch.object(
-                    MODULE.signal, "pidfd_send_signal", create=True
-                ) as send,
+                mock.patch.object(MODULE.os, "pidfd_open", return_value=91, create=True),
+                mock.patch.object(MODULE.signal, "pidfd_send_signal", create=True) as send,
                 mock.patch.object(MODULE.os, "close"),
                 mock.patch.object(
                     MODULE.Path, "read_text", return_value="0::/system.slice/" + unit
@@ -377,15 +365,11 @@ class ProbeDiagnosticsTests(unittest.TestCase):
         stream = context.wrap_socket.return_value.__enter__.return_value
         stream.recv.return_value = b"HTTP/1.1 403 Forbidden\r\n\r\nprivate data"
         with (
-            mock.patch.object(
-                MODULE.ssl, "create_default_context", return_value=context
-            ),
+            mock.patch.object(MODULE.ssl, "create_default_context", return_value=context),
             mock.patch.object(MODULE.socket, "create_connection"),
         ):
             result = self.watchdog().health()
-        assert (
-            result["websocket_diagnostics"]["http_status"] == WEBSOCKET_FORBIDDEN_STATUS
-        )
+        assert result["websocket_diagnostics"]["http_status"] == WEBSOCKET_FORBIDDEN_STATUS
         assert result["websocket_diagnostics"]["stage"] == "websocket_response"
         assert "private data" not in json.dumps(result)
 
@@ -409,9 +393,7 @@ class CommandDeadlineTests(unittest.TestCase):
         with mock.patch.object(MODULE.subprocess, "run") as run:
             run.return_value.stdout = ""
             w.command("systemctl", "start", "k3s-agent.service")
-            assert (
-                run.call_args.kwargs["timeout"] == CONFIGURED_K3S_START_TIMEOUT_SECONDS
-            )
+            assert run.call_args.kwargs["timeout"] == CONFIGURED_K3S_START_TIMEOUT_SECONDS
 
 
 class HardeningTests(unittest.TestCase):
@@ -570,9 +552,7 @@ class HardeningTests(unittest.TestCase):
         receipt = json.loads((self.w.state / "last_failure.json").read_text())
         assert receipt["mode"] == "kubernetes"
         assert not receipt["healthy"]
-        assert (
-            self.w.state / "last_failure.json"
-        ).stat().st_mode & 0o777 == STATE_FILE_MODE
+        assert (self.w.state / "last_failure.json").stat().st_mode & 0o777 == STATE_FILE_MODE
 
 
 class ServiceIdentityContractTests(unittest.TestCase):
@@ -651,12 +631,8 @@ class ReturnTransactionTests(unittest.TestCase):
             w.config["warm_return_enabled"] = True
             w.write("active", {})
             with (
-                mock.patch.object(
-                    w, "activate", return_value={"healthy": True}
-                ) as native,
-                mock.patch.object(
-                    w, "warm_return", return_value={"mode": "kubernetes"}
-                ) as attempt,
+                mock.patch.object(w, "activate", return_value={"healthy": True}) as native,
+                mock.patch.object(w, "warm_return", return_value={"mode": "kubernetes"}) as attempt,
             ):
                 assert w.tick()["return_cooldown_seconds"] == 1800
                 w.uptime += 1800
