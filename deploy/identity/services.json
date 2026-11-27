@@ -246,9 +246,11 @@
     },
     "managedBy": "native-n8n",
     "accessManagement": {
-      "state": "blocked",
-      "reason": "No reviewed native OIDC/JIT provisioning; app group does not create an n8n account"
-    }
+      "state": "ready",
+      "reason": "Native OIDC login via Authentik (socrat-n8n, scripts/provision-n8n-oidc.py). Native invitations still create the account; no JIT."
+    },
+    "admission": "native-oidc",
+    "redirect": "https://n8n.socrat.alchemmist.xyz/rest/sso/oidc/callback"
   },
   "monori": {
     "name": "Monori",

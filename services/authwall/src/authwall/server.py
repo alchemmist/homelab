@@ -24,7 +24,7 @@ from authwall.optimize import derivatives, full_webp
 from authwall.store import notify_n8n, open_store
 
 UI = Path(__file__).resolve().parents[2] / "ui"
-PREFIX = "/authwall"
+PREFIX = "/wallpapers"
 
 
 def source_key(wallpaper_id: str) -> str:
@@ -284,6 +284,9 @@ def make_handler(app: App):
 
         def do_POST(self) -> None:
             path = urlparse(self.path).path
+            # Stable internal callback used by the active n8n workflow.
+            if path == "/authwall/internal/lossless":
+                path = PREFIX + "/internal/lossless"
             length = int(self.headers.get("Content-Length", "0"))
             body = self.rfile.read(length)
             if not self._gate(path):
