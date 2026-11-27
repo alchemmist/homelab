@@ -51,3 +51,89 @@ def test_owner_opt_in_changes_only_one_ingress_label(app, field, replacement):
     assert changed["tls"][0]["hosts"] == [replacement]
     for docs in [replaced, render(release=False)]:
         assert LABEL not in ingress(docs)["metadata"].get("labels", {})
+
+
+def test_openhands_selects_the_oidc_proxy_not_the_native_ingress():
+    app = yaml.safe_load((ROOT / "deploy/argocd/apps/openhands.yaml").read_text())[
+        "spec"
+    ]
+    src = app["source"]
+    chart = ROOT / src["path"]
+    helm = src["helm"]
+    args = [
+        "helm",
+        "template",
+        helm["releaseName"],
+        str(chart),
+        "-n",
+        app["destination"]["namespace"],
+    ]
+    for file in helm["valueFiles"]:
+        args.extend(["-f", str(chart / file)])
+
+    def run(*opts):
+        return subprocess.run(
+            args + list(opts), capture_output=True, text=True, check=False
+        )
+
+    def render(*opts):
+        result = run(*opts)
+        assert result.returncode == 0
+        return [r for r in yaml.safe_load_all(result.stdout) if r]
+
+    def owner(docs):
+        (ing,) = [r for r in docs if r["kind"] == "Ingress"]
+        return ing
+
+    selected = render()
+    ing = owner(selected)
+    assert (
+        ing["metadata"]["namespace"] == "identity"
+        and ing["metadata"]["name"] == "openhands-oidc"
+    )
+    host = "openhands.socrat.alchemmist.xyz"
+    (rule,) = ing["spec"]["rules"]
+    (route,) = rule["http"]["paths"]
+    assert rule["host"] == host and route == {
+        "path": "/",
+        "pathType": "Prefix",
+        "backend": {"service": {"name": "openhands-oidc", "port": {"number": 4180}}},
+    }
+    assert ing["metadata"].pop("labels") == {LABEL: "true"}
+    ann = ing["metadata"]["annotations"]
+    assert all(
+        ann["traefik.ingress.kubernetes.io/router.observability." + field] == "false"
+        for field in ("accesslogs", "tracing")
+    )
+    for pin in ["", "other.invalid"]:
+        assert render("--set-string", "oidc.publicWebHost=" + pin) == selected
+    invalid = run("--set", "ingress.enabled=true")
+    assert invalid.returncode and "native unprotected ingress" in invalid.stderr
+
+    peer_opts = ("--set", "oidc.allowPublicEntryPeer=true")
+    assert render("--set", "oidc.allowPublicEntryPeer=false") == render()
+    permitted = render(*peer_opts)
+    (policy,) = [
+        d
+        for d in permitted
+        if d["kind"] == "NetworkPolicy"
+        and d["metadata"].get("namespace") == "identity"
+        and d["metadata"]["name"] == "openhands-oidc"
+    ]
+    assert policy["spec"]["podSelector"] == {"matchLabels": {"app": "openhands-oidc"}}
+    (incoming,) = policy["spec"]["ingress"]
+    assert incoming["ports"] == [{"port": 4180, "protocol": "TCP"}]
+    assert incoming["from"].pop() == {
+        "namespaceSelector": {
+            "matchLabels": {"kubernetes.io/metadata.name": "public-entry"}
+        },
+        "podSelector": {
+            "matchLabels": {"homelab.alchemmist.xyz/public-entry-controller": "true"}
+        },
+    }
+    assert permitted == render()
+    for value in ("true", "false"):
+        bad = run("--set-string", "oidc.allowPublicEntryPeer=" + value)
+        assert bad.returncode and "must be boolean" in bad.stderr
+    wrong = run(*peer_opts, "--set-string", "oidc.publicWebHost=other.invalid")
+    assert wrong.returncode and "requires the selected OIDC hostname" in wrong.stderr

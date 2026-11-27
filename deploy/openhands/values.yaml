@@ -52,6 +52,8 @@ statefulSet:
 # Public route terminates at standard Authentik OIDC, never directly at Canvas.
 oidc:
   enabled: true
+  publicWebHost: openhands.socrat.alchemmist.xyz
+  allowPublicEntryPeer: false  # Keep off until the private controller is approved.
   # Same existing S5 IdP route as SPI: retain public issuer/SNI/verified TLS,
   # avoid the unreachable split-DNS HA VIP; no global/public DNS changes.
   hostAliases:
