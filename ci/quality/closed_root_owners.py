@@ -41,6 +41,15 @@ ROOTS = {
         )
         for app in ("lms", "wishlist")
     },
+    "pr-agent": (
+        "pr-agent",
+        "pr-agent",
+        "pr-agent.socrat.alchemmist.xyz",
+        "pr-agent-tls",
+        80,
+        "http",
+        {"app": "pr-agent"},
+    ),
     "venice-api": (
         "venice-api",
         "venice-api",
@@ -188,6 +197,25 @@ def eligible(items, catalog, *, owner=APP):
                 != reviewed[key]
             ):
                 return False
+    if owner == "pr-agent":
+        # Only the reviewed GitHub application server; the separate redelivery job
+        # must never acquire the label selected by the closed egress policy.
+        redelivery = name + "-webhook-redelivery"
+        if sorted((d["kind"], d["metadata"]["name"]) for d in items) != sorted(
+            [
+                ("Ingress", name),
+                ("Service", name),
+                ("Deployment", name),
+                ("CronJob", redelivery),
+                ("ConfigMap", redelivery),
+            ]
+        ):
+            return False
+        job = next(d for d in items if d["kind"] == "CronJob")["spec"]["jobTemplate"]["spec"][
+            "template"
+        ]
+        if selector.items() <= job.get("metadata", {}).get("labels", {}).items():
+            return False
     if owner == "umami" and sorted((d["kind"], d["metadata"]["name"]) for d in items) != [
         ("Deployment", name),
         ("Ingress", name),
@@ -295,6 +323,15 @@ def _named_runtime(items, ns, name, selector, host, *, wiki):
     c = containers[0]
     if ns == "blog":
         return c["name"] == name and c.get("ports") == [{"containerPort": 8080}]
+    if ns == "pr-agent":
+        return (
+            c["name"] == name
+            and c.get("ports") == [{"name": "http", "containerPort": 3000}]
+            and hashlib.sha256(
+                json.dumps(workloads[0], sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest()
+            == "a4d93a2ba445dce0a0402aba546ccde5728fa98c12c484654cc64da37c7d3ed4"
+        )
     if ns == "umami":
         return (
             c["name"] == name
@@ -332,10 +369,12 @@ def owner_render(*, owner=APP):
     spec = yaml.safe_load((ROOT / f"deploy/argocd/apps/{release}.yaml").read_text())["spec"]
     src = spec["source"]
     files = [file, "alert-graphs.values.yaml"] if owner == "lms" else [file]
-    if owner in {"img-proxy", "umami", "remark42"}:
+    if owner in {"img-proxy", "umami", "remark42", "pr-agent"}:
         files = []
     params = src.get("helm", {}).get("parameters", [])
     reviewed_params = [[]]
+    if owner == "pr-agent":
+        reviewed_params.append([{"name": "publicWebHost", "value": ROOTS[owner][2]}])
     if owner in {"lms", "wishlist", "img-proxy", "umami", "remark42", "venice-api"}:
         reviewed_params.extend([[{"name": "publicWeb", "value": v}] for v in ("true", "false")])
     if (
@@ -374,6 +413,7 @@ def render():
             ("closedFormatQuorum", APP),
             ("closedWiki", "wiki-runtime"),
             ("closedMonori", "monori"),
+            ("closedPrAgent", "pr-agent"),
             ("closedVenice", "venice-api"),
             ("closedRemark", "remark42"),
             ("closedUmami", "umami"),

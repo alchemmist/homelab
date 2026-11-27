@@ -46,6 +46,7 @@ def test_effective_health_fleet():
                 "closed-health-umami",
                 "closed-health-remark42",
                 "closed-health-venice-api",
+                "closed-health-pr-agent",
             }
         ]
 
@@ -809,6 +810,7 @@ def test_img_only_reaches_the_reviewed_nginx_listener():
         ("umami", "closedUmami", 3000),
         ("remark42", "closedRemark", 8080),
         ("venice-api", "closedVenice", 8080),
+        ("pr-agent", "closedPrAgent", 3000),
     ],
 )
 def test_selected_app_only_reaches_its_reviewed_http_listener(app, bit, port):
@@ -819,7 +821,13 @@ def test_selected_app_only_reaches_its_reviewed_http_listener(app, bit, port):
     assert admit(docs)
     venice = app == "venice-api"
     peer = "venice-browser-candidate" if venice else app
-    host = "venice.socrat.alchemmist.xyz" if venice else f"{app}.alchemmist.xyz"
+    host = (
+        "venice.socrat.alchemmist.xyz"
+        if venice
+        else "pr-agent.socrat.alchemmist.xyz"
+        if app == "pr-agent"
+        else f"{app}.alchemmist.xyz"
+    )
     rows = deepcopy(docs)
     deployment = next(
         d for d in rows if d["kind"] == "Deployment" and d["metadata"]["name"] == peer
@@ -1051,3 +1059,13 @@ def test_tcp_resolver_changes_only_closed_pod_resolver_options():
         [*args, "--set-string", "useTcpResolver=true"], capture_output=True
     )
     assert bad.returncode and b"useTcpResolver must be a boolean" in bad.stderr
+
+
+def test_pr_agent_never_admits_the_redelivery_job_as_a_backend():
+    docs = owner_render(owner="pr-agent")
+    catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())
+    job = next(d for d in docs if d["kind"] == "CronJob")
+    job["spec"]["jobTemplate"]["spec"]["template"].setdefault("metadata", {})[
+        "labels"
+    ] = {"app": "pr-agent"}
+    assert not eligible(docs, catalog, owner="pr-agent")

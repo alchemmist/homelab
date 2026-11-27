@@ -5,6 +5,7 @@ closedFormatQuorum: true
 closedImg: true
 closedLms: true
 closedMonori: true
+closedPrAgent: true
 closedRemark: true
 closedStatus: true
 closedStatusRedirect: true
