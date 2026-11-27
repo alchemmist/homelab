@@ -118,12 +118,14 @@ def test_openhands_selects_the_oidc_proxy_not_the_native_ingress():
         for d in permitted
         if d["kind"] == "NetworkPolicy"
         and d["metadata"].get("namespace") == "identity"
-        and d["metadata"]["name"] == "openhands-oidc"
+        and d["metadata"]["name"] == "openhands-oidc-public-entry"
     ]
     assert policy["spec"]["podSelector"] == {"matchLabels": {"app": "openhands-oidc"}}
     (incoming,) = policy["spec"]["ingress"]
     assert incoming["ports"] == [{"port": 4180, "protocol": "TCP"}]
-    assert incoming["from"].pop() == {
+    assert policy["spec"]["policyTypes"] == ["Ingress"]
+    (peer,) = incoming["from"]
+    assert peer == {
         "namespaceSelector": {
             "matchLabels": {"kubernetes.io/metadata.name": "public-entry"}
         },
@@ -131,6 +133,7 @@ def test_openhands_selects_the_oidc_proxy_not_the_native_ingress():
             "matchLabels": {"homelab.alchemmist.xyz/public-entry-controller": "true"}
         },
     }
+    policy["spec"]["ingress"] = []
     assert permitted == render()
     for value in ("true", "false"):
         bad = run("--set-string", "oidc.allowPublicEntryPeer=" + value)
