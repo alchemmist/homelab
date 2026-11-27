@@ -183,3 +183,108 @@ def test_rsa_same_modulus_with_different_exponent_is_not_the_leaf_key():
     _, leaf = pair(key=sk, subject_public=other_public, signer=issuer)
     with pytest.raises(MaterialRejected):
         leaf_identity(pem(leaf) + pem(ca), private(sk), NAMES, NOW)
+
+
+def test_exact_refresh_does_not_lose_a_denial_on_later_failure_or_refetch_keys():
+    import base64
+
+    from services.public_entry.tls_refresh import refresh
+
+    refs = [("owner", "a"), ("owner", "b"), ("owner", "c")]
+    pins = {ref: frozenset({ref[1] + ".invalid"}) for ref in refs}
+    replies = {}
+    calls = []
+    for ref, names in pins.items():
+        k, c = pair(names)
+        replies[ref] = (
+            200,
+            {
+                "kind": "Secret",
+                "apiVersion": "v1",
+                "type": "kubernetes.io/tls",
+                "metadata": {"namespace": ref[0], "name": ref[1]},
+                "data": {
+                    "tls.crt": base64.b64encode(pem(c)).decode(),
+                    "tls.key": base64.b64encode(private(k)).decode(),
+                },
+            },
+        )
+
+    def read(ref):
+        calls.append(ref)
+        return replies[ref]
+
+    def scan():
+        calls.clear()
+        r = refresh(pins, read, NOW)
+        assert calls == refs
+        return r
+
+    initial = scan()
+    assert set(initial.material) == set(refs) and not initial.withdrawn
+    original = dict(replies)
+    replies[refs[1]] = ("403", None)
+    assert scan().withdrawn == {refs[1]: "invalid-response"}
+    replies[refs[0]] = (403, {"message": "sensitive-fixture"})
+    replies[refs[1]] = (503, None)
+    partial = scan()
+    assert partial.withdrawn == {refs[0]: "denied", refs[1]: "unavailable"} and set(
+        partial.material
+    ) == {refs[2]}
+    assert partial.fingerprints[refs[2]] == initial.fingerprints[refs[2]]
+    replies[refs[1]] = original[refs[0]]
+    assert scan().withdrawn[refs[1]] == "invalid-response"
+    replies.clear()
+    replies.update(original)
+    assert scan().fingerprints == initial.fingerprints
+    replies[refs[0]][1]["metadata"]["deletionTimestamp"] = "2026-01-01T00:00:00Z"
+    assert scan().withdrawn == {refs[0]: "invalid-response"}
+    assert "PRIVATE KEY" not in repr(initial) and "sensitive-fixture" not in str(
+        partial.withdrawn
+    )
+
+
+def test_ambiguous_ownership_is_not_fetched_even_when_one_key_would_validate():
+    from services.public_entry.tls_refresh import refresh
+
+    owners = {
+        ("a", "tls"): frozenset({"same.invalid"}),
+        ("b", "tls"): frozenset({"same.invalid"}),
+        ("c", "tls"): frozenset(),
+    }
+
+    def forbidden(ref):
+        raise AssertionError("unexpected key read")
+
+    report = refresh(owners, forbidden, NOW)
+    assert (
+        not report.material
+        and not report.hosts
+        and set(report.withdrawn.values()) == {"invalid-ownership"}
+    )
+
+
+def test_truncated_http_response_after_denial_does_not_cancel_completed_batch():
+    from http.client import IncompleteRead
+    from json import JSONDecodeError
+
+    from services.public_entry.tls_refresh import refresh
+
+    a, b, c = [("owner", n) for n in "abc"]
+
+    def read(ref):
+        if ref == a:
+            return 403, None
+        if ref == b:
+            raise IncompleteRead(b"private fixture bytes")
+        raise JSONDecodeError("bad reply", "private fixture bytes", 0)
+
+    result = refresh(
+        {ref: frozenset({ref[1] + ".invalid"}) for ref in (a, b, c)}, read, NOW
+    )
+    assert dict(result.withdrawn) == {
+        a: "denied",
+        b: "unavailable",
+        c: "invalid-response",
+    }
+    assert not result.hosts and not result.material
