@@ -38,8 +38,11 @@ def test_owner_opt_in_changes_only_one_ingress_label(app, field, replacement):
     ][app]
     assert catalog[host].get("route", "web") == "web"
     assert owner["spec"]["tls"][0]["hosts"] == [host]
-    assert owner["metadata"].pop("labels") == {LABEL: "true"}
-    assert active == render("--set-string", "publicWebHost=")
+    expected = render("--set-string", "publicWebHost=")
+    labels = ingress(expected)["metadata"].setdefault("labels", {})
+    assert LABEL not in labels
+    labels[LABEL] = "true"
+    assert active == expected
     for docs in [
         render("--set-string", f"{field}={replacement}"),
         render(release=False),
