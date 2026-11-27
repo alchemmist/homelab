@@ -115,6 +115,7 @@
       "tests/test_unified_logs_dashboard.py",
       "tests/test_update_watch.py",
       "tests/test_vendor_contracts.py",
+      "tests/test_vpn_handoff_lock.py",
       "tests/test_vpn_hardening.py",
       "tests/test_vpn_panel_session.py",
       "tests/test_webui_fetch_timeout.py",
