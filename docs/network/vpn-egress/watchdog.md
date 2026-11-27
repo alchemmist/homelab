@@ -30,7 +30,7 @@ This is **not** live session migration. A client may need to reconnect. Neither 
 
 ## Optional external validation
 
-`socrat-0` uses a dedicated 3x-ui identity, `socrat-0-watchdog-trojan`, in group `Socrat`. The forced-command witness starts a private Xray client and requests HTTPS through the public Trojan/TLS/WebSocket tunnel. The deployment used a 90-day expiry and 1 GiB quota: monitor both and renew the technical identity before exhaustion. Never substitute a human subscription. SSH authentication for invoking the witness is separate from its VPN credential and from the coordinator keys.
+`socrat-0` uses a dedicated 3x-ui identity, `socrat-0-watchdog-trojan`, in group `Socrat`. The forced-command witness starts a private Xray client and requests HTTPS through the public Trojan/TLS/WebSocket tunnel. The deployment used a 90-day expiry and 1 GiB quota: check the expiry, traffic used and configured limit in the 3x-ui panel under the `Socrat` group on the `socrat-0-watchdog-trojan` client record. Renew the technical identity before exhaustion. Never substitute a human subscription. SSH authentication for invoking the witness is separate from its VPN credential and from the coordinator keys.
 
 A successful invocation is extra evidence. A missing probe executable or SSH transport exit 255 is recorded as unavailable, not interpreted as a failed VPN tunnel. A reachable witness reporting tunnel failure rejects acceptance. Other errors (including timeouts) are not blanket-ignored. Check SSH identity, certificate validity, client expiry/quota, public ingress and the HTTPS destination before blaming one node. The public test traverses both nodes and cannot by itself localize a fault.
 
