@@ -1,4 +1,5 @@
 ---
+warmReturnGate: true
 replicaCount: 1
 nodeName: socrat-2
 service:
