@@ -32,6 +32,7 @@ ROOTS = {
         )
         for app in ("lms", "wishlist")
     },
+    "umami": ("umami", "umami", "umami.alchemmist.xyz", "umami-tls", 80, "http", {"app": "umami"}),
     "img-proxy": (
         "img-proxy",
         "img-proxy",
@@ -110,6 +111,12 @@ def eligible(items, catalog, *, owner=APP):
                 != expected[key]
             ):
                 return False
+    if owner == "umami" and sorted((d["kind"], d["metadata"]["name"]) for d in items) != [
+        ("Deployment", name),
+        ("Ingress", name),
+        ("Service", name),
+    ]:
+        return False
     owners = [d for d in items if d["kind"] == "Ingress"]
     services = [d for d in items if d["kind"] == "Service" and d["metadata"]["name"] == name]
     if (
@@ -199,6 +206,13 @@ def _named_runtime(items, ns, name, selector, host, *, wiki):
     if template["metadata"]["labels"] != selector or pod.get("hostNetwork") or len(containers) != 1:
         return False
     c = containers[0]
+    if ns == "umami":
+        return (
+            c["name"] == name
+            and c.get("ports") == [{"name": "http", "containerPort": 3000}]
+            and not c.get("args")
+            and not c.get("command")
+        )
     if ns == "wishlist":
         return c["name"] == ns and c.get("ports") == [
             {"name": "http", "containerPort": 8000},
@@ -229,11 +243,11 @@ def owner_render(*, owner=APP):
     spec = yaml.safe_load((ROOT / f"deploy/argocd/apps/{release}.yaml").read_text())["spec"]
     src = spec["source"]
     files = [file, "alert-graphs.values.yaml"] if owner == "lms" else [file]
-    if owner == "img-proxy":
+    if owner in {"img-proxy", "umami"}:
         files = []
     params = src.get("helm", {}).get("parameters", [])
     reviewed_params = [[]]
-    if owner in {"lms", "wishlist", "img-proxy"}:
+    if owner in {"lms", "wishlist", "img-proxy", "umami"}:
         reviewed_params.extend([[{"name": "publicWeb", "value": v}] for v in ("true", "false")])
     if (
         params not in reviewed_params
@@ -270,6 +284,7 @@ def render():
             ("closedFormatQuorum", APP),
             ("closedWiki", "wiki-runtime"),
             ("closedMonori", "monori"),
+            ("closedUmami", "umami"),
             ("closedImg", "img-proxy"),
             ("closedLms", "lms"),
             ("closedWishlist", "wishlist"),

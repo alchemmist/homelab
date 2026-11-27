@@ -6,5 +6,6 @@ closedLms: true
 closedMonori: true
 closedStatus: true
 closedStatusRedirect: true
+closedUmami: true
 closedWiki: true
 closedWishlist: true

@@ -21,6 +21,7 @@
 {{- $redirect := and (kindIs "bool" .Values.closedStatusRedirect) .Values.closedStatusRedirect (deepEqual (dig "uptime-kuma" "kuma.socrat.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "public-web-kuma-admin-tls")) -}}
 {{- $argo := and (kindIs "bool" .Values.closedArgo) .Values.closedArgo (deepEqual (dig "argocd" "argocd.socrat.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "argocd-server-tls")) -}}
 {{- $img := and (kindIs "bool" .Values.closedImg) .Values.closedImg (deepEqual (dig "img-proxy" "img.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "img-proxy-tls")) -}}
+{{- $umami := and (kindIs "bool" .Values.closedUmami) .Values.closedUmami (deepEqual (dig "umami" "umami.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "umami-tls")) -}}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -170,6 +171,25 @@ spec:
   egress: []
 {{- end }}
 ---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: closed-health-umami
+  namespace: {{ .Release.Namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: '-1'}
+spec:
+  podSelector: {matchLabels: {app: closed-health}}
+  policyTypes: [Egress]
+{{- if $umami }}
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: umami}}
+          podSelector: {matchLabels: {app: umami}}
+      ports: [{port: 3000, protocol: TCP}]
+{{- else }}
+  egress: []
+{{- end }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata: {name: closed-health, namespace: {{ .Release.Namespace }}}
@@ -187,6 +207,20 @@ data:
           loadBalancer:
             passHostHeader: true
             servers: [{url: 'http://img-proxy.img-proxy.svc.cluster.local:80'}]
+{{- end }}
+{{- if $umami }}
+  umami.yaml: |
+    http:
+      routers:
+        umami:
+          entryPoints: [closed]
+          rule: 'Host(`umami.alchemmist.xyz`) && PathPrefix(`/`)'
+          service: umami
+      services:
+        umami:
+          loadBalancer:
+            passHostHeader: true
+            servers: [{url: 'http://umami.umami.svc.cluster.local:80'}]
 {{- end }}
 {{- if $argo }}
   argocd.yaml: |
