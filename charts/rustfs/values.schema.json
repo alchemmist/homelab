@@ -4,8 +4,23 @@
   "properties": {
     "browserRoutes": {
       "type": "object",
-      "required": ["allowPublicEntryReaderPeer"],
-      "properties": {"allowPublicEntryReaderPeer": {"type": "boolean"}}
+      "required": [
+        "enabled",
+        "unifiedOrigin",
+        "allowPublicEntryReaderPeer"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "unifiedOrigin": {
+          "type": "boolean"
+        },
+        "allowPublicEntryReaderPeer": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

@@ -141,3 +141,10 @@ def test_optional_public_entry_peer_changes_only_reader_ingress() -> None:
         check=False,
     )
     assert result.returncode and "allowPublicEntryReaderPeer" in result.stderr
+
+
+def test_reader_schema_rejects_misspelled_browser_switch() -> None:
+    result = subprocess.run(["helm", "template", "rustfs", str(ROOT / "charts/rustfs"),
+                             "--set", "browserRoutes.unifiedOrigins=true"],
+                            capture_output=True, text=True, check=False)
+    assert result.returncode and "unifiedOrigins" in result.stderr
