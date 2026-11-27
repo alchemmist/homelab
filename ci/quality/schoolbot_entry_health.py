@@ -97,7 +97,11 @@ def main() -> int:
     )
     args = parser.parse_args()
     catalog = yaml.safe_load(CATALOG.read_text())
-    policy = catalog["hosts"]["schoolbot"].get(HOST, {})
+    policy = catalog
+    for key in ("hosts", "schoolbot", HOST):
+        policy = policy.get(key) if isinstance(policy, dict) else None
+    if not isinstance(policy, dict):
+        parser.error("missing Schoolbot host policy")
     if policy.get("dns") != "external" or policy.get("route", "web") != "web":
         parser.error("Schoolbot name is not an eligible external web route")
     if args.public:

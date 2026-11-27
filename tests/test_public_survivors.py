@@ -120,3 +120,12 @@ def test_no_length_short_read_does_not_hide_following_body():
     response.getheader.side_effect=lambda name,default=None: "application/json" if name=="Content-Type" else default
     response.read.side_effect=[b'{"ok":true}', b'x']
     assert not response_healthy(response)
+
+
+@pytest.mark.parametrize("bad",["null","hosts: []","hosts: {schoolbot: {}}"])
+def test_missing_schoolbot_policy_is_a_cli_error(monkeypatch,tmp_path,bad):
+    from ci.quality import schoolbot_entry_health as health
+    f=tmp_path/'catalog.yaml';f.write_text(bad);monkeypatch.setattr(health,'CATALOG',f)
+    monkeypatch.setattr(sys,'argv',['health','--public'])
+    with pytest.raises(SystemExit) as e:health.main()
+    assert e.value.code==2
