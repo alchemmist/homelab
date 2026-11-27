@@ -5,7 +5,7 @@ import socket
 
 import yaml
 
-from ci.quality.public_web import CATALOG, eligible_sites
+from ci.quality.public_web import CATALOG
 
 ENTRIES = {
     name: item["publicIP"] for name, item in yaml.safe_load(CATALOG.read_text())["replicas"].items()
@@ -26,8 +26,6 @@ def cases(catalog: dict) -> dict[tuple[str, str, str], str]:
                     state = "fixed relay"
                 elif policy.get("dns") == "external":
                     state = "external DNS; not a self-IP case"
-                elif entry not in eligible_sites(host):
-                    state = "regional DNS exclusion; not a self-IP case"
                 else:
                     state = "unverified"
                 rows[ns, host, entry] = state
