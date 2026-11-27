@@ -4,6 +4,7 @@ import subprocess
 from copy import deepcopy
 from pathlib import Path
 
+import pytest
 import yaml
 
 from ci.quality.closed_root_owners import eligible, owner_render
@@ -39,7 +40,12 @@ def test_effective_health_fleet():
             d
             for d in yaml.safe_load_all(raw)
             if d.get("metadata", {}).get("name")
-            not in {"closed-health-argocd", "closed-health-img", "closed-health-umami"}
+            not in {
+                "closed-health-argocd",
+                "closed-health-img",
+                "closed-health-umami",
+                "closed-health-remark42",
+            }
         ]
 
     assert app["destination"]["namespace"] == "public-health-staging"
@@ -794,17 +800,23 @@ def test_img_only_reaches_the_reviewed_nginx_listener():
     assert active == render("--set", "false") == render("--set-string", "true")
 
 
-def test_umami_only_reaches_the_reviewed_http_listener():
+@pytest.mark.parametrize(
+    ("app", "bit", "port"),
+    [("umami", "closedUmami", 3000), ("remark42", "closedRemark", 8080)],
+)
+def test_selected_app_only_reaches_its_reviewed_http_listener(app, bit, port):
 
     catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())
-    docs = owner_render(owner="umami")
-    admit = lambda rows: eligible(rows, catalog, owner="umami")
+    docs = owner_render(owner=app)
+    admit = lambda rows: eligible(rows, catalog, owner=app)
     assert admit(docs)
     rows = deepcopy(docs)
     deployment = next(d for d in rows if d["kind"] == "Deployment")
-    deployment["spec"]["template"]["spec"]["containers"][0]["ports"][0][
-        "containerPort"
-    ] = 3001
+    next(
+        c
+        for c in deployment["spec"]["template"]["spec"]["containers"]
+        if c["name"] == app
+    )["ports"][0]["containerPort"] = 3001
     assert not admit(rows)
     assert not admit([*docs, deepcopy(docs[-1])])
     args = [
@@ -822,44 +834,44 @@ def test_umami_only_reaches_the_reviewed_http_listener():
         return {
             (d["kind"], d["metadata"]["name"]): d
             for d in yaml.safe_load_all(
-                subprocess.check_output([*args, flag, "closedUmami=" + val])
+                subprocess.check_output([*args, flag, bit + "=" + val])
             )
             if d
         }
 
     active = render("--set", "true")
-    pol = active["NetworkPolicy", "closed-health-umami"]["spec"]
+    pol = active["NetworkPolicy", f"closed-health-{app}"]["spec"]
     assert pol["egress"] == [
         {
             "to": [
                 {
                     "namespaceSelector": {
-                        "matchLabels": {"kubernetes.io/metadata.name": "umami"}
+                        "matchLabels": {"kubernetes.io/metadata.name": app}
                     },
                     "podSelector": {
                         "matchLabels": {
-                            "app": "umami",
+                            "app": app,
                         }
                     },
                 }
             ],
-            "ports": [{"port": 3000, "protocol": "TCP"}],
+            "ports": [{"port": port, "protocol": "TCP"}],
         }
     ]
     dynamic = yaml.safe_load(
-        active["ConfigMap", "closed-health"]["data"].pop("umami.yaml")
+        active["ConfigMap", "closed-health"]["data"].pop(f"{app}.yaml")
     )["http"]
     assert dynamic["routers"] == {
-        "umami": {
+        app: {
             "entryPoints": ["closed"],
-            "rule": "Host(`umami.alchemmist.xyz`) && PathPrefix(`/`)",
-            "service": "umami",
+            "rule": f"Host(`{app}.alchemmist.xyz`) && PathPrefix(`/`)",
+            "service": app,
         }
     } and dynamic["services"] == {
-        "umami": {
+        app: {
             "loadBalancer": {
                 "passHostHeader": True,
-                "servers": [{"url": "http://umami.umami.svc.cluster.local:80"}],
+                "servers": [{"url": f"http://{app}.{app}.svc.cluster.local:80"}],
             }
         }
     }

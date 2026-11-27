@@ -32,6 +32,15 @@ ROOTS = {
         )
         for app in ("lms", "wishlist")
     },
+    "remark42": (
+        "remark42",
+        "remark42",
+        "remark42.alchemmist.xyz",
+        "remark42-tls",
+        80,
+        "http",
+        {"app": "remark42"},
+    ),
     "umami": ("umami", "umami", "umami.alchemmist.xyz", "umami-tls", 80, "http", {"app": "umami"}),
     "img-proxy": (
         "img-proxy",
@@ -78,7 +87,7 @@ def eligible(items, catalog, *, owner=APP):
     wiki = owner == "wiki-runtime"
     if catalog["hosts"].get(ns, {}).get(host) != {"dns": "managed", "tlsSourceName": pin}:
         return False
-    if owner == "img-proxy":
+    if owner in {"img-proxy", "remark42"}:
         # One two-container Pod; review the nginx privacy config and VPN sidecar
         # together. No additional workload may share this egress selector.
         expected = {
@@ -95,11 +104,25 @@ def eligible(items, catalog, *, owner=APP):
                 name + "-service-vpn",
             ): "216f150e896b366e654ce19af866c9f889891a76ea0e7223b369ebbfca41dcc2",
         }
+        extras = {("ServiceAccount", name)}
+        if owner == "remark42":
+            # The reviewed Deployment binds the named http port to remark42,
+            # not to its service-vpn sidecar. Do not inspect credential data.
+            expected = {
+                (
+                    "Deployment",
+                    name,
+                ): "66a16c5179a637242696d942f7194cf6b2fd0341953b1364357a6693c0146ce6",
+                (
+                    "ConfigMap",
+                    name + "-service-vpn",
+                ): "6ba92ac4527c162edec3905471eb6407d09ac8ad41b235ab12c0237bf5953f12",
+            }
+            extras = {("Secret", name + "-env"), ("PersistentVolumeClaim", name + "-data")}
         keys = [(d["kind"], d["metadata"]["name"]) for d in items]
-        if len(keys) != 6 or set(keys) != set(expected) | {
+        if len(keys) != 6 or set(keys) != set(expected) | extras | {
             ("Ingress", name),
             ("Service", name),
-            ("ServiceAccount", name),
         }:
             return False
         for key, d in zip(keys, items, strict=True):
@@ -133,7 +156,7 @@ def eligible(items, catalog, *, owner=APP):
         for d in (ing, svc)
     ):
         return False
-    if (target_port == "http" or owner == "lms") and not _named_runtime(
+    if (target_port == "http" and owner != "remark42" or owner == "lms") and not _named_runtime(
         items, ns, name, selector, host, wiki=wiki
     ):
         return False
@@ -243,11 +266,11 @@ def owner_render(*, owner=APP):
     spec = yaml.safe_load((ROOT / f"deploy/argocd/apps/{release}.yaml").read_text())["spec"]
     src = spec["source"]
     files = [file, "alert-graphs.values.yaml"] if owner == "lms" else [file]
-    if owner in {"img-proxy", "umami"}:
+    if owner in {"img-proxy", "umami", "remark42"}:
         files = []
     params = src.get("helm", {}).get("parameters", [])
     reviewed_params = [[]]
-    if owner in {"lms", "wishlist", "img-proxy", "umami"}:
+    if owner in {"lms", "wishlist", "img-proxy", "umami", "remark42"}:
         reviewed_params.extend([[{"name": "publicWeb", "value": v}] for v in ("true", "false")])
     if (
         params not in reviewed_params
@@ -284,6 +307,7 @@ def render():
             ("closedFormatQuorum", APP),
             ("closedWiki", "wiki-runtime"),
             ("closedMonori", "monori"),
+            ("closedRemark", "remark42"),
             ("closedUmami", "umami"),
             ("closedImg", "img-proxy"),
             ("closedLms", "lms"),

@@ -4,6 +4,7 @@ closedFormatQuorum: true
 closedImg: true
 closedLms: true
 closedMonori: true
+closedRemark: true
 closedStatus: true
 closedStatusRedirect: true
 closedUmami: true
