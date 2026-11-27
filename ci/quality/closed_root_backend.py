@@ -54,13 +54,14 @@ def servers(
         or not 1 <= target <= 65535
     ):
         raise ValueError("unreviewed backend protocol or target")
-    by_uid = {
-        p["metadata"]["uid"]: p
-        for p in pods
-        if p.get("kind") == "Pod"
-        and p["metadata"].get("namespace") == ns
-        and p["metadata"].get("uid")
-    }
+    by_uid = {}
+    for pod in pods:
+        pm = pod["metadata"]
+        if pod.get("kind") != "Pod" or pm.get("namespace") != ns or not pm.get("uid"):
+            continue
+        if pm["uid"] in by_uid:
+            raise ValueError("duplicate Pod UID in backend observations")
+        by_uid[pm["uid"]] = pod
     urls = set()
     for sl in slices:
         sm = sl["metadata"]
