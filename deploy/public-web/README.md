@@ -219,10 +219,24 @@ pin. The comparison emits no reader plan if any ordinary host has a missing,
 ambiguous, malformed or mismatched pin or if the inventory has errors. It does
 not render or apply RBAC, read Secrets, or change DNS ownership.
 
-The first batch was checked against 20 local owner releases (23 names; blog
-apex and www share one source), including `schoolbot/schoolbot-tls`.
-The fleet plan intentionally remains blocked until the other sources have been
-independently reviewed. Never bootstrap the pins by copying audit output into
+Offline review covers all 37 ordinary names, with exactly one namespace-local
+pin each and 35 distinct sources (blog apex/www and the two RustFS aliases
+share pairs). Local Helm renders check both referencing routes and the unique
+issuance request: an issuer-annotated Ingress or an explicit Certificate, not
+every Ingress that uses the key. In particular `llm/litellm` requests issuance;
+`llm/litellm-branding` only reuses `litellm-public-tls`. Private Certificates
+in `syncthing` covering public alias names do not authorize that namespace as
+their public key source. The fixed NetBird VPS relay remains excluded.
+
+For Argo CD, repeat the independently verified external chart render with
+`helm pull argo/argo-cd --version 10.11.6` (official Argo Helm repository),
+then `uv run python -m ci.quality.public_argocd_tls argo-cd-10.11.6.tgz`.
+The checker verifies the reviewed archive digest **before** invoking Helm;
+CI checks the declared version, inputs and pin without downloading a chart.
+Rancher uses the Kubernetes version from the repository k3s defaults, not
+Helm's possibly newer synthetic default. None of these offline checks establishes
+live writer readiness, route admission, served TLS or permission to grant a
+reader. The actual inventory must still match the reviewed plan exactly. Never bootstrap the pins by copying audit output into
 Git wholesale. A name pin is not proof of the key bytes, the authority of a
 namespace writer or successful TLS delivery; validate leaf material and test
 the listener independently. The private DNS stage needs neither pins nor keys.

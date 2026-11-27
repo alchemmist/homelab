@@ -6,7 +6,7 @@ replicas:
   moscow: {node: socrat-4, publicIP: 91.189.82.238}
 hosts:
   argocd:
-    argocd.socrat.alchemmist.xyz: {dns: managed}
+    argocd.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: argocd-server-tls}
   automation:
     n8n.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: n8n-public-tls}
     spi.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: spi-queue-tls}
@@ -16,29 +16,29 @@ hosts:
   cats:
     cats.alchemmist.xyz: {dns: managed, tlsSourceName: cats-tls}
   cattle-system:
-    rancher.socrat.alchemmist.xyz: {dns: managed}
+    rancher.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: public-web-rancher-tls}
   cattle-monitoring-system:
     grafana-mcp.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: public-web-grafana-mcp-tls}
   format-quorum:
     fq.alchemmist.xyz: {dns: managed, tlsSourceName: format-quorum-tls}
   harbor:
-    harbor.socrat.alchemmist.xyz: {dns: managed}
+    harbor.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: harbor-tls}
   identity:
-    auth.socrat.alchemmist.xyz: {dns: managed}
-    grafana.socrat.alchemmist.xyz: {dns: managed}
+    auth.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: authentik-tls}
+    grafana.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: public-web-grafana-tls}
     netbird-relay-vps.socrat.alchemmist.xyz: {dns: static, route: fixed-relay}
-    netbird.socrat.alchemmist.xyz: {dns: managed}
-    openhands.socrat.alchemmist.xyz: {dns: managed}
-    rustfs.socrat.alchemmist.xyz: {dns: managed}
-    spi-evidence.socrat.alchemmist.xyz: {dns: managed}
+    netbird.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: netbird-pilot-tls}
+    openhands.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: openhands-oidc-tls}
+    rustfs.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: rustfs-browser-tls}
+    spi-evidence.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: rustfs-browser-tls}
   img-proxy:
     img.alchemmist.xyz: {dns: managed, tlsSourceName: img-proxy-tls}
   llm:
-    chat.alchemmist.xyz: {dns: managed}
-    litellm.socrat.alchemmist.xyz: {dns: managed}
-    llm.alchemmist.xyz: {dns: managed}
-    llm.socrat.alchemmist.xyz: {dns: managed}
-    search.socrat.alchemmist.xyz: {dns: managed}
+    chat.alchemmist.xyz: {dns: managed, tlsSourceName: open-webui-tls}
+    litellm.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: public-web-litellm-alias-tls}
+    llm.alchemmist.xyz: {dns: managed, tlsSourceName: litellm-public-tls}
+    llm.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: public-web-webui-alias-tls}
+    search.socrat.alchemmist.xyz: {dns: managed, tlsSourceName: public-web-search-tls}
   lms:
     lms.alchemmist.xyz: {dns: managed, tlsSourceName: lms-tls}
   monori:

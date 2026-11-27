@@ -161,7 +161,7 @@ def test_no_partial_or_cross_namespace_reader_plan(change):
     assert report["errors"] and not report["sources"]
 
 
-def _release_tls_records(app):
+def _release_tls_objects(app):
     import subprocess
 
     import yaml
@@ -171,50 +171,66 @@ def _release_tls_records(app):
     spec = yaml.safe_load((ROOT / "deploy/argocd/apps" / f"{app}.yaml").read_text())[
         "spec"
     ]
-    src = spec["source"]
-    helm = src["helm"]
+    sources = spec.get("sources") or [spec["source"]]
+    repo = "https://github.com/alchemmist/homelab.git"
     ns = spec["destination"]["namespace"]
-    chart = ROOT / src["path"]
-    assert set(helm) <= {"releaseName", "parameters", "valueFiles"}
-    args = ["helm", "template", helm["releaseName"], str(chart), "-n", ns]
-    for f in helm.get("valueFiles", []):
-        args.extend(["-f", str(chart / f)])
-    for p in helm.get("parameters", []):
-        args.extend(
-            [
-                "--set-string" if p.get("forceString") else "--set",
-                p["name"] + "=" + p["value"],
-            ]
-        )
-    docs = yaml.safe_load_all(subprocess.check_output(args, text=True))
-    observed = set()
-    for d in docs:
-        if not d or d["kind"] != "Ingress":
+    for src in sources:
+        assert src["repoURL"] == repo and src["targetRevision"] == "main"
+        if "ref" in src:
+            assert src["ref"] == "values" and "path" not in src
             continue
-        for t in d["spec"].get("tls", []):
-            assert (
-                d["spec"]["ingressClassName"] == "traefik"
-                and d["metadata"].get("namespace", ns) == ns
+        chart = ROOT / src["path"]
+        if not (chart / "Chart.yaml").is_file():
+            assert src["path"] == "deploy/storage/grafana-socrat5"
+            assert all(
+                d["kind"] in {"PersistentVolume", "PersistentVolumeClaim"}
+                for d in yaml.safe_load_all((chart / "volume.yaml").read_text())
+                if d
             )
-            assert (
-                d["metadata"]["annotations"]["cert-manager.io/cluster-issuer"]
-                == "letsencrypt-http01"
+            continue
+        helm = src.get("helm", {})
+        assert set(helm) <= {"releaseName", "parameters", "valueFiles"}
+        args = ["helm", "template", helm.get("releaseName", app), str(chart), "-n", ns]
+        if chart.name == "rancher":
+            defaults = yaml.safe_load(
+                (ROOT / "ansible/roles/k3s_ha/defaults/main.yml").read_text()
             )
-            for h in t["hosts"]:
-                assert h in {rule["host"] for rule in d["spec"]["rules"]}
-                observed.add((h, t["secretName"]))
-    assert observed
-    return {(ns, h, key) for h, key in observed}
+            args.extend(
+                [
+                    "--kube-version",
+                    defaults["k3s_ha_version"].removeprefix("v").split("+")[0],
+                ]
+            )
+        for f in helm.get("valueFiles", []):
+            if f.startswith("$values/"):
+                assert any(
+                    s.get("ref") == "values" and s["repoURL"] == repo for s in sources
+                )
+                file = ROOT / f.removeprefix("$values/")
+            else:
+                file = chart / f
+            args.extend(["-f", str(file)])
+        for p in helm.get("parameters", []):
+            args.extend(
+                [
+                    "--set-string" if p.get("forceString") else "--set",
+                    p["name"] + "=" + p["value"],
+                ]
+            )
+        for d in yaml.safe_load_all(subprocess.check_output(args, text=True)):
+            if d and d["kind"] in {"Ingress", "Certificate"}:
+                yield d["metadata"].get("namespace", ns), d
 
 
 def test_reviewed_tls_pins_agree_with_separately_rendered_releases():
-    """Require bidirectional parity: neither an unpinned source nor an orphan pin."""
+    """Verify each reference, route owner and unique issuance request independently."""
+    from collections import defaultdict
+
     import yaml
 
     from ci.quality.public_web import CATALOG
 
-    apps = "blog cats format-quorum grafana-mcp img-proxy lms monori n8n pr-agent remark42 schoolbot socrat-bot socrat-home spi-triage syncthing umami uptime-kuma venice-api wiki-runtime wishlist".split()
-    observed = set().union(*(_release_tls_records(app) for app in apps))
+    apps = "blog cats format-quorum grafana-mcp img-proxy lms monori n8n pr-agent remark42 schoolbot socrat-bot socrat-home spi-triage syncthing umami uptime-kuma venice-api wiki-runtime wishlist litellm litellm-infra open-webui searxng harbor authentik grafana openhands netbird rustfs rancher".split()
     policy = yaml.safe_load(CATALOG.read_text())["hosts"]
     pinned = {
         (ns, host, settings["tlsSourceName"])
@@ -222,4 +238,59 @@ def test_reviewed_tls_pins_agree_with_separately_rendered_releases():
         for host, settings in hosts.items()
         if "tlsSourceName" in settings
     }
-    assert observed == pinned
+    routes = set()
+    refs = set()
+    writers = defaultdict(list)
+    for app in apps:
+        for ns, d in _release_tls_objects(app):
+            spec = d["spec"]
+            meta = d["metadata"]
+            if d["kind"] == "Certificate":
+                writers[ns, spec["secretName"]].append(
+                    (
+                        spec["issuerRef"]["kind"],
+                        spec["issuerRef"]["name"],
+                        frozenset(spec["dnsNames"]),
+                    )
+                )
+                continue
+            if spec.get("ingressClassName") != "traefik":
+                continue
+            routes.update((ns, r["host"]) for r in spec["rules"])
+            for tls in spec.get("tls", []):
+                for host in tls["hosts"]:
+                    if policy.get(ns, {}).get(host, {}).get("route", "web") == "web":
+                        refs.add((ns, host, tls["secretName"]))
+                issuer = meta.get("annotations", {}).get(
+                    "cert-manager.io/cluster-issuer"
+                )
+                if issuer:
+                    writers[ns, tls["secretName"]].append(
+                        ("ClusterIssuer", issuer, frozenset(tls["hosts"]))
+                    )
+    from ci.quality.public_argocd_tls import owner
+
+    # The external archive render is independently repeatable, not fetched by CI.
+    external = owner()
+    assert refs | {external} == pinned
+    ordinary = {
+        h
+        for hosts in policy.values()
+        for h, p in hosts.items()
+        if p.get("route", "web") == "web"
+    }
+    assert {h for _, h, _ in pinned} == ordinary and len(pinned) == len(ordinary)
+    pinned = refs
+    assert {(ns, host) for ns, host, _ in pinned} <= routes
+    for ns, key in {(ns, key) for ns, _, key in pinned}:
+        sans = frozenset(h for n, h, k in pinned if (n, k) == (ns, key))
+        assert writers[ns, key] == [("ClusterIssuer", "letsencrypt-http01", sans)]
+
+
+def test_unreviewed_external_chart_is_rejected_before_helm(tmp_path):
+    from ci.quality.public_argocd_tls import verify
+
+    wrong = tmp_path / "not-chart.tgz"
+    wrong.write_bytes(b"fixture")
+    with pytest.raises(ValueError, match="unreviewed Argo CD chart"):
+        verify(wrong)
