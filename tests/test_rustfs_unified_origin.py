@@ -132,6 +132,7 @@ def test_optional_public_entry_peer_changes_only_reader_ingress() -> None:
             "matchLabels": {"homelab.alchemmist.xyz/public-entry-controller": "true"}
         },
     }
+    assert rule["from"].count(peer) == 1, "expected exactly one scoped common controller peer"
     rule["from"].remove(peer)
     assert enabled == default
     result = subprocess.run(
