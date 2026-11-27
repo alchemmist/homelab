@@ -25,6 +25,7 @@
 {{- $img := and (kindIs "bool" .Values.closedImg) .Values.closedImg (deepEqual (dig "img-proxy" "img.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "img-proxy-tls")) -}}
 {{- $umami := and (kindIs "bool" .Values.closedUmami) .Values.closedUmami (deepEqual (dig "umami" "umami.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "umami-tls")) -}}
 {{- $remark42 := and (kindIs "bool" .Values.closedRemark) .Values.closedRemark (deepEqual (dig "remark42" "remark42.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "remark42-tls")) -}}
+{{- $venice := and (kindIs "bool" .Values.closedVenice) .Values.closedVenice (deepEqual (dig "venice-api" "venice.socrat.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "venice-api-tls")) -}}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -212,6 +213,25 @@ spec:
   egress: []
 {{- end }}
 ---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: closed-health-venice-api
+  namespace: {{ .Release.Namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: '-1'}
+spec:
+  podSelector: {matchLabels: {app: closed-health}}
+  policyTypes: [Egress]
+{{- if $venice }}
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: venice-api}}
+          podSelector: {matchLabels: {app: venice-browser-candidate}}
+      ports: [{port: 8080, protocol: TCP}]
+{{- else }}
+  egress: []
+{{- end }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata: {name: closed-health, namespace: {{ .Release.Namespace }}}
@@ -257,6 +277,20 @@ data:
           loadBalancer:
             passHostHeader: true
             servers: [{url: 'http://remark42.remark42.svc.cluster.local:80'}]
+{{- end }}
+{{- if $venice }}
+  venice-api.yaml: |
+    http:
+      routers:
+        venice-api:
+          entryPoints: [closed]
+          rule: 'Host(`venice.socrat.alchemmist.xyz`) && PathPrefix(`/`)'
+          service: venice-api
+      services:
+        venice-api:
+          loadBalancer:
+            passHostHeader: true
+            servers: [{url: 'http://venice-api.venice-api.svc.cluster.local:8080'}]
 {{- end }}
 {{- if $argo }}
   argocd.yaml: |
