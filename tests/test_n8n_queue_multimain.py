@@ -1,6 +1,5 @@
 """Offline checks for the queue-mode / multi-main n8n rollout."""
 
-import importlib.util
 import subprocess
 import sys
 import textwrap
