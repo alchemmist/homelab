@@ -7,11 +7,15 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from typing import override
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
     "traffic_lab", ROOT / "scripts/build-traffic-light-argo.py"
 )
+if spec is None or spec.loader is None:
+    msg = "Traffic light lab module under test is not loadable"
+    raise RuntimeError(msg)
 lab = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(lab)
 
@@ -25,6 +29,7 @@ ARGO_STATE_CHECK_COUNT = 5
 class TrafficLightArgoTest(unittest.TestCase):
     """Tests for TrafficLightArgoTest."""
 
+    @override
     def setUp(self) -> None:
         self.dashboard = lab.build()
         self.panels = {p["id"]: p for p in self.dashboard["panels"]}
@@ -147,16 +152,21 @@ class TrafficLightArgoTest(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("promtool"), "promtool needed for PromQL semantics")
     def test_promql_partition_latest_labels_and_telemetry_gaps(self) -> None:
-        def series(name, values="1+0x120"):
+        def series(name: str, values: str = "1+0x120") -> dict[str, str]:
             return {"series": name, "values": values}
 
-        def app(name, health="Healthy", sync="Synced", values="1+0x120"):
+        def app(
+            name: str,
+            health: str = "Healthy",
+            sync: str = "Synced",
+            values: str = "1+0x120",
+        ) -> dict[str, str]:
             return series(
                 f'argocd_app_info{{job="socrat-argocd",name="{name}",health_status="{health}",sync_status="{sync}"}}',
                 values,
             )
 
-        def checks(counts, when="30m"):
+        def checks(counts: list[int | None], when: str = "30m") -> list[dict[str, object]]:
             if len(counts) == ARGO_STATE_CHECK_COUNT:
                 counts = [*counts, None if counts[0] is None else 0]
             return [
@@ -180,7 +190,7 @@ class TrafficLightArgoTest(unittest.TestCase):
             app("g", sync="FutureStatus"),
             app("root", "Degraded"),
         ]
-        cases = [
+        cases: list[dict[str, object]] = [
             {
                 "interval": "15s",
                 "input_series": mixed,
@@ -230,7 +240,7 @@ class TrafficLightArgoTest(unittest.TestCase):
             },
         ]
 
-        def app_check(values, when="30m"):
+        def app_check(values: list[tuple[str, int]], when: str = "30m") -> dict[str, object]:
             return {
                 "expr": lab.application_query(),
                 "eval_time": when,
@@ -239,7 +249,23 @@ class TrafficLightArgoTest(unittest.TestCase):
                 ],
             }
 
-        cases[0]["promql_expr_test"].append(
+        def append_check(case: dict[str, object], check: dict[str, object]) -> None:
+            rows = case["promql_expr_test"]
+            assert isinstance(rows, list)
+            rows.append(check)
+
+        def first_eval_time(case: dict[str, object]) -> str:
+            rows = case["promql_expr_test"]
+            assert isinstance(rows, list)
+            assert rows
+            first = rows[0]
+            assert isinstance(first, dict)
+            when = first["eval_time"]
+            assert isinstance(when, str)
+            return when
+
+        append_check(
+            cases[0],
             app_check(
                 [
                     ("a", 5),
@@ -251,22 +277,24 @@ class TrafficLightArgoTest(unittest.TestCase):
                     ("g", 2),
                     ("root", 1),
                 ]
-            )
+            ),
         )
-        cases[1]["promql_expr_test"].append(app_check([("a", 5)]))
+        append_check(cases[1], app_check([("a", 5)]))
         for case in cases[2:6]:
-            case["promql_expr_test"].append(app_check([], case["promql_expr_test"][0]["eval_time"]))
+            append_check(case, app_check([], first_eval_time(case)))
         for case in cases[6:]:
-            case["promql_expr_test"].append(
-                app_check([("a", 1)], case["promql_expr_test"][0]["eval_time"])
-            )
+            append_check(case, app_check([("a", 1)], first_eval_time(case)))
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "queries.yaml"
             path.write_text(
                 json.dumps({"rule_files": [], "evaluation_interval": "15s", "tests": cases})
             )
             result = subprocess.run(
-                ["promtool", "test", "rules", str(path)], capture_output=True, text=True
+                # The returncode is asserted explicitly; no implicit check.
+                ["promtool", "test", "rules", str(path)],
+                capture_output=True,
+                text=True,
+                check=False,
             )
             assert result.returncode == 0, result.stdout + result.stderr
 
