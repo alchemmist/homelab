@@ -247,3 +247,51 @@ def test_native_auth_and_slash_boundaries_on_same_peer(monkeypatch, fault):
         fault not in ("wrong-realm", "registry-open", "slash-redirect", "ping-drift")
     )
     assert (a == "matched") == (fault not in ("anonymous-list", "wrong-version"))
+
+
+@pytest.mark.parametrize(
+    "change", ["none", "wrong-origin", "relative", "adjacent", "accepted-health"]
+)
+def test_bot_read_probe_never_follows_oauth_or_sends_a_webhook(monkeypatch, change):
+    from ci.quality import socrat_bot_delivery as bot
+
+    seen = []
+
+    def run(args, **kw):
+        assert (
+            args[:4] == ["curl", "--disable", "--noproxy", "*"]
+            and "--location" not in args
+            and args[args.index("--resolve") + 1] == bot.HOST + ":443:192.0.2.1"
+        )
+        seen.append(args[-1])
+        loc = {
+            "wrong-origin": "https://auth.socrat.alchemmist.xyz.other.invalid/application/o/authorize/?fixture=1",
+            "relative": "/application/o/authorize/?fixture=1",
+            "adjacent": "https://auth.socrat.alchemmist.xyz/application/o/authorize/else?fixture=1",
+        }.get(
+            change,
+            "https://auth.socrat.alchemmist.xyz/application/o/authorize/?fixture=1",
+        )
+        data = (
+            b"\n302\n" + loc.encode()
+            if len(seen) == 1
+            else b"404 page not found\n\n404\n"
+            if change != "accepted-health"
+            else b"ok\n200\n"
+        )
+        return subprocess.CompletedProcess(args, 0, data, b"")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    assert (bot.wire("192.0.2.1") == "matched") == (change == "none")
+    assert seen == ["https://" + bot.HOST + p for p in ("/", "/healthz")]
+
+
+def test_webhook_pin_is_separate_from_three_working_web_paths():
+    from ci.quality import socrat_bot_delivery as bot
+
+    ips = {"home": "192.0.2.1", "nl": "192.0.2.2", "moscow": "192.0.2.3"}
+    values = {"telegram": {"webhookURL": bot.URL, "webhookIP": ips["nl"]}}
+    assert bot.pin(ips, values, (bot.URL, ips["nl"])) == "nl"
+    for settings in [(bot.URL, ips["home"]), ("https://other.invalid", ips["nl"])]:
+        with pytest.raises(ValueError):
+            bot.pin(ips, values, settings)
