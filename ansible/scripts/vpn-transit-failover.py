@@ -421,16 +421,23 @@ class Controller:
             stderr=subprocess.DEVNULL,
         ) as lock:
             try:
-                if not select.select([lock.stdout], [], [], 5)[0]:
-                    self.receipt("return-deferred", reason="witness-lock-timeout")
-                    return
-                if os.read(lock.stdout.fileno(), 7) != b"LOCKED\n":
-                    self.receipt(
-                        "return-deferred",
-                        reason="witness-lock-not-granted",
-                        ssh_status=lock.poll(),
-                    )
-                    return
+                token = b"LOCKED\n"
+                reply = b""
+                deadline = time.monotonic() + 5
+                while reply != token:
+                    left = deadline - time.monotonic()
+                    if left <= 0 or not select.select([lock.stdout], [], [], left)[0]:
+                        self.receipt("return-deferred", reason="witness-lock-timeout")
+                        return
+                    chunk = os.read(lock.stdout.fileno(), len(token) - len(reply))
+                    reply += chunk
+                    if not chunk or not token.startswith(reply):
+                        self.receipt(
+                            "return-deferred",
+                            reason="witness-lock-not-granted",
+                            ssh_status=lock.poll(),
+                        )
+                        return
                 self._handoff(lock)
             finally:
                 lock.stdin.close()
