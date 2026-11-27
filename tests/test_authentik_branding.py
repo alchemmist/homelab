@@ -10,6 +10,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import ModuleType
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 THEME = ROOT / "deploy/authentik/quiet-mono"
@@ -186,6 +187,31 @@ class AuthentikBrandingTests(unittest.TestCase):
         assert "showModal(" not in source
         assert "dialog.show()" in source
         assert "!dialog.open || inspectorClosing" in source
+
+    def test_preflight_only_checks_version(self) -> None:
+        """Preflight needs no theme files and rejects an unreviewed server."""
+        branding = load("branding")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            credentials = root / "credentials.json"
+            credentials.write_text(json.dumps({"AUTHENTIK_BOOTSTRAP_TOKEN": "test"}))
+            argv = [
+                "branding.py",
+                directory,
+                str(root / "absent"),
+                "--action",
+                "preflight",
+            ]
+            with patch.object(sys, "argv", argv), patch.object(branding, "api") as api:
+                api.return_value = {"version_current": "2026.8.6"}
+                branding.main()
+                api.assert_called_once_with(
+                    "GET", "admin/version/", {"Authorization": "Bearer test"}
+                )
+                api.return_value = {"version_current": "unreviewed"}
+                with self.assertRaisesRegex(RuntimeError, "version drift"):
+                    branding.main()
+            assert list(root.iterdir()) == [credentials]
 
     def test_playbook_uses_explicit_apply_and_server_side_configmaps(self) -> None:
         """The playbook uses explicit apply and helm-free server-side configmaps."""

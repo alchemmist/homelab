@@ -374,7 +374,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("theme", type=Path)
-    parser.add_argument("--action", choices=["prepare", "apply", "rollback"], default="prepare")
+    parser.add_argument(
+        "--action",
+        choices=["preflight", "prepare", "apply", "rollback"],
+        default="prepare",
+    )
     parser.add_argument("--backup", type=Path)
     parser.add_argument(
         "--public-edge", help="Process-local resolution only; TLS/SNI stays verified"
@@ -395,6 +399,8 @@ def main() -> None:
     ):
         message = "Theme requires reviewed Authentik 2026.8.6; refusing version drift"
         raise RuntimeError(message)
+    if args.action == "preflight":
+        return
     journal_path = args.root / "quiet-mono-brand-journal.json"
     if args.action == "rollback":
         if not args.backup:

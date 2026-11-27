@@ -26,6 +26,7 @@
 
     # One archive transfer avoids per-file SSH/stat roundtrips for the photo set.
     - name: Transfer the reviewed public theme bundle in one operation
+      when: authentik_branding_action != 'rollback'
       block:
         - name: Allocate local theme archive
           ansible.builtin.tempfile:
@@ -68,12 +69,37 @@
         mode: "0600"
       loop: [branding.py, branding_static.py, flow_titles.py]
 
+    - name: Check reviewed Authentik version before changing static resources
+      ansible.builtin.command:
+        argv: [python3, "{{ authentik_directory }}/branding.py", "{{ authentik_directory }}",
+               "{{ authentik_directory }}/quiet-mono", --action, preflight,
+               --public-edge, "{{ authentik_branding_public_edge }}"]
+      changed_when: false
+      no_log: true
+      when: authentik_branding_action != 'rollback'
+
     - name: Render the static-only resource bundle
       ansible.builtin.shell:
         cmd: >-
           umask 077; python3 {{ (authentik_directory + '/branding_static.py') | quote }}
           {{ (authentik_directory + '/quiet-mono') | quote }}
           > {{ (authentik_directory + '/quiet-mono-static.yaml') | quote }}
+      changed_when: false
+      no_log: true
+      when: authentik_branding_action != 'rollback'
+
+    - name: Compare desired static resources using the apply field manager
+      ansible.builtin.command:
+        argv: [kubectl,
+               --kubeconfig,
+               /etc/rancher/k3s/k3s.yaml,
+               diff,
+               --server-side,
+               --field-manager=quiet-mono-brand,
+               -f,
+               "{{ authentik_directory }}/quiet-mono-static.yaml"]
+      register: authentik_static_diff
+      failed_when: authentik_static_diff.rc not in [0, 1]
       changed_when: false
       no_log: true
       when: authentik_branding_action != 'rollback'
@@ -88,9 +114,9 @@
                --field-manager=quiet-mono-brand,
                -f,
                "{{ authentik_directory }}/quiet-mono-static.yaml"]
-      changed_when: false
+      changed_when: true
       no_log: true
-      when: authentik_branding_action != 'rollback'
+      when: authentik_branding_action != 'rollback' and authentik_static_diff.rc == 1
 
     - name: Wait for the static server only (no IdP restart)
       ansible.builtin.command:
