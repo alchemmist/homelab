@@ -133,3 +133,32 @@ def test_matching_dns_entries_do_not_authorize_a_uri_identity():
     key, leaf = pair(extra_sans=(x509.UniformResourceIdentifier("urn:fixture:other"),))
     with pytest.raises(MaterialRejected):
         leaf_identity(pem(leaf), private(key), NAMES, NOW)
+
+
+def test_completed_refresh_admits_only_independent_owned_sources():
+    from services.public_entry.tls_selection import SourceMaterial, select_sources
+
+    left, right, stranger = ("one", "tls"), ("two", "tls"), ("unreviewed", "tls")
+    a, b = frozenset({"one.invalid", "alias.invalid"}), frozenset({"two.invalid"})
+    ak, ac = pair(a)
+    bk, bc = pair(b)
+    first = SourceMaterial(pem(ac), private(ak))
+    second = SourceMaterial(pem(bc), private(bk))
+    wanted = {
+        left: ac.fingerprint(hashes.SHA256()).hex(),
+        right: bc.fingerprint(hashes.SHA256()).hex(),
+    }
+    owners = {left: a, right: b}
+    both = {left: first, right: second, stranger: first}
+    assert select_sources(owners, both, NOW) == wanted
+    for mats in (
+        {right: second},
+        {**both, left: SourceMaterial(first.chain, second.key)},
+        {**both, left: second},
+    ):
+        assert select_sources(owners, mats, NOW) == {right: wanted[right]}
+    assert select_sources(
+        {**owners, stranger: frozenset({"alias.invalid"})}, both, NOW
+    ) == {right: wanted[right]}
+    assert select_sources(owners, both, NOW) == wanted
+    assert "PRIVATE KEY" not in repr(first)

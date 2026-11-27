@@ -177,3 +177,16 @@ client trust, or apply a snapshot. In particular, an otherwise valid self-signed
 fixture can pass this source check and still fail an ordinary browser. Do not
 feed live keys to CI or persist the arguments. Run the synthetic regression
 with `uv run pytest -q tests/test_public_tls_material.py`.
+
+`tls_selection.select_sources()` validates a completed batch independently by
+(namespace, Secret name). An invalid or missing pair withdraws every alias of
+that source; overlapping ownership rejects both sources even if only one key
+was readable. Its result contains references and fingerprints, not private keys.
+A network-isolated local Traefik file-provider rehearsal built the fixture
+certificates **and** routers from that same selection. Fresh TLS and HTTP on
+three names passed initially; a wrong key withdrew both names of one source
+while the independent site's fingerprint and body stayed correct. An empty
+selection plus a nonempty strict-SNI sentinel snapshot rejected all three;
+restoration recovered all three. Only disposable key material in container
+tmpfs was used. This does not admit production routes or address the case
+where the consumer cannot receive the snapshot.
