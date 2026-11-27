@@ -16,6 +16,9 @@ spec:
   template:
     metadata:
       annotations:
+        {{- with .Values.workflowConfigRevision }}
+        workflows.socrat/revision: {{ . | quote }}
+        {{- end }}
         checksum/service-vpn-script: {{ include (print $.Template.BasePath "/service-vpn.yaml") . | sha256sum }}
         checksum/yandex-extension: {{ include (print $.Template.BasePath "/yandex-extension.yaml") . | sha256sum }}
       labels:
