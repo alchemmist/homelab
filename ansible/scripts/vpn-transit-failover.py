@@ -439,6 +439,17 @@ class Controller:
                         )
                         return
                 self._handoff(lock)
+                completed = self.state["mode"] == "kubernetes"
+                if self.config.get("persistent_witness"):
+                    lock.stdin.write(b"COMMIT\n" if completed else b"ABORT\n")
+                    lock.stdin.flush()
+                    if (
+                        lock.wait(timeout=4) != 0
+                        or lock.stdout.read(9) != b"RELEASED\n"
+                    ):
+                        raise RuntimeError(
+                            "Unconfirmed witness release; inspect ownership before retry"
+                        )
             finally:
                 lock.stdin.close()
                 lock.terminate()
