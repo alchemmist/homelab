@@ -25,6 +25,7 @@
 {{- $img := and (kindIs "bool" .Values.closedImg) .Values.closedImg (deepEqual (dig "img-proxy" "img.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "img-proxy-tls")) -}}
 {{- $umami := and (kindIs "bool" .Values.closedUmami) .Values.closedUmami (deepEqual (dig "umami" "umami.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "umami-tls")) -}}
 {{- $remark42 := and (kindIs "bool" .Values.closedRemark) .Values.closedRemark (deepEqual (dig "remark42" "remark42.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "remark42-tls")) -}}
+{{- $prAgent := and (kindIs "bool" .Values.closedPrAgent) .Values.closedPrAgent (deepEqual (dig "pr-agent" "pr-agent.socrat.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "pr-agent-tls")) -}}
 {{- $venice := and (kindIs "bool" .Values.closedVenice) .Values.closedVenice (deepEqual (dig "venice-api" "venice.socrat.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "venice-api-tls")) -}}
 ---
 apiVersion: networking.k8s.io/v1
@@ -216,6 +217,25 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
+  name: closed-health-pr-agent
+  namespace: {{ .Release.Namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: '-1'}
+spec:
+  podSelector: {matchLabels: {app: closed-health}}
+  policyTypes: [Egress]
+{{- if $prAgent }}
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: pr-agent}}
+          podSelector: {matchLabels: {app: pr-agent}}
+      ports: [{port: 3000, protocol: TCP}]
+{{- else }}
+  egress: []
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
   name: closed-health-venice-api
   namespace: {{ .Release.Namespace }}
   annotations: {argocd.argoproj.io/sync-wave: '-1'}
@@ -277,6 +297,20 @@ data:
           loadBalancer:
             passHostHeader: true
             servers: [{url: 'http://remark42.remark42.svc.cluster.local:80'}]
+{{- end }}
+{{- if $prAgent }}
+  pr-agent.yaml: |
+    http:
+      routers:
+        pr-agent:
+          entryPoints: [closed]
+          rule: 'Host(`pr-agent.socrat.alchemmist.xyz`) && PathPrefix(`/`)'
+          service: pr-agent
+      services:
+        pr-agent:
+          loadBalancer:
+            passHostHeader: true
+            servers: [{url: 'http://pr-agent.pr-agent.svc.cluster.local:80'}]
 {{- end }}
 {{- if $venice }}
   venice-api.yaml: |
