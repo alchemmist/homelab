@@ -24,3 +24,22 @@ can disagree; rejection means no publishable result for this backend, **not**
 permission to remove a protected router and expose a catch-all. Before real
 acceptance, test a coherent live inventory, source/consumer failure behavior,
 and verified SNI plus the expected health response through the same listener.
+
+## Preserve per-router observability choices
+
+The live backend inventory found two owners that explicitly disable access
+logs and tracing: `identity/openhands-oidc` and `automation/spi-queue-ui`.
+Dropping those options when building a file-provider router could record
+requests an owner meant to exclude. Carry the explicit boolean values; an
+empty settings map means inherit the listener's settings, **not** disable
+logging everywhere. Unsupported or ambiguous overrides block compilation.
+The backend inventory remains diagnostic, not a publishable route plan.
+
+A network-isolated stock Traefik rehearsal enabled global JSON access logs
+(including internal services). Three loopback requests to synthetic exact
+routes reached the same `noop@internal` backend, all returning 418. The first
+and last inherited logging and appeared in the log; the middle had explicit
+`accessLogs: false` and `tracing: false` and did not. No query strings, tokens,
+real application requests, tracing exporter or production logs were involved.
+This demonstrates access-log suppression only, not exporter-level span
+suppression or end-to-end confidentiality across upstream components.
