@@ -132,3 +132,62 @@ def test_tls_flow_requires_both_exact_steps_on_same_new_socket():
     assert matches({0: 0}, opened, first, second, 51, 61) == {1}
     second[3] = 212
     assert matches({0: 0}, opened, first, second, 51, 61) == {1, 3}
+
+
+def test_www_split_fixture_is_exact_and_rejects_widened_owner_rules():
+    from ci.quality.moscow_www_split import VPN, WWW, fixture
+
+    def render(release, chart, namespace, *extra):
+        return [
+            d
+            for d in yaml.safe_load_all(
+                subprocess.check_output(
+                    [
+                        "helm",
+                        "template",
+                        release,
+                        str(ROOT / "charts" / chart),
+                        "-n",
+                        namespace,
+                        *extra,
+                    ]
+                )
+            )
+            if d
+        ]
+
+    (route,) = [
+        d
+        for d in render(
+            "traefik-moscow",
+            "traefik-moscow",
+            "traefik-moscow",
+            "--set",
+            "rehearsal=true",
+        )
+        if d.get("metadata", {}).get("name") == "moscow-tcp-443"
+    ]
+    docs = render("blog", "blog", "blog", "-f", str(ROOT / "deploy/blog/values.yaml"))
+    (b,) = [d for d in docs if d["kind"] == "Ingress"]
+    (s,) = [d for d in docs if d["kind"] == "Service"]
+    s["spec"].update(type="ClusterIP", clusterIP="10.43.1.2")
+    s["spec"]["ports"][0]["protocol"] = "TCP"
+    out = fixture(route, b, s)
+    assert (
+        out["http"]["routers"]["www"]["rule"] == f"Host(`{WWW}`)"
+        and out["tcp"]["routers"]["vpn"]["rule"] == f"HostSNI(`{VPN}`)"
+        and out["tcp"]["routers"]["vpn"]["tls"] == {"passthrough": True}
+    )
+    assert out["tcp"]["services"]["fixture"]["loadBalancer"]["servers"] == [
+        {"address": "127.0.0.1:19443"}
+    ]
+    assert "10.250.0.2" not in json.dumps(out)
+    b["metadata"]["annotations"]["traefik.ingress.kubernetes.io/router.middlewares"] = (
+        "unreviewed"
+    )
+    with pytest.raises(ValueError):
+        fixture(route, b, s)
+    del b["metadata"]["annotations"]["traefik.ingress.kubernetes.io/router.middlewares"]
+    route["spec"]["routes"][0]["match"] = "HostSNI(`*`)"
+    with pytest.raises(ValueError):
+        fixture(route, b, s)
