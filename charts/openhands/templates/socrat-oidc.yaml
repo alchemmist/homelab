@@ -211,6 +211,8 @@ spec:
             cidr: 0.0.0.0/0
             except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 127.0.0.0/8, 100.64.0.0/10]
       ports: [{port: 443, protocol: TCP}]
+{{- end }}
+{{- if and (eq .Release.Name "openhands") (eq .Release.Namespace "openhands") }}
 ---
 # Write an empty allow list on rollback even when Argo pruning is disabled.
 apiVersion: networking.k8s.io/v1
@@ -219,7 +221,7 @@ metadata: {name: openhands-oidc-public-entry, namespace: identity}
 spec:
   podSelector: {matchLabels: {app: openhands-oidc}}
   policyTypes: [Ingress]
-{{- if .Values.oidc.allowPublicEntryPeer }}
+{{- if and .Values.oidc .Values.oidc.enabled .Values.oidc.allowPublicEntryPeer }}
   ingress:
     - from:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: public-entry}}
