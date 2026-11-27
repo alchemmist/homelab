@@ -1,9 +1,12 @@
 """Guard the Argo-rendered loopback listener boundary."""
 
 import subprocess
+from copy import deepcopy
 from pathlib import Path
 
 import yaml
+
+from ci.quality.closed_root_owners import eligible, owner_render
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -35,7 +38,8 @@ def test_effective_health_fleet():
         return [
             d
             for d in yaml.safe_load_all(raw)
-            if d.get("metadata", {}).get("name") != "closed-health-argocd"
+            if d.get("metadata", {}).get("name")
+            not in {"closed-health-argocd", "closed-health-img"}
         ]
 
     assert app["destination"]["namespace"] == "public-health-staging"
@@ -448,7 +452,6 @@ def test_format_quorum_admission_matches_owner_release():
 
 
 def test_format_quorum_withdraws_unreviewed_owner_changes():
-    from copy import deepcopy
 
     from ci.quality.closed_root_owners import APP, CATALOG, eligible
 
@@ -486,7 +489,6 @@ def test_format_quorum_withdraws_unreviewed_owner_changes():
 
 
 def test_wiki_requires_public_runtime_and_unmodified_named_backend():
-    from copy import deepcopy
 
     from ci.quality.closed_root_owners import CATALOG, eligible, owner_render
 
@@ -540,7 +542,6 @@ def test_wiki_requires_public_runtime_and_unmodified_named_backend():
 
 
 def test_monori_front_only_no_shared_port_authorization():
-    from copy import deepcopy
 
     from ci.quality.closed_root_owners import CATALOG, eligible, owner_render
 
@@ -585,7 +586,6 @@ def test_monori_front_only_no_shared_port_authorization():
 
 
 def test_lms_and_wishlist_reject_side_channels_and_unselected_routes():
-    from copy import deepcopy
 
     from ci.quality.closed_root_owners import CATALOG, eligible, owner_render
 
@@ -713,4 +713,82 @@ def test_argo_uses_only_the_verified_https_upstream_or_withdraws_completely():
         }
     }
     policy["egress"] = []
+    assert active == render("--set", "false") == render("--set-string", "true")
+
+
+def test_img_only_reaches_the_reviewed_nginx_listener():
+
+    catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())
+    docs = owner_render(owner="img-proxy")
+    admit = lambda rows: eligible(rows, catalog, owner="img-proxy")
+    assert admit(docs)
+    for kind, name in [
+        ("Deployment", "img-proxy"),
+        ("ConfigMap", "img-proxy-nginx"),
+        ("ConfigMap", "img-proxy-service-vpn"),
+    ]:
+        rows = deepcopy(docs)
+        next(d for d in rows if (d["kind"], d["metadata"]["name"]) == (kind, name))[
+            "metadata"
+        ]["labels"] = {"changed": "true"}
+        assert not admit(rows)
+    assert not admit([*docs, deepcopy(docs[-1])])
+    args = [
+        "helm",
+        "template",
+        "closed-health",
+        str(ROOT / "deploy/public-web/closed-health"),
+        "-n",
+        "public-health-staging",
+        "-f",
+        str(ROOT / "deploy/public-web/entrances.yaml"),
+    ]
+
+    def render(flag, val):
+        return {
+            (d["kind"], d["metadata"]["name"]): d
+            for d in yaml.safe_load_all(
+                subprocess.check_output([*args, flag, "closedImg=" + val])
+            )
+            if d
+        }
+
+    active = render("--set", "true")
+    pol = active["NetworkPolicy", "closed-health-img"]["spec"]
+    assert pol["egress"] == [
+        {
+            "to": [
+                {
+                    "namespaceSelector": {
+                        "matchLabels": {"kubernetes.io/metadata.name": "img-proxy"}
+                    },
+                    "podSelector": {
+                        "matchLabels": {
+                            "app.kubernetes.io/name": "img-proxy",
+                            "app.kubernetes.io/instance": "img-proxy",
+                        }
+                    },
+                }
+            ],
+            "ports": [{"port": 8080, "protocol": "TCP"}],
+        }
+    ]
+    dynamic = yaml.safe_load(
+        active["ConfigMap", "closed-health"]["data"].pop("img.yaml")
+    )["http"]
+    assert dynamic["routers"] == {
+        "img": {
+            "entryPoints": ["closed"],
+            "rule": "Host(`img.alchemmist.xyz`) && PathPrefix(`/`)",
+            "service": "img",
+        }
+    } and dynamic["services"] == {
+        "img": {
+            "loadBalancer": {
+                "passHostHeader": True,
+                "servers": [{"url": "http://img-proxy.img-proxy.svc.cluster.local:80"}],
+            }
+        }
+    }
+    pol["egress"] = []
     assert active == render("--set", "false") == render("--set-string", "true")

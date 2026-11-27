@@ -20,6 +20,7 @@
 {{- $status := and (kindIs "bool" .Values.closedStatus) .Values.closedStatus (deepEqual (dig "uptime-kuma" "status.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "uptime-kuma-tls")) -}}
 {{- $redirect := and (kindIs "bool" .Values.closedStatusRedirect) .Values.closedStatusRedirect (deepEqual (dig "uptime-kuma" "kuma.socrat.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "public-web-kuma-admin-tls")) -}}
 {{- $argo := and (kindIs "bool" .Values.closedArgo) .Values.closedArgo (deepEqual (dig "argocd" "argocd.socrat.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "argocd-server-tls")) -}}
+{{- $img := and (kindIs "bool" .Values.closedImg) .Values.closedImg (deepEqual (dig "img-proxy" "img.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "img-proxy-tls")) -}}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -150,10 +151,43 @@ spec:
   egress: []
 {{- end }}
 ---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: closed-health-img
+  namespace: {{ .Release.Namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: '-1'}
+spec:
+  podSelector: {matchLabels: {app: closed-health}}
+  policyTypes: [Egress]
+{{- if $img }}
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: img-proxy}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: img-proxy, app.kubernetes.io/instance: img-proxy}}
+      ports: [{port: 8080, protocol: TCP}]
+{{- else }}
+  egress: []
+{{- end }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata: {name: closed-health, namespace: {{ .Release.Namespace }}}
 data:
+{{- if $img }}
+  img.yaml: |
+    http:
+      routers:
+        img:
+          entryPoints: [closed]
+          rule: 'Host(`img.alchemmist.xyz`) && PathPrefix(`/`)'
+          service: img
+      services:
+        img:
+          loadBalancer:
+            passHostHeader: true
+            servers: [{url: 'http://img-proxy.img-proxy.svc.cluster.local:80'}]
+{{- end }}
 {{- if $argo }}
   argocd.yaml: |
     http:

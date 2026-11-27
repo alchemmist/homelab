@@ -1,6 +1,8 @@
 """Compile narrowly reviewed root HTTP admissions from the owner's complete Argo render."""
 
 import argparse
+import hashlib
+import json
 import subprocess
 
 import yaml
@@ -30,6 +32,15 @@ ROOTS = {
         )
         for app in ("lms", "wishlist")
     },
+    "img-proxy": (
+        "img-proxy",
+        "img-proxy",
+        "img.alchemmist.xyz",
+        "img-proxy-tls",
+        80,
+        8080,
+        {"app.kubernetes.io/name": "img-proxy", "app.kubernetes.io/instance": "img-proxy"},
+    ),
     APP: (
         APP,
         APP,
@@ -66,6 +77,39 @@ def eligible(items, catalog, *, owner=APP):
     wiki = owner == "wiki-runtime"
     if catalog["hosts"].get(ns, {}).get(host) != {"dns": "managed", "tlsSourceName": pin}:
         return False
+    if owner == "img-proxy":
+        # One two-container Pod; review the nginx privacy config and VPN sidecar
+        # together. No additional workload may share this egress selector.
+        expected = {
+            (
+                "Deployment",
+                name,
+            ): "bb0ef4b596a4f0bb90a0fc72a7b87133ae738dababe15b620c653b516ef8e289",
+            (
+                "ConfigMap",
+                name + "-nginx",
+            ): "28c2a1c488724fe2cf5c512099c2f1685e0df6d7f5895407272553cc7cfb03fe",
+            (
+                "ConfigMap",
+                name + "-service-vpn",
+            ): "216f150e896b366e654ce19af866c9f889891a76ea0e7223b369ebbfca41dcc2",
+        }
+        keys = [(d["kind"], d["metadata"]["name"]) for d in items]
+        if len(keys) != 6 or set(keys) != set(expected) | {
+            ("Ingress", name),
+            ("Service", name),
+            ("ServiceAccount", name),
+        }:
+            return False
+        for key, d in zip(keys, items, strict=True):
+            if (
+                key in expected
+                and hashlib.sha256(
+                    json.dumps(d, sort_keys=True, separators=(",", ":")).encode()
+                ).hexdigest()
+                != expected[key]
+            ):
+                return False
     owners = [d for d in items if d["kind"] == "Ingress"]
     services = [d for d in items if d["kind"] == "Service" and d["metadata"]["name"] == name]
     if (
@@ -185,9 +229,11 @@ def owner_render(*, owner=APP):
     spec = yaml.safe_load((ROOT / f"deploy/argocd/apps/{release}.yaml").read_text())["spec"]
     src = spec["source"]
     files = [file, "alert-graphs.values.yaml"] if owner == "lms" else [file]
+    if owner == "img-proxy":
+        files = []
     params = src.get("helm", {}).get("parameters", [])
     reviewed_params = [[]]
-    if owner in {"lms", "wishlist"}:
+    if owner in {"lms", "wishlist", "img-proxy"}:
         reviewed_params.extend([[{"name": "publicWeb", "value": v}] for v in ("true", "false")])
     if (
         params not in reviewed_params
@@ -197,7 +243,11 @@ def owner_render(*, owner=APP):
             "repoURL": "https://github.com/alchemmist/homelab.git",
             "targetRevision": "main",
             "path": path,
-            "helm": {"releaseName": release, "valueFiles": files, "parameters": params},
+            "helm": {
+                "releaseName": release,
+                **({"valueFiles": files} if files else {}),
+                "parameters": params,
+            },
         }
         or spec["destination"] != {"namespace": ns, "server": "https://kubernetes.default.svc"}
     ):
@@ -220,6 +270,7 @@ def render():
             ("closedFormatQuorum", APP),
             ("closedWiki", "wiki-runtime"),
             ("closedMonori", "monori"),
+            ("closedImg", "img-proxy"),
             ("closedLms", "lms"),
             ("closedWishlist", "wishlist"),
         ]
