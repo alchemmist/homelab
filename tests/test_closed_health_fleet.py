@@ -27,7 +27,7 @@ def test_effective_health_fleet():
         "-f",
         str(chart / values),
         "--set",
-        "closedFormatQuorum=true",  # exercise enabled and withdrawn shapes even after an owner opt-out
+        "closedFormatQuorum=true,closedWiki=true",  # exercise enabled and withdrawn shapes even after an owner opt-out
     ]
     assert app["destination"]["namespace"] == "public-health-staging"
     policy, config, *deployments = yaml.safe_load_all(subprocess.check_output(args))
@@ -65,6 +65,14 @@ def test_effective_health_fleet():
             [{"port": 3000, "protocol": "TCP"}],
         ),
         (
+            {"kubernetes.io/metadata.name": "wiki"},
+            {
+                "app.kubernetes.io/name": "hugo-docs-wiki",
+                "app.kubernetes.io/instance": "wiki-runtime",
+            },
+            [{"port": 8080, "protocol": "TCP"}],
+        ),
+        (
             {"kubernetes.io/metadata.name": "kube-system"},
             {"k8s-app": "kube-dns"},
             [{"port": 53, "protocol": "UDP"}, {"port": 53, "protocol": "TCP"}],
@@ -73,6 +81,11 @@ def test_effective_health_fleet():
     assert config["kind"] == "ConfigMap"
     http = yaml.safe_load(config["data"]["dynamic.yaml"])["http"]
     assert http["routers"] == {
+        "wiki": {
+            "entryPoints": ["closed"],
+            "rule": "Host(`wiki.socrat.alchemmist.xyz`) && PathPrefix(`/`)",
+            "service": "wiki",
+        },
         "format-quorum": {
             "entryPoints": ["closed"],
             "rule": "Host(`fq.alchemmist.xyz`) && PathPrefix(`/`)",
@@ -156,7 +169,15 @@ def test_effective_health_fleet():
             "services": {k: v for k, v in http["services"].items() if k != "www-blog"},
         }
     policy_off, config_off, *unchanged = yaml.safe_load_all(
-        subprocess.check_output([*args[:-2], "--set-string", "closedFormatQuorum=true"])
+        subprocess.check_output(
+            [
+                *args[:-2],
+                "--set",
+                "closedWiki=true",
+                "--set-string",
+                "closedFormatQuorum=true",
+            ]
+        )
     )
     assert unchanged == deployments
     assert policy_off["spec"]["egress"] == [
@@ -167,6 +188,15 @@ def test_effective_health_fleet():
         assert after[section] == {
             k: v for k, v in http[section].items() if k != "format-quorum"
         }
+    policy_off, config_off, *unchanged = yaml.safe_load_all(
+        subprocess.check_output([*args, "--set", "closedWiki=false"])
+    )
+    assert unchanged == deployments and policy_off["spec"]["egress"] == [
+        r for i, r in enumerate(policy["spec"]["egress"]) if i != 3
+    ]
+    off = yaml.safe_load(config_off["data"]["dynamic.yaml"])["http"]
+    for section in ("routers", "services"):
+        assert off[section] == {k: v for k, v in http[section].items() if k != "wiki"}
     placement = {}
     for deployment in deployments:
         assert deployment["kind"] == "Deployment"
@@ -193,7 +223,7 @@ def test_effective_health_fleet():
 
 
 def test_format_quorum_admission_matches_owner_release():
-    from ci.quality.closed_format_quorum import OUTPUT, render
+    from ci.quality.closed_root_owners import OUTPUT, render
 
     assert OUTPUT.read_text() == render()
 
@@ -201,7 +231,7 @@ def test_format_quorum_admission_matches_owner_release():
 def test_format_quorum_withdraws_unreviewed_owner_changes():
     from copy import deepcopy
 
-    from ci.quality.closed_format_quorum import APP, CATALOG, eligible
+    from ci.quality.closed_root_owners import APP, CATALOG, eligible
 
     command = [
         "helm",
@@ -234,3 +264,55 @@ def test_format_quorum_withdraws_unreviewed_owner_changes():
         mutate(next(r for r in changed if r["kind"] == kind))
         assert not eligible(changed, catalog)
     assert not eligible([*rows, {"kind": "HTTPRoute"}], catalog)
+
+
+def test_wiki_requires_public_runtime_and_unmodified_named_backend():
+    from copy import deepcopy
+
+    from ci.quality.closed_root_owners import CATALOG, eligible, owner_render
+
+    rows = owner_render(wiki=True)
+    catalog = yaml.safe_load(CATALOG.read_text())
+    for kind, change in [
+        (
+            "Deployment",
+            lambda r: next(
+                x
+                for x in r["spec"]["template"]["spec"]["containers"][0]["env"]
+                if x["name"] == "WIKI_PUBLIC"
+            ).update(value="false"),
+        ),
+        (
+            "Deployment",
+            lambda r: r["spec"]["template"]["spec"]["containers"][0]["ports"][0].update(
+                containerPort=9999
+            ),
+        ),
+        ("Service", lambda r: r["metadata"].update(namespace="private")),
+        ("Ingress", lambda r: r["metadata"]["labels"].clear()),
+        (
+            "Ingress",
+            lambda r: r["metadata"]["annotations"].update(
+                {"traefik.ingress.kubernetes.io/router.middlewares": "auth"}
+            ),
+        ),
+    ]:
+        changed = deepcopy(rows)
+        change(next(d for d in changed if d["kind"] == kind))
+        assert not eligible(changed, catalog, wiki=True)
+    chart = ROOT / "deploy/wiki-runtime/chart"
+    raw = subprocess.check_output(
+        [
+            "helm",
+            "template",
+            "wiki-runtime",
+            str(chart),
+            "-n",
+            "wiki",
+            "-f",
+            str(chart / "../values.yaml"),
+            "--set",
+            "visibility=private",
+        ]
+    )
+    assert not eligible([r for r in yaml.safe_load_all(raw) if r], catalog, wiki=True)

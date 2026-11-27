@@ -7,6 +7,8 @@
 {{- $blog := and (eq (get $pin "dns") "managed") (eq (get $pin "tlsSourceName") "blog-tls") (or (not (hasKey $pin "route")) (eq (get $pin "route") "web")) (kindIs "bool" $ing.publicWeb) $ing.publicWeb (eq $ing.className "traefik") (kindIs "slice" $ing.hosts) (has $host $ing.hosts) (eq $ing.tlsSecretName "blog-tls") (eq (toJson $svc.port) "80") (eq (toJson $svc.targetPort) "8080") -}}
 {{- $fqPin := dig "format-quorum" "fq.alchemmist.xyz" (dict) .Values.hosts -}}
 {{- $fq := and (kindIs "bool" .Values.closedFormatQuorum) .Values.closedFormatQuorum (deepEqual $fqPin (dict "dns" "managed" "tlsSourceName" "format-quorum-tls")) -}}
+{{- $wikiPin := dig "wiki" "wiki.socrat.alchemmist.xyz" (dict) .Values.hosts -}}
+{{- $wiki := and (kindIs "bool" .Values.closedWiki) .Values.closedWiki (deepEqual $wikiPin (dict "dns" "managed" "tlsSourceName" "wiki-tls")) -}}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -34,6 +36,12 @@ spec:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: format-quorum}}
           podSelector: {matchLabels: {app.kubernetes.io/instance: format-quorum, app.kubernetes.io/name: format-quorum}}
       ports: [{port: 3000, protocol: TCP}]
+{{- end }}
+{{- if $wiki }}
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: wiki}}
+          podSelector: {matchLabels: {app.kubernetes.io/instance: wiki-runtime, app.kubernetes.io/name: hugo-docs-wiki}}
+      ports: [{port: 8080, protocol: TCP}]
 {{- end }}
     - to:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
@@ -63,7 +71,18 @@ data:
           rule: 'Host(`fq.alchemmist.xyz`) && PathPrefix(`/`)'
           service: format-quorum
 {{- end }}
+{{- if $wiki }}
+        wiki:
+          entryPoints: [closed]
+          rule: 'Host(`wiki.socrat.alchemmist.xyz`) && PathPrefix(`/`)'
+          service: wiki
+{{- end }}
       services:
+{{- if $wiki }}
+        wiki:
+          loadBalancer:
+            servers: [{url: 'http://wiki-runtime-wiki.wiki.svc.cluster.local:8080'}]
+{{- end }}
 {{- if $fq }}
         format-quorum:
           loadBalancer:
