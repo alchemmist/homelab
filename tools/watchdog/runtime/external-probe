@@ -1,0 +1,7 @@
+#!/bin/sh
+# Private root-owned ssh config pins host key, witness user and dedicated key.
+config=${WATCHDOG_WITNESS_SSH_CONFIG:-/etc/homelab-vpn-failover/witness.ssh}
+exec /usr/bin/ssh -F "$config" -nT \
+  -o BatchMode=yes -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes \
+  -o ClearAllForwardings=yes -o ForwardAgent=no -o ConnectTimeout=2 \
+  vpn-witness verify-vpn
