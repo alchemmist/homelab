@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 from services.public_entry.tls_material import MaterialRejected, leaf_identity
@@ -21,8 +21,9 @@ def pair(
     purpose=ExtendedKeyUsageOID.SERVER_AUTH,
     signer=None,
     extra_sans=(),
+    key=None,
 ):
-    sk = ec.generate_private_key(ec.SECP256R1())
+    sk = key or ec.generate_private_key(ec.SECP256R1())
     dn = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "fixture")])
     b = (
         x509.CertificateBuilder()
@@ -162,3 +163,12 @@ def test_completed_refresh_admits_only_independent_owned_sources():
     ) == {right: wanted[right]}
     assert select_sources(owners, both, NOW) == wanted
     assert "PRIVATE KEY" not in repr(first)
+
+
+def test_rsa_public_key_identity_uses_the_complete_key():
+    sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    _, leaf = pair(key=sk)
+    assert leaf_identity(pem(leaf), private(sk), NAMES, NOW) == leaf.fingerprint(hashes.SHA256()).hex()
+    other = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    with pytest.raises(MaterialRejected):
+        leaf_identity(pem(leaf), private(other), NAMES, NOW)
