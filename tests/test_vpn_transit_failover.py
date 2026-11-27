@@ -500,3 +500,20 @@ def test_interrupted_warm_return_recovers_before_monitoring(ctl, monkeypatch):
     monkeypatch.setattr(c, "activate", calls.append)
     c.tick()
     assert calls == ["recover interrupted warm return"]
+
+
+def test_agent_exception_requires_live_same_boot_warming(ctl, monkeypatch, tmp_path):
+    m, c = ctl
+    monkeypatch.setattr(type(c), "permit", property(lambda _: tmp_path / "permit"))
+    monkeypatch.setattr(m, "boot_id", lambda: "this-boot")
+    monkeypatch.setattr(m, "active", lambda unit: unit == m.NATIVE)
+    c.config["warm_return_enabled"] = True
+    m.atomic(c.marker, {})
+    c.save(mode="native")
+    assert not c.agent_allowed()
+    c.save(mode="warming", warming_boot="old")
+    assert not c.agent_allowed()
+    c.save(warming_boot="this-boot")
+    assert c.agent_allowed()
+    c.permit.touch()
+    assert not c.agent_allowed()

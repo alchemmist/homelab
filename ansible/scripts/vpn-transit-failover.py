@@ -291,6 +291,16 @@ class Controller:
         unique = {i["pid"]: i for i in processes}
         for i in unique.values():
             terminate_owned(i)
+        # During interrupted warm-up the original native relay may still own
+        # every public port. Do not ask it to release those ports or restart it.
+        if self.config.get("warm_return_enabled") and active(NATIVE):
+            if not self.healthy():
+                raise RuntimeError(
+                    "Native relay still owns ports but its path is unhealthy"
+                )
+            self.save(mode="native", failures=0, healthy=True)
+            self.receipt("native-preserved", reason=reason)
+            return
         # Unknown owner means STOP, never kill it or start a competing listener.
         for _ in range(30):
             try:
@@ -367,6 +377,17 @@ class Controller:
     def permit(self):
         return pathlib.Path("/var/lib/homelab-vpn-transit/port-owner/cluster")
 
+    def agent_allowed(self):
+        if not self.marker.exists():
+            return True
+        return (
+            self.config.get("warm_return_enabled") is True
+            and self.state.get("mode") == "warming"
+            and self.state.get("warming_boot") == boot_id()
+            and not self.permit.exists()
+            and active(NATIVE)
+        )
+
     def witness(self):
         run(["/usr/local/sbin/homelab-vpn-external-probe"], timeout=7)
 
@@ -415,7 +436,7 @@ class Controller:
             return
         probe(self.config, host="10.250.0.2", source=("10.250.0.40", 0))
         self.witness()
-        self.save(mode="warming", failures=0)
+        self.save(mode="warming", warming_boot=boot_id(), failures=0)
         try:
             run(["systemctl", "start", AGENT], timeout=90)
             deadline = time.monotonic() + 90
@@ -547,9 +568,21 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument(
         "action",
-        choices=["tick", "status", "activate", "failback", "promote", "demote"],
+        choices=[
+            "tick",
+            "status",
+            "activate",
+            "failback",
+            "promote",
+            "demote",
+            "agent-allowed",
+        ],
     )
     a = p.parse_args()
+    # ExecCondition runs inside the controller's systemctl start operation;
+    # taking the transaction lock here would deadlock the worker startup.
+    if a.action == "agent-allowed":
+        raise SystemExit(0 if Controller().agent_allowed() else 1)
     with (ROOT / "lock").open("a") as lock:
         try:
             fcntl.flock(
