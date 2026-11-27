@@ -18,16 +18,13 @@ VPN управляет VPN-рассылками, не выдаёт и не от�
 Роль `vpn` больше не используется: роли описывают полномочия, интересы — функции.
 
 Socrat Bot — это Telegram-бот кластера. Через него приходят карточки алертов,
-список людей на VPN и служебные ответы владельцу. Снаружи у бота открыт только
-вход от Telegram. Всё остальное — внутренний API внутри кластера. Страница
-собрана из `openapi.yaml` в репозитории бота, чтобы у процессов было одно место,
-где видно, как к нему обращаться.
+список людей на VPN и служебные ответы владельцу.
 
-Алерт приходит одним запросом `POST /v1/messages`. Бот рисует карточку и
+Алерт приходит одним запросом `POST /api/v1/messages`. Бот рисует карточку и
 отправляет копию одобренным подписчикам с receive_level >= level инцидента. Повтор того же алерта правит
 ту же карточку, в том числе когда он закрылся. Кнопки Mute ставят одну тишину
 в Alertmanager и убирают кнопки у всех копий. Отдельный процесс может позже
-найти эту карточку и дописать ссылку SPI через `POST /v1/cards/links`.
+найти эту карточку и дописать ссылку SPI через `POST /api/v1/cards/links`.
 
 `ALERT_LEVELS=10,20`: инцидент начинает с максимального уровня. Escalate под Mute
 переводит его ровно на один уровень выше по полномочиям (к меньшему числу).
@@ -48,16 +45,28 @@ receive mode не переигрывает существующие firing; но
 
 ## Куда ходить
 
-Внутренний адрес: `http://socrat-bot.socrat-bot.svc:8080`. Заголовок
-`X-Internal-Token`. Публичный адрес `https://bot.socrat.alchemmist.xyz` принимает
-только `POST /telegram/webhook` и заголовок `X-Telegram-Bot-Api-Secret-Token`.
+**Оператор:** откройте [консоль токенов](https://bot.socrat.alchemmist.xyz/).
+Вход через Authentik: достаточно членства в `socrat-bot-admin` **или** `homelab-owner`.
+Интерфейс на английском. Укажите **Token name**, **Expires in (days)** и **Permissions**.
+Для обычных сообщений выберите `messages:send` и перечислите разрешённые **Chat IDs**.
+Нажмите **Issue token** и сразу сохраните секрет: повторно он не показывается.
+Для ротации выдайте новый токен, переключите клиент и нажмите **Revoke** у старого.
+**Sign out** завершает сеанс консоли, но не отзывает токены интеграций.
+
+**Интеграция:** базовый URL — `https://bot.socrat.alchemmist.xyz/api/v1`;
+передавайте `Authorization: Bearer TOKEN` в заголовке, не в URL. Каждому клиенту — свой токен.
+Два workflow n8n используют отдельные `messages:send` + `messages:advanced`, без `messages:edit`.
+SPI использует только `cards:read` и `cards:link`. [Таблица разрешений](https://github.com/alchemmist/socrat-bot/blob/main/docs/public-api.md).
+
+Старые `/v1/*` отключены. `POST /telegram/webhook` по-прежнему проверяет
+`X-Telegram-Bot-Api-Secret-Token`; `/healthz` доступен только внутри кластера.
 
 Команды `/start`, `/mailing`, `/users`, `/alerts` и `/alertlevel` в этот API не входят: их нажимают люди
 в Telegram. Sudo и обновление 3X-UI живут в отдельных процессах и сюда тоже не входят.
 
 ## Методы
 
-### `POST /v1/messages`
+### `POST /api/v1/messages`
 
 Отправить сообщение или карточку алерта
 
@@ -91,15 +100,16 @@ exactly-once не гарантируется. Payload images не возвращ
 Повтор того же алерта правит уже отправленную карточку. Resolved дописывается
 в ту же строку, что и название. Следующее срабатывание после закрытия создаёт новое сообщение.
 
-Доступ: internalToken.
+Доступ: bearerToken.
 
 Тело: `Message`.
 
 - `200` — Сообщение отправлено или обновлено
 - `400` — В запросе больше одного алерта или нет текста
-- `401` — Нет или неверный X-Internal-Token
+- `401` — Bearer-токен отсутствует, недействителен, отозван или истёк
+- `403` — Нет нужного разрешения или доступа к чату
 
-### `POST /v1/cards/links`
+### `POST /api/v1/cards/links`
 
 Дописать ссылку SPI к уже отправленной карточке
 
@@ -109,68 +119,73 @@ exactly-once не гарантируется. Payload images не возвращ
 Если карточка ещё не отправлялась после появления этого метода, ответ 409:
 нужно дождаться следующего обновления этого алерта.
 
-Доступ: internalToken.
+Доступ: bearerToken.
 
 Тело: `CardLink`.
 
 - `200` — Ссылка записана и проставлена в те копии, где это удалось
 - `400` — Не переданы ни key, ни alert
-- `401` — Нет или неверный X-Internal-Token
+- `401` — Bearer-токен отсутствует, недействителен, отозван или истёк
+- `403` — Нет нужного разрешения или доступа к чату
 - `404` — Карточка с таким ключом ещё не отправлялась
 - `409` — У карточки ещё не сохранён текст, повторите после следующего обновления алерта
 
-### `PATCH /v1/messages/{message_id}`
+### `PATCH /api/v1/messages/{message_id}`
 
 Заменить текст одного сообщения
 
-Доступ: internalToken.
+Доступ: bearerToken.
 
 Тело: `object`.
 
 - `200` — Сообщение изменено
-- `401` — Нет или неверный X-Internal-Token
+- `401` — Bearer-токен отсутствует, недействителен, отозван или истёк
+- `403` — Нет нужного разрешения или доступа к чату
 
-### `POST /v1/link-codes`
+### `POST /api/v1/link-codes`
 
 Выдать одноразовый код привязки клиента панели
 
 Код не добавляет человека в список VPN сам по себе. Список VPN-рассылки — те, кто выбрал интерес VPN.
 
-Доступ: internalToken.
+Доступ: bearerToken.
 
 Тело: `object`.
 
 - `200` — Код и команда /start, которой его нужно передать
-- `401` — Нет или неверный X-Internal-Token
+- `401` — Bearer-токен отсутствует, недействителен, отозван или истёк
+- `403` — Нет нужного разрешения или доступа к чату
 
-### `POST /v1/broadcasts`
+### `POST /api/v1/broadcasts`
 
 Создать черновик рассылки
 
 Обычная рассылка запускается командой /mailing в Telegram, не этим методом.
 
-Доступ: internalToken.
+Доступ: bearerToken.
 
 Тело: `object`.
 
 - `200` — Черновик создан и показан владельцу
-- `401` — Нет или неверный X-Internal-Token
+- `401` — Bearer-токен отсутствует, недействителен, отозван или истёк
+- `403` — Нет нужного разрешения или доступа к чату
 
-### `GET /v1/actions/{action_id}`
+### `GET /api/v1/actions/{action_id}`
 
 Статус кнопки в сообщении
 
-Доступ: internalToken.
+Доступ: bearerToken.
 
 - `200` — Текущий статус действия
-- `401` — Нет или неверный X-Internal-Token
+- `401` — Bearer-токен отсутствует, недействителен, отозван или истёк
+- `403` — Нет нужного разрешения или доступа к чату
 - `404` — Действие не найдено
 
 ### `POST /telegram/webhook`
 
 Принять обновление Telegram
 
-Единственный публичный метод. Его вызывает Telegram, не внутренние workflow.
+Этот метод вызывает Telegram; клиентский Bearer-токен здесь не используется.
 
 Доступ: telegramSecret.
 
@@ -179,60 +194,64 @@ exactly-once не гарантируется. Payload images не возвращ
 - `200` — Обновление принято
 - `401` — Секрет webhook не совпал
 
-### `GET /v1/cards`
+### `GET /api/v1/cards`
 
 Открытые карточки и их копии
 
 По умолчанию только ещё открытые (firing). status=resolved или status=all меняет выбор.
 text_stored=false значит текст карточки ещё не сохранён и ссылку или заметку писать рано (будет 409).
 
-Доступ: internalToken.
+Доступ: bearerToken.
 
 - `200` — Карточки
-- `401` — Нет или неверный X-Internal-Token
+- `401` — Bearer-токен отсутствует, недействителен, отозван или истёк
+- `403` — Нет нужного разрешения или доступа к чату
 
-### `GET /v1/cards/item`
+### `GET /api/v1/cards/item`
 
 Одна карточка по ключу
 
-Ключ берётся из списка карточек или из ответа POST /v1/messages.
+Ключ берётся из списка карточек или из ответа POST /api/v1/messages.
 В ключе бывают слэши, поэтому он передаётся параметром key, а не частью пути.
 Возвращает и открытую, и уже закрытую карточку.
 
-Доступ: internalToken.
+Доступ: bearerToken.
 
 - `200` — Карточка и её копии
-- `401` — Нет или неверный X-Internal-Token
+- `401` — Bearer-токен отсутствует, недействителен, отозван или истёк
+- `403` — Нет нужного разрешения или доступа к чату
 - `404` — Карточка с таким ключом не отправлялась
 
-### `POST /v1/cards/notes`
+### `POST /api/v1/cards/notes`
 
 Дописать или заменить короткую заметку на карточке
 
 Одна строка без HTML, не длиннее 240 символов. Попадает во все копии и сохраняется
 при следующем обновлении алерта. Повтор той же строки ничего не дублирует.
 
-Доступ: internalToken.
+Доступ: bearerToken.
 
 Тело: `CardNote`.
 
 - `200` — Заметка записана
 - `400` — Нет ключа или заметка пустая либо слишком длинная
-- `401` — Нет или неверный X-Internal-Token
+- `401` — Bearer-токен отсутствует, недействителен, отозван или истёк
+- `403` — Нет нужного разрешения или доступа к чату
 - `404` — Карточка ещё не отправлялась
 - `409` — У карточки ещё не сохранён текст
 
-### `GET /v1/audience`
+### `GET /api/v1/audience`
 
 Получатели групп VPN, Alerts, LLM и Cluster
 
 username без символа @. Его может не быть, тогда остаётся telegram_id.
 Списки VPN, LLM и Cluster — по выбранным интересам; Alerts — выбранный интерес и одобрение владельца.
 
-Доступ: internalToken.
+Доступ: bearerToken.
 
 - `200` — Три списка по группам
-- `401` — Нет или неверный X-Internal-Token
+- `401` — Bearer-токен отсутствует, недействителен, отозван или истёк
+- `403` — Нет нужного разрешения или доступа к чату
 
 ### `GET /healthz`
 
@@ -257,7 +276,7 @@ username без символа @. Его может не быть, тогда о
 
 ### AlertImage
 
-- `data_base64`: string, обязательно — Строгая каноническая кодировка base64; после декодирования — не более 4 МиБ. Сигнатура должна соответствовать PNG или JPEG.
+- `data_base64`: string, обязательно — Canonical strict base64; decoded limit 4 MiB, matching PNG/JPEG signature required.
 - `mime_type`: string, обязательно
 - `filename`: string
 
@@ -267,7 +286,7 @@ username без символа @. Его может не быть, тогда о
 - `labels`: object
 - `annotations`: object
 - `fingerprint`: string
-- `spi_episode`: string — Эталонный хеш эпизода SPI. По нему создаётся неизменяемый ключ карточки: события `firing` и `resolved` одного эпизода используют общий ключ, следующее срабатывание — новый.
+- `spi_episode`: string — Authoritative SPI episode digest. Creates an immutable episode-specific card key; firing/resolved share it, later firings use a new key.
 
 ### Card
 
@@ -286,18 +305,18 @@ username без символа @. Его может не быть, тогда о
 - `label`: string
 - `key`: string — Ключ карточки, если он уже известен.
 - `alert`: Alert
-- `revision`: integer — Монотонно растущая ревизия ссылки. Для устаревшей ревизии сервер возвращает 409. Требуется `expected_copies`.
-- `expected_copies`: список object — Необязательная атомарная проверка: все указанные пары чата и сообщения должны по-прежнему относиться к карточке, иначе сервер вернёт 409.
+- `revision`: integer — Monotonic desired-link revision; stale revisions return409. Requires expected_copies.
+- `expected_copies`: список object — Optional atomic guard: all listed chat/message identities must still belong to this card, otherwise409.
 
 ### CardLinkResult
 
 - `key`: string
 - `updated`: список object
-- `pending`: список object — Копии без подтверждения Telegram. Повторите попытку даже при ответе HTTP 200.
+- `pending`: список object — Copies not acknowledged by Telegram; retry even on HTTP200.
 
 ### SentMessage
 
-- `attachments`: список object — Поле есть, если сохранены изображения. Доставка текста не подтверждает доставку фото. Нумерация слотов начинается с нуля. В `pending` входят получатели со сбоем доставки и отключённые получатели; содержимое файлов не передаётся.
+- `attachments`: список object — Present when retained images exist; text copies do not imply photo success. Slots are zero-based. Pending includes failed/disabled recipients; no bytes are exposed.
 - `id`: integer
 - `chat_id`: integer
 - `replayed`: boolean
@@ -340,5 +359,5 @@ username без символа @. Его может не быть, тогда о
 
 - `telegram_id`: integer, обязательно
 - `username`: string
-- `admin_level`: integer — Уровень полномочий: чем меньше число, тем выше полномочия.
-- `receive_level`: integer — Порог доставки новых срабатываний, не ниже `admin_level`.
+- `admin_level`: integer — Assigned authority tier; lower numbers have higher authority.
+- `receive_level`: integer — New firing delivery threshold, greater than or equal to admin_level.
