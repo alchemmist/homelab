@@ -136,7 +136,9 @@ def test_openhands_selects_the_oidc_proxy_not_the_native_ingress():
     policy["spec"]["ingress"] = []
     assert permitted == render()
     # With prune disabled, even turning off OIDC must overwrite the previous grant.
-    disabled = render(*peer_opts, "--set", "oidc.enabled=false")
+    refused = run(*peer_opts, "--set", "oidc.enabled=false")
+    assert refused.returncode and "requires the protected OIDC frontdoor" in refused.stderr
+    disabled = render(*peer_opts, "--set", "oidc.enabled=false", "--set-json", "config.extraEnv=[]")
     assert policy in disabled
     assert not any(d["kind"] == "Ingress" for d in disabled)
     for value in ("true", "false"):
