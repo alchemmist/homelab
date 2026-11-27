@@ -17,6 +17,8 @@ spec:
       parameters:
         - name: publicStatusHost
           value: status.alchemmist.xyz
+        - name: publicEntry.kumaPolicyProxy.spreadAcrossEntrances
+          value: 'true'
   destination:
     namespace: uptime-kuma
     server: https://kubernetes.default.svc

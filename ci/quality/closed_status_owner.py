@@ -20,6 +20,8 @@ POLICY = {
     ("Deployment", PROXY): "9f2a8fe63addefbb8f65687e478f74732d73c18e0a2241bedceb6d666a16e0cf",
     ("Service", PROXY): "54a8c444d13caea50afed9fdee711eb3b63ba81f644d66e9a17b85a6e4da186d",
 }
+SPREAD_DIGEST = "f84b64d3493f8fb797df29b90ac5f35c1b1bd9ad758163fba03bd5b566606750"
+SPREAD = "publicEntry.kumaPolicyProxy.spreadAcrossEntrances"
 STATUS = "status.alchemmist.xyz"
 LEGACY = "kuma.socrat.alchemmist.xyz"
 ROUTES = {
@@ -74,7 +76,10 @@ def admission(rows, catalog):
             and obj["spec"]["template"].get("metadata", {}).get("labels", {}).get("app") == PROXY
         ):
             return result
-    if not all(hashes.get(k) == v for k, v in POLICY.items()):
+    if not all(
+        hashes.get(k) in ({v, SPREAD_DIGEST} if k == ("Deployment", PROXY) else {v})
+        for k, v in POLICY.items()
+    ):
         return result
     for host, (bit, ing, pin, digest) in ROUTES.items():
         key = "Ingress", ing
@@ -101,12 +106,18 @@ def owner_objects():
             "helm": {"releaseName": NS, "parameters": params},
         }
         or spec["destination"] != {"namespace": NS, "server": "https://kubernetes.default.svc"}
-        or params
-        not in (
-            [],
-            [{"name": "publicStatusHost", "value": STATUS}],
-            [{"name": "publicStatusHost", "value": ""}],
+        or not isinstance(params, list)
+        or any(
+            p
+            not in [
+                {"name": "publicStatusHost", "value": STATUS},
+                {"name": "publicStatusHost", "value": ""},
+                {"name": SPREAD, "value": "true"},
+                {"name": SPREAD, "value": "false"},
+            ]
+            for p in params
         )
+        or len({p["name"] for p in params}) != len(params)
     ):
         raise ValueError("unreviewed status release inputs")
     args = ["helm", "template", NS, str(ROOT / src["path"]), "-n", NS]

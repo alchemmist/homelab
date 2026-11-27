@@ -1,4 +1,6 @@
 {{- if .Values.publicEntry.kumaPolicyProxy.enabled }}
+{{- $spread := .Values.publicEntry.kumaPolicyProxy.spreadAcrossEntrances }}
+{{- if not (kindIs "bool" $spread) }}{{ fail "spreadAcrossEntrances must be boolean" }}{{ end }}
 {{- if not (regexMatch "^docker.io/library/nginx:.+@sha256:[a-f0-9]{64}$" .Values.publicEntry.kumaPolicyProxy.image) }}
 {{- fail "Kuma policy proxy requires a verified immutable stock nginx image" }}
 {{- end }}
@@ -19,16 +21,41 @@ metadata:
   namespace: uptime-kuma
   annotations: {argocd.argoproj.io/sync-wave: '-1'}
 spec:
+{{- if $spread }}
+  replicas: 2
+  minReadySeconds: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 1, maxSurge: 1}
+{{- else }}
   replicas: 1
+{{- end }}
   selector: {matchLabels: {app: public-web-kuma-proxy}}
   template:
     metadata:
-      labels: {app: public-web-kuma-proxy}
+      labels:
+        app: public-web-kuma-proxy
+{{- if $spread }}
+        homelab.alchemmist.xyz/status-proxy-replica: spread
+{{- end }}
       annotations:
         checksum/config: {{ .Files.Get "files/kuma-policy.conf" | sha256sum | quote }}
     spec:
       automountServiceAccountToken: false
+{{- if $spread }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: kubernetes.io/hostname, operator: In, values: [socrat-0, socrat-2]}
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector: {matchLabels: {homelab.alchemmist.xyz/status-proxy-replica: spread}}
+{{- else }}
       nodeSelector: {kubernetes.io/hostname: socrat-0}
+{{- end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 101
