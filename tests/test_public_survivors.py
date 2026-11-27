@@ -111,3 +111,12 @@ def test_schoolbot_body_must_match_advertised_length(length, ok):
     with http.client.HTTPResponse(sock) as response:
         response.begin()
         assert response_healthy(response) is ok
+
+
+def test_no_length_short_read_does_not_hide_following_body():
+    from unittest.mock import Mock
+    from ci.quality.schoolbot_entry_health import response_healthy
+    response=Mock(status=200)
+    response.getheader.side_effect=lambda name,default=None: "application/json" if name=="Content-Type" else default
+    response.read.side_effect=[b'{"ok":true}', b'x']
+    assert not response_healthy(response)

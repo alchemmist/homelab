@@ -49,6 +49,8 @@ def response_healthy(resp: http.client.HTTPResponse) -> bool:
         ):
             return False
     body = resp.read(LIMIT + 1)
+    if length is None and len(body) <= LIMIT and resp.read(1):
+        return False  # Do not accept a short read when more body bytes follow.
     if length is not None and len(body) != int(length):
         return False
     return healthy(resp.status, resp.getheader("Content-Type", ""), body)
