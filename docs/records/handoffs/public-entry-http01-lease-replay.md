@@ -88,3 +88,30 @@ listener behavior, not a latency bound or a recommendation for production
 leases. Next integration concern: refreshing all slots from one complete,
 consistent namespace observation, without reopening a removed slot or letting
 one consumer see results from a superseded round.
+
+## One shared scan, late successful result
+
+`NamespaceGate` is a fixed-scope, single-process experiment. Start a round
+before page one, match all configured slots against one finished namespace
+scan, then replace the entire in-memory table under the request reader's lock.
+Each slot's deadline is relative to the round's start. Starting a newer round
+permanently disqualifies any earlier outstanding one. A failed latest round
+leaves the previous table on its original deadlines; it does not authorize
+falling back to the superseded scan. A newly committed table gives admitted
+slots new witnesses, so even an unchanged in-flight response may be discarded
+on recheck. This favors conservative suppression over that request's availability.
+
+In the isolated two-solver listener fixture the initial two-page scan did two
+child lookups **total**, not two scans per slot. An older HTTP list with both
+Challenges was then held on page two. A newer, one-page list with only the
+second Challenge committed. Fresh exact requests got 410/200. Releasing the
+older scan let it finish both pages and both child lookups, but it could not
+commit; fresh requests still got 410/200 and the first solver fetch count
+remained one. A further fresh complete scan explicitly restored both. Ordinary
+root, near miss and wrong Host remained independent controls. A concurrent
+unit test also forced the newer round to fail: the late success could not
+renew or replace the previous witnesses in that case either.
+
+This serializes commits **only in one gate process**. The HTTP API and child
+observations were fixture data. No cross-resource transaction, multi-worker
+consensus, authoritative CA observation or sustained API load was tested.

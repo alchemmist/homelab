@@ -508,3 +508,69 @@ def test_new_verified_address_cannot_renew_a_slot_for_an_old_backend():
     pod["status"]["podIP"] = "10.42.2.11"
     slices[0]["endpoints"][0]["addresses"] = ["10.42.2.11"]
     assert not run() and slot.witness() is None
+
+
+@pytest.mark.parametrize("newer_finishes", [True, False])
+def test_one_namespace_scan_cannot_resurrect_a_slot_from_an_older_inflight_round(
+    newer_finishes,
+):
+    from concurrent.futures import ThreadPoolExecutor
+    from ipaddress import IPv4Network
+    from threading import Event
+
+    from ci.quality.public_http01_lease_scan import NamespaceGate, Presentation
+    from ci.quality.public_http01_scan import IncompleteScan
+
+    rows = [destination_fixture(k, k * 43) for k in ("a", "b")]
+    net = IPv4Network("10.42.0.0/16")
+    slots = tuple(
+        Presentation(
+            "owner",
+            r[0][3],
+            r[0][2],
+            r[1]["spec"]["token"],
+            "http://10.42.2.9:8089",
+            10**11,
+        )
+        for r in rows
+    )
+    gate = NamespaceGate("owner", slots)
+    calls = []
+
+    def children(ch):
+        calls.append(ch["metadata"]["uid"])
+        return rows[int(ch["metadata"]["uid"] == "b")][2:]
+
+    def both(ns, cursor):
+        return list_page([rows[int(bool(cursor))][1]], "" if cursor else "more")
+
+    assert gate.refresh(both, children, net) and calls == ["a", "b"]
+    original = [gate.witness(s) for s in slots]
+    assert all(original)
+    entered, release = Event(), Event()
+
+    def blocked(ns, cursor):
+        if cursor:
+            entered.set()
+            assert release.wait(5)
+        return both(ns, cursor)
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        old = pool.submit(gate.refresh, blocked, children, net)
+        try:
+            assert entered.wait(5)
+            if newer_finishes:
+                assert gate.refresh(lambda *_: list_page([rows[1][1]]), children, net)
+                after = [gate.witness(s) for s in slots]
+                assert (
+                    after[0] is None
+                    and after[1] is not None
+                    and after[1] != original[1]
+                )
+            else:
+                with pytest.raises(IncompleteScan):
+                    gate.refresh(lambda *_: (410, {}), children, net)
+                after = original
+        finally:
+            release.set()
+        assert old.result(5) is False and [gate.witness(s) for s in slots] == after
