@@ -14,7 +14,9 @@ spec:
     path: charts/pr-agent
     helm:
       releaseName: pr-agent
-      parameters: []
+      parameters:
+        - name: publicWebHost
+          value: pr-agent.socrat.alchemmist.xyz
   destination:
     namespace: pr-agent
     server: https://kubernetes.default.svc
