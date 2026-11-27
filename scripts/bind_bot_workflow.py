@@ -1,0 +1,27 @@
+"""Render an offline n8n template with its instance-specific credential reference."""
+
+import argparse
+import json
+from pathlib import Path
+
+
+def bind(document, credential_id):
+    if not credential_id.strip() or credential_id.startswith('SOCRAT_BOT_'):
+        raise ValueError('supply the actual n8n credential ID, not the secret or placeholder')
+    count = 0
+    for node in document['nodes']:
+        ref = node.get('credentials', {}).get('httpHeaderAuth', {})
+        if ref.get('id') in {'SOCRAT_BOT_FAILURES_ID', 'SOCRAT_BOT_ALERTS_ID'}:
+            ref['id'] = credential_id
+            count += 1
+    if count != 1:
+        raise ValueError('expected exactly one bot credential placeholder')
+    return document
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('template', type=Path)
+    parser.add_argument('credential_id')
+    args = parser.parse_args()
+    print(json.dumps(bind(json.loads(args.template.read_text()), args.credential_id), indent=2))
