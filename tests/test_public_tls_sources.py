@@ -159,3 +159,72 @@ def test_no_partial_or_cross_namespace_reader_plan(change):
         site["tlsSourceName"] = "other/site-tls"
     report = compare(catalog, [ING, PATH, CERT])
     assert report["errors"] and not report["sources"]
+
+
+@pytest.mark.parametrize(
+    "app",
+    [
+        "blog",
+        "cats",
+        "format-quorum",
+        "img-proxy",
+        "lms",
+        "monori",
+        "n8n",
+        "pr-agent",
+        "remark42",
+        "schoolbot",
+        "socrat-bot",
+        "umami",
+        "venice-api",
+        "wiki-runtime",
+        "wishlist",
+    ],
+)
+def test_reviewed_tls_pins_agree_with_separately_rendered_release(app):
+    """Check pins against release sources, not a live-generated Secret inventory."""
+    import subprocess
+
+    import yaml
+
+    from ci.quality.public_web import CATALOG, ROOT
+
+    spec = yaml.safe_load((ROOT / "deploy/argocd/apps" / f"{app}.yaml").read_text())[
+        "spec"
+    ]
+    src = spec["source"]
+    helm = src["helm"]
+    ns = spec["destination"]["namespace"]
+    chart = ROOT / src["path"]
+    assert set(helm) <= {"releaseName", "parameters", "valueFiles"}
+    args = ["helm", "template", helm["releaseName"], str(chart), "-n", ns]
+    for f in helm.get("valueFiles", []):
+        args.extend(["-f", str(chart / f)])
+    for p in helm.get("parameters", []):
+        args.extend(
+            [
+                "--set-string" if p.get("forceString") else "--set",
+                p["name"] + "=" + p["value"],
+            ]
+        )
+    docs = yaml.safe_load_all(subprocess.check_output(args, text=True))
+    observed = set()
+    for d in docs:
+        if not d or d["kind"] != "Ingress":
+            continue
+        for t in d["spec"].get("tls", []):
+            assert (
+                d["spec"]["ingressClassName"] == "traefik"
+                and d["metadata"].get("namespace", ns) == ns
+            )
+            assert (
+                d["metadata"]["annotations"]["cert-manager.io/cluster-issuer"]
+                == "letsencrypt-http01"
+            )
+            for h in t["hosts"]:
+                assert h in {rule["host"] for rule in d["spec"]["rules"]}
+                observed.add((h, t["secretName"]))
+    policy = yaml.safe_load(CATALOG.read_text())["hosts"][ns]
+    assert observed and all(
+        policy[h].get("tlsSourceName") == name for h, name in observed
+    )

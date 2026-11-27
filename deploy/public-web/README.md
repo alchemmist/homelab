@@ -219,7 +219,8 @@ pin. The comparison emits no reader plan if any ordinary host has a missing,
 ambiguous, malformed or mismatched pin or if the inventory has errors. It does
 not render or apply RBAC, read Secrets, or change DNS ownership.
 
-The first pin is the existing Schoolbot route's `schoolbot/schoolbot-tls`.
+The first batch was checked against 15 local owner releases (16 names; blog
+apex and www share one source), including `schoolbot/schoolbot-tls`.
 The fleet plan intentionally remains blocked until the other sources have been
 independently reviewed. Never bootstrap the pins by copying audit output into
 Git wholesale. A name pin is not proof of the key bytes, the authority of a
