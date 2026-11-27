@@ -22,6 +22,7 @@ def pair(
     signer=None,
     extra_sans=(),
     key=None,
+    subject_public=None,
 ):
     sk = key or ec.generate_private_key(ec.SECP256R1())
     dn = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "fixture")])
@@ -29,7 +30,7 @@ def pair(
         x509.CertificateBuilder()
         .subject_name(dn)
         .issuer_name(dn)
-        .public_key(sk.public_key())
+        .public_key(subject_public or sk.public_key())
         .serial_number(x509.random_serial_number())
         .not_valid_before(NOW - timedelta(minutes=5))
         .not_valid_after(NOW + timedelta(hours=1))
@@ -172,3 +173,13 @@ def test_rsa_public_key_identity_uses_the_complete_key():
     other = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     with pytest.raises(MaterialRejected):
         leaf_identity(pem(leaf), private(other), NAMES, NOW)
+
+
+def test_rsa_same_modulus_with_different_exponent_is_not_the_leaf_key():
+    sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    n = sk.public_key().public_numbers().n
+    other_public = rsa.RSAPublicNumbers(3, n).public_key()
+    issuer, ca = pair(ca=True)
+    _, leaf = pair(key=sk, subject_public=other_public, signer=issuer)
+    with pytest.raises(MaterialRejected):
+        leaf_identity(pem(leaf) + pem(ca), private(sk), NAMES, NOW)
