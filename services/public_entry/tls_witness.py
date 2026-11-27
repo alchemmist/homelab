@@ -73,6 +73,8 @@ def observe(
                 )
             else:
                 result[host] = "tls-error"
+        except TimeoutError:
+            result[host] = "timeout"
         except OSError:
             result[host] = "unreachable"
     return result

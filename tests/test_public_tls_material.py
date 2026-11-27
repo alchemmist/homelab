@@ -365,3 +365,13 @@ def test_witness_rejects_empty_hostname_labels(host):
 
     with pytest.raises(ValueError, match="identity"):
         observe(443, frozenset({host}), {})
+
+
+def test_witness_timeout_does_not_acknowledge_withdrawal(monkeypatch):
+    from services.public_entry import tls_witness
+
+    def stall(*args, **kwargs):
+        raise TimeoutError
+
+    monkeypatch.setattr(tls_witness.socket, "create_connection", stall)
+    assert tls_witness.observe(443, NAMES, {}) == {host: "timeout" for host in NAMES}
