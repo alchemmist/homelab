@@ -36,3 +36,40 @@ systemctl is-enabled homelab-disable-c2.service
 
 C2 `disable` is `1`, C1 `disable` is `0`, and the watchdog `state` is `active`
 with `timeleft` between 1 and 60. Also confirm socrat-3 stays Ready.
+
+## 2026-11-27: separate the runtime stall from the subsequent boot failure
+
+| Evidence | Interpretation |
+| --- | --- |
+| The overnight boot ran with `ro quiet`, **without** ramoops. At 22:15:31 UTC on Nov 26, `Lid closed` and `Suspending...` appeared in the same second. `suspend.target` was masked; logind kept trying until the journal ended at 00:04:52 UTC on Nov 27. | A confirmed lid-policy loop, not proof that the machine suspended or that the loop caused the final hang. |
+| Later boot attempts stopped displaying output after `Physical KASLR disabled: no suitable memory region!`. The generated GRUB entry contained `memmap=0x100000$0x7f000000` with an unescaped dollar sign. | The ramoops drop-in changed the boot memory map and its argument was unsafe to pass through GRUB. No failed-boot journal proves exactly where the kernel stopped. Disabling KASLR is not the fix. |
+| A subsequent text-mode boot logged an `alx` transmit-queue timeout, RCU stall and CPU soft lockup. Stacks included network polling and Radeon VGA detection over I²C; console work waited on DRM. | This happened without Sway. Neither the interrupted GPU stack nor the Ethernet timeout alone identifies the cause of every freeze. The loaded `alx` build ID matched the DKMS module; see [network recovery](socrat-3-network-recovery.md). |
+
+**Known-good boot:** `/etc/default/grub.d/99-ramoops.cfg` was retired (kept on
+host with `.disabled` suffix), GRUB regenerated and checked with
+`grub-script-check /boot/grub/grub.cfg`. The stability playbook rejects the
+active drop-in; it does not regenerate GRUB. A normal unattended reboot of
+`6.12.113+deb13-amd64` confirmed `ro quiet` in `/proc/cmdline`, then SSH and
+Kubernetes `Ready` without user input. `k3s-agent` spent several minutes
+waiting for containerd under high disk I/O pressure. Do not power-cycle merely
+because SSH returns before kubelet is ready. SMART on `sda` passed with zero
+reallocated, pending, offline-uncorrectable and UDMA CRC counts; the recorded
+read errors on `sr0` refer to the optical drive, not the system disk.
+
+**Lid and power:** logind now ignores the lid on battery, external power and
+while docked. With Ethernet and AC attached, the closed-lid check confirmed
+`Lid closed` without subsequent suspend requests, reachable SSH and fresh
+node heartbeats. [Worker power rules](../../../../charts/monitoring-k3s/templates/socrat-3-power-rules.yaml)
+raise `Socrat3OnBattery` (warning, ADP1 offline for 2m) and `Socrat3BatteryLow`
+(critical, BAT1 at or below 20% for 2m, even on AC). Do not change the etcd
+voter alerts or disable critical-battery protection for this worker.
+
+**If it recurs:** record the UTC time and match it to `journalctl --list-boots
+--utc`. Use the boot ID rather than assuming `-1` after multiple restarts.
+Inspect `journalctl -k -b BOOT_ID --utc` and `journalctl -u systemd-logind -b
+BOOT_ID --utc`. Compare with Loki `{host_name="socrat-3",service_name="host-journal"}`
+over the same interval. Prior kernel boot messages were present remotely, but
+the exact soft-lockup trace was only found locally; both pstore directories
+were empty. A journald service watchdog restart is not evidence that the
+hardware watchdog reset the host. Do not re-enable the retired memory reservation
+just to obtain a dump.

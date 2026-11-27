@@ -44,6 +44,23 @@ verified compressed copy of 148 original files (13.43 GiB); the temporary copy o
 `0` was deleted. This is a pre-cutover snapshot, not a backup of later writes.
 [Restore verification and the archive path](../../../deploy/storage/thanos-retire/README.md).
 
+### Diagnosing `KubeJobFailed` for the hourly cascade
+
+On 2026-11-27 `thanos-cascade-29929530` stayed Pending: `socrat-3` was
+NotReady, and its hostname selector pins the writer to its local archive.
+`FailedScheduling` followed by `DeadlineExceeded` means that run never
+started; investigate [worker boot and lid state](../../platform/nodes/socrat-3/socrat-3-stability.md)
+before debugging downsampling code. Do not move the selector to another worker
+without migrating and verifying the archive itself.
+
+After reboot there was a different failure: the writer started, but the cold
+Store's loaded-block inventory endpoint refused its connection. `tier.py` now
+retries that read up to 12 times at 10-second intervals on connection refusal;
+it does not retry retention writes or relax coverage checks. Verify node Ready,
+Store readiness, then Job completion **and** its inventory output. A successful
+run with `hourly blocks confirmed 0` and `loaded cold 2` saw the two existing
+blocks; it is not evidence that a new hourly block was published.
+
 Sources: [Prometheus](../../../charts/prometheus/values.yaml), [Thanos placement and retention](../../../charts/thanos/values.yaml), [cascade schedule and permissions](../../../charts/thanos/templates/warm-cascade.yaml), [hourly block verification](../../../charts/thanos/files/hour_copy.py).
 
 ## Gaps in recent Thanos metrics (19 November 2026)
