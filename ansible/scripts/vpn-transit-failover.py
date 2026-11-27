@@ -497,9 +497,13 @@ class Controller:
                 raise RuntimeError("Lost independent transition lock")
             run(["systemctl", "stop", NATIVE])
             free_ports()
+            if lock.poll() is not None:
+                raise RuntimeError("Lost transition lock during native shutdown")
             atomic(self.permit, {"owner": "kubernetes"})
             until = time.monotonic() + 8
             while not self.healthy() and time.monotonic() < until:
+                if lock.poll() is not None:
+                    raise RuntimeError("Lost transition lock during cluster acceptance")
                 time.sleep(0.2)
             self.witness()
             if (
