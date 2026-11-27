@@ -1,0 +1,7 @@
+[Unit]
+Description=Sample VM105 recovery signals every two minutes
+[Timer]
+OnActiveSec=15s
+OnUnitInactiveSec=2min
+[Install]
+WantedBy=timers.target

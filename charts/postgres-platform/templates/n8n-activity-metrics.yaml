@@ -1,0 +1,34 @@
+{{- if .Values.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pg-common-n8n-activity
+  labels:
+    cnpg.io/reload: "true"
+data:
+  queries: |
+    n8n_activity:
+      primary: true
+      target_databases: [n8n]
+      query: SELECT status, starts FROM public.socrat_execution_activity_v1
+      metrics:
+        - status:
+            usage: LABEL
+            description: Current execution outcome
+        - starts:
+            usage: GAUGE
+            description: Executions started in the last five minutes
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pg-common-n8n-activity-metrics
+spec:
+  podSelector: {matchLabels: {cnpg.io/cluster: pg-common, cnpg.io/instanceRole: primary}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: cattle-monitoring-system}}
+          podSelector: {matchLabels: {app: socrat-n8n-activity}}
+      ports: [{port: 9187, protocol: TCP}]
+{{- end }}

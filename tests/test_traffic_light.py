@@ -229,6 +229,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
         panel = panel_by_id(self.dashboard, 920)
         assert panel["fieldConfig"]["defaults"]["custom"]["drawStyle"] == "bars"
         expr = panel["targets"][0]["expr"]
+        assert 'cnpg_n8n_activity_starts{job="n8n-activity-db"}' in expr
         assert "socrat_n8n_starts_window" in expr
         assert "collection_success" in expr
         assert "increase(" not in expr
