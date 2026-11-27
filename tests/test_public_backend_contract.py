@@ -151,3 +151,24 @@ def test_closed_path_rules_do_not_widen_segment_or_exact_matches() -> None:
     ]:
         with pytest.raises(ValueError):
             path_rule(name, path, kind)
+
+
+def test_implicit_priority_is_from_source_not_rewritten_matcher_length() -> None:
+    from ci.quality.public_path_rule import path_rule, source_priority
+
+    host = "site.invalid"
+    path = "/public/"
+    old = len('Host("site.invalid") && PathPrefix("/public/")')
+    assert source_priority(host, path, "Prefix", strict_prefix=False) == old
+    assert old < old + 1 < len(path_rule(host, path, "Prefix"))
+    assert source_priority(host, path, "Prefix", strict_prefix=True) == len(
+        path_rule(host, path, "Prefix")
+    )
+    assert (
+        source_priority(host, path, "Prefix", strict_prefix=False, declared=155) == 155
+    )
+    assert source_priority(host, "/", "Prefix", strict_prefix=False) == source_priority(
+        host, "/", "Prefix", strict_prefix=True
+    )
+    with pytest.raises(ValueError):
+        source_priority(host, path, "Prefix", strict_prefix=None)

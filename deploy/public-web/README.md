@@ -268,3 +268,17 @@ markers or the unknown-host 404, including both exact password paths and their
 unmatched child. Fixture priorities were explicit. Generated rule **length**
 must not silently change implicit priorities relative to another owner; route
 selection, auth and middleware parity remain separate deployment gates.
+
+A follow-up rehearsal showed **why copying implicit priority is not optional**.
+The [pinned Ingress implementation](https://github.com/traefik/traefik/blob/v3.7.19/pkg/provider/kubernetes/ingress/kubernetes.go)
+uses a character prefix unless `strictPrefixMatching` is enabled. For a fixture
+host and `/public/`, the unannotated original matcher had length/priority 46;
+the segment-aware rewrite measured 67. An overlapping exact-route marker at
+explicit priority 47 won initially, lost to the naive rewrite, then won again
+when the generated rule explicitly retained priority 46. Full requests to the
+running isolated binary verified each winner. The slashless `/public` still
+changed from the fallback to the prefix owner: **preserving priority is not
+preserving match scope**. Do not assume either setting on a live controller
+from this fixture. Establish the existing mode, compare both boundary paths
+and precedence, and require owner review of differences. Unreviewed ties
+between overlapping owners must not depend on router names or load order.

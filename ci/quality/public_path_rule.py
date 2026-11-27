@@ -26,3 +26,24 @@ def path_rule(host: str, path: str, kind: str) -> str:
         return f"{authority} && PathPrefix(`/`)"
     base = path.rstrip("/")
     return f"{authority} && (Path(`{base}`) || PathPrefix(`{base}/`))"
+
+
+def source_priority(
+    host: str, path: str, kind: str, *, strict_prefix: bool, declared: int = 0
+) -> int:
+    """Reproduce v3.7.19 Ingress priority for this restricted ASCII matcher subset.
+
+    The caller must establish the original strict-prefix setting. Used only to
+    compare candidate routes, not to authorize any change in matching scope.
+    Equal-priority intersecting owners still need an explicit decision.
+    """
+    rule = path_rule(host, path, kind)
+    if type(strict_prefix) is not bool or type(declared) is not int:
+        raise ValueError("unconfirmed original priority or prefix mode")
+    if declared:
+        return declared
+    if kind == "Prefix" and not strict_prefix:
+        rule = f'Host("{host}") && PathPrefix("{path}")'
+    # In this validated ASCII subset double quotes in the Kubernetes provider
+    # and backticks in the file provider have identical UTF-8 lengths.
+    return len(rule.encode("ascii"))
