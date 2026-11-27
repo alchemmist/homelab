@@ -128,6 +128,7 @@
       "tests/test_private_dns_answers.py",
       "tests/test_public_single_host_owners.py",
       "tests/test_public_tls_sources.py",
+      "tests/test_public_tls_writer_grants.py",
       "tests/test_public_tls_material.py",
       "tests/test_public_backend_contract.py",
       "tests/test_public_survivors.py",
