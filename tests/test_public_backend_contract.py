@@ -468,3 +468,40 @@ def test_closed_backend_uses_schoolbot_owner_service_and_verified_pod_destinatio
             )
         with pytest.raises(ValueError):
             build(service, slice_, pod_)
+
+
+def test_router_logging_and_tracing_suppression_is_not_confused_with_inheritance():
+    catalog, items = fixture()
+    ann = items[0]["metadata"]["annotations"]
+    prefix = PREFIX + "router.observability."
+
+    def report():
+        return inventory(catalog, items)
+
+    assert report()["routes"][0]["observability"] == {}
+    ann.update(
+        {
+            prefix + "accesslogs": "false",
+            prefix + "tracing": "false",
+            prefix + "metrics": "true",
+        }
+    )
+    result = report()
+    assert not result["errors"]
+    assert result["routes"][0]["observability"] == {
+        "accessLogs": False,
+        "tracing": False,
+        "metrics": True,
+    }
+    for key, value in [
+        (prefix + "AccessLogs", "true"),
+        (prefix + "unknown", "false"),
+        (prefix + "tracing", "no"),
+        (prefix + "metrics", False),
+        (prefix[:-1], "false"),
+    ]:
+        before = dict(ann)
+        ann[key] = value
+        assert any("unsupported router observability" in e for e in report()["errors"])
+        ann.clear()
+        ann.update(before)

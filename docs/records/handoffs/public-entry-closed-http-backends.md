@@ -72,3 +72,35 @@ backend connection could not hide a bad selector. Each client used fresh TLS.
 The neighboring route staying at 404 over verified fixture TLS distinguishes
 upstream isolation from losing the listener. These are **source-side egress**
 observations, not destination ingress authorization or production identity.
+
+## Preserve per-router observability choices
+
+The live backend inventory found two owners that explicitly disable access
+logs and tracing: `identity/openhands-oidc` and `automation/spi-queue-ui`.
+Dropping those options when building a file-provider router could record
+requests an owner meant to exclude. Carry the explicit boolean values; an
+empty settings map means inherit the listener's settings, **not** disable
+logging everywhere. Unsupported or ambiguous overrides block compilation.
+The backend inventory remains diagnostic, not a publishable route plan.
+
+A network-isolated stock Traefik rehearsal enabled global JSON access logs
+(including internal services). Three loopback requests to synthetic exact
+routes reached the same `noop@internal` backend, all returning 418. The first
+and last inherited logging and appeared in the log; the middle had explicit
+`accessLogs: false` and `tracing: false` and did not. No query strings, tokens,
+real application requests, tracing exporter or production logs were involved.
+This demonstrates access-log suppression only, not exporter-level span
+suppression or end-to-end confidentiality across upstream components.
+
+A separate network-isolated run exercised a real OTLP/HTTP exporter at 100%
+sampling, with the collector and marker backend on loopback. All three fresh
+requests carried distinct synthetic sampled W3C trace IDs and received the
+same 200 marker body. After flushing Traefik, the collector checked the
+decompressed OTLP payloads for the three known binary IDs: both inherited
+controls appeared, the explicitly disabled route's ID did not. JSON access
+logs likewise contained only the two control paths. An earlier collector
+that did not handle chunked request bodies failed to see the controls and
+was rejected as evidence. This tests export of the supplied trace IDs under
+these fixture settings, not span absence under unrelated IDs, upstream
+application logging or retention by a production telemetry service. No
+production traces, identity-provider callbacks or user data were involved.

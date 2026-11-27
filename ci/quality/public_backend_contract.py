@@ -58,6 +58,24 @@ def _middleware_kind(spec: dict) -> str | None:
     return None
 
 
+def _observability(annotations: dict) -> tuple[dict, bool]:
+    """Absence means inherit, not false. Never drop an unrecognized override."""
+    prefix = PREFIX + "router.observability."
+    fields = {"accesslogs": "accessLogs", "metrics": "metrics", "tracing": "tracing"}
+    settings = {}
+    valid = True
+    for key, value in annotations.items():
+        folded = key.lower()
+        if folded != prefix[:-1] and not folded.startswith(prefix):
+            continue
+        field = fields.get(folded.removeprefix(prefix))
+        if not field or field in settings or not isinstance(value, str) or value not in ("true", "false"):
+            valid = False
+            continue
+        settings[field] = value == "true"
+    return settings, valid
+
+
 def inventory(catalog: dict, items: list[dict]) -> dict:
     """Resolve references without granting access, reading Secrets or emitting executable config."""
     owners = {
@@ -92,6 +110,7 @@ def inventory(catalog: dict, items: list[dict]) -> dict:
         if spec.get("ingressClassName") != "traefik":
             continue
         ann = meta.get("annotations", {})
+        observability, observability_valid = _observability(ann)
         middlewares = [
             m.strip() for m in ann.get(PREFIX + "router.middlewares", "").split(",") if m.strip()
         ]
@@ -101,6 +120,8 @@ def inventory(catalog: dict, items: list[dict]) -> dict:
                 continue
             seen.add((ns, host))
             ident = f"{ns}/{name} {host}"
+            if not observability_valid:
+                errors.add(f"{ident}: ambiguous or unsupported router observability override")
             middleware_bodies = []
             for mw in middlewares:
                 if len(crds["Middleware", mw]) != 1:
@@ -208,6 +229,7 @@ def inventory(catalog: dict, items: list[dict]) -> dict:
                         "transport": transport,
                         "middlewares": middlewares,
                         "middlewareBodies": middleware_bodies,
+                        "observability": observability,
                         "transportDigest": transport_digest,
                         "priority": ann.get(PREFIX + "router.priority"),
                         "readyEndpoint": ready,
