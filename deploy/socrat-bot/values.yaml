@@ -1,5 +1,6 @@
 ---
 databaseSecret: socrat-bot-pg-common
+publicApiEnabled: true
 replicaCount: 1
 telegramRelay:
   routeBot: true
