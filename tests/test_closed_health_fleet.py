@@ -13,7 +13,7 @@ def test_effective_health_fleet():
         "spec"
     ]
     chart = ROOT / app["source"]["path"]
-    blog, values = app["source"]["helm"]["valueFiles"]
+    blog, fq, values = app["source"]["helm"]["valueFiles"]
     catalog = yaml.safe_load((chart / values).read_text())
     args = [
         "helm",
@@ -23,7 +23,11 @@ def test_effective_health_fleet():
         "-f",
         str(chart / blog),
         "-f",
+        str(chart / fq),
+        "-f",
         str(chart / values),
+        "--set",
+        "closedFormatQuorum=true",  # exercise enabled and withdrawn shapes even after an owner opt-out
     ]
     assert app["destination"]["namespace"] == "public-health-staging"
     policy, config, *deployments = yaml.safe_load_all(subprocess.check_output(args))
@@ -53,6 +57,14 @@ def test_effective_health_fleet():
             [{"port": 8080, "protocol": "TCP"}],
         ),
         (
+            {"kubernetes.io/metadata.name": "format-quorum"},
+            {
+                "app.kubernetes.io/instance": "format-quorum",
+                "app.kubernetes.io/name": "format-quorum",
+            },
+            [{"port": 3000, "protocol": "TCP"}],
+        ),
+        (
             {"kubernetes.io/metadata.name": "kube-system"},
             {"k8s-app": "kube-dns"},
             [{"port": 53, "protocol": "UDP"}, {"port": 53, "protocol": "TCP"}],
@@ -61,6 +73,11 @@ def test_effective_health_fleet():
     assert config["kind"] == "ConfigMap"
     http = yaml.safe_load(config["data"]["dynamic.yaml"])["http"]
     assert http["routers"] == {
+        "format-quorum": {
+            "entryPoints": ["closed"],
+            "rule": "Host(`fq.alchemmist.xyz`) && PathPrefix(`/`)",
+            "service": "format-quorum",
+        },
         "www-blog": {
             "entryPoints": ["closed"],
             "rule": "Host(`www.alchemmist.xyz`) && PathPrefix(`/`)",
@@ -131,12 +148,24 @@ def test_effective_health_fleet():
         assert unchanged == deployments
         assert blocked_policy["spec"]["egress"] == [
             policy["spec"]["egress"][0],
-            policy["spec"]["egress"][-1],
+            *policy["spec"]["egress"][2:],
         ]
         restricted = yaml.safe_load(blocked_config["data"]["dynamic.yaml"])["http"]
         assert restricted == {
-            "routers": {"health": http["routers"]["health"]},
-            "services": {"schoolbot": http["services"]["schoolbot"]},
+            "routers": {k: v for k, v in http["routers"].items() if k != "www-blog"},
+            "services": {k: v for k, v in http["services"].items() if k != "www-blog"},
+        }
+    policy_off, config_off, *unchanged = yaml.safe_load_all(
+        subprocess.check_output([*args[:-2], "--set-string", "closedFormatQuorum=true"])
+    )
+    assert unchanged == deployments
+    assert policy_off["spec"]["egress"] == [
+        r for i, r in enumerate(policy["spec"]["egress"]) if i != 2
+    ]
+    after = yaml.safe_load(config_off["data"]["dynamic.yaml"])["http"]
+    for section in ("routers", "services"):
+        assert after[section] == {
+            k: v for k, v in http[section].items() if k != "format-quorum"
         }
     placement = {}
     for deployment in deployments:
@@ -161,3 +190,47 @@ def test_effective_health_fleet():
             "--providers.file.directory=/route"
         ]
     assert placement == {k: v["node"] for k, v in catalog["replicas"].items()}
+
+
+def test_format_quorum_admission_matches_owner_release():
+    from ci.quality.closed_format_quorum import OUTPUT, render
+
+    assert OUTPUT.read_text() == render()
+
+
+def test_format_quorum_withdraws_unreviewed_owner_changes():
+    from copy import deepcopy
+
+    from ci.quality.closed_format_quorum import APP, CATALOG, eligible
+
+    command = [
+        "helm",
+        "template",
+        APP,
+        str(ROOT / "charts" / APP),
+        "-n",
+        APP,
+        "-f",
+        str(ROOT / "deploy" / APP / "values.yaml"),
+        "--set",
+        "ingress.publicWeb=true",
+    ]
+    rows = [r for r in yaml.safe_load_all(subprocess.check_output(command)) if r]
+    catalog = yaml.safe_load(CATALOG.read_text())
+    assert eligible(rows, catalog)
+    for kind, mutate in [
+        ("Ingress", lambda i: i["metadata"]["labels"].clear()),
+        (
+            "Ingress",
+            lambda i: i["metadata"]["annotations"].update(
+                {"traefik.ingress.kubernetes.io/router.middlewares": "auth"}
+            ),
+        ),
+        ("Ingress", lambda i: i["spec"]["rules"][0]["http"]["paths"].clear()),
+        ("Service", lambda s: s["spec"].update({"type": "ExternalName"})),
+        ("Service", lambda s: s["spec"]["ports"][0].update({"targetPort": 80})),
+    ]:
+        changed = deepcopy(rows)
+        mutate(next(r for r in changed if r["kind"] == kind))
+        assert not eligible(changed, catalog)
+    assert not eligible([*rows, {"kind": "HTTPRoute"}], catalog)

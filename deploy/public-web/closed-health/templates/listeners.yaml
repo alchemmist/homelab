@@ -5,6 +5,8 @@
 {{- $svc := .Values.service | default dict -}}
 {{- $pin := dig "blog" $host (dict) .Values.hosts -}}
 {{- $blog := and (eq (get $pin "dns") "managed") (eq (get $pin "tlsSourceName") "blog-tls") (or (not (hasKey $pin "route")) (eq (get $pin "route") "web")) (kindIs "bool" $ing.publicWeb) $ing.publicWeb (eq $ing.className "traefik") (kindIs "slice" $ing.hosts) (has $host $ing.hosts) (eq $ing.tlsSecretName "blog-tls") (eq (toJson $svc.port) "80") (eq (toJson $svc.targetPort) "8080") -}}
+{{- $fqPin := dig "format-quorum" "fq.alchemmist.xyz" (dict) .Values.hosts -}}
+{{- $fq := and (kindIs "bool" .Values.closedFormatQuorum) .Values.closedFormatQuorum (deepEqual $fqPin (dict "dns" "managed" "tlsSourceName" "format-quorum-tls")) -}}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -26,6 +28,12 @@ spec:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: blog}}
           podSelector: {matchLabels: {app.kubernetes.io/instance: blog, app.kubernetes.io/name: blog}}
       ports: [{port: 8080, protocol: TCP}]
+{{- end }}
+{{- if $fq }}
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: format-quorum}}
+          podSelector: {matchLabels: {app.kubernetes.io/instance: format-quorum, app.kubernetes.io/name: format-quorum}}
+      ports: [{port: 3000, protocol: TCP}]
 {{- end }}
     - to:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
@@ -49,7 +57,18 @@ data:
           rule: 'Host(`{{ $host }}`) && PathPrefix(`/`)'
           service: www-blog
 {{- end }}
+{{- if $fq }}
+        format-quorum:
+          entryPoints: [closed]
+          rule: 'Host(`fq.alchemmist.xyz`) && PathPrefix(`/`)'
+          service: format-quorum
+{{- end }}
       services:
+{{- if $fq }}
+        format-quorum:
+          loadBalancer:
+            servers: [{url: 'http://format-quorum.format-quorum.svc.cluster.local:80'}]
+{{- end }}
 {{- if $blog }}
         www-blog:
           loadBalancer:
