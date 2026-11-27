@@ -807,6 +807,68 @@
   },
   {
     "owner": "monitoring-k3s",
+    "resource": "socrat-3-power",
+    "group": "socrat.worker.power",
+    "alert": "Socrat3BatteryLow",
+    "expr": "(min by(instance) (node_power_supply_capacity{job=\"node-exporter\",power_supply=\"BAT1\"}) <= 20)\nand on(instance) node_uname_info{job=\"node-exporter\",nodename=\"socrat-3\"}\n",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "Socrat3BatteryLow",
+          "dashboard_uid": "alerts-66f1b5bc6e33676b",
+          "panel_id": 1,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "Socrat3BatteryLow / rule evaluations",
+          "dashboard_uid": "alerts-66f1b5bc6e33676b",
+          "panel_id": 2,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "socrat-3-power",
+    "group": "socrat.worker.power",
+    "alert": "Socrat3OnBattery",
+    "expr": "(max by(instance) (node_power_supply_online{job=\"node-exporter\",power_supply=\"ADP1\"}) == 0)\nand on(instance) node_uname_info{job=\"node-exporter\",nodename=\"socrat-3\"}\n",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "Socrat3OnBattery",
+          "dashboard_uid": "alerts-66f1b5bc6e33676b",
+          "panel_id": 3,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "Socrat3OnBattery / rule evaluations",
+          "dashboard_uid": "alerts-66f1b5bc6e33676b",
+          "panel_id": 4,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
     "resource": "socrat-service-path",
     "group": "socrat.service.paths",
     "alert": "SocratApiScrapeMissing",

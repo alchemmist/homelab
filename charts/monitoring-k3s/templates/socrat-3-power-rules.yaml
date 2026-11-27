@@ -15,6 +15,9 @@ spec:
           for: 2m
           labels: {severity: warning, node: socrat-3}
           annotations:
+            {{- with index (.Values.alertGraphAnnotations | default dict) "Socrat3OnBattery" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: socrat-3 is running on battery.
             description: Check the AC adapter, cable and outlet on the hourly metrics archive worker.
         - alert: Socrat3BatteryLow
@@ -24,5 +27,8 @@ spec:
           for: 2m
           labels: {severity: critical, node: socrat-3}
           annotations:
+            {{- with index (.Values.alertGraphAnnotations | default dict) "Socrat3BatteryLow" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: socrat-3 battery is at or below 20 percent.
             description: Restore stable external power and verify that the battery is charging.
