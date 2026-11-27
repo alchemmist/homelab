@@ -29,8 +29,8 @@ Run from `ansible/` using the existing owner SSH identity and protected server-s
 
 ```sh
 ansible-playbook playbooks/authentik-branding.yml \
-  -e ansible_host=109.173.40.247 \
-  -e 'ansible_ssh_common_args="-o HostKeyAlias=[socrat.alchemmist.xyz]:2222"' \
+  -e ansible_host=socrat-0 \
+  -e 'ansible_ssh_common_args="-o StrictHostKeyChecking=yes"' \
   -e authentik_branding_action=apply
 ```
 
@@ -49,8 +49,8 @@ The journal identifies the last changed Brand and its preceding backup. To undo 
 
 ```sh
 ansible-playbook playbooks/authentik-branding.yml \
-  -e ansible_host=109.173.40.247 \
-  -e 'ansible_ssh_common_args="-o HostKeyAlias=[socrat.alchemmist.xyz]:2222"' \
+  -e ansible_host=socrat-0 \
+  -e 'ansible_ssh_common_args="-o StrictHostKeyChecking=yes"' \
   -e authentik_branding_action=rollback \
   -e authentik_branding_backup=/home/alchemmist/.cache/homelab-authentik/theme-backups/quiet-mono-original-baseline.json
 ```

@@ -6,8 +6,8 @@ From `ansible/`:
 
 ```sh
 ansible-playbook playbooks/authentik-branding.yml \
-  -e ansible_host=109.173.40.247 \
-  -e 'ansible_ssh_common_args="-o HostKeyAlias=[socrat.alchemmist.xyz]:2222"' \
+  -e ansible_host=socrat-0 \
+  -e 'ansible_ssh_common_args="-o StrictHostKeyChecking=yes"' \
   -e authentik_branding_action=apply
 ```
 
@@ -25,8 +25,8 @@ eye settings. Use exactly it for a full rollback, not a later v5 backup:
 
 ```sh
 ansible-playbook playbooks/authentik-branding.yml \
-  -e ansible_host=109.173.40.247 \
-  -e 'ansible_ssh_common_args="-o HostKeyAlias=[socrat.alchemmist.xyz]:2222"' \
+  -e ansible_host=socrat-0 \
+  -e 'ansible_ssh_common_args="-o StrictHostKeyChecking=yes"' \
   -e authentik_branding_action=rollback \
   -e authentik_branding_backup=/home/alchemmist/.cache/homelab-authentik/theme-backups/quiet-mono-original-baseline.json
 ```
@@ -67,3 +67,7 @@ inspector denial, reduced motion and the owner existing-session check. Do not li
 guard before this check. After push, separately verify the actual rollout.
 
 After applying a theme, run `node scripts/check-authentik-login.cjs` from the repository root with Playwright available to Node and Chrome installed. The anonymous smoke test covers cold layout, keyboard focus, mobile field sizing, Russian locale overrides, an unavailable wallpaper service and the native pending state. It never submits the login form.
+
+For small screens run `node scripts/check-authentik-mobile.cjs` with Chrome and the matching Playwright WebKit installed. It tests anonymous login and a real HTTP 400 error at four viewport sizes without submitting credentials. For an explicitly authorized disposable-account test, `python3 scripts/identity-branding-smoke.py --run --mobile-webkit` exercises a rejected TOTP enrollment code, successful retry and consent. See the [acceptance record](../../../../deploy/authentik/quiet-mono/ACCEPTANCE.md) for the remaining physical-device and owner-only checks.
+
+The current public scene probe is `/authwall/scene.css` (CSS, `no-store`), not `/wallpapers/scene.css`. A static photo keeps login usable during an Authwall outage; it is not proof that the scene service is healthy. Check the endpoint and ready replicas separately.
