@@ -332,3 +332,139 @@ def test_malformed_duplicate_port_cannot_disappear_during_name_lookup():
     assert not report["routes"] and any(
         "malformed Service port" in e for e in report["errors"]
     )
+
+
+def test_closed_backend_uses_schoolbot_owner_service_and_verified_pod_destinations():
+    import copy
+    import subprocess
+    from ipaddress import IPv4Network
+
+    import yaml
+
+    from ci.quality.closed_root_backend import servers
+    from ci.quality.public_web import ROOT
+
+    args = [
+        "helm",
+        "template",
+        "schoolbot",
+        str(ROOT / "charts/schoolbot"),
+        "-n",
+        "schoolbot",
+        "-f",
+        str(ROOT / "deploy/schoolbot/values.yaml"),
+    ]
+    docs = list(yaml.safe_load_all(subprocess.check_output(args, text=True)))
+    (svc,) = [d for d in docs if d and d["kind"] == "Service"]
+    svc["metadata"].update(namespace="schoolbot", uid="fixture-service")
+    selector = svc["spec"]["selector"]
+    ns = "schoolbot"
+    addr = "10.42.8.9"
+    pod = {
+        "kind": "Pod",
+        "metadata": {
+            "uid": "fixture-pod",
+            "name": "fixture",
+            "namespace": ns,
+            "labels": selector.copy(),
+        },
+        "spec": {},
+        "status": {"phase": "Running", "podIP": addr, "conditions": [{"type": "Ready", "status": "True"}]},
+    }
+    sl = {
+        "kind": "EndpointSlice",
+        "addressType": "IPv4",
+        "metadata": {
+            "namespace": ns,
+            "labels": {
+                "kubernetes.io/service-name": "schoolbot",
+                "endpointslice.kubernetes.io/managed-by": "endpointslice-controller.k8s.io",
+            },
+            "ownerReferences": [
+                {
+                    "controller": True,
+                    "uid": "fixture-service",
+                    "name": "schoolbot",
+                    "kind": "Service",
+                    "apiVersion": "v1",
+                }
+            ],
+        },
+        "ports": [{"name": "http", "port": 8000}],
+        "endpoints": [
+            {
+                "addresses": [addr],
+                "conditions": {"ready": True},
+                "targetRef": {
+                    "kind": "Pod",
+                    "namespace": ns,
+                    "name": "fixture",
+                    "uid": "fixture-pod",
+                },
+            }
+        ],
+    }
+    svc["spec"]["clusterIP"] = "10.43.1.2"
+
+    def build(service, slice_, pod_):
+        return servers(
+            service,
+            [slice_],
+            [pod_],
+            expected=(ns, "schoolbot", 80),
+            pod_network=IPv4Network("10.42.0.0/16"),
+        )
+
+    assert build(svc, sl, pod) == [{"url": f"http://{addr}:8000"}]
+    missing_ip = copy.deepcopy(pod)
+    del missing_ip["status"]["podIP"]
+    with pytest.raises(ValueError, match="missing observed Pod IP"):
+        build(svc, sl, missing_ip)
+    with pytest.raises(ValueError, match="duplicate Pod UID"):
+        servers(svc, [sl], [pod, pod], expected=(ns, "schoolbot", 80), pod_network=IPv4Network("10.42.0.0/16"))
+    for case in (
+        "ref",
+        "address",
+        "port",
+        "phase",
+        "unready",
+        "wrong-service",
+        "wrong-owner",
+        "hostnet",
+        "terminating",
+        "selector",
+        "transport",
+        "manager",
+    ):
+        service, slice_, pod_ = copy.deepcopy([svc, sl, pod])
+        ep = slice_["endpoints"][0]
+        if case == "ref":
+            ep["targetRef"]["uid"] = "other"
+        elif case == "address":
+            ep["addresses"] = ["10.42.8.10"]
+        elif case == "port":
+            slice_["ports"][0]["port"] = 80
+        elif case == "phase":
+            pod_["status"]["phase"] = "Succeeded"
+        elif case == "unready":
+            pod_["status"]["conditions"] = []
+        elif case == "wrong-service":
+            slice_["metadata"]["labels"]["kubernetes.io/service-name"] = "other"
+        elif case == "wrong-owner":
+            slice_["metadata"]["ownerReferences"][0]["uid"] = "previous"
+        elif case == "hostnet":
+            pod_["spec"]["hostNetwork"] = True
+        elif case == "terminating":
+            ep["conditions"]["terminating"] = True
+        elif case == "selector":
+            pod_["metadata"]["labels"] = {}
+        elif case == "transport":
+            service["metadata"]["annotations"] = {
+                "traefik.ingress.kubernetes.io/service.serversscheme": "https"
+            }
+        else:
+            slice_["metadata"]["labels"]["endpointslice.kubernetes.io/managed-by"] = (
+                "manual"
+            )
+        with pytest.raises(ValueError):
+            build(service, slice_, pod_)
