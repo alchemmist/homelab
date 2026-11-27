@@ -37,3 +37,36 @@ def test_batch() -> None:
 def test_not_acceptance(result: str) -> None:
     with pytest.raises(ValueError):
         check_reply(result, ["example.test"], "192.0.2.1")
+
+
+@pytest.mark.parametrize("failed", [None, ("home", "udp"), ("nl", "tcp")])
+def test_all_sites_attempted_without_partial_success(monkeypatch, capsys, failed):
+    import sys
+
+    from ci.quality import private_dns_answers as audit
+
+    seen = []
+
+    def run(pod, label, entry, names, transport):
+        assert (
+            pod == "fixture"
+            and "inform.sch1357.ru" not in names
+            and "venice.socrat.alchemmist.xyz" in names
+        )
+        seen.append((label, transport))
+        if seen[-1] == failed:
+            raise ValueError("invalid batch")
+
+    assert audit.KUBE == [
+        "kubectl",
+        "--context=Socrat",
+        "--namespace",
+        "public-dns-rehearsal",
+    ]
+    monkeypatch.setattr(audit, "check_case", run)
+    monkeypatch.setattr(sys, "argv", ["probe", "fixture"])
+    assert audit.main() == int(failed is not None)
+    assert len(seen) == 6 and set(seen) == {
+        (label, t) for label in ("home", "nl", "moscow") for t in ("udp", "tcp")
+    }
+    assert capsys.readouterr().out.count("not verified") == int(failed is not None)
