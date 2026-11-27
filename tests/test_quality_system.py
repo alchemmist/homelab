@@ -8,18 +8,18 @@ import stat
 import subprocess
 import sys
 from pathlib import Path
+from types import ModuleType, SimpleNamespace
 from typing import TYPE_CHECKING, cast
+from unittest.mock import patch
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from types import ModuleType
-from unittest.mock import patch
 
 import pytest
-from jsonschema import Draft4Validator
 
 from ci.quality import charts, common, contracts
 from ci.quality import lint_support as lint
+from ci.quality.closed_root_backend import entries, plain, view
 from ci.quality.common import command, failure, finding, report, unique
 from ci.quality.strict_report import (
     audit_exit_code,
@@ -30,13 +30,18 @@ from ci.quality.strict_report import (
 
 ROOT = Path(__file__).resolve().parents[1]
 
+DISTINCT_ID_COUNT = 2
+CHART_TARGET_MINIMUM = 58
+FROZEN_FILE_COUNT = 15
+EXPECTED_LANGUAGE_FINDINGS = 5
+
 
 @pytest.mark.parametrize(
     ("configuration_ready", "source_clean", "expected"),
     [(True, True, 0), (True, False, 1), (False, False, 2), (False, True, 2)],
 )
 def test_strict_report_cannot_exit_success_for_dirty_or_incomplete_audit(
-    configuration_ready: bool, source_clean: bool, expected: int
+    *, configuration_ready: bool, source_clean: bool, expected: int
 ) -> None:
     """Keep configuration completeness separate from actual source acceptance."""
     assert (
@@ -59,7 +64,7 @@ def test_rendered_budget_and_limit_schemas_are_strict_offline(
     """Resolve the renderer's actual schema name and reject a misspelled spec field."""
     resource = {"apiVersion": api_version, "kind": kind, "metadata": {"name": "sample"}}
     schema = ROOT / "ci/quality/schemas" / charts.schema_name(resource)
-    validator = Draft4Validator(json.loads(schema.read_bytes()))
+    validator = _jsonschema_module().Draft4Validator(json.loads(schema.read_bytes()))
     assert validator.is_valid({**resource, "spec": spec})
     assert not validator.is_valid({**resource, "spec": {**spec, "typo": 1}})
 
@@ -69,11 +74,11 @@ def test_semantic_ids_survive_line_movement_and_do_not_store_source() -> None:
     b = finding("RULE", "tests/test_quality_system.py", 2, "message", "same semantic context")
     assert a["id"] == b["id"]
     assert "same semantic context" not in json.dumps(a)
-    assert len({f["id"] for f in unique([a, b])}) == 2
+    assert len({f["id"] for f in unique([a, b])}) == DISTINCT_ID_COUNT
 
 
 def test_escaping_finding_rejected() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unsafe finding path"):
         finding("RULE", "../private", 1, "message", "context")
 
 
@@ -125,7 +130,7 @@ def test_ci_cannot_automatically_record_debt(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("CI", "true")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Baseline regeneration is forbidden"):
         report(
             "test",
             [],
@@ -228,7 +233,7 @@ def test_suppression_guard_matches_markers_and_not_its_own_source() -> None:
 
 def test_chart_registry_covers_all_local_roots_and_consumed_values() -> None:
     values = charts.targets()
-    assert len(values) >= 58
+    assert len(values) >= CHART_TARGET_MINIMUM
     assert len({v["id"] for v in values}) == len(values)
     wishlist = next(v for v in values if v["id"] == "wishlist-0")
     assert wishlist["values"] == [ROOT / "deploy/wishlist/values.yaml"]
@@ -241,7 +246,7 @@ def test_chart_registry_covers_all_local_roots_and_consumed_values() -> None:
 
 
 def test_unknown_helm_override_cannot_silently_disappear() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Missing or escaping chart/value path"):
         charts.local_path("../outside-repo")
 
 
@@ -278,6 +283,14 @@ def test_resource_security_rules_do_not_mutate_intent() -> None:
     assert json.dumps(workload) == before
 
 
+JSONSCHEMA_MODULE = "jsonschema"
+
+
+def _jsonschema_module() -> ModuleType:
+    """Load jsonschema dynamically; the library has no reviewed Python stubs."""
+    return importlib.import_module(JSONSCHEMA_MODULE)
+
+
 def test_real_quality_integrity() -> None:
     contracts.check()
 
@@ -286,33 +299,32 @@ def test_duplicate_rendered_keys_are_rejected() -> None:
     import yaml
 
     with pytest.raises(yaml.YAMLError):
-        yaml.load("metadata: {name: first, name: second}", Loader=charts.ManifestLoader)
+        next(yaml.load_all("metadata: {name: first, name: second}", Loader=charts.ManifestLoader))
 
 
 def test_scalar_equals_is_valid_kubernetes_yaml() -> None:
     import yaml
 
-    assert yaml.load("expr: =", Loader=charts.ManifestLoader) == {"expr": "="}
+    assert next(yaml.load_all("expr: =", Loader=charts.ManifestLoader)) == {"expr": "="}
 
 
 def test_installer_rejects_escaping_binary_name(tmp_path: Path) -> None:
     from ci.quality import install_tools
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unknown or escaping tool name"):
         install_tools.install({"name": "../escape"}, tmp_path)
 
 
 def test_native_producer_payload_matches_released_quality_graph_schema(tmp_path: Path) -> None:
-    import jsonschema
-
     from ci.quality.common import command
 
     output = tmp_path / "producer.json"
     report("fixture", [], 1, output)
     schema = json.loads(command(["qg", "result", "schema", "--producer"]).stdout)
-    jsonschema.validate(json.loads(output.read_text()), schema)
+    validate = _jsonschema_module().validate
+    validate(json.loads(output.read_text()), schema)
     failure(output, ValueError("sensitive input must never be rendered"))
-    jsonschema.validate(json.loads(output.read_text()), schema)
+    validate(json.loads(output.read_text()), schema)
 
 
 def test_manifest_validation_is_not_artificially_sharded() -> None:
@@ -328,8 +340,30 @@ def test_helm_parameters_cannot_inject_a_post_renderer() -> None:
         "values": [],
         "parameters": [{"name": "--post-renderer", "value": "/unsafe"}],
     }
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unsafe Helm parameter name"):
         charts.arguments(target)
+
+
+def _system_test_runner() -> ModuleType:
+    """Load the deployed quality test runner with a checked spec."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "quality_test_runner", ROOT / "ci/quality/tests.py"
+    )
+    if spec is None or spec.loader is None or not spec.has_location:
+        message = "Cannot load quality test runner"
+        raise ValueError(message)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _record_subprocess(
+    calls: list[tuple[list[str], dict[str, object]]], argv: list[str], kw: dict[str, object]
+) -> SimpleNamespace:
+    calls.append((argv, kw))
+    return SimpleNamespace(returncode=0)
 
 
 @pytest.mark.parametrize("suite", ["fast", "medium"])
@@ -337,14 +371,8 @@ def test_helm_parameters_cannot_inject_a_post_renderer() -> None:
 def test_network_namespace_preserves_locked_tool_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, system: str, suite: str
 ) -> None:
-    import importlib.util
-    from types import SimpleNamespace
 
-    spec = importlib.util.spec_from_file_location(
-        "quality_test_runner", ROOT / "ci/quality/tests.py"
-    )
-    runner = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(runner)
+    runner = _system_test_runner()
     monkeypatch.setattr(runner, "ROOT", tmp_path)
     (tmp_path / "ci/quality").mkdir(parents=True)
     (tmp_path / "ci/quality/test-suites.json").write_text(
@@ -357,19 +385,20 @@ def test_network_namespace_preserves_locked_tool_path(
     monkeypatch.setenv("SSH_AUTH_SOCK", "/must-not-leak")
     monkeypatch.setenv("SPI_SORT_FIXTURE", "/must-not-read-user-data")
     monkeypatch.setenv("QUALITY_SYNTHETIC_SPI_SORT", "ambient")
-    calls = []
+    calls: list[tuple[list[str], dict[str, object]]] = []
     monkeypatch.setattr(
         runner.subprocess,
         "run",
-        lambda argv, **kw: calls.append((argv, kw)) or SimpleNamespace(returncode=0),
+        lambda argv, **kw: _record_subprocess(calls, argv, kw),
     )
     assert runner.main() == 0
     argv, kw = calls[0]
-    assert "SSH_AUTH_SOCK" not in kw["env"]
-    assert kw["env"]["KUBECONFIG"] == "/dev/null"
-    assert kw["env"]["PYTHONDONTWRITEBYTECODE"] == "1"
-    assert "SPI_SORT_FIXTURE" not in kw["env"]
-    assert "QUALITY_SYNTHETIC_SPI_SORT" not in kw["env"]
+    env = view(kw["env"])
+    assert "SSH_AUTH_SOCK" not in env
+    assert env["KUBECONFIG"] == "/dev/null"
+    assert env["PYTHONDONTWRITEBYTECODE"] == "1"
+    assert "SPI_SORT_FIXTURE" not in env
+    assert "QUALITY_SYNTHETIC_SPI_SORT" not in env
     assert ("QUALITY_SYNTHETIC_SPI_SORT=1" in argv) == (suite == "fast" and system == "Linux")
     if system == "Linux":
         assert argv[:4] == ["sudo", "-n", "unshare", "--net"]
@@ -385,9 +414,14 @@ def test_network_namespace_preserves_locked_tool_path(
     "image", ["example:latest", "example@sha256:short", "example@sha256:not-a-digest"]
 )
 def test_image_digest_must_be_real_sha256_shape(image: str) -> None:
-    resource = {"kind": "Pod", "spec": {"containers": [{"name": "test", "image": image}]}}
+    resource: dict[str, object] = {
+        "kind": "Pod",
+        "spec": {"containers": [{"name": "test", "image": image}]},
+    }
     assert any(rule == "image-digest" for rule, _ in charts.policies(resource))
-    resource["spec"]["containers"][0]["image"] = "example@sha256:" + "a" * 64
+    container = view(entries(view(resource["spec"])["containers"])[0])
+    reference = "example@sha256:" + "a" * 64
+    container["image"] = reference
     assert not charts.policies(resource)
 
 
@@ -401,7 +435,7 @@ def test_dependency_audit_uses_installed_environment_and_deduplicates(
     calls = []
     item = {"name": "fixture", "version": "1", "vulns": [{"id": "CVE-2026-1234"}]}
 
-    def run(argv, **_kwargs):
+    def run(argv: list[str], **_kwargs: object) -> SimpleNamespace:
         calls.append(argv)
         return SimpleNamespace(returncode=1, stdout=json.dumps({"dependencies": [item, item]}))
 
@@ -533,37 +567,44 @@ def test_shell_policy_finds_extensionless_scripts_and_inline_steps(
     assert all(row["ruleId"] == "SC2086" for row in findings)
 
 
-def _load_checker(name):
+def _load_checker(name: str) -> ModuleType:
     path = ROOT / "ci" / name
     spec = importlib.util.spec_from_file_location(name.removesuffix(".py"), path)
+    if spec is None or spec.loader is None or not spec.has_location:
+        message = "Cannot load quality checker"
+        raise ValueError(message)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-def _infra_files():
+def _infra_files() -> list[str]:
     contract = json.loads((ROOT / "deploy/contracts/infrastructure.json").read_text())
+    relay = view(contract["relayContract"])
     names = [
         "deploy/contracts/infrastructure.json",
-        contract["meshRegistry"],
-        contract["ansibleInventory"],
+        plain(contract["meshRegistry"]),
+        plain(contract["ansibleInventory"]),
     ]
-    relay = contract["relayContract"]
-    for key in (
-        "relayScript",
-        "endpointScript",
-        "frontHostVars",
-        "targetHostVars",
-        "serviceFile",
-        "installPlaybook",
-    ):
-        names.append(relay[key])
-    for consumer in contract["issuerTransport"]["consumers"]:
-        names.append(consumer["file"])
+    names.extend(
+        plain(relay[key])
+        for key in (
+            "relayScript",
+            "endpointScript",
+            "frontHostVars",
+            "targetHostVars",
+            "serviceFile",
+            "installPlaybook",
+        )
+    )
+    names.extend(
+        plain(view(consumer)["file"])
+        for consumer in entries(view(contract["issuerTransport"])["consumers"])
+    )
     return names
 
 
-def _copy_rels(tmp_path: Path, names) -> None:
+def _copy_rels(tmp_path: Path, names: list[str]) -> None:
     for name in names:
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -643,7 +684,7 @@ def test_duplicate_issuer_alias_fails(tmp_path: Path) -> None:
         infra.check(tmp_path)
 
 
-def _pointer_fixture(tmp_path: Path, document) -> None:
+def _pointer_fixture(tmp_path: Path, document: str) -> None:
     import yaml
 
     chart = tmp_path / "charts/demo"
@@ -721,7 +762,7 @@ def test_authoritative_claim_drift_fails(tmp_path: Path) -> None:
         pointers.check(tmp_path)
 
 
-def _retired_play():
+def _retired_play() -> list[dict[str, object]]:
     return [
         {
             "name": "Refuse competing provisioning",
@@ -928,7 +969,7 @@ def test_frozen_scope_excludes_exact_existing_files_not_new_neighbours(tmp_path:
     (root / neighbour).write_text('"""New owned source."""\n')
     with patch.object(common, "ROOT", root):
         frozen = common.frozen_source_files()
-        assert len(frozen) == 15
+        assert len(frozen) == FROZEN_FILE_COUNT
         assert common.owned([*frozen, neighbour]) == [neighbour]
         assert common.owned(["charts/spi-triage/ui/queue_web.py"]) == [
             "charts/spi-triage/ui/queue_web.py"
@@ -962,7 +1003,7 @@ def test_frozen_provenance_mutations_fail_before_ownership_exclusion(
     elif mutation == "new-entry":
         manifest["backend_sha256"]["new_owned.py"] = "a" * 64
         manifest_path.write_text(json.dumps(manifest))
-    with patch.object(common, "ROOT", root), pytest.raises(ValueError, match="[Ff]rozen"):
+    with patch.object(common, "ROOT", root), pytest.raises(ValueError, match=r"[Ff]rozen"):
         common.owned([record["directory"] + "/" + name])
 
 
@@ -995,7 +1036,7 @@ def test_frozen_path_escape_rejected_even_with_updated_fixture_digest(tmp_path: 
     ],
 )
 def test_audit_snapshot_requires_same_clean_source_at_both_boundaries(
-    first_clean: bool, last_clean: bool, same_head: bool, expected: bool
+    *, first_clean: bool, last_clean: bool, same_head: bool, expected: bool
 ) -> None:
     """Reject dirty inputs or a commit race even when all collectors pass."""
     head = "a" * 40
@@ -1168,7 +1209,10 @@ def test_full_audit_preserves_tool_failures_and_unstable_snapshot_as_incomplete(
 def test_yaml_empty_and_quote_rules_do_not_confuse_maps_or_typed_values() -> None:
     """Check the real pinned tool, not the previous incorrect disable rationale."""
     argv = ["yamllint", "--format", "parsable", "--config-file", "ci/quality/yamllint.yaml", "-"]
-    valid = '---\npermissions: {}\nflag: true\ncount: 1\nintentionalNull: null\nstringBoolean: "yes"\n...\n'
+    valid = (
+        "---\npermissions: {}\nflag: true\ncount: 1\n"
+        'intentionalNull: null\nstringBoolean: "yes"\n...\n'
+    )
     good = command(argv, stdin=valid, allowed=(0, 1))
     assert good.returncode == 0
     invalid = "---\nmissing:\nlabel: 'plain string'\n...\n"
@@ -1235,7 +1279,7 @@ def test_documentation_language_scope_and_locations(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
     findings, count = language.check(list(files))
-    assert count == 5
+    assert count == EXPECTED_LANGUAGE_FINDINGS
     assert [(f["location"]["path"], f["location"]["startLine"]) for f in findings] == [
         ("docs/data.tsv", 2),
         ("service/readme.RST", 1),
@@ -1256,11 +1300,13 @@ def test_wiki_language_checks_prose_but_allows_technical_examples(
     path.parent.mkdir(parents=True)
     path.write_text(
         "---\ntitle: How to deploy\nweight: 10\n---\n"
-        "## Harbor\n\nПроверьте Harbor и `the example command`.\n\n"
-        "[Ссылка](https://example.org/how-to-deploy).\n\n"
+        "## Harbor\n\n\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 Harbor"
+        " and `the example command`.\n\n"
+        "[\u0421\u0441\u044b\u043b\u043a\u0430](https://example.org/how-to-deploy).\n\n"
         "~~~~sh\nHere is an English example.\n~~~\nThis is still code.\n~~~~\n\n"
         "## When an upload appears stuck\n\n"
-        "Русский текст. Check the original publish job.\n",
+        "\u0420\u0443\u0441\u0441\u043a\u0438\u0439"
+        " text. Check the original publish job.\n",
         encoding="utf-8",
     )
     findings, count = language.check([name])
