@@ -350,3 +350,10 @@ def test_loopback_listener_witness_distinguishes_withdrawal_from_trust_and_conne
         worker.join(4)
         assert not worker.is_alive() and len(seen) == 7
     assert observe(port, NAMES, {}) == {name: "unreachable" for name in NAMES}
+
+
+def test_witness_rejects_out_of_scope_pin_before_probing():
+    from services.public_entry.tls_witness import observe
+
+    with pytest.raises(ValueError, match="scope"):
+        observe(443, NAMES, {"other.invalid": "0" * 64})
