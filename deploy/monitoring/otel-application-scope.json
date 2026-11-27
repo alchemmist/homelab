@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "partial-production-sdk-litellm-error-path-and-vllm-successful-inference-and-log-delivery-proven-other-applications-pending",
+  "status": "partial-production-sdk-litellm-error-path-and-vllm-successful-inference-and-log-delivery-proven-n8n-execution-log-delivery-by-log-streaming-bridge-proven-other-applications-pending",
   "applications": [
     {
       "namespace": "harbor",
@@ -150,6 +150,21 @@
       "productionAnonymousBrowserBackendProxyWaterfallVerified": true,
       "productionLogCorrelationVerified": true,
       "evidence": "deploy/monitoring/migration-evidence/wishlist-observability-20261116.json"
+    },
+    {
+      "namespace": "automation",
+      "workloads": [
+        "n8n"
+      ],
+      "application": "n8n",
+      "productionSdkEnabled": false,
+      "dedicatedClientCertificate": "otel-app-tls-n8n",
+      "renewalMirrorAndRolloutMaintained": true,
+      "notes": [
+        "No application OpenTelemetry SDK: n8n enterprise log-streaming webhook destination posts events to an in-pod bridge sidecar (n8n-otel-log-bridge).",
+        "Bridge converts each event to one otel-loki push entry and ships over mTLS with the dedicated client leaf; no reloadDeployments entry (bridge reloads its SSL context after cert-manager rotation).",
+        "Workflow payloads are forwarded as-is; credential values are not part of log-streaming events."
+      ]
     }
   ],
   "requiredAcceptance": [

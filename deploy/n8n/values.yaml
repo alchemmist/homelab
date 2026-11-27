@@ -22,4 +22,13 @@ resources:
 
 ingress:
   enabled: true
+
+# n8n enterprise log-streaming events ship to otel-loki through the in-pod
+# bridge sidecar (charts/n8n/templates/otel-log-bridge.yaml). The mTLS client
+# leaf otel-app-tls-n8n is mirrored into this namespace by the
+# otel-application-credentials CronJob; the bridge reloads its SSL context on
+# rotation, so no deployment reload is wired.
+otelLogBridge:
+  enabled: true
+  secretName: otel-app-tls-n8n
 ...

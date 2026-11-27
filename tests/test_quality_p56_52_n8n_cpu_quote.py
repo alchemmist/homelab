@@ -15,7 +15,7 @@ STRING_TAG = "tag:yaml.org,2002:str"
 INTEGER_TAG = "tag:yaml.org,2002:int"
 BOOLEAN_TAG = "tag:yaml.org,2002:bool"
 IMAGE = (
-    "harbor.socrat.alchemmist.xyz/n8n/n8n@sha256:0ffba3a289722fc216ee5e135c3acaeb4b3484e267aeba42df9c8f2e39e831df"
+    "harbor.socrat.alchemmist.xyz/n8n/n8n@sha256:34bb222fb111ffd12c63859cd9b7567d94264b859b1e52ce3967207a637c5755"
 )
 NO_SHARED_ALIASES = 0
 type LoaderType = type[yaml.SafeLoader | yaml.Loader]

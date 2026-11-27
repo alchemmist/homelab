@@ -60,3 +60,16 @@ authentikPublicAlias:
   enabled: true
   ip: 109.173.40.247
   host: auth.socrat.alchemmist.xyz
+
+# n8n log-streaming webhook bridge to otel-loki. n8n posts its log-streaming
+# webhook destination to 127.0.0.1:<port>/event; the bridge converts each event
+# to a Loki push entry and ships it over mTLS using the dedicated n8n client
+# leaf mirrored into the automation namespace (see
+# deploy/monitoring/otel-application-credentials.yaml).
+otelLogBridge:
+  enabled: true
+  secretName: otel-app-tls-n8n
+  image: docker.io/library/python:3.12-alpine@sha256:c5ba3deef00c7758561a0f03c26f44f10589263d40e732b8748e0d1f38f6dd89
+  port: 9123
+  lokiUrl: https://otel-loki.cattle-monitoring-system.svc.cluster.local:3100
+  lokiServerName: otel-loki.cattle-monitoring-system.svc.cluster.local

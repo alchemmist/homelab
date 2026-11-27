@@ -1,0 +1,11 @@
+{{- if .Values.otelLogBridge.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: n8n-otel-log-bridge
+  labels:
+    app.kubernetes.io/name: n8n
+data:
+  bridge.py: |-
+{{ .Files.Get "scripts/n8n-otel-log-bridge.py" | indent 4 }}
+{{- end }}

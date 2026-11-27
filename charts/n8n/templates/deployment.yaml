@@ -195,8 +195,46 @@ spec:
           volumeMounts:
             - {name: service-vpn-runtime, mountPath: /vpn-runtime, readOnly: true}
         {{- end }}
+      {{- if .Values.otelLogBridge.enabled }}
+        - name: otel-log-bridge
+          image: {{ .Values.otelLogBridge.image | quote }}
+          command: [python3, /bridge/bridge.py]
+          env:
+            - {name: BRIDGE_PORT, value: {{ .Values.otelLogBridge.port | quote }}}
+            - {name: LOKI_URL, value: {{ .Values.otelLogBridge.lokiUrl | quote }}}
+            - {name: LOKI_SERVER_NAME, value: {{ .Values.otelLogBridge.lokiServerName | quote }}}
+            - {name: TLS_DIR, value: /etc/otel-tls}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 10m, memory: 24Mi}
+            limits: {cpu: 200m, memory: 96Mi}
+          readinessProbe:
+            exec:
+              command: [python3, -c, "import socket,os; socket.create_connection(('127.0.0.1', int(os.environ['BRIDGE_PORT'])), timeout=2).close()"]
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          volumeMounts:
+            - {name: otel-log-bridge-script, mountPath: /bridge, readOnly: true}
+            - {name: otel-log-bridge-tls, mountPath: /etc/otel-tls, readOnly: true}
+            - {name: otel-log-bridge-tmp, mountPath: /tmp}
+      {{- end }}
       volumes:
         - {name: login-guard, emptyDir: {sizeLimit: 1Mi}}
+        {{- if .Values.otelLogBridge.enabled }}
+        - name: otel-log-bridge-script
+          configMap:
+            name: n8n-otel-log-bridge
+            defaultMode: 0440
+        - name: otel-log-bridge-tls
+          secret:
+            secretName: {{ .Values.otelLogBridge.secretName | quote }}
+            defaultMode: 0440
+        - name: otel-log-bridge-tmp
+          emptyDir: {medium: Memory, sizeLimit: 8Mi}
+        {{- end }}
         {{- if .Values.postgresCaConfigMap }}
         - name: pg-common-ca
           configMap: {name: {{ .Values.postgresCaConfigMap | quote }}}
