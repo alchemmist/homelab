@@ -27,12 +27,18 @@ def test_effective_health_fleet():
         "-f",
         str(chart / values),
         "--set",
-        "closedFormatQuorum=true,closedWiki=true,closedMonori=true",  # exercise enabled and withdrawn shapes even after an owner opt-out
+        "closedFormatQuorum=true,closedWiki=true,closedMonori=true,closedLms=true,closedWishlist=true",  # exercise enabled and withdrawn shapes even after an owner opt-out
     ]
     assert app["destination"]["namespace"] == "public-health-staging"
-    policy, wiki_policy, monori_policy, config, *deployments = yaml.safe_load_all(
-        subprocess.check_output(args)
-    )
+    (
+        policy,
+        wiki_policy,
+        monori_policy,
+        lms_policy,
+        wishlist_policy,
+        config,
+        *deployments,
+    ) = yaml.safe_load_all(subprocess.check_output(args))
     assert policy["kind"] == "NetworkPolicy" and policy["spec"]["ingress"] == []
     peers = []
     assert wiki_policy["spec"]["podSelector"] == policy["spec"]["podSelector"]
@@ -90,6 +96,14 @@ def test_effective_health_fleet():
     assert config["kind"] == "ConfigMap"
     http = yaml.safe_load(config["data"]["dynamic.yaml"])["http"]
     assert http["routers"] == {
+        **{
+            a: {
+                "entryPoints": ["closed"],
+                "rule": f"Host(`{a}.alchemmist.xyz`) && PathPrefix(`/`)",
+                "service": a,
+            }
+            for a in ("lms", "wishlist")
+        },
         "monori": {
             "entryPoints": ["closed"],
             "rule": "Host(`monori.alchemmist.xyz`) && PathPrefix(`/`)",
@@ -169,9 +183,10 @@ def test_effective_health_fleet():
         ("--set-json", 'ingress.hosts=["alchemmist.xyz"]'),
         ("--set", "service.targetPort=9999"),
     ):
-        blocked_policy, still_wiki, still_monori, blocked_config, *unchanged = (
+        blocked_policy, still_wiki, still_monori, lm, wl, blocked_config, *unchanged = (
             yaml.safe_load_all(subprocess.check_output([*args, *overrides]))
         )
+        assert (lm, wl) == (lms_policy, wishlist_policy)
         assert still_monori == monori_policy
         assert still_wiki == wiki_policy
         assert unchanged == deployments
@@ -184,13 +199,13 @@ def test_effective_health_fleet():
             "routers": {k: v for k, v in http["routers"].items() if k != "www-blog"},
             "services": {k: v for k, v in http["services"].items() if k != "www-blog"},
         }
-    policy_off, separate_wiki, separate_monori, config_off, *unchanged = (
+    policy_off, separate_wiki, separate_monori, lm, wl, config_off, *unchanged = (
         yaml.safe_load_all(
             subprocess.check_output(
                 [
                     *args[:-2],
                     "--set",
-                    "closedWiki=true,closedMonori=true",
+                    "closedWiki=true,closedMonori=true,closedLms=true,closedWishlist=true",
                     "--set-string",
                     "closedFormatQuorum=true",
                 ]
@@ -206,7 +221,7 @@ def test_effective_health_fleet():
         assert after[section] == {
             k: v for k, v in http[section].items() if k != "format-quorum"
         }
-    policy_off, separate_wiki, separate_monori, config_off, *unchanged = (
+    policy_off, separate_wiki, separate_monori, lm, wl, config_off, *unchanged = (
         yaml.safe_load_all(
             subprocess.check_output([*args, "--set", "closedWiki=false"])
         )
@@ -238,7 +253,7 @@ def test_effective_health_fleet():
             "servers": [{"url": "http://monori.monori.svc.cluster.local:80"}]
         }
     }
-    pol, wp, mp, cm, *ds = yaml.safe_load_all(
+    pol, wp, mp, lm, wl, cm, *ds = yaml.safe_load_all(
         subprocess.check_output([*args, "--set", "closedMonori=false"])
     )
     assert (pol, wp, ds) == (policy, wiki_policy, deployments) and mp["spec"] == {
@@ -249,6 +264,59 @@ def test_effective_health_fleet():
         section: {k: v for k, v in http[section].items() if k != "monori"}
         for section in ("routers", "services")
     }
+    for a, bit, grant in [
+        ("lms", "closedLms", lms_policy),
+        ("wishlist", "closedWishlist", wishlist_policy),
+    ]:
+        assert grant["spec"] == {
+            "podSelector": policy["spec"]["podSelector"],
+            "policyTypes": ["Egress"],
+            "egress": [
+                {
+                    "to": [
+                        {
+                            "namespaceSelector": {
+                                "matchLabels": {"kubernetes.io/metadata.name": a}
+                            },
+                            "podSelector": {
+                                "matchLabels": {
+                                    "app.kubernetes.io/name": a,
+                                    "app.kubernetes.io/instance": a,
+                                }
+                            },
+                        }
+                    ],
+                    "ports": [{"port": 8000, "protocol": "TCP"}],
+                }
+            ],
+        }
+        assert http["services"][a] == {
+            "loadBalancer": {
+                "servers": [{"url": f"http://{a}.{a}.svc.cluster.local:80"}]
+            }
+        }
+        (
+            *policies,
+            cm,
+        ) = [
+            d
+            for d in yaml.safe_load_all(
+                subprocess.check_output([*args, "--set", bit + "=false"])
+            )
+            if d["kind"] != "Deployment"
+        ]
+        for off, on in zip(
+            policies,
+            [policy, wiki_policy, monori_policy, lms_policy, wishlist_policy],
+            strict=True,
+        ):
+            assert off == (
+                {**on, "spec": {**on["spec"], "egress": []}} if on == grant else on
+            )
+        assert yaml.safe_load(cm["data"]["dynamic.yaml"])["http"] == {
+            section: {k: v for k, v in http[section].items() if k != a}
+            for section in ("routers", "services")
+        }
     placement = {}
     for deployment in deployments:
         assert deployment["kind"] == "Deployment"
@@ -415,3 +483,49 @@ def test_monori_front_only_no_shared_port_authorization():
             )
         )
         assert not eligible(changed, catalog, owner="monori")
+
+
+def test_lms_and_wishlist_reject_side_channels_and_unselected_routes():
+    from copy import deepcopy
+
+    from ci.quality.closed_root_owners import CATALOG, eligible, owner_render
+
+    catalog = yaml.safe_load(CATALOG.read_text())
+    for app in ("lms", "wishlist"):
+        rows = owner_render(owner=app)
+        for kind, mutate in [
+            (
+                "Ingress",
+                lambda d: d["metadata"]["labels"].pop(
+                    "homelab.alchemmist.xyz/public-web", None
+                ),
+            ),
+            (
+                "Ingress",
+                lambda d: d["metadata"]["annotations"].update(
+                    {"traefik.ingress.kubernetes.io/router.middlewares": "oidc"}
+                ),
+            ),
+            ("Service", lambda d: d["spec"]["ports"][0].update(targetPort="metrics")),
+            (
+                "Service",
+                lambda d: d["spec"]["selector"].update(
+                    {"app.kubernetes.io/name": "wishlist-image-optimizer"}
+                ),
+            ),
+            (
+                "Deployment",
+                lambda d: d["spec"]["template"]["spec"]["containers"][0]["ports"][
+                    0
+                ].update(containerPort=8001),
+            ),
+        ]:
+            changed = deepcopy(rows)
+            mutate(
+                next(
+                    d
+                    for d in changed
+                    if d["kind"] == kind and d["metadata"]["name"] == app
+                )
+            )
+            assert not eligible(changed, catalog, owner=app)
