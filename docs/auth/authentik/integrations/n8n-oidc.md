@@ -43,16 +43,30 @@ Existing provider/client drift is a STOP; never a reset or adoption.
 
 n8n 1.x does **not** read `N8N_SSO_OIDC_*` environment variables: the OIDC
 client config lives in the n8n database (settings key `features.oidc`) and is
-owned by the instance owner. Enabling is a one-time owner action in the UI:
+owned by the instance owner. Normal path is the owner UI
+(Settings -> SSO -> OpenID Connect with the discovery endpoint
+`.well-known/openid-configuration`, client ID `socrat-n8n`, client secret from
+`kubectl -n automation get secret socrat-authentik-n8n`).
 
-1. Read the credentials (never paste them into chat/PRs):
-   `kubectl -n automation get secret socrat-authentik-n8n -o jsonpath='{.data}' | base64 -d` per key.
-2. Open <https://n8n.socrat.alchemmist.xyz> → Settings → SSO → OpenID Connect.
-3. Discovery endpoint: `https://auth.socrat.alchemmist.xyz/application/o/n8n/.well-known/openid-configuration`.
-4. Client ID `socrat-n8n` + the client secret from the Secret. Save.
+The operator equivalent is scripted:
 
-Password login stays available; the stored secret is encrypted with
-`N8N_ENCRYPTION_KEY`. Equivalently, an owner session can
+```sh
+python3 scripts/provision-n8n-oidc.py                    # plan
+python3 scripts/activate-n8n-oidc.py                     # plan (rows both empty/dirift)
+python3 scripts/activate-n8n-oidc.py --apply            # single transaction + private snapshot
+kubectl -n automation rollout restart deployment/n8n   # pick up loadOnStartup settings
+```
+
+`activate-n8n-oidc.py` refuses a second apply once `features.oidc` exists — the
+owner UI owns changes from there. It never prints secrets, snaps both touched
+rows to `~/.config/homelab/n8n-oidc/activate/` and encrypts the client secret
+with `N8N_ENCRYPTION_KEY` (n8n Cipher/CryptoJS format). It also requires the
+chart's `authentikPublicAlias` hostAlias (node socrat-5 cannot reach the
+split-horizon LAN VIP 192.168.0.250 for `auth.socrat.alchemmist.xyz`).
+
+The stored secret is encrypted with `N8N_ENCRYPTION_KEY`. The password form
+stays available to the instance owner; non-owner users need SSO or the
+per-user allow-SSO-manual-login flag. Equivalently, an owner session can
 `POST /rest/sso/oidc/config` with `{discoveryEndpoint, clientId, clientSecret, loginEnabled: true}`.
 
 ## Kubernetes wiring
