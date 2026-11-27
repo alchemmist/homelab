@@ -71,7 +71,7 @@ class Handler(BaseHTTPRequestHandler):
 
     protocol_version = "HTTP/1.1"
 
-    def do_POST(self):  # noqa: N802 - http.server API
+    def do_POST(self) -> None:
         if self.path not in ("/event", "/event/"):
             self.send_response(404)
             self.end_headers()
