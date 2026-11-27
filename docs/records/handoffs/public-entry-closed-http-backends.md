@@ -43,3 +43,16 @@ and last inherited logging and appeared in the log; the middle had explicit
 real application requests, tracing exporter or production logs were involved.
 This demonstrates access-log suppression only, not exporter-level span
 suppression or end-to-end confidentiality across upstream components.
+
+A separate network-isolated run exercised a real OTLP/HTTP exporter at 100%
+sampling, with the collector and marker backend on loopback. All three fresh
+requests carried distinct synthetic sampled W3C trace IDs and received the
+same 200 marker body. After flushing Traefik, the collector checked the
+decompressed OTLP payloads for the three known binary IDs: both inherited
+controls appeared, the explicitly disabled route's ID did not. JSON access
+logs likewise contained only the two control paths. An earlier collector
+that did not handle chunked request bodies failed to see the controls and
+was rejected as evidence. This tests export of the supplied trace IDs under
+these fixture settings, not span absence under unrelated IDs, upstream
+application logging or retention by a production telemetry service. No
+production traces, identity-provider callbacks or user data were involved.
