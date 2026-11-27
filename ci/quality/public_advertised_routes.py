@@ -1,6 +1,6 @@
 """Bracket anonymous HTTPS route checks with independent public DNS reads.
 
-This is an observer, not a DNS writer, a self-IP check or a VPN probe. Connect
+This is an observer, not a DNS writer, a geographic outage test or a VPN probe. Connect
 only to the configured entrance addresses, never to a destination learned from
 a DNS answer. Unknown IPv4/IPv6 evidence is reported without following it.
 """
@@ -18,9 +18,17 @@ from ci.quality.public_web import CATALOG
 BLOG = "www.alchemmist.xyz"
 VENICE = "venice.socrat.alchemmist.xyz"
 MONORI = "monori.alchemmist.xyz"
-PATHS = {BLOG: "/", VENICE: "/v1/models", MONORI: "/api/auth/me"}
+WIKI = "wiki.socrat.alchemmist.xyz"
+PATHS = {BLOG: "/", VENICE: "/v1/models", MONORI: "/api/auth/me", WIKI: "/api/auth/me"}
 DENIALS = {VENICE: "Missing bearer token", MONORI: "Not authenticated"}
 LIMIT = 131072
+
+
+def unique_fields(pairs):
+    data = dict(pairs)
+    if len(data) != len(pairs):
+        raise ValueError("ambiguous JSON fields")
+    return data
 
 
 def check(host, ip):
@@ -71,9 +79,20 @@ def check(host, ip):
         and b"<title>Personal blog of Anton Grishin</title>" in body
     ):
         return "matched"
-    if host in DENIALS and code == b"401" and mime == b"application/json":
+    if mime == b"application/json" and (host in DENIALS or host == WIKI):
         try:
-            if json.loads(body) == {"detail": DENIALS[host]}:
+            data = json.loads(body, object_pairs_hook=unique_fields)
+            if host in DENIALS and code == b"401" and data == {"detail": DENIALS[host]}:
+                return "matched"
+            if (
+                host == WIKI
+                and code == b"200"
+                and isinstance(data, dict)
+                and all(
+                    data.get(k, True) is v
+                    for k, v in (("user", None), ("writable", False), ("bootstrap_required", False))
+                )
+            ):
                 return "matched"
         except (ValueError, RecursionError):
             pass
@@ -120,14 +139,32 @@ def main():
         }
         for s in ips
     }
+    self_ip = {
+        site: {
+            key: before[site][key] == after[site][key] == {"A": [ip], "AAAA": []}
+            for key in cases[site]
+        }
+        for site, ip in ips.items()
+    }
+    direct_pass = all(
+        outcome == "matched" for answers in routes.values() for outcome in answers.values()
+    )
+    target_pass = direct_pass and all(all(rows.values()) for rows in self_ip.values())
     print(
         json.dumps(
-            {"before": before, "https": routes, "after": after, "cases": cases}, sort_keys=True
+            {
+                "before": before,
+                "https": routes,
+                "after": after,
+                "cases": cases,
+                "selfIP": self_ip,
+                "allDirectMatched": direct_pass,
+                "sampledTargetMatched": target_pass,
+            },
+            sort_keys=True,
         )
     )
-    return int(
-        any(outcome != "advertised-paths-matched" for r in cases.values() for outcome in r.values())
-    )
+    return int(not target_pass)
 
 
 if __name__ == "__main__":
