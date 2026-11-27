@@ -166,6 +166,26 @@ grafana:
       default_theme: dark
   # Application data lives in pg-common; the former local PV stays retained.
   nodeSelector: {}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values: [socrat-5, socrat-1, socrat-0, socrat-4]
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values: [socrat-5]
+  tolerations:
+    - key: homelab.io/bootstrap
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
   persistence:
     enabled: false
   podAnnotations:
