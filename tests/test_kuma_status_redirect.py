@@ -92,7 +92,10 @@ def test_exact_status_owner_label_preserves_readonly_proxy_and_legacy_redirect()
         "name": "public-web-kuma-proxy",
         "port": {"number": 80},
     }
-    changed = reader(docs([*options, "--set-string", "host=other.invalid"]))
+    retained = [p for p in helm["parameters"] if p["name"] != "host"]
+    assert [p["value"] for p in retained if p["name"] == "publicStatusHost"] == [rule["host"]]
+    mismatched = [arg for p in retained for arg in ("--set-string", p["name"] + "=" + p["value"])]
+    changed = reader(docs([*mismatched, "--set-string", "host=other.invalid"]))
     assert changed["spec"]["rules"][0][
         "host"
     ] == "other.invalid" and key not in changed["metadata"].get("labels", {})
