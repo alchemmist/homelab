@@ -14,6 +14,24 @@ from ci.quality import public_advertised_routes as checks
             b"<title>Personal blog of Anton Grishin</title>",
             "matched",
         ),
+        (
+            checks.MONORI,
+            "401 application/json",
+            b'{"detail":"Not authenticated"}',
+            "matched",
+        ),
+        (
+            checks.MONORI,
+            "401 application/json",
+            b'{"detail":"Missing bearer token"}',
+            "unexpected-application-response",
+        ),
+        (
+            checks.MONORI,
+            "200 application/json",
+            b"{}",
+            "unexpected-application-response",
+        ),
         (checks.BLOG, "200 text/html", b"wrong", "unexpected-application-response"),
         (
             checks.VENICE,
@@ -62,3 +80,12 @@ def test_no_dns_derived_connection_or_partial_acceptance():
         {"A": ["192.0.2.4"], "AAAA": []},
     ):
         assert checks.verdict(d, d, routes) != "advertised-paths-matched"
+
+
+def test_monori_regional_denial_is_not_a_reason_to_contact_nl():
+    ips = {"home": "192.0.2.1", "nl": "192.0.2.2", "moscow": "192.0.2.3"}
+    peers = checks.route_peers(checks.MONORI, ips)
+    assert peers == (ips["home"], ips["moscow"])
+    routes = {ip: "matched" for ip in peers}
+    nl = {"A": [ips["nl"]], "AAAA": []}
+    assert checks.verdict(nl, nl, routes) == "outside-reviewed-entrances"
