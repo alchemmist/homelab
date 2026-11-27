@@ -226,3 +226,29 @@ def test_private_issuer_must_be_pinned_independently_of_objects(issued):
     with pytest.raises(audit.NoEvidence, match="^incomplete-public-material$") as exc:
         validated_anchor(ref, names, local, [c], [r], t)
     assert exc.value.__context__ is None
+
+
+def test_blog_date_correlation_is_not_issuance_or_approval():
+    from ci.quality.blog_validity_baseline import measure
+
+    t = datetime.now(UTC)
+    dates = tuple(t + timedelta(days=n) for n in (-2, -1, 1, 2))
+    snap = (("certificate", "rv", "owner", "v"), dates)
+    leaf = (b"one", dates[0], dates[-1])
+    result = measure(lambda: snap, lambda _: leaf, "unused", t)
+    assert (
+        result["trustedHomeLeafDatesMatchStatus"]
+        and result["statusValidityStartsBeforeCertificateCreated"]
+    )
+    assert not result["issuedLeafMatchEstablished"] and not result["writerApproved"]
+    assert not measure(lambda: snap, lambda _: (b"two", t, dates[-1]), "unused", t)[
+        "trustedHomeLeafDatesMatchStatus"
+    ]
+    for observations, leaves in [
+        ([snap, (("replacement",), dates)], [leaf, leaf]),
+        ([snap, snap], [leaf, (b"two", *leaf[1:])]),
+    ]:
+        reads = iter(observations)
+        handshakes = iter(leaves)
+        with pytest.raises(ValueError):
+            measure(lambda: next(reads), lambda _: next(handshakes), "unused", t)
