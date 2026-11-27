@@ -1,7 +1,6 @@
 """Offline checks for n8n binary-data external storage in RustFS."""
 
 import ast
-import json
 import subprocess
 import unittest
 from pathlib import Path
