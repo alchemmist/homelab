@@ -29,6 +29,15 @@ def test_effective_health_fleet():
         "--set",
         "closedFormatQuorum=true,closedWiki=true,closedMonori=true,closedLms=true,closedWishlist=true,closedStatus=true,closedStatusRedirect=true",  # exercise enabled and withdrawn shapes even after an owner opt-out
     ]
+
+    def other_objects(raw):
+        # Verified HTTPS has its own policy/file and independent transition test.
+        return [
+            d
+            for d in yaml.safe_load_all(raw)
+            if d.get("metadata", {}).get("name") != "closed-health-argocd"
+        ]
+
     assert app["destination"]["namespace"] == "public-health-staging"
     (
         policy,
@@ -39,7 +48,7 @@ def test_effective_health_fleet():
         status_policy,
         config,
         *deployments,
-    ) = yaml.safe_load_all(subprocess.check_output(args))
+    ) = other_objects(subprocess.check_output(args))
     assert policy["kind"] == "NetworkPolicy" and policy["spec"]["ingress"] == []
     peers = []
     assert wiki_policy["spec"]["podSelector"] == policy["spec"]["podSelector"]
@@ -156,7 +165,7 @@ def test_effective_health_fleet():
     (release_values,) = helm["valueFiles"]
     assert (chart_path / release_values).resolve() == (chart / blog).resolve()
     owner = list(
-        yaml.safe_load_all(
+        other_objects(
             subprocess.check_output(
                 [
                     "helm",
@@ -204,7 +213,7 @@ def test_effective_health_fleet():
             st,
             blocked_config,
             *unchanged,
-        ) = yaml.safe_load_all(subprocess.check_output([*args, *overrides]))
+        ) = other_objects(subprocess.check_output([*args, *overrides]))
         assert (lm, wl) == (lms_policy, wishlist_policy)
         assert still_monori == monori_policy
         assert still_wiki == wiki_policy
@@ -219,7 +228,7 @@ def test_effective_health_fleet():
             "services": {k: v for k, v in http["services"].items() if k != "www-blog"},
         }
     policy_off, separate_wiki, separate_monori, lm, wl, st, config_off, *unchanged = (
-        yaml.safe_load_all(
+        other_objects(
             subprocess.check_output(
                 [
                     *args[:-2],
@@ -241,9 +250,7 @@ def test_effective_health_fleet():
             k: v for k, v in http[section].items() if k != "format-quorum"
         }
     policy_off, separate_wiki, separate_monori, lm, wl, st, config_off, *unchanged = (
-        yaml.safe_load_all(
-            subprocess.check_output([*args, "--set", "closedWiki=false"])
-        )
+        other_objects(subprocess.check_output([*args, "--set", "closedWiki=false"]))
     )
     assert unchanged == deployments and policy_off == policy
     assert separate_wiki["spec"] == {**wiki_policy["spec"], "egress": []}
@@ -272,7 +279,7 @@ def test_effective_health_fleet():
             "servers": [{"url": "http://monori.monori.svc.cluster.local:80"}]
         }
     }
-    pol, wp, mp, lm, wl, st, cm, *ds = yaml.safe_load_all(
+    pol, wp, mp, lm, wl, st, cm, *ds = other_objects(
         subprocess.check_output([*args, "--set", "closedMonori=false"])
     )
     assert (pol, wp, ds) == (policy, wiki_policy, deployments) and mp["spec"] == {
@@ -319,7 +326,7 @@ def test_effective_health_fleet():
             cm,
         ) = [
             d
-            for d in yaml.safe_load_all(
+            for d in other_objects(
                 subprocess.check_output([*args, "--set", bit + "=false"])
             )
             if d["kind"] != "Deployment"
@@ -380,7 +387,7 @@ def test_effective_health_fleet():
             cm,
         ) = [
             d
-            for d in yaml.safe_load_all(subprocess.check_output([*args, "--set", opts]))
+            for d in other_objects(subprocess.check_output([*args, "--set", opts]))
             if d["kind"] != "Deployment"
         ]
         assert policies == [
@@ -621,3 +628,89 @@ def test_lms_and_wishlist_reject_side_channels_and_unselected_routes():
                 )
             )
             assert not eligible(changed, catalog, owner=app)
+
+
+def test_argo_uses_only_the_verified_https_upstream_or_withdraws_completely():
+    app = yaml.safe_load((ROOT / "deploy/argocd/apps/closed-health.yaml").read_text())[
+        "spec"
+    ]
+    src = app["source"]
+    chart = ROOT / src["path"]
+    args = [
+        "helm",
+        "template",
+        "closed-health",
+        str(chart),
+        "-n",
+        app["destination"]["namespace"],
+    ]
+    for f in src["helm"]["valueFiles"]:
+        args += ["-f", str(chart / f)]
+
+    def render(flag, value):
+        return {
+            (o["kind"], o["metadata"]["name"]): o
+            for o in yaml.safe_load_all(
+                subprocess.check_output([*args, flag, "closedArgo=" + value])
+            )
+            if o
+        }
+
+    active = render("--set", "true")
+    policy = active["NetworkPolicy", "closed-health-argocd"]["spec"]
+    assert policy["egress"] == [
+        {
+            "to": [
+                {
+                    "namespaceSelector": {
+                        "matchLabels": {"kubernetes.io/metadata.name": "argocd"}
+                    },
+                    "podSelector": {
+                        "matchLabels": {
+                            "app.kubernetes.io/name": "argocd-server",
+                            "app.kubernetes.io/instance": "argo-cd",
+                        }
+                    },
+                }
+            ],
+            "ports": [{"port": 8080, "protocol": "TCP"}],
+        }
+    ]
+    assert policy["policyTypes"] == ["Egress"] and policy["podSelector"] == {
+        "matchLabels": {"app": "closed-health"}
+    }
+    content = yaml.safe_load(
+        active["ConfigMap", "closed-health"]["data"].pop("argocd.yaml")
+    )
+    assert content == {
+        "http": {
+            "routers": {
+                "argocd": {
+                    "entryPoints": ["closed"],
+                    "rule": "Host(`argocd.socrat.alchemmist.xyz`) && PathPrefix(`/`)",
+                    "service": "argocd",
+                }
+            },
+            "services": {
+                "argocd": {
+                    "loadBalancer": {
+                        "passHostHeader": True,
+                        "serversTransport": "argocd-verified-tls",
+                        "servers": [
+                            {
+                                "url": "https://argo-cd-argocd-server.argocd.svc.cluster.local:443"
+                            }
+                        ],
+                    }
+                }
+            },
+            "serversTransports": {
+                "argocd-verified-tls": {
+                    "serverName": "argocd.socrat.alchemmist.xyz",
+                    "insecureSkipVerify": False,
+                }
+            },
+        }
+    }
+    policy["egress"] = []
+    assert active == render("--set", "false") == render("--set-string", "true")
