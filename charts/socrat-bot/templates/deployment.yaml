@@ -124,8 +124,8 @@ spec:
             - {name: BOT_DISABLE_LEGACY_API, value: "true"}
             {{- end }}
             {{- if $.Values.publicApiEnabled }}
-            - name: BOT_API_ADMIN_SECRET
-              valueFrom: {secretKeyRef: {name: socrat-bot-api-admin, key: password}}
+            - name: BOT_OIDC_SECRET
+              valueFrom: {secretKeyRef: {name: socrat-bot-oidc, key: client-secret}}
             {{- end }}
             - name: TELEGRAM_WEBHOOK_URL
               value: {{ $.Values.telegram.webhookURL | quote }}

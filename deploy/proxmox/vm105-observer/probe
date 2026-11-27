@@ -3,5 +3,10 @@
 set -u
 probe() { if timeout 8 "$@" >/dev/null 2>&1; then printf ok; else printf fail; fi; }
 node=$(hostname -s)
-rrd() { timeout 8 pvesh get "/nodes/$node/rrddata" --timeframe hour --output-format json | python3 -c 'import json,sys,time; sys.exit(not any(0 <= time.time()-x["time"] < 240 and x.get("cpu") is not None for x in json.load(sys.stdin)))'; }
-printf 'pveproxy=%s local_https=%s fresh_rrd=%s guest_agent=%s guest_k3s=%s\n' "$(probe systemctl is-active --quiet pveproxy)" "$(probe curl -kfsS --max-time 4 https://127.0.0.1:8006/)" "$(if rrd; then echo ok; else echo fail; fi)" "$(probe qm agent 105 ping)" "$(timeout 8 qm guest exec 105 --timeout 4 -- /usr/bin/systemctl is-active k3s 2>/dev/null | python3 -c 'import json,sys; print("ok" if json.load(sys.stdin).get("exitcode")==0 else "fail")' 2>/dev/null || echo fail)"
+rrd() { timeout 8 pvesh get "/nodes/${node}/rrddata" --timeframe hour --output-format json | python3 -c 'import json,sys,time; sys.exit(not any(0 <= time.time()-x["time"] < 240 and x.get("cpu") is not None for x in json.load(sys.stdin)))'; }
+pveproxy=$(probe systemctl is-active --quiet pveproxy)
+local_https=$(probe curl -kfsS --max-time 4 https://127.0.0.1:8006/)
+if rrd; then fresh_rrd=ok; else fresh_rrd=fail; fi
+guest_agent=$(probe qm agent 105 ping)
+guest_k3s=$(timeout 8 qm guest exec 105 --timeout 4 -- /usr/bin/systemctl is-active k3s 2>/dev/null | python3 -c 'import json,sys; print("ok" if json.load(sys.stdin).get("exitcode")==0 else "fail")' 2>/dev/null) || guest_k3s=fail
+printf 'pveproxy=%s local_https=%s fresh_rrd=%s guest_agent=%s guest_k3s=%s\n' "${pveproxy}" "${local_https}" "${fresh_rrd}" "${guest_agent}" "${guest_k3s}"
