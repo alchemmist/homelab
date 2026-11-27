@@ -6,12 +6,14 @@ from pathlib import Path
 
 
 def bind(document, credential_id):
-    if not credential_id.strip() or credential_id.startswith('SOCRAT_BOT_'):
+    if not credential_id.isalnum() and not credential_id.replace('-', '').isalnum():
         raise ValueError('supply the actual n8n credential ID, not the secret or placeholder')
     count = 0
     for node in document['nodes']:
         ref = node.get('credentials', {}).get('httpHeaderAuth', {})
-        if ref.get('id') in {'SOCRAT_BOT_FAILURES_ID', 'SOCRAT_BOT_ALERTS_ID'}:
+        if node.get('parameters', {}).get('url', '').startswith('https://bot.socrat.alchemmist.xyz/api/'):
+            if ref.get('id') not in {'SOCRAT_BOT_FAILURES_ID', 'SOCRAT_BOT_ALERTS_ID'}:
+                raise ValueError('unexpected bot credential reference')
             ref['id'] = credential_id
             count += 1
     if count != 1:
