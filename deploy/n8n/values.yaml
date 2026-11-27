@@ -31,4 +31,10 @@ ingress:
 otelLogBridge:
   enabled: true
   secretName: otel-app-tls-n8n
+
+# Binary data (execution attachments) lives in RustFS (in-cluster S3) under a
+# dedicated writer identity provisioned offline by scripts/rustfs/n8n_objectstore.py.
+s3BinaryData:
+  enabled: true
+  secretName: n8n-s3-storage
 ...

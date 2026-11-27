@@ -144,6 +144,28 @@ spec:
               value: {{ .Values.webhookUrl }}
             - name: N8N_SECURE_COOKIE
               value: 'true'
+            {{- if .Values.s3BinaryData.enabled }}
+            - name: N8N_DEFAULT_BINARY_DATA_MODE
+              value: s3
+            - name: N8N_AVAILABLE_BINARY_DATA_MODES
+              value: filesystem,s3
+            - name: N8N_EXTERNAL_STORAGE_S3_HOST
+              value: {{ .Values.s3BinaryData.host }}
+            - name: N8N_EXTERNAL_STORAGE_S3_PROTOCOL
+              value: {{ .Values.s3BinaryData.protocol }}
+            - name: N8N_EXTERNAL_STORAGE_S3_FORCE_PATH_STYLE
+              value: 'true'
+            - name: N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME
+              value: {{ .Values.s3BinaryData.bucket }}
+            - name: N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION
+              value: {{ .Values.s3BinaryData.region }}
+            - name: N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.s3BinaryData.secretName | quote }}, key: accessKey}
+            - name: N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.s3BinaryData.secretName | quote }}, key: accessSecret}
+            {{- end }}
             - name: GENERIC_TIMEZONE
               value: Europe/Moscow
             - name: TZ

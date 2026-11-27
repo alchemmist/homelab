@@ -66,6 +66,18 @@ authentikPublicAlias:
 # to a Loki push entry and ships it over mTLS using the dedicated n8n client
 # leaf mirrored into the automation namespace (see
 # deploy/monitoring/otel-application-credentials.yaml).
+# n8n binary-data (execution attachments) stored in RustFS, in-cluster S3.
+# Dedicated writer identity (machine user `n8n`, bucket `n8n-binary`) is
+# provisioned offline by scripts/rustfs/n8n_objectstore.py and mounted from
+# the automation-namespace Secret rendered there (n8n-s3-storage).
+s3BinaryData:
+  enabled: true
+  secretName: n8n-s3-storage
+  host: rustfs.rustfs.svc.cluster.local:9000
+  protocol: http
+  bucket: n8n-binary
+  region: us-east-1
+
 otelLogBridge:
   enabled: true
   secretName: otel-app-tls-n8n
