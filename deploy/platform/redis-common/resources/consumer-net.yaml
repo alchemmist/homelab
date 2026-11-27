@@ -10,6 +10,12 @@ spec:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: llm}}
           podSelector:
             matchLabels: {app.kubernetes.io/name: litellm, app.kubernetes.io/instance: litellm}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: automation}}
+          podSelector:
+            matchLabels: {app: n8n}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: automation}}
+          podSelector:
+            matchLabels: {app: n8n-worker}
         - podSelector: {matchLabels: {app: redis-common-write-probe}}
       ports: [{port: 6379, protocol: TCP}]
 ...

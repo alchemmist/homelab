@@ -1,15 +1,27 @@
 {{- if and .Values.serviceVpn.enabled (not .Values.googleTransportEnabled) }}
 {{- fail "Service VPN requires scoped verified Google transport" }}
 {{- end }}
+{{- if and .Values.queue.enabled .Values.queue.multimain.extraReplica }}
+{{- if ne (len .Values.queue.multimain.mainNodes) 2 }}
+{{- fail "Multi-main requires exactly two pinned mainNodes" }}
+{{- end }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   namespace: {{ $.Release.Namespace | quote }}
   name: n8n
 spec:
+  {{- if and .Values.queue.enabled .Values.queue.multimain.extraReplica }}
+  replicas: {{ len .Values.queue.multimain.mainNodes }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+  {{- else }}
   replicas: {{ .Values.replicaCount }}
   strategy:
     type: Recreate
+  {{- end }}
   selector:
     matchLabels:
       app: n8n
@@ -47,8 +59,28 @@ spec:
       {{- end }}
       tolerations:
         {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- if and .Values.queue.enabled .Values.queue.multimain.extraReplica }}
+      # Queue multi-main: pin exactly to the two named nodes and force one
+      # pod per node, so a single node failure never takes both mains.
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                    app: n8n
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      {{- toYaml .Values.queue.multimain.mainNodes | nindent 22 }}
+      {{- else }}
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.nodeName }}
+      {{- end }}
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
@@ -72,6 +104,23 @@ spec:
           securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
           resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {cpu: 200m, memory: 96Mi}}
           volumeMounts: [{name: login-guard, mountPath: /guard}]
+      {{- if .Values.queue.enabled }}
+        # One TLS trust bundle for PostgreSQL and redis-common CAs; Node accepts
+        # a single NODE_EXTRA_CA_CERTS file, so merge the PEMs at start.
+        - name: node-ca-bundle
+          image: {{ include "n8n.image" . | quote }}
+          command: [sh, -ec]
+          args:
+            - cat /etc/pg-common/ca.crt /etc/redis-common/ca.crt > /etc/node-ca/bundle.pem
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {cpu: 200m, memory: 96Mi}}
+          volumeMounts:
+            - {name: node-ca, mountPath: /etc/node-ca}
+            {{- if .Values.postgresCaConfigMap }}
+            - {name: pg-common-ca, mountPath: /etc/pg-common, readOnly: true}
+            {{- end }}
+            - {name: redis-common-n8n, mountPath: /etc/redis-common, readOnly: true}
+      {{- end }}
       {{- if .Values.serviceVpn.enabled }}
         - name: prepare-service-vpn
           image: {{ include "n8n.image" . | quote }}
@@ -110,7 +159,20 @@ spec:
             {{- end }}
             {{- if .Values.postgresCaConfigMap }}
             - name: NODE_EXTRA_CA_CERTS
+              {{- if .Values.queue.enabled }}
+              value: /etc/node-ca/bundle.pem
+              {{- else }}
               value: /etc/pg-common/ca.crt
+              {{- end }}
+            {{- else if .Values.queue.enabled }}
+            - name: NODE_EXTRA_CA_CERTS
+              value: /etc/redis-common/ca.crt
+            {{- end }}
+            {{- if .Values.queue.enabled }}
+            {{- include "n8n.queueEnv" (dict "root" .) | nindent 12 }}
+            {{- if .Values.queue.multimain.extraReplica }}
+            - {name: N8N_MULTI_MAIN_SETUP_ENABLED, value: 'true'}
+            {{- end }}
             {{- end }}
             {{- if .Values.googleTransportEnabled }}
             - name: NODE_OPTIONS
@@ -191,8 +253,14 @@ spec:
             initialDelaySeconds: 30
           volumeMounts:
             - {name: login-guard, mountPath: /usr/local/lib/node_modules/n8n/dist/controllers/auth.controller.js, subPath: auth.controller.js, readOnly: true}
+            {{- if .Values.queue.enabled }}
+            - {name: node-ca, mountPath: /etc/node-ca, readOnly: true}
+            {{- end }}
             {{- if .Values.postgresCaConfigMap }}
             - {name: pg-common-ca, mountPath: /etc/pg-common, readOnly: true}
+            {{- end }}
+            {{- if .Values.queue.enabled }}
+            - {name: redis-common-n8n, mountPath: /etc/redis-common, readOnly: true}
             {{- end }}
             - name: yandex-extension
               mountPath: /opt/n8n/yandex-extension
@@ -280,6 +348,18 @@ spec:
         - name: yandex-extension
           configMap:
             name: n8n-yandex-extension
+        {{- if not .Values.queue.enabled }}
+        # Legacy single-node PVC. In queue mode binary data lives in RustFS and
+        # the two pinned mains/worker cannot all mount this node-local claim,
+        # so /home/node/.n8n becomes an emptyDir per pod.
         - name: data
           persistentVolumeClaim:
             claimName: {{ .Values.persistence.claimName | default "n8n" }}
+        {{- else }}
+        - {name: data, emptyDir: {sizeLimit: 512Mi}}
+        - {name: node-ca, emptyDir: {sizeLimit: 1Mi}}
+        - name: redis-common-n8n
+          secret:
+            secretName: {{ .Values.queue.redis.secretName | quote }}
+            defaultMode: 0440
+        {{- end }}
