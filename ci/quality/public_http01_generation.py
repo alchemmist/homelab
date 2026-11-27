@@ -212,3 +212,50 @@ def closed_solver_snapshot(expected, challenge, ingress, service, pod, slices, p
         }
         http["services"] = {"solver": {"loadBalancer": {"servers": [{"url": dest}]}}}
     return {"http": http}
+
+
+def closed_solver_batch(observations, pod_network: IPv4Network) -> dict:
+    """Dedicated solver file for one complete scan, separate from ordinary routes.
+
+    Never pass an interrupted list as a completed scan. Reserve claims before
+    checking destinations, so an invalid backend cannot break a tie. Output
+    contains challenge paths and must not be logged. No writer or file I/O.
+    """
+    from collections import Counter
+    from hashlib import sha256
+
+    entries = list(observations)
+    names = Counter()
+    uids = Counter()
+    paths = Counter()
+    claims = []
+    for expected, challenge, *_ in entries:
+        ns, name, uid, host = expected
+        names[ns, name] += 1
+        uids[uid] += 1
+        token = challenge.get("spec", {}).get("token") if isinstance(challenge, dict) else None
+        claim = (host, token) if isinstance(token, str) and _TOKEN.fullmatch(token) else None
+        if claim:
+            paths[claim] += 1
+        claims.append(claim)
+    http = {
+        "routers": {
+            "acme-fixture-sentinel": {
+                "rule": "Host(`sentinel.invalid`)",
+                "entryPoints": ["closed"],
+                "service": "noop@internal",
+            }
+        }
+    }
+    for row, claim in zip(entries, claims, strict=True):
+        ns, name, uid, host = row[0]
+        if not claim or paths[claim] != 1 or names[ns, name] != 1 or uids[uid] != 1:
+            continue
+        single = closed_solver_snapshot(*row, pod_network)["http"]
+        proof = single["routers"].get("proof")
+        if not proof:
+            continue
+        key = "acme-fixture-" + sha256(uid.encode()).hexdigest()
+        http["routers"][key] = {**proof, "service": key}
+        http.setdefault("services", {})[key] = single["services"]["solver"]
+    return {"http": http}

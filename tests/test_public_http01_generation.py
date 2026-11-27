@@ -124,10 +124,20 @@ def test_inactive_or_unrelated_observations_cannot_present(fault):
     assert not same_presentation(expected, ch, ing, svc, pod)
 
 
-def destination_fixture():
+def destination_fixture(uid="now", token=None):
     from zlib import adler32
 
-    expected, ch, ing, svc, pod = fixture("now")
+    expected, ch, ing, svc, pod = fixture(uid)
+    if token is not None:
+        ch["spec"]["token"] = token
+        ing["spec"]["rules"][0]["http"]["paths"][0]["path"] = (
+            "/.well-known/acme-challenge/" + token
+        )
+        ns, _, _, host = expected
+        expected = (ns, "challenge-" + uid, uid, host)
+        ch["metadata"]["name"] = expected[1]
+        for child in (ing, svc, pod):
+            child["metadata"]["ownerReferences"][0]["name"] = expected[1]
     ns, _, _, host = expected
     ip = "10.42.2.9"
     selector = {
@@ -286,3 +296,25 @@ def test_closed_snapshot_never_encodes_empty_services_on_withdrawal():
     assert baseline["http"]["routers"].keys() == {"proof", "sentinel"}
     inputs[1] = None
     assert closed_solver_snapshot(*inputs, network) == withdrawn
+
+
+def test_batch_withdrawal_is_local_and_ambiguous_claims_never_choose_a_winner():
+    from ipaddress import IPv4Network
+
+    from ci.quality.public_http01_generation import closed_solver_batch
+
+    net = IPv4Network("10.42.0.0/16")
+    a = destination_fixture("first", "A" * 43)
+    b = destination_fixture("second", "B" * 43)
+
+    def snapshot(*rows):
+        return closed_solver_batch(rows, net)["http"]
+
+    both = snapshot(a, b)
+    assert both == snapshot(b, a) and len(both["services"]) == 2
+    stale = copy.deepcopy(a)
+    stale[-1][0]["endpoints"][0]["targetRef"]["uid"] = "old"
+    assert snapshot(stale, b) == snapshot(b)
+    assert snapshot(a, b, destination_fixture("third", "A" * 43)) == snapshot(b)
+    assert snapshot(a, stale, b) == snapshot(b)
+    assert snapshot() == snapshot(stale) and "services" not in snapshot()
