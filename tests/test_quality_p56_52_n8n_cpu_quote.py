@@ -126,7 +126,9 @@ def test_retired_n8n_cpu_limit_stays_a_double_quoted_string() -> None:
         assert (bare_cpu.tag, bare_cpu.value) == (INTEGER_TAG, "1")
 
     document = _first_document(text, yaml.SafeLoader)
-    assert _scalar(document, "image").value == IMAGE
+    fork_image = _child(document, "image")
+    assert _scalar(fork_image, "repository").value == IMAGE.split("@")[0]
+    assert _scalar(fork_image, "digest").value == IMAGE.split("@")[1]
     assert _scalar(document, "nodeName").value == "socrat-1"
     assert _scalar(document, "host").value == "n8n.socrat.alchemmist.xyz"
     assert _scalar(document, "webhookUrl").value == "https://n8n.socrat.alchemmist.xyz/"

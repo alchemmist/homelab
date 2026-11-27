@@ -56,7 +56,7 @@ spec:
       initContainers:
         # Pin the controller ABI; an image upgrade requires reviewing this narrow guard.
         - name: oidc-only-login
-          image: {{ .Values.image | quote }}
+          image: {{ include "n8n.image" . | quote }}
           command: [node, -e]
           args:
             - |
@@ -71,7 +71,7 @@ spec:
           volumeMounts: [{name: login-guard, mountPath: /guard}]
       {{- if .Values.serviceVpn.enabled }}
         - name: prepare-service-vpn
-          image: {{ .Values.image | quote }}
+          image: {{ include "n8n.image" . | quote }}
           command: [node, /vpn-script/prepare.js]
           securityContext:
             allowPrivilegeEscalation: false
@@ -87,7 +87,7 @@ spec:
       {{- end }}
       containers:
         - name: n8n
-          image: {{ .Values.image | quote }}
+          image: {{ include "n8n.image" . | quote }}
           env:
             {{- if .Values.database.postgresEnabled }}
             - {name: DB_TYPE, value: postgresdb}
