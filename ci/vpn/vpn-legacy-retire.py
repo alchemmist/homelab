@@ -23,6 +23,9 @@ from typing import Protocol, TypedDict, cast
 def load(name: str, filename: str) -> ModuleType:
     """Import a sibling migration module by exact file name."""
     spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
+    if spec is None or spec.loader is None:
+        msg = "Sibling migration module is not loadable"
+        raise RuntimeError(msg)
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m
@@ -33,6 +36,13 @@ target = load("target", "vpn-reality-apply.py")
 publication = load("publication", "vpn-subscription-migrate.py")
 guard = load("guard", "vpn-backend-guard.py")
 h = native.h
+LEGACY_PORT = 32063
+WATCHDOG_STATE_DIR = "/var/lib/homelab-vpn-failover"
+PRIMARY_UNIT = "homelab-vpn-primary.service"
+DRAIN_ATTEMPTS = 100
+DRAIN_LAST = DRAIN_ATTEMPTS - 1
+CONVERGE_ATTEMPTS = 60
+CONVERGE_LAST = CONVERGE_ATTEMPTS - 1
 CONFIG = Path("/etc/homelab-vpn-failover/config.json")
 UNIT = Path("/etc/systemd/system/monitoring-vpn.service")
 TIMER = "homelab-vpn-watchdog.timer"
@@ -40,6 +50,8 @@ TIMER = "homelab-vpn-watchdog.timer"
 
 def run(args: list[str]) -> str:
     """Run one dependency operation, failing loudly on any nonzero exit."""
+    # S603/S607: systemd and reviewed host operations on fixed operands are
+    # this operational script's purpose (same remnant class vpn-reality-apply keeps).
     r = subprocess.run(args, check=False, capture_output=True, text=True, timeout=30)
     if r.returncode:
         msg = "Retirement dependency operation failed; inspect private receipt"
@@ -50,11 +62,11 @@ def run(args: list[str]) -> str:
 def watchdog_after(before: dict[str, object]) -> dict[str, object]:
     """Return the pre-image-exact watchdog config with the 32063 dependency removed."""
     after = copy.deepcopy(before)
-    if before.get("state_dir") != "/var/lib/homelab-vpn-failover":
+    if before.get("state_dir") != WATCHDOG_STATE_DIR:
         msg = "Unexpected watchdog state"
         raise ValueError(msg)
     endpoints = cast("list[list[str]]", after["tcp_endpoints"])
-    endpoint_matches = [v for v in endpoints if v == ["127.0.0.1", 32063]]
+    endpoint_matches = [v for v in endpoints if v == ["127.0.0.1", LEGACY_PORT]]
     if len(endpoint_matches) != 1:
         msg = "Watchdog preimage drift"
         raise ValueError(msg)
@@ -62,10 +74,12 @@ def watchdog_after(before: dict[str, object]) -> dict[str, object]:
     ports = cast("list[dict[str, object]]", after["listen_ports"])
     primary_ports = cast(
         "list[dict[str, object]]",
-        cast("dict[str, object]", after["native_unit_ports"])["homelab-vpn-primary.service"],
+        cast("dict[str, object]", after["native_unit_ports"])[PRIMARY_UNIT],
     )
     for items in (ports, primary_ports):
-        port_matches = [v for v in items if v.get("port") == 32063 and v.get("protocol") == "tcp"]
+        port_matches = [
+            v for v in items if v.get("port") == LEGACY_PORT and v.get("protocol") == "tcp"
+        ]
         if len(port_matches) != 1:
             msg = "Watchdog preimage drift"
             raise ValueError(msg)
@@ -85,7 +99,9 @@ def monitoring_after(before: str) -> str:
 def select(config: dict[str, object]) -> dict[str, object]:
     """Return the unique excluded legacy plaintext inbound; refuse any drift."""
     rows = [
-        r for r in cast("list[dict[str, object]]", config["inbounds"]) if r.get("port") == 32063
+        r
+        for r in cast("list[dict[str, object]]", config["inbounds"])
+        if r.get("port") == LEGACY_PORT
     ]
     if len(rows) != 1:
         msg = "Legacy count drift"
@@ -145,15 +161,16 @@ def atomic(path: Path, content: str, mode: int) -> None:
             f.write(content)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(name, path)
+        Path(name).replace(path)
         directory = os.open(path.parent, os.O_DIRECTORY)
         try:
             os.fsync(directory)
         finally:
             os.close(directory)
     finally:
-        if os.path.exists(name):
-            os.unlink(name)
+        staged = Path(name)
+        if staged.exists():
+            staged.unlink()
 
 
 def healthy() -> dict[str, object]:
@@ -213,7 +230,7 @@ def stage_evidence(
     h.save(s.state / "watchdog-before-private.json", stage["w"])
     h.save(s.state / "monitoring-before.json", stage["u"])
     before = publication.snapshot(s.database, s.state, "before-uri")
-    before_json = publication.snapshot(s.database, s.state, "before-json", True)
+    before_json = publication.snapshot(s.database, s.state, "before-json", json_format=True)
     if any(publication.is_legacy(v) for links in before.values() for v in links):
         msg = "Legacy still published"
         raise ValueError(msg)
@@ -230,7 +247,8 @@ def stage_evidence(
 def wait_watchdog_drained() -> None:
     """Pause only future dispatch; wait for the running watchdog job to drain."""
     run(["systemctl", "stop", TIMER])
-    for attempt in range(100):
+    for attempt in range(DRAIN_ATTEMPTS):
+        # S603/S607: the reviewed read-only systemd state inspection.
         active = subprocess.run(
             ["systemctl", "is-active", "homelab-vpn-watchdog.service"],
             check=False,
@@ -240,7 +258,7 @@ def wait_watchdog_drained() -> None:
         ).stdout.strip()
         if active in ("inactive", "failed"):
             return
-        if attempt == 99:
+        if attempt == DRAIN_LAST:
             msg = "Existing watchdog job did not drain"
             raise RuntimeError(msg)
         time.sleep(0.25)
@@ -310,10 +328,11 @@ def disable_api_inbound(
 
 def wait_port_converged() -> None:
     """Confirm the retired port stopped listening and the watchdog stayed healthy."""
-    for attempt in range(60):
+    for attempt in range(CONVERGE_ATTEMPTS):
         if guard.read_table() is None:
             msg = "Backend guard missing"
             raise ValueError(msg)
+        # S603/S607: the reviewed read-only ss inspection on a fixed literal.
         result = subprocess.run(
             ["ss", "-Hltn", "sport = :32063"],
             check=False,
@@ -328,7 +347,7 @@ def wait_port_converged() -> None:
                 pass
             else:
                 return
-        if attempt == 59:
+        if attempt == CONVERGE_LAST:
             msg = "Retired port/runtime not converged"
             raise RuntimeError(msg)
         time.sleep(0.5)
@@ -343,7 +362,7 @@ def verify_publication_readback(
 ) -> None:
     """Confirm subscriptions stayed untouched and the new files read back exactly."""
     after = publication.snapshot(s.database, s.state, "after-uri")
-    after_json = publication.snapshot(s.database, s.state, "after-json", True)
+    after_json = publication.snapshot(s.database, s.state, "after-json", json_format=True)
     if before != cast("dict[object, object]", after) or before_json != cast(
         "dict[object, object]", after_json
     ):
@@ -420,7 +439,7 @@ def apply(state: Path, approval: str) -> dict[str, object]:
         try:
             s.cleanup()
         finally:
-            if lock:
+            if lock is not None:
                 lock.close()
             if timer_paused:
                 run(["systemctl", "start", TIMER])
@@ -451,7 +470,7 @@ if __name__ == "__main__":
         else:
             value = plan(a.state)
             print(h.canonical({"plan": value, "plan_sha256": h.digest(value), "writes": 0}))
-    except Exception:
+    except Exception as error:
         import traceback
 
         try:
@@ -463,4 +482,4 @@ if __name__ == "__main__":
         except (ValueError, OSError):
             pass
         msg = "Legacy retirement stopped; inspect private receipts; never replay writes."
-        raise SystemExit(msg) from None
+        raise SystemExit(msg) from error
