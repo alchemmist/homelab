@@ -17,6 +17,8 @@
 {{- $pin := dig $app $host (dict) $.Values.hosts -}}
 {{- $_ := set $apps $app (and (kindIs "bool" (get $.Values $bit)) (get $.Values $bit) (deepEqual $pin (dict "dns" "managed" "tlsSourceName" (printf "%s-tls" $app)))) -}}
 {{- end -}}
+{{- $status := and (kindIs "bool" .Values.closedStatus) .Values.closedStatus (deepEqual (dig "uptime-kuma" "status.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "uptime-kuma-tls")) -}}
+{{- $redirect := and (kindIs "bool" .Values.closedStatusRedirect) .Values.closedStatusRedirect (deepEqual (dig "uptime-kuma" "kuma.socrat.alchemmist.xyz" (dict) .Values.hosts) (dict "dns" "managed" "tlsSourceName" "public-web-kuma-admin-tls")) -}}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -109,6 +111,25 @@ spec:
 {{- end }}
 {{- end }}
 ---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: closed-health-status
+  namespace: {{ .Release.Namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: '-1'}
+spec:
+  podSelector: {matchLabels: {app: closed-health}}
+  policyTypes: [Egress]
+{{- if or $status $redirect }}
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: uptime-kuma}}
+          podSelector: {matchLabels: {app: public-web-kuma-proxy}}
+      ports: [{port: 8080, protocol: TCP}]
+{{- else }}
+  egress: []
+{{- end }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata: {name: closed-health, namespace: {{ .Release.Namespace }}}
@@ -152,7 +173,25 @@ data:
           service: {{ $app }}
 {{- end }}
 {{- end }}
+{{- if $status }}
+        status:
+          entryPoints: [closed]
+          rule: 'Host(`status.alchemmist.xyz`) && PathPrefix(`/`)'
+          service: status-policy
+{{- end }}
+{{- if $redirect }}
+        status-redirect:
+          entryPoints: [closed]
+          rule: 'Host(`kuma.socrat.alchemmist.xyz`) && PathPrefix(`/`)'
+          service: status-policy
+{{- end }}
       services:
+{{- if or $status $redirect }}
+        status-policy:
+          loadBalancer:
+            passHostHeader: true
+            servers: [{url: 'http://public-web-kuma-proxy.uptime-kuma.svc.cluster.local:80'}]
+{{- end }}
 {{- range $app, $enabled := $apps }}
 {{- if $enabled }}
         {{ $app }}:
