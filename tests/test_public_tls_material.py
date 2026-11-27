@@ -262,3 +262,29 @@ def test_ambiguous_ownership_is_not_fetched_even_when_one_key_would_validate():
         and not report.hosts
         and set(report.withdrawn.values()) == {"invalid-ownership"}
     )
+
+
+def test_truncated_http_response_after_denial_does_not_cancel_completed_batch():
+    from http.client import IncompleteRead
+    from json import JSONDecodeError
+
+    from services.public_entry.tls_refresh import refresh
+
+    a, b, c = [("owner", n) for n in "abc"]
+
+    def read(ref):
+        if ref == a:
+            return 403, None
+        if ref == b:
+            raise IncompleteRead(b"private fixture bytes")
+        raise JSONDecodeError("bad reply", "private fixture bytes", 0)
+
+    result = refresh(
+        {ref: frozenset({ref[1] + ".invalid"}) for ref in (a, b, c)}, read, NOW
+    )
+    assert dict(result.withdrawn) == {
+        a: "denied",
+        b: "unavailable",
+        c: "invalid-response",
+    }
+    assert not result.hosts and not result.material

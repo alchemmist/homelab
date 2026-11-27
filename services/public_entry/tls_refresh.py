@@ -5,6 +5,8 @@ from collections import Counter
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
+from http.client import HTTPException
+from json import JSONDecodeError
 from types import MappingProxyType
 
 from services.public_entry.tls_selection import Source, SourceMaterial, select_sources
@@ -74,8 +76,11 @@ def refresh(
             continue
         try:
             status, doc = get(ref)
-        except OSError:
+        except (OSError, HTTPException):
             withheld[ref] = "unavailable"
+            continue
+        except (JSONDecodeError, UnicodeDecodeError):
+            withheld[ref] = "invalid-response"
             continue
         if type(status) is not int or not 100 <= status <= 599:
             withheld[ref] = "invalid-response"
