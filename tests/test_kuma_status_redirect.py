@@ -63,9 +63,16 @@ def test_exact_status_owner_label_preserves_readonly_proxy_and_legacy_redirect()
         "-n",
         app["destination"]["namespace"],
     ]
-    options = []
-    for p in helm["parameters"]:
-        options.extend(["--set-string", p["name"] + "=" + p["value"]])
+    def parameters(*, omit=()):
+        options = []
+        for p in helm["parameters"]:
+            if p["name"] in omit:
+                continue
+            flag = "--set-string" if p.get("forceString", False) else "--set"
+            options.extend([flag, p["name"] + "=" + p["value"]])
+        return options
+
+    options = parameters()
 
     def docs(args):
         return list(yaml.safe_load_all(subprocess.check_output(base + args, text=True)))
@@ -79,7 +86,7 @@ def test_exact_status_owner_label_preserves_readonly_proxy_and_legacy_redirect()
         return obj
 
     key = "homelab.alchemmist.xyz/public-web"
-    expected = docs([])
+    expected = docs(parameters(omit={"publicStatusHost"}))
     labels = reader(expected)["metadata"].setdefault("labels", {})
     assert key not in labels
     labels[key] = "true"
@@ -94,7 +101,7 @@ def test_exact_status_owner_label_preserves_readonly_proxy_and_legacy_redirect()
     }
     retained = [p for p in helm["parameters"] if p["name"] != "host"]
     assert [p["value"] for p in retained if p["name"] == "publicStatusHost"] == [rule["host"]]
-    mismatched = [arg for p in retained for arg in ("--set-string", p["name"] + "=" + p["value"])]
+    mismatched = parameters(omit={"host"})
     changed = reader(docs([*mismatched, "--set-string", "host=other.invalid"]))
     assert changed["spec"]["rules"][0][
         "host"
