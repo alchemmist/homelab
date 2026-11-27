@@ -318,3 +318,117 @@ def test_batch_withdrawal_is_local_and_ambiguous_claims_never_choose_a_winner():
     assert snapshot(a, b, destination_fixture("third", "A" * 43)) == snapshot(b)
     assert snapshot(a, stale, b) == snapshot(b)
     assert snapshot() == snapshot(stale) and "services" not in snapshot()
+
+
+def list_page(items=(), cursor="", version="opaque-rv"):
+    return 200, {
+        "apiVersion": "acme.cert-manager.io/v1",
+        "kind": "ChallengeList",
+        "metadata": {"resourceVersion": version, "continue": cursor},
+        "items": list(items),
+    }
+
+
+def test_scan_completes_pagination_before_resolving_children_or_emitting_empty_file():
+    from ipaddress import IPv4Network
+
+    from ci.quality.public_http01_scan import scan_namespace
+
+    a = destination_fixture("a", "A" * 43)
+    b = destination_fixture("b", "B" * 43)
+    calls = []
+
+    def run(pages):
+        def read(ns, cursor):
+            calls.append((ns, cursor))
+            return pages[cursor]
+
+        def children(item):
+            calls.append(item["metadata"]["uid"])
+            return (a if item is a[1] else b)[2:]
+
+        return scan_namespace(
+            "owner",
+            frozenset({"probe.invalid"}),
+            read,
+            children,
+            IPv4Network("10.42.0.0/16"),
+        )["http"]
+
+    # An empty first page with a cursor is not an empty collection.
+    result = run(
+        {
+            "": list_page(cursor="next"),
+            "next": list_page([a[1]], "last"),
+            "last": list_page([b[1]]),
+        }
+    )
+    assert (
+        calls == [("owner", ""), ("owner", "next"), ("owner", "last"), "a", "b"]
+        and len(result["services"]) == 2
+    )
+    assert "services" not in run({"": list_page()})
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "403",
+        "410",
+        "timeout",
+        "eof",
+        "version",
+        "loop",
+        "duplicate",
+        "foreign",
+        "remaining",
+        "child",
+    ],
+)
+def test_interrupted_scan_never_emits_partial_or_empty_withdrawal(fault):
+    from ipaddress import IPv4Network
+
+    from ci.quality.public_http01_scan import IncompleteScan, scan_namespace
+
+    a = destination_fixture()
+    item = a[1]
+    resolved = []
+
+    def read(ns, cursor):
+        if not cursor:
+            return list_page([item], "sensitive-cursor")
+        if fault in ("403", "410"):
+            return int(fault), {"message": "sensitive-fixture"}
+        if fault == "timeout":
+            raise TimeoutError("sensitive-fixture")
+        if fault == "eof":
+            raise StopIteration
+        if fault == "version":
+            return list_page(version="newer")
+        if fault == "loop":
+            return list_page(cursor=cursor)
+        if fault == "duplicate":
+            return list_page([item])
+        if fault == "foreign":
+            other = copy.deepcopy(item)
+            other["metadata"]["namespace"] = "other"
+            return list_page([other])
+        status, page = list_page()
+        if fault == "remaining":
+            page["metadata"]["remainingItemCount"] = 1
+        return status, page
+
+    def children(obj):
+        resolved.append(obj)
+        raise TimeoutError("sensitive-child")
+
+    with pytest.raises(IncompleteScan, match="no snapshot") as err:
+        scan_namespace(
+            "owner",
+            frozenset({"probe.invalid"}),
+            read,
+            children,
+            IPv4Network("10.42.0.0/16"),
+        )
+    assert err.value.__context__ is None and "sensitive" not in str(err.value)
+    assert len(resolved) == int(fault == "child")
