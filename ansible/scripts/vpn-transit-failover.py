@@ -425,7 +425,11 @@ class Controller:
                     self.receipt("return-deferred", reason="witness-lock-timeout")
                     return
                 if os.read(lock.stdout.fileno(), 7) != b"LOCKED\n":
-                    self.receipt("return-deferred", reason="witness-lock-not-granted", ssh_status=lock.poll())
+                    self.receipt(
+                        "return-deferred",
+                        reason="witness-lock-not-granted",
+                        ssh_status=lock.poll(),
+                    )
                     return
                 self._handoff(lock)
             finally:
@@ -444,9 +448,18 @@ class Controller:
         if self.permit.exists() or not self.permit.parent.is_dir():
             return
         meminfo = pathlib.Path("/proc/meminfo").read_text().splitlines()
-        available = next((int(parts[1]) for line in meminfo if (parts := line.split())
-                          and parts[0] == "MemAvailable:" and len(parts) == 3
-                          and parts[1].isdigit() and parts[2] == "kB"), 0)
+        available = next(
+            (
+                int(parts[1])
+                for line in meminfo
+                if (parts := line.split())
+                and parts[0] == "MemAvailable:"
+                and len(parts) == 3
+                and parts[1].isdigit()
+                and parts[2] == "kB"
+            ),
+            0,
+        )
         disk = os.statvfs("/var/lib/rancher/k3s")
         if (
             available < 256 * 1024

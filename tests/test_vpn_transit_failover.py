@@ -532,3 +532,27 @@ def test_manual_return_cannot_bypass_busy_shared_lock(ctl, monkeypatch):
     with pytest.raises(RuntimeError, match="deferred"):
         c.failback()
     assert c.marker.exists()
+
+
+@pytest.mark.parametrize("reply", [b"", b"LOC"])
+def test_witness_denial_and_partial_response_preserve_native(ctl, monkeypatch, reply):
+    import sys
+
+    m, c = ctl
+    c.config["warm_return_enabled"] = True
+    m.atomic(c.marker, {})
+    c.save(mode="native")
+    real_popen = subprocess.Popen
+    monkeypatch.setattr(c, "prerequisites", lambda: None)
+    monkeypatch.setattr(
+        m.subprocess,
+        "Popen",
+        lambda _argv, **kw: real_popen(
+            [sys.executable, "-c", f"import os; os.write(1, {reply!r})"], **kw
+        ),
+    )
+    monkeypatch.setattr(c, "_handoff", lambda *_: pytest.fail("lock was not granted"))
+    with pytest.raises(RuntimeError, match="deferred"):
+        c.failback()
+    assert c.marker.exists() and c.state["mode"] == "native"
+    assert list(m.ROOT.glob("*-return-deferred.json"))
