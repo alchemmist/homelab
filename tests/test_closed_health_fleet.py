@@ -893,3 +893,65 @@ def test_schoolbot_sample_requires_complete_json_http_response():
         b"x" * 8193,
     ):
         assert classify(bad) != "healthy"
+
+
+@pytest.mark.parametrize(
+    "mode,query",
+    [
+        ("named", "schoolbot.schoolbot.svc.cluster.local"),
+        ("absolute", "schoolbot.schoolbot.svc.cluster.local."),
+        ("numeric", None),
+        ("listener", None),
+    ],
+)
+def test_schoolbot_phases_report_only_fixed_target_timing(monkeypatch, mode, query):
+    import io
+
+    from ci.quality import schoolbot_phase_probe as probe
+
+    vip = "10.43.0.1"
+    expected = ("127.0.0.1", 8181) if mode == "listener" else (vip, 80)
+    lookups = []
+
+    def resolve(name, *args):
+        lookups.append(name)
+        return [(None, None, None, None, (vip, 80))]
+
+    class Sock:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def settimeout(self, t):
+            assert t == 6
+
+        def connect(self, address):
+            assert address == expected
+
+        def sendall(self, data):
+            assert (
+                data
+                == b"GET /api/health HTTP/1.0\r\nHost: inform.sch1357.ru\r\nConnection: close\r\n\r\n"
+            )
+
+        def makefile(self, *args):
+            return io.BytesIO(
+                b'HTTP/1.0 200 OK\r\nContent-Type: application/json\r\nContent-Length: 11\r\n\r\n{"ok":true}'
+            )
+
+    monkeypatch.setattr(probe.socket, "getaddrinfo", resolve)
+    monkeypatch.setattr(probe.socket, "socket", lambda *args: Sock())
+    r = probe.sample(mode, vip)
+    assert r.pop("outcome") == "healthy"
+    assert lookups == ([query] if query else [])
+    assert set(r) == {"tcp_ms", "headers_ms", "body_ms"} | (
+        {"dns_ms"} if query else set()
+    )
+    assert all(v >= 0 for v in r.values())
+    if query:
+        monkeypatch.setattr(probe.socket, "getaddrinfo", lambda *args: [])
+        assert probe.sample(mode, vip)["outcome"] == "unexpected-dns"
+    with pytest.raises(ValueError):
+        probe.sample(mode, "127.0.0.1")
