@@ -161,33 +161,12 @@ def test_no_partial_or_cross_namespace_reader_plan(change):
     assert report["errors"] and not report["sources"]
 
 
-@pytest.mark.parametrize(
-    "app",
-    [
-        "blog",
-        "cats",
-        "format-quorum",
-        "img-proxy",
-        "lms",
-        "monori",
-        "n8n",
-        "pr-agent",
-        "remark42",
-        "schoolbot",
-        "socrat-bot",
-        "umami",
-        "venice-api",
-        "wiki-runtime",
-        "wishlist",
-    ],
-)
-def test_reviewed_tls_pins_agree_with_separately_rendered_release(app):
-    """Check pins against release sources, not a live-generated Secret inventory."""
+def _release_tls_records(app):
     import subprocess
 
     import yaml
 
-    from ci.quality.public_web import CATALOG, ROOT
+    from ci.quality.public_web import ROOT
 
     spec = yaml.safe_load((ROOT / "deploy/argocd/apps" / f"{app}.yaml").read_text())[
         "spec"
@@ -224,7 +203,23 @@ def test_reviewed_tls_pins_agree_with_separately_rendered_release(app):
             for h in t["hosts"]:
                 assert h in {rule["host"] for rule in d["spec"]["rules"]}
                 observed.add((h, t["secretName"]))
-    policy = yaml.safe_load(CATALOG.read_text())["hosts"][ns]
-    assert observed and all(
-        policy[h].get("tlsSourceName") == name for h, name in observed
-    )
+    assert observed
+    return {(ns, h, key) for h, key in observed}
+
+
+def test_reviewed_tls_pins_agree_with_separately_rendered_releases():
+    """Require bidirectional parity: neither an unpinned source nor an orphan pin."""
+    import yaml
+
+    from ci.quality.public_web import CATALOG
+
+    apps = "blog cats format-quorum grafana-mcp img-proxy lms monori n8n pr-agent remark42 schoolbot socrat-bot socrat-home spi-triage syncthing umami uptime-kuma venice-api wiki-runtime wishlist".split()
+    observed = set().union(*(_release_tls_records(app) for app in apps))
+    policy = yaml.safe_load(CATALOG.read_text())["hosts"]
+    pinned = {
+        (ns, host, settings["tlsSourceName"])
+        for ns, hosts in policy.items()
+        for host, settings in hosts.items()
+        if "tlsSourceName" in settings
+    }
+    assert observed == pinned

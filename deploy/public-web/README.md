@@ -219,7 +219,7 @@ pin. The comparison emits no reader plan if any ordinary host has a missing,
 ambiguous, malformed or mismatched pin or if the inventory has errors. It does
 not render or apply RBAC, read Secrets, or change DNS ownership.
 
-The first batch was checked against 15 local owner releases (16 names; blog
+The first batch was checked against 20 local owner releases (23 names; blog
 apex and www share one source), including `schoolbot/schoolbot-tls`.
 The fleet plan intentionally remains blocked until the other sources have been
 independently reviewed. Never bootstrap the pins by copying audit output into
