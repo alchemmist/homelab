@@ -5,6 +5,7 @@ No API availability-only failover. Native mode is sticky until explicit failback
 """
 
 import argparse
+import base64
 import contextlib
 import fcntl
 import hashlib
@@ -168,7 +169,7 @@ def probe(
                 req = (
                     "GET "
                     + str(config["ws_path"])
-                    + " HTTP/1.1\r\nHost: vpn.alchemmist.xyz\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n"
+                    + " HTTP/1.1\r\nHost: vpn.alchemmist.xyz\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: " + base64.b64encode(os.urandom(16)).decode("ascii") + "\r\nSec-WebSocket-Version: 13\r\n\r\n"
                 )
                 t.sendall(req.encode())
                 line = t.recv(1024).split(b"\r\n")[0]
