@@ -296,11 +296,42 @@ def test_unreviewed_external_chart_is_rejected_before_helm(tmp_path):
         verify(wrong)
 
 
-@pytest.mark.parametrize("payload", ["[]", "{}", '{"items":null}', '{"items":[{}]}', "invalid"])
-def test_pin_cli_rejects_malformed_input_without_dump(payload,monkeypatch,capsys):
+@pytest.mark.parametrize(
+    "payload", ["[]", "{}", '{"items":null}', '{"items":[{}]}', "invalid"]
+)
+def test_pin_cli_rejects_malformed_input_without_dump(payload, monkeypatch, capsys):
     import io
     import json
+
     from ci.quality import public_tls_pins as pins
-    monkeypatch.setattr(pins.sys,"stdin",io.StringIO(payload))
-    assert pins.main()==1
-    assert json.loads(capsys.readouterr().out)=={"sources":{},"errors":["invalid catalog or Kubernetes List input"]}
+
+    monkeypatch.setattr(pins.sys, "stdin", io.StringIO(payload))
+    assert pins.main() == 1
+    assert json.loads(capsys.readouterr().out) == {
+        "sources": {},
+        "errors": ["invalid catalog or Kubernetes List input"],
+    }
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("dnsNames", ["app.test", "app.test"]),
+        ("uris", ["urn:fixture:other"]),
+        ("ipAddresses", ["192.0.2.1"]),
+    ],
+)
+def test_pin_plan_checks_exact_requested_identity_set(field, value):
+    from ci.quality.public_tls_pins import compare
+
+    catalog = copy.deepcopy(CAT)
+    catalog["hosts"]["site"]["app.test"]["tlsSourceName"] = "site-tls"
+    cert = copy.deepcopy(CERT)
+    cert["spec"][field] = value
+    assert not inventory(catalog, [ING, PATH, cert])["errors"]
+    result = compare(catalog, [ING, PATH, cert])
+    assert (
+        result["sources"] == {}
+        and "site/site-tls: requested SAN set differs from reviewed source"
+        in result["errors"]
+    )

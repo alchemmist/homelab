@@ -45,6 +45,18 @@ def compare(catalog: dict, items: list[dict]) -> dict:
             issues.add(f"{host}: observed source differs from reviewed pin")
             continue
         bindings[pins[0]].append(host)
+    for item in items:
+        if item["kind"] != "Certificate":
+            continue
+        spec = item["spec"]
+        ref = f"{item['metadata']['namespace']}/{spec['secretName']}"
+        if ref not in bindings:
+            continue
+        dns = spec.get("dnsNames", [])
+        if sorted(dns) != sorted(bindings[ref]) or any(
+            spec.get(k) for k in ("ipAddresses", "uris", "emailAddresses", "otherNames")
+        ):
+            issues.add(f"{ref}: requested SAN set differs from reviewed source")
     return {"sources": {} if issues else dict(sorted(bindings.items())), "errors": sorted(issues)}
 
 
