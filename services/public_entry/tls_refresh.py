@@ -77,6 +77,9 @@ def refresh(
         except OSError:
             withheld[ref] = "unavailable"
             continue
+        if type(status) is not int or not 100 <= status <= 599:
+            withheld[ref] = "invalid-response"
+            continue
         if status != 200:
             withheld[ref] = {403: "denied", 404: "missing"}.get(status, "unavailable")
             continue

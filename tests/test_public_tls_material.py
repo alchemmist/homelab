@@ -223,6 +223,8 @@ def test_exact_refresh_does_not_lose_a_denial_on_later_failure_or_refetch_keys()
     initial = scan()
     assert set(initial.material) == set(refs) and not initial.withdrawn
     original = dict(replies)
+    replies[refs[1]] = ("403", None)
+    assert scan().withdrawn == {refs[1]: "invalid-response"}
     replies[refs[0]] = (403, {"message": "sensitive-fixture"})
     replies[refs[1]] = (503, None)
     partial = scan()
