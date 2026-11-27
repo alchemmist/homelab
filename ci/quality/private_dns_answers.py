@@ -51,7 +51,10 @@ def check_reply(output: str, names: list[str], address: str) -> None:
             raise ValueError(f"{name}: answer does not equal the replica address")
 
 
-def main() -> None:
+KUBE = ["kubectl", "--context=Socrat", "--namespace", NAMESPACE]
+
+
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "pod", help="existing tokenless DNS probe Pod in the private rehearsal namespace"
@@ -70,50 +73,75 @@ def main() -> None:
     )
     if not names:
         raise ValueError("empty managed host catalog")
-    kube = ["kubectl", "--namespace", NAMESPACE]
+    failures = 0
     for label, entry in catalog["replicas"].items():
-        svc = json.loads(
-            subprocess.check_output(
-                [*kube, "get", "service", f"authority-{label}-probe", "-o", "json"], timeout=15
-            )
-        )["spec"]
-        ip = ipaddress.ip_address(svc["clusterIP"])
-        if svc["type"] != "ClusterIP" or ip not in ipaddress.ip_network("10.43.0.0/16"):
-            raise ValueError(f"{label}: not a private rehearsal Service")
         for transport in ("udp", "tcp"):
-            cmd = [
-                *kube,
-                "exec",
-                "-i",
-                args.pod,
-                "--",
-                "dig",
-                "@" + str(ip),
-                "+tcp" if transport == "tcp" else "+notcp",
-                "+ignore",
-                "+tries=1",
-                "+time=2",
-                "+noedns",
-                "+norecurse",
-                "+noall",
-                "+nocmd",
-                "+comments",
-                "+question",
-                "+answer",
-                "-f",
-                "/dev/stdin",
-            ]
-            result = subprocess.run(
-                cmd,
-                input="".join(f"{name}. A\n" for name in names),
-                text=True,
-                capture_output=True,
-                timeout=30,
-                check=True,
-            )
-            check_reply(result.stdout, names, str(ipaddress.IPv4Address(entry["publicIP"])))
-            print(f"{label} {transport}: {len(names)} authoritative self-IP answers")
+            try:
+                check_case(args.pod, label, entry, names, transport)
+            except (subprocess.SubprocessError, ValueError, KeyError) as exc:
+                # Do not print dig bodies or mistake an incomplete batch for success.
+                print(f"{label} {transport}: not verified ({type(exc).__name__})", flush=True)
+                failures += 1
+            else:
+                print(
+                    f"{label} {transport}: {len(names)} authoritative self-IP answers", flush=True
+                )
+    return int(failures != 0)
+
+
+def check_case(pod, label, entry, names, transport):
+    svc = json.loads(
+        subprocess.check_output(
+            [*KUBE, "get", "service", f"authority-{label}-probe", "-o", "json"], timeout=15
+        )
+    )["spec"]
+    ip = ipaddress.ip_address(svc["clusterIP"])
+    expected_ports = {
+        (f"dns-{protocol.lower()}", protocol, 53, 1053) for protocol in ("UDP", "TCP")
+    }
+    if (
+        svc.get("selector") != {"app.kubernetes.io/instance": "authority-" + label}
+        or {
+            (p.get("name"), p.get("protocol"), p.get("port"), p.get("targetPort"))
+            for p in svc["ports"]
+        }
+        != expected_ports
+    ):
+        raise ValueError("unexpected authority Service contract")
+    if svc["type"] != "ClusterIP" or ip not in ipaddress.ip_network("10.43.0.0/16"):
+        raise ValueError(f"{label}: not a private rehearsal Service")
+    cmd = [
+        *KUBE,
+        "exec",
+        "-i",
+        pod,
+        "--",
+        "dig",
+        "@" + str(ip),
+        "+tcp" if transport == "tcp" else "+notcp",
+        "+ignore",
+        "+tries=1",
+        "+time=2",
+        "+noedns",
+        "+norecurse",
+        "+noall",
+        "+nocmd",
+        "+comments",
+        "+question",
+        "+answer",
+        "-f",
+        "/dev/stdin",
+    ]
+    result = subprocess.run(
+        cmd,
+        input="".join(f"{name}. A\n" for name in names),
+        text=True,
+        capture_output=True,
+        timeout=30,
+        check=True,
+    )
+    check_reply(result.stdout, names, str(ipaddress.IPv4Address(entry["publicIP"])))
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
