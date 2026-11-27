@@ -13,17 +13,43 @@ PIN = "format-quorum-tls"
 OUTPUT = ROOT / "deploy/public-web/closed-root-owners.yaml"
 
 
-def eligible(items, catalog, *, wiki=False):
+# Namespace, resource name, approved host, pin, Service port, upstream port,
+# target Pod selector. This table is reviewed; a new label cannot add entries.
+ROOTS = {
+    APP: (
+        APP,
+        APP,
+        HOST,
+        PIN,
+        80,
+        3000,
+        {"app.kubernetes.io/name": APP, "app.kubernetes.io/instance": APP},
+    ),
+    "wiki-runtime": (
+        "wiki",
+        "wiki-runtime-wiki",
+        "wiki.socrat.alchemmist.xyz",
+        "wiki-tls",
+        8080,
+        "http",
+        {"app.kubernetes.io/name": "hugo-docs-wiki", "app.kubernetes.io/instance": "wiki-runtime"},
+    ),
+    "monori": (
+        "monori",
+        "monori",
+        "monori.alchemmist.xyz",
+        "monori-tls",
+        80,
+        "http",
+        {"app": "monori"},
+    ),
+}
+
+
+def eligible(items, catalog, *, owner=APP):
     """Only translate the complete reviewed root matcher and exact upstream contract."""
-    ns, name, host, pin = (
-        ("wiki", "wiki-runtime-wiki", "wiki.socrat.alchemmist.xyz", "wiki-tls")
-        if wiki
-        else (APP, APP, HOST, PIN)
-    )
-    selector = {
-        "app.kubernetes.io/name": "hugo-docs-wiki" if wiki else APP,
-        "app.kubernetes.io/instance": "wiki-runtime" if wiki else APP,
-    }
+    ns, name, host, pin, svc_port, target_port, selector = ROOTS[owner]
+    wiki = owner == "wiki-runtime"
     if catalog["hosts"].get(ns, {}).get(host) != {"dns": "managed", "tlsSourceName": pin}:
         return False
     owners = [d for d in items if d["kind"] == "Ingress"]
@@ -42,7 +68,7 @@ def eligible(items, catalog, *, wiki=False):
         for d in (ing, svc)
     ):
         return False
-    if wiki and not _wiki_runtime(items, ns, name, selector, host):
+    if target_port == "http" and not _named_runtime(items, ns, name, selector, host, wiki=wiki):
         return False
     port = {"name": "http"} if wiki else {"number": 80}
     return (
@@ -77,23 +103,30 @@ def eligible(items, catalog, *, wiki=False):
             "ports": [
                 {
                     "name": "http",
-                    "port": 8080 if wiki else 80,
-                    "targetPort": "http" if wiki else 3000,
+                    "port": svc_port,
+                    "targetPort": target_port,
                 }
             ],
         }
     )
 
 
-def _wiki_runtime(items, ns, name, selector, host):
+def _named_runtime(items, ns, name, selector, host, *, wiki):
     workloads = [
         d
         for d in items
-        if d["kind"] == "Deployment"
+        if d["kind"] in {"Deployment", "DaemonSet", "StatefulSet", "Job", "ReplicaSet"}
         and d["metadata"].get("namespace", ns) == ns
-        and d["metadata"]["name"] == name
+        and all(
+            d["spec"]["template"].get("metadata", {}).get("labels", {}).get(k) == v
+            for k, v in selector.items()
+        )
     ]
-    if len(workloads) != 1:
+    if (
+        len(workloads) != 1
+        or workloads[0]["kind"] != "Deployment"
+        or workloads[0]["metadata"]["name"] != name
+    ):
         return False
     template = workloads[0]["spec"]["template"]
     pod = template["spec"]
@@ -101,6 +134,8 @@ def _wiki_runtime(items, ns, name, selector, host):
     if template["metadata"]["labels"] != selector or pod.get("hostNetwork") or len(containers) != 1:
         return False
     c = containers[0]
+    if not wiki:
+        return c["name"] == "front" and c.get("ports") == [{"name": "http", "containerPort": 8000}]
     return (
         c["name"] == "wiki"
         and c.get("ports") == [{"name": "http", "containerPort": 8080}]
@@ -111,11 +146,13 @@ def _wiki_runtime(items, ns, name, selector, host):
     )
 
 
-def owner_render(*, wiki=False):
-    release, path, file, ns = (
-        ("wiki-runtime", "deploy/wiki-runtime/chart", "../values.yaml", "wiki")
-        if wiki
-        else (APP, "charts/format-quorum", "../../deploy/format-quorum/values.yaml", APP)
+def owner_render(*, owner=APP):
+    ns = ROOTS[owner][0]
+    release = owner
+    path, file = (
+        ("deploy/wiki-runtime/chart", "../values.yaml")
+        if owner == "wiki-runtime"
+        else (f"charts/{owner}", f"../../deploy/{owner}/values.yaml")
     )
     spec = yaml.safe_load((ROOT / f"deploy/argocd/apps/{release}.yaml").read_text())["spec"]
     src = spec["source"]
@@ -141,8 +178,12 @@ def owner_render(*, wiki=False):
 def render():
     catalog = yaml.safe_load(CATALOG.read_text())
     bits = {
-        k: eligible(owner_render(wiki=w), catalog, wiki=w)
-        for k, w in [("closedFormatQuorum", False), ("closedWiki", True)]
+        k: eligible(owner_render(owner=w), catalog, owner=w)
+        for k, w in [
+            ("closedFormatQuorum", APP),
+            ("closedWiki", "wiki-runtime"),
+            ("closedMonori", "monori"),
+        ]
     }
     return "# Generated by python -m ci.quality.closed_root_owners\n" + yaml.safe_dump(bits)
 

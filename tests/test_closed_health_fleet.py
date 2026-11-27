@@ -27,10 +27,10 @@ def test_effective_health_fleet():
         "-f",
         str(chart / values),
         "--set",
-        "closedFormatQuorum=true,closedWiki=true",  # exercise enabled and withdrawn shapes even after an owner opt-out
+        "closedFormatQuorum=true,closedWiki=true,closedMonori=true",  # exercise enabled and withdrawn shapes even after an owner opt-out
     ]
     assert app["destination"]["namespace"] == "public-health-staging"
-    policy, wiki_policy, config, *deployments = yaml.safe_load_all(
+    policy, wiki_policy, monori_policy, config, *deployments = yaml.safe_load_all(
         subprocess.check_output(args)
     )
     assert policy["kind"] == "NetworkPolicy" and policy["spec"]["ingress"] == []
@@ -90,6 +90,11 @@ def test_effective_health_fleet():
     assert config["kind"] == "ConfigMap"
     http = yaml.safe_load(config["data"]["dynamic.yaml"])["http"]
     assert http["routers"] == {
+        "monori": {
+            "entryPoints": ["closed"],
+            "rule": "Host(`monori.alchemmist.xyz`) && PathPrefix(`/`)",
+            "service": "monori",
+        },
         "wiki": {
             "entryPoints": ["closed"],
             "rule": "Host(`wiki.socrat.alchemmist.xyz`) && PathPrefix(`/`)",
@@ -164,9 +169,10 @@ def test_effective_health_fleet():
         ("--set-json", 'ingress.hosts=["alchemmist.xyz"]'),
         ("--set", "service.targetPort=9999"),
     ):
-        blocked_policy, still_wiki, blocked_config, *unchanged = yaml.safe_load_all(
-            subprocess.check_output([*args, *overrides])
+        blocked_policy, still_wiki, still_monori, blocked_config, *unchanged = (
+            yaml.safe_load_all(subprocess.check_output([*args, *overrides]))
         )
+        assert still_monori == monori_policy
         assert still_wiki == wiki_policy
         assert unchanged == deployments
         assert blocked_policy["spec"]["egress"] == [
@@ -178,15 +184,17 @@ def test_effective_health_fleet():
             "routers": {k: v for k, v in http["routers"].items() if k != "www-blog"},
             "services": {k: v for k, v in http["services"].items() if k != "www-blog"},
         }
-    policy_off, separate_wiki, config_off, *unchanged = yaml.safe_load_all(
-        subprocess.check_output(
-            [
-                *args[:-2],
-                "--set",
-                "closedWiki=true",
-                "--set-string",
-                "closedFormatQuorum=true",
-            ]
+    policy_off, separate_wiki, separate_monori, config_off, *unchanged = (
+        yaml.safe_load_all(
+            subprocess.check_output(
+                [
+                    *args[:-2],
+                    "--set",
+                    "closedWiki=true,closedMonori=true",
+                    "--set-string",
+                    "closedFormatQuorum=true",
+                ]
+            )
         )
     )
     assert unchanged == deployments
@@ -198,14 +206,49 @@ def test_effective_health_fleet():
         assert after[section] == {
             k: v for k, v in http[section].items() if k != "format-quorum"
         }
-    policy_off, separate_wiki, config_off, *unchanged = yaml.safe_load_all(
-        subprocess.check_output([*args, "--set", "closedWiki=false"])
+    policy_off, separate_wiki, separate_monori, config_off, *unchanged = (
+        yaml.safe_load_all(
+            subprocess.check_output([*args, "--set", "closedWiki=false"])
+        )
     )
     assert unchanged == deployments and policy_off == policy
     assert separate_wiki["spec"] == {**wiki_policy["spec"], "egress": []}
     off = yaml.safe_load(config_off["data"]["dynamic.yaml"])["http"]
     for section in ("routers", "services"):
         assert off[section] == {k: v for k, v in http[section].items() if k != "wiki"}
+    assert monori_policy["spec"] == {
+        "podSelector": policy["spec"]["podSelector"],
+        "policyTypes": ["Egress"],
+        "egress": [
+            {
+                "to": [
+                    {
+                        "namespaceSelector": {
+                            "matchLabels": {"kubernetes.io/metadata.name": "monori"}
+                        },
+                        "podSelector": {"matchLabels": {"app": "monori"}},
+                    }
+                ],
+                "ports": [{"port": 8000, "protocol": "TCP"}],
+            }
+        ],
+    }
+    assert http["services"]["monori"] == {
+        "loadBalancer": {
+            "servers": [{"url": "http://monori.monori.svc.cluster.local:80"}]
+        }
+    }
+    pol, wp, mp, cm, *ds = yaml.safe_load_all(
+        subprocess.check_output([*args, "--set", "closedMonori=false"])
+    )
+    assert (pol, wp, ds) == (policy, wiki_policy, deployments) and mp["spec"] == {
+        **monori_policy["spec"],
+        "egress": [],
+    }
+    assert yaml.safe_load(cm["data"]["dynamic.yaml"])["http"] == {
+        section: {k: v for k, v in http[section].items() if k != "monori"}
+        for section in ("routers", "services")
+    }
     placement = {}
     for deployment in deployments:
         assert deployment["kind"] == "Deployment"
@@ -280,7 +323,7 @@ def test_wiki_requires_public_runtime_and_unmodified_named_backend():
 
     from ci.quality.closed_root_owners import CATALOG, eligible, owner_render
 
-    rows = owner_render(wiki=True)
+    rows = owner_render(owner="wiki-runtime")
     catalog = yaml.safe_load(CATALOG.read_text())
     for kind, change in [
         (
@@ -308,7 +351,7 @@ def test_wiki_requires_public_runtime_and_unmodified_named_backend():
     ]:
         changed = deepcopy(rows)
         change(next(d for d in changed if d["kind"] == kind))
-        assert not eligible(changed, catalog, wiki=True)
+        assert not eligible(changed, catalog, owner="wiki-runtime")
     chart = ROOT / "deploy/wiki-runtime/chart"
     raw = subprocess.check_output(
         [
@@ -324,4 +367,51 @@ def test_wiki_requires_public_runtime_and_unmodified_named_backend():
             "visibility=private",
         ]
     )
-    assert not eligible([r for r in yaml.safe_load_all(raw) if r], catalog, wiki=True)
+    assert not eligible(
+        [r for r in yaml.safe_load_all(raw) if r], catalog, owner="wiki-runtime"
+    )
+
+
+def test_monori_front_only_no_shared_port_authorization():
+    from copy import deepcopy
+
+    from ci.quality.closed_root_owners import CATALOG, eligible, owner_render
+
+    rows = owner_render(owner="monori")
+    catalog = yaml.safe_load(CATALOG.read_text())
+    for kind, name, change in [
+        (
+            "Deployment",
+            "monori-back",
+            lambda d: d["spec"]["template"]["metadata"]["labels"].update(app="monori"),
+        ),
+        (
+            "Service",
+            "monori",
+            lambda d: d["spec"]["selector"].update(app="monori-back"),
+        ),
+        (
+            "Ingress",
+            "monori",
+            lambda d: d["spec"]["rules"][0]["http"]["paths"][0]["backend"][
+                "service"
+            ].update(name="monori-sync"),
+        ),
+        (
+            "Deployment",
+            "monori",
+            lambda d: d["spec"]["template"]["spec"]["containers"][0]["ports"][0].update(
+                containerPort=8010
+            ),
+        ),
+        ("Ingress", "monori", lambda d: d["metadata"].pop("labels", None)),
+    ]:
+        changed = deepcopy(rows)
+        change(
+            next(
+                d
+                for d in changed
+                if d["kind"] == kind and d["metadata"]["name"] == name
+            )
+        )
+        assert not eligible(changed, catalog, owner="monori")

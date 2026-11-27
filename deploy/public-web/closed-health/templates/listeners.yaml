@@ -9,6 +9,8 @@
 {{- $fq := and (kindIs "bool" .Values.closedFormatQuorum) .Values.closedFormatQuorum (deepEqual $fqPin (dict "dns" "managed" "tlsSourceName" "format-quorum-tls")) -}}
 {{- $wikiPin := dig "wiki" "wiki.socrat.alchemmist.xyz" (dict) .Values.hosts -}}
 {{- $wiki := and (kindIs "bool" .Values.closedWiki) .Values.closedWiki (deepEqual $wikiPin (dict "dns" "managed" "tlsSourceName" "wiki-tls")) -}}
+{{- $monoriPin := dig "monori" "monori.alchemmist.xyz" (dict) .Values.hosts -}}
+{{- $monori := and (kindIs "bool" .Values.closedMonori) .Values.closedMonori (deepEqual $monoriPin (dict "dns" "managed" "tlsSourceName" "monori-tls")) -}}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -61,6 +63,25 @@ spec:
   egress: []
 {{- end }}
 ---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: closed-health-monori
+  namespace: {{ .Release.Namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: '-1'}
+spec:
+  podSelector: {matchLabels: {app: closed-health}}
+  policyTypes: [Egress]
+{{- if $monori }}
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monori}}
+          podSelector: {matchLabels: {app: monori}}
+      ports: [{port: 8000, protocol: TCP}]
+{{- else }}
+  egress: []
+{{- end }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata: {name: closed-health, namespace: {{ .Release.Namespace }}}
@@ -90,7 +111,18 @@ data:
           rule: 'Host(`wiki.socrat.alchemmist.xyz`) && PathPrefix(`/`)'
           service: wiki
 {{- end }}
+{{- if $monori }}
+        monori:
+          entryPoints: [closed]
+          rule: 'Host(`monori.alchemmist.xyz`) && PathPrefix(`/`)'
+          service: monori
+{{- end }}
       services:
+{{- if $monori }}
+        monori:
+          loadBalancer:
+            servers: [{url: 'http://monori.monori.svc.cluster.local:80'}]
+{{- end }}
 {{- if $wiki }}
         wiki:
           loadBalancer:
