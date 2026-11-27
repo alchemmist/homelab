@@ -43,8 +43,9 @@ def test_owner_opt_in_changes_only_one_ingress_label(app, field, replacement):
     assert LABEL not in labels
     labels[LABEL] = "true"
     assert active == expected
-    for docs in [
-        render("--set-string", f"{field}={replacement}"),
-        render(release=False),
-    ]:
+    replaced = render("--set-string", f"{field}={replacement}")
+    changed = ingress(replaced)["spec"]
+    assert [r["host"] for r in changed["rules"]] == [replacement]
+    assert changed["tls"][0]["hosts"] == [replacement]
+    for docs in [replaced, render(release=False)]:
         assert LABEL not in ingress(docs)["metadata"].get("labels", {})
