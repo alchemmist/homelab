@@ -3,51 +3,56 @@
 import subprocess
 from copy import deepcopy
 from pathlib import Path
+from typing import NamedTuple, Self
 
 import pytest
 import yaml
 
+from ci.quality.closed_root_backend import Obj, entries, plain, view
 from ci.quality.closed_root_owners import eligible, owner_render
 
 ROOT = Path(__file__).resolve().parents[1]
 
+FLEET_OWNERS = frozenset(
+    {
+        "closed-health-argocd",
+        "closed-health-img",
+        "closed-health-umami",
+        "closed-health-remark42",
+        "closed-health-venice-api",
+    }
+)
+# Index of the format-quorum egress rule inside the rendered policy.
+QUORUM_EGRESS_POSITION = 2
+# Socket timeout the phase probe must apply to every phase.
+PROBE_TIMEOUT_SECONDS = 6
+# The closed chart renders exactly one loopback Deployment per entrance.
+HEALTH_DEPLOYMENT_COUNT = 3
 
-def test_effective_health_fleet() -> None:
-    app = yaml.safe_load((ROOT / "deploy/argocd/apps/closed-health.yaml").read_text())["spec"]
-    chart = ROOT / app["source"]["path"]
-    blog, fq, values = app["source"]["helm"]["valueFiles"]
-    catalog = yaml.safe_load((chart / values).read_text())
-    args = [
-        "helm",
-        "template",
-        "closed-health",
-        str(chart),
-        "-f",
-        str(chart / blog),
-        "-f",
-        str(chart / fq),
-        "-f",
-        str(chart / values),
-        "--set",
-        "closedFormatQuorum=true,closedWiki=true,closedMonori=true,closedLms=true,closedWishlist=true,closedStatus=true,closedStatusRedirect=true",  # exercise enabled and withdrawn shapes even after an owner opt-out
+
+def _other_objects(raw: bytes) -> list[Obj]:
+    # Verified HTTPS has its own policy/file and independent transition test.
+    return [
+        doc
+        for doc in yaml.safe_load_all(raw)
+        if plain(view(view(doc).get("metadata", {})).get("name", "")) not in FLEET_OWNERS
     ]
 
-    def other_objects(raw):
-        # Verified HTTPS has its own policy/file and independent transition test.
-        return [
-            d
-            for d in yaml.safe_load_all(raw)
-            if d.get("metadata", {}).get("name")
-            not in {
-                "closed-health-argocd",
-                "closed-health-img",
-                "closed-health-umami",
-                "closed-health-remark42",
-                "closed-health-venice-api",
-            }
-        ]
 
-    assert app["destination"]["namespace"] == "public-health-staging"
+class Fleet(NamedTuple):
+    """The per-group policies, the shared config map and the loopback Deployments."""
+
+    policy: Obj
+    wiki_policy: Obj
+    monori_policy: Obj
+    lms_policy: Obj
+    wishlist_policy: Obj
+    status_policy: Obj
+    config: Obj
+    deployments: list[Obj]
+
+
+def _render_fleet(args: list[str]) -> Fleet:
     (
         policy,
         wiki_policy,
@@ -57,23 +62,47 @@ def test_effective_health_fleet() -> None:
         status_policy,
         config,
         *deployments,
-    ) = other_objects(subprocess.check_output(args))
-    assert policy["kind"] == "NetworkPolicy" and policy["spec"]["ingress"] == []
+    ) = _other_objects(subprocess.check_output(args))
+    return Fleet(
+        policy,
+        wiki_policy,
+        monori_policy,
+        lms_policy,
+        wishlist_policy,
+        status_policy,
+        config,
+        deployments,
+    )
+
+
+def _http_of(cm: Obj) -> Obj:
+    data = view(cm["data"])
+    return view(view(yaml.safe_load(plain(data["dynamic.yaml"])))["http"])
+
+
+def _assert_peer_egress(fleet: Fleet) -> list[tuple[object, object, object]]:
+    """Enumerate every egress peer with its exact port contract."""
+    pspec = view(fleet.policy["spec"])
+    assert fleet.policy["kind"] == "NetworkPolicy"
+    assert pspec["ingress"] == []
+    wspec = view(fleet.wiki_policy["spec"])
+    assert wspec["podSelector"] == pspec["podSelector"]
+    assert wspec["policyTypes"] == ["Egress"]
+    assert len(entries(wspec["egress"])) == 1
     peers = []
-    assert wiki_policy["spec"]["podSelector"] == policy["spec"]["podSelector"]
-    assert wiki_policy["spec"]["policyTypes"] == ["Egress"]
-    assert len(wiki_policy["spec"]["egress"]) == 1
     for rule in [
-        *policy["spec"]["egress"][:-1],
-        *wiki_policy["spec"]["egress"],
-        policy["spec"]["egress"][-1],
+        *entries(pspec["egress"])[:-1],
+        *entries(wspec["egress"]),
+        entries(pspec["egress"])[-1],
     ]:
-        (peer,) = rule["to"]
+        vrule = view(rule)
+        (peer,) = entries(vrule["to"])
+        vpeer = view(peer)
         peers.append(
             (
-                peer["namespaceSelector"]["matchLabels"],
-                peer["podSelector"]["matchLabels"],
-                rule["ports"],
+                view(vpeer["namespaceSelector"])["matchLabels"],
+                view(vpeer["podSelector"])["matchLabels"],
+                vrule["ports"],
             )
         )
     assert peers == [
@@ -112,8 +141,12 @@ def test_effective_health_fleet() -> None:
             [{"port": 53, "protocol": "UDP"}, {"port": 53, "protocol": "TCP"}],
         ),
     ]
-    assert config["kind"] == "ConfigMap"
-    http = yaml.safe_load(config["data"]["dynamic.yaml"])["http"]
+    return peers
+
+
+def _assert_dynamic_routing(fleet: Fleet, http: Obj) -> None:
+    """Check the single ConfigMap for exactly the reviewed routers and services."""
+    assert fleet.config["kind"] == "ConfigMap"
     assert http["routers"] == {
         **{
             a: {
@@ -160,50 +193,68 @@ def test_effective_health_fleet() -> None:
             "service": "schoolbot",
         },
     }
-    assert http["services"]["schoolbot"]["loadBalancer"]["servers"] == [
+    services = view(http["services"])
+    assert view(view(services["schoolbot"])["loadBalancer"])["servers"] == [
         {"url": "http://schoolbot.schoolbot.svc.cluster.local:80"}
     ]
-    assert http["services"]["www-blog"]["loadBalancer"]["servers"] == [
+    assert view(view(services["www-blog"])["loadBalancer"])["servers"] == [
         {"url": "http://blog.blog.svc.cluster.local:80"}
     ]
-    # Compare the actual owner's release, not merely our own duplicate rule.
-    source = yaml.safe_load((ROOT / "deploy/argocd/apps/blog.yaml").read_text())["spec"]
-    chart_path = ROOT / source["source"]["path"]
-    helm = source["source"]["helm"]
-    assert not helm["parameters"] and source["destination"]["namespace"] == "blog"
-    (release_values,) = helm["valueFiles"]
+
+
+def _assert_owner_release(
+    chart: Path, blog: str, peers: list[tuple[object, object, object]]
+) -> None:
+    """Compare the actual owner's release, not merely our own duplicate rule."""
+    spec = view(yaml.safe_load((ROOT / "deploy/argocd/apps/blog.yaml").read_text()))
+    source = view(spec["spec"])
+    src_section = view(source["source"])
+    helm = view(src_section["helm"])
+    chart_path = ROOT / plain(src_section["path"])
+    assert not helm["parameters"]
+    assert plain(view(source["destination"])["namespace"]) == "blog"
+    (release_values,) = [plain(v) for v in entries(helm["valueFiles"])]
     assert (chart_path / release_values).resolve() == (chart / blog).resolve()
-    owner = list(
-        other_objects(
-            subprocess.check_output(
-                [
-                    "helm",
-                    "template",
-                    helm["releaseName"],
-                    str(chart_path),
-                    "-n",
-                    "blog",
-                    "-f",
-                    str(chart_path / release_values),
-                ]
-            )
+    owner = _other_objects(
+        subprocess.check_output(
+            [
+                "helm",
+                "template",
+                plain(helm["releaseName"]),
+                str(chart_path),
+                "-n",
+                "blog",
+                "-f",
+                str(chart_path / release_values),
+            ]
         )
     )
     (ing,) = [d for d in owner if d and d["kind"] == "Ingress"]
     (svc,) = [d for d in owner if d and d["kind"] == "Service"]
-    assert ing["spec"]["ingressClassName"] == "traefik"
-    assert ing["metadata"]["labels"]["homelab.alchemmist.xyz/public-web"] == "true"
-    assert set(ing["metadata"]["annotations"]) == {"cert-manager.io/cluster-issuer"}
-    (www,) = [rule for rule in ing["spec"]["rules"] if rule["host"] == "www.alchemmist.xyz"]
-    assert www["http"]["paths"] == [
+    ispec = view(ing["spec"])
+    imeta = view(ing["metadata"])
+    assert ispec["ingressClassName"] == "traefik"
+    assert view(imeta["labels"])["homelab.alchemmist.xyz/public-web"] == "true"
+    assert set(view(imeta["annotations"])) == {"cert-manager.io/cluster-issuer"}
+    (www,) = [
+        rule for rule in entries(ispec["rules"]) if view(rule)["host"] == "www.alchemmist.xyz"
+    ]
+    assert view(view(www)["http"])["paths"] == [
         {
             "path": "/",
             "pathType": "Prefix",
             "backend": {"service": {"name": "blog", "port": {"number": 80}}},
         }
     ]
-    assert svc["metadata"]["name"] == "blog" and svc["spec"]["selector"] == peers[1][1]
-    assert svc["spec"]["ports"] == [{"name": "http", "port": 80, "targetPort": 8080}]
+    ssvc = view(svc["spec"])
+    assert view(svc["metadata"])["name"] == "blog"
+    assert ssvc["selector"] == peers[1][1]
+    assert ssvc["ports"] == [{"name": "http", "port": 80, "targetPort": 8080}]
+
+
+def _assert_owner_opt_outs(args: list[str], fleet: Fleet, http: Obj) -> None:
+    """Check that owner opt-out flags withdraw only the blog routes."""
+    pspec = view(fleet.policy["spec"])
     for overrides in (
         ("--set", "closedBlog=false"),
         ("--set-string", "closedBlog=true"),
@@ -213,57 +264,78 @@ def test_effective_health_fleet() -> None:
         ("--set-json", 'ingress.hosts=["alchemmist.xyz"]'),
         ("--set", "service.targetPort=9999"),
     ):
+        egress = entries(pspec["egress"])
         (
             blocked_policy,
             still_wiki,
             still_monori,
             lm,
             wl,
-            st,
+            _st,
             blocked_config,
             *unchanged,
-        ) = other_objects(subprocess.check_output([*args, *overrides]))
-        assert (lm, wl) == (lms_policy, wishlist_policy)
-        assert still_monori == monori_policy
-        assert still_wiki == wiki_policy
-        assert unchanged == deployments
-        assert blocked_policy["spec"]["egress"] == [
-            policy["spec"]["egress"][0],
-            *policy["spec"]["egress"][2:],
+        ) = _other_objects(subprocess.check_output([*args, *overrides]))
+        assert (lm, wl) == (fleet.lms_policy, fleet.wishlist_policy)
+        assert still_monori == fleet.monori_policy
+        assert still_wiki == fleet.wiki_policy
+        assert unchanged == fleet.deployments
+        assert view(blocked_policy["spec"])["egress"] == [
+            egress[0],
+            *egress[2:],
         ]
-        restricted = yaml.safe_load(blocked_config["data"]["dynamic.yaml"])["http"]
+        restricted = _http_of(blocked_config)
         assert restricted == {
-            "routers": {k: v for k, v in http["routers"].items() if k != "www-blog"},
-            "services": {k: v for k, v in http["services"].items() if k != "www-blog"},
+            "routers": {k: v for k, v in view(http["routers"]).items() if k != "www-blog"},
+            "services": {k: v for k, v in view(http["services"]).items() if k != "www-blog"},
         }
-    policy_off, separate_wiki, separate_monori, lm, wl, st, config_off, *unchanged = other_objects(
+
+
+def _assert_quorum_withdrawal(args: list[str], fleet: Fleet, http: Obj) -> None:
+    """Assert that enabling the quorum keeps every other reviewed shape byte-identical."""
+    policy_off, _wiki, _monori, _lm, _wl, _st, config_off, *unchanged = _other_objects(
         subprocess.check_output(
             [
                 *args[:-2],
                 "--set",
-                "closedWiki=true,closedMonori=true,closedLms=true,closedWishlist=true,closedStatus=true,closedStatusRedirect=true",
+                "closedWiki=true,closedMonori=true,closedLms=true,closedWishlist=true,"
+                "closedStatus=true,closedStatusRedirect=true",
                 "--set-string",
                 "closedFormatQuorum=true",
             ]
         )
     )
-    assert unchanged == deployments
-    assert policy_off["spec"]["egress"] == [
-        r for i, r in enumerate(policy["spec"]["egress"]) if i != 2
+    assert unchanged == fleet.deployments
+    egress = entries(view(fleet.policy["spec"])["egress"])
+    assert view(policy_off["spec"])["egress"] == [
+        r for i, r in enumerate(egress) if i != QUORUM_EGRESS_POSITION
     ]
-    after = yaml.safe_load(config_off["data"]["dynamic.yaml"])["http"]
+    after = _http_of(config_off)
     for section in ("routers", "services"):
-        assert after[section] == {k: v for k, v in http[section].items() if k != "format-quorum"}
-    policy_off, separate_wiki, separate_monori, lm, wl, st, config_off, *unchanged = other_objects(
+        section_map = view(http[section])
+        assert view(after[section]) == {
+            k: v for k, v in section_map.items() if k != "format-quorum"
+        }
+
+
+def _assert_wiki_withdrawal(args: list[str], fleet: Fleet, http: Obj) -> None:
+    """Assert that turning the wiki off removes only its own policy and route."""
+    policy_off, _wiki, _monori, _lm, _wl, _st, config_off, *unchanged = _other_objects(
         subprocess.check_output([*args, "--set", "closedWiki=false"])
     )
-    assert unchanged == deployments and policy_off == policy
-    assert separate_wiki["spec"] == {**wiki_policy["spec"], "egress": []}
-    off = yaml.safe_load(config_off["data"]["dynamic.yaml"])["http"]
+    assert unchanged == fleet.deployments
+    assert policy_off == fleet.policy
+    assert view(_wiki["spec"]) == {**view(fleet.wiki_policy["spec"]), "egress": []}
+    off = _http_of(config_off)
     for section in ("routers", "services"):
-        assert off[section] == {k: v for k, v in http[section].items() if k != "wiki"}
-    assert monori_policy["spec"] == {
-        "podSelector": policy["spec"]["podSelector"],
+        section_map = view(http[section])
+        assert view(off[section]) == {k: v for k, v in section_map.items() if k != "wiki"}
+
+
+def _assert_monori_withdrawal(args: list[str], fleet: Fleet, http: Obj) -> None:
+    """Verify the monori grant is one exact peer; opting out leaves everything else."""
+    pspec = view(fleet.policy["spec"])
+    assert view(fleet.monori_policy["spec"]) == {
+        "podSelector": pspec["podSelector"],
         "policyTypes": ["Egress"],
         "egress": [
             {
@@ -279,26 +351,29 @@ def test_effective_health_fleet() -> None:
             }
         ],
     }
-    assert http["services"]["monori"] == {
+    assert view(http["services"])["monori"] == {
         "loadBalancer": {"servers": [{"url": "http://monori.monori.svc.cluster.local:80"}]}
     }
-    pol, wp, mp, lm, wl, st, cm, *ds = other_objects(
+    pol, wp, _mp, _lm, _wl, _st, cm, *ds = _other_objects(
         subprocess.check_output([*args, "--set", "closedMonori=false"])
     )
-    assert (pol, wp, ds) == (policy, wiki_policy, deployments) and mp["spec"] == {
-        **monori_policy["spec"],
-        "egress": [],
-    }
-    assert yaml.safe_load(cm["data"]["dynamic.yaml"])["http"] == {
-        section: {k: v for k, v in http[section].items() if k != "monori"}
+    assert (pol, wp, ds) == (fleet.policy, fleet.wiki_policy, fleet.deployments)
+    assert view(_mp["spec"]) == {**view(fleet.monori_policy["spec"]), "egress": []}
+    assert _http_of(cm) == {
+        section: {k: v for k, v in view(http[section]).items() if k != "monori"}
         for section in ("routers", "services")
     }
+
+
+def _assert_grants_and_opt_outs(args: list[str], fleet: Fleet, http: Obj) -> None:
+    """Verify that LMS and wishlist own one exact peer each and opt-outs stay local."""
+    pspec = view(fleet.policy["spec"])
     for a, bit, grant in [
-        ("lms", "closedLms", lms_policy),
-        ("wishlist", "closedWishlist", wishlist_policy),
+        ("lms", "closedLms", fleet.lms_policy),
+        ("wishlist", "closedWishlist", fleet.wishlist_policy),
     ]:
-        assert grant["spec"] == {
-            "podSelector": policy["spec"]["podSelector"],
+        assert view(grant["spec"]) == {
+            "podSelector": pspec["podSelector"],
             "policyTypes": ["Egress"],
             "egress": [
                 {
@@ -319,36 +394,40 @@ def test_effective_health_fleet() -> None:
                 }
             ],
         }
-        assert http["services"][a] == {
+        assert view(view(http["services"])[a]) == {
             "loadBalancer": {"servers": [{"url": f"http://{a}.{a}.svc.cluster.local:80"}]}
         }
-        (
-            *policies,
-            cm,
-        ) = [
+        (*policies, cm) = [
             d
-            for d in other_objects(subprocess.check_output([*args, "--set", bit + "=false"]))
+            for d in _other_objects(subprocess.check_output([*args, "--set", bit + "=false"]))
             if d["kind"] != "Deployment"
         ]
         for off, on in zip(
             policies,
             [
-                policy,
-                wiki_policy,
-                monori_policy,
-                lms_policy,
-                wishlist_policy,
-                status_policy,
+                fleet.policy,
+                fleet.wiki_policy,
+                fleet.monori_policy,
+                fleet.lms_policy,
+                fleet.wishlist_policy,
+                fleet.status_policy,
             ],
             strict=True,
         ):
-            assert off == ({**on, "spec": {**on["spec"], "egress": []}} if on == grant else on)
-        assert yaml.safe_load(cm["data"]["dynamic.yaml"])["http"] == {
-            section: {k: v for k, v in http[section].items() if k != a}
+            ospec = view(on["spec"])
+            assert off == ({**on, "spec": {**ospec, "egress": []}} if on == grant else on)
+        assert _http_of(cm) == {
+            section: {k: v for k, v in view(http[section]).items() if k != a}
             for section in ("routers", "services")
         }
-    assert status_policy["spec"] == {
-        "podSelector": policy["spec"]["podSelector"],
+
+
+def _assert_status_matrix(args: list[str], fleet: Fleet, http: Obj) -> None:
+    """Verify the status grant and its redirect route follow the two flags exactly."""
+    pspec = view(fleet.policy["spec"])
+    sspec = view(fleet.status_policy["spec"])
+    assert sspec == {
+        "podSelector": pspec["podSelector"],
         "policyTypes": ["Egress"],
         "egress": [
             {
@@ -364,7 +443,7 @@ def test_effective_health_fleet() -> None:
             }
         ],
     }
-    assert http["services"]["status-policy"] == {
+    assert view(http["services"])["status-policy"] == {
         "loadBalancer": {
             "passHostHeader": True,
             "servers": [{"url": "http://public-web-kuma-proxy.uptime-kuma.svc.cluster.local:80"}],
@@ -372,56 +451,102 @@ def test_effective_health_fleet() -> None:
     }
     for status, redirect in [(False, True), (True, False), (False, False)]:
         opts = f"closedStatus={str(status).lower()},closedStatusRedirect={str(redirect).lower()}"
-        (
-            *policies,
-            sp,
-            cm,
-        ) = [
+        (*policies, sp, cm) = [
             d
-            for d in other_objects(subprocess.check_output([*args, "--set", opts]))
+            for d in _other_objects(subprocess.check_output([*args, "--set", opts]))
             if d["kind"] != "Deployment"
         ]
         assert policies == [
-            policy,
-            wiki_policy,
-            monori_policy,
-            lms_policy,
-            wishlist_policy,
+            fleet.policy,
+            fleet.wiki_policy,
+            fleet.monori_policy,
+            fleet.lms_policy,
+            fleet.wishlist_policy,
         ]
-        assert sp["spec"] == (
-            status_policy["spec"] if status or redirect else {**status_policy["spec"], "egress": []}
-        )
-        after = yaml.safe_load(cm["data"]["dynamic.yaml"])["http"]
+        assert view(sp)["spec"] == (sspec if status or redirect else {**sspec, "egress": []})
+        after = _http_of(cm)
         remove = set()
         if not status:
             remove.add("status")
         if not redirect:
             remove.add("status-redirect")
-        assert after["routers"] == {k: v for k, v in http["routers"].items() if k not in remove}
-        assert after["services"] == {
-            k: v for k, v in http["services"].items() if k != "status-policy" or status or redirect
+        assert view(after)["routers"] == {
+            k: v for k, v in view(http["routers"]).items() if k not in remove
         }
+        assert view(after)["services"] == {
+            k: v
+            for k, v in view(http["services"]).items()
+            if k != "status-policy" or status or redirect
+        }
+
+
+def _assert_deployments(fleet: Fleet, catalog: Obj) -> None:
+    """Assert every loopback Deployment is a node-pinned, port-less Traefik pod."""
     placement = {}
-    for deployment in deployments:
+    for deployment in fleet.deployments:
         assert deployment["kind"] == "Deployment"
-        template = deployment["spec"]["template"]
-        spec = template["spec"]
-        assert template["metadata"]["labels"]["app"] == "closed-health"
-        placement[template["metadata"]["labels"]["entrance"]] = spec["nodeSelector"][
-            "kubernetes.io/hostname"
-        ]
-        assert not spec.get("hostNetwork") and not spec["automountServiceAccountToken"]
+        template = view(view(deployment["spec"])["template"])
+        spec = view(template["spec"])
+        labels = view(view(template["metadata"])["labels"])
+        assert labels["app"] == "closed-health"
+        placement[plain(labels["entrance"])] = plain(
+            view(view(spec)["nodeSelector"])["kubernetes.io/hostname"]
+        )
+        assert not spec.get("hostNetwork")
+        assert not spec["automountServiceAccountToken"]
         assert spec["volumes"] == [{"name": "routes", "configMap": {"name": "closed-health"}}]
-        (container,) = spec["containers"]
-        assert not container.get("ports")
-        assert [a for a in container["args"] if a.startswith("--entrypoints")] == [
+        (container,) = entries(spec["containers"])
+        cview = view(container)
+        assert not cview.get("ports")
+        cargs = [plain(a) for a in entries(cview["args"])]
+        assert [a for a in cargs if a.startswith("--entrypoints")] == [
             "--entrypoints.closed.address=127.0.0.1:8181",
             "--entrypoints.pulse.address=127.0.0.1:8182",
         ]
-        assert [a for a in container["args"] if a.startswith("--providers")] == [
+        assert [a for a in cargs if a.startswith("--providers")] == [
             "--providers.file.directory=/route"
         ]
-    assert placement == {k: v["node"] for k, v in catalog["replicas"].items()}
+    assert placement == {k: plain(view(v)["node"]) for k, v in view(catalog["replicas"]).items()}
+
+
+def test_effective_health_fleet() -> None:
+    spec = view(yaml.safe_load((ROOT / "deploy/argocd/apps/closed-health.yaml").read_text()))
+    app = view(spec["spec"])
+    source = view(app["source"])
+    chart = ROOT / plain(source["path"])
+    helm = view(source["helm"])
+    blog, fq, values = (plain(item) for item in entries(helm["valueFiles"]))
+    catalog = view(yaml.safe_load((chart / values).read_text()))
+    args = [
+        "helm",
+        "template",
+        "closed-health",
+        str(chart),
+        "-f",
+        str(chart / blog),
+        "-f",
+        str(chart / fq),
+        "-f",
+        str(chart / values),
+        # exercise enabled and withdrawn shapes even after an owner opt-out
+        "--set",
+        "closedFormatQuorum=true,closedWiki=true,closedMonori=true,"
+        "closedLms=true,closedWishlist=true,closedStatus=true,"
+        "closedStatusRedirect=true",
+    ]
+    assert view(app["destination"])["namespace"] == "public-health-staging"
+    fleet = _render_fleet(args)
+    http = _http_of(fleet.config)
+    peers = _assert_peer_egress(fleet)
+    _assert_dynamic_routing(fleet, http)
+    _assert_owner_release(chart, blog, peers)
+    _assert_owner_opt_outs(args, fleet, http)
+    _assert_quorum_withdrawal(args, fleet, http)
+    _assert_wiki_withdrawal(args, fleet, http)
+    _assert_monori_withdrawal(args, fleet, http)
+    _assert_grants_and_opt_outs(args, fleet, http)
+    _assert_status_matrix(args, fleet, http)
+    _assert_deployments(fleet, catalog)
 
 
 def test_format_quorum_admission_matches_owner_release() -> None:
@@ -430,8 +555,34 @@ def test_format_quorum_admission_matches_owner_release() -> None:
     assert OUTPUT.read_text() == render()
 
 
+def _clear_ingress_labels(row: Obj) -> None:
+    view(view(row["metadata"])["labels"]).clear()
+
+
+def _add_auth_middleware(row: Obj) -> None:
+    view(view(row["metadata"])["annotations"]).update(
+        {"traefik.ingress.kubernetes.io/router.middlewares": "auth"}
+    )
+
+
+def _clear_ingress_paths(row: Obj) -> None:
+    rules = entries(view(row["spec"])["rules"])
+    http = view(view(rules[0])["http"])
+    entries(view(http)["paths"]).clear()
+
+
+def _make_service_external_name(row: Obj) -> None:
+    view(row["spec"]).update({"type": "ExternalName"})
+
+
+def _retarget_service_port(row: Obj) -> None:
+    ports = entries(view(row["spec"])["ports"])
+    view(ports[0]).update({"targetPort": 80})
+
+
 def test_format_quorum_withdraws_unreviewed_owner_changes() -> None:
-    from ci.quality.closed_root_owners import APP, CATALOG, eligible
+    from ci.quality.closed_root_owners import APP, eligible
+    from ci.quality.public_web import CATALOG
 
     command = [
         "helm",
@@ -449,54 +600,54 @@ def test_format_quorum_withdraws_unreviewed_owner_changes() -> None:
     catalog = yaml.safe_load(CATALOG.read_text())
     assert eligible(rows, catalog)
     for kind, mutate in [
-        ("Ingress", lambda i: i["metadata"]["labels"].clear()),
-        (
-            "Ingress",
-            lambda i: i["metadata"]["annotations"].update(
-                {"traefik.ingress.kubernetes.io/router.middlewares": "auth"}
-            ),
-        ),
-        ("Ingress", lambda i: i["spec"]["rules"][0]["http"]["paths"].clear()),
-        ("Service", lambda s: s["spec"].update({"type": "ExternalName"})),
-        ("Service", lambda s: s["spec"]["ports"][0].update({"targetPort": 80})),
+        ("Ingress", _clear_ingress_labels),
+        ("Ingress", _add_auth_middleware),
+        ("Ingress", _clear_ingress_paths),
+        ("Service", _make_service_external_name),
+        ("Service", _retarget_service_port),
     ]:
         changed = deepcopy(rows)
-        mutate(next(r for r in changed if r["kind"] == kind))
+        mutate(next(r for r in changed if view(r)["kind"] == kind))
         assert not eligible(changed, catalog)
     assert not eligible([*rows, {"kind": "HTTPRoute"}], catalog)
 
 
+def _flip_wiki_public_env(row: Obj) -> None:
+    template = view(view(row["spec"])["template"])
+    spec = view(template["spec"])
+    container = entries(view(spec)["containers"])[0]
+    envs = entries(view(container)["env"])
+    target = next(x for x in envs if view(x)["name"] == "WIKI_PUBLIC")
+    view(target).update(value="false")
+
+
+def _widen_wiki_container_port(row: Obj) -> None:
+    template = view(view(row["spec"])["template"])
+    spec = view(template["spec"])
+    container = entries(view(spec)["containers"])[0]
+    ports_entry = entries(view(container)["ports"])[0]
+    view(ports_entry).update(containerPort=9999)
+
+
+def _privatize_wiki_service(row: Obj) -> None:
+    view(row["metadata"]).update(namespace="private")
+
+
 def test_wiki_requires_public_runtime_and_unmodified_named_backend() -> None:
-    from ci.quality.closed_root_owners import CATALOG, eligible, owner_render
+    from ci.quality.closed_root_owners import eligible, owner_render
+    from ci.quality.public_web import CATALOG
 
     rows = owner_render(owner="wiki-runtime")
     catalog = yaml.safe_load(CATALOG.read_text())
     for kind, change in [
-        (
-            "Deployment",
-            lambda r: next(
-                x
-                for x in r["spec"]["template"]["spec"]["containers"][0]["env"]
-                if x["name"] == "WIKI_PUBLIC"
-            ).update(value="false"),
-        ),
-        (
-            "Deployment",
-            lambda r: r["spec"]["template"]["spec"]["containers"][0]["ports"][0].update(
-                containerPort=9999
-            ),
-        ),
-        ("Service", lambda r: r["metadata"].update(namespace="private")),
-        ("Ingress", lambda r: r["metadata"]["labels"].clear()),
-        (
-            "Ingress",
-            lambda r: r["metadata"]["annotations"].update(
-                {"traefik.ingress.kubernetes.io/router.middlewares": "auth"}
-            ),
-        ),
+        ("Deployment", _flip_wiki_public_env),
+        ("Deployment", _widen_wiki_container_port),
+        ("Service", _privatize_wiki_service),
+        ("Ingress", _clear_ingress_labels),
+        ("Ingress", _add_auth_middleware),
     ]:
         changed = deepcopy(rows)
-        change(next(d for d in changed if d["kind"] == kind))
+        change(next(d for d in changed if view(d)["kind"] == kind))
         assert not eligible(changed, catalog, owner="wiki-runtime")
     chart = ROOT / "deploy/wiki-runtime/chart"
     raw = subprocess.check_output(
@@ -516,76 +667,109 @@ def test_wiki_requires_public_runtime_and_unmodified_named_backend() -> None:
     assert not eligible([r for r in yaml.safe_load_all(raw) if r], catalog, owner="wiki-runtime")
 
 
+def _rename_workload_label(row: Obj) -> None:
+    template = view(view(row["spec"])["template"])
+    meta = view(template["metadata"])
+    view(meta["labels"]).update(app="monori")
+
+
+def _retarget_selector_to_monori_back(row: Obj) -> None:
+    view(view(row["spec"])["selector"]).update(app="monori-back")
+
+
+def _rename_ingress_backend_service(row: Obj) -> None:
+    rule_zero = entries(view(row["spec"])["rules"])[0]
+    http = view(view(rule_zero)["http"])
+    path_zero = view(entries(view(http)["paths"])[0])
+    backend = view(path_zero["backend"])
+    view(backend["service"]).update(name="monori-sync")
+
+
+def _widen_monori_container_port(row: Obj) -> None:
+    template = view(view(row["spec"])["template"])
+    spec = view(template["spec"])
+    container = entries(view(spec)["containers"])[0]
+    ports_entry = entries(view(container)["ports"])[0]
+    view(ports_entry).update(containerPort=8010)
+
+
+def _drop_ingress_labels(row: Obj) -> None:
+    view(row["metadata"]).pop("labels", None)
+
+
 def test_monori_front_only_no_shared_port_authorization() -> None:
-    from ci.quality.closed_root_owners import CATALOG, eligible, owner_render
+    from ci.quality.closed_root_owners import eligible, owner_render
+    from ci.quality.public_web import CATALOG
 
     rows = owner_render(owner="monori")
     catalog = yaml.safe_load(CATALOG.read_text())
     for kind, name, change in [
-        (
-            "Deployment",
-            "monori-back",
-            lambda d: d["spec"]["template"]["metadata"]["labels"].update(app="monori"),
-        ),
-        (
-            "Service",
-            "monori",
-            lambda d: d["spec"]["selector"].update(app="monori-back"),
-        ),
-        (
-            "Ingress",
-            "monori",
-            lambda d: d["spec"]["rules"][0]["http"]["paths"][0]["backend"]["service"].update(
-                name="monori-sync"
-            ),
-        ),
-        (
-            "Deployment",
-            "monori",
-            lambda d: d["spec"]["template"]["spec"]["containers"][0]["ports"][0].update(
-                containerPort=8010
-            ),
-        ),
-        ("Ingress", "monori", lambda d: d["metadata"].pop("labels", None)),
+        ("Deployment", "monori-back", _rename_workload_label),
+        ("Service", "monori", _retarget_selector_to_monori_back),
+        ("Ingress", "monori", _rename_ingress_backend_service),
+        ("Deployment", "monori", _widen_monori_container_port),
+        ("Ingress", "monori", _drop_ingress_labels),
     ]:
         changed = deepcopy(rows)
-        change(next(d for d in changed if d["kind"] == kind and d["metadata"]["name"] == name))
+        target = next(
+            d
+            for d in changed
+            if view(d)["kind"] == kind and view(view(d)["metadata"])["name"] == name
+        )
+        change(target)
         assert not eligible(changed, catalog, owner="monori")
 
 
+def _drop_public_web_opt_in(row: Obj) -> None:
+    view(view(row["metadata"])["labels"]).pop("homelab.alchemmist.xyz/public-web", None)
+
+
+def _add_oidc_middleware(row: Obj) -> None:
+    view(view(row["metadata"])["annotations"]).update(
+        {"traefik.ingress.kubernetes.io/router.middlewares": "oidc"}
+    )
+
+
+def _set_service_target_metrics(row: Obj) -> None:
+    ports = entries(view(row["spec"])["ports"])
+    view(ports[0]).update({"targetPort": "metrics"})
+
+
+def _broaden_wishlist_image_selector(row: Obj) -> None:
+    view(view(row["spec"])["selector"]).update(
+        {"app.kubernetes.io/name": "wishlist-image-optimizer"}
+    )
+
+
+def _widen_health_container_port(row: Obj) -> None:
+    template = view(view(row["spec"])["template"])
+    spec = view(template["spec"])
+    container = entries(view(spec)["containers"])[0]
+    ports_entry = entries(view(container)["ports"])[0]
+    view(ports_entry).update(containerPort=8001)
+
+
 def test_lms_and_wishlist_reject_side_channels_and_unselected_routes() -> None:
-    from ci.quality.closed_root_owners import CATALOG, eligible, owner_render
+    from ci.quality.closed_root_owners import eligible, owner_render
+    from ci.quality.public_web import CATALOG
 
     catalog = yaml.safe_load(CATALOG.read_text())
     for app in ("lms", "wishlist"):
         rows = owner_render(owner=app)
         for kind, mutate in [
-            (
-                "Ingress",
-                lambda d: d["metadata"]["labels"].pop("homelab.alchemmist.xyz/public-web", None),
-            ),
-            (
-                "Ingress",
-                lambda d: d["metadata"]["annotations"].update(
-                    {"traefik.ingress.kubernetes.io/router.middlewares": "oidc"}
-                ),
-            ),
-            ("Service", lambda d: d["spec"]["ports"][0].update(targetPort="metrics")),
-            (
-                "Service",
-                lambda d: d["spec"]["selector"].update(
-                    {"app.kubernetes.io/name": "wishlist-image-optimizer"}
-                ),
-            ),
-            (
-                "Deployment",
-                lambda d: d["spec"]["template"]["spec"]["containers"][0]["ports"][0].update(
-                    containerPort=8001
-                ),
-            ),
+            ("Ingress", _drop_public_web_opt_in),
+            ("Ingress", _add_oidc_middleware),
+            ("Service", _set_service_target_metrics),
+            ("Service", _broaden_wishlist_image_selector),
+            ("Deployment", _widen_health_container_port),
         ]:
             changed = deepcopy(rows)
-            mutate(next(d for d in changed if d["kind"] == kind and d["metadata"]["name"] == app))
+            target = next(
+                d
+                for d in changed
+                if view(d)["kind"] == kind and view(view(d)["metadata"])["name"] == app
+            )
+            mutate(target)
             assert not eligible(changed, catalog, owner=app)
 
 
@@ -604,7 +788,7 @@ def test_argo_uses_only_the_verified_https_upstream_or_withdraws_completely() ->
     for f in src["helm"]["valueFiles"]:
         args += ["-f", str(chart / f)]
 
-    def render(flag, value):
+    def render(flag: str, value: str) -> dict[tuple[object, object], Obj]:
         return {
             (o["kind"], o["metadata"]["name"]): o
             for o in yaml.safe_load_all(
@@ -614,7 +798,7 @@ def test_argo_uses_only_the_verified_https_upstream_or_withdraws_completely() ->
         }
 
     active = render("--set", "true")
-    policy = active["NetworkPolicy", "closed-health-argocd"]["spec"]
+    policy = view(active["NetworkPolicy", "closed-health-argocd"]["spec"])
     assert policy["egress"] == [
         {
             "to": [
@@ -631,10 +815,11 @@ def test_argo_uses_only_the_verified_https_upstream_or_withdraws_completely() ->
             "ports": [{"port": 8080, "protocol": "TCP"}],
         }
     ]
-    assert policy["policyTypes"] == ["Egress"] and policy["podSelector"] == {
-        "matchLabels": {"app": "closed-health"}
-    }
-    content = yaml.safe_load(active["ConfigMap", "closed-health"]["data"].pop("argocd.yaml"))
+    assert policy["policyTypes"] == ["Egress"]
+    assert policy["podSelector"] == {"matchLabels": {"app": "closed-health"}}
+    content = yaml.safe_load(
+        plain(view(active["ConfigMap", "closed-health"]["data"]).pop("argocd.yaml"))
+    )
     assert content == {
         "http": {
             "routers": {
@@ -667,10 +852,17 @@ def test_argo_uses_only_the_verified_https_upstream_or_withdraws_completely() ->
     assert active == render("--set", "false") == render("--set-string", "true")
 
 
+def _mark_row_changed(row: Obj) -> None:
+    view(row["metadata"])["labels"] = {"changed": "true"}
+
+
 def test_img_only_reaches_the_reviewed_nginx_listener() -> None:
     catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())
     docs = owner_render(owner="img-proxy")
-    admit = lambda rows: eligible(rows, catalog, owner="img-proxy")
+
+    def admit(rows: list[Obj]) -> bool:
+        return eligible(rows, catalog, owner="img-proxy")
+
     assert admit(docs)
     for kind, name in [
         ("Deployment", "img-proxy"),
@@ -678,9 +870,8 @@ def test_img_only_reaches_the_reviewed_nginx_listener() -> None:
         ("ConfigMap", "img-proxy-service-vpn"),
     ]:
         rows = deepcopy(docs)
-        next(d for d in rows if (d["kind"], d["metadata"]["name"]) == (kind, name))["metadata"][
-            "labels"
-        ] = {"changed": "true"}
+        target = next(d for d in rows if (d["kind"], view(d["metadata"])["name"]) == (kind, name))
+        _mark_row_changed(target)
         assert not admit(rows)
     assert not admit([*docs, deepcopy(docs[-1])])
     args = [
@@ -694,7 +885,7 @@ def test_img_only_reaches_the_reviewed_nginx_listener() -> None:
         str(ROOT / "deploy/public-web/entrances.yaml"),
     ]
 
-    def render(flag, val):
+    def render(flag: str, val: str) -> dict[tuple[object, object], Obj]:
         return {
             (d["kind"], d["metadata"]["name"]): d
             for d in yaml.safe_load_all(subprocess.check_output([*args, flag, "closedImg=" + val]))
@@ -702,7 +893,7 @@ def test_img_only_reaches_the_reviewed_nginx_listener() -> None:
         }
 
     active = render("--set", "true")
-    pol = active["NetworkPolicy", "closed-health-img"]["spec"]
+    pol = view(active["NetworkPolicy", "closed-health-img"]["spec"])
     assert pol["egress"] == [
         {
             "to": [
@@ -721,14 +912,21 @@ def test_img_only_reaches_the_reviewed_nginx_listener() -> None:
             "ports": [{"port": 8080, "protocol": "TCP"}],
         }
     ]
-    dynamic = yaml.safe_load(active["ConfigMap", "closed-health"]["data"].pop("img.yaml"))["http"]
-    assert dynamic["routers"] == {
+    dynamic = view(
+        view(
+            yaml.safe_load(
+                plain(view(active["ConfigMap", "closed-health"]["data"]).pop("img.yaml"))
+            )
+        )["http"]
+    )
+    assert view(dynamic)["routers"] == {
         "img": {
             "entryPoints": ["closed"],
             "rule": "Host(`img.alchemmist.xyz`) && PathPrefix(`/`)",
             "service": "img",
         }
-    } and dynamic["services"] == {
+    }
+    assert view(dynamic)["services"] == {
         "img": {
             "loadBalancer": {
                 "passHostHeader": True,
@@ -753,20 +951,27 @@ def test_selected_app_only_reaches_its_reviewed_http_listener(
 ) -> None:
     catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())
     docs = owner_render(owner=app)
-    admit = lambda rows: eligible(rows, catalog, owner=app)
+
+    def admit(rows: list[Obj]) -> bool:
+        return eligible(rows, catalog, owner=app)
+
     assert admit(docs)
     venice = app == "venice-api"
     peer = "venice-browser-candidate" if venice else app
     host = "venice.socrat.alchemmist.xyz" if venice else f"{app}.alchemmist.xyz"
     rows = deepcopy(docs)
     deployment = next(
-        d for d in rows if d["kind"] == "Deployment" and d["metadata"]["name"] == peer
+        d for d in rows if d["kind"] == "Deployment" and view(d["metadata"])["name"] == peer
     )
-    next(
+    template = view(view(deployment["spec"])["template"])
+    pod_spec = view(template["spec"])
+    runner = next(
         c
-        for c in deployment["spec"]["template"]["spec"]["containers"]
-        if c["name"] == ("bridge" if venice else app)
-    )["ports"][0]["containerPort"] = 3001
+        for c in entries(pod_spec["containers"])
+        if view(c)["name"] == ("bridge" if venice else app)
+    )
+    (runner_port,) = entries(view(runner)["ports"])
+    view(runner_port)["containerPort"] = 3001
     assert not admit(rows)
     assert not admit([*docs, deepcopy(docs[-1])])
     args = [
@@ -780,7 +985,7 @@ def test_selected_app_only_reaches_its_reviewed_http_listener(
         str(ROOT / "deploy/public-web/entrances.yaml"),
     ]
 
-    def render(flag, val):
+    def render(flag: str, val: str) -> dict[tuple[object, object], Obj]:
         return {
             (d["kind"], d["metadata"]["name"]): d
             for d in yaml.safe_load_all(subprocess.check_output([*args, flag, bit + "=" + val]))
@@ -788,7 +993,7 @@ def test_selected_app_only_reaches_its_reviewed_http_listener(
         }
 
     active = render("--set", "true")
-    pol = active["NetworkPolicy", f"closed-health-{app}"]["spec"]
+    pol = view(active["NetworkPolicy", f"closed-health-{app}"]["spec"])
     assert pol["egress"] == [
         {
             "to": [
@@ -804,16 +1009,21 @@ def test_selected_app_only_reaches_its_reviewed_http_listener(
             "ports": [{"port": port, "protocol": "TCP"}],
         }
     ]
-    dynamic = yaml.safe_load(active["ConfigMap", "closed-health"]["data"].pop(f"{app}.yaml"))[
-        "http"
-    ]
-    assert dynamic["routers"] == {
+    dynamic = view(
+        view(
+            yaml.safe_load(
+                plain(view(active["ConfigMap", "closed-health"]["data"]).pop(f"{app}.yaml"))
+            )
+        )["http"]
+    )
+    assert view(dynamic)["routers"] == {
         app: {
             "entryPoints": ["closed"],
             "rule": f"Host(`{host}`) && PathPrefix(`/`)",
             "service": app,
         }
-    } and dynamic["services"] == {
+    }
+    assert view(dynamic)["services"] == {
         app: {
             "loadBalancer": {
                 "passHostHeader": True,
@@ -830,7 +1040,10 @@ def test_selected_app_only_reaches_its_reviewed_http_listener(
 def test_schoolbot_sample_requires_complete_json_http_response() -> None:
     from ci.quality.closed_schoolbot_samples import classify
 
-    raw = b'HTTP/1.0 200 OK\r\nContent-Type: application/json\r\nContent-Length: 11\r\n\r\n{"ok":true}'
+    raw = (
+        b"HTTP/1.0 200 OK\r\nContent-Type: application/json\r\n"
+        b'Content-Length: 11\r\n\r\n{"ok":true}'
+    )
     assert classify(raw) == "healthy"
     for bad in (
         b"",
@@ -844,7 +1057,7 @@ def test_schoolbot_sample_requires_complete_json_http_response() -> None:
 
 
 @pytest.mark.parametrize(
-    "mode,query",
+    ("mode", "query"),
     [
         ("named", "schoolbot.schoolbot.svc.cluster.local"),
         ("absolute", "schoolbot.schoolbot.svc.cluster.local."),
@@ -856,52 +1069,54 @@ def test_schoolbot_phases_report_only_fixed_target_timing(
     monkeypatch: pytest.MonkeyPatch, mode: str, query: None | str
 ) -> None:
     import io
+    import socket
 
     from ci.quality import schoolbot_phase_probe as probe
 
     vip = "10.43.0.1"
     expected = ("127.0.0.1", 8181) if mode == "listener" else (vip, 80)
-    lookups = []
+    lookups: list[str] = []
 
-    def resolve(name, *args):
+    def resolve(name: str, *_args: object) -> list[tuple[None, None, None, None, tuple[str, int]]]:
         lookups.append(name)
         return [(None, None, None, None, (vip, 80))]
 
     class Sock:
-        def __enter__(self):
+        def __enter__(self) -> Self:
             return self
 
-        def __exit__(self, *args):
+        def __exit__(self, *args: object) -> None:
             pass
 
-        def settimeout(self, t):
-            assert t == 6
+        def settimeout(self, t: int) -> None:
+            assert t == PROBE_TIMEOUT_SECONDS
 
-        def connect(self, address):
+        def connect(self, address: tuple[str, int]) -> None:
             assert address == expected
 
-        def sendall(self, data):
+        def sendall(self, data: bytes) -> None:
             assert (
-                data
-                == b"GET /api/health HTTP/1.0\r\nHost: inform.sch1357.ru\r\nConnection: close\r\n\r\n"
+                data == b"GET /api/health HTTP/1.0\r\nHost: inform.sch1357.ru\r\n"
+                b"Connection: close\r\n\r\n"
             )
 
-        def makefile(self, *args):
+        def makefile(self, *_args: object) -> io.BytesIO:
             return io.BytesIO(
-                b'HTTP/1.0 200 OK\r\nContent-Type: application/json\r\nContent-Length: 11\r\n\r\n{"ok":true}'
+                b"HTTP/1.0 200 OK\r\nContent-Type: application/json\r\n"
+                b'Content-Length: 11\r\n\r\n{"ok":true}'
             )
 
-    monkeypatch.setattr(probe.socket, "getaddrinfo", resolve)
-    monkeypatch.setattr(probe.socket, "socket", lambda *args: Sock())
+    monkeypatch.setattr(socket, "getaddrinfo", resolve)
+    monkeypatch.setattr(socket, "socket", lambda *_args: Sock())
     r = probe.sample(mode, vip)
     assert r.pop("outcome") == "healthy"
     assert lookups == ([query] if query else [])
     assert set(r) == {"tcp_ms", "headers_ms", "body_ms"} | ({"dns_ms"} if query else set())
-    assert all(v >= 0 for v in r.values())
+    assert all(isinstance(v, (int, float)) and v >= 0 for v in r.values())
     if query:
-        monkeypatch.setattr(probe.socket, "getaddrinfo", lambda *args: [])
+        monkeypatch.setattr(socket, "getaddrinfo", lambda *_args: [])
         assert probe.sample(mode, vip)["outcome"] == "unexpected-dns"
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="unexpected probe destination"):
         probe.sample(mode, "127.0.0.1")
 
 
@@ -922,24 +1137,31 @@ def test_blog_render_drift_withholds_www(drift: str) -> None:
     catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())
     docs = owner_render(owner="blog")
     assert eligible(docs, catalog, owner="blog")
-    ing = next(d for d in docs if d["kind"] == "Ingress")
-    svc = next(d for d in docs if d["kind"] == "Service")
-    dep = next(d for d in docs if d["kind"] == "Deployment")
-    containers = dep["spec"]["template"]["spec"]["containers"]
+    ing = view(next(d for d in docs if d["kind"] == "Ingress"))
+    svc = view(next(d for d in docs if d["kind"] == "Service"))
+    dep = view(next(d for d in docs if d["kind"] == "Deployment"))
+    template = view(view(dep["spec"])["template"])
+    pod_spec = view(template["spec"])
+    containers = entries(pod_spec["containers"])
     if drift == "narrow":
-        ing["spec"]["rules"][1]["http"]["paths"][0]["path"] = "/articles"
+        rules = entries(view(ing["spec"])["rules"])
+        http = view(view(rules[1])["http"])
+        paths = entries(view(http)["paths"])
+        view(paths[0])["path"] = "/articles"
     elif drift == "middleware":
-        ing["metadata"]["annotations"]["traefik.ingress.kubernetes.io/router.middlewares"] = (
-            "blog-login"
-        )
+        view(view(ing["metadata"])["annotations"])[
+            "traefik.ingress.kubernetes.io/router.middlewares"
+        ] = "blog-login"
     elif drift == "alias":
-        ing["spec"]["rules"][0]["host"] = "other.alchemmist.xyz"
+        rules = entries(view(ing["spec"])["rules"])
+        view(rules[0])["host"] = "other.alchemmist.xyz"
     elif drift == "no-opt-in":
-        ing["metadata"]["labels"].clear()
+        view(view(ing["metadata"])["labels"]).clear()
     elif drift == "selector":
-        svc["spec"]["selector"].pop("app.kubernetes.io/instance")
+        view(view(svc["spec"])["selector"]).pop("app.kubernetes.io/instance")
     elif drift == "port":
-        containers[0]["ports"][0]["containerPort"] = 9000
+        port_zero = view(entries(view(containers[0])["ports"])[0])
+        view(port_zero)["containerPort"] = 9000
     elif drift == "second-container":
         containers.append({"name": "sidecar"})
     else:
@@ -964,16 +1186,20 @@ def test_tcp_resolver_changes_only_closed_pod_resolver_options() -> None:
     ):
         args += ["-f", str(ROOT / f)]
 
-    def render(*opts):
+    def render(*opts: str) -> list[Obj]:
         return [d for d in yaml.safe_load_all(subprocess.check_output([*args, *opts])) if d]
 
     default = render()
     assert default == render("--set", "useTcpResolver=false")
     candidate = render("--set", "useTcpResolver=true")
     deploys = [d for d in candidate if d["kind"] == "Deployment"]
-    assert len(deploys) == 3
+    assert len(deploys) == HEALTH_DEPLOYMENT_COUNT
     for d in deploys:
-        assert d["spec"]["template"]["spec"].pop("dnsConfig") == {"options": [{"name": "use-vc"}]}
+        pod_spec = view(view(view(d["spec"])["template"])["spec"])
+        assert pod_spec.pop("dnsConfig") == {"options": [{"name": "use-vc"}]}
     assert candidate == default
-    bad = subprocess.run([*args, "--set-string", "useTcpResolver=true"], capture_output=True)
-    assert bad.returncode and b"useTcpResolver must be a boolean" in bad.stderr
+    bad = subprocess.run(
+        [*args, "--set-string", "useTcpResolver=true"], capture_output=True, check=False
+    )
+    assert bad.returncode
+    assert b"useTcpResolver must be a boolean" in bad.stderr
