@@ -13,11 +13,10 @@ from concurrent.futures import ThreadPoolExecutor
 import yaml
 
 from ci.quality.public_dns_snapshot import observe, questions
-from ci.quality.public_web import CATALOG
+from ci.quality.public_web import CATALOG, MONORI, eligible_sites
 
 BLOG = "www.alchemmist.xyz"
 VENICE = "venice.socrat.alchemmist.xyz"
-MONORI = "monori.alchemmist.xyz"
 PATHS = {BLOG: "/", VENICE: "/v1/models", MONORI: "/api/auth/me"}
 DENIALS = {VENICE: "Missing bearer token", MONORI: "Not authenticated"}
 LIMIT = 131072
@@ -94,8 +93,7 @@ def verdict(before, after, routes):
 
 def route_peers(host, ips):
     # NL may answer authoritative DNS for Monori; it is not a permitted web destination.
-    sites = ("home", "moscow") if host == MONORI else ("home", "nl", "moscow")
-    return tuple(ips[s] for s in sites)
+    return tuple(ips[s] for s in eligible_sites(host))
 
 
 def main():
