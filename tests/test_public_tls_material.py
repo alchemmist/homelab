@@ -169,7 +169,10 @@ def test_completed_refresh_admits_only_independent_owned_sources():
 def test_rsa_public_key_identity_uses_the_complete_key():
     sk = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     _, leaf = pair(key=sk)
-    assert leaf_identity(pem(leaf), private(sk), NAMES, NOW) == leaf.fingerprint(hashes.SHA256()).hex()
+    assert (
+        leaf_identity(pem(leaf), private(sk), NAMES, NOW)
+        == leaf.fingerprint(hashes.SHA256()).hex()
+    )
     other = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     with pytest.raises(MaterialRejected):
         leaf_identity(pem(leaf), private(other), NAMES, NOW)
@@ -375,3 +378,130 @@ def test_witness_timeout_does_not_acknowledge_withdrawal(monkeypatch):
 
     monkeypatch.setattr(tls_witness.socket, "create_connection", stall)
     assert tls_witness.observe(443, NAMES, {}) == {host: "timeout" for host in NAMES}
+
+
+def test_issuance_binding_never_implies_writer_approval_or_reuses_a_denied_source():
+    import base64
+    from dataclasses import replace
+
+    from services.public_entry.tls_issued_refresh import (
+        ApprovedScope,
+        IssuedLeaf,
+        issued_refresh,
+    )
+
+    a, b = ("one", "tls"), ("two", "tls")
+    pins = {a: NAMES, b: frozenset({"neighbor.invalid"})}
+    grants = {}
+    anchors = {}
+    docs = {}
+    reads = []
+    observations = []
+
+    def issue(ref):
+        k, c = pair(pins[ref])
+        fingerprint = c.fingerprint(hashes.SHA256()).hex()
+        anchor = IssuedLeaf(
+            ref,
+            pins[ref],
+            "cert-" + ref[0],
+            "rv-A",
+            "req-" + ref[0],
+            "rv-B",
+            fingerprint,
+        )
+        doc = {
+            "kind": "Secret",
+            "apiVersion": "v1",
+            "type": "kubernetes.io/tls",
+            "metadata": {"namespace": ref[0], "name": ref[1]},
+            "data": {
+                "tls.crt": base64.b64encode(pem(c)).decode(),
+                "tls.key": base64.b64encode(private(k)).decode(),
+            },
+        }
+        return anchor, (200, doc)
+
+    for ref in pins:
+        anchors[ref], docs[ref] = issue(ref)
+
+    def observe(ref):
+        observations.append(ref)
+        return anchors[ref]
+
+    def get(ref):
+        reads.append(ref)
+        return docs[ref]
+
+    def run(obs=observe):
+        reads.clear()
+        observations.clear()
+        return issued_refresh(pins, grants, obs, get, NOW)
+
+    def assert_only_b(result, why):
+        assert set(result.material) == set(result.hosts) == set(
+            result.fingerprints
+        ) == {b} and result.withdrawn == {a: why}
+
+    assert (
+        run().withdrawn == {a: "no-writer-approval", b: "no-writer-approval"}
+        and reads == observations == []
+    )
+    grants.update(
+        {ref: ApprovedScope(w.certificate_uid, w.hosts) for ref, w in anchors.items()}
+    )
+    assert (
+        set(run().material) == {a, b}
+        and reads == [a, b]
+        and observations == [a, a, b, b]
+    )
+    original = anchors[a]
+    rotation, newdoc = issue(a)
+    docs[a] = newdoc
+    assert_only_b(run(), "issued-leaf-mismatch")
+    anchors[a] = rotation
+    assert set(run().material) == {a, b}
+    for before in [
+        None,
+        replace(rotation, source=b),
+        replace(rotation, hosts=frozenset({"one.invalid"})),
+        replace(rotation, certificate_uid="replacement"),
+        replace(rotation, request_version=""),
+    ]:
+        anchors[a] = before
+        assert_only_b(run(), "no-current-issuance")
+        assert reads == [b]
+    anchors[a] = rotation
+    for after in [
+        None,
+        original,
+        replace(rotation, request_version="after"),
+        replace(rotation, certificate_version="after"),
+        replace(rotation, request_uid="other"),
+    ]:
+        it = iter((rotation, after))
+        assert_only_b(
+            run(lambda ref: next(it) if ref == a else anchors[b]), "issuance-changed"
+        )
+        assert reads == [a, b]
+    docs[a] = (403, None)
+    assert_only_b(run(), "denied")
+    assert observations == [a, b, b]
+    docs[a] = newdoc
+    grants[a] = ApprovedScope(rotation.certificate_uid, frozenset({"one.invalid"}))
+    assert_only_b(run(), "no-writer-approval")
+    assert reads == [b]
+    pins[("unapproved", "tls")] = NAMES
+    assert run().withdrawn[a] == "invalid-ownership" and reads == [b]
+
+
+def test_malformed_approved_name_never_triggers_sensitive_io():
+    from services.public_entry.tls_issued_refresh import ApprovedScope, issued_refresh
+
+    ref = ("fixture", "tls")
+    names = frozenset({"*.invalid"})
+    unexpected = lambda _: pytest.fail("invalid SNI triggered I/O")
+    result = issued_refresh(
+        {ref: names}, {ref: ApprovedScope("c", names)}, unexpected, unexpected, NOW
+    )
+    assert result.withdrawn == {ref: "invalid-ownership"} and not result.material

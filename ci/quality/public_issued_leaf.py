@@ -21,6 +21,7 @@ from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives import hashes, serialization
 
 from ci.quality.public_web import CATALOG
+from services.public_entry.tls_issued_refresh import IssuedLeaf
 
 # Query only the reviewed frontend SNI; the blog certificate also covers apex.
 OWNERS = {
@@ -170,6 +171,12 @@ def evidence(owner, catalog, certs, requests, now):
         rm["resourceVersion"],
         leaf.fingerprint(hashes.SHA256()).hex(),
     )
+
+
+def issuance_anchor(owner, catalog, certs, requests, now):
+    """Adapt validated public evidence, never a writer grant, for an in-memory rehearsal."""
+    ns, pin, _, sans = OWNERS[owner]
+    return IssuedLeaf((ns, pin), frozenset(sans), *evidence(owner, catalog, certs, requests, now))
 
 
 def observe(owner):
