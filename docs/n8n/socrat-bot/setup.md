@@ -4,7 +4,7 @@ The workflow receives one Alertmanager group and posts each alert on its own to 
 
 JSON: `docs/n8n/socrat-bot/workflow.json`. Chart and addresses: `docs/socrat-bot/operations.md`.
 
-Live workflow name: `Socrat Alerts` (active). The public API template requires a dedicated `Socrat bot alerts` credential (`httpHeaderAuth`, header `Authorization`, value `Bearer <token>`). Importing a template does not migrate the active workflow. That value is not in Git. `ownerChatId` in the code node is `891074228`.
+Live workflow name: `Socrat Alerts` (active). The public API template requires a dedicated `Socrat bot alerts` credential (`httpHeaderAuth`, header `Authorization`, value `Bearer <token>` including the literal `Bearer ` prefix; a raw token will not authenticate). Importing a template does not migrate the active workflow. That value is not in Git. `ownerChatId` in the code node is `891074228`.
 
 Alertmanager receiver `socrat-bot` posts to `https://n8n.socrat.alchemmist.xyz/webhook/socrat-alerts` with `send_resolved: true`. The bot token never goes into Grafana.
 
