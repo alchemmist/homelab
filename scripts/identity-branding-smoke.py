@@ -18,6 +18,11 @@ parser.add_argument(
     choices=["109.173.40.247", "109.120.141.60"],
     default="109.173.40.247",
 )
+parser.add_argument(
+    "--mobile-webkit",
+    action="store_true",
+    help="Exercise the mobile layout and a rejected enrollment code before retrying",
+)
 args = parser.parse_args()
 if not args.run:
     parser.error("--run is required for a live fixture test")
@@ -112,10 +117,24 @@ try:
         {"password": password},
     )
     with sync_playwright() as p:
-        browser = p.chromium.launch(
-            args=["--host-resolver-rules=MAP auth.socrat.alchemmist.xyz " + args.public_edge]
+        browser = (
+            p.webkit.launch()
+            if args.mobile_webkit
+            else p.chromium.launch(
+                args=[
+                    "--host-resolver-rules=MAP auth.socrat.alchemmist.xyz "
+                    + args.public_edge
+                ]
+            )
         )
-        page = browser.new_page(viewport={"width": 1440, "height": 960})
+        page = (
+            browser.new_page(
+                viewport={"width": 390, "height": 650}, is_mobile=True, has_touch=True
+            )
+            if args.mobile_webkit
+            else browser.new_page(viewport={"width": 1440, "height": 960})
+        )
+        rejected_code = False
         last = {}
         totp_challenge = {}
         components = []
@@ -169,7 +188,9 @@ try:
                     totp_challenge.get("secret")
                     or totp_challenge.get("secret_key")
                     or urllib.parse.parse_qs(
-                        urllib.parse.urlparse(totp_challenge.get("config_url", "")).query
+                        urllib.parse.urlparse(
+                            totp_challenge.get("config_url", "")
+                        ).query
                     ).get("secret", [None])[0]
                 )
                 if not source:
@@ -181,24 +202,52 @@ try:
                 ).digest()
                 offset = sig[-1] & 15
                 code = str(
-                    (struct.unpack(">I", sig[offset : offset + 4])[0] & 0x7FFFFFFF) % 1000000
+                    (struct.unpack(">I", sig[offset : offset + 4])[0] & 0x7FFFFFFF)
+                    % 1000000
                 ).zfill(6)
                 stage = page.locator("ak-stage-authenticator-totp")
+                if args.mobile_webkit and not rejected_code:
+                    wrong = str((int(code) + 1) % 1000000).zfill(6)
+                    stage.locator("input[name=code]").fill(wrong)
+                    with page.expect_response(
+                        lambda r: (
+                            "/api/v3/flows/executor/" in r.url
+                            and r.request.method == "POST"
+                        )
+                    ) as rejection:
+                        stage.locator("button[type=submit]").click()
+                    assert rejection.value.json().get("response_errors"), (
+                        "Expected native enrollment error"
+                    )
+                    rejected_code = True
+                    print("Rejected TOTP enrollment code; retrying in the same form")
+                    continue
                 stage.locator("input[name=code]").fill(code)
                 stage.locator("button[type=submit]").click()
                 stage.wait_for(state="hidden", timeout=30000)
             elif page.locator("ak-stage-consent").is_visible():
                 print("Native consent presented")
                 slug = urllib.parse.urlparse(page.url).path.strip("/").split("/")[-1]
-                inspection = page.request.get(BASE + "/api/v3/flows/inspector/" + slug + "/")
-                assert inspection.status in [403, 404], "Observer must not inspect flows"
-                assert not page.get_by_role("button", name="Open flow inspector").is_visible()
+                inspection = page.request.get(
+                    BASE + "/api/v3/flows/inspector/" + slug + "/"
+                )
+                assert inspection.status in [403, 404], (
+                    "Observer must not inspect flows"
+                )
+                assert not page.get_by_role(
+                    "button", name="Open flow inspector"
+                ).is_visible()
                 print("Observer native inspector access denied:", inspection.status)
                 stage = page.locator("ak-stage-consent")
                 stage.locator("button[name=continue]").click()
                 stage.wait_for(state="hidden", timeout=30000)
-            elif urllib.parse.urlparse(page.url).hostname == "grafana.socrat.alchemmist.xyz":
-                resp = page.request.get("https://grafana.socrat.alchemmist.xyz/api/user")
+            elif (
+                urllib.parse.urlparse(page.url).hostname
+                == "grafana.socrat.alchemmist.xyz"
+            ):
+                resp = page.request.get(
+                    "https://grafana.socrat.alchemmist.xyz/api/user"
+                )
                 if resp.status != 200:
                     page.wait_for_timeout(500)
                     continue
@@ -224,7 +273,7 @@ finally:
         print("Temporary Authentik theme identity removed")
     finally:
         source = Path(__file__).with_name("identity-grafana-smoke.py").read_text()
-        cleanup = source.split('cleanup="""', 1)[1].split('"""', 1)[0]
+        cleanup = source.split('cleanup = """', 1)[1].split('"""', 1)[0]
         cleanup = cleanup.replace(
             "user.get('name')=='Temporary SSO acceptance probe'",
             "user.get('name') in ['Temporary theme acceptance probe','Temporary SSO acceptance probe']",

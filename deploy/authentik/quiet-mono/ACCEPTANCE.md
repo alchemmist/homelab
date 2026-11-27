@@ -194,3 +194,15 @@ Independent new journeys resample and can legitimately select the same photo.
 - These are anonymous layout/network tests, not owner/password/MFA impersonation.
 - 19 branding unit tests passed. See Russian frontend runbook §16 for limits and
   narrow rollback, not a global Brand or shared routing rollback.
+
+## Mobile viewport and MFA acceptance (2026-11-27)
+
+- `node scripts/check-authentik-mobile.cjs` (Playwright with Chrome and WebKit):
+  login controls and the real HTTP 400 server error's home action were reachable
+  without horizontal scrolling at 320×568, 360×340, 390×844 and 844×320.
+- `scripts/identity-branding-smoke.py --run --mobile-webkit`: a disposable
+  observer completed password, rejected TOTP enrollment code, successful retry,
+  consent and Grafana OIDC at 390×650. Zero page errors; fixtures cleaned up.
+- These were browser-engine and viewport tests. Physical keyboards, OS autofill,
+  accessibility text scaling, expired sessions, subsequent enrolled-device login
+  and the owner's authenticated inspector remain separate acceptance cases.
