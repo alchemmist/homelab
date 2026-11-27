@@ -421,6 +421,7 @@ def test_closed_backend_uses_schoolbot_owner_service_and_verified_pod_destinatio
         "address",
         "port",
         "unready",
+        "wrong-service",
         "wrong-owner",
         "hostnet",
         "terminating",
@@ -438,6 +439,8 @@ def test_closed_backend_uses_schoolbot_owner_service_and_verified_pod_destinatio
             slice_["ports"][0]["port"] = 80
         elif case == "unready":
             pod_["status"]["conditions"] = []
+        elif case == "wrong-service":
+            slice_["metadata"]["labels"]["kubernetes.io/service-name"] = "other"
         elif case == "wrong-owner":
             slice_["metadata"]["ownerReferences"][0]["uid"] = "previous"
         elif case == "hostnet":

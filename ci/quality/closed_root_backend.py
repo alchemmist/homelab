@@ -66,7 +66,7 @@ def servers(
         sm = sl["metadata"]
         labels = sm.get("labels", {})
         if sm.get("namespace") != ns or labels.get("kubernetes.io/service-name") != name:
-            continue
+            raise ValueError("unexpected slice in scoped Service observations")
         controllers = [
             (r.get("apiVersion"), r.get("kind"), r.get("name"), r.get("uid"))
             for r in sm.get("ownerReferences", [])
