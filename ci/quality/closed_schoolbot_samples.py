@@ -11,7 +11,7 @@ import subprocess as sp
 import time
 from ipaddress import IPv4Address, IPv4Network
 
-from ci.quality.closed_root_backend import servers
+from ci.quality.closed_root_backend import plain, servers
 from ci.quality.schoolbot_entry_health import healthy
 
 base = ["kubectl", "--context=Socrat", "--request-timeout=12s"]
@@ -45,7 +45,7 @@ def discovery():
     )
     if not (len(eps) == 1):
         raise ValueError("unexpected Schoolbot path topology; discard this sample set")
-    endpoint = eps[0]["url"].split("/")[2].split(":")
+    endpoint = plain(eps[0]["url"]).split("/")[2].split(":")
     ep = next(p for p in ps if p["status"].get("podIP") == endpoint[0])
     pods = get(ns, "pods", "-l", "app=closed-health")["items"]
     if not (len(pods) == 3):
