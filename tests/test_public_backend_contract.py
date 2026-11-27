@@ -16,7 +16,10 @@ def fixture() -> tuple[dict, list[dict]]:
     service = item(
         "Service",
         "backend",
-        spec={"clusterIP": "10.43.0.10", "ports": [{"name": "secure", "port": 443}]},
+        spec={
+            "clusterIP": "10.43.0.10",
+            "ports": [{"name": "secure", "port": 443, "targetPort": 8443}],
+        },
     )
     service["metadata"]["annotations"] = {
         PREFIX + "service.serverstransport": "app-verified@kubernetescrd"
@@ -280,3 +283,17 @@ def test_unrehearsed_crd_shapes_block_route_comparison(change):
     else:
         objects[4]["spec"]["rootCAsSecrets"] = ["some-ca"]
     assert inventory(catalog, objects)["errors"]
+
+
+def test_unnamed_service_port_must_match_numeric_target_not_frontend():
+    catalog, objects = fixture()
+    target = objects[0]["spec"]["rules"][0]["http"]["paths"][0]["backend"]["service"]
+    target["port"] = {"number": 443}
+    port = objects[1]["spec"]["ports"][0]
+    del port["name"]
+    del objects[2]["ports"][0]["name"]
+    assert not inventory(catalog, objects)["errors"]
+    objects[2]["ports"][0]["port"] = 443
+    assert inventory(catalog, objects)["errors"]
+    del port["targetPort"]
+    assert not inventory(catalog, objects)["errors"]

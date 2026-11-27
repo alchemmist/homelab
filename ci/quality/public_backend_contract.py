@@ -162,11 +162,14 @@ def inventory(catalog: dict, items: list[dict]) -> dict:
                         )
                     else:
                         transport_digest = _fingerprint(matches[0]["spec"])
+                target_port = port.get("targetPort", port["port"])
                 ready = any(
                     any(
-                        p.get("name", "") == port.get("name", "")
+                        (p.get("name") or "") == (port.get("name") or "")
                         and p.get("protocol", "TCP") == "TCP"
-                        and p.get("port")
+                        and type(p.get("port")) is int
+                        and 1 <= p["port"] <= 65535
+                        and (isinstance(target_port, str) or p["port"] == target_port)
                         for p in sl.get("ports", [])
                     )
                     and any(
