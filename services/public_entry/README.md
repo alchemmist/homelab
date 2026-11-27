@@ -50,3 +50,7 @@ unassigned SNI each gave an untrusted certificate, **not** a strict rejection.
 The public samples were comparison fingerprints, not authorization to fetch
 those keys. The legacy controller was not changed; this is not a successful
 withdrawal or a real-key Schoolbot test of the proposed common replica.
+
+Default witness trust uses system CA roots and hostname verification. The
+expected leaf fingerprint is an additional equality check, never a substitute
+for certificate trust. A different trusted leaf is not an acknowledgment.
