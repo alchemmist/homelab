@@ -10,7 +10,7 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-IMG = "ghcr.io/alchemmist/n8n@"
+IMG = "harbor.socrat.alchemmist.xyz/n8n/n8n@"
 SS = "socrat-n8n"
 
 
