@@ -202,6 +202,7 @@ def test_release_selects_only_existing_webhook_owner() -> None:
     assert "homelab.alchemmist.xyz/public-web" not in labels
     labels["homelab.alchemmist.xyz/public-web"] = "true"
     assert active == baseline
-    assert "homelab.alchemmist.xyz/public-web" not in ingress(
-        render(*settings, "host=unreviewed.invalid")
-    )["metadata"].get("labels", {})
+    mismatched = [s for s in settings if not s.startswith("host=")]
+    replaced = ingress(render(*mismatched, "host=unreviewed.invalid"))
+    assert [r["host"] for r in replaced["spec"]["rules"]] == ["unreviewed.invalid"]
+    assert "homelab.alchemmist.xyz/public-web" not in replaced["metadata"].get("labels", {})
