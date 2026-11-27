@@ -21,6 +21,7 @@
       "tests/test_grafana_alert_links.py",
       "tests/test_grafana_mcp_credentials.py",
       "tests/test_harbor.py",
+      "tests/test_closed_harbor_paths.py",
       "tests/test_helm_manifest_changed.py",
       "tests/test_user_unit.py",
       "tests/test_home_nl_udp_probe.py",
