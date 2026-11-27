@@ -443,12 +443,10 @@ class Controller:
             return
         if self.permit.exists() or not self.permit.parent.is_dir():
             return
-        available = int(
-            pathlib.Path("/proc/meminfo")
-            .read_text()
-            .split("MemAvailable:")[1]
-            .split()[0]
-        )
+        meminfo = pathlib.Path("/proc/meminfo").read_text().splitlines()
+        available = next((int(parts[1]) for line in meminfo if (parts := line.split())
+                          and parts[0] == "MemAvailable:" and len(parts) == 3
+                          and parts[1].isdigit() and parts[2] == "kB"), 0)
         disk = os.statvfs("/var/lib/rancher/k3s")
         if (
             available < 256 * 1024
