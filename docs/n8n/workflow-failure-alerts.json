@@ -36,7 +36,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "http://socrat-bot.socrat-bot.svc:8080/v1/messages",
+        "url": "https://bot.socrat.alchemmist.xyz/api/v1/messages",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
@@ -53,8 +53,8 @@
       },
       "credentials": {
         "httpHeaderAuth": {
-          "id": "SOCRAT_BOT_CREDENTIAL_ID",
-          "name": "Socrat bot internal"
+          "id": "SOCRAT_BOT_FAILURES_ID",
+          "name": "Socrat bot failures"
         }
       }
     }

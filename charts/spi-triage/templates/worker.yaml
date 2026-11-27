@@ -60,11 +60,20 @@ spec:
             - |
               from pathlib import Path
               text = Path("/app/telegram_delivery.py").read_text()
+              {{- if .Values.publicBotApi }}
+              for old in ("http://10.250.0.2:8082", "http://socrat-bot.socrat-bot.svc:8080"):
+                  text = text.replace(old, "https://bot.socrat.alchemmist.xyz/api")
+              old = "'X-Internal-Token':self.token"
+              if old not in text or "https://bot.socrat.alchemmist.xyz/api" not in text:
+                  raise SystemExit("unexpected bot client format")
+              Path("/patch/telegram_delivery.py").write_text(text.replace(old, "'Authorization':'Bearer '+self.token"))
+              {{- else }}
               old = "http://10.250.0.2:8082"
               new = "http://socrat-bot.socrat-bot.svc:8080"
               if old not in text and new not in text:
                   raise SystemExit("telegram bot base not found")
               Path("/patch/telegram_delivery.py").write_text(text.replace(old, new, 1))
+              {{- end }}
           securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
           volumeMounts: [{name: bot-base, mountPath: /patch}]
         {{- if .Values.requireExistingData }}
@@ -134,6 +143,10 @@ spec:
             {{- if or .Values.s3Evidence.enabled .Values.s3Evidence.retainCredentials }}
             - name: SPI_S3_WRITER_FILE
               value: /s3-writer/credentials.json
+            {{- end }}
+            {{- if .Values.publicBotApi }}
+            - name: BOT_INTERNAL_TOKEN
+              valueFrom: {secretKeyRef: {name: spi-bot-api, key: token}}
             {{- end }}
             - name: WRITE_ENABLED
               value: {{ .Values.writeEnabled | quote }}

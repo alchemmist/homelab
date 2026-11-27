@@ -103,7 +103,7 @@ class FailureAlertsTests(unittest.TestCase):
         last = TEMPLATE["nodes"][-1]
         assert not last.get("retryOnFail", False)
         assert "onError" not in last
-        assert last["parameters"]["url"] == "http://socrat-bot.socrat-bot.svc:8080/v1/messages"
+        assert last["parameters"]["url"] == "https://bot.socrat.alchemmist.xyz/api/v1/messages"
 
     def wf(self, active=True) -> dict[str, object]:
         """Build an example workflow document in the requested active state."""

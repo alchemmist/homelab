@@ -28,3 +28,14 @@ spec:
                 name: socrat-bot
                 port:
                   number: {{ .Values.service.port }}
+          {{- if .Values.publicApiEnabled }}
+          {{- range $route := list (dict "path" "/" "type" "Exact") (dict "path" "/admin/tokens" "type" "Prefix") (dict "path" "/api/v1" "type" "Prefix") }}
+          - path: {{ $route.path | quote }}
+            pathType: {{ $route.type }}
+            backend:
+              service:
+                name: socrat-bot
+                port:
+                  number: {{ $.Values.service.port }}
+          {{- end }}
+          {{- end }}
