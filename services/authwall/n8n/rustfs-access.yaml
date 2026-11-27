@@ -13,5 +13,9 @@ spec:
             matchLabels: {kubernetes.io/metadata.name: automation}
           podSelector:
             matchLabels: {app: n8n}
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: automation}
+          podSelector:
+            matchLabels: {app: n8n-worker}
       ports:
         - {protocol: TCP, port: 9000}
