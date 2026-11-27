@@ -167,6 +167,23 @@ exactly the expected IP per question. It does not create, relabel or delete the
 probe. An execution error is not evidence of a policy denial. Record separate
 same-Pod deny/reallow results and clean up the probe after the exercise.
 
+### Verify the TLS source boundary before web staging
+
+```sh
+kubectl get ingress,certificate.cert-manager.io -A -o json | uv run python -m ci.quality.public_tls_sources
+```
+
+Use only Ingress and Certificate objects, never Secret dumps. The report maps
+ordinary hostnames to owner namespace/name references. All routes must have an
+owner; multiple paths on one hostname need not duplicate its TLS Secret. One
+Ingress may declare a certificate covering names routed by another Ingress.
+Ambiguous sources, missing writers, out-of-catalog DNS SANs and unready writers
+prevent emission of candidate rules. The report is not applied: the exact-name
+`get` rules show a target boundary, not a working replacement for Traefik's
+list/watch informer. Do not bind them and fall back to wildcard access when
+discovery fails. Do not copy private keys. Certificate status is not a live TLS
+handshake, an authorization check or evidence of a healthy backend.
+
 ### Inventory backend dependencies separately from TLS source ownership
 
 ```sh
