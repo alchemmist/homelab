@@ -124,6 +124,7 @@
       "tests/test_traffic_light_models.py"
     ],
     "medium": [
+      "tests/openhands/test_oidc.py",
       "tests/test_public_replica_contract.py",
       "tests/test_private_dns_answers.py",
       "tests/test_closed_health_fleet.py",
@@ -351,7 +352,6 @@
     "tests/spi_triage/test_wait_admission.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling.",
     "tests/spi_triage/test_wait_integration.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling.",
     "tests/wiki_openapi/test_flow.py": "Nested suite omitted by the previous root-only inventory; dependency and execution safety review required before scheduling.",
-    "tests/openhands/test_loop.py": "Owner source synchronized from main; imports an operational provisioning/validation entrypoint. Not imported or run in this source-only mission. Pending bounded offline interface/isolation review; not passed or runtime acceptance.",
-    "tests/openhands/test_oidc.py": "Owner source synchronized from main; imports an operational provisioning/validation entrypoint. Not imported or run in this source-only mission. Pending bounded offline interface/isolation review; not passed or runtime acceptance."
+    "tests/openhands/test_loop.py": "Owner source synchronized from main; imports an operational provisioning/validation entrypoint. Not imported or run in this source-only mission. Pending bounded offline interface/isolation review; not passed or runtime acceptance."
   }
 }

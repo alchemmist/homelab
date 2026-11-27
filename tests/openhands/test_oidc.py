@@ -3,7 +3,10 @@
 import base64
 import copy
 import importlib.util
+import json
+import os
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -96,6 +99,11 @@ class NativeOIDC(unittest.TestCase):
             with pytest.raises(RuntimeError):
                 self.validate()
             self.bindings = original
+        for field in ("negate", "failure_result"):
+            value = self.bindings[0].pop(field)
+            with pytest.raises(RuntimeError, match="Owner-only admission binding drift"):
+                self.validate()
+            self.bindings[0][field] = value
         self.bindings *= 2
         with pytest.raises(RuntimeError):
             self.validate()
@@ -112,6 +120,53 @@ class NativeOIDC(unittest.TestCase):
             with pytest.raises(RuntimeError):
                 self.validate()
             self.provider = old
+
+
+def test_read_only_plan_and_stale_approval_stop_before_delivery(tmp_path, monkeypatch, capsys):
+    """Use only a temporary journal directory and a synthetic, read-only API."""
+    calls = []
+
+    def api(path, *, write=False):
+        assert path == tmp_path / "unused" and not write
+        calls.append(write)
+        return object()
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Plan or stale approval reached credential delivery")
+
+    monkeypatch.setattr(m.iam, "API", api)
+    monkeypatch.setattr(m, "inspect", lambda _: ({"pk": "fixture"}, m.PROVIDER, None, None))
+    monkeypatch.setattr(m.subprocess, "check_output", forbidden)
+    monkeypatch.setattr(m.subprocess, "run", forbidden)
+    state = tmp_path / "journal"
+    argv = ["fixture", "--credentials", str(tmp_path / "unused"), "--state-dir", str(state)]
+    # Separate temp directories model separate operator invocations.
+    locks = []
+    flock = m.fcntl.flock
+
+    def track_lock(fd, operation):
+        locks.append(fd)
+        flock(fd, operation)
+
+    monkeypatch.setattr(m.fcntl, "flock", track_lock)
+    original_umask = os.umask(0o077)
+    try:
+        for extra in ([], ["--apply", "--approve-plan-hash", "stale"]):
+            location = state if not extra else tmp_path / "other-journal"
+            monkeypatch.setattr(sys, "argv", [*argv[:-1], str(location), *extra])
+            if extra:
+                with pytest.raises(RuntimeError, match="Exact fresh plan approval required"):
+                    m.main()
+            else:
+                m.main()
+                result = json.loads(capsys.readouterr().out)
+                assert result["creates"] == 3 and not result["existing_identities_modified"]
+            assert [p.name for p in location.iterdir()] == ["lock"]
+    finally:
+        os.umask(original_umask)
+        for fd in locks:
+            os.close(fd)
+    assert calls == [False, False]
 
 
 class OIDCRender(unittest.TestCase):

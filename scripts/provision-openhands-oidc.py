@@ -42,12 +42,14 @@ PROVIDER = {
     "access_token_validity": "minutes=5",
     "refresh_token_validity": "hours=8",
     "issuer_mode": "per_provider",
-    "redirect_uris": [{"matching_mode": "strict", "url": "https://" + HOST + "/oauth2/callback"}],
+    "redirect_uris": [
+        {"matching_mode": "strict", "url": "https://" + HOST + "/oauth2/callback"}
+    ],
 }
 
 
 def encode_cookie_secret(raw):
-    iam.require(len(raw) == 32, "Cookie key must contain exactly32 bytes")
+    iam.require("Cookie key must contain exactly32 bytes", ok=len(raw) == 32)
     # oauth2-proxy SecretBytes uses Go RawURLEncoding, not standard base64.
     return base64.urlsafe_b64encode(raw).decode()
 
@@ -62,15 +64,19 @@ def write_private(path, data) -> None:
 
 def inspect(api):
     owner = iam.one(api, "core/groups/", "name", "homelab-owner")
-    iam.require(owner is not None, "Existing owner group missing")
+    iam.require("Existing owner group missing", ok=owner is not None)
     flows = {
-        key: iam.one(api, "flows/instances/", "slug", value) for key, value in iam.FLOWS.items()
+        key: iam.one(api, "flows/instances/", "slug", value)
+        for key, value in iam.FLOWS.items()
     }
-    iam.require(all(flows.values()), "Existing authentication/consent/invalidation flow missing")
+    iam.require(
+        "Existing authentication/consent/invalidation flow missing",
+        ok=all(flows.values()),
+    )
     signing = iam.one(
         api, "crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate"
     )
-    iam.require(signing is not None, "Existing signing key missing")
+    iam.require("Existing signing key missing", ok=signing is not None)
     mappings = api.rows("propertymappings/provider/scope/")
     selected = []
     for scope in ["openid", "profile", "email", "offline_access"]:
@@ -79,16 +85,18 @@ def inspect(api):
             for v in mappings
             if v.get("managed") == "goauthentik.io/providers/oauth2/scope-" + scope
         ]
-        iam.require(len(found) == 1, "Missing/ambiguous standard scope: " + scope)
+        iam.require("Missing/ambiguous standard scope: " + scope, ok=len(found) == 1)
         selected.append(found[0]["pk"])
     groups = [
-        v for v in mappings if v.get("name") == "homelab-groups" and v.get("scope_name") == "groups"
+        v
+        for v in mappings
+        if v.get("name") == "homelab-groups" and v.get("scope_name") == "groups"
     ]
     iam.require(
-        len(groups) == 1
+        "Groups mapping drift",
+        ok=len(groups) == 1
         and groups[0].get("expression")
         == 'return {"groups": [group.name for group in request.user.ak_groups.all()]}',
-        "Groups mapping drift",
     )
     settings = {
         **PROVIDER,
@@ -98,15 +106,18 @@ def inspect(api):
     }
     provider = iam.one(api, "providers/oauth2/", "name", PROVIDER["name"])
     by_client = iam.one(api, "providers/oauth2/", "client_id", CLIENT)
-    iam.require((provider or {}).get("pk") == (by_client or {}).get("pk"), "Client-id collision")
+    iam.require(
+        "Client-id collision",
+        ok=(provider or {}).get("pk") == (by_client or {}).get("pk"),
+    )
     app = iam.one(api, "core/applications/", "slug", APP["slug"])
     return owner, settings, provider, app
 
 
 def validate(api, owner, settings, provider, app, journal) -> None:
     iam.require(
-        provider and app and journal and journal.get("status") == "active",
         "Partial identity or missing private journal; no adoption/reset",
+        ok=provider and app and journal and journal.get("status") == "active",
     )
     for key, value in settings.items():
         actual = provider.get(key)
@@ -117,53 +128,63 @@ def validate(api, owner, settings, provider, app, journal) -> None:
                 iam.canonical_redirects(actual),
                 iam.canonical_redirects(value),
             )
-        iam.require(actual == value, "OIDC provider drift: " + key)
+        iam.require("OIDC provider drift: " + key, ok=actual == value)
     iam.require(
-        provider["pk"] == journal["provider_pk"] and str(app["pk"]) == str(journal["app_pk"]),
         "Identity ownership drift",
+        ok=provider["pk"] == journal["provider_pk"]
+        and str(app["pk"]) == str(journal["app_pk"]),
     )
     iam.require(
-        secrets.compare_digest(provider.get("client_secret", ""), journal["client_secret"]),
         "Client-secret drift; no rotation",
+        ok=secrets.compare_digest(
+            provider.get("client_secret", ""), journal["client_secret"]
+        ),
     )
     iam.require(
-        app.get("provider") == provider["pk"] and all(app.get(k) == v for k, v in APP.items()),
         "Application drift",
+        ok=app.get("provider") == provider["pk"]
+        and all(app.get(k) == v for k, v in APP.items()),
     )
     bindings = api.rows("policies/bindings/?target=" + str(app["pk"]))
-    iam.require(len(bindings) == 1, "Unexpected application bindings")
+    iam.require("Unexpected application bindings", ok=len(bindings) == 1)
     b = bindings[0]
     iam.require(
-        b.get("group") == owner["pk"]
+        "Owner-only admission binding drift",
+        ok=b.get("group") == owner["pk"]
         and not b.get("user")
         and not b.get("policy")
         and b.get("enabled") is True
-        and not b.get("negate")
-        and not b.get("failure_result"),
-        "Owner-only admission binding drift",
+        and b.get("negate") is False
+        and b.get("failure_result") is False,
     )
 
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     private = Path.home() / ".config/homelab/openhands"
-    p.add_argument("--credentials", type=Path, default=private / "authentik-api-token.json")
+    p.add_argument(
+        "--credentials", type=Path, default=private / "authentik-api-token.json"
+    )
     p.add_argument("--state-dir", type=Path, default=private / "oidc")
-    p.add_argument("--backup-receipt", type=Path, default=private / "oidc-backup-receipt.json")
+    p.add_argument(
+        "--backup-receipt", type=Path, default=private / "oidc-backup-receipt.json"
+    )
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")
     a = p.parse_args()
     os.umask(0o077)
     a.state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     iam.require(
-        not a.state_dir.is_symlink() and not a.state_dir.stat().st_mode & 0o077,
         "Unsafe state directory",
+        ok=not a.state_dir.is_symlink() and not a.state_dir.stat().st_mode & 0o077,
     )
     lock = os.open(a.state_dir / "lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     marker = a.state_dir / "uncertain.json"
     file = a.state_dir / "client.json"
-    iam.require(not marker.exists(), "Uncertain prior write; inspect manually, do not retry")
+    iam.require(
+        "Uncertain prior write; inspect manually, do not retry", ok=not marker.exists()
+    )
     journal = None
     if file.exists():
         iam.private(file)
@@ -173,7 +194,7 @@ def main() -> None:
     if provider or app:
         validate(api, owner, settings, provider, app, journal)
     else:
-        iam.require(journal is None, "Private journal without live identity; stop")
+        iam.require("Private journal without live identity; stop", ok=journal is None)
     context = {
         "application": APP,
         "provider": settings,
@@ -194,17 +215,19 @@ def main() -> None:
             )
         )
         return
-    iam.require(a.approve_plan_hash == digest, "Exact fresh plan approval required")
+    iam.require("Exact fresh plan approval required", ok=a.approve_plan_hash == digest)
     if not provider:
         iam.private(a.backup_receipt)
         receipt = json.loads(a.backup_receipt.read_text())
-        age = (datetime.now(UTC) - datetime.fromisoformat(receipt["observedAt"])).total_seconds()
+        age = (
+            datetime.now(UTC) - datetime.fromisoformat(receipt["observedAt"])
+        ).total_seconds()
         backup = Path(receipt["encryptedBackup"])
         iam.private(backup)
         iam.require(
-            0 <= age <= 3600
-            and hashlib.sha256(backup.read_bytes()).hexdigest() == receipt["sha256"],
             "Fresh valid encrypted backup required",
+            ok=0 <= age <= 3600
+            and hashlib.sha256(backup.read_bytes()).hexdigest() == receipt["sha256"],
         )
         write_private(marker, {"plan_hash": digest})
         journal = {
@@ -219,7 +242,9 @@ def main() -> None:
             "providers/oauth2/",
             {**settings, "client_secret": journal["client_secret"]},
         )
-        app = api.call("POST", "core/applications/", {**APP, "provider": provider["pk"]})
+        app = api.call(
+            "POST", "core/applications/", {**APP, "provider": provider["pk"]}
+        )
         api.call(
             "POST",
             "policies/bindings/",
@@ -259,8 +284,8 @@ def main() -> None:
     if old.strip():
         old = json.loads(old)
         iam.require(
-            old["metadata"].get("labels", {}).get("homelab-app") == "openhands",
             "Unexpected existing Secret owner",
+            ok=old["metadata"].get("labels", {}).get("homelab-app") == "openhands",
         )
     payload = {
         "apiVersion": "v1",
@@ -280,10 +305,10 @@ def main() -> None:
     if old:
         for name, value in payload["stringData"].items():
             iam.require(
-                secrets.compare_digest(
+                "Runtime Secret drift; no silent rotation",
+                ok=secrets.compare_digest(
                     base64.b64decode(old.get("data", {}).get(name, "")), value.encode()
                 ),
-                "Runtime Secret drift; no silent rotation",
             )
     else:
         subprocess.run(
