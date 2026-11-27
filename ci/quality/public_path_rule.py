@@ -14,7 +14,7 @@ def path_rule(host: str, path: str, kind: str) -> str:
     """Keep Kubernetes element-wise Prefix semantics; refuse unsupported literals."""
     if not 0 < len(host) <= 253 or not all(_LABEL.fullmatch(s) for s in host.split(".")):
         raise ValueError("unsupported public DNS name")
-    if not path.startswith("/") or "//" in path or kind not in {"Prefix", "Exact"}:
+    if not isinstance(path, str) or not path.startswith("/") or "//" in path or kind not in {"Prefix", "Exact"}:
         raise ValueError("unsupported public path or path type")
     segments = path.strip("/").split("/") if path != "/" else []
     if any(not _SEGMENT.fullmatch(s) or s in {".", ".."} for s in segments):

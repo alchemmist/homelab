@@ -297,3 +297,10 @@ def test_unnamed_service_port_must_match_numeric_target_not_frontend():
     assert inventory(catalog, objects)["errors"]
     del port["targetPort"]
     assert not inventory(catalog, objects)["errors"]
+
+
+def test_malformed_path_does_not_become_catchall():
+    from ci.quality.public_path_rule import path_rule
+
+    with pytest.raises(ValueError, match="unsupported public path"):
+        path_rule("site.test", None, "Prefix")
