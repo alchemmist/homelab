@@ -164,3 +164,72 @@ def test_closed_status_requires_reviewed_policy_and_keeps_host_decisions_indepen
         assert admission(clone, catalog) == {**yes, key: False}
         ing["spec"]["rules"][0]["host"] = "*.alchemmist.xyz"
         assert admission(clone, catalog) == no
+
+
+def test_spread_changes_only_proxy_placement_not_gatus_or_any_route():
+    import subprocess
+
+    import yaml
+
+    from ci.quality.closed_status_owner import NS, PROXY, SPREAD, owner_objects
+    from ci.quality.public_web import ROOT
+
+    def indexed(rows):
+        return {(r["kind"], r["metadata"]["name"]): r for r in rows if r}
+
+    selected = indexed(owner_objects())
+    args = [
+        "helm",
+        "template",
+        NS,
+        str(ROOT / "charts/uptime-kuma"),
+        "-n",
+        NS,
+        "--set",
+        "publicStatusHost=status.alchemmist.xyz",
+    ]
+    fallback = indexed(yaml.safe_load_all(subprocess.check_output(args)))
+    new = selected["Deployment", PROXY]["spec"]
+    old = fallback["Deployment", PROXY]["spec"]
+    assert new["replicas"] == 2 and old["replicas"] == 1
+    new["replicas"] = 1
+    assert new.pop("minReadySeconds") == 5 and new.pop("strategy") == {
+        "type": "RollingUpdate",
+        "rollingUpdate": {"maxUnavailable": 1, "maxSurge": 1},
+    }
+    pod = new["template"]["spec"]
+    labels = new["template"]["metadata"]["labels"]
+    spread = "homelab.alchemmist.xyz/status-proxy-replica"
+    assert labels.pop(spread) == "spread"
+    assert pod.pop("affinity") == {
+        "nodeAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+                "nodeSelectorTerms": [
+                    {
+                        "matchExpressions": [
+                            {
+                                "key": "kubernetes.io/hostname",
+                                "operator": "In",
+                                "values": ["socrat-0", "socrat-2"],
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "podAntiAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": [
+                {
+                    "topologyKey": "kubernetes.io/hostname",
+                    "labelSelector": {"matchLabels": {spread: "spread"}},
+                }
+            ]
+        },
+    }
+    assert "nodeSelector" not in pod
+    pod["nodeSelector"] = {"kubernetes.io/hostname": "socrat-0"}
+    assert selected == fallback
+    invalid = subprocess.run(
+        [*args, "--set-string", SPREAD + "=false"], capture_output=True, check=False
+    )
+    assert invalid.returncode and b"must be boolean" in invalid.stderr
