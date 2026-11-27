@@ -10,17 +10,19 @@ if TYPE_CHECKING:
 
 from pathlib import Path
 
+from ci.quality.closed_root_backend import view, whole
 from ci.quality.common import ROOT, command, finding
 from ci.quality.runner import run
 
 
-def nonsecret_tokenizer_option(path, item):
-    """Execute nonsecret_tokenizer_option."""
+def nonsecret_tokenizer_option(path: str, item: object) -> bool:
+    """Grant the reviewed TOKENIZERS public-env line its documented exception."""
+    record = view(item)
     # DL3064 matches TOKENIZERS as though it were a credential. This exact
     # public runtime option line contains no secret; any edit loses the exception.
-    if path != "services/spi/tokenizer/Dockerfile" or item["code"] != "DL3064":
+    if path != "services/spi/tokenizer/Dockerfile" or record["code"] != "DL3064":
         return False
-    line = (ROOT / path).read_text().splitlines()[item["line"] - 1]
+    line = (ROOT / path).read_text().splitlines()[whole(record["line"]) - 1]
     return line == "ENV TOKENIZERS_PARALLELISM=false RAYON_NUM_THREADS=1 PYTHONPATH=/app"
 
 

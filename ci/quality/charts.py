@@ -3,35 +3,60 @@
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import re
 import sys
 from pathlib import Path
-from typing import NotRequired, TypedDict, cast
+from typing import TYPE_CHECKING, NotRequired, TypedDict, cast, override
+
+if TYPE_CHECKING:
+    from collections.abc import Hashable, Iterable, Mapping
 
 import yaml
 
-from ci.quality.common import ROOT, command, digest, failure, finding, report, tracked
+from ci.quality.closed_root_backend import Obj, entries, plain, view
+from ci.quality.common import (
+    ROOT,
+    Finding,
+    command,
+    digest,
+    failure,
+    finding,
+    report,
+    tracked,
+)
 
 
 class ManifestLoader(yaml.SafeLoader):
     """YAML loader that preserves mapping key order."""
 
-    def construct_mapping(self, node, deep=False):
+    @override
+    def construct_mapping(
+        self, node: yaml.MappingNode, deep: bool | None = None
+    ) -> dict[Hashable, object]:
         """Reject duplicate mapping keys while loading YAML manifests."""
-        seen = set()
+        merge_depth = bool(deep)
+        seen: set[Hashable] = set()
         for key, _value in node.value:
             if key.tag == "tag:yaml.org,2002:merge":
                 continue
-            name = self.construct_object(key, deep=deep)
+            name = self.construct_object(key, deep=merge_depth)
             if name in seen:
                 msg = "Duplicate rendered YAML key"
                 raise yaml.YAMLError(msg)
             seen.add(name)
-        return super().construct_mapping(node, deep=deep)
+        return cast("dict[Hashable, object]", super().construct_mapping(node, deep=merge_depth))
 
 
-ManifestLoader.add_constructor("tag:yaml.org,2002:value", ManifestLoader.construct_scalar)
+def _construct_value_scalar(loader: yaml.SafeLoader, node: yaml.ScalarNode) -> object:
+    """Read a YAML `value`-tagged scalar node as its plain text (typically "=")."""
+    return loader.construct_scalar(node)
+
+
+# The value scalar ("=") is registered on the safe loader this class extends,
+# so every manifest loader inherits the same reviewed behavior.
+yaml.SafeLoader.add_constructor("tag:yaml.org,2002:value", _construct_value_scalar)
 
 KUBE_VERSION = "1.36.0"
 API_VERSIONS = [
@@ -42,8 +67,8 @@ API_VERSIONS = [
 ]
 
 
-def local_path(value):
-    """Execute local_path."""
+def local_path(value: str) -> Path:
+    """Resolve a value path inside the repository, rejecting escapes and misses."""
     path = (ROOT / value).resolve()
     if not path.is_relative_to(ROOT) or not path.exists():
         msg = "Missing or escaping chart/value path"
@@ -105,7 +130,7 @@ class RenderTarget(TypedDict):
 def resolve_values(helm: HelmOverrides, chart: Path, refs: dict[str, ValueRef]) -> list[Path]:
     """Resolve a Helm valueFiles list to local paths, rejecting foreign references."""
     relative = chart.relative_to(ROOT)
-    values = []
+    values: list[Path] = []
     for value in helm.get("valueFiles", []):
         if value.startswith("$"):
             ref, subpath = value[1:].split("/", 1)
@@ -121,7 +146,7 @@ def resolve_values(helm: HelmOverrides, chart: Path, refs: dict[str, ValueRef]) 
 def argocd_targets() -> tuple[list[RenderTarget], set[str]]:
     """Build render targets from the Argocd Application manifests."""
     result: list[RenderTarget] = []
-    consumed = set()
+    consumed: set[str] = set()
     for path in sorted((ROOT / "deploy/argocd/apps").glob("*.yaml")):
         app = yaml.safe_load(path.read_text())
         spec = app["spec"]
@@ -140,7 +165,7 @@ def argocd_targets() -> tuple[list[RenderTarget], set[str]]:
                 raise ValueError(msg)
             if not isinstance(helm.get("valuesObject", {}), dict):
                 msg = "Helm valuesObject must be a mapping"
-                raise ValueError(msg)
+                raise TypeError(msg)
             result.append(
                 {
                     "id": app["metadata"]["name"] + f"-{index}",
@@ -177,38 +202,41 @@ def default_targets(result: list[RenderTarget], consumed: set[str]) -> list[Rend
     return result
 
 
-def targets():
-    """Execute targets."""
+def targets() -> list[RenderTarget]:
+    """Collect every offline render target, Argocd applications plus chart defaults."""
     result, consumed = argocd_targets()
     # Include every unconsumed root, including vendored charts, with chart defaults.
     result = default_targets(result, consumed)
     return sorted(result, key=lambda target: target["id"])
 
 
-def arguments(target):
-    """Execute arguments."""
-    if not re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,52}", target["release"]):
+def arguments(target: Mapping[str, object]) -> list[str]:
+    """Build the offline-hermetic helm argument vector for one render target."""
+    release = plain(target["release"])
+    if not re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,52}", release):
         msg = "Invalid Helm release name"
         raise ValueError(msg)
-    args = ["--kube-version", KUBE_VERSION, "--namespace", target["namespace"]]
-    for value in target["values"]:
+    args = ["--kube-version", KUBE_VERSION, "--namespace", plain(target["namespace"])]
+    for value in entries(target["values"]):
         args += ["--values", str(value)]
-    if target.get("inline_values"):
+    if view(target.get("inline_values", {})):
         args += ["--values", "-"]
-    for parameter in target["parameters"]:
-        if set(parameter) - {"name", "value", "forceString"}:
+    for parameter in entries(target["parameters"]):
+        item = view(parameter)
+        if set(item) - {"name", "value", "forceString"}:
             msg = "Unsupported Helm parameter"
             raise ValueError(msg)
-        if not re.fullmatch(r"[a-zA-Z0-9_][a-zA-Z0-9_.\[\]\\/-]*", parameter["name"]):
+        parameter_name = plain(item["name"])
+        if not re.fullmatch(r"[a-zA-Z0-9_][a-zA-Z0-9_.\[\]\/-]*", parameter_name):
             msg = "Unsafe Helm parameter name"
             raise ValueError(msg)
-        flag = "--set-string" if parameter.get("forceString") else "--set"
-        args += [flag + "=" + parameter["name"] + "=" + str(parameter["value"])]
+        flag = "--set-string" if item.get("forceString") else "--set"
+        args += [flag + "=" + parameter_name + "=" + str(item["value"])]
     return args
 
 
-def render(target):
-    """Execute render."""
+def render(target: RenderTarget) -> list[dict[str, object]] | None:
+    """Render one target offline with the pinned helm and checked local loader."""
     args = [
         "helm",
         "template",
@@ -230,37 +258,46 @@ def render(target):
         return None  # Invalid rendered YAML is a quality failure, not a successful empty render.
 
 
-def schema_name(resource):
-    """Execute schema_name."""
-    api = resource["apiVersion"].split("/")
-    version = (api[0].split(".")[0] + "-" + api[1]) if len(api) == 2 else api[0]
-    return resource["kind"].lower() + "-" + version + ".json"
+API_SEGMENT_COUNT = 2
 
 
-def policies(resource):
-    """Execute policies."""
+def schema_name(resource: Mapping[str, object]) -> str:
+    """Map a rendered object to its reviewed offline schema file name."""
+    api = plain(resource["apiVersion"]).split("/")
+    version = api[0].split(".")[0] + "-" + api[1] if len(api) == API_SEGMENT_COUNT else api[0]
+    return plain(resource["kind"]).lower() + "-" + version + ".json"
+
+
+def policies(resource: Mapping[str, object]) -> list[tuple[str, str]]:
+    """Apply the Homelab ownership/data/image contracts to one rendered object."""
     # Generic Kubernetes best practices belong to kube-linter, not a parallel implementation.
     # These are additional Homelab ownership/data/image contracts.
-    kind = resource.get("kind")
-    spec = resource.get("spec", {})
-    pod = None
+    kind = str(resource.get("kind"))
+    spec = view(resource.get("spec", {}))
+    pod: Obj | None = None
     if kind in {"Deployment", "DaemonSet", "StatefulSet", "Job", "ReplicaSet"}:
-        pod = spec.get("template", {}).get("spec", {})
+        pod = view(view(spec.get("template", {})).get("spec", {}))
     elif kind == "CronJob":
-        pod = spec.get("jobTemplate", {}).get("spec", {}).get("template", {}).get("spec", {})
+        job = view(view(spec.get("jobTemplate", {})).get("spec", {}))
+        pod = view(view(view(job.get("template", {})).get("spec", {})))
     elif kind == "Pod":
         pod = spec
-    errors = []
+    errors: list[tuple[str, str]] = []
     if pod is not None:
-        for container in pod.get("containers", []) + pod.get("initContainers", []):
-            if not re.fullmatch(r".+@sha256:[0-9a-f]{64}", container.get("image", "")):
+        for container in itertools.chain(
+            entries(pod.get("containers", [])), entries(pod.get("initContainers", []))
+        ):
+            item = view(container)
+            if not re.fullmatch(r".+@sha256:[0-9a-f]{64}", str(item.get("image", ""))):
                 errors.append(
                     (
                         "image-digest",
-                        container["name"] + ": immutable image digest is missing",
+                        plain(item["name"]) + ": immutable image digest is missing",
                     )
                 )
-    if kind == "ClusterRoleBinding" and resource.get("roleRef", {}).get("name") == "cluster-admin":
+    if kind == "ClusterRoleBinding" and view(resource.get("roleRef", {})).get("name") == (
+        "cluster-admin"
+    ):
         errors.append(
             (
                 "cluster-admin-binding",
@@ -279,7 +316,7 @@ RELEASE_PEERS = {
 }
 
 
-def authentik_accounts():
+def authentik_accounts() -> list[dict[str, object]]:
     """Use the same namespace-scoped account documents applied by the Ansible role."""
     path = ROOT / "deploy/authentik/foundation.yaml"
     return [
@@ -289,15 +326,19 @@ def authentik_accounts():
     ]
 
 
-def kube_lint(target, resources, peers=()):
-    """Execute kube_lint."""
+def kube_lint(
+    target: Mapping[str, object],
+    resources: Iterable[dict[str, object]],
+    peers: Iterable[dict[str, object]] = (),
+) -> list[Finding]:
+    """Run kube-linter for one target, attributing findings only to checked objects."""
 
-    def key(doc):
-        meta = doc["metadata"]
+    def key(doc: dict[str, object]) -> tuple[object, object, object]:
+        meta = view(doc["metadata"])
         return doc["kind"], meta.get("namespace", ""), meta["name"]
 
     peer_keys = {key(doc) for doc in peers}
-    if peer_keys.intersection(map(key, resources)):
+    if peer_keys.intersection(key(doc) for doc in resources):
         msg = "Ambiguous cross-release lint resource"
         raise ValueError(msg)
     data = command(
@@ -313,39 +354,41 @@ def kube_lint(target, resources, peers=()):
         stdin=yaml.safe_dump_all([*resources, *peers]),
         allowed=(0, 1),
     )
-    value = json.loads(data.stdout)
+    value = view(json.loads(data.stdout))
     if value.get("Reports") is None and data.returncode == 0 and "Summary" in value:
         value["Reports"] = []
-    if not isinstance(value.get("Reports"), list):
+    reports = value["Reports"]
+    if not isinstance(reports, list):
         msg = "Invalid kube-linter report"
-        raise ValueError(msg)
-    if data.returncode and not value["Reports"]:
+        raise TypeError(msg)
+    if data.returncode and not reports:
         msg = "kube-linter failed without findings"
         raise RuntimeError(msg)
-    result = []
-    for item in value["Reports"]:
-        obj = item["Object"]["K8sObject"]
+    result: list[Finding] = []
+    for item in reports:
+        entry = view(item)
+        obj = view(view(entry["Object"])["K8sObject"])
         # Peers are checked and attributed in full by their own release.
-        if (obj["GroupVersionKind"]["Kind"], obj.get("Namespace", ""), obj["Name"]) in peer_keys:
+        gvk = view(view(obj["GroupVersionKind"]))
+        identity_key = (gvk["Kind"], obj.get("Namespace", ""), obj["Name"])
+        if identity_key in peer_keys:
             continue
         identity = json.dumps(obj, sort_keys=True)
-        rule = "kube-linter-" + item["Check"]
+        rule = "kube-linter-" + plain(entry["Check"])
         # Hash diagnostics for semantic identity, but never echo possible env/Secret values.
-        context = target["id"] + identity + item["Diagnostic"]["Message"]
-        result.append(
-            finding(
-                rule,
-                target["source"],
-                1,
-                f"{item['Check']}: {obj['Name']} (rendered object; inspect locally)",
-                context,
-            )
+        context = plain(target["id"]) + identity + plain(view(entry["Diagnostic"])["Message"])
+        threatening = (
+            plain(entry["Check"])
+            + ": "
+            + plain(obj["Name"])
+            + " (rendered object; inspect locally)"
         )
+        result.append(finding(rule, plain(target["source"]), 1, threatening, context))
     return result
 
 
-def contract_hash(target):
-    """Execute contract_hash."""
+def contract_hash(target: RenderTarget) -> str:
+    """Hash a target's complete source, values and parameters for replay identity."""
     # A previously broken render is accepted ONLY while its entire source stays identical.
     parts = [target["id"], json.dumps(target["parameters"], sort_keys=True)]
     if target.get("inline_values"):
@@ -377,9 +420,9 @@ def identity_key(target: RenderTarget, resource: RenderedObject) -> str:
 
 def schema_findings(
     *, target: RenderTarget, resource: RenderedObject, key: str, validate: bool
-) -> list[object]:
+) -> list[Finding]:
     """Return schema availability and strict validation findings for one object."""
-    findings: list[object] = []
+    findings: list[Finding] = []
     if not validate:
         return findings
     path = ROOT / "ci/quality/schemas" / schema_name(resource)
@@ -420,7 +463,7 @@ def schema_findings(
     return findings
 
 
-def policy_findings(*, target: RenderTarget, resource: RenderedObject, key: str) -> list[object]:
+def policy_findings(*, target: RenderTarget, resource: RenderedObject, key: str) -> list[Finding]:
     """Return Homelab ownership/data/image policy findings for one object."""
     return [
         finding(rule, target["source"], 1, message, key + "|" + message)
@@ -449,15 +492,77 @@ def library_consumer(target: RenderTarget, selected: list[RenderTarget]) -> Rend
     raise ValueError(message)
 
 
-def check(*, validate=True):
-    """Execute check."""
+def context_peers(
+    target: RenderTarget,
+    selected: list[RenderTarget],
+    renders: dict[str, list[dict[str, object]] | None],
+) -> list[dict[str, object]]:
+    """Collect the provider objects a consumer must see without owning their findings."""
+    # These consumers reference objects rendered by a different Helm source.
+    # Only the actual provider object is context; it still has its own gate.
+    peers: list[dict[str, object]] = []
+    link = RELEASE_PEERS.get(target["id"])
+    if link:
+        peer_id, kind, name = link
+        peer = next(t for t in selected if t["id"] == peer_id)
+        if peer_id not in renders:
+            renders[peer_id] = render(peer)
+        rendered = renders[peer_id]
+        peers = [
+            doc
+            for doc in rendered or []
+            if doc["kind"] == kind and plain(view(doc["metadata"])["name"]) == name
+        ]
+    return peers
+
+
+def object_findings(
+    *,
+    target: RenderTarget,
+    resources: Iterable[object],
+    validate: bool,
+) -> tuple[list[Finding], list[str]]:
+    """Validate every rendered object for schema, identity and Homelab policy."""
+    findings: list[Finding] = []
+    inventory: list[str] = []
+    seen: set[str] = set()
+    for resource in resources:
+        if (
+            not isinstance(resource, dict)
+            or not {"apiVersion", "kind", "metadata"} <= resource.keys()
+        ):
+            msg = "Rendered output is not a Kubernetes object"
+            raise ValueError(msg)
+        rendered = cast("RenderedObject", resource)
+        key = identity_key(target=target, resource=rendered)
+        if key in seen:
+            findings.append(
+                finding(
+                    "duplicate-object",
+                    target["source"],
+                    1,
+                    "Duplicate rendered object identity",
+                    key,
+                )
+            )
+        seen.add(key)
+        inventory.append(schema_name(resource))
+        findings.extend(
+            schema_findings(target=target, resource=rendered, key=key, validate=validate)
+        )
+        findings.extend(policy_findings(target=target, resource=rendered, key=key))
+    return findings, inventory
+
+
+def check(*, validate: bool = True) -> tuple[list[Finding], int, list[str]]:
+    """Render every offline target and check it fully for schema and policy drift."""
     selected = targets()
     if not selected:
         msg = "No local chart targets"
         raise ValueError(msg)
-    findings = []
-    inventory = []
-    renders = {}
+    findings: list[Finding] = []
+    inventory: list[str] = []
+    renders: dict[str, list[dict[str, object]] | None] = {}
     for target in selected:
         source = target["source"]
         lint = command(
@@ -486,60 +591,26 @@ def check(*, validate=True):
             # Each real parent's complete cached render goes through the normal
             # schema, identity, policy and kube-linter checks under its own ID.
             continue
-        peers = []
-        # These consumers reference objects rendered by a different Helm source.
-        # Only the actual provider object is context; it still has its own gate.
-        link = RELEASE_PEERS.get(target["id"])
-        if link:
-            peer_id, kind, name = link
-            peer = next(t for t in selected if t["id"] == peer_id)
-            if peer_id not in renders:
-                renders[peer_id] = render(peer)
-            peers = [
-                doc
-                for doc in renders[peer_id] or []
-                if doc["kind"] == kind and doc["metadata"]["name"] == name
-            ]
+        peers = context_peers(target, selected, renders)
         if target["id"] == "authentik-0":
             peers = authentik_accounts()
             # Do not discard the foundation accounts' own lint diagnostics.
-            foundation = {
+            foundation: dict[str, object] = {
                 "id": "authentik-foundation",
                 "source": "deploy/authentik/foundation.yaml",
             }
             findings.extend(kube_lint(foundation, peers) if peers else [])
         findings.extend(kube_lint(target, resources, peers))
-        seen = set()
-        for resource in resources:
-            if (
-                not isinstance(resource, dict)
-                or not {"apiVersion", "kind", "metadata"} <= resource.keys()
-            ):
-                msg = "Rendered output is not a Kubernetes object"
-                raise ValueError(msg)
-            resource = cast("RenderedObject", resource)
-            key = identity_key(target=target, resource=resource)
-            if key in seen:
-                findings.append(
-                    finding(
-                        "duplicate-object",
-                        source,
-                        1,
-                        "Duplicate rendered object identity",
-                        key,
-                    )
-                )
-            seen.add(key)
-            inventory.append(schema_name(resource))
-            findings.extend(
-                schema_findings(target=target, resource=resource, key=key, validate=validate)
-            )
-            findings.extend(policy_findings(target=target, resource=resource, key=key))
+        object_findings_results = object_findings(
+            target=target, resources=resources, validate=validate
+        )
+        findings.extend(object_findings_results[0])
+        inventory.extend(object_findings_results[1])
     return findings, len(selected), sorted(set(inventory))
 
 
-def main():
-    """Execute main."""
+def main() -> int:
+    """Render and check every offline chart target, writing the manifests report."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--schema-inventory", action="store_true")
     args = parser.parse_args()

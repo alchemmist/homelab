@@ -1,4 +1,4 @@
-"""Lint support."""
+"""Lint support for workflow CI scripts and SARIF tool output."""
 
 from __future__ import annotations
 
@@ -7,46 +7,60 @@ import json
 import re
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlparse
 
+import yaml
+
+from ci.quality.closed_root_backend import entries, plain, view, whole
 from ci.quality.common import ROOT, command, finding
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Mapping
+
+    from ci.quality.common import Finding
+
 GITHUB_EXPR = re.compile(r"\$\{\{.*?\}\}", re.DOTALL)
+SHELL_DIALECTS = ("bash", "sh", "dash", "ksh")
 
 
 class LintToolError(RuntimeError):
     """Raised when a lint subprocess emits output that cannot be parsed."""
 
 
-def sarif(data, prefix=""):
-    """Execute sarif."""
-    result = []
-    for run in data["runs"]:
-        for item in run.get("results", []):
-            location = item.get("locations", [])[0]["physicalLocation"]
-            path = unquote(location["artifactLocation"]["uri"])
+def sarif(data: Mapping[str, object], prefix: str = "") -> list[Finding]:
+    """Convert a SARIF tool report into stable findings under the repo root."""
+    result: list[Finding] = []
+    for raw_run in entries(data["runs"]):
+        run = view(raw_run)
+        for raw_item in entries(run.get("results", [])):
+            item = view(raw_item)
+            location = view(view(entries(item["locations"])[0])["physicalLocation"])
+            artifact = view(location["artifactLocation"])
+            path = unquote(plain(artifact["uri"]))
             if path.startswith("file:"):
                 path = urlparse(path).path
             if not Path(path).is_absolute() and not (ROOT / path).is_file():
                 path = str(Path(prefix) / path)
-            rule = item["ruleId"]
-            line = location.get("region", {}).get("startLine", 1)
+            rule = plain(item["ruleId"])
+            region = location.get("region")
+            line = 1 if region is None else whole(view(region)["startLine"])
             result.append(finding(rule, path, line, f"{rule}: inspect this source location."))
     return result
 
 
-def shell_dialect(spec):
-    """Execute shell_dialect."""
-    token = spec.split()[0]
-    if token in {"bash", "sh", "dash", "ksh"}:
+def shell_dialect(spec: str) -> str | None:
+    """Classify a workflow `shell:` spec into a shellcheck dialect or python."""
+    token = spec.split(maxsplit=1)[0]
+    if token in SHELL_DIALECTS:
         return token
     if token in {"python", "python3"}:
         return "python"
     return None
 
 
-def walk_runs(node, shell="bash"):
-    """Execute walk_runs."""
+def walk_runs(node: object, shell: str = "bash") -> Iterator[tuple[str, str]]:
+    """Yield every inline `run:` script with the shell dialect declared around it."""
     if isinstance(node, dict):
         current = node["shell"] if isinstance(node.get("shell"), str) else shell
         script = node.get("run")
@@ -60,18 +74,16 @@ def walk_runs(node, shell="bash"):
             yield from walk_runs(item, shell)
 
 
-def workflow_runs(names):
-    """Execute workflow_runs."""
-    import yaml
-
-    result = []
+def workflow_runs(names: list[str]) -> list[tuple[str, str, str]]:
+    """Collect inline run scripts from active GitHub workflow files."""
+    result: list[tuple[str, str, str]] = []
     for name in names:
         if not name.startswith(".github/") or not name.endswith((".yml", ".yaml")):
             continue
         if "/templates/" in name:
             continue
         try:
-            document = yaml.safe_load((ROOT / name).read_text())
+            document: object = yaml.safe_load((ROOT / name).read_text())
         except yaml.YAMLError:
             continue
         for spec, script in walk_runs(document):
@@ -79,19 +91,19 @@ def workflow_runs(names):
     return result
 
 
-def workflow_files(names):
-    """Execute workflow_files."""
+def workflow_files(names: list[str]) -> list[str]:
+    """List the first-party workflow files among the passed tracked names."""
     return [
         p for p in names if p.startswith(".github/workflows/") and p.endswith((".yml", ".yaml"))
     ]
 
 
-def workflow_script_findings(names, kind):
-    """Execute workflow_script_findings."""
-    result = []
-    grouped = {"bash": [], "sh": [], "dash": [], "ksh": []}
+def workflow_script_findings(names: list[str], kind: str) -> list[Finding]:
+    """Lint inline workflow scripts with their pinned parser (shellcheck or ast)."""
+    result: list[Finding] = []
+    grouped: dict[str, list[str]] = {dialect: [] for dialect in SHELL_DIALECTS}
     with tempfile.TemporaryDirectory(prefix="homelab-shellcheck-") as temp:
-        labels = {}
+        labels: dict[str, str] = {}
         for name, spec, script in workflow_runs(names):
             dialect = shell_dialect(spec)
             if dialect == "python":
@@ -144,10 +156,13 @@ def workflow_script_findings(names, kind):
                 allowed=(0, 1),
                 timeout=180,
             )
-            for item in json.loads(process.stdout.strip() or "[]"):
+            report: object = json.loads(process.stdout.strip() or "[]")
+            rows = report if isinstance(report, list) else []
+            for raw_report in rows:
+                item = view(raw_report)
                 source = labels.get(
-                    str(Path(item["file"]).resolve()),
-                    labels.get(item["file"], item["file"]),
+                    str(Path(plain(item["file"])).resolve()),
+                    labels.get(plain(item["file"]), plain(item["file"])),
                 )
                 result.append(
                     finding(
@@ -155,7 +170,7 @@ def workflow_script_findings(names, kind):
                         source,
                         1,
                         f"Inline workflow script line {item['line']}: {item['message']}",
-                        source + "\n" + item["message"],
+                        source + "\n" + plain(item["message"]),
                     )
                 )
     return result

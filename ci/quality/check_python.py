@@ -16,15 +16,18 @@ from ci.quality.common import ROOT, command, finding
 from ci.quality.lint_support import LintToolError, workflow_script_findings
 from ci.quality.runner import run
 
+MYPY_COMPLETE_EXIT_CODES = (0, 1)
+MYPY_SYNTAX_EXIT = 2
+
 MYPY_ERROR = re.compile(
     r"^(?P<path>.+?):(?P<line>\d+):(?:\d+:)? (?P<level>error|warning): "
     r"(?P<message>.*?)(?:\s+\[(?P<code>[A-Za-z0-9_-]+)\])?$"
 )
 
 
-def parse_mypy(text):
-    """Execute parse_mypy."""
-    result = []
+def parse_mypy(text: str) -> list[Finding]:
+    """Turn raw mypy output lines into stable findings, defaulting the rule to mypy."""
+    result: list[Finding] = []
     for line in text.splitlines():
         match = MYPY_ERROR.match(line)
         if not match:
@@ -40,8 +43,8 @@ def parse_mypy(text):
     return result
 
 
-def mypy_argv(files):
-    """Execute mypy_argv."""
+def mypy_argv(files: list[str]) -> list[str]:
+    """Build the reviewed strict-mypy command line for the given files."""
     return [
         "mypy",
         "--config-file",
@@ -57,7 +60,14 @@ def mypy_argv(files):
     ]
 
 
-def mypy_status(parsed, code, text) -> str:
+FATAL_OUTPUT_MARKERS = (
+    "Duplicate module",
+    "Traceback (most recent call last)",
+    "INTERNAL ERROR",
+)
+
+
+def mypy_status(parsed: list[Finding], code: int, text: str) -> str:
     """Separate a finished type-check from a fatal run that did not cover its files."""
     if any(
         marker in text
@@ -68,25 +78,25 @@ def mypy_status(parsed, code, text) -> str:
         )
     ):
         return "incomplete"
-    if code in (0, 1):
+    if code in MYPY_COMPLETE_EXIT_CODES:
         return "complete"
-    if code == 2 and parsed and all(item["ruleId"] == "syntax" for item in parsed):
+    if code == MYPY_SYNTAX_EXIT and parsed and all(item["ruleId"] == "syntax" for item in parsed):
         return "syntax"
     return "incomplete"
 
 
-def mypy_invoke(files, timeout):
-    """Execute mypy_invoke."""
+def mypy_invoke(files: list[str], timeout: int) -> tuple[list[Finding], str]:
+    """Run mypy once and classify its run as complete, syntax-only, or incomplete."""
     process = command(mypy_argv(files), allowed=(0, 1, 2), timeout=timeout)
     parsed = parse_mypy(process.stdout) + parse_mypy(process.stderr)
     text = process.stdout + "\n" + process.stderr
     return parsed, mypy_status(parsed, process.returncode, text)
 
 
-def python_syntax_findings(files):
+def python_syntax_findings(files: list[str]) -> tuple[list[Finding], list[str]]:
     """Real parser failures. They must not abort type-checking of every other file."""
-    findings = []
-    clean = []
+    findings: list[Finding] = []
+    clean: list[str] = []
     for name in files:
         source = (ROOT / name).read_text()
         try:
@@ -106,8 +116,8 @@ def python_syntax_findings(files):
     return findings, clean
 
 
-def mypy_on(files, timeout):
-    """Execute mypy_on."""
+def mypy_on(files: list[str], timeout: int) -> list[Finding]:
+    """Type-check files, retrying smaller groups instead of keeping a partial report."""
     if not files:
         return []
     parsed, status = mypy_invoke(files, timeout)
@@ -118,7 +128,7 @@ def mypy_on(files, timeout):
             return parsed
         msg = "mypy coverage incomplete"
         raise RuntimeError(msg)
-    groups = {}
+    groups: dict[str, list[str]] = {}
     for name in files:
         groups.setdefault(str(Path(name).parent), []).append(name)
     if len(groups) == 1 or len(groups) == len(files):
@@ -132,8 +142,8 @@ def mypy_on(files, timeout):
     return result
 
 
-def mypy_findings(files):
-    """Execute mypy_findings."""
+def mypy_findings(files: list[str]) -> list[Finding]:
+    """Combine syntax findings with a full type-check of every remaining file."""
     syntax, remaining = python_syntax_findings(files)
     syntax_names = {item["location"]["path"] for item in syntax}
     if syntax_names | set(remaining) != set(files) or syntax_names & set(remaining):
@@ -143,14 +153,14 @@ def mypy_findings(files):
     return syntax + mypy_on(remaining, 2400)
 
 
-def format_findings(files):
-    """Execute format_findings."""
+def format_findings(files: list[str]) -> list[Finding]:
+    """Report ruff format parse failures and would-reformat files."""
     process = command(
         ["ruff", "format", "--check", "--config", "ci/quality/ruff.toml", *files],
         allowed=(0, 1, 2),
         timeout=300,
     )
-    result = []
+    result: list[Finding] = []
     for line in process.stderr.splitlines():
         marker = "Failed to parse "
         if marker not in line:
