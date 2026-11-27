@@ -172,3 +172,36 @@ def test_implicit_priority_is_from_source_not_rewritten_matcher_length() -> None
     )
     with pytest.raises(ValueError):
         source_priority(host, path, "Prefix", strict_prefix=None)
+
+
+def test_path_diff_reports_winning_auth_owner_and_ties_not_just_http_service():
+    from ci.quality.public_path_diff import path_diff
+
+    rows = [
+        {
+            "host": "site.test",
+            "path": "/",
+            "pathType": "Prefix",
+            "owner": "site/ui",
+            "service": "site/app",
+            "priority": None,
+        },
+        {
+            "host": "site.test",
+            "path": "/webhook",
+            "pathType": "Prefix",
+            "owner": "site/machine",
+            "service": "site/app",
+            "priority": "200",
+        },
+    ]
+    report = path_diff(rows, source_strict=False)
+    (one,) = report
+    assert (
+        one["witness"] == "/webhook-probe"
+        and one["original"] == [rows[1]]
+        and one["candidate"] == [rows[0]]
+    )
+    assert not path_diff(rows, source_strict=True)
+    rows.append({**rows[1], "owner": "site/other"})
+    assert any(len(f["candidate"]) == 2 for f in path_diff(rows, source_strict=True))

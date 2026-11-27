@@ -282,3 +282,21 @@ preserving match scope**. Do not assume either setting on a live controller
 from this fixture. Establish the existing mode, compare both boundary paths
 and precedence, and require owner review of differences. Unreviewed ties
 between overlapping owners must not depend on router names or load order.
+
+Run `uv run python -m ci.quality.public_path_diff --source-prefix character`
+(or `segment`) on the JSON from `public_backend_contract`. Use the route set
+of the controller being compared; the full catalog does not describe each
+legacy controller's discovery scope. The mode is mandatory: this tool samples
+boundary paths, freezes original priorities and reports all highest-priority
+rows rather than choosing a winner on a tie. Exit 1 means changed winners or
+ties, not necessarily differing backends; exit 2 on incomplete inventory. An
+empty result is not exhaustive, does not model middleware or application auth,
+and is not permission to install a generated configuration.
+
+Applied to the two offline rendered n8n Ingresses: assuming a character-prefix
+source produced 12 flagged witnesses, six changing winning Ingress owner and
+eight with original equal-priority ties (categories overlap). Assuming a
+segment-prefix source produced none. The machine and UI Ingress can point to
+the same Service: comparing only service names would miss the difference. These
+are conditional comparisons, not claims about live n8n reachability or an
+actual authentication bypass. No synthetic webhook or callback was sent.
