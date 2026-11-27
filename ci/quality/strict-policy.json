@@ -317,7 +317,7 @@
     "charts/rancher",
     "deploy/wiki-runtime/chart"
   ],
-  "reviewedExceptionDigest": "2e0a9d901092db421597e8037311f14b215a7a5f3193567f4ac93b0316fce978",
+  "reviewedExceptionDigest": "fdbf4b83755f7ce568da4b53a20b5d23dfb4fa882728e8c1a5def79055935481",
   "frozenCompatibility": {
     "manifest": "charts/spi-triage/LEGACY-SOURCE-MANIFEST.json",
     "sha256": "347da7660db675cbed3b48f2597a509546123ad3444e70ed08570895e1abd7fe",

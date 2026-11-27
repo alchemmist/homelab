@@ -179,6 +179,17 @@ def _digest(name: str) -> str:
     module = ast.parse(source)
     for node in module.body:
         if isinstance(node, ast.FunctionDef) and node.name == name:
+            if name == "nonsecret_tokenizer_option":
+                # SPI was moved in 171a5fdea. Normalize only that one literal
+                # before comparing with the frozen pre-move executable AST.
+                paths = [
+                    item
+                    for item in ast.walk(node)
+                    if isinstance(item, ast.Constant)
+                    and item.value == "services/spi/tokenizer/Dockerfile"
+                ]
+                assert len(paths) == 1, "Expected the single relocated tokenizer recipe"
+                paths[0].value = "services/spi-tokenizer/Dockerfile"
             if name == "_distribution_fields":
                 expected = ast.parse('"skip_reason" in value', mode="eval").body
                 guards = [

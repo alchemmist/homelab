@@ -37,6 +37,7 @@
       "tests/test_metrics_disk.py",
       "tests/test_moscow_return_worker.py",
       "tests/test_n8n_failure_alert_policy.py",
+      "tests/test_n8n_oidc.py",
       "tests/test_netbird_node_ansible.py",
       "tests/test_network_dashboard.py",
       "tests/test_observer_access.py",

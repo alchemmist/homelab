@@ -539,11 +539,16 @@ class RolloutRegressionTests(unittest.TestCase):
         )
         assert "proxy" not in services["n8n"]
         assert "uptime-kuma" not in services
-        resources = list(
-            yaml.safe_load_all((ROOT / "charts/n8n/templates/access.yaml").read_text())
+        import subprocess
+
+        rendered = subprocess.check_output(
+            ["helm", "template", "n8n", str(ROOT / "charts/n8n"),
+             "--show-only", "templates/access.yaml"], text=True,
         )
+        resources = list(yaml.safe_load_all(rendered))
         assert len(resources) == 1
         machine = resources[0]
+        assert "traefik.ingress.kubernetes.io/router.middlewares" not in machine["metadata"]["annotations"]
         assert machine["metadata"]["namespace"] == "automation"
         for path in machine["spec"]["rules"][0]["http"]["paths"]:
             assert path["backend"]["service"]["name"] == "n8n"
