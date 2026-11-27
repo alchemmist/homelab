@@ -1,4 +1,5 @@
 ---
+publicStatusHost: ""
 host: status.alchemmist.xyz
 tlsSecret: uptime-kuma-tls
 clusterIssuer: letsencrypt-http01

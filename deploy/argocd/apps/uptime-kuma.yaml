@@ -14,7 +14,9 @@ spec:
     path: charts/uptime-kuma
     helm:
       releaseName: uptime-kuma
-      parameters: []
+      parameters:
+        - name: publicStatusHost
+          value: status.alchemmist.xyz
   destination:
     namespace: uptime-kuma
     server: https://kubernetes.default.svc
