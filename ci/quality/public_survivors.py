@@ -24,6 +24,8 @@ def cases(catalog: dict) -> dict[tuple[str, str, str], str]:
                     state = "dedicated VPN path"
                 elif policy.get("route") == "fixed-relay":
                     state = "fixed relay"
+                elif policy.get("dns") == "external":
+                    state = "external DNS; not a self-IP case"
                 else:
                     state = "unverified"
                 rows[ns, host, entry] = state
