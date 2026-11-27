@@ -15,6 +15,7 @@ import runpy
 
 import yaml
 
+from ci.quality.closed_root_owners import eligible, owner_render
 from ci.quality.public_web import CATALOG, ROOT
 
 OWNER = "www"
@@ -59,6 +60,8 @@ def rehearse(catalog, site, serial, digest):
         "tlsSourceName": "blog-tls",
     }:
         raise ValueError("unreviewed ordinary name")
+    if not eligible(owner_render(owner="blog"), catalog, owner="blog"):
+        raise ValueError("current blog release no longer admits the reviewed www route")
     ip = str(ipaddress.IPv4Address(catalog["replicas"][site]["publicIP"]))
     render = runpy.run_path(str(ROOT / "ansible/scripts/public_dns_zone.py"))["render"]
     result = None

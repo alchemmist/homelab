@@ -56,3 +56,17 @@ def test_preserve_order_and_do_not_infer_unique_health_from_identical_bytes():
             "192.0.2.2",
             42,
         )
+
+
+def test_dns_rehearsal_rejects_changed_owner_before_matching_known_bytes(monkeypatch):
+    cat = yaml.safe_load(audit.CATALOG.read_text())
+    docs = audit.owner_render(owner="blog")
+    ing = next(d for d in docs if d["kind"] == "Ingress")
+    ing["spec"]["rules"][1]["http"]["paths"][0]["path"] = "/posts"
+    monkeypatch.setattr(audit, "owner_render", lambda *, owner: docs)
+    render = runpy.run_path(str(audit.ROOT / "ansible/scripts/public_dns_zone.py"))[
+        "render"
+    ]
+    digest = hashlib.sha256(render(42, True, True).encode()).hexdigest()
+    with pytest.raises(ValueError, match="blog release"):
+        audit.rehearse(cat, "home", 42, digest)

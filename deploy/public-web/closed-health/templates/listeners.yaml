@@ -4,7 +4,7 @@
 {{- $ing := .Values.ingress | default dict -}}
 {{- $svc := .Values.service | default dict -}}
 {{- $pin := dig "blog" $host (dict) .Values.hosts -}}
-{{- $blog := and (eq (get $pin "dns") "managed") (eq (get $pin "tlsSourceName") "blog-tls") (or (not (hasKey $pin "route")) (eq (get $pin "route") "web")) (kindIs "bool" $ing.publicWeb) $ing.publicWeb (eq $ing.className "traefik") (kindIs "slice" $ing.hosts) (has $host $ing.hosts) (eq $ing.tlsSecretName "blog-tls") (eq (toJson $svc.port) "80") (eq (toJson $svc.targetPort) "8080") -}}
+{{- $blog := and (kindIs "bool" .Values.closedBlog) .Values.closedBlog (eq (get $pin "dns") "managed") (eq (get $pin "tlsSourceName") "blog-tls") (or (not (hasKey $pin "route")) (eq (get $pin "route") "web")) (kindIs "bool" $ing.publicWeb) $ing.publicWeb (eq $ing.className "traefik") (kindIs "slice" $ing.hosts) (has $host $ing.hosts) (eq $ing.tlsSecretName "blog-tls") (eq (toJson $svc.port) "80") (eq (toJson $svc.targetPort) "8080") -}}
 {{- $fqPin := dig "format-quorum" "fq.alchemmist.xyz" (dict) .Values.hosts -}}
 {{- $fq := and (kindIs "bool" .Values.closedFormatQuorum) .Values.closedFormatQuorum (deepEqual $fqPin (dict "dns" "managed" "tlsSourceName" "format-quorum-tls")) -}}
 {{- $wikiPin := dig "wiki" "wiki.socrat.alchemmist.xyz" (dict) .Values.hosts -}}
