@@ -7,16 +7,22 @@ import json
 HOST = "fq.alchemmist.xyz"
 LIMIT = 2048
 PATH = "/api/format"
+MAX_PORT = 65535
+MAX_LENGTH_DIGITS = 5
 
 
-def _unique(pairs):
+def _unique(pairs: list[tuple[str, object]]) -> object:
+    """Reject a response body that repeats a JSON key."""
     obj = dict(pairs)
     if len(obj) != len(pairs):
-        raise ValueError("duplicate response field")
+        reason = "duplicate response field"
+        raise ValueError(reason)
     return obj
 
 
-def matches(response, expected_status, expected):
+def matches(
+    response: http.client.HTTPResponse, expected_status: int, expected: dict[str, object]
+) -> bool:
     """Require the exact bounded JSON result; redirects, echoes and partial bodies fail."""
     if (
         response.status != expected_status
@@ -28,7 +34,7 @@ def matches(response, expected_status, expected):
     if length is not None and (
         not length.isascii()
         or not length.isdecimal()
-        or len(length) > 5
+        or len(length) > MAX_LENGTH_DIGITS
         or int(length) > LIMIT
         or response.getheader("Transfer-Encoding") is not None
     ):
@@ -37,14 +43,17 @@ def matches(response, expected_status, expected):
     if len(raw) > LIMIT or (length is not None and len(raw) != int(length)):
         return False
     try:
-        return json.loads(raw.decode("utf-8"), object_pairs_hook=_unique) == expected
+        decoded = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique)
+        return bool(decoded == expected)
     except (ValueError, RecursionError):
         return False
 
 
-def probe(port):
-    if type(port) is not int or not 1 <= port <= 65535:
-        raise ValueError("invalid loopback port")
+def probe(port: int) -> bool:
+    """Format two fixed snippets over the loopback forward and verify results."""
+    if type(port) is not int or not 1 <= port <= MAX_PORT:
+        reason = "invalid loopback port"
+        raise ValueError(reason)
     # Per-request config avoids looking up or initializing stored configuration.
     for code, expected in [
         ("int   value=1;", "int value = 1;"),
@@ -77,7 +86,8 @@ def probe(port):
     return True
 
 
-def main():
+def main() -> int:
+    """Run the formatter probe from the CLI and report one exit status."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--local-port", type=int, required=True)
     args = parser.parse_args()
