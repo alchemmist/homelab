@@ -295,3 +295,76 @@ def test_webhook_pin_is_separate_from_three_working_web_paths():
     for settings in [(bot.URL, ips["home"]), ("https://other.invalid", ips["nl"])]:
         with pytest.raises(ValueError):
             bot.pin(ips, values, settings)
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        None,
+        "wrong-origin",
+        "wrong-callback",
+        "plain",
+        "reused-state",
+        "reused-challenge",
+        "open-auth",
+        "duplicate",
+        "extra-scope",
+    ],
+)
+def test_openhands_public_auth_flow_never_follows_or_replays(fault, monkeypatch):
+    from urllib.parse import urlencode
+
+    from ci.quality import openhands_public_auth as probe
+
+    calls = []
+
+    def run(args, **kwargs):
+        assert (
+            "--location" not in args
+            and "--insecure" not in args
+            and "--cookie" not in args
+            and args[:4] == ["curl", "--disable", "--noproxy", "*"]
+        )
+        assert args[args.index("--resolve") + 1] == probe.HOST + ":443:192.0.2.1"
+        calls.append(args[-1])
+        n = len(calls)
+        base = "https://" + probe.HOST
+        if n == 3:
+            assert args[-1] == base + "/oauth2/auth"
+            return subprocess.CompletedProcess(
+                args,
+                0,
+                b"Unauthorized\n\n"
+                + (b"200" if fault == "open-auth" else b"401")
+                + b"\n",
+                b"",
+            )
+        assert args[-1] == base + "/"
+        params = {
+            "response_type": "code",
+            "client_id": "fixture",
+            "approval_prompt": "auto",
+            "scope": "openid profile groups offline_access"
+            + (" other" if fault == "extra-scope" else ""),
+            "redirect_uri": probe.CALLBACK
+            if fault != "wrong-callback"
+            else base + "/other",
+            "code_challenge_method": "plain" if fault == "plain" else "S256",
+            "state": str(1 if fault == "reused-state" else n),
+            "code_challenge": ("A" if n == 1 or fault == "reused-challenge" else "B")
+            * 43,
+        }
+        origin = (
+            "other.invalid" if fault == "wrong-origin" else "auth.socrat.alchemmist.xyz"
+        )
+        url = (
+            "https://"
+            + origin
+            + "/application/o/authorize/?"
+            + urlencode(params)
+            + ("&state=other" if fault == "duplicate" else "")
+        )
+        return subprocess.CompletedProcess(args, 0, b"\n302\n" + url.encode(), b"")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    assert (probe.check("192.0.2.1") == "matched") == (fault is None)
