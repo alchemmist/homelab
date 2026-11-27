@@ -1,5 +1,7 @@
 {{ {
   'agent_unit': vpn_failover_k3s_unit,
+  'warm_return_enabled': vpn_failover_warm_return | default(false),
+  'return_api': 'https://10.250.0.3:6443',
   'fenced_units': vpn_failover_fenced_units,
   'state_dir': vpn_failover_state,
   'failure_threshold': vpn_failover_failure_threshold,
