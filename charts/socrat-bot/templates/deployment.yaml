@@ -120,6 +120,13 @@ spec:
               value: {{ $.Values.alertmanagerUrl | quote }}
             {{- end }}
             {{- if eq $component.component "bot" }}
+            {{- if $.Values.disableLegacyApi }}
+            - {name: BOT_DISABLE_LEGACY_API, value: "true"}
+            {{- end }}
+            {{- if $.Values.publicApiEnabled }}
+            - name: BOT_API_ADMIN_SECRET
+              valueFrom: {secretKeyRef: {name: socrat-bot-api-admin, key: password}}
+            {{- end }}
             - name: TELEGRAM_WEBHOOK_URL
               value: {{ $.Values.telegram.webhookURL | quote }}
             - name: TELEGRAM_WEBHOOK_IP
