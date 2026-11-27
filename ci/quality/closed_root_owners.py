@@ -3,13 +3,18 @@
 import argparse
 import hashlib
 import json
-import subprocess
+from collections.abc import Mapping
 
 import yaml
 
 from ci.quality.closed_argocd_backend import eligible as argo_eligible
+from ci.quality.closed_root_backend import entries, plain, view
 from ci.quality.closed_status_owner import render_status
+from ci.quality.common import command
 from ci.quality.public_web import CATALOG, ROOT
+
+PINNED_OWNER_DOCS = 6
+PINNED_VENICE_DOCS = 8
 
 APP = "format-quorum"
 HOST = "fq.alchemmist.xyz"
@@ -99,11 +104,14 @@ ROOTS = {
 }
 
 
-def eligible(items, catalog, *, owner=APP):
+def eligible(
+    items: list[dict[str, object]], catalog: dict[str, object], *, owner: str = APP
+) -> bool:
     """Only translate the complete reviewed root matcher and exact upstream contract."""
     ns, name, host, pin, svc_port, target_port, selector = ROOTS[owner]
     wiki = owner == "wiki-runtime"
-    if catalog["hosts"].get(ns, {}).get(host) != {"dns": "managed", "tlsSourceName": pin}:
+    hosts = view(view(catalog["hosts"]).get(ns, {}))
+    if hosts.get(host) != {"dns": "managed", "tlsSourceName": pin}:
         return False
     if owner in {"img-proxy", "remark42"}:
         # One two-container Pod; review the nginx privacy config and VPN sidecar
@@ -137,8 +145,8 @@ def eligible(items, catalog, *, owner=APP):
                 ): "6ba92ac4527c162edec3905471eb6407d09ac8ad41b235ab12c0237bf5953f12",
             }
             extras = {("Secret", name + "-env"), ("PersistentVolumeClaim", name + "-data")}
-        keys = [(d["kind"], d["metadata"]["name"]) for d in items]
-        if len(keys) != 6 or set(keys) != set(expected) | extras | {
+        keys = [(plain(d["kind"]), plain(view(d["metadata"])["name"])) for d in items]
+        if len(keys) != PINNED_OWNER_DOCS or set(keys) != set(expected) | extras | {
             ("Ingress", name),
             ("Service", name),
         }:
@@ -170,8 +178,8 @@ def eligible(items, catalog, *, owner=APP):
                 candidate,
             ): "3cc89643dcaa890398f1cbd1c4ad5a210a22c0a433d03040b5027f91ed5dbec4",
         }
-        keys = [(d["kind"], d["metadata"]["name"]) for d in items]
-        if len(keys) != 8 or set(keys) != set(reviewed) | {
+        keys = [(plain(d["kind"]), plain(view(d["metadata"])["name"])) for d in items]
+        if len(keys) != PINNED_VENICE_DOCS or set(keys) != set(reviewed) | {
             ("Ingress", name),
             ("Service", name),
             ("ServiceAccount", name),
@@ -188,49 +196,62 @@ def eligible(items, catalog, *, owner=APP):
                 != reviewed[key]
             ):
                 return False
-    if owner == "umami" and sorted((d["kind"], d["metadata"]["name"]) for d in items) != [
+    if owner == "umami" and sorted(
+        (plain(d["kind"]), plain(view(d["metadata"])["name"])) for d in items
+    ) != [
         ("Deployment", name),
         ("Ingress", name),
         ("Service", name),
     ]:
         return False
-    if owner == "blog" and sorted((d["kind"], d["metadata"]["name"]) for d in items) != [
+    if owner == "blog" and sorted(
+        (plain(d["kind"]), plain(view(d["metadata"])["name"])) for d in items
+    ) != [
         ("Deployment", name),
         ("Ingress", name),
         ("Service", name),
         ("ServiceAccount", name),
     ]:
         return False
-    owners = [d for d in items if d["kind"] == "Ingress"]
-    services = [d for d in items if d["kind"] == "Service" and d["metadata"]["name"] == name]
+    owners = [view(d) for d in items if plain(d["kind"]) == "Ingress"]
+    services = [
+        view(d)
+        for d in items
+        if plain(d["kind"]) == "Service" and plain(view(d["metadata"])["name"]) == name
+    ]
     if (
         len(owners) != 1
         or len(services) != 1
         or any(
-            d["kind"] in {"IngressRoute", "HTTPRoute", "IngressRouteTCP", "TLSRoute"} for d in items
+            plain(d["kind"]) in {"IngressRoute", "HTTPRoute", "IngressRouteTCP", "TLSRoute"}
+            for d in items
         )
     ):
         return False
     ing, svc = owners[0], services[0]
     if any(
-        d["metadata"]["name"] != name or d["metadata"].get("namespace", ns if wiki else None) != ns
+        plain(view(d["metadata"])["name"]) != name
+        or view(d["metadata"]).get("namespace", ns if wiki else None) != ns
         for d in (ing, svc)
     ):
         return False
     if (
-        target_port == "http" and owner != "remark42" or owner in {"lms", "blog"}
+        (target_port == "http" and owner != "remark42") or owner in {"lms", "blog"}
     ) and not _named_runtime(items, ns, name, selector, host, wiki=wiki):
         return False
     port = {"name": "http"} if wiki else {"number": svc_port}
     # Validate the complete owner Ingress. Only www is emitted by the closed chart.
     source_hosts = ["alchemmist.xyz", host] if owner == "blog" else [host]
-    return (
+    ing_meta = view(ing["metadata"])
+    svc_meta = view(svc["metadata"])
+    ing_spec = view(ing["spec"])
+    svc_spec = view(svc["spec"])
+    return bool(
         ing["apiVersion"] == "networking.k8s.io/v1"
         and svc["apiVersion"] == "v1"
-        and ing["metadata"].get("labels", {}).get("homelab.alchemmist.xyz/public-web") == "true"
-        and ing["metadata"].get("annotations")
-        == {"cert-manager.io/cluster-issuer": "letsencrypt-http01"}
-        and ing["spec"]
+        and view(ing_meta.get("labels", {})).get("homelab.alchemmist.xyz/public-web") == "true"
+        and ing_meta.get("annotations") == {"cert-manager.io/cluster-issuer": "letsencrypt-http01"}
+        and ing_spec
         == {
             "ingressClassName": "traefik",
             "tls": [{"hosts": source_hosts, "secretName": pin}],
@@ -250,8 +271,8 @@ def eligible(items, catalog, *, owner=APP):
                 for source_host in source_hosts
             ],
         }
-        and not svc["metadata"].get("annotations")
-        and svc["spec"]
+        and not svc_meta.get("annotations")
+        and svc_spec
         == {
             "selector": selector,
             "ports": [
@@ -270,58 +291,85 @@ def eligible(items, catalog, *, owner=APP):
     )
 
 
-def _named_runtime(items, ns, name, selector, host, *, wiki):
-    workloads = [
-        d
-        for d in items
-        if d["kind"] in {"Deployment", "DaemonSet", "StatefulSet", "Job", "ReplicaSet"}
-        and d["metadata"].get("namespace", ns) == ns
-        and all(
-            d["spec"]["template"].get("metadata", {}).get("labels", {}).get(k) == v
-            for k, v in selector.items()
-        )
-    ]
+def _carries_labels(item: dict[str, object], selector: Mapping[str, object]) -> bool:
+    """Compare the workload template labels to the reviewed selector."""
+    template = view(view(item["spec"])["template"])
+    labels = view(view(template.get("metadata", {})).get("labels", {}))
+    return all(labels.get(k) == v for k, v in selector.items())
+
+
+def _named_runtime(
+    items: list[dict[str, object]],
+    ns: str,
+    name: str,
+    selector: Mapping[str, object],
+    host: str,
+    *,
+    wiki: bool,
+) -> bool:
+    """Check the single reviewed workload that may receive public traffic."""
+    workloads = []
+    kinds = {"Deployment", "DaemonSet", "StatefulSet", "Job", "ReplicaSet"}
+    for doc in items:
+        item = view(doc)
+        if (
+            plain(item["kind"]) in kinds
+            and view(item["metadata"]).get("namespace", ns) == ns
+            and _carries_labels(item, selector)
+        ):
+            workloads.append(item)
     if (
         len(workloads) != 1
-        or workloads[0]["kind"] != "Deployment"
-        or workloads[0]["metadata"]["name"] != name
+        or plain(workloads[0]["kind"]) != "Deployment"
+        or plain(view(workloads[0]["metadata"])["name"]) != name
     ):
         return False
-    template = workloads[0]["spec"]["template"]
-    pod = template["spec"]
-    containers = pod["containers"]
-    if template["metadata"]["labels"] != selector or pod.get("hostNetwork") or len(containers) != 1:
+    template = view(view(workloads[0]["spec"])["template"])
+    pod = view(template["spec"])
+    containers = entries(pod["containers"])
+    if (
+        view(template["metadata"])["labels"] != selector
+        or pod.get("hostNetwork")
+        or len(containers) != 1
+    ):
         return False
-    c = containers[0]
+    c = view(containers[0])
     if ns == "blog":
-        return c["name"] == name and c.get("ports") == [{"containerPort": 8080}]
+        return bool(c["name"] == name and c.get("ports") == [{"containerPort": 8080}])
     if ns == "umami":
-        return (
+        return bool(
             c["name"] == name
             and c.get("ports") == [{"name": "http", "containerPort": 3000}]
             and not c.get("args")
             and not c.get("command")
         )
     if ns == "wishlist":
-        return c["name"] == ns and c.get("ports") == [
-            {"name": "http", "containerPort": 8000},
-            {"name": "metrics", "containerPort": 8001},
-        ]
+        return bool(
+            c["name"] == ns
+            and c.get("ports")
+            == [
+                {"name": "http", "containerPort": 8000},
+                {"name": "metrics", "containerPort": 8001},
+            ]
+        )
     if ns == "lms":
-        return c["name"] == ns and c.get("ports") == [{"containerPort": 8000}]
+        return bool(c["name"] == ns and c.get("ports") == [{"containerPort": 8000}])
     if not wiki:
-        return c["name"] == "front" and c.get("ports") == [{"name": "http", "containerPort": 8000}]
-    return (
+        return bool(
+            c["name"] == "front" and c.get("ports") == [{"name": "http", "containerPort": 8000}]
+        )
+    return bool(
         c["name"] == "wiki"
         and c.get("ports") == [{"name": "http", "containerPort": 8080}]
-        and [v for v in c["env"] if v["name"] == "WIKI_PUBLIC"]
+        and [view(v) for v in entries(c["env"]) if view(v)["name"] == "WIKI_PUBLIC"]
         == [{"name": "WIKI_PUBLIC", "value": "true"}]
-        and [v for v in c["env"] if v["name"] == "PUBLIC_ORIGIN"]
+        and [view(v) for v in entries(c["env"]) if view(v)["name"] == "PUBLIC_ORIGIN"]
         == [{"name": "PUBLIC_ORIGIN", "value": "https://" + host}]
     )
 
 
-def owner_render(*, owner=APP):
+def owner_render(*, owner: str = APP) -> list[dict[str, object]]:
+    """Render the reviewed upstream Helm release for one root owner."""
     ns = ROOTS[owner][0]
     release = owner
     path, file = (
@@ -335,7 +383,7 @@ def owner_render(*, owner=APP):
     if owner in {"img-proxy", "umami", "remark42"}:
         files = []
     params = src.get("helm", {}).get("parameters", [])
-    reviewed_params = [[]]
+    reviewed_params: list[list[dict[str, str]]] = [[]]
     if owner in {"lms", "wishlist", "img-proxy", "umami", "remark42", "venice-api"}:
         reviewed_params.extend([[{"name": "publicWeb", "value": v}] for v in ("true", "false")])
     if (
@@ -354,18 +402,20 @@ def owner_render(*, owner=APP):
         }
         or spec["destination"] != {"namespace": ns, "server": "https://kubernetes.default.svc"}
     ):
-        raise ValueError("unreviewed owner release inputs")
+        reason = "unreviewed owner release inputs"
+        raise ValueError(reason)
     chart = ROOT / path
-    command = ["helm", "template", release, str(chart), "-n", ns]
+    argv = ["helm", "template", release, str(chart), "-n", ns]
     for value_file in files:
-        command.extend(["-f", str(chart / value_file)])
+        argv.extend(["-f", str(chart / value_file)])
     for param in params:
-        command.extend(["--set", param["name"] + "=" + param["value"]])
-    raw = subprocess.check_output(command)
+        argv.extend(["--set", param["name"] + "=" + param["value"]])
+    raw = command(argv).stdout
     return [d for d in yaml.safe_load_all(raw) if d]
 
 
-def render():
+def render() -> str:
+    """Render the complete reviewed closed-root owners YAML."""
     catalog = yaml.safe_load(CATALOG.read_text())
     bits = {
         k: eligible(owner_render(owner=w), catalog, owner=w)
@@ -387,7 +437,8 @@ def render():
     return "# Generated by python -m ci.quality.closed_root_owners\n" + yaml.safe_dump(bits)
 
 
-def main():
+def main() -> int:
+    """Check or rewrite the generated closed-root owners manifest."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()

@@ -2,14 +2,22 @@
 
 import argparse
 import hashlib
-import subprocess
 from pathlib import Path
 
 import yaml
 
 from ci.quality import public_argocd_tls
+from ci.quality.closed_root_backend import entries, view
+from ci.quality.common import command
 from ci.quality.public_web import CATALOG, ROOT
 
+SHOW_ONLY = (
+    "argocd-server/ingress",
+    "argocd-server/service",
+    "argocd-server/deployment",
+    "extra-manifests",
+)
+KIND_ORDER = ("Ingress", "Service", "Deployment", "ServersTransport")
 HOST = "argocd.socrat.alchemmist.xyz"
 SERVER = "argo-cd-argocd-server"
 TRANSPORT = "argocd-verified-tls"
@@ -21,25 +29,32 @@ VALUES_SHA256 = "54cd7c8e157592de729cc5568f6bf39fa00d8915be9b27667134fe131c9c40b
 TRANSPORT_SPEC = {"serverName": HOST, "insecureSkipVerify": False}
 
 
-def eligible(catalog):
+def eligible(catalog: dict[str, object]) -> bool:
+    """Accept only the reviewed Argo owner inputs and transport evidence."""
     try:
         owner = public_argocd_tls.owner()
     except (KeyError, ValueError, TypeError):
         return False
+    hosts = view(view(catalog["hosts"]).get("argocd", {}))
     return (
         owner == ("argocd", HOST, "argocd-server-tls")
-        and catalog["hosts"].get("argocd", {}).get(HOST)
-        == {"dns": "managed", "tlsSourceName": "argocd-server-tls"}
+        and hosts.get(HOST) == {"dns": "managed", "tlsSourceName": "argocd-server-tls"}
         and hashlib.sha256(VALUES.read_bytes()).hexdigest() == VALUES_SHA256
         and yaml.safe_load((ROOT / "deploy/argocd/server-transport.yaml").read_text())
         == yaml.safe_load(VALUES.read_text())["extraObjects"][0]
     )
 
 
-def verified_rows(ing, svc, deploy, transport):
+def verified_rows(
+    ing: dict[str, object],
+    svc: dict[str, object],
+    deploy: dict[str, object],
+    transport: dict[str, object],
+) -> bool:
+    """Check the exact owner render for the four verified upstream rows."""
     if not all(
-        o["metadata"]["name"] == name
-        and o["metadata"].get("namespace", "argocd") == "argocd"
+        view(o["metadata"])["name"] == name
+        and view(o["metadata"]).get("namespace", "argocd") == "argocd"
         and o["kind"] == kind
         for o, kind, name in (
             (ing, "Ingress", SERVER),
@@ -49,11 +64,13 @@ def verified_rows(ing, svc, deploy, transport):
         )
     ):
         return False
-    server = deploy["spec"]["template"]
-    pod = server["spec"]
+    server = view(view(deploy["spec"])["template"])
+    pod = view(server["spec"])
     backend = {"service": {"name": SERVER, "port": {"number": 443}}}
+    ing_meta = view(ing["metadata"])
+    transport_spec = view(transport["spec"])
     return (
-        ing["spec"]
+        view(ing["spec"])
         == {
             "ingressClassName": "traefik",
             "tls": [{"hosts": [HOST], "secretName": "argocd-server-tls"}],
@@ -64,18 +81,19 @@ def verified_rows(ing, svc, deploy, transport):
                 }
             ],
         }
-        and ing["metadata"].get("labels", {}).get("homelab.alchemmist.xyz/public-web") == "true"
-        and ing["metadata"].get("annotations")
-        == {"cert-manager.io/cluster-issuer": "letsencrypt-http01"}
+        and view(ing_meta.get("labels", {})).get("homelab.alchemmist.xyz/public-web") == "true"
+        and ing_meta.get("annotations") == {"cert-manager.io/cluster-issuer": "letsencrypt-http01"}
         and transport["apiVersion"] == "traefik.io/v1alpha1"
-        and transport["spec"] == TRANSPORT_SPEC
-        and transport["spec"]["insecureSkipVerify"] is False
-        and svc["metadata"].get("annotations")
+        and transport_spec == TRANSPORT_SPEC
+        and transport_spec["insecureSkipVerify"] is False
+        and view(svc["metadata"]).get("annotations")
         == {
             "traefik.ingress.kubernetes.io/service.serversscheme": "https",
-            "traefik.ingress.kubernetes.io/service.serverstransport": "argocd-argocd-verified-tls@kubernetescrd",
+            "traefik.ingress.kubernetes.io/service.serverstransport": (
+                "argocd-argocd-verified-tls@kubernetescrd"
+            ),
         }
-        and svc["spec"]
+        and view(svc["spec"])
         == {
             "type": "ClusterIP",
             "sessionAffinity": "None",
@@ -85,11 +103,11 @@ def verified_rows(ing, svc, deploy, transport):
             ],
             "selector": SELECTOR,
         }
-        and all(server["metadata"]["labels"].get(k) == v for k, v in SELECTOR.items())
+        and all(view(view(server["metadata"])["labels"]).get(k) == v for k, v in SELECTOR.items())
         and not pod.get("hostNetwork")
-        and len(pod["containers"]) == 1
-        and pod["containers"][0]["name"] == "server"
-        and pod["containers"][0]["ports"]
+        and len(entries(pod["containers"])) == 1
+        and view(entries(pod["containers"])[0])["name"] == "server"
+        and view(entries(pod["containers"])[0])["ports"]
         == [
             {"name": "server", "containerPort": 8080, "protocol": "TCP"},
             {"name": "metrics", "containerPort": 8083, "protocol": "TCP"},
@@ -97,26 +115,23 @@ def verified_rows(ing, svc, deploy, transport):
     )
 
 
-def verify(archive):
+def verify(archive: Path) -> None:
+    """Validate the external --archive render against the reviewed contract."""
     public_argocd_tls.verify(archive)
     if not eligible(yaml.safe_load(CATALOG.read_text())):
-        raise ValueError("Argo owner or external render inputs changed")
+        changed = "Argo owner or external render inputs changed"
+        raise ValueError(changed)
     args = ["helm", "template", "argo-cd", str(archive), "-n", "argocd", "-f", str(VALUES)]
-    for path in (
-        "argocd-server/ingress",
-        "argocd-server/service",
-        "argocd-server/deployment",
-        "extra-manifests",
-    ):
+    for path in SHOW_ONLY:
         args += ["--show-only", "templates/" + path + ".yaml"]
-    docs = [d for d in yaml.safe_load_all(subprocess.check_output(args)) if d]
+    docs = [d for d in yaml.safe_load_all(command(args).stdout) if d]
     rows = {d["kind"]: d for d in docs}
-    if len(docs) != 4 or len(rows) != 4:
-        raise ValueError("expected four distinct owner resources")
-    if not verified_rows(
-        *(rows[k] for k in ("Ingress", "Service", "Deployment", "ServersTransport"))
-    ):
-        raise ValueError("Argo verified upstream contract changed")
+    if len(docs) != len(SHOW_ONLY) or len(rows) != len(SHOW_ONLY):
+        missing = "expected four distinct owner resources"
+        raise ValueError(missing)
+    if not verified_rows(*(rows[k] for k in KIND_ORDER)):
+        wrong = "Argo verified upstream contract changed"
+        raise ValueError(wrong)
 
 
 if __name__ == "__main__":
