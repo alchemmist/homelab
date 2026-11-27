@@ -343,6 +343,10 @@ def test_missing_writer_destination_is_localized_and_blocks_all_reads():
     cert = copy.deepcopy(CERT)
     del cert["spec"]["secretName"]
     cert["metadata"]["name"] = "broken-writer"
-    result = compare(CAT, [ING, PATH, cert])
-    assert result["sources"] == {}
-    assert "site/broken-writer: Certificate missing secretName" in result["errors"]
+    catalog = copy.deepcopy(CAT)
+    catalog["hosts"]["site"]["app.test"]["tlsSourceName"] = "site-tls"
+    result = compare(catalog, [ING, PATH, cert])
+    assert result == {"sources": {}, "errors": [
+        "app.test: expected one Certificate writer, found 0",
+        "site/broken-writer: Certificate missing secretName",
+    ]}
