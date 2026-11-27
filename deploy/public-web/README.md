@@ -347,3 +347,9 @@ them in translation. Recognition is not approval of the address, regex, or TLS
 name and is not proof of equivalent runtime behavior. The offline unified-origin
 RustFS chart's `rustfs-browser-auth` was recognized as `forwardAuth`; no live
 CRD was fetched or changed for this check.
+
+For a named `targetPort` the EndpointSlice supplies the resolved port number;
+its port *name* identifies the Service port, not the named container port.
+Different Pods can resolve the same named target to different numbers. The
+audit does not independently inspect Pod specs or probe those sockets. A
+numeric target (including the implicit Service port default) must match exactly.
