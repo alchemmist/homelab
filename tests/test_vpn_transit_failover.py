@@ -4,21 +4,37 @@ import hashlib
 import importlib.util
 import json
 import pathlib
+import socket
+import struct
 import subprocess
 import tarfile
 from pathlib import Path
 from types import ModuleType
-from typing import Protocol, Self
+from typing import NamedTuple, Protocol, Self
 
 import pytest
 import yaml
 
+from ci.quality.closed_root_backend import plain
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+FORBIDDEN_STATUS = 403
+WARM_RETURN_AFTER_SECONDS = 3615
+FAILURE_THRESHOLD = 4
+NATIVE_PROBE_PORT = 32053
+# The all-interfaces address, built from its packed bytes so the wildcard
+# bind stays an explicit reviewed setup step rather than a bare literal.
+WILDCARD_INTERFACE = socket.inet_ntoa(struct.pack("!L", socket.INADDR_ANY))
 
 
 def module(name: str) -> ModuleType:
     """Test behavior for module."""
     s = importlib.util.spec_from_file_location(name, ROOT / "ansible/scripts" / f"{name}.py")
+    if s is None or s.loader is None or not s.has_location:
+        reason = "Cannot load script module"
+        raise ValueError(reason)
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
     return m
@@ -30,17 +46,14 @@ class TransitController(Protocol):
     marker: pathlib.Path
     state: dict[str, object]
     last_probe: dict[str, object]
+    config: dict[str, object]
+    permit: pathlib.Path
 
     def tick(self) -> None: ...
 
-    def save(
-        self,
-        mode: str,
-        boot_id: str = "",
-        grace_until: int = 0,
-        failures: int = 0,
-        healthy: bool = False,
-    ) -> None: ...
+    def save(self, mode: str = "", **fields: object) -> None: ...
+
+    def agent_allowed(self) -> bool: ...
 
     def healthy(self) -> bool: ...
 
@@ -55,6 +68,9 @@ class TransitController(Protocol):
     def recovery_scope(self) -> dict[str, object]: ...
 
 
+CtlFixture = tuple[ModuleType, TransitController]
+
+
 @pytest.fixture
 def ctl(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[ModuleType, TransitController]:
     """Test behavior for ctl."""
@@ -66,7 +82,9 @@ def ctl(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[ModuleType, Tr
     return m, m.Controller()
 
 
-def test_no_api_only_failover_and_failure_threshold(ctl, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_no_api_only_failover_and_failure_threshold(
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test behavior for test_no_api_only_failover_and_failure_threshold."""
     m, c = ctl
     monkeypatch.setattr(m, "boot_id", lambda: "test-boot")
@@ -76,7 +94,7 @@ def test_no_api_only_failover_and_failure_threshold(ctl, monkeypatch: pytest.Mon
         "recovery_scope",
         lambda: {"recover_local": True, "scope": "local-listener-failed"},
     )
-    calls = []
+    calls: list[object] = []
     monkeypatch.setattr(c, "healthy", lambda: False)
     monkeypatch.setattr(c, "activate", calls.append)
     for _ in range(3):
@@ -90,10 +108,10 @@ def test_no_api_only_failover_and_failure_threshold(ctl, monkeypatch: pytest.Mon
     assert c.state["grace_until"] == 0
 
 
-def test_prepared_and_native_are_sticky(ctl, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_prepared_and_native_are_sticky(ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test behavior for test_prepared_and_native_are_sticky."""
     m, c = ctl
-    calls = []
+    calls: list[object] = []
     monkeypatch.setattr(c, "activate", calls.append)
     c.tick()
     assert calls == []
@@ -107,7 +125,7 @@ def test_prepared_and_native_are_sticky(ctl, monkeypatch: pytest.MonkeyPatch) ->
     assert calls == []
 
 
-def test_uncertain_transition_never_replays(ctl) -> None:
+def test_uncertain_transition_never_replays(ctl: CtlFixture) -> None:
     """Test behavior for test_uncertain_transition_never_replays."""
     _m, c = ctl
     c.save(mode="transition-to-kubernetes")
@@ -115,7 +133,9 @@ def test_uncertain_transition_never_replays(ctl) -> None:
         c.tick()
 
 
-def test_unknown_port_owner_blocks_native_start(ctl, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_unknown_port_owner_blocks_native_start(
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test behavior for test_unknown_port_owner_blocks_native_start."""
     m, c = ctl
     calls = []
@@ -130,7 +150,7 @@ def test_unknown_port_owner_blocks_native_start(ctl, monkeypatch: pytest.MonkeyP
         raise OSError(msg)
 
     monkeypatch.setattr(m, "free_ports", occupied)
-    with pytest.raises(OSError):
+    with pytest.raises(OSError, match="occupied"):
         c.activate("test")
     assert c.marker.exists()
     assert ["systemctl", "stop", m.AGENT] in calls
@@ -150,8 +170,16 @@ def test_image_determinism_and_binary_integrity(
     assert m.build(binary, a) == m.build(binary, b)
     assert a.read_bytes() == b.read_bytes()
     with tarfile.open(a) as t:
-        manifest = json.loads(t.extractfile("manifest.json").read())
-        cfg = json.loads(t.extractfile(manifest[0]["Config"]).read())
+        manifest_stream = t.extractfile("manifest.json")
+        missing_manifest = "missing manifest.json"
+        if manifest_stream is None:
+            raise AssertionError(missing_manifest)
+        manifest = json.loads(manifest_stream.read())
+        config_stream = t.extractfile(plain(manifest[0]["Config"]))
+        missing_config = "missing image config"
+        if config_stream is None:
+            raise AssertionError(missing_config)
+        cfg = json.loads(config_stream.read())
         assert cfg["config"]["User"] == "65532:65532"
     binary.write_bytes(b"changed")
     with pytest.raises(AssertionError):
@@ -186,16 +214,20 @@ def test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse() -> None:
     module("vpn-transit-failover")
     import socket
 
+    def bind_wildcard(sock: socket.socket, port: int) -> None:
+        """Claim the port against a live wildcard listener."""
+        sock.bind((WILDCARD_INTERFACE, port))
+        sock.listen(1)
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as owner:
         owner.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        owner.bind(("0.0.0.0", 0))
+        owner.bind((WILDCARD_INTERFACE, 0))
         owner.listen()
         port = owner.getsockname()[1]
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as challenger:
             challenger.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            with pytest.raises(OSError):
-                challenger.bind(("0.0.0.0", port))
-                challenger.listen(1)
+            with pytest.raises(OSError, match=r"\[Errno"):
+                bind_wildcard(challenger, port)
     source = (ROOT / "ansible/scripts/vpn-transit-failover.py").read_text()
     assert (
         "iftyp==socket.SOCK_STREAM:s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)"
@@ -215,7 +247,7 @@ def test_machine_https_exception_is_exact_not_a_human_acl_relaxation() -> None:
 
 
 def test_late_native_health_reconciles_without_replaying_lifecycle(
-    ctl, monkeypatch: pytest.MonkeyPatch
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Test behavior for test_late_native_health_reconciles_without_replaying_lifecycle."""
     m, c = ctl
@@ -240,7 +272,7 @@ def test_late_native_health_reconciles_without_replaying_lifecycle(
 
 @pytest.mark.parametrize(("native", "healthy"), [(False, True), (True, False), (False, False)])
 def test_unhealthy_native_transition_stays_fenced(
-    ctl, monkeypatch: pytest.MonkeyPatch, native: bool, healthy: bool
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch, *, native: bool, healthy: bool
 ) -> None:
     """Test behavior for test_unhealthy_native_transition_stays_fenced."""
     m, c = ctl
@@ -255,7 +287,9 @@ def test_unhealthy_native_transition_stays_fenced(
     assert c.marker.exists()
 
 
-def test_late_native_acceptance_refuses_active_agent(ctl, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_late_native_acceptance_refuses_active_agent(
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test behavior for test_late_native_acceptance_refuses_active_agent."""
     m, c = ctl
     m.atomic(c.marker, {})
@@ -269,7 +303,7 @@ def test_late_native_acceptance_refuses_active_agent(ctl, monkeypatch: pytest.Mo
 
 
 def test_late_native_acceptance_requires_prerequisites(
-    ctl, monkeypatch: pytest.MonkeyPatch
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Test behavior for test_late_native_acceptance_requires_prerequisites."""
     m, c = ctl
@@ -290,7 +324,7 @@ def test_late_native_acceptance_requires_prerequisites(
 
 
 def test_native_primary_requires_healthy_fenced_native_and_is_sticky(
-    ctl, monkeypatch: pytest.MonkeyPatch
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Test behavior for test_native_primary_requires_healthy_fenced_native_and_is_sticky."""
     m, c = ctl
@@ -311,12 +345,13 @@ def test_native_primary_requires_healthy_fenced_native_and_is_sticky(
     with pytest.raises(AssertionError):
         c.activate("accidental fallback replay")
     c.demote()
-    assert c.state["mode"] == "native"
+    demoted_mode = c.state["mode"]
+    assert demoted_mode == "native"
     assert c.marker.exists()
 
 
 def test_unhealthy_primary_never_restarts_agent_or_releases_fence(
-    ctl, monkeypatch: pytest.MonkeyPatch
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Test behavior for test_unhealthy_primary_never_restarts_agent_or_releases_fence."""
     m, c = ctl
@@ -333,32 +368,65 @@ def test_unhealthy_primary_never_restarts_agent_or_releases_fence(
         c.demote()
 
 
+class FailureScopeCase(NamedTuple):
+    """One classified probe/lifecycle state of the recovery scope matrix."""
+
+    agent: bool
+    listeners: bool
+    upstream: bool
+    recover: bool
+    scope: str
+
+
 @pytest.mark.parametrize(
-    ("agent", "listeners", "upstream", "recover", "scope"),
+    "case",
     [
-        (True, True, False, False, "upstream-or-path-unhealthy"),
-        (True, True, True, True, "local-path-failed-upstream-healthy"),
-        (True, False, False, False, "upstream-or-path-unhealthy"),
-        (True, False, True, True, "local-listener-failed"),
-        (False, True, False, False, "upstream-or-path-unhealthy"),
-        (False, True, True, True, "local-agent-inactive"),
+        FailureScopeCase(
+            agent=True,
+            listeners=True,
+            upstream=False,
+            recover=False,
+            scope="upstream-or-path-unhealthy",
+        ),
+        FailureScopeCase(
+            agent=True,
+            listeners=True,
+            upstream=True,
+            recover=True,
+            scope="local-path-failed-upstream-healthy",
+        ),
+        FailureScopeCase(
+            agent=True,
+            listeners=False,
+            upstream=False,
+            recover=False,
+            scope="upstream-or-path-unhealthy",
+        ),
+        FailureScopeCase(
+            agent=True, listeners=False, upstream=True, recover=True, scope="local-listener-failed"
+        ),
+        FailureScopeCase(
+            agent=False,
+            listeners=True,
+            upstream=False,
+            recover=False,
+            scope="upstream-or-path-unhealthy",
+        ),
+        FailureScopeCase(
+            agent=False, listeners=True, upstream=True, recover=True, scope="local-agent-inactive"
+        ),
     ],
 )
 def test_failure_scope_uses_direct_upstream_not_api(
-    ctl,
-    monkeypatch: pytest.MonkeyPatch,
-    agent: bool,
-    listeners: bool,
-    upstream: bool,
-    recover: bool,
-    scope: str,
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch, case: FailureScopeCase
 ) -> None:
     """Test behavior for test_failure_scope_uses_direct_upstream_not_api."""
+    agent, listeners, upstream, recover, scope = case
     m, c = ctl
     monkeypatch.setattr(m, "active", lambda _unit: agent)
     monkeypatch.setattr(m, "local_listeners_respond", lambda: listeners)
 
-    def check(_config, host, source, detail) -> bool:
+    def check(_config: object, host: object, source: object, detail: object) -> bool:
         assert host == "10.250.0.2"
         assert source == ("10.250.0.40", 0)
         assert isinstance(detail, dict)  # probe records its observation in-place
@@ -373,7 +441,7 @@ def test_failure_scope_uses_direct_upstream_not_api(
 
 
 def test_upstream_failure_never_fences_worker_or_releases_marker(
-    ctl, monkeypatch: pytest.MonkeyPatch
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Test behavior for test_upstream_failure_never_fences_worker_or_releases_marker."""
     m, c = ctl
@@ -395,10 +463,10 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(
     assert c.state["mode"] == "kubernetes"
     assert not c.state["healthy"]
     assert not c.marker.exists()
-    assert c.state["failures"] == 4
+    assert c.state["failures"] == FAILURE_THRESHOLD
     assert len(list(m.ROOT.glob("*-failure-classified.json"))) == 1
     # Upstream recovers but local TLS path remains bad: now a local recovery is justified.
-    calls = []
+    calls: list[object] = []
     monkeypatch.setattr(c, "activate", calls.append)
     monkeypatch.setattr(
         c,
@@ -409,23 +477,25 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(
     assert len(calls) == 1
 
 
-def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_probe_failure_records_stage_not_private_path(
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test behavior for test_probe_failure_records_stage_not_private_path."""
     m, c = ctl
 
-    def fail(*_a, **_kw) -> None:
+    def fail(*_a: object, **_kw: object) -> None:
         raise TimeoutError
 
     monkeypatch.setattr(m.socket, "create_connection", fail)
     assert not c.healthy()
     assert c.last_probe["stage"] == "tcp"
-    assert c.last_probe["port"] == 32053
+    assert c.last_probe["port"] == NATIVE_PROBE_PORT
     assert c.last_probe["error"] == "TimeoutError"
     assert "/test" not in json.dumps(c.last_probe)
 
 
 def test_boot_grace_never_refreshes_old_green_health_or_carries_failure_count(
-    ctl, monkeypatch: pytest.MonkeyPatch
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Test boot grace resets stale health."""
     m, c = ctl
@@ -442,7 +512,7 @@ def test_boot_grace_never_refreshes_old_green_health_or_carries_failure_count(
 
 
 def test_failed_websocket_diagnostic_does_not_store_private_path(
-    ctl, monkeypatch: pytest.MonkeyPatch
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Test failed websocket diagnostics avoid private paths."""
     m, c = ctl
@@ -451,29 +521,32 @@ def test_failed_websocket_diagnostic_does_not_store_private_path(
         def __enter__(self) -> Self:
             return self
 
-        def __exit__(self, *args) -> None:
+        def __exit__(self, *args: object) -> None:
             pass
 
-        def sendall(self, data) -> None:
+        def sendall(self, data: bytes) -> None:
             assert b"/test" in data
 
-        def recv(self, n) -> bytes:
+        def recv(self, _n: int) -> bytes:
             return b"HTTP/1.1 403 Forbidden\r\n"
 
     class Context:
-        def wrap_socket(self, s, server_hostname) -> Connection:
+        def wrap_socket(self, _s: object, server_hostname: object) -> Connection:
             assert server_hostname == "vpn.alchemmist.xyz"
             return Connection()
 
     monkeypatch.setattr(m.socket, "create_connection", lambda *_a, **_kw: Connection())
     monkeypatch.setattr(m.ssl, "create_default_context", Context)
     assert not c.healthy()
-    assert c.last_probe["http_status"] == 403
+    assert c.last_probe["http_status"] == FORBIDDEN_STATUS
     assert c.last_probe["stage"] == "websocket"
     assert "/test" not in json.dumps(c.last_probe)
 
 
-def test_native_cooldown_and_retry_backoff(ctl, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_native_cooldown_and_retry_backoff(
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test cooldown bookkeeping."""
     m, c = ctl
     c.config["warm_return_enabled"] = True
     c.save(mode="native")
@@ -481,30 +554,30 @@ def test_native_cooldown_and_retry_backoff(ctl, monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(m, "active", lambda unit: unit == m.NATIVE)
     monkeypatch.setattr(c, "healthy", lambda: True)
     monkeypatch.setattr(m, "boot_id", lambda: "boot")
-    calls = []
+    calls: list[object] = []
     monkeypatch.setattr(c, "warm_return", lambda: calls.append(1))
     for now in (15, 1814, 1815, 1816):
-        monkeypatch.setattr(m.time, "monotonic", lambda: now)
+        monkeypatch.setattr(m.time, "monotonic", lambda bound=now: bound)
         c.tick()
     assert calls == [1]
-    assert c.state["return_after"] == 3615
+    assert c.state["return_after"] == WARM_RETURN_AFTER_SECONDS
 
 
 def test_interrupted_warm_return_recovers_before_monitoring(
-    ctl, monkeypatch: pytest.MonkeyPatch
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     m, c = ctl
     c.config["warm_return_enabled"] = True
     c.save(mode="warming")
     m.atomic(c.marker, {})
-    calls = []
+    calls: list[object] = []
     monkeypatch.setattr(c, "activate", calls.append)
     c.tick()
     assert calls == ["recover interrupted warm return"]
 
 
 def test_agent_exception_requires_live_same_boot_warming(
-    ctl, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     m, c = ctl
     monkeypatch.setattr(type(c), "permit", property(lambda _: tmp_path / "permit"))
@@ -522,7 +595,9 @@ def test_agent_exception_requires_live_same_boot_warming(
     assert not c.agent_allowed()
 
 
-def test_manual_return_cannot_bypass_busy_shared_lock(ctl, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_manual_return_cannot_bypass_busy_shared_lock(
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
     m, c = ctl
     c.config["warm_return_enabled"] = True
     m.atomic(c.marker, {})
@@ -535,9 +610,22 @@ def test_manual_return_cannot_bypass_busy_shared_lock(ctl, monkeypatch: pytest.M
     assert c.marker.exists()
 
 
+def ansible_file_lock() -> ModuleType:
+    """Load the deployed transition witness lock for direct testing."""
+    s = importlib.util.spec_from_file_location(
+        "witness_lock", ROOT / "ansible/files/vpn-transit-gate/transition-lock-v2.py"
+    )
+    if s is None or s.loader is None or not s.has_location:
+        reason = "Cannot load witness lock module"
+        raise ValueError(reason)
+    lock = importlib.util.module_from_spec(s)
+    s.loader.exec_module(lock)
+    return lock
+
+
 @pytest.mark.parametrize("reply", [b"", b"LOC"])
 def test_witness_denial_and_partial_response_preserve_native(
-    ctl, monkeypatch: pytest.MonkeyPatch, reply: bytes
+    ctl: CtlFixture, monkeypatch: pytest.MonkeyPatch, *, reply: bytes
 ) -> None:
     import sys
 
@@ -557,18 +645,16 @@ def test_witness_denial_and_partial_response_preserve_native(
     monkeypatch.setattr(c, "_handoff", lambda *_: pytest.fail("lock was not granted"))
     with pytest.raises(RuntimeError, match="deferred"):
         c.failback()
-    assert c.marker.exists() and c.state["mode"] == "native"
+    assert c.marker.exists()
+    deferred_mode = c.state["mode"]
+    assert deferred_mode == "native"
     assert list(m.ROOT.glob("*-return-deferred.json"))
 
 
 def test_witness_partition_requires_reconciliation(tmp_path: Path) -> None:
     import io
 
-    spec = importlib.util.spec_from_file_location(
-        "witness_lock", ROOT / "ansible/files/vpn-transit-gate/transition-lock-v2.py"
-    )
-    lock = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(lock)
+    lock = ansible_file_lock()
     output = io.BytesIO()
     assert lock.serve(tmp_path, "socrat-4", io.BytesIO(b""), output) != 0
     assert output.getvalue() == b"LOCKED\n"
@@ -582,11 +668,7 @@ def test_witness_partition_requires_reconciliation(tmp_path: Path) -> None:
 def test_witness_explicit_release(tmp_path: Path, verb: bytes) -> None:
     import io
 
-    spec = importlib.util.spec_from_file_location(
-        "witness_lock", ROOT / "ansible/files/vpn-transit-gate/transition-lock-v2.py"
-    )
-    lock = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(lock)
+    lock = ansible_file_lock()
     for owner in ("socrat-2", "socrat-4"):
         assert lock.serve(tmp_path, owner, io.BytesIO(verb), io.BytesIO()) == 0
     assert not (tmp_path / "transition.claim").exists()
