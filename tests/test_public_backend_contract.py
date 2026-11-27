@@ -304,3 +304,10 @@ def test_malformed_path_does_not_become_catchall():
 
     with pytest.raises(ValueError, match="unsupported public path"):
         path_rule("site.test", None, "Prefix")
+
+
+def test_malformed_service_port_is_not_a_ready_target():
+    catalog, objects = fixture()
+    del objects[1]["spec"]["ports"][0]["port"]
+    report = inventory(catalog, objects)
+    assert not report["routes"] and any("cannot resolve Service port" in e for e in report["errors"])

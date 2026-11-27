@@ -132,7 +132,9 @@ def inventory(catalog: dict, items: list[dict]) -> dict:
                 ports = [
                     p
                     for p in svc["spec"].get("ports", [])
-                    if p.get("protocol", "TCP") == "TCP"
+                    if type(p.get("port")) is int
+                    and 1 <= p["port"] <= 65535
+                    and p.get("protocol", "TCP") == "TCP"
                     and (
                         selector == {"number": p["port"]}
                         or (p.get("name") and selector == {"name": p["name"]})
