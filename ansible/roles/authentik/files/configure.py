@@ -91,7 +91,8 @@ for username, account in accounts.items():
 
 managed_app_groups = app_groups(services)
 groups = {}
-for name in LEGACY_GROUPS + list(managed_app_groups):
+# The wallpaper gallery enforces this standalone group in its own session gate.
+for name in LEGACY_GROUPS + ["app-authwall-manager"] + list(managed_app_groups):
     group = unique("core/groups/", "name", name)
     if group is None:
         settings = {"name": name, "is_superuser": False}

@@ -1,3 +1,0 @@
-image: authentik-wallpapers:0.1.0
-host: auth.socrat.alchemmist.xyz
-replicas: 1

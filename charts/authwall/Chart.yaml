@@ -1,5 +1,5 @@
 apiVersion: v2
-name: authentik-wallpapers
+name: authwall
 description: Gallery and scene CSS for Authentik login wallpapers
 type: application
 version: 0.1.0

@@ -1,5 +1,5 @@
 {
-  "name": "Wallpaper derivatives v2",
+  "name": "Authwall derivatives",
   "active": false,
   "nodes": [
     {
@@ -13,11 +13,11 @@
       ],
       "parameters": {
         "httpMethod": "POST",
-        "path": "wallpaper-derivatives-v2",
+        "path": "authwall-derivatives",
         "authentication": "headerAuth",
         "responseMode": "responseNode"
       },
-      "webhookId": "2faec20c-9980-4c0a-827e-25c7d6a62ba4",
+      "webhookId": "50b51e38-962b-4d69-bfd1-364399f62625",
       "credentials": {
         "httpHeaderAuth": {
           "id": "wallpaperHeaderV2",
@@ -84,7 +84,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "http://authentik-wallpapers.identity.svc.cluster.local/wallpapers/internal/lossless",
+        "url": "http://authwall.identity.svc.cluster.local/authwall/internal/lossless",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
@@ -284,5 +284,5 @@
     "saveDataErrorExecution": "none",
     "saveExecutionProgress": false
   },
-  "id": "wallpaperWebpV002"
+  "id": "authwallDerivatives"
 }

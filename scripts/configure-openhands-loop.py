@@ -16,7 +16,7 @@ DEST = "/home/openhands/.openhands/tools/filesystem"
 
 def main() -> None:
     files = {
-        n: (ROOT / "services/openhands/mcp" / n).read_text()
+        n: (ROOT / "deploy/openhands/integration/mcp" / n).read_text()
         for n in ["package.json", "package-lock.json"]
     }
     stage = """import pathlib,json,sys
@@ -63,9 +63,9 @@ pathlib.Path('/home/openhands/workspace/the-loop-demo').mkdir(parents=True,exist
         check=True,
     )
     policy = (
-        (ROOT / "services/openhands/READY_TO_REVIEW.md").read_text()
+        (ROOT / "deploy/openhands/integration/READY_TO_REVIEW.md").read_text()
         + "\n\n"
-        + (ROOT / "services/openhands/THE_LOOP.md").read_text()
+        + (ROOT / "deploy/openhands/integration/THE_LOOP.md").read_text()
     )
     code = """import json,sys,pathlib,urllib.request
 policy=json.load(sys.stdin)['policy'];key=pathlib.Path('/home/openhands/.openhands/agent-canvas/api-key.txt').read_text().strip()

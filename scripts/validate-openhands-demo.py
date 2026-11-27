@@ -125,7 +125,7 @@ def main() -> None:
     candidate = kubectl(
         "-n", "openhands", "exec", "openhands-0", "--", "cat", base + "intervals.py"
     ).decode()
-    original = (ROOT / "services/openhands/the-loop-demo/test_intervals.py.fixture").read_text()
+    original = (ROOT / "deploy/openhands/integration/the-loop-demo/test_intervals.py.fixture").read_text()
     live_tests = kubectl(
         "-n",
         "openhands",

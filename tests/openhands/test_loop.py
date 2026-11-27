@@ -21,7 +21,7 @@ class LoopSetup(unittest.TestCase):
 
     def test_official_mcp_is_version_and_integrity_pinned(self) -> None:
         """Verify the official MCP package is version and integrity pinned."""
-        p = json.loads((ROOT / "services/openhands/mcp/package-lock.json").read_text())
+        p = json.loads((ROOT / "deploy/openhands/integration/mcp/package-lock.json").read_text())
         fs = p["packages"]["node_modules/@modelcontextprotocol/server-filesystem"]
         assert fs["version"] == "2.4.0"
         assert (
@@ -39,7 +39,7 @@ class LoopSetup(unittest.TestCase):
 
     def test_schedule_is_paused_bounded_and_uses_pinned_image_sdk(self) -> None:
         """Verify the schedule is paused, bounded and pinned image/SDK."""
-        c = json.loads((ROOT / "services/openhands/the-loop-demo/schedule.json").read_text())
+        c = json.loads((ROOT / "deploy/openhands/integration/the-loop-demo/schedule.json").read_text())
         assert not c["enabled"]
         assert not c["keep_alive"]
         assert c["timeout"] == 300

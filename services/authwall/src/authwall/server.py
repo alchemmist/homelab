@@ -17,11 +17,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 
-from wallpapers.db import new_id, open_db
-from wallpapers import responsive
+from authwall.db import new_id, open_db
+from authwall import responsive
 import re
-from wallpapers.optimize import derivatives, full_webp
-from wallpapers.store import notify_n8n, open_store
+from authwall.optimize import derivatives, full_webp
+from authwall.store import notify_n8n, open_store
 
 UI = Path(__file__).resolve().parents[2] / "ui"
 PREFIX = "/wallpapers"
@@ -133,7 +133,7 @@ def _files(body: bytes, content_type: str) -> list[tuple[str, bytes]]:
 
 PUBLIC_PREFIXES = (PREFIX + "/scene.css", PREFIX + "/media/", PREFIX + "/internal/")
 _AUTH_CACHE: dict[str, tuple[float, set[str]]] = {}
-OWNER_GROUPS = frozenset({"homelab-owner", "homelab-owners"})
+GALLERY_GROUPS = frozenset({"homelab-owner", "homelab-owners", "app-authwall-manager"})
 
 
 def _public(path: str) -> bool:
@@ -155,7 +155,7 @@ def groups_from_authentik(headers, original_url: str) -> set[str] | None:
     """Read the browser session from Authentik. None means the API is unreachable."""
     del original_url
     if os.environ.get("WALLPAPER_AUTH", "on") == "off":
-        return set(OWNER_GROUPS)
+        return set(GALLERY_GROUPS)
     cookies = headers.get_all("Cookie") if hasattr(headers, "get_all") else [headers.get("Cookie")]
     cookies = [item for item in (cookies or []) if item]
     if len(cookies) != 1 or len(cookies[0]) > 8192 or "\r" in cookies[0] or "\n" in cookies[0]:
@@ -219,7 +219,7 @@ def make_handler(app: App):
             if groups is None:
                 self._json(503, {"error": "auth unavailable"})
                 return False
-            if not (groups & OWNER_GROUPS):
+            if not (groups & GALLERY_GROUPS):
                 if not groups and self.command == "GET" and path in {PREFIX, PREFIX + "/"}:
                     target = origin + "/if/flow/default-authentication-flow/?next=" + quote(PREFIX + "/")
                     self._send(302, b"", "text/plain", {"Location": target})
@@ -284,6 +284,9 @@ def make_handler(app: App):
 
         def do_POST(self) -> None:
             path = urlparse(self.path).path
+            # Stable internal callback used by the active n8n workflow.
+            if path == "/authwall/internal/lossless":
+                path = PREFIX + "/internal/lossless"
             length = int(self.headers.get("Content-Length", "0"))
             body = self.rfile.read(length)
             if not self._gate(path):

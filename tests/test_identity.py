@@ -5,7 +5,6 @@ import hashlib
 import io
 import json
 import runpy
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -525,43 +524,37 @@ class RolloutRegressionTests(unittest.TestCase):
             assert (root / "antropophag-login.json").stat().st_mode & 511 == 384
 
     def test_n8n_native_login_and_machine_paths_have_no_idp_gate(self) -> None:
-        """Keep n8n native paths free of identity gates."""
+        """Keep n8n native paths free of identity gates.
+
+        Native OIDC is the reviewed admission (no JIT; credentials stay with
+        the instance owner), so the catalog records the callback endpoint while
+        native login and machine paths themselves remain un-gated."""
         services = json.loads((ROOT / "deploy/identity/services.json").read_text())
         assert services["n8n"]["managedBy"] == "native-n8n"
-        assert services["n8n"]["accessManagement"]["state"] == "blocked"
-        assert "proxy" not in services["n8n"]
-        assert "redirect" not in services["n8n"]
-        assert "uptime-kuma" not in services
-        resources = list(
-            yaml.safe_load_all(
-                subprocess.check_output(
-                    [
-                        "helm",
-                        "template",
-                        "n8n",
-                        str(ROOT / "charts/n8n"),
-                        "-n",
-                        "automation",
-                        "--show-only",
-                        "templates/access.yaml",
-                    ],
-                    text=True,
-                )
-            )
+        assert services["n8n"]["accessManagement"]["state"] == "ready"
+        assert "no JIT" in services["n8n"]["accessManagement"]["reason"]
+        assert services["n8n"]["admission"] == "native-oidc"
+        assert services["n8n"]["redirect"] == (
+            "https://n8n.socrat.alchemmist.xyz/rest/sso/oidc/callback"
         )
+        assert "proxy" not in services["n8n"]
+        assert "uptime-kuma" not in services
+        import subprocess
+
+        rendered = subprocess.check_output(
+            ["helm", "template", "n8n", str(ROOT / "charts/n8n"),
+             "--show-only", "templates/access.yaml"], text=True,
+        )
+        resources = list(yaml.safe_load_all(rendered))
         assert len(resources) == 1
         machine = resources[0]
+        assert "traefik.ingress.kubernetes.io/router.middlewares" not in machine["metadata"]["annotations"]
         assert machine["metadata"]["namespace"] == "automation"
         for path in machine["spec"]["rules"][0]["http"]["paths"]:
             assert path["backend"]["service"]["name"] == "n8n"
             assert path["path"] != "/"
-        assert yaml.safe_load((ROOT / "charts/n8n/values.yaml").read_text())["ingress"][
-            "enabled"
-        ]
-        assert (
-            "n8n-gateway"
-            not in (ROOT / "ansible/roles/authentik/tasks/main.yml").read_text()
-        )
+        assert yaml.safe_load((ROOT / "charts/n8n/values.yaml").read_text())["ingress"]["enabled"]
+        assert "n8n-gateway" not in (ROOT / "ansible/roles/authentik/tasks/main.yml").read_text()
 
     def test_owner_mapping_is_server_admin_only_for_owner_group(self) -> None:
         """Grant Grafana server admin only to the owner group."""

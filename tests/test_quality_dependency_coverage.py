@@ -11,8 +11,6 @@ from unittest.mock import patch
 
 import pytest
 
-from ci.quality import common
-
 if TYPE_CHECKING:
     from pathlib import Path
 

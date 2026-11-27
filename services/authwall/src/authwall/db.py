@@ -196,7 +196,7 @@ def open_db() -> Database:
     url = os.environ.get("DATABASE_URL", "")
     if url.startswith("postgres"):
         return PostgresDB(url)
-    return SQLiteDB(os.environ.get("WALLPAPER_SQLITE", "/tmp/authentik-wallpapers.sqlite"))
+    return SQLiteDB(os.environ.get("WALLPAPER_SQLITE", "/tmp/authwall.sqlite"))
 
 
 def new_id() -> str:

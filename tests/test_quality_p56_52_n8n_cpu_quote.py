@@ -15,7 +15,7 @@ STRING_TAG = "tag:yaml.org,2002:str"
 INTEGER_TAG = "tag:yaml.org,2002:int"
 BOOLEAN_TAG = "tag:yaml.org,2002:bool"
 IMAGE = (
-    "docker.io/n8nio/n8n@sha256:624a1f10f37119a73eca34c0cbd358668aebf0068d320ad5eae584f9d35aa314"
+    "ghcr.io/alchemmist/n8n@sha256:0ffba3a289722fc216ee5e135c3acaeb4b3484e267aeba42df9c8f2e39e831df"
 )
 NO_SHARED_ALIASES = 0
 type LoaderType = type[yaml.SafeLoader | yaml.Loader]

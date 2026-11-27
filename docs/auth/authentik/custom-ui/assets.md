@@ -62,9 +62,11 @@ resolved URL; do not store its signed query in Git. Do not “clean” checksum-
 sensitive line endings with a global formatter: `.gitattributes` preserves the
 needed asset bytes.
 
+> **Current login backgrounds:** see the [wallpaper gallery and RustFS runbook](../../../applications/authwall/README.md). The Nature picker and its acceptance receipts below are historical, not the live selection path.
+
 ## 14. Random backgrounds from the Nature dotfiles
 
-As of 2026-11-01 the owner provided `~/code/dotfiles/wallpapers/nature/images`:
+As of 2026-11-01 the owner provided `~/code/dotfiles/authwall/nature/images`:
 30 JPEGs (~40MiB, width up to 5120px). The source repository is not changed;
 the actual SHA256 of every original, the Git revision and the Pillow version are
 recorded in `deploy/authentik/quiet-mono/nature.json`. This is provenance, not a
