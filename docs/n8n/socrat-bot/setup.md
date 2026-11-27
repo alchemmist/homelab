@@ -1,10 +1,10 @@
 # Socrat alerts to Telegram
 
-The workflow receives one Alertmanager group and posts each alert on its own to `http://socrat-bot.socrat-bot.svc:8080/v1/messages` as `{chat_id, alert}` with `status`, `labels`, and `annotations`. The bot renders the card, chooses links, and adds Mute 15m, Mute 30m, and Mute 1h. n8n does not build URLs.
+The workflow receives one Alertmanager group and posts each alert on its own to `https://bot.socrat.alchemmist.xyz/api/v1/messages` as `{chat_id, alert}` with `status`, `labels`, and `annotations`. The bot renders the card, chooses links, and adds Mute 15m, Mute 30m, and Mute 1h. n8n does not build URLs.
 
 JSON: `docs/n8n/socrat-bot/workflow.json`. Chart and addresses: `docs/socrat-bot/operations.md`.
 
-Live workflow name: `Socrat Alerts` (active). The HTTP node uses the n8n credential `Socrat bot internal` (`httpHeaderAuth`, header `X-Internal-Token`). That value is not in Git. `ownerChatId` in the code node is `891074228`.
+Live workflow name: `Socrat Alerts` (active). The public API template requires a dedicated `Socrat bot alerts` credential (`httpHeaderAuth`, header `Authorization`, value `Bearer <token>` including the literal `Bearer ` prefix; a raw token will not authenticate). Importing a template does not migrate the active workflow. That value is not in Git. `ownerChatId` in the code node is `891074228`.
 
 Alertmanager receiver `socrat-bot` posts to `https://n8n.socrat.alchemmist.xyz/webhook/socrat-alerts` with `send_resolved: true`. The bot token never goes into Grafana.
 

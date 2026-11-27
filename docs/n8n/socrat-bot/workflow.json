@@ -42,7 +42,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://socrat-bot.socrat-bot.svc:8080/v1/messages",
+        "url": "https://bot.socrat.alchemmist.xyz/api/v1/messages",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ chat_id: $json.ownerChatId, alert: $json.alert }) }}",
@@ -62,8 +62,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "SOCRAT_BOT_CREDENTIAL_ID",
-          "name": "Socrat bot internal"
+          "id": "SOCRAT_BOT_ALERTS_ID",
+          "name": "Socrat bot alerts"
         }
       },
       "onError": "continueRegularOutput"
