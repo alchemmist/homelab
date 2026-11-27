@@ -32,3 +32,25 @@ initial 4/4 serving; synthetic 403 plus 503 left only the unrelated source;
 clearing only the 503 restored that source, not the denied source or its alias;
 all missing withdrew all four; restoring the fixture restored all four. No
 cluster credentials, public listener or real Schoolbot key were involved.
+
+`tls_witness.observe()` is an operator-side, loopback-only measurement, not
+part of the key reader. Supply the **complete independently reviewed host set**
+(including removed aliases) and the currently expected admitted fingerprints.
+Only `trusted-match` counts as applied and only `strict-rejection` as strict
+withdrawal. An untrusted fallback leaf, a different but trusted leaf, a TLS
+error, or a stopped socket never acknowledges withdrawal. Each observation
+uses new TCP and TLS, checks SNI and trust, and sends no HTTP request. One
+sequential sample does not bound the stale interval, prove all workers agree,
+or enforce a fence after the observer or publisher fails.
+
+Read-only Moscow baseline: through a loopback port-forward to the existing
+blog-only controller, both blog aliases matched trusted public leaves sampled
+at the HOME IP immediately beforehand. The real Schoolbot SNI and a synthetic
+unassigned SNI each gave an untrusted certificate, **not** a strict rejection.
+The public samples were comparison fingerprints, not authorization to fetch
+those keys. The legacy controller was not changed; this is not a successful
+withdrawal or a real-key Schoolbot test of the proposed common replica.
+
+Default witness trust uses system CA roots and hostname verification. The
+expected leaf fingerprint is an additional equality check, never a substitute
+for certificate trust. A different trusted leaf is not an acknowledgment.
