@@ -196,6 +196,7 @@ def test_release_selects_only_existing_webhook_owner() -> None:
     owner = ingress(active)
     (rule,) = owner["spec"]["rules"]
     catalog = yaml.safe_load((ROOT / "deploy/public-web/entrances.yaml").read_text())
+    assert [p["value"] for p in helm["parameters"] if p["name"] == "publicWebHost"] == [rule["host"]]
     assert catalog["hosts"]["pr-agent"][rule["host"]].get("route", "web") == "web"
     labels = ingress(baseline)["metadata"].setdefault("labels", {})
     assert "homelab.alchemmist.xyz/public-web" not in labels
