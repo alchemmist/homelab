@@ -9,6 +9,9 @@ from pathlib import Path
 from typing import cast
 
 BASE = Path(__file__).resolve().parents[2]
+HTTP_OK = 200
+HTTP_NOT_FOUND = 404
+HTTP_REDIRECTION = 300
 REMOTE = r"""
 import sys,json,subprocess,urllib.request,urllib.error,base64
 r=json.load(sys.stdin);k=['kubectl','--kubeconfig','/etc/rancher/k3s/k3s.yaml','-n','cattle-monitoring-system']
@@ -30,7 +33,7 @@ print(json.dumps({'status':status,'body':body}))
 """
 
 
-def api(method, path, body=None) -> dict[str, object]:
+def api(method: str, path: str, body: dict[str, object] | None = None) -> dict[str, object]:
     """Run one authenticated n8n API call through the private host and return parsed JSON."""
     r = subprocess.run(
         ["ssh", "socrat-0", "python3 -c " + shlex.quote(REMOTE)],
@@ -51,19 +54,22 @@ def main() -> None:
         ).read_text()
     )
     folder = api("GET", "/api/folders/automation")
-    if folder["status"] == 404:
-        assert (
-            cast(
-                "int",
-                api("POST", "/api/folders", {"uid": "automation", "title": "Automation"})["status"],
-            )
-            < 300
+    if folder["status"] == HTTP_NOT_FOUND:
+        created = cast(
+            "int",
+            api("POST", "/api/folders", {"uid": "automation", "title": "Automation"})["status"],
         )
-    else:
-        assert folder["status"] == 200
+        if created >= HTTP_REDIRECTION:
+            msg = "Automation folder creation failed with HTTP " + str(created)
+            raise RuntimeError(msg)
+    elif folder["status"] != HTTP_OK:
+        msg = "Grafana folder listing failed with HTTP " + str(folder["status"])
+        raise RuntimeError(msg)
     cp = definition["contactPoint"]
     existing = api("GET", "/api/v1/provisioning/contact-points")
-    assert existing["status"] == 200
+    if existing["status"] != HTTP_OK:
+        msg = "Contact points listing failed with HTTP " + str(existing["status"])
+        raise RuntimeError(msg)
     method = (
         "PUT"
         if any(c.get("uid") == cp["uid"] for c in cast("list[dict[str, object]]", existing["body"]))
@@ -71,18 +77,20 @@ def main() -> None:
     )
     path = "/api/v1/provisioning/contact-points" + ("/" + cp["uid"] if method == "PUT" else "")
     result = api(method, path, cp)
-    assert cast("int", result["status"]) < 300, "Grafana provisioning failed with HTTP " + str(
-        result["status"]
-    )
+    if cast("int", result["status"]) >= HTTP_REDIRECTION:
+        msg = "Grafana provisioning failed with HTTP " + str(result["status"])
+        raise RuntimeError(msg)
     for rule in definition["rules"]:
         current = api("GET", "/api/v1/provisioning/alert-rules/" + rule["uid"])
-        method = "PUT" if current["status"] == 200 else "POST"
-        assert current["status"] in [200, 404]
+        if current["status"] not in (HTTP_OK, HTTP_NOT_FOUND):
+            msg = "Alert rule lookup returned HTTP " + str(current["status"])
+            raise RuntimeError(msg)
+        method = "PUT" if current["status"] == HTTP_OK else "POST"
         path = "/api/v1/provisioning/alert-rules" + ("/" + rule["uid"] if method == "PUT" else "")
         result = api(method, path, rule)
-        assert cast("int", result["status"]) < 300, "Grafana provisioning failed with HTTP " + str(
-            result["status"]
-        )
+        if cast("int", result["status"]) >= HTTP_REDIRECTION:
+            msg = "Grafana provisioning failed with HTTP " + str(result["status"])
+            raise RuntimeError(msg)
         print("Grafana alert provisioned:", rule["uid"])
 
 
