@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 from collections.abc import Mapping
+from typing import TypedDict
 
 import yaml
 
@@ -104,6 +105,114 @@ ROOTS = {
 }
 
 
+def _hash_review(
+    items: list[dict[str, object]],
+    expected: dict[tuple[str, str], str],
+    required_count: int,
+    allow: set[tuple[str, str]],
+) -> bool:
+    """Verify an exact item key set plus the sha256 bodies of the reviewed items."""
+    keys = [(plain(d["kind"]), plain(view(d["metadata"])["name"])) for d in items]
+    if len(keys) != required_count or set(keys) != set(expected) | allow:
+        return False
+    for key, d in zip(keys, items, strict=True):
+        digest = hashlib.sha256(
+            json.dumps(d, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        if key in expected and digest != expected[key]:
+            return False
+    return True
+
+
+def _pinned_pair(items: list[dict[str, object]], owner: str, name: str) -> bool:
+    """Review the two-container Pod owners; no other workload may share the egress selector.
+
+    The nginx privacy config and VPN sidecar are reviewed together with one Pod.
+    """
+    expected: dict[tuple[str, str], str] = {
+        ("Deployment", name): "bb0ef4b596a4f0bb90a0fc72a7b87133ae738dababe15b620c653b516ef8e289",
+        (
+            "ConfigMap",
+            name + "-nginx",
+        ): "28c2a1c488724fe2cf5c512099c2f1685e0df6d7f5895407272553cc7cfb03fe",
+        (
+            "ConfigMap",
+            name + "-service-vpn",
+        ): "216f150e896b366e654ce19af866c9f889891a76ea0e7223b369ebbfca41dcc2",
+    }
+    extras = {("ServiceAccount", name)}
+    if owner == "remark42":
+        # The reviewed Deployment binds the named http port to remark42,
+        # not to its service-vpn sidecar. Do not inspect credential data.
+        expected = {
+            (
+                "Deployment",
+                name,
+            ): "66a16c5179a637242696d942f7194cf6b2fd0341953b1364357a6693c0146ce6",
+            (
+                "ConfigMap",
+                name + "-service-vpn",
+            ): "6ba92ac4527c162edec3905471eb6407d09ac8ad41b235ab12c0237bf5953f12",
+        }
+        extras = {("Secret", name + "-env"), ("PersistentVolumeClaim", name + "-data")}
+    return _hash_review(
+        items, expected, PINNED_OWNER_DOCS, extras | {("Ingress", name), ("Service", name)}
+    )
+
+
+def _venice_review(items: list[dict[str, object]], name: str) -> bool:
+    """Review the venice-api bridge: HTTP only, never browser control or egress.
+
+    A switch back to the legacy Deployment needs a separate review rather than a fallback.
+    """
+    candidate = "venice-browser-candidate"
+    reviewed: dict[tuple[str, str], str] = {
+        (
+            "Deployment",
+            candidate,
+        ): "4430a4c9ff1d1c7d34c0a98c9b643f6b65d279536058a6a48232203b0b7463d5",
+        ("Deployment", name): "a5368ef5565848ea7879f09381b4908f24984e80d6e5c78139fdafb256409336",
+        (
+            "NetworkPolicy",
+            candidate,
+        ): "3cc89643dcaa890398f1cbd1c4ad5a210a22c0a433d03040b5027f91ed5dbec4",
+    }
+    allow = {
+        ("Ingress", name),
+        ("Service", name),
+        ("ServiceAccount", name),
+        ("StorageClass", "venice-browser-retain"),
+        ("PersistentVolumeClaim", "venice-browser-profile"),
+    }
+    return _hash_review(items, reviewed, PINNED_VENICE_DOCS, allow)
+
+
+def _owner_reviews(items: list[dict[str, object]], owner: str, name: str) -> bool:
+    """Run the per-family exact item reviews; unlisted families place no extra constraint."""
+    if owner in {"img-proxy", "remark42"}:
+        return _pinned_pair(items, owner, name)
+    if owner == "venice-api":
+        return _venice_review(items, name)
+    if owner == "umami" and sorted(
+        (plain(d["kind"]), plain(view(d["metadata"])["name"])) for d in items
+    ) != [
+        ("Deployment", name),
+        ("Ingress", name),
+        ("Service", name),
+    ]:
+        return False
+    return not (
+        owner == "blog"
+        and sorted((plain(d["kind"]), plain(view(d["metadata"])["name"])) for d in items)
+        != [
+            ("Deployment", name),
+            ("Ingress", name),
+            ("Service", name),
+            ("ServiceAccount", name),
+        ]
+    )
+
+
 def eligible(
     items: list[dict[str, object]], catalog: dict[str, object], *, owner: str = APP
 ) -> bool:
@@ -113,105 +222,7 @@ def eligible(
     hosts = view(view(catalog["hosts"]).get(ns, {}))
     if hosts.get(host) != {"dns": "managed", "tlsSourceName": pin}:
         return False
-    if owner in {"img-proxy", "remark42"}:
-        # One two-container Pod; review the nginx privacy config and VPN sidecar
-        # together. No additional workload may share this egress selector.
-        expected = {
-            (
-                "Deployment",
-                name,
-            ): "bb0ef4b596a4f0bb90a0fc72a7b87133ae738dababe15b620c653b516ef8e289",
-            (
-                "ConfigMap",
-                name + "-nginx",
-            ): "28c2a1c488724fe2cf5c512099c2f1685e0df6d7f5895407272553cc7cfb03fe",
-            (
-                "ConfigMap",
-                name + "-service-vpn",
-            ): "216f150e896b366e654ce19af866c9f889891a76ea0e7223b369ebbfca41dcc2",
-        }
-        extras = {("ServiceAccount", name)}
-        if owner == "remark42":
-            # The reviewed Deployment binds the named http port to remark42,
-            # not to its service-vpn sidecar. Do not inspect credential data.
-            expected = {
-                (
-                    "Deployment",
-                    name,
-                ): "66a16c5179a637242696d942f7194cf6b2fd0341953b1364357a6693c0146ce6",
-                (
-                    "ConfigMap",
-                    name + "-service-vpn",
-                ): "6ba92ac4527c162edec3905471eb6407d09ac8ad41b235ab12c0237bf5953f12",
-            }
-            extras = {("Secret", name + "-env"), ("PersistentVolumeClaim", name + "-data")}
-        keys = [(plain(d["kind"]), plain(view(d["metadata"])["name"])) for d in items]
-        if len(keys) != PINNED_OWNER_DOCS or set(keys) != set(expected) | extras | {
-            ("Ingress", name),
-            ("Service", name),
-        }:
-            return False
-        for key, d in zip(keys, items, strict=True):
-            if (
-                key in expected
-                and hashlib.sha256(
-                    json.dumps(d, sort_keys=True, separators=(",", ":")).encode()
-                ).hexdigest()
-                != expected[key]
-            ):
-                return False
-    if owner == "venice-api":
-        # Only bridge HTTP, never browser control or egress. A switch back to
-        # the legacy Deployment needs a separate review rather than a fallback.
-        candidate = "venice-browser-candidate"
-        reviewed = {
-            (
-                "Deployment",
-                candidate,
-            ): "4430a4c9ff1d1c7d34c0a98c9b643f6b65d279536058a6a48232203b0b7463d5",
-            (
-                "Deployment",
-                name,
-            ): "a5368ef5565848ea7879f09381b4908f24984e80d6e5c78139fdafb256409336",
-            (
-                "NetworkPolicy",
-                candidate,
-            ): "3cc89643dcaa890398f1cbd1c4ad5a210a22c0a433d03040b5027f91ed5dbec4",
-        }
-        keys = [(plain(d["kind"]), plain(view(d["metadata"])["name"])) for d in items]
-        if len(keys) != PINNED_VENICE_DOCS or set(keys) != set(reviewed) | {
-            ("Ingress", name),
-            ("Service", name),
-            ("ServiceAccount", name),
-            ("StorageClass", "venice-browser-retain"),
-            ("PersistentVolumeClaim", "venice-browser-profile"),
-        }:
-            return False
-        for key, d in zip(keys, items, strict=True):
-            if (
-                key in reviewed
-                and hashlib.sha256(
-                    json.dumps(d, sort_keys=True, separators=(",", ":")).encode()
-                ).hexdigest()
-                != reviewed[key]
-            ):
-                return False
-    if owner == "umami" and sorted(
-        (plain(d["kind"]), plain(view(d["metadata"])["name"])) for d in items
-    ) != [
-        ("Deployment", name),
-        ("Ingress", name),
-        ("Service", name),
-    ]:
-        return False
-    if owner == "blog" and sorted(
-        (plain(d["kind"]), plain(view(d["metadata"])["name"])) for d in items
-    ) != [
-        ("Deployment", name),
-        ("Ingress", name),
-        ("Service", name),
-        ("ServiceAccount", name),
-    ]:
+    if not _owner_reviews(items, owner, name):
         return False
     owners = [view(d) for d in items if plain(d["kind"]) == "Ingress"]
     services = [
@@ -237,7 +248,11 @@ def eligible(
         return False
     if (
         (target_port == "http" and owner != "remark42") or owner in {"lms", "blog"}
-    ) and not _named_runtime(items, ns, name, selector, host, wiki=wiki):
+    ) and not _named_runtime(
+        items,
+        _runtime_ctx(ns, name, host, wiki=wiki),
+        selector,
+    ):
         return False
     port = {"name": "http"} if wiki else {"number": svc_port}
     # Validate the complete owner Ingress. Only www is emitted by the closed chart.
@@ -298,14 +313,22 @@ def _carries_labels(item: dict[str, object], selector: Mapping[str, object]) -> 
     return all(labels.get(k) == v for k, v in selector.items())
 
 
+class _RuntimeCtx(TypedDict):
+    """The reviewed runtime facts one container contract is checked against."""
+
+    ns: str
+    name: str
+    host: str
+    wiki: bool
+
+
+def _runtime_ctx(ns: str, name: str, host: str, *, wiki: bool) -> _RuntimeCtx:
+    """Bundle the reviewed runtime facts for the named-runtime container contract."""
+    return {"ns": ns, "name": name, "host": host, "wiki": wiki}
+
+
 def _named_runtime(
-    items: list[dict[str, object]],
-    ns: str,
-    name: str,
-    selector: Mapping[str, object],
-    host: str,
-    *,
-    wiki: bool,
+    items: list[dict[str, object]], ctx: _RuntimeCtx, selector: Mapping[str, object]
 ) -> bool:
     """Check the single reviewed workload that may receive public traffic."""
     workloads = []
@@ -314,14 +337,14 @@ def _named_runtime(
         item = view(doc)
         if (
             plain(item["kind"]) in kinds
-            and view(item["metadata"]).get("namespace", ns) == ns
+            and view(item["metadata"]).get("namespace", ctx["ns"]) == ctx["ns"]
             and _carries_labels(item, selector)
         ):
             workloads.append(item)
     if (
         len(workloads) != 1
         or plain(workloads[0]["kind"]) != "Deployment"
-        or plain(view(workloads[0]["metadata"])["name"]) != name
+        or plain(view(workloads[0]["metadata"])["name"]) != ctx["name"]
     ):
         return False
     template = view(view(workloads[0]["spec"])["template"])
@@ -334,11 +357,17 @@ def _named_runtime(
     ):
         return False
     c = view(containers[0])
+    return _container_contract(c, ctx)
+
+
+def _container_contract(c: dict[str, object], ctx: _RuntimeCtx) -> bool:
+    """Match one container against its namespace-specific reviewed port and env contract."""
+    ns, wiki, host = ctx["ns"], ctx["wiki"], ctx["host"]
     if ns == "blog":
-        return bool(c["name"] == name and c.get("ports") == [{"containerPort": 8080}])
+        return bool(c["name"] == ns and c.get("ports") == [{"containerPort": 8080}])
     if ns == "umami":
         return bool(
-            c["name"] == name
+            c["name"] == ctx["name"]
             and c.get("ports") == [{"name": "http", "containerPort": 3000}]
             and not c.get("args")
             and not c.get("command")
