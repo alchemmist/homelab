@@ -182,6 +182,19 @@
         "PLR0913",
         "PLR0915"
       ],
+      "services/spi/backend/integrations.py": [
+        "S310",
+        "PLC0415",
+        "C901",
+        "PLR0912",
+        "PLR0913",
+        "PLR0915",
+        "FBT001",
+        "FBT002",
+        "PLR2004",
+        "TRY301",
+        "EM101"
+      ],
       "charts/spi-triage/files/telemetry.py": [
         "PLC0415",
         "C901",

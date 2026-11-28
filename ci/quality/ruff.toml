@@ -112,6 +112,10 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # of the fixed observability/GitHub origins named in this file's constants.
 "charts/spi-triage/files/integrations.py" = ["S310", "PLC0415", "C901", "PLR0912", "PLR0913", "PLR0915"]
 "services/spi/legacy/backend/integrations.py" = ["S310", "PLC0415", "C901", "PLR0912", "PLR0913", "PLR0915"]
+# The evolved services adapter keeps the reviewed GitHub allow_issue_creation
+# boolean default and the int32 issue-number ceiling inline with the deployed
+# compatibility pins; the graph capture raise stays in the reviewed handler.
+"services/spi/backend/integrations.py" = ["S310", "PLC0415", "C901", "PLR0912", "PLR0913", "PLR0915", "FBT001", "FBT002", "PLR2004", "TRY301", "EM101"]
 # The telemetry collector is one reviewed bounded-read contract: the window
 # clipper, the trace-span projector, and the per-source request gate are pinned
 # digest-exactly by the spi_triage suite (probe order, budget gaps, truncation
