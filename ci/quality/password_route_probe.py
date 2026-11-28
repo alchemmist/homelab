@@ -21,12 +21,12 @@ def sample(path, *, ip=None, local_port=None):
     if path not in EXPECTED or (ip is None) == (local_port is None):
         raise ValueError("invalid probe target")
     if ip is not None:
-        args = ["--resolve", f"{HOST}:443:{ipaddress.IPv4Address(ip)}"]
+        args = ["--proto", "=https", "--resolve", f"{HOST}:443:{ipaddress.IPv4Address(ip)}"]
         url = "https://" + HOST + path
     else:
         if type(local_port) is not int or not 1024 <= local_port <= 65535:
             raise ValueError("invalid loopback port")
-        args = ["--header", "Host: " + HOST]
+        args = ["--proto", "=http", "--header", "Host: " + HOST]
         url = f"http://127.0.0.1:{local_port}" + path
     try:
         r = subprocess.run(

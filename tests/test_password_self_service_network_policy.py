@@ -163,6 +163,7 @@ def test_anonymous_password_path_witness(monkeypatch, path, status, location, re
     def run(args, **kwargs):
         assert (
             args[-1] == "https://" + probe.HOST + path
+            and args[args.index("--proto") + 1] == "=https"
             and args[args.index("--resolve") + 1] == probe.HOST + ":443:192.0.2.1"
             and not {"--location", "--insecure", "--cookie"} & set(args)
         )
