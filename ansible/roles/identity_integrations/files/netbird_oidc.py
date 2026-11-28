@@ -131,7 +131,7 @@ def issuer_from_netbird_config(path: str | Path) -> str:
     issuer = auth.get("issuer") if isinstance(auth, dict) else None
     if not isinstance(issuer, str):
         msg = "NetBird config has no server.auth.issuer string"
-        raise RuntimeError(msg)  # noqa: TRY004
+        raise RuntimeError(msg)
     return validate_management_issuer(issuer.strip())
 
 
@@ -232,7 +232,7 @@ class Authentik:
             page = self("GET", url)
             if not isinstance(page, dict) or not isinstance(page.get("results"), list):
                 msg = "Authentik collection response is incomplete"
-                raise RuntimeError(msg)  # noqa: TRY004
+                raise RuntimeError(msg)
             rows.extend(page["results"])
             nxt = (page.get("pagination") or {}).get("next")
             if not bool(nxt):
@@ -303,7 +303,7 @@ def _pilot_snapshot(inventory: Inventory) -> list[Row]:
         membership = user.get("groups")
         if not isinstance(membership, list):
             msg = "Pilot group membership is incomplete"
-            raise RuntimeError(msg)  # noqa: TRY004
+            raise RuntimeError(msg)
         names = []
         for pk in membership:
             group = next((row for row in inventory["groups"] if row.get("pk") == pk), None)
@@ -390,7 +390,7 @@ def _plan_context(inventory: Inventory, issuer: str | None) -> Row:
     ):
         if not isinstance(flows.get(slug), str):
             msg = "Reviewed authentication flow is missing"
-            raise RuntimeError(msg)  # noqa: TRY004
+            raise RuntimeError(msg)
     certificates = [row for row in inventory["certificates"] if row.get("name") == CERT_NAME]
     if len(certificates) != 1 or not isinstance(certificates[0].get("pk"), str):
         msg = "Reviewed signing key is missing or ambiguous"
@@ -842,7 +842,7 @@ def _apply_provider(state: Row, operation: Row) -> None:
     email = _managed(inventory["scopes"], EMAIL_MANAGED)["pk"]
     if not isinstance(mapping_pk, str):
         msg = "Provider requires the journaled profile mapping PK"
-        raise RuntimeError(msg)  # noqa: TRY004
+        raise RuntimeError(msg)
     plan = cast("Row", state["plan"])
     body = _provider_body(
         [openid, email, mapping_pk],
@@ -874,7 +874,7 @@ def _apply_application(api: Authentik, operation: Row, journal: Row) -> None:
     fields["provider"] = journal.get("provider_pk")
     if not isinstance(fields["provider"], int):
         msg = "Application requires the journaled provider PK"
-        raise RuntimeError(msg)  # noqa: TRY004
+        raise RuntimeError(msg)
     if operation["action"] == "create":
         created = cast("Row", api("POST", "core/applications/", fields))
         journal["application_pk"] = created["pk"]
@@ -892,7 +892,7 @@ def _apply_binding(api: Authentik, journal: Row) -> None:
     )
     if not isinstance(journal.get("application_pk"), str) or not isinstance(group_pk, str):
         msg = "Binding requires journaled application and admission group PKs"
-        raise RuntimeError(msg)  # noqa: TRY004
+        raise RuntimeError(msg)
     created = cast(
         "Row",
         api(

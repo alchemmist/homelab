@@ -62,6 +62,11 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # precede imports, and one cohesive procedure is the documented interface.
 "scripts/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
 "ansible/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
+# The NetBird OIDC reconciler's isinstance guards protect reviewed remote
+# inventory integrity on the CLI apply path: they raise RuntimeError so main()'s
+# handler can print one reviewed line and exit 1; a TypeError would escape it
+# and crash the operational tool with a raw traceback instead.
+"ansible/roles/identity_integrations/files/netbird_oidc.py" = ["TRY004"]
 "charts/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
 # The durable workflow error type is named Failure across the reviewed
 # worker API boundary: its fixed non-sensitive codes are the documented wire

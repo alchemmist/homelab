@@ -64,6 +64,9 @@
         "PLR0913",
         "PLR0915"
       ],
+      "ansible/roles/identity_integrations/files/netbird_oidc.py": [
+        "TRY004"
+      ],
       "charts/**": [
         "INP001",
         "T201",
