@@ -210,6 +210,9 @@
       "deploy/storage/thanos-retire/retire.py": [
         "E501"
       ],
+      "scripts/identity-xui-gateway-smoke.py": [
+        "TRY301"
+      ],
       "services/spi/backend/service.py": [
         "PLC0415",
         "T201",

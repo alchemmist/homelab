@@ -149,6 +149,10 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # against the socrat-0 spool; reflowing their long single-line assert code
 # would change the audited command bytes, so the payload lines stay exact.
 "deploy/storage/thanos-retire/retire.py" = ["E501"]
+# The whole live smoke is one sanitized catch-all try/except boundary;
+# its RuntimeError guards must stay inline inside that boundary so the
+# sanitized failure path stays the single exit, hence TRY301 stays local.
+"scripts/identity-xui-gateway-smoke.py" = ["TRY301"]
 
 "services/spi/backend/service.py" = ["PLC0415", "T201", "PLR0913", "TRY301"]
 "deploy/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
