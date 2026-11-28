@@ -202,6 +202,11 @@
       "scripts/identity-app-access-smoke.py": [
         "A002"
       ],
+      "scripts/check-webui-tool-guard.py": [
+        "C901",
+        "PLR0912",
+        "S108"
+      ],
       "services/spi/backend/service.py": [
         "PLC0415",
         "T201",
