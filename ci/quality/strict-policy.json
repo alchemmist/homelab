@@ -175,6 +175,22 @@
         "PLR0913",
         "TRY301"
       ],
+      "services/spi/integrations/evidence/gateway.py": [
+        "TRY300",
+        "TRY301",
+        "PLR2004",
+        "PLR0913",
+        "PLR0911",
+        "PLR0912",
+        "PLR0915",
+        "C901",
+        "N815",
+        "N803",
+        "FBT001",
+        "FBT002",
+        "S104",
+        "S310"
+      ],
       "charts/spi-triage/files/integrations.py": [
         "S310",
         "PLC0415",
