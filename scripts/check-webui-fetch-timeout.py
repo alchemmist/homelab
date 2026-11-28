@@ -3,7 +3,7 @@
 import asyncio
 import json
 import time
-from typing import cast
+from typing import IO, cast
 from unittest.mock import patch
 
 from open_webui.models.config import Config
@@ -13,7 +13,9 @@ from open_webui.utils.middleware import execute_tool_call
 
 async def main() -> None:
     """Run the command-line entry point."""
-    assert await Config.get("web.loader.timeout") == "15"
+    if await Config.get("web.loader.timeout") != "15":
+        msg = "web.loader.timeout drifted from the reviewed 15 seconds"
+        raise RuntimeError(msg)
     metadata = {
         "tools": {
             "fetch_url": {
@@ -26,7 +28,7 @@ async def main() -> None:
         }
     }
 
-    async def call(url) -> tuple[object, object]:
+    async def call(url: str) -> tuple[object, object]:
         return cast(
             "tuple[object, object]",
             await execute_tool_call(
@@ -44,13 +46,21 @@ async def main() -> None:
 
     with patch.object(guard, "FETCH_WORKER", 'import json; print(json.dumps("healthy page"))'):
         response = await call("https://example.com")
-        assert response[1] == "healthy page", response
+        if response[1] != "healthy page":
+            msg = "Healthy-page fetch returned unreviewed content: " + repr(response)
+            raise RuntimeError(msg)
 
     processes = []
     spawn = asyncio.create_subprocess_exec
 
-    async def record_process(*args, **kwargs) -> asyncio.subprocess.Process:
-        process = await spawn(*args, **kwargs)
+    async def record_process(
+        program: str,
+        *args: str,
+        stdin: int | IO[bytes] | None = asyncio.subprocess.PIPE,
+        stdout: int | IO[bytes] | None = asyncio.subprocess.PIPE,
+        stderr: int | IO[bytes] | None = asyncio.subprocess.DEVNULL,
+    ) -> asyncio.subprocess.Process:
+        process = await spawn(program, *args, stdin=stdin, stdout=stdout, stderr=stderr)
         processes.append(process)
         return process
 
@@ -61,15 +71,24 @@ async def main() -> None:
     ):
         response = await call("https://example.com")
         payload = cast("dict[str, object]", response[1])
-        assert "deadline" in cast("str", payload["error"]), response
-        assert processes[0].returncode is not None
+        error = cast("str", payload["error"])
+        if "deadline" not in error:
+            msg = "Fetch deadline not reported: " + repr(response)
+            raise RuntimeError(msg)
+        if processes[0].returncode is None:
+            msg = "Timed-out fetch worker was not reaped"
+            raise RuntimeError(msg)
 
     start = time.monotonic()
     response = await call("https://thanos.io/v0.8/components/compact/")
     elapsed = time.monotonic() - start
-    assert elapsed < guard.FETCH_TIMEOUT_SECONDS + 5, elapsed
+    if elapsed >= guard.FETCH_TIMEOUT_SECONDS + 5:
+        msg = "Thanos fetch exceeded the timeout budget: " + str(elapsed)
+        raise RuntimeError(msg)
     result = response[1]
-    assert isinstance(result, (str, dict)) and result, result
+    if not isinstance(result, (str, dict)) or not result:
+        msg = "Thanos fetch returned an empty or unexpected payload: " + repr(result)
+        raise RuntimeError(msg)
     print(
         json.dumps(
             {
