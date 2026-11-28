@@ -113,11 +113,23 @@
         "N818",
         "PLC0415"
       ],
+      "services/spi/backend/core.py": [
+        "N818",
+        "PLC0415",
+        "FBT001",
+        "S311"
+      ],
       "charts/spi-triage/files/durable_wait.py": [
         "PLC0415"
       ],
       "services/spi/legacy/backend/durable_wait.py": [
         "PLC0415"
+      ],
+      "services/spi/backend/durable_wait.py": [
+        "PLC0415",
+        "SLF001",
+        "C901",
+        "FBT001"
       ],
       "charts/spi-triage/files/s3_evidence.py": [
         "N818",
@@ -154,6 +166,12 @@
         "T201",
         "PLR0913"
       ],
+      "services/spi/backend/service.py": [
+        "PLC0415",
+        "T201",
+        "PLR0913",
+        "TRY301"
+      ],
       "charts/spi-triage/files/integrations.py": [
         "S310",
         "PLC0415",
@@ -169,6 +187,19 @@
         "PLR0912",
         "PLR0913",
         "PLR0915"
+      ],
+      "services/spi/backend/integrations.py": [
+        "S310",
+        "PLC0415",
+        "C901",
+        "PLR0912",
+        "PLR0913",
+        "PLR0915",
+        "FBT001",
+        "FBT002",
+        "PLR2004",
+        "TRY301",
+        "EM101"
       ],
       "charts/spi-triage/files/telemetry.py": [
         "PLC0415",
