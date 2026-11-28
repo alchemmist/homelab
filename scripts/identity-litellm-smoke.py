@@ -26,21 +26,41 @@ import subprocess
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Literal
 
 BASE = "https://auth.socrat.alchemmist.xyz"
 # Process-local public-edge resolution; keep verified TLS/SNI, no system DNS changes.
 import socket
 
 _original_getaddrinfo = socket.getaddrinfo
+HTTP_CALLBACK_ERROR = 400
 
 
-def public_auth(host, *params, **kwargs):
-    """Perform the public auth operation."""
-    return _original_getaddrinfo(
-        args.public_edge if host in ["auth.socrat.alchemmist.xyz", "llm.alchemmist.xyz"] else host,
-        *params,
-        **kwargs,
+GaiResult = list[
+    tuple[Literal[socket.AddressFamily.AF_INET], socket.SocketKind, int, str, tuple[str, int]]
+    | tuple[
+        Literal[socket.AddressFamily.AF_INET6],
+        socket.SocketKind,
+        int,
+        str,
+        tuple[str, int, int, int] | tuple[int, bytes],
+    ]
+]
+
+
+def public_auth(
+    host: str | bytes | None,
+    port: bytes | str | int | None = None,
+    family: int = 0,
+    type: int = 0,
+    proto: int = 0,
+    flags: int = 0,
+) -> GaiResult:
+    """Resolve reviewed public-edge hostnames to the pinned edge address."""
+    target = (
+        args.public_edge if host in ["auth.socrat.alchemmist.xyz", "llm.alchemmist.xyz"] else host
     )
+    return _original_getaddrinfo(target, port, family, type, proto, flags)
 
 
 socket.getaddrinfo = public_auth
@@ -54,25 +74,25 @@ SSH = [
     "HostKeyAlias=[socrat.alchemmist.xyz]:2222",
     "socrat-0",
 ]
-credential = json.loads(
+credential: dict[str, object] = json.loads(
     subprocess.check_output([*SSH, "cat ~/.cache/homelab-authentik/credentials.json"])
 )
 
 
-def api(method, path, data=None):
-    """Perform the HTTP request and return its response."""
+def api(method: str, path: str, data: dict[str, object] | None = None) -> dict[str, object]:
+    """Perform the reviewed Authentik API request and return its decoded body."""
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
         headers={
-            "Authorization": "Bearer " + credential["AUTHENTIK_BOOTSTRAP_TOKEN"],
+            "Authorization": "Bearer " + str(credential["AUTHENTIK_BOOTSTRAP_TOKEN"]),
             "Content-Type": "application/json",
         },
         data=json.dumps(data).encode() if data is not None else None,
     )
     with urllib.request.urlopen(req, timeout=45) as r:
-        b = r.read()
-        return json.loads(b) if b else None
+        body = r.read()
+        return json.loads(body) if body else {}
 
 
 import base64
@@ -83,16 +103,17 @@ import struct
 import time
 import urllib.parse
 import uuid
+from typing import cast
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Response, sync_playwright
 
 username = "litellm-smoke-" + uuid.uuid4().hex[:10]
 password = secrets.token_urlsafe(32)
-group = next(
-    x
-    for x in api("GET", "core/groups/?name=homelab-observer")["results"]
-    if x["name"] == "homelab-observer"
+results = cast(
+    "list[dict[str, object]]",
+    api("GET", "core/groups/?name=homelab-observer")["results"],
 )
+group = next(x for x in results if x["name"] == "homelab-observer")
 user = api(
     "POST",
     "core/users/",
@@ -105,13 +126,13 @@ user = api(
     },
 )
 binding = None
-fixture_id = "authentik:" + user["uuid"]
+fixture_id = "authentik:" + str(user["uuid"])
 try:
-    app = next(
-        a
-        for a in api("GET", "core/applications/?superuser_full_list=true&page_size=100")["results"]
-        if a["slug"] == "litellm"
+    applications = cast(
+        "list[dict[str, object]]",
+        api("GET", "core/applications/?superuser_full_list=true&page_size=100")["results"],
     )
+    app = next(a for a in applications if a["slug"] == "litellm")
     binding = api(
         "POST",
         "policies/bindings/",
@@ -138,19 +159,20 @@ try:
             ]
         )
         page = browser.new_page(viewport={"width": 1440, "height": 960})
-        last = {}
-        totp_challenge = {}
-        components = []
-        errors = []
+        last: dict[str, object] = {}
+        totp_challenge: dict[str, object] = {}
+        components: list[object] = []
+        errors: list[str] = []
+        EXECUTOR_STATUSES = (200, 400)
 
-        def observe(response) -> None:
-            """Perform the observe operation."""
+        def observe(response: Response) -> None:
+            """Log the LiteLLM callback and the flow executor responses."""
             if (
                 urllib.parse.urlparse(response.url).hostname == "llm.alchemmist.xyz"
                 and "/sso/callback" in response.url
             ):
                 print("LiteLLM callback HTTP status:", response.status)
-                if response.status >= 400:
+                if response.status >= HTTP_CALLBACK_ERROR:
                     try:
                         import re
 
@@ -193,10 +215,7 @@ try:
                         AttributeError,
                     ):
                         pass
-            if "/api/v3/flows/executor/" in response.url and response.status in [
-                200,
-                400,
-            ]:
+            if "/api/v3/flows/executor/" in response.url and response.status in (EXECUTOR_STATUSES):
                 try:
                     data = response.json()
                     last.clear()
@@ -232,13 +251,13 @@ try:
                     totp_challenge.get("secret")
                     or totp_challenge.get("secret_key")
                     or urllib.parse.parse_qs(
-                        urllib.parse.urlparse(totp_challenge.get("config_url", "")).query
+                        urllib.parse.urlparse(str(totp_challenge.get("config_url", ""))).query
                     ).get("secret", [None])[0]
                 )
                 if not source:
                     msg = "TOTP setup data unavailable"
                     raise RuntimeError(msg)
-                key = base64.b32decode(source.upper() + "=" * ((-len(source)) % 8))
+                key = base64.b32decode(str(source).upper() + "=" * ((-len(str(source))) % 8))
                 sig = hmac.new(
                     key, struct.pack(">Q", int(time.time()) // 30), hashlib.sha1
                 ).digest()
@@ -254,8 +273,12 @@ try:
                 print("Native consent presented")
                 slug = urllib.parse.urlparse(page.url).path.strip("/").split("/")[-1]
                 inspection = page.request.get(BASE + "/api/v3/flows/inspector/" + slug + "/")
-                assert inspection.status in [403, 404], "Observer must not inspect flows"
-                assert not page.get_by_role("button", name="Open flow inspector").is_visible()
+                if inspection.status not in (403, 404):
+                    msg = "Observer must not inspect flows"
+                    raise RuntimeError(msg)
+                if page.get_by_role("button", name="Open flow inspector").is_visible():
+                    msg = "Observer must not see the flow inspector control"
+                    raise RuntimeError(msg)
                 print("Observer native inspector access denied:", inspection.status)
                 stage = page.locator("ak-stage-consent")
                 stage.locator("button[name=continue]").click()
@@ -264,29 +287,47 @@ try:
                 urllib.parse.urlparse(page.url).hostname == "llm.alchemmist.xyz"
                 and "/ui" in urllib.parse.urlparse(page.url).path
             ):
-                cookies = page.context.cookies("https://llm.alchemmist.xyz")
+                cookies = cast(
+                    "list[dict[str, object]]", page.context.cookies("https://llm.alchemmist.xyz")
+                )
                 session = next((c for c in cookies if c["name"] == "token"), None)
-                token = session["value"] if session else None
-                if not token:
+                if session is None or not session["value"]:
                     page.wait_for_timeout(500)
                     continue
-                assert session["secure"], "SSO session cookie must be HTTPS-only"
+                token = str(session["value"])
+                if not session["secure"]:
+                    msg = "SSO session cookie must be HTTPS-only"
+                    raise RuntimeError(msg)
                 part = token.split(".")[1]
-                payload = json.loads(base64.urlsafe_b64decode(part + "=" * ((-len(part)) % 4)))
-                assert payload["user_id"] == fixture_id
-                assert payload["user_role"] == "internal_user_viewer"
+                payload: dict[str, object] = json.loads(
+                    base64.urlsafe_b64decode(part + "=" * ((-len(part)) % 4))
+                )
+                if payload["user_id"] != fixture_id:
+                    msg = "LiteLLM session carries a different identity than the fixture"
+                    raise RuntimeError(msg)
+                if payload["user_role"] != "internal_user_viewer":
+                    msg = "LiteLLM session role must stay read-only"
+                    raise RuntimeError(msg)
                 request = urllib.request.Request(
                     "https://llm.alchemmist.xyz/user/info?"
                     + urllib.parse.urlencode({"user_id": fixture_id}),
-                    headers={"Authorization": "Bearer " + payload["key"]},
+                    headers={"Authorization": "Bearer " + str(payload["key"])},
                 )
                 with urllib.request.urlopen(request, timeout=30) as response:
-                    profile = json.load(response)
-                assert profile["user_info"]["user_role"] == "internal_user_viewer"
-                assert "ak-stage-authenticator-totp" in components
-                assert "ak-stage-consent" in components
+                    profile: dict[str, object] = json.load(response)
+                user_info = cast("dict[str, object]", profile["user_info"])
+                if user_info["user_role"] != "internal_user_viewer":
+                    msg = "User info API must confirm the read-only role"
+                    raise RuntimeError(msg)
+                if "ak-stage-authenticator-totp" not in components:
+                    msg = "TOTP stage missing from the observed flow"
+                    raise RuntimeError(msg)
+                if "ak-stage-consent" not in components:
+                    msg = "Consent stage missing from the observed flow"
+                    raise RuntimeError(msg)
                 print(
-                    "PASS: LiteLLM native password + TOTP + consent + PKCE/OIDC callback and server-verified read-only identity"
+                    "PASS: LiteLLM native password + TOTP + consent + "
+                    "PKCE/OIDC callback and server-verified read-only identity"
                 )
                 break
             page.wait_for_timeout(500)
@@ -299,12 +340,14 @@ try:
             msg = "Browser roundtrip did not complete"
             raise RuntimeError(msg)
         print("Browser JS errors:", len(errors))
-        assert not errors
+        if errors:
+            msg = "Browser JS errors must stay empty"
+            raise RuntimeError(msg)
         browser.close()
 finally:
     try:
         if binding:
-            api("DELETE", "policies/bindings/" + binding["pk"] + "/")
+            api("DELETE", "policies/bindings/" + str(binding["pk"]) + "/")
         api("DELETE", "core/users/" + str(user["pk"]) + "/")
     finally:
         cleanup = Path(__file__).with_name("identity-litellm-cleanup.py").read_text()
