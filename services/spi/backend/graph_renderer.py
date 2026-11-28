@@ -4,15 +4,15 @@ This module does not import service.py or open the SPI database. A gateway proce
 owns its own Grafana credential, policy and bounded cache, never worker secrets.
 """
 
-from collections import OrderedDict
 import hashlib
 import hmac
-import re
 import http.client
+import re
 import threading
 import time
+from collections import OrderedDict
 
-from graph_contract import GraphError, MAX_PNG_BYTES, canonical, render_path, validate_png
+from graph_contract import MAX_PNG_BYTES, GraphError, canonical, render_path, validate_png
 from s3_evidence import HTTPConnection
 
 GRAFANA_HOST = "kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local"
@@ -157,10 +157,10 @@ class Renderer:
             try:
                 remaining = deadline - self._clock()
                 if remaining <= 0:
-                    raise TimeoutError()
+                    raise TimeoutError
                 status, mime, body = (self._transport or self._wire)(path, remaining)
                 if self._clock() > deadline:
-                    raise TimeoutError()
+                    raise TimeoutError
             except TimeoutError:
                 raise GraphError("RENDER_TIMEOUT") from None
             except (OSError, ValueError, http.client.HTTPException):

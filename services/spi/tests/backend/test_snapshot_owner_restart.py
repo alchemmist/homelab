@@ -2,6 +2,7 @@
 
 import unittest
 from unittest.mock import patch
+
 import test_triage as f
 import test_wait_integration as integration_fixtures
 from core import Failure, Store
@@ -88,11 +89,15 @@ class SnapshotOwnerRestartTests(unittest.TestCase):
         OWNER_CONTEXT.binding = (self.key, owner["fence"])
         try:
             job = self.store.get(self.key)
-            with patch.object(
-                self.store.owners, "snapshot_replaced", side_effect=RuntimeError("local fixture")
+            with (
+                patch.object(
+                    self.store.owners,
+                    "snapshot_replaced",
+                    side_effect=RuntimeError("local fixture"),
+                ),
+                self.assertRaises(RuntimeError),
             ):
-                with self.assertRaises(RuntimeError):
-                    self.store.replace_snapshot(self.key, job, {}, False)
+                self.store.replace_snapshot(self.key, job, {}, False)
         finally:
             del OWNER_CONTEXT.binding
         with self.store.db() as c:

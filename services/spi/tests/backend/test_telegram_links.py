@@ -1,7 +1,7 @@
 import importlib.util
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 FILES = Path(__file__).resolve().parents[2] / "backend"
 
@@ -200,7 +200,7 @@ class OutboxTest(unittest.TestCase):
         def service(method, path, json):
             self.assertEqual((method, path), ("POST", "/v1/cards/links"))
             if self.now < 1120:
-                raise ConnectionRefusedError()
+                raise ConnectionRefusedError
             key = (
                 json["key"],
                 json["revision"],
@@ -258,12 +258,11 @@ class OutboxTest(unittest.TestCase):
                 links.primary_url(self.publication(**changes))
 
     def test_atomic_rollback(self):
-        with self.assertRaises(RuntimeError):
-            with self.store.db() as c:
-                self.outbox.record_primary_publication(
-                    "event", "e", 1, self.publication(), connection=c
-                )
-                raise RuntimeError()
+        with self.assertRaises(RuntimeError), self.store.db() as c:
+            self.outbox.record_primary_publication(
+                "event", "e", 1, self.publication(), connection=c
+            )
+            raise RuntimeError
         self.assertIsNone(self.outbox.snapshot("e"))
 
 

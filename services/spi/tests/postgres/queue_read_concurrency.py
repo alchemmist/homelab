@@ -12,6 +12,7 @@ from core import Store
 class PostgresQueueReads(unittest.TestCase):
     def test_postgres_reader_does_not_wait_for_writer(self):
         from unittest.mock import patch
+
         import psycopg
 
         url = "host=" + os.environ["SPI_TEST_PG_SOCKET"] + " dbname=spi_queue_test"

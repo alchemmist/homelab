@@ -2,14 +2,15 @@
 
 import base64
 import json
-import re
-from datetime import datetime, timezone
 import os
+import re
 import ssl
 import time
-import urllib.request
 import urllib.error
+import urllib.request
+from datetime import UTC, datetime
 from pathlib import Path
+
 import jwt
 
 
@@ -39,7 +40,7 @@ def log_event(event, level="info", **fields):
             if not valid:
                 record[key] = "REDACTED"
     record.update(
-        ts=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        ts=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         level=level,
         service="spi-triage",
         component="spi-token-broker",

@@ -1,13 +1,12 @@
 """Bounded internal graph gateway client; no arbitrary URL or ambient credentials."""
 
-import hashlib
 import hmac
 import http.client
 import json
 import re
 import time
 
-from graph_contract import GraphError, MAX_PNG_BYTES, canonical, render_path, validate_png
+from graph_contract import MAX_PNG_BYTES, GraphError, canonical, render_path, validate_png
 from s3_evidence import HTTPConnection
 
 GATEWAY_HOST = "socrat-alert-graphs.cattle-monitoring-system.svc.cluster.local"

@@ -3,11 +3,11 @@
 import ast
 import inspect
 import json
-from pathlib import Path
 import re
 import subprocess
 import textwrap
 import unittest
+from pathlib import Path
 
 from durable_wait import WaitOwners
 

@@ -1,4 +1,7 @@
-import copy, importlib.util, json, unittest
+import copy
+import importlib.util
+import json
+import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]

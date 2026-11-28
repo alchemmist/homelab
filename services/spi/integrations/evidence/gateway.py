@@ -5,15 +5,15 @@ No cookies, caller identity headers, request paths or bodies are logged.
 import datetime
 import hashlib
 import hmac
-import json
-import http.server
 import http.client
-import socket
-import threading
-import time
-import socketserver
+import http.server
+import json
 import os
 import re
+import socket
+import socketserver
+import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -159,7 +159,7 @@ def sign(method, url, access, secret, now=None, region="us-east-1", payload=b"")
     u = urllib.parse.urlsplit(url)
     if u.query or u.fragment or u.username or u.password:
         raise ValueError("invalid upstream")
-    now = now or datetime.datetime.now(datetime.timezone.utc)
+    now = now or datetime.datetime.now(datetime.UTC)
     stamp = now.strftime("%Y%m%dT%H%M%SZ")
     day = stamp[:8]
     digest = hashlib.sha256(payload).hexdigest()

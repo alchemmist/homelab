@@ -1,6 +1,9 @@
 """Bounded anonymous TLS routing diagnostics. No credentials, body or retry."""
 
-import http.client, json, socket, time
+import http.client
+import json
+import socket
+import time
 
 HOST = "harbor.socrat.alchemmist.xyz"
 print(

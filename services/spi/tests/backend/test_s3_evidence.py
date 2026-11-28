@@ -1,7 +1,7 @@
 import datetime
 import hashlib
-import sys
 import socket
+import sys
 import threading
 import time
 import unittest
@@ -128,15 +128,15 @@ class ClientTests(unittest.TestCase):
                 )
 
     def test_retry_date(self):
-        date = (
-            datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=50)
-        ).strftime("%a, %d %b %Y %H:%M:%S GMT")
+        date = (datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds=50)).strftime(
+            "%a, %d %b %Y %H:%M:%S GMT"
+        )
         self.assertTrue(48 <= s.retry_after(date) <= 50)
         self.assertEqual(s.retry_after("999999999"), 86400)
         self.assertIsNone(s.retry_after("invalid"))
 
     def test_signing(self):
-        now = datetime.datetime(2025, 1, 2, tzinfo=datetime.timezone.utc)
+        now = datetime.datetime(2025, 1, 2, tzinfo=datetime.UTC)
         h = s.sign(
             "PUT",
             s.ORIGIN + "/spi-evidence/" + KEY,

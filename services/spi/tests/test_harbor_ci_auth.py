@@ -2,10 +2,10 @@ import base64
 import importlib.util
 import json
 import os
-from pathlib import Path
 import stat
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 spec = importlib.util.spec_from_file_location(

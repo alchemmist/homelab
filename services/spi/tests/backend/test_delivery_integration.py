@@ -1,12 +1,13 @@
-import unittest, tempfile, json
+import json
+import unittest
 from pathlib import Path
-from unittest.mock import Mock
 from types import SimpleNamespace
+from unittest.mock import Mock
+
 import test_triage as fixture
-from core import Store, Failure
-from telegram_links import Links
+from core import Failure
 from telegram_delivery import Delivery
-from integrations import GitHub
+from telegram_links import Links
 
 
 class DeliveryIntegrationTests(unittest.TestCase):

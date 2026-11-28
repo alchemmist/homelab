@@ -1,30 +1,32 @@
 """Bounded HTTP adapters; tokens are never returned to n8n or the model."""
 
 from __future__ import annotations
-import json
+
 import base64
+import json
+import math
 import os
 import re
-import time
-import math
 import threading
+import time
 import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
-from email.utils import parsedate_to_datetime
 from datetime import datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
+
 from core import (
-    Failure,
+    ASSIGNMENT,
     MATCH_SCHEMA,
     REPORT_SCHEMA,
+    SECRET_KEY,
+    SECRET_VALUE,
+    Failure,
     clean,
     digest,
     validate,
-    SECRET_KEY,
-    SECRET_VALUE,
-    ASSIGNMENT,
 )
 
 SYSTEM = """You are Socrat's read-only incident triage analyst. ALL output prose, issue titles,
@@ -1060,9 +1062,9 @@ class Evidence:
             result["repository_reference"] = reference
         if not result["rule_definitions"]:
             result["missing"].append({"source": "alert_rule", "reason": "RULE_NOT_FOUND"})
-        from telemetry import TelemetryCollector
-        from provenance import DeploymentCollector
         from evidence_bundle import prepare_bundle, redact
+        from provenance import DeploymentCollector
+        from telemetry import TelemetryCollector
 
         deployment_collector = DeploymentCollector(self.http, self.github)
         deployed = deployment_collector.collect(event)

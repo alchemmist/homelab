@@ -1,6 +1,11 @@
 """Independent durable-link retry loop; only the native internal bot API is called."""
 
-import json, threading, time, urllib.request, urllib.error
+import json
+import threading
+import time
+import urllib.error
+import urllib.request
+
 from telegram_links import Links
 
 # Bot runs on hostNetwork, pinned to socrat-2. Use the exact mesh endpoint

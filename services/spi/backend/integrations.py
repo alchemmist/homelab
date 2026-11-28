@@ -1,34 +1,36 @@
 """Bounded HTTP adapters; tokens are never returned to n8n or the model."""
 
 from __future__ import annotations
-from analysis_context import project_metric_series, compact_analysis_context
+
+import base64
 import json
 import logging
-import base64
+import math
 import os
 import re
-import time
-import math
 import threading
+import time
 import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
-from email.utils import parsedate_to_datetime
 from datetime import datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
+
+from analysis_context import compact_analysis_context, project_metric_series
 from core import (
-    OWNER_CONTEXT,
-    Store,
-    Failure,
+    ASSIGNMENT,
     MATCH_SCHEMA,
+    OWNER_CONTEXT,
     REPORT_SCHEMA,
+    SECRET_KEY,
+    SECRET_VALUE,
+    Failure,
+    Store,
     clean,
     digest,
     validate,
-    SECRET_KEY,
-    SECRET_VALUE,
-    ASSIGNMENT,
 )
 
 SYSTEM = """You are Socrat's read-only incident triage analyst. ALL output prose, issue titles,
@@ -1305,9 +1307,9 @@ class Evidence:
             result["repository_reference"] = reference
         if not result["rule_definitions"]:
             result["missing"].append({"source": "alert_rule", "reason": "RULE_NOT_FOUND"})
-        from telemetry import TelemetryCollector
-        from provenance import DeploymentCollector
         from evidence_bundle import prepare_bundle, redact
+        from provenance import DeploymentCollector
+        from telemetry import TelemetryCollector
 
         deployment_collector = DeploymentCollector(self.http, self.github)
         deployed = deployment_collector.collect(event)
@@ -1361,10 +1363,11 @@ class Evidence:
                 pass
         bundle = prepare_bundle(event, result, artifacts, extra["links"], known)
         if os.environ.get("SPI_GRAPHS_ENABLED", "false") == "true":
-            from graph_evidence import collect as collect_graphs, attach as attach_graphs
             from graph_client import GraphClient
-            from graph_gateway import secret as graph_secret
             from graph_contract import GraphError
+            from graph_evidence import attach as attach_graphs
+            from graph_evidence import collect as collect_graphs
+            from graph_gateway import secret as graph_secret
 
             try:
                 if os.environ.get("SPI_EVIDENCE_BACKEND") != "s3":

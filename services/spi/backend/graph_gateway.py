@@ -10,8 +10,8 @@ import socket
 import stat
 import threading
 
-from graph_contract import GraphError, canonical, _object, parse_annotation, resolve
-from graph_renderer import Renderer, MAX_REQUEST_BYTES
+from graph_contract import GraphError, _object, canonical, parse_annotation, resolve
+from graph_renderer import MAX_REQUEST_BYTES, Renderer
 
 
 def secret(path):

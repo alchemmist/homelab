@@ -8,11 +8,11 @@ import argparse
 import base64
 import json
 import os
-from pathlib import Path
 import re
 import tempfile
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 HOST = "harbor.socrat.alchemmist.xyz"
 

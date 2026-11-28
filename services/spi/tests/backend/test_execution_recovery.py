@@ -5,8 +5,9 @@ import tempfile
 import time
 import unittest
 from unittest.mock import Mock, patch
+
 import test_triage as f
-from core import Store, Failure, OWNER_CONTEXT, REPORT_SCHEMA
+from core import OWNER_CONTEXT, REPORT_SCHEMA, Failure, Store
 from integrations import Model
 from test_wait_integration import IntegrationTests
 
@@ -31,9 +32,10 @@ class ReadWaitTests(IntegrationTests):
             self.assertEqual(c.execute("SELECT count(*) FROM job_failure_budget").fetchone()[0], 0)
 
     def test_github_network_error_waits_with_same_owner_and_survives_restart(self):
-        from integrations import GitHub, HTTP
-        from pathlib import Path
         import urllib.error
+        from pathlib import Path
+
+        from integrations import HTTP, GitHub
 
         token = Path(self.tmp.name) / "github-token"
         token.write_text("local-fixture-only")
@@ -169,7 +171,8 @@ class MatchSliceTests(IntegrationTests):
         self.exercise(nominees=True)
 
     def test_model_timeout_requeues_once_without_paging(self):
-        import contextlib, io
+        import contextlib
+        import io
 
         self.model.match.side_effect = Failure("LLM_UPSTREAM_TIMEOUT")
         output = io.StringIO()

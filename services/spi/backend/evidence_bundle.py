@@ -2,9 +2,11 @@
 
 import hashlib
 import json
-import re
 import os
-from core import Failure, SECRET_KEY, SECRET_VALUE, ASSIGNMENT
+import re
+from datetime import UTC
+
+from core import ASSIGNMENT, SECRET_KEY, SECRET_VALUE, Failure
 from grafana_links import repair_markdown_links
 
 MAX_ARTIFACT = 90000
@@ -49,7 +51,7 @@ def redact(value, known=()):
     )
     value = ASSIGNMENT.sub(r"\1[REDACTED]", value)
     value = re.sub(
-        r"(\b[a-z][a-z0-9+.-]*://)[^\s/@:]+:[^\s/@]+@", r"\1[REDACTED]@", value, flags=re.I
+        r"(\b[a-z][a-z0-9+.-]*://)[^\s/@:]+:[^\s/@]+@", r"\1[REDACTED]@", value, flags=re.IGNORECASE
     )
     return re.sub(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", "[REDACTED_EMAIL]", value)
 
@@ -411,11 +413,11 @@ def storage_markdown(objects):
             .replace("<", "&lt;")
             .replace(">", "&gt;")
         )
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         try:
-            start = datetime.fromtimestamp(source["from_ms"] / 1000, timezone.utc).isoformat()
-            end = datetime.fromtimestamp(source["to_ms"] / 1000, timezone.utc).isoformat()
+            start = datetime.fromtimestamp(source["from_ms"] / 1000, UTC).isoformat()
+            end = datetime.fromtimestamp(source["to_ms"] / 1000, UTC).isoformat()
         except (KeyError, TypeError, ValueError, OverflowError):
             raise Failure("STORAGE_INTEGRITY") from None
         dashboard = grafana_panel_url(source)
@@ -508,7 +510,7 @@ def navigation_markdown(manifest):
 
 
 def grafana_panel_url(source):
-    from urllib.parse import urlencode, quote
+    from urllib.parse import quote, urlencode
 
     uid = source.get("dashboard_uid")
     panel = source.get("panel_id")

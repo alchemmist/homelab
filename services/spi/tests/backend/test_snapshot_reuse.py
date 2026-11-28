@@ -3,9 +3,10 @@
 import copy
 import unittest
 from unittest.mock import Mock, patch
+
 import test_triage as f
 from core import Failure, digest
-from integrations import Model, GitHub
+from integrations import GitHub, Model
 
 GOOD = {"issue_number": 0, "reason": "Different problem", "confidence": "low"}
 
@@ -237,12 +238,13 @@ class ChurnPublicationTests(unittest.TestCase):
     tearDown = f.EngineTests.tearDown
 
     def test_four_prepared_jobs_eventually_publish_after_own_bot_updates(self):
+        import hashlib
         from types import SimpleNamespace
-        from service import Engine
+
         from core import Store
         from evidence_bundle import prepare_bundle, storage_objects
+        from service import Engine
         from telegram_links import Links
-        import hashlib
 
         now = [1000]
         with patch("core.time.time", side_effect=lambda: now[0]):
