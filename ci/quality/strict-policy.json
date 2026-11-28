@@ -127,6 +127,9 @@
       "deploy/storage/thanos-warm-seed/start.py": [
         "E501"
       ],
+      "scripts/identity-litellm-smoke.py": [
+        "A002"
+      ],
 "charts/spi-triage/files/core.py": [
         "N818",
         "PLC0415"
