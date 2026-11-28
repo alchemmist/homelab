@@ -9,12 +9,13 @@ from playwright.async_api import async_playwright
 
 
 async def main() -> None:
+    """Verify the public NetBird entry redirects to the reviewed auth flow."""
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context()  # trusted TLS, fresh anonymous context
         page = await context.new_page()
-        failures = []
-        navigation = []
+        failures: list[object] = []
+        navigation: list[str] = []
         page.on(
             "requestfailed",
             lambda r: failures.append({"url": r.url.split("?")[0], "failure": r.failure}),
@@ -36,11 +37,19 @@ async def main() -> None:
         )
         await page.wait_for_timeout(5000)
         parts = urllib.parse.urlsplit(page.url)
-        assert parts.hostname == "auth.socrat.alchemmist.xyz"
-        assert parts.path == "/if/flow/default-authentication-flow/"
+        if parts.hostname != "auth.socrat.alchemmist.xyz":
+            msg = "Entry redirected to an unreviewed host"
+            raise RuntimeError(msg)
+        if parts.path != "/if/flow/default-authentication-flow/":
+            msg = "Entry redirected to an unreviewed auth flow"
+            raise RuntimeError(msg)
         query = urllib.parse.parse_qs(parts.query)
-        assert query["redirect_uri"] == ["https://netbird.socrat.alchemmist.xyz/oauth2/callback"]
-        assert any("/oauth2/auth" in u for u in navigation)
+        if query["redirect_uri"] != ["https://netbird.socrat.alchemmist.xyz/oauth2/callback"]:
+            msg = "Entry redirected with an unreviewed callback"
+            raise RuntimeError(msg)
+        if not any("/oauth2/auth" in u for u in navigation):
+            msg = "OAuth2 authorization step missing from the navigation"
+            raise RuntimeError(msg)
         inputs = await page.locator("input").evaluate_all(
             "(els)=>els.map(e=>({type:e.type,placeholder:e.placeholder,name:e.name}))"
         )
@@ -48,9 +57,15 @@ async def main() -> None:
         buttons = [
             s.strip() for s in await page.get_by_role("button").all_text_contents() if s.strip()
         ]
-        assert not failures
-        assert not any("sign up" in s.lower() or "register" in s.lower() for s in buttons + links)
-        assert any(i["type"] == "text" for i in inputs)
+        if failures:
+            msg = "Public entry produced failed requests"
+            raise RuntimeError(msg)
+        if any("sign up" in s.lower() or "register" in s.lower() for s in buttons + links):
+            msg = "Sign-up affordances exposed on the public entry"
+            raise RuntimeError(msg)
+        if not any(i["type"] == "text" for i in inputs):
+            msg = "Expected credential input missing from the auth flow"
+            raise RuntimeError(msg)
         result = {
             "trusted_TLS": True,
             "fresh_anonymous_context": True,
