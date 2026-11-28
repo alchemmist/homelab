@@ -194,24 +194,24 @@ class IntegrationTests(unittest.TestCase):
         a = self.engine.run_v1("analyze", a)
         with self.store.db() as c:
             assert (
-                self.store._owned_priority_until(c, 0, self.now) == 0
+                self.store.owned_priority_until(c, 0, self.now) == 0
             )  # Far future is not a reservation.
-            assert self.store._owned_priority_until(c, 0, a["due_at"]) > a["due_at"]
+            assert self.store.owned_priority_until(c, 0, a["due_at"]) > a["due_at"]
             c.execute(
                 "update workflow_wait_owner set revision='foreign' where job_id=?",
                 (self.key,),
             )
-            assert self.store._owned_priority_until(c, 0, a["due_at"]) == 0
+            assert self.store.owned_priority_until(c, 0, a["due_at"]) == 0
             c.execute(
                 "update workflow_wait_owner set revision='durable-v1' where job_id=?",
                 (self.key,),
             )
             c.execute("update jobs set stage=1 where id=?", (self.key,))
-            assert self.store._owned_priority_until(c, 0, a["due_at"]) == 0
+            assert self.store.owned_priority_until(c, 0, a["due_at"]) == 0
             c.execute("update jobs set stage=2 where id=?", (self.key,))
             expiry = a["due_at"] + 180
-            self.store._reconcile_owners(c, expiry)
-            assert self.store._owned_priority_until(c, 0, expiry) == 0
+            self.store.reconcile_owners(c, expiry)
+            assert self.store.owned_priority_until(c, 0, expiry) == 0
         assert self.store.get(self.key)["state"] == "retry"
 
     def test_fresh_queued_match_waits_for_short_owned_analysis_slot(self) -> None:

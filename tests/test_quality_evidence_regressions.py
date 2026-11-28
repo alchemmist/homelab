@@ -174,6 +174,10 @@ def test_frozen_provenance_is_the_exact_reviewed_file_set() -> None:
     expected = {record["directory"] + "/" + name for name in manifest["backend_sha256"]}
     frozen = common.frozen_source_files()
     patched = [
+        "charts/spi-triage/files/core.py",
+        "charts/spi-triage/files/durable_wait.py",
+        "charts/spi-triage/files/s3_evidence.py",
+        "charts/spi-triage/files/service.py",
         "charts/spi-triage/files/telegram_delivery.py",
         "charts/spi-triage/files/telegram_links.py",
     ]

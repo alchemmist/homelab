@@ -34,7 +34,7 @@ _UNCHANGED_FUNCTION_DIGESTS = {
     # The same branch later typed yaml_targets/shell_targets/shellcheck_files
     # signatures and moved the lazy yamllint imports behind audited Protocol
     # casts (check_yaml), reriving those four pins only. It also split the
-    # noqa-attribute offset and YAML field/shell lookups out of
+    # the ruff suppression-attribute offset and YAML field/shell lookups out of
     # python_directive_lines (check_workflow) under a top-level yaml import,
     # reriving that one pin. check_javascript also moved its digest helper to a
     # top-level import (PLC0415), check_dependencies gained _distribution_flags,

@@ -303,7 +303,7 @@ class EngineStorageTests(unittest.TestCase):
         with pytest.raises(Failure, match="OPEN_SPI_CHANGED"):
             self.engine.run("publish", self.key)
         saved = self.store.get(self.key)
-        self.store.replace_snapshot(self.key, saved, saved["result"], True)
+        self.store.replace_snapshot(self.key, saved, saved["result"], expensive=True)
         with self.store.db() as c:
             assert c.execute("SELECT replacements FROM snapshot_budget").fetchone()[0] == 1
 

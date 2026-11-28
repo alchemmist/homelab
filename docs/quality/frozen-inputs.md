@@ -1,10 +1,26 @@
 # Exact frozen compatibility inputs, not a lint-debt exemption
 
-Local compatibility update: commits `a6c666af` and `dec487d0` changed card
-discovery, the guarded POST timeout and its retry lease. `telegram_delivery.py`
+Local strict cleanup update: `core.py`, `durable_wait.py`, `service.py` and
+`s3_evidence.py` are fully renovated to the ruff select=ALL and mypy strict
+gate without behavior change (verified by the full `tests/spi_triage` suite;
+deterministic jitter now runs through a `random.SystemRandom` instance on the
+`_RETRY_JITTER` seam, the Store owner methods
+`reconcile_owners`/`owned_priority_until`/`schedule` are public cross-module
+API, `service.py` keeps the reviewed HTTP surfaces and stage pipeline factored
+into typed helpers with the same wire contract, and `s3_evidence.py` keeps the
+storage exception names and the SigV4 `sign()` arity shared with the reviewed
+rustfs_gateway reference implementation). Together with the older
+`telegram_delivery.py`/`telegram_links.py` patches this marks **six locally
+patched modules**, not pristine upstream files.
+All 17 deployed inputs still have pinned SHA-256 digests; only the 11 unpatched
+modules are excluded from owned-source checks. The earlier boundary below
+describes the snapshot before those local patches.
+
+Earlier local compatibility update: commits `a6c666af` and `dec487d0` changed
+card discovery, the guarded POST timeout and its retry lease. `telegram_delivery.py`
 and `telegram_links.py` are therefore **local patches**, not pristine upstream
 files. All 17 deployed inputs still have pinned SHA-256 digests; only the 15
-unpatched modules are excluded from owned-source checks. The original boundary
+unpatched modules were excluded from owned-source checks. The original boundary
 below describes the snapshot before those two commits.
 
 ## Original snapshot

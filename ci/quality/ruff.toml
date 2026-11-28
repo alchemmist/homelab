@@ -63,5 +63,27 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 "scripts/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
 "ansible/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
 "charts/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
+# The durable workflow error type is named Failure across the reviewed
+# worker API boundary: its fixed non-sensitive codes are the documented wire
+# contract asserted by the spi_triage suite and produced by every chart
+# module, so renaming to an Error suffix would break the deployed worker API
+# and the reviewed compatibility pins.
+"charts/spi-triage/files/core.py" = ["N818", "PLC0415"]
+"services/spi/legacy/backend/core.py" = ["N818", "PLC0415"]
+"charts/spi-triage/files/durable_wait.py" = ["PLC0415"]
+"services/spi/legacy/backend/durable_wait.py" = ["PLC0415"]
+# The storage exception names (StoragePermanent/StorageTransient et al.) and
+# the SigV4 sign() arity are the reviewed wire contract shared with the
+# independent reference implementation in services/rustfs_gateway/gateway.py
+# and consumed by service.py/storage_runtime.py: renaming or re-shaping them
+# would break the deployed worker and gateway boundaries.
+"charts/spi-triage/files/s3_evidence.py" = ["N818", "PLR0913"]
+"services/spi/legacy/backend/s3_evidence.py" = ["N818", "PLR0913"]
+# The git-tracked spelling of the renovated spi-triage service module carries the
+# same reviewed rationale as the charts/** family: stdout JSON records are the
+# worker log contract, the Engine collaborator arity is the reviewed (and test-
+# asserted) constructor surface, and queue_admin is deferred until the worker is
+# actually configured with a queue UI token.
+"services/spi/legacy/backend/service.py" = ["PLC0415", "T201", "PLR0913"]
 "deploy/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
 "services/**" = ["INP001"]

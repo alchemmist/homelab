@@ -32,7 +32,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 DISTINCT_ID_COUNT = 2
 CHART_TARGET_MINIMUM = 58
-FROZEN_FILE_COUNT = 15
+# 17 pinned compatibility inputs minus the 6 locally patched Homelab-owned
+# modules (telegram_delivery, telegram_links, core, durable_wait, service,
+# s3_evidence).
+FROZEN_FILE_COUNT = 11
 EXPECTED_LANGUAGE_FINDINGS = 5
 
 
