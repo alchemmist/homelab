@@ -16,8 +16,8 @@
     "s3_evidence.py": "83bddf4d72cf1dbdb66579dbb76b0f722e083a12dd09b9eba1f8c5cab1b7e00c",
     "service.py": "6f9ba21d7f7fdfd25703de6688e23ab3957a9d9e5e592525d27677c284cd56c2",
     "storage_runtime.py": "dd70d456f7c3cca83b730c4ee0cb67e22fdee3bab1c930a228f4137284ada768",
-    "telegram_delivery.py": "58229b1ace751b775457b9912b6abd93b65814aa037b01f32dcd7c2bf3aa35fc",
-    "telegram_links.py": "7f226fe9a89821c0d082512fbbbde4bb04da5361883cf9550d441f4209e31351",
+    "telegram_delivery.py": "32c24fd9645e5d9cca1a6510d6d43a8e7cb5cb9a2910c1aa83adf051576f6d3a",
+    "telegram_links.py": "16a06e46dfd7917ea27e790268248abeb924b67a0131d178e763356a1180d4a0",
     "telemetry.py": "7e6b5e43e5e6bc65c21911d39ee42cf4dba3cb6a7fbe705c982f0b51648a6ff7"
   }
 }

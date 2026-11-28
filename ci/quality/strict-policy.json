@@ -209,6 +209,24 @@
       ],
       "services/spi/legacy/backend/provenance.py": [
         "PLC0415"
+      ],
+      "charts/spi-triage/files/telegram_links.py": [
+        "BLE001"
+      ],
+      "services/spi/legacy/backend/telegram_links.py": [
+        "BLE001"
+      ],
+      "charts/spi-triage/files/telegram_delivery.py": [
+        "BLE001",
+        "S110"
+      ],
+      "services/spi/legacy/backend/telegram_delivery.py": [
+        "BLE001",
+        "S110",
+        "PLC0415",
+        "S310",
+        "T201",
+        "PLR0913"
       ]
     },
     "ignoreReasons": {
@@ -460,7 +478,7 @@
   "reviewedExceptionDigest": "fdbf4b83755f7ce568da4b53a20b5d23dfb4fa882728e8c1a5def79055935481",
   "frozenCompatibility": {
     "manifest": "charts/spi-triage/LEGACY-SOURCE-MANIFEST.json",
-    "sha256": "bf962fa43a28a15c3e8a7865291d3f293557dc3b89ab6bc7d5d6bf5980d2447c",
+    "sha256": "064f06b684d6529053a56c454316d6afcd7180e8fc264076ebf94c2eedf28e68",
     "canonicalRepository": "https://github.com/alchemmist/spi-triage",
     "directory": "charts/spi-triage/files",
     "count": 17

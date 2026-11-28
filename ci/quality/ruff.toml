@@ -146,4 +146,17 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # and the shared import cycle stays guarded per-call (charts/** already
 # carries PLC0415; the services spelling repeats it here).
 "services/spi/legacy/backend/provenance.py" = ["PLC0415"]
+# telegram_links.once deliberately catches a blind Exception so an ambiguous
+# POST outcome is retried instead of killing the delivery thread or
+# fabricating a receipt (reviewed seams, pinned by the spi_triage suite).
+"charts/spi-triage/files/telegram_links.py" = ["BLE001"]
+"services/spi/legacy/backend/telegram_links.py" = ["BLE001"]
+# telegram_delivery loops swallow single-retry hiccups on purpose: a tick of
+# card discovery, primary backfill, or link retry must never kill its worker
+# thread, and each failure already reschedules itself in the durable tables
+# (reviewed seams, pinned by the spi_triage suite; the services spelling also
+# keeps the lazy json.codec import, the audited HTTPS open, and the one-line
+# loop retry log that charts/** covers via the global tables).
+"charts/spi-triage/files/telegram_delivery.py" = ["BLE001", "S110"]
+"services/spi/legacy/backend/telegram_delivery.py" = ["BLE001", "S110", "PLC0415", "S310", "T201", "PLR0913"]
 "services/**" = ["INP001"]
