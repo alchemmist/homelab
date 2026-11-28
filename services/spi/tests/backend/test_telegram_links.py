@@ -3,6 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 FILES = Path(__file__).resolve().parents[2] / "backend"
 
 
@@ -83,17 +85,17 @@ class OutboxTest(unittest.TestCase):
         self.enqueue()
         self.receipt()
         self.outbox.once()
-        self.assertEqual(self.outbox.snapshot("e")["state"], "applied")
-        self.assertFalse(self.outbox.once())
-        self.assertEqual(len(self.calls), 1)
+        assert self.outbox.snapshot("e")["state"] == "applied"
+        assert not self.outbox.once()
+        assert len(self.calls) == 1
 
     def test_publication_before_card(self):
         self.enqueue()
         self.outbox.once()
-        self.assertEqual(self.outbox.snapshot("e")["error"], "WAIT_RECEIPT")
+        assert self.outbox.snapshot("e")["error"] == "WAIT_RECEIPT"
         self.receipt()
         self.outbox.once()
-        self.assertEqual(self.outbox.snapshot("e")["state"], "applied")
+        assert self.outbox.snapshot("e")["state"] == "applied"
 
     def test_races_and_restart(self):
         self.enqueue()
@@ -101,13 +103,13 @@ class OutboxTest(unittest.TestCase):
         for status in (404, 409, 500):
             self.status = status
             self.retry()
-            self.assertEqual(self.outbox.snapshot("e")["state"], "pending")
+            assert self.outbox.snapshot("e")["state"] == "pending"
         self.outbox = links.Links(
             self.store, self.http, clock=lambda: self.now, guarded_protocol=True
         )
         self.status = 200
         self.retry()
-        self.assertEqual(self.outbox.snapshot("e")["state"], "applied")
+        assert self.outbox.snapshot("e")["state"] == "applied"
 
     def test_partial_readback_not_desired_state(self):
         self.enqueue()
@@ -122,10 +124,10 @@ class OutboxTest(unittest.TestCase):
             ),
         )
         self.outbox.once()
-        self.assertEqual(self.outbox.snapshot("e")["error"], "COPIES_PENDING")
+        assert self.outbox.snapshot("e")["error"] == "COPIES_PENDING"
         self.outbox.request = self.http
         self.retry()
-        self.assertEqual(self.outbox.snapshot("e")["state"], "applied")
+        assert self.outbox.snapshot("e")["state"] == "applied"
 
     def test_timeout_secret_safe(self):
         self.enqueue()
@@ -136,17 +138,17 @@ class OutboxTest(unittest.TestCase):
 
         self.outbox.request = fail
         self.outbox.once()
-        self.assertEqual(self.outbox.snapshot("e")["error"], "DELIVERY_UNKNOWN")
-        self.assertNotIn("secret-value", str(self.outbox.snapshot("e")))
+        assert self.outbox.snapshot("e")["error"] == "DELIVERY_UNKNOWN"
+        assert "secret-value" not in str(self.outbox.snapshot("e"))
 
     def test_lease_recovery(self):
         self.enqueue()
         self.receipt()
         with self.store.db() as c:
             c.execute("UPDATE spi_links SET owner='crashed',lease=1100")
-        self.assertFalse(self.outbox.once())
+        assert not self.outbox.once()
         self.retry()
-        self.assertEqual(self.outbox.snapshot("e")["state"], "applied")
+        assert self.outbox.snapshot("e")["state"] == "applied"
 
     def test_episode_and_stale_revision(self):
         self.enqueue()
@@ -154,8 +156,8 @@ class OutboxTest(unittest.TestCase):
             "e", dict(key="legacy", copies=[dict(chat_id=1, message_id=2)])
         )
         self.outbox.once()
-        self.assertEqual(self.outbox.snapshot("e")["error"], "WAIT_IMMUTABLE_RECEIPT")
-        self.assertFalse(any(c[0] == "POST" for c in self.calls))
+        assert self.outbox.snapshot("e")["error"] == "WAIT_IMMUTABLE_RECEIPT"
+        assert not any(c[0] == "POST" for c in self.calls)
         self.outbox.record_primary_publication(
             "resolved",
             "e",
@@ -165,7 +167,7 @@ class OutboxTest(unittest.TestCase):
             ),
         )
         self.enqueue()
-        self.assertEqual(self.outbox.snapshot("e")["revision"], 2)
+        assert self.outbox.snapshot("e")["revision"] == 2
 
     def test_out_of_order_completion_cannot_ack_new_revision(self):
         self.enqueue()
@@ -187,8 +189,8 @@ class OutboxTest(unittest.TestCase):
 
         self.outbox.request = racing
         self.outbox.once()
-        self.assertEqual(self.outbox.snapshot("e")["state"], "pending")
-        self.assertEqual(self.outbox.snapshot("e")["revision"], 2)
+        assert self.outbox.snapshot("e")["state"] == "pending"
+        assert self.outbox.snapshot("e")["revision"] == 2
 
     def test_two_minute_outage_lost_ack_and_restart(self):
         # Backend A disappears. B has the same durable card state even after
@@ -198,7 +200,7 @@ class OutboxTest(unittest.TestCase):
         committed, requests = set(), []
 
         def service(method, path, json):
-            self.assertEqual((method, path), ("POST", "/v1/cards/links"))
+            assert (method, path) == ("POST", "/v1/cards/links")
             if self.now < 1120:
                 raise ConnectionRefusedError
             key = (
@@ -216,36 +218,36 @@ class OutboxTest(unittest.TestCase):
         self.outbox.request = service
         for self.now in range(1000, 1120):
             self.outbox.once()
-            self.assertEqual(self.outbox.snapshot("e")["state"], "pending")
+            assert self.outbox.snapshot("e")["state"] == "pending"
         for self.now in range(1120, 1300):
             self.outbox.once()
             if committed:
                 break
-        self.assertEqual(len(committed), 1)
-        self.assertEqual(self.outbox.snapshot("e")["state"], "pending")
+        assert len(committed) == 1
+        assert self.outbox.snapshot("e")["state"] == "pending"
         reopened = core.Store(Path(self.tmp.name) / "db")
         self.outbox = links.Links(reopened, service, clock=lambda: self.now, guarded_protocol=True)
         self.retry()
-        self.assertEqual(self.outbox.snapshot("e")["state"], "applied")
-        self.assertEqual(requests, [requests[0]] * 2)
-        self.assertFalse(self.outbox.once())
+        assert self.outbox.snapshot("e")["state"] == "applied"
+        assert requests == [requests[0]] * 2
+        assert not self.outbox.once()
 
     def test_legacy_bot_blocked(self):
         self.enqueue()
         self.receipt()
         self.outbox.guarded = False
         self.outbox.once()
-        self.assertEqual(self.calls, [])
-        self.assertEqual(self.outbox.snapshot("e")["error"], "BOT_GUARD_REQUIRED")
+        assert self.calls == []
+        assert self.outbox.snapshot("e")["error"] == "BOT_GUARD_REQUIRED"
 
     def test_urls(self):
-        self.assertEqual(
+        assert (
             links.primary_url(
                 self.publication(
                     kind="issue", html_url="https://github.com/alchemmist/homelab/issues/42"
                 )
-            ),
-            "https://github.com/alchemmist/homelab/issues/42",
+            )
+            == "https://github.com/alchemmist/homelab/issues/42"
         )
         for changes in [
             dict(role="artifact"),
@@ -254,16 +256,16 @@ class OutboxTest(unittest.TestCase):
             dict(id=8),
             dict(html_url=self.publication()["html_url"] + "?token=x"),
         ]:
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 links.primary_url(self.publication(**changes))
 
     def test_atomic_rollback(self):
-        with self.assertRaises(RuntimeError), self.store.db() as c:
+        with pytest.raises(RuntimeError), self.store.db() as c:
             self.outbox.record_primary_publication(
                 "event", "e", 1, self.publication(), connection=c
             )
             raise RuntimeError
-        self.assertIsNone(self.outbox.snapshot("e"))
+        assert self.outbox.snapshot("e") is None
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import copy
 import unittest
 from unittest.mock import Mock
 
+import pytest
 import test_triage as f
 from core import Failure, digest
 from integrations import GitHub, Model
@@ -46,8 +47,8 @@ class SnapshotConsistencyTests(unittest.TestCase):
         m.call.reset_mock()
         g, calls = self.transport(lambda r: r.append(dict(r[-1], number=62)), descending=True)
         current = list(g.pages("/issues?state=open&sort=created&direction=desc"))
-        self.assertEqual(len(current), 62)
-        self.assertEqual(len({x["number"] for x in current}), 61)
+        assert len(current) == 62
+        assert len({x["number"] for x in current}) == 61
         # Execute the exact clean pre-fix matcher, not an approximation.
         import types
 
@@ -63,17 +64,17 @@ class SnapshotConsistencyTests(unittest.TestCase):
         )
         old = baseline.Model(Mock(), "fake")
         old.call = Mock()
-        with self.assertRaises(Failure) as previous:
+        with pytest.raises(Failure) as previous:
             old.match(f.event(), current, proof)
-        self.assertEqual(previous.exception.code, "INVALID_MATCH_PROGRESS")
+        assert previous.value.code == "INVALID_MATCH_PROGRESS"
         old.call.assert_not_called()
         with self.assertLogs("integrations", level="WARNING") as logs:
-            with self.assertRaises(Failure) as e:
+            with pytest.raises(Failure) as e:
                 m.match(f.event(), current, proof)
-        self.assertEqual(e.exception.code, "GITHUB_SNAPSHOT_UNSTABLE")
-        self.assertIn("CURRENT_DUPLICATE", "".join(logs.output))
+        assert e.value.code == "GITHUB_SNAPSHOT_UNSTABLE"
+        assert "CURRENT_DUPLICATE" in "".join(logs.output)
         m.call.assert_not_called()
-        self.assertEqual(proof, saved[-1])
+        assert proof == saved[-1]
 
     def test_insert_close_reopen_reorder_coherent_or_visible_instability(self):
         for n in (61, 62):
@@ -89,17 +90,14 @@ class SnapshotConsistencyTests(unittest.TestCase):
                     try:
                         snapshot = g.snapshot()
                     except Failure as e:
-                        self.assertEqual(e.code, "GITHUB_SNAPSHOT_UNSTABLE")
+                        assert e.code == "GITHUB_SNAPSHOT_UNSTABLE"
                     else:
                         expected = g.issues()
-                        self.assertEqual(
-                            [x["number"] for x in snapshot], [x["number"] for x in expected]
+                        assert [x["number"] for x in snapshot] == [x["number"] for x in expected]
+                        assert g.open_signature() == digest(
+                            [(x["number"], x["updated_at"]) for x in snapshot]
                         )
-                        self.assertEqual(
-                            g.open_signature(),
-                            digest([(x["number"], x["updated_at"]) for x in snapshot]),
-                        )
-                    self.assertLessEqual(len(calls), 20)
+                    assert len(calls) <= 20
 
     def test_comment_window_update_defers_no_model(self):
         g = GitHub(Mock(), "unused")
@@ -108,18 +106,18 @@ class SnapshotConsistencyTests(unittest.TestCase):
         second[0]["updated_at"] = "changed"
         g.issues = Mock(side_effect=[first, second])
         g.comments = Mock()
-        with self.assertRaises(Failure) as e:
+        with pytest.raises(Failure) as e:
             g.snapshot()
-        self.assertEqual(e.exception.code, "GITHUB_SNAPSHOT_UNSTABLE")
-        self.assertEqual(g.issues.call_count, 2)
+        assert e.value.code == "GITHUB_SNAPSHOT_UNSTABLE"
+        assert g.issues.call_count == 2
 
     def test_bad_schema_finite(self):
         g = GitHub(Mock(), "unused")
         g.request = Mock(return_value=[{"title": "[SPI] bad", "number": "secret"}])
-        with self.assertRaises(Failure) as e:
+        with pytest.raises(Failure) as e:
             g.snapshot()
-        self.assertEqual(e.exception.code, "INVALID_GITHUB_PAGE")
-        self.assertEqual(g.request.call_count, 1)
+        assert e.value.code == "INVALID_GITHUB_PAGE"
+        assert g.request.call_count == 1
 
 
 class PatientBudgetTests(unittest.TestCase):
@@ -130,15 +128,15 @@ class PatientBudgetTests(unittest.TestCase):
         key = self.store.enqueue(f.event())["job_id"]
         self.store.claim()
         self.github.snapshot.side_effect = Failure("GITHUB_SNAPSHOT_UNSTABLE", retry_after=15)
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.run("match", key)
         self.model.match.assert_not_called()
         with self.store.db() as c:
-            self.assertEqual(
+            assert (
                 c.execute(
                     "select count(*) from job_failure_budget where job_id=?", (key,)
-                ).fetchone()[0],
-                0,
+                ).fetchone()[0]
+                == 0
             )
 
     def test_snapshot_deferral_preserves_proof_and_failure_budget(self):
@@ -148,14 +146,14 @@ class PatientBudgetTests(unittest.TestCase):
         for _ in range(3):
             self.store.fail(key, "GITHUB_SNAPSHOT_UNSTABLE", retry_after=15)
             row = self.store.get(key)
-            self.assertEqual(row["result"]["match_progress_v3"], {"proof": "retained"})
-            self.assertTrue(15 <= row["available"] - row["updated"] <= 18)
+            assert row["result"]["match_progress_v3"] == {"proof": "retained"}
+            assert 15 <= row["available"] - row["updated"] <= 18
             with self.store.db() as c:
-                self.assertEqual(
+                assert (
                     c.execute(
                         "select count(*) from job_failure_budget where job_id=?", (key,)
-                    ).fetchone()[0],
-                    0,
+                    ).fetchone()[0]
+                    == 0
                 )
                 c.execute("update jobs set available=0 where id=?", (key,))
             self.store.claim()

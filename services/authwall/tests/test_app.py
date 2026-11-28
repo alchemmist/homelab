@@ -1,15 +1,14 @@
 import io
 import json
 import os
-import uuid
 import threading
 import unittest
 import urllib.request
+import uuid
 from http.server import ThreadingHTTPServer
 
-from PIL import Image
-
 from authwall.server import App, make_handler
+from PIL import Image
 
 
 def png() -> bytes:
@@ -37,10 +36,14 @@ class WallpaperTests(unittest.TestCase):
     def test_upload_optimize_toggle_and_scene(self) -> None:
         boundary = "bound"
         body = (
-            f"--{boundary}\r\n"
-            'Content-Disposition: form-data; name="file"; filename="lake.png"\r\n'
-            "Content-Type: image/png\r\n\r\n"
-        ).encode() + png() + f"\r\n--{boundary}--\r\n".encode()
+            (
+                f"--{boundary}\r\n"
+                'Content-Disposition: form-data; name="file"; filename="lake.png"\r\n'
+                "Content-Type: image/png\r\n\r\n"
+            ).encode()
+            + png()
+            + f"\r\n--{boundary}--\r\n".encode()
+        )
         req = urllib.request.Request(
             self.base + "/wallpapers/api/upload",
             data=body,
@@ -51,7 +54,7 @@ class WallpaperTests(unittest.TestCase):
             wallpaper_id = json.load(res)["ids"][0]
         self.app.optimize(wallpaper_id)
         row = self.app.db.get(wallpaper_id)
-        self.assertEqual(row["status"], "ready")
+        assert row["status"] == "ready"
         urllib.request.urlopen(
             urllib.request.Request(
                 self.base + f"/wallpapers/api/items/{wallpaper_id}/active",
@@ -61,22 +64,29 @@ class WallpaperTests(unittest.TestCase):
             )
         ).read()
         css = urllib.request.urlopen(self.base + "/wallpapers/scene.css?seed=login").read().decode()
-        self.assertIn(wallpaper_id, css)
-        self.assertIn("data:image/webp;base64,", css)
+        assert wallpaper_id in css
+        assert "data:image/webp;base64," in css
         full = urllib.request.urlopen(self.base + f"/wallpapers/media/{wallpaper_id}.webp").read()
-        self.assertTrue(full.startswith(b"RIFF"))
+        assert full.startswith(b"RIFF")
 
     def test_gallery_delegation(self) -> None:
         from unittest.mock import patch
 
-        for group, status in [("app-authwall-manager", 200), ("homelab-owner", 200), ("homelab-observer", 403)]:
-            with self.subTest(group=group), patch("authwall.server.groups_from_authentik", return_value={group}):
+        for group, status in [
+            ("app-authwall-manager", 200),
+            ("homelab-owner", 200),
+            ("homelab-observer", 403),
+        ]:
+            with (
+                self.subTest(group=group),
+                patch("authwall.server.groups_from_authentik", return_value={group}),
+            ):
                 try:
                     with urllib.request.urlopen(self.base + "/wallpapers/api/items") as response:
                         actual = response.status
                 except urllib.error.HTTPError as exc:
                     actual = exc.code
-                self.assertEqual(actual, status)
+                assert actual == status
 
     def test_gallery_requires_owner_group(self) -> None:
         os.environ["WALLPAPER_AUTH"] = "on"
@@ -89,17 +99,17 @@ class WallpaperTests(unittest.TestCase):
         try:
             opener.open(self.base + "/wallpapers/")
         except urllib.error.HTTPError as exc:
-            self.assertEqual(exc.code, 302)
-            self.assertIn("if/flow/default-authentication-flow", exc.headers["Location"])
+            assert exc.code == 302
+            assert "if/flow/default-authentication-flow" in exc.headers["Location"]
         else:
             self.fail("anonymous gallery was allowed")
         css = urllib.request.urlopen(self.base + "/wallpapers/scene.css").read()
-        self.assertIn(b"body::before", css)
+        assert b"body::before" in css
         denied = urllib.request.Request(self.base + "/wallpapers/api/items")
         try:
             urllib.request.urlopen(denied)
         except urllib.error.HTTPError as exc:
-            self.assertEqual(exc.code, 401)
+            assert exc.code == 401
         else:
             self.fail("anonymous api was allowed")
         os.environ["WALLPAPER_AUTH"] = "off"

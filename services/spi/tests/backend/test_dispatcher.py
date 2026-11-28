@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "backend"))
+import pytest
 from core import Store
 from dispatcher import Dispatcher
 
@@ -23,37 +24,37 @@ class DispatchTests(unittest.TestCase):
         d = Dispatcher(self.store, "unused", post=lambda: calls.append(1))
         self.enqueue()
         d.tick()
-        self.assertEqual(calls, [])
+        assert calls == []
         d.enabled = True
         d.tick()
         d.tick()
-        self.assertEqual(calls, [1])
-        self.assertGreater(self.store.dispatch_status()["deadline"], 0)
+        assert calls == [1]
+        assert self.store.dispatch_status()["deadline"] > 0
 
     def test_empty(self):
         d = Dispatcher(self.store, "unused", True, lambda: self.fail("network"))
-        self.assertIsNone(d.tick())
+        assert d.tick() is None
 
     def test_ambiguous_persists_and_ack_race(self):
         self.enqueue()
 
         def post():
-            self.assertEqual(self.store.claim()["job_id"], "a")
+            assert self.store.claim()["job_id"] == "a"
             raise TimeoutError
 
         Dispatcher(self.store, "unused", True, post).tick()
-        self.assertEqual(self.store.dispatch_status()["attempts"], 0)
-        self.assertIsNone(self.store.reserve_dispatch()[0])
+        assert self.store.dispatch_status()["attempts"] == 0
+        assert self.store.reserve_dispatch()[0] is None
 
     def test_deadlines_recovery_and_terminal_lease(self):
         self.enqueue()
         self.enqueue("b")
         self.store.claim()
         self.store.save("a", 4, {}, state="dry_run")
-        self.assertIsNotNone(self.store.reserve_dispatch()[0])
-        self.assertEqual(self.store.claim()["job_id"], "b")
-        self.assertEqual(self.store.recover_on_start(), 1)
-        self.assertIsNotNone(self.store.reserve_dispatch()[0])
+        assert self.store.reserve_dispatch()[0] is not None
+        assert self.store.claim()["job_id"] == "b"
+        assert self.store.recover_on_start() == 1
+        assert self.store.reserve_dispatch()[0] is not None
 
     def test_backoff_restart_and_due_retry(self):
         with (
@@ -62,20 +63,20 @@ class DispatchTests(unittest.TestCase):
         ):
             self.enqueue()
             token, deadline = self.store.reserve_dispatch()
-            self.assertEqual(deadline, 130)
+            assert deadline == 130
             reopened = Store(self.store.path)
-            self.assertEqual(reopened.reserve_dispatch(129), (None, 130))
-            self.assertEqual(reopened.reserve_dispatch(130)[1], 190)
+            assert reopened.reserve_dispatch(129) == (None, 130)
+            assert reopened.reserve_dispatch(130)[1] == 190
             self.store.claim()
             self.store.fail("a", "INTERNAL_ERROR")
-            self.assertEqual(self.store.reserve_dispatch(101), (None, 160))
+            assert self.store.reserve_dispatch(101) == (None, 160)
 
     def test_expired_processing_lease(self):
         with patch("core.time.time", return_value=100):
             self.enqueue()
             self.store.claim()
-        self.assertEqual(self.store.reserve_dispatch(2079), (None, 2080))
-        self.assertIsNotNone(self.store.reserve_dispatch(2080)[0])
+        assert self.store.reserve_dispatch(2079) == (None, 2080)
+        assert self.store.reserve_dispatch(2080)[0] is not None
 
 
 class ServiceSafetyTests(unittest.TestCase):
@@ -94,15 +95,15 @@ class ServiceSafetyTests(unittest.TestCase):
             )
             engine.lock.acquire()
             try:
-                self.assertEqual(engine.claim(), {"job_id": ""})
-                self.assertIsNone(dispatcher.tick())
-                self.assertEqual(calls, [])
-                self.assertEqual(store.get("a")["attempts"], 1)
+                assert engine.claim() == {"job_id": ""}
+                assert dispatcher.tick() is None
+                assert calls == []
+                assert store.get("a")["attempts"] == 1
             finally:
                 engine.lock.release()
             dispatcher.tick()
-            self.assertEqual(calls, [1])
-            self.assertEqual(engine.claim(), {"job_id": "a"})
+            assert calls == [1]
+            assert engine.claim() == {"job_id": "a"}
 
     def test_body_validation_and_partial_timeout(self):
         import socket
@@ -121,10 +122,10 @@ class ServiceSafetyTests(unittest.TestCase):
                     handler = SimpleNamespace(
                         headers={"Content-Length": length}, connection=left, rfile=stream
                     )
-                    with self.assertRaises(Failure) as caught:
+                    with pytest.raises(Failure) as caught:
                         read_request_body(handler, timeout=0.03)
-                    self.assertEqual(caught.exception.code, code)
-                    self.assertIsNone(left.gettimeout())
+                    assert caught.value.code == code
+                    assert left.gettimeout() is None
             finally:
                 left.close()
                 right.close()
@@ -171,10 +172,10 @@ class DispatchTransportTests(unittest.TestCase):
                 "dispatcher.threading.Timer",
                 side_effect=lambda seconds, callback: real_timer(0.02, callback),
             ),
-            self.assertRaises(http.client.RemoteDisconnected),
+            pytest.raises(http.client.RemoteDisconnected),
         ):
             Dispatcher(None, "unused")._post()
-        self.assertTrue(connection.closed)
+        assert connection.closed
 
 
 if __name__ == "__main__":

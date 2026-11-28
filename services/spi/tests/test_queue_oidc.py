@@ -9,6 +9,8 @@ from email.message import Message
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "frontend"))
 import queue_oidc as q
@@ -45,15 +47,15 @@ class ProtocolTests(unittest.TestCase):
     def test_confidential_pkce_nonce_cookie_and_no_open_redirect(self):
         target, binding = self.client.begin()
         p = urllib.parse.parse_qs(urllib.parse.urlsplit(target).query)
-        self.assertEqual(p["redirect_uri"], [q.CALLBACK])
-        self.assertEqual(p["scope"], ["openid groups"])
-        self.assertEqual(p["code_challenge_method"], ["S256"])
-        self.assertNotIn(self.client.client_secret, target + binding)
-        self.assertNotIn("code_verifier", p)
-        self.assertNotEqual(p["state"], p["nonce"])
+        assert p["redirect_uri"] == [q.CALLBACK]
+        assert p["scope"] == ["openid groups"]
+        assert p["code_challenge_method"] == ["S256"]
+        assert self.client.client_secret not in target + binding
+        assert "code_verifier" not in p
+        assert p["state"] != p["nonce"]
         for flag in ("Secure", "HttpOnly", "SameSite=Lax", "Path=/", "Max-Age=300"):
-            self.assertIn(flag, binding)
-        self.assertNotIn("Domain=", binding)
+            assert flag in binding
+        assert "Domain=" not in binding
 
     def test_missing_forged_duplicate_state_and_errors_fail_before_exchange(self):
         p, h = self.pending()
@@ -63,19 +65,19 @@ class ProtocolTests(unittest.TestCase):
             ("code=x&state=" + p["state"][0] + "&state=other", h),
             ("error=access_denied&state=" + p["state"][0], h),
         ]:
-            with self.subTest(query=query), self.assertRaises(q.Rejected):
+            with self.subTest(query=query), pytest.raises(q.Rejected):
                 self.client.finish(query, cookie)
-        self.assertFalse(any(c.args[0] == "POST" for c in self.http.call_args_list))
+        assert not any(c.args[0] == "POST" for c in self.http.call_args_list)
 
     def test_exchange_is_one_shot_even_on_network_failure(self):
         p, h = self.pending()
         query = "code=local-code&state=" + p["state"][0]
         self.http.side_effect = q.Unavailable()
-        with self.assertRaises(q.Unavailable):
+        with pytest.raises(q.Unavailable):
             self.client.finish(query, h)
-        with self.assertRaises(q.Rejected):
+        with pytest.raises(q.Rejected):
             self.client.finish(query, h)
-        self.assertEqual(self.http.call_count, 2)
+        assert self.http.call_count == 2
 
     def test_valid_exchange_checks_exact_endpoints_and_keeps_tokens_off_browser(self):
         p, h = self.pending()
@@ -90,43 +92,39 @@ class ProtocolTests(unittest.TestCase):
             session = self.client.finish("code=local-code&state=" + state, h)
         verify.assert_called_once_with("local-token", {"keys": []}, expected["nonce"])
         call = self.http.call_args_list[-2]
-        self.assertEqual(call.args[:2], ("POST", q.AUTH_ORIGIN + "/application/o/token/"))
+        assert call.args[:2] == ("POST", q.AUTH_ORIGIN + "/application/o/token/")
         body = urllib.parse.parse_qs(call.args[2].decode())
-        self.assertEqual(body["code_verifier"], [expected["verifier"]])
-        self.assertEqual(body["client_secret"], [self.client.client_secret])
-        self.assertEqual(body["redirect_uri"], [q.CALLBACK])
-        self.assertNotIn("local-token", session)
-        self.assertTrue(self.client.authorized(headers(session.split(";")[0])))
+        assert body["code_verifier"] == [expected["verifier"]]
+        assert body["client_secret"] == [self.client.client_secret]
+        assert body["redirect_uri"] == [q.CALLBACK]
+        assert "local-token" not in session
+        assert self.client.authorized(headers(session.split(";")[0]))
         self.client.logout(headers(session.split(";")[0]))
-        self.assertFalse(self.client.authorized(headers(session.split(";")[0])))
+        assert not self.client.authorized(headers(session.split(";")[0]))
 
     def test_metadata_cannot_redirect_credentials_or_choose_issuer(self):
         for key in ("issuer", "authorization_endpoint", "token_endpoint", "jwks_uri"):
             data = metadata()
             data[key] = "https://evil.invalid/steal"
             client = q.OIDC("local", "s" * 48, request=Mock(return_value=data))
-            with self.subTest(key=key), self.assertRaises(q.Unavailable):
+            with self.subTest(key=key), pytest.raises(q.Unavailable):
                 client.begin()
 
     def test_expired_and_duplicate_cookies_never_authorize(self):
         identity = "x" * 43
         self.client.sessions[identity] = {"sub": "fixture", "until": time.time() - 1}
-        self.assertFalse(self.client.authorized(headers(q.SESSION_COOKIE + "=" + identity)))
+        assert not self.client.authorized(headers(q.SESSION_COOKIE + "=" + identity))
         self.client.sessions[identity] = {"sub": "fixture", "until": time.time() + 60}
-        self.assertFalse(
-            self.client.authorized(
-                headers(
-                    q.SESSION_COOKIE + "=" + identity + "; " + q.SESSION_COOKIE + "=" + identity
-                )
-            )
+        assert not self.client.authorized(
+            headers(q.SESSION_COOKIE + "=" + identity + "; " + q.SESSION_COOKIE + "=" + identity)
         )
 
     def test_memory_and_outbound_concurrency_are_bounded(self):
         for _ in range(q.MAX_SESSIONS):
             self.client.begin()
-        with self.assertRaises(q.Unavailable):
+        with pytest.raises(q.Unavailable):
             self.client.begin()
-        self.assertEqual(len(self.client.pending), q.MAX_SESSIONS)
+        assert len(self.client.pending) == q.MAX_SESSIONS
 
 
 @unittest.skipUnless(q.jwt is not None, "Pinned crypto is required in the native release image")
@@ -153,10 +151,7 @@ class SignedTokenTests(unittest.TestCase):
         def signed(claims):
             return jwt.encode(claims, private, algorithm="RS256", headers={"kid": "fixture"})
 
-        self.assertEqual(
-            client.verify(signed(base), {"keys": [key]}, "native-nonce")["sub"],
-            base["sub"],
-        )
+        assert client.verify(signed(base), {"keys": [key]}, "native-nonce")["sub"] == base["sub"]
         for change in (
             {"iss": "https://evil.invalid/"},
             {"aud": "other-client"},
@@ -169,13 +164,13 @@ class SignedTokenTests(unittest.TestCase):
             {"azp": "other-client"},
             {"exp": now + 4000},
         ):
-            with self.subTest(change=change), self.assertRaises(q.Rejected):
+            with self.subTest(change=change), pytest.raises(q.Rejected):
                 client.verify(signed({**base, **change}), {"keys": [key]}, "native-nonce")
         for missing in ("iss", "aud", "sub", "exp", "iat", "nonce"):
             claims = {k: v for k, v in base.items() if k != missing}
-            with self.subTest(missing=missing), self.assertRaises(q.Rejected):
+            with self.subTest(missing=missing), pytest.raises(q.Rejected):
                 client.verify(signed(claims), {"keys": [key]}, "native-nonce")
-        with self.assertRaises(q.Rejected):
+        with pytest.raises(q.Rejected):
             client.verify(signed(base), {"keys": [key, key]}, "native-nonce")
         forged = jwt.encode(
             base,
@@ -183,7 +178,7 @@ class SignedTokenTests(unittest.TestCase):
             algorithm="HS256",
             headers={"kid": "fixture"},
         )
-        with self.assertRaises(q.Rejected):
+        with pytest.raises(q.Rejected):
             client.verify(forged, {"keys": [key]}, "native-nonce")
 
 
@@ -207,7 +202,7 @@ class NativeHTTPFlowTests(unittest.TestCase):
                 return metadata()
             if url.endswith("/jwks/"):
                 return {"keys": [key]}
-            self.assertEqual((method, url), ("POST", q.AUTH_ORIGIN + "/application/o/token/"))
+            assert (method, url) == ("POST", q.AUTH_ORIGIN + "/application/o/token/")
             now = int(time.time())
             claims = {
                 "iss": q.ISSUER,
@@ -253,27 +248,27 @@ class NativeHTTPFlowTests(unittest.TestCase):
                 return result
 
             try:
-                self.assertEqual(request("/")[0], 302)
+                assert request("/")[0] == 302
                 start = request("/login")
-                self.assertEqual(start[0], 302)
+                assert start[0] == 302
                 params = urllib.parse.parse_qs(urllib.parse.urlsplit(start[1]["Location"]).query)
                 state["nonce"] = params["nonce"][0]
                 callback = request(
                     "/oauth/callback?code=offline-fixture&state=" + params["state"][0],
                     start[2][0].split(";")[0],
                 )
-                self.assertEqual(callback[0], 303)
-                self.assertEqual(callback[1]["Location"], "/")
+                assert callback[0] == 303
+                assert callback[1]["Location"] == "/"
                 session = next(
                     c.split(";")[0] for c in callback[2] if c.startswith(q.SESSION_COOKIE + "=")
                 )
                 content = request("/", session)
-                self.assertEqual(content[0], 200)
-                self.assertNotIn(b"http-fixture", content[3])
-                self.assertEqual(request("/logout", session, "POST")[0], 200)
-                self.assertEqual(request("/", session)[0], 302)
-                self.assertEqual(request("/logout", session, "POST")[0], 401)
-                self.assertEqual(request("/", session)[0], 302)
+                assert content[0] == 200
+                assert b"http-fixture" not in content[3]
+                assert request("/logout", session, "POST")[0] == 200
+                assert request("/", session)[0] == 302
+                assert request("/logout", session, "POST")[0] == 401
+                assert request("/", session)[0] == 302
             finally:
                 server.shutdown()
                 server.server_close()

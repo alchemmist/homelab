@@ -7,6 +7,7 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+import pytest
 from graph_contract import GraphError, canonical, resolve
 from graph_gateway import Server, secret
 from graph_renderer import Renderer
@@ -39,11 +40,11 @@ class RendererTests(unittest.TestCase):
     def test_render_and_cache(self):
         engine = self.renderer()
         body, meta = engine.render(self.request, caller="telegram", seconds=4)
-        self.assertEqual(body, self.raw)
-        self.assertEqual(json.loads(meta)["sha256"], hashlib.sha256(body).hexdigest())
-        self.assertEqual(engine.render(self.request, caller="spi", seconds=20), (body, meta))
-        self.assertEqual(len(self.calls), 1)
-        self.assertNotIn("private", self.calls[0][0])
+        assert body == self.raw
+        assert json.loads(meta)["sha256"] == hashlib.sha256(body).hexdigest()
+        assert engine.render(self.request, caller="spi", seconds=20) == (body, meta)
+        assert len(self.calls) == 1
+        assert "private" not in self.calls[0][0]
 
     def test_cache_expiry(self):
         now = [0]
@@ -51,7 +52,7 @@ class RendererTests(unittest.TestCase):
         engine.render(self.request, caller="spi", seconds=20)
         now[0] = 3601
         engine.render(self.request, caller="spi", seconds=20)
-        self.assertEqual(len(self.calls), 2)
+        assert len(self.calls) == 2
 
     def test_policy_and_digest_before_network(self):
         for key, value in [("panel_id", 13), ("digest", "fake"), ("version", True)]:
@@ -60,9 +61,9 @@ class RendererTests(unittest.TestCase):
                 req["digest"] = hashlib.sha256(
                     canonical({k: v for k, v in req.items() if k != "digest"}).encode()
                 ).hexdigest()
-            with self.subTest(key=key), self.assertRaises(GraphError):
+            with self.subTest(key=key), pytest.raises(GraphError):
                 self.renderer().render(req, caller="spi", seconds=20)
-        self.assertEqual(self.calls, [])
+        assert self.calls == []
 
     def test_invalid_upstreams_never_cached(self):
         for response in [
@@ -72,9 +73,9 @@ class RendererTests(unittest.TestCase):
         ]:
             engine = self.renderer(transport=lambda *args: response)
             for _ in range(2):
-                with self.assertRaises(GraphError):
+                with pytest.raises(GraphError):
                     engine.render(self.request, caller="spi", seconds=20)
-            self.assertFalse(engine._cache)
+            assert not engine._cache
 
     def test_total_deadline(self):
         now = [0]
@@ -84,10 +85,10 @@ class RendererTests(unittest.TestCase):
             return 200, "image/png", self.raw
 
         engine = self.renderer(transport=slow, clock=lambda: now[0])
-        with self.assertRaisesRegex(GraphError, "RENDER_TIMEOUT"):
+        with pytest.raises(GraphError, match="RENDER_TIMEOUT"):
             engine.render(self.request, caller="spi", seconds=20)
-        self.assertFalse(engine._cache)
-        self.assertFalse(engine._inflight)
+        assert not engine._cache
+        assert not engine._inflight
 
     def test_spi_cannot_consume_telegram_reserved_slot(self):
         started, release = threading.Event(), threading.Event()
@@ -103,15 +104,15 @@ class RendererTests(unittest.TestCase):
         with ThreadPoolExecutor(max_workers=2) as pool:
             first = pool.submit(engine.render, self.request, caller="spi", seconds=20)
             try:
-                self.assertTrue(started.wait(2))
+                assert started.wait(2)
                 other = dict(self.request, mode="resolved")
                 other["digest"] = hashlib.sha256(
                     canonical({k: v for k, v in other.items() if k != "digest"}).encode()
                 ).hexdigest()
-                with self.assertRaisesRegex(GraphError, "BUSY"):
+                with pytest.raises(GraphError, match="BUSY"):
                     engine.render(other, caller="spi", seconds=20)
-                self.assertEqual(engine.render(other, caller="telegram", seconds=4)[0], self.raw)
-                self.assertFalse(first.done())
+                assert engine.render(other, caller="telegram", seconds=4)[0] == self.raw
+                assert not first.done()
                 release.set()
                 first.result(timeout=3)
             finally:
@@ -129,17 +130,17 @@ class RendererTests(unittest.TestCase):
         engine = self.renderer(transport=blocking)
         with ThreadPoolExecutor(max_workers=2) as pool:
             first = pool.submit(engine.render, self.request, caller="spi", seconds=20)
-            self.assertTrue(started.wait(2))
+            assert started.wait(2)
 
             def follow():
                 follower.set()
                 return engine.render(self.request, caller="telegram", seconds=4)
 
             second = pool.submit(follow)
-            self.assertTrue(follower.wait(2))
+            assert follower.wait(2)
             release.set()
-            self.assertEqual(first.result(timeout=3), second.result(timeout=3))
-        self.assertEqual(len(self.calls), 1)
+            assert first.result(timeout=3) == second.result(timeout=3)
+        assert len(self.calls) == 1
 
     def test_gateway_auth_and_exact_png(self):
         server = Server(
@@ -163,13 +164,13 @@ class RendererTests(unittest.TestCase):
                 connection.close()
 
         try:
-            self.assertEqual(post("Bearer wrong")[0], 401)
-            self.assertEqual(post("Bearer test-tg", "{}")[0], 422)
+            assert post("Bearer wrong")[0] == 401
+            assert post("Bearer test-tg", "{}")[0] == 422
             status, headers, body = post("Bearer test-tg")
-            self.assertEqual(status, 200)
-            self.assertEqual(body, self.raw)
-            self.assertEqual(headers["X-Content-SHA256"], hashlib.sha256(body).hexdigest())
-            self.assertEqual(headers["Cache-Control"], "no-store")
+            assert status == 200
+            assert body == self.raw
+            assert headers["X-Content-SHA256"] == hashlib.sha256(body).hexdigest()
+            assert headers["Cache-Control"] == "no-store"
             primary = {
                 "annotation": canonical(
                     {"version": 1, "graphs": [graph(), graph(id="context", panel_id=13)]}
@@ -181,21 +182,22 @@ class RendererTests(unittest.TestCase):
                 "status": "firing",
             }
             status, headers, body = post("Bearer test-tg", canonical(primary), "/v1/primary")
-            self.assertEqual(status, 200)
-            self.assertEqual(body, self.raw)
-            self.assertEqual(headers["X-Graph-Mode"], "onset")
-            self.assertEqual(headers["X-Render-Digest"], self.request["digest"])
-            self.assertEqual(len(self.calls), 1)  # second graph isn't the primary
-            self.assertEqual(
-                post("Bearer test-tg", canonical({**primary, "labels": {}}), "/v1/primary")[0], 422
+            assert status == 200
+            assert body == self.raw
+            assert headers["X-Graph-Mode"] == "onset"
+            assert headers["X-Render-Digest"] == self.request["digest"]
+            assert len(self.calls) == 1  # second graph isn't the primary
+            assert (
+                post("Bearer test-tg", canonical({**primary, "labels": {}}), "/v1/primary")[0]
+                == 422
             )
-            self.assertEqual(
+            assert (
                 post(
                     "Bearer test-tg",
                     canonical({**primary, "url": "https://invalid.example"}),
                     "/v1/primary",
-                )[0],
-                422,
+                )[0]
+                == 422
             )
 
         finally:
@@ -234,9 +236,9 @@ class RendererTests(unittest.TestCase):
                 headers={"Authorization": "Bearer test-tg", "Content-Type": "application/json"},
             )
             response = connection.getresponse()
-            self.assertEqual(response.status, 200)
-            self.assertEqual(response.read(), self.raw)
-            self.assertEqual(budgets, [15])
+            assert response.status == 200
+            assert response.read() == self.raw
+            assert budgets == [15]
         finally:
             connection.close()
             server.shutdown()
@@ -248,9 +250,9 @@ class RendererTests(unittest.TestCase):
             path = Path(directory) / "token"
             path.write_text("synthetic-token-only")
             path.chmod(0o600)
-            self.assertEqual(secret(path), "synthetic-token-only")
+            assert secret(path) == "synthetic-token-only"
             path.chmod(0o644)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 secret(path)
 
 

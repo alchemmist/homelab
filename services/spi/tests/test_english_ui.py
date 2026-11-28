@@ -20,16 +20,14 @@ class EnglishUITests(unittest.TestCase):
         html = (ROOT / "frontend/index.html").read_text()
         parsed = HTML()
         parsed.feed(html)
-        self.assertEqual(parsed.language, "en")
+        assert parsed.language == "en"
         for path in (ROOT / "frontend").iterdir():
             if path.suffix in (".html", ".js", ".css", ".py"):
-                self.assertFalse(
-                    any("\u0400" <= c <= "\u04ff" for c in path.read_text()), path.name
-                )
-        self.assertIn("Queue controls", html)
-        self.assertIn("Cancellation does not close the GitHub issue", html)
+                assert not any("Ѐ" <= c <= "ӿ" for c in path.read_text()), path.name
+        assert "Queue controls" in html
+        assert "Cancellation does not close the GitHub issue" in html
         js = (ROOT / "frontend/app.js").read_text()
-        self.assertIn("toLocaleString('en-GB'", js)
+        assert "toLocaleString('en-GB'" in js
 
     def test_render_confirmation_and_errors_are_english_but_data_is_preserved(self):
         script = r"""
@@ -66,11 +64,11 @@ catch(error){assert.ok(error.message.startsWith('Your session has expired.'));}}
     def test_selection_toolbar_does_not_participate_in_table_layout(self):
         css = (ROOT / "frontend/style.css").read_text()
         bar = css.split("#bulkbar {", 1)[1].split("}", 1)[0]
-        self.assertIn("position: fixed", bar)
-        self.assertIn("bottom: 1rem", bar)
-        self.assertNotIn("position: sticky", bar)
-        self.assertIn(".selecting #bulkbar { pointer-events: none; }", css)
-        self.assertIn("padding-bottom: 8rem", css)
+        assert "position: fixed" in bar
+        assert "bottom: 1rem" in bar
+        assert "position: sticky" not in bar
+        assert ".selecting #bulkbar { pointer-events: none; }" in css
+        assert "padding-bottom: 8rem" in css
 
     def test_sort_scroll_selection_and_bulk_cancellation_contract(self):
         result = subprocess.run(
@@ -79,7 +77,7 @@ catch(error){assert.ok(error.message.startsWith('Your session has expired.'));}}
             text=True,
             timeout=10,
         )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        assert result.returncode == 0, result.stdout + result.stderr
 
 
 if __name__ == "__main__":

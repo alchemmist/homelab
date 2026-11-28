@@ -12,6 +12,8 @@ from pathlib import Path
 from types import ModuleType
 from unittest.mock import patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 THEME = ROOT / "deploy/authentik/quiet-mono"
 # Backups must keep owner-only file permissions (0o600).
@@ -209,7 +211,7 @@ class AuthentikBrandingTests(unittest.TestCase):
                     "GET", "admin/version/", {"Authorization": "Bearer test"}
                 )
                 api.return_value = {"version_current": "unreviewed"}
-                with self.assertRaisesRegex(RuntimeError, "version drift"):
+                with pytest.raises(RuntimeError, match="version drift"):
                     branding.main()
             assert list(root.iterdir()) == [credentials]
 

@@ -39,8 +39,8 @@ class WaitCodeContract(unittest.TestCase):
         match = re.search(
             r"if\(x.status==='deferred' && !(\[[^\n]+?\])\.includes\(x.code\)\)", code
         )
-        self.assertIsNotNone(match)
-        self.assertEqual(set(ast.literal_eval(match[1])), producer_codes())
+        assert match is not None
+        assert set(ast.literal_eval(match[1])) == producer_codes()
 
     def test_real_javascript_retains_fences_deadlines_and_unsafe_failure_rejection(self):
         workflow = json.loads((ROOT / "integrations/n8n/triage-workflow.json").read_text())
@@ -87,4 +87,4 @@ console.log('all producer codes and negative contract guards verified');
             capture_output=True,
             timeout=10,
         )
-        self.assertEqual(result.returncode, 0, result.stderr)
+        assert result.returncode == 0, result.stderr

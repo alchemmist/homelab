@@ -8,6 +8,7 @@ import unittest
 from email.message import Message
 from pathlib import Path
 
+import pytest
 import test_triage as f
 from core import Failure, Store
 from queue_admin import QueueAdmin, authorized
@@ -28,24 +29,24 @@ class QueueAdminTests(unittest.TestCase):
         token = "local-fixture-" * 4
         headers = Message()
         headers["X-Worker-Token"] = token
-        self.assertFalse(authorized(headers, token))
+        assert not authorized(headers, token)
         headers["X-Queue-Token"] = token
-        self.assertTrue(authorized(headers, token))
+        assert authorized(headers, token)
         headers["X-Queue-Token"] = token
-        self.assertFalse(authorized(headers, token))
+        assert not authorized(headers, token)
         other = Message()
         other["X-Queue-Token"] = "несовпадение"
-        self.assertFalse(authorized(other, token))
-        self.assertFalse(authorized(other, ""))
+        assert not authorized(other, token)
+        assert not authorized(other, "")
 
     def test_minimal_dto_no_raw_event_result_or_fences(self):
         value = self.row()
-        self.assertTrue(value["can_cancel"])
-        self.assertEqual(value["state"], "queued")
-        self.assertEqual(value["failures"], 0)
+        assert value["can_cancel"]
+        assert value["state"] == "queued"
+        assert value["failures"] == 0
         for field in ("event", "result", "intent", "fence", "request_fence", "response", "episode"):
-            self.assertNotIn(field, value)
-        self.assertEqual(self.api.list({})["limits"]["tokens_per_minute"], 30000)
+            assert field not in value
+        assert self.api.list({})["limits"]["tokens_per_minute"] == 30000
 
     def test_cancel_preserves_row_checkpoint_budget_and_previous_error_audit(self):
         with self.store.db() as c:
@@ -56,44 +57,42 @@ class QueueAdminTests(unittest.TestCase):
             c.execute("INSERT INTO job_failure_budget VALUES(?,3)", (self.key,))
         value = self.row()
         result = self.api.cancel({"job_id": self.key, "expected_updated": value["updated"]})
-        self.assertEqual(result["status"], "cancelled")
+        assert result["status"] == "cancelled"
         after = self.store.get(self.key)
-        self.assertEqual(after["state"], "cancelled")
-        self.assertEqual(after["result"], {"safe_checkpoint": "retain"})
+        assert after["state"] == "cancelled"
+        assert after["result"] == {"safe_checkpoint": "retain"}
         with self.store.db() as c:
-            self.assertEqual(
+            assert (
                 c.execute(
                     "SELECT failures FROM job_failure_budget WHERE job_id=?", (self.key,)
-                ).fetchone()[0],
-                3,
+                ).fetchone()[0]
+                == 3
             )
             audit = c.execute("SELECT * FROM queue_operator_actions").fetchone()
-            self.assertEqual(audit["previous_error"], "GITHUB_READ_TIMEOUT")
-            self.assertEqual(audit["previous_state"], "retry")
-        self.assertEqual(self.api.list({})["total"], 0)
-        self.assertEqual(self.store.enqueue(f.event())["duplicate"], True)
-        self.assertEqual(self.store.get(self.key)["state"], "cancelled")
+            assert audit["previous_error"] == "GITHUB_READ_TIMEOUT"
+            assert audit["previous_state"] == "retry"
+        assert self.api.list({})["total"] == 0
+        assert self.store.enqueue(f.event())["duplicate"] == True
+        assert self.store.get(self.key)["state"] == "cancelled"
 
     def test_duplicate_cancel_has_one_audit_receipt(self):
         request = {"job_id": self.key, "expected_updated": self.row()["updated"]}
         self.api.cancel(request)
-        self.assertTrue(self.api.cancel(request)["already_applied"])
+        assert self.api.cancel(request)["already_applied"]
         with self.store.db() as c:
-            self.assertEqual(
-                c.execute("SELECT count(*) FROM queue_operator_actions").fetchone()[0], 1
-            )
+            assert c.execute("SELECT count(*) FROM queue_operator_actions").fetchone()[0] == 1
 
     def test_stale_version_rejected_after_claim(self):
         item = self.row()
         self.store.claim()
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.api.cancel({"job_id": self.key, "expected_updated": item["updated"]})
-        self.assertEqual(self.store.get(self.key)["state"], "processing")
+        assert self.store.get(self.key)["state"] == "processing"
 
     def test_cancel_wins_then_claim_cannot_take_it(self):
         item = self.row()
         self.api.cancel({"job_id": self.key, "expected_updated": item["updated"]})
-        self.assertFalse(self.store.claim().get("job_id"))
+        assert not self.store.claim().get("job_id")
 
     def test_wait_owner_never_cancellable_even_if_job_is_retry(self):
         self.store.claim()
@@ -102,8 +101,8 @@ class QueueAdminTests(unittest.TestCase):
         with self.store.db() as c:
             c.execute("UPDATE jobs SET state='retry' WHERE id=?", (self.key,))
         item = self.row()
-        self.assertFalse(item["can_cancel"])
-        with self.assertRaisesRegex(Failure, "QUEUE_ITEM_NOT_CANCELLABLE"):
+        assert not item["can_cancel"]
+        with pytest.raises(Failure, match="QUEUE_ITEM_NOT_CANCELLABLE"):
             self.api.cancel({"job_id": self.key, "expected_updated": item["updated"]})
 
     def test_terminal_and_publication_states_are_not_cancellable(self):
@@ -123,7 +122,7 @@ class QueueAdminTests(unittest.TestCase):
                         (state, intent, issue, json.dumps(result), self.key),
                     )
                 current = self.store.get(self.key)
-                with self.assertRaisesRegex(Failure, "QUEUE_ITEM_NOT_CANCELLABLE"):
+                with pytest.raises(Failure, match="QUEUE_ITEM_NOT_CANCELLABLE"):
                     self.api.cancel({"job_id": self.key, "expected_updated": current["updated"]})
 
     def test_audit_failure_rolls_back_cancellation(self):
@@ -140,9 +139,9 @@ class QueueAdminTests(unittest.TestCase):
                     "CREATE TRIGGER block_operator_audit BEFORE INSERT ON queue_operator_actions BEGIN SELECT RAISE(ABORT,'blocked'); END"
                 )
         item = self.row()
-        with self.assertRaises(Exception):
+        with pytest.raises(Exception):
             self.api.cancel({"job_id": self.key, "expected_updated": item["updated"]})
-        self.assertEqual(self.store.get(self.key)["state"], "queued")
+        assert self.store.get(self.key)["state"] == "queued"
 
     def seed_ordering(self):
         keys = [self.key]
@@ -177,11 +176,11 @@ class QueueAdminTests(unittest.TestCase):
     def test_default_oldest_created_not_stage_or_processing_priority(self):
         self.seed_ordering()
         rows = self.api.list({})["items"]
-        self.assertEqual(
-            [(r["created"], r["id"]) for r in rows], sorted((r["created"], r["id"]) for r in rows)
+        assert [(r["created"], r["id"]) for r in rows] == sorted(
+            (r["created"], r["id"]) for r in rows
         )
-        self.assertEqual(self.api.list({})["sort"], "created")
-        self.assertEqual(self.api.list({})["direction"], "asc")
+        assert self.api.list({})["sort"] == "created"
+        assert self.api.list({})["direction"] == "asc"
 
     def test_cursor_all_sorts_directions_exact_ties_and_global_order(self):
         self.seed_ordering()
@@ -198,15 +197,15 @@ class QueueAdminTests(unittest.TestCase):
                     query["after"] = page["next_cursor"]
                 else:
                     self.fail("Cursor failed to terminate")
-                self.assertEqual([r["id"] for r in seen], [r["id"] for r in expected])
-                self.assertEqual(len({r["id"] for r in seen}), 12)
+                assert [r["id"] for r in seen] == [r["id"] for r in expected]
+                assert len({r["id"] for r in seen}) == 12
                 if sort == "alert":
                     names = [r["alertname"].lower() for r in seen]
-                    self.assertEqual(names, sorted(names, reverse=direction == "desc"))
+                    assert names == sorted(names, reverse=direction == "desc")
                 if sort == "state":
                     rank = {"queued": 0, "retry": 1, "processing": 2}
                     order = [(rank[r["state"]], r["stage"], r["created"], r["id"]) for r in seen]
-                    self.assertEqual(order, sorted(order, reverse=direction == "desc"))
+                    assert order == sorted(order, reverse=direction == "desc")
                 if sort == "progress":
                     order = [
                         (
@@ -218,7 +217,7 @@ class QueueAdminTests(unittest.TestCase):
                         )
                         for r in seen
                     ]
-                    self.assertEqual(order, sorted(order, reverse=direction == "desc"))
+                    assert order == sorted(order, reverse=direction == "desc")
 
     def test_created_cursor_does_not_skip_after_earlier_cancellation_or_new_arrival(self):
         self.seed_ordering()
@@ -230,9 +229,9 @@ class QueueAdminTests(unittest.TestCase):
         value["episode"] = value["event_key"]
         new = self.store.enqueue(value)["job_id"]
         following = self.api.list({"after": first["next_cursor"], "limit": 100})["items"]
-        self.assertEqual(len(following), 10)
-        self.assertEqual(len(set(r["id"] for r in first["items"] + following)), 13)
-        self.assertIn(new, [r["id"] for r in following])
+        assert len(following) == 10
+        assert len(set(r["id"] for r in first["items"] + following)) == 13
+        assert new in [r["id"] for r in following]
 
     def test_invalid_cursor_order_values_and_sql_are_rejected(self):
         self.seed_ordering()
@@ -248,9 +247,9 @@ class QueueAdminTests(unittest.TestCase):
             {"after": []},
             {"after": {**cursor, "values": [1]}},
         ):
-            with self.subTest(query=query), self.assertRaisesRegex(Failure, "INVALID_QUEUE_QUERY"):
+            with self.subTest(query=query), pytest.raises(Failure, match="INVALID_QUEUE_QUERY"):
                 self.api.list(query)
-        self.assertEqual(self.api.list({})["total"], 12)
+        assert self.api.list({})["total"] == 12
 
     def seed_batch(self, count):
         event = json.dumps(f.event())
@@ -270,30 +269,24 @@ class QueueAdminTests(unittest.TestCase):
         batch = self.seed_batch(400)
         with patch.object(self.store, "db", wraps=self.store.db) as transactions:
             result = self.api.cancel_batch({"items": batch})
-        self.assertEqual(transactions.call_count, 1)
-        self.assertEqual(len(result["cancelled"]), 400)
-        self.assertEqual(result["skipped"], [])
+        assert transactions.call_count == 1
+        assert len(result["cancelled"]) == 400
+        assert result["skipped"] == []
         with self.store.db() as c:
-            self.assertEqual(
-                c.execute("SELECT count(*) FROM queue_operator_actions").fetchone()[0], 400
-            )
-            self.assertEqual(
+            assert c.execute("SELECT count(*) FROM queue_operator_actions").fetchone()[0] == 400
+            assert (
                 c.execute(
                     "SELECT count(*) FROM jobs WHERE state='cancelled' AND json_extract(result,'$.safe_checkpoint')=id"
-                ).fetchone()[0],
-                400,
+                ).fetchone()[0]
+                == 400
             )
-            self.assertEqual(c.execute("SELECT count(*) FROM jobs").fetchone()[0], 401)
+            assert c.execute("SELECT count(*) FROM jobs").fetchone()[0] == 401
         again = self.api.cancel_batch({"items": batch})
-        self.assertEqual(len(again["already_cancelled"]), 400)
-        self.assertEqual(again["cancelled"], [])
+        assert len(again["already_cancelled"]) == 400
+        assert again["cancelled"] == []
         with self.store.db() as c:
-            self.assertEqual(
-                c.execute("SELECT count(*) FROM queue_operator_actions").fetchone()[0], 400
-            )
-        self.assertEqual(
-            self.store.get(self.key)["state"], "queued"
-        )  # unselected arrival untouched
+            assert c.execute("SELECT count(*) FROM queue_operator_actions").fetchone()[0] == 400
+        assert self.store.get(self.key)["state"] == "queued"  # unselected arrival untouched
 
     def test_bulk_skips_changed_owned_and_publication_rows_in_same_commit(self):
         self.store.claim()
@@ -319,11 +312,11 @@ class QueueAdminTests(unittest.TestCase):
                 ]
             }
         )
-        self.assertEqual(result["cancelled"], [batch[5]["job_id"]])
-        self.assertEqual(len(result["skipped"]), 7)
-        self.assertIn("QUEUE_ITEM_CHANGED", [r["code"] for r in result["skipped"]])
-        self.assertIn("JOB_NOT_FOUND", [r["code"] for r in result["skipped"]])
-        self.assertEqual(self.store.get(self.key)["state"], "processing")
+        assert result["cancelled"] == [batch[5]["job_id"]]
+        assert len(result["skipped"]) == 7
+        assert "QUEUE_ITEM_CHANGED" in [r["code"] for r in result["skipped"]]
+        assert "JOB_NOT_FOUND" in [r["code"] for r in result["skipped"]]
+        assert self.store.get(self.key)["state"] == "processing"
 
     def test_bulk_audit_error_rolls_back_entire_batch(self):
         batch = self.seed_batch(10)
@@ -343,15 +336,11 @@ class QueueAdminTests(unittest.TestCase):
                     + batch[5]["job_id"]
                     + "' BEGIN SELECT RAISE(ABORT,'fixture'); END"
                 )
-        with self.assertRaises(Exception):
+        with pytest.raises(Exception):
             self.api.cancel_batch({"items": batch})
         with self.store.db() as c:
-            self.assertEqual(
-                c.execute("SELECT count(*) FROM jobs WHERE state='cancelled'").fetchone()[0], 0
-            )
-            self.assertEqual(
-                c.execute("SELECT count(*) FROM queue_operator_actions").fetchone()[0], 0
-            )
+            assert c.execute("SELECT count(*) FROM jobs WHERE state='cancelled'").fetchone()[0] == 0
+            assert c.execute("SELECT count(*) FROM queue_operator_actions").fetchone()[0] == 0
 
     def test_bulk_rejects_invalid_or_duplicate_input_without_partial_writes(self):
         batch = self.seed_batch(1)
@@ -366,20 +355,20 @@ class QueueAdminTests(unittest.TestCase):
             {"items": [{"job_id": self.key, "expected_updated": 2**13000}]},
             {"items": batch, "state": "pending"},
         ):
-            with self.assertRaisesRegex(Failure, "INVALID_QUEUE_CANCEL_BATCH"):
+            with pytest.raises(Failure, match="INVALID_QUEUE_CANCEL_BATCH"):
                 self.api.cancel_batch(bad)
-        self.assertEqual(self.store.get(batch[0]["job_id"])["state"], "queued")
+        assert self.store.get(batch[0]["job_id"])["state"] == "queued"
 
     def test_bulk_maximum_stays_inside_fixed_http_body_and_response_bounds(self):
         from queue_admin import MAX_CANCEL_BATCH
 
         batch = self.seed_batch(MAX_CANCEL_BATCH)
-        self.assertLess(len(json.dumps({"items": batch}).encode()), 512000)
+        assert len(json.dumps({"items": batch}).encode()) < 512000
         with self.store.db() as c:
             c.execute("UPDATE jobs SET state='processing'")
         result = self.api.cancel_batch({"items": batch})
-        self.assertEqual(len(result["skipped"]), MAX_CANCEL_BATCH)
-        self.assertLess(len(json.dumps(result).encode()), 512000)
+        assert len(result["skipped"]) == MAX_CANCEL_BATCH
+        assert len(json.dumps(result).encode()) < 512000
 
     def test_query_and_cancel_validation(self):
         for bad in (
@@ -388,7 +377,7 @@ class QueueAdminTests(unittest.TestCase):
             {"limit": 101},
             {"offset": -1},
         ):
-            with self.assertRaisesRegex(Failure, "INVALID_QUEUE_QUERY"):
+            with pytest.raises(Failure, match="INVALID_QUEUE_QUERY"):
                 self.api.list(bad)
         for bad in (
             {},
@@ -396,7 +385,7 @@ class QueueAdminTests(unittest.TestCase):
             {"job_id": self.key, "expected_updated": True},
             {"job_id": "../", "expected_updated": 1},
         ):
-            with self.assertRaisesRegex(Failure, "INVALID_QUEUE_CANCEL"):
+            with pytest.raises(Failure, match="INVALID_QUEUE_CANCEL"):
                 self.api.cancel(bad)
 
 

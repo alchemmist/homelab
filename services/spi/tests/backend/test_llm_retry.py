@@ -6,6 +6,7 @@ import unittest
 import urllib.error
 from unittest.mock import Mock, patch
 
+import pytest
 import test_triage as f
 from core import LLM_TRANSIENT, MATCH_SCHEMA, Failure, Store
 from integrations import HTTP, Model
@@ -19,20 +20,20 @@ class DurableRetryTests(unittest.TestCase):
         e = f.event()
         key = self.store.enqueue(e)["job_id"]
         for _ in range(20):
-            self.assertEqual(self.store.claim()["job_id"], key)
+            assert self.store.claim()["job_id"] == key
             self.store.fail(key, "LLM_HTTP_429", retry_after=7200)
             r = self.store.get(key)
-            self.assertEqual(r["state"], "retry")
-            self.assertEqual(r["lease"], 0)
-            self.assertGreaterEqual(r["available"] - r["updated"], 7200)
-            self.assertEqual(self.store.claim()["job_id"], "")
+            assert r["state"] == "retry"
+            assert r["lease"] == 0
+            assert r["available"] - r["updated"] >= 7200
+            assert self.store.claim()["job_id"] == ""
             self.store = Store(self.store.path)
             with self.store.db() as c:
                 c.execute("update jobs set available=0 where id=?", (key,))
         self.store.claim()
         self.store.save(key, 4, {"done": True}, state="complete")
-        self.assertEqual(self.store.get(key)["state"], "complete")
-        self.assertEqual(self.store.get(key)["attempts"], 21)
+        assert self.store.get(key)["state"] == "complete"
+        assert self.store.get(key)["attempts"] == 21
 
     def test_model_route_survives_worker_restarts(self):
         from core import OWNER_CONTEXT
@@ -48,11 +49,11 @@ class DurableRetryTests(unittest.TestCase):
                 patch.object(self.store, "reserve_llm"),
                 patch.object(self.store, "finish_llm"),
             ):
-                with self.assertRaisesRegex(Failure, "LLM_HTTP_429"):
+                with pytest.raises(Failure, match="LLM_HTTP_429"):
                     Model(http, "fake", store=self.store).call(
                         "match", {}, MATCH_SCHEMA, time.monotonic() + 60
                     )
-            self.assertEqual(http.request.call_args.args[3]["model"], expected)
+            assert http.request.call_args.args[3]["model"] == expected
             self.store.fail(key, "LLM_HTTP_429")
             self.store = Store(self.store.path)
             with self.store.db() as c:
@@ -68,14 +69,14 @@ class DurableRetryTests(unittest.TestCase):
             for i in range(8):
                 self.store.fail(key, code)
                 expected = "dead" if code == "WRITE_NEEDS_REVIEW" or i == 7 else "retry"
-                self.assertEqual(self.store.get(key)["state"], expected)
+                assert self.store.get(key)["state"] == expected
             self.store = Store(self.store.path)
             with self.store.db() as c:
-                self.assertEqual(
+                assert (
                     c.execute(
                         "select failures from job_failure_budget where job_id=?", (key,)
-                    ).fetchone()[0],
-                    8,
+                    ).fetchone()[0]
+                    == 8
                 )
 
     def test_jitter_cap_and_retry_hint_validation(self):
@@ -84,10 +85,10 @@ class DurableRetryTests(unittest.TestCase):
             c.execute("update jobs set attempts=10000 where id=?", (key,))
         self.store.fail(key, "LLM_UPSTREAM_TIMEOUT")
         r = self.store.get(key)
-        self.assertGreaterEqual(r["available"] - r["updated"], 3000)
-        self.assertLessEqual(r["available"] - r["updated"], 3600)
-        self.assertIsNone(Failure("x", float("nan")).retry_after)
-        self.assertEqual(Failure("x", 999999).retry_after, 86400)
+        assert r["available"] - r["updated"] >= 3000
+        assert r["available"] - r["updated"] <= 3600
+        assert Failure("x", float("nan")).retry_after is None
+        assert Failure("x", 999999).retry_after == 86400
 
 
 class ModelRetryTests(unittest.TestCase):
@@ -101,13 +102,13 @@ class ModelRetryTests(unittest.TestCase):
         ]:
             http = Mock()
             http.request.side_effect = Failure(code, retry_after=91)
-            with self.assertRaises(Failure) as caught:
+            with pytest.raises(Failure) as caught:
                 Model(http, "fake", min_interval=0, store=Mock()).call(
                     "test", {}, MATCH_SCHEMA, time.monotonic() + 30
                 )
-            self.assertIn(caught.exception.code, LLM_TRANSIENT)
-            self.assertEqual(caught.exception.retry_after, 91)
-            self.assertEqual(http.request.call_count, 1)  # durable queue retry, no busy loop
+            assert caught.value.code in LLM_TRANSIENT
+            assert caught.value.retry_after == 91
+            assert http.request.call_count == 1  # durable queue retry, no busy loop
 
     def test_retry_after_seconds_and_date(self):
         from email.utils import formatdate
@@ -118,12 +119,12 @@ class ModelRetryTests(unittest.TestCase):
             h.opener.open.side_effect = urllib.error.HTTPError(
                 "http://internal", 429, "busy", {"Retry-After": value}, None
             )
-            with self.assertRaises(Failure) as caught:
+            with pytest.raises(Failure) as caught:
                 h.request("GET", "http://internal")
             if value in ["invalid", "NaN"]:
-                self.assertIsNone(caught.exception.retry_after)
+                assert caught.value.retry_after is None
             else:
-                self.assertGreater(caught.exception.retry_after, 100)
+                assert caught.value.retry_after > 100
 
     def test_batch_checkpoint_resumes_and_changed_snapshot_invalidates(self):
         good = {"issue_number": 0, "reason": "Different", "confidence": "low"}
@@ -131,18 +132,18 @@ class ModelRetryTests(unittest.TestCase):
         m = Model(Mock(), "fake")
         m.call = Mock(side_effect=[good, Failure("LLM_HTTP_503")])
         saved = []
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             m.match(
                 f.event(), issues, on_progress=lambda p: saved.append(json.loads(json.dumps(p)))
             )
-        self.assertEqual(len(saved[-1]["reviews"]), 1)
+        assert len(saved[-1]["reviews"]) == 1
         m.call = Mock(return_value=good)
         r = m.match(f.event(), issues, progress=saved[-1])
-        self.assertEqual(m.call.call_count, 2)
-        self.assertEqual(r["reviewed_numbers"], list(range(25)))
+        assert m.call.call_count == 2
+        assert r["reviewed_numbers"] == list(range(25))
         m.call.reset_mock()
         m.match(f.event(), issues + [{"number": 25}], progress=saved[-1])
-        self.assertEqual(m.call.call_count, 2)
+        assert m.call.call_count == 2
 
 
 class EngineCheckpointTests(unittest.TestCase):
@@ -157,11 +158,11 @@ class EngineCheckpointTests(unittest.TestCase):
         self.model.match.side_effect = matching
         key = self.store.enqueue(f.event())["job_id"]
         self.store.claim()
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.run("match", key)
         r = self.store.get(key)
-        self.assertEqual(r["result"]["match_progress_v3"]["signature"], "test")
-        self.assertEqual(r["state"], "retry")
+        assert r["result"]["match_progress_v3"]["signature"] == "test"
+        assert r["state"] == "retry"
         self.github.request.assert_not_called()
 
     def test_many_llm_deferrals_do_not_exhaust_github_reconciliation(self):
@@ -169,9 +170,9 @@ class EngineCheckpointTests(unittest.TestCase):
         self.model.match.side_effect = Failure("LLM_HTTP_429")
         for _ in range(20):
             self.store.claim()
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 self.engine.run("match", key)
-            self.assertEqual(self.store.get(key)["state"], "retry")
+            assert self.store.get(key)["state"] == "retry"
             with self.store.db() as c:
                 c.execute("update jobs set available=0 where id=?", (key,))
         self.model.match.side_effect = None
@@ -180,23 +181,23 @@ class EngineCheckpointTests(unittest.TestCase):
             self.engine.run(stage, key)
         self.engine.write = True
         self.github.request.side_effect = Failure("UPSTREAM_TIMEOUT")
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.engine.run("publish", key)
         r = self.store.get(key)
-        self.assertEqual(r["state"], "retry")
-        self.assertIsNotNone(r["intent"])
+        assert r["state"] == "retry"
+        assert r["intent"] is not None
         self.store = Store(self.store.path)
         self.engine.store = self.store
         with self.store.db() as c:
-            self.assertEqual(
+            assert (
                 c.execute(
                     "select failures from job_failure_budget where job_id=?", (key,)
-                ).fetchone()[0],
-                1,
+                ).fetchone()[0]
+                == 1
             )
             c.execute("update jobs set available=0 where id=?", (key,))
         self.github.reconcile.return_value = 7
         self.store.claim()
         self.engine.run("publish", key)
-        self.assertEqual(self.store.get(key)["state"], "complete")
+        assert self.store.get(key)["state"] == "complete"
         self.github.request.assert_called_once()

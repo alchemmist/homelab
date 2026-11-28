@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend"))
+import pytest
 import service
 import storage_runtime as runtime
 
@@ -14,7 +15,7 @@ import storage_runtime as runtime
 class Runtime(unittest.TestCase):
     def test_off(self):
         with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(runtime.load_storage(), (None, "legacy"))
+            assert runtime.load_storage() == (None, "legacy")
 
     def test_projected_file_and_invalid_inputs(self):
         with tempfile.TemporaryDirectory() as d:
@@ -45,8 +46,8 @@ class Runtime(unittest.TestCase):
                     target.write_text(json.dumps({"access": "writer", "secret": "private"}))
                     target.chmod(0o440)
                     client, flag = runtime.load_storage()
-                    self.assertIsInstance(client, runtime.S3Evidence)
-                    self.assertEqual(flag, backend)
+                    assert isinstance(client, runtime.S3Evidence)
+                    assert flag == backend
                     for content, mode in [
                         ("{}", 0o600),
                         ('{"access":"a","secret":"b","secret":"c"}', 0o600),
@@ -56,9 +57,7 @@ class Runtime(unittest.TestCase):
                         target.chmod(0o600)
                         target.write_text(content)
                         target.chmod(mode)
-                        with self.assertRaisesRegex(
-                            RuntimeError, "^S3_WRITER_CONFIGURATION_INVALID$"
-                        ):
+                        with pytest.raises(RuntimeError, match="^S3_WRITER_CONFIGURATION_INVALID$"):
                             runtime.load_storage()
 
     def test_serve_wires_engine_before_dispatch(self):
@@ -87,16 +86,16 @@ class Runtime(unittest.TestCase):
                 },
             ),
         ):
-            with self.assertRaises(Stop):
+            with pytest.raises(Stop):
                 service.serve()
-            self.assertIs(engine.call_args.kwargs["storage"], storage)
-            self.assertEqual(engine.call_args.kwargs["storage_backend"], "legacy")
+            assert engine.call_args.kwargs["storage"] is storage
+            assert engine.call_args.kwargs["storage_backend"] == "legacy"
         with (
             patch.dict(os.environ, {"SPI_EVIDENCE_BACKEND": "s3"}, clear=True),
             patch.object(service, "Dispatcher") as dispatch,
             patch.object(service, "Store") as store,
         ):
-            with self.assertRaisesRegex(RuntimeError, "S3_WRITER_CONFIGURATION_INVALID"):
+            with pytest.raises(RuntimeError, match="S3_WRITER_CONFIGURATION_INVALID"):
                 service.serve()
             dispatch.assert_not_called()
             store.assert_not_called()

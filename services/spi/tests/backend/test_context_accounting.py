@@ -4,6 +4,7 @@ import copy
 import unittest
 from unittest.mock import Mock
 
+import pytest
 import test_triage as f
 from core import MATCH_SCHEMA, Failure
 from integrations import Model
@@ -15,18 +16,18 @@ class ContextAccountingTests(unittest.TestCase):
         b = m.payload("x", {"text": 'é😀"\\\n' * 100}, MATCH_SCHEMA)
         n = m.reservation(b)
         b["max_tokens"] += 123
-        self.assertEqual(m.reservation(b), n + 123)
+        assert m.reservation(b) == n + 123
         b["response_format"]["extra"] = "x" * 123
-        self.assertGreater(m.reservation(b), n + 246)
+        assert m.reservation(b) > n + 246
         for change in (
             {"model": "other"},
             {"tools": []},
             {"chat_template_kwargs": {"enable_thinking": True}},
             {"messages": []},
         ):
-            with self.assertRaises(Failure) as e:
+            with pytest.raises(Failure) as e:
                 m.reservation({**b, **change})
-            self.assertEqual(e.exception.code, "LLM_ACCOUNTING_CONTRACT_MISMATCH")
+            assert e.value.code == "LLM_ACCOUNTING_CONTRACT_MISMATCH"
         m.http.request.assert_not_called()
 
     def test_excerpts_identity_reference_metadata_and_no_mutation(self):
@@ -38,15 +39,15 @@ class ContextAccountingTests(unittest.TestCase):
         }
         old = copy.deepcopy(x)
         v = Model.bounded_context(x)
-        self.assertEqual(x, old)
-        self.assertEqual([c["number"] for c in v["candidates"]], list(range(120)))
-        self.assertEqual(v["index"][0]["id"], "E001")
-        self.assertEqual(v["index"][0]["path"], "original/reference")
-        self.assertEqual(v["missing"], x["missing"])
-        self.assertTrue(v["truncated"])
+        assert x == old
+        assert [c["number"] for c in v["candidates"]] == list(range(120))
+        assert v["index"][0]["id"] == "E001"
+        assert v["index"][0]["path"] == "original/reference"
+        assert v["missing"] == x["missing"]
+        assert v["truncated"]
         for c in v["candidates"]:
-            self.assertTrue(c["body"]["truncated"])
-            self.assertGreater(c["body"]["unreviewed_bytes"], 0)
+            assert c["body"]["truncated"]
+            assert c["body"]["unreviewed_bytes"] > 0
 
     def test_matching_event_bounded_and_all_identities(self):
         m = Model(Mock(), "unused")
@@ -55,14 +56,14 @@ class ContextAccountingTests(unittest.TestCase):
         seen = []
 
         def call(task, data, schema, deadline):
-            self.assertLessEqual(m.reservation(m.payload(task, data, schema)), 30000)
-            self.assertTrue(data["alert"]["description"]["truncated"])
+            assert m.reservation(m.payload(task, data, schema)) <= 30000
+            assert data["alert"]["description"]["truncated"]
             seen.extend(x["number"] for x in data["open_issues"])
             return {"issue_number": 0, "reason": "No same problem.", "confidence": "low"}
 
         m.call = call
         m.match(event, [{"number": i, "body": "x" * 6000} for i in range(120)])
-        self.assertEqual(seen, list(range(120)))
+        assert seen == list(range(120))
 
     def test_large_analysis_preserves_candidates_and_artifact_index(self):
         m = Model(Mock(), "unused")
@@ -89,27 +90,25 @@ class ContextAccountingTests(unittest.TestCase):
 
         def call(task, data, schema, deadline):
             captured.update(data)
-            self.assertLessEqual(m.budget_reservation(m.payload(task, data, schema)), 30000)
+            assert m.budget_reservation(m.payload(task, data, schema)) <= 30000
             raise Stop
 
         m.call = call
-        with self.assertRaises(Stop):
+        with pytest.raises(Stop):
             m.analyze(event, match, evidence)
-        self.assertEqual((event, match, evidence), original)
-        self.assertEqual(
-            [x["number"] for x in captured["preliminary_match"]["candidates"]], [0, 1, 2]
-        )
-        self.assertEqual(captured["preliminary_match"]["reviewed_numbers"], list(range(120)))
-        self.assertEqual(captured["evidence"]["artifact_context"]["index"][0]["id"], "E001")
-        self.assertTrue(captured["alert"]["description"]["truncated"])
+        assert (event, match, evidence) == original
+        assert [x["number"] for x in captured["preliminary_match"]["candidates"]] == [0, 1, 2]
+        assert captured["preliminary_match"]["reviewed_numbers"] == list(range(120))
+        assert captured["evidence"]["artifact_context"]["index"][0]["id"] == "E001"
+        assert captured["alert"]["description"]["truncated"]
 
     def test_irreducible_metadata_visible_without_transport(self):
         m = Model(Mock(), "unused")
         event = f.event()
         event["path"] = ["x" * 120000] * 5
-        with self.assertRaises(Failure) as e:
+        with pytest.raises(Failure) as e:
             m.analyze(event, {"candidates": []}, {})
-        self.assertEqual(e.exception.code, "LLM_CONTEXT_METADATA_TOO_LARGE")
+        assert e.value.code == "LLM_CONTEXT_METADATA_TOO_LARGE"
         m.http.request.assert_not_called()
 
     def test_local_120_long_report_analysis(self):
@@ -136,14 +135,14 @@ class ContextAccountingTests(unittest.TestCase):
 
         def call(task, data, schema, deadline):
             captured.update(data)
-            self.assertLessEqual(m.counter.reservation(m.payload(task, data, schema)), 30000)
+            assert m.counter.reservation(m.payload(task, data, schema)) <= 30000
             raise Stop
 
         m.call = call
-        with self.assertRaises(Stop):
+        with pytest.raises(Stop):
             m.analyze(f.event(), match, evidence)
-        self.assertEqual((match, evidence), original)
-        self.assertEqual(
-            [c["number"] for c in captured["preliminary_match"]["candidates"]], list(range(120))
+        assert (match, evidence) == original
+        assert [c["number"] for c in captured["preliminary_match"]["candidates"]] == list(
+            range(120)
         )
-        self.assertEqual(captured["evidence"]["artifact_context"]["index"][0]["id"], "E001")
+        assert captured["evidence"]["artifact_context"]["index"][0]["id"] == "E001"

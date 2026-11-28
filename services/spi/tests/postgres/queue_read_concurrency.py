@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend"))
+import pytest
 from core import Store
 
 
@@ -20,14 +21,14 @@ class PostgresQueueReads(unittest.TestCase):
             store = Store(":memory:")
             with store.db() as writer:
                 writer.execute("INSERT INTO dispatch VALUES(1,?,?,?)", ("reserved", 42, 1))
-                self.assertEqual(store.health()["counts"], {})
-                self.assertEqual(store.dispatch_status()["attempts"], 0)
+                assert store.health()["counts"] == {}
+                assert store.dispatch_status()["attempts"] == 0
                 with (
-                    self.assertRaises(psycopg.errors.ReadOnlySqlTransaction),
+                    pytest.raises(psycopg.errors.ReadOnlySqlTransaction),
                     store.read_db() as reader,
                 ):
                     reader.execute("DELETE FROM dispatch")
-            self.assertEqual(store.dispatch_status()["attempts"], 1)
+            assert store.dispatch_status()["attempts"] == 1
 
 
 if __name__ == "__main__":
