@@ -73,9 +73,7 @@ class Watchdog:
 
     def service_installed(self, unit) -> bool:
         """Report whether a systemd unit is installed on this host."""
-        state = self.command(
-            "systemctl", "show", unit, "--property=LoadState", "--value"
-        )
+        state = self.command("systemctl", "show", unit, "--property=LoadState", "--value")
         if state == "not-found":
             return False
         if state not in ("loaded", "masked"):
@@ -84,18 +82,14 @@ class Watchdog:
 
     def service_active(self, unit):
         """Report whether a systemd unit is currently active."""
-        return self.command(
-            "systemctl", "show", unit, "--property=ActiveState", "--value"
-        ) not in (
+        return self.command("systemctl", "show", unit, "--property=ActiveState", "--value") not in (
             "inactive",
             "failed",
         )
 
     def kubernetes_group(self, group):
         """Check whether a cgroup belongs to Kubernetes or a fenced unit."""
-        return "kubepods" in group or any(
-            "/" + unit in group for unit in self.fenced_units
-        )
+        return "kubepods" in group or any("/" + unit in group for unit in self.fenced_units)
 
     def processes(self):
         """Enumerate Kubernetes processes with their cgroup and cmdline."""
@@ -165,16 +159,11 @@ class Watchdog:
 
     def occupied(self):
         """Report which configured listen ports are already bound on this host."""
-        wanted = {
-            (item["protocol"], int(item["port"]))
-            for item in self.config["listen_ports"]
-        }
+        wanted = {(item["protocol"], int(item["port"])) for item in self.config["listen_ports"]}
         found = set()
         for protocol in ("tcp", "udp"):
             for suffix in ("", "6"):
-                for line in (
-                    Path("/proc/net/" + protocol + suffix).read_text().splitlines()[1:]
-                ):
+                for line in Path("/proc/net/" + protocol + suffix).read_text().splitlines()[1:]:
                     fields = line.split()
                     if protocol == "tcp" and fields[3] != "0A":
                         continue
@@ -232,21 +221,15 @@ class Watchdog:
                         if not part or time.monotonic() >= deadline:
                             break
                         response += part
-                    lines = (
-                        response.split(b"\r\n\r\n", 1)[0].decode("latin1").split("\r\n")
-                    )
-                    headers = dict(
-                        line.lower().split(":", 1) for line in lines[1:] if ":" in line
-                    )
+                    lines = response.split(b"\r\n\r\n", 1)[0].decode("latin1").split("\r\n")
+                    headers = dict(line.lower().split(":", 1) for line in lines[1:] if ":" in line)
                     expected = base64.b64encode(
                         hashlib.sha1(
                             (key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()
                         ).digest()
                     ).decode()
                     status = lines[0].split()[1] if len(lines[0].split()) >= 2 else ""
-                    diagnostics["http_status"] = (
-                        int(status) if status.isdigit() else None
-                    )
+                    diagnostics["http_status"] = int(status) if status.isdigit() else None
                     if len(lines[0].split()) < 2 or lines[0].split()[1] != "101":
                         msg = "WebSocket upgrade rejected"
                         raise ValueError(msg)
@@ -258,10 +241,7 @@ class Watchdog:
                         ),
                         "",
                     )
-                    if (
-                        accept != expected
-                        or headers.get("upgrade", "").strip() != "websocket"
-                    ):
+                    if accept != expected or headers.get("upgrade", "").strip() != "websocket":
                         msg = "WebSocket handshake invalid"
                         raise ValueError(msg)
         except (OSError, ValueError) as error:
@@ -318,11 +298,7 @@ class Watchdog:
             path = Path("/proc") / str(pid)
             try:
                 if "kubepods" in (path / "cgroup").read_text() and (
-                    (path / "comm")
-                    .read_text()
-                    .strip()
-                    .lower()
-                    .startswith(("xray", "x-ui"))
+                    (path / "comm").read_text().strip().lower().startswith(("xray", "x-ui"))
                 ):
                     return False
             except FileNotFoundError:
@@ -476,14 +452,10 @@ class Watchdog:
                 )
             )["items"]
             relevant = [
-                pod
-                for pod in pods
-                if any(c["name"] == name for c in pod["spec"]["containers"])
+                pod for pod in pods if any(c["name"] == name for c in pod["spec"]["containers"])
             ]
             if running:
-                if len(relevant) != 1 or relevant[0]["metadata"].get(
-                    "deletionTimestamp"
-                ):
+                if len(relevant) != 1 or relevant[0]["metadata"].get("deletionTimestamp"):
                     return False
                 pod = relevant[0]
                 spec = pod["spec"]
@@ -504,14 +476,11 @@ class Watchdog:
             if len(spec["containers"]) != 1 or spec["containers"][0]["name"] != name:
                 return False
             c = spec["containers"][0]
-            target = (
-                "/app/DockerEntrypoint.sh" if ns == "x-ui" else '/entrypoint.sh "$@"'
-            )
+            target = "/app/DockerEntrypoint.sh" if ns == "x-ui" else '/entrypoint.sh "$@"'
             if c.get("command") != [
                 "/bin/sh",
                 "-ec",
-                "until test -f /run/vpn-owner/cluster; do sleep 0.2; done; exec "
-                + target,
+                "until test -f /run/vpn-owner/cluster; do sleep 0.2; done; exec " + target,
                 "--",
             ]:
                 return False
@@ -529,8 +498,7 @@ class Watchdog:
             ):
                 return False
             if running and not any(
-                "running" in st["state"]
-                for st in pod["status"].get("containerStatuses", [])
+                "running" in st["state"] for st in pod["status"].get("containerStatuses", [])
             ):
                 return False
         return True
@@ -556,12 +524,15 @@ class Watchdog:
                 # SSH transport unavailable is not evidence of a broken tunnel.
                 # A reachable client reporting failure still vetoes the handoff.
                 if error.returncode == 255:
-                    self.write("external-validation.json", {"status": "unavailable", "at": time.time()})
+                    self.write(
+                        "external-validation.json", {"status": "unavailable", "at": time.time()}
+                    )
                     return
-                time.sleep(.2)
+                time.sleep(0.2)
             except subprocess.TimeoutExpired:
-                time.sleep(.2)
-        raise RuntimeError("External VPN acceptance deadline expired")
+                time.sleep(0.2)
+        msg = "External VPN acceptance deadline expired"
+        raise RuntimeError(msg)
 
     def coordinated_return(self):
         """A witness outage or busy shared lock defers the transfer, never forces it."""
@@ -594,7 +565,8 @@ class Watchdog:
                     lock.stdin.write(b"COMMIT\n" if completed else b"ABORT\n")
                     lock.stdin.flush()
                     if lock.wait(timeout=4) != 0 or lock.stdout.read(9) != b"RELEASED\n":
-                        raise RuntimeError("Unconfirmed witness release; inspect ownership before retry")
+                        msg = "Unconfirmed witness release; inspect ownership before retry"
+                        raise RuntimeError(msg)
                 return result
             finally:
                 lock.stdin.close()
@@ -619,29 +591,27 @@ class Watchdog:
         self.write("warming", {"started": time.time()})
         try:
             self.command("systemctl", "start", self.agent)
-            self.cluster_query(
-                "wait", "--for=condition=Ready", "node/socrat-2", "--timeout=35s"
-            )
+            self.cluster_query("wait", "--for=condition=Ready", "node/socrat-2", "--timeout=35s")
             deadline = time.monotonic() + 90
-            while (
-                not self.guarded_workloads(running=True) and time.monotonic() < deadline
-            ):
+            while not self.guarded_workloads(running=True) and time.monotonic() < deadline:
                 time.sleep(1)
             if not self.guarded_workloads(running=True) or not self.health()["healthy"]:
-                raise RuntimeError(
-                    "Warm-up did not preserve workload isolation and native path"
-                )
+                msg = "Warm-up did not preserve workload isolation and native path"
+                raise RuntimeError(msg)
             self.confirm_return_path(probe)
             if lock is not None and lock.poll() is not None:
-                raise RuntimeError("Lost independent transition lock")
+                msg = "Lost independent transition lock"
+                raise RuntimeError(msg)
             for unit in reversed(self.units):
                 self.command("systemctl", "stop", unit)
             if any(self.service_active(u) for u in self.units) or self.occupied():
-                raise RuntimeError("Native runtime did not release ownership")
+                msg = "Native runtime did not release ownership"
+                raise RuntimeError(msg)
             self.owner_permit.touch(exist_ok=False)
             self.confirm_return_path(probe)
             if not self.health()["healthy"]:
-                raise RuntimeError("Cluster ingress not healthy")
+                msg = "Cluster ingress not healthy"
+                raise RuntimeError(msg)
             (self.state / "active").unlink()
             (self.state / "warming").unlink()
             return {"mode": "kubernetes", "warm_return": True}
@@ -658,11 +628,7 @@ class Watchdog:
         if (self.state / "active").exists():
             remaining = self.return_window()
             native = self.activate()
-            if (
-                self.config.get("warm_return_enabled")
-                and not remaining
-                and native.get("healthy")
-            ):
+            if self.config.get("warm_return_enabled") and not remaining and native.get("healthy"):
                 if self.config.get("coordinated_return"):
                     return self.coordinated_return()
                 return self.warm_return()
@@ -672,9 +638,7 @@ class Watchdog:
         if uptime < saved["grace_until"]:
             return {"mode": "grace"}
         health = self.health()
-        saved["failures"] = (
-            saved["failures"] + 1 if self.fencing_evidence(health) else 0
-        )
+        saved["failures"] = saved["failures"] + 1 if self.fencing_evidence(health) else 0
         self.write("failures.json", saved)
         if not health["healthy"]:
             self.write(
@@ -750,9 +714,7 @@ class Watchdog:
         try:
             self.command("systemctl", "start", self.agent)
         except Exception:
-            self.write(
-                "active", {"activated_at": time.time(), "reason": "failback failed"}
-            )
+            self.write("active", {"activated_at": time.time(), "reason": "failback failed"})
             self.fence()
             # Restore service immediately, rather than waiting for the next timer.
             self.activate()
@@ -771,9 +733,7 @@ class Watchdog:
 def main() -> int | None:
     """Execute the main operation."""
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "action", choices=["tick", "check", "status", "guard", "failback"]
-    )
+    parser.add_argument("action", choices=["tick", "check", "status", "guard", "failback"])
     parser.add_argument("--config", default=CONFIG_PATH)
     args = parser.parse_args()
     try:
@@ -784,9 +744,7 @@ def main() -> int | None:
                 fcntl.flock(lock, fcntl.LOCK_EX)
                 result = getattr(watchdog, args.action)()
         else:
-            result = getattr(
-                watchdog, "health" if args.action == "check" else args.action
-            )()
+            result = getattr(watchdog, "health" if args.action == "check" else args.action)()
         print(json.dumps(result or {"guard": True}))
         return 1 if result and result.get("healthy") is False else 0
     except Exception as error:

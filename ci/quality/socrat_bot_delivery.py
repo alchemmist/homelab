@@ -22,7 +22,8 @@ URL = "https://" + HOST + "/telegram/webhook"
 
 def require(ok):
     if not ok:
-        raise ValueError("unverified bot configuration")
+        msg = "unverified bot configuration"
+        raise ValueError(msg)
 
 
 def redirect(location):

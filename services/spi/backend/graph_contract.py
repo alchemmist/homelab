@@ -122,7 +122,8 @@ def validate_graph(graph):
 
 def timestamp_ms(value):
     if not isinstance(value, str) or len(value) > 64:
-        raise GraphError("INVALID_TIMESTAMP")
+        msg = "INVALID_TIMESTAMP"
+        raise GraphError(msg)
     try:
         parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
         if parsed.tzinfo is None:
@@ -132,7 +133,8 @@ def timestamp_ms(value):
             raise ValueError
         return int(result)
     except (ValueError, OverflowError, OSError):
-        raise GraphError("INVALID_TIMESTAMP") from None
+        msg = "INVALID_TIMESTAMP"
+        raise GraphError(msg) from None
 
 
 def resolve(
@@ -147,19 +149,22 @@ def resolve(
         raise GraphError
     start, observed = timestamp_ms(starts_at), timestamp_ms(observed_at)
     if observed < start:
-        raise GraphError("INVALID_TIMESTAMP")
+        msg = "INVALID_TIMESTAMP"
+        raise GraphError(msg)
     mode, anchor = "onset", start
     if status == "resolved":
         mode, anchor = "resolved", timestamp_ms(ends_at)
         if not start <= anchor <= observed:
-            raise GraphError("INVALID_TIMESTAMP")
+            msg = "INVALID_TIMESTAMP"
+            raise GraphError(msg)
     elif purpose == "telegram" and observed > start + graph["after_seconds"] * 1000:
         mode, anchor = "ongoing", observed
     variables = {}
     for name, binding in graph["variables"].items():
         value = labels.get(binding["label"]) if "label" in binding else binding["literal"]
         if not isinstance(value, str) or not value.strip() or value in ("All", "$__all", ".*"):
-            raise GraphError("MISSING_LABEL")
+            msg = "MISSING_LABEL"
+            raise GraphError(msg)
         variables[name] = _text(value, 512)
     result = {
         "version": VERSION,
@@ -174,7 +179,8 @@ def resolve(
         "mode": mode,
     }
     if result["from_ms"] < 0 or result["to_ms"] <= result["from_ms"]:
-        raise GraphError("INVALID_TIMESTAMP")
+        msg = "INVALID_TIMESTAMP"
+        raise GraphError(msg)
     result["digest"] = hashlib.sha256(canonical(result).encode("ascii")).hexdigest()
     return result
 
@@ -213,7 +219,8 @@ def render_path(request):
             raise GraphError
         _text(value, 512)
         if value in ("All", "$__all", ".*"):
-            raise GraphError("MISSING_LABEL")
+            msg = "MISSING_LABEL"
+            raise GraphError(msg)
         params.append(("var-" + name, value))
     return "/render/d-solo/" + request["dashboard_uid"] + "/_?" + urllib.parse.urlencode(params)
 
@@ -221,9 +228,11 @@ def render_path(request):
 def validate_png(data):
     """Validate bounded PNG structure/CRC and inflated scanlines, not just magic bytes."""
     if not isinstance(data, bytes) or not 8 <= len(data) <= MAX_PNG_BYTES:
-        raise GraphError("IMAGE_LIMIT")
+        msg = "IMAGE_LIMIT"
+        raise GraphError(msg)
     if data[:8] != b"\x89PNG\r\n\x1a\n":
-        raise GraphError("INVALID_PNG")
+        msg = "INVALID_PNG"
+        raise GraphError(msg)
     offset, chunks, compressed, ended, idat_ended = 8, [], bytearray(), False, False
     width = height = depth = color = None
     try:
@@ -298,7 +307,8 @@ def validate_png(data):
         if any(pixels[y * stride] > 4 for y in range(height)):
             raise ValueError
     except (ValueError, KeyError, struct.error, zlib.error):
-        raise GraphError("INVALID_PNG") from None
+        msg = "INVALID_PNG"
+        raise GraphError(msg) from None
     return {
         "mime_type": "image/png",
         "size": len(data),

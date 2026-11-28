@@ -253,5 +253,6 @@ if __name__ == "__main__":
     OIDC_CLIENT = OIDC.from_file()
     TOKEN = Path("/queue-control/token").read_text().strip()
     if len(TOKEN) < 32:
-        raise RuntimeError("QUEUE_ADMIN_TOKEN_REQUIRED")
+        msg = "QUEUE_ADMIN_TOKEN_REQUIRED"
+        raise RuntimeError(msg)
     Server(("0.0.0.0", 8080), Handler).serve_forever()

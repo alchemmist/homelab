@@ -80,7 +80,8 @@ def metric_summary(value):
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
-        raise Failure("HTTP_REDIRECT_FORBIDDEN")
+        msg = "HTTP_REDIRECT_FORBIDDEN"
+        raise Failure(msg)
 
 
 class HTTP:
@@ -90,7 +91,8 @@ class HTTP:
     def request(self, method, url, headers=None, body=None, timeout=30, limit=2_000_000):
         remaining = getattr(REQUEST_DEADLINE, "at", time.monotonic() + timeout) - time.monotonic()
         if remaining < 1:
-            raise Failure("REQUEST_BUDGET_EXCEEDED")
+            msg = "REQUEST_BUDGET_EXCEEDED"
+            raise Failure(msg)
         timeout = min(timeout, remaining)
         data = json.dumps(body).encode() if body is not None else None
         req = urllib.request.Request(
@@ -103,7 +105,8 @@ class HTTP:
             with self.opener.open(req, timeout=timeout) as r:
                 raw = r.read(limit + 1)
                 if len(raw) > limit:
-                    raise Failure("UPSTREAM_RESPONSE_TOO_LARGE")
+                    msg = "UPSTREAM_RESPONSE_TOO_LARGE"
+                    raise Failure(msg)
                 return json.loads(raw) if raw else {}
         except urllib.error.HTTPError as e:
             hint = None
@@ -147,27 +150,33 @@ class HTTP:
                 else "UPSTREAM_NETWORK_ERROR"
             ) from None
         except TimeoutError:
-            raise Failure("UPSTREAM_TIMEOUT") from None
+            msg = "UPSTREAM_TIMEOUT"
+            raise Failure(msg) from None
         except OSError:
-            raise Failure("UPSTREAM_NETWORK_ERROR") from None
+            msg = "UPSTREAM_NETWORK_ERROR"
+            raise Failure(msg) from None
         except (ValueError, UnicodeError):
-            raise Failure("INVALID_UPSTREAM_JSON") from None
+            msg = "INVALID_UPSTREAM_JSON"
+            raise Failure(msg) from None
 
 
 class GitHub:
     def __init__(self, http, token_file, repo="alchemmist/homelab"):
         if repo != "alchemmist/homelab":
-            raise Failure("REPOSITORY_NOT_ALLOWED")
+            msg = "REPOSITORY_NOT_ALLOWED"
+            raise Failure(msg)
         self.http = http
         self.token_file = token_file
         self.root = "https://api.github.com/repos/" + repo
 
     def request(self, method, path, body=None):
         if not path.startswith("/") or ".." in path or "://" in path:
-            raise Failure("INVALID_GITHUB_PATH")
+            msg = "INVALID_GITHUB_PATH"
+            raise Failure(msg)
         token = Path(self.token_file).read_text().strip()
         if not token:
-            raise Failure("GITHUB_TOKEN_UNAVAILABLE")
+            msg = "GITHUB_TOKEN_UNAVAILABLE"
+            raise Failure(msg)
         return self.http.request(
             method,
             self.root + path,
@@ -193,13 +202,15 @@ class GitHub:
                 + str(page),
             )
             if not isinstance(data, list):
-                raise Failure("INVALID_GITHUB_PAGE")
+                msg = "INVALID_GITHUB_PAGE"
+                raise Failure(msg)
             yield from data
             if len(data) < page_size:
                 break
             page += 1
             if page > 100:
-                raise Failure("GITHUB_PAGINATION_BUDGET_EXCEEDED")
+                msg = "GITHUB_PAGINATION_BUDGET_EXCEEDED"
+                raise Failure(msg)
 
     def issues(self, state="open"):
         return [
@@ -305,11 +316,13 @@ class GitHub:
                             }
                         )
         if len(matches) != 1:
-            raise Failure("WRITE_NEEDS_REVIEW")
+            msg = "WRITE_NEEDS_REVIEW"
+            raise Failure(msg)
         try:
             primary_url(matches[0])
         except ValueError:
-            raise Failure("INVALID_PRIMARY_REFERENCE") from None
+            msg = "INVALID_PRIMARY_REFERENCE"
+            raise Failure(msg) from None
         return matches[0]
 
     def reconcile(self, marker, number=0):
@@ -402,7 +415,8 @@ class Model:
             or body.get("chat_template_kwargs") != {"enable_thinking": False}
             or "tools" in body
         ):
-            raise Failure("LLM_ACCOUNTING_CONTRACT_MISMATCH")
+            msg = "LLM_ACCOUNTING_CONTRACT_MISMATCH"
+            raise Failure(msg)
         content = sum(
             len(unicodedata.normalize("NFC", m["content"]).encode("utf-8"))
             for m in body["messages"]
@@ -471,11 +485,13 @@ class Model:
         body = self.payload(task, data, schema)
         tokens = self.reservation(body)
         if tokens > 30000:
-            raise Failure("LLM_REQUEST_TOO_LARGE")
+            msg = "LLM_REQUEST_TOO_LARGE"
+            raise Failure(msg)
         for attempt in range(2):
             remaining = deadline - time.monotonic()
             if remaining < 10:
-                raise Failure("LLM_MODEL_STAGE_BUDGET_EXCEEDED")
+                msg = "LLM_MODEL_STAGE_BUDGET_EXCEEDED"
+                raise Failure(msg)
             timeout = min(600, remaining)
             if self.store is None:
                 from core import Store
@@ -501,11 +517,13 @@ class Model:
                 self.store.finish_llm(reservation, actual=usage.get("total_tokens"))
             try:
                 if response["choices"][0].get("finish_reason") == "length":
-                    raise Failure("MODEL_OUTPUT_TRUNCATED")
+                    msg = "MODEL_OUTPUT_TRUNCATED"
+                    raise Failure(msg)
                 value = json.loads(response["choices"][0]["message"]["content"])
                 validate(value, schema)
                 if clean(value) != value:
-                    raise Failure("UNSAFE_MODEL_OUTPUT")
+                    msg = "UNSAFE_MODEL_OUTPUT"
+                    raise Failure(msg)
                 context = (
                     data.get("evidence", {}).get("artifact_context")
                     if isinstance(data, dict)
@@ -516,7 +534,8 @@ class Model:
                     for fact in value["facts"]:
                         refs = set(re.findall(r"\bE[0-9]{3}\b", fact))
                         if not refs or not refs <= ids:
-                            raise Failure("INVALID_EVIDENCE_REFERENCE")
+                            msg = "INVALID_EVIDENCE_REFERENCE"
+                            raise Failure(msg)
                 return value
             except (KeyError, IndexError, TypeError, ValueError, Failure) as exc:
                 last = exc.code if isinstance(exc, Failure) else "INVALID_MODEL_SCHEMA"
@@ -531,11 +550,13 @@ class Model:
         event = self.bounded_context(event)
         # Every issue is examined. Batches avoid a single unbounded prompt.
         if len(issues) > 120:
-            raise Failure("OPEN_SPI_REVIEW_BUDGET_EXCEEDED")
+            msg = "OPEN_SPI_REVIEW_BUDGET_EXCEEDED"
+            raise Failure(msg)
         if any(not isinstance(x, dict) or type(x.get("number")) is not int for x in issues) or len(
             {x["number"] for x in issues}
         ) != len(issues):
-            raise Failure("INVALID_MATCH_PROGRESS")
+            msg = "INVALID_MATCH_PROGRESS"
+            raise Failure(msg)
         task = "Choose the same underlying problem from these OPEN SPI issues, or issue_number=0. Explain ambiguity in at most 120 words. Return compact strict JSON."
         signature = digest(issues)
 
@@ -578,14 +599,17 @@ class Model:
         if old:
             original = old.get("snapshot")
             if not isinstance(original, list) or digest(original) != old.get("signature"):
-                raise Failure("INVALID_MATCH_PROGRESS")
+                msg = "INVALID_MATCH_PROGRESS"
+                raise Failure(msg)
             if any(
                 not isinstance(x, dict) or type(x.get("number")) is not int for x in original
             ) or not isinstance(old.get("reviews"), list):
-                raise Failure("INVALID_MATCH_PROGRESS")
+                msg = "INVALID_MATCH_PROGRESS"
+                raise Failure(msg)
             original_by = {x["number"]: x for x in original}
             if len(original_by) != len(original):
-                raise Failure("INVALID_MATCH_PROGRESS")
+                msg = "INVALID_MATCH_PROGRESS"
+                raise Failure(msg)
             seen = set()
             current = {x["number"]: x for x in issues}
             for review in old.get("reviews", []):
@@ -597,17 +621,20 @@ class Model:
                         or len(ids) > 12
                         or (not ids and original)
                     ):
-                        raise Failure("INVALID_MATCH_PROGRESS")
+                        msg = "INVALID_MATCH_PROGRESS"
+                        raise Failure(msg)
                     batch = [original_by[n] for n in ids]
                     if (
                         len(set(ids)) != len(ids)
                         or seen.intersection(ids)
                         or review["content"] != digest(batch)
                     ):
-                        raise Failure("INVALID_MATCH_PROGRESS")
+                        msg = "INVALID_MATCH_PROGRESS"
+                        raise Failure(msg)
                     validate(review["decision"], MATCH_SCHEMA)
                     if review["decision"]["issue_number"] not in {0, *ids}:
-                        raise Failure("INVALID_MATCH_PROGRESS")
+                        msg = "INVALID_MATCH_PROGRESS"
+                        raise Failure(msg)
                     seen.update(ids)
                     if (
                         all(n in current for n in ids)
@@ -615,7 +642,8 @@ class Model:
                     ):
                         reviews.append(review)
                 except (KeyError, TypeError, ValueError):
-                    raise Failure("INVALID_MATCH_PROGRESS") from None
+                    msg = "INVALID_MATCH_PROGRESS"
+                    raise Failure(msg) from None
         by_number = {x["number"]: x for x in issues}
         reviewed = set()
         candidates = []
@@ -623,18 +651,22 @@ class Model:
             try:
                 batch = [by_number[n] for n in review["ids"]]
             except (KeyError, TypeError):
-                raise Failure("INVALID_MATCH_PROGRESS") from None
+                msg = "INVALID_MATCH_PROGRESS"
+                raise Failure(msg) from None
             if review["content"] != digest(batch) or reviewed.intersection(review["ids"]):
-                raise Failure("INVALID_MATCH_PROGRESS")
+                msg = "INVALID_MATCH_PROGRESS"
+                raise Failure(msg)
             result = review["decision"]
             validate(result, MATCH_SCHEMA)
             if result["issue_number"] not in {0, *review["ids"]}:
-                raise Failure("INVALID_MATCH_PROGRESS")
+                msg = "INVALID_MATCH_PROGRESS"
+                raise Failure(msg)
             reviewed.update(review["ids"])
             candidates.extend(x for x in batch if x["number"] == result["issue_number"])
         selection = old.get("selection") if old.get("signature") == signature else None
         if selection and reviewed != {x["number"] for x in issues}:
-            raise Failure("INVALID_MATCH_PROGRESS")
+            msg = "INVALID_MATCH_PROGRESS"
+            raise Failure(msg)
 
         def checkpoint():
             value = {
@@ -672,7 +704,8 @@ class Model:
                 batch = proposed
             if pending and not batch:
                 checkpoint()
-                raise Failure("LLM_SINGLE_CANDIDATE_TOO_LARGE")
+                msg = "LLM_SINGLE_CANDIDATE_TOO_LARGE"
+                raise Failure(msg)
             checkpoint()
             result = self.call(
                 task,
@@ -681,7 +714,8 @@ class Model:
                 deadline,
             )
             if result["issue_number"] not in {0, *[x["number"] for x in batch]}:
-                raise Failure("INVALID_MATCH_TARGET")
+                msg = "INVALID_MATCH_TARGET"
+                raise Failure(msg)
             reviews.append(
                 {"ids": [x["number"] for x in batch], "content": digest(batch), "decision": result}
             )
@@ -693,13 +727,15 @@ class Model:
         comparisons = []
         if selection:
             if selection.get("nominees") != digest(candidates):
-                raise Failure("INVALID_MATCH_PROGRESS")
+                msg = "INVALID_MATCH_PROGRESS"
+                raise Failure(msg)
             replay = [x["number"] for x in candidates]
             comparisons = selection.get("comparisons", [])
             for decision in comparisons:
                 validate(decision, MATCH_SCHEMA)
                 if len(replay) < 2 or decision["issue_number"] not in {0, *replay[:2]}:
-                    raise Failure("INVALID_MATCH_PROGRESS")
+                    msg = "INVALID_MATCH_PROGRESS"
+                    raise Failure(msg)
                 replay = ([decision["issue_number"]] if decision["issue_number"] else []) + replay[
                     2:
                 ]
@@ -708,12 +744,14 @@ class Model:
                 or replay != selection.get("remaining")
                 or comparisons[-1] != selection.get("decision")
             ):
-                raise Failure("INVALID_MATCH_PROGRESS")
+                msg = "INVALID_MATCH_PROGRESS"
+                raise Failure(msg)
             remaining_numbers = selection.get("remaining", [])
             if len(set(remaining_numbers)) != len(remaining_numbers) or not set(
                 remaining_numbers
             ) <= {x["number"] for x in candidates}:
-                raise Failure("INVALID_MATCH_PROGRESS")
+                msg = "INVALID_MATCH_PROGRESS"
+                raise Failure(msg)
             finalists = [by_number[n] for n in remaining_numbers]
             result = selection["decision"]
             validate(result, MATCH_SCHEMA)
@@ -732,7 +770,8 @@ class Model:
                 deadline,
             )
             if result["issue_number"] not in {0, *[x["number"] for x in pair]}:
-                raise Failure("INVALID_MATCH_TARGET")
+                msg = "INVALID_MATCH_TARGET"
+                raise Failure(msg)
             finalists = (
                 [by_number[result["issue_number"]]] if result["issue_number"] else []
             ) + finalists[2:]
@@ -791,10 +830,12 @@ class Model:
                 break
             data = self.bounded_context(original, limit)
         if self.reservation(self.payload(task, data, REPORT_SCHEMA)) > 30000:
-            raise Failure("LLM_CONTEXT_METADATA_TOO_LARGE")
+            msg = "LLM_CONTEXT_METADATA_TOO_LARGE"
+            raise Failure(msg)
         report = self.call(task, data, REPORT_SCHEMA, time.monotonic() + 780)
         if report["issue_number"] not in {0, *[x["number"] for x in match["candidates"]]}:
-            raise Failure("INVALID_MATCH_TARGET")
+            msg = "INVALID_MATCH_TARGET"
+            raise Failure(msg)
         return report
 
 
@@ -807,13 +848,15 @@ class Evidence:
 
     def get(self, path, params=None):
         if not path.startswith("/api/") or ".." in path:
-            raise Failure("INVALID_OBSERVABILITY_PATH")
+            msg = "INVALID_OBSERVABILITY_PATH"
+            raise Failure(msg)
         url = self.base + path + ("?" + urllib.parse.urlencode(params) if params else "")
         value = self.http.request(
             "GET", url, {"Authorization": "Bearer " + self.token}, timeout=20, limit=1_000_000
         )
         if isinstance(value, dict) and value.get("status") == "error":
-            raise Failure("OBSERVABILITY_QUERY_ERROR")
+            msg = "OBSERVABILITY_QUERY_ERROR"
+            raise Failure(msg)
         return clean(value)
 
     def collect(self, event):
@@ -1035,7 +1078,8 @@ class Evidence:
                     ):
                         spans += scope.get("spans", [])
                 if not spans:
-                    raise Failure("TRACE_SPAN_FORMAT_UNSUPPORTED")
+                    msg = "TRACE_SPAN_FORMAT_UNSUPPORTED"
+                    raise Failure(msg)
                 summary = {
                     "span_count": len(spans),
                     "error_span_count": sum(

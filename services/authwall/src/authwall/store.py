@@ -61,8 +61,16 @@ class S3Store(Store):
         )
 
     def job_urls(self, source, full, thumb):
-        return {name: self.client.generate_presigned_url(method, Params={"Bucket": self.bucket, "Key": key}, ExpiresIn=300)
-                for name, method, key in (("sourceUrl", "get_object", source), ("fullPutUrl", "put_object", full), ("previewPutUrl", "put_object", thumb))}
+        return {
+            name: self.client.generate_presigned_url(
+                method, Params={"Bucket": self.bucket, "Key": key}, ExpiresIn=300
+            )
+            for name, method, key in (
+                ("sourceUrl", "get_object", source),
+                ("fullPutUrl", "put_object", full),
+                ("previewPutUrl", "put_object", thumb),
+            )
+        }
 
     def open_media(self, key):
         response = self.client.get_object(Bucket=self.bucket, Key=key)
@@ -70,6 +78,7 @@ class S3Store(Store):
 
     def has_webp(self, key):
         from botocore.exceptions import ClientError
+
         try:
             head = self.client.head_object(Bucket=self.bucket, Key=key)
         except ClientError as exc:
@@ -111,7 +120,8 @@ def notify_n8n(wallpaper_id: str, urls: dict) -> dict:
         with urllib.request.urlopen(req, timeout=8) as response:
             raw = response.read().decode() or "{}"
     except urllib.error.URLError as exc:
-        raise RuntimeError("n8n webhook failed") from exc
+        msg = "n8n webhook failed"
+        raise RuntimeError(msg) from exc
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError:

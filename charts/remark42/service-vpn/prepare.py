@@ -20,24 +20,29 @@ def prepare(value, door):
             if outbound.get("protocol") == "vless":
                 candidates.append(outbound)
     if len(candidates) != 1:
-        raise RuntimeError("PROFILE_COUNT")
+        msg = "PROFILE_COUNT"
+        raise RuntimeError(msg)
     outbound = json.loads(json.dumps(candidates[0]))
     settings = outbound.get("settings") or {}
     endpoint = (settings.get("vnext") or [settings])[0]
     stream = outbound.get("streamSettings") or {}
     if endpoint.get("address") != ENDPOINT or endpoint.get("port") != PORT:
-        raise RuntimeError("PROFILE_POLICY")
+        msg = "PROFILE_POLICY"
+        raise RuntimeError(msg)
     if stream.get("security") != "reality":
-        raise RuntimeError("PROFILE_POLICY")
+        msg = "PROFILE_POLICY"
+        raise RuntimeError(msg)
     if not isinstance((stream.get("realitySettings") or {}).get("publicKey"), str):
-        raise RuntimeError("REALITY_IDENTITY")
+        msg = "REALITY_IDENTITY"
+        raise RuntimeError(msg)
 
     def check(item):
         if not isinstance(item, dict):
             return
         for key, nested in item.items():
             if key == "allowInsecure" and nested is not False:
-                raise RuntimeError("TLS_POLICY")
+                msg = "TLS_POLICY"
+                raise RuntimeError(msg)
             check(nested)
 
     check(outbound)
@@ -72,11 +77,13 @@ def main():
         or url.query
         or url.fragment
     ):
-        raise RuntimeError("SUBSCRIPTION_POLICY")
+        msg = "SUBSCRIPTION_POLICY"
+        raise RuntimeError(msg)
 
     class NoRedirect(urllib.request.HTTPRedirectHandler):
         def redirect_request(self, *args, **kwargs):
-            raise RuntimeError("SUBSCRIPTION_REDIRECT")
+            msg = "SUBSCRIPTION_REDIRECT"
+            raise RuntimeError(msg)
 
     opener = urllib.request.build_opener(
         urllib.request.ProxyHandler({}),
@@ -86,10 +93,12 @@ def main():
     request = urllib.request.Request(raw, headers={"User-Agent": "homelab-service-vpn"})
     with opener.open(request, timeout=8) as response:
         if response.status != 200:
-            raise RuntimeError("SUBSCRIPTION_HTTP")
+            msg = "SUBSCRIPTION_HTTP"
+            raise RuntimeError(msg)
         body = response.read(262145)
     if len(body) > 262144:
-        raise RuntimeError("SUBSCRIPTION_SIZE")
+        msg = "SUBSCRIPTION_SIZE"
+        raise RuntimeError(msg)
     config = prepare(json.loads(body), os.environ.get("VPN_DOOR") or "")
     temporary = Path("/vpn-runtime/client.json.tmp")
     temporary.write_text(json.dumps(config))

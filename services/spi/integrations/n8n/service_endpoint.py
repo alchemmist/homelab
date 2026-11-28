@@ -35,7 +35,8 @@ def validate_service(service, contract=None):
         or s.get("selector") != {"app": "spi-triage"}
         or s.get("ports") != expected
     ):
-        raise ValueError("SPI_SERVICE_IDENTITY_MISMATCH")
+        msg = "SPI_SERVICE_IDENTITY_MISMATCH"
+        raise ValueError(msg)
     return "http://" + str(ip) + ":8080"
 
 
@@ -49,5 +50,6 @@ def validate_workflow(workflow, base):
             or n["parameters"]["method"] != "POST"
             or n.get("retryOnFail", False)
         ):
-            raise ValueError("SPI_ENDPOINT_CONTRACT_MISMATCH")
+            msg = "SPI_ENDPOINT_CONTRACT_MISMATCH"
+            raise ValueError(msg)
     return True

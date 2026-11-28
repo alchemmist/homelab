@@ -134,7 +134,8 @@ class OutboxTest(unittest.TestCase):
         self.receipt()
 
         def fail(*a, **kw):
-            raise TimeoutError("X-Internal-Token: secret-value")
+            msg = "X-Internal-Token: secret-value"
+            raise TimeoutError(msg)
 
         self.outbox.request = fail
         self.outbox.once()
@@ -212,7 +213,8 @@ class OutboxTest(unittest.TestCase):
             requests.append(key)
             if key not in committed:
                 committed.add(key)
-                raise TimeoutError("lost acknowledgement from B")
+                msg = "lost acknowledgement from B"
+                raise TimeoutError(msg)
             return 200, dict(key=json["key"], updated=json["expected_copies"], pending=[])
 
         self.outbox.request = service

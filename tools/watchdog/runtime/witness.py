@@ -25,7 +25,8 @@ def probe():
         and stream["network"] == "ws"
         and not stream.get("tlsSettings", {}).get("allowInsecure")
     ):
-        raise ValueError("Unexpected witness configuration")
+        msg = "Unexpected witness configuration"
+        raise ValueError(msg)
     with socket.socket() as reservation:
         reservation.bind(("127.0.0.1", 0))
         port = reservation.getsockname()[1]

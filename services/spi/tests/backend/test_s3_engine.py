@@ -527,7 +527,8 @@ class EngineStorageTests(unittest.TestCase):
         def post(method, path, data):
             assert len(self.store.get(self.key)["result"]["storage_publication"]["verified"]) == 2
             posts.append(data)
-            raise Failure("HTTP_502")
+            msg = "HTTP_502"
+            raise Failure(msg)
 
         self.g.request.side_effect = post
         with pytest.raises(Failure, match="HTTP_502"):

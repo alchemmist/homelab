@@ -209,7 +209,8 @@ class AdmissionTests(unittest.TestCase):
             if len(ids) == 2 and not any("selection" in s for s in saved):
                 return {**GOOD, "issue_number": ids[0]}
             if len(ids) == 2:
-                raise Failure("LLM_ADMISSION_DEFERRED", retry_after=61)
+                msg = "LLM_ADMISSION_DEFERRED"
+                raise Failure(msg, retry_after=61)
             return {**GOOD, "issue_number": ids[0]}
 
         m.call = choose

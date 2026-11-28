@@ -176,10 +176,13 @@ def _verify_nature_responses(
         urls["NATURE_RANDOM_" + variant.upper()] = url
     scene_url = BASE + "/authwall/scene.css"
     with urllib.request.urlopen(scene_url, timeout=60) as response:
-        if (response.headers.get_content_type() != "text/css"
-                or response.headers.get("Cache-Control") != "no-store"
-                or b"body::before" not in response.read()):
-            raise RuntimeError("Wallpaper service scene CSS verification failed")
+        if (
+            response.headers.get_content_type() != "text/css"
+            or response.headers.get("Cache-Control") != "no-store"
+            or b"body::before" not in response.read()
+        ):
+            msg = "Wallpaper service scene CSS verification failed"
+            raise RuntimeError(msg)
     urls["NATURE_SCENE"] = scene_url
 
 

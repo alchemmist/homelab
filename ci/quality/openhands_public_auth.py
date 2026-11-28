@@ -17,7 +17,8 @@ def challenge(location):
         or not location.isascii()
         or any(ord(c) <= 32 or ord(c) == 127 for c in location)
     ):
-        raise ValueError("invalid authorization redirect")
+        msg = "invalid authorization redirect"
+        raise ValueError(msg)
     url = urlsplit(location)
     if (url.scheme, url.netloc, url.path, url.fragment) != (
         "https",
@@ -25,7 +26,8 @@ def challenge(location):
         "/application/o/authorize/",
         "",
     ):
-        raise ValueError("unexpected authorization endpoint")
+        msg = "unexpected authorization endpoint"
+        raise ValueError(msg)
     pairs = parse_qsl(url.query, strict_parsing=True, keep_blank_values=True, max_num_fields=10)
     q = dict(pairs)
     if (
@@ -49,13 +51,15 @@ def challenge(location):
         or not q["client_id"]
         or sorted(q["scope"].split()) != ["groups", "offline_access", "openid", "profile"]
     ):
-        raise ValueError("unexpected authorization contract")
+        msg = "unexpected authorization contract"
+        raise ValueError(msg)
     return tuple(hashlib.sha256(q[key].encode()).digest() for key in ("state", "code_challenge"))
 
 
 def request(ip, path):
     if path not in ("/", "/oauth2/auth"):
-        raise ValueError("unsupported auth probe")
+        msg = "unsupported auth probe"
+        raise ValueError(msg)
     result = subprocess.run(
         [
             "curl",
@@ -81,10 +85,12 @@ def request(ip, path):
         timeout=9,
     )
     if result.returncode:
-        raise ValueError("incomplete HTTPS request")
+        msg = "incomplete HTTPS request"
+        raise ValueError(msg)
     parts = result.stdout.rsplit(b"\n", 2)
     if len(parts) != 3:
-        raise ValueError("incomplete response")
+        msg = "incomplete response"
+        raise ValueError(msg)
     body, status, location = parts
     if path == "/" and status == b"302":
         return challenge(location.decode("ascii"))
@@ -95,7 +101,8 @@ def request(ip, path):
         and body in (b"Unauthorized", b"Unauthorized\n", b"Unauthorized\r\n")
     ):
         return True
-    raise ValueError("unexpected anonymous response")
+    msg = "unexpected anonymous response"
+    raise ValueError(msg)
 
 
 def check(ip):

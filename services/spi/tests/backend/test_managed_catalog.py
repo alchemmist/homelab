@@ -131,7 +131,8 @@ class ManagedFlowTests(IntegrationTests):
 
         def fail(method, path, body=None):
             if method == "POST":
-                raise Failure("UPSTREAM_NETWORK_ERROR")
+                msg = "UPSTREAM_NETWORK_ERROR"
+                raise Failure(msg)
             return original(method, path, body)
 
         self.github.request.side_effect = fail

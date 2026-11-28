@@ -30,7 +30,8 @@ def sample(bucket, now):
         ):
             continue
         if meta["ulid"] != uid:
-            raise ValueError("hourly block identity mismatch")
+            msg = "hourly block identity mismatch"
+            raise ValueError(msg)
         prefix = uid + "/"
         files = bucket.listing(prefix)
         if prefix + "deletion-mark.json" in files or key not in files:
@@ -46,9 +47,7 @@ def sample(bucket, now):
 
 if __name__ == "__main__":
     now = time.time()
-    size, age = sample(
-        Bucket(json.loads(Path("/s3/objstore.yml").read_bytes())["config"]), now
-    )
+    size, age = sample(Bucket(json.loads(Path("/s3/objstore.yml").read_bytes())["config"]), now)
     tmp = Path("/textfile/.warm-hour-pending.tmp")
     tmp.write_text(
         f"socrat_warm_hour_pending_upper_bytes {size}\nsocrat_warm_hour_oldest_upper_seconds {age}\nsocrat_warm_hour_inventory_timestamp_seconds {int(now)}\n"

@@ -73,9 +73,11 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 class OIDC:
     def __init__(self, client_id, client_secret, *, clock=time.time, request=None):
         if not isinstance(client_id, str) or not 1 <= len(client_id) <= 256:
-            raise ValueError("invalid OIDC client")
+            msg = "invalid OIDC client"
+            raise ValueError(msg)
         if not isinstance(client_secret, str) or not 32 <= len(client_secret) <= 2048:
-            raise ValueError("invalid OIDC credential")
+            msg = "invalid OIDC credential"
+            raise ValueError(msg)
         self.client_id, self.client_secret = client_id, client_secret
         self.clock, self.request = clock, request or self._request
         self.lock = threading.Lock()
@@ -97,10 +99,12 @@ class OIDC:
                 or info.st_size > 8192
                 or (info.st_mode & 0o040 and info.st_gid not in (os.getgid(), *os.getgroups()))
             ):
-                raise ValueError("invalid OIDC credential permissions")
+                msg = "invalid OIDC credential permissions"
+                raise ValueError(msg)
             value = json.loads(stream.read(8193))
         if set(value) != {"client_id", "client_secret"}:
-            raise ValueError("invalid OIDC credential fields")
+            msg = "invalid OIDC credential fields"
+            raise ValueError(msg)
         return cls(**value)
 
     def _request(self, method, url, data=None):

@@ -12,10 +12,12 @@ PATH = "/fixture-only"
 def configs(password, wrong, peer):
     """Return ephemeral configs only; caller must keep all credentials out of output."""
     if password == wrong or not all(re.fullmatch(r"[0-9a-f]{64}", s) for s in (password, wrong)):
-        raise ValueError("expected distinct fixture credentials")
+        msg = "expected distinct fixture credentials"
+        raise ValueError(msg)
     address = IPv4Address(peer)
     if address not in IPv4Network("10.42.0.0/16"):
-        raise ValueError("expected disposable Pod address")
+        msg = "expected disposable Pod address"
+        raise ValueError(msg)
     stream = {"network": "ws", "security": "tls", "wsSettings": {"path": PATH}}
     server = {
         "inbounds": [

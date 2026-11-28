@@ -340,7 +340,8 @@ class DeliveryIntegrationTests(unittest.TestCase):
 
         def reference(marker, issue):
             if fixture.event("resolved")["event_key"] in marker:
-                raise Failure("UPSTREAM_NETWORK_ERROR")
+                msg = "UPSTREAM_NETWORK_ERROR"
+                raise Failure(msg)
             return {
                 "kind": "comment",
                 "role": "primary",
@@ -413,7 +414,8 @@ class DeliveryIntegrationTests(unittest.TestCase):
 
         def reference(marker, issue):
             if fixture.event("resolved")["event_key"] in marker:
-                raise Failure("PRIMARY_PUBLICATION_MISSING")
+                msg = "PRIMARY_PUBLICATION_MISSING"
+                raise Failure(msg)
             return {
                 "kind": "issue",
                 "role": "primary",

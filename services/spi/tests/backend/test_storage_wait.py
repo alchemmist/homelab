@@ -89,7 +89,8 @@ class StorageWaitTests(unittest.TestCase):
 class StorageReasonTests(unittest.TestCase):
     def test_dns_exception_is_typed_not_raw_message(self):
         def wire(*a):
-            raise socket.gaierror("credential-must-not-leak")
+            msg = "credential-must-not-leak"
+            raise socket.gaierror(msg)
 
         s = S3Evidence("access", "secret", transport=wire)
         with pytest.raises(StorageTransient) as cm:

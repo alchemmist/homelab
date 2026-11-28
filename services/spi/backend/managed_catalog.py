@@ -23,7 +23,8 @@ class ManagedCatalog:
             or p.get("max_open") != 20
             or p.get("automatic_create") is not False
         ):
-            raise Failure("INVALID_CATALOG_POLICY")
+            msg = "INVALID_CATALOG_POLICY"
+            raise Failure(msg)
         self.topics = p.get("topics", {})
         expected = {
             "registry",
@@ -48,24 +49,28 @@ class ManagedCatalog:
             "metricsapi",
         }
         if not isinstance(self.topics, dict) or set(self.topics) != expected:
-            raise Failure("INVALID_CATALOG_POLICY")
+            msg = "INVALID_CATALOG_POLICY"
+            raise Failure(msg)
         if (
             not isinstance(self.topics, dict)
             or not 1 <= len(self.topics) <= 20
             or not {"review", "probes", "spi"} <= self.topics.keys()
         ):
-            raise Failure("INVALID_CATALOG_POLICY")
+            msg = "INVALID_CATALOG_POLICY"
+            raise Failure(msg)
         self.aliases = {}
         self.by_issue = {}
         for key, topic in self.topics.items():
             if not isinstance(topic, dict) or not re.fullmatch(r"[a-z][a-z0-9_]{0,31}", key):
-                raise Failure("INVALID_CATALOG_POLICY")
+                msg = "INVALID_CATALOG_POLICY"
+                raise Failure(msg)
             if (
                 not isinstance(topic.get("members"), list)
                 or not isinstance(topic.get("title"), str)
                 or not 1 <= len(topic["title"]) <= 160
             ):
-                raise Failure("INVALID_CATALOG_POLICY")
+                msg = "INVALID_CATALOG_POLICY"
+                raise Failure(msg)
             number = topic.get("issue")
             if (
                 type(number) is not int
@@ -73,11 +78,13 @@ class ManagedCatalog:
                 or number in self.by_issue
                 or number not in topic.get("members", [])
             ):
-                raise Failure("INVALID_CATALOG_POLICY")
+                msg = "INVALID_CATALOG_POLICY"
+                raise Failure(msg)
             self.by_issue[number] = key
             for old in topic["members"]:
                 if type(old) is not int or old <= 0 or old in self.aliases:
-                    raise Failure("INVALID_CATALOG_POLICY")
+                    msg = "INVALID_CATALOG_POLICY"
+                    raise Failure(msg)
                 self.aliases[old] = number
 
     def route(self, event, previous=0):
@@ -172,7 +179,8 @@ class ManagedCatalog:
             or key not in self.topics
             or route.get("issue") != self.topics[key]["issue"]
         ):
-            raise Failure("INVALID_CATALOG_TARGET")
+            msg = "INVALID_CATALOG_TARGET"
+            raise Failure(msg)
         row = github.request("GET", "/issues/" + str(route["issue"]))
         marker = "<!-- socrat-spi-catalog:v1:" + key + " -->"
         if (
@@ -182,7 +190,8 @@ class ManagedCatalog:
             or not row.get("title", "").startswith("[SPI]")
             or marker not in (row.get("body") or "")
         ):
-            raise Failure("CATALOG_TARGET_UNAVAILABLE")
+            msg = "CATALOG_TARGET_UNAVAILABLE"
+            raise Failure(msg)
         # Do not load any comment history into the analysis prompt.
         return {
             "number": row["number"],

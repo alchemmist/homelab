@@ -34,18 +34,13 @@ from cryptography.hazmat.primitives.padding import PKCS7
 ROOT = Path(__file__).resolve().parents[1]
 PG_NS, PG_POD, PG_DB = "postgres", "pg-common-1", "n8n"
 SECRET = ["-n", "automation", "secret", "socrat-authentik-n8n"]
-DISCOVERY = (
-    "https://auth.socrat.alchemmist.xyz/application/o/n8n/"
-    ".well-known/openid-configuration"
-)
+DISCOVERY = "https://auth.socrat.alchemmist.xyz/application/o/n8n/.well-known/openid-configuration"
 FEATURES_KEY = "features.oidc"
 METHOD_KEY = "userManagement.authenticationMethod"
 
 
 def kubectl(*args, check=True, input=None) -> str:
-    out = subprocess.run(
-        ["kubectl", *args], capture_output=True, input=input, check=False
-    )
+    out = subprocess.run(["kubectl", *args], capture_output=True, input=input, check=False)
     if check and out.returncode:
         raise SystemExit("kubectl failed: " + out.stderr.decode())
     return out.stdout.decode()
@@ -77,7 +72,21 @@ def rows_sql() -> tuple[str, str]:
         'SELECT key, value, "loadOnStartup" FROM settings '
         f"WHERE key IN ('{FEATURES_KEY}', '{METHOD_KEY}') ORDER BY key;"
     )
-    out = kubectl("exec", "-n", PG_NS, PG_POD, "--", "psql", "-U", "postgres", "-d", PG_DB, "-At", "-c", select)
+    out = kubectl(
+        "exec",
+        "-n",
+        PG_NS,
+        PG_POD,
+        "--",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        PG_DB,
+        "-At",
+        "-c",
+        select,
+    )
     return out.strip(), select
 
 
@@ -97,7 +106,8 @@ def main() -> None:
     private(journal_path)
     journal = json.loads(journal_path.read_text())
     if journal.get("status") != "active" or journal["client_secret"] != client_secret:
-        raise SystemExit("Secret/journal drift; run scripts/provision-n8n-oidc.py first")
+        msg = "Secret/journal drift; run scripts/provision-n8n-oidc.py first"
+        raise SystemExit(msg)
     ekey = base64.b64decode(
         json.loads(kubectl("-n", "automation", "get", "secret", "n8n-secrets", "-o", "json"))[
             "data"
@@ -116,7 +126,8 @@ def main() -> None:
         print(json.dumps({"plan": plan, "existing_rows": before}))
         return
     if already:
-        raise SystemExit("features.oidc already present; owner-UI owns changes from here")
+        msg = "features.oidc already present; owner-UI owns changes from here"
+        raise SystemExit(msg)
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     snap = a.state_dir / ("settings-before-" + stamp + ".json")
     fd = os.open(snap, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -134,16 +145,10 @@ def main() -> None:
     )
     sql = (
         "BEGIN;"
-        "INSERT INTO settings (key, value, \"loadOnStartup\") "
-        "VALUES ('"
-        + FEATURES_KEY
-        + "', $secret$"
-        + value_payload
-        + "$secret$, true);"
-        "INSERT INTO settings (key, value, \"loadOnStartup\") "
-        "VALUES ('"
-        + METHOD_KEY
-        + "', 'oidc', true) "
+        'INSERT INTO settings (key, value, "loadOnStartup") '
+        "VALUES ('" + FEATURES_KEY + "', $secret$" + value_payload + "$secret$, true);"
+        'INSERT INTO settings (key, value, "loadOnStartup") '
+        "VALUES ('" + METHOD_KEY + "', 'oidc', true) "
         "ON CONFLICT (key) DO UPDATE SET value='oidc', \"loadOnStartup\"=true;"
         "COMMIT;"
     )
@@ -165,7 +170,18 @@ def main() -> None:
     )
     after, _ = rows_sql()
     method = kubectl(
-        "exec", "-n", PG_NS, PG_POD, "--", "psql", "-U", "postgres", "-d", PG_DB, "-At", "-c",
+        "exec",
+        "-n",
+        PG_NS,
+        PG_POD,
+        "--",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        PG_DB,
+        "-At",
+        "-c",
         "SELECT value FROM settings WHERE key='" + METHOD_KEY + "';",
     ).strip()
     ok = FEATURES_KEY in after and method == "oidc"

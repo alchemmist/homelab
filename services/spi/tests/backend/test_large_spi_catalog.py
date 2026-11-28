@@ -63,7 +63,8 @@ class LargeCatalogTests(unittest.TestCase):
         def first(task, data, schema, deadline):
             calls.append([x["number"] for x in data["open_issues"]])
             if len(calls) == 3:
-                raise Failure("LLM_ADMISSION_DEFERRED", 61)
+                msg = "LLM_ADMISSION_DEFERRED"
+                raise Failure(msg, 61)
             return dict(GOOD)
 
         m.call = first

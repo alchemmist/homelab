@@ -43,7 +43,8 @@ LIMIT = 131072
 def unique_fields(pairs):
     data = dict(pairs)
     if len(data) != len(pairs):
-        raise ValueError("ambiguous JSON fields")
+        msg = "ambiguous JSON fields"
+        raise ValueError(msg)
     return data
 
 
@@ -188,7 +189,8 @@ def main():
         or len(set(ips.values())) != 3
         or not set(PATHS) <= set(questions(catalog))
     ):
-        raise ValueError("unreviewed inventory")
+        msg = "unreviewed inventory"
+        raise ValueError(msg)
     with ThreadPoolExecutor(3) as pool:
 
         def dns():

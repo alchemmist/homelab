@@ -70,16 +70,25 @@ class App:
         return wallpaper_id
 
     def optimize_remote(self, wallpaper_id: str) -> None:
-        source, full, thumb = source_key(wallpaper_id), full_key(wallpaper_id), thumb_key(wallpaper_id)
+        source, full, thumb = (
+            source_key(wallpaper_id),
+            full_key(wallpaper_id),
+            thumb_key(wallpaper_id),
+        )
         try:
             with Image.open(io.BytesIO(self.store.get(source))) as image:
-                if image.format not in {"JPEG", "PNG", "WEBP", "GIF"} or getattr(image, "n_frames", 1) != 1:
-                    raise ValueError("Unsupported image")
+                if (
+                    image.format not in {"JPEG", "PNG", "WEBP", "GIF"}
+                    or getattr(image, "n_frames", 1) != 1
+                ):
+                    msg = "Unsupported image"
+                    raise ValueError(msg)
                 width, height = image.size
             reply = notify_n8n(wallpaper_id, self.store.job_urls(source, full, thumb))
             url = reply.get("executionUrl", "")
             if not url.startswith("https://"):
-                raise ValueError("Missing workflow execution link")
+                msg = "Missing workflow execution link"
+                raise ValueError(msg)
             self.db.set_execution(wallpaper_id, url)
             deadline = time.monotonic() + 300
             while time.monotonic() < deadline:
@@ -87,9 +96,16 @@ class App:
                     self.db.set_status(wallpaper_id, "ready", width, height, None)
                     return
                 time.sleep(2)
-            raise TimeoutError("Wallpaper workflow did not produce both WebPs")
+            msg = "Wallpaper workflow did not produce both WebPs"
+            raise TimeoutError(msg)
         except Exception as exc:
-            self.db.set_status(wallpaper_id, "failed", None, None, type(exc).__name__ + ": wallpaper processing failed")
+            self.db.set_status(
+                wallpaper_id,
+                "failed",
+                None,
+                None,
+                type(exc).__name__ + ": wallpaper processing failed",
+            )
 
     def remove(self, wallpaper_id: str) -> None:
         for tag, _, _ in responsive.variants(self.store, wallpaper_id):
@@ -197,7 +213,9 @@ def make_handler(app: App):
         def log_message(self, fmt: str, *args) -> None:
             return
 
-        def _send(self, code: int, body: bytes, content_type: str, extra: dict | None = None) -> None:
+        def _send(
+            self, code: int, body: bytes, content_type: str, extra: dict | None = None
+        ) -> None:
             self.send_response(code)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(body)))
@@ -221,10 +239,14 @@ def make_handler(app: App):
                 return False
             if not (groups & GALLERY_GROUPS):
                 if not groups and self.command == "GET" and path in {PREFIX, PREFIX + "/"}:
-                    target = origin + "/if/flow/default-authentication-flow/?next=" + quote(PREFIX + "/")
+                    target = (
+                        origin + "/if/flow/default-authentication-flow/?next=" + quote(PREFIX + "/")
+                    )
                     self._send(302, b"", "text/plain", {"Location": target})
                     return False
-                self._json(403 if groups else 401, {"error": "forbidden" if groups else "unauthorized"})
+                self._json(
+                    403 if groups else 401, {"error": "forbidden" if groups else "unauthorized"}
+                )
                 return False
             return True
 
@@ -293,7 +315,9 @@ def make_handler(app: App):
                 return
             if path == PREFIX + "/internal/lossless":
                 token = os.environ.get("WALLPAPER_JOB_TOKEN", "")
-                if not token or not hmac.compare_digest(self.headers.get("X-Wallpaper-Token", ""), token):
+                if not token or not hmac.compare_digest(
+                    self.headers.get("X-Wallpaper-Token", ""), token
+                ):
                     self._json(401, {"error": "unauthorized"})
                     return
                 wallpaper_id = json.loads(body).get("id", "")

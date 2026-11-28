@@ -21,13 +21,15 @@ WHEEL_SHA = "38337540fbbddff8e999d59970f3c6f35a82de10053206a7562f1ea02d046fa5"
 class HTTPSOnly(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         if urllib.parse.urlsplit(newurl).scheme != "https":
-            raise ValueError("ASSET_REDIRECT_NOT_HTTPS")
+            msg_0 = "ASSET_REDIRECT_NOT_HTTPS"
+            raise ValueError(msg_0)
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def fetch(url, expected, destination):
     if urllib.parse.urlsplit(url).scheme != "https":
-        raise ValueError("ASSET_URL_NOT_HTTPS")
+        msg = "ASSET_URL_NOT_HTTPS"
+        raise ValueError(msg)
     digest = hashlib.sha256()
     size = 0
     try:
@@ -38,11 +40,13 @@ def fetch(url, expected, destination):
             while chunk := response.read(65536):
                 size += len(chunk)
                 if size > 32 * 1024 * 1024:
-                    raise ValueError("ASSET_TOO_LARGE")
+                    msg = "ASSET_TOO_LARGE"
+                    raise ValueError(msg)
                 digest.update(chunk)
                 output.write(chunk)
         if digest.hexdigest() != expected:
-            raise ValueError("ASSET_HASH_MISMATCH")
+            msg = "ASSET_HASH_MISMATCH"
+            raise ValueError(msg)
     except BaseException:
         destination.unlink(missing_ok=True)
         raise

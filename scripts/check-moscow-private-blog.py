@@ -14,7 +14,8 @@ def service_ip(value: str) -> str:
     """Accept only an IPv4 address in the Socrat Service CIDR."""
     address = ipaddress.ip_address(value)
     if address not in ipaddress.ip_network("10.43.0.0/16"):
-        raise ValueError("Expected the private Moscow Service ClusterIP")
+        msg = "Expected the private Moscow Service ClusterIP"
+        raise ValueError(msg)
     return str(address)
 
 
@@ -24,9 +25,7 @@ def probe(host: str, address: str) -> bool:
     with socket.create_connection((service_ip(address), 443), timeout=5) as raw:
         with context.wrap_socket(raw, server_hostname=host) as secured:
             secured.sendall(
-                f"GET / HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n".encode(
-                    "ascii"
-                )
+                f"GET / HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n".encode("ascii")
             )
             with http.client.HTTPResponse(secured) as response:
                 response.begin()

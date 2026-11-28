@@ -19,7 +19,8 @@ class GraphClient:
             or not 16 <= len(token) <= 4096
             or any(ord(c) < 33 or ord(c) > 126 for c in token)
         ):
-            raise ValueError("GRAPH_CONFIGURATION_INVALID")
+            msg = "GRAPH_CONFIGURATION_INVALID"
+            raise ValueError(msg)
         self._token, self._transport = token, transport
 
     def _wire(self, request, seconds):
@@ -60,11 +61,14 @@ class GraphClient:
         try:
             status, headers, body = (self._transport or self._wire)(request, seconds)
         except TimeoutError:
-            raise GraphError("RENDER_TIMEOUT") from None
+            msg = "RENDER_TIMEOUT"
+            raise GraphError(msg) from None
         except (OSError, http.client.HTTPException):
-            raise GraphError("RENDER_FAILED") from None
+            msg = "RENDER_FAILED"
+            raise GraphError(msg) from None
         if time.monotonic() - started > seconds:
-            raise GraphError("RENDER_TIMEOUT")
+            msg = "RENDER_TIMEOUT"
+            raise GraphError(msg)
         if status != 200:
             code = "RENDER_FAILED"
             if len(body) <= 4096:
@@ -82,7 +86,8 @@ class GraphClient:
                     pass
             raise GraphError(code)
         if headers.get("content-type", "").split(";")[0].strip().lower() != "image/png":
-            raise GraphError("RENDER_FAILED")
+            msg = "RENDER_FAILED"
+            raise GraphError(msg)
         meta = validate_png(body)
         checksum = headers.get("x-content-sha256", "")
         digest = headers.get("x-render-digest", "")
@@ -94,7 +99,8 @@ class GraphClient:
             or not hmac.compare_digest(checksum, meta["sha256"])
             or not hmac.compare_digest(digest, request["digest"])
         ):
-            raise GraphError("IMAGE_INTEGRITY")
+            msg = "IMAGE_INTEGRITY"
+            raise GraphError(msg)
         meta.update(
             {
                 "render_digest": request["digest"],
