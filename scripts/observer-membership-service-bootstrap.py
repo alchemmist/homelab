@@ -13,7 +13,9 @@ import os
 import pathlib
 import urllib.error
 import urllib.request
+from typing import override
 
+STATE_MODE = 0o700
 policy = {
     "role": "homelab-observer-membership-read",
     "permissions": ["authentik_core.view_user", "authentik_core.view_group"],
@@ -39,19 +41,26 @@ if args.approve_policy_sha256 != policy_hash or args.state is None:
     msg = "Exact approval hash and private --state required"
     raise SystemExit(msg)
 root = args.state
-assert (
-    not root.is_symlink()
-    and root.is_dir()
-    and root.stat().st_uid == os.geteuid()
-    and root.stat().st_mode & 0o777 == 0o700
-), "State must be operator-owned mode 0700"
-cred = json.loads((root / "credentials.json").read_text())
+if root.is_symlink():
+    msg = "State must be operator-owned mode 0700"
+    raise RuntimeError(msg)
+if not root.is_dir():
+    msg = "State must be operator-owned mode 0700"
+    raise RuntimeError(msg)
+if root.stat().st_uid != os.geteuid():
+    msg = "State must be operator-owned mode 0700"
+    raise RuntimeError(msg)
+if root.stat().st_mode & 0o777 != STATE_MODE:
+    msg = "State must be operator-owned mode 0700"
+    raise RuntimeError(msg)
+cred: dict[str, object] = json.loads((root / "credentials.json").read_text())
 os.umask(0o077)
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
+    @override
     def redirect_request(self, *_a: object, **_kw: object) -> None:
         """Refuse redirects so credentials are never forwarded."""
         return
@@ -60,13 +69,13 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 http = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
 
-def api(method, path, body=None):
+def api(method: str, path: str, body: dict[str, object] | None = None) -> dict[str, object]:
     """Call the IdP API, retaining HTTP error details in a private file."""
     req = urllib.request.Request(
         "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
         method=method,
         headers={
-            "Authorization": "Bearer " + cred["authentikToken"],
+            "Authorization": "Bearer " + str(cred["authentikToken"]),
             "Content-Type": "application/json",
         },
         data=None if body is None else json.dumps(body).encode(),
@@ -74,7 +83,7 @@ def api(method, path, body=None):
     try:
         with http.open(req, timeout=30) as r:
             data = r.read()
-            return json.loads(data) if data else None
+            return json.loads(data) if data else {}
     except urllib.error.HTTPError as e:
         data = e.read()
         p = root / "idp-service-last-error.json"
@@ -85,32 +94,37 @@ def api(method, path, body=None):
         ) from None
 
 
-def rows(path):
+def rows(path: str) -> "list[dict[str, object]]":
     """Collect IdP results and fail if pagination does not finish within 100 pages."""
-    out = []
+    out: list[dict[str, object]] = []
     for page in range(1, 101):
         d = api("GET", path + ("&" if "?" in path else "?") + "page_size=100&page=" + str(page))
-        out += d["results"]
-        if not d.get("pagination", {}).get("next"):
+        out += cast("list[dict[str, object]]", d["results"])
+        pagination = cast("dict[str, object]", d["pagination"])
+        if not pagination.get("next"):
             return out
     msg = "Incomplete pagination"
     raise RuntimeError(msg)
 
 
+from typing import cast
+
 name = "homelab-observer-membership-read"
-assert not [r for r in rows("rbac/roles/") if r["name"] == name], (
-    "Role collision; inspect before retry"
-)
-assert not [r for r in rows("core/groups/") if r["name"] == name], (
-    "Group collision; inspect before retry"
-)
-assert not [
+if [r for r in rows("rbac/roles/") if r["name"] == name]:
+    msg = "Role collision; inspect before retry"
+    raise RuntimeError(msg)
+if [r for r in rows("core/groups/") if r["name"] == name]:
+    msg = "Group collision; inspect before retry"
+    raise RuntimeError(msg)
+if [
     u
     for u in rows("core/users/?username=svc-observer-membership")
     if u["username"] == "svc-observer-membership"
-], "Service identity collision"
+]:
+    msg = "Service identity collision"
+    raise RuntimeError(msg)
 p = root / "idp-service-progress.json"
-state = {"state": "applying"}
+state: dict[str, object] = {"state": "applying"}
 p.write_text(json.dumps(state))
 p.chmod(0o600)
 role = api("POST", "rbac/roles/", {"name": name})
@@ -118,7 +132,7 @@ state["role"] = role["pk"]
 p.write_text(json.dumps(state))
 api(
     "POST",
-    "rbac/permissions/assigned_by_roles/" + role["pk"] + "/assign/",
+    "rbac/permissions/assigned_by_roles/" + str(role["pk"]) + "/assign/",
     {"permissions": ["authentik_core.view_user", "authentik_core.view_group"]},
 )
 g = api(
@@ -161,6 +175,7 @@ t = api(
     },
 )
 key = api("GET", "core/tokens/homelab-observer-membership/view_key/")["key"]
+token_key = cast("str", key)
 p2 = root / "membership-reader-token"
 p2.write_text(key)
 p2.chmod(0o600)
@@ -170,11 +185,13 @@ for path in [
 ]:
     req = urllib.request.Request(
         "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
-        headers={"Authorization": "Bearer " + key},
+        headers={"Authorization": "Bearer " + token_key},
     )
     with http.open(req, timeout=30) as r:
-        d = json.load(r)
-        assert d["results"], "Scoped service read returned no data"
+        d: dict[str, object] = json.load(r)
+        if not d["results"]:
+            msg = "Scoped service read returned no data"
+            raise RuntimeError(msg)
 state["state"] = "configured"
 p.write_text(json.dumps(state))
 print(
@@ -193,7 +210,7 @@ import base64
 import subprocess
 
 k = ["/usr/local/bin/kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
-for namespace in policy["namespaces"]:
+for namespace in cast("list[str]", policy["namespaces"]):
     result = subprocess.run(
         [
             *k,
@@ -208,10 +225,14 @@ for namespace in policy["namespaces"]:
         ],
         capture_output=True,
         text=True,
+        check=False,
     )
-    assert result.returncode == 0 and not result.stdout.strip(), (
-        "Secret collision; inspect private receipts"
-    )
+    if result.returncode != 0:
+        msg = "Secret collision; inspect private receipts"
+        raise RuntimeError(msg)
+    if result.stdout.strip():
+        msg = "Secret collision; inspect private receipts"
+        raise RuntimeError(msg)
     secret = {
         "apiVersion": "v1",
         "kind": "Secret",
@@ -224,10 +245,16 @@ for namespace in policy["namespaces"]:
             },
         },
         "type": "Opaque",
-        "data": {"token": base64.b64encode(key.encode()).decode()},
+        "data": {"token": base64.b64encode(token_key.encode()).decode()},
     }
     result = subprocess.run(
-        [*k, "create", "-f", "-"], input=json.dumps(secret), capture_output=True, text=True
+        [*k, "create", "-f", "-"],
+        input=json.dumps(secret),
+        capture_output=True,
+        text=True,
+        check=False,
     )
-    assert result.returncode == 0, "Scoped Secret creation failed; inspect private receipts"
+    if result.returncode != 0:
+        msg = "Scoped Secret creation failed; inspect private receipts"
+        raise RuntimeError(msg)
 print("READ_ONLY_MEMBERSHIP_SECRETS_INSTALLED", policy["namespaces"])
