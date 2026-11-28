@@ -16,7 +16,7 @@ SLUG = "socrat-change-password"
 HOST = "auth.socrat.alchemmist.xyz"
 
 
-def route():
+def route() -> list[dict[str, object]]:
     # Constant destination: user-supplied next/username cannot select another account.
     """Document the route operation."""
     flow = (
@@ -51,7 +51,9 @@ def route():
                 **meta,
                 "annotations": {
                     "traefik.ingress.kubernetes.io/router.priority": "150",
-                    "traefik.ingress.kubernetes.io/router.middlewares": "identity-socrat-password-self-service@kubernetescrd",
+                    "traefik.ingress.kubernetes.io/router.middlewares": (
+                        "identity-socrat-password-self-service@kubernetescrd"
+                    ),
                 },
             },
             "spec": {
@@ -92,8 +94,9 @@ class _Client:
 
     def api(self, method: str, path: str, data: object | None = None) -> object:
         """Perform one API request, refusing unreviewed write methods."""
-        if method != "GET":
-            assert self.applier and method == "POST", "Additive creation only"
+        if method != "GET" and (not self.applier or method != "POST"):
+            msg = "Additive creation only"
+            raise RuntimeError(msg)
         request = urllib.request.Request(
             "https://" + HOST + "/api/v3/" + path,
             data=json.dumps(data).encode() if data is not None else None,
@@ -112,14 +115,18 @@ class _Client:
     def all_rows(self, path: str) -> list[dict[str, object]]:
         """Read one reviewed list endpoint, refusing unreviewed pagination."""
         data = cast("dict[str, object]", self.api("GET", path + "?page_size=100"))
-        assert not data.get("next"), "Pagination requires review"
+        if data.get("next"):
+            msg = "Pagination requires review"
+            raise RuntimeError(msg)
         return cast("list[dict[str, object]]", data["results"])
 
 
 def _exact(snapshot: dict[str, list[dict[str, object]]], path: str, name: str) -> dict[str, object]:
     """Return the one snapshot row with the given name; ambiguity is fatal."""
     matches = [r for r in snapshot[path] if r.get("name") == name]
-    assert len(matches) == 1, "Missing/ambiguous native object: " + name
+    if len(matches) != 1:
+        msg = "Missing/ambiguous native object: " + name
+        raise RuntimeError(msg)
     return matches[0]
 
 
@@ -128,17 +135,31 @@ def _verify_native(
 ) -> tuple[dict[str, object], dict[str, object]]:
     """Verify the reviewed native password-change flow, prompts and writer stage."""
     native = _exact(snapshot, "flows/instances/", "Change Password")
-    assert native["authentication"] == "require_authenticated"
-    assert native["slug"] == "default-password-change"
+    if native["authentication"] != "require_authenticated":
+        msg = "Password change must require an authenticated native session"
+        raise RuntimeError(msg)
+    if native["slug"] != "default-password-change":
+        msg = "Unexpected native password-change flow slug"
+        raise RuntimeError(msg)
     prompt = _exact(snapshot, "stages/prompt/stages/", "default-password-change-prompt")
     write = _exact(snapshot, "stages/user_write/", "default-password-change-write")
-    assert write["user_creation_mode"] == "never_create"
-    assert write["create_users_group"] is None
+    if write["user_creation_mode"] != "never_create":
+        msg = "Writer stage must never create users"
+        raise RuntimeError(msg)
+    if write["create_users_group"] is not None:
+        msg = "Writer stage must not enroll users into a group"
+        raise RuntimeError(msg)
     rows = snapshot["stages/prompt/prompts/"]
     fields = [p for p in rows if p["pk"] in cast("list[object]", prompt["fields"])]
-    assert {p["field_key"] for p in fields} == {"password", "password_repeat"}
-    assert all(p["type"] == "password" and p["required"] for p in fields)
-    assert prompt["validation_policies"], "Password policy must be preserved"
+    if {p["field_key"] for p in fields} != {"password", "password_repeat"}:
+        msg = "Prompt stage must expose exactly the password pair"
+        raise RuntimeError(msg)
+    if any(p["type"] != "password" or not p["required"] for p in fields):
+        msg = "Password prompts must stay typed and required"
+        raise RuntimeError(msg)
+    if not prompt["validation_policies"]:
+        msg = "Password policy must be preserved"
+        raise RuntimeError(msg)
     return prompt, write
 
 
@@ -147,18 +168,24 @@ def _ensure(
 ) -> dict[str, object]:
     """Create-or-verify one owned object additively, never touching shared ones."""
     matches = [r for r in client.all_rows(path) if r.get(key) == value]
-    assert len(matches) <= 1, "Ambiguous owned object"
+    if len(matches) > 1:
+        msg = "Ambiguous owned object"
+        raise RuntimeError(msg)
     if matches:
         obj = matches[0]
-        assert all(obj.get(k) == v for k, v in spec.items()), "Owned object drift: " + cast(
-            "str", value
-        )
+        if any(obj.get(k) != v for k, v in spec.items()):
+            msg = "Owned object drift: " + cast("str", value)
+            raise RuntimeError(msg)
         return matches[0]
     # Absence rechecked immediately before additive create.
     client.api("POST", path, spec)
     verified = [r for r in client.all_rows(path) if r.get(key) == value]
-    assert len(verified) == 1
-    assert all(verified[0].get(k) == v for k, v in spec.items())
+    if len(verified) != 1:
+        msg = "Created owned object not found exactly once"
+        raise RuntimeError(msg)
+    if any(verified[0].get(k) != v for k, v in spec.items()):
+        msg = "Created owned object drifted from the reviewed spec"
+        raise RuntimeError(msg)
     return verified[0]
 
 
@@ -176,10 +203,14 @@ def _ensure_bindings(
         (20, done_stage["pk"]),
     ]
     existing = [b for b in client.all_rows("flows/bindings/") if b["target"] == flow["pk"]]
-    assert all((b["order"], b["stage"]) in expected for b in existing), "Unexpected flow binding"
+    if any((b["order"], b["stage"]) not in expected for b in existing):
+        msg = "Unexpected flow binding"
+        raise RuntimeError(msg)
     for order, stage in expected:
         matches = [b for b in existing if b["order"] == order and b["stage"] == stage]
-        assert len(matches) <= 1
+        if len(matches) > 1:
+            msg = "Ambiguous flow binding"
+            raise RuntimeError(msg)
         if not matches:
             client.api(
                 "POST",
@@ -194,7 +225,9 @@ def _ensure_bindings(
                 },
             )
     bindings = [b for b in client.all_rows("flows/bindings/") if b["target"] == flow["pk"]]
-    assert sorted((b["order"], b["stage"]) for b in bindings) == expected
+    if sorted((b["order"], b["stage"]) for b in bindings) != expected:
+        msg = "Flow bindings must match the reviewed ordering exactly"
+        raise RuntimeError(msg)
     return bindings
 
 
@@ -206,12 +239,14 @@ def _verify_shared_unchanged(client: _Client, snapshot: dict[str, list[dict[str,
         ("stages/prompt/stages/", "default-password-change-prompt"),
         ("stages/user_write/", "default-password-change-write"),
     ]:
-        current = [r for r in client.all_rows(path) if r["name"] == name][0]
+        current = next(r for r in client.all_rows(path) if r["name"] == name)
         before = _exact(snapshot, path, name)
         # flow_set is a derived reverse reference to our newly added flow.
-        assert {k: v for k, v in current.items() if k != "flow_set"} == {
+        if {k: v for k, v in current.items() if k != "flow_set"} != {
             k: v for k, v in before.items() if k != "flow_set"
-        }
+        }:
+            msg = "Shared object must stay unchanged: " + name
+            raise RuntimeError(msg)
 
 
 def _apply_route(resources: list[dict[str, object]]) -> None:
@@ -237,9 +272,13 @@ def _apply_route(resources: list[dict[str, object]]) -> None:
         )
         if result.returncode == 0:
             current = json.loads(result.stdout)
-            assert current["spec"] == obj["spec"], "Existing route drift"
+            if current["spec"] != obj["spec"]:
+                msg = "Existing route drift"
+                raise RuntimeError(msg)
         else:
-            assert "NotFound" in result.stderr, "Route inspection failed"
+            if "NotFound" not in result.stderr:
+                msg = "Route inspection failed"
+                raise RuntimeError(msg)
             subprocess.run(
                 [*k, "create", "-f", "-"],
                 input=json.dumps(obj),
@@ -283,7 +322,8 @@ def main() -> None:
     (journal / "preimage.json").write_text(json.dumps(snapshot, indent=2))
     prompt, write = _verify_native(snapshot)
     print(
-        "Verified native authenticated-only password/repeat, validation policy, never-create writer."
+        "Verified native authenticated-only password/repeat, "
+        "validation policy, never-create writer."
     )
     if not args.apply:
         print("GET-only preflight; receipt:", journal)
@@ -317,7 +357,10 @@ def main() -> None:
             "label": "Password updated",
             "type": "static",
             "required": False,
-            "initial_value": "Your password has been updated. Continue to sign out. Use your new password next time.",
+            "initial_value": (
+                "Your password has been updated. Continue to sign out. "
+                "Use your new password next time."
+            ),
             "order": 0,
         },
     )
@@ -331,7 +374,7 @@ def main() -> None:
     bindings = _ensure_bindings(client, flow, prompt, write, done_stage)
     _verify_shared_unchanged(client, snapshot)
     resources = route()
-    _apply_route(cast("list[dict[str, object]]", resources))
+    _apply_route(resources)
     (journal / "verified.json").write_text(
         json.dumps({"flow": flow, "bindings": bindings, "route": resources}, indent=2)
     )
