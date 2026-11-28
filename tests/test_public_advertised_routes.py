@@ -368,3 +368,47 @@ def test_openhands_public_auth_flow_never_follows_or_replays(fault, monkeypatch)
 
     monkeypatch.setattr(subprocess, "run", run)
     assert (probe.check("192.0.2.1") == "matched") == (fault is None)
+
+
+@pytest.mark.parametrize(
+    "path,reply,ok",
+    [
+        ("/api/heartbeat", b'{"ok":true}\n200 application/json', True),
+        ("/api/heartbeat", b'{"ok":1}\n200 application/json', False),
+        ("/api/heartbeat", b'{"ok":false,"ok":true}\n200 application/json', False),
+        (
+            "/api/websites",
+            b'{"error":{"message":"Unauthorized","code":"unauthorized","status":401}}\n401 application/json',
+            True,
+        ),
+        (
+            "/api/websites",
+            b'{"error":{"message":"Unauthorized","code":"unauthorized","status":401.0}}\n401 application/json',
+            False,
+        ),
+        ("/api/websites", b"[]\n200 application/json", False),
+        ("/script.js", b"fixture\n200 application/javascript; charset=UTF-8", True),
+        ("/script.js", b"drift\n200 application/javascript", False),
+        ("/script.js", b"fixture\n200 text/html", False),
+    ],
+)
+def test_umami_requires_native_denial_heartbeat_and_reviewed_bytes(
+    monkeypatch, path, reply, ok
+):
+    import hashlib
+
+    monkeypatch.setattr(checks, "UMAMI_SCRIPT", hashlib.sha256(b"fixture").hexdigest())
+
+    def run(args, **kwargs):
+        assert args[-1] == "https://" + checks.UMAMI + path
+        assert args[args.index("--resolve") + 1] == checks.UMAMI + ":443:192.0.2.1"
+        return subprocess.CompletedProcess(args, 0, reply)
+
+    monkeypatch.setattr(subprocess, "run", run)
+    assert (checks._path(checks.UMAMI, "192.0.2.1", path) == "matched") is ok
+
+
+def test_reviewed_umami_digest_has_sha256_shape():
+    import re
+
+    assert re.fullmatch(r"[0-9a-f]{64}", checks.UMAMI_SCRIPT)

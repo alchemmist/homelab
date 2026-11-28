@@ -5,6 +5,7 @@ only to the configured entrance addresses, never to a destination learned from
 a DNS answer. Unknown IPv4/IPv6 evidence is reported without following it.
 """
 
+import hashlib
 import ipaddress
 import json
 import re
@@ -23,7 +24,11 @@ MONORI = "monori.alchemmist.xyz"
 WIKI = "wiki.socrat.alchemmist.xyz"
 ARGO = "argocd.socrat.alchemmist.xyz"
 HARBOR = "harbor.socrat.alchemmist.xyz"
+UMAMI = "umami.alchemmist.xyz"
+# Reviewed public asset bytes; version drift needs a fresh baseline.
+UMAMI_SCRIPT = "654f12c7548be726eba5b71d5ef8bffc2a41a39a0053e2a49a847869ccd7ac3f"
 PATHS = {
+    UMAMI: "/api/websites",
     openhands_public_auth.HOST: "/",
     BLOG: "/",
     VENICE: "/v1/models",
@@ -32,7 +37,11 @@ PATHS = {
     ARGO: "/api/v1/applications",
     HARBOR: "/v2/",
 }
-ADDITIONAL = {ARGO: ("/api/version",), HARBOR: ("/v2", "/api/v2.0/ping")}
+ADDITIONAL = {
+    UMAMI: ("/api/heartbeat", "/script.js"),
+    ARGO: ("/api/version",),
+    HARBOR: ("/v2", "/api/v2.0/ping"),
+}
 CHALLENGE = (
     b'Bearer realm="https://harbor.socrat.alchemmist.xyz/service/token",service="harbor-registry"'
 )
@@ -112,14 +121,38 @@ def _path(host, ip, path):
         and b"<title>Personal blog of Anton Grishin</title>" in body
     ):
         return "matched"
+    if (
+        host == UMAMI
+        and path == "/script.js"
+        and code == b"200"
+        and mime == b"application/javascript"
+        and hashlib.sha256(body).hexdigest() == UMAMI_SCRIPT
+    ):
+        return "matched"
     if host == HARBOR and code == b"200":
         if path == "/v2" and mime == b"text/html" and b"<title>Harbor</title>" in body:
             return "matched"
         if path == "/api/v2.0/ping" and mime == b"text/plain" and body == b"Pong":
             return "matched"
-    if mime == b"application/json" and (host in DENIALS or host in (WIKI, ARGO, HARBOR)):
+    if mime == b"application/json" and (host in DENIALS or host in (WIKI, ARGO, HARBOR, UMAMI)):
         try:
             data = json.loads(body, object_pairs_hook=unique_fields)
+            if host == UMAMI and isinstance(data, dict):
+                if (
+                    path == "/api/heartbeat"
+                    and code == b"200"
+                    and set(data) == {"ok"}
+                    and data["ok"] is True
+                ):
+                    return "matched"
+                if (
+                    path == "/api/websites"
+                    and code == b"401"
+                    and data
+                    == {"error": {"message": "Unauthorized", "code": "unauthorized", "status": 401}}
+                    and type(data["error"]["status"]) is int
+                ):
+                    return "matched"
             if host == ARGO and isinstance(data, dict):
                 if (
                     path == "/api/version"
