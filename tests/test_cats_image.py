@@ -35,12 +35,16 @@ class CatsImageTest(unittest.TestCase):
     def test_workload_uses_a_tokenless_dedicated_service_account(self) -> None:
         """Avoid the default identity and disable unnecessary API credentials."""
         documents = [
-            document for document in yaml.safe_load_all(self.render()) if document is not None
+            document
+            for document in yaml.safe_load_all(self.render())
+            if document is not None
         ]
         service_account = next(
             document for document in documents if document["kind"] == "ServiceAccount"
         )
-        deployment = next(document for document in documents if document["kind"] == "Deployment")
+        deployment = next(
+            document for document in documents if document["kind"] == "Deployment"
+        )
 
         assert service_account["automountServiceAccountToken"] is False
         pod_spec = deployment["spec"]["template"]["spec"]
@@ -60,3 +64,85 @@ class CatsImageTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_cats_asset_witness_requires_complete_fixed_peer_responses(monkeypatch):
+    import hashlib
+    from types import SimpleNamespace
+
+    from ci.quality import cats_route_witness as cats
+
+    body = b"fixture\n"
+    path = "/fixture.css"
+    monkeypatch.setattr(
+        cats, "BUILD", {path: ("text/css", len(body), hashlib.sha256(body).hexdigest())}
+    )
+    reply = body + b"\n200 text/css; charset=utf-8"
+    assert cats.matches(path, reply)
+    for bad in [
+        reply.replace(b"200", b"302"),
+        reply.replace(b"css", b"html"),
+        reply.replace(body, b"fIXTURE\n"),
+        reply[1:],
+    ]:
+        assert not cats.matches(path, bad)
+
+    def run(args, *, timeout, capture_output):
+        assert (
+            args[-1] == "https://" + cats.HOST + path
+            and args[args.index("--resolve") + 1] == cats.HOST + ":443:192.0.2.1"
+            and args[args.index("--max-filesize") + 1] == str(len(body))
+        )
+        assert not {"--location", "--insecure", "--cookie"} & set(args)
+        return subprocess.CompletedProcess(args, 63, stdout=reply)
+
+    monkeypatch.setattr(
+        cats,
+        "subprocess",
+        SimpleNamespace(run=run, TimeoutExpired=subprocess.TimeoutExpired),
+    )
+    assert cats.sample(ip="192.0.2.1") == {path: False}
+
+
+def test_cache_fixture_is_disposable_no_pull_and_not_a_listener_release():
+    import pytest
+
+    from ci.quality.cats_cached_fixture import PIN, fixture
+
+    with pytest.raises(ValueError):
+        fixture("cats")
+    rows = fixture("cats-cache-proof-1234567890")
+    policy, sa, *pods = rows
+    assert policy["spec"] == {
+        "podSelector": {},
+        "policyTypes": ["Ingress", "Egress"],
+        "ingress": [],
+        "egress": [],
+    }
+    assert sa["automountServiceAccountToken"] is False
+    assert {p["spec"]["nodeSelector"]["kubernetes.io/hostname"] for p in pods} == {
+        "socrat-0",
+        "socrat-1",
+        "socrat-3",
+        "socrat-5",
+    }
+    for p in pods:
+        s = p["spec"]
+        assert (
+            p["kind"] == "Pod"
+            and set(s)
+            == {
+                "containers",
+                "nodeSelector",
+                "restartPolicy",
+                "automountServiceAccountToken",
+                "enableServiceLinks",
+                "serviceAccountName",
+            }
+            and s["automountServiceAccountToken"] is False
+        )
+        assert (
+            s["serviceAccountName"] == "cats"
+            and s["containers"][0]["image"] == PIN
+            and s["containers"][0]["imagePullPolicy"] == "Never"
+        )
