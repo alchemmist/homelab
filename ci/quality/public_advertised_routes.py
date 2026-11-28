@@ -36,8 +36,11 @@ PATHS = {
     ARGO: "/api/v1/applications",
     HARBOR: "/v2/",
 }
-ADDITIONAL = {ARGO: ("/api/version",), HARBOR: ("/v2", "/api/v2.0/ping")}
-ADDITIONAL[REMARK] = ("/ping", "/web/embed.js")
+ADDITIONAL = {
+    ARGO: ("/api/version",),
+    HARBOR: ("/v2", "/api/v2.0/ping"),
+    REMARK: ("/ping", "/web/embed.js"),
+}
 CHALLENGE = (
     b'Bearer realm="https://harbor.socrat.alchemmist.xyz/service/token",service="harbor-registry"'
 )
