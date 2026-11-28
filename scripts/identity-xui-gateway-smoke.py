@@ -34,11 +34,18 @@ import time
 import urllib.parse
 import urllib.request
 import uuid
+from typing import cast
 
 from playwright.sync_api import Error as PlaywrightError
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Response, sync_playwright
 
 BASE = "https://auth.socrat.alchemmist.xyz"
+HTTP_OK = 200
+HTTP_BAD_REQUEST = 400
+HTTP_FORBIDDEN = 403
+HTTP_NOT_FOUND = 404
+HTTP_UNAUTHORIZED_STATUS = 401
+HTTP_REDIRECTED = 302
 original = socket.getaddrinfo
 socket.getaddrinfo = lambda h, *a, **kw: original(
     "109.173.40.247"
@@ -62,7 +69,7 @@ credential = json.loads(
 )
 
 
-def api(method, path, data=None):
+def api(method: str, path: str, data: object | None = None) -> object:
     """Perform the HTTP request and return its response."""
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
@@ -78,41 +85,61 @@ def api(method, path, data=None):
         return json.loads(body) if body else None
 
 
-app = api("GET", "core/applications/xui-panel/")
+app = cast("dict[str, object]", api("GET", "core/applications/xui-panel/"))
 owner = next(
     g
-    for g in api("GET", "core/groups/?name=homelab-owner")["results"]
+    for g in cast(
+        "list[dict[str, object]]",
+        cast("dict[str, object]", api("GET", "core/groups/?name=homelab-owner"))["results"],
+    )
     if g["name"] == "homelab-owner"
 )
 bindings = [
     b
-    for b in api("GET", "policies/bindings/?page_size=1000")["results"]
+    for b in cast(
+        "list[dict[str, object]]",
+        cast("dict[str, object]", api("GET", "policies/bindings/?page_size=1000"))["results"],
+    )
     if b["target"] == app["pk"]
 ]
-assert len(bindings) == 1
-assert bindings[0]["group"] == owner["pk"]
-assert not bindings[0].get("user")
-launch = app["meta_launch_url"]
-assert urllib.parse.urlparse(launch).hostname == "vpn.alchemmist.xyz"
+if len(bindings) != 1:
+    msg = "The gateway application must keep exactly one policy binding"
+    raise RuntimeError(msg)
+if bindings[0]["group"] != owner["pk"]:
+    msg = "The policy binding must keep the homelab-owner group"
+    raise RuntimeError(msg)
+if bindings[0].get("user"):
+    msg = "The policy binding must target only the group, never a single user"
+    raise RuntimeError(msg)
+launch = cast("str", app["meta_launch_url"])
+if urllib.parse.urlparse(launch).hostname != "vpn.alchemmist.xyz":
+    msg = "The application launch host must remain vpn.alchemmist.xyz"
+    raise RuntimeError(msg)
 username = "xui-gateway-smoke-" + uuid.uuid4().hex[:10]
 password = secrets.token_urlsafe(32)
 observer = next(
     g
-    for g in api("GET", "core/groups/?name=homelab-observer")["results"]
+    for g in cast(
+        "list[dict[str, object]]",
+        cast("dict[str, object]", api("GET", "core/groups/?name=homelab-observer"))["results"],
+    )
     if g["name"] == "homelab-observer"
 )
-user = api(
-    "POST",
-    "core/users/",
-    {
-        "username": username,
-        "name": "Temporary VPN gateway acceptance",
-        "email": username + "@example.invalid",
-        "groups": [observer["pk"]],
-        "is_active": True,
-    },
+user = cast(
+    "dict[str, object]",
+    api(
+        "POST",
+        "core/users/",
+        {
+            "username": username,
+            "name": "Temporary VPN gateway acceptance",
+            "email": username + "@example.invalid",
+            "groups": [observer["pk"]],
+            "is_active": True,
+        },
+    ),
 )
-binding = None
+binding: dict[str, object] | None = None
 try:
     api(
         "POST",
@@ -122,19 +149,19 @@ try:
     with sync_playwright() as p:
         browser = p.chromium.launch(
             args=[
-                "--host-resolver-rules=MAP auth.socrat.alchemmist.xyz 109.173.40.247, MAP vpn.alchemmist.xyz "
-                + args.public_edge
+                "--host-resolver-rules=MAP auth.socrat.alchemmist.xyz 109.173.40.247,"
+                " MAP vpn.alchemmist.xyz " + args.public_edge
             ]
         )
         context = browser.new_context(viewport={"width": 1440, "height": 960})
         page = context.new_page()
-        challenge = {}
-        components = []
-        errors = []
-        denials = []
-        authorization_scopes = []
+        challenge: dict[str, str] = {}
+        components: list[str] = []
+        errors: list[bool] = []
+        denials: list[bool] = []
+        authorization_scopes: list[str] = []
 
-        def observe(response) -> None:
+        def observe(response: Response) -> None:
             """Perform the observe operation."""
             parsed = urllib.parse.urlparse(response.url)
             if (
@@ -144,15 +171,15 @@ try:
                 authorization_scopes.extend(
                     urllib.parse.parse_qs(parsed.query).get("scope", [""])[0].split()
                 )
-            if response.status == 403 and parsed.hostname in [
+            if response.status == HTTP_FORBIDDEN and parsed.hostname in [
                 "auth.socrat.alchemmist.xyz",
                 "vpn.alchemmist.xyz",
             ]:
                 denials.append(True)
                 print("Native policy HTTP denial:", response.status, flush=True)
             if "/api/v3/flows/executor/" not in response.url or response.status not in [
-                200,
-                400,
+                HTTP_OK,
+                HTTP_BAD_REQUEST,
             ]:
                 return
             try:
@@ -170,7 +197,7 @@ try:
         page.on("response", observe)
         page.on(
             "pageerror",
-            lambda e: (
+            lambda _e: (
                 errors.append(True)
                 if urllib.parse.urlparse(page.url).hostname == "auth.socrat.alchemmist.xyz"
                 else None
@@ -244,28 +271,34 @@ try:
                 len(text),
                 flush=True,
             )
-        assert denied and "ak-stage-authenticator-totp" in components, (
-            "Expected native MFA and non-owner policy denial"
-        )
+        if not denied or "ak-stage-authenticator-totp" not in components:
+            msg = "Expected native MFA and non-owner policy denial"
+            raise RuntimeError(msg)
         print(
-            "PASS: real native MFA completed; ordinary observer denied by owner-only application policy",
+            "PASS: real native MFA completed; "
+            "ordinary observer denied by owner-only application policy",
             flush=True,
         )
         inspection = context.request.get(
             BASE + "/api/v3/flows/inspector/default-provider-authorization-implicit-consent/"
         )
-        assert inspection.status in [403, 404]
+        if inspection.status not in (HTTP_FORBIDDEN, HTTP_NOT_FOUND):
+            msg = "Fixture inspector access denied"
+            raise RuntimeError(msg)
         print("PASS: fixture inspector access denied", inspection.status)
-        binding = api(
-            "POST",
-            "policies/bindings/",
-            {
-                "target": app["pk"],
-                "user": user["pk"],
-                "order": 90000 + secrets.randbelow(10000),
-                "enabled": True,
-                "failure_result": False,
-            },
+        binding = cast(
+            "dict[str, object]",
+            api(
+                "POST",
+                "policies/bindings/",
+                {
+                    "target": app["pk"],
+                    "user": user["pk"],
+                    "order": 90000 + secrets.randbelow(10000),
+                    "enabled": True,
+                    "failure_result": False,
+                },
+            ),
         )
         # Native policy/outpost caches may briefly retain the preceding denial.
         for _attempt in range(8):
@@ -284,31 +317,41 @@ try:
             raise AssertionError(msg)
         cookies = context.cookies("https://vpn.alchemmist.xyz")
         proxy = [c for c in cookies if c["name"].startswith("authentik_proxy")]
-        assert proxy and all(c["secure"] and c["httpOnly"] for c in proxy), (
-            "Proxy cookies must be Secure and HttpOnly"
-        )
-        assert page.locator("input[type=password]").count(), (
-            "Test must remain at native login screen"
-        )
+        if not proxy or not all(c["secure"] and c["httpOnly"] for c in proxy):
+            msg = "Proxy cookies must be Secure and HttpOnly"
+            raise RuntimeError(msg)
+        if not page.locator("input[type=password]").count():
+            msg = "Test must remain at native login screen"
+            raise RuntimeError(msg)
         print(
-            "PASS: admitted fixture reached separate native 3x-ui password screen; proxy cookies Secure/HttpOnly",
+            "PASS: admitted fixture reached separate native 3x-ui password screen; "
+            "proxy cookies Secure/HttpOnly",
             flush=True,
         )
         # Exercise native CSRF + POST parsing without a real native username/password.
         transport = page.evaluate(
             """async base=>{
-   const c=await fetch(base+'csrf-token',{credentials:'same-origin'});const token=(await c.json()).obj;
-   const r=await fetch(base+'login',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':token,'X-Requested-With':'XMLHttpRequest'},body:'username=&password='});
-   return {csrf:c.status,status:r.status,redirected:r.redirected,json:(r.headers.get('content-type')||'').includes('json')};
+   const c=await fetch(base+'csrf-token',{credentials:'same-origin'});
+   const token=(await c.json()).obj;
+   const form={'Content-Type':'application/x-www-form-urlencoded',
+    'X-CSRF-Token':token,
+    'X-Requested-With':'XMLHttpRequest'};
+   const r=await fetch(base+'login',
+    {method:'POST',credentials:'same-origin',headers:form,
+     body:'username=&password='});
+   return {csrf:c.status,status:r.status,redirected:r.redirected,
+    json:(r.headers.get('content-type')||'').includes('json')};
   }""",
             launch,
         )
-        assert transport == {
-            "csrf": 200,
-            "status": 200,
+        if transport != {
+            "csrf": HTTP_OK,
+            "status": HTTP_OK,
             "redirected": False,
             "json": True,
-        }
+        }:
+            msg = "Native CSRF + safe empty-login POST must return native JSON without redirect"
+            raise RuntimeError(msg)
         print(
             "PASS: native CSRF + safe empty-login POST returns native JSON, no redirect",
             flush=True,
@@ -317,16 +360,21 @@ try:
         context.clear_cookies(name=__import__("re").compile("^authentik_proxy"))
         missing = page.evaluate(
             """async base=>{
-   const r=await fetch(base+'login',{method:'POST',credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest','Content-Type':'application/x-www-form-urlencoded'},body:'username=&password='});
+   const form={'X-Requested-With':'XMLHttpRequest',
+    'Content-Type':'application/x-www-form-urlencoded'};
+   const r=await fetch(base+'login',
+    {method:'POST',credentials:'same-origin',headers:form,body:'username=&password='});
    return {status:r.status,redirected:r.redirected,origin:new URL(r.url).origin};
   }""",
             launch,
         )
-        assert missing == {
-            "status": 401,
+        if missing != {
+            "status": HTTP_UNAUTHORIZED_STATUS,
             "redirected": False,
             "origin": "https://vpn.alchemmist.xyz",
-        }
+        }:
+            msg = "Missing/expired gateway session must return a same-origin 401"
+            raise RuntimeError(msg)
         print(
             "PASS: missing/expired gateway session returns same-origin 401, not Failed to fetch",
             flush=True,
@@ -356,7 +404,7 @@ try:
                 if c["name"].startswith("authentik_proxy")
             ]
             if (
-                401 in rejected
+                HTTP_UNAUTHORIZED_STATUS in rejected
                 and proxy
                 and page.url == launch
                 and page.locator("input[type=password]").count()
@@ -365,9 +413,12 @@ try:
         else:
             msg = "Native UI did not recover missing gateway session"
             raise AssertionError(msg)
-        assert 200 not in rejected, "Synthetic native credentials must never reach the backend"
+        if HTTP_OK in rejected:
+            msg = "Synthetic native credentials must never reach the backend"
+            raise RuntimeError(msg)
         print(
-            "PASS: actual native login submit handles 401 and returns via top-level SSO; no native password attempted",
+            "PASS: actual native login submit handles 401 and returns via top-level SSO; "
+            "no native password attempted",
             flush=True,
         )
 
@@ -376,14 +427,17 @@ try:
             headers={"Authorization": "Bearer deliberately-invalid-probe"},
             max_redirects=0,
         )
-        assert response.status == 401
+        if response.status != HTTP_UNAUTHORIZED_STATUS:
+            msg = "Invalid machine Bearer must return native 401 even with gateway browser cookies"
+            raise RuntimeError(msg)
         print(
-            "PASS: invalid machine Bearer returns native 401 even with authenticated gateway browser cookies"
+            "PASS: invalid machine Bearer returns native 401 "
+            "even with authenticated gateway browser cookies"
         )
         if args.wait_refresh:
-            assert "offline_access" in authorization_scopes, (
-                "Live proxy authorization must request offline_access"
-            )
+            if "offline_access" not in authorization_scopes:
+                msg = "Live proxy authorization must request offline_access"
+                raise RuntimeError(msg)
             navigations = []
             page.on(
                 "request",
@@ -404,13 +458,16 @@ try:
                 bool(navigations),
                 flush=True,
             )
-            assert all(
+            if not all(
                 c["secure"] and c["httpOnly"]
                 for c in context.cookies("https://vpn.alchemmist.xyz")
                 if c["name"].startswith("authentik_proxy")
-            )
+            ):
+                msg = "Proxy cookies must remain Secure and HttpOnly after expiry"
+                raise RuntimeError(msg)
             print(
-                "PASS: gateway authorization returns after real five-minute expiry; Secure preserved (not a silent-refresh claim)",
+                "PASS: gateway authorization returns after real five-minute expiry; "
+                "Secure preserved (not a silent-refresh claim)",
                 flush=True,
             )
         anonymous = browser.new_context()
@@ -422,9 +479,13 @@ try:
             },
             max_redirects=0,
         )
-        assert r.status == 302
+        if r.status != HTTP_REDIRECTED:
+            msg = "Forged identity headers must not bypass gateway authentication"
+            raise RuntimeError(msg)
         print("PASS: forged identity headers do not bypass gateway authentication")
-        assert not errors, "Authentik JS error observed"
+        if errors:
+            msg = "Authentik JS error observed"
+            raise RuntimeError(msg)
         browser.close()
 except (
     AssertionError,
@@ -444,7 +505,7 @@ except (
 finally:
     try:
         if binding:
-            api("DELETE", "policies/bindings/" + binding["pk"] + "/")
+            api("DELETE", "policies/bindings/" + cast("str", binding["pk"]) + "/")
     finally:
         api("DELETE", "core/users/" + str(user["pk"]) + "/")
     print("Temporary observer identity and exact admission binding removed", flush=True)
