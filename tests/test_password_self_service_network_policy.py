@@ -209,3 +209,28 @@ def test_password_probe_rejects_whole_invalid_inventory_before_network(
     )
     assert probe.main() == 1
     assert "invalid-entrance-inventory" in capsys.readouterr().out
+
+
+def test_password_loopback_control_uses_only_plain_http_on_local_forward(monkeypatch):
+    from types import SimpleNamespace
+
+    from ci.quality import password_route_probe as probe
+
+    def run(args, *, capture_output, timeout):
+        assert capture_output is True and timeout == 9
+        assert args[-1] == "http://127.0.0.1:29864/change-password/"
+        assert args[args.index("--proto") + 1] == "=http"
+        assert args[args.index("--header") + 1] == "Host: " + probe.HOST
+        assert "--resolve" not in args and "--location" not in args
+        return subprocess.CompletedProcess(
+            args, 0, stdout=b"302\n" + probe.EXPECTED[probe.ROOT + "/"].encode()
+        )
+
+    monkeypatch.setattr(
+        probe,
+        "subprocess",
+        SimpleNamespace(run=run, TimeoutExpired=subprocess.TimeoutExpired),
+    )
+    assert probe.sample(probe.ROOT + "/", local_port=29864) == "matched"
+    with pytest.raises(ValueError):
+        probe.sample(probe.ROOT + "/", local_port=29864, ip="192.0.2.1")
