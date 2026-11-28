@@ -19,24 +19,29 @@ from pathlib import Path
 ROOT = Path("/opt/homelab-vpn-failover")
 STATE = Path("/var/lib/homelab-vpn-failover")
 RECEIPT = Path("/var/lib/homelab-recovery/20261113-vpn-native-image/promotion.json")
+SMOKE_MAX_AGE_SECONDS = 900
 
 
-def active(unit) -> bool:
+def active(unit: str) -> bool:
+    """Check whether a systemd unit reports the active state."""
     p = subprocess.run(
         ["systemctl", "is-active", "--quiet", unit],
         check=False,
         capture_output=True,
         timeout=5,
     )
-    assert p.returncode in (0, 3)
+    if p.returncode not in (0, 3):
+        msg = "is-active returned an unexpected status"
+        raise RuntimeError(msg)
     return p.returncode == 0
 
 
 def running_core() -> str:
-    found = []
+    """Hash the live xray core binary of the running native instance."""
+    found: list[Path] = []
     for path in Path("/proc").glob("[0-9]*/exe"):
         try:
-            if Path(os.readlink(path)).name != "xray-linux-amd64":
+            if path.readlink().name != "xray-linux-amd64":
                 continue
             if any(
                 x.endswith(b"bin/config.json")
@@ -45,39 +50,83 @@ def running_core() -> str:
                 found.append(path)
         except (FileNotFoundError, PermissionError, ProcessLookupError):
             continue
-    assert len(found) == 1
+    if len(found) != 1:
+        msg = "Exactly one running native xray core is required"
+        raise RuntimeError(msg)
     return hashlib.sha256(found[0].read_bytes()).hexdigest()
 
 
-def promote(candidate, old_image, new_image) -> None:
-    assert os.geteuid() == 0
-    assert socket.gethostname() == "socrat-2"
-    assert candidate.parent == ROOT
-    assert candidate.name.startswith("staged-")
-    assert not candidate.is_symlink()
-    assert not RECEIPT.exists(), "Existing attempt/receipt; inspect, never replay"
+def promote(candidate: Path, old_image: str, new_image: str) -> None:
+    """Atomically exchange the verified dormant image, stopping on any doubt."""
+    if os.geteuid() != 0:
+        msg = "Promotion must run as root"
+        raise RuntimeError(msg)
+    if socket.gethostname() != "socrat-2":
+        msg = "Promotion must run on the NL host"
+        raise RuntimeError(msg)
+    if candidate.parent != ROOT:
+        msg = "Candidate must live directly beneath the promotion root"
+        raise RuntimeError(msg)
+    if not candidate.name.startswith("staged-"):
+        msg = "Candidate must use the staged- directory prefix"
+        raise RuntimeError(msg)
+    if candidate.is_symlink():
+        msg = "Candidate must be a real directory, never a symlink"
+        raise RuntimeError(msg)
+    if RECEIPT.exists():
+        msg = "Existing attempt/receipt; inspect, never replay"
+        raise RuntimeError(msg)
     proof = json.loads((candidate / ".isolated-smoke-accepted.json").read_text())
-    assert proof["healthy"]
-    assert proof["cleanup_verified"]
-    assert not proof["production_runtime_changed"]
-    assert 0 <= time.time() - proof["accepted_at"] <= 900, "Fresh isolated smoke required"
-    assert proof["image"] == new_image
+    if not proof["healthy"]:
+        msg = "Recorded isolated smoke must be healthy"
+        raise RuntimeError(msg)
+    if not proof["cleanup_verified"]:
+        msg = "Recorded isolated smoke cleanup must be verified"
+        raise RuntimeError(msg)
+    if proof["production_runtime_changed"]:
+        msg = "Isolated smoke must not have changed the production runtime"
+        raise RuntimeError(msg)
+    if not 0 <= time.time() - proof["accepted_at"] <= SMOKE_MAX_AGE_SECONDS:
+        msg = "Fresh isolated smoke required"
+        raise RuntimeError(msg)
+    if proof["image"] != new_image:
+        msg = "Smoke receipt must pin the requested new image"
+        raise RuntimeError(msg)
     new = candidate / "primary"
     current = ROOT / "primary"
-    assert not new.is_symlink()
-    assert not current.is_symlink()
-    assert new.stat().st_dev == current.stat().st_dev
-    assert (new / ".homelab-image").read_text().strip() == new_image
-    assert hashlib.sha256((new / "app/x-ui").read_bytes()).hexdigest() == proof["ui_sha256"]
+    if new.is_symlink() or current.is_symlink():
+        msg = "Neither image directory may be a symlink"
+        raise RuntimeError(msg)
+    if new.stat().st_dev != current.stat().st_dev:
+        msg = "Images must share one filesystem for the atomic exchange"
+        raise RuntimeError(msg)
+    if (new / ".homelab-image").read_text().strip() != new_image:
+        msg = "Candidate primary must carry the new image label"
+        raise RuntimeError(msg)
+    if hashlib.sha256((new / "app/x-ui").read_bytes()).hexdigest() != proof["ui_sha256"]:
+        msg = "Candidate x-ui binary must match the smoke receipt hash"
+        raise RuntimeError(msg)
     core = hashlib.sha256((new / "app/bin/xray-linux-amd64").read_bytes()).hexdigest()
-    assert core == running_core(), "Candidate core differs from live; stop for explicit review"
+    if core != running_core():
+        msg = "Candidate core differs from live; stop for explicit review"
+        raise RuntimeError(msg)
     with (STATE / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        assert not (STATE / "active").exists()
-        assert not (STATE / "inhibit").exists()
-        assert active("k3s.service")
-        assert not active("homelab-vpn-primary.service")
-        assert not active("homelab-vpn-caddy.service")
+        if (STATE / "active").exists():
+            msg = "Failover state must not be active"
+            raise RuntimeError(msg)
+        if (STATE / "inhibit").exists():
+            msg = "Promotion is inhibited"
+            raise RuntimeError(msg)
+        if not active("k3s.service"):
+            msg = "Kubernetes must stay active during the exchange"
+            raise RuntimeError(msg)
+        if active("homelab-vpn-primary.service"):
+            msg = "Native primary service must be dormant"
+            raise RuntimeError(msg)
+        if active("homelab-vpn-caddy.service"):
+            msg = "Native caddy service must be dormant"
+            raise RuntimeError(msg)
         status = subprocess.run(
             ["/usr/local/sbin/homelab-vpn-failover", "status"],
             check=False,
@@ -85,9 +134,15 @@ def promote(candidate, old_image, new_image) -> None:
             text=True,
             timeout=30,
         )
-        assert status.returncode == 0
-        assert json.loads(status.stdout)["healthy"]
-        assert (current / ".homelab-image").read_text().strip() == old_image
+        if status.returncode != 0:
+            msg = "Failover status probe failed"
+            raise RuntimeError(msg)
+        if not json.loads(status.stdout)["healthy"]:
+            msg = "Failover watchdog must report health"
+            raise RuntimeError(msg)
+        if (current / ".homelab-image").read_text().strip() != old_image:
+            msg = "Live image label must still match the recorded old image"
+            raise RuntimeError(msg)
         # Durable intent before atomic syscall; any uncertainty prohibits replay.
         fd = os.open(RECEIPT, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, "w") as stream:
@@ -115,8 +170,12 @@ def promote(candidate, old_image, new_image) -> None:
             fd = os.open(path, os.O_DIRECTORY)
             os.fsync(fd)
             os.close(fd)
-        assert (current / ".homelab-image").read_text().strip() == new_image
-        assert (new / ".homelab-image").read_text().strip() == old_image
+        if (current / ".homelab-image").read_text().strip() != new_image:
+            msg = "Atomic exchange must leave the new image live"
+            raise RuntimeError(msg)
+        if (new / ".homelab-image").read_text().strip() != old_image:
+            msg = "Atomic exchange must preserve the old image in the candidate"
+            raise RuntimeError(msg)
         receipt = {
             "state": "accepted",
             "old_image_preserved": True,
@@ -131,7 +190,7 @@ def promote(candidate, old_image, new_image) -> None:
             json.dump(receipt, stream)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temporary, RECEIPT)
+        temporary.replace(RECEIPT)
         fd = os.open(RECEIPT.parent, os.O_DIRECTORY)
         os.fsync(fd)
         os.close(fd)
