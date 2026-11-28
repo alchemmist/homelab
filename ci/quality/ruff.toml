@@ -86,6 +86,7 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # are the worker stdout log contract.
 "charts/spi-triage/files/dispatcher.py" = ["FBT001", "FBT002", "BLE001", "T201"]
 "services/spi/legacy/backend/dispatcher.py" = ["FBT001", "FBT002", "BLE001", "T201"]
+"services/spi/backend/dispatcher.py" = ["FBT001", "FBT002", "BLE001", "T201"]
 # The git-tracked spelling of the renovated spi-triage service module carries the
 # same reviewed rationale as the charts/** family: stdout JSON records are the
 # worker log contract, the Engine collaborator arity is the reviewed (and test-
@@ -120,12 +121,14 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # extension (PLC0415 listed only where charts/** does not already cover it).
 "charts/spi-triage/files/local_token_counter.py" = ["C901", "PLR0912", "BLE001"]
 "services/spi/legacy/backend/local_token_counter.py" = ["C901", "PLR0912", "BLE001", "PLC0415"]
+"services/spi/backend/local_token_counter.py" = ["C901", "PLR0912", "BLE001", "PLC0415"]
 # The storage runtime is the reviewed fail-closed credentials seam: every
 # invalid input, unpinned path, unsafe inode or parser error must surface as
 # the single documented S3_WRITER_CONFIGURATION_INVALID code, so the outward
 # except Exception stays part of the pinned contract.
 "charts/spi-triage/files/storage_runtime.py" = ["BLE001"]
 "services/spi/legacy/backend/storage_runtime.py" = ["BLE001"]
+"services/spi/backend/storage_runtime.py" = ["BLE001"]
 # The GitHub App token broker runs as a copy-deployed CronJob entrypoint: its
 # reviewed function is emitting the operational log/exit-status lines and
 # calling the four fixed https API origins, and any failure must become the
@@ -134,6 +137,7 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # already cover them).
 "charts/spi-triage/files/github_broker.py" = ["BLE001"]
 "services/spi/legacy/backend/github_broker.py" = ["T201", "S310", "BLE001"]
+"services/spi/backend/github_broker.py" = ["T201", "S310", "BLE001"]
 # The queue operator DTO composes its IN-clause from the fixed "?"
 # placeholder set only (never interpolated values), which S608 cannot see;
 # the projection stays exactly the reviewed column list pinned by the
@@ -146,6 +150,7 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # and the shared import cycle stays guarded per-call (charts/** already
 # carries PLC0415; the services spelling repeats it here).
 "services/spi/legacy/backend/provenance.py" = ["PLC0415"]
+"services/spi/backend/provenance.py" = ["PLC0415"]
 # telegram_links.once deliberately catches a blind Exception so an ambiguous
 # POST outcome is retried instead of killing the delivery thread or
 # fabricating a receipt (reviewed seams, pinned by the spi_triage suite).

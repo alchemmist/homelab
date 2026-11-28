@@ -139,6 +139,12 @@
         "BLE001",
         "T201"
       ],
+      "services/spi/backend/dispatcher.py": [
+        "FBT001",
+        "FBT002",
+        "BLE001",
+        "T201"
+      ],
       "services/spi/legacy/backend/service.py": [
         "PLC0415",
         "T201",
@@ -187,16 +193,30 @@
         "BLE001",
         "PLC0415"
       ],
+      "services/spi/backend/local_token_counter.py": [
+        "C901",
+        "PLR0912",
+        "BLE001",
+        "PLC0415"
+      ],
       "charts/spi-triage/files/storage_runtime.py": [
         "BLE001"
       ],
       "services/spi/legacy/backend/storage_runtime.py": [
         "BLE001"
       ],
+      "services/spi/backend/storage_runtime.py": [
+        "BLE001"
+      ],
       "charts/spi-triage/files/github_broker.py": [
         "BLE001"
       ],
       "services/spi/legacy/backend/github_broker.py": [
+        "T201",
+        "S310",
+        "BLE001"
+      ],
+      "services/spi/backend/github_broker.py": [
         "T201",
         "S310",
         "BLE001"
@@ -208,6 +228,9 @@
         "S608"
       ],
       "services/spi/legacy/backend/provenance.py": [
+        "PLC0415"
+      ],
+      "services/spi/backend/provenance.py": [
         "PLC0415"
       ],
       "charts/spi-triage/files/telegram_links.py": [
