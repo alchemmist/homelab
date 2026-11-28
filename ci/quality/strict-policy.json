@@ -244,6 +244,10 @@
       "services/spi/legacy/backend/queue_admin.py": [
         "S608"
       ],
+      "services/spi/backend/queue_admin.py": [
+        "S608",
+        "C901"
+      ],
       "services/spi/legacy/backend/provenance.py": [
         "PLC0415"
       ],

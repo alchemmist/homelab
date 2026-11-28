@@ -151,6 +151,10 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # spi_triage queue_admin suite.
 "charts/spi-triage/files/queue_admin.py" = ["S608"]
 "services/spi/legacy/backend/queue_admin.py" = ["S608"]
+# The evolved queue list keeps the reviewed cursor-paginated query and the
+# fenced cancel_batch transaction as single cohesive contracts (digest-pinned
+# by the queue-admin tests); the SQL constructors use fixed identifiers only.
+"services/spi/backend/queue_admin.py" = ["S608", "C901"]
 # The provenance collector keeps its original per-call lazy imports: the
 # in-cluster hosts (integrations) and quote/urlencode helpers load only on
 # the reviewed read paths so an unused collector never touches the wire,
