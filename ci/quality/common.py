@@ -207,8 +207,9 @@ def frozen_source_files() -> frozenset[str]:
         # Homelab renovation patch set: core.py, durable_wait.py, service.py,
         # s3_evidence.py, dispatcher.py, integrations.py, telemetry.py,
         # local_token_counter.py, card_correlation.py, grafana_links.py,
-        # storage_runtime.py, github_broker.py and queue_admin.py are fully
-        # strict-gate clean under the shared per-file review policies.
+        # storage_runtime.py, github_broker.py, queue_admin.py,
+        # evidence_bundle.py and provenance.py are fully strict-gate clean
+        # under the shared per-file review policies.
         "charts/spi-triage/files/core.py",
         "charts/spi-triage/files/durable_wait.py",
         "charts/spi-triage/files/service.py",
@@ -222,6 +223,8 @@ def frozen_source_files() -> frozenset[str]:
         "charts/spi-triage/files/storage_runtime.py",
         "charts/spi-triage/files/github_broker.py",
         "charts/spi-triage/files/queue_admin.py",
+        "charts/spi-triage/files/evidence_bundle.py",
+        "charts/spi-triage/files/provenance.py",
     }
 
 

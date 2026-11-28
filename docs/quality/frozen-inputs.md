@@ -25,13 +25,18 @@ pinned by the spi_triage suite, and `card_correlation.py` keeps its exact
 receipt SQL and fail-closed copy validation, `grafana_links.py` keeps its
 reviewed Explore forceLogin seam and `storage_runtime.py` keeps its fail-closed
 projected-Secret inode validation, `github_broker.py` keeps its one-hour
-repo-scoped token mint seam and `queue_admin.py` keeps its audited atomic
-cancellation seam, all pinned by the spi_triage suite).
+repo-scoped token mint seam, `queue_admin.py` keeps its audited atomic
+cancellation seam, `evidence_bundle.py` keeps its exact failure codes,
+redaction ladder, part/comment budget walk and deterministic index
+marker byte stream, and `provenance.py` keeps its exact failure codes,
+reason strings, owner-chain walk, anonymous Harbor pull-token flow and
+safe-path fragment quotes, all pinned by the spi_triage suite).
 Together
 with the older `telegram_delivery.py`/`telegram_links.py` patches this marks
-**fifteen locally patched modules**, not pristine upstream files.
-All 17 deployed inputs still have pinned SHA-256 digests; only the 2 unpatched
-modules are excluded from owned-source checks. The earlier boundary below
+**seventeen locally patched modules**, not pristine upstream files.
+All 17 deployed inputs still have pinned SHA-256 digests; every deployed
+module is now locally patched, so no deployed input is excluded from
+owned-source checks. The earlier boundary below
 describes the snapshot before those local patches.
 
 Earlier local compatibility update: commits `a6c666af` and `dec487d0` changed
