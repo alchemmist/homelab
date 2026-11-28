@@ -92,6 +92,9 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # The remote inventory payload is a byte-pinned single-line Python program
 # executed on the source host; its long ULID/fullmatch line must not be folded.
 "deploy/storage/thanos-warm-seed/start.py" = ["E501"]
+# The REMOTE payload is a byte-pinned ssh-executed Python program whose
+# embedded lines cannot be refolded without changing what runs remotely.
+"scripts/n8n/provision_yandex_alerts.py" = ["E501"]
 # public_auth mirrors the socket.getaddrinfo signature (including the
 # builtin-shadowing "type" argument) so it can replace it process-locally.
 # Same reviewed mirror as identity-argocd-refresh-smoke.py.

@@ -108,7 +108,7 @@
       "ci/quality/install_collections.py": [
         "S603"
       ],
-            "charts/openhands/files/cold_backup.py": [
+      "charts/openhands/files/cold_backup.py": [
         "S108",
         "TRY004"
       ],
@@ -133,7 +133,7 @@
       "scripts/identity-branding-smoke.py": [
         "A002"
       ],
-"charts/spi-triage/files/core.py": [
+      "charts/spi-triage/files/core.py": [
         "N818",
         "PLC0415"
       ],
@@ -401,6 +401,9 @@
         "S310",
         "T201",
         "PLR0913"
+      ],
+      "scripts/n8n/provision_yandex_alerts.py": [
+        "E501"
       ]
     },
     "ignoreReasons": {
