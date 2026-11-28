@@ -96,6 +96,9 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # builtin-shadowing "type" argument) so it can replace it process-locally.
 # Same reviewed mirror as identity-argocd-refresh-smoke.py.
 "scripts/identity-litellm-smoke.py" = ["A002"]
+# public_auth mirrors the socket.getaddrinfo signature one more time for
+# the branding acceptance smoke; same reviewed A002 mirror as above.
+"scripts/identity-branding-smoke.py" = ["A002"]
 # The durable workflow error type is named Failure across the reviewed
 # worker API boundary: its fixed non-sensitive codes are the documented wire
 # contract asserted by the spi_triage suite and produced by every chart

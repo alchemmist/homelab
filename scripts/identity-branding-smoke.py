@@ -31,21 +31,40 @@ import subprocess
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Literal
 
 BASE = "https://auth.socrat.alchemmist.xyz"
 # Process-local public-edge resolution; keep verified TLS/SNI, no system DNS changes.
 import socket
 
 _original_getaddrinfo = socket.getaddrinfo
+GRAFANA_OK = 200
+EXECUTOR_STATUSES = (200, 400)
 
 
-def public_auth(host, *params, **kwargs):
-    """Perform the public auth operation."""
-    return _original_getaddrinfo(
-        args.public_edge if host == "auth.socrat.alchemmist.xyz" else host,
-        *params,
-        **kwargs,
-    )
+GaiResult = list[
+    tuple[Literal[socket.AddressFamily.AF_INET], socket.SocketKind, int, str, tuple[str, int]]
+    | tuple[
+        Literal[socket.AddressFamily.AF_INET6],
+        socket.SocketKind,
+        int,
+        str,
+        tuple[str, int, int, int] | tuple[int, bytes],
+    ]
+]
+
+
+def public_auth(
+    host: str | bytes | None,
+    port: bytes | str | int | None = None,
+    family: int = 0,
+    type: int = 0,
+    proto: int = 0,
+    flags: int = 0,
+) -> GaiResult:
+    """Resolve the reviewed public-edge hostname to the pinned edge address."""
+    target = args.public_edge if host == "auth.socrat.alchemmist.xyz" else host
+    return _original_getaddrinfo(target, port, family, type, proto, flags)
 
 
 socket.getaddrinfo = public_auth
@@ -59,25 +78,25 @@ SSH = [
     "HostKeyAlias=[socrat.alchemmist.xyz]:2222",
     "socrat-0",
 ]
-credential = json.loads(
+credential: dict[str, object] = json.loads(
     subprocess.check_output([*SSH, "cat ~/.cache/homelab-authentik/credentials.json"])
 )
 
 
-def api(method, path, data=None):
-    """Perform the HTTP request and return its response."""
+def api(method: str, path: str, data: dict[str, object] | None = None) -> dict[str, object]:
+    """Perform the reviewed Authentik API request and return its decoded body."""
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
         headers={
-            "Authorization": "Bearer " + credential["AUTHENTIK_BOOTSTRAP_TOKEN"],
+            "Authorization": "Bearer " + str(credential["AUTHENTIK_BOOTSTRAP_TOKEN"]),
             "Content-Type": "application/json",
         },
         data=json.dumps(data).encode() if data is not None else None,
     )
     with urllib.request.urlopen(req, timeout=45) as r:
         b = r.read()
-        return json.loads(b) if b else None
+        return json.loads(b) if b else {}
 
 
 import base64
@@ -90,15 +109,17 @@ import urllib.parse
 import uuid
 
 from playwright.sync_api import Error as PlaywrightError
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Response, sync_playwright
 
 username = "theme-smoke-" + uuid.uuid4().hex[:10]
 password = secrets.token_urlsafe(32)
-group = next(
-    x
-    for x in api("GET", "core/groups/?name=homelab-observer")["results"]
-    if x["name"] == "homelab-observer"
+from typing import cast
+
+results = cast(
+    "list[dict[str, object]]",
+    api("GET", "core/groups/?name=homelab-observer")["results"],
 )
+group = next(x for x in results if x["name"] == "homelab-observer")
 user = api(
     "POST",
     "core/users/",
@@ -121,31 +142,23 @@ try:
             p.webkit.launch()
             if args.mobile_webkit
             else p.chromium.launch(
-                args=[
-                    "--host-resolver-rules=MAP auth.socrat.alchemmist.xyz "
-                    + args.public_edge
-                ]
+                args=["--host-resolver-rules=MAP auth.socrat.alchemmist.xyz " + args.public_edge]
             )
         )
         page = (
-            browser.new_page(
-                viewport={"width": 390, "height": 650}, is_mobile=True, has_touch=True
-            )
+            browser.new_page(viewport={"width": 390, "height": 650}, is_mobile=True, has_touch=True)
             if args.mobile_webkit
             else browser.new_page(viewport={"width": 1440, "height": 960})
         )
         rejected_code = False
-        last = {}
-        totp_challenge = {}
-        components = []
-        errors = []
+        last: dict[str, object] = {}
+        totp_challenge: dict[str, object] = {}
+        components: list[object] = []
+        errors: list[str] = []
 
-        def observe(response) -> None:
-            """Perform the observe operation."""
-            if "/api/v3/flows/executor/" in response.url and response.status in [
-                200,
-                400,
-            ]:
+        def observe(response: Response) -> None:
+            """Log the flow executor responses and captured stage components."""
+            if "/api/v3/flows/executor/" in response.url and response.status in (EXECUTOR_STATUSES):
                 try:
                     data = response.json()
                     last.clear()
@@ -188,37 +201,31 @@ try:
                     totp_challenge.get("secret")
                     or totp_challenge.get("secret_key")
                     or urllib.parse.parse_qs(
-                        urllib.parse.urlparse(
-                            totp_challenge.get("config_url", "")
-                        ).query
+                        urllib.parse.urlparse(str(totp_challenge.get("config_url", ""))).query
                     ).get("secret", [None])[0]
                 )
                 if not source:
                     msg = "TOTP setup data unavailable"
                     raise RuntimeError(msg)
-                key = base64.b32decode(source.upper() + "=" * ((-len(source)) % 8))
+                key = base64.b32decode(str(source).upper() + "=" * ((-len(str(source))) % 8))
                 sig = hmac.new(
                     key, struct.pack(">Q", int(time.time()) // 30), hashlib.sha1
                 ).digest()
                 offset = sig[-1] & 15
                 code = str(
-                    (struct.unpack(">I", sig[offset : offset + 4])[0] & 0x7FFFFFFF)
-                    % 1000000
+                    (struct.unpack(">I", sig[offset : offset + 4])[0] & 0x7FFFFFFF) % 1000000
                 ).zfill(6)
                 stage = page.locator("ak-stage-authenticator-totp")
                 if args.mobile_webkit and not rejected_code:
                     wrong = str((int(code) + 1) % 1000000).zfill(6)
                     stage.locator("input[name=code]").fill(wrong)
                     with page.expect_response(
-                        lambda r: (
-                            "/api/v3/flows/executor/" in r.url
-                            and r.request.method == "POST"
-                        )
+                        lambda r: "/api/v3/flows/executor/" in r.url and r.request.method == "POST"
                     ) as rejection:
                         stage.locator("button[type=submit]").click()
-                    assert rejection.value.json().get("response_errors"), (
-                        "Expected native enrollment error"
-                    )
+                    if not rejection.value.json().get("response_errors"):
+                        msg = "Expected native enrollment error"
+                        raise RuntimeError(msg)
                     rejected_code = True
                     print("Rejected TOTP enrollment code; retrying in the same form")
                     continue
@@ -228,36 +235,38 @@ try:
             elif page.locator("ak-stage-consent").is_visible():
                 print("Native consent presented")
                 slug = urllib.parse.urlparse(page.url).path.strip("/").split("/")[-1]
-                inspection = page.request.get(
-                    BASE + "/api/v3/flows/inspector/" + slug + "/"
-                )
-                assert inspection.status in [403, 404], (
-                    "Observer must not inspect flows"
-                )
-                assert not page.get_by_role(
-                    "button", name="Open flow inspector"
-                ).is_visible()
+                inspection = page.request.get(BASE + "/api/v3/flows/inspector/" + slug + "/")
+                if inspection.status not in (403, 404):
+                    msg = "Observer must not inspect flows"
+                    raise RuntimeError(msg)
+                if page.get_by_role("button", name="Open flow inspector").is_visible():
+                    msg = "Observer must not see the flow inspector control"
+                    raise RuntimeError(msg)
                 print("Observer native inspector access denied:", inspection.status)
                 stage = page.locator("ak-stage-consent")
                 stage.locator("button[name=continue]").click()
                 stage.wait_for(state="hidden", timeout=30000)
-            elif (
-                urllib.parse.urlparse(page.url).hostname
-                == "grafana.socrat.alchemmist.xyz"
-            ):
-                resp = page.request.get(
-                    "https://grafana.socrat.alchemmist.xyz/api/user"
-                )
-                if resp.status != 200:
+            elif urllib.parse.urlparse(page.url).hostname == "grafana.socrat.alchemmist.xyz":
+                resp = page.request.get("https://grafana.socrat.alchemmist.xyz/api/user")
+                if resp.status != GRAFANA_OK:
                     page.wait_for_timeout(500)
                     continue
-                profile = resp.json()
-                assert profile["login"] == username
-                assert not profile.get("isGrafanaAdmin")
-                assert "ak-stage-authenticator-totp" in components
-                assert "ak-stage-consent" in components
+                profile: dict[str, object] = resp.json()
+                if profile["login"] != username:
+                    msg = "Grafana session carries a different identity than the fixture"
+                    raise RuntimeError(msg)
+                if profile.get("isGrafanaAdmin"):
+                    msg = "Observer must not be a Grafana server admin"
+                    raise RuntimeError(msg)
+                if "ak-stage-authenticator-totp" not in components:
+                    msg = "TOTP stage missing from the observed flow"
+                    raise RuntimeError(msg)
+                if "ak-stage-consent" not in components:
+                    msg = "Consent stage missing from the observed flow"
+                    raise RuntimeError(msg)
                 print(
-                    "PASS: native browser password + TOTP + consent + Grafana OIDC; observer is not server admin"
+                    "PASS: native browser password + TOTP + consent + Grafana OIDC; "
+                    "observer is not server admin"
                 )
                 break
             page.wait_for_timeout(500)
@@ -265,7 +274,9 @@ try:
             msg = "Browser roundtrip did not complete"
             raise RuntimeError(msg)
         print("Browser JS errors:", len(errors))
-        assert not errors
+        if errors:
+            msg = "Browser JS errors must stay empty"
+            raise RuntimeError(msg)
         browser.close()
 finally:
     try:
@@ -276,7 +287,8 @@ finally:
         cleanup = source.split('cleanup = """', 1)[1].split('"""', 1)[0]
         cleanup = cleanup.replace(
             "user.get('name')=='Temporary SSO acceptance probe'",
-            "user.get('name') in ['Temporary theme acceptance probe','Temporary SSO acceptance probe']",
+            "user.get('name') in ['Temporary theme acceptance probe',"
+            "'Temporary SSO acceptance probe']",
         )
         subprocess.run(
             [*SSH, "python3", "-"],
