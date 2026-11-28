@@ -158,18 +158,27 @@ def test_peer_flag_rejects_strings(value: str) -> None:
     ],
 )
 def test_anonymous_password_path_witness(monkeypatch, path, status, location, result):
+    from types import SimpleNamespace
+
     from ci.quality import password_route_probe as probe
 
-    def run(args, **kwargs):
+    def run(args, *, capture_output, timeout):
+        assert capture_output is True and timeout == 9
         assert (
             args[-1] == "https://" + probe.HOST + path
             and args[args.index("--proto") + 1] == "=https"
             and args[args.index("--resolve") + 1] == probe.HOST + ":443:192.0.2.1"
             and not {"--location", "--insecure", "--cookie"} & set(args)
         )
-        return subprocess.CompletedProcess(args, 0, f"{status}\n{location}".encode())
+        return subprocess.CompletedProcess(
+            args, 0, stdout=f"{status}\n{location}".encode()
+        )
 
-    monkeypatch.setattr(subprocess, "run", run)
+    monkeypatch.setattr(
+        probe,
+        "subprocess",
+        SimpleNamespace(run=run, TimeoutExpired=subprocess.TimeoutExpired),
+    )
     assert probe.sample(path, ip="192.0.2.1") == result
 
 
