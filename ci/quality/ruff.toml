@@ -120,4 +120,10 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # extension (PLC0415 listed only where charts/** does not already cover it).
 "charts/spi-triage/files/local_token_counter.py" = ["C901", "PLR0912", "BLE001"]
 "services/spi/legacy/backend/local_token_counter.py" = ["C901", "PLR0912", "BLE001", "PLC0415"]
+# The storage runtime is the reviewed fail-closed credentials seam: every
+# invalid input, unpinned path, unsafe inode or parser error must surface as
+# the single documented S3_WRITER_CONFIGURATION_INVALID code, so the outward
+# except Exception stays part of the pinned contract.
+"charts/spi-triage/files/storage_runtime.py" = ["BLE001"]
+"services/spi/legacy/backend/storage_runtime.py" = ["BLE001"]
 "services/**" = ["INP001"]
