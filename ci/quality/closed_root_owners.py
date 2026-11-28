@@ -129,7 +129,7 @@ def eligible(items, catalog, *, owner=APP):
             (
                 "ConfigMap",
                 name + "-service-vpn",
-            ): "216f150e896b366e654ce19af866c9f889891a76ea0e7223b369ebbfca41dcc2",
+            ): "c679e1c46e48fb0cd201e54e8f73ad46ebb1ca6c9fd5dfc9626d12d9e8877b33",
         }
         extras = {("ServiceAccount", name)}
         if owner == "remark42":
@@ -143,7 +143,7 @@ def eligible(items, catalog, *, owner=APP):
                 (
                     "ConfigMap",
                     name + "-service-vpn",
-                ): "6ba92ac4527c162edec3905471eb6407d09ac8ad41b235ab12c0237bf5953f12",
+                ): "a0e3137c4dd6ce5da7941a42ae00f47450b7df3d824a2480905ce242472e6d48",
             }
             extras = {("Secret", name + "-env"), ("PersistentVolumeClaim", name + "-data")}
         keys = [(d["kind"], d["metadata"]["name"]) for d in items]
@@ -393,7 +393,8 @@ def owner_render(*, owner=APP):
         }
         or spec["destination"] != {"namespace": ns, "server": "https://kubernetes.default.svc"}
     ):
-        raise ValueError("unreviewed owner release inputs")
+        msg = "unreviewed owner release inputs"
+        raise ValueError(msg)
     chart = ROOT / path
     command = ["helm", "template", release, str(chart), "-n", ns]
     for value_file in files:

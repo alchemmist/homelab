@@ -44,9 +44,7 @@ class Diagnosis(TypedDict, total=False):
 def run(
     args: list[str], timeout: int = 25, *, check: bool = True
 ) -> subprocess.CompletedProcess[str]:
-    p = subprocess.run(
-        args, check=False, capture_output=True, text=True, timeout=timeout
-    )
+    p = subprocess.run(args, check=False, capture_output=True, text=True, timeout=timeout)
     if check and p.returncode:
         raise RuntimeError("Command failed: " + str(args[:3]))
     return p
@@ -105,15 +103,11 @@ def pod_processes() -> list[dict[str, object]]:
         if (
             labels.get("io.kubernetes.pod.namespace") != "vpn-transit"
             or not labels.get("io.kubernetes.pod.name", "").startswith("vpn-transit-")
-            or labels.get("io.kubernetes.pod.name", "").startswith(
-                "vpn-transit-rehearsal-"
-            )
+            or labels.get("io.kubernetes.pod.name", "").startswith("vpn-transit-rehearsal-")
             or labels.get("io.kubernetes.container.name") != "relay"
         ):
             continue
-        v = json.loads(
-            run(["k3s", "crictl", "--timeout=5s", "inspect", c["id"]], timeout=9).stdout
-        )
+        v = json.loads(run(["k3s", "crictl", "--timeout=5s", "inspect", c["id"]], timeout=9).stdout)
         i = identity(int(v["info"]["pid"]), str(c["id"]))
         if i:
             result.append(i)
@@ -153,14 +147,10 @@ def probe(
     try:
         for port in (32053, 32083, 32084):
             d.update(stage="tcp", port=port)
-            with socket.create_connection(
-                (host, port), timeout=2, source_address=source
-            ):
+            with socket.create_connection((host, port), timeout=2, source_address=source):
                 pass
         d.update(stage="tcp", port=443)
-        with socket.create_connection(
-            (host, 443), timeout=3, source_address=source
-        ) as sock:
+        with socket.create_connection((host, 443), timeout=3, source_address=source) as sock:
             d["stage"] = "tls"
             with ssl.create_default_context().wrap_socket(
                 sock, server_hostname="vpn.alchemmist.xyz"
@@ -169,15 +159,15 @@ def probe(
                 req = (
                     "GET "
                     + str(config["ws_path"])
-                    + " HTTP/1.1\r\nHost: vpn.alchemmist.xyz\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: " + base64.b64encode(os.urandom(16)).decode("ascii") + "\r\nSec-WebSocket-Version: 13\r\n\r\n"
+                    + " HTTP/1.1\r\nHost: vpn.alchemmist.xyz\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: "
+                    + base64.b64encode(os.urandom(16)).decode("ascii")
+                    + "\r\nSec-WebSocket-Version: 13\r\n\r\n"
                 )
                 t.sendall(req.encode())
                 line = t.recv(1024).split(b"\r\n")[0]
                 # Record only the numeric HTTP status, never the private path/response body.
                 parts = line.split()
-                d["http_status"] = (
-                    int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
-                )
+                d["http_status"] = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
                 assert d["http_status"] == 101
         d.update(stage="complete", ok=True)
         return True
@@ -234,9 +224,7 @@ class Controller:
         """Determine the scope of local recovery, if any is warranted."""
         detail: dict[str, object] = {}
         try:
-            probe(
-                self.config, host="10.250.0.2", source=("10.250.0.40", 0), detail=detail
-            )
+            probe(self.config, host="10.250.0.2", source=("10.250.0.40", 0), detail=detail)
             scope = "local-path-failed-upstream-healthy"
             if not active(AGENT):
                 scope = "local-agent-inactive"
@@ -257,9 +245,7 @@ class Controller:
     def prerequisites(self) -> None:
         """Pin the binary hash and validate the native path before use."""
         assert (
-            hashlib.sha256(
-                pathlib.Path("/usr/local/libexec/xray-transit").read_bytes()
-            ).hexdigest()
+            hashlib.sha256(pathlib.Path("/usr/local/libexec/xray-transit").read_bytes()).hexdigest()
             == self.config["binary_sha256"]
         )
         assert active("homelab-vpn-management-relay.service")
@@ -297,9 +283,8 @@ class Controller:
         # every public port. Do not ask it to release those ports or restart it.
         if self.config.get("warm_return_enabled") and active(NATIVE):
             if not self.healthy():
-                raise RuntimeError(
-                    "Native relay still owns ports but its path is unhealthy"
-                )
+                msg = "Native relay still owns ports but its path is unhealthy"
+                raise RuntimeError(msg)
             self.save(mode="native", failures=0, healthy=True)
             self.receipt("native-preserved", reason=reason)
             return
@@ -319,9 +304,7 @@ class Controller:
             time.sleep(1)
         assert self.healthy()
         self.save(mode="native", failures=0, healthy=True)
-        self.receipt(
-            "native-accepted", reason=reason, owned_containers_fenced=len(unique)
-        )
+        self.receipt("native-accepted", reason=reason, owned_containers_fenced=len(unique))
 
     def promote(self) -> None:
         """Explicitly accept a healthy fenced native relay as the permanent primary."""
@@ -353,7 +336,8 @@ class Controller:
         if self.config.get("warm_return_enabled"):
             self.warm_return()
             if self.state["mode"] != "kubernetes":
-                raise RuntimeError("Coordinated return deferred; native relay retained")
+                msg = "Coordinated return deferred; native relay retained"
+                raise RuntimeError(msg)
             return
         self.save(mode="transition-to-kubernetes", healthy=False)
         try:
@@ -407,7 +391,8 @@ class Controller:
         if response.returncode == 255:
             self.receipt("external-validation-unavailable")
         elif response.returncode:
-            raise RuntimeError("Reachable external VPN client rejected path")
+            msg = "Reachable external VPN client rejected path"
+            raise RuntimeError(msg)
 
     def warm_return(self):
         # A separate SSH identity invokes a fixed flock command on socrat-0.
@@ -453,13 +438,9 @@ class Controller:
                 if self.config.get("persistent_witness"):
                     lock.stdin.write(b"COMMIT\n" if completed else b"ABORT\n")
                     lock.stdin.flush()
-                    if (
-                        lock.wait(timeout=4) != 0
-                        or lock.stdout.read(9) != b"RELEASED\n"
-                    ):
-                        raise RuntimeError(
-                            "Unconfirmed witness release; inspect ownership before retry"
-                        )
+                    if lock.wait(timeout=4) != 0 or lock.stdout.read(9) != b"RELEASED\n":
+                        msg = "Unconfirmed witness release; inspect ownership before retry"
+                        raise RuntimeError(msg)
             finally:
                 lock.stdin.close()
                 lock.terminate()
@@ -503,7 +484,8 @@ class Controller:
             deadline = time.monotonic() + 90
             while time.monotonic() < deadline:
                 if lock.poll() is not None:
-                    raise RuntimeError("Lost independent transition lock")
+                    msg = "Lost independent transition lock"
+                    raise RuntimeError(msg)
                 owners = pod_processes()
                 if len(owners) == 1 and os.path.samefile(
                     f"/proc/{owners[0]['pid']}/exe",
@@ -512,19 +494,23 @@ class Controller:
                     break
                 time.sleep(0.5)
             else:
-                raise RuntimeError("No verified relay waiting at ownership gate")
+                msg = "No verified relay waiting at ownership gate"
+                raise RuntimeError(msg)
             self.witness()
             if lock.poll() is not None:
-                raise RuntimeError("Lost independent transition lock")
+                msg = "Lost independent transition lock"
+                raise RuntimeError(msg)
             run(["systemctl", "stop", NATIVE])
             free_ports()
             if lock.poll() is not None:
-                raise RuntimeError("Lost transition lock during native shutdown")
+                msg = "Lost transition lock during native shutdown"
+                raise RuntimeError(msg)
             atomic(self.permit, {"owner": "kubernetes"})
             until = time.monotonic() + 8
             while not self.healthy() and time.monotonic() < until:
                 if lock.poll() is not None:
-                    raise RuntimeError("Lost transition lock during cluster acceptance")
+                    msg = "Lost transition lock during cluster acceptance"
+                    raise RuntimeError(msg)
                 time.sleep(0.2)
             self.witness()
             if (
@@ -533,7 +519,8 @@ class Controller:
                 or active(NATIVE)
                 or lock.poll() is not None
             ):
-                raise RuntimeError("Unverified cluster handoff")
+                msg = "Unverified cluster handoff"
+                raise RuntimeError(msg)
             self.save(mode="committing", failures=0)
             self.marker.unlink()
             self.save(mode="kubernetes", failures=0, healthy=True)
@@ -569,11 +556,7 @@ class Controller:
                 self.save(mode="native", failures=0, healthy=True)
             else:
                 self.save(healthy=ok, last_probe=getattr(self, "last_probe", {}))
-            if (
-                ok
-                and self.config.get("warm_return_enabled")
-                and self.state["mode"] == "native"
-            ):
+            if ok and self.config.get("warm_return_enabled") and self.state["mode"] == "native":
                 boot = boot_id()
                 now = time.monotonic()
                 if self.state.get("return_boot") != boot:
@@ -587,9 +570,7 @@ class Controller:
             raise RuntimeError(msg)
         boot = boot_id()
         if self.state.get("boot_id") != boot:
-            self.save(
-                boot_id=boot, grace_until=time.time() + 120, healthy=False, failures=0
-            )
+            self.save(boot_id=boot, grace_until=time.time() + 120, healthy=False, failures=0)
         ok = self.healthy()
         if not ok and time.time() < persistent_number(self.state.get("grace_until", 0)):
             self.save(healthy=False, last_probe=getattr(self, "last_probe", {}))
@@ -597,9 +578,7 @@ class Controller:
         if ok:
             self.save(grace_until=0)
         n = 0 if ok else int(persistent_number(self.state.get("failures", 0))) + 1
-        self.save(
-            healthy=ok, failures=min(n, 4), last_probe=getattr(self, "last_probe", {})
-        )
+        self.save(healthy=ok, failures=min(n, 4), last_probe=getattr(self, "last_probe", {}))
         if ok:
             if self.state.get("failure_scope"):
                 self.save(failure_scope=None)
@@ -649,9 +628,7 @@ def main() -> None:
         raise SystemExit(0 if Controller().agent_allowed() else 1)
     with (ROOT / "lock").open("a") as lock:
         try:
-            fcntl.flock(
-                lock, fcntl.LOCK_EX | (fcntl.LOCK_NB if a.action == "tick" else 0)
-            )
+            fcntl.flock(lock, fcntl.LOCK_EX | (fcntl.LOCK_NB if a.action == "tick" else 0))
         except BlockingIOError:
             return
         c = Controller()

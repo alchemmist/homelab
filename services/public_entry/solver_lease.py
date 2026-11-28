@@ -15,7 +15,8 @@ class SolverLease:
 
     def __init__(self, window_ns: int):
         if type(window_ns) is not int or window_ns <= 0:
-            raise ValueError("positive fixture age budget required")
+            msg = "positive fixture age budget required"
+            raise ValueError(msg)
         self._window = window_ns
         self._lock = Lock()
         self._pending = None
@@ -39,7 +40,8 @@ class SolverLease:
             if time.monotonic_ns() >= deadline or uid is None:
                 return False
             if not isinstance(uid, str) or not uid:
-                raise ValueError("invalid confirmed Challenge UID")
+                msg = "invalid confirmed Challenge UID"
+                raise ValueError(msg)
             self._current = (ticket, uid, deadline)
             return True
 

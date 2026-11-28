@@ -153,7 +153,8 @@ class EngineCheckpointTests(unittest.TestCase):
     def test_partial_matching_checkpoint_saved_before_busy_failure(self):
         def matching(event, issues, progress=None, on_progress=None):
             on_progress({"signature": "test", "decisions": []})
-            raise Failure("LLM_HTTP_429")
+            msg = "LLM_HTTP_429"
+            raise Failure(msg)
 
         self.model.match.side_effect = matching
         key = self.store.enqueue(f.event())["job_id"]

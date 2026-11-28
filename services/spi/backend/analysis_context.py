@@ -16,7 +16,8 @@ def project_metric_series(data, limit):
     without immutable-artifact references keeps its existing fail-closed path.
     """
     if type(limit) is not int or not 1 <= limit <= 16:
-        raise ValueError("Invalid model metric series projection limit")
+        msg = "Invalid model metric series projection limit"
+        raise ValueError(msg)
     evidence = data.get("evidence", {})
     context = evidence.get("artifact_context")
     if not isinstance(context, dict) or not context.get("index"):

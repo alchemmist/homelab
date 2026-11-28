@@ -18,7 +18,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 def api(method, path, body=None):
     if path.startswith("/") or "://" in path or ".." in path:
-        raise ValueError("INVALID_N8N_API_PATH")
+        msg = "INVALID_N8N_API_PATH"
+        raise ValueError(msg)
     request = urllib.request.Request(
         "http://127.0.0.1:5678/api/v1/" + path,
         data=json.dumps(body).encode() if body is not None else None,
@@ -32,5 +33,6 @@ def api(method, path, body=None):
     with opener.open(request, timeout=30) as response:
         raw = response.read(4 * 1024 * 1024 + 1)
         if len(raw) > 4 * 1024 * 1024:
-            raise ValueError("N8N_RESPONSE_TOO_LARGE")
+            msg = "N8N_RESPONSE_TOO_LARGE"
+            raise ValueError(msg)
         return json.loads(raw) if raw else {}

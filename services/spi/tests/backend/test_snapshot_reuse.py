@@ -135,7 +135,8 @@ class ReviewReuseTests(unittest.TestCase):
         def choose(task, data, schema, deadline):
             calls[0] += 1
             if calls[0] == 8:
-                raise Failure("LLM_ADMISSION_DEFERRED")
+                msg = "LLM_ADMISSION_DEFERRED"
+                raise Failure(msg)
             return dict(GOOD, issue_number=data["open_issues"][0]["number"])
 
         m.call = choose

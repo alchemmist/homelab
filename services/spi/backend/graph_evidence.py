@@ -29,14 +29,17 @@ def _private_fd(fd, directory):
     # Tighten only service-owned, service-group, non-world-accessible objects.
     # Never follow links, chown foreign data, accept world access, or relax checks.
     if not expected or info.st_uid != os.getuid() or info.st_mode & 0o007:
-        raise GraphError("GRAPH_CHECKPOINT_INVALID")
+        msg = "GRAPH_CHECKPOINT_INVALID"
+        raise GraphError(msg)
     if info.st_mode & 0o077:
         if info.st_gid != os.getegid():
-            raise GraphError("GRAPH_CHECKPOINT_INVALID")
+            msg = "GRAPH_CHECKPOINT_INVALID"
+            raise GraphError(msg)
         os.fchmod(fd, 0o700 if directory else 0o600)
     info = os.fstat(fd)
     if info.st_mode & 0o077:
-        raise GraphError("GRAPH_CHECKPOINT_INVALID")
+        msg = "GRAPH_CHECKPOINT_INVALID"
+        raise GraphError(msg)
     return info
 
 
@@ -45,7 +48,8 @@ def _directory(path):
     try:
         fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     except OSError:
-        raise GraphError("GRAPH_CHECKPOINT_INVALID") from None
+        msg = "GRAPH_CHECKPOINT_INVALID"
+        raise GraphError(msg) from None
     try:
         _private_fd(fd, True)
     finally:
@@ -58,10 +62,12 @@ def _read(path, limit):
     with os.fdopen(fd, "rb") as stream:
         info = _private_fd(stream.fileno(), False)
         if info.st_size > limit:
-            raise GraphError("GRAPH_CHECKPOINT_INVALID")
+            msg = "GRAPH_CHECKPOINT_INVALID"
+            raise GraphError(msg)
         result = stream.read(limit + 1)
     if len(result) > limit:
-        raise GraphError("GRAPH_CHECKPOINT_INVALID")
+        msg = "GRAPH_CHECKPOINT_INVALID"
+        raise GraphError(msg)
     return result
 
 
@@ -76,7 +82,8 @@ def _immutable(path, data):
                 os.link(temporary, path, follow_symlinks=False)
             except FileExistsError:
                 if _read(path, len(data)) != data:
-                    raise GraphError("GRAPH_CHECKPOINT_CONFLICT")
+                    msg = "GRAPH_CHECKPOINT_CONFLICT"
+                    raise GraphError(msg)
             fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
             try:
                 os.fsync(fd)
@@ -92,7 +99,8 @@ def read_artifact(ref):
         or set(ref) != {"event_key", "render_digest"}
         or any(not isinstance(v, str) or not HEX.fullmatch(v) for v in ref.values())
     ):
-        raise GraphError("GRAPH_CHECKPOINT_INVALID")
+        msg = "GRAPH_CHECKPOINT_INVALID"
+        raise GraphError(msg)
     directory = _directory(_directory(ARTIFACT_ROOT) / ref["event_key"])
     data = _read(directory / (ref["render_digest"] + ".png"), 2 * 1024 * 1024)
     validate_png(data)
@@ -105,13 +113,15 @@ def collect(event, client, *, deadline=None):
         return [], []
     event_key = event.get("event_key")
     if not isinstance(event_key, str) or not HEX.fullmatch(event_key):
-        raise GraphError("GRAPH_CHECKPOINT_INVALID")
+        msg = "GRAPH_CHECKPOINT_INVALID"
+        raise GraphError(msg)
     directory = _directory(_directory(ARTIFACT_ROOT) / event_key)
     capture = directory / "capture.json"
     if capture.exists():
         state = json.loads(_read(capture, 65536))
         if state.get("specs") != specs:
-            raise GraphError("GRAPH_CHECKPOINT_CONFLICT")
+            msg = "GRAPH_CHECKPOINT_CONFLICT"
+            raise GraphError(msg)
         observed = state["observed_at"]
     else:
         observed = datetime.datetime.now(datetime.UTC).isoformat()
@@ -136,7 +146,8 @@ def collect(event, client, *, deadline=None):
                 meta = validate_png(data)
             else:
                 if remaining <= 0:
-                    raise GraphError("GRAPH_CAPTURE_DEFERRED")
+                    msg = "GRAPH_CAPTURE_DEFERRED"
+                    raise GraphError(msg)
                 data, meta = client.render(request, seconds=remaining)
                 validate_png(data)
                 # A bounded private spool must not exhaust the queue PVC. Never delete
@@ -145,12 +156,14 @@ def collect(event, client, *, deadline=None):
                     p.stat().st_size for p in ARTIFACT_ROOT.glob("*/*.png") if not p.is_symlink()
                 )
                 if used + len(data) > 512 * 1024 * 1024:
-                    raise GraphError("GRAPH_STORAGE_BUDGET")
+                    msg = "GRAPH_STORAGE_BUDGET"
+                    raise GraphError(msg)
                 if (
                     os.statvfs(directory).f_bavail * os.statvfs(directory).f_frsize
                     < len(data) + MIN_FREE_BYTES
                 ):
-                    raise GraphError("GRAPH_STORAGE_BUDGET")
+                    msg = "GRAPH_STORAGE_BUDGET"
+                    raise GraphError(msg)
                 _immutable(path, data)
             source = {
                 "kind": "grafana_panel_png",
@@ -225,7 +238,8 @@ def attach(bundle, artifacts, missing=()):
         aid = "E" + str(len(manifest["artifacts"]) + 1).zfill(3)
         raw = read_artifact(item["reference"])
         if len(raw) != item["stored_bytes"] or hashlib.sha256(raw).hexdigest() != item["sha256"]:
-            raise GraphError("GRAPH_CHECKPOINT_INVALID")
+            msg = "GRAPH_CHECKPOINT_INVALID"
+            raise GraphError(msg)
         manifest["artifacts"].append(
             {
                 "id": aid,

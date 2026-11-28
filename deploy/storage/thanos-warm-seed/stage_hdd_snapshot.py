@@ -43,19 +43,23 @@ def main() -> None:
     bucket = Bucket(json.loads(Path("/s3/objstore.yml").read_bytes())["config"])
     objects = retry_connection(bucket.listing)
     if objects is None:
-        raise OSError("object listing failed")
+        msg = "object listing failed"
+        raise OSError(msg)
     fs = os.statvfs(dest)
     if fs.f_bavail * fs.f_frsize < sum(objects.values()) + 100 * 2**30:
-        raise OSError("insufficient disk reserve")
+        msg = "insufficient disk reserve"
+        raise OSError(msg)
     copied = missing = 0
     tree = dest / "objects"
     with (dest / "verified.jsonl").open("x") as journal:
         for key, size in sorted(objects.items()):
             if any(part in {"", ".", ".."} for part in key.split("/")):
-                raise ValueError("unsafe object key")
+                msg = "unsafe object key"
+                raise ValueError(msg)
             target = tree / key
             target.parent.mkdir(parents=True, exist_ok=True)
             with tempfile.NamedTemporaryFile(dir=target.parent) as temp:
+
                 def transfer() -> tuple[int, str] | None:
                     temp.seek(0)
                     temp.truncate()

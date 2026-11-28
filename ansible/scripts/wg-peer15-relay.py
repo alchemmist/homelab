@@ -83,5 +83,6 @@ if __name__ == "__main__":
         BACK = ("10.250.0.1", 51838)
         TARGET = ("10.250.0.5", 51830)
     elif sys.argv[1:]:
-        raise SystemExit("Unknown relay profile")
+        msg = "Unknown relay profile"
+        raise SystemExit(msg)
     main()

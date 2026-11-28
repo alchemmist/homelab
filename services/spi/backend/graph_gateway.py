@@ -23,10 +23,12 @@ def secret(path):
             or info.st_uid not in (0, os.getuid())
             or info.st_size > 4096
         ):
-            raise ValueError("GRAPH_CONFIGURATION_INVALID")
+            msg = "GRAPH_CONFIGURATION_INVALID"
+            raise ValueError(msg)
         value = stream.read(4097).decode("ascii").strip()
     if not 16 <= len(value) <= 4096 or any(ord(c) < 33 or ord(c) > 126 for c in value):
-        raise ValueError("GRAPH_CONFIGURATION_INVALID")
+        msg = "GRAPH_CONFIGURATION_INVALID"
+        raise ValueError(msg)
     return value
 
 
@@ -36,7 +38,8 @@ class Server(http.server.ThreadingHTTPServer):
 
     def __init__(self, address, renderer, tokens):
         if set(tokens) != {"telegram", "spi"} or tokens["telegram"] == tokens["spi"]:
-            raise ValueError("GRAPH_CONFIGURATION_INVALID")
+            msg = "GRAPH_CONFIGURATION_INVALID"
+            raise ValueError(msg)
         self.renderer = renderer
         self.identities = {k: hashlib.sha256(v.encode()).digest() for k, v in tokens.items()}
         self.slots = threading.BoundedSemaphore(8)
@@ -148,7 +151,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     raise GraphError()
                 specs = parse_annotation(request["annotation"])
                 if not specs:
-                    raise GraphError("MISSING_GRAPH")
+                    msg = "MISSING_GRAPH"
+                    raise GraphError(msg)
                 request = resolve(
                     specs[0],
                     request["labels"],
@@ -184,7 +188,8 @@ def main():
     # Fixed mounts: no ambient credentials and no caller-selected policy/network origin.
     policy_path = pathlib.Path("/graph-policy/panels.json")
     if policy_path.stat().st_size > 65536:
-        raise ValueError("GRAPH_CONFIGURATION_INVALID")
+        msg = "GRAPH_CONFIGURATION_INVALID"
+        raise ValueError(msg)
     policy = json.loads(policy_path.read_bytes(), object_pairs_hook=_object)
     tokens = {name: secret("/graph-secrets/" + name) for name in ("telegram", "spi")}
     renderer = Renderer(secret("/graph-secrets/grafana"), policy)

@@ -159,7 +159,8 @@ def render(serial, home_up, vps_up, *, monori_health=None, web_answers=None):
             lines.append(f"{name} IN A {address}")
     for name, address in sorted((web_answers or {}).items()):
         if name in STATIC_A:
-            raise ValueError("Web record conflicts with fixed infrastructure record")
+            msg = "Web record conflicts with fixed infrastructure record"
+            raise ValueError(msg)
         lines.append(f"{name} IN A {address}")
     lines.append("")
     return "\n".join(lines)

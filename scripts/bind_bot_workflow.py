@@ -7,9 +7,8 @@ from pathlib import Path
 
 def bind(document, credential_id):
     if not credential_id.isalnum() and not credential_id.replace("-", "").isalnum():
-        raise ValueError(
-            "supply the actual n8n credential ID, not the secret or placeholder"
-        )
+        msg = "supply the actual n8n credential ID, not the secret or placeholder"
+        raise ValueError(msg)
     count = 0
     for node in document["nodes"]:
         ref = node.get("credentials", {}).get("httpHeaderAuth", {})
@@ -19,11 +18,13 @@ def bind(document, credential_id):
             .startswith("https://bot.socrat.alchemmist.xyz/api/")
         ):
             if ref.get("id") not in {"SOCRAT_BOT_FAILURES_ID", "SOCRAT_BOT_ALERTS_ID"}:
-                raise ValueError("unexpected bot credential reference")
+                msg = "unexpected bot credential reference"
+                raise ValueError(msg)
             ref["id"] = credential_id
             count += 1
     if count != 1:
-        raise ValueError("expected exactly one bot credential placeholder")
+        msg = "expected exactly one bot credential placeholder"
+        raise ValueError(msg)
     return document
 
 
@@ -32,8 +33,4 @@ if __name__ == "__main__":
     parser.add_argument("template", type=Path)
     parser.add_argument("credential_id")
     args = parser.parse_args()
-    print(
-        json.dumps(
-            bind(json.loads(args.template.read_text()), args.credential_id), indent=2
-        )
-    )
+    print(json.dumps(bind(json.loads(args.template.read_text()), args.credential_id), indent=2))

@@ -88,5 +88,6 @@ def validate_generated_report(value, schema, reference_ids=None):
                         sort_keys=True,
                     ),
                 )
-                raise Failure("INVALID_MODEL_SCHEMA")
+                msg = "INVALID_MODEL_SCHEMA"
+                raise Failure(msg)
     return value

@@ -43,7 +43,8 @@ def render():
         "namespace": NS,
         "server": "https://kubernetes.default.svc",
     }:
-        raise ValueError("unexpected release inputs")
+        msg = "unexpected release inputs"
+        raise ValueError(msg)
     return [
         obj
         for obj in yaml.safe_load_all(
@@ -71,7 +72,8 @@ def fixture(objects, catalog, *, strict):
     if strict is not False or catalog["hosts"][NS] != {
         HOST: {"dns": "managed", "tlsSourceName": "socrat-bot-tls"}
     }:
-        raise ValueError("unreviewed host or prefix mode")
+        msg = "unreviewed host or prefix mode"
+        raise ValueError(msg)
     (ing,) = [o for o in objects if o["kind"] == "Ingress"]
     m = ing["metadata"]
     wanted = lambda o: o["metadata"]["name"] == NS and o["metadata"]["namespace"] == NS
@@ -90,7 +92,8 @@ def fixture(objects, catalog, *, strict):
             "rules": [{"host": HOST, "http": {"paths": paths}}],
         }
     ):
-        raise ValueError("bot Ingress drift")
+        msg = "bot Ingress drift"
+        raise ValueError(msg)
     (svc,) = [o for o in objects if o["kind"] == "Service" and wanted(o)]
     (dep,) = [o for o in objects if o["kind"] == "Deployment" and wanted(o)]
     tmpl = dep["spec"]["template"]
@@ -111,7 +114,8 @@ def fixture(objects, catalog, *, strict):
         or main["ports"] != [{"name": "http", "containerPort": TARGET}]
         or main["command"] != ["python", "-m", "socrat_bot"]
     ):
-        raise ValueError("bot backend drift")
+        msg = "bot backend drift"
+        raise ValueError(msg)
     routers = {}
     for p, kind in PATHS:
         matcher = "Path" if kind == "Exact" else "PathPrefix"

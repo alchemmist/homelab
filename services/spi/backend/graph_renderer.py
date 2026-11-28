@@ -29,18 +29,22 @@ class Renderer:
             or not token
             or any(ord(c) < 33 or ord(c) > 126 for c in token)
         ):
-            raise ValueError("GRAPH_CONFIGURATION_INVALID")
+            msg = "GRAPH_CONFIGURATION_INVALID"
+            raise ValueError(msg)
         if not isinstance(policy, dict) or not policy:
-            raise ValueError("GRAPH_CONFIGURATION_INVALID")
+            msg = "GRAPH_CONFIGURATION_INVALID"
+            raise ValueError(msg)
         for key, names in policy.items():
             if (
                 not isinstance(key, str)
                 or not isinstance(names, list)
                 or any(not isinstance(n, str) for n in names)
             ):
-                raise ValueError("GRAPH_CONFIGURATION_INVALID")
+                msg = "GRAPH_CONFIGURATION_INVALID"
+                raise ValueError(msg)
         if type(cache_bytes) is not int or not MAX_PNG_BYTES <= cache_bytes <= 64 * 1024 * 1024:
-            raise ValueError("GRAPH_CONFIGURATION_INVALID")
+            msg = "GRAPH_CONFIGURATION_INVALID"
+            raise ValueError(msg)
         self._token, self._policy, self._transport = token, policy, transport
         self._clock, self._cache_limit = clock, cache_bytes
         self._cache, self._bytes = OrderedDict(), 0
@@ -124,7 +128,8 @@ class Renderer:
         path = render_path(request)
         key = request["dashboard_uid"] + ":" + str(request["panel_id"])
         if key not in self._policy or sorted(request["variables"]) != sorted(self._policy[key]):
-            raise GraphError("PANEL_NOT_ALLOWED")
+            msg = "PANEL_NOT_ALLOWED"
+            raise GraphError(msg)
         deadline = self._clock() + seconds
         with self._lock:
             cached = self._cached(digest)
@@ -139,21 +144,25 @@ class Renderer:
                 leader = False
         if not leader:
             if not existing.wait(max(0, deadline - self._clock())):
-                raise GraphError("RENDER_TIMEOUT")
+                msg = "RENDER_TIMEOUT"
+                raise GraphError(msg)
             with self._lock:
                 cached = self._cached(digest)
             if cached:
                 return cached
-            raise GraphError("RENDER_FAILED")
+            msg = "RENDER_FAILED"
+            raise GraphError(msg)
         spi_slot = slot = False
         try:
             if caller == "spi":
                 spi_slot = self._spi.acquire(blocking=False)
                 if not spi_slot:
-                    raise GraphError("BUSY")
+                    msg = "BUSY"
+                    raise GraphError(msg)
             slot = self._slots.acquire(blocking=False)
             if not slot:
-                raise GraphError("BUSY")
+                msg = "BUSY"
+                raise GraphError(msg)
             try:
                 remaining = deadline - self._clock()
                 if remaining <= 0:
@@ -162,11 +171,14 @@ class Renderer:
                 if self._clock() > deadline:
                     raise TimeoutError
             except TimeoutError:
-                raise GraphError("RENDER_TIMEOUT") from None
+                msg = "RENDER_TIMEOUT"
+                raise GraphError(msg) from None
             except (OSError, ValueError, http.client.HTTPException):
-                raise GraphError("RENDER_FAILED") from None
+                msg = "RENDER_FAILED"
+                raise GraphError(msg) from None
             if status != 200 or mime.split(";")[0].strip().lower() != "image/png":
-                raise GraphError("RENDER_FAILED")
+                msg = "RENDER_FAILED"
+                raise GraphError(msg)
             metadata = validate_png(body)
             metadata.update(
                 {

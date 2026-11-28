@@ -33,20 +33,18 @@ def observe(
         or not reviewed
         or not pins.keys() <= reviewed
     ):
-        raise ValueError("invalid listener witness scope")
+        msg = "invalid listener witness scope"
+        raise ValueError(msg)
     if any(
-        not isinstance(h, str)
-        or len(h) > 253
-        or not all(_LABEL.fullmatch(s) for s in h.split("."))
+        not isinstance(h, str) or len(h) > 253 or not all(_LABEL.fullmatch(s) for s in h.split("."))
         for h in reviewed
-    ) or any(
-        not isinstance(v, str) or not re.fullmatch("[0-9a-f]{64}", v)
-        for v in pins.values()
-    ):
-        raise ValueError("invalid listener witness identity")
+    ) or any(not isinstance(v, str) or not re.fullmatch("[0-9a-f]{64}", v) for v in pins.values()):
+        msg = "invalid listener witness identity"
+        raise ValueError(msg)
     ctx = trust if trust is not None else ssl.create_default_context()
     if not ctx.check_hostname or ctx.verify_mode != ssl.CERT_REQUIRED:
-        raise ValueError("verified client context required")
+        msg = "verified client context required"
+        raise ValueError(msg)
     result = {}
     for host in sorted(reviewed):
         try:
@@ -54,9 +52,7 @@ def observe(
                 socket.create_connection(("127.0.0.1", port), timeout=3) as raw,
                 ctx.wrap_socket(raw, server_hostname=host) as conn,
             ):
-                fingerprint = hashlib.sha256(
-                    conn.getpeercert(binary_form=True)
-                ).hexdigest()
+                fingerprint = hashlib.sha256(conn.getpeercert(binary_form=True)).hexdigest()
                 result[host] = (
                     "unexpected-leaf"
                     if host not in pins
@@ -68,9 +64,7 @@ def observe(
             result[host] = "untrusted-leaf"
         except ssl.SSLError as exc:
             if exc.reason == "TLSV1_UNRECOGNIZED_NAME":
-                result[host] = (
-                    "strict-rejection" if host not in pins else "missing-leaf"
-                )
+                result[host] = "strict-rejection" if host not in pins else "missing-leaf"
             else:
                 result[host] = "tls-error"
         except TimeoutError:

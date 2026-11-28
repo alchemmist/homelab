@@ -91,12 +91,14 @@ class Command(Protocol):
 def canonical_policy(document: object) -> dict[str, object]:
     """Compare policies by normalized statements, independent of ordering."""
     if not isinstance(document, dict) or set(document) - {"Version", "Statement", "Id"}:
-        raise ValueError("unexpected policy fields")
+        msg = "unexpected policy fields"
+        raise ValueError(msg)
     statements = document.get("Statement")
     if isinstance(statements, dict):
         statements = [statements]
     if not isinstance(statements, list):
-        raise ValueError("invalid statements")
+        msg = "invalid statements"
+        raise ValueError(msg)
     normalized = []
     for statement in statements:
         if not isinstance(statement, dict) or set(statement) - {
@@ -105,14 +107,16 @@ def canonical_policy(document: object) -> dict[str, object]:
             "Action",
             "Resource",
         }:
-            raise ValueError("unexpected policy grants/conditions")
+            msg = "unexpected policy grants/conditions"
+            raise ValueError(msg)
         row: dict[str, object] = {"Effect": statement.get("Effect")}
         for field in ("Action", "Resource"):
             values = statement.get(field)
             if isinstance(values, str):
                 values = [values]
             if not isinstance(values, list) or not all(isinstance(v, str) for v in values):
-                raise ValueError("invalid policy scope")
+                msg = "invalid policy scope"
+                raise ValueError(msg)
             row[field] = sorted(set(values))
         normalized.append(row)
     return {
@@ -125,14 +129,16 @@ def private_directory(path: Path) -> None:
     """Require a private, owned credentials directory."""
     s = path.lstat()
     if not stat.S_ISDIR(s.st_mode) or s.st_uid != os.getuid() or s.st_mode & 0o077:
-        raise ValueError("private owned directory required")
+        msg = "private owned directory required"
+        raise ValueError(msg)
 
 
 def private(path: Path) -> None:
     """Require a private, owned regular file."""
     s = path.lstat()
     if not stat.S_ISREG(s.st_mode) or s.st_uid != os.getuid() or s.st_mode & 0o077:
-        raise ValueError("private owned regular credentials file required")
+        msg = "private owned regular credentials file required"
+        raise ValueError(msg)
 
 
 def run(mc: str, config: str, args: Sequence[str], stdin: bytes | None = None) -> list[CommandRow]:
@@ -145,7 +151,8 @@ def run(mc: str, config: str, args: Sequence[str], stdin: bytes | None = None) -
         env={"PATH": os.defpath, "HOME": config, "LANG": "C"},
     )
     if result.returncode or len(result.stdout) > 1024 * 1024:
-        raise ValueError("request failed; stop and inspect privately; no automatic retry")
+        msg = "request failed; stop and inspect privately; no automatic retry"
+        raise ValueError(msg)
     rows: list[CommandRow] = []
     decoder = json.JSONDecoder()
     text = result.stdout.decode().strip()
@@ -154,23 +161,28 @@ def run(mc: str, config: str, args: Sequence[str], stdin: bytes | None = None) -
         rows.append(row)
         text = text[n:].lstrip()
     if any(row.get("status") == "error" for row in rows):
-        raise ValueError("request failed")
+        msg = "request failed"
+        raise ValueError(msg)
     return rows
 
 
 def validate_credentials(c: Credentials) -> None:
     """Fail unless the parsed credentials match the private port-forward contract."""
     if c["endpoint"] != "http://127.0.0.1:19000":
-        raise ValueError("private port-forward required")
+        msg = "private port-forward required"
+        raise ValueError(msg)
     for role in ("root", "n8n"):
         row = c[role]
         if not isinstance(row, dict):
-            raise ValueError("invalid credential")
+            msg = "invalid credential"
+            raise ValueError(msg)
         for key in ("access", "secret"):
             if not re.fullmatch(r"[A-Za-z0-9_-]{16,128}", row[key]):
-                raise ValueError("invalid credential")
+                msg = "invalid credential"
+                raise ValueError(msg)
     if c["root"]["access"] == c["n8n"]["access"]:
-        raise ValueError("separate identities and secrets required")
+        msg = "separate identities and secrets required"
+        raise ValueError(msg)
 
 
 def load_journal(path: Path, intended: dict[str, str]) -> object:
@@ -180,7 +192,8 @@ def load_journal(path: Path, intended: dict[str, str]) -> object:
     private(path)
     journal = json.loads(path.read_text())
     if journal != intended:
-        raise ValueError("machine credentials differ from ownership journal")
+        msg = "machine credentials differ from ownership journal"
+        raise ValueError(msg)
     return journal
 
 
@@ -188,7 +201,8 @@ def require_private_bucket(mc: Command) -> None:
     """Verify the binary-data bucket is absent of any anonymous access."""
     anonymous = mc("anonymous", "get", f"store/{BUCKET}")
     if not anonymous or anonymous[0].get("permission") != "private":
-        raise ValueError("private bucket verification failed; stop")
+        msg = "private bucket verification failed; stop"
+        raise ValueError(msg)
 
 
 def verify_existing_policy(mc: Command, tmp: Path, policy_names: set[str]) -> None:
@@ -201,7 +215,8 @@ def verify_existing_policy(mc: Command, tmp: Path, policy_names: set[str]) -> No
         if isinstance(actual, dict) and isinstance(actual.get("policy"), dict):
             actual = actual["policy"]
         if canonical_policy(actual) != canonical_policy(IDENTITY_POLICY):
-            raise ValueError("existing policy mismatch; no overwrite")
+            msg = "existing policy mismatch; no overwrite"
+            raise ValueError(msg)
 
 
 def verify_existing_user(mc: Command, journal: object, access: str, exists: bool) -> None:
@@ -209,19 +224,19 @@ def verify_existing_user(mc: Command, journal: object, access: str, exists: bool
     if not exists:
         return
     if journal is None:
-        raise ValueError("existing user without ownership journal; no adoption")
+        msg = "existing user without ownership journal; no adoption"
+        raise ValueError(msg)
     row = mc("admin", "user", "info", "store", access)[0]
     if (
         row.get("policyName", "") not in ("", POLICY_NAME)
         or row.get("memberOf")
         or row.get("userStatus") != "enabled"
     ):
-        raise ValueError("existing user mismatch; no modification")
+        msg = "existing user mismatch; no modification"
+        raise ValueError(msg)
 
 
-def attach_user(
-    mc: Command, names: set[str], journal: object, access: str, secret: str
-) -> None:
+def attach_user(mc: Command, names: set[str], journal: object, access: str, secret: str) -> None:
     """Create the journaled user when absent and attach the bucket policy."""
     if access not in names:
         mc("admin", "user", "add", "store", stdin=(access + "\n" + secret + "\n").encode())
@@ -259,7 +274,8 @@ def main() -> None:
     private_directory(args.credentials.parent)
     private(args.credentials)
     if hashlib.sha256(Path(args.mc).read_bytes()).hexdigest() != args.mc_sha256:
-        raise ValueError("mc binary digest mismatch")
+        msg = "mc binary digest mismatch"
+        raise ValueError(msg)
     c = json.loads(args.credentials.read_text())
     validate_credentials(c)
     if not args.apply:
@@ -316,7 +332,8 @@ def main() -> None:
         if output.exists() or output.is_symlink():
             private(output)
             if json.loads(output.read_text()) != render_secret(c):
-                raise ValueError("existing rendered Secret differs; no overwrite")
+                msg = "existing rendered Secret differs; no overwrite"
+                raise ValueError(msg)
         else:
             fd = os.open(output, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
             with os.fdopen(fd, "w") as out:
@@ -330,6 +347,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception:
-        raise SystemExit(
-            "Bootstrap stopped safely; inspect private state; no secrets or response bodies printed."
-        )
+        msg = "Bootstrap stopped safely; inspect private state; no secrets or response bodies printed."
+        raise SystemExit(msg)
