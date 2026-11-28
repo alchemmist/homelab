@@ -1,10 +1,13 @@
 """Immutable S3 publication can wait; unsafe writes/auth/conflicts cannot."""
 
-import copy, hashlib, socket, unittest
+import copy
+import socket
+import unittest
 from unittest.mock import patch
+
 import test_s3_engine as fixture
 from core import Failure
-from s3_evidence import StorageTransient, StoragePermanent, StorageConflict, S3Evidence
+from s3_evidence import S3Evidence, StorageConflict, StoragePermanent, StorageTransient
 
 
 class StorageWaitTests(unittest.TestCase):

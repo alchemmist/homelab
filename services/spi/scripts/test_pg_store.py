@@ -1,8 +1,12 @@
 """Existing behavioural tests, unique PG schema per temporary SQLite path; disposable DB only."""
 
-import hashlib, os, sys, unittest
+import hashlib
+import os
+import sys
+import unittest
 from pathlib import Path
 from unittest.mock import patch
+
 import psycopg
 from psycopg import sql
 from psycopg.conninfo import make_conninfo

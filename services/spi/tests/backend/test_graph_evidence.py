@@ -2,15 +2,15 @@ import copy
 import hashlib
 import importlib.util
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 
-from core import Failure
-from evidence_bundle import prepare_bundle, storage_objects, publish_parts
-from graph_contract import GraphError, validate_png
 import graph_evidence as graphs
+from core import Failure
+from evidence_bundle import prepare_bundle, publish_parts, storage_objects
+from graph_contract import GraphError, validate_png
 from test_graph_contract import annotation, graph, png
 
 

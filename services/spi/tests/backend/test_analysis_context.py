@@ -3,10 +3,11 @@
 import copy
 import unittest
 from unittest.mock import Mock
-from analysis_context import project_metric_series, compact_analysis_context
-from core import digest, Failure
-from integrations import Model
+
 import test_triage as fixture
+from analysis_context import compact_analysis_context, project_metric_series
+from core import Failure, digest
+from integrations import Model
 
 
 def context():
@@ -124,7 +125,7 @@ class AnalysisContextProjectionTests(unittest.TestCase):
                 0,
             )
             self.assertEqual(len(projected["evidence"]["queries"][0]["result"]["series"]), 100)
-            raise Captured()
+            raise Captured
 
         model.call = call
         with self.assertRaises(Captured):

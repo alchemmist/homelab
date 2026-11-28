@@ -30,9 +30,7 @@ ISSUER = AUTH_ORIGIN + "/application/o/spi-triage/"
 CALLBACK = ORIGIN + "/oauth/callback"
 SESSION_COOKIE = "__Host-spi-session"
 STATE_COOKIE = "__Host-spi-state"
-GROUPS = frozenset(
-    ("homelab-owner", "homelab-platform-operator", "app-spi-triage-operator")
-)
+GROUPS = frozenset(("homelab-owner", "homelab-platform-operator", "app-spi-triage-operator"))
 MAX_SESSIONS = 128
 
 
@@ -62,9 +60,7 @@ def cookie_value(headers, name):
         return None
     return (
         value
-        if len(value) == 43
-        and value.isascii()
-        and all(c.isalnum() or c in "_-" for c in value)
+        if len(value) == 43 and value.isascii() and all(c.isalnum() or c in "_-" for c in value)
         else None
     )
 
@@ -87,9 +83,7 @@ class OIDC:
         self.pending, self.sessions = {}, {}
         self.metadata = None
         self.metadata_until = 0
-        self.http = urllib.request.build_opener(
-            urllib.request.ProxyHandler({}), NoRedirect()
-        )
+        self.http = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
     @classmethod
     def from_file(cls):
@@ -101,10 +95,7 @@ class OIDC:
                 or info.st_mode & 0o027
                 or info.st_uid not in (0, os.getuid())
                 or info.st_size > 8192
-                or (
-                    info.st_mode & 0o040
-                    and info.st_gid not in (os.getgid(), *os.getgroups())
-                )
+                or (info.st_mode & 0o040 and info.st_gid not in (os.getgid(), *os.getgroups()))
             ):
                 raise ValueError("invalid OIDC credential permissions")
             value = json.loads(stream.read(8193))
@@ -121,22 +112,22 @@ class OIDC:
         try:
             with self.http.open(req, timeout=5) as response:
                 if response.status != 200:
-                    raise Unavailable()
+                    raise Unavailable
                 raw = response.read(65537)
             if len(raw) > 65536:
-                raise Unavailable()
+                raise Unavailable
             result = json.loads(raw)
             if not isinstance(result, dict):
-                raise Unavailable()
+                raise Unavailable
             return result
         except urllib.error.HTTPError as error:
             error.close()
             # Never retry an ambiguous token exchange or expose IdP responses.
             if method == "POST" and error.code in (400, 401, 403):
-                raise Rejected() from None
-            raise Unavailable() from None
+                raise Rejected from None
+            raise Unavailable from None
         except (OSError, ValueError, urllib.error.URLError):
-            raise Unavailable() from None
+            raise Unavailable from None
 
     def discovery(self):
         with self.lock:
@@ -150,14 +141,13 @@ class OIDC:
             "jwks_uri": ISSUER + "jwks/",
         }
         if any(data.get(k) != v for k, v in required.items()):
-            raise Unavailable()
+            raise Unavailable
         if (
             "S256" not in data.get("code_challenge_methods_supported", [])
             or "RS256" not in data.get("id_token_signing_alg_values_supported", [])
-            or "client_secret_post"
-            not in data.get("token_endpoint_auth_methods_supported", [])
+            or "client_secret_post" not in data.get("token_endpoint_auth_methods_supported", [])
         ):
-            raise Unavailable()
+            raise Unavailable
         with self.lock:
             self.metadata, self.metadata_until = required, self.clock() + 300
         return dict(required)
@@ -169,7 +159,7 @@ class OIDC:
 
     def begin(self):
         if not self.slots.acquire(blocking=False):
-            raise Unavailable()
+            raise Unavailable
         try:
             metadata = self.discovery()
         finally:
@@ -183,7 +173,7 @@ class OIDC:
         with self.lock:
             self._prune()
             if len(self.pending) >= MAX_SESSIONS:
-                raise Unavailable()
+                raise Unavailable
             self.pending[state] = {
                 "binding": binding,
                 "nonce": nonce,
@@ -202,27 +192,25 @@ class OIDC:
                 "code_challenge_method": "S256",
             }
         )
-        return metadata["authorization_endpoint"] + "?" + query, cookie(
-            STATE_COOKIE, binding, 300
-        )
+        return metadata["authorization_endpoint"] + "?" + query, cookie(STATE_COOKIE, binding, 300)
 
     def finish(self, query, headers):
         if len(query) > 4096:
-            raise Rejected()
+            raise Rejected
         try:
             params = urllib.parse.parse_qs(query, strict_parsing=True, max_num_fields=8)
         except ValueError:
-            raise Rejected() from None
+            raise Rejected from None
         if (
             not {"code", "state"} <= set(params)
             or set(params) - {"code", "state", "iss"}
             or any(len(v) != 1 for v in params.values())
             or ("iss" in params and params["iss"] != [ISSUER])
         ):
-            raise Rejected()
+            raise Rejected
         code, state = params["code"][0], params["state"][0]
         if not 1 <= len(code) <= 2048 or len(state) != 43:
-            raise Rejected()
+            raise Rejected
         binding = cookie_value(headers, STATE_COOKIE)
         with self.lock:
             self._prune()
@@ -232,11 +220,11 @@ class OIDC:
                 or not binding
                 or not secrets.compare_digest(binding, pending["binding"])
             ):
-                raise Rejected()
+                raise Rejected
             # A code/state gets one attempt even on ambiguous upstream failure.
             del self.pending[state]
         if not self.slots.acquire(blocking=False):
-            raise Unavailable()
+            raise Unavailable
         try:
             metadata = self.discovery()
             data = urllib.parse.urlencode(
@@ -252,7 +240,7 @@ class OIDC:
             tokens = self.request("POST", metadata["token_endpoint"], data)
             token = tokens.get("id_token")
             if not isinstance(token, str) or len(token) > 16384:
-                raise Rejected()
+                raise Rejected
             keys = self.request("GET", metadata["jwks_uri"])
             claims = self.verify(token, keys, pending["nonce"])
         finally:
@@ -261,7 +249,7 @@ class OIDC:
         with self.lock:
             self._prune()
             if len(self.sessions) >= MAX_SESSIONS:
-                raise Unavailable()
+                raise Unavailable
             self.sessions[identity] = {
                 "sub": claims["sub"],
                 "until": min(claims["exp"], self.clock() + 300),
@@ -274,14 +262,14 @@ class OIDC:
 
     def verify(self, token, keys, nonce):
         if jwt is None:
-            raise Unavailable()
+            raise Unavailable
         try:
             header = jwt.get_unverified_header(token)
             if header.get("alg") != "RS256" or not isinstance(header.get("kid"), str):
-                raise Rejected()
+                raise Rejected
             rows = keys.get("keys")
             if not isinstance(rows, list) or len(rows) > 16:
-                raise Rejected()
+                raise Rejected
             matches = [
                 r
                 for r in rows
@@ -291,10 +279,10 @@ class OIDC:
                 and r.get("alg", "RS256") == "RS256"
             ]
             if len(matches) != 1:
-                raise Rejected()
+                raise Rejected
             key = jwt.PyJWK.from_dict(matches[0], algorithm="RS256").key
             if key.key_size < 2048:
-                raise Rejected()
+                raise Rejected
             claims = jwt.decode(
                 token,
                 key,
@@ -320,10 +308,10 @@ class OIDC:
                 or not all(isinstance(g, str) for g in claims["groups"])
                 or not GROUPS.intersection(claims["groups"])
             ):
-                raise Rejected()
+                raise Rejected
             return claims
         except (jwt.PyJWTError, ValueError, TypeError, KeyError, AttributeError):
-            raise Rejected() from None
+            raise Rejected from None
 
     def authorized(self, headers):
         identity = cookie_value(headers, SESSION_COOKIE)

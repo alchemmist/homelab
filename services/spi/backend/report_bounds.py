@@ -1,10 +1,11 @@
 """Generation-only bounds; historical REPORT_SCHEMA and stored evidence stay intact."""
 
 import copy
-import re
 import json
 import logging
-from core import REPORT_SCHEMA, validate, Failure
+import re
+
+from core import REPORT_SCHEMA, Failure, validate
 
 # Printable ASCII excluding double quote/backslash: no mandatory JSON escaping.
 # A compact ASCII report fits the original2500-token allowance even without

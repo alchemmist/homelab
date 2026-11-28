@@ -1,4 +1,5 @@
 import unittest
+
 from graph_client import GraphClient
 from graph_contract import GraphError, resolve, validate_png
 from test_graph_contract import graph, png

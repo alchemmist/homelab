@@ -1,13 +1,14 @@
 """Read-only, allowlisted workload metadata. Never export pod specs or env values."""
 
-import json
 import base64
+import json
 import re
 import ssl
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 from pathlib import Path
+
 from core import Failure
 
 SAFE = re.compile(r"[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?\Z")
@@ -25,7 +26,7 @@ class DeploymentCollector:
             return self.reader(path)
         if not (ROOT / "token").exists():
             raise Failure("KUBERNETES_READ_IDENTITY_MISSING")
-        from integrations import NoRedirect, REQUEST_DEADLINE
+        from integrations import REQUEST_DEADLINE, NoRedirect
 
         remaining = getattr(REQUEST_DEADLINE, "at", time.monotonic() + 12) - time.monotonic()
         if remaining < 1:
@@ -345,7 +346,6 @@ class DeploymentCollector:
                 timeout=10,
                 limit=200000,
             )
-            import hashlib
 
             # Registry JSON reserialization is not byte-identical: record registry claim, not cryptographic binary/source equivalence.
             labels = raw.get("config", {}).get("Labels") or {}

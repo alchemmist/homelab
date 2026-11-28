@@ -8,6 +8,7 @@ already committed. Waiting owners have no in-flight side effect to replay.
 import math
 import re
 import secrets
+
 from core import Failure
 
 ABSOLUTE_SECONDS = 21600
@@ -359,6 +360,7 @@ class WaitOwners:
         budget, or authority to replay an ambiguous publication.
         """
         import json
+
         from core import OWNER_CONTEXT
 
         row = c.execute("SELECT * FROM workflow_wait_owner WHERE job_id=?", (key,)).fetchone()

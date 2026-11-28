@@ -22,7 +22,7 @@ import json
 import re
 import time
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from core import SECRET_KEY, Failure
 from integrations import REQUEST_DEADLINE
@@ -118,7 +118,7 @@ def _epoch(value):
         return None
     if parsed.tzinfo is None:
         return None
-    delta = parsed.astimezone(timezone.utc) - datetime(1970, 1, 1, tzinfo=timezone.utc)
+    delta = parsed.astimezone(UTC) - datetime(1970, 1, 1, tzinfo=UTC)
     return int(delta.total_seconds())
 
 
@@ -191,7 +191,7 @@ def absolute_window(starts_at, ends_at, now):
 
 def _rfc3339(epoch):
     try:
-        return datetime.fromtimestamp(int(epoch), timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        return datetime.fromtimestamp(int(epoch), UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     except (OverflowError, OSError, ValueError):
         return None
 
@@ -365,9 +365,9 @@ def trace_ids_in_text(text):
 def _line_epoch(value):
     if isinstance(value, bool):
         return None
-    if isinstance(value, (int, float)):
-        number = int(value)
-    elif isinstance(value, str) and re.fullmatch(r"[0-9]{10,19}", value):
+    if isinstance(value, (int, float)) or (
+        isinstance(value, str) and re.fullmatch(r"[0-9]{10,19}", value)
+    ):
         number = int(value)
     else:
         return None

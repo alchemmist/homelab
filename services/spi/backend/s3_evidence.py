@@ -7,11 +7,11 @@ import datetime
 import hashlib
 import hmac
 import http.client
+import queue
+import re
 import socket
 import threading
 import time
-import re
-import queue
 import urllib.parse
 from email.utils import parsedate_to_datetime
 
@@ -201,7 +201,7 @@ def sign(method, url, access, secret, now=None, region="us-east-1", payload=b"")
     u = urllib.parse.urlsplit(url)
     if u.query or u.fragment or u.username or u.password:
         raise ValueError("invalid upstream")
-    now = now or datetime.datetime.now(datetime.timezone.utc)
+    now = now or datetime.datetime.now(datetime.UTC)
     stamp = now.strftime("%Y%m%dT%H%M%SZ")
     day = stamp[:8]
     digest = hashlib.sha256(payload).hexdigest()
@@ -251,7 +251,7 @@ def retry_after(value):
             int(value)
             if value.isascii() and value.isdigit()
             else (
-                parsedate_to_datetime(value) - datetime.datetime.now(datetime.timezone.utc)
+                parsedate_to_datetime(value) - datetime.datetime.now(datetime.UTC)
             ).total_seconds()
         )
         return min(86400, max(0, seconds))
@@ -264,12 +264,12 @@ class S3Evidence:
         if origin != ORIGIN or not (
             type(operation_seconds) in (int, float) and 0 < operation_seconds <= 60
         ):
-            raise StoragePermanent()
+            raise StoragePermanent
         if any(
             not isinstance(x, str) or not re.fullmatch(r"[A-Za-z0-9/+=_.-]{1,256}", x)
             for x in (access, secret)
         ):
-            raise StoragePermanent()
+            raise StoragePermanent
         self._access, self._secret = access, secret
         self._seconds, self._transport = operation_seconds, transport
 
@@ -283,17 +283,17 @@ class S3Evidence:
             body = b""
             if response.status == 200 and method == "GET":
                 if response.getheader("Content-Encoding", "identity") != "identity":
-                    raise StoragePermanent()
+                    raise StoragePermanent
                 length = response.getheader("Content-Length")
                 if length is not None and (
                     not length.isascii() or not length.isdigit() or int(length) > MAX_BYTES
                 ):
-                    raise StoragePermanent()
+                    raise StoragePermanent
                 body = response.read(MAX_BYTES + 1)
                 if len(body) > MAX_BYTES:
-                    raise StoragePermanent()
+                    raise StoragePermanent
                 if length is not None and len(body) != int(length):
-                    raise StorageTransient()
+                    raise StorageTransient
             return response.status, dict(response.getheaders()), body
         finally:
             if response is not None:
@@ -324,7 +324,7 @@ class S3Evidence:
             raise StorageTransient(reason="OPERATION_DEADLINE")
         status, headers, body = result
         if not isinstance(body, bytes) or len(body) > MAX_BYTES:
-            raise StoragePermanent()
+            raise StoragePermanent
         if status in (408, 429) or 500 <= status <= 599:
             raise StorageTransient(
                 retry_after(
@@ -333,7 +333,7 @@ class S3Evidence:
                 reason="HTTP_5XX" if status >= 500 else "HTTP_" + str(status),
             )
         if status not in (200, 201, 204, 404, 409, 412):
-            raise StoragePermanent()
+            raise StoragePermanent
         return status, body
 
     def ensure_object(self, key, exact_bytes):
@@ -344,7 +344,7 @@ class S3Evidence:
             or type(exact_bytes) is not bytes
             or len(exact_bytes) > MAX_BYTES
         ):
-            raise StoragePermanent()
+            raise StoragePermanent
         deadline = time.monotonic() + self._seconds
         digest = hashlib.sha256(exact_bytes).hexdigest()
 
@@ -352,7 +352,7 @@ class S3Evidence:
             if status != 200:
                 raise StorageTransient(reason="READBACK_NOT_READY")
             if len(body) != len(exact_bytes) or hashlib.sha256(body).hexdigest() != digest:
-                raise StorageConflict()
+                raise StorageConflict
             return {
                 "bucket": BUCKET,
                 "key": key,
@@ -365,11 +365,11 @@ class S3Evidence:
         if status == 200:
             return verify(status, body)
         if status != 404:
-            raise StoragePermanent()
+            raise StoragePermanent
         try:
             status, _ = self._request("PUT", key, exact_bytes, deadline)
             if status not in (200, 201, 204, 409, 412):
-                raise StoragePermanent()
+                raise StoragePermanent
         except StorageTransient:
             return verify(*self._request("GET", key, b"", deadline))
         return verify(*self._request("GET", key, b"", deadline))

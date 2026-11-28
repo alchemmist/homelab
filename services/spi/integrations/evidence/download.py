@@ -26,7 +26,7 @@ def reconstruct(comments, event_key):
             r"## Evidence ([A-Z0-9]+) — ([A-Za-z0-9_.-]+) \(part ([0-9]+)/([0-9]+)\)\n\nSHA-256: `([a-f0-9]{64})`",
             body,
         )
-        block = re.search(r"\n\n(?P<fence>`{4,})text\n(?P<data>.*?)\n(?P=fence)\n", body, re.S)
+        block = re.search(r"\n\n(?P<fence>`{4,})text\n(?P<data>.*?)\n(?P=fence)\n", body, re.DOTALL)
         if not header or not block:
             raise ValueError("INVALID_ARTIFACT_COMMENT")
         aid, name, part, total, checksum = header.groups()

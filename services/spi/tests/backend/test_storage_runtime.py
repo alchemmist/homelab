@@ -1,14 +1,14 @@
 import json
 import os
-from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch, MagicMock
+from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend"))
-import storage_runtime as runtime
 import service
+import storage_runtime as runtime
 
 
 class Runtime(unittest.TestCase):

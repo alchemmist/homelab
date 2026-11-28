@@ -4,10 +4,10 @@ This module is never imported by the runtime; production never downloads assets.
 
 import hashlib
 import json
-from pathlib import Path
 import sys
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 REVISION = "91bd022d5b49442a868bc35008f6c21e1860edfa"
 TOKENIZER = {

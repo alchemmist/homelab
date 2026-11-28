@@ -3,11 +3,11 @@
 import http.client
 import importlib.util
 import json
-from pathlib import Path
 import subprocess
-import threading
 import sys
+import threading
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -210,11 +210,13 @@ class QueueWebTests(unittest.TestCase):
 
     def test_upstream_failures_log_only_error_type_not_private_details(self):
         headers = {"Origin": web.ORIGIN, "X-SPI-Queue": "1", "Content-Type": "application/json"}
-        with patch.object(
-            web.http.client, "HTTPConnection", side_effect=OSError("PRIVATE_SENTINEL")
+        with (
+            patch.object(
+                web.http.client, "HTTPConnection", side_effect=OSError("PRIVATE_SENTINEL")
+            ),
+            self.assertLogs(level="WARNING") as logs,
         ):
-            with self.assertLogs(level="WARNING") as logs:
-                self.assertEqual(self.request("POST", "/api/list", "{}", headers)[0], 502)
+            self.assertEqual(self.request("POST", "/api/list", "{}", headers)[0], 502)
         self.assertIn("OSError", str(logs.output))
         self.assertNotIn("PRIVATE_SENTINEL", str(logs.output))
 
@@ -231,6 +233,7 @@ class QueueWebTests(unittest.TestCase):
 class QueueAuthorizationTests(unittest.TestCase):
     def test_caller_identity_headers_never_authorize_without_native_session(self):
         from email.message import Message
+
         from queue_oidc import OIDC
 
         handler = Mock()
@@ -247,6 +250,7 @@ class QueueAuthorizationTests(unittest.TestCase):
     def test_only_opaque_server_side_session_authorizes(self):
         import time
         from email.message import Message
+
         from queue_oidc import OIDC, SESSION_COOKIE
 
         handler = Mock()

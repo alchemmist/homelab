@@ -5,7 +5,8 @@ The Helm service address must be pinned to this existing VIP before activation.
 Service recreation/selector/address drift requires explicit operator review.
 """
 
-import ipaddress, json
+import ipaddress
+import json
 from pathlib import Path
 
 CONTRACT = Path(__file__).with_name("worker-service.json")

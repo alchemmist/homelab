@@ -1,9 +1,11 @@
 """Validated byte-bound contract; fixtures contain no production evidence."""
 
-import copy, json, time, unittest
+import copy
+import unittest
 from unittest.mock import Mock
+
 import test_triage as f
-from core import Failure, MATCH_SCHEMA, REPORT_SCHEMA
+from core import MATCH_SCHEMA, Failure
 from integrations import Model
 
 
@@ -88,7 +90,7 @@ class ContextAccountingTests(unittest.TestCase):
         def call(task, data, schema, deadline):
             captured.update(data)
             self.assertLessEqual(m.budget_reservation(m.payload(task, data, schema)), 30000)
-            raise Stop()
+            raise Stop
 
         m.call = call
         with self.assertRaises(Stop):
@@ -135,7 +137,7 @@ class ContextAccountingTests(unittest.TestCase):
         def call(task, data, schema, deadline):
             captured.update(data)
             self.assertLessEqual(m.counter.reservation(m.payload(task, data, schema)), 30000)
-            raise Stop()
+            raise Stop
 
         m.call = call
         with self.assertRaises(Stop):

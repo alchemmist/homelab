@@ -28,22 +28,22 @@ def _object(pairs):
     out = {}
     for key, value in pairs:
         if key in out:
-            raise GraphError()
+            raise GraphError
         out[key] = value
     return out
 
 
 def _int(value, low, high):
     if type(value) is not int or not low <= value <= high:
-        raise GraphError()
+        raise GraphError
     return value
 
 
 def _text(value, maximum):
     if not isinstance(value, str) or not 1 <= len(value) <= maximum:
-        raise GraphError()
+        raise GraphError
     if any(ord(c) < 32 or ord(c) == 127 for c in value):
-        raise GraphError()
+        raise GraphError
     return value
 
 
@@ -56,7 +56,7 @@ def parse_annotation(raw):
     if raw is None:
         return []
     if not isinstance(raw, str) or len(raw.encode("utf-8")) > MAX_ANNOTATION_BYTES:
-        raise GraphError()
+        raise GraphError
     try:
         obj = json.loads(
             raw,
@@ -64,19 +64,19 @@ def parse_annotation(raw):
             parse_constant=lambda _: (_ for _ in ()).throw(GraphError()),
         )
     except (ValueError, TypeError, RecursionError):
-        raise GraphError() from None
+        raise GraphError from None
     if not isinstance(obj, dict) or set(obj) != {"version", "graphs"}:
-        raise GraphError()
+        raise GraphError
     if type(obj["version"]) is not int or obj["version"] != VERSION:
-        raise GraphError()
+        raise GraphError
     graphs = obj["graphs"]
     if not isinstance(graphs, list) or not 1 <= len(graphs) <= MAX_GRAPHS:
-        raise GraphError()
+        raise GraphError
     result, seen = [], set()
     for graph in graphs:
         normalized = validate_graph(graph)
         if normalized["id"] in seen:
-            raise GraphError()
+            raise GraphError
         seen.add(normalized["id"])
         result.append(normalized)
     return result
@@ -90,32 +90,32 @@ def validate_graph(graph):
         or not required <= graph.keys()
         or graph.keys() - required - optional
     ):
-        raise GraphError()
+        raise GraphError
     for key in ("id", "dashboard_uid"):
         if not isinstance(graph[key], str) or not _ID.fullmatch(graph[key]):
-            raise GraphError()
+            raise GraphError
     _text(graph["title"], 160)
     _int(graph["panel_id"], 1, 2**31 - 1)
     before = _int(graph.get("before_seconds", 1800), 1, MAX_WINDOW_SECONDS)
     after = _int(graph.get("after_seconds", 300), 0, MAX_WINDOW_SECONDS)
     if before + after > MAX_WINDOW_SECONDS:
-        raise GraphError()
+        raise GraphError
     variables = graph["variables"]
     if not isinstance(variables, dict) or len(variables) > 16:
-        raise GraphError()
+        raise GraphError
     normalized = {}
     for name, binding in variables.items():
         if not isinstance(name, str) or not _NAME.fullmatch(name):
-            raise GraphError()
+            raise GraphError
         if not isinstance(binding, dict) or set(binding) not in ({"label"}, {"literal"}):
-            raise GraphError()
+            raise GraphError
         kind = next(iter(binding))
         value = _text(binding[kind], 512)
         if kind == "label" and not _NAME.fullmatch(value):
-            raise GraphError()
+            raise GraphError
         # Never accidentally widen an instance to Grafana All/regex selectors.
         if kind == "literal" and value in ("All", "$__all", ".*"):
-            raise GraphError()
+            raise GraphError
         normalized[name] = {kind: value}
     return {**graph, "variables": normalized, "before_seconds": before, "after_seconds": after}
 
@@ -126,10 +126,10 @@ def timestamp_ms(value):
     try:
         parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
         if parsed.tzinfo is None:
-            raise ValueError()
+            raise ValueError
         result = parsed.timestamp() * 1000
         if not math.isfinite(result) or result < 0:
-            raise ValueError()
+            raise ValueError
         return int(result)
     except (ValueError, OverflowError, OSError):
         raise GraphError("INVALID_TIMESTAMP") from None
@@ -144,7 +144,7 @@ def resolve(
         or status not in ("firing", "resolved")
         or purpose not in ("telegram", "spi")
     ):
-        raise GraphError()
+        raise GraphError
     start, observed = timestamp_ms(starts_at), timestamp_ms(observed_at)
     if observed < start:
         raise GraphError("INVALID_TIMESTAMP")
@@ -184,7 +184,7 @@ def render_path(request):
     if not isinstance(request.get("dashboard_uid"), str) or not _ID.fullmatch(
         request["dashboard_uid"]
     ):
-        raise GraphError()
+        raise GraphError
     _int(request.get("panel_id"), 1, 2**31 - 1)
     _int(request.get("from_ms"), 0, 2**53 - 1)
     _int(
@@ -195,10 +195,10 @@ def render_path(request):
         or request.get("height") != 600
         or request.get("theme") != "light"
     ):
-        raise GraphError()
+        raise GraphError
     variables = request.get("variables")
     if not isinstance(variables, dict) or len(variables) > 16:
-        raise GraphError()
+        raise GraphError
     params = [
         ("panelId", request["panel_id"]),
         ("from", request["from_ms"]),
@@ -210,7 +210,7 @@ def render_path(request):
     ]
     for name, value in sorted(variables.items()):
         if not isinstance(name, str) or not _NAME.fullmatch(name):
-            raise GraphError()
+            raise GraphError
         _text(value, 512)
         if value in ("All", "$__all", ".*"):
             raise GraphError("MISSING_LABEL")
@@ -230,17 +230,17 @@ def validate_png(data):
         while offset < len(data):
             length = struct.unpack_from(">I", data, offset)[0]
             if offset + length + 12 > len(data) or length > MAX_PNG_BYTES:
-                raise ValueError()
+                raise ValueError
             kind = data[offset + 4 : offset + 8]
             body = data[offset + 8 : offset + 8 + length]
             crc = struct.unpack_from(">I", data, offset + 8 + length)[0]
             if zlib.crc32(kind + body) & 0xFFFFFFFF != crc:
-                raise ValueError()
+                raise ValueError
             if not chunks and kind != b"IHDR":
-                raise ValueError()
+                raise ValueError
             if kind == b"IHDR":
                 if chunks or length != 13:
-                    raise ValueError()
+                    raise ValueError
                 width, height, depth, color, method, filt, interlace = struct.unpack(
                     ">IIBBBBB", body
                 )
@@ -252,14 +252,14 @@ def validate_png(data):
                     or filt
                     or interlace
                 ):
-                    raise ValueError()
+                    raise ValueError
             elif kind == b"IDAT":
                 if idat_ended:
-                    raise ValueError()
+                    raise ValueError
                 compressed.extend(body)
             elif kind == b"IEND":
                 if length or not compressed or offset + 12 != len(data):
-                    raise ValueError()
+                    raise ValueError
                 ended = True
             elif kind not in (
                 b"PLTE",
@@ -276,13 +276,13 @@ def validate_png(data):
                 b"iTXt",
                 b"tIME",
             ):
-                raise ValueError()
+                raise ValueError
             if compressed and kind != b"IDAT":
                 idat_ended = True
             chunks.append(kind)
             offset += length + 12
         if not ended:
-            raise ValueError()
+            raise ValueError
         channels = {0: 1, 2: 3, 4: 2, 6: 4}[color]
         stride = width * channels + 1
         expected = stride * height
@@ -294,9 +294,9 @@ def validate_png(data):
             or decoder.unused_data
             or decoder.unconsumed_tail
         ):
-            raise ValueError()
+            raise ValueError
         if any(pixels[y * stride] > 4 for y in range(height)):
-            raise ValueError()
+            raise ValueError
     except (ValueError, KeyError, struct.error, zlib.error):
         raise GraphError("INVALID_PNG") from None
     return {

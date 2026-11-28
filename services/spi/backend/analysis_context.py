@@ -1,6 +1,6 @@
 """Model-only metric projection; immutable collection/artifact data is untouched."""
 
-from core import digest, SECRET_KEY
+from core import SECRET_KEY, digest
 
 METRIC_SOURCES = frozenset(
     ("prometheus_metrics", "loki_error_frequency", "host_log_error_frequency", "loki_rule_metric")

@@ -5,10 +5,11 @@ import json
 import time
 import unittest
 from unittest.mock import Mock, patch
-from core import REPORT_SCHEMA, MATCH_SCHEMA, Failure, validate
-from integrations import Model
-from report_bounds import guided_report_schema, TEXT_LIMITS, ARRAY_LIMITS
+
 import test_triage as f
+from core import MATCH_SCHEMA, REPORT_SCHEMA, Failure, validate
+from integrations import Model
+from report_bounds import ARRAY_LIMITS, TEXT_LIMITS, guided_report_schema
 
 
 def maximal(schema):

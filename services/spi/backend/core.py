@@ -1,19 +1,20 @@
 """Durable SPI jobs and deliberately small, English-only publication contracts."""
 
 from __future__ import annotations
+
 import hashlib
 import json
+import math
+import os
+import random
 import re
 import sqlite3
-import os
-import time
-import math
-import random
 import threading
+import time
 
 OWNER_CONTEXT = threading.local()
-from contextlib import contextmanager, closing
-from datetime import datetime, timezone
+from contextlib import closing, contextmanager
+from datetime import UTC, datetime
 
 
 class Failure(Exception):
@@ -77,7 +78,7 @@ PATIENT_TRANSIENT = LLM_TRANSIENT | {
 
 SECRET_KEY = re.compile(
     r"authorization|cookie|password|passwd|secret|api[_-]?key|access[_-]?token|refresh[_-]?token|x[_-]?token|private[_-]?key",
-    re.I,
+    re.IGNORECASE,
 )
 SECRET_VALUE = re.compile(
     r"(?i)(?:bearer\s+\S+|(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]+|sk-[A-Za-z0-9_-]{12,}|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|-----BEGIN[^\n]*PRIVATE KEY-----[\s\S]*?-----END[^\n]*PRIVATE KEY-----)"
@@ -110,8 +111,8 @@ def timestamp(text):
     try:
         d = datetime.fromisoformat(text.replace("Z", "+00:00"))
         if not d.tzinfo:
-            raise ValueError()
-        return d.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+            raise ValueError
+        return d.astimezone(UTC).isoformat().replace("+00:00", "Z")
     except (ValueError, TypeError, AttributeError):
         raise Failure("INVALID_ALERT_TIMESTAMP") from None
 

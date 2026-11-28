@@ -1,15 +1,14 @@
 """Fixed-topic routing, immutable evidence and no automatic issue creation."""
 
 import copy
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import Mock
+
+import test_triage as f
 from core import Failure
 from integrations import GitHub
 from managed_catalog import ManagedCatalog
 from test_wait_integration import IntegrationTests
-import test_triage as f
 
 
 class PolicyTests(unittest.TestCase):
@@ -161,6 +160,7 @@ class ManagedFlowTests(IntegrationTests):
     def test_s3_diagnostics_are_verified_before_comment_and_kept_private(self):
         import hashlib
         from unittest.mock import patch
+
         from evidence_bundle import prepare_bundle
 
         self.managed()
@@ -198,6 +198,7 @@ class ProductionContractTests(unittest.TestCase):
     def test_every_production_github_client_blocks_new_issue_creation(self):
         import ast
         import inspect
+
         import service
 
         tree = ast.parse(inspect.getsource(service.serve))

@@ -3,32 +3,33 @@
 import hashlib
 import hmac
 import json
-import re
-from datetime import datetime, timezone
 import os
+import re
 import threading
 import time
+from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from storage_runtime import load_storage
-from dispatcher import Dispatcher
+
+from card_correlation import record_receipt
 from core import (
-    Failure,
-    OWNER_CONTEXT,
     MODEL_RETRY,
+    OWNER_CONTEXT,
     PATIENT_TRANSIENT,
+    Failure,
     Store,
     digest,
     normalize,
     render,
 )
-from integrations import Evidence, GitHub, HTTP, Model, REQUEST_DEADLINE
-from evidence_bundle import index_markdown, publish_parts, storage_objects, storage_markdown
-from s3_evidence import StorageTransient, StoragePermanent, StorageConflict
+from dispatcher import Dispatcher
+from evidence_bundle import index_markdown, publish_parts, storage_markdown, storage_objects
 from grafana_links import repair_markdown_links
+from integrations import HTTP, REQUEST_DEADLINE, Evidence, GitHub, Model
+from managed_catalog import ManagedCatalog
+from s3_evidence import StorageConflict, StoragePermanent, StorageTransient
+from storage_runtime import load_storage
 from telegram_delivery import Delivery
 from telegram_links import primary_url
-from card_correlation import record_receipt
-from managed_catalog import ManagedCatalog
 
 
 def log_event(event, level="info", **fields):
@@ -84,7 +85,7 @@ def log_event(event, level="info", **fields):
     ):
         del record["n8n_execution_id"]
     record.update(
-        ts=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        ts=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         level=level,
         service="spi-triage",
         component="spi-triage",
@@ -413,25 +414,19 @@ class Engine:
                     + ".\n\nResolution does not establish root-cause remediation; this issue remains open.\n\n"
                     + marker
                 )
+            elif self.catalog and r.get("catalog_route"):
+                self.catalog.issue(self.github, r["catalog_route"])
+                title, body = render(r["report"], event)
+                body = self.catalog.banner(r["catalog_route"], r["report"]["issue_number"]) + body
+                number = r["catalog_route"]["issue"]
             else:
-                if self.catalog and r.get("catalog_route"):
-                    self.catalog.issue(self.github, r["catalog_route"])
-                    title, body = render(r["report"], event)
-                    body = (
-                        self.catalog.banner(r["catalog_route"], r["report"]["issue_number"]) + body
-                    )
-                    number = r["catalog_route"]["issue"]
-                else:
-                    issues = self.github.snapshot()
-                    if (
-                        digest([(x["number"], x["updated_at"]) for x in issues])
-                        != r["open_signature"]
-                    ):
-                        self.invalidate_snapshot(key, r, job)
-                    title, body = render(r["report"], event)
-                    number = r["report"]["issue_number"]
-                    if number not in {0, *[x["number"] for x in r["match"]["candidates"]]}:
-                        raise Failure("INVALID_MATCH_TARGET")
+                issues = self.github.snapshot()
+                if digest([(x["number"], x["updated_at"]) for x in issues]) != r["open_signature"]:
+                    self.invalidate_snapshot(key, r, job)
+                title, body = render(r["report"], event)
+                number = r["report"]["issue_number"]
+                if number not in {0, *[x["number"] for x in r["match"]["candidates"]]}:
+                    raise Failure("INVALID_MATCH_TARGET")
             if r["publication_backend"] == "s3":
                 objects = self.upload_evidence(key, r)
                 if not resolved or r.get("analyze_recovery"):
@@ -615,7 +610,7 @@ def read_request_body(handler, timeout=10):
         while length:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                raise TimeoutError()
+                raise TimeoutError
             handler.connection.settimeout(remaining)
             chunk = handler.rfile.read1(length)
             if not chunk:
@@ -651,7 +646,8 @@ def serve():
         queue_token = Path("/queue-control/token").read_text().strip()
         if len(queue_token) < 32:
             raise RuntimeError("QUEUE_ADMIN_TOKEN_REQUIRED")
-        from queue_admin import QueueAdmin, authorized as queue_authorized
+        from queue_admin import QueueAdmin
+        from queue_admin import authorized as queue_authorized
 
         queue_admin = QueueAdmin(store)
     recovered = store.recover_on_start()

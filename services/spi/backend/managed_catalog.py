@@ -1,9 +1,10 @@
 """Fixed, bounded workstreams: topic routing is never a shared-root-cause claim."""
 
-import json
 import copy
+import json
 import re
 from pathlib import Path
+
 from core import Failure
 
 

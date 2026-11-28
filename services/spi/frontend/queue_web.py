@@ -7,13 +7,13 @@ import http.client
 import http.server
 import json
 import logging
-import sys
-from pathlib import Path
 import socket
+import sys
 import threading
 import urllib.parse
+from pathlib import Path
 
-from queue_oidc import OIDC, ORIGIN, Rejected, Unavailable, STATE_COOKIE, cookie
+from queue_oidc import OIDC, ORIGIN, STATE_COOKIE, Rejected, Unavailable, cookie
 
 OIDC_CLIENT = None
 ASSETS = {
@@ -189,7 +189,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self.send(502, b'{"code":"QUEUE_UNAVAILABLE"}')
             data = json.loads(body)
             if not isinstance(data, dict):
-                raise ValueError()
+                raise ValueError
             self.send(response.status, json.dumps(data).encode())
         except (ValueError, OSError, http.client.HTTPException) as error:
             # Never log URLs, cookies, request/response bodies or exception text.

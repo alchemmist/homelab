@@ -9,11 +9,11 @@ import datetime
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import stat
 import tempfile
 import time
+from pathlib import Path
 
 from graph_contract import GraphError, canonical, parse_annotation, resolve, validate_png
 
@@ -114,7 +114,7 @@ def collect(event, client, *, deadline=None):
             raise GraphError("GRAPH_CHECKPOINT_CONFLICT")
         observed = state["observed_at"]
     else:
-        observed = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        observed = datetime.datetime.now(datetime.UTC).isoformat()
         _immutable(capture, canonical({"specs": specs, "observed_at": observed}).encode("ascii"))
     artifacts, missing = [], []
     for spec in specs:
@@ -163,7 +163,7 @@ def collect(event, client, *, deadline=None):
                 "to_ms": request["to_ms"],
                 "observed_at": observed,
                 "collected_at": datetime.datetime.fromtimestamp(
-                    path.stat().st_mtime, datetime.timezone.utc
+                    path.stat().st_mtime, datetime.UTC
                 ).isoformat(),
                 "mode": request["mode"],
                 "render_digest": request["digest"],

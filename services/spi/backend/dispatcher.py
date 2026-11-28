@@ -1,9 +1,9 @@
 """Single durable wake reservation; never hold database locks during HTTP."""
 
-import json
-import threading
 import http.client
+import json
 import socket
+import threading
 import time
 
 DISPATCH_URL = "http://n8n.automation.svc.cluster.local/webhook/spi-incident-triage-dispatch"

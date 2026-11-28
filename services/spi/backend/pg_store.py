@@ -3,6 +3,7 @@
 import re
 from contextlib import contextmanager
 from functools import lru_cache
+
 import psycopg
 from psycopg.rows import dict_row
 

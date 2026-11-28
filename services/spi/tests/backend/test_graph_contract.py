@@ -3,12 +3,13 @@ import json
 import struct
 import unittest
 import zlib
+
 from graph_contract import (
     GraphError,
     canonical,
     parse_annotation,
-    resolve,
     render_path,
+    resolve,
     validate_png,
 )
 

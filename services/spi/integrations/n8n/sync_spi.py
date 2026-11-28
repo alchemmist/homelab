@@ -4,7 +4,8 @@
 import copy
 import json
 from urllib.parse import urlencode
-from n8n_api import api, BASE, CONFIG
+
+from n8n_api import BASE, CONFIG, api
 
 
 def render(template, mapping):

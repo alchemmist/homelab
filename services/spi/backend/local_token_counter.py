@@ -6,6 +6,7 @@ import json
 import os
 import threading
 from pathlib import Path
+
 from core import Failure
 
 PINS = {
@@ -98,9 +99,11 @@ def raw_fits(body):
             if remaining < 0:
                 return False
             stack.extend((item, depth + 1) for item in value)
-        elif value is None or isinstance(value, (bool, float)):
-            remaining -= 32
-        elif isinstance(value, int) and value.bit_length() < 64:
+        elif (
+            value is None
+            or isinstance(value, (bool, float))
+            or (isinstance(value, int) and value.bit_length() < 64)
+        ):
             remaining -= 32
         else:
             raise Failure("LLM_ACCOUNTING_CONTRACT_MISMATCH")
