@@ -6,6 +6,29 @@ from ci.quality import public_advertised_routes as checks
 
 
 @pytest.mark.parametrize(
+    "path,reply,ok",
+    [
+        ("/ping", b"pong\n200 text/plain", True),
+        ("/ping", b"pong\n200 text/html", False),
+        ("/api/v1/user", b"Unauthorized\n\n401 text/plain", True),
+        ("/api/v1/user", b"Unauthorized\n\n200 text/plain", False),
+        ("/api/v1/user", b"\n401 text/plain", False),
+        ("/web/embed.js", b"fixture\n200 text/javascript", True),
+        ("/web/embed.js", b"drift\n200 text/javascript", False),
+        ("/web/embed.js", b"fixture\n200 text/html", False),
+    ],
+)
+def test_remark_public_response(monkeypatch, path, reply, ok):
+    from hashlib import sha256
+
+    monkeypatch.setattr(checks, "REMARK_EMBED_SHA256", sha256(b"fixture").hexdigest())
+    monkeypatch.setattr(
+        subprocess, "run", lambda *a, **kw: subprocess.CompletedProcess([], 0, reply)
+    )
+    assert (checks._path(checks.REMARK, "192.0.2.1", path) == "matched") is ok
+
+
+@pytest.mark.parametrize(
     "host,status,body,want",
     [
         (

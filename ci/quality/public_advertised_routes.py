@@ -5,6 +5,7 @@ only to the configured entrance addresses, never to a destination learned from
 a DNS answer. Unknown IPv4/IPv6 evidence is reported without following it.
 """
 
+import hashlib
 import ipaddress
 import json
 import re
@@ -17,6 +18,8 @@ from ci.quality import openhands_public_auth
 from ci.quality.public_dns_snapshot import observe, questions
 from ci.quality.public_web import CATALOG
 
+REMARK = "remark42.alchemmist.xyz"
+REMARK_EMBED_SHA256 = "dfe16bead0dfeff7b2cefb0a0ba874c2a51b995737aec0abd2eac4e844934581"
 BLOG = "www.alchemmist.xyz"
 VENICE = "venice.socrat.alchemmist.xyz"
 MONORI = "monori.alchemmist.xyz"
@@ -27,12 +30,14 @@ PATHS = {
     openhands_public_auth.HOST: "/",
     BLOG: "/",
     VENICE: "/v1/models",
+    REMARK: "/api/v1/user",
     MONORI: "/api/auth/me",
     WIKI: "/api/auth/me",
     ARGO: "/api/v1/applications",
     HARBOR: "/v2/",
 }
 ADDITIONAL = {ARGO: ("/api/version",), HARBOR: ("/v2", "/api/v2.0/ping")}
+ADDITIONAL[REMARK] = ("/ping", "/web/embed.js")
 CHALLENGE = (
     b'Bearer realm="https://harbor.socrat.alchemmist.xyz/service/token",service="harbor-registry"'
 )
@@ -105,6 +110,20 @@ def _path(host, ip, path):
     mime = ct.partition(b";")[0].lower().strip()
     if not marker or len(body) > LIMIT:
         return "invalid-response"
+    if host == REMARK:
+        if (path, code, mime, body) in (
+            ("/ping", b"200", b"text/plain", b"pong"),
+            ("/api/v1/user", b"401", b"text/plain", b"Unauthorized\n"),
+        ):
+            return "matched"
+        if (
+            path == "/web/embed.js"
+            and code == b"200"
+            and mime == b"text/javascript"
+            and hashlib.sha256(body).hexdigest() == REMARK_EMBED_SHA256
+        ):
+            return "matched"
+        return "unexpected-application-response"
     if (
         host == BLOG
         and code == b"200"
