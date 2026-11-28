@@ -125,6 +125,12 @@
       "services/spi/legacy/backend/durable_wait.py": [
         "PLC0415"
       ],
+      "services/spi/backend/durable_wait.py": [
+        "PLC0415",
+        "SLF001",
+        "C901",
+        "FBT001"
+      ],
       "charts/spi-triage/files/s3_evidence.py": [
         "N818",
         "PLR0913"

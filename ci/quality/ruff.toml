@@ -76,6 +76,9 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 "services/spi/backend/core.py" = ["N818", "PLC0415", "FBT001", "S311"]
 "charts/spi-triage/files/durable_wait.py" = ["PLC0415"]
 "services/spi/legacy/backend/durable_wait.py" = ["PLC0415"]
+# The evolved wait owners call the services Store private API (_schedule,
+# _reconcile_owners, _owned_priority_until) reviewed in the same package.
+"services/spi/backend/durable_wait.py" = ["PLC0415", "SLF001", "C901", "FBT001"]
 # The storage exception names (StoragePermanent/StorageTransient et al.) and
 # the SigV4 sign() arity are the reviewed wire contract shared with the
 # independent reference implementation in services/rustfs_gateway/gateway.py
