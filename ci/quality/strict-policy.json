@@ -127,6 +127,10 @@
         "N818",
         "PLR0913"
       ],
+      "services/spi/backend/s3_evidence.py": [
+        "N818",
+        "PLR0913"
+      ],
       "charts/spi-triage/files/dispatcher.py": [
         "FBT001",
         "FBT002",
@@ -175,6 +179,14 @@
         "PLR0915"
       ],
       "services/spi/legacy/backend/telemetry.py": [
+        "PLC0415",
+        "C901",
+        "PLR0911",
+        "PLR0912",
+        "PLR0913",
+        "PLR0915"
+      ],
+      "services/spi/backend/telemetry.py": [
         "PLC0415",
         "C901",
         "PLR0911",
@@ -239,11 +251,22 @@
       "services/spi/legacy/backend/telegram_links.py": [
         "BLE001"
       ],
+      "services/spi/backend/telegram_links.py": [
+        "BLE001"
+      ],
       "charts/spi-triage/files/telegram_delivery.py": [
         "BLE001",
         "S110"
       ],
       "services/spi/legacy/backend/telegram_delivery.py": [
+        "BLE001",
+        "S110",
+        "PLC0415",
+        "S310",
+        "T201",
+        "PLR0913"
+      ],
+      "services/spi/backend/telegram_delivery.py": [
         "BLE001",
         "S110",
         "PLC0415",
