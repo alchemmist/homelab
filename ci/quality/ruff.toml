@@ -82,6 +82,10 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # sqlite_master itself; no user input reaches the fragment, and every other
 # query goes through psycopg sql composition with bound parameters.
 "scripts/spi-pg/finalize.py" = ["S608"]
+# The cold-copy TLS sender must listen on every interface of its
+# single-purpose sending container; the socket is immediately wrapped in the
+# reviewed TLS context and every response requires the verified bearer token.
+"deploy/storage/thanos-retire/offload.py" = ["S104"]
 # The durable workflow error type is named Failure across the reviewed
 # worker API boundary: its fixed non-sensitive codes are the documented wire
 # contract asserted by the spi_triage suite and produced by every chart
