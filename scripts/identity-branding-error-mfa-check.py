@@ -11,6 +11,9 @@ import argparse
 
 from playwright.sync_api import sync_playwright
 
+BUTTON_HEIGHT_PX = 43
+HTTP_CLIENT_ERROR = 400
+
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument("--run", action="store_true")
 p.add_argument(
@@ -46,47 +49,92 @@ with sync_playwright() as pw:
                 const button=stage.shadowRoot.querySelector('button[name=continue]');
                 const input=stage.shadowRoot.querySelector('input');
                 button.focus();const style=getComputedStyle(button);
-                return {bg:style.backgroundColor,color:style.color,height:button.getBoundingClientRect().height,
+                const rect=button.getBoundingClientRect();
+                return {bg:style.backgroundColor,color:style.color,height:rect.height,
                     arrow:getComputedStyle(button,'::after').content,font:style.fontFamily,
                     focused:stage.shadowRoot.activeElement===button,required:input.required,
                     autocomplete:input.autocomplete,part:stage.getAttribute('part')};
             } finally {stage.remove()}
         }""")
-        assert result["bg"] == "rgba(0, 0, 0, 0)"
-        assert result["color"] == "rgb(21, 34, 60)"
-        assert result["height"] == 43
-        assert result["arrow"] == '"→"'
-        assert "QuietMono" in result["font"]
-        assert result["focused"]
-        assert result["required"]
-        assert result["autocomplete"] == "one-time-code"
-        assert result["part"] is None
+        if result["bg"] != "rgba(0, 0, 0, 0)":
+            msg = "Continue button background must stay transparent"
+            raise RuntimeError(msg)
+        if result["color"] != "rgb(21, 34, 60)":
+            msg = "Continue button must keep the reviewed ink color"
+            raise RuntimeError(msg)
+        if result["height"] != BUTTON_HEIGHT_PX:
+            msg = "Continue button must stay 43px tall"
+            raise RuntimeError(msg)
+        if result["arrow"] != '"→"':
+            msg = "Continue button must keep the reviewed arrow glyph"
+            raise RuntimeError(msg)
+        if "QuietMono" not in result["font"]:
+            msg = "Continue button must use the reviewed QuietMono face"
+            raise RuntimeError(msg)
+        if not result["focused"]:
+            msg = "Continue button must self-focus"
+            raise RuntimeError(msg)
+        if not result["required"]:
+            msg = "Code input must stay required"
+            raise RuntimeError(msg)
+        if result["autocomplete"] != "one-time-code":
+            msg = "Code input must keep the one-time-code autocomplete token"
+            raise RuntimeError(msg)
+        if result["part"] is not None:
+            msg = "Nested stage must stay unparted"
+            raise RuntimeError(msg)
         print("PASS: native nested MFA appearance/focus/validation attributes", width)
     response = page.goto(
         BASE + "/application/o/authorize/?client_id=quiet-mono-ui-probe&response_type=code"
     )
-    assert response.status == 400
+    assert_status = response.status if response else None
+    if assert_status != HTTP_CLIENT_ERROR:
+        msg = "Invalid-client request must produce HTTP 400"
+        raise RuntimeError(msg)
     for width in [1440, 390]:
         page.set_viewport_size({"width": width, "height": 960})
         page.wait_for_timeout(150)
         button = page.locator("#ak-back-home")
-        result = button.evaluate("""e=>({bg:getComputedStyle(e).backgroundColor,color:getComputedStyle(e).color,
-            height:e.getBoundingClientRect().height,arrow:getComputedStyle(e,'::after').content})""")
-        assert result["height"] == 43
-        assert result["bg"] == "rgba(0, 0, 0, 0)"
-        assert result["color"] == "rgb(21, 34, 60)"
-        assert result["arrow"] == '"→"'
+        result = button.evaluate(
+            """e=>({bg:getComputedStyle(e).backgroundColor,color:getComputedStyle(e).color,
+            height:e.getBoundingClientRect().height,arrow:getComputedStyle(e,'::after').content})"""
+        )
+        if result["height"] != BUTTON_HEIGHT_PX:
+            msg = "Back-home button must stay 43px tall"
+            raise RuntimeError(msg)
+        if result["bg"] != "rgba(0, 0, 0, 0)":
+            msg = "Back-home button background must stay transparent"
+            raise RuntimeError(msg)
+        if result["color"] != "rgb(21, 34, 60)":
+            msg = "Back-home button must keep the reviewed ink color"
+            raise RuntimeError(msg)
+        if result["arrow"] != '"→"':
+            msg = "Back-home button must keep the reviewed arrow glyph"
+            raise RuntimeError(msg)
         card = page.locator(".pf-c-login__main").bounding_box()
-        assert abs(card["x"] + card["width"] / 2 - width / 2) < 1
-        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        if card is None:
+            msg = "Login card must exist on the denial page"
+            raise RuntimeError(msg)
+        if abs(card["x"] + card["width"] / 2 - width / 2) >= 1:
+            msg = "Login card must stay horizontally centered"
+            raise RuntimeError(msg)
+        if not page.evaluate("document.documentElement.scrollWidth <= innerWidth"):
+            msg = "Denial page must not overflow the viewport"
+            raise RuntimeError(msg)
         button.focus()
-        assert button.evaluate("e=>document.activeElement===e")
+        if not button.evaluate("e=>document.activeElement===e"):
+            msg = "Back-home button must self-focus"
+            raise RuntimeError(msg)
         page.emulate_media(reduced_motion="reduce")
         button.hover()
-        assert button.evaluate('e=>getComputedStyle(e,"::after").transform') == "none"
+        if button.evaluate('e=>getComputedStyle(e,"::after").transform') != "none":
+            msg = "Reduced motion must disable the arrow transition"
+            raise RuntimeError(msg)
         print(
             "PASS: real server error shared denial template, centered/mobile/focus/reduced motion",
             width,
         )
-    assert not errors
+    if errors:
+        msg = "Browser reported page errors: " + ", ".join(errors)
+        raise RuntimeError(msg)
     browser.close()
