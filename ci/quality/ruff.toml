@@ -70,6 +70,10 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # and the reviewed compatibility pins.
 "charts/spi-triage/files/core.py" = ["N818", "PLC0415"]
 "services/spi/legacy/backend/core.py" = ["N818", "PLC0415"]
+# The evolved services store keeps replace_snapshot(expensive) positional
+# (the deployed worker calls it positionally) and keeps module-level seeded
+# random for the test-pinned jitter determinism instead of SystemRandom.
+"services/spi/backend/core.py" = ["N818", "PLC0415", "FBT001", "S311"]
 "charts/spi-triage/files/durable_wait.py" = ["PLC0415"]
 "services/spi/legacy/backend/durable_wait.py" = ["PLC0415"]
 # The storage exception names (StoragePermanent/StorageTransient et al.) and

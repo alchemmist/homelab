@@ -113,6 +113,12 @@
         "N818",
         "PLC0415"
       ],
+      "services/spi/backend/core.py": [
+        "N818",
+        "PLC0415",
+        "FBT001",
+        "S311"
+      ],
       "charts/spi-triage/files/durable_wait.py": [
         "PLC0415"
       ],
