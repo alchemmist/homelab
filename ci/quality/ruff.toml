@@ -140,6 +140,11 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # signature, whose fourth parameter is legitimately named "type".
 "scripts/identity-argocd-refresh-smoke.py" = ["A002"]
 "scripts/identity-app-access-smoke.py" = ["A002"]
+# The live tool-guard probe walks one sequential end-to-end scenario whose
+# stages share the mutable dispatch counter, metadata and repeat-stop state;
+# re-staging them into helpers would spread reviewed protocol steps, and the
+# /tmp fixture is a unique uuid-named file the probe itself deletes.
+"scripts/check-webui-tool-guard.py" = ["C901", "PLR0912", "S108"]
 
 "services/spi/backend/service.py" = ["PLC0415", "T201", "PLR0913", "TRY301"]
 "deploy/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]

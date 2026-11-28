@@ -3,6 +3,7 @@
 import asyncio
 import json
 import uuid
+from collections.abc import Mapping
 from typing import cast
 
 from open_webui.utils.homelab_tool_guard import REPEAT_STOP_MESSAGE, guard_stopped
@@ -19,7 +20,7 @@ from open_webui.utils.tools import (
 )
 
 
-def serialize(result):
+def serialize(result: object) -> str:
     """Perform the serialize operation."""
     if isinstance(result, tuple):
         result = result[0]
@@ -54,7 +55,7 @@ async def main() -> None:
     changed = "GUARD_AFTER_" + uuid.uuid4().hex
     dispatches = 0
 
-    async def raw(name, params) -> object:
+    async def raw(name: str, params: Mapping[str, object]) -> object:
         return cast(
             "object",
             await execute_tool_server(
@@ -67,7 +68,7 @@ async def main() -> None:
             ),
         )
 
-    async def replace(**params) -> object:
+    async def replace(**params: object) -> object:
         nonlocal dispatches
         dispatches += 1
         return await raw("replace_file_content", params)
@@ -84,7 +85,7 @@ async def main() -> None:
         },
     }
 
-    async def call(params) -> tuple[object, dict[str, object]]:
+    async def call(params: Mapping[str, object]) -> tuple[object, dict[str, object]]:
         return cast(
             "tuple[object, dict[str, object]]",
             await execute_tool_call(
@@ -103,7 +104,9 @@ async def main() -> None:
 
     try:
         created = await raw("write_file", {"path": path, "content": original})
-        assert "error" not in serialize(created).lower(), "Fixture creation failed"
+        if "error" in serialize(created).lower():
+            msg = "Fixture creation failed"
+            raise RuntimeError(msg)
         for should_stop in (False, False, True):
             result = await call(
                 {
@@ -112,16 +115,32 @@ async def main() -> None:
                 }
             )
             error = cast("str", result[1]["error"])
-            assert "target" in error
-            assert "replacement" in error
-            assert original not in error
-            assert changed not in error
-            assert guard_stopped(metadata) == should_stop
-        assert dispatches == 0, "Invalid calls reached terminal"
+            if "target" not in error:
+                msg = "Guard error must explain the reviewed field name"
+                raise RuntimeError(msg)
+            if "replacement" not in error:
+                msg = "Guard error must explain the corrected field name"
+                raise RuntimeError(msg)
+            if original in error:
+                msg = "Guard error must not leak the fixture content"
+                raise RuntimeError(msg)
+            if changed in error:
+                msg = "Guard error must not leak the fixture replacement"
+                raise RuntimeError(msg)
+            if guard_stopped(metadata) != should_stop:
+                msg = "Guard stop flag must match the reviewed sequence"
+                raise RuntimeError(msg)
+        if dispatches != 0:
+            msg = "Invalid calls reached terminal"
+            raise RuntimeError(msg)
         read = await raw("read_file", {"path": path})
-        assert original in serialize(read) and changed not in serialize(read), (
-            "Invalid calls changed fixture"
-        )
+        serialized_read = serialize(read)
+        if original not in serialized_read:
+            msg = "Invalid calls changed fixture"
+            raise RuntimeError(msg)
+        if changed in serialized_read:
+            msg = "Invalid calls changed fixture"
+            raise RuntimeError(msg)
         metadata["message_id"] = str(uuid.uuid4())
         result = await call(
             {
@@ -129,13 +148,21 @@ async def main() -> None:
                 "replacements": [{"target": original, "replacement": changed}],
             }
         )
-        assert dispatches == 1
-        assert not guard_stopped(metadata)
+        if dispatches != 1:
+            msg = "Corrected call must dispatch exactly once"
+            raise RuntimeError(msg)
+        if guard_stopped(metadata):
+            msg = "Corrected call must not trip the guard"
+            raise RuntimeError(msg)
         read = await raw("read_file", {"path": path})
-        assert changed in serialize(read) and original not in serialize(read), (
-            "Corrected edit did not change fixture"
-        )
-        assert (
+        serialized_read = serialize(read)
+        if changed not in serialized_read:
+            msg = "Corrected edit did not change fixture"
+            raise RuntimeError(msg)
+        if original in serialized_read:
+            msg = "Corrected edit did not change fixture"
+            raise RuntimeError(msg)
+        if (
             build_terminal_file_tool_result(
                 "display_file",
                 {"path": path},
@@ -143,20 +170,25 @@ async def main() -> None:
                 {"tool_id": "terminal:socrat-terminal"},
                 {},
             )
-            is None
-        )
+            is not None
+        ):
+            msg = "Failed display tool must produce no card"
+            raise RuntimeError(msg)
         # Repeated identical valid calls warn first and then stop the loop.
         metadata["message_id"] = str(uuid.uuid4())
-        metadata["tools"]["read_file"] = {
+        cast("dict[str, object]", metadata["tools"])["read_file"] = {
             "type": "terminal",
             "spec": specs["read_file"],
         }
 
-        async def read(params) -> tuple[object, dict[str, object] | str]:
-            async def dispatch(**kwargs) -> object:
+        async def read(params: Mapping[str, object]) -> tuple[object, dict[str, object] | str]:
+            async def dispatch(**_kwargs: object) -> object:
                 return await raw("read_file", params)
 
-            metadata["tools"]["read_file"]["callable"] = dispatch
+            cast(
+                "dict[str, object]",
+                cast("dict[str, object]", metadata["tools"])["read_file"],
+            )["callable"] = dispatch
             return cast(
                 "tuple[object, dict[str, object] | str]",
                 await execute_tool_call(
@@ -178,9 +210,12 @@ async def main() -> None:
         await read(identical)
         warned = await read(identical)
         error = serialize(warned[1])
-        assert "not run again" in error and not guard_stopped(metadata), (
-            "Third identical valid call did not warn"
-        )
+        if "not run again" not in error:
+            msg = "Third identical valid call did not warn"
+            raise RuntimeError(msg)
+        if guard_stopped(metadata):
+            msg = "Warning must not stop the loop yet"
+            raise RuntimeError(msg)
         stopped = await read(identical)
         stopped_payload = stopped[1]
         error = (
@@ -188,13 +223,18 @@ async def main() -> None:
             if isinstance(stopped_payload, dict)
             else serialize(stopped_payload)
         )
-        assert guard_stopped(metadata) and error == REPEAT_STOP_MESSAGE, (
-            "Fourth identical valid call did not stop the loop"
-        )
+        if not guard_stopped(metadata):
+            msg = "Fourth identical valid call did not stop the loop"
+            raise RuntimeError(msg)
+        if error != REPEAT_STOP_MESSAGE:
+            msg = "Repeat stop must use the reviewed stop message"
+            raise RuntimeError(msg)
         # A genuinely different command clears the warning in a fresh response.
         metadata["message_id"] = str(uuid.uuid4())
         await read({"path": path + ".missing"})
-        assert not guard_stopped(metadata), "Fresh response inherited repeat stop"
+        if guard_stopped(metadata):
+            msg = "Fresh response inherited repeat stop"
+            raise RuntimeError(msg)
     finally:
         cleanup = await raw("run_command", {"command": "rm -f -- " + path, "wait": 10})
         cleanup_body = json.loads(serialize(cleanup))
@@ -202,11 +242,15 @@ async def main() -> None:
             if cleanup_body.get("exit_code") is not None:
                 break
             process_id = cleanup_body.get("id") or cleanup_body.get("process_id")
-            assert process_id, "Fixture cleanup returned no process identifier"
+            if not process_id:
+                msg = "Fixture cleanup returned no process identifier"
+                raise RuntimeError(msg)
             cleanup_body = json.loads(
                 serialize(await raw("get_process_status", {"process_id": process_id, "wait": 10}))
             )
-        assert cleanup_body.get("exit_code") == 0, "Fixture cleanup did not finish successfully"
+        if cleanup_body.get("exit_code") != 0:
+            msg = "Fixture cleanup did not finish successfully"
+            raise RuntimeError(msg)
     print(
         json.dumps(
             {
