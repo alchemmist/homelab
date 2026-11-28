@@ -112,6 +112,9 @@
         "S108",
         "TRY004"
       ],
+      "scripts/test-otel-log-runtime.py": [
+        "S108"
+      ],
 "charts/spi-triage/files/core.py": [
         "N818",
         "PLC0415"
