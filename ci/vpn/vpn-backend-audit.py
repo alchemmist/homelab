@@ -13,11 +13,15 @@ import json
 import os
 import socket
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
     "vpn_inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
 )
+if spec is None or spec.loader is None:
+    msg = "Inventory module is not loadable"
+    raise RuntimeError(msg)
 helpers = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(helpers)
 TABLE = "homelab_xui_backend_audit"
@@ -27,6 +31,7 @@ PORTS = (12096, 32087)
 
 
 def rules() -> str:
+    """Return the asymmetric ACCEPT-only counter ruleset, byte-for-byte deterministic."""
     lines = [
         "table inet " + TABLE + " {",
         ' comment "' + OWNER + '"',
@@ -34,18 +39,18 @@ def rules() -> str:
         "  type filter hook input priority -5; policy accept;",
     ]
     for port in PORTS:
-        for interface in INTERFACES:
-            lines.append(
-                '  iifname "'
-                + interface
-                + '" tcp dport '
-                + str(port)
-                + ' counter comment "'
-                + str(port)
-                + ":"
-                + interface
-                + '"'
-            )
+        lines.extend(
+            '  iifname "'
+            + interface
+            + '" tcp dport '
+            + str(port)
+            + ' counter comment "'
+            + str(port)
+            + ":"
+            + interface
+            + '"'
+            for interface in INTERFACES
+        )
         lines.append(
             "  iifname != { "
             + ", ".join('"' + x + '"' for x in INTERFACES)
@@ -58,7 +63,8 @@ def rules() -> str:
     return "\n".join([*lines, " }", "}"]) + "\n"
 
 
-def stable(value) -> object:
+def stable(value: object) -> object:
+    """Project volatile counters, handles and metainfo out of a json structure."""
     if isinstance(value, dict):
         return {
             k: stable(v)
@@ -70,8 +76,11 @@ def stable(value) -> object:
     return value
 
 
-def run(args, *, check: bool = False, **kwargs) -> str:
-    result = subprocess.run(args, check=check, capture_output=True, text=True, timeout=20, **kwargs)
+def run(args: Sequence[str], *, stdin: str | None = None) -> str:
+    """Run one reviewed nft operation with bounded output; never publish failure output."""
+    result = subprocess.run(
+        args, input=stdin, check=False, capture_output=True, text=True, timeout=20
+    )
     if result.returncode:
         msg = "nft operation failed; inspect private state"
         raise RuntimeError(msg)
@@ -79,7 +88,8 @@ def run(args, *, check: bool = False, **kwargs) -> str:
     return output
 
 
-def expected_objects() -> "list[dict[str, object]]":
+def expected_objects() -> list[dict[str, object]]:
+    """Return the exact nftables JSON objects the counter policy must match."""
     objects: list[dict[str, object]] = [
         {"table": {"family": "inet", "name": TABLE}},
         {
@@ -128,7 +138,8 @@ def expected_objects() -> "list[dict[str, object]]":
     return objects
 
 
-def normalize(value) -> object:
+def normalize(value: object) -> object:
+    """Sort set members so nft JSON reordering cannot fake a policy change."""
     value = stable(value)
     if isinstance(value, dict):
         return {k: sorted(v) if k == "set" else normalize(v) for k, v in value.items()}
@@ -137,7 +148,8 @@ def normalize(value) -> object:
     return value
 
 
-def validate_objects(selected) -> None:
+def validate_objects(selected: list[dict[str, object]]) -> None:
+    """Recognize only the complete exact owned counter policy, nothing else."""
     copy = json.loads(json.dumps(selected))
     for item in copy:
         if "table" in item:
@@ -152,7 +164,8 @@ def validate_objects(selected) -> None:
         raise ValueError(msg)
 
 
-def read_table() -> "list[dict[str, object]] | None":
+def read_table() -> list[dict[str, object]] | None:
+    """Read and validate the owned counter table, or None when absent."""
     # Read the ruleset so permission errors cannot masquerade as an absent table.
     data = json.loads(run(["nft", "-j", "list", "ruleset"]))["nftables"]
     selected: list[dict[str, object]] = [
@@ -175,7 +188,8 @@ def read_table() -> "list[dict[str, object]] | None":
     return selected
 
 
-def plan(current) -> "dict[str, object]":
+def plan(current: object) -> dict[str, object]:
+    """Publish the exact intended counter observation change without applying it."""
     return {
         "table": TABLE,
         "policy": "accept",
@@ -187,7 +201,8 @@ def plan(current) -> "dict[str, object]":
     }
 
 
-def apply(approval, state) -> "dict[str, object]":
+def apply(approval: str, state: Path) -> dict[str, object]:
+    """Apply the approved counter table exactly once, leaving private receipts."""
     if socket.gethostname() != "socrat-2" or os.geteuid() != 0:
         msg = "Apply requires root on socrat-2"
         raise ValueError(msg)
@@ -207,13 +222,13 @@ def apply(approval, state) -> "dict[str, object]":
             msg = "Fresh exact plan hash required"
             raise ValueError(msg)
         batch = rules()
-        run(["nft", "--check", "-f", "-"], input=batch)
+        run(["nft", "--check", "-f", "-"], stdin=batch)
         if stable(read_table()) != stable(before):
             msg = "Table changed before apply"
             raise ValueError(msg)
         helpers.save(directory / "before.json", before)
         helpers.save(directory / "uncertain.json", {"plan_sha256": approval})
-        run(["nft", "-f", "-"], input=batch)
+        run(["nft", "-f", "-"], stdin=batch)
         after = read_table()
         if after is None or len([x for x in after if "rule" in x]) != len(PORTS) * (
             len(INTERFACES) + 1
@@ -226,7 +241,8 @@ def apply(approval, state) -> "dict[str, object]":
         return {**desired, "installed": True}
 
 
-def finalize_readback(approval, state) -> "dict[str, object]":
+def finalize_readback(approval: str, state: Path) -> dict[str, object]:
+    """Finalize an interrupted apply from its private readback markers, never retry."""
     if socket.gethostname() != "socrat-2" or os.geteuid() != 0:
         msg = "Finalization requires root on socrat-2"
         raise ValueError(msg)
@@ -260,6 +276,7 @@ def finalize_readback(approval, state) -> "dict[str, object]":
 
 
 def main() -> None:
+    """Dispatch the mutually exclusive reviewed modes, refusing ambiguous combinations."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--finalize-readback", action="store_true")

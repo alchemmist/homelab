@@ -45,7 +45,7 @@ class Kube(Protocol):
 
 
 @pytest.fixture(scope="module")
-def cluster(tmp_path_factory):
+def cluster(tmp_path_factory: pytest.TempPathFactory):
     """Run cluster."""
     directory = tmp_path_factory.mktemp("kind-private")
     directory.chmod(0o700)

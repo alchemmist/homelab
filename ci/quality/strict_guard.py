@@ -8,8 +8,9 @@ import json
 import re
 import sys
 import tomllib
+from importlib import import_module
 from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Protocol, TypedDict, cast
 
 import yaml
 
@@ -35,9 +36,10 @@ class RuffPolicy(TypedDict):
 
 
 class MypyPolicy(TypedDict):
-    """Extra mypy strict flags and required error codes."""
+    """Extra mypy strict flags, resolved module paths and required error codes."""
 
     extra: list[str]
+    mypyPath: list[str]
     errorCodes: list[str]
 
 
@@ -112,11 +114,16 @@ SUPPRESSION = re.compile(
     )
 )
 CODE_SUFFIXES = {".py", ".pyi", ".sh", ".bash", ".yml", ".yaml", ".js", ".ts", ".tsx", ".j2"}
+MIN_CATALOG_RULES = 40
+MIN_BLOCKER_TEXT = 20
+MIN_DISABLE_REASON = 20
+YAML_LINE_LENGTH = 100
 
 
-def policy():
-    """Execute policy."""
-    return json.loads((ROOT / "ci/quality/strict-policy.json").read_text())
+def policy() -> StrictPolicy:
+    """Load the reviewed strict policy document for the verifier below."""
+    loaded = json.loads((ROOT / "ci/quality/strict-policy.json").read_text())
+    return cast("StrictPolicy", loaded)
 
 
 def line_is_suppression(line: str) -> bool:
@@ -174,9 +181,8 @@ def partition(path: str) -> str:
 
 def discovered_ansible_rules() -> set[str]:
     """Execute discovered_ansible_rules."""
-    import ansiblelint
-
-    root = Path(ansiblelint.__file__).parent / "rules"
+    package = import_module("ansiblelint")
+    root = Path(cast("str", package.__file__)).parent / "rules"
     found = set()
     for path in root.glob("*.py"):
         tree = ast.parse(path.read_text())
@@ -208,7 +214,7 @@ def listed_ansible_rules() -> set[str]:
     for line in process.stdout.splitlines():
         if line.startswith("- "):
             found.add(line.split()[1])
-    if len(found) < 40:
+    if len(found) < MIN_CATALOG_RULES:
         msg = "ansible-lint rule catalog was not parsed"
         raise ValueError(msg)
     return found
@@ -256,15 +262,43 @@ def verify_mypy_policy(data: StrictPolicy) -> None:
         if code not in mypy:
             msg = "Missing mypy error code"
             raise ValueError(msg)
+    match = re.search(r"^mypy_path = (\S+)$", mypy, re.MULTILINE)
+    if match is None or match[1].split(":") != data["mypy"]["mypyPath"]:
+        msg = "Mypy resolved-path resolution drifted from the strict policy"
+        raise ValueError(msg)
+
+
+class _YamlLintConfig(Protocol):
+    """The yamllint configuration surface the guard compares rules through."""
+
+    @property
+    def rules(self) -> dict[str, object]: ...
+
+
+class _YamlLintConfigFactory(Protocol):
+    """Constructs a yamllint configuration from a repository config file."""
+
+    def __call__(self, *, file: str) -> _YamlLintConfig: ...
+
+
+class _YamlLintConfigModule(Protocol):
+    """The importable yamllint config module surface the guard targets."""
+
+    YamlLintConfig: _YamlLintConfigFactory
+
+
+def _yamllint_rules() -> dict[str, object]:
+    """Load the repo yamllint configuration lazily through its stable public surface."""
+    module = cast("_YamlLintConfigModule", import_module("yamllint.config"))
+    factory = module.YamlLintConfig
+    return factory(file=str(ROOT / "ci/quality/yamllint.yaml")).rules
 
 
 def verify_yamllint_contract(data: StrictPolicy) -> None:
     """Fail if yamllint enabled/disabled rules drifted from the policy."""
-    from yamllint.config import YamlLintConfig
-
-    yamllint_rules = YamlLintConfig(file=str(ROOT / "ci/quality/yamllint.yaml")).rules
+    yamllint_rules = _yamllint_rules()
     for name, reason in data["yamllint"]["disabled"].items():
-        if not isinstance(reason, str) or len(reason) < 20:
+        if not isinstance(reason, str) or len(reason) < MIN_DISABLE_REASON:
             msg = "Yamllint disable reason is missing"
             raise ValueError(msg)
         if yamllint_rules[name] is not False:
@@ -302,7 +336,7 @@ def verify_yamllint_text(data: StrictPolicy) -> None:
     if yamllint["rules"]["truthy"].get("check-keys") is not False:
         msg = "YAML truthy key exception drifted"
         raise ValueError(msg)
-    if yamllint["rules"]["line-length"]["max"] != 100:
+    if yamllint["rules"]["line-length"]["max"] != YAML_LINE_LENGTH:
         msg = "YAML line length drifted from the repository length"
         raise ValueError(msg)
 
@@ -416,7 +450,7 @@ def verify_generated_publisher(data: StrictPolicy) -> None:
     if publisher["trusted"] is not False or publisher["waiver"] is not False:
         msg = "Generated workflows were marked trusted"
         raise ValueError(msg)
-    if len(publisher["blocker"]) < 20:
+    if len(publisher["blocker"]) < MIN_BLOCKER_TEXT:
         msg = "Generated workflow blocker is missing"
         raise ValueError(msg)
     document = yaml.safe_load((ROOT / publisher["publisher"]).read_text())

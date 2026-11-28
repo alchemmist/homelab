@@ -85,13 +85,13 @@ def _helm_holders(root: Path) -> set[str]:
     return found
 
 
-def check(root=ROOT):
-    """Check the requested inputs."""
+def check(root: Path = ROOT) -> tuple[int, int]:
+    """Verify every classified and literal Helm entrypoint against its play and owners."""
     c = json.loads((root / "deploy/contracts/operational-entrypoints.json").read_text())
     if c["schemaVersion"] != 1:
         msg = "Unsupported entrypoint schema"
         raise ValueError(msg)
-    entries = {}
+    entries: dict[str, dict[str, object]] = {}
     for entry in c["entries"]:
         name = entry["path"]
         if name in entries:
@@ -115,5 +115,7 @@ def check(root=ROOT):
 if __name__ == "__main__":
     count, found = check()
     print(
-        f"Operational classification OK: {count} scoped records, {found} literal Helm matches; review-required/excluded entries are not certified"
+        "Operational classification OK: "
+        f"{count} scoped records, {found} literal Helm matches; "
+        "review-required/excluded entries are not certified"
     )

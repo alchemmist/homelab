@@ -11,19 +11,24 @@ import json
 import os
 import socket
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
     "inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
 )
+if spec is None or spec.loader is None:
+    msg = "Inventory module is not loadable"
+    raise RuntimeError(msg)
 h = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(h)
 TABLE = "homelab_xui_backend_guard"
 OWNER = "homelab issue83 public backend guard v1"
 
 
-def run(args, *, check: bool = False, **kwargs) -> str:
-    r = subprocess.run(args, check=check, capture_output=True, text=True, timeout=20, **kwargs)
+def run(args: Sequence[str], *, stdin: str | None = None) -> str:
+    """Run one reviewed root operation with bounded output; never publish failure output."""
+    r = subprocess.run(args, input=stdin, check=False, capture_output=True, text=True, timeout=20)
     if r.returncode:
         msg = "Backend guard operation failed; inspect private receipts"
         raise RuntimeError(msg)
@@ -32,18 +37,23 @@ def run(args, *, check: bool = False, **kwargs) -> str:
 
 
 def rules() -> str:
-    return """table inet homelab_xui_backend_guard {
- comment "homelab issue83 public backend guard v1"
- chain input {
-  type filter hook input priority -6; policy accept;
-  iifname "eth0" tcp dport { 12096, 32087 } ct state established counter return comment "owned83:established"
-  iifname "eth0" tcp dport { 12096, 32087 } counter reject with tcp reset comment "owned83:public-deny"
- }
-}
-"""
+    """Return the pinned guard input table, byte-for-byte identical to the reviewed nft file."""
+    return (
+        "table inet homelab_xui_backend_guard {\n"
+        ' comment "homelab issue83 public backend guard v1"\n'
+        " chain input {\n"
+        "  type filter hook input priority -6; policy accept;\n"
+        '  iifname "eth0" tcp dport { 12096, 32087 } ct state established '
+        'counter return comment "owned83:established"\n'
+        '  iifname "eth0" tcp dport { 12096, 32087 } counter reject with tcp '
+        'reset comment "owned83:public-deny"\n'
+        " }\n"
+        "}\n"
+    )
 
 
-def stable(value) -> object:
+def stable(value: object) -> object:
+    """Project volatile counters, handles and metainfo out of a json structure."""
     if isinstance(value, dict):
         return {
             k: stable(v)
@@ -55,7 +65,8 @@ def stable(value) -> object:
     return value
 
 
-def expected() -> "list[dict[str, object]]":
+def expected() -> list[dict[str, object]]:
+    """Return the exact nftables JSON objects this owner installed."""
     prefix = [
         {"match": {"op": "==", "left": {"meta": {"key": "iifname"}}, "right": "eth0"}},
         {
@@ -112,7 +123,8 @@ def expected() -> "list[dict[str, object]]":
     return objects
 
 
-def validate(objects) -> None:
+def validate(objects: list[dict[str, object]]) -> None:
+    """Require the observed table to contain exactly this owner's reviewed rules."""
     data = stable(objects)
     if not isinstance(data, list):
         reason = "Unexpected nftables objects projection"
@@ -153,7 +165,8 @@ def validate(objects) -> None:
         raise ValueError(msg)
 
 
-def read_table() -> "list[dict[str, object]] | None":
+def read_table() -> list[dict[str, object]] | None:
+    """Read and validate this owner's table objects, or None when absent."""
     data = json.loads(run(["nft", "-j", "list", "ruleset"]))["nftables"]
     own = [
         x
@@ -171,6 +184,7 @@ def read_table() -> "list[dict[str, object]] | None":
 
 
 def require_host() -> None:
+    """Refuse to run anywhere but root on socrat-2 with its public interface."""
     if os.geteuid() != 0 or socket.gethostname() != "socrat-2":
         msg = "Requires root on socrat-2"
         raise ValueError(msg)
@@ -180,7 +194,8 @@ def require_host() -> None:
         raise ValueError(msg)
 
 
-def plan() -> "dict[str, object]":
+def plan() -> dict[str, object]:
+    """Publish the exact intended guard change without applying it."""
     require_host()
     current = read_table()
     return {
@@ -195,19 +210,20 @@ def plan() -> "dict[str, object]":
     }
 
 
-def apply(state, approval) -> "dict[str, object]":
+def apply(state: Path, approval: str) -> dict[str, object]:
+    """Apply the approved rules once, leaving private receipts behind."""
     require_host()
     wanted = plan()
     if h.digest(wanted) != approval or read_table() is not None:
         msg = "Fresh empty-table approval required"
         raise ValueError(msg)
-    run(["nft", "--check", "-f", "-"], input=rules())
+    run(["nft", "--check", "-f", "-"], stdin=rules())
     h.save(state / "backend-guard-before.json", None)
     h.save(state / "backend-guard-uncertain.json", {"approval": approval, "plan": wanted})
     if plan() != wanted:
         msg = "Preimage drift"
         raise ValueError(msg)
-    run(["nft", "-f", "-"], input=rules())
+    run(["nft", "-f", "-"], stdin=rules())
     after = read_table()
     if after is None:
         msg = "Guard not present"
@@ -218,7 +234,8 @@ def apply(state, approval) -> "dict[str, object]":
     return wanted
 
 
-def finalize_readback(state, approval) -> "dict[str, object]":
+def finalize_readback(state: Path, approval: str) -> dict[str, object]:
+    """Finalize an interrupted apply from its private readback markers."""
     require_host()
     marker = json.loads((state / "backend-guard-uncertain.json").read_text())
     if marker["approval"] != approval or h.digest(marker["plan"]) != approval:
@@ -245,11 +262,12 @@ def finalize_readback(state, approval) -> "dict[str, object]":
     return {"readback_finalized": True, "repeated_rule_writes": 0}
 
 
-def ensure() -> "dict[str, object]":
+def ensure() -> dict[str, object]:
+    """Idempotently verify the owned boot guard, applying it once when absent."""
     require_host()
     if read_table() is None:
-        run(["nft", "--check", "-f", "-"], input=rules())
-        run(["nft", "-f", "-"], input=rules())
+        run(["nft", "--check", "-f", "-"], stdin=rules())
+        run(["nft", "-f", "-"], stdin=rules())
         if read_table() is None:
             msg = "Boot guard missing"
             raise RuntimeError(msg)
@@ -265,14 +283,16 @@ Before=k3s.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/bin/python3 /usr/local/libexec/homelab-vpn-backend-guard/vpn-backend-guard.py --ensure
+ExecStart=/usr/bin/python3\
+ /usr/local/libexec/homelab-vpn-backend-guard/vpn-backend-guard.py --ensure
 
 [Install]
 WantedBy=multi-user.target
 """
 
 
-def persist(state) -> None:
+def persist(state: Path) -> None:
+    """Copy the verified guard to the host and enable its boot unit, exactly once."""
     require_host()
     if read_table() is None:
         msg = "Verified live guard required before persistence"
@@ -285,7 +305,7 @@ def persist(state) -> None:
         .read_bytes(),
         Path("/etc/systemd/system/homelab-xui-backend-guard.service"): UNIT.encode(),
     }
-    for path, content in files.items():
+    for path in files:
         h.check_path(path)
         if path.exists():
             msg = "Persistence path already exists; inspect instead of overwriting"

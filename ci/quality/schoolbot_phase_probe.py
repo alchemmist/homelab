@@ -14,22 +14,22 @@ import time
 
 SERVICE = "schoolbot.schoolbot.svc.cluster.local"
 REQUEST = b"GET /api/health HTTP/1.0\r\nHost: inform.sch1357.ru\r\nConnection: close\r\n\r\n"
+MODES = ("named", "absolute", "numeric", "listener")
+HTTP_OK = 200
+BODY_LIMIT = 8192
 
 
-def sample(mode, vip):
+def sample(mode: str, vip: str) -> dict[str, object]:
+    """Measure one bounded probe pass against the Schoolbot VIP."""
     address = ipaddress.IPv4Address(vip)
-    if address not in ipaddress.IPv4Network("10.43.0.0/16") or mode not in {
-        "named",
-        "absolute",
-        "numeric",
-        "listener",
-    }:
-        raise ValueError("unexpected probe destination")
-    result = {}
+    if address not in ipaddress.IPv4Network("10.43.0.0/16") or mode not in set(MODES):
+        unexpected = "unexpected probe destination"
+        raise ValueError(unexpected)
+    result: dict[str, object] = {}
     phase = "dns"
     start = time.monotonic_ns()
 
-    def finish(label):
+    def finish(label: str) -> None:
         nonlocal start
         now = time.monotonic_ns()
         result[label + "_ms"] = round((now - start) / 1e6, 2)
@@ -57,18 +57,18 @@ def sample(mode, vip):
             with http.client.HTTPResponse(sock) as response:
                 response.begin()
                 finish("headers")
-                if response.status != 200:
+                if response.status != HTTP_OK:
                     return {**result, "outcome": f"http-{response.status}"}
                 phase = "body"
-                body = response.read(8193)
+                body = response.read(BODY_LIMIT + 1)
                 finish("body")
-                doc = json.loads(body) if len(body) <= 8192 else None
+                doc = json.loads(body) if len(body) <= BODY_LIMIT else None
                 valid = (
                     response.headers.get_all("Content-Length") == [str(len(body))]
                     and response.getheader("Transfer-Encoding") is None
                     and response.getheader("Content-Type", "").partition(";")[0]
                     == "application/json"
-                    and len(body) <= 8192
+                    and len(body) <= BODY_LIMIT
                     and isinstance(doc, dict)
                     and doc.get("ok") is True
                 )
@@ -80,7 +80,7 @@ def sample(mode, vip):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["absolute", "named", "numeric", "listener"])
+    parser.add_argument("mode", choices=list(MODES))
     parser.add_argument("vip")
     args = parser.parse_args()
     print(json.dumps(sample(args.mode, args.vip)))

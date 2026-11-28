@@ -16,6 +16,46 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 "tests/**" = ["INP001", "PLC0415", "S603", "S607"]
 # CI console tools print their machine-readable progress to stdout.
 "ci/**" = ["INP001", "T201"]
+# The audited subprocess dispatcher itself: this module is the single reviewed
+# execution site every ci tool routes through (fixed argv, no shell, bounded,
+# failure output never published). All other modules must use command()/spawn().
+"ci/quality/common.py" = ["S603"]
+# The checksum-locked tool fetcher: it must stream the raw binary payload out
+# of curl, which the str-only command() dispatcher and DEVNULL-based spawn()
+# cannot carry; the argv below stays fixed (/usr/bin/curl, https-only,
+# bounded size/time) and every archive is sha256-verified before use.
+"ci/quality/install_tools.py" = ["S603"]
+# The checksum-locked ansible-galaxy installer: like install_tools it must
+# stream the raw archive bytes out of curl (the str-only dispatcher cannot
+# carry them) and then hand each verified tarball to the pinned
+# ansible-galaxy executable; both argv lists stay fixed and reviewed.
+"ci/quality/install_collections.py" = ["S603"]
+# The npm consumer-parity smoke: its reviewed function is running the same
+# npm/node binaries the consumer runs, in the consumer's isolated HOME/PATH
+# sandbox, so the audited dispatcher (fixed cwd/env) cannot reproduce it.
+"ci/quality/npm_smoke.py" = ["S603", "S607"]
+# The reviewed test-suite launcher: it must inject a credential-scrubbed
+# environment, an isolated network policy and the framework's own exit code
+# for pytest, none of which the fixed-argv dispatcher carries.
+"ci/quality/tests.py" = ["S603"]
+# The scoped ruff driver: it batches the owned inventory as explicit argv
+# and must propagate each batch's own ruff exit status (tests pin that
+# contract on the raw runner), which the failing dispatcher cannot carry.
+"ci/quality/ruff_scope.py" = ["S603"]
+# Copy-deployed VPN operational programs (persist() ships these single files
+# to hosts without a repo checkout): reviewed fixed-operand subprocess calls
+# are their documented function, and routing them through ci.quality.common
+# would break the single-file deployment contract.
+"ci/vpn/**" = ["S603", "S607"]
+# The pinned hostname/timeout asserts are the reviewed hard stops whose exact
+# AST the probe tests pin structurally: the timeout bounds (including the
+# literal 45) are part of that pinned review, so PLR2004 stays per-file ignored.
+"ci/vpn/vpn-home-nl-udp-probe.py" = ["S101", "PLR2004"]
+# Subscription migration: the subListen allow-list audits the panel's
+# historical wildcard binding (retiring it is out of this change's scope),
+# and the subscription fetches go to the two reviewed constant origins with
+# an explicit scheme allowlist.
+"ci/vpn/vpn-subscription-migrate.py" = ["S104", "S310"]
 # Operational single-file programs below are deployed by copy (no package
 # layout makes sense): stdout is their CLI contract, subprocess/urllib calls on
 # reviewed fixed operands are their purpose, sys.path or bootstrap code can
@@ -23,5 +63,100 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 "scripts/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
 "ansible/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
 "charts/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
+# The durable workflow error type is named Failure across the reviewed
+# worker API boundary: its fixed non-sensitive codes are the documented wire
+# contract asserted by the spi_triage suite and produced by every chart
+# module, so renaming to an Error suffix would break the deployed worker API
+# and the reviewed compatibility pins.
+"charts/spi-triage/files/core.py" = ["N818", "PLC0415"]
+"services/spi/legacy/backend/core.py" = ["N818", "PLC0415"]
+"charts/spi-triage/files/durable_wait.py" = ["PLC0415"]
+"services/spi/legacy/backend/durable_wait.py" = ["PLC0415"]
+# The storage exception names (StoragePermanent/StorageTransient et al.) and
+# the SigV4 sign() arity are the reviewed wire contract shared with the
+# independent reference implementation in services/rustfs_gateway/gateway.py
+# and consumed by service.py/storage_runtime.py: renaming or re-shaping them
+# would break the deployed worker and gateway boundaries.
+"charts/spi-triage/files/s3_evidence.py" = ["N818", "PLR0913"]
+"services/spi/legacy/backend/s3_evidence.py" = ["N818", "PLR0913"]
+# The dispatcher constructor arity (store, token, enabled) and its positional
+# boolean are pinned positionally by the spi_triage dispatcher tests; the two
+# kept tail `except Exception` sites are the reviewed trust boundary (a failed
+# POST does not prove n8n did not start), and the component/event JSON lines
+# are the worker stdout log contract.
+"charts/spi-triage/files/dispatcher.py" = ["FBT001", "FBT002", "BLE001", "T201"]
+"services/spi/legacy/backend/dispatcher.py" = ["FBT001", "FBT002", "BLE001", "T201"]
+# The git-tracked spelling of the renovated spi-triage service module carries the
+# same reviewed rationale as the charts/** family: stdout JSON records are the
+# worker log contract, the Engine collaborator arity is the reviewed (and test-
+# asserted) constructor surface, and queue_admin is deferred until the worker is
+# actually configured with a queue UI token.
+"services/spi/legacy/backend/service.py" = ["PLC0415", "T201", "PLR0913"]
 "deploy/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
+# The integrations adapters are the reviewed LLM/checkpoint/collector boundary:
+# the v3 checkpoint-replay reductions (match, call, collect) and the bounded
+# rate-limit header parser are single cohesive contracts whose exact structure
+# the spi_triage suite pins (replay digests, batch order, admission budget
+# probes); splitting them would rewrite reviewed replay semantics, not style.
+# Lazy evidence_bundle/telegram_links/local_token_counter imports guard the
+# legacy import cycle behind per-call freshness, and every adapter URL is one
+# of the fixed observability/GitHub origins named in this file's constants.
+"charts/spi-triage/files/integrations.py" = ["S310", "PLC0415", "C901", "PLR0912", "PLR0913", "PLR0915"]
+"services/spi/legacy/backend/integrations.py" = ["S310", "PLC0415", "C901", "PLR0912", "PLR0913", "PLR0915"]
+# The telemetry collector is one reviewed bounded-read contract: the window
+# clipper, the trace-span projector, and the per-source request gate are pinned
+# digest-exactly by the spi_triage suite (probe order, budget gaps, truncation
+# flags), so their branch/return shape stays per-file reviewed rather than split.
+"charts/spi-triage/files/telemetry.py" = ["PLC0415", "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915"]
+"services/spi/legacy/backend/telemetry.py" = ["PLC0415", "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915"]
+# The local token counter is one reviewed bounded-input contract: raw_fits
+# walks the whole request once with per-type budget deductions (returning
+# False exactly at the bound, raising Failure only on the named
+# non-negotiable types), and its shape is pinned digest-exactly by the
+# spi_triage parity/golden-render tests, so the single walk stays per-file
+# reviewed rather than split; the constructor converts any pinned-asset or
+# library failure into the one documented Failure code, and the local
+# tokenizers import stays per-call so byte-bound mode never loads the Rust
+# extension (PLC0415 listed only where charts/** does not already cover it).
+"charts/spi-triage/files/local_token_counter.py" = ["C901", "PLR0912", "BLE001"]
+"services/spi/legacy/backend/local_token_counter.py" = ["C901", "PLR0912", "BLE001", "PLC0415"]
+# The storage runtime is the reviewed fail-closed credentials seam: every
+# invalid input, unpinned path, unsafe inode or parser error must surface as
+# the single documented S3_WRITER_CONFIGURATION_INVALID code, so the outward
+# except Exception stays part of the pinned contract.
+"charts/spi-triage/files/storage_runtime.py" = ["BLE001"]
+"services/spi/legacy/backend/storage_runtime.py" = ["BLE001"]
+# The GitHub App token broker runs as a copy-deployed CronJob entrypoint: its
+# reviewed function is emitting the operational log/exit-status lines and
+# calling the four fixed https API origins, and any failure must become the
+# one logged refresh_failed line plus exit 1, so the outer except Exception
+# stays part of the pinned contract (T201/S310 where charts/** does not
+# already cover them).
+"charts/spi-triage/files/github_broker.py" = ["BLE001"]
+"services/spi/legacy/backend/github_broker.py" = ["T201", "S310", "BLE001"]
+# The queue operator DTO composes its IN-clause from the fixed "?"
+# placeholder set only (never interpolated values), which S608 cannot see;
+# the projection stays exactly the reviewed column list pinned by the
+# spi_triage queue_admin suite.
+"charts/spi-triage/files/queue_admin.py" = ["S608"]
+"services/spi/legacy/backend/queue_admin.py" = ["S608"]
+# The provenance collector keeps its original per-call lazy imports: the
+# in-cluster hosts (integrations) and quote/urlencode helpers load only on
+# the reviewed read paths so an unused collector never touches the wire,
+# and the shared import cycle stays guarded per-call (charts/** already
+# carries PLC0415; the services spelling repeats it here).
+"services/spi/legacy/backend/provenance.py" = ["PLC0415"]
+# telegram_links.once deliberately catches a blind Exception so an ambiguous
+# POST outcome is retried instead of killing the delivery thread or
+# fabricating a receipt (reviewed seams, pinned by the spi_triage suite).
+"charts/spi-triage/files/telegram_links.py" = ["BLE001"]
+"services/spi/legacy/backend/telegram_links.py" = ["BLE001"]
+# telegram_delivery loops swallow single-retry hiccups on purpose: a tick of
+# card discovery, primary backfill, or link retry must never kill its worker
+# thread, and each failure already reschedules itself in the durable tables
+# (reviewed seams, pinned by the spi_triage suite; the services spelling also
+# keeps the lazy json.codec import, the audited HTTPS open, and the one-line
+# loop retry log that charts/** covers via the global tables).
+"charts/spi-triage/files/telegram_delivery.py" = ["BLE001", "S110"]
+"services/spi/legacy/backend/telegram_delivery.py" = ["BLE001", "S110", "PLC0415", "S310", "T201", "PLR0913"]
 "services/**" = ["INP001"]

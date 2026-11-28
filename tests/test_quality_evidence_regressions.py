@@ -16,7 +16,7 @@ common = importlib.import_module("ci.quality.common")
 strict_report = importlib.import_module("ci.quality.strict_report")
 
 _FROZEN_FILE_COUNT = 17
-_REVIEWED_NONSECRET_COUNT = 57
+_REVIEWED_NONSECRET_COUNT = 61
 _GIT_SHA1_LENGTH = 40
 _GIT_SHA256_LENGTH = 64
 _PRIVATE_DIRECTORY_MODE = 0o700
@@ -174,8 +174,23 @@ def test_frozen_provenance_is_the_exact_reviewed_file_set() -> None:
     expected = {record["directory"] + "/" + name for name in manifest["backend_sha256"]}
     frozen = common.frozen_source_files()
     patched = [
+        "charts/spi-triage/files/core.py",
+        "charts/spi-triage/files/dispatcher.py",
+        "charts/spi-triage/files/integrations.py",
+        "charts/spi-triage/files/telemetry.py",
+        "charts/spi-triage/files/durable_wait.py",
+        "charts/spi-triage/files/s3_evidence.py",
+        "charts/spi-triage/files/service.py",
         "charts/spi-triage/files/telegram_delivery.py",
         "charts/spi-triage/files/telegram_links.py",
+        "charts/spi-triage/files/local_token_counter.py",
+        "charts/spi-triage/files/card_correlation.py",
+        "charts/spi-triage/files/grafana_links.py",
+        "charts/spi-triage/files/storage_runtime.py",
+        "charts/spi-triage/files/github_broker.py",
+        "charts/spi-triage/files/queue_admin.py",
+        "charts/spi-triage/files/evidence_bundle.py",
+        "charts/spi-triage/files/provenance.py",
     ]
     assert common.owned(patched) == patched
     assert frozen == expected - set(patched)

@@ -8,9 +8,7 @@ from unittest.mock import patch
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location(
-    "udp_probe", ROOT / "ci/vpn/vpn-home-nl-udp-probe.py"
-)
+spec = importlib.util.spec_from_file_location("udp_probe", ROOT / "ci/vpn/vpn-home-nl-udp-probe.py")
 assert spec is not None
 assert spec.loader is not None
 m = importlib.util.module_from_spec(spec)

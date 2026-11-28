@@ -70,7 +70,7 @@ def test_rendered_source_environment_is_a_string() -> None:
         assert isinstance(source, str)
 
 
-def test_prometheus_rules(tmp_path) -> None:
+def test_prometheus_rules(tmp_path: Path) -> None:
     rendered = subprocess.check_output(
         [
             "helm",

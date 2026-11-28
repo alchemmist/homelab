@@ -24,10 +24,16 @@ from typing import Protocol, TextIO, TypedDict, cast
 def load(name: str, filename: str) -> ModuleType:
     """Import a sibling migration module by exact file name."""
     spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
+    if spec is None or spec.loader is None:
+        msg = "Sibling migration module is not loadable"
+        raise RuntimeError(msg)
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m
 
+
+PROBE_READY_ATTEMPTS = 40
+TROJAN_PUBLIC_PORT = 32087
 
 native = load("native", "vpn-panel-session.py")
 target = load("target", "vpn-reality-apply.py")
@@ -201,6 +207,8 @@ def stage_own_probe(
     )
     log = os.fdopen(fd, "w")
     executable = s.state / "owned-xray-probe"
+    # S603: the reviewed owned-xray probe executable deployed inside the
+    # approved private session state; no partial-path shell is involved.
     process = subprocess.Popen(
         [str(executable), "run", "-c", str(s.state / "trojan-client-private.json")],
         stdout=log,
@@ -211,7 +219,7 @@ def stage_own_probe(
 
 def wait_probe_ready(process: subprocess.Popen[bytes], port: int) -> None:
     """Wait until the own client listens on its reserved local port."""
-    for attempt in range(40):
+    for attempt in range(PROBE_READY_ATTEMPTS):
         if process.poll() is not None:
             msg = "Own Trojan client exited"
             raise RuntimeError(msg)
@@ -219,7 +227,7 @@ def wait_probe_ready(process: subprocess.Popen[bytes], port: int) -> None:
             with socket.create_connection(("127.0.0.1", port), timeout=0.3):
                 return
         except OSError:
-            if attempt == 39:
+            if attempt == PROBE_READY_ATTEMPTS - 1:
                 raise
             time.sleep(0.25)
 
@@ -235,7 +243,7 @@ def capture_publication_baseline(s: SessionLike, identity: ProbeIdentity) -> Pub
         s.database, s.state, "backend-before-uri", exclude_client_ids=(own_id,)
     )
     json_before = publication.snapshot(
-        s.database, s.state, "backend-before-json", True, exclude_client_ids=(own_id,)
+        s.database, s.state, "backend-before-json", json_format=True, exclude_client_ids=(own_id,)
     )
     pre = target.configuration(s.database)
     return {
@@ -268,7 +276,7 @@ def write_guard(
         s.database, s.state, "backend-after-uri", exclude_client_ids=(own_id,)
     )
     json_after = publication.snapshot(
-        s.database, s.state, "backend-after-json", True, exclude_client_ids=(own_id,)
+        s.database, s.state, "backend-after-json", json_format=True, exclude_client_ids=(own_id,)
     )
     if baseline["before"] != cast("dict[object, object]", after) or baseline["json_before"] != cast(
         "dict[object, object]", json_after
@@ -338,7 +346,7 @@ def apply(
     trojan = [
         r
         for r in original["inbounds"]
-        if r["port"] == 32087 and r["protocol"] == "trojan" and r["enable"]
+        if r["port"] == TROJAN_PUBLIC_PORT and r["protocol"] == "trojan" and r["enable"]
     ]
     if len(trojan) != 1:
         msg = "Trojan target drift"
@@ -415,6 +423,7 @@ def apply(
 
 
 def main() -> None:
+    """Enact or preview the backend switch with three approvals and private proof."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--state", type=Path, required=True)
     p.add_argument("--apply", action="store_true")
@@ -455,7 +464,7 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except Exception as error:
         import sys
         import traceback
 
@@ -470,4 +479,4 @@ if __name__ == "__main__":
         except (OSError, ValueError):
             pass
         msg = "Backend enforcement stopped; inspect private receipts, never replay writes."
-        raise SystemExit(msg) from None
+        raise SystemExit(msg) from error

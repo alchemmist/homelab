@@ -5,6 +5,7 @@ import socket
 
 import yaml
 
+from ci.quality.closed_root_backend import view
 from ci.quality.public_web import CATALOG
 
 ENTRIES = {
@@ -12,12 +13,15 @@ ENTRIES = {
 }
 
 
-def cases(catalog: dict) -> dict[tuple[str, str, str], str]:
+def cases(catalog: dict[str, object]) -> dict[tuple[str, str, str], str]:
     """Retain namespace/path owners; policy and topology gaps are not passing tests."""
-    rows = {}
-    for ns, hosts in catalog["hosts"].items():
-        for host, policy in hosts.items():
-            for entry in catalog["replicas"]:
+    rows: dict[tuple[str, str, str], str] = {}
+    hosts = view(catalog["hosts"])
+    replicas = view(catalog["replicas"])
+    for ns, host_map in hosts.items():
+        for host, raw_policy in view(host_map).items():
+            policy = view(raw_policy)
+            for entry in replicas:
                 if policy.get("route") == "reserved":
                     state = "reserved"
                 elif policy.get("route") == "vpn-transit":

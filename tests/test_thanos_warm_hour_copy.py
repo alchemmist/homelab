@@ -52,7 +52,7 @@ class Bucket:
         return len(v), hashlib.sha256(v).hexdigest()
 
 
-def test_reader_skips_wrong_resolution_and_marked_input(tmp_path) -> None:
+def test_reader_skips_wrong_resolution_and_marked_input(tmp_path: Path) -> None:
     MOD.run(Bucket(300000), tmp_path)
     b = Bucket()
     b.obj["deletion-mark.json"] = b"{}"
@@ -60,7 +60,9 @@ def test_reader_skips_wrong_resolution_and_marked_input(tmp_path) -> None:
     assert list(tmp_path.iterdir()) == []
 
 
-def test_reader_never_replaces_different_existing_hour(tmp_path, monkeypatch) -> None:
+def test_reader_never_replaces_different_existing_hour(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from collections import namedtuple
 
     monkeypatch.setattr(

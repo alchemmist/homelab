@@ -2,12 +2,14 @@
 
 import json
 import re
-import subprocess
 from pathlib import Path
 
 import yaml
 
+from ci.quality.common import command
+
 SOURCES = ("charts/grafana-mcp/values.yaml", "deploy/netbird/values.yaml")
+SCAN_BUDGET_SECONDS = 1800
 
 
 def main() -> int:
@@ -20,7 +22,7 @@ def main() -> int:
             raise ValueError(msg)
         ref = f"{image['repository']}@{image['digest']}"
         print(f"Scanning {source}: {ref}", flush=True)
-        output = subprocess.check_output(
+        output = command(
             [
                 "trivy",
                 "image",
@@ -36,8 +38,9 @@ def main() -> int:
                 "json",
                 "--",
                 ref,
-            ]
-        )
+            ],
+            timeout=SCAN_BUDGET_SECONDS,
+        ).stdout
         for result in json.loads(output)["Results"]:
             for vuln in result.get("Vulnerabilities", []):
                 fix = vuln.get("FixedVersion")

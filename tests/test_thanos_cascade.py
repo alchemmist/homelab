@@ -6,6 +6,8 @@ import unittest
 from pathlib import Path
 from typing import TypedDict
 
+import pytest
+
 SOURCE = Path(__file__).resolve().parents[1] / "charts/thanos/files/cascade.py"
 SPEC = importlib.util.spec_from_file_location("cascade", SOURCE)
 CASCADE = importlib.util.module_from_spec(SPEC)
@@ -233,7 +235,9 @@ if __name__ == "__main__":
     unittest.main()
 
 
-def test_shared_pressure_reads_only_one_fresh_bucket_sample(monkeypatch) -> None:
+def test_shared_pressure_reads_only_one_fresh_bucket_sample(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from io import BytesIO
     from urllib.parse import parse_qs, urlparse
 

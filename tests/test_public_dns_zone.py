@@ -176,7 +176,9 @@ def test_monori_https_selection_is_scoped(home, moscow, ips) -> None:
 @pytest.mark.parametrize(
     ("rc", "status", "healthy"), [(0, "200", True), (0, "503", False), (60, "000", False)]
 )
-def test_monori_https_requires_verified_exchange(monkeypatch, rc, status, healthy) -> None:
+def test_monori_https_requires_verified_exchange(
+    monkeypatch: pytest.MonkeyPatch, rc: int, status: str, healthy: bool
+) -> None:
     import subprocess
 
     def run(argv, **kwargs):
@@ -195,7 +197,7 @@ def test_monori_https_requires_verified_exchange(monkeypatch, rc, status, health
 @pytest.mark.parametrize(
     ("home", "vps"), [(True, True), (True, False), (False, True), (False, False)]
 )
-def test_existing_production_oidc_pair_preserved(home, vps) -> None:
+def test_existing_production_oidc_pair_preserved(home: bool, vps: bool) -> None:
     lines = zone.render(123, home, vps).splitlines()
     for name in ("lms", "auth.socrat"):
         prefix = name + " IN A "

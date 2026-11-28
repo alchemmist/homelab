@@ -31,9 +31,7 @@ def render() -> dict[tuple[str, str], dict[str, object]]:
         ],
         text=True,
     )
-    return {
-        (x["kind"], x["metadata"]["name"]): x for x in yaml.safe_load_all(raw) if x
-    }
+    return {(x["kind"], x["metadata"]["name"]): x for x in yaml.safe_load_all(raw) if x}
 
 
 class N8nOidcCatalogTests(unittest.TestCase):
@@ -46,9 +44,7 @@ class N8nOidcCatalogTests(unittest.TestCase):
         assert n8n["accessManagement"]["state"] == "ready"
         assert "no JIT" in n8n["accessManagement"]["reason"]
         assert n8n["admission"] == "native-oidc"
-        assert n8n["redirect"] == (
-            "https://n8n.socrat.alchemmist.xyz/rest/sso/oidc/callback"
-        )
+        assert n8n["redirect"] == ("https://n8n.socrat.alchemmist.xyz/rest/sso/oidc/callback")
         assert n8n["groups"] == ["homelab-owner"]
 
 

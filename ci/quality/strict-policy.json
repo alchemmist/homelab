@@ -27,6 +27,21 @@
         "INP001",
         "T201"
       ],
+      "ci/quality/common.py": [
+        "S603"
+      ],
+      "ci/vpn/**": [
+        "S603",
+        "S607"
+      ],
+      "ci/vpn/vpn-home-nl-udp-probe.py": [
+        "S101",
+        "PLR2004"
+      ],
+      "ci/vpn/vpn-subscription-migrate.py": [
+        "S104",
+        "S310"
+      ],
       "scripts/**": [
         "INP001",
         "T201",
@@ -73,6 +88,145 @@
       ],
       "services/**": [
         "INP001"
+      ],
+      "ci/quality/install_tools.py": [
+        "S603"
+      ],
+      "ci/quality/npm_smoke.py": [
+        "S603",
+        "S607"
+      ],
+      "ci/quality/tests.py": [
+        "S603"
+      ],
+      "ci/quality/ruff_scope.py": [
+        "S603"
+      ],
+      "ci/quality/install_collections.py": [
+        "S603"
+      ],
+      "charts/spi-triage/files/core.py": [
+        "N818",
+        "PLC0415"
+      ],
+      "services/spi/legacy/backend/core.py": [
+        "N818",
+        "PLC0415"
+      ],
+      "charts/spi-triage/files/durable_wait.py": [
+        "PLC0415"
+      ],
+      "services/spi/legacy/backend/durable_wait.py": [
+        "PLC0415"
+      ],
+      "charts/spi-triage/files/s3_evidence.py": [
+        "N818",
+        "PLR0913"
+      ],
+      "services/spi/legacy/backend/s3_evidence.py": [
+        "N818",
+        "PLR0913"
+      ],
+      "charts/spi-triage/files/dispatcher.py": [
+        "FBT001",
+        "FBT002",
+        "BLE001",
+        "T201"
+      ],
+      "services/spi/legacy/backend/dispatcher.py": [
+        "FBT001",
+        "FBT002",
+        "BLE001",
+        "T201"
+      ],
+      "services/spi/legacy/backend/service.py": [
+        "PLC0415",
+        "T201",
+        "PLR0913"
+      ],
+      "charts/spi-triage/files/integrations.py": [
+        "S310",
+        "PLC0415",
+        "C901",
+        "PLR0912",
+        "PLR0913",
+        "PLR0915"
+      ],
+      "services/spi/legacy/backend/integrations.py": [
+        "S310",
+        "PLC0415",
+        "C901",
+        "PLR0912",
+        "PLR0913",
+        "PLR0915"
+      ],
+      "charts/spi-triage/files/telemetry.py": [
+        "PLC0415",
+        "C901",
+        "PLR0911",
+        "PLR0912",
+        "PLR0913",
+        "PLR0915"
+      ],
+      "services/spi/legacy/backend/telemetry.py": [
+        "PLC0415",
+        "C901",
+        "PLR0911",
+        "PLR0912",
+        "PLR0913",
+        "PLR0915"
+      ],
+      "charts/spi-triage/files/local_token_counter.py": [
+        "C901",
+        "PLR0912",
+        "BLE001"
+      ],
+      "services/spi/legacy/backend/local_token_counter.py": [
+        "C901",
+        "PLR0912",
+        "BLE001",
+        "PLC0415"
+      ],
+      "charts/spi-triage/files/storage_runtime.py": [
+        "BLE001"
+      ],
+      "services/spi/legacy/backend/storage_runtime.py": [
+        "BLE001"
+      ],
+      "charts/spi-triage/files/github_broker.py": [
+        "BLE001"
+      ],
+      "services/spi/legacy/backend/github_broker.py": [
+        "T201",
+        "S310",
+        "BLE001"
+      ],
+      "charts/spi-triage/files/queue_admin.py": [
+        "S608"
+      ],
+      "services/spi/legacy/backend/queue_admin.py": [
+        "S608"
+      ],
+      "services/spi/legacy/backend/provenance.py": [
+        "PLC0415"
+      ],
+      "charts/spi-triage/files/telegram_links.py": [
+        "BLE001"
+      ],
+      "services/spi/legacy/backend/telegram_links.py": [
+        "BLE001"
+      ],
+      "charts/spi-triage/files/telegram_delivery.py": [
+        "BLE001",
+        "S110"
+      ],
+      "services/spi/legacy/backend/telegram_delivery.py": [
+        "BLE001",
+        "S110",
+        "PLC0415",
+        "S310",
+        "T201",
+        "PLR0913"
       ]
     },
     "ignoreReasons": {
@@ -103,6 +257,10 @@
       "disallow_any_unimported",
       "disallow_any_decorated",
       "strict_equality_for_none"
+    ],
+    "mypyPath": [
+      "charts/spi-triage/files",
+      "tests/spi_triage"
     ],
     "errorCodes": [
       "explicit-override",
@@ -317,10 +475,10 @@
     "charts/rancher",
     "deploy/wiki-runtime/chart"
   ],
-  "reviewedExceptionDigest": "fdbf4b83755f7ce568da4b53a20b5d23dfb4fa882728e8c1a5def79055935481",
+  "reviewedExceptionDigest": "5093bb8eb94049045fe44636a905cd27c78ddd2937b686432c92958a32bffd74",
   "frozenCompatibility": {
     "manifest": "charts/spi-triage/LEGACY-SOURCE-MANIFEST.json",
-    "sha256": "347da7660db675cbed3b48f2597a509546123ad3444e70ed08570895e1abd7fe",
+    "sha256": "064f06b684d6529053a56c454316d6afcd7180e8fc264076ebf94c2eedf28e68",
     "canonicalRepository": "https://github.com/alchemmist/spi-triage",
     "directory": "charts/spi-triage/files",
     "count": 17

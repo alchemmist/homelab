@@ -3,9 +3,10 @@
 import fcntl
 import subprocess
 import sys
+from pathlib import Path
 
 
-def test_writer_gate_survives_contender_restart_and_releases_on_owner_exit(tmp_path):
+def test_writer_gate_survives_contender_restart_and_releases_on_owner_exit(tmp_path: Path) -> None:
     gate = tmp_path / "vpn-owner.lock"
     gate.touch()
     contender = """import fcntl, sys

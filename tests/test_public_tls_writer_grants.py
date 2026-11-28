@@ -1,9 +1,16 @@
+"""Direct writer-grant reporting must stay positive-only and identity-free."""
+
+from collections.abc import Sequence
+from typing import cast
+
 import pytest
 
 from ci.quality.public_tls_writer_grants import grants
+from ci.quality.public_tls_writer_triage import _SubjectObservation, requester_for, summarize
 
 
-def obj(kind, name, ns=None, **fields):
+def obj(kind: str, name: str, ns: str | None = None, **fields: object) -> dict[str, object]:
+    """Build one literal RBAC object body for a grant fixture."""
     return {
         "apiVersion": "rbac.authorization.k8s.io/v1",
         "kind": kind,
@@ -12,7 +19,10 @@ def obj(kind, name, ns=None, **fields):
     }
 
 
-def fixture(names, namespace="school"):
+def fixture(
+    names: Sequence[str], namespace: str = "school"
+) -> tuple[dict[str, object], dict[str, object]]:
+    """Build a pinned ClusterRole and its RoleBinding with the given Secret names."""
     role = obj(
         "ClusterRole",
         "operator",
@@ -39,7 +49,7 @@ def fixture(names, namespace="school"):
     return role, binding
 
 
-def test_cluster_role_obeys_binding_namespace_and_named_verb_limits():
+def test_cluster_role_obeys_binding_namespace_and_named_verb_limits() -> None:
     role, b = fixture(["pin"])
     (r,) = grants("school", "pin", [role, b])
     assert r["verbs"] == ["delete", "patch", "update"]
@@ -49,31 +59,29 @@ def test_cluster_role_obeys_binding_namespace_and_named_verb_limits():
     (r,) = grants("school", "pin", [role, b])
     assert {"create", "deletecollection"} <= set(r["verbs"])
     b["kind"] = "ClusterRoleBinding"
-    del b["metadata"]["namespace"]
+    del cast("dict[str, object]", b["metadata"])["namespace"]
     (r,) = grants("different", "pin", [b, role])
     assert r["binding"] == ["ClusterRoleBinding", None, "editor"]
     with pytest.raises(ValueError, match="incomplete"):
         grants("school", "pin", [b])
 
 
-def test_local_role_cannot_be_resolved_from_another_namespace():
+def test_local_role_cannot_be_resolved_from_another_namespace() -> None:
     role, b = fixture([])
-    b["roleRef"]["kind"] = "Role"
+    cast("dict[str, object]", b["roleRef"])["kind"] = "Role"
     role["kind"] = "Role"
-    role["metadata"]["namespace"] = "other"
+    cast("dict[str, object]", role["metadata"])["namespace"] = "other"
     with pytest.raises(ValueError, match="incomplete"):
         grants("school", "pin", [role, b])
-    role["metadata"]["namespace"] = "school"
-    role["rules"][0]["verbs"] = ["get", "list", "watch"]
+    cast("dict[str, object]", role["metadata"])["namespace"] = "school"
+    cast("list[dict[str, object]]", role["rules"])[0]["verbs"] = ["get", "list", "watch"]
     assert not grants("school", "pin", [role, b])
 
 
-def test_report_deduplicates_verb_union_without_revealing_names():
-    from ci.quality.public_tls_writer_triage import summarize
-
-    local = {"kind": "ServiceAccount", "name": "private-subject"}
-    group = {"kind": "Group", "name": "system:authenticated"}
-    rows = [
+def test_report_deduplicates_verb_union_without_revealing_names() -> None:
+    local: dict[str, object] = {"kind": "ServiceAccount", "name": "private-subject"}
+    group: dict[str, object] = {"kind": "Group", "name": "system:authenticated"}
+    rows: list[_SubjectObservation] = [
         {
             "binding": ["RoleBinding", "school", "one"],
             "subjects": [local, group],
@@ -96,27 +104,24 @@ def test_report_deduplicates_verb_union_without_revealing_names():
     }
     assert report["descriptorsByVerb"] == {"patch": 2, "update": 1}
     assert report["requesterDirectServiceAccountVerbs"] == ["patch", "update"]
-    assert not report["writerApproved"] and "private-subject" not in str(report)
-    assert not summarize(rows, set(), "system:serviceaccount:other:private-subject")[
+    assert not report["writerApproved"]
+    assert "private-subject" not in str(report)
+    quiet = summarize(rows, set(), "system:serviceaccount:other:private-subject")[
         "requesterDirectServiceAccountVerbs"
     ]
+    assert not quiet
+    unscoped = dict(rows[0], binding=["ClusterRoleBinding", None, "one"])
     with pytest.raises(ValueError, match="unscoped"):
-        summarize(
-            [dict(rows[0], binding=["ClusterRoleBinding", None, "one"])], set(), ""
-        )
+        summarize([cast("_SubjectObservation", unscoped)], set(), "")
 
 
-def test_requester_requires_unique_current_owned_revision():
-    from ci.quality.public_tls_writer_triage import requester_for
-
-    cert = {
+def test_requester_requires_unique_current_owned_revision() -> None:
+    cert: dict[str, object] = {
         "metadata": {"uid": "new", "name": "cert", "generation": 2},
         "spec": {"secretName": "pin", "issuerRef": {"name": "issuer"}},
         "status": {
             "revision": 3,
-            "conditions": [
-                {"type": "Ready", "status": "True", "observedGeneration": 2}
-            ],
+            "conditions": [{"type": "Ready", "status": "True", "observedGeneration": 2}],
         },
     }
     owner = {
@@ -126,7 +131,7 @@ def test_requester_requires_unique_current_owned_revision():
         "controller": True,
         "uid": "new",
     }
-    req = {
+    req: dict[str, object] = {
         "metadata": {
             "ownerReferences": [owner],
             "annotations": {"cert-manager.io/certificate-revision": "3"},
@@ -135,26 +140,27 @@ def test_requester_requires_unique_current_owned_revision():
         "status": {"conditions": [{"type": "Ready", "status": "True"}]},
     }
     assert requester_for("pin", [cert], [req]) == "fixture"
-    for requests in [
-        [],
-        [req, req],
-        [
-            dict(
-                req,
-                metadata=dict(
-                    req["metadata"], ownerReferences=[dict(owner, uid="old")]
-                ),
-            )
-        ],
-        [
-            dict(
-                req,
-                metadata=dict(
-                    req["metadata"],
-                    annotations={"cert-manager.io/certificate-revision": "2"},
-                ),
-            )
-        ],
-    ]:
-        with pytest.raises(ValueError):
-            requester_for("pin", [cert], requests)
+    stale_owner = dict(
+        req,
+        metadata=dict(
+            cast("dict[str, object]", req["metadata"]),
+            ownerReferences=[dict(owner, uid="old")],
+        ),
+    )
+    stale_revision = dict(
+        req,
+        metadata=dict(
+            cast("dict[str, object]", req["metadata"]),
+            annotations={"cert-manager.io/certificate-revision": "2"},
+        ),
+    )
+    faults: list[tuple[str, Sequence[object], str]] = [
+        ("empty request list", [], "not enough values"),
+        ("two matching requests", [req, req], "too many values"),
+        ("stale owner uid", [stale_owner], "not enough values"),
+        ("stale revision", [stale_revision], "not enough values"),
+    ]
+    for label, candidates, fragment in faults:
+        assert label
+        with pytest.raises(ValueError, match=fragment):
+            requester_for("pin", [cert], candidates)

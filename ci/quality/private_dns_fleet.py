@@ -2,10 +2,10 @@
 
 import argparse
 import json
-import subprocess
 
 import yaml
 
+from ci.quality.common import command
 from ci.quality.public_web import CATALOG, ROOT, replica_values
 
 NAMESPACE = "public-dns-rehearsal"
@@ -29,11 +29,11 @@ ManifestDumper.add_representer(str, _string)
 def render() -> str:
     """Build each closed authority from the common chart and trusted inventory."""
     catalog = yaml.safe_load(CATALOG.read_text())
-    documents = []
+    documents: list[object] = []
     for name, instance in sorted(catalog["replicas"].items()):
         values = replica_values(catalog, instance, SERIAL)
         values["stage"] = "dns-only"
-        raw = subprocess.check_output(
+        raw = command(
             [
                 "helm",
                 "template",
@@ -44,9 +44,9 @@ def render() -> str:
                 "-f",
                 "-",
             ],
-            input=json.dumps(values),
-            text=True,
-        )
+            stdin=json.dumps(values),
+            timeout=180,
+        ).stdout
         documents.extend(doc for doc in yaml.safe_load_all(raw) if doc)
     # Helm versions may insert different comments/blank lines between objects.
     # Normalize outer YAML, not the contents of ConfigMap data or their checksum.
@@ -56,6 +56,7 @@ def render() -> str:
 
 
 def main() -> int:
+    """Render the closed DNS bundle and optionally verify the checked-in output byte-for-byte."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()

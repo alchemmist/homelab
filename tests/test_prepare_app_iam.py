@@ -2,6 +2,8 @@
 
 import contextlib
 import copy
+import email.message
+import importlib.util
 import io
 import json
 import sys
@@ -9,18 +11,27 @@ import tempfile
 import unittest
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TypedDict, cast, override
 from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlsplit
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "ansible/roles/authentik/files"))
-import prepare_app_iam as prep
 import pytest
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
+ROOT = Path(__file__).resolve().parents[1]
+spec = importlib.util.spec_from_file_location(
+    "prepare_app_iam", ROOT / "ansible/roles/authentik/files/prepare_app_iam.py"
+)
+if spec is None or spec.loader is None:
+    msg = "Preparation tool under test is not loadable"
+    raise RuntimeError(msg)
+prep = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(prep)
+
+FAKE_PROVIDER_MARKER = "SECRET-NEVER-LOG"
+EXPECTED_GROUP_WRITES = 9
+SECOND_SNAPSHOT_PASS = 2
+FAIL_WRITE_ATTEMPT = 2
 
 
 class FakeAPI:
@@ -30,25 +41,37 @@ class FakeAPI:
     requests: list[tuple[str, str, object]]
     page_size: int
     fail_write: int | None
-    after_get: Callable[[object], object] | None
+    after_get: Callable[[str], None] | None
     writes: int
 
-    def __init__(self, services, reviewed) -> None:
+    def __init__(
+        self,
+        services: dict[str, dict[str, object]],
+        reviewed: dict[str, dict[str, object]],
+    ) -> None:
+        """Seed the fake API with the frozen catalog and reviewed state."""
         self.data = {p: [] for p in prep.COLLECTIONS}
         self.requests: list[tuple[str, str, object]] = []
         self.page_size = 2
         self.fail_write: int | None = None
         self.after_get: Callable[[str], None] | None = None
         self.writes = 0
-        legacy = sorted({g for s in services.values() for g in s.get("groups", [])})
+        legacy = sorted(
+            {
+                cast("str", g)
+                for s in services.values()
+                for g in cast("list[object]", s.get("groups", []))
+            }
+        )
         self.data["core/groups/"] = [dict(prep.group_payload(n), pk="g-" + n) for n in legacy]
         for i, (n, uuid) in enumerate(prep.PINNED.items()):
+            member_groups = cast("list[object]", reviewed[n]["groups"])
             self.data["core/users/"].append(
                 {
                     "pk": i + 1,
                     "username": n,
                     "uuid": uuid,
-                    "groups": ["g-" + g for g in reviewed[n]["groups"]],
+                    "groups": ["g-" + cast("str", g) for g in member_groups],
                     "type": "internal",
                     "is_active": True,
                     "is_superuser": n == "alchemmist",
@@ -60,7 +83,9 @@ class FakeAPI:
                 "name": "homelab-" + slug,
             }
             self.data["providers/all/"].append(provider)
-            self.data["providers/oauth2/"].append(dict(provider, client_secret="SECRET-NEVER-LOG"))
+            self.data["providers/oauth2/"].append(
+                dict(provider, client_secret=FAKE_PROVIDER_MARKER)
+            )
             app = {
                 "pk": "a-" + slug,
                 "slug": slug,
@@ -68,12 +93,14 @@ class FakeAPI:
                 "policy_engine_mode": "any",
             }
             self.data["core/applications/"].append(app)
-            for n in services[slug]["groups"]:
+            service_groups = cast("list[object]", services[slug]["groups"])
+            for n in service_groups:
+                group_name = cast("str", n)
                 self.data["policies/bindings/"].append(
                     {
                         "pk": "b-" + str(len(self.data["policies/bindings/"])),
                         "target": app["pk"],
-                        "group": "g-" + n,
+                        "group": "g-" + group_name,
                         "user": None,
                         "policy": None,
                         "enabled": True,
@@ -86,7 +113,12 @@ class FakeAPI:
             if p.startswith(("stages/", "flows/", "outposts/", "propertymappings/")):
                 self.data[p] = [{"pk": "protected-" + p, "setting": "unchanged"}]
 
-    def __call__(self, method, endpoint, payload=None) -> dict[str, object]:
+    def __call__(
+        self,
+        method: str,
+        endpoint: str,
+        payload: dict[str, object] | None = None,
+    ) -> dict[str, object]:
         """Record the call and return fixture API responses."""
         self.requests.append((method, endpoint, copy.deepcopy(payload)))
         parsed = urlsplit(endpoint)
@@ -103,6 +135,7 @@ class FakeAPI:
             }
         assert method == "POST"
         assert path in ("core/groups/", "policies/bindings/")
+        assert payload is not None
         self.writes += 1
         if self.fail_write == self.writes:
             msg = "simulated private failure"
@@ -133,6 +166,7 @@ class _Plan(TypedDict):
 class PreparationTests(unittest.TestCase):
     """Run the frozen app IAM preparation tool against the fake API."""
 
+    @override
     def setUp(self) -> None:
         """Freeze the historical catalog and reviewed app state."""
         # Frozen historical migration tool, NOT the current dynamic reconciler.
@@ -162,14 +196,14 @@ class PreparationTests(unittest.TestCase):
             "writers_paused": True,
         }
 
-    def plan(self, stage="groups-only", evidence=None) -> _Plan:
+    def plan(self, stage: str = "groups-only", evidence: dict[str, object] | None = None) -> _Plan:
         """Build the migration plan via the frozen tool."""
         return cast(
             "_Plan",
             prep.build_plan(self.api, self.services, self.reviewed, stage, evidence)[0],
         )
 
-    def apply(self, stage="groups-only", approval=None) -> int:
+    def apply(self, stage: str = "groups-only", approval: str | None = None) -> int:
         """Apply the plan with the given approval."""
         if approval is None:
             approval = self.plan(stage, self.evidence)["sha256"]
@@ -198,7 +232,7 @@ class PreparationTests(unittest.TestCase):
         """Full plan is get only paginated and sanitized."""
         before = copy.deepcopy(self.api.data)
         plan = self.plan()
-        assert len(plan["operations"]) == 9
+        assert len(plan["operations"]) == EXPECTED_GROUP_WRITES
         assert before == self.api.data
         assert {m for m, _, _ in self.api.requests} == {"GET"}
         assert any("page=2" in p for _, p, _ in self.api.requests)
@@ -210,17 +244,17 @@ class PreparationTests(unittest.TestCase):
     def test_both_stages_bounded_preserve_everything_else(self) -> None:
         """Both stages bounded preserve everything else."""
         before = copy.deepcopy(self.api.data)
-        assert self.apply() == 9
+        assert self.apply() == EXPECTED_GROUP_WRITES
         assert self.plan()["operations"] == []
         for p in prep.COLLECTIONS:
             if p != "core/groups/":
                 assert self.api.data[p] == before[p]
         plan = self.plan("groups+empty-bindings")
-        assert len(plan["operations"]) == 9
+        assert len(plan["operations"]) == EXPECTED_GROUP_WRITES
         for op in plan["operations"]:
             assert op["payload"]["group"] in {g["pk"] for g in self.api.data["core/groups/"]}
             assert op["payload"]["target"] in {a["pk"] for a in self.api.data["core/applications/"]}
-        assert self.apply("groups+empty-bindings") == 9
+        assert self.apply("groups+empty-bindings") == EXPECTED_GROUP_WRITES
         assert self.plan("groups+empty-bindings")["operations"] == []
         for p in prep.COLLECTIONS:
             if p not in ("core/groups/", "policies/bindings/"):
@@ -277,6 +311,11 @@ class PreparationTests(unittest.TestCase):
     def test_unexpected_objects_catalog_uuids_and_links_fail_closed(self) -> None:
         """Unexpected objects catalog uuids and links fail closed."""
         baseline = copy.deepcopy(self.api.data)
+
+        def pop_last_application() -> dict[str, object]:
+            """Drop the newest application row via late-bound state access."""
+            return self.api.data["core/applications/"].pop()
+
         changes: list[Callable[[], object]] = [
             lambda: self.api.data["core/groups/"].append(
                 dict(prep.group_payload("app-foreign-user"), pk="foreign")
@@ -289,7 +328,7 @@ class PreparationTests(unittest.TestCase):
             lambda: self.api.data["core/users/"][0].update(is_active=False),
             lambda: self.api.data["core/applications/"][0].update(policy_engine_mode="all"),
             lambda: self.api.data["core/applications/"][0].update(provider=999),
-            self.api.data["core/applications/"].pop,
+            pop_last_application,
         ]
         for change in changes:
             self.api.data = copy.deepcopy(baseline)
@@ -355,11 +394,11 @@ class PreparationTests(unittest.TestCase):
 
         state: list[int] = [0]
 
-        def drift(path) -> None:
+        def drift(path: str) -> None:
             # One page per empty proxy collection: second pass is pre-write revalidation.
             if path == "providers/proxy/":
                 state[0] += 1
-                if state[0] == 2:
+                if state[0] == SECOND_SNAPSHOT_PASS:
                     self.api.data["outposts/instances/"][0]["setting"] = "drift"
 
         self.api.after_get = drift
@@ -371,7 +410,7 @@ class PreparationTests(unittest.TestCase):
         self,
     ) -> None:
         """Partial failure durable pending and no retry rollback or adoption."""
-        self.api.fail_write = 2
+        self.api.fail_write = FAIL_WRITE_ATTEMPT
         with pytest.raises(RuntimeError, match="simulated"):
             self.apply()
         journals = list((self.root / "app-iam-prepare-journal").iterdir())
@@ -382,13 +421,13 @@ class PreparationTests(unittest.TestCase):
         self.api.fail_write = None
         with pytest.raises(RuntimeError, match="Unresolved prior journal"):
             self.apply()
-        assert self.api.writes == 2
+        assert self.api.writes == FAIL_WRITE_ATTEMPT
 
     def test_uncertain_accepted_post_is_not_retried_or_adopted(self) -> None:
         """Uncertain accepted post is not retried or adopted."""
         original = self.api.__call__
 
-        def uncertain(method, path, payload=None):
+        def uncertain(method: str, path: str, payload: dict[str, object] | None = None) -> object:
             result = original(method, path, payload)
             if method == "POST":
                 msg = "connection lost after server accepted POST"
@@ -407,7 +446,7 @@ class PreparationTests(unittest.TestCase):
                 approval,
             )
         assert self.api.writes == 1
-        assert len(self.plan()["operations"]) == 8
+        assert len(self.plan()["operations"]) == EXPECTED_GROUP_WRITES - 1
         with pytest.raises(RuntimeError, match="Unresolved prior journal"):
             self.apply()
         assert self.api.writes == 1
@@ -418,7 +457,7 @@ class PreparationTests(unittest.TestCase):
         """Journal intent failure prevents post."""
         original = prep.atomic_json
 
-        def fail_intent(path, value):
+        def fail_intent(path: Path, value: object) -> object:
             if path.name == "01.json":
                 msg = "disk full"
                 raise OSError(msg)
@@ -426,7 +465,7 @@ class PreparationTests(unittest.TestCase):
 
         with (
             patch.object(prep, "atomic_json", side_effect=fail_intent),
-            pytest.raises(OSError),
+            pytest.raises(OSError, match="disk full"),
         ):
             self.apply()
         assert self.api.writes == 0
@@ -435,7 +474,7 @@ class PreparationTests(unittest.TestCase):
         """Post create drift stops after one post."""
         original = self.api.__call__
 
-        def api(method, path, payload=None):
+        def api(method: str, path: str, payload: dict[str, object] | None = None) -> object:
             result = original(method, path, payload)
             if method == "POST":
                 self.api.data["outposts/instances/"][0]["setting"] = "drift"
@@ -469,10 +508,10 @@ class PreparationTests(unittest.TestCase):
         )
         for response in responses:
             with pytest.raises(RuntimeError):
-                prep.rows(lambda *args, response=response: response, "core/users/")
+                prep.rows(lambda *_args, response=response: response, "core/users/")
         original = self.api.__call__
 
-        def api(method, path, payload=None):
+        def api(method: str, path: str, payload: dict[str, object] | None = None) -> object:
             result = original(method, path, payload)
             if "core/users/" in path:
                 results = cast("list[object]", result["results"])
@@ -501,11 +540,11 @@ class PreparationTests(unittest.TestCase):
                     "https://example.invalid/",
                     403,
                     "PRIVATE-TOKEN",
-                    {},
+                    email.message.Message(),
                     io.BytesIO(b"SECRET-RESPONSE-BODY"),
                 )
                 with pytest.raises(
-                    RuntimeError, match="^API request failed; outcome may be uncertain$"
+                    RuntimeError, match=r"^API request failed; outcome may be uncertain$"
                 ):
                     api("GET", "core/users/?page=1")
                 for method, endpoint in [

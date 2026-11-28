@@ -11,6 +11,7 @@ import json
 import ssl
 import subprocess
 import sys
+from operator import attrgetter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -27,29 +28,41 @@ _INTEGRITY = "sha512-" + base64.b64encode(bytes((0x11,)) * 64).decode("ascii")
 _OWNED_LOCK = "deploy/mcp/clients/package-lock.json"
 _OWNED_DISTRIBUTIONS = 127
 _UNCHANGED_FUNCTION_DIGESTS = {
+    # cleanup/python-tests-ci re-derived these pins after typing lint_support,
+    # check_python and check_docker signatures and narrowing their imported
+    # tool output; no linter rule, file or filtering behavior changed.
+    # The same branch later typed yaml_targets/shell_targets/shellcheck_files
+    # signatures and moved the lazy yamllint imports behind audited Protocol
+    # casts (check_yaml), reriving those four pins only. It also split the
+    # the ruff suppression-attribute offset and YAML field/shell lookups out of
+    # python_directive_lines (check_workflow) under a top-level yaml import,
+    # reriving that one pin. check_javascript also moved its digest helper to a
+    # top-level import (PLC0415), check_dependencies gained _distribution_flags,
+    # and shellcheck_files narrowed its line numbers via whole(), reriving all
+    # three pins.
     "validate_requirement_lock": "b3a33235549137f1",
     "_distribution_fields": "92a59186d7631950",
     "_vulnerability_id": "28d4d310c9cd0844",
     "dependency_report": "28a9518091f014b5",
     "_audit_python_source": "82a0df4c0b4905b9",
-    "sarif": "9a051a40eaa2fc84",
-    "nonsecret_tokenizer_option": "8bed6a3793d2ba0c",
-    "yaml_targets": "06416c3ddf6bc233",
-    "shell_targets": "d0a64ddec3855750",
-    "shell_dialect": "5b314dd33ce322ab",
-    "walk_runs": "84e47c6628291ba5",
-    "workflow_runs": "b662bffc061e68ea",
-    "workflow_files": "bd14b7f949c7a464",
-    "parse_mypy": "a4b195fa170ed049",
-    "mypy_argv": "52f4ec72b8406dcf",
-    "mypy_status": "fae6bc5c3eef93f5",
-    "mypy_invoke": "893e273ac5b5b538",
-    "python_syntax_findings": "0767c5b6e78c82a1",
-    "mypy_on": "c19a1f5445421f63",
-    "mypy_findings": "b0821ce4951ff90d",
-    "format_findings": "077fcf8649e2a02a",
-    "shellcheck_files": "5212046c9fd29985",
-    "workflow_script_findings": "a9c8e6afff47f8fd",
+    "sarif": "9c3af544d2da77bd",
+    "nonsecret_tokenizer_option": "f99f9ef3da1d942a",
+    "yaml_targets": "3069e74b13756743",
+    "shell_targets": "0eca31dd63b6da04",
+    "shell_dialect": "b3c7ec669e8de5fc",
+    "walk_runs": "dbd8c2c0084f7b9f",
+    "workflow_runs": "558e5ff5edc38b39",
+    "workflow_files": "ba70b68a09cd1607",
+    "parse_mypy": "adaad12916de9f0a",
+    "mypy_argv": "11fbcf8e0fd6b9dd",
+    "mypy_status": "4e54d2c889dcaf81",
+    "mypy_invoke": "9d71c7076d3fc9bb",
+    "python_syntax_findings": "735903e84356158b",
+    "mypy_on": "e8db476b0fe8474a",
+    "mypy_findings": "d798d13582466cfd",
+    "format_findings": "a52354ed567b5a70",
+    "shellcheck_files": "9a1b17fe549775bf",
+    "workflow_script_findings": "7372fab9d6f6fa27",
     # 7a45c9cd split check into a dispatcher and nine typed implementations.
     # Pin the extracted implementations and the shared fail-closed report runner.
     # #459 deliberately changed the workflow dispatch and both workflow scanners.
@@ -58,15 +71,15 @@ _UNCHANGED_FUNCTION_DIGESTS = {
     # 82e99f75 for physical-line attribution. All other original pins remain.
     "check_workflow": "f31d15922b633629",
     "workflow_directives": "27fd8a3f48f36905",
-    "python_directive_lines": "d22bda0bca5be6da",
+    "python_directive_lines": "d38e6c4d8b75465a",
     "check_python": "82ce28a1894a9fbf",
-    "check_yaml": "f7758c28b3de10c4",
+    "check_yaml": "4b126f10225231c4",
     "check_shell": "3cb39cc5d1303f55",
     "check_actions": "640d695b3edece7c",
     "check_actionlint": "8a638536da1ae4e0",
     "check_ansible": "e7f4c4134b3e3508",
     "check_docker": "62b3f92b54fea0d7",
-    "check_javascript": "669d09e95bf085cf",
+    "check_javascript": "70bbea6e28d158c7",
     "check_secrets": "d58cf370ba0c9e77",
     "run": "451657b3c955b7a4",
 }
@@ -1069,7 +1082,10 @@ def test_reviewed_archive_admission_is_exact(
     lock.with_name("package.json").write_text(json.dumps(manifest))
     monkeypatch.setattr(lint, "ROOT", tmp_path)
     if mutation == "hook":
-        findings, count = lint._npm_lock_audit(lock, relative)
+        audit_life_cycle = attrgetter("_npm_lock_audit")(lint)
+        audit_result = audit_life_cycle(lock, relative)
+        assert audit_result is not None, "hook mutation must reach the npm lock audit"
+        findings, count = audit_result
         assert count == 0
         assert [finding["ruleId"] for finding in findings] == ["DEPENDENCY_INSTALL_SCRIPT"]
         return

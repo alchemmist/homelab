@@ -52,7 +52,15 @@ class Bucket:
         (91, True, True, True, False),
     ],
 )
-def test_windows(tmp_path, monkeypatch, age, readable, wrong, expect_raw, expect_five) -> None:
+def test_windows(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    age: int,
+    readable: bool,
+    wrong: bool,
+    expect_raw: bool,
+    expect_five: bool,
+) -> None:
     r, f, h = [block(i, res, age) for i, res in enumerate([0, T.FIVE, T.HOUR])]
     b = Bucket([r, f, h])
     if wrong:
@@ -92,7 +100,7 @@ def test_gaps_and_unrelated_lineage() -> None:
     assert not T.encloses(b, a, T.FIVE)
 
 
-def test_store_refusal_is_retried_before_reading_inventory(monkeypatch):
+def test_store_refusal_is_retried_before_reading_inventory(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = []
 
     def read(url):

@@ -18,6 +18,8 @@ import time
 from pathlib import Path
 
 OUTPUT = Path("/var/lib/node_exporter/textfile_collector/vpn-runtime.prom")
+METRICS_MODE = 0o644
+SOCKET_TABLE_MIN_FIELDS = 4
 PROFILES: dict[str, dict[str, object]] = {
     "socrat-4": {
         "component": "relay",
@@ -43,10 +45,12 @@ PROFILES: dict[str, dict[str, object]] = {
 
 
 def command(args: list[str], timeout: int = 30) -> subprocess.CompletedProcess[str]:
+    """Run one read-only command and capture its streams."""
     return subprocess.run(args, capture_output=True, text=True, timeout=timeout, check=False)
 
 
 def active(unit: str) -> bool:
+    """Return whether exactly this unit is active right now."""
     p = command(["systemctl", "is-active", unit], 5)
     if p.returncode not in (0, 3):
         msg = "Unobservable unit"
@@ -60,17 +64,20 @@ def _unit_list(value: object) -> list[str]:
 
 
 def _port_set(value: object) -> set[int]:
-    items = value if isinstance(value, list) else []
-    return {int(p) for p in items if isinstance(p, int)}
+    """Read the reviewed listener ports; unknown shapes keep OFF fail-closed."""
+    if isinstance(value, (list, set, frozenset)):
+        return {int(p) for p in value if isinstance(p, int)}
+    return set()
 
 
 def listening(proc: Path, protocol: str) -> set[int]:
+    """Read listening/local ports from the /proc socket tables."""
     ports: set[int] = set()
     for suffix in ("", "6"):
         lines = (proc / ("net/" + protocol + suffix)).read_text().splitlines()
         for line in lines[1:]:
             fields = line.split()
-            if len(fields) < 4:
+            if len(fields) < SOCKET_TABLE_MIN_FIELDS:
                 msg = "Malformed socket table"
                 raise ValueError(msg)
             # TCP LISTEN or established sessions; any UDP socket prevents a false OFF.
@@ -106,6 +113,7 @@ def classify(
 
 
 def units_snapshot(units: list[str]) -> dict[str, bool]:
+    """Fence against watchdog-style races in systemctl show output."""
     result = command(
         [
             "systemctl",
@@ -139,6 +147,7 @@ def units_snapshot(units: list[str]) -> dict[str, bool]:
 def observe(
     profile: dict[str, object], proc: Path = Path("/proc"), *, live_check: bool = False
 ) -> dict[str, object]:
+    """Collect one read-only runtime observation of a VPN profile."""
     before = Path(str(profile["marker"])).exists()
     cached = profile["component"] == "relay" and not live_check
     if cached:
@@ -196,6 +205,7 @@ def observe(
 
 
 def write_metrics(path: Path, component: str, values: dict[str, object]) -> None:
+    """Atomically stage and swap the textfile-collector metrics."""
     lines = []
     for key, value in values.items():
         name = "socrat_vpn_component_" + key
@@ -206,21 +216,23 @@ def write_metrics(path: Path, component: str, values: dict[str, object]) -> None
             ]
         )
     fd, name = tempfile.mkstemp(prefix=".vpn-runtime-", dir=path.parent)
+    staged = Path(name)
     try:
         with os.fdopen(fd, "w") as stream:
             stream.write("\n".join(lines) + "\n")
             stream.flush()
             os.fsync(stream.fileno())
-        os.chmod(name, 0o644)
-        os.replace(name, path)
+        staged.chmod(METRICS_MODE)
+        staged.replace(path)
     finally:
-        if os.path.exists(name):
-            os.unlink(name)
+        if staged.exists():
+            staged.unlink()
 
 
 def audit(
     host: str, profile: dict[str, object], expected_image: str | None = None
 ) -> dict[str, object]:
+    """Deep read-only audit of one VPN host's runtime shape."""
     observation = observe(profile, live_check=True)
     native_units = [
         command(["systemctl", "cat", unit], 5).stdout for unit in _unit_list(profile["native"])
@@ -287,10 +299,11 @@ def audit(
             in obsolete,
             "watchdog_inhibited": Path("/var/lib/homelab-vpn-failover/inhibit").exists(),
         }
-    nameservers = []
-    for line in Path("/etc/resolv.conf").read_text().splitlines():
-        if line.split()[:1] == ["nameserver"]:
-            nameservers.append(line.split()[1])
+    nameservers = [
+        fields[1]
+        for fields in (line.split() for line in Path("/etc/resolv.conf").read_text().splitlines())
+        if fields[:1] == ["nameserver"]
+    ]
     return {
         "host": host,
         "observation": observation,

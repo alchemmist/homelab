@@ -62,7 +62,7 @@ class CompletionSchedulerTests(unittest.TestCase):
         self.s.save(key, 2, result, state="retry")
         reservation = self.s.reserve_llm(29929)
         self.s.finish_llm(reservation)
-        with patch("core.random.uniform", return_value=jitter):
+        with patch("core._RETRY_JITTER.uniform", return_value=jitter):
             self.s.fail(key, "LLM_ADMISSION_DEFERRED", retry_after=61)
         self.s = Store(self.s.path)  # restart retains ledger and policy
         for t in range(101, 161 + jitter):

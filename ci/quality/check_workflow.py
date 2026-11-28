@@ -10,6 +10,8 @@ import shutil
 import tokenize
 from typing import TYPE_CHECKING
 
+import yaml
+
 if TYPE_CHECKING:
     from ci.quality.common import Finding
 
@@ -42,36 +44,53 @@ def check_actions(names: list[str]) -> tuple[list[Finding], int]:
     ), len(files)
 
 
+def _suppression_offset(source: str, script: yaml.ScalarNode, token: tokenize.TokenInfo) -> int:
+    """Offset one noqa comment inside its YAML scalar, folding-aware."""
+    if script.style == "|":
+        return token.start[0]
+    # Folding/quoting can remove physical newlines. If the comment has a
+    # unique verbatim spelling inside this scalar, report its source line.
+    # Escaped/ambiguous spellings can only be attributed reliably to the
+    # scalar as a whole.
+    raw = source[script.start_mark.index : script.end_mark.index]
+    comment = token.string.rstrip()
+    return raw[: raw.index(comment)].count("\n") if raw.count(comment) == 1 else 0
+
+
+def _fields(node: yaml.Node | None) -> dict[str, yaml.Node]:
+    """Flatten one YAML mapping node to its scalar-keyed fields."""
+    if not isinstance(node, yaml.MappingNode):
+        return {}
+    return {key.value: value for key, value in node.value if isinstance(key, yaml.ScalarNode)}
+
+
+def _shell(node: yaml.Node | None, fallback: str) -> str:
+    """Take the scalar string held by a node, or the fallback."""
+    return node.value if isinstance(node, yaml.ScalarNode) else fallback
+
+
+def _default_shell(mapping: dict[str, yaml.Node], fallback: str) -> str:
+    """Resolve the inherited defaults.run shell for one mapping."""
+    run = _fields(_fields(mapping.get("defaults")).get("run"))
+    return _shell(run.get("shell"), fallback)
+
+
 def python_directive_lines(source: str) -> set[int]:
     """Find noqa comment tokens in Python run steps, not YAML prose or shell data."""
-    import yaml
-
-    def fields(node: yaml.Node | None) -> dict[str, yaml.Node]:
-        if not isinstance(node, yaml.MappingNode):
-            return {}
-        return {key.value: value for key, value in node.value if isinstance(key, yaml.ScalarNode)}
-
-    def shell(node: yaml.Node | None, fallback: str) -> str:
-        return node.value if isinstance(node, yaml.ScalarNode) else fallback
-
-    def default_shell(mapping: dict[str, yaml.Node], fallback: str) -> str:
-        run = fields(fields(mapping.get("defaults")).get("run"))
-        return shell(run.get("shell"), fallback)
-
-    document = fields(yaml.compose(source, Loader=yaml.SafeLoader))
+    document = _fields(yaml.compose(source, Loader=yaml.SafeLoader))
     lines = set()
-    for job in fields(document.get("jobs")).values():
-        config = fields(job)
+    for job in _fields(document.get("jobs")).values():
+        config = _fields(job)
         steps = config.get("steps")
         if not isinstance(steps, yaml.SequenceNode):
             continue
-        inherited = default_shell(config, default_shell(document, "bash"))
+        inherited = _default_shell(config, _default_shell(document, "bash"))
         for step in steps.value:
-            values = fields(step)
+            values = _fields(step)
             script = values.get("run")
             if (
                 not isinstance(script, yaml.ScalarNode)
-                or shell_dialect(shell(values.get("shell"), inherited)) != "python"
+                or shell_dialect(_shell(values.get("shell"), inherited)) != "python"
             ):
                 continue
             for token in tokenize.generate_tokens(io.StringIO(script.value).readline):

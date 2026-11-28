@@ -12,7 +12,8 @@ from typing import TypedDict
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def inventory(root, directory):
+def inventory(root: Path, directory: str) -> dict[str, str]:
+    """Hash every regular file of a vendored tree, refusing symlinks and escapes."""
     base = root / directory
     if base.is_symlink() or not base.is_dir() or not base.resolve().is_relative_to(root.resolve()):
         raise ValueError("Invalid vendor directory: " + directory)
@@ -76,7 +77,8 @@ def _check_links(root: Path, links: dict[str, str], trees: list[_VendorTree]) ->
             raise ValueError("Vendor alias target has no registered inventory: " + name)
 
 
-def check(root=ROOT):
+def check(root: Path = ROOT) -> int:
+    """Verify every reviewed vendor tree and dependency alias against the contract."""
     contract = json.loads((root / "deploy/contracts/vendors.json").read_text())
     if contract["schemaVersion"] != 1:
         msg = "Unsupported vendor contract schema"

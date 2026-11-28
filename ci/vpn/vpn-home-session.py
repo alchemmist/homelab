@@ -10,6 +10,7 @@ import copy
 import fcntl
 import hashlib
 import importlib.util
+import ipaddress
 import json
 import os
 import secrets
@@ -28,6 +29,9 @@ from typing import Protocol, TypedDict, cast
 def load(name: str, filename: str) -> ModuleType:
     """Import a sibling migration module by exact file name."""
     spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
+    if spec is None or spec.loader is None:
+        msg = "Sibling migration module is not loadable"
+        raise RuntimeError(msg)
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m
@@ -37,25 +41,6 @@ native = load("native", "vpn-panel-session.py")
 target = load("target", "vpn-reality-apply.py")
 backend = load("backend", "vpn-backend-enforce.py")
 h = native.h
-
-
-def restore(state):
-    if os.geteuid() != 0 or socket.gethostname() != "socrat-2":
-        msg = "Requires VPS root"
-        raise ValueError(msg)
-    s = native.NativeSession(state)
-    h.private_directory(s.state)
-    fd = os.open(s.state / "lock", os.O_RDWR | os.O_NOFOLLOW)
-    s.lock = os.fdopen(fd, "w")
-    fcntl.flock(s.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    s.original = json.loads(h.check_path(s.state / "before-tokens.json").read_text())
-    s.base = native.api_path(s.database)
-    for kind in ("bootstrap", "cleanup", "worker"):
-        p = h.check_path(s.state / (kind + ".json"))
-        if p.exists():
-            s.credentials[kind] = json.loads(p.read_text())
-            s._owned(kind)
-    return s
 
 
 class SessionLike(Protocol):
@@ -71,6 +56,26 @@ class SessionLike(Protocol):
     def cleanup(self) -> None:
         """Release the session's temporary runtime state."""
         ...
+
+
+def restore(state: Path) -> SessionLike:
+    """Reattach to a prepared native session under its lock, verifying ownership."""
+    if os.geteuid() != 0 or socket.gethostname() != "socrat-2":
+        msg = "Requires VPS root"
+        raise ValueError(msg)
+    s = native.NativeSession(state)
+    h.private_directory(s.state)
+    fd = os.open(s.state / "lock", os.O_RDWR | os.O_NOFOLLOW)
+    s.lock = os.fdopen(fd, "w")
+    fcntl.flock(s.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    s.original = json.loads(h.check_path(s.state / "before-tokens.json").read_text())
+    s.base = native.api_path(s.database)
+    for kind in ("bootstrap", "cleanup", "worker"):
+        p = h.check_path(s.state / (kind + ".json"))
+        if p.exists():
+            s.credentials[kind] = json.loads(p.read_text())
+            s.require_owned(kind)
+    return cast("SessionLike", s)
 
 
 class ProbeIdentity(TypedDict):
@@ -139,8 +144,6 @@ def finish(s: SessionLike) -> dict[str, object]:
 
 def require_public_endpoint(endpoint: str) -> None:
     """Refuse any non-public probe endpoint before touching the session."""
-    import ipaddress
-
     if not ipaddress.ip_address(endpoint).is_global:
         msg = "Public probe endpoint required"
         raise ValueError(msg)
@@ -212,6 +215,7 @@ def add_udp_probe(
     endpoint: str,
 ) -> None:
     """Add the owned userspace WireGuard probe binding when requested."""
+    # S607: the reviewed host wireguard key tools on fixed operands.
     private = subprocess.check_output(["wg", "genkey"], text=True).strip()
     public = subprocess.check_output(["wg", "pubkey"], input=private + "\n", text=True).strip()
     context["client"].update(privateKey=private, publicKey=public, allowedIPsByInbound={})
@@ -228,6 +232,7 @@ def add_udp_probe(
             str(rows[port]["id"])
         ] = [candidate]
         context["inbound_ids"].append(rows[port]["id"])
+        # S607: the reviewed host wireguard pubkey derivation for the probe peer.
         server_public = subprocess.check_output(
             ["wg", "pubkey"], input=cast("str", server["secretKey"]) + "\n", text=True
         ).strip()
@@ -245,6 +250,13 @@ def add_udp_probe(
             "mtu": 1420,
         }
         context["udp_settings"][label] = settings
+
+
+def require_probe_inbounds(rows: dict[int, dict[str, object]]) -> None:
+    """Refuse preparation unless both pinned probe inbounds stay enabled."""
+    if not all(rows[p]["enable"] for p in (32053, 32087)):
+        msg = "Probe inbounds unavailable"
+        raise ValueError(msg)
 
 
 def register_probe_client(s: SessionLike, context: ProbeContext) -> None:
@@ -302,9 +314,7 @@ def prepare(
         original = target.configuration(s.database)
         h.save(s.state / "home-proxy-before-private.json", original)
         rows = probe_rows(original)
-        if not all(rows[p]["enable"] for p in (32053, 32087)):
-            msg = "Probe inbounds unavailable"
-            raise ValueError(msg)
+        require_probe_inbounds(rows)
         identity: ProbeIdentity = {
             "email": s.state.name + "-probe",
             "uuid": str(uuid.uuid4()),
@@ -355,10 +365,10 @@ def prepare(
             "no_human_identity_used": True,
         }
         h.save(s.state / "home-prepare-receipt.json", proof)
-        return proof
     except Exception:
         finish(s)
         raise
+    return proof
 
 
 if __name__ == "__main__":
@@ -396,6 +406,6 @@ if __name__ == "__main__":
         else:
             s = native.NativeSession(a.state)
             print(h.canonical({"session_sha256": h.digest(s.preview()), "writes": 0}))
-    except Exception:
+    except Exception as error:
         msg = "Home native session stopped; inspect private receipts, no blind replay."
-        raise SystemExit(msg) from None
+        raise SystemExit(msg) from error

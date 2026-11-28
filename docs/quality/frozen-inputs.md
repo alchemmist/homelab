@@ -1,10 +1,49 @@
 # Exact frozen compatibility inputs, not a lint-debt exemption
 
-Local compatibility update: commits `a6c666af` and `dec487d0` changed card
-discovery, the guarded POST timeout and its retry lease. `telegram_delivery.py`
+Local strict cleanup update: `core.py`, `durable_wait.py`, `service.py`,
+`s3_evidence.py`, `dispatcher.py`, `integrations.py` and `telemetry.py` are fully
+renovated to
+the ruff select=ALL and mypy strict gate without behavior change (verified by the full
+`tests/spi_triage` suite; deterministic jitter now runs through a
+`random.SystemRandom` instance on the `_RETRY_JITTER` seam, the Store owner
+methods `reconcile_owners`/`owned_priority_until`/`schedule` are public
+cross-module API, `service.py` keeps the reviewed HTTP surfaces and stage
+pipeline factored into typed helpers with the same wire contract,
+`s3_evidence.py` keeps the storage exception names and the SigV4 `sign()`
+arity shared with the reviewed rustfs_gateway reference implementation, and
+`dispatcher.py` keeps its test-pinned positional constructor arity, its
+reviewed tail `except Exception` trust boundary and its stdout JSON log
+contract, and `integrations.py` keeps its exact LOM system prompt bytes, the
+v3 checkpoint/replay contracts pinned by the spi_triage suite, its bounded
+rate-limit parsing and its fixed GitHub/observability adapter origins, and
+`telemetry.py` keeps its reviewed bounded-read collector contract with the typed
+telemetry window, trace-span projector, per-source request gate and the exact
+Grafana link surface pinned digest-exactly by the spi_triage suite, and
+`local_token_counter.py` keeps its golden chat-template render, its bounded
+raw_fits budget walk and its digest-pinned tokenizer reservation contract
+pinned by the spi_triage suite, and `card_correlation.py` keeps its exact
+receipt SQL and fail-closed copy validation, `grafana_links.py` keeps its
+reviewed Explore forceLogin seam and `storage_runtime.py` keeps its fail-closed
+projected-Secret inode validation, `github_broker.py` keeps its one-hour
+repo-scoped token mint seam, `queue_admin.py` keeps its audited atomic
+cancellation seam, `evidence_bundle.py` keeps its exact failure codes,
+redaction ladder, part/comment budget walk and deterministic index
+marker byte stream, and `provenance.py` keeps its exact failure codes,
+reason strings, owner-chain walk, anonymous Harbor pull-token flow and
+safe-path fragment quotes, all pinned by the spi_triage suite).
+Together
+with the older `telegram_delivery.py`/`telegram_links.py` patches this marks
+**seventeen locally patched modules**, not pristine upstream files.
+All 17 deployed inputs still have pinned SHA-256 digests; every deployed
+module is now locally patched, so no deployed input is excluded from
+owned-source checks. The earlier boundary below
+describes the snapshot before those local patches.
+
+Earlier local compatibility update: commits `a6c666af` and `dec487d0` changed
+card discovery, the guarded POST timeout and its retry lease. `telegram_delivery.py`
 and `telegram_links.py` are therefore **local patches**, not pristine upstream
 files. All 17 deployed inputs still have pinned SHA-256 digests; only the 15
-unpatched modules are excluded from owned-source checks. The original boundary
+unpatched modules were excluded from owned-source checks. The original boundary
 below describes the snapshot before those two commits.
 
 ## Original snapshot

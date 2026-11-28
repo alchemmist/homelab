@@ -11,17 +11,29 @@ import unittest
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, cast, override
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "ansible/roles/identity_integrations/files/netbird_oidc.py"
 SPEC = importlib.util.spec_from_file_location("netbird_oidc", SOURCE)
+if SPEC is None or SPEC.loader is None:
+    msg = "NetBird OIDC source module under test is not loadable"
+    raise RuntimeError(msg)
 oidc = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(oidc)
 
-TOKEN = "fixture-machine-token"
+FIXTURE_BEARER = "fixture-machine-token"
+OWNER_ONLY_MODE = 0o600
+ANTROPOPHAG_PK = 6
+PILOT_GROUP_WRITES = 3
+PILOT_GROUP_COUNT = 3
+PINNED_NETBIRD_REPO = Path(tempfile.gettempdir()) / "netbird-v082-repo"
+PINNED_DEX_OIDC = Path(tempfile.gettempdir()) / "netbird-dex" / "oidc.go"
 ISSUER = "https://netbird.socrat.alchemmist.xyz/oauth2"
 CALLBACK = ISSUER + "/callback"
 OWNER_GROUPS = [
@@ -32,10 +44,10 @@ OWNER_GROUPS = [
 TIM_GROUPS = ["b7af46a6-6208-4a32-bfb1-4e61fd3c88ec"]
 
 
-def write_json(path, value) -> None:
+def write_json(path: Path, value: object) -> None:
     """Write the given value as a 0600 permissions JSON document."""
     path.write_text(json.dumps(value, indent=2) + "\n")
-    os.chmod(path, 0o600)
+    path.chmod(0o600)
 
 
 def _mapping(value: object) -> dict[str, object]:
@@ -58,6 +70,15 @@ def _string(value: object) -> str:
     return value
 
 
+def _ints(value: object) -> list[int]:
+    """Return the assert-verified integer rows of an untyped runtime list."""
+    result: list[int] = []
+    for item in _sequence(value):
+        assert isinstance(item, int)
+        result.append(item)
+    return result
+
+
 class FakeAuthentik(threading.Thread):
     """Threaded fake Authentik server recording OIDC requests."""
 
@@ -68,7 +89,7 @@ class FakeAuthentik(threading.Thread):
         self.fail_provider = False
         self.drop_legacy_on_add = False
         self.attach_outpost = False
-        self.users = [
+        self.users: list[dict[str, object]] = [
             {
                 "pk": 5,
                 "uuid": "9e33877a-3eaa-4541-98eb-8cdc10088ef6",
@@ -92,7 +113,7 @@ class FakeAuthentik(threading.Thread):
                 "groups": list(TIM_GROUPS),
             },
         ]
-        self.groups = [
+        self.groups: list[dict[str, object]] = [
             {
                 "pk": OWNER_GROUPS[0],
                 "num_pk": 1,
@@ -138,7 +159,7 @@ class FakeAuthentik(threading.Thread):
                 "attributes": {},
             },
         ]
-        self.scopes = [
+        self.scopes: list[dict[str, object]] = [
             {
                 "pk": "openid-pk",
                 "name": "authentik default OAuth Mapping: OpenID 'openid'",
@@ -158,17 +179,21 @@ class FakeAuthentik(threading.Thread):
                 "name": "authentik default OAuth Mapping: OpenID 'profile'",
                 "scope_name": "profile",
                 "managed": oidc.PROFILE_MANAGED,
-                "expression": 'return {"groups": [group.name for group in request.user.groups.all()]}',
+                "expression": (
+                    'return {"groups": [group.name for group in request.user.groups.all()]}'
+                ),
             },
             {
                 "pk": "groups-pk",
                 "name": "homelab-groups",
                 "scope_name": "groups",
                 "managed": None,
-                "expression": 'return {"groups": [group.name for group in request.user.ak_groups.all()]}',
+                "expression": (
+                    'return {"groups": [group.name for group in request.user.ak_groups.all()]}'
+                ),
             },
         ]
-        self.providers = [
+        self.providers: list[dict[str, object]] = [
             {
                 "pk": 1,
                 "name": "homelab-grafana",
@@ -179,7 +204,7 @@ class FakeAuthentik(threading.Thread):
         ]
         self.applications: list[dict[str, object]] = []
         self.bindings: list[dict[str, object]] = []
-        self.outposts = [
+        self.outposts: list[dict[str, object]] = [
             {
                 "pk": "outpost-pk",
                 "name": "authentik Embedded Outpost",
@@ -188,7 +213,7 @@ class FakeAuthentik(threading.Thread):
                 "type": "proxy",
             },
         ]
-        self.flows = [
+        self.flows: list[dict[str, object]] = [
             {"pk": "auth-flow", "slug": "default-authentication-flow"},
             {
                 "pk": "consent-flow",
@@ -196,14 +221,14 @@ class FakeAuthentik(threading.Thread):
             },
             {"pk": "invalidation-flow", "slug": "default-provider-invalidation-flow"},
         ]
-        self.certificates = [{"pk": "cert-pk", "name": oidc.CERT_NAME}]
+        self.certificates: list[dict[str, object]] = [{"pk": "cert-pk", "name": oidc.CERT_NAME}]
         self.provider_secrets: dict[int, object] = {}
         self._seq = 20
         server = self
 
         class Handler(BaseHTTPRequestHandler):
             @override
-            def log_message(self, fmt, *args) -> None:
+            def log_message(self, fmt: str, *args: object) -> None:
                 """Stay quiet while the offline contract server runs."""
 
             def do_GET(self) -> None:
@@ -215,13 +240,14 @@ class FakeAuthentik(threading.Thread):
             def do_PATCH(self) -> None:
                 self._handle("PATCH")
 
-            def _handle(self, method):
+            def _handle(self, method: str) -> None:
+                """Dispatch one HTTP method to the offline router."""
                 length = int(self.headers.get("Content-Length", "0"))
                 raw = self.rfile.read(length) if length else b""
                 payload = json.loads(raw) if raw else None
                 parsed = urllib.parse.urlsplit(self.path)
                 server.calls.append((method, parsed.path, parsed.query, payload))
-                if self.headers.get("Authorization") != "Bearer " + TOKEN:
+                if self.headers.get("Authorization") != "Bearer " + FIXTURE_BEARER:
                     return self._send(401, {"detail": "unauthorized"})
                 try:
                     code, body = server.route(method, parsed.path, parsed.query, payload)
@@ -237,7 +263,8 @@ class FakeAuthentik(threading.Thread):
                 self._send(code, body)
                 return None
 
-            def _send(self, code, body) -> None:
+            def _send(self, code: int, body: object) -> None:
+                """Answer one request with a JSON body."""
                 data = b"" if body is None else json.dumps(body).encode()
                 self.send_response(code)
                 self.send_header("Content-Type", "application/json")
@@ -263,7 +290,7 @@ class FakeAuthentik(threading.Thread):
         self.httpd.shutdown()
         self.httpd.server_close()
 
-    def page(self, rows) -> dict[str, object]:
+    def page(self, rows: list[dict[str, object]]) -> dict[str, object]:
         """Wrap fixture rows in the API pagination envelope."""
         result: dict[str, object] = {
             "pagination": {"next": None, "count": len(rows)},
@@ -271,11 +298,17 @@ class FakeAuthentik(threading.Thread):
         }
         return result
 
-    def route(self, method, path, query, payload) -> tuple[int, object]:
+    def route(self, method: str, path: str, query: str, payload: object) -> tuple[int, object]:
         """Route an offline contract API request to the fake backend."""
-        if method == "GET" and path == "/api/v3/admin/version/":
+        if method == "GET":
+            return self.route_get(path, query)
+        return self.route_write(method, path, payload)
+
+    def route_get(self, path: str, query: str) -> tuple[int, object]:
+        """Answer the offline contract server's read-only requests."""
+        if path == "/api/v3/admin/version/":
             return 200, {"version_current": oidc.AUTHENTIK_VERSION}
-        collections = {
+        collections: dict[str, list[dict[str, object]]] = {
             "/api/v3/core/users/": self.users,
             "/api/v3/core/groups/": self.groups,
             "/api/v3/propertymappings/provider/scope/": self.scopes,
@@ -285,86 +318,129 @@ class FakeAuthentik(threading.Thread):
             "/api/v3/crypto/certificatekeypairs/": self.certificates,
             "/api/v3/policies/bindings/": self.bindings,
         }
-        if method == "GET" and path in collections:
-            return 200, self.page(collections[path])
-        if method == "GET" and path == "/api/v3/core/applications/":
-            rows = self.applications if "superuser_full_list=true" in query else []
+        rows = collections.get(path)
+        if rows is not None:
             return 200, self.page(rows)
-        if method == "POST" and path == "/api/v3/core/groups/":
-            self._seq += 1
-            created = dict(payload)
-            created["pk"] = "group-" + str(self._seq)
-            created["num_pk"] = self._seq
-            self.groups.append(created)
-            return 201, created
-        if method == "POST" and path == "/api/v3/propertymappings/provider/scope/":
-            self._seq += 1
-            created = dict(payload)
-            # Match Authentik's trim_whitespace serializer behavior.
-            created["expression"] = created["expression"].strip()
-            created["pk"] = "map-" + str(self._seq)
-            created["managed"] = None
-            self.scopes.append(created)
-            return 201, created
+        if path == "/api/v3/core/applications/":
+            listed = self.applications if "superuser_full_list=true" in query else []
+            return 200, self.page(listed)
+        return 404, {"detail": "missing"}
+
+    def route_write(self, method: str, path: str, payload: object) -> tuple[int, object]:
+        """Answer the offline contract server's mutating requests."""
+        assert isinstance(payload, dict)
+        row: dict[str, object] = payload
+        exact: dict[tuple[str, str], Callable[[str, dict[str, object]], tuple[int, object]]] = {
+            ("POST", "/api/v3/core/groups/"): self.create_group_row,
+            ("POST", "/api/v3/propertymappings/provider/scope/"): self.create_scope_row,
+            ("POST", "/api/v3/providers/oauth2/"): self.create_provider_row,
+            ("POST", "/api/v3/core/applications/"): self.create_application_row,
+            ("POST", "/api/v3/policies/bindings/"): self.create_binding_row,
+        }
+        handler = exact.get((method, path))
+        if handler is not None:
+            return handler(path, row)
         if method == "PATCH" and path.startswith("/api/v3/propertymappings/provider/scope/"):
-            pk = path.rstrip("/").split("/")[-1]
-            row = next(item for item in self.scopes if item["pk"] == pk)
-            row.update(payload)
-            return 200, row
-        if method == "POST" and path == "/api/v3/providers/oauth2/":
-            if self.fail_provider:
-                self.fail_provider = False
-                return 500, {"detail": "unavailable"}
-            if self.attach_outpost:
-                self.outposts[0]["providers"] = [*list(self.outposts[0]["providers"]), 101]
-            self._seq += 1
-            created = dict(payload)
-            self.provider_secrets[self._seq] = created.pop("client_secret", None)
-            created["pk"] = self._seq
-            self.providers.append(created)
-            return 201, created
+            return self.patch_scope_row(path, row)
         if method == "PATCH" and path.startswith("/api/v3/providers/oauth2/"):
-            pk = int(path.rstrip("/").split("/")[-1])
-            row = next(item for item in self.providers if item["pk"] == pk)
-            updated = dict(payload)
-            if "client_secret" in updated:
-                self.provider_secrets[pk] = updated.pop("client_secret")
-            row.update(updated)
-            return 200, row
-        if method == "POST" and path == "/api/v3/core/applications/":
-            self._seq += 1
-            created = dict(payload)
-            created["pk"] = "app-" + str(self._seq)
-            self.applications.append(created)
-            return 201, created
+            return self.patch_provider_row(path, row)
         if method == "PATCH" and path.startswith("/api/v3/core/applications/"):
-            slug = path.rstrip("/").split("/")[-1]
-            row = next(item for item in self.applications if item["slug"] == slug)
-            row.update(payload)
-            return 200, row
-        if method == "POST" and path == "/api/v3/policies/bindings/":
-            self._seq += 1
-            created = dict(payload)
-            created["pk"] = self._seq
-            self.bindings.append(created)
-            return 201, created
+            return self.patch_application_row(path, row)
         if (
             method == "POST"
             and path.startswith("/api/v3/core/groups/")
             and path.endswith("/add_user/")
         ):
-            pk = path.split("/")[-3]
-            group = next(item for item in self.groups if item["pk"] == pk)
-            user_pk = payload["pk"]
-            user = next(item for item in self.users if item["pk"] == user_pk)
-            if user_pk not in _sequence(group["users"]):
-                _sequence(group["users"]).append(user_pk)
-            if group["pk"] not in _sequence(user["groups"]):
-                _sequence(user["groups"]).append(group["pk"])
-            if self.drop_legacy_on_add:
-                user["groups"] = [item for item in user["groups"] if item == group["pk"]]
-            return 200, {"pk": user_pk}
+            return self.add_group_user(path, row)
         return 404, {"detail": "missing"}
+
+    def create_group_row(self, _path: str, payload: dict[str, object]) -> tuple[int, object]:
+        """Create one group row from the reviewed request payload."""
+        self._seq += 1
+        created: dict[str, object] = dict(payload)
+        created["pk"] = "group-" + str(self._seq)
+        created["num_pk"] = self._seq
+        self.groups.append(created)
+        return 201, created
+
+    def create_scope_row(self, _path: str, payload: dict[str, object]) -> tuple[int, object]:
+        """Create one property-mapping row, mimicking Authentik's serializer."""
+        self._seq += 1
+        created: dict[str, object] = dict(payload)
+        # Match Authentik's trim_whitespace serializer behavior.
+        created["expression"] = cast("str", created["expression"]).strip()
+        created["pk"] = "map-" + str(self._seq)
+        created["managed"] = None
+        self.scopes.append(created)
+        return 201, created
+
+    def patch_scope_row(self, path: str, payload: dict[str, object]) -> tuple[int, object]:
+        """Patch one property-mapping row in place."""
+        pk = path.rstrip("/").split("/")[-1]
+        row = next(item for item in self.scopes if item["pk"] == pk)
+        row.update(payload)
+        return 200, row
+
+    def create_provider_row(self, _path: str, payload: dict[str, object]) -> tuple[int, object]:
+        """Create one OAuth2 provider row, keeping its secret runtime-only."""
+        if self.fail_provider:
+            self.fail_provider = False
+            return 500, {"detail": "unavailable"}
+        if self.attach_outpost:
+            self.outposts[0]["providers"] = [*_sequence(self.outposts[0]["providers"]), 101]
+        self._seq += 1
+        created: dict[str, object] = dict(payload)
+        self.provider_secrets[self._seq] = created.pop("client_secret", None)
+        created["pk"] = self._seq
+        self.providers.append(created)
+        return 201, created
+
+    def patch_provider_row(self, path: str, payload: dict[str, object]) -> tuple[int, object]:
+        """Patch one OAuth2 provider row in place."""
+        pk = int(path.rstrip("/").split("/")[-1])
+        row = next(item for item in self.providers if item["pk"] == pk)
+        updated: dict[str, object] = dict(payload)
+        if "client_secret" in updated:
+            self.provider_secrets[pk] = updated.pop("client_secret")
+        row.update(updated)
+        return 200, row
+
+    def create_application_row(self, _path: str, payload: dict[str, object]) -> tuple[int, object]:
+        """Create one application row from the reviewed request payload."""
+        self._seq += 1
+        created: dict[str, object] = dict(payload)
+        created["pk"] = "app-" + str(self._seq)
+        self.applications.append(created)
+        return 201, created
+
+    def patch_application_row(self, path: str, payload: dict[str, object]) -> tuple[int, object]:
+        """Patch one application row in place."""
+        slug = path.rstrip("/").split("/")[-1]
+        row = next(item for item in self.applications if item["slug"] == slug)
+        row.update(payload)
+        return 200, row
+
+    def create_binding_row(self, _path: str, payload: dict[str, object]) -> tuple[int, object]:
+        """Create one policy-binding row from the reviewed request payload."""
+        self._seq += 1
+        created: dict[str, object] = dict(payload)
+        created["pk"] = self._seq
+        self.bindings.append(created)
+        return 201, created
+
+    def add_group_user(self, path: str, payload: dict[str, object]) -> tuple[int, object]:
+        """Add one user to a group, mirroring both membership sides."""
+        pk = path.split("/")[-3]
+        group = next(item for item in self.groups if item["pk"] == pk)
+        user_pk = payload["pk"]
+        user = next(item for item in self.users if item["pk"] == user_pk)
+        if user_pk not in _sequence(group["users"]):
+            _sequence(group["users"]).append(user_pk)
+        if group["pk"] not in _sequence(user["groups"]):
+            _sequence(user["groups"]).append(group["pk"])
+        if self.drop_legacy_on_add:
+            user["groups"] = [item for item in _sequence(user["groups"]) if item == group["pk"]]
+        return 200, {"pk": user_pk}
 
     def writes(self) -> list[tuple[str, str, str, object]]:
         """Return only the non-GET calls recorded by the offline server."""
@@ -395,7 +471,7 @@ class NetBirdOIDCTests(unittest.TestCase):
                 },
             },
         )
-        write_json(self.root / "credentials.json", {"AUTHENTIK_BOOTSTRAP_TOKEN": TOKEN})
+        write_json(self.root / "credentials.json", {"AUTHENTIK_BOOTSTRAP_TOKEN": FIXTURE_BEARER})
         self.config = self.root / "netbird.yaml"
         self.config.write_text(
             "server:\n  auth:\n    issuer: "
@@ -430,7 +506,7 @@ class NetBirdOIDCTests(unittest.TestCase):
             )
         return code, stdout.getvalue(), stderr.getvalue()
 
-    def plan(self, config=True) -> dict[str, object]:
+    def plan(self, *, config: bool = True) -> dict[str, object]:
         """Run the tool's plan command and parse its JSON report."""
         args = ["plan"]
         if config:
@@ -446,16 +522,13 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert oidc.callback_from_issuer(ISSUER) == CALLBACK
         assert oidc.callback_from_issuer(ISSUER + "/") == CALLBACK
         assert oidc.callback_from_issuer("https://netbird.socrat.alchemmist.xyz") == CALLBACK
-        assert (
-            oidc.callback_from_issuer("https://netbird.socrat.alchemmist.xyz/oauth2//")
-            == "https://netbird.socrat.alchemmist.xyz/oauth2//oauth2/callback"
-        )
+        doubled = oidc.callback_from_issuer("https://netbird.socrat.alchemmist.xyz/oauth2//")
+        assert doubled == "https://netbird.socrat.alchemmist.xyz/oauth2//oauth2/callback"
         with pytest.raises(RuntimeError):
             oidc.validate_management_issuer("https://example.com/oauth2")
+        app_issuer = "https://auth.socrat.alchemmist.xyz/application/o/netbird-pilot/"
         with pytest.raises(RuntimeError):
-            oidc.validate_management_issuer(
-                "https://auth.socrat.alchemmist.xyz/application/o/netbird-pilot/"
-            )
+            oidc.validate_management_issuer(app_issuer)
         with pytest.raises(RuntimeError):
             oidc.validate_management_issuer("http://netbird.socrat.alchemmist.xyz/oauth2")
         assert "--callback" not in SOURCE.read_text()
@@ -512,7 +585,7 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert code == 1
         assert "Plan digest mismatch" in err
         assert self.fake.writes() == []
-        assert TOKEN not in out + err
+        assert FIXTURE_BEARER not in out + err
         approved = self.plan()
         code, out, err = self.run_tool(
             "apply", "--approve-sha256", "0" * 64, "--netbird-config", str(self.config)
@@ -532,14 +605,31 @@ class NetBirdOIDCTests(unittest.TestCase):
         secret = runtime["client_secret"]
         assert secret not in out + err
         assert secret not in (self.root / oidc.JOURNAL_NAME).read_text()
-        assert (self.root / oidc.RUNTIME_NAME).stat().st_mode & 511 == 384
-        assert (self.root / oidc.JOURNAL_NAME).stat().st_mode & 511 == 384
+        assert (self.root / oidc.RUNTIME_NAME).stat().st_mode & 511 == OWNER_ONLY_MODE
+        assert (self.root / oidc.JOURNAL_NAME).stat().st_mode & 511 == OWNER_ONLY_MODE
+
+    def apply_approved(self) -> None:
+        """Run one reviewed apply and pin its exit code."""
+        approved = self.plan()
+        code, _out, err = self.run_tool(
+            "apply",
+            "--approve-sha256",
+            approved["sha256"],
+            "--netbird-config",
+            str(self.config),
+        )
+        assert code == 0, err
+
+    def test_apply_records_only_reviewed_journal_shapes(self) -> None:
+        """Apply records only the reviewed journal and created object shapes."""
+        self.apply_approved()
+        secret = json.loads((self.root / oidc.RUNTIME_NAME).read_text())["client_secret"]
         journal = json.loads((self.root / oidc.JOURNAL_NAME).read_text())
         assert journal["client_secret_sha256"] == hashlib.sha256(secret.encode()).hexdigest()
         assert (
             journal["pilot_users"]["alchemmist"]["uuid"] == "9e33877a-3eaa-4541-98eb-8cdc10088ef6"
         )
-        assert journal["pilot_users"]["antropophag"]["pk"] == 6
+        assert journal["pilot_users"]["antropophag"]["pk"] == ANTROPOPHAG_PK
         assert set(journal["groups"]) == set(oidc.GROUP_NAMES)
         for recorded in journal["groups"].values():
             assert isinstance(recorded["pk"], str)
@@ -577,13 +667,13 @@ class NetBirdOIDCTests(unittest.TestCase):
                 assert not group["is_superuser"]
                 assert group["parents"] == []
                 assert group["roles"] == []
-                assert sorted(_sequence(group["users"])) == [5, 6]
+                assert sorted(_ints(group["users"])) == [5, 6]
         assert self.fake.outposts[0]["providers"] == [5, 9]
         assert self.fake.providers[0]["name"] == "homelab-grafana"
         owner = self.fake.users[0]
-        assert owner["is_superuser"] == True
+        assert owner["is_superuser"] is True
         assert set(OWNER_GROUPS).issubset(_sequence(owner["groups"]))
-        assert self.fake.users[1]["is_superuser"] == False
+        assert self.fake.users[1]["is_superuser"] is False
         assert TIM_GROUPS[0] in _sequence(self.fake.users[1]["groups"])
         user_writes = [
             call for call in self.fake.writes() if call[1].startswith("/api/v3/core/users/")
@@ -594,6 +684,11 @@ class NetBirdOIDCTests(unittest.TestCase):
         binding = self.fake.bindings[0]
         assert binding["group"] == journal["groups"][oidc.ADMISSION_GROUP]["pk"]
         assert "user" not in binding
+
+    def test_recheck_and_second_apply_write_nothing(self) -> None:
+        """A fresh recheck passes and a second reviewed apply writes nothing."""
+        self.apply_approved()
+        secret = json.loads((self.root / oidc.RUNTIME_NAME).read_text())["client_secret"]
         code, out, err = self.run_tool("check", "--netbird-config", str(self.config))
         assert code == 0, err + out
         assert "reconciled=true" in out
@@ -623,7 +718,7 @@ class NetBirdOIDCTests(unittest.TestCase):
                 "redirect_uris": [],
             }
         )
-        code, out, err = self.run_tool("plan", "--netbird-config", str(self.config))
+        code, out, _err = self.run_tool("plan", "--netbird-config", str(self.config))
         assert code == 0
         plan = json.loads(out)
         assert any("adopt" in _string(item) for item in _sequence(plan["blockers"]))
@@ -649,9 +744,12 @@ class NetBirdOIDCTests(unittest.TestCase):
             str(self.config),
         )
         assert code == 1, out
-        assert sum(1 for call in self.fake.writes() if call[1] == "/api/v3/core/groups/") == 3
+        assert (
+            sum(1 for call in self.fake.writes() if call[1] == "/api/v3/core/groups/")
+            == PILOT_GROUP_WRITES
+        )
         journal = json.loads((self.root / oidc.JOURNAL_NAME).read_text())
-        assert len(journal["groups"]) == 3
+        assert len(journal["groups"]) == PILOT_GROUP_COUNT
         assert "provider_pk" not in journal
         retry = self.plan()
         code, out, err = self.run_tool(
@@ -662,7 +760,10 @@ class NetBirdOIDCTests(unittest.TestCase):
             str(self.config),
         )
         assert code == 0, err
-        assert sum(1 for call in self.fake.writes() if call[1] == "/api/v3/core/groups/") == 3
+        assert (
+            sum(1 for call in self.fake.writes() if call[1] == "/api/v3/core/groups/")
+            == PILOT_GROUP_WRITES
+        )
         assert sum(1 for item in self.fake.providers if item["name"] == oidc.PROVIDER_NAME) == 1
 
     def test_tim_superuser_group_and_extra_member_block_without_writes(self) -> None:
@@ -781,12 +882,12 @@ class NetBirdOIDCTests(unittest.TestCase):
 
     def test_pinned_connector_source_matches_when_present(self) -> None:
         """The pinned connector source matches its digest when present."""
-        repo = Path(os.environ.get("NETBIRD_V082_SRC", "/tmp/netbird-v082-repo"))
+        repo = Path(os.environ.get("NETBIRD_V082_SRC", str(PINNED_NETBIRD_REPO)))
         connector = repo / "idp/dex/connector.go"
         if not connector.is_file():
             self.skipTest("pinned NetBird v0.82.0 source is not present")
         assert hashlib.sha256(connector.read_bytes()).hexdigest() == oidc.CONNECTOR_SHA256
-        dex = Path("/tmp/netbird-dex/oidc.go")
+        dex = PINNED_DEX_OIDC
         if dex.is_file():
             assert hashlib.sha256(dex.read_bytes()).hexdigest() == oidc.DEX_OIDC_SHA256
         test_path = repo / "idp/dex/homelab_upstream_scopes_test.go"
@@ -809,6 +910,8 @@ class NetBirdOIDCTests(unittest.TestCase):
             text=True,
             capture_output=True,
             timeout=180,
+            # The returncode assertion below is the intended gate.
+            check=False,
         )
         assert completed.returncode == 0, completed.stdout + completed.stderr
 

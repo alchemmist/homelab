@@ -16,8 +16,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def inside(root, path):
-    """Perform the inside operation."""
+def inside(root: Path, path: Path) -> Path:
+    """Return the resolved path only while it stays inside the given root."""
     path = path.resolve()
     if not path.is_relative_to(root.resolve()):
         msg = "Source pointer escapes repository"
@@ -102,7 +102,14 @@ def _value_targets(
 ) -> int:
     """Validate every Helm value file of one source against repository relative paths."""
     pointers = 0
-    for value in source.get("helm", {}).get("valueFiles", []):
+    if "helm" not in source:
+        value_files: list[object] = []
+    else:
+        helm = source["helm"]
+        if not isinstance(helm, dict):
+            raise TypeError("Expected a source helm section mapping: " + context.name)
+        value_files = helm.get("valueFiles", [])
+    for value in value_files:
         target = _resolve_value_target(context, value, local=local, path=path)
         # Deliberately strict even with ignoreMissingValueFiles. Optional
         # values need a separately reviewed contract, not silently skipping.
@@ -127,8 +134,10 @@ def _resolve_value_target(
     raise ValueError("Cannot verify external relative values offline: " + context.name)
 
 
-def applications(root, directory, repo):
-    """Perform the applications operation."""
+def applications(
+    root: Path, directory: str, repo: str
+) -> tuple[int, int, dict[tuple[str, str], set[Path]]]:
+    """Scan every Application document into per-owner pointers and value files."""
     base = inside(root, root / directory)
     if not base.is_dir():
         msg = "Missing Application directory"
@@ -137,8 +146,8 @@ def applications(root, directory, repo):
     if not files:
         msg = "Empty Application inventory"
         raise ValueError(msg)
-    names = set()
-    values_by_owner = {}
+    names: set[tuple[str, str]] = set()
+    values_by_owner: dict[tuple[str, str], set[Path]] = {}
     pointers = 0
     for file in files:
         app = yaml.safe_load(inside(root, file).read_text())
@@ -204,13 +213,14 @@ def _current_values(
             raise ValueError("Current documentation value drift: " + name)
 
 
-def check(root=ROOT):
+def check(root: Path = ROOT) -> tuple[int, int]:
     """Check the requested inputs."""
     c = json.loads((root / "deploy/contracts/source-pointers.json").read_text())
     if c["schemaVersion"] != 1:
         msg = "Unsupported source pointer schema"
         raise ValueError(msg)
-    source = yaml.safe_load(inside(root, root / c["rootApplication"]).read_text())["spec"]["source"]
+    root_application = yaml.safe_load(inside(root, root / c["rootApplication"]).read_text())
+    source = root_application["spec"]["source"]
     if (
         source["repoURL"] != c["repoURL"]
         or source["path"] != c["applicationDirectory"]
@@ -229,5 +239,6 @@ def check(root=ROOT):
 if __name__ == "__main__":
     count, pointers = check()
     print(
-        f"Source pointers OK: {count} Applications, {pointers} local source/value pointers and registered current docs"
+        f"Source pointers OK: {count} Applications, "
+        f"{pointers} local source/value pointers and registered current docs"
     )

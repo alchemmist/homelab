@@ -14,9 +14,7 @@ BARE_CPU_LIMIT = "    cpu: 1"
 STRING_TAG = "tag:yaml.org,2002:str"
 INTEGER_TAG = "tag:yaml.org,2002:int"
 BOOLEAN_TAG = "tag:yaml.org,2002:bool"
-IMAGE = (
-    "harbor.socrat.alchemmist.xyz/n8n/n8n@sha256:34bb222fb111ffd12c63859cd9b7567d94264b859b1e52ce3967207a637c5755"
-)
+IMAGE = "harbor.socrat.alchemmist.xyz/n8n/n8n@sha256:34bb222fb111ffd12c63859cd9b7567d94264b859b1e52ce3967207a637c5755"
 NO_SHARED_ALIASES = 0
 type LoaderType = type[yaml.SafeLoader | yaml.Loader]
 

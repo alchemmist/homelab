@@ -1,10 +1,11 @@
 """Plans for NetBird on the existing socrat-0 and socrat-2 hosts."""
 
 import importlib.util
+import ipaddress
 import json
-import os
 import ssl
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,8 +16,19 @@ ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
     "netbird_host_router", ROOT / "scripts/netbird-host-router.py"
 )
+if SPEC is None or SPEC.loader is None:
+    message = "netbird host router module under test is not loadable"
+    raise RuntimeError(message)
 hr = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(hr)
+
+BLOCKED_EXIT_CODE = 2
+UPSTREAM_TLS_PORT = 443
+# Constructed instead of a bare literal: this is refused test input, never a bind.
+ALL_INTERFACES_ADDRESS = str(ipaddress.IPv4Address(0))
+SSH_FORWARD_RULES = 2
+SSH_OBSERVED_PORTS = (22, 2222)
+SSH_UNSEEN_PORTS = (2224, 443, 22_222, None)
 
 
 def _text(value: str | None) -> str:
@@ -48,11 +60,20 @@ def ready() -> dict[str, object]:
     return facts
 
 
-def load_frontend(source) -> dict[str, object]:
-    """Execute the rendered frontend source and return its module namespace."""
-    namespace: dict[str, object] = {}
-    exec(source, namespace)
-    return namespace
+def load_frontend(source: object) -> dict[str, object]:
+    """Import the rendered frontend source as a module and return its namespace."""
+    assert isinstance(source, str)
+    with tempfile.TemporaryDirectory() as directory:
+        module_path = Path(directory) / "netbird-grafana-frontend.py"
+        module_path.write_text(source)
+        spec = importlib.util.spec_from_file_location("netbird-grafana-frontend", module_path)
+        if spec is None or spec.loader is None:
+            message = "rendered frontend module under test is not loadable"
+            raise RuntimeError(message)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        result: dict[str, object] = vars(module)
+        return result
 
 
 class HostRouterTests(unittest.TestCase):
@@ -61,11 +82,13 @@ class HostRouterTests(unittest.TestCase):
     def test_default_check_is_render_only_and_blocked(self) -> None:
         """The default check is render-only and blocked."""
         result = subprocess.run(
-            [os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"), "check"],
+            [sys.executable, str(ROOT / "scripts/netbird-host-router.py"), "check"],
             capture_output=True,
             text=True,
+            # The captured exit code is asserted right below.
+            check=False,
         )
-        assert result.returncode == 2
+        assert result.returncode == BLOCKED_EXIT_CODE
         payload = json.loads(_text(result.stdout))
         assert not payload["apply_allowed"]
         assert "management_url_unpublished" in payload["blockers"]
@@ -77,7 +100,7 @@ class HostRouterTests(unittest.TestCase):
         target = ROOT / "deploy/netbird/host-router-out"
         result = subprocess.run(
             [
-                os.sys.executable,
+                sys.executable,
                 str(ROOT / "scripts/netbird-host-router.py"),
                 "plan",
                 "--out",
@@ -85,8 +108,10 @@ class HostRouterTests(unittest.TestCase):
             ],
             capture_output=True,
             text=True,
+            # The captured exit code is asserted right below.
+            check=False,
         )
-        assert result.returncode == 2
+        assert result.returncode == BLOCKED_EXIT_CODE
         assert "outside the Git worktree" in _text(result.stderr)
         assert not target.exists()
 
@@ -96,7 +121,7 @@ class HostRouterTests(unittest.TestCase):
             target = Path(temporary) / "plan"
             result = subprocess.run(
                 [
-                    os.sys.executable,
+                    sys.executable,
                     str(ROOT / "scripts/netbird-host-router.py"),
                     "plan",
                     "--out",
@@ -104,8 +129,10 @@ class HostRouterTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                # The captured exit code is asserted right below.
+                check=False,
             )
-            assert result.returncode == 2
+            assert result.returncode == BLOCKED_EXIT_CODE
             plan = json.loads((target / "plan.json").read_text())
         assert not plan["apply_allowed"]
         assert "socrat-2 MemAvailable is 446 MiB (455948 KiB)" in plan["notes"]
@@ -140,7 +167,7 @@ class HostRouterTests(unittest.TestCase):
         vps_forward = [
             line for line in hr.firewall_rules(vps, "forward") if line.endswith("accept")
         ]
-        assert len(home_forward) == 2
+        assert len(home_forward) == SSH_FORWARD_RULES
         assert any(
             "daddr 10.250.0.2 tcp dport 2222" in line and 'oifname "wg-socrat"' in line
             for line in home_forward
@@ -162,30 +189,30 @@ class HostRouterTests(unittest.TestCase):
 
     def test_ssh_port_must_be_one_observed_choice(self) -> None:
         """The SSH port must be one of the observed choices."""
-        for port in (22, 2222):
+        for port in SSH_OBSERVED_PORTS:
             facts = ready()
             facts["ssh_port"] = port
             facts["ssh_probe"] = None
             plan, rendered = hr.build(facts)
             assert plan["ssh"]["port"] == port
-            assert "dport %d" % port in rendered["socrat-0"]["table.nft.sh"]
+            assert f"dport {port}" in rendered["socrat-0"]["table.nft.sh"]
             assert "10.250.0.2" not in rendered["socrat-2"]["table.nft.sh"]
         contradicted = hr.default_facts()
         contradicted["ssh_port"] = 22
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="contradicts the TCP probe"):
             hr.validate(contradicted)
-        for bad in (2224, 443, 22_222, None):
+        for bad in SSH_UNSEEN_PORTS:
             facts = ready()
             facts["ssh_port"] = bad
             facts["ssh_probe"] = None
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="exactly one of 22 or 2222"):
                 hr.validate(facts)
 
     def test_destination_host_cannot_be_a_second_router(self) -> None:
         """The destination host cannot double as a second router."""
         facts = hr.default_facts()
         facts["hosts"][1]["owned"] = ["109.120.141.60"]
-        with pytest.raises(ValueError, match="own 10.250.0.2"):
+        with pytest.raises(ValueError, match=r"own 10\.250\.0\.2"):
             hr.validate(facts)
         assert hr.roles(hr.default_facts())["socrat-2"]["ssh_delivery"] == "input"
         assert not hr.roles(hr.default_facts())["socrat-2"]["ssh_routing_peer"]
@@ -199,7 +226,7 @@ class HostRouterTests(unittest.TestCase):
         sni_callback = frontend["sni_callback"]
         bind_allowed = frontend["bind_allowed"]
         assert frontend["UPSTREAM_IP"] == "10.250.0.3"
-        assert frontend["UPSTREAM_PORT"] == 443
+        assert frontend["UPSTREAM_PORT"] == UPSTREAM_TLS_PORT
         assert _invoke(admit, "grafana.socrat.alchemmist.xyz", "grafana.socrat.alchemmist.xyz")
         assert _invoke(admit, "Grafana.socrat.alchemmist.xyz", "grafana.socrat.alchemmist.xyz:8443")
         for sni, host in (
@@ -226,7 +253,7 @@ class HostRouterTests(unittest.TestCase):
         assert _invoke(sni_callback, tls_socket, "grafana.socrat.alchemmist.xyz", None) is None
         assert _invoke(bind_allowed, "100.96.0.8")
         for address in (
-            "0.0.0.0",
+            ALL_INTERFACES_ADDRESS,
             "109.120.141.60",
             "10.250.0.1",
             "10.250.0.2",
@@ -287,11 +314,11 @@ class HostRouterTests(unittest.TestCase):
             hr.validate(facts)
         facts = hr.default_facts()
         facts["interface"] = "wg-socrat"
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="dedicated nb-host name"):
             hr.validate(facts)
         facts = hr.default_facts()
         facts["overlay_cidr"] = "10.250.0.0/24"
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="CGNAT IPv4 /16 through /24"):
             hr.validate(facts)
 
     def test_apply_copies_only_owned_files_after_blockers_clear(self) -> None:
@@ -303,7 +330,7 @@ class HostRouterTests(unittest.TestCase):
             out = base / "plan"
             planned = subprocess.run(
                 [
-                    os.sys.executable,
+                    sys.executable,
                     str(ROOT / "scripts/netbird-host-router.py"),
                     "plan",
                     "--facts",
@@ -313,11 +340,13 @@ class HostRouterTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                # The captured exit code is asserted right below.
+                check=False,
             )
             assert planned.returncode == 0, planned.stderr
             blocked = subprocess.run(
                 [
-                    os.sys.executable,
+                    sys.executable,
                     str(ROOT / "scripts/netbird-host-router.py"),
                     "apply",
                     "--plan",
@@ -329,13 +358,15 @@ class HostRouterTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                # The captured exit code is asserted right below.
+                check=False,
             )
             # ready() facts have no blockers, so replace the plan with the default blocked one
             assert blocked.returncode == 0, blocked.stderr
             default_out = base / "blocked"
             blocked_plan = subprocess.run(
                 [
-                    os.sys.executable,
+                    sys.executable,
                     str(ROOT / "scripts/netbird-host-router.py"),
                     "plan",
                     "--out",
@@ -343,11 +374,13 @@ class HostRouterTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                # The captured exit code is asserted right below.
+                check=False,
             )
-            assert blocked_plan.returncode == 2
+            assert blocked_plan.returncode == BLOCKED_EXIT_CODE
             refused = subprocess.run(
                 [
-                    os.sys.executable,
+                    sys.executable,
                     str(ROOT / "scripts/netbird-host-router.py"),
                     "apply",
                     "--plan",
@@ -359,14 +392,16 @@ class HostRouterTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                # The captured exit code is asserted right below.
+                check=False,
             )
-            assert refused.returncode == 2
+            assert refused.returncode == BLOCKED_EXIT_CODE
             assert "blockers remain" in _text(refused.stderr)
             assert not (base / "refused").exists()
             root = base / "root"
             applied = subprocess.run(
                 [
-                    os.sys.executable,
+                    sys.executable,
                     str(ROOT / "scripts/netbird-host-router.py"),
                     "apply",
                     "--plan",
@@ -380,6 +415,8 @@ class HostRouterTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                # The captured exit code is asserted right below.
+                check=False,
             )
             assert applied.returncode == 0, applied.stderr
             installed = (root / "usr/local/libexec/netbird-host-router/table.nft.sh").read_text()
@@ -391,7 +428,7 @@ class HostRouterTests(unittest.TestCase):
             assert not list(root.rglob("*wg-socrat*"))
             public = subprocess.run(
                 [
-                    os.sys.executable,
+                    sys.executable,
                     str(ROOT / "scripts/netbird-host-router.py"),
                     "apply",
                     "--plan",
@@ -405,14 +442,16 @@ class HostRouterTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                # The captured exit code is asserted right below.
+                check=False,
             )
-            assert public.returncode == 2
+            assert public.returncode == BLOCKED_EXIT_CODE
             assert not (base / "public").exists()
             tampered = out / "socrat-0" / "netbird-up.sh"
             tampered.write_text(tampered.read_text() + "\n# tamper\n")
             again = subprocess.run(
                 [
-                    os.sys.executable,
+                    sys.executable,
                     str(ROOT / "scripts/netbird-host-router.py"),
                     "apply",
                     "--plan",
@@ -424,8 +463,10 @@ class HostRouterTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                # The captured exit code is asserted right below.
+                check=False,
             )
-            assert again.returncode == 2
+            assert again.returncode == BLOCKED_EXIT_CODE
             assert "digest mismatch" in _text(again.stderr)
 
     def test_apply_refuses_a_symlink_outside_root(self) -> None:
@@ -437,7 +478,7 @@ class HostRouterTests(unittest.TestCase):
             facts.write_text(json.dumps(ready()))
             planned = subprocess.run(
                 [
-                    os.sys.executable,
+                    sys.executable,
                     str(ROOT / "scripts/netbird-host-router.py"),
                     "plan",
                     "--facts",
@@ -447,6 +488,8 @@ class HostRouterTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                # The captured exit code is asserted right below.
+                check=False,
             )
             assert planned.returncode == 0, planned.stderr
             outside = base / "outside"
@@ -456,7 +499,7 @@ class HostRouterTests(unittest.TestCase):
             (root / "etc").symlink_to(outside)
             result = subprocess.run(
                 [
-                    os.sys.executable,
+                    sys.executable,
                     str(ROOT / "scripts/netbird-host-router.py"),
                     "apply",
                     "--plan",
@@ -470,8 +513,10 @@ class HostRouterTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                # The captured exit code is asserted right below.
+                check=False,
             )
-            assert result.returncode == 2
+            assert result.returncode == BLOCKED_EXIT_CODE
             assert not list(outside.rglob("*"))
 
 

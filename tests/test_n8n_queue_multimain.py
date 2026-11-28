@@ -28,7 +28,7 @@ def render(extra: list[str]) -> list[dict]:
 
 
 class N8nQueueMultimain(unittest.TestCase):
-    def test_worker_and_queue_envs_render_only_when_enabled(self):
+    def test_worker_and_queue_envs_render_only_when_enabled(self) -> None:
         legacy = render(["--set", "queue.enabled=false"])
         assert not any(d["metadata"].get("name") == "n8n-worker" for d in legacy)
         legacy_text = yaml.safe_dump(legacy)
@@ -44,11 +44,12 @@ class N8nQueueMultimain(unittest.TestCase):
         enabled = render([])
         worker = next(d for d in enabled if d["metadata"].get("name") == "n8n-worker")
         main = next(
-            d
-            for d in enabled
-            if d["kind"] == "Deployment" and d["metadata"]["name"] == "n8n"
+            d for d in enabled if d["kind"] == "Deployment" and d["metadata"]["name"] == "n8n"
         )
-        main_env = {e["name"]: e.get("value") for e in main["spec"]["template"]["spec"]["containers"][0]["env"]}
+        main_env = {
+            e["name"]: e.get("value")
+            for e in main["spec"]["template"]["spec"]["containers"][0]["env"]
+        }
         assert main_env["N8N_EXECUTIONS_MODE"] == "queue"
         assert main_env["N8N_MULTI_MAIN_SETUP_ENABLED"] == "true"
         worker_env = {
@@ -61,7 +62,7 @@ class N8nQueueMultimain(unittest.TestCase):
             assert env["QUEUE_BULL_REDIS_HOST"] == "redis-common-haproxy.redis.svc.cluster.local"
             assert env["QUEUE_BULL_REDIS_TLS"] == "true"
 
-    def test_worker_healthcheck_and_command(self):
+    def test_worker_healthcheck_and_command(self) -> None:
         enabled = render([])
         worker = next(d for d in enabled if d["metadata"].get("name") == "n8n-worker")
         c = worker["spec"]["template"]["spec"]["containers"][0]
@@ -73,12 +74,10 @@ class N8nQueueMultimain(unittest.TestCase):
         for probe in ("readinessProbe", "livenessProbe"):
             assert c[probe]["httpGet"]["port"] == "healthcheck"
 
-    def test_multimain_topology(self):
+    def test_multimain_topology(self) -> None:
         enabled = render([])
         main = next(
-            d
-            for d in enabled
-            if d["kind"] == "Deployment" and d["metadata"]["name"] == "n8n"
+            d for d in enabled if d["kind"] == "Deployment" and d["metadata"]["name"] == "n8n"
         )
         assert main["spec"]["replicas"] == 2
         assert main["spec"]["strategy"]["type"] == "RollingUpdate"
@@ -86,7 +85,9 @@ class N8nQueueMultimain(unittest.TestCase):
         anti = spec["affinity"]["podAntiAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"]
         assert anti[0]["topologyKey"] == "kubernetes.io/hostname"
         assert anti[0]["labelSelector"]["matchLabels"] == {"app": "n8n"}
-        node_aff = spec["affinity"]["nodeAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"]
+        node_aff = spec["affinity"]["nodeAffinity"][
+            "requiredDuringSchedulingIgnoredDuringExecution"
+        ]
         expr = node_aff["nodeSelectorTerms"][0]["matchExpressions"][0]
         assert expr["operator"] == "In"
         assert sorted(expr["values"]) == ["socrat-0", "socrat-5"]
@@ -99,12 +100,10 @@ class N8nQueueMultimain(unittest.TestCase):
         wspec = worker["spec"]["template"]["spec"]
         assert wspec["nodeSelector"]["kubernetes.io/hostname"] == "socrat-1"
 
-    def test_main_bundles_cas_for_redis_tls(self):
+    def test_main_bundles_cas_for_redis_tls(self) -> None:
         enabled = render([])
         main = next(
-            d
-            for d in enabled
-            if d["kind"] == "Deployment" and d["metadata"]["name"] == "n8n"
+            d for d in enabled if d["kind"] == "Deployment" and d["metadata"]["name"] == "n8n"
         )
         spec = main["spec"]["template"]["spec"]
         bundle = next(c for c in spec["initContainers"] if c["name"] == "node-ca-bundle")
@@ -114,7 +113,7 @@ class N8nQueueMultimain(unittest.TestCase):
         env = {e["name"]: e.get("value") for e in spec["containers"][0]["env"]}
         assert env["NODE_EXTRA_CA_CERTS"] == "/etc/node-ca/bundle.pem"
 
-    def test_worker_joins_service_vpn_and_extensions(self):
+    def test_worker_joins_service_vpn_and_extensions(self) -> None:
         enabled = render([])
         worker = next(d for d in enabled if d["metadata"].get("name") == "n8n-worker")
         spec = worker["spec"]["template"]["spec"]
@@ -122,15 +121,13 @@ class N8nQueueMultimain(unittest.TestCase):
         assert "service-vpn" in names, "Google-facing nodes execute on workers"
         env = {e["name"]: e for e in spec["containers"][0]["env"]}
         assert env["N8N_CUSTOM_EXTENSIONS"]["value"] == "/opt/n8n/yandex-extension"
-        assert (
-            env["N8N_ENCRYPTION_KEY"]["valueFrom"]["secretKeyRef"]["name"] == "n8n-secrets"
-        )
+        assert env["N8N_ENCRYPTION_KEY"]["valueFrom"]["secretKeyRef"]["name"] == "n8n-secrets"
         assert (
             env["N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY"]["valueFrom"]["secretKeyRef"]["name"]
             == "n8n-s3-storage"
         )
 
-    def test_onboard_script_is_explicit_and_scoped(self):
+    def test_onboard_script_is_explicit_and_scoped(self) -> None:
         source = ONBOARD.read_text()
         assert 'sys.argv[1:] != ["--create-missing"]' in source
         assert "~n8n:*" in source and "&n8n:*" in source
@@ -149,7 +146,7 @@ class N8nQueueMultimain(unittest.TestCase):
         )
         subprocess.run([sys.executable, "-c", script], check=True, capture_output=True)
 
-    def test_consumer_net_admits_n8n_pods_only_from_automation(self):
+    def test_consumer_net_admits_n8n_pods_only_from_automation(self) -> None:
         doc = yaml.safe_load(CONSUMER_NET.read_text().replace("---\n", "").replace("...\n", ""))
         entries = doc["spec"]["ingress"][0]["from"]
         n8n_entries = [
@@ -159,4 +156,6 @@ class N8nQueueMultimain(unittest.TestCase):
         ]
         assert len(n8n_entries) == 2
         for e in n8n_entries:
-            assert e["namespaceSelector"]["matchLabels"]["kubernetes.io/metadata.name"] == "automation"
+            assert (
+                e["namespaceSelector"]["matchLabels"]["kubernetes.io/metadata.name"] == "automation"
+            )

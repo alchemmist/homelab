@@ -18,11 +18,15 @@ PREFIX = b"hl-home-nl-v1:"
 PORT = 51843
 
 
-def valid(data, peer) -> bool:
+def valid(data: bytes, peer: tuple[str, int]) -> bool:
+    """Accept only the exact small fixed-shape HOME datagram."""
     return peer[0] == HOME and len(data) == len(PREFIX) + 16 and data.startswith(PREFIX)
 
 
-def server(timeout=40) -> "dict[str, object]":
+def server(timeout: int = 40) -> dict[str, object]:
+    """Echo one valid bounded HOME datagram, then stop listening."""
+    # The pinned assert guards are the reviewed hard stops probed by
+    # tests/test_home_nl_udp_probe.py; keep the exact literals.
     assert socket.gethostname() == "socrat-2"
     assert 1 <= timeout <= 45
     deadline = time.monotonic() + timeout
@@ -47,7 +51,8 @@ def server(timeout=40) -> "dict[str, object]":
     raise TimeoutError(msg)
 
 
-def client() -> "dict[str, object]":
+def client() -> dict[str, object]:
+    """Send the fixed probe shape and demand a byte-identical echo."""
     assert socket.gethostname() == "socrat-0"
     payload = PREFIX + secrets.token_bytes(16)
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:

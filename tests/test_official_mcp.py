@@ -83,7 +83,7 @@ def test_all_current_applications_are_audited_with_reason() -> None:
 
 
 def test_official_launchers_pin_read_only_and_do_not_override_tool_allowlist(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Pin read-only launcher args and reject an unknown server name."""
     m = module("run-official-mcp")
@@ -101,7 +101,7 @@ def test_official_launchers_pin_read_only_and_do_not_override_tool_allowlist(
         m.command("unknown")
 
 
-def test_secret_reader_rejects_symlink_and_unsafe_mode(tmp_path) -> None:
+def test_secret_reader_rejects_symlink_and_unsafe_mode(tmp_path: Path) -> None:
     """Accept only a mode 0600 regular file and reject links or multiline text."""
     m = module("mcp-credential")
     p = tmp_path / "key"
@@ -154,7 +154,8 @@ def test_native_n8n_mcp_is_exact_service_owned_without_bypassing_ui() -> None:
     baseline = list(yaml.safe_load_all(subprocess.check_output(cmd, text=True)))
     assert all(
         "homelab.alchemmist.xyz/public-web" not in doc["metadata"].get("labels", {})
-        for doc in baseline if doc and doc["kind"] == "Ingress"
+        for doc in baseline
+        if doc and doc["kind"] == "Ingress"
     )
     for param in helm["parameters"]:
         cmd.extend(["--set", f"{param['name']}={param['value']}"])
@@ -162,11 +163,11 @@ def test_native_n8n_mcp_is_exact_service_owned_without_bypassing_ui() -> None:
     ingresses = {d["metadata"]["name"]: d for d in docs if d and d["kind"] == "Ingress"}
     assert set(ingresses) == {"n8n", "n8n-machine-endpoints"}
     for ingress in ingresses.values():
-        assert ingress["metadata"].pop("labels") == {
-            "homelab.alchemmist.xyz/public-web": "true"
-        }
+        assert ingress["metadata"].pop("labels") == {"homelab.alchemmist.xyz/public-web": "true"}
     assert docs == baseline
-    disabled = yaml.safe_load_all(subprocess.check_output([*cmd, "--set", "ingress.enabled=false"], text=True))
+    disabled = yaml.safe_load_all(
+        subprocess.check_output([*cmd, "--set", "ingress.enabled=false"], text=True)
+    )
     remaining = [doc for doc in disabled if doc and doc["kind"] == "Ingress"]
     assert [doc["metadata"]["name"] for doc in remaining] == ["n8n-machine-endpoints"]
     assert "homelab.alchemmist.xyz/public-web" not in remaining[0]["metadata"].get("labels", {})
@@ -180,10 +181,7 @@ def test_native_n8n_mcp_is_exact_service_owned_without_bypassing_ui() -> None:
     assert "name: n8n" in ui
     assert "tls:" in ui
     assert "websecure" in ui
-    assert (
-        "N8N_SECURE_COOKIE"
-        in (ROOT / "charts/n8n/templates/deployment.yaml").read_text()
-    )
+    assert "N8N_SECURE_COOKIE" in (ROOT / "charts/n8n/templates/deployment.yaml").read_text()
     paths = machine["spec"]["rules"][0]["http"]["paths"]
     mcp = [p for p in paths if p["path"] == "/mcp-server/http"]
     assert len(mcp) == 1

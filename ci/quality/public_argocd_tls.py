@@ -2,15 +2,19 @@
 
 import argparse
 import hashlib
-import subprocess
 from pathlib import Path
 
 import yaml
 
+from ci.quality.common import command
 from ci.quality.public_web import CATALOG, ROOT
 
 ARCHIVE_SHA256 = "d8f096d87513b41ff754053a7f9604c943bf29c15436a79226fd51595ea67d05"
 VERSION = "10.11.6"
+MSG_NEW_RENDER_REVIEW = "Argo CD release requires a new upstream render review"
+MSG_UNEXPECTED_INGRESS = "unexpected Argo CD ingress settings"
+MSG_UNREVIEWED_ARCHIVE = "unreviewed Argo CD chart archive"
+MSG_PIN_DIFFERS = "Argo CD TLS pin and upstream render differ"
 
 
 def owner() -> tuple[str, str, str]:
@@ -35,7 +39,8 @@ def owner() -> tuple[str, str, str]:
         or ns != "argocd"
         or app["metadata"]["name"] != "argo-cd"
     ):
-        raise ValueError("Argo CD release requires a new upstream render review")
+        reason = MSG_NEW_RENDER_REVIEW
+        raise ValueError(reason)
     ingress = yaml.safe_load((ROOT / "deploy/platform/argo-cd/values.yaml").read_text())["server"][
         "ingress"
     ]
@@ -46,16 +51,19 @@ def owner() -> tuple[str, str, str]:
         or ingress["ingressClassName"] != "traefik"
         or ingress["annotations"].get("cert-manager.io/cluster-issuer") != "letsencrypt-http01"
     ):
-        raise ValueError("unexpected Argo CD ingress settings")
+        reason = MSG_UNEXPECTED_INGRESS
+        raise ValueError(reason)
     return ns, host, "argocd-server-tls"
 
 
 def verify(path: Path) -> None:
+    """Recheck the reviewe upstream render inside the pinned chart archive."""
     with path.open("rb") as f:
         if hashlib.file_digest(f, "sha256").hexdigest() != ARCHIVE_SHA256:
-            raise ValueError("unreviewed Argo CD chart archive")
+            reason = MSG_UNREVIEWED_ARCHIVE
+            raise ValueError(reason)
     ns, host, key = owner()
-    rendered = subprocess.check_output(
+    rendered = command(
         [
             "helm",
             "template",
@@ -67,9 +75,8 @@ def verify(path: Path) -> None:
             str(ROOT / "deploy/platform/argo-cd/values.yaml"),
             "--show-only",
             "templates/argocd-server/ingress.yaml",
-        ],
-        text=True,
-    )
+        ]
+    ).stdout
     (ing,) = yaml.safe_load_all(rendered)
     spec = ing["spec"]
     meta = ing["metadata"]
@@ -82,7 +89,8 @@ def verify(path: Path) -> None:
         or spec["tls"] != [{"hosts": [host], "secretName": key}]
         or yaml.safe_load(CATALOG.read_text())["hosts"][ns][host].get("tlsSourceName") != key
     ):
-        raise ValueError("Argo CD TLS pin and upstream render differ")
+        reason = MSG_PIN_DIFFERS
+        raise ValueError(reason)
 
 
 if __name__ == "__main__":

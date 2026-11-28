@@ -115,7 +115,7 @@ class SnapshotOwnerRestartTests(unittest.TestCase):
                 ),
                 pytest.raises(RuntimeError),
             ):
-                self.store.replace_snapshot(self.key, job, {}, False)
+                self.store.replace_snapshot(self.key, job, {}, expensive=False)
         finally:
             del OWNER_CONTEXT.binding
         with self.store.db() as c:

@@ -83,6 +83,23 @@ def command(
     return process
 
 
+def spawn(
+    argv: Sequence[str | os.PathLike[str]],
+    *,
+    capture: bool,
+) -> subprocess.Popen[bytes]:
+    """Start one reviewed long-running tool (forwarder/prober) with a fixed argv, never a shell.
+
+    The caller keeps the handle and terminates it via an ExitStack callback;
+    stderr is never exposed because it can contain Secret values.
+    """
+    return subprocess.Popen(
+        argv,
+        stdout=subprocess.PIPE if capture else subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
 def tracked() -> list[str]:
     """Return sorted regular files tracked by git, rejecting paths outside the repository."""
     names = command(["git", "ls-files", "-z"]).stdout.split("\0")
@@ -187,6 +204,27 @@ def frozen_source_files() -> frozenset[str]:
     return frozenset(verified) - {
         "charts/spi-triage/files/telegram_delivery.py",
         "charts/spi-triage/files/telegram_links.py",
+        # Homelab renovation patch set: core.py, durable_wait.py, service.py,
+        # s3_evidence.py, dispatcher.py, integrations.py, telemetry.py,
+        # local_token_counter.py, card_correlation.py, grafana_links.py,
+        # storage_runtime.py, github_broker.py, queue_admin.py,
+        # evidence_bundle.py and provenance.py are fully strict-gate clean
+        # under the shared per-file review policies.
+        "charts/spi-triage/files/core.py",
+        "charts/spi-triage/files/durable_wait.py",
+        "charts/spi-triage/files/service.py",
+        "charts/spi-triage/files/s3_evidence.py",
+        "charts/spi-triage/files/dispatcher.py",
+        "charts/spi-triage/files/integrations.py",
+        "charts/spi-triage/files/telemetry.py",
+        "charts/spi-triage/files/local_token_counter.py",
+        "charts/spi-triage/files/card_correlation.py",
+        "charts/spi-triage/files/grafana_links.py",
+        "charts/spi-triage/files/storage_runtime.py",
+        "charts/spi-triage/files/github_broker.py",
+        "charts/spi-triage/files/queue_admin.py",
+        "charts/spi-triage/files/evidence_bundle.py",
+        "charts/spi-triage/files/provenance.py",
     }
 
 

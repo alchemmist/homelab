@@ -22,9 +22,13 @@ ALLOWED_HOSTS = {
 }
 CONTROL_ADDRESSES = ("109.120.141.60", "109.173.40.247")
 MAX_BYTES = 2 * 1024 * 1024
+FAMILY_IPV4 = 4
+MIN_USEFUL_BYTES = 32768
+HTTP_OK = 200
 
 
-def endpoint(url) -> "urllib.parse.SplitResult":
+def endpoint(url: str) -> urllib.parse.SplitResult:
+    """Validate the URL shape against the approved public HTTPS allowlist."""
     parsed: urllib.parse.SplitResult = urllib.parse.urlsplit(url)
     if (
         parsed.scheme != "https"
@@ -44,13 +48,18 @@ def endpoint(url) -> "urllib.parse.SplitResult":
     return parsed
 
 
-def check(url, vantage, family=4, control_address=None) -> "dict[str, object]":
+def check(
+    url: str, vantage: str, family: int = FAMILY_IPV4, control_address: str | None = None
+) -> dict[str, object]:
+    """One bounded unauthenticated HTTPS probe from the given vantage point."""
     parsed = endpoint(url)
     host = parsed.hostname
     if host is None:
         reason = "Approved hostname required"
         raise ValueError(reason)
-    if control_address is not None and (control_address not in CONTROL_ADDRESSES or family != 4):
+    if control_address is not None and (
+        control_address not in CONTROL_ADDRESSES or family != FAMILY_IPV4
+    ):
         msg = "Explicit controls are limited to the two approved IPv4 ingress addresses"
         raise ValueError(msg)
     result = {
@@ -61,15 +70,15 @@ def check(url, vantage, family=4, control_address=None) -> "dict[str, object]":
         "path_sha256": hashlib.sha256((parsed.path or "/").encode()).hexdigest(),
         "native_tunnel_test": False,
         "automatic_recovery": False,
-        "minimum_useful_transfer_bytes": 32768,
+        "minimum_useful_transfer_bytes": MIN_USEFUL_BYTES,
     }
-    stage = "dns"
+    stage: str | None = "dns"
     start = time.monotonic()
     try:
         address = socket.getaddrinfo(
             host,
             443,
-            socket.AF_INET if family == 4 else socket.AF_INET6,
+            socket.AF_INET if family == FAMILY_IPV4 else socket.AF_INET6,
             socket.SOCK_STREAM,
         )[0]
         result["dns_address"] = address[4][0]
@@ -114,13 +123,12 @@ def check(url, vantage, family=4, control_address=None) -> "dict[str, object]":
                         0,
                     )
                     result["complete_success_above_32k"] = bool(
-                        result["complete"] and len(data) > 32768 and response.status == 200
+                        result["complete"]
+                        and len(data) > MIN_USEFUL_BYTES
+                        and response.status == HTTP_OK
                     )
-        stage = (
-            None
-            if result.get("complete") and result.get("http_status") == 200
-            else "https_transfer"
-        )
+        reached_http_ok = result.get("complete") and result.get("http_status") == HTTP_OK
+        stage = None if reached_http_ok else "https_transfer"
     except (OSError, ValueError, http.client.HTTPException) as error:
         result["error_type"] = type(error).__name__  # No raw response, URL or credentials.
     result["first_failed_stage"] = stage
@@ -129,6 +137,7 @@ def check(url, vantage, family=4, control_address=None) -> "dict[str, object]":
 
 
 def main() -> None:
+    """Run one bounded probe and print its machine-readable result."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="https://wiki.socrat.alchemmist.xyz/")
     parser.add_argument(

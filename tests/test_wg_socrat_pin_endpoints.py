@@ -31,11 +31,11 @@ AllowedIPs = 10.250.0.4/32
 
 
 class PinEndpointTests(unittest.TestCase):
-    def test_only_peers_with_endpoint_are_pinned(self):
+    def test_only_peers_with_endpoint_are_pinned(self) -> None:
         pin = load()
         self.assertEqual(pin.configured_endpoints(CONFIG), {"node1=": "192.168.0.24:51830"})
 
-    def test_roam_into_tunnel_address_is_a_drift(self):
+    def test_roam_into_tunnel_address_is_a_drift(self) -> None:
         pin = load()
         wanted = pin.configured_endpoints(CONFIG)
         runtime = pin.runtime_endpoints("node1=\t10.250.0.3:51830\nphone=\t1.2.3.4:9\n")
@@ -44,7 +44,7 @@ class PinEndpointTests(unittest.TestCase):
             [("node1=", "192.168.0.24:51830", "10.250.0.3:51830")],
         )
 
-    def test_matching_runtime_is_left_alone(self):
+    def test_matching_runtime_is_left_alone(self) -> None:
         pin = load()
         wanted = pin.configured_endpoints(CONFIG)
         runtime = pin.runtime_endpoints("node1=\t192.168.0.24:51830\n")

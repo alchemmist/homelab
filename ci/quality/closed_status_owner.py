@@ -2,10 +2,11 @@
 
 import hashlib
 import json
-import subprocess
 
 import yaml
 
+from ci.quality.closed_root_backend import entries, plain, view
+from ci.quality.common import command
 from ci.quality.public_web import ROOT
 
 NS = "uptime-kuma"
@@ -40,16 +41,40 @@ ROUTES = {
 }
 
 
-def admission(rows, catalog):
+def _shares_proxy_label(item: dict[str, object], kind: object, key: tuple[str, str]) -> bool:
+    """Reject a second Deployment that wears the proxy label."""
+    if plain(kind) != "Deployment" or key == ("Deployment", PROXY):
+        return False
+    template = view(view(item["spec"])["template"])
+    metadata = view(template.get("metadata", {}))
+    labels = view(metadata.get("labels", {}))
+    return labels.get("app") == PROXY
+
+
+def _ingress_claims(
+    item: dict[str, object], key: tuple[str, str]
+) -> dict[str, list[tuple[str, str]]]:
+    """Collect which reviewed hosts this Ingress claims, per host log."""
+    spec = view(item["spec"])
+    claims: dict[str, list[tuple[str, str]]] = {}
+    for rule in entries(spec["rules"]):
+        host = view(rule).get("host")
+        claims.setdefault(str(host), []).append(key)
+    return claims
+
+
+def admission(rows: list[dict[str, object]], catalog: dict[str, object]) -> dict[str, bool]:
+    """Admit the two status routes only as the exact reviewed proxy render."""
     result = {bit: False for bit, *_ in ROUTES.values()}
-    hashes = {}
+    hashes: dict[tuple[str, str], str] = {}
     seen = set()
     monitored = set(POLICY) | {("Ingress", name) for _, name, _, _ in ROUTES.values()}
-    claims = {}
+    claims: dict[str, list[tuple[str, str]]] = {}
     for obj in rows:
-        kind = obj["kind"]
-        meta = obj["metadata"]
-        key = kind, meta["name"]
+        item = view(obj)
+        kind = plain(item["kind"])
+        meta = view(item["metadata"])
+        key = kind, plain(meta["name"])
         if key in seen or kind not in {
             "Ingress",
             "ConfigMap",
@@ -64,34 +89,32 @@ def admission(rows, catalog):
                 json.dumps(obj, sort_keys=True, separators=(",", ":")).encode()
             ).hexdigest()
         if kind == "Ingress":
-            if key not in monitored or "defaultBackend" in obj["spec"]:
+            spec = view(item["spec"])
+            if key not in monitored or "defaultBackend" in spec:
                 return result
-            for rule in obj["spec"]["rules"]:
-                if rule.get("host") not in ROUTES:
-                    return result
-                claims.setdefault(rule["host"], []).append(key)
-        if (
-            kind == "Deployment"
-            and key != ("Deployment", PROXY)
-            and obj["spec"]["template"].get("metadata", {}).get("labels", {}).get("app") == PROXY
-        ):
+            claims.update(_ingress_claims(item, key))
+            if any(host not in ROUTES for host in claims):
+                return result
+        if _shares_proxy_label(item, kind, key):
             return result
     if not all(
         hashes.get(k) in ({v, SPREAD_DIGEST} if k == ("Deployment", PROXY) else {v})
         for k, v in POLICY.items()
     ):
         return result
+    hosts = view(catalog["hosts"])
     for host, (bit, ing, pin, digest) in ROUTES.items():
         key = "Ingress", ing
         result[bit] = (
-            catalog["hosts"].get(NS, {}).get(host) == {"dns": "managed", "tlsSourceName": pin}
+            view(hosts.get(NS, {})).get(host) == {"dns": "managed", "tlsSourceName": pin}
             and claims.get(host) == [key]
             and hashes.get(key) == digest
         )
     return result
 
 
-def owner_objects():
+def owner_objects() -> list[dict[str, object]]:
+    """Render the reviewed upstream Argo release for the status proxy."""
     spec = yaml.safe_load((ROOT / "deploy/argocd/apps/uptime-kuma.yaml").read_text())["spec"]
     src = spec["source"]
     helm = src.get("helm", {})
@@ -119,12 +142,15 @@ def owner_objects():
         )
         or len({p["name"] for p in params}) != len(params)
     ):
-        raise ValueError("unreviewed status release inputs")
+        reason = "unreviewed status release inputs"
+        raise ValueError(reason)
     args = ["helm", "template", NS, str(ROOT / src["path"]), "-n", NS]
     for p in params:
         args += ["--set", p["name"] + "=" + p["value"]]
-    return [d for d in yaml.safe_load_all(subprocess.check_output(args)) if d]
+    raw = command(args).stdout
+    return [d for d in yaml.safe_load_all(raw) if d]
 
 
-def render_status(catalog):
+def render_status(catalog: dict[str, object]) -> dict[str, bool]:
+    """Render the owner release and evaluate both status admissions."""
     return admission(owner_objects(), catalog)

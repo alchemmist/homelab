@@ -8,27 +8,42 @@ import json
 import re
 from pathlib import Path
 
+import yaml
+
 from ci.quality import boundaries
 from ci.quality.common import ROOT, frozen_source_files, tracked
 
+MSG_QUALITY_INTEGRITY = "Quality integrity contract failed"
+MSG_MISSING_CHECKER = "Missing architecture checker"
+MIN_REASON_LENGTH = 20
+SCHEMA_SHA256 = "[a-f0-9]{64}"
+GITHUB_RELEASE_URL = "https://github.com/[\\w-]+/[\\w-]+/releases/download/v[\\d.]+/[\\w.-]+"
+KUBECTL_URL = r"https://dl\.k8s\.io/release/v1\.36\.4/bin/(linux/amd64|darwin/arm64)/kubectl"
+ARCHITECTURE_CHECKERS = (
+    "check_infrastructure_contracts.py",
+    "check_source_pointers.py",
+    "check_operational_entrypoints.py",
+    "check_vendor_contracts.py",
+)
+
 
 def require(condition: object, message: str) -> None:
-    """Execute require."""
+    """Fail the quality system with a named reason instead of accepting drift."""
     if not condition:
         raise ValueError(message)
 
 
-def unique_json(pairs):
-    """Execute unique_json."""
-    result = {}
+def unique_json(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """Reject duplicate JSON keys in every policy and schema document."""
+    result: dict[str, object] = {}
     for key, value in pairs:
         require(key not in result, "Duplicate JSON policy/schema key")
         result[key] = value
     return result
 
 
-def local_refs(value) -> None:
-    """Execute local_refs."""
+def local_refs(value: object) -> None:
+    """Require every JSON schema $ref to stay local to its own document."""
     if isinstance(value, dict):
         for key, item in value.items():
             if key in {"properties", "patternProperties", "definitions"} and isinstance(item, dict):
@@ -44,35 +59,6 @@ def local_refs(value) -> None:
     elif isinstance(value, list):
         for item in value:
             local_refs(item)
-
-
-# Offline modules executed by the seven push gates at main181eca75.
-# This is coverage preservation, not acceptance of findings or unscheduled work.
-RETAINED_PUSH_TESTS = frozenset(
-    [
-        "tests/test_alert_graph_panel_ids.py",
-        "tests/test_alert_graphs_chart.py",
-        "tests/test_argocd_refresh.py",
-        "tests/test_deployment_ownership.py",
-        "tests/test_gateway_readonly.py",
-        "tests/test_infrastructure_contracts.py",
-        "tests/test_n8n_failure_alert_policy.py",
-        "tests/test_operational_entrypoints.py",
-        "tests/test_otel_application_credentials.py",
-        "tests/test_otel_application_leaf_rotation.py",
-        "tests/test_otel_application_registry.py",
-        "tests/test_refactor_acceptance.py",
-        "tests/test_socrat5_app_placement.py",
-        "tests/test_source_pointers.py",
-        "tests/test_spi_execution_links.py",
-        "tests/test_target_placement_ownership.py",
-        "tests/test_vendor_contracts.py",
-        "tests/test_vm105_management.py",
-        "tests/test_vm105_renderer_lms_litellm.py",
-        "tests/test_wg_peer15_relay.py",
-        "tests/test_wishlist_observability.py",
-    ]
-)
 
 
 def require_retained_push_tests(scheduled: set[str]) -> None:
@@ -94,78 +80,115 @@ def owned_test_files(names: list[str]) -> set[str]:
     }
 
 
-def check() -> None:
-    """Execute check."""
+# Offline modules executed by the seven push gates at main181eca75.
+# This is coverage preservation, not acceptance of findings or unscheduled work.
+RETAINED_PUSH_TESTS = frozenset(
+    {
+        "tests/test_alert_graph_panel_ids.py",
+        "tests/test_alert_graphs_chart.py",
+        "tests/test_argocd_refresh.py",
+        "tests/test_deployment_ownership.py",
+        "tests/test_gateway_readonly.py",
+        "tests/test_infrastructure_contracts.py",
+        "tests/test_n8n_failure_alert_policy.py",
+        "tests/test_operational_entrypoints.py",
+        "tests/test_otel_application_credentials.py",
+        "tests/test_otel_application_leaf_rotation.py",
+        "tests/test_otel_application_registry.py",
+        "tests/test_refactor_acceptance.py",
+        "tests/test_socrat5_app_placement.py",
+        "tests/test_source_pointers.py",
+        "tests/test_spi_execution_links.py",
+        "tests/test_target_placement_ownership.py",
+        "tests/test_vendor_contracts.py",
+        "tests/test_vm105_management.py",
+        "tests/test_vm105_renderer_lms_litellm.py",
+        "tests/test_wg_peer15_relay.py",
+        "tests/test_wishlist_observability.py",
+    }
+)
+
+
+def require_policy_files() -> None:
+    """Require every quality policy json to stay inside its frozen tree."""
     frozen_source_files()
     for policy in (ROOT / "ci/quality").rglob("*.json"):
         require(policy.resolve().is_relative_to(ROOT / "ci/quality"), "Quality policy path escape")
         json.loads(policy.read_text(), object_pairs_hook=unique_json)
 
+
+def require_schema_lock() -> set[str]:
+    """Verify the pinned offline schema lock byte-for-byte and keep it complete."""
     lock = json.loads((ROOT / "ci/quality/schemas.lock.json").read_text())
-    require(lock["kubernetesVersion"] == "1.36.0", "Quality integrity contract failed")
-    paths = set()
+    require(lock["kubernetesVersion"] == "1.36.0", MSG_QUALITY_INTEGRITY)
+    paths: set[str] = set()
     for item in lock["files"]:
         path = ROOT / "ci/quality/schemas" / item["path"]
         require(
             path.resolve().is_relative_to(ROOT / "ci/quality/schemas"),
-            "Quality integrity contract failed",
+            MSG_QUALITY_INTEGRITY,
         )
-        require(path.name not in paths, "Quality integrity contract failed")
+        require(path.name not in paths, MSG_QUALITY_INTEGRITY)
         paths.add(path.name)
         require(
             hashlib.sha256(path.read_bytes()).hexdigest() == item["sha256"],
-            "Quality integrity contract failed",
+            MSG_QUALITY_INTEGRITY,
         )
         local_refs(json.loads(path.read_text()))
     require(
         paths == {p.name for p in (ROOT / "ci/quality/schemas").glob("*.json")},
-        "Quality integrity contract failed",
+        MSG_QUALITY_INTEGRITY,
     )
+    return paths
+
+
+def require_tools_lock() -> None:
+    """Verify every pinned platform tool record is unique, hashed and vendored."""
     tools = json.loads((ROOT / "ci/quality/tools.lock.json").read_text())
     for records in tools["platforms"].values():
         require(
             len({r["name"] for r in records}) == len(records),
-            "Quality integrity contract failed",
+            MSG_QUALITY_INTEGRITY,
         )
         for record in records:
+            require(re.fullmatch(SCHEMA_SHA256, record["sha256"]), MSG_QUALITY_INTEGRITY)
             require(
-                re.fullmatch("[a-f0-9]{64}", record["sha256"]),
-                "Quality integrity contract failed",
-            )
-            require(
-                re.fullmatch(
-                    "https://github.com/[\\w-]+/[\\w-]+/releases/download/v[\\d.]+/[\\w.-]+",
-                    record["url"],
-                )
-                or re.fullmatch(
-                    r"https://dl\.k8s\.io/release/v1\.36\.4/bin/(linux/amd64|darwin/arm64)/kubectl",
-                    record["url"],
-                ),
-                "Quality integrity contract failed",
+                re.fullmatch(GITHUB_RELEASE_URL, record["url"])
+                or re.fullmatch(KUBECTL_URL, record["url"]),
+                MSG_QUALITY_INTEGRITY,
             )
             require(
                 record["member"] is None or ".." not in Path(record["member"]).parts,
-                "Quality integrity contract failed",
+                MSG_QUALITY_INTEGRITY,
             )
+
+
+def require_suite_inventory() -> tuple[list[str], dict[str, list[str]]]:
+    """Require complete, non-overlapping test classification into suites."""
     inventory = json.loads((ROOT / "ci/quality/test-suites.json").read_text())
-    actual = owned_test_files(tracked())
     scheduled = [p for paths in inventory["suites"].values() for p in paths]
     require(len(scheduled) == len(set(scheduled)), "Test assigned to multiple suites")
     require_retained_push_tests(set(scheduled))
     deferred = set(inventory["notScheduled"])
-    require(not set(scheduled) & deferred, "Quality integrity contract failed")
+    require(not set(scheduled) & deferred, MSG_QUALITY_INTEGRITY)
     require(
-        actual == set(scheduled) | deferred,
-        f"New/stale test classification: unclassified={sorted(actual - set(scheduled) - deferred)}, "
-        f"stale={sorted((set(scheduled) | deferred) - actual)}",
-    )
-    require(
-        all(len(reason) >= 20 for reason in inventory["notScheduled"].values()),
-        "Quality integrity contract failed",
+        all(len(reason) >= MIN_REASON_LENGTH for reason in inventory["notScheduled"].values()),
+        MSG_QUALITY_INTEGRITY,
     )
     require(all(inventory["suites"].values()), "Empty test suite")
-    import yaml
+    return scheduled, inventory
 
+
+def require_suite_wiring(scheduled: list[str], inventory: dict[str, list[str]]) -> None:
+    """Require every test module to be classified and its suite recipe intact."""
+    actual = owned_test_files(tracked())
+    deferred = set(inventory["notScheduled"])
+    unclassified = sorted(actual - set(scheduled) - deferred)
+    stale = sorted((set(scheduled) | deferred) - actual)
+    require(
+        actual == set(scheduled) | deferred,
+        f"New/stale test classification: unclassified={unclassified}, stale={stale}",
+    )
     graph = yaml.safe_load((ROOT / "qg.yaml").read_text())
     local = json.loads((ROOT / "ci/quality/local-checks.json").read_text())
     require(not (local.keys() & graph["nodes"].keys()), "Check declared twice")
@@ -177,16 +200,21 @@ def check() -> None:
     for suite in inventory["suites"]:
         node = checks["tests-" + suite]
         isolation = "" if suite == "cluster" else " --isolate-network"
-        require(
-            f"tests-{suite}:\n\tuv run python -m ci.quality.tests {suite}{isolation}\n" in makefile,
-            "Test suite execution contract drift",
-        )
+        recipe = f"tests-{suite}:\n\tuv run python -m ci.quality.tests {suite}{isolation}\n"
+        require(recipe in makefile, "Test suite execution contract drift")
         require(
             node["results"] == {"junit": f"reports/tests-{suite}.xml"}, "Test report contract drift"
         )
+
+
+def require_debt_baselines() -> None:
+    """Require every tracked debt baseline to stay unaccepted and path-safe."""
     for baseline in (ROOT / "ci/quality/debt").glob("*.json"):
         data = json.loads(baseline.read_text())
-        require(data["version"] == 1 and len(data["reason"]) >= 20, "Unreviewed quality debt")
+        require(
+            data["version"] == 1 and len(data["reason"]) >= MIN_REASON_LENGTH,
+            "Unreviewed quality debt",
+        )
         require(data.get("acceptance") is False, "Quality debt must not be accepted")
         ids = [f["id"] for f in data["findings"]]
         require(len(ids) == len(set(ids)), "Duplicate quality debt identities")
@@ -196,6 +224,10 @@ def check() -> None:
                 not Path(item["path"]).is_absolute() and ".." not in Path(item["path"]).parts,
                 "Unsafe debt source path",
             )
+
+
+def require_secret_exceptions() -> None:
+    """Require secret exceptions to be reasoned, path-safe and payload-free."""
     exceptions = json.loads((ROOT / "ci/quality/secret-false-positives.json").read_text())
     exception_ids = [item["id"] for item in exceptions["findings"]]
     require(len(exception_ids) == len(set(exception_ids)), "Duplicate secret exception IDs")
@@ -204,28 +236,44 @@ def check() -> None:
             set(item) == {"id", "path", "rule", "reason"},
             "Raw secret payload must not enter exception policy",
         )
-        require(len(item["reason"]) >= 20, "Unreviewed secret false positive")
+        require(len(item["reason"]) >= MIN_REASON_LENGTH, "Unreviewed secret false positive")
         require(
             not Path(item["path"]).is_absolute() and ".." not in Path(item["path"]).parts,
             "Unsafe secret exception path",
         )
+
+
+def require_architecture_gate() -> None:
+    """Run the four architecture checkers through their checked entry points."""
     boundaries.check(ROOT)
-    for name in (
-        "check_infrastructure_contracts.py",
-        "check_source_pointers.py",
-        "check_operational_entrypoints.py",
-        "check_vendor_contracts.py",
-    ):
+    for name in ARCHITECTURE_CHECKERS:
         path = ROOT / "ci" / name
         spec = importlib.util.spec_from_file_location(name.removesuffix(".py"), path)
-        require(spec is not None and spec.loader is not None, "Missing architecture checker")
+        if spec is None or spec.loader is None:
+            msg = MSG_MISSING_CHECKER
+            raise ValueError(msg)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         checker = getattr(module, "check", None)
-        require(callable(checker), "Missing architecture checker")
+        if not callable(checker):
+            reason = MSG_MISSING_CHECKER
+            raise TypeError(reason)
         checker()
+
+
+def check() -> None:
+    """Fail closed unless every self-referential quality contract still holds."""
+    require_policy_files()
+    schema_paths = require_schema_lock()
+    require_tools_lock()
+    scheduled, inventory = require_suite_inventory()
+    require_suite_wiring(scheduled, inventory)
+    require_debt_baselines()
+    require_secret_exceptions()
+    require_architecture_gate()
     print(
-        f"Quality contracts OK: {len(paths)} offline schemas, {len(scheduled)}/{len(actual)} test modules assigned to suites"
+        f"Quality contracts OK: {len(schema_paths)} offline schemas, "
+        f"{len(scheduled)}/{len(owned_test_files(tracked()))} test modules assigned to suites"
     )
 
 

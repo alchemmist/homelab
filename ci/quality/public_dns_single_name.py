@@ -16,21 +16,33 @@ import runpy
 import yaml
 
 from ci.quality.closed_root_owners import eligible, owner_render
+from ci.quality.public_dns_snapshot import EXPECTED_SITES
 from ci.quality.public_web import CATALOG, ROOT
+from services.public_entry.tls_issuance import _mapping
 
 OWNER = "www"
 HOST = "www.alchemmist.xyz"
+REVIEWED_BLOG_ENTRY = {"dns": "managed", "tlsSourceName": "blog-tls"}
+WWW_ADDRESS_COLUMNS = 4
+MAX_SERIAL = 2**32
+MSG_UNEXPECTED_ZONE_DELTA = "unexpected zone delta"
+MSG_INVALID_SERIAL_OR_DIGEST = "invalid serial or digest"
+MSG_UNREVIEWED_ORDINARY_NAME = "unreviewed ordinary name"
+MSG_BLOG_RELEASE_CHANGED = "current blog release no longer admits the reviewed www route"
+MSG_AMBIGUOUS_CANDIDATE = "ambiguous candidate"
+MSG_DIGEST_NO_MATCH = "zone digest does not match any legacy rendering; do not assume a baseline"
+MSG_EXPECTED_REPLICA_ADDRESS = "expected a textual or numeric replica address"
 
 
-def delta(old, new, ip, serial):
-    """Only a change in the complete www A RRset is permitted in these renderings."""
+def delta(old: str, new: str, ip: str, serial: int) -> dict[str, object]:
+    """Permit only a change in the complete www A RRset between these renderings."""
 
-    def split(zone):
-        rows = []
-        addresses = []
+    def split(zone: str) -> tuple[list[str], list[str]]:
+        rows: list[str] = []
+        addresses: list[str] = []
         for row in zone.splitlines(keepends=True):
             parts = row.split()
-            if parts[:3] == [OWNER, "IN", "A"] and len(parts) == 4:
+            if parts[:3] == [OWNER, "IN", "A"] and len(parts) == WWW_ADDRESS_COLUMNS:
                 addresses.append(parts[3])
             else:
                 rows.append(row)
@@ -39,7 +51,7 @@ def delta(old, new, ip, serial):
     before, previous = split(old)
     after, current = split(new)
     if before != after or not previous or len(previous) != len(set(previous)) or current != [ip]:
-        raise ValueError("unexpected zone delta")
+        raise ValueError(MSG_UNEXPECTED_ZONE_DELTA)
     return {
         "serial": serial,
         "previous": previous,
@@ -48,23 +60,28 @@ def delta(old, new, ip, serial):
     }
 
 
-def rehearse(catalog, site, serial, digest):
+def rehearse(catalog: dict[str, object], site: str, serial: int, digest: str) -> dict[str, object]:
+    """Rehearse the offline one-name delta and return its matched legacy render states."""
     if (
         type(serial) is not int
-        or not 0 < serial < 2**32
+        or not 0 < serial < MAX_SERIAL
         or not re.fullmatch("[0-9a-f]{64}", digest)
     ):
-        raise ValueError("invalid serial or digest")
-    if site not in {"home", "nl", "moscow"} or catalog["hosts"]["blog"].get(HOST) != {
-        "dns": "managed",
-        "tlsSourceName": "blog-tls",
-    }:
-        raise ValueError("unreviewed ordinary name")
+        raise ValueError(MSG_INVALID_SERIAL_OR_DIGEST)
+    hosts = _mapping(catalog["hosts"])
+    blog = _mapping(hosts["blog"])
+    if site not in EXPECTED_SITES or blog.get(HOST) != REVIEWED_BLOG_ENTRY:
+        raise ValueError(MSG_UNREVIEWED_ORDINARY_NAME)
     if not eligible(owner_render(owner="blog"), catalog, owner="blog"):
-        raise ValueError("current blog release no longer admits the reviewed www route")
-    ip = str(ipaddress.IPv4Address(catalog["replicas"][site]["publicIP"]))
+        raise ValueError(MSG_BLOG_RELEASE_CHANGED)
+    replicas = _mapping(catalog["replicas"])
+    replica = _mapping(replicas[site])
+    address_value = replica["publicIP"]
+    if not isinstance(address_value, (str, int)):
+        raise TypeError(MSG_EXPECTED_REPLICA_ADDRESS)
+    ip = str(ipaddress.IPv4Address(address_value))
     render = runpy.run_path(str(ROOT / "ansible/scripts/public_dns_zone.py"))["render"]
-    result = None
+    result: dict[str, object] | None = None
     matches = 0
     for home, nl, mhome, mmoscow in itertools.product((False, True), repeat=4):
         kwargs = {"monori_health": (mhome, mmoscow)}
@@ -74,13 +91,11 @@ def rehearse(catalog, site, serial, digest):
         candidate = render(serial, home, nl, **kwargs, web_answers={OWNER: ip})
         d = delta(old, candidate, ip, serial)
         if result is not None and result != d:
-            raise ValueError("ambiguous candidate")
+            raise ValueError(MSG_AMBIGUOUS_CANDIDATE)
         result = d
         matches += 1
     if result is None:
-        raise ValueError(
-            "zone digest does not match any legacy rendering; do not assume a baseline"
-        )
+        raise ValueError(MSG_DIGEST_NO_MATCH)
     return {**result, "host": HOST, "compatibleInputStates": matches}
 
 

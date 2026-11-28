@@ -542,13 +542,23 @@ class RolloutRegressionTests(unittest.TestCase):
         import subprocess
 
         rendered = subprocess.check_output(
-            ["helm", "template", "n8n", str(ROOT / "charts/n8n"),
-             "--show-only", "templates/access.yaml"], text=True,
+            [
+                "helm",
+                "template",
+                "n8n",
+                str(ROOT / "charts/n8n"),
+                "--show-only",
+                "templates/access.yaml",
+            ],
+            text=True,
         )
         resources = list(yaml.safe_load_all(rendered))
         assert len(resources) == 1
         machine = resources[0]
-        assert "traefik.ingress.kubernetes.io/router.middlewares" not in machine["metadata"]["annotations"]
+        assert (
+            "traefik.ingress.kubernetes.io/router.middlewares"
+            not in machine["metadata"]["annotations"]
+        )
         assert machine["metadata"]["namespace"] == "automation"
         for path in machine["spec"]["rules"][0]["http"]["paths"]:
             assert path["backend"]["service"]["name"] == "n8n"

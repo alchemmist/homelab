@@ -3,19 +3,30 @@
 import importlib.util
 import json
 import pathlib
+import tempfile
 import unittest
+from types import ModuleType
+from typing import override
 from unittest.mock import patch
 
 import pytest
 
+from ci.quality.closed_root_backend import plain
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+TMP_DIR = pathlib.Path(tempfile.gettempdir())
+EXAMPLE_REPLACEMENT_PATH = str(TMP_DIR / "example")
+OTHER_REPLACEMENT_PATH = str(TMP_DIR / "other")
 
 
-def load(name):
-    """Test behavior for load."""
+def load(name: str) -> ModuleType:
+    """Load a chart-loaded python module by name."""
     spec = importlib.util.spec_from_file_location(
         name, ROOT / "charts/open-webui/files" / f"{name}.py"
     )
+    if spec is None or spec.loader is None or not spec.has_location:
+        reason = "Cannot load chart tool module"
+        raise ValueError(reason)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -49,12 +60,12 @@ SCHEMA = {
     },
     "required": ["path", "replacements"],
 }
-BAD = {
-    "path": "/tmp/example",
+BAD: dict[str, object] = {
+    "path": EXAMPLE_REPLACEMENT_PATH,
     "replacements": [{"old_text": "PRIVATE CODE", "new_text": "PRIVATE CODE 2"}],
 }
-GOOD = {
-    "path": "/tmp/example",
+GOOD: dict[str, object] = {
+    "path": EXAMPLE_REPLACEMENT_PATH,
     "replacements": [{"target": "old", "replacement": "new"}],
 }
 
@@ -62,8 +73,9 @@ GOOD = {
 class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
     """Tests for ToolGuardTests."""
 
+    @override
     def setUp(self) -> None:
-        self.metadata = {
+        self.metadata: dict[str, object] = {
             "message_id": "one",
             "tools": {
                 "replace_file_content": {
@@ -73,12 +85,18 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
             },
         }
         self.calls = 0
-        self.result = {"success": True}
+        self.result: object = {"success": True}
 
-        async def execute(form_data, metadata, event_caller, call):
+        async def execute(
+            _form_data: object,
+            metadata: dict[str, dict[str, object]],
+            _event_caller: object,
+            call: dict[str, dict[str, object]],
+        ) -> tuple[object, object, object, str, bool]:
+            arguments = plain(call["function"]["arguments"])
             self.calls += 1
             return (
-                json.loads(call["function"]["arguments"]),
+                json.loads(arguments),
                 self.result,
                 metadata["tools"]["replace_file_content"],
                 "terminal",
@@ -87,8 +105,10 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
 
         self.execute = GUARD.guarded_execute(execute)
 
-    async def call(self, params=BAD, raw=None):
-        return await self.execute(
+    async def call(
+        self, params: dict[str, object] = BAD, raw: str | None = None
+    ) -> tuple[object, dict[str, str], object, str, bool]:
+        outcome: tuple[object, dict[str, str], object, str, bool] = await self.execute(
             {},
             self.metadata,
             None,
@@ -99,6 +119,8 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
                 }
             },
         )
+
+        return outcome
 
     async def test_nested_validation_is_concise_and_never_executes(self) -> None:
         result = await self.call()
@@ -153,8 +175,8 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         assert GUARD.guard_stop_message(self.metadata) == GUARD.REPEAT_STOP_MESSAGE
 
     async def test_alternating_valid_calls_escalate_to_stop(self) -> None:
-        other = {
-            "path": "/tmp/other",
+        other: dict[str, object] = {
+            "path": OTHER_REPLACEMENT_PATH,
             "replacements": [{"target": "x", "replacement": "y"}],
         }
         executed = 0
@@ -172,7 +194,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         assert self.calls >= ESCALATION_MIN_EXECUTIONS
 
     async def test_varied_calls_reset_repeat_warning(self) -> None:
-        other = {"path": "/tmp/other", "replacements": []}
+        other: dict[str, object] = {"path": OTHER_REPLACEMENT_PATH, "replacements": []}
         await self.call(GOOD)
         await self.call(GOOD)
         warned = await self.call(GOOD)
@@ -194,7 +216,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         assert stopped[1]["error"] == GUARD.REPEAT_STOP_MESSAGE
 
     async def test_alias_resolved_before_validation(self) -> None:
-        def resolve(call, tools) -> None:
+        def resolve(call: dict[str, dict[str, object]], _tools: object) -> None:
             call["function"]["name"] = "replace_file_content"
 
         with patch.dict(self.execute.__wrapped__.__globals__, {"resolve_tool_call": resolve}):
@@ -213,7 +235,12 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         assert self.calls == 0
 
     async def test_non_terminal_is_not_intercepted(self) -> None:
-        self.metadata["tools"]["replace_file_content"]["type"] = "external"
+        self.metadata["tools"] = {
+            "replace_file_content": {
+                "type": "external",
+                "spec": {"parameters": SCHEMA},
+            }
+        }
         await self.call()
         assert self.calls == 1
 
@@ -240,8 +267,8 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_backend_422_compacted_and_bounded(self) -> None:
         self.result = ({"error": 'HTTP error 422: {"input":"PRIVATE CODE"}'}, None)
-        for _ in range(3):
-            result = await self.call(GOOD)
+        outcomes = [await self.call(GOOD) for _ in range(BACKEND_REPEAT_ERROR_CALLS)]
+        result = outcomes[-1]
         assert GUARD.guard_stopped(self.metadata)
         assert "PRIVATE" not in result[1]["error"]
         assert self.calls == BACKEND_REPEAT_ERROR_CALLS
@@ -270,7 +297,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         assert "expected type" in GUARD.validation_problem({"name": 1}, schema)
 
     def test_patcher_rejects_changed_upstream(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="anchor count differs"):
             PATCHER.patch("async def changed():\n    pass\n")
 
     def test_patch_preserves_syntax_and_stop_before_continuation(self) -> None:
@@ -278,7 +305,9 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
             PATCHER.FUNCTION
             + "    pass\n\nasync def example():\n    while True:\n"
             + PATCHER.CONTINUATION
-            + "\n                            'model': 'test',\n                        }\n                    except Exception:\n                        pass\n"
+            + "\n                            'model': 'test',\n"
+            + "                        }\n"
+            + "                    except Exception:\n                        pass\n"
         )
         source += (
             "\ndef file_result(tool_function_name, tool_result):\n"
@@ -295,14 +324,14 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         assert PATCHER.FILE_RESULT_GUARD in patched
         assert PATCHER.EVENT_GUARD in patched
         assert patched.index("if guard_stopped") < patched.index("new_form_data")
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="already present"):
             PATCHER.patch(patched)
 
 
 class NoProgressRoundTests(unittest.TestCase):
     """Tests for NoProgressRoundTests."""
 
-    def call(self, name, error):
+    def call(self, name: str, error: str) -> list[dict[str, object]]:
         return [
             {"type": "message", "status": "in_progress"},
             {

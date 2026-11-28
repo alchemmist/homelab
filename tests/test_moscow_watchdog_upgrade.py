@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture
-def env(tmp_path, monkeypatch) -> tuple[ModuleType, Path, Path]:
+def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[ModuleType, Path, Path]:
     """Load the upgrade runtime against a temporary watchdog state fixture."""
     spec = importlib.util.spec_from_file_location(
         "upgrade", ROOT / "ansible/scripts/moscow-watchdog-upgrade.py"
@@ -52,7 +52,9 @@ def test_exact_atomic_upgrade_keeps_fence_and_state(env) -> None:
         m.install(candidate, m.sha(candidate.read_bytes()))
 
 
-def test_conflicting_active_agent_refuses_without_mutation(env, monkeypatch) -> None:
+def test_conflicting_active_agent_refuses_without_mutation(
+    env, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Refuse when the agent unit is active and leave the controller untouched."""
     m, candidate, dest = env
     monkeypatch.setattr(m, "unit", lambda _: True)

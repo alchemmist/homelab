@@ -4,6 +4,7 @@ import json
 import subprocess
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -296,7 +297,7 @@ def test_remote_canary_programs_are_valid_python_including_finally_cleanup() -> 
 
 
 def test_copy_refuses_live_ha_or_unknown_endpoint_before_creating_job(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import base64
     import importlib.util

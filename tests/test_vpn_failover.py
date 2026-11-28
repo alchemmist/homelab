@@ -5,16 +5,15 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from typing import ClassVar, Protocol, TypedDict, override
 from unittest import mock
 
 import pytest
 
-SOURCE = (
-    Path(__file__).resolve().parents[1]
-    / "ansible/roles/vpn_failover/files/vpn_failover.py"
-)
+SOURCE = Path(__file__).resolve().parents[1] / "ansible/roles/vpn_failover/files/vpn_failover.py"
 
 # Named mirrors of the watchdog defaults asserted below.
+WARM_RETURN_WINDOW_SECONDS = 1800
 WEBSOCKET_FORBIDDEN_STATUS = 403
 KUBERNETES_START_TIMEOUT_SECONDS = 180
 UNIT_COMMAND_TIMEOUT_SECONDS = 40
@@ -22,85 +21,152 @@ CONFIGURED_K3S_START_TIMEOUT_SECONDS = 240
 EXPECTED_UNHEALTHY_HEALTH_CALLS = 7
 STATE_FILE_MODE = 0o600
 SPEC = importlib.util.spec_from_file_location("vpn_failover", SOURCE)
+if SPEC is None or SPEC.loader is None:
+    reason = "Cannot load the deployed failover watchdog"
+    raise RuntimeError(reason)
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
-class FakeWatchdog(MODULE.Watchdog):
-    """Tests for FakeWatchdog."""
+class _ProbeDiagnostics(TypedDict, total=False):
+    """Shape of the diagnostics the probe watchdog must expose."""
 
-    def __init__(self, directory) -> None:
-        super().__init__(
-            {
-                "state_dir": directory,
-                "listen_ports": [],
-                "failure_threshold": 4,
-                "confirmation_interval_seconds": 0,
-                "native_start_grace_seconds": 0,
-            }
-        )
-        self.good = False
-        self.uptime = 300
-        self.events = []
-        self.running = set()
-        self.stuck = False
-        self.ports = []
-        self.invalid = False
+    stage: str
+    exception: str
+    http_status: int
 
-    def processes(self):
-        return []
 
-    def service_installed(self, unit):
-        return unit == self.agent
+class _ProbeHealth(TypedDict):
+    """Shape of one health() result from the probe watchdog."""
 
-    def clock(self):
-        return "boot-one", self.uptime
+    healthy: bool
+    errors: list[str]
+    websocket_diagnostics: _ProbeDiagnostics
 
-    def health(self):
-        return {
-            "healthy": self.good,
-            "errors": []
-            if self.good
-            else [
-                "TCP listener unavailable: 32087",
-                "Public VPN TLS/WebSocket handshake failed",
-            ],
-        }
 
-    def preflight(self) -> None:
-        if self.invalid:
-            msg = "Missing assets"
-            raise RuntimeError(msg)
+class _ProbeWatchdog(Protocol):
+    """Methods of the dynamic probe watchdog used by the diagnostics tests."""
 
-    def fence(self) -> None:
-        self.events.append("fence")
-        if self.stuck:
-            msg = "Cannot fence"
-            raise RuntimeError(msg)
+    def health(self) -> _ProbeHealth:
+        """Return one classified health result."""
+        ...
 
-    def guard(self) -> None:
-        if not (self.state / "active").exists() or self.stuck:
-            msg = "Unsafe start"
-            raise RuntimeError(msg)
 
-    def occupied(self):
-        return self.ports
+class _FakeBody(Protocol):
+    """Attribute contract shared by the typed FakeWatchdog override functions."""
 
-    def service_active(self, unit):
-        return unit in self.running
+    state: Path
+    agent: str
+    good: bool
+    uptime: float
+    events: list[object]
+    running: set[str]
+    stuck: bool
+    ports: list[object]
+    invalid: bool
 
-    def command(self, *args) -> str:
-        self.events.append(args)
-        if args[1] == "start":
-            self.running.add(args[2])
-        elif args[1] == "stop":
-            self.running.discard(args[2])
-        return ""
+
+def _fake_init(self: _FakeBody, directory: str) -> None:
+    MODULE.Watchdog.__init__(
+        self,
+        {
+            "state_dir": directory,
+            "listen_ports": [],
+            "failure_threshold": 4,
+            "confirmation_interval_seconds": 0,
+            "native_start_grace_seconds": 0,
+        },
+    )
+    self.good = False
+    self.uptime = 300
+    self.events = []
+    self.running = set()
+    self.stuck = False
+    self.ports = []
+    self.invalid = False
+
+
+def _fake_processes(_self: _FakeBody) -> list[object]:
+    return []
+
+
+def _fake_service_installed(self: _FakeBody, unit: str) -> bool:
+    return unit == self.agent
+
+
+def _fake_clock(self: _FakeBody) -> tuple[str, float]:
+    return "boot-one", self.uptime
+
+
+def _fake_health(self: _FakeBody) -> dict[str, object]:
+    return {
+        "healthy": self.good,
+        "errors": []
+        if self.good
+        else [
+            "TCP listener unavailable: 32087",
+            "Public VPN TLS/WebSocket handshake failed",
+        ],
+    }
+
+
+def _fake_preflight(self: _FakeBody) -> None:
+    if self.invalid:
+        msg = "Missing assets"
+        raise RuntimeError(msg)
+
+
+def _fake_fence(self: _FakeBody) -> None:
+    self.events.append("fence")
+    if self.stuck:
+        msg = "Cannot fence"
+        raise RuntimeError(msg)
+
+
+def _fake_guard(self: _FakeBody) -> None:
+    if not (self.state / "active").exists() or self.stuck:
+        msg = "Unsafe start"
+        raise RuntimeError(msg)
+
+
+def _fake_occupied(self: _FakeBody) -> list[object]:
+    return self.ports
+
+
+def _fake_service_active(self: _FakeBody, unit: str) -> bool:
+    return unit in self.running
+
+
+def _fake_command(self: _FakeBody, *args: str) -> str:
+    self.events.append(args)
+    if args[1] == "start":
+        self.running.add(args[2])
+    elif args[1] == "stop":
+        self.running.discard(args[2])
+    return ""
+
+
+_FAKE_METHODS: dict[str, object] = {
+    "__init__": _fake_init,
+    "processes": _fake_processes,
+    "service_installed": _fake_service_installed,
+    "clock": _fake_clock,
+    "health": _fake_health,
+    "preflight": _fake_preflight,
+    "fence": _fake_fence,
+    "guard": _fake_guard,
+    "occupied": _fake_occupied,
+    "service_active": _fake_service_active,
+    "command": _fake_command,
+}
+
+FakeWatchdog = type("FakeWatchdog", (MODULE.Watchdog,), _FAKE_METHODS)
 
 
 class FailoverTests(unittest.TestCase):
     """Tests for FailoverTests."""
 
+    @override
     def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
@@ -198,9 +264,7 @@ class FailoverTests(unittest.TestCase):
         self.watchdog.activate()
         unit = MODULE.NATIVE_UNITS[-1]
         self.watchdog.running.remove(unit)
-        self.watchdog.config["native_unit_ports"] = {
-            unit: [{"protocol": "tcp", "port": 443}]
-        }
+        self.watchdog.config["native_unit_ports"] = {unit: [{"protocol": "tcp", "port": 443}]}
         self.watchdog.ports = [("tcp", 443)]
         with pytest.raises(RuntimeError):
             self.watchdog.tick()
@@ -212,8 +276,7 @@ class FailoverTests(unittest.TestCase):
         self.watchdog.tick()
         self.watchdog.tick()
         assert not any(
-            isinstance(event, tuple) and event[1] == "stop"
-            for event in self.watchdog.events
+            isinstance(event, tuple) and event[1] == "stop" for event in self.watchdog.events
         )
         assert self.watchdog.tick()["restarted"]
         assert self.watchdog.running == set(MODULE.NATIVE_UNITS)
@@ -232,9 +295,7 @@ class FailoverTests(unittest.TestCase):
             mock.patch.object(MODULE.os, "pidfd_open", return_value=91, create=True),
             mock.patch.object(MODULE.signal, "pidfd_send_signal", create=True) as send,
             mock.patch.object(MODULE.os, "close") as close,
-            mock.patch.object(
-                MODULE.Path, "read_text", return_value="0::/kubepods/pod-one"
-            ),
+            mock.patch.object(MODULE.Path, "read_text", return_value="0::/kubepods/pod-one"),
         ):
             self.watchdog.terminate(123, MODULE.signal.SIGTERM)
         send.assert_called_once_with(91, MODULE.signal.SIGTERM)
@@ -257,6 +318,7 @@ class FailoverTests(unittest.TestCase):
 class KubernetesFencingTests(unittest.TestCase):
     """Tests for KubernetesFencingTests."""
 
+    @override
     def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
@@ -265,10 +327,10 @@ class KubernetesFencingTests(unittest.TestCase):
         )
         self.loads = {"k3s-agent.service": "loaded", "k3s.service": "loaded"}
         self.active = {"k3s-agent.service", "k3s.service"}
-        self.commands = []
+        self.commands: list[tuple[str, ...]] = []
         self.watchdog.command = self.command
 
-    def command(self, *args):
+    def command(self, *args: str) -> str | None:
         self.commands.append(args)
         if args[1] == "show":
             if args[3] == "--property=LoadState":
@@ -297,9 +359,11 @@ class KubernetesFencingTests(unittest.TestCase):
         (self.watchdog.state / "active").touch()
         self.loads["k3s-agent.service"] = "not-found"
         self.active = {"k3s.service"}
-        with mock.patch.object(self.watchdog, "processes", return_value=[]):
-            with pytest.raises(RuntimeError, match="verified Kubernetes fencing"):
-                self.watchdog.guard()
+        with (
+            mock.patch.object(self.watchdog, "processes", return_value=[]),
+            pytest.raises(RuntimeError, match="verified Kubernetes fencing"),
+        ):
+            self.watchdog.guard()
 
     def test_unknown_load_state_fails_closed(self) -> None:
         self.loads["k3s.service"] = "error"
@@ -311,21 +375,17 @@ class KubernetesFencingTests(unittest.TestCase):
         with (
             mock.patch.object(self.watchdog, "service_active", return_value=True),
             mock.patch.object(self.watchdog, "processes") as processes,
+            pytest.raises(RuntimeError, match="did not stop"),
         ):
-            with pytest.raises(RuntimeError, match="did not stop"):
-                self.watchdog.fence()
+            self.watchdog.fence()
         processes.assert_not_called()
 
     def test_server_and_agent_cgroups_are_both_fenced(self) -> None:
         for unit in self.watchdog.fenced_units:
             with (
                 self.subTest(unit=unit),
-                mock.patch.object(
-                    MODULE.os, "pidfd_open", return_value=91, create=True
-                ),
-                mock.patch.object(
-                    MODULE.signal, "pidfd_send_signal", create=True
-                ) as send,
+                mock.patch.object(MODULE.os, "pidfd_open", return_value=91, create=True),
+                mock.patch.object(MODULE.signal, "pidfd_send_signal", create=True) as send,
                 mock.patch.object(MODULE.os, "close"),
                 mock.patch.object(
                     MODULE.Path, "read_text", return_value="0::/system.slice/" + unit
@@ -351,13 +411,15 @@ class KubernetesFencingTests(unittest.TestCase):
 class ProbeDiagnosticsTests(unittest.TestCase):
     """Tests for ProbeDiagnosticsTests."""
 
-    def watchdog(self):
-        return MODULE.Watchdog(
+    def probe_instance(self) -> _ProbeWatchdog:
+        """Build one probe watchdog of the dynamic module as a typed local value."""
+        instance: _ProbeWatchdog = MODULE.Watchdog(
             {
                 "tcp_endpoints": [],
                 "websocket": {"host": "example.invalid", "path": "/private-route"},
             }
         )
+        return instance
 
     def test_connect_failure_is_classified_without_exception_text(self) -> None:
         with mock.patch.object(
@@ -365,7 +427,7 @@ class ProbeDiagnosticsTests(unittest.TestCase):
             "create_connection",
             side_effect=TimeoutError("sensitive diagnostic text"),
         ):
-            result = self.watchdog().health()
+            result = self.probe_instance().health()
         assert not result["healthy"]
         assert result["websocket_diagnostics"]["stage"] == "tcp_connect"
         assert result["websocket_diagnostics"]["exception"] == "TimeoutError"
@@ -377,15 +439,11 @@ class ProbeDiagnosticsTests(unittest.TestCase):
         stream = context.wrap_socket.return_value.__enter__.return_value
         stream.recv.return_value = b"HTTP/1.1 403 Forbidden\r\n\r\nprivate data"
         with (
-            mock.patch.object(
-                MODULE.ssl, "create_default_context", return_value=context
-            ),
+            mock.patch.object(MODULE.ssl, "create_default_context", return_value=context),
             mock.patch.object(MODULE.socket, "create_connection"),
         ):
-            result = self.watchdog().health()
-        assert (
-            result["websocket_diagnostics"]["http_status"] == WEBSOCKET_FORBIDDEN_STATUS
-        )
+            result = self.probe_instance().health()
+        assert result["websocket_diagnostics"]["http_status"] == WEBSOCKET_FORBIDDEN_STATUS
         assert result["websocket_diagnostics"]["stage"] == "websocket_response"
         assert "private data" not in json.dumps(result)
 
@@ -409,14 +467,13 @@ class CommandDeadlineTests(unittest.TestCase):
         with mock.patch.object(MODULE.subprocess, "run") as run:
             run.return_value.stdout = ""
             w.command("systemctl", "start", "k3s-agent.service")
-            assert (
-                run.call_args.kwargs["timeout"] == CONFIGURED_K3S_START_TIMEOUT_SECONDS
-            )
+            assert run.call_args.kwargs["timeout"] == CONFIGURED_K3S_START_TIMEOUT_SECONDS
 
 
 class HardeningTests(unittest.TestCase):
     """Tests for HardeningTests."""
 
+    @override
     def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
@@ -434,7 +491,8 @@ class HardeningTests(unittest.TestCase):
         self.w.health = mock.Mock(return_value=timeout)
         for _ in range(8):
             result = self.w.tick()
-            assert not result["healthy"] and result["failures"] == 0
+            assert not result["healthy"]
+            assert result["failures"] == 0
         self.w.health.side_effect = [
             {
                 "healthy": False,
@@ -444,19 +502,21 @@ class HardeningTests(unittest.TestCase):
                 ],
             }
         ] * 4 + [timeout]
-        for _ in range(4):
+        result = self.w.tick()
+        for _ in range(3):
             result = self.w.tick()
-        assert result["activation_cancelled"] and not self.w.events
+        assert result["activation_cancelled"]
+        assert not self.w.events
 
-    def test_live_k3s_is_allowed_to_repair_dead_workload(self):
+    def test_live_k3s_is_allowed_to_repair_dead_workload(self) -> None:
         self.w.running.add(self.w.agent)
         for _ in range(8):
             assert self.w.tick()["failures"] == 0
         assert not self.w.events
 
-    def test_return_window_survives_restart(self):
+    def test_return_window_survives_restart(self) -> None:
         self.w.activate()
-        assert self.w.return_window() == 1800
+        assert self.w.return_window() == WARM_RETURN_WINDOW_SECONDS
         other = FakeWatchdog(self.directory.name)
         other.uptime += 1799
         assert other.return_window() == 1
@@ -495,7 +555,8 @@ class HardeningTests(unittest.TestCase):
                 ],
             }
         )
-        for _ in range(4):
+        result = self.w.tick()
+        for _ in range(3):
             result = self.w.tick()
         assert result["mode"] == "fallback"
         assert (
@@ -535,7 +596,7 @@ class HardeningTests(unittest.TestCase):
         self.w.activate()
         self.w.events.clear()
         self.w.agent = "k3s-agent.service"
-        self.w.service_installed = lambda unit: True
+        self.w.service_installed = lambda _unit: True
         with pytest.raises(RuntimeError, match="Legacy agent"):
             self.w.failback()
         assert self.w.events == []
@@ -544,7 +605,7 @@ class HardeningTests(unittest.TestCase):
     def test_missing_target_keeps_native_untouched(self) -> None:
         self.w.activate()
         self.w.events.clear()
-        self.w.service_installed = lambda unit: False
+        self.w.service_installed = lambda _unit: False
         with pytest.raises(RuntimeError, match="not installed"):
             self.w.failback()
         assert self.w.events == []
@@ -553,7 +614,7 @@ class HardeningTests(unittest.TestCase):
         self.w.activate()
         command = self.w.command
 
-        def failed(*args):
+        def failed(*args: object) -> object:
             if args == ("systemctl", "start", self.w.agent):
                 msg = "start failed"
                 raise RuntimeError(msg)
@@ -570,9 +631,7 @@ class HardeningTests(unittest.TestCase):
         receipt = json.loads((self.w.state / "last_failure.json").read_text())
         assert receipt["mode"] == "kubernetes"
         assert not receipt["healthy"]
-        assert (
-            self.w.state / "last_failure.json"
-        ).stat().st_mode & 0o777 == STATE_FILE_MODE
+        assert (self.w.state / "last_failure.json").stat().st_mode & 0o777 == STATE_FILE_MODE
 
 
 class ServiceIdentityContractTests(unittest.TestCase):
@@ -598,14 +657,24 @@ if __name__ == "__main__":
 
 
 class StagedReturnTests(unittest.TestCase):
-    steps = (
-        "hold_cluster_vpn_and_ingress start_cluster verify_cluster_ready_and_native_path "
-        "prepare_images_and_verify_holds stop_native verify_native_released "
-        "release_cluster_workloads verify_external_cluster_tunnel"
-    ).split()
-    rollback = ["fence_cluster_and_verify_release", "ensure_native_running"]
+    """Rehearse the staged warm-failback protocol and its fault rollbacks."""
 
-    def test_staged_protocol_and_faults(self):
+    steps: ClassVar[tuple[str, ...]] = (
+        "hold_cluster_vpn_and_ingress",
+        "start_cluster",
+        "verify_cluster_ready_and_native_path",
+        "prepare_images_and_verify_holds",
+        "stop_native",
+        "verify_native_released",
+        "release_cluster_workloads",
+        "verify_external_cluster_tunnel",
+    )
+    rollback: ClassVar[tuple[str, ...]] = (
+        "fence_cluster_and_verify_release",
+        "ensure_native_running",
+    )
+
+    def test_staged_protocol_and_faults(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             watchdog = FakeWatchdog(directory)
             for failure in [None, *self.steps]:
@@ -613,28 +682,30 @@ class StagedReturnTests(unittest.TestCase):
                     backend = mock.Mock(spec=self.steps + self.rollback)
                     if failure is None:
                         watchdog.rehearse_warm_failback(backend)
-                        expected = self.steps
+                        expected = list(self.steps)
                     else:
                         getattr(backend, failure).side_effect = RuntimeError(failure)
-                        with self.assertRaises(RuntimeError):
+                        with pytest.raises(RuntimeError):
                             watchdog.rehearse_warm_failback(backend)
-                        expected = self.steps[: self.steps.index(failure) + 1]
+                        expected = list(self.steps[: self.steps.index(failure) + 1])
                         if failure != self.steps[0]:
-                            expected += self.rollback
+                            expected += list(self.rollback)
                     assert [call[0] for call in backend.mock_calls] == expected
 
-    def test_uncertain_fence_never_starts_native_writer(self):
+    def test_uncertain_fence_never_starts_native_writer(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             backend = mock.Mock(spec=self.steps + self.rollback)
             backend.verify_external_cluster_tunnel.side_effect = RuntimeError("timeout")
             backend.fence_cluster_and_verify_release.side_effect = RuntimeError("busy")
-            with self.assertRaisesRegex(RuntimeError, "busy"):
+            with pytest.raises(RuntimeError, match="busy"):
                 FakeWatchdog(directory).rehearse_warm_failback(backend)
             backend.ensure_native_running.assert_not_called()
 
 
 class ReturnTransactionTests(unittest.TestCase):
-    def test_interrupted_handoff_precedes_inhibit_and_timer(self):
+    """Pin the warm-return transaction: interrupt and cooldown ordering."""
+
+    def test_interrupted_handoff_precedes_inhibit_and_timer(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             w = FakeWatchdog(d)
             w.write("warming", {})
@@ -645,20 +716,16 @@ class ReturnTransactionTests(unittest.TestCase):
                 assert w.tick()["mode"] == "fallback"
                 rollback.assert_called_once_with()
 
-    def test_timer_dispatches_only_after_cooldown_and_healthy_native(self):
+    def test_timer_dispatches_only_after_cooldown_and_healthy_native(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             w = FakeWatchdog(d)
             w.config["warm_return_enabled"] = True
             w.write("active", {})
             with (
-                mock.patch.object(
-                    w, "activate", return_value={"healthy": True}
-                ) as native,
-                mock.patch.object(
-                    w, "warm_return", return_value={"mode": "kubernetes"}
-                ) as attempt,
+                mock.patch.object(w, "activate", return_value={"healthy": True}) as native,
+                mock.patch.object(w, "warm_return", return_value={"mode": "kubernetes"}) as attempt,
             ):
-                assert w.tick()["return_cooldown_seconds"] == 1800
+                assert w.tick()["return_cooldown_seconds"] == WARM_RETURN_WINDOW_SECONDS
                 w.uptime += 1800
                 native.return_value = {"healthy": False}
                 w.tick()

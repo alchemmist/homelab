@@ -10,9 +10,7 @@ def item(kind: str, name: str, **fields: dict) -> dict:
 
 
 def fixture() -> tuple[dict, list[dict]]:
-    catalog = {
-        "hosts": {"app": {"site.test": {}, "vpn.test": {"route": "vpn-transit"}}}
-    }
+    catalog = {"hosts": {"app": {"site.test": {}, "vpn.test": {"route": "vpn-transit"}}}}
     service = item(
         "Service",
         "backend",
@@ -94,9 +92,7 @@ def test_preserves_upstream_and_auth_references() -> None:
         "https",
         "app-verified@kubernetescrd",
     )
-    assert (
-        row["middlewares"] == ["app-guard@kubernetescrd"] and row["priority"] == "150"
-    )
+    assert row["middlewares"] == ["app-guard@kubernetescrd"] and row["priority"] == "150"
     objects[1]["metadata"]["annotations"] = {PREFIX + "service.serversscheme": "h2c"}
     assert inventory(catalog, objects)["routes"][0]["scheme"] == "h2c"
 
@@ -176,9 +172,7 @@ def test_implicit_priority_is_from_source_not_rewritten_matcher_length() -> None
     assert source_priority(host, path, "Prefix", strict_prefix=True) == len(
         path_rule(host, path, "Prefix")
     )
-    assert (
-        source_priority(host, path, "Prefix", strict_prefix=False, declared=155) == 155
-    )
+    assert source_priority(host, path, "Prefix", strict_prefix=False, declared=155) == 155
     assert source_priority(host, "/", "Prefix", strict_prefix=False) == source_priority(
         host, "/", "Prefix", strict_prefix=True
     )
@@ -186,7 +180,7 @@ def test_implicit_priority_is_from_source_not_rewritten_matcher_length() -> None
         source_priority(host, path, "Prefix", strict_prefix=None)
 
 
-def test_path_diff_reports_winning_auth_owner_and_ties_not_just_http_service():
+def test_path_diff_reports_winning_auth_owner_and_ties_not_just_http_service() -> None:
     from ci.quality.public_path_diff import path_diff
 
     rows = [
@@ -222,14 +216,12 @@ def test_path_diff_reports_winning_auth_owner_and_ties_not_just_http_service():
 @pytest.mark.parametrize("path", ["/public/", "/api/v1"])
 @pytest.mark.parametrize("priority", [0, 160])
 def test_closed_compiler_refuses_non_equivalent_prefix_even_with_priority(
-    path, priority
-):
+    path: str, priority: int
+) -> None:
     from ci.quality.public_path_rule import unchanged_path_matcher
 
     with pytest.raises(ValueError, match="scope review"):
-        unchanged_path_matcher(
-            "site.test", path, "Prefix", source_strict=False, declared=priority
-        )
+        unchanged_path_matcher("site.test", path, "Prefix", source_strict=False, declared=priority)
     strict = unchanged_path_matcher(
         "site.test", path, "Prefix", source_strict=True, declared=priority
     )
@@ -240,7 +232,7 @@ def test_closed_compiler_refuses_non_equivalent_prefix_even_with_priority(
         ) == unchanged_path_matcher("site.test", unchanged, kind, source_strict=True)
 
 
-def test_host_compilation_does_not_return_fallback_without_blocked_specific_route():
+def test_host_compilation_does_not_return_fallback_without_blocked_specific_route() -> None:
     from ci.quality.public_path_rule import unchanged_host_matchers
 
     paths = [("/", "Prefix", 10), ("/public/", "Prefix", 155)]
@@ -249,7 +241,7 @@ def test_host_compilation_does_not_return_fallback_without_blocked_specific_rout
     assert len(unchanged_host_matchers("site.test", paths, source_strict=True)) == 2
 
 
-def test_same_ref_body_changes_are_visible_without_dumping_contents():
+def test_same_ref_body_changes_are_visible_without_dumping_contents() -> None:
     catalog, objects = fixture()
     before = inventory(catalog, objects)
     assert not before["errors"]
@@ -262,17 +254,12 @@ def test_same_ref_body_changes_are_visible_without_dumping_contents():
         old["middlewareBodies"] != new["middlewareBodies"]
         and old["transportDigest"] != new["transportDigest"]
     )
-    assert (
-        old["middlewares"] == new["middlewares"]
-        and old["transport"] == new["transport"]
-    )
+    assert old["middlewares"] == new["middlewares"] and old["transport"] == new["transport"]
     assert "other-auth" not in str(after) and "other.test" not in str(after)
 
 
-@pytest.mark.parametrize(
-    "change", ["trust", "chain", "transport-option", "middleware-option"]
-)
-def test_unrehearsed_crd_shapes_block_route_comparison(change):
+@pytest.mark.parametrize("change", ["trust", "chain", "transport-option", "middleware-option"])
+def test_unrehearsed_crd_shapes_block_route_comparison(change: str) -> None:
     catalog, objects = fixture()
     if change == "trust":
         objects[3]["spec"]["forwardAuth"]["trustForwardHeader"] = True
@@ -285,7 +272,7 @@ def test_unrehearsed_crd_shapes_block_route_comparison(change):
     assert inventory(catalog, objects)["errors"]
 
 
-def test_unnamed_service_port_must_match_numeric_target_not_frontend():
+def test_unnamed_service_port_must_match_numeric_target_not_frontend() -> None:
     catalog, objects = fixture()
     target = objects[0]["spec"]["rules"][0]["http"]["paths"][0]["backend"]["service"]
     target["port"] = {"number": 443}
@@ -299,42 +286,36 @@ def test_unnamed_service_port_must_match_numeric_target_not_frontend():
     assert not inventory(catalog, objects)["errors"]
 
 
-def test_malformed_path_does_not_become_catchall():
+def test_malformed_path_does_not_become_catchall() -> None:
     from ci.quality.public_path_rule import path_rule
 
     with pytest.raises(ValueError, match="unsupported public path"):
         path_rule("site.test", None, "Prefix")
 
 
-def test_malformed_service_port_is_not_a_ready_target():
+def test_malformed_service_port_is_not_a_ready_target() -> None:
     catalog, objects = fixture()
     del objects[1]["spec"]["ports"][0]["port"]
     report = inventory(catalog, objects)
-    assert not report["routes"] and any(
-        "malformed Service port" in e for e in report["errors"]
-    )
+    assert not report["routes"] and any("malformed Service port" in e for e in report["errors"])
 
 
-def test_named_target_uses_slice_resolution_not_frontend_port():
+def test_named_target_uses_slice_resolution_not_frontend_port() -> None:
     catalog, objects = fixture()
     objects[1]["spec"]["ports"][0]["targetPort"] = "tls-listener"
     assert not inventory(catalog, objects)["errors"]
     objects[2]["ports"][0]["name"] = "tls-listener"
-    assert inventory(catalog, objects)[
-        "errors"
-    ]  # Must name Service port, not targetPort.
+    assert inventory(catalog, objects)["errors"]  # Must name Service port, not targetPort.
 
 
-def test_malformed_duplicate_port_cannot_disappear_during_name_lookup():
+def test_malformed_duplicate_port_cannot_disappear_during_name_lookup() -> None:
     catalog, objects = fixture()
     objects[1]["spec"]["ports"].append({"name": "secure", "port": "443"})
     report = inventory(catalog, objects)
-    assert not report["routes"] and any(
-        "malformed Service port" in e for e in report["errors"]
-    )
+    assert not report["routes"] and any("malformed Service port" in e for e in report["errors"])
 
 
-def test_closed_backend_uses_schoolbot_owner_service_and_verified_pod_destinations():
+def test_closed_backend_uses_schoolbot_owner_service_and_verified_pod_destinations() -> None:
     import copy
     import subprocess
     from ipaddress import IPv4Network
@@ -369,7 +350,11 @@ def test_closed_backend_uses_schoolbot_owner_service_and_verified_pod_destinatio
             "labels": selector.copy(),
         },
         "spec": {},
-        "status": {"phase": "Running", "podIP": addr, "conditions": [{"type": "Ready", "status": "True"}]},
+        "status": {
+            "phase": "Running",
+            "podIP": addr,
+            "conditions": [{"type": "Ready", "status": "True"}],
+        },
     }
     sl = {
         "kind": "EndpointSlice",
@@ -421,7 +406,13 @@ def test_closed_backend_uses_schoolbot_owner_service_and_verified_pod_destinatio
     with pytest.raises(ValueError, match="missing observed Pod IP"):
         build(svc, sl, missing_ip)
     with pytest.raises(ValueError, match="duplicate Pod UID"):
-        servers(svc, [sl], [pod, pod], expected=(ns, "schoolbot", 80), pod_network=IPv4Network("10.42.0.0/16"))
+        servers(
+            svc,
+            [sl],
+            [pod, pod],
+            expected=(ns, "schoolbot", 80),
+            pod_network=IPv4Network("10.42.0.0/16"),
+        )
     for case in (
         "ref",
         "address",
@@ -463,14 +454,12 @@ def test_closed_backend_uses_schoolbot_owner_service_and_verified_pod_destinatio
                 "traefik.ingress.kubernetes.io/service.serversscheme": "https"
             }
         else:
-            slice_["metadata"]["labels"]["endpointslice.kubernetes.io/managed-by"] = (
-                "manual"
-            )
+            slice_["metadata"]["labels"]["endpointslice.kubernetes.io/managed-by"] = "manual"
         with pytest.raises(ValueError):
             build(service, slice_, pod_)
 
 
-def test_router_logging_and_tracing_suppression_is_not_confused_with_inheritance():
+def test_router_logging_and_tracing_suppression_is_not_confused_with_inheritance() -> None:
     catalog, items = fixture()
     ann = items[0]["metadata"]["annotations"]
     prefix = PREFIX + "router.observability."

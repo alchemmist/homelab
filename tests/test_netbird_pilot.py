@@ -5,20 +5,41 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
-from typing import TypedDict
+from types import ModuleType
+from typing import ClassVar, TypedDict, override
 from unittest.mock import patch
 
 import pytest
 import yaml
 
+# Synthetic TEST constants, not discovered or proposed production values.
+CLI_BLOCKED_EXIT = 2
+STUN_UDP_PORT = 3478
+METRICS_FORBIDDEN_PORT = 9090
+LOGIN_EXPIRY_SECONDS = 3600
+CONFIG_MODE_OWNER_ONLY = 0o600
+MISSING_INPUT_KEYS = "unexpected/missing input keys"
+
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("netbird_pilot", ROOT / "scripts/netbird-pilot.py")
-nb = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(nb)
+spec = importlib.util.spec_from_file_location("netbird_pilot", ROOT / "scripts/netbird-pilot.py")
+if spec is None or spec.loader is None:
+    msg = "Pilot module under test is not loadable"
+    raise RuntimeError(msg)
+nb = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(nb)
+
+JSONSCHEMA_MODULE = "jsonschema"
+
+
+def _jsonschema_module() -> ModuleType:
+    """Load jsonschema dynamically; the library has no reviewed Python stubs."""
+    return importlib.import_module(JSONSCHEMA_MODULE)
 
 
 class Inputs(TypedDict):
@@ -144,7 +165,7 @@ class PilotTests(unittest.TestCase):
             target = Path(d) / "rendered"
             result = subprocess.run(
                 [
-                    os.sys.executable,
+                    sys.executable,
                     str(ROOT / "scripts/netbird-pilot.py"),
                     "render",
                     "--out",
@@ -152,8 +173,9 @@ class PilotTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                check=False,
             )
-            assert result.returncode == 2
+            assert result.returncode == CLI_BLOCKED_EXIT
             assert "BLOCKED" in result.stderr
             assert not target.exists()
 
@@ -165,7 +187,7 @@ class PilotTests(unittest.TestCase):
             target = ROOT / "deploy/argocd/netbird-forbidden-output"
             result = subprocess.run(
                 [
-                    os.sys.executable,
+                    sys.executable,
                     str(ROOT / "scripts/netbird-pilot.py"),
                     "render",
                     "--inputs",
@@ -175,8 +197,9 @@ class PilotTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                check=False,
             )
-            assert result.returncode == 2
+            assert result.returncode == CLI_BLOCKED_EXIT
             assert "outside the Git worktree" in result.stderr
             assert not target.exists()
 
@@ -185,7 +208,10 @@ class PilotTests(unittest.TestCase):
         nb.validate(inputs())
         for key in inputs():
             c = {k: v for k, v in inputs().items() if k != key}
-            with self.subTest(key=key), pytest.raises(ValueError):
+            with (
+                self.subTest(key=key),
+                pytest.raises(ValueError, match=MISSING_INPUT_KEYS),
+            ):
                 nb.validate(c)
         for key in nb.REVIEWS:
             document = inputs()
@@ -193,38 +219,44 @@ class PilotTests(unittest.TestCase):
             if key == "existing_node_router_mode_reviewed":
                 nb.validate(document)
                 document["routing_peers"][0]["host"] = "socrat-2"
-                with self.subTest(review=key), pytest.raises(ValueError):
+                with (
+                    self.subTest(review=key),
+                    pytest.raises(ValueError, match="existing-node router mode"),
+                ):
                     nb.validate(document)
                 continue
-            with self.subTest(review=key), pytest.raises(ValueError):
+            with (
+                self.subTest(review=key),
+                pytest.raises(ValueError, match="review gate must explicitly be true"),
+            ):
                 nb.validate(document)
 
     def test_no_broad_networks_ports_or_all_to_all(self) -> None:
         """Broad networks, ports or all-to-all rules are rejected."""
-        for address in [
-            "0.0.0.0/0",
-            "192.168.0.0/24",
-            "10.250.0.0/24",
-            "10.42.1.1/32",
-            "10.43.0.1/32",
-            "::/0",
+        for address, refusal in [
+            ("0.0.0.0/0", "RFC1918 IPv4 /32 hosts"),
+            ("192.168.0.0/24", "RFC1918 IPv4 /32 hosts"),
+            ("10.250.0.0/24", "RFC1918 IPv4 /32 hosts"),
+            ("10.42.1.1/32", "pod/service CIDRs are not pilot endpoints"),
+            ("10.43.0.1/32", "pod/service CIDRs are not pilot endpoints"),
+            ("::/0", "RFC1918 IPv4 /32 hosts"),
         ]:
             c = inputs()
             c["resources"][0]["address"] = address
-            with self.subTest(address=address), pytest.raises(ValueError):
+            with self.subTest(address=address), pytest.raises(ValueError, match=refusal):
                 nb.validate(c)
-        for field, value in [
-            ("ports", [80, 443]),
-            ("source_group", "All"),
-            ("kind", "exit"),
+        for field, value, refusal in [
+            ("ports", [80, 443], "web pilot permits TLS TCP 443 only"),
+            ("source_group", "All", "dedicated source_group required"),
+            ("kind", "exit", "only web/ssh resources allowed"),
         ]:
             c = inputs()
             c["resources"][0][field] = value
-            with self.subTest(field=field), pytest.raises(ValueError):
+            with self.subTest(field=field), pytest.raises(ValueError, match=refusal):
                 nb.validate(c)
         c = inputs()
         c["resources"][1]["ports"] = [22]
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="existing SSH must stay TCP 2222"):
             nb.validate(c)
 
     def test_mesh_k3s_transport_never_selected_as_overlay(self) -> None:
@@ -238,14 +270,17 @@ class PilotTests(unittest.TestCase):
         ]:
             c = inputs()
             c["overlay_cidr"] = network
-            with self.subTest(network=network), pytest.raises(ValueError):
+            with (
+                self.subTest(network=network),
+                pytest.raises(ValueError, match="overlay overlaps existing transport"),
+            ):
                 nb.validate(c)
 
     def test_one_ssh_router_is_not_a_second_ha_peer(self) -> None:
         """A single SSH router is not a second HA peer."""
         empty = inputs()
         empty["routing_peers"] = []
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="exactly one SSH routing peer"):
             nb.validate(empty)
         doubled = inputs()
         doubled["routing_peers"].append(
@@ -256,18 +291,21 @@ class PilotTests(unittest.TestCase):
                 "metric": 200,
             }
         )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="exactly one SSH routing peer"):
             nb.validate(doubled)
         blocked = inputs()
         blocked["review"]["existing_node_router_mode_reviewed"] = False
         blocked["routing_peers"][0]["host"] = "socrat-2"
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="existing-node router mode"):
             nb.validate(blocked)
         allowed = inputs()
         allowed["routing_peers"][0]["host"] = "socrat-0"
         allowed["review"]["existing_node_router_mode_reviewed"] = True
         nb.validate(allowed)
-        with tempfile.TemporaryDirectory() as directory, pytest.raises(ValueError):
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            pytest.raises(ValueError, match="existing-node router artifacts"),
+        ):
             nb.render(allowed, Path(directory) / "routers")
         compose = nb.router_compose(allowed, allowed["routing_peers"][0])
         assert set(compose["services"]) == {"routing-peer"}
@@ -307,11 +345,11 @@ class PilotTests(unittest.TestCase):
         assert not nb.ingress_allowed(policy, "10.42.0.20", 80)
         assert not nb.ingress_allowed(policy, "10.43.0.10", 80)
         assert nb.ingress_allowed(policy, "10.42.0.20", 9000)
-        assert not nb.ingress_allowed(policy, "10.42.0.20", 9090)
-        assert not nb.ingress_allowed(policy, "203.0.113.10", 3478, "UDP")
-        with pytest.raises(ValueError):
+        assert not nb.ingress_allowed(policy, "10.42.0.20", METRICS_FORBIDDEN_PORT)
+        assert not nb.ingress_allowed(policy, "203.0.113.10", STUN_UDP_PORT, "UDP")
+        with pytest.raises(ValueError, match="service CIDR is not a port-forward source"):
             nb.manifests(inputs(), "internal", ["10.43.0.1/32"])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="port-forward sources required"):
             nb.manifests(inputs(), "internal", None)
 
     def test_manifest_pins_runtime_secret_singleton_no_argo(self) -> None:
@@ -374,9 +412,9 @@ class PilotTests(unittest.TestCase):
         assert "/oauth2/" in text
         stun = next(x for x in docs if x["metadata"]["name"] == "stun")
         assert stun["spec"]["ports"][0]["protocol"] == "UDP"
-        assert stun["spec"]["ports"][0]["port"] == 3478
+        assert stun["spec"]["ports"][0]["port"] == STUN_UDP_PORT
         assert all(
-            port.get("port") != 9090
+            port.get("port") != METRICS_FORBIDDEN_PORT
             for doc in docs
             if doc["kind"] == "Service"
             for port in doc["spec"]["ports"]
@@ -423,30 +461,34 @@ class PilotTests(unittest.TestCase):
         for key in ["policies", "routes"]:
             s = snapshot()
             s[key] = [{"id": "default"}]
-            with self.subTest(key=key), pytest.raises(ValueError):
+            with (
+                self.subTest(key=key),
+                pytest.raises(ValueError, match="remove DEFAULT/other policies"),
+            ):
                 nb.access_requests(inputs(), bindings(), s)
-        for field, value in [
-            ("name", "All"),
-            ("peers", ["peer123"]),
-            ("resources", ["other-resource"]),
+        for field, value, refusal in [
+            ("name", "All", "group ID/name mismatch"),
+            ("peers", ["peer123"], "destination groups must be complete"),
+            ("resources", ["other-resource"], "destination groups must be complete"),
         ]:
             s = snapshot()
             s["groups"][2][field] = value
-            with self.subTest(field=field), pytest.raises(ValueError):
+            with self.subTest(field=field), pytest.raises(ValueError, match=refusal):
                 nb.access_requests(inputs(), bindings(), s)
         s = snapshot()
         s["groups"][0]["issued"] = "api"
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="source groups must originate from JWT"):
             nb.access_requests(inputs(), bindings(), s)
         b = bindings()
         b["peer_ids"]["router-b"] = b["peer_ids"]["router-a"]
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="exact one SSH routing peer ID binding"):
             nb.access_requests(inputs(), b, snapshot())
 
     def test_network_current_schema_empty_required_no_partial_replay(self) -> None:
         """A network missing required current fields allows no partial replay."""
+        broken_values: list[object] = [None, "missing", False, {}, "", ["existing-id"], 1]
         for field in ["routers", "resources", "policies", "routing_peers_count"]:
-            for value in [None, "missing", False, {}, "", ["existing-id"], 1]:
+            for value in broken_values:
                 s = snapshot()
                 if value == "missing":
                     s["networks"][0].pop(field)
@@ -463,11 +505,12 @@ class PilotTests(unittest.TestCase):
     ) -> None:
         """Destination group propagation and incomplete responses are refused."""
         assert nb.account_settings(inputs())["groups_propagation_enabled"]
-        for field, values in [
+        malformed_cases: list[tuple[str, list[object]]] = [
             ("issued", ["missing", None, "jwt", "integration", ""]),
             ("peers", ["missing", None, {}, ["propagated-user-peer"]]),
             ("resources", ["missing", None, {}, ["previous-resource"]]),
-        ]:
+        ]
+        for field, values in malformed_cases:
             for value in values:
                 s = snapshot()
                 if value == "missing":
@@ -476,7 +519,7 @@ class PilotTests(unittest.TestCase):
                     s["groups"][2][field] = value
                 with (
                     self.subTest(field=field, value=value),
-                    pytest.raises(ValueError),
+                    pytest.raises(ValueError, match="destination groups must be complete"),
                 ):
                     nb.access_requests(inputs(), bindings(), s)
         # A second JWT group with the destination name is unsafe even if the bound ID is API-issued.
@@ -491,7 +534,7 @@ class PilotTests(unittest.TestCase):
         assert s["jwt_groups_enabled"]
         assert s["groups_propagation_enabled"]
         assert s["jwt_allow_groups"] == ["pilot-login"]
-        assert s["peer_login_expiration"] == 3600
+        assert s["peer_login_expiration"] == LOGIN_EXPIRY_SECONDS
         assert not s["peer_expose_enabled"]
         assert s["ipv6_enabled_groups"] == []
 
@@ -519,7 +562,7 @@ class PilotTests(unittest.TestCase):
                 "NB_STORE_KEY": base64.b64encode(b"b" * 32).decode(),
             }
             command = [
-                os.sys.executable,
+                sys.executable,
                 str(ROOT / "scripts/netbird-pilot.py"),
                 "runtime-config",
                 "--inputs",
@@ -532,19 +575,20 @@ class PilotTests(unittest.TestCase):
                 env={k: v for k, v in env.items() if not k.startswith("NB_")},
                 capture_output=True,
                 text=True,
+                check=False,
             )
-            assert missing.returncode == 2
+            assert missing.returncode == CLI_BLOCKED_EXIT
             assert not target.exists()
-            result = subprocess.run(command, env=env, capture_output=True, text=True)
+            result = subprocess.run(command, env=env, capture_output=True, text=True, check=False)
             assert result.returncode == 0, result.stderr
-            assert target.stat().st_mode & 511 == 384
+            assert target.stat().st_mode & 0o777 == CONFIG_MODE_OWNER_ONLY
             for key in ["NB_RELAY_SECRET", "NB_COOKIE_KEY", "NB_STORE_KEY"]:
                 assert env[key] not in result.stdout + result.stderr
             assert yaml.safe_load(target.read_text())["server"]["store"]["engine"] == "sqlite"
             target.unlink()
             target.symlink_to(source)
-            result = subprocess.run(command, env=env, capture_output=True, text=True)
-            assert result.returncode == 2
+            result = subprocess.run(command, env=env, capture_output=True, text=True, check=False)
+            assert result.returncode == CLI_BLOCKED_EXIT
             assert json.loads(source.read_text()) == inputs()
 
 
@@ -557,14 +601,14 @@ class UpstreamContractTests(unittest.TestCase):
     )
     def test_generated_requests_against_official_v082_openapi(self) -> None:
         """Generated requests validate against the official v0.82 OpenAPI."""
-        import jsonschema
+        jsonschema = _jsonschema_module()
 
         path = Path(os.environ["NETBIRD_OPENAPI_FILE"])
         lock = json.loads((ROOT / "deploy/netbird/upstream.lock.json").read_text())
         assert hashlib.sha256(path.read_bytes()).hexdigest() == lock["sources"]["openapi"]["sha256"]
         schemas = yaml.safe_load(path.read_text())["components"]["schemas"]
 
-        def check(name, body) -> None:
+        def check(name: str, body: object) -> None:
             schema = {
                 "$ref": "#/components/schemas/" + name,
                 "components": {"schemas": schemas},
@@ -596,12 +640,18 @@ class UpstreamContractTests(unittest.TestCase):
 class ProbeTests(unittest.TestCase):
     """Run the NetBird probe module loaded from its pinned location."""
 
+    probes: ClassVar[ModuleType]
+
+    @override
     @classmethod
     def setUpClass(cls) -> None:
         """Load the pilot probe module once."""
         spec = importlib.util.spec_from_file_location(
             "netbird_probe", ROOT / "scripts/netbird-pilot-probe.py"
         )
+        if spec is None or spec.loader is None:
+            msg = "Probe module under test is not loadable"
+            raise RuntimeError(msg)
         cls.probes = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cls.probes)
 

@@ -427,7 +427,8 @@ def _assert_owner_backup_declarations(documents: list[dict[str, object]]) -> Non
     assert not [
         d
         for d in documents
-        if d.get("kind") == "Job" and _get(d, "metadata", "name") == "openhands-cold-backup-20261119"
+        if d.get("kind") == "Job"
+        and _get(d, "metadata", "name") == "openhands-cold-backup-20261119"
     ], "Completed 2026-11-19 cold backup Job must stay retired"
     for name, size in [
         ("openhands-cold-backups", "3Gi"),

@@ -1,6 +1,7 @@
 """Offline checks for single-entrance DNS acceptance and inventory coverage."""
 
 import sys
+from pathlib import Path
 
 import pytest
 import yaml
@@ -30,23 +31,21 @@ def test_all_route_owners_have_three_cases() -> None:
         (set(), 1),
     ],
 )
-def test_dns_requires_only_survivor(monkeypatch, answers: set[str], code: int) -> None:
+def test_dns_requires_only_survivor(
+    monkeypatch: pytest.MonkeyPatch, answers: set[str], code: int
+) -> None:
     """A dead second address, IPv6 alternative or empty result cannot pass this gate."""
-    monkeypatch.setattr(
-        sys, "argv", ["audit", "--dns", "blog", "alchemmist.xyz", "moscow"]
-    )
+    monkeypatch.setattr(sys, "argv", ["audit", "--dns", "blog", "alchemmist.xyz", "moscow"])
     monkeypatch.setattr(audit, "dns_view", lambda host: answers)
     assert audit.main() == code
 
 
-def test_reserved_case_is_not_queried(monkeypatch, capsys) -> None:
+def test_reserved_case_is_not_queried(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     """A known but unpublished case is a usage error, not a failed DNS lookup."""
-    monkeypatch.setattr(
-        sys, "argv", ["audit", "--dns", "schoolbot", "bot.sch1357.ru", "home"]
-    )
-    monkeypatch.setattr(
-        audit, "dns_view", lambda host: pytest.fail("unexpected DNS lookup")
-    )
+    monkeypatch.setattr(sys, "argv", ["audit", "--dns", "schoolbot", "bot.sch1357.ru", "home"])
+    monkeypatch.setattr(audit, "dns_view", lambda host: pytest.fail("unexpected DNS lookup"))
     with pytest.raises(SystemExit) as exc:
         audit.main()
     assert exc.value.code == 2
@@ -54,7 +53,9 @@ def test_reserved_case_is_not_queried(monkeypatch, capsys) -> None:
 
 
 @pytest.mark.parametrize("entry", ["home", "nl", "moscow"])
-def test_schoolbot_external_authority_is_not_a_self_ip_case(monkeypatch, entry):
+def test_schoolbot_external_authority_is_not_a_self_ip_case(
+    monkeypatch: pytest.MonkeyPatch, entry: str
+) -> None:
     """Even a HOME-only client match must not certify DNS we do not publish."""
     from ci.quality.public_web import replica_values
 
@@ -71,11 +72,11 @@ def test_schoolbot_external_authority_is_not_a_self_ip_case(monkeypatch, entry):
     assert exc.value.code == 2
 
 
-def test_unknown_survivor_lists_valid_entries(monkeypatch, capsys) -> None:
+def test_unknown_survivor_lists_valid_entries(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     """Explain survivor spelling errors before attempting a lookup."""
-    monkeypatch.setattr(
-        sys, "argv", ["audit", "--dns", "blog", "alchemmist.xyz", "nl-only"]
-    )
+    monkeypatch.setattr(sys, "argv", ["audit", "--dns", "blog", "alchemmist.xyz", "nl-only"])
     with pytest.raises(SystemExit) as exc:
         audit.main()
     assert exc.value.code == 2
@@ -95,19 +96,19 @@ def test_unknown_survivor_lists_valid_entries(monkeypatch, capsys) -> None:
         (200, "application/json", b'{"ok":true}' + b" " * 8192, False),
     ],
 )
-def test_schoolbot_anonymous_payload(status, ct, body, valid):
+def test_schoolbot_anonymous_payload(status, ct, body, valid) -> None:
     from ci.quality.schoolbot_entry_health import healthy
 
     assert healthy(status, ct, body) is valid
 
 
-def test_closed_schoolbot_probe_only_uses_loopback(monkeypatch, tmp_path):
+def test_closed_schoolbot_probe_only_uses_loopback(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     from ci.quality import schoolbot_entry_health as health
 
     catalog = tmp_path / "catalog.yaml"
-    catalog.write_text(
-        yaml.safe_dump({"hosts": {"schoolbot": {health.HOST: {"dns": "external"}}}})
-    )
+    catalog.write_text(yaml.safe_dump({"hosts": {"schoolbot": {health.HOST: {"dns": "external"}}}}))
     monkeypatch.setattr(health, "CATALOG", catalog)
     calls = []
     monkeypatch.setattr(
@@ -120,7 +121,7 @@ def test_closed_schoolbot_probe_only_uses_loopback(monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize(("length", "ok"), [(11, True), (12, False), (100000, False)])
-def test_schoolbot_body_must_match_advertised_length(length, ok):
+def test_schoolbot_body_must_match_advertised_length(length: int, ok: bool) -> None:
     import http.client
     import io
     from unittest.mock import Mock
@@ -137,7 +138,7 @@ def test_schoolbot_body_must_match_advertised_length(length, ok):
         assert response_healthy(response) is ok
 
 
-def test_no_length_short_read_does_not_hide_following_body():
+def test_no_length_short_read_does_not_hide_following_body() -> None:
     from unittest.mock import Mock
 
     from ci.quality.schoolbot_entry_health import response_healthy
@@ -151,7 +152,9 @@ def test_no_length_short_read_does_not_hide_following_body():
 
 
 @pytest.mark.parametrize("bad", ["null", "hosts: []", "hosts: {schoolbot: {}}"])
-def test_missing_schoolbot_policy_is_a_cli_error(monkeypatch, tmp_path, bad):
+def test_missing_schoolbot_policy_is_a_cli_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, bad: str
+) -> None:
     from ci.quality import schoolbot_entry_health as health
 
     f = tmp_path / "catalog.yaml"

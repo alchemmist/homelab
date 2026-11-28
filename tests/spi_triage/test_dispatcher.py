@@ -71,7 +71,7 @@ class DispatchTests(unittest.TestCase):
         """Verify backoff, restart and due retry scheduling."""
         with (
             patch("core.time.time", return_value=100),
-            patch("core.random.uniform", return_value=1),
+            patch("core._RETRY_JITTER.uniform", return_value=1),
         ):
             self.enqueue()
             _token, deadline = self.store.reserve_dispatch()

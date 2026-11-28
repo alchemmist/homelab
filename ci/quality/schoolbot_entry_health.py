@@ -13,18 +13,25 @@ from ci.quality.public_web import CATALOG
 
 HOST = "inform.sch1357.ru"
 LIMIT = 8192
+HTTP_OK = 200
+MAX_CONTENT_LENGTH_DIGITS = 10
+MAX_PORT = 65535
+MSG_DUPLICATE_JSON_KEY = "duplicate JSON key"
 
 
-def _unique(pairs):
-    result = dict(pairs)
+def _unique(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """Reject duplicate JSON keys with one named hard stop."""
+    result: dict[str, object] = dict(pairs)
     if len(result) != len(pairs):
-        raise ValueError("duplicate JSON key")
+        reason = MSG_DUPLICATE_JSON_KEY
+        raise ValueError(reason)
     return result
 
 
 def healthy(status: int, content_type: str, body: bytes) -> bool:
+    """Classify one health response body, accepting only unique exact JSON."""
     if (
-        status != 200
+        status != HTTP_OK
         or content_type.partition(";")[0].strip().lower() != "application/json"
         or len(body) > LIMIT
     ):
@@ -39,15 +46,14 @@ def healthy(status: int, content_type: str, body: bytes) -> bool:
 def response_healthy(resp: http.client.HTTPResponse) -> bool:
     """Do not accept a valid-looking JSON prefix of a truncated response."""
     length = resp.getheader("Content-Length")
-    if length is not None:
-        if (
-            not length.isascii()
-            or not length.isdecimal()
-            or len(length) > 10
-            or int(length) > LIMIT
-            or resp.getheader("Transfer-Encoding") is not None
-        ):
-            return False
+    if length is not None and (
+        not length.isascii()
+        or not length.isdecimal()
+        or len(length) > MAX_CONTENT_LENGTH_DIGITS
+        or int(length) > LIMIT
+        or resp.getheader("Transfer-Encoding") is not None
+    ):
+        return False
     body = resp.read(LIMIT + 1)
     if length is None and len(body) <= LIMIT and resp.read(1):
         return False  # Do not accept a short read when more body bytes follow.
@@ -57,6 +63,7 @@ def response_healthy(resp: http.client.HTTPResponse) -> bool:
 
 
 def probe(ip: str, port: int) -> str:
+    """Probe one address end to end, returning the phase bucket of any failure."""
     phase = "tcp"
     try:
         with socket.create_connection((ip, port), timeout=5) as raw:
@@ -64,14 +71,17 @@ def probe(ip: str, port: int) -> str:
             with ssl.create_default_context().wrap_socket(raw, server_hostname=HOST) as conn:
                 phase = "http"
                 conn.settimeout(6)
-                conn.sendall(
-                    f"GET /api/health HTTP/1.1\r\nHost: {HOST}\r\nAccept: application/json\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n".encode(
-                        "ascii"
-                    )
+                request = (
+                    f"GET /api/health HTTP/1.1\r\n"
+                    f"Host: {HOST}\r\n"
+                    "Accept: application/json\r\n"
+                    "Accept-Encoding: identity\r\n"
+                    "Connection: close\r\n\r\n"
                 )
+                conn.sendall(request.encode("ascii"))
                 with http.client.HTTPResponse(conn) as resp:
                     resp.begin()
-                    if resp.status != 200:
+                    if resp.status != HTTP_OK:
                         return f"http-{resp.status}"
                     if not response_healthy(resp):
                         return "unexpected-health-response"
@@ -83,6 +93,7 @@ def probe(ip: str, port: int) -> str:
 
 
 def main() -> int:
+    """Run the anonymous probe per the inventory policy and report row results."""
     parser = argparse.ArgumentParser(description=__doc__)
     choice = parser.add_mutually_exclusive_group(required=True)
     choice.add_argument(
@@ -110,7 +121,7 @@ def main() -> int:
             for name, item in catalog["replicas"].items()
         ]
     else:
-        if not 1 <= args.local_port <= 65535:
+        if not 1 <= args.local_port <= MAX_PORT:
             parser.error("invalid loopback port")
         targets = [("private-loopback", "127.0.0.1", args.local_port)]
     ok = bool(targets)

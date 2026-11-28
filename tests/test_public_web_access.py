@@ -162,7 +162,9 @@ GRAFANA_DENIAL = "Native Grafana SSO requires the exact password-safe policy pro
         ("grafana", "service", "grafana", GRAFANA_DENIAL),
     ],
 )
-def test_chart_rejects_mislabeled_authorization(owner, key, value, denial: str, tmp_path) -> None:
+def test_chart_rejects_mislabeled_authorization(
+    owner, key, value, denial: str, tmp_path: Path
+) -> None:
     import subprocess
 
     import yaml

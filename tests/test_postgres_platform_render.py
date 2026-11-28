@@ -92,7 +92,19 @@ def test_rendered_cnpg_services_and_policies_follow_operator_role_labels() -> No
             "cnpg.io/instanceRole": "primary",
         }
     }
-    assert activity["ingress"] == [{"from": [{"namespaceSelector": {"matchLabels": {"kubernetes.io/metadata.name": "cattle-monitoring-system"}}, "podSelector": {"matchLabels": {"app": "socrat-n8n-activity"}}}], "ports": [{"port": 9187, "protocol": "TCP"}]}]
+    assert activity["ingress"] == [
+        {
+            "from": [
+                {
+                    "namespaceSelector": {
+                        "matchLabels": {"kubernetes.io/metadata.name": "cattle-monitoring-system"}
+                    },
+                    "podSelector": {"matchLabels": {"app": "socrat-n8n-activity"}},
+                }
+            ],
+            "ports": [{"port": 9187, "protocol": "TCP"}],
+        }
+    ]
     admin = policies["pgadmin-database-access"]["spec"]
     assert admin["ingress"] == [
         {"from": [{"podSelector": {"matchLabels": {"app": "pgadmin"}}}], "ports": [{"port": 5432}]}

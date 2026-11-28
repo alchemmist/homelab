@@ -36,7 +36,7 @@ def test_swap_repair_accepts_existing_persistent_active_swap() -> None:
 
 
 @pytest.mark.parametrize("change", ["provider", "competitor", "inactive", "fstab", "size"])
-def test_swap_repair_refuses_unknown_conditions(change) -> None:
+def test_swap_repair_refuses_unknown_conditions(change: str) -> None:
     base, others, swaps, fstab, size = (
         {"bootcmd": CLOUD.EXPECTED},
         [],
@@ -58,7 +58,7 @@ def test_swap_repair_refuses_unknown_conditions(change) -> None:
         CLOUD.validate(base, others, swaps, fstab, size)
 
 
-def test_cloud_atomic_permissions_and_no_active_swap_mutation(tmp_path) -> None:
+def test_cloud_atomic_permissions_and_no_active_swap_mutation(tmp_path: Path) -> None:
     target = tmp_path / "receipt"
     CLOUD.atomic(target, CLOUD.OVERRIDE, 0o600)
     assert target.read_text() == CLOUD.OVERRIDE
@@ -98,7 +98,7 @@ def expression() -> str:
 
 
 @pytest.mark.parametrize("indent", [0, 6, 12])
-def test_only_prometheus_memory_scalars_change(indent) -> None:
+def test_only_prometheus_memory_scalars_change(indent: int) -> None:
     before = "\n".join(
         line[indent:] if line.startswith(" " * indent) else line
         for line in expression().split("\n")
@@ -232,7 +232,7 @@ def test_resize_only_ram_and_has_uid_rv_and_resource_guards() -> None:
 
 
 @pytest.mark.parametrize("change", ["node", "controller", "restart", "memory", "name"])
-def test_resize_refuses_unknown_or_disruptive_conditions(change) -> None:
+def test_resize_refuses_unknown_or_disruptive_conditions(change: str) -> None:
     value = pod()
     if change == "node":
         value["spec"]["nodeName"] = "socrat-1"
@@ -266,7 +266,9 @@ def test_capacity_gate_stops_before_mutation_if_request_growth_does_not_fit() ->
         PROM.memory_capacity({"status": {"allocatable": {"memory": "2500Mi"}}}, [pod()])
 
 
-def test_admission_cache_propagation_is_bounded_and_verified(monkeypatch) -> None:
+def test_admission_cache_propagation_is_bounded_and_verified(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     responses = iter(
         [
             {"requests": {"memory": "2Gi"}, "limits": {"memory": "3Gi"}},
@@ -287,7 +289,7 @@ def test_admission_cache_propagation_is_bounded_and_verified(monkeypatch) -> Non
     ]
 
 
-def test_admission_nonconvergence_is_failure(monkeypatch) -> None:
+def test_admission_nonconvergence_is_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(PROM, "probe", lambda sts: {})
     monkeypatch.setattr(
         PROM,

@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
         ({"unavailable.collection.fake_module": {}}, "syntax-check"),
     ],
 )
-def test_real_linter_rejects_unsafe_or_unresolved_tasks(tmp_path, task, rule) -> None:
+def test_real_linter_rejects_unsafe_or_unresolved_tasks(tmp_path: Path, task, rule) -> None:
     """Reject unsafe or unresolved tasks with offline ansible-lint."""
     import yaml
 
@@ -60,7 +60,9 @@ def test_real_linter_rejects_unsafe_or_unresolved_tasks(tmp_path, task, rule) ->
 
 
 @pytest.mark.parametrize(("prop", "rc"), [("LoadState", 0), (None, 3), (None, 4), (None, 1)])
-def test_unit_probe_preserves_systemctl_status(prop, rc, monkeypatch) -> None:
+def test_unit_probe_preserves_systemctl_status(
+    prop: None | str, rc: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Keep the real active-state exit status for the caller's failure policy."""
     import runpy
     from unittest.mock import Mock

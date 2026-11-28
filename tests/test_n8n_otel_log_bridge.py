@@ -59,7 +59,25 @@ class N8nOtelLogBridge(unittest.TestCase):
 
     def test_configmap_renders_only_when_enabled(self) -> None:
         """ConfigMap appears only when the bridge flag is enabled."""
-        assert subprocess.run(
+        assert (
+            subprocess.run(
+                [
+                    "helm",
+                    "template",
+                    "n8n",
+                    str(ROOT / "charts" / "n8n"),
+                    "--set",
+                    "otelLogBridge.enabled=true",
+                    "--show-only",
+                    "templates/otel-log-bridge.yaml",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.count("kind: ConfigMap")
+            == 1
+        )
+        docs = subprocess.run(
             [
                 "helm",
                 "template",
@@ -67,15 +85,7 @@ class N8nOtelLogBridge(unittest.TestCase):
                 str(ROOT / "charts" / "n8n"),
                 "--set",
                 "otelLogBridge.enabled=true",
-                "--show-only",
-                "templates/otel-log-bridge.yaml",
             ],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.count("kind: ConfigMap") == 1
-        docs = subprocess.run(
-            ["helm", "template", "n8n", str(ROOT / "charts" / "n8n"), "--set", "otelLogBridge.enabled=true"],
             capture_output=True,
             text=True,
             check=True,
@@ -164,7 +174,6 @@ class N8nOtelLogBridge(unittest.TestCase):
 
     def test_loki_push_format(self) -> None:
         """The push payload matches the Loki streams JSON contract."""
-        module = load_bridge()
         source = (ROOT / BRIDGE_REL).read_text()
         assert '"/loki/api/v1/push"' in source
         assert "job" in source and "n8n" in source
@@ -200,9 +209,7 @@ class N8nOtelLogBridge(unittest.TestCase):
         cert = next(
             d
             for d in pki
-            if d
-            and d.get("kind") == "Certificate"
-            and d["metadata"]["name"] == "otel-app-tls-n8n"
+            if d and d.get("kind") == "Certificate" and d["metadata"]["name"] == "otel-app-tls-n8n"
         )
         assert cert["spec"]["commonName"] == "otel-app-n8n"
         assert "client auth" in cert["spec"]["usages"]
@@ -234,9 +241,7 @@ class N8nOtelLogBridge(unittest.TestCase):
             (ROOT / "deploy" / "monitoring" / "otel-application-scope.json").read_text()
         )
         registered = next(
-            a
-            for a in scope["applications"]
-            if a.get("application", a.get("namespace")) == "n8n"
+            a for a in scope["applications"] if a.get("application", a.get("namespace")) == "n8n"
         )
         assert registered["dedicatedClientCertificate"] == "otel-app-tls-n8n"
         assert registered["workloads"] == ["n8n"]

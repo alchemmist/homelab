@@ -63,17 +63,13 @@ def test_catalog_scope() -> None:
             assert policy["dns"] in {"static", "managed", "external"}
     assert CAT["traefik-edge"]["vpn.alchemmist.xyz"]["route"] == "vpn-transit"
     assert CAT["schoolbot"]["bot.sch1357.ru"]["dns"] == "external"
-    assert not WATCH.intersection(
-        {"postgres", "redis", "schoolbot", "rustfs", "netbird-pilot"}
-    )
+    assert not WATCH.intersection({"postgres", "redis", "schoolbot", "rustfs", "netbird-pilot"})
 
 
 def test_effective_nl_discovery_scope() -> None:
     """Check production Helm overrides cannot widen the watch or namespace RBAC."""
     targets, _ = argocd_targets()
-    nl_targets = [
-        target for target in targets if target["chart"] == ROOT / "charts/traefik-edge"
-    ]
+    nl_targets = [target for target in targets if target["chart"] == ROOT / "charts/traefik-edge"]
     assert nl_targets
     for target in nl_targets:
         docs = render(target)
@@ -87,9 +83,7 @@ def test_effective_nl_discovery_scope() -> None:
                 if d["kind"] == kind and d["metadata"]["name"] == release
             } == approved
         (deployment,) = [
-            d
-            for d in docs
-            if d["kind"] == "Deployment" and d["metadata"]["name"] == release
+            d for d in docs if d["kind"] == "Deployment" and d["metadata"]["name"] == release
         ]
         (controller,) = [
             c
@@ -98,9 +92,7 @@ def test_effective_nl_discovery_scope() -> None:
         ]
         prefix = "--providers.kubernetesingress.namespaces="
         (scope,) = [
-            arg.removeprefix(prefix)
-            for arg in controller["args"]
-            if arg.startswith(prefix)
+            arg.removeprefix(prefix) for arg in controller["args"] if arg.startswith(prefix)
         ]
         assert set(scope.split(",")) == approved
 

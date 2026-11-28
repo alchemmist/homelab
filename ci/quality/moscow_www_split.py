@@ -2,23 +2,41 @@
 
 from ipaddress import IPv4Address, IPv4Network
 
+from ci.quality.closed_root_backend import entries, plain, view
+
 WWW = "www.alchemmist.xyz"
 VPN = "vpn.alchemmist.xyz"
+MSG_ROUTE_SELECTION = "route selection changed"
+MSG_TCP_OWNER = "TCP owner changed"
+MSG_BLOG_OWNER = "blog owner changed"
+MSG_WWW_PATH = "www path changed"
+MSG_BLOG_SERVICE = "blog Service changed"
 
 
-def fixture(route, blog, service):
-    spec = route["spec"]
-    m = route["metadata"]
-    b = blog["spec"]
-    s = service["spec"]
+def fixture(route: object, blog: object, service: object) -> dict[str, object]:
+    """Compile the reviewed IngressRouteTCP/Ingress split into one closed fixture."""
+    route_doc = view(route)
+    blog_doc = view(blog)
+    service_doc = view(service)
+    spec = view(route_doc["spec"])
+    route_meta = view(route_doc["metadata"])
+    blog_spec = view(blog_doc["spec"])
+    service_spec = view(service_doc["spec"])
     selector = {"app.kubernetes.io/name": "blog", "app.kubernetes.io/instance": "blog"}
+    annotations = view(route_meta.get("annotations", {})).get("kubernetes.io/ingress.class")
+    opt_in = view(route_meta.get("labels", {})).get("homelab.alchemmist.xyz/moscow-rehearsal")
     if (
-        any(o["metadata"].get("deletionTimestamp") for o in (route, blog, service))
-        or m.get("annotations", {}).get("kubernetes.io/ingress.class") != "traefik-moscow"
-        or m.get("labels", {}).get("homelab.alchemmist.xyz/moscow-rehearsal") != "true"
+        any(view(view(o)["metadata"]).get("deletionTimestamp") for o in (route, blog, service))
+        or annotations != "traefik-moscow"
+        or opt_in != "true"
     ):
-        raise ValueError("route selection changed")
-    if (route["kind"], route["apiVersion"], m["namespace"], m["name"]) != (
+        raise ValueError(MSG_ROUTE_SELECTION)
+    if (
+        route_doc["kind"],
+        route_doc["apiVersion"],
+        route_meta["namespace"],
+        route_meta["name"],
+    ) != (
         "IngressRouteTCP",
         "traefik.io/v1alpha1",
         "vpn-transit",
@@ -33,23 +51,25 @@ def fixture(route, blog, service):
         ],
         "tls": {"passthrough": True},
     }:
-        raise ValueError("TCP owner changed")
+        raise ValueError(MSG_TCP_OWNER)
+    blog_labels = view(view(blog_doc["metadata"]).get("labels", {}))
+    blog_meta = view(blog_doc["metadata"])
     if (
-        blog["kind"] != "Ingress"
-        or blog["apiVersion"] != "networking.k8s.io/v1"
-        or blog["metadata"].get("labels", {}).get("homelab.alchemmist.xyz/public-web") != "true"
+        blog_doc["kind"] != "Ingress"
+        or blog_doc["apiVersion"] != "networking.k8s.io/v1"
+        or blog_labels.get("homelab.alchemmist.xyz/public-web") != "true"
         or any(
             k.startswith("traefik.")
             for o in (blog, service)
-            for k in o["metadata"].get("annotations", {})
+            for k in view(view(view(o)["metadata"]).get("annotations", {}))
         )
-        or blog["metadata"]["namespace"] != "blog"
-        or blog["metadata"]["name"] != "blog"
-        or b.get("ingressClassName") != "traefik"
-        or b["tls"] != [{"secretName": "blog-tls", "hosts": ["alchemmist.xyz", WWW]}]
+        or blog_meta["namespace"] != "blog"
+        or blog_meta["name"] != "blog"
+        or blog_spec.get("ingressClassName") != "traefik"
+        or blog_spec["tls"] != [{"secretName": "blog-tls", "hosts": ["alchemmist.xyz", WWW]}]
     ):
-        raise ValueError("blog owner changed")
-    rules = [r for r in b["rules"] if r.get("host") == WWW]
+        raise ValueError(MSG_BLOG_OWNER)
+    rules = [r for r in entries(blog_spec["rules"]) if view(r).get("host") == WWW]
     paths = [
         {
             "path": "/",
@@ -57,18 +77,25 @@ def fixture(route, blog, service):
             "backend": {"service": {"name": "blog", "port": {"number": 80}}},
         }
     ]
-    if len(rules) != 1 or rules[0]["http"]["paths"] != paths:
-        raise ValueError("www path changed")
+    if len(rules) != 1:
+        raise ValueError(MSG_WWW_PATH)
+    http = view(view(rules[0])["http"])
+    if entries(http["paths"]) != paths:
+        raise ValueError(MSG_WWW_PATH)
+    service_meta = view(service_doc["metadata"])
     if (
-        service["kind"] != "Service"
-        or service["metadata"]["namespace"] != "blog"
-        or service["metadata"]["name"] != "blog"
-        or s.get("selector") != selector
-        or s.get("type") != "ClusterIP"
-        or s["ports"] != [{"name": "http", "port": 80, "targetPort": 8080, "protocol": "TCP"}]
-        or IPv4Address(s["clusterIP"]) not in IPv4Network("10.43.0.0/16")
+        service_doc["kind"] != "Service"
+        or service_meta["namespace"] != "blog"
+        or service_meta["name"] != "blog"
+        or service_spec.get("selector") != selector
+        or service_spec.get("type") != "ClusterIP"
+        or service_spec["ports"]
+        != [{"name": "http", "port": 80, "targetPort": 8080, "protocol": "TCP"}]
+        or IPv4Address(plain(service_spec["clusterIP"])) not in IPv4Network("10.43.0.0/16")
     ):
-        raise ValueError("blog Service changed")
+        raise ValueError(MSG_BLOG_SERVICE)
+    cluster_ip = plain(service_spec["clusterIP"])
+    tcp_match = plain(view(entries(spec["routes"])[0])["match"])
     return {
         "tls": {
             "options": {"default": {"sniStrict": True}},
@@ -84,14 +111,14 @@ def fixture(route, blog, service):
                 }
             },
             "services": {
-                "blog": {"loadBalancer": {"servers": [{"url": f"http://{s['clusterIP']}:80"}]}}
+                "blog": {"loadBalancer": {"servers": [{"url": f"http://{cluster_ip}:80"}]}}
             },
         },
         "tcp": {
             "routers": {
                 "vpn": {
                     "entryPoints": ["websecure"],
-                    "rule": spec["routes"][0]["match"],
+                    "rule": tcp_match,
                     "tls": {"passthrough": True},
                     "service": "fixture",
                 }

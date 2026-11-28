@@ -115,7 +115,7 @@ def test_periodic_chart_isolated_and_bounded() -> None:
     )
 
 
-def test_periodic_retains_last_120_batches(tmp_path) -> None:
+def test_periodic_retains_last_120_batches(tmp_path: Path) -> None:
     """No network, sleeps or pod runtime required."""
     import json
 
@@ -146,7 +146,7 @@ def test_streamable_probe_matches_helm_payload() -> None:
     ).read_bytes()
 
 
-def test_overrun_skips_ticks_and_transient_write_failure_recovers(tmp_path) -> None:
+def test_overrun_skips_ticks_and_transient_write_failure_recovers(tmp_path: Path) -> None:
     import json
 
     periodic = samples.__globals__["periodic"]
