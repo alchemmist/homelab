@@ -188,6 +188,10 @@
         "PLR0915",
         "T201"
       ],
+      "ansible/scripts/vpn-home-transit-egress.py": [
+        "C901",
+        "PLR0912"
+      ],
       "services/spi/backend/service.py": [
         "PLC0415",
         "T201",
