@@ -9,6 +9,7 @@ import sys
 
 import yaml
 
+from ci.quality.closed_root_backend import view
 from ci.quality.public_path_rule import source_priority
 from ci.quality.public_web import CATALOG, ROOT
 
@@ -51,9 +52,12 @@ def owner_command() -> list[str]:
     return args
 
 
-def compile_fixture(objects: list[dict], catalog: dict, *, source_strict: bool) -> dict:
+def compile_fixture(
+    objects: list[dict[str, object]], catalog: dict[str, object], *, source_strict: bool
+) -> dict[str, object]:
     """Reject the entire host when any reviewed path or destination changes."""
-    if source_strict is not False or catalog["hosts"].get("harbor", {}).get(HOST) != {
+    hosts = view(catalog["hosts"]).get("harbor", {})
+    if source_strict is not False or view(hosts).get(HOST) != {
         "dns": "managed",
         "tlsSourceName": "harbor-tls",
     }:
@@ -72,13 +76,13 @@ def compile_fixture(objects: list[dict], catalog: dict, *, source_strict: bool) 
         message = "unexpected Harbor ingress set"
         raise ValueError(message)
     ing = ings[0]
-    meta = ing["metadata"]
-    spec = ing["spec"]
+    meta = view(ing["metadata"])
+    spec = view(ing["spec"])
     if (
         meta["name"] != "harbor-ingress"
         or meta.get("namespace", "harbor") != "harbor"
         or meta.get("annotations") != ANNOTATIONS
-        or meta.get("labels", {}).get("homelab.alchemmist.xyz/public-web") != "true"
+        or view(meta.get("labels", {})).get("homelab.alchemmist.xyz/public-web") != "true"
         or spec
         != {
             "ingressClassName": "traefik",
@@ -88,18 +92,20 @@ def compile_fixture(objects: list[dict], catalog: dict, *, source_strict: bool) 
     ):
         message = "Harbor routing or TLS contract changed"
         raise ValueError(message)
-    services = {}
+    services: dict[str, object] = {}
     for target in ("core", "portal"):
         name = "harbor-" + target
-        rows = [d for d in objects if d["kind"] == "Service" and d["metadata"]["name"] == name]
-        port = {"port": 80, "targetPort": 8080}
+        rows = [
+            d for d in objects if d["kind"] == "Service" and view(d["metadata"])["name"] == name
+        ]
+        port: dict[str, object] = {"port": 80, "targetPort": 8080}
         selector = {"release": "harbor", "app": "harbor", "component": target}
         if target == "core":
             port["name"] = "http-web"
         if (
             len(rows) != 1
-            or rows[0]["metadata"].get("namespace", "harbor") != "harbor"
-            or rows[0]["metadata"].get("annotations")
+            or view(rows[0]["metadata"]).get("namespace", "harbor") != "harbor"
+            or view(rows[0]["metadata"]).get("annotations")
             or rows[0]["spec"] != {"ports": [port], "selector": selector}
         ):
             message = "unreviewed Harbor Service"
@@ -110,7 +116,7 @@ def compile_fixture(objects: list[dict], catalog: dict, *, source_strict: bool) 
                 "servers": [{"url": f"http://{name}.harbor.svc.cluster.local:80"}],
             }
         }
-    routers = {}
+    routers: dict[str, object] = {}
     for path, target in PATHS.items():
         rule = f"Host(`{HOST}`) && PathPrefix(`{path}`)"
         routers["harbor-" + (path.strip("/") or "portal")] = {

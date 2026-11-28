@@ -10,7 +10,7 @@ import pytest
 
 from ci.quality.public_http01_generation import Observation, same_presentation
 from ci.quality.public_http01_lease_scan import Presentation, ScannedSlot
-from ci.quality.public_http01_scan import IncompleteScan, scan_namespace
+from ci.quality.public_http01_scan import IncompleteScanError, scan_namespace
 
 Ref = tuple[str, str, str, str]
 Doc = dict[str, object]
@@ -622,7 +622,7 @@ def test_interrupted_scan_never_emits_partial_or_empty_withdrawal(fault: str) ->
         resolved.append(ob)
         raise TimeoutError("sensitive" + "-child")
 
-    with pytest.raises(IncompleteScan, match="no snapshot") as err:
+    with pytest.raises(IncompleteScanError, match="no snapshot") as err:
         scan_namespace(
             "owner",
             frozenset({"probe.invalid"}),
@@ -659,14 +659,14 @@ def test_namespace_scan_renews_only_original_slot_after_terminal_page(
     original = slot.witness()
     assert original is not None
     tick[0] = 108
-    with pytest.raises(IncompleteScan):
+    with pytest.raises(IncompleteScanError):
         run(lambda: (410, {}))
     assert slot.witness() == original
 
     def interrupted(_item: Doc) -> Children:
         raise TimeoutError
 
-    with pytest.raises(IncompleteScan):
+    with pytest.raises(IncompleteScanError):
         run(list_page, interrupted)
     tick[0] = 110
     assert slot.witness() is None
@@ -759,7 +759,7 @@ def test_one_namespace_scan_cannot_resurrect_a_slot_from_an_older_inflight_round
                 assert after[1] is not None
                 assert after[1] != original[1]
             else:
-                with pytest.raises(IncompleteScan):
+                with pytest.raises(IncompleteScanError):
                     gate.refresh(lambda *_: (410, {}), children, net)
                 after = original
         finally:

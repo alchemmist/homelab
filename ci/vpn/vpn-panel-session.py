@@ -286,6 +286,7 @@ class NativeSession:
         return self.base
 
     def owned(self, kind: str) -> "dict[str, object] | None":
+        """Return the owned token row for one credential kind, or None if absent."""
         expected = self.credentials[kind]
         rows = [r for r in token_rows(self.database) if r["id"] == expected["id"]]
         if not rows:

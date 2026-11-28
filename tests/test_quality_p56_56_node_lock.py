@@ -33,7 +33,13 @@ _UNCHANGED_FUNCTION_DIGESTS = {
     # tool output; no linter rule, file or filtering behavior changed.
     # The same branch later typed yaml_targets/shell_targets/shellcheck_files
     # signatures and moved the lazy yamllint imports behind audited Protocol
-    # casts (check_yaml), reriving those four pins only.
+    # casts (check_yaml), reriving those four pins only. It also split the
+    # noqa-attribute offset and YAML field/shell lookups out of
+    # python_directive_lines (check_workflow) under a top-level yaml import,
+    # reriving that one pin. check_javascript also moved its digest helper to a
+    # top-level import (PLC0415), check_dependencies gained _distribution_flags,
+    # and shellcheck_files narrowed its line numbers via whole(), reriving all
+    # three pins.
     "validate_requirement_lock": "b3a33235549137f1",
     "_distribution_fields": "92a59186d7631950",
     "_vulnerability_id": "28d4d310c9cd0844",
@@ -55,7 +61,7 @@ _UNCHANGED_FUNCTION_DIGESTS = {
     "mypy_on": "e8db476b0fe8474a",
     "mypy_findings": "d798d13582466cfd",
     "format_findings": "a52354ed567b5a70",
-    "shellcheck_files": "e2972b56f41be814",
+    "shellcheck_files": "9a1b17fe549775bf",
     "workflow_script_findings": "7372fab9d6f6fa27",
     # 7a45c9cd split check into a dispatcher and nine typed implementations.
     # Pin the extracted implementations and the shared fail-closed report runner.
@@ -65,7 +71,7 @@ _UNCHANGED_FUNCTION_DIGESTS = {
     # 82e99f75 for physical-line attribution. All other original pins remain.
     "check_workflow": "f31d15922b633629",
     "workflow_directives": "27fd8a3f48f36905",
-    "python_directive_lines": "d22bda0bca5be6da",
+    "python_directive_lines": "d38e6c4d8b75465a",
     "check_python": "82ce28a1894a9fbf",
     "check_yaml": "4b126f10225231c4",
     "check_shell": "3cb39cc5d1303f55",
@@ -73,7 +79,7 @@ _UNCHANGED_FUNCTION_DIGESTS = {
     "check_actionlint": "8a638536da1ae4e0",
     "check_ansible": "e7f4c4134b3e3508",
     "check_docker": "62b3f92b54fea0d7",
-    "check_javascript": "669d09e95bf085cf",
+    "check_javascript": "70bbea6e28d158c7",
     "check_secrets": "d58cf370ba0c9e77",
     "run": "451657b3c955b7a4",
 }

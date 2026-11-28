@@ -35,7 +35,8 @@
     "S607"
    ],
    "ci/vpn/vpn-home-nl-udp-probe.py": [
-    "S101"
+    "S101",
+    "PLR2004"
    ],
    "ci/vpn/vpn-subscription-migrate.py": [
     "S104",
@@ -94,6 +95,15 @@
    "ci/quality/npm_smoke.py": [
     "S603",
     "S607"
+   ],
+   "ci/quality/tests.py": [
+    "S603"
+   ],
+   "ci/quality/ruff_scope.py": [
+    "S603"
+   ],
+   "ci/quality/install_collections.py": [
+    "S603"
    ]
   },
   "ignoreReasons": {

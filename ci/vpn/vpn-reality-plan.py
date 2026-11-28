@@ -40,7 +40,8 @@ def _restream(config: dict[str, object], row_id: object, canonical: object) -> N
             item["stream_settings"] = canonical
 
 
-def build(config: dict[str, object], policy: dict[str, object]) -> dict[str, object]:
+def _policy_gate(policy: dict[str, object]) -> dict[str, object]:
+    """Require the reviewed existing-host correction policy before planning."""
     if (
         policy.get("version") != 1
         or policy.get("newVpsOrPublicIp") is not False
@@ -58,6 +59,12 @@ def build(config: dict[str, object], policy: dict[str, object]) -> dict[str, obj
     ):
         msg = "Explicit apply policy and preserved client material required"
         raise ValueError(msg)
+    return desired
+
+
+def build(config: dict[str, object], policy: dict[str, object]) -> dict[str, object]:
+    """Plan the reviewed REALITY target correction; never write or reload anything."""
+    desired = _policy_gate(policy)
     matches = [x for x in _inbounds(config) if isinstance(x, dict) and x["port"] == desired["port"]]
     if len(matches) != 1:
         msg = "Expected exactly one target inbound"
@@ -117,18 +124,21 @@ def build(config: dict[str, object], policy: dict[str, object]) -> dict[str, obj
 
 
 def main() -> None:
+    """Read the panel database read-only and print the migration plan as canonical JSON."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, default=Path("/srv/x-ui-lab/db/x-ui.db"))
     parser.add_argument("--policy", type=Path, required=True)
     args = parser.parse_args()
     path = inventory.check_path(args.database)
-    with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as source:
-        with closing(sqlite3.connect(":memory:")) as snapshot:
-            source.backup(snapshot)
-            if snapshot.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
-                msg = "Integrity check failed"
-                raise ValueError(msg)
-            result = build(inventory.projection(snapshot), json.loads(args.policy.read_text()))
+    with (
+        closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as source,
+        closing(sqlite3.connect(":memory:")) as snapshot,
+    ):
+        source.backup(snapshot)
+        if snapshot.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+            msg = "Integrity check failed"
+            raise ValueError(msg)
+        result = build(inventory.projection(snapshot), json.loads(args.policy.read_text()))
     print(inventory.canonical(result))
 
 

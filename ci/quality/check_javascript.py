@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ci.quality.common import Finding
 
-from ci.quality.common import ROOT, command, finding
+from ci.quality.common import ROOT, command, digest, finding
 from ci.quality.runner import run
 
 
@@ -18,8 +18,6 @@ def check_javascript(names: list[str]) -> tuple[list[Finding], int]:
     for path in files:
         process = command(["node", "--check", path], allowed=(0, 1))
         if process.returncode:
-            from ci.quality.common import digest
-
             result.append(
                 finding(
                     "javascript-syntax",

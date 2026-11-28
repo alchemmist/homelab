@@ -12,7 +12,7 @@ import json
 import re
 from pathlib import Path
 
-from ci.quality.closed_root_backend import entries, plain, view
+from ci.quality.closed_root_backend import entries, plain, view, whole
 from ci.quality.common import ROOT, command, finding
 from ci.quality.lint_support import workflow_script_findings
 from ci.quality.runner import run
@@ -52,7 +52,7 @@ def shellcheck_files(files: list[str]) -> list[Finding]:
         finding(
             "SC" + str(view(item)["code"]),
             plain(view(item)["file"]),
-            int(view(item)["line"]),
+            whole(view(item)["line"]),
             plain(view(item)["message"]),
         )
         for item in rows

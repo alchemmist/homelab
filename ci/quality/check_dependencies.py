@@ -468,6 +468,16 @@ _PATCHED_LOCKS = {
 }
 
 
+def _distribution_flags(parsed: dict[str, object]) -> None:
+    """Refuse every execution-affecting or classification flag a lock entry could set."""
+    for key in ("hasInstallScript", "inBundle", "link"):
+        _disabled_flag(parsed, key)
+    for key in ("dev", "optional", "peer"):
+        value = parsed.get(key)
+        if value is not None and not isinstance(value, bool):
+            raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+
+
 def _distribution(
     package_path: str, meta: object, patches: dict[str, tuple[str, str, str]]
 ) -> tuple[str, str]:
@@ -475,12 +485,7 @@ def _distribution(
     parsed = _string_key_dict(meta)
     if parsed is None or set(parsed) - _NPM_PACKAGE_KEYS:
         raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
-    for key in ("hasInstallScript", "inBundle", "link"):
-        _disabled_flag(parsed, key)
-    for key in ("dev", "optional", "peer"):
-        value = parsed.get(key)
-        if value is not None and not isinstance(value, bool):
-            raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    _distribution_flags(parsed)
     name = _package_name(package_path)
     version = parsed.get("version")
     if not isinstance(version, str) or _NPM_VERSION.fullmatch(version) is None:

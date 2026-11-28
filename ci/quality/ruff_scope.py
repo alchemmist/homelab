@@ -21,7 +21,7 @@ def run(rules: str, roots: list[str]) -> int:
         "--",
     ]
     status = 0
-    for paths in batched(python_inputs(roots), 128):
+    for paths in batched(python_inputs(roots), 128, strict=False):
         result = subprocess.run([*argv, *paths], check=False)
         status = status or result.returncode
     return status

@@ -22,7 +22,7 @@ MAX_OBJECTS = 4096
 HTTP_OK = 200
 
 
-class IncompleteScan(ValueError):
+class IncompleteScanError(ValueError):
     """No publishable result; never include API response or cursor in diagnostics."""
 
 
@@ -44,7 +44,7 @@ def _pages(namespace: str, read_page: ReadPage) -> list[dict[str, object]]:
             break
         meta = page["metadata"]
         if not isinstance(meta, dict):
-            raise IncompleteScan
+            raise IncompleteScanError
         version = meta["resourceVersion"]
         items = page["items"]
         cursor = meta.get("continue", "")
@@ -63,7 +63,7 @@ def _pages(namespace: str, read_page: ReadPage) -> list[dict[str, object]]:
         rv = version
         for item in items:
             if not isinstance(item, dict):
-                raise IncompleteScan
+                raise IncompleteScanError
             m = item["metadata"]
             uid = m["uid"]
             name = m["name"]
@@ -78,7 +78,7 @@ def _pages(namespace: str, read_page: ReadPage) -> list[dict[str, object]]:
                 or uid in uids
                 or name in names
             ):
-                raise IncompleteScan
+                raise IncompleteScanError
             uids.add(uid)
             names.add(name)
             objects.append(item)
@@ -87,7 +87,7 @@ def _pages(namespace: str, read_page: ReadPage) -> list[dict[str, object]]:
                 break
             return objects
         seen.add(cursor)
-    raise IncompleteScan
+    raise IncompleteScanError
 
 
 def scan_namespace(
@@ -106,23 +106,23 @@ def scan_namespace(
     """
     try:
         if not namespace:
-            raise IncompleteScan
+            raise IncompleteScanError
         entries: list[Observation] = []
         for item in _pages(namespace, read_page):
             spec = item["spec"]
             if not isinstance(spec, dict):
-                raise IncompleteScan
+                raise IncompleteScanError
             host = spec["dnsName"]
             typ = spec["type"]
             if typ != "HTTP-01" or not isinstance(host, str) or host not in approved_hosts:
                 continue
             m = item["metadata"]
             if not isinstance(m, dict):
-                raise IncompleteScan
+                raise IncompleteScanError
             name = m["name"]
             uid = m["uid"]
             if not isinstance(name, str) or not isinstance(uid, str):
-                raise IncompleteScan
+                raise IncompleteScanError
             expected = (namespace, name, uid, host)
             ing, svc, pod, slices = read_children(item)
             entries.append((expected, item, ing, svc, pod, slices))
@@ -130,4 +130,4 @@ def scan_namespace(
     except (KeyError, ValueError, TypeError, AttributeError, HTTPException, OSError, StopIteration):
         pass
     msg = "incomplete solver observations; no snapshot"
-    raise IncompleteScan(msg)
+    raise IncompleteScanError(msg)
