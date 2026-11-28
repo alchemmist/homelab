@@ -115,6 +115,9 @@
       "scripts/test-otel-log-runtime.py": [
         "S108"
       ],
+      "scripts/spi-pg/finalize.py": [
+        "S608"
+      ],
 "charts/spi-triage/files/core.py": [
         "N818",
         "PLC0415"

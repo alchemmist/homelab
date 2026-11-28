@@ -78,6 +78,10 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # through docker cp into a real TemporaryDirectory, and every peer reviewed
 # here is a container-side literal, so the S108 host-tmp rule does not apply.
 "scripts/test-otel-log-runtime.py" = ["S108"]
+# The SPI finalize probe selects rows from a table name read back from
+# sqlite_master itself; no user input reaches the fragment, and every other
+# query goes through psycopg sql composition with bound parameters.
+"scripts/spi-pg/finalize.py" = ["S608"]
 # The durable workflow error type is named Failure across the reviewed
 # worker API boundary: its fixed non-sensitive codes are the documented wire
 # contract asserted by the spi_triage suite and produced by every chart
