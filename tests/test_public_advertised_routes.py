@@ -10,6 +10,7 @@ from ci.quality import public_advertised_routes as checks
     [
         ("/ping", b"pong\n200 text/plain", True),
         ("/ping", b"pong\n200 text/html", False),
+        ("/ping", b"pong\n\n200 text/plain", False),
         ("/api/v1/user", b"Unauthorized\n\n401 text/plain", True),
         ("/api/v1/user", b"Unauthorized\n\n200 text/plain", False),
         ("/api/v1/user", b"\n401 text/plain", False),
