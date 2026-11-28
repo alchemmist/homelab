@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import pytest
 from core import Failure
 from integrations import Model
 from local_token_counter import MAX_BYTES, LocalCounter
@@ -16,7 +17,7 @@ class Lifecycle(unittest.TestCase):
     def test_retained_models_and_request_isolation(self):
         with patch.dict(os.environ, SPI_TOKEN_ACCOUNTING_MODE="local-qwen-v1"):
             models = [Model(Mock(), "unused") for _ in range(24)]
-        self.assertEqual(len({id(m.counter.tokenizer) for m in models}), 1)
+        assert len({id(m.counter.tokenizer) for m in models}) == 1
         bodies = [
             dict(
                 model="qwen3.8-27b",
@@ -35,13 +36,13 @@ class Lifecycle(unittest.TestCase):
             actual = list(
                 pool.map(lambda pair: pair[0].counter.reservation(pair[1]), zip(models, bodies))
             )
-        self.assertEqual(actual, expected)
+        assert actual == expected
         body = bodies[0]
         body["messages"][0]["content"] = ""
         body["messages"][1]["content"] = "a" * (MAX_BYTES - 128)
         models[0].counter.reservation(body)
         body["messages"][1]["content"] += "a"
-        self.assertEqual(models[0].counter.reservation(body), 30001)
+        assert models[0].counter.reservation(body) == 30001
         for m in models:
             m.http.request.assert_not_called()
 
@@ -71,7 +72,7 @@ class Lifecycle(unittest.TestCase):
                     stack.enter_context(patch("local_token_counter.json.loads", return_value={}))
                 http = Mock()
                 store = Mock()
-                with self.assertRaises(Failure):
+                with pytest.raises(Failure):
                     Model(http, "unused", store=store)
                 http.request.assert_not_called()
                 store.recover_on_start.assert_not_called()
@@ -93,14 +94,14 @@ class Lifecycle(unittest.TestCase):
             ("chat_template_kwargs", {"enable_thinking": True}),
             ("messages", [dict(role="assistant", content="x")]),
         ]:
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 m.counter.reservation(dict(base, **{key: value}))
         m.http.request.assert_not_called()
 
     def test_cached_native_does_not_bypass_validation(self):
         LocalCounter()
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             LocalCounter("/nonexistent/spi-tokenizer")
         with patch("local_token_counter.PINS", {"tokenizer.json": "0" * 64}):
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 LocalCounter()

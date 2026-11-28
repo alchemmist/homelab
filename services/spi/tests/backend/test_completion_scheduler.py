@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
+import pytest
 import test_triage as f
 from core import Failure, Store, digest
 from service import Engine
@@ -51,10 +52,10 @@ class CompletionSchedulerTests(unittest.TestCase):
         for t in range(101, 161 + jitter):
             self.now = t
             self.add("arrival-" + str(t))
-            self.assertEqual(self.s.claim(), {"job_id": ""})
-            self.assertEqual(self.s.reserve_dispatch(), (None, 161 + jitter))
+            assert self.s.claim() == {"job_id": ""}
+            assert self.s.reserve_dispatch() == (None, 161 + jitter)
         self.now = 161 + jitter
-        self.assertEqual(self.s.claim()["job_id"], key)
+        assert self.s.claim()["job_id"] == key
         http = Mock()
         http.request.return_value = {"number": 7}
         http.snapshot.return_value = []
@@ -70,9 +71,9 @@ class CompletionSchedulerTests(unittest.TestCase):
         engine = Engine(self.s, http, model, Mock(), write=True)
         engine.run("analyze", key)
         engine.run("publish", key)
-        self.assertEqual(self.s.get(key)["state"], "complete")
-        self.assertEqual(http.request.call_count, 1)
-        self.assertEqual(self.s.claim()["job_id"], "older-match")
+        assert self.s.get(key)["state"] == "complete"
+        assert http.request.call_count == 1
+        assert self.s.claim()["job_id"] == "older-match"
 
     def test_safe_continuations_unknown_backoff_and_cancelled(self):
         self.add("match")
@@ -81,17 +82,17 @@ class CompletionSchedulerTests(unittest.TestCase):
             self.add("cancelled-" + str(i), 4, "cancelled")
         self.add("collect", 1)
         self.add("write", 3)
-        self.assertEqual(self.s.claim()["job_id"], "write")
+        assert self.s.claim()["job_id"] == "write"
         self.s.save("write", 4, {}, state="complete")
-        self.assertEqual(self.s.claim()["job_id"], "collect")
+        assert self.s.claim()["job_id"] == "collect"
         self.s.save("collect", 4, {}, state="complete")
-        self.assertEqual(self.s.claim()["job_id"], "match")
+        assert self.s.claim()["job_id"] == "match"
 
     def test_stale_unbounded_deadline_does_not_hold(self):
         self.add("match")
         self.add("analysis", 2, "retry", 4000, "LLM_ADMISSION_DEFERRED")
         self.s.reserve_llm(30000, timeout=4000)
-        self.assertEqual(self.s.claim()["job_id"], "match")
+        assert self.s.claim()["job_id"] == "match"
 
     def test_due_analysis_priority_and_safe_write_during_hold(self):
         self.add("match")
@@ -99,11 +100,11 @@ class CompletionSchedulerTests(unittest.TestCase):
         r = self.s.reserve_llm(30000)
         self.s.finish_llm(r)
         self.add("write", 3)
-        self.assertEqual(self.s.claim()["job_id"], "write")
+        assert self.s.claim()["job_id"] == "write"
         self.s.save("write", 4, {}, state="complete")
-        self.assertEqual(self.s.claim()["job_id"], "")
+        assert self.s.claim()["job_id"] == ""
         self.now = 164
-        self.assertEqual(self.s.claim()["job_id"], "analysis")
+        assert self.s.claim()["job_id"] == "analysis"
 
     def test_abandoned_active_ledger_bounded_wake_and_expiry(self):
         self.add("match")
@@ -111,12 +112,12 @@ class CompletionSchedulerTests(unittest.TestCase):
         self.s.reserve_llm(30000)  # active request lost on restart, expires at 761
         self.s = Store(self.s.path)
         self.now = 761
-        self.assertEqual(self.s.reserve_dispatch(), (None, 764))
-        self.assertEqual(self.s.claim()["job_id"], "")
+        assert self.s.reserve_dispatch() == (None, 764)
+        assert self.s.claim()["job_id"] == ""
         self.now = 764
-        self.assertEqual(self.s.claim()["job_id"], "analysis")
+        assert self.s.claim()["job_id"] == "analysis"
         self.s.reserve_llm(28931)
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             self.s.reserve_llm(1)
 
     def test_stage_ties_and_age_alert_remain_natural(self):
@@ -124,8 +125,8 @@ class CompletionSchedulerTests(unittest.TestCase):
         self.now = 110
         self.add("z-analysis", 2)
         self.add("a-analysis", 2)
-        self.assertEqual(self.s.health()["oldest_pending_seconds"], 10)
-        self.assertEqual(self.s.claim()["job_id"], "a-analysis")
+        assert self.s.health()["oldest_pending_seconds"] == 10
+        assert self.s.claim()["job_id"] == "a-analysis"
         self.s.save("a-analysis", 4, {}, state="complete")
-        self.assertEqual(self.s.claim()["job_id"], "z-analysis")
-        self.assertEqual(self.s.health()["oldest_pending_seconds"], 10)
+        assert self.s.claim()["job_id"] == "z-analysis"
+        assert self.s.health()["oldest_pending_seconds"] == 10

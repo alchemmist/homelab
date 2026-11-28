@@ -4,6 +4,7 @@ import struct
 import unittest
 import zlib
 
+import pytest
 from graph_contract import (
     GraphError,
     canonical,
@@ -51,13 +52,13 @@ def png(width=1200, height=600, pixels=None):
 
 class GraphContractTests(unittest.TestCase):
     def test_missing_is_compatible(self):
-        self.assertEqual(parse_annotation(None), [])
+        assert parse_annotation(None) == []
 
     def test_order_and_defaults(self):
         specs = parse_annotation(annotation([graph(), graph(id="context", panel_id=18)]))
-        self.assertEqual([s["id"] for s in specs], ["primary", "context"])
-        self.assertEqual(specs[0]["before_seconds"], 1800)
-        self.assertEqual(specs[0]["after_seconds"], 300)
+        assert [s["id"] for s in specs] == ["primary", "context"]
+        assert specs[0]["before_seconds"] == 1800
+        assert specs[0]["after_seconds"] == 300
 
     def test_strict_contract(self):
         bad = ["", "{}", "[]", '{"version":1,"version":1,"graphs":[]}']
@@ -72,7 +73,7 @@ class GraphContractTests(unittest.TestCase):
             " " * 32769,
         ]
         for raw in bad:
-            with self.subTest(raw=raw[:80]), self.assertRaises(GraphError):
+            with self.subTest(raw=raw[:80]), pytest.raises(GraphError):
                 parse_annotation(raw)
 
     def request(self, **changes):
@@ -82,30 +83,30 @@ class GraphContractTests(unittest.TestCase):
 
     def test_time_and_variable_encoding(self):
         req = self.request()
-        self.assertEqual(req["to_ms"] - req["from_ms"], 32 * 60000)
-        self.assertEqual(req["mode"], "onset")
+        assert req["to_ms"] - req["from_ms"] == 32 * 60000
+        assert req["mode"] == "onset"
         path = render_path(req)
-        self.assertTrue(path.startswith("/render/d-solo/service-health/_?"))
-        self.assertIn("var-service=api+%26worker%2F%CE%B1", path)
-        self.assertIn("tz=UTC", path)
+        assert path.startswith("/render/d-solo/service-health/_?")
+        assert "var-service=api+%26worker%2F%CE%B1" in path
+        assert "tz=UTC" in path
 
     def test_ongoing_and_spi_onset(self):
         req = self.request(observed_at="2026-11-08T13:00:00Z")
         spi = self.request(observed_at="2026-11-08T13:00:00Z", purpose="spi")
-        self.assertEqual(req["mode"], "ongoing")
-        self.assertEqual(spi["mode"], "onset")
-        self.assertEqual(spi["to_ms"] - spi["from_ms"], 35 * 60000)
-        self.assertNotEqual(req["digest"], spi["digest"])
+        assert req["mode"] == "ongoing"
+        assert spi["mode"] == "onset"
+        assert spi["to_ms"] - spi["from_ms"] == 35 * 60000
+        assert req["digest"] != spi["digest"]
 
     def test_resolved(self):
         req = self.request(status="resolved", ends_at="2026-11-08T12:01:00Z")
-        self.assertEqual(req["mode"], "resolved")
-        with self.assertRaises(GraphError):
+        assert req["mode"] == "resolved"
+        with pytest.raises(GraphError):
             self.request(status="resolved", ends_at="2026-11-08T12:03:00Z")
 
     def test_missing_label_never_all(self):
         for value in (None, "", " ", "All", "$__all", ".*", 123):
-            with self.subTest(value=value), self.assertRaises(GraphError):
+            with self.subTest(value=value), pytest.raises(GraphError):
                 resolve(
                     graph(),
                     {"service": value},
@@ -114,15 +115,15 @@ class GraphContractTests(unittest.TestCase):
                 )
 
     def test_digest_deterministic_and_isolated(self):
-        self.assertEqual(self.request(), self.request())
-        self.assertNotEqual(
-            self.request()["digest"], self.request(observed_at="2026-11-08T12:03:00Z")["digest"]
+        assert self.request() == self.request()
+        assert (
+            self.request()["digest"] != self.request(observed_at="2026-11-08T12:03:00Z")["digest"]
         )
-        self.assertEqual(canonical({"b": 1, "a": 2}), canonical({"a": 2, "b": 1}))
+        assert canonical({"b": 1, "a": 2}) == canonical({"a": 2, "b": 1})
 
     def test_timestamp_rejections(self):
         for value in ("bad", "2026-11-08T12:00:00", "2026-11-08T11:00:00Z", None):
-            with self.subTest(value=value), self.assertRaises(GraphError):
+            with self.subTest(value=value), pytest.raises(GraphError):
                 self.request(observed_at=value)
 
     def test_render_revalidates_untrusted_request(self):
@@ -134,15 +135,15 @@ class GraphContractTests(unittest.TestCase):
         ]:
             req = copy.deepcopy(self.request())
             req[key] = value
-            with self.subTest(key=key), self.assertRaises(GraphError):
+            with self.subTest(key=key), pytest.raises(GraphError):
                 render_path(req)
 
     def test_valid_png(self):
         data = png()
         result = validate_png(data)
-        self.assertEqual((result["width"], result["height"]), (1200, 600))
-        self.assertEqual(result["size"], len(data))
-        self.assertEqual(len(result["sha256"]), 64)
+        assert (result["width"], result["height"]) == (1200, 600)
+        assert result["size"] == len(data)
+        assert len(result["sha256"]) == 64
 
     def test_invalid_pngs(self):
         good = png()
@@ -156,7 +157,7 @@ class GraphContractTests(unittest.TestCase):
             png(pixels=b"\xff" * (3601 * 600)),
             b"\x89PNG\r\n\x1a\n" + b"x" * (2 * 1024 * 1024),
         ):
-            with self.subTest(size=len(data)), self.assertRaises(GraphError):
+            with self.subTest(size=len(data)), pytest.raises(GraphError):
                 validate_png(data)
 
 

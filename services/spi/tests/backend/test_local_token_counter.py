@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend"))
+import pytest
 from core import Failure
 from local_token_counter import LocalCounter, configured_counter, render
 
@@ -19,9 +20,9 @@ class CounterContract(unittest.TestCase):
         )
 
     def test_render(self):
-        self.assertEqual(
-            render(self.body()),
-            "<|im_start|>system\ns<|im_end|>\n<|im_start|>user\nu<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+        assert (
+            render(self.body())
+            == "<|im_start|>system\ns<|im_end|>\n<|im_start|>user\nu<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
         )
 
     def test_contract_and_size(self):
@@ -33,20 +34,20 @@ class CounterContract(unittest.TestCase):
         ]:
             body = self.body()
             body[key] = value
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 render(body)
         body = self.body()
         body["messages"][1]["content"] = "a" * 524289
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             render(body)
 
     def test_modes_and_missing_assets(self):
         with patch.dict(os.environ, {"SPI_TOKEN_ACCOUNTING_MODE": "byte-bound-v1"}):
-            self.assertIsNone(configured_counter())
+            assert configured_counter() is None
         with patch.dict(os.environ, {"SPI_TOKEN_ACCOUNTING_MODE": "unknown"}):
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 configured_counter()
-        with self.assertRaises(Failure):
+        with pytest.raises(Failure):
             LocalCounter("/nonexistent/spi-tokenizer")
 
 
@@ -74,9 +75,9 @@ class ProxyFloor(unittest.TestCase):
             for maximum in (768, 2500):
                 body = self.body(text, maximum)
                 actual = self.counter().reservation(body)
-                self.assertGreaterEqual(actual, (len(text) + 1 + 3) // 4 + maximum)
-                self.assertGreaterEqual(actual, 10 + 2 + 256 + maximum)
-                self.assertEqual(actual, max(268, (len(text) + 4) // 4 + 256) + maximum)
+                assert actual >= (len(text) + 1 + 3) // 4 + maximum
+                assert actual >= 10 + 2 + 256 + maximum
+                assert actual == max(268, (len(text) + 4) // 4 + 256) + maximum
 
     def test_oversize_no_bpe_and_contract_not_masked(self):
         from unittest.mock import Mock
@@ -84,7 +85,7 @@ class ProxyFloor(unittest.TestCase):
         counter = self.counter()
         counter._tokenizer = Mock()
         body = self.body(" " * 600000)
-        self.assertEqual(counter.reservation(body), 30001)
+        assert counter.reservation(body) == 30001
         counter._tokenizer.encode.assert_not_called()
         for key, value in [
             ("metadata", {}),
@@ -94,5 +95,5 @@ class ProxyFloor(unittest.TestCase):
         ]:
             bad = dict(body)
             bad[key] = value
-            with self.assertRaises(Failure):
+            with pytest.raises(Failure):
                 counter.reservation(bad)

@@ -58,41 +58,41 @@ class QueueWebTests(unittest.TestCase):
         r = c.getresponse()
         result = (r.status, dict(r.headers), r.read())
         c.close()
-        self.assertTrue(self.server.completed.wait(3), "Handler cleanup did not finish")
+        assert self.server.completed.wait(3), "Handler cleanup did not finish"
         return result
 
     def test_static_csp_and_no_framework(self):
         code, headers, body = self.request()
-        self.assertEqual(code, 200)
-        self.assertIn("private, no-store", headers["Cache-Control"])
-        self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
-        self.assertIn("script-src 'self'", headers["Content-Security-Policy"])
-        self.assertNotIn("'unsafe-inline'", headers["Content-Security-Policy"])
-        self.assertNotIn(b"https://", body)
-        self.assertIn(b'href="/style.css"', body)
-        self.assertIn(b'src="/app.js"', body)
-        self.assertNotIn(b"/queue/", body)
-        self.assertNotIn("Location", headers)
-        self.assertEqual(self.request(path="/app.js")[0], 200)
-        self.assertEqual(self.request(path="/style.css")[0], 200)
+        assert code == 200
+        assert "private, no-store" in headers["Cache-Control"]
+        assert headers["X-Content-Type-Options"] == "nosniff"
+        assert "script-src 'self'" in headers["Content-Security-Policy"]
+        assert "'unsafe-inline'" not in headers["Content-Security-Policy"]
+        assert b"https://" not in body
+        assert b'href="/style.css"' in body
+        assert b'src="/app.js"' in body
+        assert b"/queue/" not in body
+        assert "Location" not in headers
+        assert self.request(path="/app.js")[0] == 200
+        assert self.request(path="/style.css")[0] == 200
         js = (ROOT / "frontend/app.js").read_text()
-        self.assertNotIn("innerHTML", js)
-        self.assertIn("textContent", js)
-        self.assertIn("expected_updated", js)
+        assert "innerHTML" not in js
+        assert "textContent" in js
+        assert "expected_updated" in js
 
     def test_host_group_and_arbitrary_path_denied(self):
-        self.assertEqual(self.request(extra={"Host": "evil.invalid"})[0], 400)
-        self.assertEqual(self.request(path="/queue/../../service.py")[0], 404)
-        self.assertEqual(self.request(path="/queue/app.js?x=1")[0], 404)
-        self.assertEqual(self.request(path="/queue")[0], 308)
-        self.assertEqual(self.request(path="/queue/")[1]["Location"], "/")
-        self.assertEqual(self.request(path="/queue/app.js")[1]["Location"], "/app.js")
+        assert self.request(extra={"Host": "evil.invalid"})[0] == 400
+        assert self.request(path="/queue/../../service.py")[0] == 404
+        assert self.request(path="/queue/app.js?x=1")[0] == 404
+        assert self.request(path="/queue")[0] == 308
+        assert self.request(path="/queue/")[1]["Location"] == "/"
+        assert self.request(path="/queue/app.js")[1]["Location"] == "/app.js"
 
     def test_anonymous_challenge_returns_exact_queue_and_does_not_trust_identity_header(self):
         with patch.object(web.Handler, "authorization", return_value=401):
             code, headers, _ = self.request(extra={"X-authentik-groups": "homelab-owner"})
-        self.assertEqual(code, 302)
-        self.assertEqual(headers["Location"], "/login")
+        assert code == 302
+        assert headers["Location"] == "/login"
 
     def test_csrf_rejected_before_upstream(self):
         for extra in (
@@ -101,7 +101,7 @@ class QueueWebTests(unittest.TestCase):
             {"Origin": web.ORIGIN, "X-SPI-Queue": "1", "Sec-Fetch-Site": "cross-site"},
         ):
             with patch.object(web.http.client, "HTTPConnection") as upstream:
-                self.assertEqual(self.request("POST", "/api/cancel", "{}", extra)[0], 403)
+                assert self.request("POST", "/api/cancel", "{}", extra)[0] == 403
                 upstream.assert_not_called()
 
     def test_fixed_upstream_and_no_cookie_identity_or_worker_header_forwarding(self):
@@ -121,18 +121,18 @@ class QueueWebTests(unittest.TestCase):
             patch.object(web.http.client, "HTTPConnection", return_value=connection) as factory,
         ):
             code, _, body = self.request("POST", "/api/list", "{}", headers)
-        self.assertEqual(code, 200)
+        assert code == 200
         factory.assert_called_once_with("spi-triage.automation.svc.cluster.local", 8080, timeout=8)
         args, kwargs = connection.request.call_args
-        self.assertEqual(args, ("POST", "/operator/queue/list"))
-        self.assertEqual(set(kwargs["headers"]), {"Content-Type", "X-Queue-Token"})
-        self.assertNotIn(b"local-fixture-token", body)
+        assert args == ("POST", "/operator/queue/list")
+        assert set(kwargs["headers"]) == {"Content-Type", "X-Queue-Token"}
+        assert b"local-fixture-token" not in body
         connection.close.assert_called_once()
 
     def test_bulk_endpoint_uses_one_fixed_request_with_route_scoped_body_limit(self):
         ids = [format(n, "064x") for n in range(400)]
         body = json.dumps({"items": [{"job_id": key, "expected_updated": 1} for key in ids]})
-        self.assertGreater(len(body), 2048)
+        assert len(body) > 2048
         response = Mock(status=200)
         response.read.return_value = json.dumps(
             {
@@ -147,46 +147,46 @@ class QueueWebTests(unittest.TestCase):
         connection.getresponse.return_value = response
         headers = {"Origin": web.ORIGIN, "X-SPI-Queue": "1", "Content-Type": "application/json"}
         with patch.object(web.http.client, "HTTPConnection", return_value=connection):
-            self.assertEqual(self.request("POST", "/api/cancel-batch", body, headers)[0], 200)
+            assert self.request("POST", "/api/cancel-batch", body, headers)[0] == 200
         connection.request.assert_called_once()
         args, kwargs = connection.request.call_args
-        self.assertEqual(args, ("POST", "/operator/queue/cancel-batch"))
-        self.assertEqual(json.loads(kwargs["body"]), json.loads(body))
+        assert args == ("POST", "/operator/queue/cancel-batch")
+        assert json.loads(kwargs["body"]) == json.loads(body)
         for route, length in [
             ("/api/list", 2049),
             ("/api/cancel", 2049),
             ("/api/cancel-batch", 512001),
         ]:
             with patch.object(web.http.client, "HTTPConnection") as upstream:
-                self.assertEqual(
-                    self.request("POST", route, "", {**headers, "Content-Length": str(length)})[0],
-                    400,
+                assert (
+                    self.request("POST", route, "", {**headers, "Content-Length": str(length)})[0]
+                    == 400
                 )
                 upstream.assert_not_called()
         with (
             patch.object(web.Handler, "authorization", return_value=401),
             patch.object(web.http.client, "HTTPConnection") as upstream,
         ):
-            self.assertEqual(self.request("POST", "/api/cancel-batch", body, headers)[0], 401)
+            assert self.request("POST", "/api/cancel-batch", body, headers)[0] == 401
             upstream.assert_not_called()
         with patch.object(web.http.client, "HTTPConnection") as upstream:
-            self.assertEqual(
+            assert (
                 self.request(
                     "POST", "/api/cancel-batch", body, {"Content-Type": "application/json"}
-                )[0],
-                403,
+                )[0]
+                == 403
             )
             upstream.assert_not_called()
 
     def test_old_tab_api_remains_a_fixed_authenticated_alias(self):
-        self.assertEqual(web.ROUTES["/queue/api/list"], web.ROUTES["/api/list"])
-        self.assertEqual(web.ROUTES["/queue/api/cancel"], web.ROUTES["/api/cancel"])
+        assert web.ROUTES["/queue/api/list"] == web.ROUTES["/api/list"]
+        assert web.ROUTES["/queue/api/cancel"] == web.ROUTES["/api/cancel"]
 
     def test_exhausted_capacity_returns_http_503_not_a_proxy_bad_gateway(self):
         # A dedicated server avoids racing cleanup of the previous test's request.
         server = web.Server(("127.0.0.1", 0), web.Handler)
         for _ in range(8):
-            self.assertTrue(server.slots.acquire(False))
+            assert server.slots.acquire(False)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
@@ -195,18 +195,18 @@ class QueueWebTests(unittest.TestCase):
                 conn.request("GET", "/", headers={"Host": "spi.socrat.alchemmist.xyz"})
                 response = conn.getresponse()
                 body = response.read()
-                self.assertEqual(response.status, 503)
-                self.assertEqual(json.loads(body), {"code": "SERVICE_BUSY"})
-                self.assertEqual(response.getheader("Retry-After"), "1")
+                assert response.status == 503
+                assert json.loads(body) == {"code": "SERVICE_BUSY"}
+                assert response.getheader("Retry-After") == "1"
                 conn.close()
-            self.assertIn("queue_frontend_busy", str(logs.output))
+            assert "queue_frontend_busy" in str(logs.output)
         finally:
             for _ in range(8):
                 server.slots.release()
             server.shutdown()
             server.server_close()
             thread.join(2)
-        self.assertEqual(self.request()[0], 200)
+        assert self.request()[0] == 200
 
     def test_upstream_failures_log_only_error_type_not_private_details(self):
         headers = {"Origin": web.ORIGIN, "X-SPI-Queue": "1", "Content-Type": "application/json"}
@@ -216,18 +216,18 @@ class QueueWebTests(unittest.TestCase):
             ),
             self.assertLogs(level="WARNING") as logs,
         ):
-            self.assertEqual(self.request("POST", "/api/list", "{}", headers)[0], 502)
-        self.assertIn("OSError", str(logs.output))
-        self.assertNotIn("PRIVATE_SENTINEL", str(logs.output))
+            assert self.request("POST", "/api/list", "{}", headers)[0] == 502
+        assert "OSError" in str(logs.output)
+        assert "PRIVATE_SENTINEL" not in str(logs.output)
 
     def test_no_arbitrary_proxy_target_or_cors(self):
         headers = {"Origin": web.ORIGIN, "X-SPI-Queue": "1", "Content-Type": "application/json"}
         with patch.object(web.http.client, "HTTPConnection") as upstream:
-            self.assertEqual(self.request("POST", "/api/claim", "{}", headers)[0], 404)
+            assert self.request("POST", "/api/claim", "{}", headers)[0] == 404
             upstream.assert_not_called()
         code, response_headers, _ = self.request("OPTIONS")
-        self.assertEqual(code, 405)
-        self.assertNotIn("Access-Control-Allow-Origin", response_headers)
+        assert code == 405
+        assert "Access-Control-Allow-Origin" not in response_headers
 
 
 class QueueAuthorizationTests(unittest.TestCase):
@@ -243,9 +243,9 @@ class QueueAuthorizationTests(unittest.TestCase):
         handler.headers["Cookie"] = "authentik_proxy=forged"
         oidc = OIDC("fixture", "s" * 48)
         with patch.object(web, "OIDC_CLIENT", oidc):
-            self.assertEqual(RealAuthorization(handler), 401)
+            assert RealAuthorization(handler) == 401
         with patch.object(web, "OIDC_CLIENT", None):
-            self.assertEqual(RealAuthorization(handler), 503)
+            assert RealAuthorization(handler) == 503
 
     def test_only_opaque_server_side_session_authorizes(self):
         import time
@@ -260,9 +260,9 @@ class QueueAuthorizationTests(unittest.TestCase):
         oidc.sessions[identity] = {"sub": "native-fixture", "until": time.time() + 30}
         handler.headers["Cookie"] = SESSION_COOKIE + "=" + identity
         with patch.object(web, "OIDC_CLIENT", oidc):
-            self.assertEqual(RealAuthorization(handler), 200)
+            assert RealAuthorization(handler) == 200
             oidc.logout(handler.headers)
-            self.assertEqual(RealAuthorization(handler), 401)
+            assert RealAuthorization(handler) == 401
 
 
 class LogoutBrowserTests(unittest.TestCase):

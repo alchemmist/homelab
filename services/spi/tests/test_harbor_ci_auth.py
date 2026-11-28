@@ -8,6 +8,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 spec = importlib.util.spec_from_file_location(
     "harbor_ci_auth", Path(__file__).resolve().parents[1] / "scripts/harbor_ci_auth.py"
 )
@@ -56,13 +58,13 @@ class HarborAuthTests(unittest.TestCase):
         ):
             auth.configure("homelab/socrat-bot")
             directory = Path(Path(temp + "/env").read_text().strip().split("=", 1)[1])
-            self.assertEqual(stat.S_IMODE(directory.stat().st_mode), 0o700)
-            self.assertEqual(stat.S_IMODE((directory / "config.json").stat().st_mode), 0o600)
+            assert stat.S_IMODE(directory.stat().st_mode) == 448
+            assert stat.S_IMODE((directory / "config.json").stat().st_mode) == 384
             config = json.loads((directory / "config.json").read_text())
-            self.assertEqual(set(config["auths"]), {auth.HOST})
+            assert set(config["auths"]) == {auth.HOST}
             request = opener.open.call_args.args[0]
-            self.assertTrue(request.full_url.startswith("https://" + auth.HOST + "/service/token?"))
-            self.assertEqual(opener.open.call_args.kwargs["timeout"], 15)
+            assert request.full_url.startswith("https://" + auth.HOST + "/service/token?")
+            assert opener.open.call_args.kwargs["timeout"] == 15
             response.read.assert_called_once_with(65537)
 
     def test_missing_push_never_writes_credentials(self):
@@ -80,11 +82,11 @@ class HarborAuthTests(unittest.TestCase):
             ),
             patch.object(auth.urllib.request, "build_opener", return_value=opener),
         ):
-            with self.assertRaisesRegex(ValueError, "ROBOT_PUSH_GRANT_MISSING"):
+            with pytest.raises(ValueError, match="ROBOT_PUSH_GRANT_MISSING"):
                 auth.configure("homelab/socrat-bot")
-            self.assertEqual(list(Path(temp).iterdir()), [])
+            assert list(Path(temp).iterdir()) == []
 
     def test_no_arbitrary_registry_or_repository(self):
         for repo in ("https://other.invalid/a", "other/private", "homelab/name:tag", "homelab/a/b"):
-            with self.assertRaisesRegex(ValueError, "INVALID_REPOSITORY"):
+            with pytest.raises(ValueError, match="INVALID_REPOSITORY"):
                 auth.configure(repo)

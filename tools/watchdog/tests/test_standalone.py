@@ -29,4 +29,4 @@ class StandaloneTests(unittest.TestCase):
                     env={**os.environ, "PYTHONPATH": ""},
                     capture_output=True,
                 )
-                self.assertEqual(result.returncode, 0, result.stderr)
+                assert result.returncode == 0, result.stderr
