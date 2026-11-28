@@ -90,9 +90,7 @@ class ProtocolTests(unittest.TestCase):
             session = self.client.finish("code=local-code&state=" + state, h)
         verify.assert_called_once_with("local-token", {"keys": []}, expected["nonce"])
         call = self.http.call_args_list[-2]
-        self.assertEqual(
-            call.args[:2], ("POST", q.AUTH_ORIGIN + "/application/o/token/")
-        )
+        self.assertEqual(call.args[:2], ("POST", q.AUTH_ORIGIN + "/application/o/token/"))
         body = urllib.parse.parse_qs(call.args[2].decode())
         self.assertEqual(body["code_verifier"], [expected["verifier"]])
         self.assertEqual(body["client_secret"], [self.client.client_secret])
@@ -113,20 +111,12 @@ class ProtocolTests(unittest.TestCase):
     def test_expired_and_duplicate_cookies_never_authorize(self):
         identity = "x" * 43
         self.client.sessions[identity] = {"sub": "fixture", "until": time.time() - 1}
-        self.assertFalse(
-            self.client.authorized(headers(q.SESSION_COOKIE + "=" + identity))
-        )
+        self.assertFalse(self.client.authorized(headers(q.SESSION_COOKIE + "=" + identity)))
         self.client.sessions[identity] = {"sub": "fixture", "until": time.time() + 60}
         self.assertFalse(
             self.client.authorized(
                 headers(
-                    q.SESSION_COOKIE
-                    + "="
-                    + identity
-                    + "; "
-                    + q.SESSION_COOKIE
-                    + "="
-                    + identity
+                    q.SESSION_COOKIE + "=" + identity + "; " + q.SESSION_COOKIE + "=" + identity
                 )
             )
         )
@@ -139,9 +129,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(len(self.client.pending), q.MAX_SESSIONS)
 
 
-@unittest.skipUnless(
-    q.jwt is not None, "Pinned crypto is required in the native release image"
-)
+@unittest.skipUnless(q.jwt is not None, "Pinned crypto is required in the native release image")
 class SignedTokenTests(unittest.TestCase):
     def test_signed_identity_acceptance_and_negative_protocol_matrix(self):
         import jwt
@@ -163,9 +151,7 @@ class SignedTokenTests(unittest.TestCase):
         }
 
         def signed(claims):
-            return jwt.encode(
-                claims, private, algorithm="RS256", headers={"kid": "fixture"}
-            )
+            return jwt.encode(claims, private, algorithm="RS256", headers={"kid": "fixture"})
 
         self.assertEqual(
             client.verify(signed(base), {"keys": [key]}, "native-nonce")["sub"],
@@ -184,9 +170,7 @@ class SignedTokenTests(unittest.TestCase):
             {"exp": now + 4000},
         ):
             with self.subTest(change=change), self.assertRaises(q.Rejected):
-                client.verify(
-                    signed({**base, **change}), {"keys": [key]}, "native-nonce"
-                )
+                client.verify(signed({**base, **change}), {"keys": [key]}, "native-nonce")
         for missing in ("iss", "aud", "sub", "exp", "iat", "nonce"):
             claims = {k: v for k, v in base.items() if k != missing}
             with self.subTest(missing=missing), self.assertRaises(q.Rejected):
@@ -203,9 +187,7 @@ class SignedTokenTests(unittest.TestCase):
             client.verify(forged, {"keys": [key]}, "native-nonce")
 
 
-@unittest.skipUnless(
-    q.jwt is not None, "Pinned crypto is required in the native release image"
-)
+@unittest.skipUnless(q.jwt is not None, "Pinned crypto is required in the native release image")
 class NativeHTTPFlowTests(unittest.TestCase):
     def test_real_handler_code_callback_session_static_and_logout(self):
         import http.client
@@ -225,9 +207,7 @@ class NativeHTTPFlowTests(unittest.TestCase):
                 return metadata()
             if url.endswith("/jwks/"):
                 return {"keys": [key]}
-            self.assertEqual(
-                (method, url), ("POST", q.AUTH_ORIGIN + "/application/o/token/")
-            )
+            self.assertEqual((method, url), ("POST", q.AUTH_ORIGIN + "/application/o/token/"))
             now = int(time.time())
             claims = {
                 "iss": q.ISSUER,
@@ -251,9 +231,7 @@ class NativeHTTPFlowTests(unittest.TestCase):
             thread.start()
 
             def request(path, cookie=None, method="GET"):
-                conn = http.client.HTTPConnection(
-                    "127.0.0.1", server.server_port, timeout=3
-                )
+                conn = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=3)
                 h = {
                     "Host": "spi.socrat.alchemmist.xyz",
                     "X-authentik-groups": "homelab-owner",
@@ -278,20 +256,16 @@ class NativeHTTPFlowTests(unittest.TestCase):
                 self.assertEqual(request("/")[0], 302)
                 start = request("/login")
                 self.assertEqual(start[0], 302)
-                params = urllib.parse.parse_qs(
-                    urllib.parse.urlsplit(start[1]["Location"]).query
-                )
+                params = urllib.parse.parse_qs(urllib.parse.urlsplit(start[1]["Location"]).query)
                 state["nonce"] = params["nonce"][0]
                 callback = request(
                     "/oauth/callback?code=offline-fixture&state=" + params["state"][0],
                     start[2][0].split(";")[0],
                 )
                 self.assertEqual(callback[0], 303)
-                self.assertEqual(callback[1]['Location'], '/')
+                self.assertEqual(callback[1]["Location"], "/")
                 session = next(
-                    c.split(";")[0]
-                    for c in callback[2]
-                    if c.startswith(q.SESSION_COOKIE + "=")
+                    c.split(";")[0] for c in callback[2] if c.startswith(q.SESSION_COOKIE + "=")
                 )
                 content = request("/", session)
                 self.assertEqual(content[0], 200)
