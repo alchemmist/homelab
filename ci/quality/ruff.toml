@@ -73,6 +73,11 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # narrows the reviewed recipient key with an isinstance guard that raises
 # RuntimeError, like every reviewed backup failure, instead of a bare TypeError.
 "charts/openhands/files/cold_backup.py" = ["S108", "TRY004"]
+# The OTLP log-runtime probe mounts three fixed /tmp paths inside throwaway
+# pinned Collector containers (config/output/queue); the host side only copies
+# through docker cp into a real TemporaryDirectory, and every peer reviewed
+# here is a container-side literal, so the S108 host-tmp rule does not apply.
+"scripts/test-otel-log-runtime.py" = ["S108"]
 # The durable workflow error type is named Failure across the reviewed
 # worker API boundary: its fixed non-sensitive codes are the documented wire
 # contract asserted by the spi_triage suite and produced by every chart
