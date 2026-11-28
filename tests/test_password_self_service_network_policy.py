@@ -31,7 +31,9 @@ def _render(*args: str) -> list[dict]:
 
 
 def _ports(rules: list[dict]) -> set[tuple[str, int]]:
-    return {(port["protocol"], port["port"]) for rule in rules for port in rule["ports"]}
+    return {
+        (port["protocol"], port["port"]) for rule in rules for port in rule["ports"]
+    }
 
 
 def test_rendered_password_service_network_policy_is_minimal() -> None:
@@ -40,7 +42,9 @@ def test_rendered_password_service_network_policy_is_minimal() -> None:
     assert len(policies) == 1
     policy = policies[0]
     assert policy["metadata"]["namespace"] == "identity"
-    assert policy["spec"]["podSelector"]["matchLabels"] == {"app": "password-self-service"}
+    assert policy["spec"]["podSelector"]["matchLabels"] == {
+        "app": "password-self-service"
+    }
     spec = policy["spec"]
     assert set(spec["policyTypes"]) == {"Ingress", "Egress"}
 
@@ -51,7 +55,9 @@ def test_rendered_password_service_network_policy_is_minimal() -> None:
     assert traefik_peer["namespaceSelector"]["matchLabels"] == {
         "kubernetes.io/metadata.name": "kube-system"
     }
-    assert traefik_peer["podSelector"]["matchLabels"] == {"app.kubernetes.io/name": "traefik"}
+    assert traefik_peer["podSelector"]["matchLabels"] == {
+        "app.kubernetes.io/name": "traefik"
+    }
     assert _ports(ingress) == {("TCP", 8080)}
 
     egress = spec["egress"]
@@ -76,14 +82,16 @@ def test_rendered_password_service_network_policy_is_minimal() -> None:
     # No wildcard peer/range rule can silently grant unrelated callers or destinations.
     assert all("ipBlock" not in str(rule) for rule in ingress + egress)
     assert all(
-        "namespaceSelector" in str(rule) and "podSelector" in str(rule) for rule in ingress + egress
+        "namespaceSelector" in str(rule) and "podSelector" in str(rule)
+        for rule in ingress + egress
     )
 
     service = next(doc for doc in documents if doc.get("kind") == "Service")
     assert service["spec"]["selector"] == spec["podSelector"]["matchLabels"]
     deployment = next(doc for doc in documents if doc.get("kind") == "Deployment")
     assert (
-        deployment["spec"]["template"]["metadata"]["labels"] == spec["podSelector"]["matchLabels"]
+        deployment["spec"]["template"]["metadata"]["labels"]
+        == spec["podSelector"]["matchLabels"]
     )
 
     nginx = (ROOT / "charts/password-self-service/files/nginx.conf").read_text()
@@ -101,8 +109,12 @@ def test_rehearsal_admission_changes_only_the_controller_peer() -> None:
     assert rule["ports"] == [{"protocol": "TCP", "port": 8080}]
     assert len(rule["from"]) == 2
     assert rule["from"].pop() == {
-        "namespaceSelector": {"matchLabels": {"kubernetes.io/metadata.name": "public-entry"}},
-        "podSelector": {"matchLabels": {"homelab.alchemmist.xyz/public-entry-controller": "true"}},
+        "namespaceSelector": {
+            "matchLabels": {"kubernetes.io/metadata.name": "public-entry"}
+        },
+        "podSelector": {
+            "matchLabels": {"homelab.alchemmist.xyz/public-entry-controller": "true"}
+        },
     }
     assert enabled == baseline
 
@@ -112,3 +124,49 @@ def test_peer_flag_rejects_strings(value: str) -> None:
     with pytest.raises(subprocess.CalledProcessError) as exc:
         _render("--set-string", f"allowPublicEntryPeer={value}")
     assert "allowPublicEntryPeer" in exc.value.stderr
+
+
+@pytest.mark.parametrize(
+    "path,status,location,result",
+    [
+        (
+            "/change-password/",
+            302,
+            "https://auth.socrat.alchemmist.xyz/change-password",
+            "matched",
+        ),
+        (
+            "/change-password/",
+            302,
+            "https://example.invalid/change-password",
+            "unexpected-response",
+        ),
+        (
+            "/change-password",
+            302,
+            "https://auth.socrat.alchemmist.xyz/if/flow/default-authentication-flow/?next=%2Fchange-password",
+            "matched",
+        ),
+        (
+            "/change-password",
+            302,
+            "https://auth.socrat.alchemmist.xyz/change-password",
+            "unexpected-response",
+        ),
+        ("/change-password", 200, "", "unexpected-response"),
+        ("/change-password/", 502, "", "http-502"),
+    ],
+)
+def test_anonymous_password_path_witness(monkeypatch, path, status, location, result):
+    from ci.quality import password_route_probe as probe
+
+    def run(args, **kwargs):
+        assert (
+            args[-1] == "https://" + probe.HOST + path
+            and args[args.index("--resolve") + 1] == probe.HOST + ":443:192.0.2.1"
+            and not {"--location", "--insecure", "--cookie"} & set(args)
+        )
+        return subprocess.CompletedProcess(args, 0, f"{status}\n{location}".encode())
+
+    monkeypatch.setattr(subprocess, "run", run)
+    assert probe.sample(path, ip="192.0.2.1") == result
