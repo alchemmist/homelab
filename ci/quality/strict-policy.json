@@ -192,6 +192,9 @@
         "C901",
         "PLR0912"
       ],
+      "scripts/identity-argocd-refresh-smoke.py": [
+        "A002"
+      ],
       "services/spi/backend/service.py": [
         "PLC0415",
         "T201",
