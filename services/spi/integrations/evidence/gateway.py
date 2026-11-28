@@ -1,7 +1,9 @@
 """SSO-protected, bounded, integrity-checked artifact reader; private read-only S3 upstream.
+
 No cookies, caller identity headers, request paths or bodies are logged.
 """
 
+import contextlib
 import datetime
 import hashlib
 import hmac
@@ -12,11 +14,13 @@ import os
 import re
 import socket
 import socketserver
+import ssl
 import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from typing import IO, Never, cast, override
 
 HOST = "rustfs.socrat.alchemmist.xyz"
 ORIGIN = "https://" + HOST
@@ -28,7 +32,19 @@ MAX_BYTES = 2 * 1024 * 1024
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, request, response, code, message, headers, newurl):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
+    @override
+    def redirect_request(
+        self,
+        _request: urllib.request.Request | None,
+        response: IO[bytes] | None,
+        _code: int,
+        _message: str,
+        _headers: http.client.HTTPMessage,
+        _newurl: str,
+    ) -> Never:
+        """Close the response and refuse redirects instead of following them."""
         if response is not None:
             response.close()
         msg = "redirect denied"
@@ -42,14 +58,14 @@ UPSTREAM_SECONDS = 10
 MAX_CONNECTIONS = 8
 
 
-def expire(sock):
-    try:
+def expire(sock: socket.socket) -> None:
+    """Shut the socket down, ignoring a peer that already disconnected."""
+    with contextlib.suppress(OSError):
         sock.shutdown(socket.SHUT_RDWR)
-    except OSError:
-        pass
 
 
-def watchdog(sock, seconds):
+def watchdog(sock: socket.socket, seconds: float) -> threading.Timer:
+    """Arm a daemon timer that expires the socket after the given budget."""
     timer = threading.Timer(seconds, expire, (sock,))
     timer.daemon = True
     timer.start()
@@ -57,7 +73,13 @@ def watchdog(sock, seconds):
 
 
 class DeadlineResponse(http.client.HTTPResponse):
-    def close(self):
+    """Response that counts reads against the artifact deadline."""
+
+    deadline_timer: threading.Timer
+
+    @override
+    def close(self) -> None:
+        """Close the underlying response and cancel its watchdog timer."""
         try:
             super().close()
         finally:
@@ -67,15 +89,20 @@ class DeadlineResponse(http.client.HTTPResponse):
 
 
 class DeadlineConnection:
-    response_class = DeadlineResponse
+    """Connection base wiring the deadline-aware response class."""
 
-    def connect(self):
+    response_class: type[http.client.HTTPResponse] = DeadlineResponse
+    sock: socket.socket | None
+    deadline_timer: threading.Timer
+
+    def connect(self) -> None:
+        """Connect under an absolute deadline watched by a timer."""
         start = time.monotonic()
         self.deadline_expired = False
         self.response_owns_deadline = False
-        connected_socket = []
+        connected_socket: list[socket.socket | None] = []
 
-        def abort():
+        def abort() -> None:
             self.deadline_expired = True
             sock = (
                 self.sock
@@ -89,23 +116,29 @@ class DeadlineConnection:
         self.deadline_timer.daemon = True
         self.deadline_timer.start()
         try:
-            super().connect()
-            connected_socket.append(self.sock)
+            cast("http.client.HTTPConnection", super()).connect()
+            sock = self.sock
+            connected_socket.append(sock)
             if self.deadline_expired or time.monotonic() - start >= UPSTREAM_SECONDS:
-                expire(self.sock)
+                if sock is not None:
+                    expire(sock)
                 msg = "upstream deadline"
                 raise TimeoutError(msg)
         except BaseException:
             self.close()
             raise
 
-    def getresponse(self):
+    def getresponse(self) -> DeadlineResponse:
         # HTTPConnection closes/detaches its socket before returning a response
         # with Connection: close. The response's file still owns the descriptor:
         # keep its watchdog alive until that response is explicitly closed.
+        """Read the response while keeping the deadline watchdog alive."""
         self.transferring_response = True
         try:
-            response = super().getresponse()
+            response = cast(
+                "DeadlineResponse",
+                cast("http.client.HTTPConnection", super()).getresponse(),
+            )
             response.deadline_timer = self.deadline_timer
             self.response_owns_deadline = True
             return response
@@ -115,49 +148,70 @@ class DeadlineConnection:
         finally:
             self.transferring_response = False
 
-    def close(self):
+    def close(self) -> None:
+        """Cancel the deadline timer unless the transfer owns the deadline."""
         timer = getattr(self, "deadline_timer", None)
         if timer and not (
             getattr(self, "transferring_response", False)
             or getattr(self, "response_owns_deadline", False)
         ):
             timer.cancel()
-        super().close()
+        cast("http.client.HTTPConnection", super()).close()
 
 
 class HTTPConnection(DeadlineConnection, http.client.HTTPConnection):
-    pass
+    """Plain HTTP connection with deadline-bounded responses."""
 
 
 class HTTPSConnection(DeadlineConnection, http.client.HTTPSConnection):
-    pass
+    """TLS HTTP connection with deadline-bounded responses."""
 
 
 class HTTPHandler(urllib.request.HTTPHandler):
-    def http_open(self, request):
+    """URL handler returning deadline-bounded HTTP connections."""
+
+    @override
+    def http_open(self, request: urllib.request.Request) -> http.client.HTTPResponse:
+        """Open HTTP connections through the deadline-aware handler."""
         return self.do_open(HTTPConnection, request)
 
 
 class HTTPSHandler(urllib.request.HTTPSHandler):
-    def https_open(self, request):
+    """URL handler returning deadline-bounded HTTPS connections."""
+
+    _context: ssl.SSLContext
+
+    @override
+    def https_open(self, request: urllib.request.Request) -> http.client.HTTPResponse:
+        """Open HTTPS connections through the deadline-aware handler."""
         return self.do_open(HTTPSConnection, request, context=self._context)
 
 
-def opener():
+def opener() -> urllib.request.OpenerDirector:
+    """Build an opener that skips proxies and refuses redirects."""
     # Environment proxy settings must not redirect private S3/auth traffic.
     return urllib.request.build_opener(
         urllib.request.ProxyHandler({}), NoRedirect(), HTTPHandler(), HTTPSHandler()
     )
 
 
-def valid_key(path):
+def valid_key(path: str) -> str:
+    """Validate an immutable evidence key and strip its leading slash."""
     if not KEY.fullmatch(path) or ".." in path:
         msg = "invalid key"
         raise ValueError(msg)
     return path[1:]
 
 
-def sign(method, url, access, secret, now=None, region="us-east-1", payload=b""):
+def sign(
+    method: str,
+    url: str,
+    access: str,
+    secret: str,
+    now: datetime.datetime | None = None,
+    region: str = "us-east-1",
+    payload: bytes = b"",
+) -> dict[str, str]:
     """AWS SigV4, unsigned query unsupported; canonical URI encoded exactly once."""
     u = urllib.parse.urlsplit(url)
     if u.query or u.fragment or u.username or u.password:
@@ -205,7 +259,8 @@ def sign(method, url, access, secret, now=None, region="us-east-1", payload=b"")
     return headers
 
 
-def bounded(response):
+def bounded(response: http.client.HTTPResponse) -> bytes:
+    """Read one bounded, uncompressed 200 body or refuse the response."""
     if response.status != 200 or response.headers.get("Content-Encoding", "identity") != "identity":
         msg = "invalid response"
         raise ValueError(msg)
@@ -221,7 +276,10 @@ def bounded(response):
 
 
 class Reader:
-    def __init__(self):
+    """Artifact reader backed by the gateway opener."""
+
+    def __init__(self) -> None:
+        """Bind the reviewed fixed origins and credentials from the environment."""
         self.http = opener()
         self.auth = os.environ["AUTH_URL"]
         if self.auth != ORIGIN + "/outpost.goauthentik.io/auth/nginx":
@@ -234,10 +292,12 @@ class Reader:
         self.access = os.environ["S3_ACCESS_KEY"]
         self.secret = os.environ["S3_SECRET_KEY"]
 
-    def authorized(self, cookie):
+    def authorized(self, cookie: str | None) -> bool:
+        """Check the session cookie against the authorization endpoint."""
         return self.authorization(cookie) == 200
 
-    def authorization(self, cookie):
+    def authorization(self, cookie: str | None) -> int:
+        """Validate the cookie with the auth proxy and return its status code."""
         if not cookie or len(cookie) > 8192 or "\r" in cookie or "\n" in cookie:
             return 401
         request = urllib.request.Request(
@@ -263,13 +323,15 @@ class Reader:
                 return code if code in (401, 403) else 503
             return 503
 
-    def object(self, key):
+    def object(self, key: str) -> bytes:
+        """Fetch one signed object body from the evidence bucket."""
         url = self.s3 + "/spi-evidence/" + key
         request = urllib.request.Request(url, headers=sign("GET", url, self.access, self.secret))
         with self.http.open(request, timeout=10) as response:
             return bounded(response)
 
-    def read(self, key):
+    def read(self, key: str) -> bytes:
+        """Validate an immutable key against its manifest and return the body."""
         valid_key("/" + key)
         prefix, filename = key.rsplit("/", 1)
         event, manifest_hash = prefix.split("/")[-2:]
@@ -341,13 +403,15 @@ PREVIEW_TYPES = {
 }
 
 
-def presentation(filename):
+def presentation(filename: str | None) -> tuple[str, bool]:
+    """Map a filename to its reviewed inline preview type if one is allowlisted."""
     suffix = (filename or "").rsplit(".", 1)[-1].lower()
     mime = PREVIEW_TYPES.get(suffix)
     return (mime, True) if mime else ("application/octet-stream", False)
 
 
-def byte_range(value, size):
+def byte_range(value: str, size: int) -> tuple[int, int]:
+    """Parse one reviewed suffix request into inclusive start and end offsets."""
     match = re.fullmatch(r"bytes=([0-9]{0,20})-([0-9]{0,20})", value)
     if not match or not size or not any(match.groups()):
         msg = "invalid range"
@@ -368,32 +432,43 @@ def byte_range(value, size):
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
+    """HTTP handler serving reviewed evidence artifacts to authorized callers."""
+
     server_version = "ArtifactReader"
     sys_version = ""
+    raw_requestline: bytes
 
-    def setup(self):
+    @override
+    def setup(self) -> None:
+        """Arm header and request watchdogs around each request."""
         self.request.settimeout(HEADER_SECONDS)
         self.header_timer = watchdog(self.request, HEADER_SECONDS)
         self.request_timer = watchdog(self.request, REQUEST_SECONDS)
         super().setup()
 
-    def finish(self):
+    @override
+    def finish(self) -> None:
+        """Finish the request and cancel both watchdog timers."""
         try:
             super().finish()
         finally:
             self.header_timer.cancel()
             self.request_timer.cancel()
 
-    def log_message(self, *args):
-        pass
+    @override
+    def log_message(self, *args: object) -> None:
+        """Suppress default request-line logging."""
 
-    def do_GET(self):
+    def do_GET(self) -> None:
+        """Dispatch GET through the common answer path."""
         self.answer()
 
-    def do_HEAD(self):
+    def do_HEAD(self) -> None:
+        """Dispatch HEAD through the common answer path."""
         self.answer()
 
-    def do_POST(self):
+    def do_POST(self) -> None:
+        """Dispatch POST through the common answer path."""
         self.answer()
 
     do_PUT = do_POST
@@ -401,7 +476,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
     do_OPTIONS = do_POST
     do_PATCH = do_POST
 
-    def answer(self):
+    def answer(self) -> None:
+        """Authorize, route and answer one request under strict redirect rules."""
         self.close_connection = True
         self.header_timer.cancel()
         # Only a fixed legacy authority may redirect, with an exact validated raw
@@ -429,7 +505,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         cookies = self.headers.get_all("Cookie", [])
         auth_status = 401
         if len(cookies) == 1:
-            reader = self.server.reader
+            reader = cast("Server", self.server).reader
             auth_status = reader.authorization(cookies[0])
         if auth_status != 200:
             if auth_status != 401:
@@ -465,7 +541,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 raise ValueError(msg)
             if raw_target == "/":
                 self.respond(
-                    200, b"Socrat evidence reader. Open an artifact link from an incident issue.\n"
+                    200,
+                    b"Socrat evidence reader. Open an artifact link from an incident issue.\n",
                 )
                 return
             key = valid_key(raw_target)
@@ -473,7 +550,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.respond(404)
             return
         try:
-            body = self.server.reader.read(key)
+            body = cast("Server", self.server).reader.read(key)
         except (OSError, ValueError, urllib.error.URLError) as error:
             if isinstance(error, urllib.error.HTTPError):
                 error.close()
@@ -499,15 +576,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         self.respond(200, body, filename)
 
-    def send_error(self, code, message=None, explain=None):
+    @override
+    def send_error(
+        self, _code: int, _message: str | None = None, _explain: str | None = None
+    ) -> None:
         # Parser/unsupported-method errors must not echo raw request lines or
         # distinguish paths to unauthenticated callers.
+        """Answer every parser error with an opaque 400."""
         self.close_connection = True
         self.respond(400)
 
     def respond(
-        self, status, body=b"", filename=None, content_range=None, full_length=None, location=None
-    ):
+        self,
+        status: int,
+        body: bytes = b"",
+        filename: str | None = None,
+        content_range: str | None = None,
+        full_length: int | None = None,
+        location: str | None = None,
+    ) -> None:
+        """Write the response with fixed security headers and body framing."""
         mime, inline = presentation(filename) if filename else ("text/plain; charset=utf-8", True)
         self.send_response(status)
         self.send_header("Content-Type", mime)
@@ -515,7 +603,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "private, no-store" if filename else "no-store")
         self.send_header(
             "Content-Security-Policy",
-            "default-src 'none'; img-src 'self' data:; media-src 'self'; object-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+            "default-src 'none'; img-src 'self' data:; media-src 'self'; "
+            "object-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; "
+            "form-action 'none'; frame-ancestors 'none'",
         )
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("Connection", "close")
@@ -548,14 +638,33 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(body)
 
 
+# ThreadingMixIn types its hooks for both stream and datagram servers.
+type ServerRequest = socket.socket | tuple[bytes, socket.socket]
+type ClientAddress = tuple[str, int] | tuple[str, int, int, int]
+type BindHost = str | bytes | bytearray
+type BindAddress = tuple[BindHost, int] | tuple[BindHost, int, int, int]
+
+
 class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    """Threaded HTTP server for the artifact reader."""
+
     daemon_threads = True
+    reader: "Reader"
+    slots: threading.BoundedSemaphore
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self,
+        server_address: BindAddress,
+        RequestHandlerClass: type[socketserver.BaseRequestHandler],
+        bind_and_activate: bool = True,
+    ) -> None:
+        """Arm the bounded admission semaphore before binding the listener."""
         self.slots = threading.BoundedSemaphore(MAX_CONNECTIONS)
-        super().__init__(*args, **kwargs)
+        super().__init__(server_address, RequestHandlerClass, bind_and_activate)
 
-    def process_request(self, request, client_address):
+    @override
+    def process_request(self, request: ServerRequest, client_address: ClientAddress) -> None:
+        """Admit a request only when a connection slot is free."""
         if not self.slots.acquire(blocking=False):
             self.shutdown_request(request)
             return
@@ -565,15 +674,18 @@ class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
             self.slots.release()
             raise
 
-    def process_request_thread(self, request, client_address):
+    @override
+    def process_request_thread(self, request: ServerRequest, client_address: ClientAddress) -> None:
+        """Process an admitted request and always release its slot."""
         try:
             super().process_request_thread(request, client_address)
         finally:
             self.slots.release()
 
-    def handle_error(self, request, client_address):
+    @override
+    def handle_error(self, request: ServerRequest, client_address: ClientAddress) -> None:
         # Network resets/timeouts must not emit request context or upstream errors.
-        pass
+        """Swallow handler errors without echoing request or upstream context."""
 
 
 if __name__ == "__main__":
