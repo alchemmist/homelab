@@ -76,7 +76,7 @@ class EventWorkflowTests(unittest.TestCase):
         ]
         assert [nodes[n]["id"] for n in chain] == original_ids
 
-        def targets(name) -> "list[list[object]]":
+        def targets(name: str) -> "list[list[object]]":
             return [[x["node"] for x in output] for output in w["connections"][name]["main"]]
 
         assert targets("Dispatch Triage Job") == [["Claim Triage Job"]]
@@ -101,13 +101,16 @@ class EventWorkflowTests(unittest.TestCase):
         ]:
             node = nodes[name]
             p = node["parameters"]
-            assert p["url"] == "http://spi-triage.automation.svc:8080/" + endpoint
+            # The five native stage URLs use the reviewed Service VIP pinned by
+            # 52f0eb5e7 (DNS-independent fenced RPC, see docs/n8n/spi/native-service-vip.md).
+            assert p["url"] == "http://10.43.194.185:8080/" + endpoint
             assert p["method"] == "POST"
             assert p["genericAuthType"] == "httpHeaderAuth"
             assert p["authentication"] == "genericCredentialType"
             assert p["options"]["timeout"] == (20000 if endpoint == "claim" else 1920000)
             assert p["jsonBody"] == (
-                "={{ JSON.stringify({execution_id: String($execution.id), workflow_revision: 'durable-v1'}) }}"
+                "={{ JSON.stringify({execution_id: String($execution.id), "
+                "workflow_revision: 'durable-v1'}) }}"
                 if endpoint == "claim"
                 else "={{ JSON.stringify($json) }}"
             )
@@ -169,7 +172,8 @@ class EventWorkflowTests(unittest.TestCase):
             + json.dumps(code)
             + ");const inputs="
             + json.dumps(inputs)
-            + ';console.log(JSON.stringify(inputs.map(x=>{try{return run([{json:x}],{id:"1234"}).length}catch(e){return "error"}})));'
+            + ";console.log(JSON.stringify(inputs.map(x=>{try{return run([{json:x}],"
+            '{id:"1234"}).length}catch(e){return "error"}})));'
         )
         results = json.loads(subprocess.check_output(["node", "-e", js], text=True))
         assert results == [1, 1, 1, "error", "error", "error", "error", "error", 1, 0]
