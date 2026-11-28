@@ -89,6 +89,9 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # The SPI import copies each reviewed table by its sqlite_master name;
 # the table set is verified against the applied schema beforehand.
 "scripts/spi-pg/transfer.py" = ["S608"]
+# The remote inventory payload is a byte-pinned single-line Python program
+# executed on the source host; its long ULID/fullmatch line must not be folded.
+"deploy/storage/thanos-warm-seed/start.py" = ["E501"]
 # The durable workflow error type is named Failure across the reviewed
 # worker API boundary: its fixed non-sensitive codes are the documented wire
 # contract asserted by the spi_triage suite and produced by every chart
