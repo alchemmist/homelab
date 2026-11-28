@@ -11,6 +11,10 @@ import os
 import socket
 import subprocess
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 ROOT = Path("/var/lib/homelab-vpn-transit/exit-fence")
 TABLE = "homelab_msk_exit_fence"
@@ -23,14 +27,16 @@ RULES = """table inet homelab_msk_exit_fence {
 """
 
 
-def command(args) -> str:
+def command(args: "Sequence[str]") -> str:
+    """Run one reviewed command and return its stdout."""
     return subprocess.check_output(args, text=True, stderr=subprocess.PIPE)
 
 
 def projection() -> object:
+    """Project the live fence table without counters or metainfo."""
     value = json.loads(command(["nft", "-j", "list", "table", "inet", TABLE]))
 
-    def clean(v) -> object:
+    def clean(v: object) -> object:
         if isinstance(v, list):
             return [clean(x) for x in v if not isinstance(x, dict) or "metainfo" not in x]
         if isinstance(v, dict):
@@ -41,29 +47,59 @@ def projection() -> object:
     return clean(value)
 
 
-def run(boot=False) -> None:
-    assert os.geteuid() == 0
-    assert socket.gethostname() == "socrat-2"
-    os.umask(0o077)
+def _require_root_on_exit_host() -> None:
+    """Require root on the reviewed exit host before any fence change."""
+    if os.geteuid() != 0:
+        msg = "The exit fence must be applied as root"
+        raise RuntimeError(msg)
+    if socket.gethostname() != "socrat-2":
+        msg = "The exit fence belongs on the reviewed exit host only"
+        raise RuntimeError(msg)
+
+
+def _require_wan_routes_clean() -> None:
+    """Require the reviewed WAN interface and no earlier apply state."""
     route = json.loads(command(["ip", "-j", "route", "get", "91.189.82.238"]))
-    assert route[0]["dev"] == "eth0", "WAN interface changed; inspect rather than guess"
+    if route[0]["dev"] != "eth0":
+        msg = "WAN interface changed; inspect rather than guess"
+        raise RuntimeError(msg)
+    if ROOT.exists():
+        msg = "Existing apply state; inspect, never replay"
+        raise RuntimeError(msg)
+    if (
+        subprocess.run(
+            ["nft", "list", "table", "inet", TABLE],
+            check=False,
+            capture_output=True,
+        ).returncode
+        == 0
+    ):
+        msg = "Fence table already exists; inspect rather than guess"
+        raise RuntimeError(msg)
+
+
+def require_boot_accepted() -> None:
+    """Require the stored apply receipts for the boot verification path."""
+    if not (ROOT / "accepted.json").exists():
+        msg = "Boot verification requires a previously accepted apply"
+        raise RuntimeError(msg)
+    if (ROOT / "rules.nft").read_text() != RULES:
+        msg = "Stored fence rules drifted from the reviewed ruleset"
+        raise RuntimeError(msg)
+
+
+def run(*, boot: bool = False) -> None:
+    """Apply or re-verify the reviewed raw WAN VPN ingress fence."""
+    _require_root_on_exit_host()
+    os.umask(0o077)
     if not boot:
-        assert not ROOT.exists(), "Existing apply state; inspect, never replay"
-        assert (
-            subprocess.run(
-                ["nft", "list", "table", "inet", TABLE],
-                check=False,
-                capture_output=True,
-            ).returncode
-            != 0
-        )
+        _require_wan_routes_clean()
         ROOT.mkdir(parents=True, mode=0o700)
         (ROOT / "before-private.json").write_text(command(["nft", "-j", "list", "ruleset"]))
         (ROOT / "rules.nft").write_text(RULES)
         (ROOT / "attempt.json").write_text(json.dumps({"only_raw_wan_vpn_ports": True}))
     else:
-        assert (ROOT / "accepted.json").exists()
-        assert (ROOT / "rules.nft").read_text() == RULES
+        require_boot_accepted()
     command(["nft", "-c", "-f", str(ROOT / "rules.nft")])
     if (
         subprocess.run(
@@ -74,9 +110,9 @@ def run(boot=False) -> None:
         command(["nft", "-f", str(ROOT / "rules.nft")])
     observed = projection()
     if boot:
-        assert observed == json.loads((ROOT / "expected.json").read_text()), (
-            "Unexpected table drift"
-        )
+        if observed != json.loads((ROOT / "expected.json").read_text()):
+            msg = "Unexpected table drift"
+            raise RuntimeError(msg)
     else:
         (ROOT / "expected.json").write_text(json.dumps(observed))
         (ROOT / "accepted.json").write_text(
