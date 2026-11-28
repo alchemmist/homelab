@@ -195,6 +195,9 @@
       "scripts/identity-argocd-refresh-smoke.py": [
         "A002"
       ],
+      "scripts/identity-app-access-smoke.py": [
+        "A002"
+      ],
       "services/spi/backend/service.py": [
         "PLC0415",
         "T201",

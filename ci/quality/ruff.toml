@@ -131,9 +131,10 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # (apply, boot, direct-probe upgrade); its branches are inseparable safety steps.
 "ansible/scripts/vpn-home-transit-egress.py" = ["C901", "PLR0912"]
 
-# The public-edge resolver patch mirrors the exact typeshed socket.getaddrinfo
+# The public-edge resolver patches mirror the exact typeshed socket.getaddrinfo
 # signature, whose fourth parameter is legitimately named "type".
 "scripts/identity-argocd-refresh-smoke.py" = ["A002"]
+"scripts/identity-app-access-smoke.py" = ["A002"]
 
 "services/spi/backend/service.py" = ["PLC0415", "T201", "PLR0913", "TRY301"]
 "deploy/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]

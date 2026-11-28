@@ -14,26 +14,53 @@ import secrets
 import socket
 import tempfile
 import urllib.request
-from collections.abc import Callable
 from pathlib import Path
-from typing import NamedTuple, cast
+from typing import Literal, NamedTuple, cast
 
 
 def _require_private_paths(root: Path) -> None:
     """Refuse root directories or credentials that other users can touch."""
     for path in (root, root / "credentials.json"):
-        assert not path.is_symlink()
-        assert path.stat().st_uid == os.getuid()
-        assert not path.stat().st_mode & 0o077
+        if path.is_symlink():
+            msg = "Root paths must not be symlinks: " + str(path)
+            raise RuntimeError(msg)
+        if path.stat().st_uid != os.getuid():
+            msg = "Root paths must be owned by this user: " + str(path)
+            raise RuntimeError(msg)
+        if path.stat().st_mode & 0o077:
+            msg = "Root paths must not be group/world accessible: " + str(path)
+            raise RuntimeError(msg)
 
 
-def _pin_public_dns() -> Callable[..., object]:
+GaiResult = list[
+    tuple[Literal[socket.AddressFamily.AF_INET], socket.SocketKind, int, str, tuple[str, int]]
+    | tuple[
+        Literal[socket.AddressFamily.AF_INET6],
+        socket.SocketKind,
+        int,
+        str,
+        tuple[str, int, int, int] | tuple[int, bytes],
+    ]
+]
+
+
+def _pin_public_dns() -> None:
     """Force the IdP hostname to resolve to the reviewed public address."""
-    original: Callable[..., object] = socket.getaddrinfo
-    socket.getaddrinfo = lambda h, *a, **kw: original(
-        "109.173.40.247" if h == "auth.socrat.alchemmist.xyz" else h, *a, **kw
-    )
-    return original
+    original = socket.getaddrinfo
+
+    def pinned(
+        host: str | bytes | None,
+        port: bytes | str | int | None = None,
+        family: int = 0,
+        type: int = 0,
+        proto: int = 0,
+        flags: int = 0,
+    ) -> GaiResult:
+        """Rewrite only the reviewed IdP hostname; pass everything else through."""
+        target = "109.173.40.247" if host == "auth.socrat.alchemmist.xyz" else host
+        return original(target, port, family, type, proto, flags)
+
+    socket.getaddrinfo = pinned
 
 
 def _api(credential: dict[str, object], method: str, path: str, data: object = None) -> object:
@@ -88,9 +115,15 @@ class _FixtureContext(NamedTuple):
 def _check_fixture(context: _FixtureContext) -> dict[str, object]:
     """Fetch the fixture and assert it stays inactive with only our marker."""
     current = cast("dict[str, object]", _api(context.credential, "GET", context.path))
-    assert current["uuid"] == context.fixture["uuid"]
-    assert not current["is_active"]
-    assert current["attributes"] == {"homelab_app_access_fixture": context.marker}
+    if current["uuid"] != context.fixture["uuid"]:
+        msg = "Live fixture changed identity mid-run"
+        raise RuntimeError(msg)
+    if current["is_active"]:
+        msg = "Fixture must stay inactive"
+        raise RuntimeError(msg)
+    if current["attributes"] != {"homelab_app_access_fixture": context.marker}:
+        msg = "Fixture attributes must carry only our marker"
+        raise RuntimeError(msg)
     return current
 
 
@@ -107,7 +140,9 @@ def _evaluate(context: _FixtureContext, name: str) -> object:
             {"user": context.fixture["pk"]},
         ),
     )
-    assert result["successful"], "Native property mapping evaluation failed"
+    if not result["successful"]:
+        msg = "Native property mapping evaluation failed"
+        raise RuntimeError(msg)
     value = result["result"]
     if isinstance(value, str):
         try:
@@ -123,12 +158,39 @@ def _admitted(context: _FixtureContext, group_pk: object) -> list[str]:
     for app in context.apps:
         subset = [b for b in context.bindings if b["target"] == app["pk"]]
         # Test guarantees only the simple ANY group lanes in this inventory.
-        assert subset
-        assert app["policy_engine_mode"] == "any"
-        assert all(b.get("enabled") and not b.get("negate") and not b.get("policy") for b in subset)
+        if not subset:
+            msg = "Application must keep at least one binding"
+            raise RuntimeError(msg)
+        if app["policy_engine_mode"] != "any":
+            msg = "Application must use the ANY lane"
+            raise RuntimeError(msg)
+        if any(not b.get("enabled") or b.get("negate") or b.get("policy") for b in subset):
+            msg = "Application lanes must be simple enabled group bindings"
+            raise RuntimeError(msg)
         if any(b.get("group") == group_pk for b in subset):
             slugs.append(cast("str", app["slug"]))
     return sorted(slugs)
+
+
+def _verify_projected(
+    actual: dict[str, object], slug: str, expected: object, fixture_uuid: object
+) -> None:
+    """Verify one native projection result against the reviewed expectations."""
+    if slug == "litellm":
+        if actual["litellm_user_role"] != expected:
+            msg = "litellm role projection drifted from the reviewed mapping"
+            raise RuntimeError(msg)
+        if actual["litellm_user_id"] != "authentik:" + cast("str", fixture_uuid):
+            msg = "litellm id projection must pin the fixture uuid"
+            raise RuntimeError(msg)
+        return
+    groups_value = cast("list[object]", actual["groups"])
+    if expected not in groups_value:
+        msg = "Projected membership must include the reviewed group"
+        raise RuntimeError(msg)
+    if "homelab-owner" in groups_value:
+        msg = "Privileged group must never be projected"
+        raise RuntimeError(msg)
 
 
 def _run_cases(context: _FixtureContext) -> None:
@@ -178,25 +240,28 @@ def _run_cases(context: _FixtureContext) -> None:
         _check_fixture(context)
         group_pk = context.groups[group]["pk"]
         _api(context.credential, "PATCH", context.path, {"groups": [group_pk]})
-        assert _check_fixture(context)["groups"] == [group_pk]
-        assert _admitted(context, group_pk) == [slug], "Cross-application admission leak"
-        actual = _evaluate(context, mapping)
-        if slug == "litellm":
-            assert actual["litellm_user_role"] == expected
-            assert actual["litellm_user_id"] == "authentik:" + context.fixture["uuid"]
-        else:
-            assert expected in actual["groups"]
-            assert "homelab-owner" not in actual["groups"]
+        if _check_fixture(context)["groups"] != [group_pk]:
+            msg = "Fixture membership patch must be reflected exactly once"
+            raise RuntimeError(msg)
+        if _admitted(context, group_pk) != [slug]:
+            msg = "Cross-application admission leak"
+            raise RuntimeError(msg)
+        actual = cast("dict[str, object]", _evaluate(context, mapping))
+        _verify_projected(actual, slug, expected, context.fixture["uuid"])
         # Projection aliases exist only in this client's token, not in IdP membership.
-        assert _check_fixture(context)["groups"] == [group_pk]
+        if _check_fixture(context)["groups"] != [group_pk]:
+            msg = "Fixture membership must not drift away from the single group"
+            raise RuntimeError(msg)
         successes.append(group)
         print("PASS native mapping + isolated admission:", group, flush=True)
     _api(context.credential, "PATCH", context.path, {"groups": []})
-    assert _check_fixture(context)["groups"] == []
-    assert (
-        _evaluate(context, "homelab-litellm-reviewed-identity")["litellm_user_role"]
-        == "internal_user_viewer"
-    )
+    if _check_fixture(context)["groups"] != []:
+        msg = "Fixture membership must be cleared exactly"
+        raise RuntimeError(msg)
+    litellm = cast("dict[str, object]", _evaluate(context, "homelab-litellm-reviewed-identity"))
+    if litellm["litellm_user_role"] != "internal_user_viewer":
+        msg = "Removed membership must fail safe to the viewer role"
+        raise RuntimeError(msg)
     result = {
         "native_mapping_cases": successes,
         "cross_app_admission_denied": True,
@@ -212,9 +277,9 @@ def _delete_fixture(context: _FixtureContext) -> None:
     """Delete the fixture and verify no residue user remains."""
     _check_fixture(context)
     _api(context.credential, "DELETE", context.path)
-    assert not any(
-        u["uuid"] == context.fixture["uuid"] for u in _rows(context.credential, "core/users/")
-    )
+    if any(u["uuid"] == context.fixture["uuid"] for u in _rows(context.credential, "core/users/")):
+        msg = "Deleted fixture must leave no residue user"
+        raise RuntimeError(msg)
     print(
         "Inactive fixture deleted; no password/MFA/session or native application accounts created",
         flush=True,
