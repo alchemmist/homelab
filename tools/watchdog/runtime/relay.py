@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Node-local Moscow relay watchdog. Never manages control-plane or management relay.
-The worker agent is fenced before native start; fallback marker fences its boot.
-No API availability-only failover. Native mode is sticky until explicit failback.
+"""Node-local Moscow relay watchdog.
+
+Never manages control-plane or management relay. The worker agent is fenced
+before native start; fallback marker fences its boot. No API availability-only
+failover. Native mode is sticky until explicit failback.
 """
 
 import argparse
@@ -26,6 +28,10 @@ AGENT = "k3s-agent.service"
 NATIVE = "homelab-vpn-transit-native.service"
 TCP = (80, 443, 32053, 32083, 32084)
 UDP = (443, 32085, 32086)
+WEBSOCKET_STATUS = 101
+WITNESS_UNAVAILABLE_EXIT = 255
+MIN_FREE_DISK_BYTES = 2 * 1024**3
+FAILURE_THRESHOLD = 4
 
 
 def persistent_number(value: object) -> float:
@@ -44,35 +50,40 @@ class Diagnosis(TypedDict, total=False):
 def run(
     args: list[str], timeout: int = 25, *, check: bool = True
 ) -> subprocess.CompletedProcess[str]:
+    """Run a fixed, reviewed command and optionally require success."""
     p = subprocess.run(args, check=False, capture_output=True, text=True, timeout=timeout)
     if check and p.returncode:
         raise RuntimeError("Command failed: " + str(args[:3]))
     return p
 
 
-def atomic(path, value) -> None:
+def atomic(path: pathlib.Path, value: object) -> None:
+    """Persist a JSON value atomically with fsync on file and directory."""
     tmp = path.with_suffix(".tmp")
     data = json.dumps(value, sort_keys=True).encode()
     with tmp.open("wb") as f:
         f.write(data)
         f.flush()
         os.fsync(f.fileno())
-    os.chmod(tmp, 0o600)
-    os.replace(tmp, path)
+    tmp.chmod(0o600)
+    tmp.replace(path)
     fd = os.open(path.parent, os.O_DIRECTORY)
     os.fsync(fd)
     os.close(fd)
 
 
 def boot_id() -> str:
+    """Return the current kernel boot identifier."""
     return pathlib.Path("/proc/sys/kernel/random/boot_id").read_text().strip()
 
 
 def active(unit: str) -> bool:
+    """Return True when the given systemd unit reports active."""
     return run(["systemctl", "is-active", "--quiet", unit], check=False).returncode == 0
 
 
 def free_ports() -> bool:
+    """Verify every public port can be bound fresh (no live local owner)."""
     for typ, ports in [(socket.SOCK_STREAM, TCP), (socket.SOCK_DGRAM, UDP)]:
         for port in ports:
             with socket.socket(socket.AF_INET, typ) as s:
@@ -86,16 +97,22 @@ def free_ports() -> bool:
 
 
 def identity(pid: int, cid: str) -> dict[str, object] | None:
+    """Verify the pid belongs to the reviewed container id and return its identity."""
     p = pathlib.Path("/proc") / str(pid)
     if not p.exists():
         return None
     cg = (p / "cgroup").read_text()
-    assert cid in cg
-    assert "kubepods" in cg or "cri-containerd" in cg
+    if cid not in cg:
+        msg = "Container id mismatch in cgroup"
+        raise RuntimeError(msg)
+    if "kubepods" not in cg and "cri-containerd" not in cg:
+        msg = "Process is outside the reviewed container runtime"
+        raise RuntimeError(msg)
     return {"pid": pid, "cid": cid, "start": (p / "stat").read_text().split()[21]}
 
 
 def pod_processes() -> list[dict[str, object]]:
+    """List the vpn-transit relay pod worker identities with stable start times."""
     p = run(["k3s", "crictl", "--timeout=5s", "ps", "-o", "json"], timeout=9)
     result: list[dict[str, object]] = []
     for c in json.loads(p.stdout)["containers"]:
@@ -115,6 +132,7 @@ def pod_processes() -> list[dict[str, object]]:
 
 
 def terminate_owned(i: dict[str, object]) -> None:
+    """Stop the identified owned relay worker, escalating to SIGKILL if needed."""
     pid_value = i["pid"]
     if not isinstance(pid_value, int):
         reason = "Unusable container pid"
@@ -124,7 +142,9 @@ def terminate_owned(i: dict[str, object]) -> None:
     now = identity(pid, cid)
     if now is None:
         return
-    assert now == i
+    if now != i:
+        msg = "Owned process identity changed before termination"
+        raise RuntimeError(msg)
     os.kill(pid, signal.SIGTERM)
     for _ in range(50):
         if not pathlib.Path("/proc", str(pid)).exists():
@@ -141,6 +161,7 @@ def probe(
     source: tuple[str, int] | None = None,
     detail: dict[str, object] | None = None,
 ) -> bool:
+    """Probe the reviewed TLS/WebSocket data path and record stage detail."""
     # Same strict TLS/WS identity and ACLs on the local and direct upstream path.
     d = detail if detail is not None else {}
     d.update(at=time.time(), stage="connect", ok=False)
@@ -159,7 +180,9 @@ def probe(
                 req = (
                     "GET "
                     + str(config["ws_path"])
-                    + " HTTP/1.1\r\nHost: vpn.alchemmist.xyz\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: "
+                    + " HTTP/1.1\r\nHost: vpn.alchemmist.xyz\r\n"
+                    + "Upgrade: websocket\r\nConnection: Upgrade\r\n"
+                    + "Sec-WebSocket-Key: "
                     + base64.b64encode(os.urandom(16)).decode("ascii")
                     + "\r\nSec-WebSocket-Version: 13\r\n\r\n"
                 )
@@ -168,15 +191,18 @@ def probe(
                 # Record only the numeric HTTP status, never the private path/response body.
                 parts = line.split()
                 d["http_status"] = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
-                assert d["http_status"] == 101
+                if d["http_status"] != WEBSOCKET_STATUS:
+                    msg = "Websocket upgrade did not return switching protocols"
+                    raise RuntimeError(msg)
         d.update(stage="complete", ok=True)
         return True
-    except (OSError, AssertionError, ssl.SSLError) as e:
+    except (OSError, RuntimeError, ssl.SSLError) as e:
         d.update(error=type(e).__name__, errno=getattr(e, "errno", None))
         raise
 
 
 def local_listeners_respond() -> bool:
+    """Check whether every local data-path port accepts a TCP connection."""
     for port in (32053, 32083, 32084, 443):
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=1):
@@ -190,7 +216,7 @@ class Controller:
     """Failover controller for the VPN transit links."""
 
     def __init__(self) -> None:
-
+        """Load config and persisted state for the failover controller."""
         self.config = json.loads(CONFIG.read_text())
         self.marker = ROOT / "fallback.active"
         self.state: dict[str, object] = (
@@ -199,12 +225,12 @@ class Controller:
             else {"mode": "prepared", "failures": 0}
         )
 
-    def save(self, **fields) -> None:
+    def save(self, **fields: object) -> None:
         """Persist updated state fields atomically."""
         self.state.update(fields)
         atomic(ROOT / "state.json", self.state)
 
-    def receipt(self, action, **fields) -> None:
+    def receipt(self, action: str, **fields: object) -> None:
         """Append a timestamped receipt file for the taken action."""
         v = {"action": action, "at": time.time(), **fields}
         atomic(ROOT / (str(time.time_ns()) + "-" + action + ".json"), v)
@@ -215,7 +241,7 @@ class Controller:
         try:
             probe(self.config, detail=self.last_probe)
             return True
-        except (OSError, AssertionError, ssl.SSLError):
+        except (OSError, RuntimeError, ssl.SSLError):
             return False
 
     def recovery_scope(self) -> Diagnosis:
@@ -235,7 +261,7 @@ class Controller:
                 "scope": scope,
                 "upstream_probe": detail,
             }
-        except (OSError, AssertionError, ssl.SSLError):
+        except (OSError, RuntimeError, ssl.SSLError):
             return {
                 "recover_local": False,
                 "scope": "upstream-or-path-unhealthy",
@@ -244,21 +270,31 @@ class Controller:
 
     def prerequisites(self) -> None:
         """Pin the binary hash and validate the native path before use."""
-        assert (
-            hashlib.sha256(pathlib.Path("/usr/local/libexec/xray-transit").read_bytes()).hexdigest()
-            == self.config["binary_sha256"]
-        )
-        assert active("homelab-vpn-management-relay.service")
-        assert not active("homelab-vpn-transit.service")  # retired combined service
+        digest = hashlib.sha256(
+            pathlib.Path("/usr/local/libexec/xray-transit").read_bytes()
+        ).hexdigest()
+        if digest != self.config["binary_sha256"]:
+            msg = "Native binary hash does not match the pinned value"
+            raise RuntimeError(msg)
+        if not active("homelab-vpn-management-relay.service"):
+            msg = "Management relay must stay active for any transition"
+            raise RuntimeError(msg)
+        if active("homelab-vpn-transit.service"):  # retired combined service
+            msg = "Retired combined transit service must never run"
+            raise RuntimeError(msg)
         r = run(["ip", "route", "get", "10.250.0.2"]).stdout
-        assert "dev wg-socrat" in r
-        assert "src 10.250.0.40" in r
+        if "dev wg-socrat" not in r:
+            msg = "Upstream route must leave via the reviewed wireguard interface"
+            raise RuntimeError(msg)
+        if "src 10.250.0.40" not in r:
+            msg = "Upstream route must use the reviewed transit source address"
+            raise RuntimeError(msg)
 
     def activate(self, reason: str) -> None:
         """Enter the xray fallback mode after all prerequisites pass."""
-        assert self.state["mode"] != "native-primary", (
-            "Native primary cannot be reactivated as fallback"
-        )
+        if self.state["mode"] == "native-primary":
+            msg = "Native primary cannot be reactivated as fallback"
+            raise RuntimeError(msg)
         self.prerequisites()
         processes: list[dict[str, object]] = []
         try:
@@ -273,7 +309,9 @@ class Controller:
         atomic(self.marker, {"reason": reason, "at": time.time()})
         self.save(mode="transition-to-native", healthy=False)
         run(["systemctl", "stop", AGENT], timeout=75)
-        assert not active(AGENT)
+        if active(AGENT):
+            msg = "Worker agent still active after stop"
+            raise RuntimeError(msg)
         with contextlib.suppress(RuntimeError, subprocess.TimeoutExpired):
             processes += pod_processes()
         unique = {i["pid"]: i for i in processes}
@@ -297,52 +335,82 @@ class Controller:
                 time.sleep(0.2)
         free_ports()
         run(["systemctl", "start", NATIVE])
-        assert active(NATIVE)
+        if not active(NATIVE):
+            msg = "Native relay failed to become active"
+            raise RuntimeError(msg)
         for _ in range(15):
             if self.healthy():
                 break
             time.sleep(1)
-        assert self.healthy()
+        if not self.healthy():
+            msg = "Native relay did not become healthy after activation"
+            raise RuntimeError(msg)
         self.save(mode="native", failures=0, healthy=True)
         self.receipt("native-accepted", reason=reason, owned_containers_fenced=len(unique))
 
     def promote(self) -> None:
         """Explicitly accept a healthy fenced native relay as the permanent primary."""
         self.prerequisites()
-        assert self.marker.exists()
-        assert self.state["mode"] == "native"
-        assert not active(AGENT)
-        assert active(NATIVE)
-        assert self.healthy()
+        if not self.marker.exists():
+            msg = "Promotion requires the fallback marker"
+            raise RuntimeError(msg)
+        if self.state["mode"] != "native":
+            msg = "Promotion requires the native fallback mode"
+            raise RuntimeError(msg)
+        if active(AGENT):
+            msg = "Promotion requires the fenced agent to stay stopped"
+            raise RuntimeError(msg)
+        if not active(NATIVE):
+            msg = "Promotion requires an active native relay"
+            raise RuntimeError(msg)
+        if not self.healthy():
+            msg = "Promotion requires a healthy native relay"
+            raise RuntimeError(msg)
         self.save(mode="native-primary", failures=0, healthy=True)
         self.receipt("native-primary-accepted")
 
     def demote(self) -> None:
         """Explicit rollback preparation; never starts a worker or releases its fence."""
         self.prerequisites()
-        assert self.marker.exists()
-        assert self.state["mode"] == "native-primary"
-        assert not active(AGENT)
-        assert active(NATIVE)
-        assert self.healthy()
+        if not self.marker.exists():
+            msg = "Demotion requires the fallback marker"
+            raise RuntimeError(msg)
+        if self.state["mode"] != "native-primary":
+            msg = "Demotion requires the native-primary mode"
+            raise RuntimeError(msg)
+        if active(AGENT):
+            msg = "Demotion requires the fenced agent to stay stopped"
+            raise RuntimeError(msg)
+        if not active(NATIVE):
+            msg = "Demotion requires an active native relay"
+            raise RuntimeError(msg)
+        if not self.healthy():
+            msg = "Demotion requires a healthy native relay"
+            raise RuntimeError(msg)
         self.save(mode="native", failures=0, healthy=True)
         self.receipt("native-primary-demoted")
 
     def failback(self) -> None:
         """Return to the native primary path after re-validation."""
         self.prerequisites()
-        assert self.marker.exists()
-        assert self.state["mode"] == "native"
+        if not self.marker.exists():
+            msg = "Failback requires the fallback marker"
+            raise RuntimeError(msg)
+        if self.state["mode"] != "native":
+            msg = "Failback requires the native fallback mode"
+            raise RuntimeError(msg)
         if self.config.get("warm_return_enabled"):
             self.warm_return()
-            if self.state["mode"] != "kubernetes":
+            if self.state.get("mode") != "kubernetes":
                 msg = "Coordinated return deferred; native relay retained"
                 raise RuntimeError(msg)
             return
         self.save(mode="transition-to-kubernetes", healthy=False)
         try:
             run(["systemctl", "stop", NATIVE])
-            assert not active(NATIVE)
+            if active(NATIVE):
+                msg = "Native relay still active after stop"
+                raise RuntimeError(msg)
             free_ports()
             if self.permit.parent.is_dir():
                 atomic(self.permit, {"owner": "kubernetes"})
@@ -355,7 +423,9 @@ class Controller:
             deadline = time.monotonic() + 150
             while time.monotonic() < deadline:
                 if self.healthy() and pod_processes():
-                    assert not active(NATIVE)
+                    if active(NATIVE):
+                        msg = "Native relay must not stay active after cluster accept"
+                        raise RuntimeError(msg)
                     self.save(mode="kubernetes", failures=0, healthy=True)
                     self.receipt("kubernetes-accepted")
                     return
@@ -367,10 +437,12 @@ class Controller:
             raise
 
     @property
-    def permit(self):
+    def permit(self) -> pathlib.Path:
+        """Path of the cluster port-ownership permit file."""
         return pathlib.Path("/var/lib/homelab-vpn-transit/port-owner/cluster")
 
-    def agent_allowed(self):
+    def agent_allowed(self) -> bool:
+        """Return True only when a fenced warm return may boot the agent."""
         if not self.marker.exists():
             return True
         return (
@@ -381,20 +453,22 @@ class Controller:
             and active(NATIVE)
         )
 
-    def witness(self):
+    def witness(self) -> None:
+        """Run the optional external witness probe and record its verdict."""
         # Optional external validation supplements mandatory local/upstream probes.
         try:
             response = run(["/usr/local/sbin/homelab-vpn-external-probe"], timeout=7, check=False)
         except FileNotFoundError:
             self.receipt("external-validation-unavailable")
             return
-        if response.returncode == 255:
+        if response.returncode == WITNESS_UNAVAILABLE_EXIT:
             self.receipt("external-validation-unavailable")
         elif response.returncode:
             msg = "Reachable external VPN client rejected path"
             raise RuntimeError(msg)
 
-    def warm_return(self):
+    def warm_return(self) -> None:
+        """Coordinate the witnessed return to the kubernetes data path."""
         # A separate SSH identity invokes a fixed flock command on socrat-0.
         # EOF releases it, including after a controller crash. Never substitute
         # a failed/queued lock with a local-only decision.
@@ -415,16 +489,21 @@ class Controller:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
         ) as lock:
+            stdout = lock.stdout
+            stdin = lock.stdin
+            if stdout is None or stdin is None:
+                msg = "Witness lock pipes unavailable"
+                raise RuntimeError(msg)
             try:
                 token = b"LOCKED\n"
                 reply = b""
                 deadline = time.monotonic() + 5
                 while reply != token:
                     left = deadline - time.monotonic()
-                    if left <= 0 or not select.select([lock.stdout], [], [], left)[0]:
+                    if left <= 0 or not select.select([stdout], [], [], left)[0]:
                         self.receipt("return-deferred", reason="witness-lock-timeout")
                         return
-                    chunk = os.read(lock.stdout.fileno(), len(token) - len(reply))
+                    chunk = os.read(stdout.fileno(), len(token) - len(reply))
                     reply += chunk
                     if not chunk or not token.startswith(reply):
                         self.receipt(
@@ -434,18 +513,19 @@ class Controller:
                         )
                         return
                 self._handoff(lock)
-                completed = self.state["mode"] == "kubernetes"
+                mode_value = self.state["mode"]
                 if self.config.get("persistent_witness"):
-                    lock.stdin.write(b"COMMIT\n" if completed else b"ABORT\n")
-                    lock.stdin.flush()
-                    if lock.wait(timeout=4) != 0 or lock.stdout.read(9) != b"RELEASED\n":
+                    stdin.write(b"COMMIT\n" if mode_value == "kubernetes" else b"ABORT\n")
+                    stdin.flush()
+                    if lock.wait(timeout=4) != 0 or stdout.read(9) != b"RELEASED\n":
                         msg = "Unconfirmed witness release; inspect ownership before retry"
                         raise RuntimeError(msg)
             finally:
-                lock.stdin.close()
+                stdin.close()
                 lock.terminate()
 
-    def _handoff(self, lock):
+    def _handoff(self, lock: subprocess.Popen[bytes]) -> None:
+        """Perform the gated cluster takeover while holding the witness lock."""
         self.prerequisites()
         if (
             not self.marker.exists()
@@ -472,7 +552,7 @@ class Controller:
         disk = os.statvfs("/var/lib/rancher/k3s")
         if (
             available < 256 * 1024
-            or disk.f_bavail * disk.f_frsize < 2 * 1024**3
+            or disk.f_bavail * disk.f_frsize < MIN_FREE_DISK_BYTES
             or os.getloadavg()[0] > (os.cpu_count() or 1)
         ):
             return
@@ -487,9 +567,8 @@ class Controller:
                     msg = "Lost independent transition lock"
                     raise RuntimeError(msg)
                 owners = pod_processes()
-                if len(owners) == 1 and os.path.samefile(
-                    f"/proc/{owners[0]['pid']}/exe",
-                    "/usr/local/libexec/vpn-transit-gate",
+                if len(owners) == 1 and pathlib.Path(f"/proc/{owners[0]['pid']}/exe").samefile(
+                    "/usr/local/libexec/vpn-transit-gate"
                 ):
                     break
                 time.sleep(0.5)
@@ -578,11 +657,15 @@ class Controller:
         if ok:
             self.save(grace_until=0)
         n = 0 if ok else int(persistent_number(self.state.get("failures", 0))) + 1
-        self.save(healthy=ok, failures=min(n, 4), last_probe=getattr(self, "last_probe", {}))
+        self.save(
+            healthy=ok,
+            failures=min(n, FAILURE_THRESHOLD),
+            last_probe=getattr(self, "last_probe", {}),
+        )
         if ok:
             if self.state.get("failure_scope"):
                 self.save(failure_scope=None)
-        elif n >= 4:
+        elif n >= FAILURE_THRESHOLD:
             diagnosis = self.recovery_scope()
             if self.state.get("failure_scope") != diagnosis["scope"]:
                 self.receipt(
@@ -606,6 +689,7 @@ class Controller:
 
 
 def main() -> None:
+    """Dispatch the reviewed supervisor action under the exclusive tree lock."""
     os.umask(0o077)
     p = argparse.ArgumentParser()
     p.add_argument(

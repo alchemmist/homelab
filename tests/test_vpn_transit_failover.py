@@ -331,7 +331,7 @@ def test_native_primary_requires_healthy_fenced_native_and_is_sticky(
     monkeypatch.setattr(c, "prerequisites", lambda: None)
     monkeypatch.setattr(m, "active", lambda unit: unit == m.NATIVE)
     monkeypatch.setattr(c, "healthy", lambda: True)
-    with pytest.raises(AssertionError):
+    with pytest.raises(RuntimeError, match="Promotion requires"):
         c.promote()
     m.atomic(c.marker, {"native": True})
     c.save(mode="native")
@@ -340,9 +340,9 @@ def test_native_primary_requires_healthy_fenced_native_and_is_sticky(
     assert c.marker.exists()
     c.tick()
     assert c.state["mode"] == "native-primary"
-    with pytest.raises(AssertionError):
+    with pytest.raises(RuntimeError, match="Failback requires"):
         c.failback()
-    with pytest.raises(AssertionError):
+    with pytest.raises(RuntimeError, match="cannot be reactivated"):
         c.activate("accidental fallback replay")
     c.demote()
     demoted_mode = c.state["mode"]
@@ -364,7 +364,7 @@ def test_unhealthy_primary_never_restarts_agent_or_releases_fence(
     c.tick()
     assert not c.state["healthy"]
     assert c.marker.exists()
-    with pytest.raises(AssertionError):
+    with pytest.raises(RuntimeError, match="Demotion requires a healthy"):
         c.demote()
 
 
