@@ -20,10 +20,18 @@ from ci.quality import public_advertised_routes as checks
 )
 def test_remark_public_response(monkeypatch, path, reply, ok):
     from hashlib import sha256
+    from types import SimpleNamespace
 
     monkeypatch.setattr(checks, "REMARK_EMBED_SHA256", sha256(b"fixture").hexdigest())
+
+    def run(args, **kwargs):
+        assert args[-1] == "https://" + checks.REMARK + path
+        return subprocess.CompletedProcess(args, 0, reply)
+
     monkeypatch.setattr(
-        subprocess, "run", lambda *a, **kw: subprocess.CompletedProcess([], 0, reply)
+        checks,
+        "subprocess",
+        SimpleNamespace(run=run, TimeoutExpired=subprocess.TimeoutExpired),
     )
     assert (checks._path(checks.REMARK, "192.0.2.1", path) == "matched") is ok
 
