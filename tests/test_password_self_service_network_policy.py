@@ -39,8 +39,13 @@ def _ports(rules: list[dict]) -> set[tuple[str, int]]:
 def test_rendered_password_service_network_policy_is_minimal() -> None:
     documents = _render()
     policies = [doc for doc in documents if doc.get("kind") == "NetworkPolicy"]
-    assert len(policies) == 1
-    policy = policies[0]
+    assert sorted(d["metadata"]["name"] for d in policies) == [
+        "password-self-service",
+        "password-self-service-nl-peer",
+    ]
+    (policy,) = [
+        d for d in policies if d["metadata"]["name"] == "password-self-service"
+    ]
     assert policy["metadata"]["namespace"] == "identity"
     assert policy["spec"]["podSelector"]["matchLabels"] == {
         "app": "password-self-service"
