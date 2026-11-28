@@ -183,6 +183,7 @@ def test_frozen_provenance_is_the_exact_reviewed_file_set() -> None:
         "charts/spi-triage/files/service.py",
         "charts/spi-triage/files/telegram_delivery.py",
         "charts/spi-triage/files/telegram_links.py",
+        "charts/spi-triage/files/local_token_counter.py",
     ]
     assert common.owned(patched) == patched
     assert frozen == expected - set(patched)

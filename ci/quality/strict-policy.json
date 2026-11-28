@@ -175,6 +175,17 @@
         "PLR0912",
         "PLR0913",
         "PLR0915"
+      ],
+      "charts/spi-triage/files/local_token_counter.py": [
+        "C901",
+        "PLR0912",
+        "BLE001"
+      ],
+      "services/spi/legacy/backend/local_token_counter.py": [
+        "C901",
+        "PLR0912",
+        "BLE001",
+        "PLC0415"
       ]
     },
     "ignoreReasons": {
@@ -426,7 +437,7 @@
   "reviewedExceptionDigest": "fdbf4b83755f7ce568da4b53a20b5d23dfb4fa882728e8c1a5def79055935481",
   "frozenCompatibility": {
     "manifest": "charts/spi-triage/LEGACY-SOURCE-MANIFEST.json",
-    "sha256": "f35a1697568f0ebc5f3f9c3c55fcef027573879239b3b9f083bb3df2314eef42",
+    "sha256": "1fdcf392597e89cc047527611937f06261e5ffd96531c336c7dc5a7e5f029abf",
     "canonicalRepository": "https://github.com/alchemmist/spi-triage",
     "directory": "charts/spi-triage/files",
     "count": 17

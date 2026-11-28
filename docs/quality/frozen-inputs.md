@@ -18,10 +18,13 @@ v3 checkpoint/replay contracts pinned by the spi_triage suite, its bounded
 rate-limit parsing and its fixed GitHub/observability adapter origins, and
 `telemetry.py` keeps its reviewed bounded-read collector contract with the typed
 telemetry window, trace-span projector, per-source request gate and the exact
-Grafana link surface pinned digest-exactly by the spi_triage suite). Together
+Grafana link surface pinned digest-exactly by the spi_triage suite, and
+`local_token_counter.py` keeps its golden chat-template render, its bounded
+raw_fits budget walk and its digest-pinned tokenizer reservation contract
+pinned by the spi_triage suite). Together
 with the older `telegram_delivery.py`/`telegram_links.py` patches this marks
-**nine locally patched modules**, not pristine upstream files.
-All 17 deployed inputs still have pinned SHA-256 digests; only the 8 unpatched
+**ten locally patched modules**, not pristine upstream files.
+All 17 deployed inputs still have pinned SHA-256 digests; only the 7 unpatched
 modules are excluded from owned-source checks. The earlier boundary below
 describes the snapshot before those local patches.
 
