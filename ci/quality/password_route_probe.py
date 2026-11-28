@@ -55,9 +55,11 @@ def sample(path, *, ip=None, local_port=None):
     if r.returncode:
         return "transfer-unverified"
     status, sep, location = r.stdout.partition(b"\n")
-    if sep and status == b"302" and location == EXPECTED[path].encode():
+    if not sep or b"\n" in location or b"\r" in location:
+        return "unexpected-response"
+    if status == b"302" and location == EXPECTED[path].encode():
         return "matched"
-    if sep and status == b"502":
+    if status == b"502":
         return "http-502"
     return "unexpected-response"
 

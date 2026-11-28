@@ -155,6 +155,7 @@ def test_peer_flag_rejects_strings(value: str) -> None:
         ),
         ("/change-password", 200, "", "unexpected-response"),
         ("/change-password/", 502, "", "http-502"),
+        ("/change-password/", 502, "\nextra", "unexpected-response"),
     ],
 )
 def test_anonymous_password_path_witness(monkeypatch, path, status, location, result):
