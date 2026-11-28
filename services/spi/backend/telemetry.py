@@ -23,9 +23,13 @@ import re
 import time
 import urllib.parse
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING, TypedDict, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
 
 from core import SECRET_KEY, Failure
-from integrations import REQUEST_DEADLINE
+from integrations import HTTP, REQUEST_DEADLINE
 
 PUBLIC_GRAFANA_URL = "https://grafana.socrat.alchemmist.xyz"
 DATASOURCE_UIDS = ("loki", "prometheus", "tempo")
@@ -83,26 +87,66 @@ TRACEPARENT_RE = re.compile(
 )
 
 NOT_HEALTH = " This does not establish service health."
+LOG_SAMPLE_ITEMS = 2
+STAMP_CHAR_LIMIT = 32
+SPAN_EVENT_ITEMS = 10
+EVENT_ATTRIBUTE_ITEMS = 16
+LABELS_KEPT = 20
+LABEL_KEY_CHAR_LIMIT = 64
+LABEL_VALUE_CHAR_LIMIT = 200
+LINK_URL_CHAR_LIMIT = 8000
+METRIC_QUERY_CHAR_LIMIT = 4000
 WINDOW_LIMITATIONS = {
-    "INVALID_ALERT_TIMESTAMP": "The alert start time could not be parsed, so no log or trace query was issued."
+    "INVALID_ALERT_TIMESTAMP": (
+        "The alert start time could not be parsed, so no log or trace query was issued."
+    )
     + NOT_HEALTH,
-    "WINDOW_OUTSIDE_LOOKBACK": "The incident ended before the bounded lookback, so historical raw logs and traces were not queried."
+    "WINDOW_OUTSIDE_LOOKBACK": (
+        "The incident ended before the bounded lookback, so historical raw logs and traces were "
+        "not queried."
+    )
     + NOT_HEALTH,
-    "WINDOW_IN_FUTURE": "The alert start time is after the collector clock, so no telemetry query was issued."
+    "WINDOW_IN_FUTURE": (
+        "The alert start time is after the collector clock, so no telemetry query was issued."
+    )
     + NOT_HEALTH,
-    "EMPTY_WINDOW": "The bounded window collapsed to an empty interval, so no telemetry query was issued."
+    "EMPTY_WINDOW": (
+        "The bounded window collapsed to an empty interval, so no telemetry query was issued."
+    )
     + NOT_HEALTH,
 }
 BUDGET_LIMITATION = (
-    "The collector stopped before this read because the stage deadline or the deterministic request cap was reached. "
+    "The collector stopped before this read because the stage deadline or the deterministic "
+    "request cap was reached. "
     "Unfetched telemetry is unknown, not healthy."
 )
 FAILED_LIMITATION = "The telemetry query failed, so there are no rows to interpret." + NOT_HEALTH
-EMPTY_LOG_LIMITATION = "The log query succeeded and returned no lines. No matching lines do not establish service health or exclude an incident."
-EMPTY_TRACE_SEARCH_LIMITATION = "The Tempo search succeeded and returned no traces. No hits do not establish that the service is healthy or that no trace exists."
+EMPTY_WINDOW: _Window = {
+    "collected_at": 0,
+    "start": None,
+    "end": None,
+    "requested_start": None,
+    "requested_end": None,
+    "incident_start": None,
+    "incident_end": None,
+    "span_capped": False,
+    "clipped_to_lookback": False,
+    "clipped_to_now": False,
+    "end_ignored_reason": None,
+    "reason": None,
+}
+
+EMPTY_LOG_LIMITATION = (
+    "The log query succeeded and returned no lines. No matching lines do not establish service "
+    "health or exclude an incident."
+)
+EMPTY_TRACE_SEARCH_LIMITATION = (
+    "The Tempo search succeeded and returned no traces. No hits do not establish that the service "
+    "is healthy or that no trace exists."
+)
 
 
-def _epoch(value):
+def _epoch(value: object) -> int | None:
     """Whole Unix seconds for an ISO-8601 timestamp. Zero-year Alertmanager ends are open."""
     if value is None or value == "":
         return None
@@ -113,7 +157,7 @@ def _epoch(value):
     if not isinstance(value, str) or value.startswith("0001-"):
         return None
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value)
     except ValueError:
         return None
     if parsed.tzinfo is None:
@@ -122,7 +166,7 @@ def _epoch(value):
     return int(delta.total_seconds())
 
 
-def absolute_window(starts_at, ends_at, now):
+def absolute_window(starts_at: object, ends_at: object, now: float) -> _Window:
     """Absolute query bounds around the incident, clipped to now and lookback.
 
     ``start`` and ``end`` are the Unix seconds actually eligible for queries.
@@ -131,7 +175,7 @@ def absolute_window(starts_at, ends_at, now):
     """
     collected_at = int(now)
     started = _epoch(starts_at)
-    base = {
+    base: _Window = {
         "collected_at": collected_at,
         "start": None,
         "end": None,
@@ -189,34 +233,43 @@ def absolute_window(starts_at, ends_at, now):
     return base
 
 
-def _rfc3339(epoch):
+def _rfc3339(epoch: object) -> str | None:
+    if not isinstance(epoch, (int, float, str)) or isinstance(epoch, bool):
+        return None
     try:
         return datetime.fromtimestamp(int(epoch), UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     except (OverflowError, OSError, ValueError):
         return None
 
 
-def _deadline_remaining():
+def _deadline_remaining() -> float | None:
     deadline = getattr(REQUEST_DEADLINE, "at", None)
     if deadline is None:
         return None
     return deadline - time.monotonic()
 
 
-def _stable_id(prefix, *parts):
+def _stable_id(prefix: str, *parts: object) -> str:
     raw = json.dumps(parts, sort_keys=True, separators=(",", ":"), default=str).encode()
     return prefix + "-" + hashlib.sha256(raw).hexdigest()[:16]
 
 
-def _safe_name(name):
+def _safe_name(name: str) -> str:
     if re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,70}\.json", name):
         return name
     return "telemetry.json"
 
 
-def grafana_explore_url(public_base, datasource_uid, query_text, start, end, query_field):
+def grafana_explore_url(
+    public_base: str,
+    datasource_uid: str,
+    query_text: str,
+    start: int,
+    end: int,
+    query_field: str,
+) -> str:
     """Grafana Explore URL with a datasource UID and an absolute millisecond range."""
-    query = {
+    query: dict[str, object] = {
         "refId": "A",
         "datasource": {"type": datasource_uid, "uid": datasource_uid},
         query_field: query_text,
@@ -245,7 +298,7 @@ def grafana_explore_url(public_base, datasource_uid, query_text, start, end, que
     return public_base.rstrip("/") + "/explore?" + encoded
 
 
-def _public_base(url):
+def _public_base(url: object) -> str | None:
     if not isinstance(url, str):
         return None
     parts = urllib.parse.urlsplit(url.strip())
@@ -259,9 +312,15 @@ def _public_base(url):
     return "https://" + host
 
 
-def _one_label(labels, keys, pattern, field, rejected):
+def _one_label(
+    labels: object,
+    keys: tuple[str, ...],
+    pattern: re.Pattern[str],
+    field: str,
+    rejected: list[dict[str, str]],
+) -> str | None:
     """Return one validated label, or None. Present invalid aliases are not used."""
-    present = []
+    present: list[tuple[str, object]] = []
     for key in keys:
         if not isinstance(labels, dict) or key not in labels:
             continue
@@ -274,12 +333,13 @@ def _one_label(labels, keys, pattern, field, rejected):
     bad = [
         key for key, value in present if not (isinstance(value, str) and pattern.fullmatch(value))
     ]
-    good = []
-    for key, value in present:
-        if isinstance(value, str) and pattern.fullmatch(value) and value not in good:
-            good.append(value)
-    for key in bad:
-        rejected.append({"label": key, "reason": "UNSAFE_LABEL"})
+    good: list[str] = []
+    good.extend(
+        value
+        for _, value in present
+        if isinstance(value, str) and pattern.fullmatch(value) and value not in good
+    )
+    rejected.extend({"label": item, "reason": "UNSAFE_LABEL"} for item in bad)
     if bad:
         return None
     if len(good) > 1:
@@ -288,7 +348,7 @@ def _one_label(labels, keys, pattern, field, rejected):
     return good[0] if good else None
 
 
-def _service_label(labels, rejected):
+def _service_label(labels: object, rejected: list[dict[str, str]]) -> str | None:
     value = _one_label(
         labels,
         ("service", "service_name", "app", "deployment", "k8s_deployment_name"),
@@ -302,11 +362,12 @@ def _service_label(labels, rejected):
     return value
 
 
-def _nodenames(result):
-    names = []
+def _nodenames(result: object) -> list[str]:
+    names: list[str] = []
     if not isinstance(result, dict):
         return names
-    data = result.get("data")
+    typed = cast("dict[str, object]", result)
+    data = typed.get("data")
     rows = data.get("result") if isinstance(data, dict) else None
     if isinstance(rows, list):
         for row in rows:
@@ -314,7 +375,7 @@ def _nodenames(result):
             if isinstance(metric, dict) and isinstance(metric.get("nodename"), str):
                 names.append(metric["nodename"])
         return names
-    series = result.get("series")
+    series = typed.get("series")
     if isinstance(series, list):
         for row in series:
             item = row.get("labels") if isinstance(row, dict) else None
@@ -323,7 +384,7 @@ def _nodenames(result):
     return names
 
 
-def _unique(values):
+def _unique[T](values: Iterable[T]) -> list[T]:
     result = []
     for value in values:
         if value not in result:
@@ -331,16 +392,18 @@ def _unique(values):
     return result
 
 
-def _evidence_hosts(evidence):
+def _evidence_hosts(evidence: dict[str, object]) -> list[str]:
     names = []
-    for query in evidence.get("queries") or []:
+    queries = evidence.get("queries")
+    for query in queries if isinstance(queries, list) else []:
         if not isinstance(query, dict) or query.get("source") != "node_identity":
             continue
         names.extend(_nodenames(query.get("result")))
     return _unique(names)
 
 
-def normalize_trace_id(value):
+def normalize_trace_id(value: object) -> str | None:
+    """Normalize a trace ID to 32 hexadecimal digits, zero-padded from 16, or None."""
     if not isinstance(value, str):
         return None
     text = value.strip().lower()
@@ -351,18 +414,18 @@ def normalize_trace_id(value):
     return None
 
 
-def trace_ids_in_text(text):
+def trace_ids_in_text(text: object) -> list[str]:
+    """Collect unique trace IDs from traceparent or bare trace-ID form, in order."""
     if not isinstance(text, str):
         return []
-    found = []
+    found: list[tuple[int, str]] = []
     for pattern in (TRACEPARENT_RE, TRACE_ID_RE):
-        for match in pattern.finditer(text):
-            found.append((match.start(1), match.group(1).lower()))
+        found.extend((match.start(1), match.group(1).lower()) for match in pattern.finditer(text))
     found.sort()
     return _unique(value for _, value in found)
 
 
-def _line_epoch(value):
+def _line_epoch(value: object) -> int | None:
     if isinstance(value, bool):
         return None
     if isinstance(value, (int, float)) or (
@@ -382,7 +445,9 @@ def _line_epoch(value):
     return None
 
 
-def _k8s_selector(namespace, pod, container, service):
+def _k8s_selector(
+    namespace: str, pod: str | None, container: str | None, service: str | None
+) -> str:
     query = "{k8s_namespace_name=" + json.dumps(namespace) + "}"
     if pod:
         query += " | k8s_pod_name=" + json.dumps(pod)
@@ -393,56 +458,61 @@ def _k8s_selector(namespace, pod, container, service):
     return query
 
 
-def _host_selector(host, unit):
+def _host_selector(host: str, unit: str | None) -> str:
     query = "{host_name=" + json.dumps(host) + "}"
     if unit:
         query += " | service_name=" + json.dumps(unit)
     return query
 
 
-def _bound_labels(labels):
+def _bound_labels(labels: object) -> dict[str, str]:
     if not isinstance(labels, dict):
         return {}
-    bounded = {}
+    bounded: dict[str, str] = {}
     for index, (key, value) in enumerate(labels.items()):
-        if index >= 20:
+        if index >= LABELS_KEPT:
             break
-        if isinstance(key, str) and isinstance(value, str) and len(key) <= 64 and len(value) <= 200:
+        if (
+            isinstance(key, str)
+            and isinstance(value, str)
+            and len(key) <= LABEL_KEY_CHAR_LIMIT
+            and len(value) <= LABEL_VALUE_CHAR_LIMIT
+        ):
             bounded[key] = value
     return bounded
 
 
-def _attr_scalar(raw):
+def _attr_scalar(raw: object) -> bool | int | float | str | None:
     if not isinstance(raw, dict):
         return None
     for key in ("stringValue", "intValue", "doubleValue", "boolValue"):
         if key not in raw:
             continue
         value = raw[key]
-        if isinstance(value, bool) or isinstance(value, (int, float, str)):
+        if isinstance(value, (bool, int, float, str)):
             if isinstance(value, str) and len(value) > ATTRIBUTE_CHAR_LIMIT:
                 return value[:ATTRIBUTE_CHAR_LIMIT]
             return value
     return None
 
 
-def _project_trace(payload, trace_id):
+def _project_trace(payload: object, trace_id: str) -> dict[str, object] | None:
     batches = None
-    if isinstance(payload, dict):
-        if isinstance(payload.get("resourceSpans"), list) or isinstance(
-            payload.get("batches"), list
-        ):
-            batches = payload.get("resourceSpans") or payload.get("batches") or []
+    if isinstance(payload, dict) and (
+        isinstance(payload.get("resourceSpans"), list) or isinstance(payload.get("batches"), list)
+    ):
+        batches = payload.get("resourceSpans") or payload.get("batches") or []
     if batches is None:
         return None
-    spans = []
+    spans: list[dict[str, object]] = []
     scanned = 0
     scan_capped = False
     for batch in batches:
         if not isinstance(batch, dict):
             continue
         service = None
-        resource = batch.get("resource") if isinstance(batch.get("resource"), dict) else {}
+        resource_value = batch.get("resource")
+        resource = resource_value if isinstance(resource_value, dict) else {}
         for attribute in resource.get("attributes") or []:
             if not isinstance(attribute, dict) or attribute.get("key") != "service.name":
                 continue
@@ -465,11 +535,12 @@ def _project_trace(payload, trace_id):
                 own = normalize_trace_id(raw.get("traceId") or raw.get("trace_id") or "")
                 if own and own != trace_id:
                     continue
-                status = raw.get("status") if isinstance(raw.get("status"), dict) else {}
+                status_value = raw.get("status")
+                status = status_value if isinstance(status_value, dict) else {}
                 code = status.get("code")
                 if isinstance(code, bool) or not isinstance(code, (int, str)):
                     code = None
-                attributes = {}
+                attributes: dict[str, object] = {}
                 omitted = 0
                 truncated_attributes = False
                 for attribute in raw.get("attributes") or []:
@@ -486,7 +557,7 @@ def _project_trace(payload, trace_id):
                     if value is None:
                         continue
                     attributes[key] = value
-                resource_context = {}
+                resource_context: dict[str, object] = {}
                 for item in (resource.get("attributes") or [])[:40]:
                     key = item.get("key", "") if isinstance(item, dict) else ""
                     if key in (
@@ -498,11 +569,11 @@ def _project_trace(payload, trace_id):
                         "deployment.environment.name",
                     ) or key.startswith("k8s."):
                         resource_context[key] = _attr_scalar(item.get("value"))
-                events = []
+                events: list[dict[str, object]] = []
                 for item in (raw.get("events") or [])[:10]:
                     if not isinstance(item, dict):
                         continue
-                    event_attributes = {}
+                    event_attributes: dict[str, object] = {}
                     for attribute in (item.get("attributes") or [])[:16]:
                         if not isinstance(attribute, dict):
                             continue
@@ -510,21 +581,23 @@ def _project_trace(payload, trace_id):
                         if not isinstance(key, str) or SECRET_KEY.search(key):
                             continue
                         raw_value = attribute.get("value", {})
-                        value = (
+                        stack_value: object = (
                             raw_value.get("stringValue", "")[:4000]
                             if key == "exception.stacktrace" and isinstance(raw_value, dict)
                             else _attr_scalar(raw_value)
                         )
-                        event_attributes[key[:128]] = value
+                        event_attributes[key[:128]] = stack_value
                     events.append(
                         {
                             "name": str(item.get("name", ""))[:180],
-                            "time_unix_nano": str(item.get("timeUnixNano", ""))[:32],
+                            "time_unix_nano": str(item.get("timeUnixNano", ""))[:STAMP_CHAR_LIMIT],
                             "attributes": event_attributes,
-                            "attributes_truncated": len(item.get("attributes") or []) > 16,
+                            "attributes_truncated": len(item.get("attributes") or [])
+                            > EVENT_ATTRIBUTE_ITEMS,
                         }
                     )
-                name = raw.get("name") if isinstance(raw.get("name"), str) else ""
+                name_value = raw.get("name")
+                name = name_value if isinstance(name_value, str) else ""
                 spans.append(
                     {
                         "trace_id": trace_id,
@@ -536,7 +609,7 @@ def _project_trace(payload, trace_id):
                         "service": service,
                         "resource_context": resource_context,
                         "events": events,
-                        "events_truncated": len(raw.get("events") or []) > 10,
+                        "events_truncated": len(raw.get("events") or []) > SPAN_EVENT_ITEMS,
                         "start_time_unix_nano": raw.get("startTimeUnixNano")
                         if isinstance(raw.get("startTimeUnixNano"), str)
                         else "",
@@ -575,26 +648,31 @@ def _project_trace(payload, trace_id):
         or any(
             x["events_truncated"]
             or x["attributes_truncated"]
-            or any(e["attributes_truncated"] for e in x["events"])
+            or any(e["attributes_truncated"] for e in cast("list[dict[str, object]]", x["events"]))
             for x in stored
         ),
         "span_scan_capped": scan_capped,
         "spans": stored,
         "limitation": (
             "The trace document was fetched and reduced to a bounded span projection. "
-            "Credential-like attribute keys were not copied. Omitted spans are truncation, not health. "
+            "Credential-like attribute keys were not copied. Omitted spans are truncation, not "
+            "health. "
             "A trace does not by itself establish root cause."
         ),
     }
 
 
-def _gap(source, reason, limitation, **fields):
-    item = {"source": source, "reason": reason, "limitation": limitation}
+def _gap(source: str, reason: str, limitation: str, **fields: object) -> dict[str, object]:
+    item: dict[str, object] = {
+        "source": source,
+        "reason": reason,
+        "limitation": limitation,
+    }
     item.update(fields)
     return item
 
 
-def _detail(payload):
+def _detail(payload: object) -> str | None:
     if not isinstance(payload, dict) or not isinstance(payload.get("error"), str):
         return None
     text = payload["error"].replace("\n", " ").strip()
@@ -605,28 +683,99 @@ def _detail(payload):
     return text[:DETAIL_CHAR_LIMIT]
 
 
+class _Window(TypedDict):
+    collected_at: int
+    start: int | None
+    end: int | None
+    requested_start: int | None
+    requested_end: int | None
+    incident_start: int | None
+    incident_end: int | None
+    span_capped: bool
+    clipped_to_lookback: bool
+    clipped_to_now: bool
+    end_ignored_reason: str | None
+    reason: str | None
+
+
+class _Discovered(TypedDict):
+    trace_id: str
+    origin: str
+
+
+class _Plan(TypedDict, total=False):
+    kind: str
+    selector: str
+    namespace: str | None
+    pod: str | None
+    container: str | None
+    service: str | None
+    host: str | None
+    unit: str | None
+    host_source: str | None
+    scope_note: str
+
+
+class _Anchor(TypedDict):
+    plan: _Plan
+    center: int
+    kind: str
+
+
 class TelemetryCollector:
-    def __init__(self, http, grafana_url, grafana_token, public_grafana_url=PUBLIC_GRAFANA_URL):
+    """Bounded Loki/Tempo collector reading only within the absolute alert window."""
+
+    def __init__(
+        self,
+        http: HTTP,
+        grafana_url: object,
+        grafana_token: object,
+        public_grafana_url: object = PUBLIC_GRAFANA_URL,
+    ) -> None:
+        """Store the Grafana origin, bearer token, and public link origin."""
         if not isinstance(grafana_url, str) or not grafana_url.startswith(("http://", "https://")):
-            raise Failure("INVALID_GRAFANA_URL")
+            msg = "INVALID_GRAFANA_URL"
+            raise Failure(msg)
         self.http = http
         self.base = grafana_url.rstrip("/")
         self.token = grafana_token
         self.public = public_grafana_url
+        self._calls = 0
+        self._stop = False
+        self._window: _Window = {
+            "collected_at": 0,
+            "start": None,
+            "end": None,
+            "requested_start": None,
+            "requested_end": None,
+            "incident_start": None,
+            "incident_end": None,
+            "span_capped": False,
+            "clipped_to_lookback": False,
+            "clipped_to_now": False,
+            "end_ignored_reason": None,
+            "reason": None,
+        }
+        self._rejected: list[dict[str, object]] = []
 
-    def collect(self, event, existing_evidence):
-        artifacts = []
-        links = []
-        missing = []
-        seen = set()
-        evidence = existing_evidence if isinstance(existing_evidence, dict) else {}
+    def collect(self, event: object, existing_evidence: object) -> dict[str, object]:
+        """Gather bounded telemetry artifacts, Explore links, and explicit gaps."""
+        artifacts: list[dict[str, object]] = []
+        links: list[dict[str, object]] = []
+        missing: list[dict[str, object]] = []
+        seen: set[str] = set()
+        evidence = (
+            cast("dict[str, object]", existing_evidence)
+            if isinstance(existing_evidence, dict)
+            else {}
+        )
         if existing_evidence is not None and not isinstance(existing_evidence, dict):
             missing.append(
                 _gap(
                     "existing_evidence",
                     "INVALID_EXISTING_EVIDENCE",
-                    "Existing evidence was not a JSON object, so metric links were not read from it."
-                    + NOT_HEALTH,
+                    "Existing evidence was not a JSON object, so metric links were not read from "
+                    "it." + NOT_HEALTH,
                 )
             )
         public = _public_base(self.public)
@@ -635,22 +784,31 @@ class TelemetryCollector:
                 _gap(
                     "grafana_links",
                     "PUBLIC_GRAFANA_URL_INVALID",
-                    "The public Grafana URL is not an https origin, so Explore links were not built."
-                    + NOT_HEALTH,
+                    "The public Grafana URL is not an https origin, so Explore links were not "
+                    "built." + NOT_HEALTH,
                 )
             )
-        event = event if isinstance(event, dict) else {}
-        labels = event.get("labels") if isinstance(event.get("labels"), dict) else {}
-        annotations = event.get("annotations") if isinstance(event.get("annotations"), dict) else {}
+        event = cast("dict[str, object]", event) if isinstance(event, dict) else {}
+        labels: dict[str, object] = (
+            cast("dict[str, object]", event.get("labels"))
+            if isinstance(event.get("labels"), dict)
+            else {}
+        )
+        annotations: dict[str, object] = (
+            cast("dict[str, object]", event.get("annotations"))
+            if isinstance(event.get("annotations"), dict)
+            else {}
+        )
         window = absolute_window(event.get("startsAt"), event.get("endsAt"), time.time())
         if public:
             self._metric_links(evidence, window, links, seen, public)
-        if window.get("reason"):
+        reason_value = window.get("reason")
+        if reason_value:
             missing.append(
                 _gap(
                     "telemetry_window",
-                    window["reason"],
-                    WINDOW_LIMITATIONS[window["reason"]],
+                    reason_value,
+                    WINDOW_LIMITATIONS[reason_value],
                     collected_at=window["collected_at"],
                     incident_start=window["incident_start"],
                     incident_end=window["incident_end"],
@@ -673,8 +831,8 @@ class TelemetryCollector:
         plans, trace_service = self._plans(
             labels, evidence, missing, window, artifacts, links, seen, public
         )
-        discovered = []
-        anchors = []
+        discovered: list[_Discovered] = []
+        anchors: list[tuple[_Plan, int]] = []
         self._remember_trace_id(
             labels.get("trace_id") or annotations.get("trace_id") or labels.get("traceId"),
             "alert",
@@ -686,7 +844,8 @@ class TelemetryCollector:
                 _gap(
                     "loki_raw_logs",
                     "NO_SAFE_LOG_SCOPE",
-                    "No validated namespace, pod, service, systemd unit, or host selector was available, "
+                    "No validated namespace, pod, service, systemd unit, or host selector was "
+                    "available, "
                     "so raw logs were not queried." + NOT_HEALTH,
                     rejected=self._rejected,
                 )
@@ -736,7 +895,7 @@ class TelemetryCollector:
                     if kind == "error":
                         center = _line_epoch(line.get("timestamp"))
                         if center is not None:
-                            anchors.append((plan, center))
+                            anchors.append((cast("_Plan", plan), center))
         self._search_traces(
             trace_service, window, discovered, artifacts, links, seen, public, missing
         )
@@ -745,19 +904,43 @@ class TelemetryCollector:
             self._context_queries(anchors, window, artifacts, links, seen, public, missing)
         return {"artifacts": artifacts, "links": links, "missing": missing}
 
-    def _plans(self, labels, evidence, missing, window, artifacts, links, seen, public):
-        rejected = []
-        namespace = _one_label(
-            labels, ("namespace", "k8s_namespace_name"), NAMESPACE_RE, "namespace", rejected
+    def _plans(
+        self,
+        labels: dict[str, object],
+        evidence: dict[str, object],
+        missing: list[dict[str, object]],
+        window: _Window,
+        artifacts: list[dict[str, object]],
+        links: list[dict[str, object]],
+        seen: set[str],
+        public: str | None,
+    ) -> tuple[list[_Plan], str | None]:
+        rejected: list[dict[str, str]] = []
+        namespace: str | None = _one_label(
+            labels,
+            ("namespace", "k8s_namespace_name"),
+            NAMESPACE_RE,
+            "namespace",
+            rejected,
         )
-        pod = _one_label(labels, ("pod", "k8s_pod_name"), POD_RE, "pod", rejected)
-        container = _one_label(
-            labels, ("container", "k8s_container_name"), CONTAINER_RE, "container", rejected
+        pod: str | None = _one_label(labels, ("pod", "k8s_pod_name"), POD_RE, "pod", rejected)
+        container: str | None = _one_label(
+            labels,
+            ("container", "k8s_container_name"),
+            CONTAINER_RE,
+            "container",
+            rejected,
         )
-        service = _service_label(labels, rejected)
-        unit = _one_label(labels, ("name", "systemd_unit", "unit"), UNIT_RE, "unit", rejected)
-        host = _one_label(
-            labels, ("host_name", "hostname", "nodename", "host", "node"), HOST_RE, "host", rejected
+        service: str | None = _service_label(labels, rejected)
+        unit: str | None = _one_label(
+            labels, ("name", "systemd_unit", "unit"), UNIT_RE, "unit", rejected
+        )
+        host: str | None = _one_label(
+            labels,
+            ("host_name", "hostname", "nodename", "host", "node"),
+            HOST_RE,
+            "host",
+            rejected,
         )
         if unit:
             namespace = None
@@ -765,11 +948,11 @@ class TelemetryCollector:
             container = None
             service = None
         elif labels.get("job_name"):
-            pod = evidence.get("verified_workload_pod")
-            service = evidence.get("verified_workload_service")
+            pod = cast("str | None", evidence.get("verified_workload_pod"))
+            service = cast("str | None", evidence.get("verified_workload_service"))
             if pod and not POD_RE.fullmatch(pod):
                 pod = None
-            if service and not SERVICE_RE.fullmatch(service):
+            if service and not SERVICE_RE.fullmatch(cast("str", service)):
                 service = None
             if not pod:
                 namespace = None
@@ -777,14 +960,14 @@ class TelemetryCollector:
                     _gap(
                         "log_scope",
                         "JOB_POD_NOT_VERIFIED",
-                        "Exporter pod labels were not used as affected job pods. Raw job logs were not queried without a verified pod.",
+                        "Exporter pod labels were not used as affected job pods. Raw job logs were "
+                        "not queried without a verified pod.",
                     )
                 )
-
         if (
             pod
             and any(x in pod for x in ("kube-state-metrics", "node-exporter"))
-            and evidence.get("verified_workload_pod") != pod
+            and (evidence.get("verified_workload_pod") != pod)
         ):
             namespace = None
             pod = None
@@ -794,22 +977,24 @@ class TelemetryCollector:
                 _gap(
                     "log_scope",
                     "EXPORTER_POD_NOT_VERIFIED",
-                    "Scrape exporter identity was not verified as an affected workload. No broader log selector was substituted.",
+                    "Scrape exporter identity was not verified as an affected workload. No "
+                    "broader log selector was substituted.",
                 )
             )
+
         self._rejected = [{"label": item["label"], "reason": item["reason"]} for item in rejected]
-        for item in rejected:
-            missing.append(
-                _gap(
-                    "log_scope",
-                    item["reason"],
-                    "Label "
-                    + item["label"]
-                    + " failed validation and was not interpolated into any query. "
-                    "The selector was not widened to a broader target." + NOT_HEALTH,
-                    label=item["label"],
-                )
+        missing.extend(
+            _gap(
+                "log_scope",
+                item["reason"],
+                "Label "
+                + item["label"]
+                + " failed validation and was not interpolated into any query. "
+                "The selector was not widened to a broader target." + NOT_HEALTH,
+                label=item["label"],
             )
+            for item in rejected
+        )
         k8s_blocked = any(
             item["label"]
             in (
@@ -824,10 +1009,19 @@ class TelemetryCollector:
         )
         host_blocked = any(
             item["label"]
-            in ("host", "host_name", "hostname", "nodename", "node", "unit", "name", "systemd_unit")
+            in (
+                "host",
+                "host_name",
+                "hostname",
+                "nodename",
+                "node",
+                "unit",
+                "name",
+                "systemd_unit",
+            )
             for item in rejected
         )
-        plans = []
+        plans: list[_Plan] = []
         if namespace and not k8s_blocked:
             selector = _k8s_selector(namespace, pod, container, service if not pod else None)
             note = (
@@ -852,7 +1046,8 @@ class TelemetryCollector:
                 _gap(
                     "loki_raw_logs",
                     "UNSAFE_LABEL",
-                    "Kubernetes raw logs were not queried because a provided namespace, pod, or container "
+                    "Kubernetes raw logs were not queried because a provided namespace, pod, or "
+                    "container "
                     "label failed validation. The query was not widened to a larger scope."
                     + NOT_HEALTH,
                 )
@@ -862,22 +1057,25 @@ class TelemetryCollector:
             evidence,
             host if not host_blocked else None,
             unit,
-            host_blocked,
-            window,
-            artifacts,
-            links,
-            seen,
-            public,
-            missing,
+            host_blocked=host_blocked,
+            window=window,
+            artifacts=artifacts,
+            links=links,
+            seen=seen,
+            public=public,
+            missing=missing,
         )
         use_host = host_name and not host_blocked and (unit or not namespace)
         if use_host:
-            selector = _host_selector(host_name, unit)
+            selector = _host_selector(cast("str", host_name), unit)
             note = (
                 "Lines are limited to the validated host and systemd unit."
                 if unit
-                else "Lines are limited to the validated host and are not specific to one systemd unit. "
-                "A host-wide sample does not prove unit health."
+                else (
+                    "Lines are limited to the validated host and are not specific to one "
+                    "systemd unit. "
+                    "A host-wide sample does not prove unit health."
+                )
             )
             plans.append(
                 {
@@ -891,7 +1089,9 @@ class TelemetryCollector:
             )
         if evidence.get("verified_workload_service") and not unit:
             candidate = evidence["verified_workload_service"]
-            service = candidate if SERVICE_RE.fullmatch(candidate) else None
+            service = (
+                cast("str", candidate) if SERVICE_RE.fullmatch(cast("str", candidate)) else None
+            )
         service_rejected = any(
             item["label"] in ("service", "service_name", "app", "deployment", "k8s_deployment_name")
             for item in rejected
@@ -900,32 +1100,33 @@ class TelemetryCollector:
 
     def _resolve_host(
         self,
-        labels,
-        evidence,
-        label_host,
-        unit,
-        host_blocked,
-        window,
-        artifacts,
-        links,
-        seen,
-        public,
-        missing,
-    ):
+        labels: dict[str, object],
+        evidence: dict[str, object],
+        label_host: str | None,
+        unit: str | None,
+        *,
+        host_blocked: bool,
+        window: _Window,
+        artifacts: list[dict[str, object]],
+        links: list[dict[str, object]],
+        seen: set[str],
+        public: str | None,
+        missing: list[dict[str, object]],
+    ) -> tuple[str | None, str | None]:
         evidence_names = [name for name in _evidence_hosts(evidence) if HOST_RE.fullmatch(name)]
         if len(_unique(_evidence_hosts(evidence))) > 1:
             missing.append(
                 _gap(
                     "node_identity",
                     "NODE_IDENTITY_AMBIGUOUS",
-                    "Existing node identity returned more than one nodename, so it was not used to scope host logs."
-                    + NOT_HEALTH,
+                    "Existing node identity returned more than one nodename, so it was not used to "
+                    "scope host logs." + NOT_HEALTH,
                     series_count=len(_evidence_hosts(evidence)),
                 )
             )
             evidence_names = []
-        chosen = None
-        source = None
+        chosen: str | None = None
+        source: str | None = None
         if len(evidence_names) == 1:
             chosen, source = evidence_names[0], "node_identity_evidence"
         if label_host and chosen and label_host != chosen:
@@ -933,8 +1134,8 @@ class TelemetryCollector:
                 _gap(
                     "log_scope",
                     "HOST_SCOPE_CONFLICT",
-                    "The alert host and the node identity nodename differ, so host logs were not queried."
-                    + NOT_HEALTH,
+                    "The alert host and the node identity nodename differ, so host logs were not "
+                    "queried." + NOT_HEALTH,
                 )
             )
             return None, None
@@ -942,15 +1143,15 @@ class TelemetryCollector:
             chosen, source = label_host, "label"
         if chosen or host_blocked or not unit:
             return chosen, source
-        instance = labels.get("instance") if isinstance(labels, dict) else None
+        instance: object = labels.get("instance")
         if not isinstance(instance, str) or not INSTANCE_RE.fullmatch(instance):
             if instance not in (None, ""):
                 missing.append(
                     _gap(
                         "log_scope",
                         "UNSAFE_LABEL",
-                        "The instance label failed validation, so node identity was not queried and host logs were not widened."
-                        + NOT_HEALTH,
+                        "The instance label failed validation, so node identity was not queried "
+                        "and host logs were not widened." + NOT_HEALTH,
                         label="instance",
                     )
                 )
@@ -959,8 +1160,8 @@ class TelemetryCollector:
                     _gap(
                         "node_identity",
                         "NODE_IDENTITY_NOT_FOUND",
-                        "A systemd unit was present but no validated host or instance was available, so host logs were not queried."
-                        + NOT_HEALTH,
+                        "A systemd unit was present but no validated host or instance was "
+                        "available, so host logs were not queried." + NOT_HEALTH,
                     )
                 )
             return None, None
@@ -989,13 +1190,21 @@ class TelemetryCollector:
         if len(names) != 1 or not HOST_RE.fullmatch(names[0]):
             reason = "NODE_IDENTITY_AMBIGUOUS" if len(names) > 1 else "NODE_IDENTITY_NOT_FOUND"
             text = (
-                "Node identity returned more than one nodename, so none was used to scope host logs."
+                "Node identity returned more than one nodename, so none was used to scope host "
+                "logs."
                 if len(names) > 1
-                else "Node identity did not return one usable nodename, so host logs were not queried."
+                else (
+                    "Node identity did not return one usable nodename, so host logs were "
+                    "not queried."
+                )
             )
             missing.append(
                 _gap(
-                    "node_identity", reason, text + NOT_HEALTH, series_count=len(names), query=query
+                    "node_identity",
+                    reason,
+                    text + NOT_HEALTH,
+                    series_count=len(names),
+                    query=query,
                 )
             )
             return None, None
@@ -1004,8 +1213,6 @@ class TelemetryCollector:
                 "node-identity",
                 "node-identity.json",
                 query,
-                PROMETHEUS_QUERY_PATH,
-                "prometheus",
                 window,
                 {
                     "kind": "node_identity",
@@ -1014,7 +1221,10 @@ class TelemetryCollector:
                     "series_count": 1,
                     "collected_at": window["collected_at"],
                     "collected_at_rfc3339": _rfc3339(window["collected_at"]),
-                    "limitation": "node_uname_info is the current scraper identity, not proof of the host at the incident start. It was used only to scope host logs.",
+                    "limitation": (
+                        "node_uname_info is the current scraper identity, not proof of the host at "
+                        "the incident start. It was used only to scope host logs."
+                    ),
                 },
                 {
                     "system": "prometheus",
@@ -1029,24 +1239,24 @@ class TelemetryCollector:
 
     def _log_query(
         self,
-        plan,
-        kind,
-        line_filter,
-        limit,
-        direction,
-        start,
-        end,
-        title,
-        artifacts,
-        links,
-        seen,
-        public,
-        missing,
-    ):
+        plan: _Plan,
+        kind: str,
+        line_filter: str,
+        limit: int,
+        direction: str,
+        start: int | None,
+        end: int | None,
+        title: str,
+        artifacts: list[dict[str, object]],
+        links: list[dict[str, object]],
+        seen: set[str],
+        public: str | None,
+        missing: list[dict[str, object]],
+    ) -> list[dict[str, object]]:
         if self._stopped(missing, "loki_" + kind + "_logs"):
             return []
-        query = plan["selector"] + " " + line_filter
-        params = [
+        query = cast("str", plan["selector"]) + " " + line_filter
+        params: list[tuple[str, str]] = [
             ("query", query),
             ("start", str(start)),
             ("end", str(end)),
@@ -1084,15 +1294,14 @@ class TelemetryCollector:
                 "window": self._bounds(start, end),
                 "parameters": dict(params),
                 "collected_at": int(time.time()),
-                "limitation": "No response snapshot was available. This is not an empty successful query.",
+                "limitation": "No response snapshot was available. This is not an empty "
+                "successful query.",
             }
             artifacts.append(
                 self._artifact(
-                    "loki-" + kind + "-" + plan["kind"],
-                    "loki-" + kind + "-receipt-" + plan["kind"] + ".json",
+                    "loki-" + kind + "-" + cast("str", plan["kind"]),
+                    "loki-" + kind + "-receipt-" + cast("str", plan["kind"]) + ".json",
                     query,
-                    LOKI_RANGE_PATH,
-                    "loki",
                     {"start": start, "end": end},
                     receipt,
                     {
@@ -1105,7 +1314,8 @@ class TelemetryCollector:
                 )
             )
             return []
-        data = payload.get("data") if isinstance(payload.get("data"), dict) else None
+        data_value = payload.get("data")
+        data = data_value if isinstance(data_value, dict) else None
         if data is None or data.get("resultType") != "streams":
             missing.append(
                 _gap(
@@ -1119,7 +1329,7 @@ class TelemetryCollector:
                 )
             )
             return []
-        returned = []
+        returned: list[dict[str, object]] = []
         malformed = 0
         for stream in data.get("result") or []:
             if not isinstance(stream, dict):
@@ -1127,7 +1337,7 @@ class TelemetryCollector:
                 continue
             stream_labels = _bound_labels(stream.get("stream"))
             for sample in stream.get("values") or []:
-                if not isinstance(sample, (list, tuple)) or len(sample) < 2:
+                if not isinstance(sample, (list, tuple)) or len(sample) < LOG_SAMPLE_ITEMS:
                     malformed += 1
                     continue
                 timestamp, text = sample[0], sample[1]
@@ -1136,18 +1346,18 @@ class TelemetryCollector:
                     continue
                 stamp = (
                     timestamp
-                    if isinstance(timestamp, str) and len(timestamp) <= 32
-                    else str(timestamp)[:32]
+                    if isinstance(timestamp, str) and len(timestamp) <= STAMP_CHAR_LIMIT
+                    else str(timestamp)[:STAMP_CHAR_LIMIT]
                 )
                 returned.append({"timestamp": stamp, "line": text, "labels": stream_labels})
                 if len(returned) >= limit:
                     break
             if len(returned) >= limit:
                 break
-        stored = []
+        stored: list[dict[str, object]] = []
         line_truncated = False
-        for item in returned[:limit]:
-            text = item["line"]
+        for item in cast("list[dict[str, object]]", returned)[:limit]:
+            text = cast("str", item["line"])
             clipped = len(text) > LINE_CHAR_LIMIT
             line_truncated = line_truncated or clipped
             stored.append(
@@ -1214,12 +1424,15 @@ class TelemetryCollector:
         }
         name = (
             "loki-"
-            + (
-                "error-logs"
-                if kind == "error"
-                else "stack-lines"
-                if kind == "stack"
-                else "baseline-logs"
+            + cast(
+                "str",
+                (
+                    "error-logs"
+                    if kind == "error"
+                    else "stack-lines"
+                    if kind == "stack"
+                    else "baseline-logs"
+                ),
             )
             + "-"
             + plan["kind"]
@@ -1230,8 +1443,6 @@ class TelemetryCollector:
                 "loki-" + kind + "-" + plan["kind"],
                 name,
                 query,
-                LOKI_RANGE_PATH,
-                "loki",
                 {"start": start, "end": end},
                 content,
                 source,
@@ -1254,8 +1465,17 @@ class TelemetryCollector:
             )
         return stored
 
-    def _context_queries(self, anchors, window, artifacts, links, seen, public, missing):
-        chosen = []
+    def _context_queries(
+        self,
+        anchors: list[tuple[_Plan, int]],
+        window: _Window,
+        artifacts: list[dict[str, object]],
+        links: list[dict[str, object]],
+        seen: set[str],
+        public: str | None,
+        missing: list[dict[str, object]],
+    ) -> None:
+        chosen: list[_Anchor] = []
         for plan, center in anchors:
             if any(item["kind"] == plan["kind"] and item["center"] == center for item in chosen):
                 continue
@@ -1269,29 +1489,35 @@ class TelemetryCollector:
                 _gap(
                     "loki_context",
                     "NO_ERROR_ANCHOR",
-                    "Nearby log context was not queried because no error line supplied a usable timestamp."
-                    + NOT_HEALTH,
+                    "Nearby log context was not queried because no error line supplied a usable "
+                    "timestamp." + NOT_HEALTH,
                 )
             )
             return
         for index, item in enumerate(chosen, start=1):
             if self._stopped(missing, "loki_context"):
                 return
-            start = max(window["start"], item["center"] - CONTEXT_RADIUS_SECONDS)
-            end = min(window["end"], item["center"] + CONTEXT_RADIUS_SECONDS)
+            start = max(
+                cast("int", window["start"]),
+                item["center"] - CONTEXT_RADIUS_SECONDS,
+            )
+            end = min(
+                cast("int", window["end"]),
+                item["center"] + CONTEXT_RADIUS_SECONDS,
+            )
             if end <= start:
                 missing.append(
                     _gap(
                         "loki_context",
                         "EMPTY_CONTEXT_WINDOW",
-                        "The context window around an error line was empty after clipping, so it was not queried."
-                        + NOT_HEALTH,
+                        "The context window around an error line was empty after clipping, so it "
+                        "was not queried." + NOT_HEALTH,
                         center=item["center"],
                     )
                 )
                 continue
             query = item["plan"]["selector"]
-            params = [
+            params: list[tuple[str, str]] = [
                 ("query", query),
                 ("start", str(start)),
                 ("end", str(end)),
@@ -1324,7 +1550,8 @@ class TelemetryCollector:
             )
             if error or payload is None:
                 continue
-            data = payload.get("data") if isinstance(payload.get("data"), dict) else None
+            data_value = payload.get("data")
+            data = data_value if isinstance(data_value, dict) else None
             if data is None or data.get("resultType") != "streams":
                 missing.append(
                     _gap(
@@ -1340,7 +1567,7 @@ class TelemetryCollector:
                     )
                 )
                 continue
-            stored = []
+            stored: list[dict[str, object]] = []
             for stream in data.get("result") or []:
                 if not isinstance(stream, dict):
                     continue
@@ -1348,14 +1575,14 @@ class TelemetryCollector:
                 for sample in stream.get("values") or []:
                     if (
                         not isinstance(sample, (list, tuple))
-                        or len(sample) < 2
+                        or len(sample) < LOG_SAMPLE_ITEMS
                         or not isinstance(sample[1], str)
                     ):
                         continue
                     text = sample[1]
                     stored.append(
                         {
-                            "timestamp": str(sample[0])[:32],
+                            "timestamp": str(sample[0])[:STAMP_CHAR_LIMIT],
                             "line": text[:LINE_CHAR_LIMIT],
                             "line_truncated": len(text) > LINE_CHAR_LIMIT,
                             "labels": labels,
@@ -1392,7 +1619,10 @@ class TelemetryCollector:
                 "stored_lines": len(stored),
                 "truncated": truncated,
                 "lines": stored,
-                "limitation": "Context lines are the neighboring records in a short absolute window. An empty neighborhood does not establish health.",
+                "limitation": (
+                    "Context lines are the neighboring records in a short absolute window. An "
+                    "empty neighborhood does not establish health."
+                ),
             }
             source = {
                 "system": "loki",
@@ -1411,8 +1641,6 @@ class TelemetryCollector:
                     "loki-context-" + item["kind"] + "-" + str(index),
                     "loki-context-" + item["kind"] + "-" + str(index) + ".json",
                     query,
-                    LOKI_RANGE_PATH,
-                    "loki",
                     {"start": start, "end": end},
                     content,
                     source,
@@ -1423,7 +1651,7 @@ class TelemetryCollector:
                     _gap(
                         "loki_context",
                         "NO_MATCHING_LINES",
-                        content["limitation"],
+                        cast("str", content["limitation"]),
                         query=query,
                         start=start,
                         end=end,
@@ -1432,21 +1660,31 @@ class TelemetryCollector:
                     )
                 )
 
-    def _search_traces(self, service, window, discovered, artifacts, links, seen, public, missing):
+    def _search_traces(
+        self,
+        service: str | None,
+        window: _Window,
+        discovered: list[_Discovered],
+        artifacts: list[dict[str, object]],
+        links: list[dict[str, object]],
+        seen: set[str],
+        public: str | None,
+        missing: list[dict[str, object]],
+    ) -> None:
         if not service:
             missing.append(
                 _gap(
                     "tempo_search",
                     "TRACE_SERVICE_NOT_AVAILABLE",
-                    "Tempo was not searched by service name because no validated service label was present."
-                    + NOT_HEALTH,
+                    "Tempo was not searched by service name because no validated service label was "
+                    "present." + NOT_HEALTH,
                 )
             )
             return
         if self._stopped(missing, "tempo_search"):
             return
         tags = "service.name=" + service
-        params = [
+        params: list[tuple[str, str]] = [
             ("tags", tags),
             ("start", str(window["start"])),
             ("end", str(window["end"])),
@@ -1478,8 +1716,10 @@ class TelemetryCollector:
         if error or payload is None:
             return
         rows = payload.get("traces")
-        if rows is None and isinstance(payload.get("data"), dict):
-            rows = payload["data"].get("traces")
+        if rows is None:
+            data_value = payload.get("data")
+            if isinstance(data_value, dict):
+                rows = cast("dict[str, object]", data_value).get("traces")
         if not isinstance(rows, list):
             missing.append(
                 _gap(
@@ -1493,7 +1733,7 @@ class TelemetryCollector:
                 )
             )
             return
-        found = []
+        found: list[str] = []
         rejected = 0
         for row in rows[:SEARCH_LIMIT]:
             if not isinstance(row, dict):
@@ -1547,8 +1787,6 @@ class TelemetryCollector:
                 "tempo-search",
                 "tempo-search.json",
                 tags,
-                TEMPO_SEARCH_PATH,
-                "tempo",
                 window,
                 content,
                 source,
@@ -1568,15 +1806,24 @@ class TelemetryCollector:
                 )
             )
 
-    def _fetch_traces(self, discovered, window, artifacts, links, seen, public, missing):
+    def _fetch_traces(
+        self,
+        discovered: list[_Discovered],
+        window: _Window,
+        artifacts: list[dict[str, object]],
+        links: list[dict[str, object]],
+        seen: set[str],
+        public: str | None,
+        missing: list[dict[str, object]],
+    ) -> None:
         if not discovered:
             if not any(item.get("reason") == "INVALID_TRACE_ID" for item in missing):
                 missing.append(
                     _gap(
                         "tempo_trace",
                         "TRACE_ID_NOT_AVAILABLE",
-                        "No valid trace ID was present on the alert or discovered in the fetched logs or Tempo search."
-                        + NOT_HEALTH,
+                        "No valid trace ID was present on the alert or discovered in the fetched "
+                        "logs or Tempo search." + NOT_HEALTH,
                     )
                 )
             return
@@ -1588,7 +1835,8 @@ class TelemetryCollector:
                     _gap(
                         "tempo_trace",
                         "TRACE_FETCH_BUDGET",
-                        "This trace ID was not fetched because the deterministic trace fetch cap was reached. Its absence from the artifacts is not health.",
+                        "This trace ID was not fetched because the deterministic trace fetch cap "
+                        "was reached. Its absence from the artifacts is not health.",
                         trace_id=trace_id,
                     )
                 )
@@ -1605,7 +1853,12 @@ class TelemetryCollector:
                 continue
             path = TEMPO_TRACE_PREFIX + trace_id
             payload, error = self._request(
-                "tempo_trace", path, [], TRACE_RESPONSE_LIMIT, missing, trace_id=trace_id
+                "tempo_trace",
+                path,
+                [],
+                TRACE_RESPONSE_LIMIT,
+                missing,
+                trace_id=trace_id,
             )
             self._maybe_link(
                 links,
@@ -1627,8 +1880,8 @@ class TelemetryCollector:
                     _gap(
                         "tempo_trace",
                         "TRACE_SPAN_FORMAT_UNSUPPORTED",
-                        "The trace document did not contain a recognized span list, so no spans were invented."
-                        + NOT_HEALTH,
+                        "The trace document did not contain a recognized span list, so no spans "
+                        "were invented." + NOT_HEALTH,
                         trace_id=trace_id,
                     )
                 )
@@ -1638,8 +1891,8 @@ class TelemetryCollector:
                     _gap(
                         "tempo_trace",
                         "TRACE_EMPTY",
-                        "The trace document was fetched and contained no spans. An empty trace does not establish health."
-                        + NOT_HEALTH,
+                        "The trace document was fetched and contained no spans. An empty trace "
+                        "does not establish health." + NOT_HEALTH,
                         trace_id=trace_id,
                     )
                 )
@@ -1660,18 +1913,22 @@ class TelemetryCollector:
                     "tempo-trace-" + trace_id,
                     "tempo-trace-" + trace_id + ".json",
                     trace_id,
-                    path,
-                    "tempo",
                     window,
                     projected,
                     source,
                 )
             )
 
-    def _remember_trace_id(self, value, origin, discovered, missing):
+    def _remember_trace_id(
+        self,
+        value: object,
+        origin: str,
+        discovered: list[_Discovered],
+        missing: list[dict[str, object]],
+    ) -> None:
         if value in (None, ""):
             return
-        trace_id = normalize_trace_id(value) if origin != "log" else value
+        trace_id: object = normalize_trace_id(value) if origin != "log" else value
         if origin == "log":
             trace_id = (
                 value if isinstance(value, str) and re.fullmatch(r"[0-9a-f]{32}", value) else None
@@ -1682,15 +1939,23 @@ class TelemetryCollector:
                     _gap(
                         "tempo_trace",
                         "INVALID_TRACE_ID",
-                        "The alert trace ID was not a 16 or 32 digit hexadecimal value, so it was not fetched."
-                        + NOT_HEALTH,
+                        "The alert trace ID was not a 16 or 32 digit hexadecimal value, so it was "
+                        "not fetched." + NOT_HEALTH,
                     )
                 )
             return
         if not any(item["trace_id"] == trace_id for item in discovered):
-            discovered.append({"trace_id": trace_id, "origin": origin})
+            discovered.append({"trace_id": cast("str", trace_id), "origin": origin})
 
-    def _request(self, source, path, params, response_limit, missing, **fields):
+    def _request(
+        self,
+        source: str,
+        path: str,
+        params: list[tuple[str, str]],
+        response_limit: int,
+        missing: list[dict[str, object]],
+        **fields: object,
+    ) -> tuple[dict[str, object] | None, str | None]:
         if self._stop or self._calls >= MAX_REQUESTS:
             self._stop = True
             missing.append(_gap(source, "REQUEST_BUDGET_EXCEEDED", BUDGET_LIMITATION, **fields))
@@ -1705,12 +1970,16 @@ class TelemetryCollector:
                 _gap(
                     source,
                     "INVALID_OBSERVABILITY_PATH",
-                    "The collector refused a telemetry path outside the Loki, Tempo, and Prometheus proxies."
-                    + NOT_HEALTH,
+                    "The collector refused a telemetry path outside the Loki, Tempo, and "
+                    "Prometheus proxies." + NOT_HEALTH,
                 )
             )
             return None, "INVALID_OBSERVABILITY_PATH"
-        allowed = path in (LOKI_RANGE_PATH, TEMPO_SEARCH_PATH, PROMETHEUS_QUERY_PATH) or (
+        allowed = path in (
+            LOKI_RANGE_PATH,
+            TEMPO_SEARCH_PATH,
+            PROMETHEUS_QUERY_PATH,
+        ) or (
             path.startswith(TEMPO_TRACE_PREFIX)
             and re.fullmatch(r"[0-9a-f]{32}", path[len(TEMPO_TRACE_PREFIX) :]) is not None
         )
@@ -1719,8 +1988,8 @@ class TelemetryCollector:
                 _gap(
                     source,
                     "INVALID_OBSERVABILITY_PATH",
-                    "The collector refused a telemetry path outside the Loki, Tempo, and Prometheus proxies."
-                    + NOT_HEALTH,
+                    "The collector refused a telemetry path outside the Loki, Tempo, and "
+                    "Prometheus proxies." + NOT_HEALTH,
                 )
             )
             return None, "INVALID_OBSERVABILITY_PATH"
@@ -1743,7 +2012,7 @@ class TelemetryCollector:
             payload = self.http.request(
                 "GET",
                 url,
-                {"Authorization": "Bearer " + self.token},
+                {"Authorization": "Bearer " + cast("str", self.token)},
                 timeout=REQUEST_TIMEOUT_SECONDS,
                 limit=response_limit,
             )
@@ -1775,8 +2044,8 @@ class TelemetryCollector:
             return None, "OBSERVABILITY_QUERY_ERROR"
         return payload, None
 
-    def _bounds(self, start, end):
-        window = getattr(self, "_window", {}) or {}
+    def _bounds(self, start: int | None, end: int | None) -> dict[str, object]:
+        window = getattr(self, "_window", EMPTY_WINDOW) or {}
         collected = window.get("collected_at")
         return {
             "start": start,
@@ -1792,7 +2061,7 @@ class TelemetryCollector:
             "clipped_to_now": bool(window.get("clipped_to_now")),
         }
 
-    def _stopped(self, missing, source):
+    def _stopped(self, missing: list[dict[str, object]], source: str) -> bool:
         remaining = _deadline_remaining()
         if not self._stop and self._calls < MAX_REQUESTS and (remaining is None or remaining >= 1):
             return False
@@ -1801,9 +2070,23 @@ class TelemetryCollector:
         return True
 
     def _maybe_link(
-        self, links, seen, public, title, datasource_uid, query_field, query_text, start, end
-    ):
-        if not public or not isinstance(query_text, str) or query_text == "" or end <= start:
+        self,
+        links: list[dict[str, object]],
+        seen: set[str],
+        public: str | None,
+        title: str,
+        datasource_uid: str,
+        query_field: str,
+        query_text: object,
+        start: object,
+        end: object,
+    ) -> None:
+        if (
+            not public
+            or not isinstance(query_text, str)
+            or query_text == ""
+            or int(cast("int", end)) <= int(cast("int", start))
+        ):
             return
         if datasource_uid not in DATASOURCE_UIDS:
             return
@@ -1811,16 +2094,31 @@ class TelemetryCollector:
 
         if redact(query_text) != query_text:
             return
-        url = grafana_explore_url(public, datasource_uid, query_text, start, end, query_field)
-        if len(url) > 8000:
+        url = grafana_explore_url(
+            public,
+            datasource_uid,
+            query_text,
+            int(cast("int", start)),
+            int(cast("int", end)),
+            query_field,
+        )
+        if len(url) > LINK_URL_CHAR_LIMIT:
             return
         if url in seen:
             return
         seen.add(url)
         links.append({"title": title, "url": url})
 
-    def _metric_links(self, evidence, window, links, seen, public):
-        evidence_window = evidence.get("window") if isinstance(evidence.get("window"), dict) else {}
+    def _metric_links(
+        self,
+        evidence: dict[str, object],
+        window: _Window,
+        links: list[dict[str, object]],
+        seen: set[str],
+        public: str | None,
+    ) -> None:
+        evidence_window_value = evidence.get("window")
+        evidence_window = evidence_window_value if isinstance(evidence_window_value, dict) else {}
         titles = {
             "prometheus_metrics": "Prometheus metric query",
             "node_identity": "Prometheus node identity",
@@ -1828,15 +2126,18 @@ class TelemetryCollector:
             "host_log_error_frequency": "Host log error frequency",
             "loki_rule_metric": "Loki rule metric",
         }
-        counts = {}
-        for query in evidence.get("queries") or []:
+        counts: dict[str, int] = {}
+        queries_value = evidence.get("queries")
+        for query in queries_value if isinstance(queries_value, list) else []:
             if not isinstance(query, dict):
                 continue
-            params = query.get("parameters") if isinstance(query.get("parameters"), dict) else {}
+            params_value = query.get("parameters")
+            params = params_value if isinstance(params_value, dict) else {}
             expr = params.get("query")
-            if not isinstance(expr, str) or expr == "" or len(expr) > 4000:
+            if not isinstance(expr, str) or expr == "" or len(expr) > METRIC_QUERY_CHAR_LIMIT:
                 continue
-            path = query.get("path") if isinstance(query.get("path"), str) else ""
+            path_value = query.get("path")
+            path = path_value if isinstance(path_value, str) else ""
             match = re.search(r"/api/datasources/proxy/uid/([A-Za-z0-9_-]+)/", path)
             uid = match.group(1) if match else None
             if uid not in DATASOURCE_UIDS:
@@ -1854,15 +2155,34 @@ class TelemetryCollector:
                     start, end = window["start"], window["end"]
                 else:
                     continue
-            source = query.get("source") if isinstance(query.get("source"), str) else ""
+            source_value = query.get("source")
+            source = source_value if isinstance(source_value, str) else ""
             counts[source] = counts.get(source, 0) + 1
             title = titles.get(source, "Observability query")
             if counts[source] > 1:
                 title += " (" + str(counts[source]) + ")"
             field = "query" if uid == "tempo" else "expr"
-            self._maybe_link(links, seen, public, title, uid, field, expr, int(start), int(end))
+            self._maybe_link(
+                links,
+                seen,
+                public,
+                title,
+                uid,
+                field,
+                expr,
+                int(cast("int | float", start)),
+                int(cast("int | float", end)),
+            )
 
-    def _artifact(self, prefix, name, query, path, uid, window, content, source):
+    def _artifact(
+        self,
+        prefix: str,
+        name: str,
+        query: str,
+        window: Mapping[str, object],
+        content: dict[str, object],
+        source: Mapping[str, object],
+    ) -> dict[str, object]:
         start = window.get("start") if isinstance(window, dict) else None
         end = window.get("end") if isinstance(window, dict) else None
         return {

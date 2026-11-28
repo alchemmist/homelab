@@ -79,6 +79,7 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # would break the deployed worker and gateway boundaries.
 "charts/spi-triage/files/s3_evidence.py" = ["N818", "PLR0913"]
 "services/spi/legacy/backend/s3_evidence.py" = ["N818", "PLR0913"]
+"services/spi/backend/s3_evidence.py" = ["N818", "PLR0913"]
 # The dispatcher constructor arity (store, token, enabled) and its positional
 # boolean are pinned positionally by the spi_triage dispatcher tests; the two
 # kept tail `except Exception` sites are the reviewed trust boundary (a failed
@@ -110,6 +111,12 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # flags), so their branch/return shape stays per-file reviewed rather than split.
 "charts/spi-triage/files/telemetry.py" = ["PLC0415", "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915"]
 "services/spi/legacy/backend/telemetry.py" = ["PLC0415", "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915"]
+"services/spi/backend/telemetry.py" = ["PLC0415", "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915"]
+# The evolved evidence bundle keeps the reviewed bounded-excerpt packing, the
+# binary-ref storage readers and the deterministic graph/navigation markdown in
+# single cohesive contracts (digest-pinned by the sp services suite); the lazy
+# graph_evidence import guards the same legacy import cycle per call freshness.
+"services/spi/backend/evidence_bundle.py" = ["PLC0415", "C901", "PLR0915"]
 # The local token counter is one reviewed bounded-input contract: raw_fits
 # walks the whole request once with per-type budget deductions (returning
 # False exactly at the bound, raising Failure only on the named
@@ -144,6 +151,10 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # spi_triage queue_admin suite.
 "charts/spi-triage/files/queue_admin.py" = ["S608"]
 "services/spi/legacy/backend/queue_admin.py" = ["S608"]
+# The evolved queue list keeps the reviewed cursor-paginated query and the
+# fenced cancel_batch transaction as single cohesive contracts (digest-pinned
+# by the queue-admin tests); the SQL constructors use fixed identifiers only.
+"services/spi/backend/queue_admin.py" = ["S608", "C901"]
 # The provenance collector keeps its original per-call lazy imports: the
 # in-cluster hosts (integrations) and quote/urlencode helpers load only on
 # the reviewed read paths so an unused collector never touches the wire,
@@ -156,6 +167,7 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # fabricating a receipt (reviewed seams, pinned by the spi_triage suite).
 "charts/spi-triage/files/telegram_links.py" = ["BLE001"]
 "services/spi/legacy/backend/telegram_links.py" = ["BLE001"]
+"services/spi/backend/telegram_links.py" = ["BLE001"]
 # telegram_delivery loops swallow single-retry hiccups on purpose: a tick of
 # card discovery, primary backfill, or link retry must never kill its worker
 # thread, and each failure already reschedules itself in the durable tables
@@ -164,4 +176,5 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # loop retry log that charts/** covers via the global tables).
 "charts/spi-triage/files/telegram_delivery.py" = ["BLE001", "S110"]
 "services/spi/legacy/backend/telegram_delivery.py" = ["BLE001", "S110", "PLC0415", "S310", "T201", "PLR0913"]
+"services/spi/backend/telegram_delivery.py" = ["BLE001", "S110", "PLC0415", "S310", "T201", "PLR0913"]
 "services/**" = ["INP001"]
