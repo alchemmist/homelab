@@ -194,6 +194,11 @@
         "PLR0913",
         "PLR0915"
       ],
+      "services/spi/backend/evidence_bundle.py": [
+        "PLC0415",
+        "C901",
+        "PLR0915"
+      ],
       "charts/spi-triage/files/local_token_counter.py": [
         "C901",
         "PLR0912",
