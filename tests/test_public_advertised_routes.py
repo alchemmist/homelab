@@ -398,7 +398,11 @@ def test_umami_requires_native_denial_heartbeat_and_reviewed_bytes(
     import hashlib
 
     monkeypatch.setattr(checks, "UMAMI_SCRIPT", hashlib.sha256(b"fixture").hexdigest())
-    monkeypatch.setattr(
-        subprocess, "run", lambda *a, **kw: subprocess.CompletedProcess([], 0, reply)
-    )
+
+    def run(args, **kwargs):
+        assert args[-1] == "https://" + checks.UMAMI + path
+        assert args[args.index("--resolve") + 1] == checks.UMAMI + ":443:192.0.2.1"
+        return subprocess.CompletedProcess(args, 0, reply)
+
+    monkeypatch.setattr(subprocess, "run", run)
     assert (checks._path(checks.UMAMI, "192.0.2.1", path) == "matched") is ok
