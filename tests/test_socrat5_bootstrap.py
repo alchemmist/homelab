@@ -11,14 +11,14 @@ from jinja2 import Environment, StrictUndefined
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
-CAS_SOURCE = "hashlib.sha256(before).hexdigest() == EXPECTED"
-CAS_EXPRESSION = ast.dump(ast.parse(CAS_SOURCE, mode="eval").body)
+CAS_SOURCE = "hashlib.sha256(before).hexdigest() != EXPECTED"
+CAS_GUARD = ast.dump(ast.parse(CAS_SOURCE, mode="eval").body)
 
 
-def has_cas_assertion(tree: ast.Module) -> bool:
-    """Find an actual top-level main assertion, never a comment or quoted recipe."""
+def has_cas_guard(tree: ast.Module) -> bool:
+    """Find an actual top-level main guard, never a comment or quoted recipe."""
     return any(
-        isinstance(statement, ast.Assert) and ast.dump(statement.test) == CAS_EXPRESSION
+        isinstance(statement, ast.If) and ast.dump(statement.test) == CAS_GUARD
         for node in tree.body
         if isinstance(node, ast.FunctionDef) and node.name == "main"
         for statement in node.body
@@ -71,7 +71,7 @@ class BootstrapTests(unittest.TestCase):
         """Require CAS peer admission and reject transport restart tokens."""
         s = (ROOT / "scripts/wg-testing-class-admit.py").read_text()
         tree = ast.parse(s)
-        assert has_cas_assertion(tree)
+        assert has_cas_guard(tree)
         expected_args = ast.parse(
             '["wg", "set", "wg-socrat", "peer", KEY, "allowed-ips", IP, '
             '"persistent-keepalive", "25"]',
@@ -87,12 +87,10 @@ class BootstrapTests(unittest.TestCase):
             and ast.dump(node.args[0]) == ast.dump(expected_args)
             for node in ast.walk(tree)
         )
-        preservation = ast.dump(ast.parse("current == original", mode="eval").body)
+        preservation = ast.dump(ast.parse("current != original", mode="eval").body)
         assert any(
-            ast.dump(part) == preservation
+            isinstance(node, ast.If) and ast.dump(node.test) == preservation
             for node in ast.walk(tree)
-            if isinstance(node, ast.Assert)
-            for part in ast.walk(node.test)
         )
         tokens = {
             node.value
@@ -105,12 +103,12 @@ class BootstrapTests(unittest.TestCase):
         """Reject a replaced CAS assertion and a comment that only quotes the check."""
         source = (ROOT / "scripts/wg-testing-class-admit.py").read_text()
         tree = ast.parse(source)
-        assert has_cas_assertion(tree)
+        assert has_cas_guard(tree)
         for node in ast.walk(tree):
-            if isinstance(node, ast.Assert) and ast.dump(node.test) == CAS_EXPRESSION:
+            if isinstance(node, ast.If) and ast.dump(node.test) == CAS_GUARD:
                 node.test = ast.Constant(value=True)
-        assert not has_cas_assertion(tree)
-        assert not has_cas_assertion(ast.parse("# " + ast.unparse(ast.parse(CAS_SOURCE))))
+        assert not has_cas_guard(tree)
+        assert not has_cas_guard(ast.parse("# " + ast.unparse(ast.parse(CAS_SOURCE))))
 
     def test_guard_declared_before_transport_on_boot(self) -> None:
         """Declare the guard before the WireGuard unit and never restart it."""
