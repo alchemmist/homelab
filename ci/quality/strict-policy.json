@@ -176,6 +176,18 @@
         "C901",
         "PLR0912"
       ],
+      "tools/watchdog/runtime/relay.py": [
+        "TRY300",
+        "TRY301",
+        "PLR2004",
+        "S603",
+        "S607",
+        "S104",
+        "C901",
+        "PLR0912",
+        "PLR0915",
+        "T201"
+      ],
       "services/spi/backend/service.py": [
         "PLC0415",
         "T201",
