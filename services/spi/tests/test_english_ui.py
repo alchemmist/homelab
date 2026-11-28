@@ -1,4 +1,5 @@
 """Offline interface-language regressions; incoming alert data is not rewritten."""
+
 from html.parser import HTMLParser
 import json
 from pathlib import Path
@@ -7,25 +8,32 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 
+
 class EnglishUITests(unittest.TestCase):
     def test_all_owned_interface_assets_are_english(self):
         class HTML(HTMLParser):
             language = None
+
             def handle_starttag(self, tag, attrs):
-                if tag == 'html': self.language = dict(attrs).get('lang')
-        html = (ROOT / 'frontend/index.html').read_text()
-        parsed = HTML(); parsed.feed(html)
-        self.assertEqual(parsed.language, 'en')
-        for path in (ROOT / 'frontend').iterdir():
-            if path.suffix in ('.html', '.js', '.css', '.py'):
-                self.assertFalse(any('\u0400' <= c <= '\u04ff' for c in path.read_text()), path.name)
-        self.assertIn('Queue controls', html)
-        self.assertIn('Cancellation does not close the GitHub issue', html)
-        js = (ROOT / 'frontend/app.js').read_text()
+                if tag == "html":
+                    self.language = dict(attrs).get("lang")
+
+        html = (ROOT / "frontend/index.html").read_text()
+        parsed = HTML()
+        parsed.feed(html)
+        self.assertEqual(parsed.language, "en")
+        for path in (ROOT / "frontend").iterdir():
+            if path.suffix in (".html", ".js", ".css", ".py"):
+                self.assertFalse(
+                    any("\u0400" <= c <= "\u04ff" for c in path.read_text()), path.name
+                )
+        self.assertIn("Queue controls", html)
+        self.assertIn("Cancellation does not close the GitHub issue", html)
+        js = (ROOT / "frontend/app.js").read_text()
         self.assertIn("toLocaleString('en-GB'", js)
 
     def test_render_confirmation_and_errors_are_english_but_data_is_preserved(self):
-        script = r'''
+        script = r"""
 const assert=require('node:assert/strict'), path=require('node:path');
 const {createHarness,texts}=require(path.join(path.dirname(process.argv[1]),'../tests/ui_harness.js'));
 const {context:ctx,get,run}=createHarness(process.argv[1]);
@@ -48,20 +56,32 @@ assert.ok(run("errorMessage({name:'TimeoutError'})").startsWith('The request tim
 ctx.fetch=async()=>({ok:false,redirected:false,status:401,headers:{get:()=> 'application/json'},json:async()=>({code:'AUTH_REQUIRED'})});
 (async()=>{try{await run("api('list',{})");assert.fail('must reject');}
 catch(error){assert.ok(error.message.startsWith('Your session has expired.'));}})().catch(error=>{console.error(error);process.exitCode=1;});
-'''
-        subprocess.run(['node', '-e', script, str(ROOT / 'frontend/app.js')], check=True, capture_output=True, timeout=10)
+"""
+        subprocess.run(
+            ["node", "-e", script, str(ROOT / "frontend/app.js")],
+            check=True,
+            capture_output=True,
+            timeout=10,
+        )
 
     def test_selection_toolbar_does_not_participate_in_table_layout(self):
-        css = (ROOT / 'frontend/style.css').read_text()
-        bar = css.split('#bulkbar {', 1)[1].split('}', 1)[0]
-        self.assertIn('position: fixed', bar)
-        self.assertIn('bottom: 1rem', bar)
-        self.assertNotIn('position: sticky', bar)
-        self.assertIn('.selecting #bulkbar { pointer-events: none; }', css)
-        self.assertIn('padding-bottom: 8rem', css)
+        css = (ROOT / "frontend/style.css").read_text()
+        bar = css.split("#bulkbar {", 1)[1].split("}", 1)[0]
+        self.assertIn("position: fixed", bar)
+        self.assertIn("bottom: 1rem", bar)
+        self.assertNotIn("position: sticky", bar)
+        self.assertIn(".selecting #bulkbar { pointer-events: none; }", css)
+        self.assertIn("padding-bottom: 8rem", css)
 
     def test_sort_scroll_selection_and_bulk_cancellation_contract(self):
-        result = subprocess.run(['node', str(ROOT / 'tests/ui_interactions.js'), str(ROOT / 'frontend/app.js')], capture_output=True, text=True, timeout=10)
+        result = subprocess.run(
+            ["node", str(ROOT / "tests/ui_interactions.js"), str(ROOT / "frontend/app.js")],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-if __name__ == '__main__': unittest.main()
+
+if __name__ == "__main__":
+    unittest.main()
