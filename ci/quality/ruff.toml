@@ -127,6 +127,10 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # are inseparable safety steps under a single tree lock.
 "tools/watchdog/runtime/relay.py" = ["TRY300", "TRY301", "PLR2004", "S603", "S607", "S104", "C901", "PLR0912", "PLR0915", "T201"]
 
+# The HOME egress tool is one reviewed sequential CAS/state guard chain per mode
+# (apply, boot, direct-probe upgrade); its branches are inseparable safety steps.
+"ansible/scripts/vpn-home-transit-egress.py" = ["C901", "PLR0912"]
+
 "services/spi/backend/service.py" = ["PLC0415", "T201", "PLR0913", "TRY301"]
 "deploy/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
 # The integrations adapters are the reviewed LLM/checkpoint/collector boundary:
