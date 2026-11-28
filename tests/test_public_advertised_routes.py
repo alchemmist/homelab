@@ -406,3 +406,9 @@ def test_umami_requires_native_denial_heartbeat_and_reviewed_bytes(
 
     monkeypatch.setattr(subprocess, "run", run)
     assert (checks._path(checks.UMAMI, "192.0.2.1", path) == "matched") is ok
+
+
+def test_reviewed_umami_digest_has_sha256_shape():
+    import re
+
+    assert re.fullmatch(r"[0-9a-f]{64}", checks.UMAMI_SCRIPT)
