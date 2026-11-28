@@ -102,3 +102,47 @@ def test_cats_asset_witness_requires_complete_fixed_peer_responses(monkeypatch):
         SimpleNamespace(run=run, TimeoutExpired=subprocess.TimeoutExpired),
     )
     assert cats.sample(ip="192.0.2.1") == {path: False}
+
+
+def test_cache_fixture_is_disposable_no_pull_and_not_a_listener_release():
+    import pytest
+
+    from ci.quality.cats_cached_fixture import PIN, fixture
+
+    with pytest.raises(ValueError):
+        fixture("cats")
+    rows = fixture("cats-cache-proof-1234567890")
+    policy, sa, *pods = rows
+    assert policy["spec"] == {
+        "podSelector": {},
+        "policyTypes": ["Ingress", "Egress"],
+        "ingress": [],
+        "egress": [],
+    }
+    assert sa["automountServiceAccountToken"] is False
+    assert {p["spec"]["nodeSelector"]["kubernetes.io/hostname"] for p in pods} == {
+        "socrat-0",
+        "socrat-1",
+        "socrat-3",
+        "socrat-5",
+    }
+    for p in pods:
+        s = p["spec"]
+        assert (
+            p["kind"] == "Pod"
+            and set(s)
+            == {
+                "containers",
+                "nodeSelector",
+                "restartPolicy",
+                "automountServiceAccountToken",
+                "enableServiceLinks",
+                "serviceAccountName",
+            }
+            and s["automountServiceAccountToken"] is False
+        )
+        assert (
+            s["serviceAccountName"] == "cats"
+            and s["containers"][0]["image"] == PIN
+            and s["containers"][0]["imagePullPolicy"] == "Never"
+        )

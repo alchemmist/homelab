@@ -782,3 +782,16 @@ Cats: `python -m ci.quality.cats_route_witness` проверяет HTML и дв�
 в live Application `automated.enabled: false`, OutOfSync для Ingress, Deployment
 и ServiceAccount. Проверка байтов не снимает эту блокировку, не одобряет
 синхронизацию остальных объектов и не добавляет Cats к закрытым слушателям.
+
+Репетиция холодного старта Cats отделена от чтения файлов из работающего Pod.
+Из актуального owner chart взяты закреплённый образ, порт и отдельный SA без
+токена. В одноразовом namespace без Service, с запретом ingress/egress, без
+volume и pull Secret по одному Pod запросил тот же образ с `imagePullPolicy:
+Never` на socrat-0/1/3/5, без tolerations. На socrat-1 и socrat-5 новый Pod
+стал Ready; port-forward подтвердил все три файла сборки. На socrat-0 и socrat-3
+получен `ErrImageNeverPull`. Даже работающая реплика на socrat-0 с тем же
+указанным digest не доказывает, что kubelet сможет создать ещё один Pod по
+этой ссылке без pull. Это не тест доступности Harbor с учётными данными и
+не установление причины расхождения локального кеша. Namespace удалён,
+рабочие реплики и пауза Cats не менялись. Перед снятием паузы нужен отдельный
+контроль получения образа на необходимых узлах или согласованный prewarm.
