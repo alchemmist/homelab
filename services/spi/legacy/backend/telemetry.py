@@ -120,9 +120,7 @@ BUDGET_LIMITATION = (
     "request cap was reached. "
     "Unfetched telemetry is unknown, not healthy."
 )
-FAILED_LIMITATION = (
-    "The telemetry query failed, so there are no rows to interpret." + NOT_HEALTH
-)
+FAILED_LIMITATION = "The telemetry query failed, so there are no rows to interpret." + NOT_HEALTH
 EMPTY_WINDOW: _Window = {
     "collected_at": 0,
     "start": None,
@@ -282,9 +280,7 @@ def grafana_explore_url(
         if datasource_uid == "prometheus":
             query.update(range=True, instant=False)
     elif datasource_uid == "tempo":
-        query["queryType"] = (
-            "traceId" if re.fullmatch(r"[a-f0-9]{32}", query_text) else "traceql"
-        )
+        query["queryType"] = "traceId" if re.fullmatch(r"[a-f0-9]{32}", query_text) else "traceql"
     pane = {
         "datasource": datasource_uid,
         "queries": [query],
@@ -306,12 +302,7 @@ def _public_base(url: object) -> str | None:
     if not isinstance(url, str):
         return None
     parts = urllib.parse.urlsplit(url.strip())
-    if (
-        parts.scheme != "https"
-        or not parts.hostname
-        or parts.username
-        or parts.password
-    ):
+    if parts.scheme != "https" or not parts.hostname or parts.username or parts.password:
         return None
     if parts.query or parts.fragment or parts.path not in ("", "/"):
         return None
@@ -340,9 +331,7 @@ def _one_label(
     if not present:
         return None
     bad = [
-        key
-        for key, value in present
-        if not (isinstance(value, str) and pattern.fullmatch(value))
+        key for key, value in present if not (isinstance(value, str) and pattern.fullmatch(value))
     ]
     good: list[str] = []
     good.extend(
@@ -368,9 +357,7 @@ def _service_label(labels: object, rejected: list[dict[str, str]]) -> str | None
         rejected,
     )
     if value and UNIT_RE.fullmatch(value):
-        rejected.append(
-            {"label": "service", "reason": "SYSTEMD_UNIT_NOT_A_TRACE_SERVICE"}
-        )
+        rejected.append({"label": "service", "reason": "SYSTEMD_UNIT_NOT_A_TRACE_SERVICE"})
         return None
     return value
 
@@ -433,9 +420,7 @@ def trace_ids_in_text(text: object) -> list[str]:
         return []
     found: list[tuple[int, str]] = []
     for pattern in (TRACEPARENT_RE, TRACE_ID_RE):
-        found.extend(
-            (match.start(1), match.group(1).lower()) for match in pattern.finditer(text)
-        )
+        found.extend((match.start(1), match.group(1).lower()) for match in pattern.finditer(text))
     found.sort()
     return _unique(value for _, value in found)
 
@@ -514,8 +499,7 @@ def _attr_scalar(raw: object) -> bool | int | float | str | None:
 def _project_trace(payload: object, trace_id: str) -> dict[str, object] | None:
     batches = None
     if isinstance(payload, dict) and (
-        isinstance(payload.get("resourceSpans"), list)
-        or isinstance(payload.get("batches"), list)
+        isinstance(payload.get("resourceSpans"), list) or isinstance(payload.get("batches"), list)
     ):
         batches = payload.get("resourceSpans") or payload.get("batches") or []
     if batches is None:
@@ -530,10 +514,7 @@ def _project_trace(payload: object, trace_id: str) -> dict[str, object] | None:
         resource_value = batch.get("resource")
         resource = resource_value if isinstance(resource_value, dict) else {}
         for attribute in resource.get("attributes") or []:
-            if (
-                not isinstance(attribute, dict)
-                or attribute.get("key") != "service.name"
-            ):
+            if not isinstance(attribute, dict) or attribute.get("key") != "service.name":
                 continue
             value = _attr_scalar(attribute.get("value"))
             if isinstance(value, str):
@@ -551,9 +532,7 @@ def _project_trace(payload: object, trace_id: str) -> dict[str, object] | None:
                 scanned += 1
                 if not isinstance(raw, dict):
                     continue
-                own = normalize_trace_id(
-                    raw.get("traceId") or raw.get("trace_id") or ""
-                )
+                own = normalize_trace_id(raw.get("traceId") or raw.get("trace_id") or "")
                 if own and own != trace_id:
                     continue
                 status_value = raw.get("status")
@@ -565,9 +544,7 @@ def _project_trace(payload: object, trace_id: str) -> dict[str, object] | None:
                 omitted = 0
                 truncated_attributes = False
                 for attribute in raw.get("attributes") or []:
-                    if not isinstance(attribute, dict) or not isinstance(
-                        attribute.get("key"), str
-                    ):
+                    if not isinstance(attribute, dict) or not isinstance(attribute.get("key"), str):
                         continue
                     key = attribute["key"][:128]
                     if SECRET_KEY.search(key):
@@ -606,17 +583,14 @@ def _project_trace(payload: object, trace_id: str) -> dict[str, object] | None:
                         raw_value = attribute.get("value", {})
                         stack_value: object = (
                             raw_value.get("stringValue", "")[:4000]
-                            if key == "exception.stacktrace"
-                            and isinstance(raw_value, dict)
+                            if key == "exception.stacktrace" and isinstance(raw_value, dict)
                             else _attr_scalar(raw_value)
                         )
                         event_attributes[key[:128]] = stack_value
                     events.append(
                         {
                             "name": str(item.get("name", ""))[:180],
-                            "time_unix_nano": str(item.get("timeUnixNano", ""))[
-                                :STAMP_CHAR_LIMIT
-                            ],
+                            "time_unix_nano": str(item.get("timeUnixNano", ""))[:STAMP_CHAR_LIMIT],
                             "attributes": event_attributes,
                             "attributes_truncated": len(item.get("attributes") or [])
                             > EVENT_ATTRIBUTE_ITEMS,
@@ -627,9 +601,7 @@ def _project_trace(payload: object, trace_id: str) -> dict[str, object] | None:
                 spans.append(
                     {
                         "trace_id": trace_id,
-                        "span_id": raw.get("spanId")
-                        if isinstance(raw.get("spanId"), str)
-                        else "",
+                        "span_id": raw.get("spanId") if isinstance(raw.get("spanId"), str) else "",
                         "parent_span_id": raw.get("parentSpanId")
                         if isinstance(raw.get("parentSpanId"), str)
                         else "",
@@ -637,8 +609,7 @@ def _project_trace(payload: object, trace_id: str) -> dict[str, object] | None:
                         "service": service,
                         "resource_context": resource_context,
                         "events": events,
-                        "events_truncated": len(raw.get("events") or [])
-                        > SPAN_EVENT_ITEMS,
+                        "events_truncated": len(raw.get("events") or []) > SPAN_EVENT_ITEMS,
                         "start_time_unix_nano": raw.get("startTimeUnixNano")
                         if isinstance(raw.get("startTimeUnixNano"), str)
                         else "",
@@ -677,10 +648,7 @@ def _project_trace(payload: object, trace_id: str) -> dict[str, object] | None:
         or any(
             x["events_truncated"]
             or x["attributes_truncated"]
-            or any(
-                e["attributes_truncated"]
-                for e in cast("list[dict[str, object]]", x["events"])
-            )
+            or any(e["attributes_truncated"] for e in cast("list[dict[str, object]]", x["events"]))
             for x in stored
         ),
         "span_scan_capped": scan_capped,
@@ -694,9 +662,7 @@ def _project_trace(payload: object, trace_id: str) -> dict[str, object] | None:
     }
 
 
-def _gap(
-    source: str, reason: str, limitation: str, **fields: object
-) -> dict[str, object]:
+def _gap(source: str, reason: str, limitation: str, **fields: object) -> dict[str, object]:
     item: dict[str, object] = {
         "source": source,
         "reason": reason,
@@ -767,9 +733,7 @@ class TelemetryCollector:
         public_grafana_url: object = PUBLIC_GRAFANA_URL,
     ) -> None:
         """Store the Grafana origin, bearer token, and public link origin."""
-        if not isinstance(grafana_url, str) or not grafana_url.startswith(
-            ("http://", "https://")
-        ):
+        if not isinstance(grafana_url, str) or not grafana_url.startswith(("http://", "https://")):
             msg = "INVALID_GRAFANA_URL"
             raise Failure(msg)
         self.http = http
@@ -835,9 +799,7 @@ class TelemetryCollector:
             if isinstance(event.get("annotations"), dict)
             else {}
         )
-        window = absolute_window(
-            event.get("startsAt"), event.get("endsAt"), time.time()
-        )
+        window = absolute_window(event.get("startsAt"), event.get("endsAt"), time.time())
         if public:
             self._metric_links(evidence, window, links, seen, public)
         reason_value = window.get("reason")
@@ -872,9 +834,7 @@ class TelemetryCollector:
         discovered: list[_Discovered] = []
         anchors: list[tuple[_Plan, int]] = []
         self._remember_trace_id(
-            labels.get("trace_id")
-            or annotations.get("trace_id")
-            or labels.get("traceId"),
+            labels.get("trace_id") or annotations.get("trace_id") or labels.get("traceId"),
             "alert",
             discovered,
             missing,
@@ -922,9 +882,7 @@ class TelemetryCollector:
         )
         self._fetch_traces(discovered, window, artifacts, links, seen, public, missing)
         if plans:
-            self._context_queries(
-                anchors, window, artifacts, links, seen, public, missing
-            )
+            self._context_queries(anchors, window, artifacts, links, seen, public, missing)
         return {"artifacts": artifacts, "links": links, "missing": missing}
 
     def _plans(
@@ -946,9 +904,7 @@ class TelemetryCollector:
             "namespace",
             rejected,
         )
-        pod: str | None = _one_label(
-            labels, ("pod", "k8s_pod_name"), POD_RE, "pod", rejected
-        )
+        pod: str | None = _one_label(labels, ("pod", "k8s_pod_name"), POD_RE, "pod", rejected)
         container: str | None = _one_label(
             labels,
             ("container", "k8s_container_name"),
@@ -990,9 +946,7 @@ class TelemetryCollector:
                     )
                 )
 
-        self._rejected = [
-            {"label": item["label"], "reason": item["reason"]} for item in rejected
-        ]
+        self._rejected = [{"label": item["label"], "reason": item["reason"]} for item in rejected]
         missing.extend(
             _gap(
                 "log_scope",
@@ -1033,9 +987,7 @@ class TelemetryCollector:
         )
         plans: list[_Plan] = []
         if namespace and not k8s_blocked:
-            selector = _k8s_selector(
-                namespace, pod, container, service if not pod else None
-            )
+            selector = _k8s_selector(namespace, pod, container, service if not pod else None)
             note = (
                 "Lines are limited to the validated Kubernetes namespace and pod."
                 if pod
@@ -1102,13 +1054,10 @@ class TelemetryCollector:
         if evidence.get("verified_workload_service") and not unit:
             candidate = evidence["verified_workload_service"]
             service = (
-                cast("str", candidate)
-                if SERVICE_RE.fullmatch(cast("str", candidate))
-                else None
+                cast("str", candidate) if SERVICE_RE.fullmatch(cast("str", candidate)) else None
             )
         service_rejected = any(
-            item["label"]
-            in ("service", "service_name", "app", "deployment", "k8s_deployment_name")
+            item["label"] in ("service", "service_name", "app", "deployment", "k8s_deployment_name")
             for item in rejected
         )
         return plans, None if service_rejected else service
@@ -1128,9 +1077,7 @@ class TelemetryCollector:
         public: str | None,
         missing: list[dict[str, object]],
     ) -> tuple[str | None, str | None]:
-        evidence_names = [
-            name for name in _evidence_hosts(evidence) if HOST_RE.fullmatch(name)
-        ]
+        evidence_names = [name for name in _evidence_hosts(evidence) if HOST_RE.fullmatch(name)]
         if len(_unique(_evidence_hosts(evidence))) > 1:
             missing.append(
                 _gap(
@@ -1205,11 +1152,7 @@ class TelemetryCollector:
             return None, None
         names = _unique(_nodenames(payload))
         if len(names) != 1 or not HOST_RE.fullmatch(names[0]):
-            reason = (
-                "NODE_IDENTITY_AMBIGUOUS"
-                if len(names) > 1
-                else "NODE_IDENTITY_NOT_FOUND"
-            )
+            reason = "NODE_IDENTITY_AMBIGUOUS" if len(names) > 1 else "NODE_IDENTITY_NOT_FOUND"
             text = (
                 "Node identity returned more than one nodename, so none was used to scope host "
                 "logs."
@@ -1316,8 +1259,7 @@ class TelemetryCollector:
                 _gap(
                     "loki_" + kind + "_logs",
                     "UNEXPECTED_LOG_RESULT",
-                    "Loki did not return a log stream result for this query."
-                    + NOT_HEALTH,
+                    "Loki did not return a log stream result for this query." + NOT_HEALTH,
                     query=query,
                     start=start,
                     end=end,
@@ -1333,10 +1275,7 @@ class TelemetryCollector:
                 continue
             stream_labels = _bound_labels(stream.get("stream"))
             for sample in stream.get("values") or []:
-                if (
-                    not isinstance(sample, (list, tuple))
-                    or len(sample) < LOG_SAMPLE_ITEMS
-                ):
+                if not isinstance(sample, (list, tuple)) or len(sample) < LOG_SAMPLE_ITEMS:
                     malformed += 1
                     continue
                 timestamp, text = sample[0], sample[1]
@@ -1348,9 +1287,7 @@ class TelemetryCollector:
                     if isinstance(timestamp, str) and len(timestamp) <= STAMP_CHAR_LIMIT
                     else str(timestamp)[:STAMP_CHAR_LIMIT]
                 )
-                returned.append(
-                    {"timestamp": stamp, "line": text, "labels": stream_labels}
-                )
+                returned.append({"timestamp": stamp, "line": text, "labels": stream_labels})
                 if len(returned) >= limit:
                     break
             if len(returned) >= limit:
@@ -1466,10 +1403,7 @@ class TelemetryCollector:
     ) -> None:
         chosen: list[_Anchor] = []
         for plan, center in anchors:
-            if any(
-                item["kind"] == plan["kind"] and item["center"] == center
-                for item in chosen
-            ):
+            if any(item["kind"] == plan["kind"] and item["center"] == center for item in chosen):
                 continue
             chosen.append({"plan": plan, "center": center, "kind": plan["kind"]})
             if len(chosen) >= CONTEXT_ANCHORS:
@@ -1728,9 +1662,7 @@ class TelemetryCollector:
             if not isinstance(row, dict):
                 rejected += 1
                 continue
-            trace_id = normalize_trace_id(
-                str(row.get("traceID") or row.get("traceId") or "")
-            )
+            trace_id = normalize_trace_id(str(row.get("traceID") or row.get("traceId") or ""))
             if not trace_id:
                 rejected += 1
                 continue
@@ -1922,9 +1854,7 @@ class TelemetryCollector:
         trace_id: object = normalize_trace_id(value) if origin != "log" else value
         if origin == "log":
             trace_id = (
-                value
-                if isinstance(value, str) and re.fullmatch(r"[0-9a-f]{32}", value)
-                else None
+                value if isinstance(value, str) and re.fullmatch(r"[0-9a-f]{32}", value) else None
             )
         if not trace_id:
             if origin == "alert":
@@ -1951,22 +1881,14 @@ class TelemetryCollector:
     ) -> tuple[dict[str, object] | None, str | None]:
         if self._stop or self._calls >= MAX_REQUESTS:
             self._stop = True
-            missing.append(
-                _gap(source, "REQUEST_BUDGET_EXCEEDED", BUDGET_LIMITATION, **fields)
-            )
+            missing.append(_gap(source, "REQUEST_BUDGET_EXCEEDED", BUDGET_LIMITATION, **fields))
             return None, "REQUEST_BUDGET_EXCEEDED"
         remaining = _deadline_remaining()
         if remaining is not None and remaining < 1:
             self._stop = True
-            missing.append(
-                _gap(source, "REQUEST_BUDGET_EXCEEDED", BUDGET_LIMITATION, **fields)
-            )
+            missing.append(_gap(source, "REQUEST_BUDGET_EXCEEDED", BUDGET_LIMITATION, **fields))
             return None, "REQUEST_BUDGET_EXCEEDED"
-        if (
-            not path.startswith("/api/datasources/proxy/uid/")
-            or ".." in path
-            or "://" in path
-        ):
+        if not path.startswith("/api/datasources/proxy/uid/") or ".." in path or "://" in path:
             missing.append(
                 _gap(
                     source,
@@ -1982,8 +1904,7 @@ class TelemetryCollector:
             PROMETHEUS_QUERY_PATH,
         ) or (
             path.startswith(TEMPO_TRACE_PREFIX)
-            and re.fullmatch(r"[0-9a-f]{32}", path[len(TEMPO_TRACE_PREFIX) :])
-            is not None
+            and re.fullmatch(r"[0-9a-f]{32}", path[len(TEMPO_TRACE_PREFIX) :]) is not None
         )
         if not allowed:
             missing.append(
@@ -2042,9 +1963,7 @@ class TelemetryCollector:
             detail = _detail(payload)
             if detail:
                 extra["detail"] = detail
-            missing.append(
-                _gap(source, "OBSERVABILITY_QUERY_ERROR", FAILED_LIMITATION, **extra)
-            )
+            missing.append(_gap(source, "OBSERVABILITY_QUERY_ERROR", FAILED_LIMITATION, **extra))
             return None, "OBSERVABILITY_QUERY_ERROR"
         return payload, None
 
@@ -2059,9 +1978,7 @@ class TelemetryCollector:
             "requested_start": window.get("requested_start"),
             "requested_end": window.get("requested_end"),
             "collected_at": collected,
-            "collected_at_rfc3339": _rfc3339(collected)
-            if collected is not None
-            else None,
+            "collected_at_rfc3339": _rfc3339(collected) if collected is not None else None,
             "span_capped": bool(window.get("span_capped")),
             "clipped_to_lookback": bool(window.get("clipped_to_lookback")),
             "clipped_to_now": bool(window.get("clipped_to_now")),
@@ -2069,11 +1986,7 @@ class TelemetryCollector:
 
     def _stopped(self, missing: list[dict[str, object]], source: str) -> bool:
         remaining = _deadline_remaining()
-        if (
-            not self._stop
-            and self._calls < MAX_REQUESTS
-            and (remaining is None or remaining >= 1)
-        ):
+        if not self._stop and self._calls < MAX_REQUESTS and (remaining is None or remaining >= 1):
             return False
         self._stop = True
         missing.append(_gap(source, "REQUEST_BUDGET_EXCEEDED", BUDGET_LIMITATION))
@@ -2128,9 +2041,7 @@ class TelemetryCollector:
         public: str | None,
     ) -> None:
         evidence_window_value = evidence.get("window")
-        evidence_window = (
-            evidence_window_value if isinstance(evidence_window_value, dict) else {}
-        )
+        evidence_window = evidence_window_value if isinstance(evidence_window_value, dict) else {}
         titles = {
             "prometheus_metrics": "Prometheus metric query",
             "node_identity": "Prometheus node identity",
@@ -2146,11 +2057,7 @@ class TelemetryCollector:
             params_value = query.get("parameters")
             params = params_value if isinstance(params_value, dict) else {}
             expr = params.get("query")
-            if (
-                not isinstance(expr, str)
-                or expr == ""
-                or len(expr) > METRIC_QUERY_CHAR_LIMIT
-            ):
+            if not isinstance(expr, str) or expr == "" or len(expr) > METRIC_QUERY_CHAR_LIMIT:
                 continue
             path_value = query.get("path")
             path = path_value if isinstance(path_value, str) else ""

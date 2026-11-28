@@ -460,7 +460,7 @@
   "reviewedExceptionDigest": "fdbf4b83755f7ce568da4b53a20b5d23dfb4fa882728e8c1a5def79055935481",
   "frozenCompatibility": {
     "manifest": "charts/spi-triage/LEGACY-SOURCE-MANIFEST.json",
-    "sha256": "8c4a891cde09ab0f2461b3aaa11c229c43168786dd82f60e9a247d7e418a2586",
+    "sha256": "bf962fa43a28a15c3e8a7865291d3f293557dc3b89ab6bc7d5d6bf5980d2447c",
     "canonicalRepository": "https://github.com/alchemmist/spi-triage",
     "directory": "charts/spi-triage/files",
     "count": 17

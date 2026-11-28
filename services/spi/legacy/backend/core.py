@@ -131,9 +131,7 @@ def clean(value: object) -> object:
     if isinstance(value, list):
         return [clean(v) for v in value[:500]]
     if isinstance(value, str):
-        return ASSIGNMENT.sub(r"\1[REDACTED]", SECRET_VALUE.sub("[REDACTED]", value))[
-            :12000
-        ]
+        return ASSIGNMENT.sub(r"\1[REDACTED]", SECRET_VALUE.sub("[REDACTED]", value))[:12000]
     return value
 
 
@@ -170,11 +168,7 @@ def normalize(payload: object) -> dict[str, object]:
         msg = "INVALID_ALERT_STATUS"
         raise Failure(msg)
     labels = raw.get("labels", {})
-    if (
-        not isinstance(labels, dict)
-        or not labels.get("alertname")
-        or len(labels) > MAX_SCHEMA_KEYS
-    ):
+    if not isinstance(labels, dict) or not labels.get("alertname") or len(labels) > MAX_SCHEMA_KEYS:
         msg = "INVALID_ALERT_LABELS"
         raise Failure(msg)
     if any(
@@ -188,8 +182,7 @@ def normalize(payload: object) -> dict[str, object]:
         not isinstance(annotations, dict)
         or len(annotations) > MAX_SCHEMA_KEYS
         or any(
-            not isinstance(v, str) or len(v) > MAX_ANNOTATION_VALUE
-            for v in annotations.values()
+            not isinstance(v, str) or len(v) > MAX_ANNOTATION_VALUE for v in annotations.values()
         )
     ):
         msg = "INVALID_ALERT_ANNOTATIONS"
@@ -300,11 +293,7 @@ def _validate_array(value: object, schema: dict[str, object]) -> None:
 
 
 def _validate_string(value: object) -> None:
-    if (
-        not isinstance(value, str)
-        or not value.strip()
-        or len(value) > MAX_SCHEMA_STRING
-    ):
+    if not isinstance(value, str) or not value.strip() or len(value) > MAX_SCHEMA_STRING:
         msg = "INVALID_MODEL_SCHEMA"
         raise Failure(msg)
     # Fail closed on non-English scripts rather than publishing untranslated prose.
@@ -426,9 +415,7 @@ _RETRY_JITTER = random.SystemRandom()
 class Store:
     """SQLite-backed durable job ledger with one worker slot per store file."""
 
-    def __init__(
-        self, path: object, minute_token_limit: int = LLM_MINUTE_TOKEN_LIMIT
-    ) -> None:
+    def __init__(self, path: object, minute_token_limit: int = LLM_MINUTE_TOKEN_LIMIT) -> None:
         """Open (or create) the store file and mount the durable wait owners."""
         if type(minute_token_limit) is not int or minute_token_limit not in (
             30000,
@@ -502,9 +489,7 @@ class Store:
             row = c.execute(
                 "SELECT progress FROM match_review_v3 WHERE job_id=?", (key,)
             ).fetchone()
-            progress: dict[str, object] | None = (
-                json.loads(row["progress"]) if row else None
-            )
+            progress: dict[str, object] | None = json.loads(row["progress"]) if row else None
         return progress
 
     def snapshot_guard(self, key: str) -> None:
@@ -513,19 +498,14 @@ class Store:
             self._guard_owner(c, key)
             row = c.execute("SELECT * FROM jobs WHERE id=?", (key,)).fetchone()
             result = json.loads(row["result"])
-            budget = c.execute(
-                "SELECT * FROM snapshot_budget WHERE job_id=?", (key,)
-            ).fetchone()
-            invalid = (
-                len(result.get("snapshot_audit", [])) > SNAPSHOT_REPLACEMENT_BUDGET
-            )
+            budget = c.execute("SELECT * FROM snapshot_budget WHERE job_id=?", (key,)).fetchone()
+            invalid = len(result.get("snapshot_audit", [])) > SNAPSHOT_REPLACEMENT_BUDGET
             if budget:
                 retained = json.loads(budget["retained"])
                 invalid = (
                     invalid
                     or result.get("snapshot_generation") != budget["replacements"]
-                    or result.get("snapshot_audit", [])
-                    != retained.get("snapshot_audit", [])
+                    or result.get("snapshot_audit", []) != retained.get("snapshot_audit", [])
                 )
             if invalid:
                 c.execute(
@@ -555,15 +535,10 @@ class Store:
             row = c.execute("SELECT * FROM jobs WHERE id=?", (key,)).fetchone()
             if row["stage"] == 0:
                 return
-            if (
-                row["result"] != json.dumps(expected["result"])
-                or row["stage"] != expected["stage"]
-            ):
+            if row["result"] != json.dumps(expected["result"]) or row["stage"] != expected["stage"]:
                 msg = "INVALID_STAGE_ORDER"
                 raise Failure(msg)
-            budget = c.execute(
-                "SELECT * FROM snapshot_budget WHERE job_id=?", (key,)
-            ).fetchone()
+            budget = c.execute("SELECT * FROM snapshot_budget WHERE job_id=?", (key,)).fetchone()
             audits: list[object] = []
             current = expected["result"]
             if isinstance(current, dict):
@@ -632,9 +607,7 @@ class Store:
             ).lastrowid
             return reservation
 
-    def finish_llm(
-        self, reservation: int, actual: object = None, now: float | None = None
-    ) -> None:
+    def finish_llm(self, reservation: int, actual: object = None, now: float | None = None) -> None:
         """Settle one reservation; never refund an estimate."""
         now = time.time() if now is None else now
         with self.db() as c:
@@ -659,9 +632,7 @@ class Store:
             (now,),
         ).fetchall()
         for owner in rows:
-            job = c.execute(
-                "SELECT stage FROM jobs WHERE id=?", (owner["job_id"],)
-            ).fetchone()
+            job = c.execute("SELECT stage FROM jobs WHERE id=?", (owner["job_id"],)).fetchone()
             checkpointed = job and job["stage"] > STAGE_INDEX[owner["stage"]]
             if owner["phase"] == "running" and not checkpointed:
                 c.execute(
@@ -777,8 +748,7 @@ class Store:
             older = (
                 index == stage
                 and current is not None
-                and (owner["deadline"], owner["job_id"])
-                < (current["deadline"], current["job_id"])
+                and (owner["deadline"], owner["job_id"]) < (current["deadline"], current["job_id"])
             )
             if index < stage or (index == stage and not older):
                 continue
@@ -788,18 +758,10 @@ class Store:
                 and owner["due"] <= owner["job_updated"] + 70
             )
             near_wake = older and owner["due"] <= now + 70
-            eligible = (
-                owner["phase"] == "ready" or owner["due"] <= now or short or near_wake
-            )
+            eligible = owner["phase"] == "ready" or owner["due"] <= now or short or near_wake
             bounded = owner["expires"] <= owner["deadline"] and (
-                (
-                    owner["phase"] == "ready"
-                    and owner["expires"] <= owner["job_updated"] + 180
-                )
-                or (
-                    owner["phase"] == "waiting"
-                    and owner["expires"] <= owner["due"] + 180
-                )
+                (owner["phase"] == "ready" and owner["expires"] <= owner["job_updated"] + 180)
+                or (owner["phase"] == "waiting" and owner["expires"] <= owner["due"] + 180)
             )
             if eligible and bounded:
                 until = max(until, owner["expires"])
@@ -957,20 +919,16 @@ class Store:
             # is the reviewed whitelist routing into FIELD_UPDATES.
             for name, value in fields.items():
                 c.execute(FIELD_UPDATES[name], [value, key])
-            if c.execute(
-                "SELECT 1 FROM snapshot_budget WHERE job_id=?", (key,)
-            ).fetchone():
+            if c.execute("SELECT 1 FROM snapshot_budget WHERE job_id=?", (key,)).fetchone():
                 # Never overwrite the independent retained copy with an old
                 # worker's marker-less reset. Such a reset fails closed later.
                 budget = c.execute(
                     "SELECT replacements,retained FROM snapshot_budget WHERE job_id=?",
                     (key,),
                 ).fetchone()
-                if result.get("snapshot_generation") == budget[
-                    "replacements"
-                ] and result.get("snapshot_audit", []) == json.loads(
-                    budget["retained"]
-                ).get("snapshot_audit", []):
+                if result.get("snapshot_generation") == budget["replacements"] and result.get(
+                    "snapshot_audit", []
+                ) == json.loads(budget["retained"]).get("snapshot_audit", []):
                     c.execute(
                         "UPDATE snapshot_budget SET retained=? WHERE job_id=?",
                         (json.dumps(result), key),
@@ -1016,13 +974,9 @@ class Store:
                     "SELECT failures FROM job_failure_budget WHERE job_id=?", (key,)
                 ).fetchone()[0]
             dead = (
-                count >= MAX_FAILURES
-                and code not in PATIENT_TRANSIENT
-                and not safe_snapshot
+                count >= MAX_FAILURES and code not in PATIENT_TRANSIENT and not safe_snapshot
             ) or code == "WRITE_NEEDS_REVIEW"
-            delay: float = min(
-                3600, 30 * 2 ** min(count, 7) * _RETRY_JITTER.uniform(0.8, 1.2)
-            )
+            delay: float = min(3600, 30 * 2 ** min(count, 7) * _RETRY_JITTER.uniform(0.8, 1.2))
             if code in PATIENT_TRANSIENT and retry_after is not None:
                 delay = max(delay, Failure(code, retry_after).retry_after or 0)
             if code in {
@@ -1031,8 +985,7 @@ class Store:
                 "GITHUB_READ_TIMEOUT",
             } or (code == "LLM_HTTP_429" and retry_after is not None):
                 delay = (
-                    Failure(code, retry_after).retry_after
-                    or RETRY_AFTER_FALLBACK_SECONDS
+                    Failure(code, retry_after).retry_after or RETRY_AFTER_FALLBACK_SECONDS
                 ) + _RETRY_JITTER.uniform(1, 3)
             if safe_snapshot:
                 delay = 15 + _RETRY_JITTER.uniform(0, 5)
@@ -1065,15 +1018,11 @@ class Store:
             ).fetchone()[0]
             report: dict[str, object] = {
                 "counts": counts,
-                "oldest_pending_seconds": max(0, int(time.time() - oldest))
-                if oldest
-                else 0,
+                "oldest_pending_seconds": max(0, int(time.time() - oldest)) if oldest else 0,
             }
         return report
 
-    def reserve_dispatch(
-        self, now: float | None = None
-    ) -> tuple[str | None, float | None]:
+    def reserve_dispatch(self, now: float | None = None) -> tuple[str | None, float | None]:
         """Reserve one wake durably; return (reservation id, next deadline)."""
         now = time.time() if now is None else now
         with self.db() as c:
@@ -1109,10 +1058,6 @@ class Store:
     def dispatch_status(self) -> dict[str, object]:
         """Return the durable dispatcher wake state for liveness checks."""
         with self.db() as c:
-            row = c.execute(
-                "SELECT deadline,attempts FROM dispatch WHERE singleton=1"
-            ).fetchone()
-            status: dict[str, object] = (
-                dict(row) if row else {"deadline": 0, "attempts": 0}
-            )
+            row = c.execute("SELECT deadline,attempts FROM dispatch WHERE singleton=1").fetchone()
+            status: dict[str, object] = dict(row) if row else {"deadline": 0, "attempts": 0}
             return status

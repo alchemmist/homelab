@@ -128,10 +128,7 @@ def _rate_limit_metadata(
                 continue
             try:
                 number = float(raw)
-                if (
-                    math.isfinite(number)
-                    and 0 <= number <= _RATE_LIMIT_PLAUSIBLE_SECONDS
-                ):
+                if math.isfinite(number) and 0 <= number <= _RATE_LIMIT_PLAUSIBLE_SECONDS:
                     metadata[category + "_" + field] = number
                     if field == "reset":
                         delay = (
@@ -140,9 +137,7 @@ def _rate_limit_metadata(
                             else number
                         )
                         if delay >= 0:
-                            hint = max(
-                                hint or 0, min(_RATE_LIMIT_WINDOW_SECONDS, delay)
-                            )
+                            hint = max(hint or 0, min(_RATE_LIMIT_WINDOW_SECONDS, delay))
             except (ValueError, TypeError):
                 pass
     if hint is not None and math.isfinite(hint):
@@ -152,11 +147,7 @@ def _rate_limit_metadata(
 
 def metric_summary(value: object) -> object:
     """Keep observed extrema/trend without sending repetitive sample arrays to LLM."""
-    data = (
-        cast("dict[str, object]", value).get("data", {})
-        if isinstance(value, dict)
-        else {}
-    )
+    data = cast("dict[str, object]", value).get("data", {}) if isinstance(value, dict) else {}
     if not isinstance(data, dict) or data.get("resultType") not in ("matrix", "vector"):
         return value
     rows: object = data.get("result", [])
@@ -183,12 +174,8 @@ def metric_summary(value: object) -> object:
                 "finite_count": len(points),
                 "first": points[0] if points else None,
                 "last": points[-1] if points else None,
-                "minimum": min(
-                    (cast("float", p["value"]) for p in points), default=None
-                ),
-                "maximum": max(
-                    (cast("float", p["value"]) for p in points), default=None
-                ),
+                "minimum": min((cast("float", p["value"]) for p in points), default=None),
+                "maximum": max((cast("float", p["value"]) for p in points), default=None),
                 "nonzero_samples": sum(p["value"] != 0 for p in points),
             }
         )
@@ -216,9 +203,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Refuse every redirect: adapters stay confined to their reviewed origin."""
 
     @override
-    def redirect_request(
-        self, *_args: object, **_kwargs: object
-    ) -> urllib.request.Request:
+    def redirect_request(self, *_args: object, **_kwargs: object) -> urllib.request.Request:
         """Reject redirects from the urllib machinery with a transport failure."""
         msg = "HTTP_REDIRECT_FORBIDDEN"
         raise Failure(msg)
@@ -249,10 +234,7 @@ class HTTP:
         limit: int = 2_000_000,
     ) -> object:
         """Issue one bounded JSON request against the absolute request deadline."""
-        remaining = (
-            getattr(REQUEST_DEADLINE, "at", time.monotonic() + timeout)
-            - time.monotonic()
-        )
+        remaining = getattr(REQUEST_DEADLINE, "at", time.monotonic() + timeout) - time.monotonic()
         if remaining < 1:
             msg = "REQUEST_BUDGET_EXCEEDED"
             raise Failure(msg)
@@ -269,9 +251,7 @@ class HTTP:
                 raw = self._limited_read(response, limit)
                 return json.loads(raw) if raw else {}
         except urllib.error.HTTPError as error:
-            hint, metadata = _rate_limit_metadata(
-                cast("HTTPMessage | None", error.headers)
-            )
+            hint, metadata = _rate_limit_metadata(cast("HTTPMessage | None", error.headers))
             error.close()
             msg = "HTTP_" + str(error.code)
             raise Failure(msg, retry_after=hint, rate_metadata=metadata) from None
@@ -296,9 +276,7 @@ class HTTP:
 class GitHub:
     """Read-only GitHub API adapter pinned to the reviewed repository."""
 
-    def __init__(
-        self, http: HTTP, token_file: str, repo: str = "alchemmist/homelab"
-    ) -> None:
+    def __init__(self, http: HTTP, token_file: str, repo: str = "alchemmist/homelab") -> None:
         """Bind the transport, token-file path and the single reviewed repository."""
         if repo != "alchemmist/homelab":
             msg = "REPOSITORY_NOT_ALLOWED"
@@ -413,9 +391,7 @@ class GitHub:
             return None
         data = cast(
             "dict[str, object]",
-            self.request(
-                "GET", "/contents/" + urllib.parse.quote(path, safe="/") + "?ref=main"
-            ),
+            self.request("GET", "/contents/" + urllib.parse.quote(path, safe="/") + "?ref=main"),
         )
         size = data.get("size", 0)
         content_value = _text(data.get("content"))
@@ -528,9 +504,7 @@ class GitHub:
                         "role": "primary",
                     }
                     for c in self.comments(issue_number)
-                    if isinstance(c, dict)
-                    and trusted_comment(c)
-                    and marker in _text(c.get("body"))
+                    if isinstance(c, dict) and trusted_comment(c) and marker in _text(c.get("body"))
                 )
         if len(matches) != 1:
             msg = "WRITE_NEEDS_REVIEW"
@@ -550,9 +524,7 @@ class GitHub:
             return (
                 number
                 if any(
-                    isinstance(c, dict)
-                    and trusted_comment(c)
-                    and marker in _text(c.get("body"))
+                    isinstance(c, dict) and trusted_comment(c) and marker in _text(c.get("body"))
                     for c in self.comments(number)
                 )
                 else 0
@@ -591,17 +563,13 @@ class Model:
         self.store: Store | None = store
         from local_token_counter import configured_counter
 
-        self.counter: _TokenCounter | None = cast(
-            "_TokenCounter | None", configured_counter()
-        )
+        self.counter: _TokenCounter | None = cast("_TokenCounter | None", configured_counter())
 
     @staticmethod
     def analysis_reference_ids(data: object) -> list[str] | None:
         """Return the sorted artifact allowlist exposed to the model, if any."""
         evidence = (
-            cast("dict[str, object]", data).get("evidence")
-            if isinstance(data, dict)
-            else None
+            cast("dict[str, object]", data).get("evidence") if isinstance(data, dict) else None
         )
         context = (
             cast("dict[str, object]", evidence).get("artifact_context")
@@ -634,25 +602,19 @@ class Model:
             raise Failure(msg)
         return ids
 
-    def payload(
-        self, task: str, data: object, schema: dict[str, object]
-    ) -> dict[str, object]:
+    def payload(self, task: str, data: object, schema: dict[str, object]) -> dict[str, object]:
         """Build the bounded chat request, redacting secrets before transport."""
 
         def redact(value: object) -> object:
             if isinstance(value, dict):
                 return {
-                    str(key): "[REDACTED]"
-                    if SECRET_KEY.search(str(key))
-                    else redact(item)
+                    str(key): "[REDACTED]" if SECRET_KEY.search(str(key)) else redact(item)
                     for key, item in value.items()
                 }
             if isinstance(value, list):
                 return [redact(item) for item in value]
             if isinstance(value, str):
-                return ASSIGNMENT.sub(
-                    r"\1[REDACTED]", SECRET_VALUE.sub("[REDACTED]", value)
-                )
+                return ASSIGNMENT.sub(r"\1[REDACTED]", SECRET_VALUE.sub("[REDACTED]", value))
             return value
 
         guided = schema
@@ -712,26 +674,19 @@ class Model:
         if (
             body.get("model") != "qwen3.8-27b"
             or not isinstance(messages, list)
-            or [cast("dict[str, object]", m).get("role") for m in messages]
-            != ["system", "user"]
+            or [cast("dict[str, object]", m).get("role") for m in messages] != ["system", "user"]
             or body.get("chat_template_kwargs") != {"enable_thinking": False}
             or "tools" in body
         ):
             msg = "LLM_ACCOUNTING_CONTRACT_MISMATCH"
             raise Failure(msg)
         for message in messages:
-            if not isinstance(message, dict) or not isinstance(
-                message.get("content"), str
-            ):
+            if not isinstance(message, dict) or not isinstance(message.get("content"), str):
                 msg = "LLM_ACCOUNTING_CONTRACT_MISMATCH"
                 raise Failure(msg)
             contents.append(cast("str", message["content"]))
-        content = sum(
-            len(unicodedata.normalize("NFC", item).encode("utf-8")) for item in contents
-        )
-        schema_bytes = len(
-            json.dumps(body["response_format"], ensure_ascii=False).encode("utf-8")
-        )
+        content = sum(len(unicodedata.normalize("NFC", item).encode("utf-8")) for item in contents)
+        schema_bytes = len(json.dumps(body["response_format"], ensure_ascii=False).encode("utf-8"))
         # Rendered fixed template contributes <128 bytes (including generation
         # prefix); 256 is a conservative doubled byte bound, not chars/4.
         return content + schema_bytes + 256 + cast("int", body["max_tokens"])
@@ -739,9 +694,7 @@ class Model:
     def budget_reservation(self, body: dict[str, object]) -> int:
         """Reserve through the configured tokenizer or the static byte bound."""
         # Oversize is a bounded probe result, not a transport exception.
-        return (
-            self.counter.reservation(body) if self.counter else self.reservation(body)
-        )
+        return self.counter.reservation(body) if self.counter else self.reservation(body)
 
     @staticmethod
     def bounded_context(value: object, limit: int = 300) -> object:
@@ -803,9 +756,7 @@ class Model:
     ) -> tuple[dict[str, object], int]:
         """Build the payload and reserve its bounded token cost."""
         body = self.payload(task, data, schema)
-        tokens = (
-            self.counter.reservation(body) if self.counter else self.reservation(body)
-        )
+        tokens = self.counter.reservation(body) if self.counter else self.reservation(body)
         if tokens > _LLM_TOKEN_LIMIT:
             msg = "LLM_REQUEST_TOO_LARGE"
             raise Failure(msg)
@@ -857,19 +808,13 @@ class Model:
         store.finish_llm(reservation, actual=actual)
 
     @staticmethod
-    def _validated_choice(
-        response: object, schema: dict[str, object], data: object
-    ) -> object:
+    def _validated_choice(response: object, schema: dict[str, object], data: object) -> object:
         """Validate one completion payload against the strict response schema."""
         if not isinstance(response, dict):
             msg = "INVALID_MODEL_SCHEMA"
             raise Failure(msg)
         choices = response.get("choices")
-        if (
-            not isinstance(choices, list)
-            or not choices
-            or not isinstance(choices[0], dict)
-        ):
+        if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
             msg = "INVALID_MODEL_SCHEMA"
             raise Failure(msg)
         first = choices[0]
@@ -913,9 +858,7 @@ class Model:
                 raise Failure(msg)
         return value
 
-    def call(
-        self, task: str, data: object, schema: dict[str, object], deadline: float
-    ) -> object:
+    def call(self, task: str, data: object, schema: dict[str, object], deadline: float) -> object:
         """Run (at most) two bounded completions and validate against ``schema``."""
         body, tokens = self._prepared(task, data, schema)
         store = self.store
@@ -945,9 +888,7 @@ class Model:
             if remaining < _LLM_STAGE_MIN_SECONDS:
                 msg = "LLM_MODEL_STAGE_BUDGET_EXCEEDED"
                 raise Failure(msg)
-            timeout = min(
-                remaining, getattr(REQUEST_DEADLINE, "at", deadline) - time.monotonic()
-            )
+            timeout = min(remaining, getattr(REQUEST_DEADLINE, "at", deadline) - time.monotonic())
             if timeout < _LLM_STAGE_MIN_SECONDS:
                 msg = "LLM_MODEL_STAGE_BUDGET_EXCEEDED"
                 raise Failure(msg)
@@ -1000,9 +941,7 @@ class Model:
         """Log a bounded-rejection summary and build the matching failure."""
         # No raw IDs, bodies, events, credentials, or exception strings.
         numbers = [
-            x.get("number")
-            for x in issues
-            if isinstance(x, dict) and type(x.get("number")) is int
+            x.get("number") for x in issues if isinstance(x, dict) and type(x.get("number")) is int
         ]
         logging.getLogger(__name__).warning(
             "match_progress_rejected %s",
@@ -1021,9 +960,7 @@ class Model:
         return Failure("INVALID_MATCH_PROGRESS")
 
     @staticmethod
-    def _replayed_reviews(
-        old: dict[str, object], issues: list[dict[str, object]]
-    ) -> list[object]:
+    def _replayed_reviews(old: dict[str, object], issues: list[dict[str, object]]) -> list[object]:
         """Replay trusted v3 batch reviews against the persisted snapshot."""
         reviews: list[object] = []
         if not old:
@@ -1033,14 +970,11 @@ class Model:
             failure = Model._reject("ORIGINAL_SIGNATURE", cast("list[object]", issues))
             raise failure
         if any(
-            not isinstance(x, dict) or type(x.get("number")) is not int
-            for x in original
+            not isinstance(x, dict) or type(x.get("number")) is not int for x in original
         ) or not isinstance(old.get("reviews"), list):
             failure = Model._reject("ORIGINAL_SIGNATURE", cast("list[object]", issues))
             raise failure
-        original_by = {
-            _issue_number(x): x for x in cast("list[dict[str, object]]", original)
-        }
+        original_by = {_issue_number(x): x for x in cast("list[dict[str, object]]", original)}
         if len(original_by) != len(original):
             failure = Model._reject("ORIGINAL_SIGNATURE", cast("list[object]", issues))
             raise failure
@@ -1130,9 +1064,7 @@ class Model:
             failure = self._reject("DECISION", issues)
             raise failure
         entry: dict[str, object]
-        for entry in [
-            x for x in cast("list[object]", comparisons) if isinstance(x, dict)
-        ]:
+        for entry in [x for x in cast("list[object]", comparisons) if isinstance(x, dict)]:
             validate(entry, MATCH_SCHEMA)
             raw_number = entry["issue_number"]
             number: int = raw_number if isinstance(raw_number, int) else 0
@@ -1231,9 +1163,7 @@ class Model:
     ) -> dict[str, object]:
         """Review every open SPI in bounded, checkpointed batches against ``event``."""
         items = cast("list[object]", issues)
-        deadline = min(
-            time.monotonic() + 1800, getattr(REQUEST_DEADLINE, "at", float("inf"))
-        )
+        deadline = min(time.monotonic() + 1800, getattr(REQUEST_DEADLINE, "at", float("inf")))
         event_identity = digest(event)
         event = self.bounded_context(event)
         # Every issue is examined; do not fail every incident merely because
@@ -1260,13 +1190,10 @@ class Model:
             for field in ("body", "title"):
                 if (
                     isinstance(value.get(field), str)
-                    and len(cast("str", value[field]).encode("utf-8"))
-                    > _MATCH_EXCERPT_BYTES
+                    and len(cast("str", value[field]).encode("utf-8")) > _MATCH_EXCERPT_BYTES
                 ):
                     value[field] = (
-                        cast("str", value[field])
-                        .encode("utf-8")[:1600]
-                        .decode("utf-8", "ignore")
+                        cast("str", value[field]).encode("utf-8")[:1600].decode("utf-8", "ignore")
                     )
                     value[field + "_match_excerpt_truncated"] = True
             if "recent_comments" in value:
@@ -1366,8 +1293,7 @@ class Model:
                 {
                     "alert": event,
                     "open_issues": [
-                        bounded[_issue_number(cast("dict[str, object]", x))]
-                        for x in pair
+                        bounded[_issue_number(cast("dict[str, object]", x))] for x in pair
                     ],
                 },
                 MATCH_SCHEMA,
@@ -1386,9 +1312,7 @@ class Model:
             selection = {
                 "nominees": digest(candidates),
                 "comparisons": list(comparisons),
-                "remaining": [
-                    _issue_number(cast("dict[str, object]", x)) for x in finalists
-                ],
+                "remaining": [_issue_number(cast("dict[str, object]", x)) for x in finalists],
                 "decision": result,
             }
             checkpoint()
@@ -1402,9 +1326,9 @@ class Model:
                 cast("dict[str, object]", review)["decision"]
                 for review in reviews
                 if isinstance(review, dict)
-                and cast(
-                    "dict[str, object]", cast("dict[str, object]", review)["decision"]
-                )["issue_number"]
+                and cast("dict[str, object]", cast("dict[str, object]", review)["decision"])[
+                    "issue_number"
+                ]
                 == _issue_number(cast("dict[str, object]", finalist))
             )
         return {
@@ -1423,17 +1347,13 @@ class Model:
         evidence_map["queries"] = [
             {
                 **q,
-                "result": metric_summary(
-                    cast("dict[str, object]", q).get("result", {})
-                ),
+                "result": metric_summary(cast("dict[str, object]", q).get("result", {})),
             }
             if isinstance(q, dict) and q.get("source") in _MATRIX_SOURCES
             else q
             for q in queries
         ]
-        rule_definitions = cast(
-            "list[object]", evidence_map.get("rule_definitions", [])
-        )
+        rule_definitions = cast("list[object]", evidence_map.get("rule_definitions", []))
         evidence_map["rule_definitions"] = [
             {k: v for k, v in cast("dict[str, object]", rule).items() if k != "alerts"}
             for rule in rule_definitions
@@ -1479,22 +1399,13 @@ class Model:
         # Prefer full context. Compact preliminary FULL report bodies before
         # diagnostic evidence, then progressively bounded, explicit excerpts.
         data: dict[str, object] = original
-        if (
-            self.budget_reservation(self.payload(task, data, REPORT_SCHEMA))
-            > _LLM_TOKEN_LIMIT
-        ):
+        if self.budget_reservation(self.payload(task, data, REPORT_SCHEMA)) > _LLM_TOKEN_LIMIT:
             data = {**original, "preliminary_match": self.bounded_context(match, 600)}
         for limit in (1200, 600, 300):
-            if (
-                self.budget_reservation(self.payload(task, data, REPORT_SCHEMA))
-                <= _LLM_TOKEN_LIMIT
-            ):
+            if self.budget_reservation(self.payload(task, data, REPORT_SCHEMA)) <= _LLM_TOKEN_LIMIT:
                 break
             data = cast("dict[str, object]", self.bounded_context(original, limit))
-        if (
-            self.budget_reservation(self.payload(task, data, REPORT_SCHEMA))
-            > _LLM_TOKEN_LIMIT
-        ):
+        if self.budget_reservation(self.payload(task, data, REPORT_SCHEMA)) > _LLM_TOKEN_LIMIT:
             msg = "LLM_CONTEXT_METADATA_TOO_LARGE"
             raise Failure(msg)
         report = self.call(
@@ -1520,9 +1431,7 @@ class Model:
 class Evidence:
     """Bounded observability collectors writing the per-incident evidence bundle."""
 
-    def __init__(
-        self, http: HTTP, token: str, base: str, github: GitHub | None = None
-    ) -> None:
+    def __init__(self, http: HTTP, token: str, base: str, github: GitHub | None = None) -> None:
         """Bind the transport, worker token, observability base URL and GitHub adapter."""
         self.http = http
         self.token = token
@@ -1537,11 +1446,7 @@ class Evidence:
         url = (
             self.base
             + path
-            + (
-                "?" + urllib.parse.urlencode(cast("dict[str, object]", params))
-                if params
-                else ""
-            )
+            + ("?" + urllib.parse.urlencode(cast("dict[str, object]", params)) if params else "")
         )
         value = self.http.request(
             "GET",
@@ -1560,21 +1465,15 @@ class Evidence:
         """Summarize one fetched trace without leaking raw span payloads."""
         spans: list[object] = []
         batches = (
-            cast("dict[str, object]", raw).get("resourceSpans")
-            if isinstance(raw, dict)
-            else None
+            cast("dict[str, object]", raw).get("resourceSpans") if isinstance(raw, dict) else None
         )
         if batches is None and isinstance(raw, dict):
             batches = cast("dict[str, object]", raw).get("batches", [])
         for batch in cast("list[object]", batches or []):
             if not isinstance(batch, dict):
                 continue
-            scopes = batch.get(
-                "scopeSpans", batch.get("instrumentationLibrarySpans", [])
-            )
-            for scope in (
-                cast("list[object]", scopes) if isinstance(scopes, list) else []
-            ):
+            scopes = batch.get("scopeSpans", batch.get("instrumentationLibrarySpans", []))
+            for scope in cast("list[object]", scopes) if isinstance(scopes, list) else []:
                 if not isinstance(scope, dict):
                     continue
                 spans.extend(cast("list[object]", scope.get("spans", [])))
@@ -1625,11 +1524,7 @@ class Evidence:
         if not isinstance(rules, dict):
             return definitions, expressions
         data = rules.get("data")
-        groups = (
-            cast("dict[str, object]", data).get("groups", [])
-            if isinstance(data, dict)
-            else []
-        )
+        groups = cast("dict[str, object]", data).get("groups", []) if isinstance(data, dict) else []
         for group in cast("list[object]", groups):
             if not isinstance(group, dict):
                 continue
@@ -1656,9 +1551,7 @@ class Evidence:
             if not isinstance(rule, dict):
                 continue
             alert = rule.get("grafana_alert", {})
-            for query in cast(
-                "list[object]", cast("dict[str, object]", alert).get("data", [])
-            ):
+            for query in cast("list[object]", cast("dict[str, object]", alert).get("data", [])):
                 if not isinstance(query, dict):
                     continue
                 uid = query.get("datasourceUid")
@@ -1694,9 +1587,7 @@ class Evidence:
         instance = labels.get("instance")
         unit = labels.get("name")
         if not (
-            instance
-            and isinstance(unit, str)
-            and unit.endswith((".service", ".timer", ".socket"))
+            instance and isinstance(unit, str) and unit.endswith((".service", ".timer", ".socket"))
         ):
             return
         selector = "instance=" + json.dumps(instance) + ",name=" + json.dumps(unit)
@@ -1710,18 +1601,14 @@ class Evidence:
             {"query": "node_uname_info{instance=" + json.dumps(instance) + "}"},
         )
         records: object = (
-            cast(
-                "dict[str, object]", cast("dict[str, object]", identity).get("data", {})
-            ).get("result", [])
+            cast("dict[str, object]", cast("dict[str, object]", identity).get("data", {})).get(
+                "result", []
+            )
             if isinstance(identity, dict)
             else []
         )
         host = ""
-        if (
-            isinstance(records, list)
-            and len(records) == 1
-            and isinstance(records[0], dict)
-        ):
+        if isinstance(records, list) and len(records) == 1 and isinstance(records[0], dict):
             metric = records[0].get("metric", {})
             host = _text(cast("dict[str, object]", metric).get("nodename"))
         if re.fullmatch(r"[A-Za-z0-9.-]{1,253}", host):
@@ -1768,9 +1655,7 @@ class Evidence:
             selector += ",pod=" + json.dumps(pod)
         job = labels.get("job_name")
         if isinstance(job, str) and re.fullmatch(r"[a-z0-9.-]{1,253}", job):
-            job_selector = (
-                "namespace=" + json.dumps(namespace) + ",job_name=" + json.dumps(job)
-            )
+            job_selector = "namespace=" + json.dumps(namespace) + ",job_name=" + json.dumps(job)
             expressions += [
                 "kube_job_status_failed{" + job_selector + "}",
                 "kube_job_owner{" + job_selector + "}",
@@ -1803,9 +1688,7 @@ class Evidence:
             },
         )
 
-    def _deployment_workloads(
-        self, deployed: object, result: dict[str, object]
-    ) -> None:
+    def _deployment_workloads(self, deployed: object, result: dict[str, object]) -> None:
         """Highlight the most relevant failed workload pod from deployment facts."""
         artifacts = (
             cast("dict[str, object]", deployed).get("artifacts", [])
@@ -1888,9 +1771,7 @@ class Evidence:
                             },
                         }
                     )
-                compact: object = (
-                    metric_summary(value) if kind in _MATRIX_SOURCES else value
-                )
+                compact: object = metric_summary(value) if kind in _MATRIX_SOURCES else value
                 queries.append(
                     {
                         "source": kind,
@@ -1904,9 +1785,7 @@ class Evidence:
         rules = fetch("grafana_rules", "/api/prometheus/grafana/api/v1/rules")
         for rule in self._grafana_rule_definitions(rules, name):
             rule_definitions.append(rule)
-        rules = fetch(
-            "prometheus_rules", "/api/datasources/proxy/uid/prometheus/api/v1/rules"
-        )
+        rules = fetch("prometheus_rules", "/api/datasources/proxy/uid/prometheus/api/v1/rules")
         found_rules, expressions = self._prometheus_rule_definitions(rules, name)
         for rule in found_rules:
             rule_definitions.append(rule)
@@ -1977,9 +1856,7 @@ class Evidence:
             except Failure as failure:
                 missing.append({"source": "traces", "reason": failure.code})
             else:
-                queries.append(
-                    {"source": "tempo_trace_summary", "path": path, "result": summary}
-                )
+                queries.append({"source": "tempo_trace_summary", "path": path, "result": summary})
         else:
             missing.append({"source": "traces", "reason": "TRACE_ID_NOT_AVAILABLE"})
         reference = None
@@ -1991,9 +1868,7 @@ class Evidence:
                     )
                 )
             except Failure as failure:
-                missing.append(
-                    {"source": "repository_reference", "reason": failure.code}
-                )
+                missing.append({"source": "repository_reference", "reason": failure.code})
         if reference is not None:
             result["repository_reference"] = reference
         if not result["rule_definitions"]:
@@ -2006,9 +1881,7 @@ class Evidence:
         deployed = deployment_collector.collect(event)
         if labels.get("job_name") or (pod and not labels.get("name")):
             self._deployment_workloads(deployed, result)
-        extra = TelemetryCollector(self.http, self.base, self.token).collect(
-            event, result
-        )
+        extra = TelemetryCollector(self.http, self.base, self.token).collect(event, result)
         source = deployment_collector.source_fragments(deployed, extra)
         missing += (
             cast("list[object]", extra["missing"])

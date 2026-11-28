@@ -287,17 +287,12 @@ def log_event(event: str, level: str = "info", **fields: object) -> None:
     unknown fields are dropped and unreviewed stage or code values are redacted
     before serialization.
     """
-    record: dict[str, object] = {
-        k: v for k, v in fields.items() if k in LOG_ALLOWED_FIELDS
-    }
+    record: dict[str, object] = {k: v for k, v in fields.items() if k in LOG_ALLOWED_FIELDS}
     for key in ("stage", "phase", "code"):
         if key in record:
             value = record[key]
             valid = (
-                (
-                    isinstance(value, str)
-                    and bool(re.fullmatch(r"[A-Z][A-Z0-9_]{0,79}", value))
-                )
+                (isinstance(value, str) and bool(re.fullmatch(r"[A-Z][A-Z0-9_]{0,79}", value)))
                 if key == "code"
                 else value in LOGGED_PHASE_NAMES
             )
@@ -395,9 +390,7 @@ class Engine:
     def _legacy_fail(self, name: str, key: str, error: Failure) -> None:
         """Apply legacy retry/failure semantics for a raised stage error."""
         current = self.store.get(key)
-        if not (
-            current["state"] == "dead" and current["error"] == "WRITE_NEEDS_REVIEW"
-        ):
+        if not (current["state"] == "dead" and current["error"] == "WRITE_NEEDS_REVIEW"):
             self.store.fail(
                 key,
                 error.code,
@@ -441,14 +434,10 @@ class Engine:
         self, name: str, data: dict[str, object]
     ) -> tuple[dict[str, object] | None, dict[str, object] | None]:
         """Admit one owned v1 stage; return a replay response or a fresh owner."""
-        priority = self.store.owners.capacity_defer(
-            name, data, time.time(), priority_only=True
-        )
+        priority = self.store.owners.capacity_defer(name, data, time.time(), priority_only=True)
         if priority is not None:
             if priority["status"] == "deferred":
-                log_event(
-                    "stage_deferred", "warning", stage=name, code=priority["code"]
-                )
+                log_event("stage_deferred", "warning", stage=name, code=priority["code"])
             return priority, None
         cached, owner = self.store.owners.begin(name, data, time.time())
         if cached is not None:
@@ -489,9 +478,7 @@ class Engine:
             del REQUEST_DEADLINE.at
             del OWNER_CONTEXT.binding
 
-    def _v1_failure(
-        self, name: str, owner: dict[str, object], exc: Failure
-    ) -> dict[str, object]:
+    def _v1_failure(self, name: str, owner: dict[str, object], exc: Failure) -> dict[str, object]:
         """Commit the reviewed v1 outcome for one stage failure."""
         if exc.code == "OPEN_SPI_CHANGED":
             # Store reset and owner/fence/receipt changed atomically.
@@ -555,9 +542,7 @@ class Engine:
         elif name == "analyze":
             self._run_analyze(key, record, event, resolved=resolved, intent=intent)
         else:
-            return self._run_publish(
-                key, record, event, resolved=resolved, intent=intent
-            )
+            return self._run_publish(key, record, event, resolved=resolved, intent=intent)
         self.store.save(key, wanted, record)
         return {"job_id": key, "status": "processing", "stage": wanted}
 
@@ -576,9 +561,7 @@ class Engine:
                 record["analyze_recovery"] = True
         if not resolved or bool(record.get("analyze_recovery")):
             issues = cast("GitHubApi", self.github).snapshot()
-            record["open_signature"] = digest(
-                [(x["number"], x["updated_at"]) for x in issues]
-            )
+            record["open_signature"] = digest([(x["number"], x["updated_at"]) for x in issues])
 
             def checkpoint(progress: object) -> None:
                 """Persist one reviewed match progress checkpoint."""
@@ -596,8 +579,7 @@ class Engine:
             record["match"] = cast("ModelApi", self.model).match(
                 event,
                 issues,
-                progress=self.store.match_checkpoint(key)
-                or record.get("match_progress_v3"),
+                progress=self.store.match_checkpoint(key) or record.get("match_progress_v3"),
                 on_progress=checkpoint,
             )
 
@@ -663,10 +645,7 @@ class Engine:
             return title, body, number
         github = cast("GitHubApi", self.github)
         issues = github.snapshot()
-        if (
-            digest([(x["number"], x["updated_at"]) for x in issues])
-            != record["open_signature"]
-        ):
+        if digest([(x["number"], x["updated_at"]) for x in issues]) != record["open_signature"]:
             self.invalidate_snapshot(key, record, self.store.get(key))
         title, body = render(cast("dict[str, object]", record["report"]), event)
         report = cast("dict[str, object]", record["report"])
@@ -723,9 +702,7 @@ class Engine:
             return {"job_id": key, "status": "dry_run", "issue_number": 0}
         if "publication_backend" not in record:
             record["publication_backend"] = (
-                "legacy"
-                if intent or "artifact_publication" in record
-                else self.storage_backend
+                "legacy" if intent or "artifact_publication" in record else self.storage_backend
             )
             self.store.save(key, 3, record, intent=job["intent"])
         if record["publication_backend"] not in {"legacy", "s3"}:
@@ -740,14 +717,10 @@ class Engine:
         if "artifact_publication" in record:
             msg = "WRITE_NEEDS_REVIEW"
             raise Failure(msg)
-        targets = self._publish_targets(
-            key, record, event, marker(key), resolved=resolved
-        )
+        targets = self._publish_targets(key, record, event, marker(key), resolved=resolved)
         if isinstance(targets, dict):
             return targets
-        rendered = self._render_publication(
-            key, record, job, targets, resolved=resolved
-        )
+        rendered = self._render_publication(key, record, job, targets, resolved=resolved)
         if isinstance(rendered, dict):
             return rendered
         self.store.save(key, 3, record, intent=json.dumps({"number": targets[2]}))
@@ -772,9 +745,7 @@ class Engine:
             if not resolved or bool(record.get("analyze_recovery")):
                 github = cast("GitHubApi", self.github)
                 issues = github.snapshot()
-                digest_fresh = digest(
-                    [(item["number"], item["updated_at"]) for item in issues]
-                )
+                digest_fresh = digest([(item["number"], item["updated_at"]) for item in issues])
                 if digest_fresh != record["open_signature"]:
                     self.invalidate_snapshot(key, record, job)
             elif not self._issue_open(number):
@@ -786,9 +757,7 @@ class Engine:
 
     def _issue_open(self, number: object) -> bool:
         """Verify the resolved episode still has its open issue."""
-        existing = cast("GitHubApi", self.github).request(
-            "GET", "/issues/" + str(number)
-        )
+        existing = cast("GitHubApi", self.github).request("GET", "/issues/" + str(number))
         return bool(existing.get("state") == "open")
 
     def _publish_post(
@@ -810,9 +779,7 @@ class Engine:
                 )
                 kind = "comment"
             else:
-                posted = github.request(
-                    "POST", "/issues", {"title": title, "body": body}
-                )
+                posted = github.request("POST", "/issues", {"title": title, "body": body})
                 number = posted["number"]
                 kind = "issue"
         except Failure as e:
@@ -844,10 +811,7 @@ class Engine:
         if "storage_publication" in retained:
             audit = list(cast("list[object]", retained.get("snapshot_audit", [])))
             audit.append(
-                {
-                    k: retained.get(k)
-                    for k in ("evidence", "storage_publication", "open_signature")
-                }
+                {k: retained.get(k) for k in ("evidence", "storage_publication", "open_signature")}
             )
             retained["snapshot_audit"] = audit
             del retained["storage_publication"]
@@ -881,9 +845,7 @@ class Engine:
         ]
         progress = cast(
             "dict[str, object]",
-            result.setdefault(
-                "storage_publication", {"binding": binding, "verified": []}
-            ),
+            result.setdefault("storage_publication", {"binding": binding, "verified": []}),
         )
         verified = cast("list[object]", progress.get("verified", []))
         if (
@@ -959,21 +921,15 @@ class Engine:
             key,
             3,
             result,
-            intent=json.dumps(
-                {"number": publication["issue_number"], "primary_done": True}
-            ),
+            intent=json.dumps({"number": publication["issue_number"], "primary_done": True}),
             on_save=queue,
         )
         delivery.signal()
 
-    def finish_evidence(
-        self, key: str, result: dict[str, object], number: object
-    ) -> None:
+    def finish_evidence(self, key: str, result: dict[str, object], number: object) -> None:
         """Publish artifacts and mark the job complete."""
         intent = json.dumps({"number": number, "primary_done": True})
-        progress = cast(
-            "dict[str, object]", result.setdefault("artifact_publication", {})
-        )
+        progress = cast("dict[str, object]", result.setdefault("artifact_publication", {}))
 
         def save() -> None:
             """Persist the continuing artifact publication progress."""
@@ -1077,9 +1033,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: object) -> None:
         """Silence the default per-request noise log."""
 
-    def send(
-        self, status: int, body: object, content_type: str = "application/json"
-    ) -> None:
+    def send(self, status: int, body: object, content_type: str = "application/json") -> None:
         """Send one bounded response body."""
         raw = body.encode() if isinstance(body, str) else json.dumps(body).encode()
         self.send_response(status)
@@ -1113,13 +1067,12 @@ class Handler(BaseHTTPRequestHandler):
         )
         lines += [
             "# TYPE socrat_spi_oldest_pending_seconds gauge",
-            "socrat_spi_oldest_pending_seconds "
-            + str(healthy["oldest_pending_seconds"]),
+            "socrat_spi_oldest_pending_seconds " + str(healthy["oldest_pending_seconds"]),
         ]
         with context.store.db() as c:
-            pending = c.execute(
-                "SELECT count(*)FROM spi_links WHERE state!='applied'"
-            ).fetchone()[0]
+            pending = c.execute("SELECT count(*)FROM spi_links WHERE state!='applied'").fetchone()[
+                0
+            ]
         lines += [
             "socrat_spi_telegram_links_pending " + str(pending),
             "socrat_spi_telegram_links_enabled " + str(int(context.delivery.enabled)),
@@ -1137,9 +1090,7 @@ class Handler(BaseHTTPRequestHandler):
             self.post_queue_admin()
             return
         headers = cast("Message", self.headers)
-        if not hmac.compare_digest(
-            headers.get("X-Worker-Token", ""), os.environ["WORKER_TOKEN"]
-        ):
+        if not hmac.compare_digest(headers.get("X-Worker-Token", ""), os.environ["WORKER_TOKEN"]):
             self.send(403, {"code": "FORBIDDEN"})
             return
         try:
@@ -1167,9 +1118,7 @@ class Handler(BaseHTTPRequestHandler):
         if result is None:
             self.send(404, {"code": "NOT_FOUND"})
             return
-        self.send(
-            202 if opted and result.get("status") == "deferred" else HTTP_OK, result
-        )
+        self.send(202 if opted and result.get("status") == "deferred" else HTTP_OK, result)
 
     @staticmethod
     def workflow_opted(headers: Message) -> bool:
@@ -1206,9 +1155,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send(HTTP_OK, result)
         except Failure as e:
             self.send(
-                409
-                if e.code in {"QUEUE_ITEM_CHANGED", "QUEUE_ITEM_NOT_CANCELLABLE"}
-                else 400,
+                409 if e.code in {"QUEUE_ITEM_CHANGED", "QUEUE_ITEM_NOT_CANCELLABLE"} else 400,
                 {"code": e.code},
             )
         except (ValueError, TypeError, AttributeError):
@@ -1216,9 +1163,7 @@ class Handler(BaseHTTPRequestHandler):
         except (ArithmeticError, IndexError, KeyError, OSError, sqlite3.Error):
             self.send(500, {"code": "INTERNAL_ERROR"})
 
-    def post_route(
-        self, data: dict[str, object], *, opted: bool
-    ) -> dict[str, object] | None:
+    def post_route(self, data: dict[str, object], *, opted: bool) -> dict[str, object] | None:
         """Route one authenticated stage request; None selects the 404."""
         context = self.server.context
         if self.path == "/enqueue":
@@ -1247,9 +1192,7 @@ class Handler(BaseHTTPRequestHandler):
         accepted = context.store.enqueue_many(events)
         return {
             "accepted": len(accepted),
-            "events": [
-                {"event_key": e["event_key"], "episode": e["episode"]} for e in events
-            ],
+            "events": [{"event_key": e["event_key"], "episode": e["episode"]} for e in events],
         }
 
     def post_telegram_receipt(self, data: dict[str, object]) -> dict[str, object]:
@@ -1348,8 +1291,8 @@ def serve() -> None:
     token_file = os.environ.get("GITHUB_TOKEN_FILE", "/github/token")
     engine = Engine(
         store,
-        GitHub(http, token_file),
-        model,
+        cast("GitHubApi", GitHub(http, token_file)),
+        cast("ModelApi", model),
         Evidence(
             http,
             os.environ["GRAFANA_TOKEN"],
@@ -1370,9 +1313,7 @@ def serve() -> None:
     )
     dispatcher.start()
     delivery.start()
-    threading.Thread(
-        target=_heartbeat, args=(store,), name="spi-health", daemon=True
-    ).start()
+    threading.Thread(target=_heartbeat, args=(store,), name="spi-health", daemon=True).start()
     Worker(
         WorkerContext(
             store,

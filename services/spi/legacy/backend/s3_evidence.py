@@ -218,20 +218,14 @@ class HTTPConnection(DeadlineConnection):
         self._create_connection = create
         super().connect()
 
-    def _resolve_address(
-        self, deadline: float, slots: threading.BoundedSemaphore
-    ) -> _AddressList:
+    def _resolve_address(self, deadline: float, slots: threading.BoundedSemaphore) -> _AddressList:
         """Resolve one host on a release-only worker under the shared deadline."""
         results: queue.Queue[object] = queue.Queue(maxsize=1)
 
         def resolve() -> None:
             try:
                 try:
-                    results.put(
-                        socket.getaddrinfo(
-                            self.host, self.port, type=socket.SOCK_STREAM
-                        )
-                    )
+                    results.put(socket.getaddrinfo(self.host, self.port, type=socket.SOCK_STREAM))
                 except OSError:
                     results.put(None)
             finally:
@@ -358,9 +352,7 @@ class S3Evidence:
         remaining: float,
     ) -> tuple[int, dict[str, str], bytes]:
         """Perform one request/response round trip on the in-cluster socket."""
-        conn = HTTPConnection(
-            "rustfs.rustfs.svc.cluster.local", 9000, timeout=min(5, remaining)
-        )
+        conn = HTTPConnection("rustfs.rustfs.svc.cluster.local", 9000, timeout=min(5, remaining))
         conn.budget = remaining
         response = None
         try:
@@ -372,9 +364,7 @@ class S3Evidence:
                     raise StoragePermanent
                 length = response.getheader("Content-Length")
                 if length is not None and (
-                    not length.isascii()
-                    or not length.isdigit()
-                    or int(length) > MAX_BYTES
+                    not length.isascii() or not length.isdigit() or int(length) > MAX_BYTES
                 ):
                     raise StoragePermanent
                 body = response.read(MAX_BYTES + 1)
@@ -388,24 +378,18 @@ class S3Evidence:
                 response.close()
             conn.close()
 
-    def _request(
-        self, method: str, key: str, payload: bytes, deadline: float
-    ) -> tuple[int, bytes]:
+    def _request(self, method: str, key: str, payload: bytes, deadline: float) -> tuple[int, bytes]:
         """Issue one signed request against the fixed origin and bucket."""
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise StorageTransient
         path = "/" + BUCKET + "/" + key
-        headers = sign(
-            method, ORIGIN + path, self._access, self._secret, payload=payload
-        )
+        headers = sign(method, ORIGIN + path, self._access, self._secret, payload=payload)
         if method == "PUT":
             headers["If-None-Match"] = "*"
         headers["Connection"] = "close"
         try:
-            result = (self._transport or self._wire)(
-                method, path, headers, payload, remaining
-            )
+            result = (self._transport or self._wire)(method, path, headers, payload, remaining)
         except (OSError, http.client.HTTPException):
             raise StorageTransient from None
         if time.monotonic() >= deadline:
@@ -413,18 +397,11 @@ class S3Evidence:
         status, response_headers, body = result
         if not isinstance(body, bytes) or len(body) > MAX_BYTES:
             raise StoragePermanent
-        if (
-            status in (408, 429)
-            or _HTTP_SERVER_ERROR_MIN <= status <= _HTTP_SERVER_ERROR_MAX
-        ):
+        if status in (408, 429) or _HTTP_SERVER_ERROR_MIN <= status <= _HTTP_SERVER_ERROR_MAX:
             raise StorageTransient(
                 retry_after(
                     next(
-                        (
-                            v
-                            for k, v in response_headers.items()
-                            if k.lower() == "retry-after"
-                        ),
+                        (v for k, v in response_headers.items() if k.lower() == "retry-after"),
                         None,
                     )
                 )
@@ -449,10 +426,7 @@ class S3Evidence:
         def verify(status: int, body: bytes) -> dict[str, object]:
             if status != _HTTP_OK:
                 raise StorageTransient
-            if (
-                len(body) != len(exact_bytes)
-                or hashlib.sha256(body).hexdigest() != digest
-            ):
+            if len(body) != len(exact_bytes) or hashlib.sha256(body).hexdigest() != digest:
                 raise StorageConflict
             return {
                 "bucket": BUCKET,

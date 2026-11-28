@@ -3,21 +3,21 @@
   "purpose": "Pinned legacy compatibility inputs; remove after first full bundle activation. Five locally patched modules are Homelab-owned for quality checks (see docs/quality/frozen-inputs.md).",
   "backend_sha256": {
     "card_correlation.py": "ab8c9a36d0c8908fa11909b99aabc4b2f6b4f9d6cf60baebcecd7ec00d7018ca",
-    "core.py": "6e4b4b0f53e17a86485462024d82eb1697be6343efc555af69391c3915c70e28",
-    "dispatcher.py": "a0d5d5305c9414413a2f17276c09b7c84dc7ffd0f5cd99be46efd0fc52efe578",
+    "core.py": "e853e9cc4dc6595544debf374a318ba77f11374737ed8b05b287e615f2db9914",
+    "dispatcher.py": "7cd92a10ac269f338de8a2e7f3991f628240e5b7f59e5d7b710171f6b23a24ea",
     "durable_wait.py": "8e3d04b162da6791df7822f243b73686f37b6ccec6909a77da78bb33cfdbfa1d",
     "evidence_bundle.py": "931789e85f1506823b93589ee023552bf7c13f9192d712fa3838f1355b594b93",
     "github_broker.py": "8adb7a8f92ecd47b3951005cf17a6d685eb9ab1827a21bd205a3cc305d760421",
     "grafana_links.py": "af8dc854c4628db146b0794e5e1442a600b542113ac740d36b99651cb43a8dfc",
-    "integrations.py": "2d827babb3ea8f622ade3b24d499303117df1c3452a0936478b36c71dd0e75d1",
+    "integrations.py": "579b1fa149181588306333dcdc1cea0fc838d9d790aa7437c4dd59816c51f92c",
     "local_token_counter.py": "372354244e432f0610df3fccbc1641e57453e2e43bf4ae3318f40b940c427380",
     "provenance.py": "8f89b6177cad6ad9cbd435b40a5161706df313e6fab9ef3b815fff7b9f4c880c",
     "queue_admin.py": "e8d9bae577ed301bf1b5513054a652a841d640d07732af21ccd5855622b6be2b",
-    "s3_evidence.py": "a4d3a8c6ef1c414e3c828bea778c8a8390e9084277464d66026238d1bdef9e37",
-    "service.py": "6907cb33e456cc63394cee979ebfbbade795086addc79a6df2a1b389ab139e85",
+    "s3_evidence.py": "83bddf4d72cf1dbdb66579dbb76b0f722e083a12dd09b9eba1f8c5cab1b7e00c",
+    "service.py": "6f9ba21d7f7fdfd25703de6688e23ab3957a9d9e5e592525d27677c284cd56c2",
     "storage_runtime.py": "dd70d456f7c3cca83b730c4ee0cb67e22fdee3bab1c930a228f4137284ada768",
-    "telegram_delivery.py": "86bbd147dd16c820e0ce29da25c36fbe85927b12d356ef6fd9443c35828cec26",
-    "telegram_links.py": "3c5b7ab8d54603c01c5a4ead2c6bc22aeb8ac728972008df18e39fee096979ad",
-    "telemetry.py": "77eb3e42ae57df6d89a2686aeaaa98d32bb776d5b03e79e194efa51e86f1d8d9"
+    "telegram_delivery.py": "58229b1ace751b775457b9912b6abd93b65814aa037b01f32dcd7c2bf3aa35fc",
+    "telegram_links.py": "7f226fe9a89821c0d082512fbbbde4bb04da5361883cf9550d441f4209e31351",
+    "telemetry.py": "7e6b5e43e5e6bc65c21911d39ee42cf4dba3cb6a7fbe705c982f0b51648a6ff7"
   }
 }

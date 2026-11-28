@@ -9,9 +9,7 @@ import time
 from collections.abc import Callable
 from typing import Protocol, cast
 
-DISPATCH_URL = (
-    "http://n8n.automation.svc.cluster.local/webhook/spi-incident-triage-dispatch"
-)
+DISPATCH_URL = "http://n8n.automation.svc.cluster.local/webhook/spi-incident-triage-dispatch"
 
 # Fixed internal dispatch endpoints and reviewed bounds; no redirects or
 # proxy credential forwarding is ever attempted.
@@ -33,9 +31,7 @@ _DISPATCH_REJECTED_MESSAGE = "Dispatch rejected"
 class _StoreContract(Protocol):
     """The single store surface the dispatch loop depends on."""
 
-    def reserve_dispatch(
-        self, now: float | None = None
-    ) -> tuple[str | None, float | None]:
+    def reserve_dispatch(self, now: float | None = None) -> tuple[str | None, float | None]:
         """Reserve one wake durably; return (reservation id, next deadline)."""
         ...
 
@@ -150,25 +146,17 @@ class Dispatcher:
                 deadline = self.tick()
             except Exception:
                 print(
-                    json.dumps(
-                        {"component": "spi-triage", "event": "dispatch_internal_error"}
-                    ),
+                    json.dumps({"component": "spi-triage", "event": "dispatch_internal_error"}),
                     flush=True,
                 )
                 deadline = time.time() + _BACKOFF_SECONDS
-            timeout = (
-                None
-                if deadline is None
-                else max(_MIN_WAIT_SECONDS, deadline - time.time())
-            )
+            timeout = None if deadline is None else max(_MIN_WAIT_SECONDS, deadline - time.time())
             self.wake.wait(timeout)
 
     def start(self) -> None:
         """Start the daemon dispatch thread once."""
         if self.enabled and self.thread is None:
-            self.thread = threading.Thread(
-                target=self._run, name="spi-dispatch", daemon=True
-            )
+            self.thread = threading.Thread(target=self._run, name="spi-dispatch", daemon=True)
             self.thread.start()
 
     def stop(self) -> None:
