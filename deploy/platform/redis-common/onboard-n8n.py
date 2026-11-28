@@ -81,6 +81,20 @@ COMMANDS = [
     "xclaim",
     "xtrim",
     "client|setinfo",
+    # BullMQ worker runtime additions, verified live from a real worker:
+    "client|setname",
+    "xgroup",
+    "xinfo",
+    "xread",
+    "xautoclaim",
+    "xpending|range",
+    "lmove",
+    "blmove",
+    "llen",
+    "lrem",
+    "zpopmin",
+    "zpopmax",
+    "type",
 ]
 
 
@@ -150,7 +164,14 @@ def main() -> None:
         ),
         "n8n": (
             client["password"],
-            ["~n8n:*", "&n8n:*", *["+" + c for c in COMMANDS]],
+            [
+                "~n8n:*",
+                "~bull:*",
+                "&n8n:*",
+                "&n8n.*",
+                "&bull:*",
+                *["+" + c for c in COMMANDS],
+            ],
         ),
     }
     install_rules(users)
@@ -228,7 +249,10 @@ def install_rules(users) -> None:
         if existing == [line]:
             continue
         if existing not in ([], ["user " + u + " off"]):
-            sys.exit("Conflicting persistent ACL: " + u)
+            old_pw_hash = existing[0].split("#")[-1].split()[0] if "#" in existing[0] else ""
+            new_pw_hash = rule[1].lstrip("#")
+            if old_pw_hash != new_pw_hash:
+                sys.exit("Conflicting persistent ACL (password differs): " + u)
         lines = [s for s in lines if s not in existing] + [line]
     new = base64.b64encode(("\n".join(lines) + "\n").encode()).decode()
     if obj["data"]["client.conf"] != new:

@@ -196,3 +196,184 @@ def test_tls_domain_requires_positive_and_negative_controls(fault: None | str) -
     elif fault == "unknown":
         rows["s"]["b"] = "unverified"
     assert correlated(rows, ["a", "b"], ["s"]) == ({} if fault else {"s": "a"})
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        None,
+        "wrong-realm",
+        "registry-open",
+        "slash-redirect",
+        "ping-drift",
+        "anonymous-list",
+        "wrong-version",
+    ],
+)
+def test_native_auth_and_slash_boundaries_on_same_peer(monkeypatch, fault):
+    results = {
+        "/v2/": b'{"errors":[{"code":"UNAUTHORIZED"}]}\n401 application/json\n'
+        + checks.CHALLENGE,
+        "/v2": b"<title>Harbor</title>\n200 text/html",
+        "/api/v2.0/ping": b"Pong\n200 text/plain",
+        "/api/version": b'{"Version":"v3.2.1+abc"}\n200 application/json',
+        "/api/v1/applications": b'{"code":16,"error":"no session information","message":"no session information"}\n401 application/json',
+    }
+    cases = {
+        "wrong-realm": (
+            "/v2/",
+            results["/v2/"].replace(b"harbor.socrat", b"other.socrat"),
+        ),
+        "registry-open": ("/v2/", results["/v2/"].replace(b"401", b"200")),
+        "slash-redirect": ("/v2", b"\n301 text/html"),
+        "ping-drift": ("/api/v2.0/ping", b"OK\n200 text/plain"),
+        "anonymous-list": (
+            "/api/v1/applications",
+            results["/api/v1/applications"].replace(b"{", b'{"items":[],'),
+        ),
+        "wrong-version": (
+            "/api/version",
+            b'{"Version":"unknown"}\n200 application/json',
+        ),
+    }
+    if fault:
+        p, value = cases[fault]
+        results[p] = value
+
+    def run(args, **kw):
+        from urllib.parse import urlsplit
+
+        url = urlsplit(args[-1])
+        assert args[args.index("--resolve") + 1] == url.hostname + ":443:192.0.2.1"
+        assert ("%header{www-authenticate}" in args[-2]) == (url.path == "/v2/")
+        assert "--location" not in args
+        return subprocess.CompletedProcess(args, 0, results[url.path], b"")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    h = checks.check(checks.HARBOR, "192.0.2.1")
+    a = checks.check(checks.ARGO, "192.0.2.1")
+    assert (h == "matched") == (
+        fault not in ("wrong-realm", "registry-open", "slash-redirect", "ping-drift")
+    )
+    assert (a == "matched") == (fault not in ("anonymous-list", "wrong-version"))
+
+
+@pytest.mark.parametrize(
+    "change", ["none", "wrong-origin", "relative", "adjacent", "accepted-health"]
+)
+def test_bot_read_probe_never_follows_oauth_or_sends_a_webhook(monkeypatch, change):
+    from ci.quality import socrat_bot_delivery as bot
+
+    seen = []
+
+    def run(args, **kw):
+        assert (
+            args[:4] == ["curl", "--disable", "--noproxy", "*"]
+            and "--location" not in args
+            and args[args.index("--resolve") + 1] == bot.HOST + ":443:192.0.2.1"
+        )
+        seen.append(args[-1])
+        loc = {
+            "wrong-origin": "https://auth.socrat.alchemmist.xyz.other.invalid/application/o/authorize/?fixture=1",
+            "relative": "/application/o/authorize/?fixture=1",
+            "adjacent": "https://auth.socrat.alchemmist.xyz/application/o/authorize/else?fixture=1",
+        }.get(
+            change,
+            "https://auth.socrat.alchemmist.xyz/application/o/authorize/?fixture=1",
+        )
+        data = (
+            b"\n302\n" + loc.encode()
+            if len(seen) == 1
+            else b"404 page not found\n\n404\n"
+            if change != "accepted-health"
+            else b"ok\n200\n"
+        )
+        return subprocess.CompletedProcess(args, 0, data, b"")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    assert (bot.wire("192.0.2.1") == "matched") == (change == "none")
+    assert seen == ["https://" + bot.HOST + p for p in ("/", "/healthz")]
+
+
+def test_webhook_pin_is_separate_from_three_working_web_paths():
+    from ci.quality import socrat_bot_delivery as bot
+
+    ips = {"home": "192.0.2.1", "nl": "192.0.2.2", "moscow": "192.0.2.3"}
+    values = {"telegram": {"webhookURL": bot.URL, "webhookIP": ips["nl"]}}
+    assert bot.pin(ips, values, (bot.URL, ips["nl"])) == "nl"
+    for settings in [(bot.URL, ips["home"]), ("https://other.invalid", ips["nl"])]:
+        with pytest.raises(ValueError):
+            bot.pin(ips, values, settings)
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        None,
+        "wrong-origin",
+        "wrong-callback",
+        "plain",
+        "reused-state",
+        "reused-challenge",
+        "open-auth",
+        "duplicate",
+        "extra-scope",
+    ],
+)
+def test_openhands_public_auth_flow_never_follows_or_replays(fault, monkeypatch):
+    from urllib.parse import urlencode
+
+    from ci.quality import openhands_public_auth as probe
+
+    calls = []
+
+    def run(args, **kwargs):
+        assert (
+            "--location" not in args
+            and "--insecure" not in args
+            and "--cookie" not in args
+            and args[:4] == ["curl", "--disable", "--noproxy", "*"]
+        )
+        assert args[args.index("--resolve") + 1] == probe.HOST + ":443:192.0.2.1"
+        calls.append(args[-1])
+        n = len(calls)
+        base = "https://" + probe.HOST
+        if n == 3:
+            assert args[-1] == base + "/oauth2/auth"
+            return subprocess.CompletedProcess(
+                args,
+                0,
+                b"Unauthorized\n\n"
+                + (b"200" if fault == "open-auth" else b"401")
+                + b"\n",
+                b"",
+            )
+        assert args[-1] == base + "/"
+        params = {
+            "response_type": "code",
+            "client_id": "fixture",
+            "approval_prompt": "auto",
+            "scope": "openid profile groups offline_access"
+            + (" other" if fault == "extra-scope" else ""),
+            "redirect_uri": probe.CALLBACK
+            if fault != "wrong-callback"
+            else base + "/other",
+            "code_challenge_method": "plain" if fault == "plain" else "S256",
+            "state": str(1 if fault == "reused-state" else n),
+            "code_challenge": ("A" if n == 1 or fault == "reused-challenge" else "B")
+            * 43,
+        }
+        origin = (
+            "other.invalid" if fault == "wrong-origin" else "auth.socrat.alchemmist.xyz"
+        )
+        url = (
+            "https://"
+            + origin
+            + "/application/o/authorize/?"
+            + urlencode(params)
+            + ("&state=other" if fault == "duplicate" else "")
+        )
+        return subprocess.CompletedProcess(args, 0, b"\n302\n" + url.encode(), b"")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    assert (probe.check("192.0.2.1") == "matched") == (fault is None)

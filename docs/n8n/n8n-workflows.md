@@ -1,3 +1,38 @@
+## CURRENT 28Nov — multi-main queue mode LIVE (HA, second main on socrat-0)
+
+n8n now runs `N8N_EXECUTIONS_MODE=queue` with
+`N8N_MULTI_MAIN_SETUP_ENABLED=true`: two main instances pinned to socrat-5 and
+socrat-0 (required one-main-per-node pod anti-affinity + node affinity), plus
+a dedicated `n8n-worker` Deployment on socrat-1 that actually executes flows
+(concurrency 10, healthcheck on 9230, service-vpn sidecar and yandex extensions
+carried over). The frontend/leader survives either main crashing — verified
+with a live kill: the pod was replaced and the UI served 200 throughout.
+
+Redis is the shared redis-common platform, not a new instance: dedicated ACL
+user `n8n` scoped to `~n8n:* ~bull:*` keys and `&n8n:* &n8n.* &bull:*`
+channels with a BullMQ command set, TLS to redis-common-haproxy, credentials
+in the automation Secret `redis-common-n8n`, provisioned by the new
+`deploy/platform/redis-common/onboard-n8n.py` (explicit `--create-missing`,
+never rotates passwords;青春期 own rules may be re-applied if the password
+hash matches). Live-verified from the n8n pod: AUTH/PING/SET/GET on `n8n:*`,
+NOPERM on litellm keys, foreign channels and CONFIG, WRONGPASS on bad creds.
+
+Gotchas found the hard way (all fixed, live-verified):
+- The command channel is dot-separated (`n8n.commands`) and BullMQ uses the
+  `bull:` prefix; the initial `&n8n:*`-only pattern NOPERM'd the worker, and
+  `client|setname` was missing from the command list.
+- NetworkPolicy allowlists needed `app: n8n-worker` in three places:
+  redis consumer-net, postgres-platform pg-common-ingress, rustfs
+  wallpaper-workflow-s3 — each showed up as ECONNREFUSED on one VIP or 5432.
+- Required main anti-affinity + `maxSurge:1/maxUnavailable:0` deadlocks the
+  rolling update on two eligible nodes (old pod holds the node, new pod
+  Pending forever). Roll 1-at-a-time instead: `maxUnavailable:1, maxSurge:0`,
+  briefly running one main during deploys.
+- queue-worker needed its own `prepare-service-vpn` init container; without
+  it the vpn sidecar crash-looped (exit 23, `client.json` missing).
+- The node-local legacy PVC can't serve two mains: queue-mode pods use
+  emptyDirs (binary data lives in RustFS); the PVC stays for rollback.
+
 ## CURRENT 27Nov — n8n binary data lives in RustFS (in-cluster S3)
 
 Execution attachments no longer grow the PVC: `N8N_DEFAULT_BINARY_DATA_MODE=s3`

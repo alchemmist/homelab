@@ -207,3 +207,47 @@ def test_www_split_fixture_is_exact_and_rejects_widened_owner_rules() -> None:
     view(tcp_route)["match"] = "HostSNI(`*`)"
     with pytest.raises(ValueError, match="TCP owner changed"):
         fixture(route, b, s)
+
+
+def test_trojan_fixture_preserves_private_destination_guard_and_separate_credentials():
+    from ci.quality.moscow_vpn_echo import ECHO, PATH, configs
+
+    a, b = "1" * 64, "2" * 64
+    server, right, wrong = configs(a, b, "10.42.7.101")
+    assert server["routing"]["rules"] == [
+        {
+            "type": "field",
+            "ip": ["10.42.7.101/32"],
+            "port": str(ECHO),
+            "network": "tcp,udp",
+            "outboundTag": "echo",
+        }
+    ]
+    assert server["outbounds"] == [
+        {"tag": "deny", "protocol": "blackhole"},
+        {"tag": "echo", "protocol": "freedom"},
+    ]
+    assert all(
+        c["inbounds"][0]["listen"] == "127.0.0.1" for c in (server, right, wrong)
+    )
+    assert server["inbounds"][0]["settings"] == {"clients": [{"password": a}]}
+    for client, credential in [(right, a), (wrong, b)]:
+        out = client["outbounds"][0]
+        assert out["settings"] == {
+            "servers": [{"address": "127.0.0.1", "port": 18443, "password": credential}]
+        }
+        s = out["streamSettings"]
+        assert s["wsSettings"] == {"path": PATH} and s["tlsSettings"] == {
+            "serverName": "vpn.alchemmist.xyz",
+            "disableSystemRoot": True,
+            "certificates": [
+                {"usage": "verify", "certificateFile": "/client/fixture-ca.crt"}
+            ],
+        }
+    for first, second, peer in [
+        (a, a, "10.42.1.1"),
+        (a, "short", "10.42.1.1"),
+        (a, b, "10.250.0.2"),
+    ]:
+        with pytest.raises(ValueError):
+            configs(first, second, peer)

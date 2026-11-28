@@ -1,5 +1,8 @@
 # VPN: current production and historical hardening
 
+**Current watchdog operations:** see the [two-node watchdog runbook](watchdog.md). Earlier sticky-native/manual-return descriptions below refer to the previous deployment or to configurations with warm return disabled. Do not use a historical manual failback as the normal warm-return procedure.
+
+
 ## Session close: RF/NL split deferred by the owner
 
 **November 10: the owner decided to keep the working scheme and not implement the server-side split.**

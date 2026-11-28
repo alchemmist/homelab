@@ -5,6 +5,10 @@ kind: Deployment
 metadata:
   namespace: {{ $.Release.Namespace | quote }}
   name: n8n-worker
+  {{- if .Values.serviceVpn.enabled }}
+  annotations:
+    checksum/service-vpn-script: {{ include (print $.Template.BasePath "/service-vpn.yaml") . | sha256sum }}
+  {{- end }}
 spec:
   replicas: {{ .Values.queue.worker.replicas }}
   strategy:
@@ -38,6 +42,22 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       initContainers:
+        {{- if .Values.serviceVpn.enabled }}
+        - name: prepare-service-vpn
+          image: {{ include "n8n.image" . | quote }}
+          command: [node, /vpn-script/prepare.js]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 128Mi}
+          volumeMounts:
+            - {name: service-vpn-script, mountPath: /vpn-script, readOnly: true}
+            - {name: service-vpn-identity, mountPath: /vpn-identity, readOnly: true}
+            - {name: service-vpn-runtime, mountPath: /vpn-runtime}
+        {{- end }}
         - name: node-ca-bundle
           image: {{ include "n8n.image" . | quote }}
           command: [sh, -ec]

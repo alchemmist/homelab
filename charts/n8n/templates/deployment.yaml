@@ -16,7 +16,12 @@ spec:
   replicas: {{ len .Values.queue.multimain.mainNodes }}
   strategy:
     type: RollingUpdate
-    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+    # With required pod anti-affinity (one main per node, two nodes total),
+    # maxSurge cannot place a new main while the old one still occupies its
+    # node, and maxUnavailable=0 forbids the controller from evicting it: a
+    # rolling update deadlocks. Roll 1-at-a-time instead, briefly dropping to
+    # a single main during deploys.
+    rollingUpdate: {maxSurge: 0, maxUnavailable: 1}
   {{- else }}
   replicas: {{ .Values.replicaCount }}
   strategy:
