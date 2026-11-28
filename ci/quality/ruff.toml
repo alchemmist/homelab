@@ -86,6 +86,9 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # single-purpose sending container; the socket is immediately wrapped in the
 # reviewed TLS context and every response requires the verified bearer token.
 "deploy/storage/thanos-retire/offload.py" = ["S104"]
+# The SPI import copies each reviewed table by its sqlite_master name;
+# the table set is verified against the applied schema beforehand.
+"scripts/spi-pg/transfer.py" = ["S608"]
 # The durable workflow error type is named Failure across the reviewed
 # worker API boundary: its fixed non-sensitive codes are the documented wire
 # contract asserted by the spi_triage suite and produced by every chart

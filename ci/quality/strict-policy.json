@@ -121,6 +121,9 @@
       "deploy/storage/thanos-retire/offload.py": [
         "S104"
       ],
+      "scripts/spi-pg/transfer.py": [
+        "S608"
+      ],
 "charts/spi-triage/files/core.py": [
         "N818",
         "PLC0415"
