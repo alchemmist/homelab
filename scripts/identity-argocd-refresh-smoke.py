@@ -9,7 +9,7 @@ Requires Playwright + Chromium. Run from the owner Mac with --run.
 """
 
 import argparse
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -31,21 +31,43 @@ import urllib.error
 import urllib.request
 
 BASE = "https://auth.socrat.alchemmist.xyz"
+HTTP_OK = 200
+HTTP_CLIENT_ERROR = 400
+MAX_TOKEN_LIFETIME_SECONDS = 305
+PRIVILEGED_GROUP_DENYLIST = {"homelab-owner", "homelab-platform-operator"}
 # Process-local public-edge resolution; keep verified TLS/SNI, no system DNS changes.
 import socket
 
 _original_getaddrinfo = socket.getaddrinfo
 
 
-def public_auth(host, *params, **kwargs):
-    """Perform the public auth operation."""
-    return _original_getaddrinfo(
+GaiResult = list[
+    tuple[Literal[socket.AddressFamily.AF_INET], socket.SocketKind, int, str, tuple[str, int]]
+    | tuple[
+        Literal[socket.AddressFamily.AF_INET6],
+        socket.SocketKind,
+        int,
+        str,
+        tuple[str, int, int, int] | tuple[int, bytes],
+    ]
+]
+
+
+def public_auth(
+    host: str | bytes | None,
+    port: bytes | str | int | None = None,
+    family: int = 0,
+    type: int = 0,
+    proto: int = 0,
+    flags: int = 0,
+) -> GaiResult:
+    """Resolve reviewed public-edge hostnames to the pinned edge address."""
+    target = (
         args.public_edge
         if host in ["auth.socrat.alchemmist.xyz", "argocd.socrat.alchemmist.xyz"]
-        else host,
-        *params,
-        **kwargs,
+        else host
     )
+    return _original_getaddrinfo(target, port, family, type, proto, flags)
 
 
 socket.getaddrinfo = public_auth
@@ -64,20 +86,20 @@ credential = json.loads(
 )
 
 
-def api(method, path, data=None):
-    """Perform the HTTP request and return its response."""
+def api(method: str, path: str, data: dict[str, object] | None = None) -> dict[str, object]:
+    """Perform the reviewed Authentik API request and return its decoded body."""
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
         headers={
-            "Authorization": "Bearer " + credential["AUTHENTIK_BOOTSTRAP_TOKEN"],
+            "Authorization": "Bearer " + str(credential["AUTHENTIK_BOOTSTRAP_TOKEN"]),
             "Content-Type": "application/json",
         },
         data=json.dumps(data).encode() if data is not None else None,
     )
     with urllib.request.urlopen(req, timeout=45) as r:
-        b = r.read()
-        return json.loads(b) if b else None
+        body = r.read()
+        return json.loads(body) if body else {}
 
 
 import base64
@@ -88,28 +110,40 @@ import struct
 import time
 import urllib.parse
 import uuid
+from typing import cast
 
 from playwright.sync_api import Error as PlaywrightError
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Response, sync_playwright
+
+
+def results_of(response: dict[str, object]) -> list[dict[str, object]]:
+    """Return a reviewed API page body list as typed objects."""
+    value = response["results"]
+    if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
+        reason = "API results payload must be an object list"
+        raise TypeError(reason)
+    return value
+
 
 provider = next(
     x
-    for x in api("GET", "providers/oauth2/?page_size=100")["results"]
+    for x in results_of(api("GET", "providers/oauth2/?page_size=100"))
     if x["name"] == "homelab-argocd"
 )
 offline = [
     x
-    for x in api("GET", "propertymappings/provider/scope/?page_size=100")["results"]
+    for x in results_of(api("GET", "propertymappings/provider/scope/?page_size=100"))
     if x["scope_name"] == "offline_access"
 ]
-if len(offline) != 1 or offline[0]["pk"] not in provider["property_mappings"]:
+mappings = provider["property_mappings"]
+if len(offline) != 1 or not isinstance(mappings, list) or offline[0]["pk"] not in mappings:
     msg = "Refresh deployment not activated; no fixtures created"
     raise SystemExit(msg)
 username = "argocd-refresh-smoke-" + uuid.uuid4().hex[:10]
 password = secrets.token_urlsafe(32)
 group = next(
     x
-    for x in api("GET", "core/groups/?name=homelab-observer")["results"]
+    for x in results_of(api("GET", "core/groups/?name=homelab-observer"))
     if x["name"] == "homelab-observer"
 )
 user = api(
@@ -128,7 +162,7 @@ fixture_id = user["uuid"]
 try:
     app = next(
         a
-        for a in api("GET", "core/applications/?superuser_full_list=true&page_size=100")["results"]
+        for a in results_of(api("GET", "core/applications/?superuser_full_list=true&page_size=100"))
         if a["slug"] == "argocd"
     )
     binding = api(
@@ -165,13 +199,13 @@ try:
             ]
         )
         page = browser.new_page(viewport={"width": 1440, "height": 960})
-        last = {}
-        totp_challenge = {}
-        components = []
-        errors = []
+        last: dict[str, object] = {}
+        totp_challenge: dict[str, object] = {}
+        components: list[str] = []
+        errors: list[str] = []
 
-        def observe(response) -> None:
-            """Perform the observe operation."""
+        def observe(response: Response) -> None:
+            """Watch the login journey and record stage/API details for review."""
             if (
                 urllib.parse.urlparse(response.url).hostname == "argocd.socrat.alchemmist.xyz"
                 and urllib.parse.urlparse(response.url).path == "/auth/login"
@@ -180,15 +214,15 @@ try:
                 authorization = urllib.parse.parse_qs(
                     urllib.parse.urlparse(response.headers.get("location", "")).query
                 )
-                assert "offline_access" in authorization.get("scope", [""])[0].split(), (
-                    "Live authorization must request offline_access"
-                )
+                if "offline_access" not in authorization.get("scope", [""])[0].split():
+                    msg = "Live authorization must request offline_access"
+                    raise RuntimeError(msg)
             if (
                 urllib.parse.urlparse(response.url).hostname == "argocd.socrat.alchemmist.xyz"
                 and "/auth/callback" in response.url
             ):
                 print("Argo CD callback HTTP status:", response.status)
-                if response.status >= 400:
+                if response.status >= HTTP_CLIENT_ERROR:
                     try:
                         import re
 
@@ -233,8 +267,8 @@ try:
                     ):
                         pass
             if "/api/v3/flows/executor/" in response.url and response.status in [
-                200,
-                400,
+                HTTP_OK,
+                HTTP_CLIENT_ERROR,
             ]:
                 try:
                     data = response.json()
@@ -276,16 +310,20 @@ try:
         for _step in range(60):
             if page.locator("ak-stage-authenticator-totp").is_visible():
                 print("Native TOTP enrollment presented")
-                source = (
+                config_url = totp_challenge.get("config_url")
+                if not isinstance(config_url, str):
+                    config_url = ""
+                secret = (
                     totp_challenge.get("secret")
                     or totp_challenge.get("secret_key")
-                    or urllib.parse.parse_qs(
-                        urllib.parse.urlparse(totp_challenge.get("config_url", "")).query
-                    ).get("secret", [None])[0]
+                    or urllib.parse.parse_qs(urllib.parse.urlparse(config_url).query).get(
+                        "secret", [None]
+                    )[0]
                 )
-                if not source:
+                if not isinstance(secret, str) or not secret:
                     msg = "TOTP setup data unavailable"
                     raise RuntimeError(msg)
+                source = secret
                 key = base64.b32decode(source.upper() + "=" * ((-len(source)) % 8))
                 sig = hmac.new(
                     key, struct.pack(">Q", int(time.time()) // 30), hashlib.sha1
@@ -302,8 +340,12 @@ try:
                 print("Native consent presented")
                 slug = urllib.parse.urlparse(page.url).path.strip("/").split("/")[-1]
                 inspection = page.request.get(BASE + "/api/v3/flows/inspector/" + slug + "/")
-                assert inspection.status in [403, 404], "Observer must not inspect flows"
-                assert not page.get_by_role("button", name="Open flow inspector").is_visible()
+                if inspection.status not in (403, 404):
+                    msg = "Observer must not inspect flows"
+                    raise RuntimeError(msg)
+                if page.get_by_role("button", name="Open flow inspector").is_visible():
+                    msg = "Observer must not see the inspector toggle"
+                    raise RuntimeError(msg)
                 print("Observer native inspector access denied:", inspection.status)
                 stage = page.locator("ak-stage-consent")
                 stage.locator("button[name=continue]").click()
@@ -320,7 +362,9 @@ try:
                         for c in page.context.cookies("https://argocd.socrat.alchemmist.xyz")
                         if c["name"] == "argocd.token"
                     )
-                    assert c["secure"]
+                    if not c["secure"]:
+                        msg = "Session cookie must remain Secure"
+                        raise RuntimeError(msg)
                     raw = c["value"].split(".")[1]
                     payload: Claims = json.loads(
                         base64.urlsafe_b64decode(raw + "=" * ((-len(raw)) % 4))
@@ -328,23 +372,33 @@ try:
                     return payload
 
                 old = claims()
-                assert "homelab-observer" in old["groups"]
-                assert not set(old["groups"]) & {
-                    "homelab-owner",
-                    "homelab-platform-operator",
-                }
+                if "homelab-observer" not in old["groups"]:
+                    msg = "Session must carry the observer group"
+                    raise RuntimeError(msg)
+                if set(old["groups"]) & PRIVILEGED_GROUP_DENYLIST:
+                    msg = "Session must not carry privileged groups"
+                    raise RuntimeError(msg)
 
-                def api_page(path):
-                    """Perform the api page operation."""
+                def api_page(path: str) -> dict[str, object]:
+                    """Fetch a native Argo CD API page through the browser session."""
                     response = page.goto("https://argocd.socrat.alchemmist.xyz" + path)
-                    assert response.status == 200
-                    return response.json()
+                    if response.status != HTTP_OK:
+                        msg = "Native API page request failed"
+                        raise RuntimeError(msg)
+                    return cast("dict[str, object]", response.json())
 
                 info = api_page("/api/v1/session/userinfo")
-                assert info.get("loggedIn") is True, "Initial native session must be authenticated"
-                assert api_page("/api/v1/account/can-i/applications/create/*")["value"] == "no"
+                if info.get("loggedIn") is not True:
+                    msg = "Initial native session must be authenticated"
+                    raise RuntimeError(msg)
+                if api_page("/api/v1/account/can-i/applications/create/*")["value"] != "no":
+                    msg = "Observer must not gain application creation rights"
+                    raise RuntimeError(msg)
                 old = claims()
-                assert 0 < old["exp"] - time.time() <= 305
+                lifetime = old["exp"] - time.time()
+                if not 0 < lifetime <= MAX_TOKEN_LIFETIME_SECONDS:
+                    msg = "Session token lifetime must stay within the reviewed bound"
+                    raise RuntimeError(msg)
                 page.goto("about:blank")
                 # No application polls/heartbeats during the idle period. Wait beyond the REAL
                 # five-minute expiry; do not forge a JWT or shorten a production token lifetime.
@@ -366,16 +420,25 @@ try:
                         else None
                     ),
                 )
-                assert api_page("/api/v1/session/userinfo").get("loggedIn") is True, (
-                    "Native session lost authentication"
-                )
+                if api_page("/api/v1/session/userinfo").get("loggedIn") is not True:
+                    msg = "Native session lost authentication"
+                    raise RuntimeError(msg)
                 new = claims()
-                assert new["exp"] > old["exp"]
-                assert new["sub"] == old["sub"]
-                assert not auth_navigations, "Browser must not navigate to IdP for refresh"
-                assert api_page("/api/v1/account/can-i/applications/create/*")["value"] == "no"
+                if new["exp"] <= old["exp"]:
+                    msg = "Token was not renewed after idle expiry"
+                    raise RuntimeError(msg)
+                if new["sub"] != old["sub"]:
+                    msg = "Renewed token subject changed"
+                    raise RuntimeError(msg)
+                if auth_navigations:
+                    msg = "Browser must not navigate to IdP for refresh"
+                    raise RuntimeError(msg)
+                if api_page("/api/v1/account/can-i/applications/create/*")["value"] != "no":
+                    msg = "Observer must not gain application creation rights"
+                    raise RuntimeError(msg)
                 print(
-                    "PASS: expired five-minute token renewed after idle; Secure preserved, same subject, no IdP navigation or admin grant",
+                    "PASS: expired five-minute token renewed after idle; "
+                    "Secure preserved, same subject, no IdP navigation or admin grant",
                     flush=True,
                 )
                 # Then prove preemptive refresh as well, without forging tokens or changing TTL.
@@ -384,25 +447,32 @@ try:
                 while time.time() < deadline:
                     page.wait_for_timeout(15000)
                     before_request = time.time()
-                    assert api_page("/api/v1/session/userinfo").get("loggedIn") is True, (
-                        "Native session lost authentication"
-                    )
+                    if api_page("/api/v1/session/userinfo").get("loggedIn") is not True:
+                        msg = "Native session lost authentication"
+                        raise RuntimeError(msg)
                     candidate = claims()
                     if candidate["exp"] > active["exp"]:
-                        assert before_request < active["exp"], (
-                            "Active refresh must occur BEFORE expiry"
-                        )
-                        assert candidate["sub"] == old["sub"]
-                        assert not auth_navigations
+                        if before_request >= active["exp"]:
+                            msg = "Active refresh must occur BEFORE expiry"
+                            raise RuntimeError(msg)
+                        if candidate["sub"] != old["sub"]:
+                            msg = "Preemptive token subject changed"
+                            raise RuntimeError(msg)
+                        if auth_navigations:
+                            msg = "Browser must not navigate to IdP for refresh"
+                            raise RuntimeError(msg)
                         print(
-                            "PASS: active preemptive refresh before expiry; Secure preserved; no browser IdP redirect",
+                            "PASS: active preemptive refresh before expiry; "
+                            "Secure preserved; no browser IdP redirect",
                             flush=True,
                         )
                         break
                 else:
                     msg = "Preemptive renewal was not observed"
-                    raise AssertionError(msg)
-                assert api_page("/api/v1/account/can-i/applications/create/*")["value"] == "no"
+                    raise RuntimeError(msg)
+                if api_page("/api/v1/account/can-i/applications/create/*")["value"] != "no":
+                    msg = "Observer must not gain application creation rights"
+                    raise RuntimeError(msg)
                 break
             page.wait_for_timeout(500)
         else:
@@ -414,12 +484,14 @@ try:
             msg = "Browser roundtrip did not complete"
             raise RuntimeError(msg)
         print("Browser JS errors:", len(errors))
-        assert not errors
+        if errors:
+            msg = "The live refresh probes must run without page errors"
+            raise RuntimeError(msg)
         browser.close()
 finally:
     try:
         if binding:
-            api("DELETE", "policies/bindings/" + binding["pk"] + "/")
+            api("DELETE", "policies/bindings/" + str(binding["pk"]) + "/")
     finally:
         api("DELETE", "core/users/" + str(user["pk"]) + "/")
     print("Temporary Argo CD admission binding and Authentik identity removed", flush=True)
