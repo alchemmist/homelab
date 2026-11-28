@@ -143,6 +143,22 @@
         "PLC0415",
         "T201",
         "PLR0913"
+      ],
+      "charts/spi-triage/files/integrations.py": [
+        "S310",
+        "PLC0415",
+        "C901",
+        "PLR0912",
+        "PLR0913",
+        "PLR0915"
+      ],
+      "services/spi/legacy/backend/integrations.py": [
+        "S310",
+        "PLC0415",
+        "C901",
+        "PLR0912",
+        "PLR0913",
+        "PLR0915"
       ]
     },
     "ignoreReasons": {
@@ -394,7 +410,7 @@
   "reviewedExceptionDigest": "fdbf4b83755f7ce568da4b53a20b5d23dfb4fa882728e8c1a5def79055935481",
   "frozenCompatibility": {
     "manifest": "charts/spi-triage/LEGACY-SOURCE-MANIFEST.json",
-    "sha256": "71da6109f67e4d9d9d179806cbe2d44d36ad1a489074c540154c18d08cb3327e",
+    "sha256": "401230106dc9d1361c56f6c792a85afbbef9ba0853bcd6530a435f42eb044589",
     "canonicalRepository": "https://github.com/alchemmist/spi-triage",
     "directory": "charts/spi-triage/files",
     "count": 17

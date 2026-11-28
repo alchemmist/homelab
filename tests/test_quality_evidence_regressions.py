@@ -176,6 +176,7 @@ def test_frozen_provenance_is_the_exact_reviewed_file_set() -> None:
     patched = [
         "charts/spi-triage/files/core.py",
         "charts/spi-triage/files/dispatcher.py",
+        "charts/spi-triage/files/integrations.py",
         "charts/spi-triage/files/durable_wait.py",
         "charts/spi-triage/files/s3_evidence.py",
         "charts/spi-triage/files/service.py",

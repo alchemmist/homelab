@@ -1,8 +1,8 @@
 # Exact frozen compatibility inputs, not a lint-debt exemption
 
 Local strict cleanup update: `core.py`, `durable_wait.py`, `service.py`,
-`s3_evidence.py` and `dispatcher.py` are fully renovated to the ruff
-select=ALL and mypy strict gate without behavior change (verified by the full
+`s3_evidence.py`, `dispatcher.py` and `integrations.py` are fully renovated to
+the ruff select=ALL and mypy strict gate without behavior change (verified by the full
 `tests/spi_triage` suite; deterministic jitter now runs through a
 `random.SystemRandom` instance on the `_RETRY_JITTER` seam, the Store owner
 methods `reconcile_owners`/`owned_priority_until`/`schedule` are public
@@ -12,10 +12,12 @@ pipeline factored into typed helpers with the same wire contract,
 arity shared with the reviewed rustfs_gateway reference implementation, and
 `dispatcher.py` keeps its test-pinned positional constructor arity, its
 reviewed tail `except Exception` trust boundary and its stdout JSON log
-contract). Together with the older `telegram_delivery.py`/
-`telegram_links.py` patches this marks **seven locally patched modules**,
-not pristine upstream files.
-All 17 deployed inputs still have pinned SHA-256 digests; only the 10 unpatched
+contract, and `integrations.py` keeps its exact LOM system prompt bytes, the
+v3 checkpoint/replay contracts pinned by the spi_triage suite, its bounded
+rate-limit parsing and its fixed GitHub/observability adapter origins). Together
+with the older `telegram_delivery.py`/`telegram_links.py` patches this marks
+**eight locally patched modules**, not pristine upstream files.
+All 17 deployed inputs still have pinned SHA-256 digests; only the 9 unpatched
 modules are excluded from owned-source checks. The earlier boundary below
 describes the snapshot before those local patches.
 

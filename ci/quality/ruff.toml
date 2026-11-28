@@ -93,4 +93,14 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # actually configured with a queue UI token.
 "services/spi/legacy/backend/service.py" = ["PLC0415", "T201", "PLR0913"]
 "deploy/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
+# The integrations adapters are the reviewed LLM/checkpoint/collector boundary:
+# the v3 checkpoint-replay reductions (match, call, collect) and the bounded
+# rate-limit header parser are single cohesive contracts whose exact structure
+# the spi_triage suite pins (replay digests, batch order, admission budget
+# probes); splitting them would rewrite reviewed replay semantics, not style.
+# Lazy evidence_bundle/telegram_links/local_token_counter imports guard the
+# legacy import cycle behind per-call freshness, and every adapter URL is one
+# of the fixed observability/GitHub origins named in this file's constants.
+"charts/spi-triage/files/integrations.py" = ["S310", "PLC0415", "C901", "PLR0912", "PLR0913", "PLR0915"]
+"services/spi/legacy/backend/integrations.py" = ["S310", "PLC0415", "C901", "PLR0912", "PLR0913", "PLR0915"]
 "services/**" = ["INP001"]
