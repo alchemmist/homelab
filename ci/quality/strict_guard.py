@@ -36,9 +36,10 @@ class RuffPolicy(TypedDict):
 
 
 class MypyPolicy(TypedDict):
-    """Extra mypy strict flags and required error codes."""
+    """Extra mypy strict flags, resolved module paths and required error codes."""
 
     extra: list[str]
+    mypyPath: list[str]
     errorCodes: list[str]
 
 
@@ -261,6 +262,10 @@ def verify_mypy_policy(data: StrictPolicy) -> None:
         if code not in mypy:
             msg = "Missing mypy error code"
             raise ValueError(msg)
+    match = re.search(r"^mypy_path = (\S+)$", mypy, re.MULTILINE)
+    if match is None or match[1].split(":") != data["mypy"]["mypyPath"]:
+        msg = "Mypy resolved-path resolution drifted from the strict policy"
+        raise ValueError(msg)
 
 
 class _YamlLintConfig(Protocol):

@@ -135,6 +135,10 @@
    "disallow_any_decorated",
    "strict_equality_for_none"
   ],
+  "mypyPath": [
+   "charts/spi-triage/files",
+   "tests/spi_triage"
+  ],
   "errorCodes": [
    "explicit-override",
    "mutable-override",
