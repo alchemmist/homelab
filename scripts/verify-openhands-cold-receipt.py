@@ -11,21 +11,37 @@ os.umask(0o077)
 ns = "openhands"
 job = "openhands-cold-backup-20261119"
 home = pathlib.Path.home() / ".config/homelab/openhands/backups"
+RECOVERY_KEY_BYTES = 32
 
 
-def k(*args) -> bytes:
+def k(*args: str) -> bytes:
+    """Run one reviewed kubectl call in the openhands namespace."""
     return subprocess.check_output(["kubectl", "-n", ns, *args])
 
 
 state = json.loads(k("get", "job", job, "-o", "json"))
-assert any(c["type"] == "Complete" and c["status"] == "True" for c in state["status"]["conditions"])
+if not any(
+    c["type"] == "Complete" and c["status"] == "True" for c in state["status"]["conditions"]
+):
+    msg = "cold-backup job has not completed successfully"
+    raise RuntimeError(msg)
 lines = k("logs", "job/" + job).splitlines()
-r = json.loads(next(l for l in reversed(lines) if l.startswith(b"{")))
-assert r["format"] == "openhands-full-claim-v2"
-assert r["restored_sqlite_integrity"] == "ok"
-assert r["verified_settings_and_handoff"]
-assert min(r["history_events"].values()) > 0
-assert r["excluded"] == []
+r = json.loads(next(line for line in reversed(lines) if line.startswith(b"{")))
+if r["format"] != "openhands-full-claim-v2":
+    msg = "receipt claim format changed"
+    raise RuntimeError(msg)
+if r["restored_sqlite_integrity"] != "ok":
+    msg = "restored sqlite integrity failed"
+    raise RuntimeError(msg)
+if not r["verified_settings_and_handoff"]:
+    msg = "settings and handoff verification failed"
+    raise RuntimeError(msg)
+if min(r["history_events"].values()) <= 0:
+    msg = "history events counters are empty"
+    raise RuntimeError(msg)
+if r["excluded"] != []:
+    msg = "receipt lists excluded members"
+    raise RuntimeError(msg)
 key = subprocess.check_output(
     [
         "openssl",
@@ -40,8 +56,12 @@ key = subprocess.check_output(
     ],
     input=base64.b64decode(r["wrapped_key"], validate=True),
 )
-assert len(key) == 32
-assert hashlib.sha256(key).hexdigest() == r["key_sha256"]
+if len(key) != RECOVERY_KEY_BYTES:
+    msg = "unwrapped recovery key has the wrong length"
+    raise RuntimeError(msg)
+if hashlib.sha256(key).hexdigest() != r["key_sha256"]:
+    msg = "operator-side unwrap digest mismatch"
+    raise RuntimeError(msg)
 del key
 r.update(
     job_uid=state["metadata"]["uid"],
@@ -52,7 +72,9 @@ r.update(
 )
 p = home / "canvas-cold-20261119-receipt.json"
 if p.exists():
-    assert json.loads(p.read_bytes()) == r
+    if json.loads(p.read_bytes()) != r:
+        msg = "receipt on disk differs from the verified claim"
+        raise RuntimeError(msg)
 else:
     with p.open("x") as out:
         json.dump(r, out)
