@@ -127,6 +127,18 @@
         "N818",
         "PLR0913"
       ],
+      "charts/spi-triage/files/dispatcher.py": [
+        "FBT001",
+        "FBT002",
+        "BLE001",
+        "T201"
+      ],
+      "services/spi/legacy/backend/dispatcher.py": [
+        "FBT001",
+        "FBT002",
+        "BLE001",
+        "T201"
+      ],
       "services/spi/legacy/backend/service.py": [
         "PLC0415",
         "T201",
@@ -382,7 +394,7 @@
   "reviewedExceptionDigest": "fdbf4b83755f7ce568da4b53a20b5d23dfb4fa882728e8c1a5def79055935481",
   "frozenCompatibility": {
     "manifest": "charts/spi-triage/LEGACY-SOURCE-MANIFEST.json",
-    "sha256": "40fc5dae879102b7d9dfd1654916944698fbefa89e8b481217f6de2f7108f721",
+    "sha256": "71da6109f67e4d9d9d179806cbe2d44d36ad1a489074c540154c18d08cb3327e",
     "canonicalRepository": "https://github.com/alchemmist/spi-triage",
     "directory": "charts/spi-triage/files",
     "count": 17

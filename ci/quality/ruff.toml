@@ -79,6 +79,13 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # would break the deployed worker and gateway boundaries.
 "charts/spi-triage/files/s3_evidence.py" = ["N818", "PLR0913"]
 "services/spi/legacy/backend/s3_evidence.py" = ["N818", "PLR0913"]
+# The dispatcher constructor arity (store, token, enabled) and its positional
+# boolean are pinned positionally by the spi_triage dispatcher tests; the two
+# kept tail `except Exception` sites are the reviewed trust boundary (a failed
+# POST does not prove n8n did not start), and the component/event JSON lines
+# are the worker stdout log contract.
+"charts/spi-triage/files/dispatcher.py" = ["FBT001", "FBT002", "BLE001", "T201"]
+"services/spi/legacy/backend/dispatcher.py" = ["FBT001", "FBT002", "BLE001", "T201"]
 # The git-tracked spelling of the renovated spi-triage service module carries the
 # same reviewed rationale as the charts/** family: stdout JSON records are the
 # worker log contract, the Engine collaborator arity is the reviewed (and test-
