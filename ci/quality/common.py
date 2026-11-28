@@ -205,7 +205,7 @@ def frozen_source_files() -> frozenset[str]:
         "charts/spi-triage/files/telegram_delivery.py",
         "charts/spi-triage/files/telegram_links.py",
         # Homelab renovation patch set: core.py, durable_wait.py, service.py,
-        # s3_evidence.py, dispatcher.py and integrations.py are fully
+        # s3_evidence.py, dispatcher.py, integrations.py and telemetry.py are fully
         # strict-gate clean under the shared per-file review policies.
         "charts/spi-triage/files/core.py",
         "charts/spi-triage/files/durable_wait.py",
@@ -213,6 +213,7 @@ def frozen_source_files() -> frozenset[str]:
         "charts/spi-triage/files/s3_evidence.py",
         "charts/spi-triage/files/dispatcher.py",
         "charts/spi-triage/files/integrations.py",
+        "charts/spi-triage/files/telemetry.py",
     }
 
 

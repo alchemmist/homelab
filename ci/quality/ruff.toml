@@ -103,4 +103,10 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # of the fixed observability/GitHub origins named in this file's constants.
 "charts/spi-triage/files/integrations.py" = ["S310", "PLC0415", "C901", "PLR0912", "PLR0913", "PLR0915"]
 "services/spi/legacy/backend/integrations.py" = ["S310", "PLC0415", "C901", "PLR0912", "PLR0913", "PLR0915"]
+# The telemetry collector is one reviewed bounded-read contract: the window
+# clipper, the trace-span projector, and the per-source request gate are pinned
+# digest-exactly by the spi_triage suite (probe order, budget gaps, truncation
+# flags), so their branch/return shape stays per-file reviewed rather than split.
+"charts/spi-triage/files/telemetry.py" = ["PLC0415", "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915"]
+"services/spi/legacy/backend/telemetry.py" = ["PLC0415", "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915"]
 "services/**" = ["INP001"]
