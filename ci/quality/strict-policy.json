@@ -166,6 +166,12 @@
         "T201",
         "PLR0913"
       ],
+      "services/spi/backend/service.py": [
+        "PLC0415",
+        "T201",
+        "PLR0913",
+        "TRY301"
+      ],
       "charts/spi-triage/files/integrations.py": [
         "S310",
         "PLC0415",
