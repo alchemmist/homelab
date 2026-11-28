@@ -108,7 +108,11 @@
       "ci/quality/install_collections.py": [
         "S603"
       ],
-      "charts/spi-triage/files/core.py": [
+            "charts/openhands/files/cold_backup.py": [
+        "S108",
+        "TRY004"
+      ],
+"charts/spi-triage/files/core.py": [
         "N818",
         "PLC0415"
       ],

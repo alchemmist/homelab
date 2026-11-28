@@ -68,6 +68,11 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # and crash the operational tool with a raw traceback instead.
 "ansible/roles/identity_integrations/files/netbird_oidc.py" = ["TRY004"]
 "charts/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
+# The cold backup probe writes its sqlite staging copies into the container's
+# fixed /tmp spawn directory (never extracted, single-purpose container) and
+# narrows the reviewed recipient key with an isinstance guard that raises
+# RuntimeError, like every reviewed backup failure, instead of a bare TypeError.
+"charts/openhands/files/cold_backup.py" = ["S108", "TRY004"]
 # The durable workflow error type is named Failure across the reviewed
 # worker API boundary: its fixed non-sensitive codes are the documented wire
 # contract asserted by the spi_triage suite and produced by every chart
