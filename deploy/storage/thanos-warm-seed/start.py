@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import NotRequired, TypedDict
 
 D = Path(__file__).parent
+MAX_FILE_BYTES = 5 * 2**30
+HEADROOM_BYTES = 50 * 2**30
 NS = "cattle-monitoring-system"
 P = "python@sha256:cb33f7f771ecec2ef1225cf39b159591a040391bd73e4c01f00fdfc4c47611d2"
 NAME = "warm-raw-seed-" + secrets.token_hex(4)
@@ -47,11 +49,15 @@ class Resource(TypedDict):
 
 
 class JobCondition(TypedDict):
+    """One terminal job condition the seed checks before running."""
+
     type: str
     status: str
 
 
 class JobStatus(TypedDict, total=False):
+    """Reported job success and terminal conditions, if any."""
+
     succeeded: int
     conditions: list[JobCondition]
 
@@ -63,12 +69,14 @@ class SeedJob(Resource):
 
 
 def kube(*args: str, data: str | None = None) -> str:
+    """Run one reviewed kubectl call and require it to exit zero."""
     p = subprocess.run(
         ["kubectl", "--context=Socrat", "-n", NS, *args],
         input=data,
         text=True,
         capture_output=True,
         timeout=90,
+        check=False,
     )
     if p.returncode:
         raise RuntimeError("kubectl failed: " + str(args[:2]))  # no capability paths in errors
@@ -76,6 +84,7 @@ def kube(*args: str, data: str | None = None) -> str:
 
 
 def create(kind: str, body: Mapping[str, object], name: str = NAME, api: str = "v1") -> Resource:
+    """Create one reviewed Kubernetes object and return its identity."""
     created: Resource = json.loads(
         kube(
             "create",
@@ -105,73 +114,62 @@ print(json.dumps([f for _,files in sorted(blocks) for f in files]))
 """
 
 
-def main() -> None:
-    delta = sys.argv[1:] == ["--run", "--delta"]
-    marks = sys.argv[1:] == ["--run", "--source-compaction-marks"]
-    if not delta and not marks and sys.argv[1:] != ["--run"]:
-        sys.exit("use --run explicitly")
-    jobs: list[SeedJob] = json.loads(
-        kube("get", "jobs", "-l", "thanos-warm-client=seed", "-o", "json")
-    )["items"]
-    assert not any(
+def _require_seed_idle(jobs: list[SeedJob]) -> None:
+    """Refuse to run while any earlier seed job is still in flight."""
+    if any(
         not any(
             c["type"] in ("Complete", "Failed") and c["status"] == "True"
             for c in (j.get("status") or {}).get("conditions", [])
         )
         for j in jobs
-    ), "another seed in flight"
-    pods = json.loads(
-        kube(
-            "get",
-            "pods",
-            "-l",
-            "app=thanos-disk",
-            "--field-selector=spec.nodeName=socrat-0,status.phase=Running",
-            "-o",
-            "json",
+    ):
+        msg = "another seed in flight"
+        raise RuntimeError(msg)
+
+
+def _delta_selection(
+    jobs: list[SeedJob], files: list[tuple[str, int]]
+) -> list[tuple[str, int]] | None:
+    """Keep only blocks unconfirmed by earlier verified seed jobs."""
+    import re
+
+    from delta import remote_objects
+
+    objects = remote_objects()
+    verified = set()
+    for j in jobs:
+        if not (j.get("status") or {}).get("succeeded"):
+            continue
+        log = kube("logs", "job/" + j["metadata"]["name"])
+        if not re.search(
+            r"^all files verified .*sha256\(manifest\) [a-f0-9]{64}$", log, re.MULTILINE
+        ):
+            continue
+        verified.update(
+            re.findall(r"^verified block ([0-9A-Z]{26}) cumulative bytes", log, re.MULTILINE)
         )
-    )["items"]
-    assert len(pods) == 1
-    files = json.loads(kube("exec", pods[0]["metadata"]["name"], "--", "python3", "-c", INVENTORY))
-    if marks:
-        from markers import batch
+    if any(k in objects and objects[k] != n for k, n in files):
+        msg = "size mismatch; review required"
+        raise RuntimeError(msg)
+    needed = {
+        k.split("/")[0] for k, n in files if k not in objects or k.split("/")[0] not in verified
+    }
+    selected = [(k, n) for k, n in files if k.split("/")[0] in needed]
+    if not selected:
+        print("No unconfirmed active blocks at this observation")
+        return None
+    return selected
 
-        files = batch(jobs)
-        if not files:
-            return
-    if delta:
-        import re
 
-        from delta import remote_objects
-
-        objects = remote_objects()
-        verified = set()
-        for j in jobs:
-            if not (j.get("status") or {}).get("succeeded"):
-                continue
-            log = kube("logs", "job/" + j["metadata"]["name"])
-            if not re.search(
-                r"^all files verified .*sha256\(manifest\) [a-f0-9]{64}$", log, re.MULTILINE
-            ):
-                continue
-            verified.update(
-                re.findall(r"^verified block ([0-9A-Z]{26}) cumulative bytes", log, re.MULTILINE)
-            )
-        assert not any(k in objects and objects[k] != n for k, n in files), (
-            "size mismatch; review required"
-        )
-        needed = {
-            k.split("/")[0] for k, n in files if k not in objects or k.split("/")[0] not in verified
-        }
-        files = [(k, n) for k, n in files if k.split("/")[0] in needed]
-        if not files:
-            print("No unconfirmed active blocks at this observation")
-            return
-    assert files
-    assert max(n for _, n in files) < 5 * 2**30
+def _require_warm_capacity(files: list[tuple[str, int]], size: int) -> None:
+    """Require the single reviewed backend node and the free-space headroom."""
     backend = json.loads(kube("get", "pod", "-l", "app=thanos-warm-api", "-o", "json"))["items"]
-    assert len(backend) == 1
-    assert backend[0]["spec"]["nodeName"] == "socrat-1"
+    if len(backend) != 1:
+        msg = "expected exactly one thanos warm api pod"
+        raise RuntimeError(msg)
+    if backend[0]["spec"]["nodeName"] != "socrat-1":
+        msg = "thanos warm api pod not on the reviewed node"
+        raise RuntimeError(msg)
     free = (
         int(
             kube(
@@ -187,8 +185,14 @@ def main() -> None:
         )
         * 1024
     )
-    size = sum(n for _, n in files)
-    assert free - size > 50 * 2**30, "insufficient headroom"
+    if free - size <= HEADROOM_BYTES:
+        msg = "insufficient headroom"
+        raise RuntimeError(msg)
+    del files
+
+
+def _signed_caps(files: list[tuple[str, int]]) -> str:
+    """Run the reviewed signer pod and capture its cap list."""
     signer = NAME + "-sign"
     create(
         "Pod",
@@ -234,9 +238,59 @@ def main() -> None:
             (D / "sign.py").read_text(),
             data=json.dumps(files),
         )
-        assert set(json.loads(caps)) == {k for k, _ in files}
+        if set(json.loads(caps)) != {k for k, _ in files}:
+            msg = "signed caps differ from the observed file set"
+            raise RuntimeError(msg)
     finally:
         kube("delete", "pod", signer, "--wait=false")
+    return caps
+
+
+def main() -> None:
+    """Start the additive TLS seed hand-off."""
+    delta = sys.argv[1:] == ["--run", "--delta"]
+    marks = sys.argv[1:] == ["--run", "--source-compaction-marks"]
+    if not delta and not marks and sys.argv[1:] != ["--run"]:
+        sys.exit("use --run explicitly")
+    jobs: list[SeedJob] = json.loads(
+        kube("get", "jobs", "-l", "thanos-warm-client=seed", "-o", "json")
+    )["items"]
+    _require_seed_idle(jobs)
+    pods = json.loads(
+        kube(
+            "get",
+            "pods",
+            "-l",
+            "app=thanos-disk",
+            "--field-selector=spec.nodeName=socrat-0,status.phase=Running",
+            "-o",
+            "json",
+        )
+    )["items"]
+    if len(pods) != 1:
+        msg = "expected exactly one running thanos-disk pod"
+        raise RuntimeError(msg)
+    files = json.loads(kube("exec", pods[0]["metadata"]["name"], "--", "python3", "-c", INVENTORY))
+    if marks:
+        from markers import batch
+
+        files = batch(jobs)
+        if not files:
+            return
+    if delta:
+        selected = _delta_selection(jobs, files)
+        if selected is None:
+            return
+        files = selected
+    if not files:
+        msg = "no block files to seed"
+        raise RuntimeError(msg)
+    if max(int(str(n)) for _, n in files) >= MAX_FILE_BYTES:
+        msg = "block file exceeds the reviewed single-file cap"
+        raise RuntimeError(msg)
+    size = sum(n for _, n in files)
+    _require_warm_capacity(files, size)
+    caps = _signed_caps(files)
     mounts = [
         {"name": "source", "mountPath": "/source", "readOnly": True},
         {"name": "caps", "mountPath": "/caps", "readOnly": True},
