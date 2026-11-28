@@ -31,6 +31,9 @@ _UNCHANGED_FUNCTION_DIGESTS = {
     # cleanup/python-tests-ci re-derived these pins after typing lint_support,
     # check_python and check_docker signatures and narrowing their imported
     # tool output; no linter rule, file or filtering behavior changed.
+    # The same branch later typed yaml_targets/shell_targets/shellcheck_files
+    # signatures and moved the lazy yamllint imports behind audited Protocol
+    # casts (check_yaml), reriving those four pins only.
     "validate_requirement_lock": "b3a33235549137f1",
     "_distribution_fields": "92a59186d7631950",
     "_vulnerability_id": "28d4d310c9cd0844",
@@ -38,8 +41,8 @@ _UNCHANGED_FUNCTION_DIGESTS = {
     "_audit_python_source": "82a0df4c0b4905b9",
     "sarif": "9c3af544d2da77bd",
     "nonsecret_tokenizer_option": "f99f9ef3da1d942a",
-    "yaml_targets": "06416c3ddf6bc233",
-    "shell_targets": "d0a64ddec3855750",
+    "yaml_targets": "3069e74b13756743",
+    "shell_targets": "0eca31dd63b6da04",
     "shell_dialect": "b3c7ec669e8de5fc",
     "walk_runs": "dbd8c2c0084f7b9f",
     "workflow_runs": "558e5ff5edc38b39",
@@ -52,7 +55,7 @@ _UNCHANGED_FUNCTION_DIGESTS = {
     "mypy_on": "e8db476b0fe8474a",
     "mypy_findings": "d798d13582466cfd",
     "format_findings": "a52354ed567b5a70",
-    "shellcheck_files": "5212046c9fd29985",
+    "shellcheck_files": "e2972b56f41be814",
     "workflow_script_findings": "7372fab9d6f6fa27",
     # 7a45c9cd split check into a dispatcher and nine typed implementations.
     # Pin the extracted implementations and the shared fail-closed report runner.
@@ -64,7 +67,7 @@ _UNCHANGED_FUNCTION_DIGESTS = {
     "workflow_directives": "27fd8a3f48f36905",
     "python_directive_lines": "d22bda0bca5be6da",
     "check_python": "82ce28a1894a9fbf",
-    "check_yaml": "f7758c28b3de10c4",
+    "check_yaml": "4b126f10225231c4",
     "check_shell": "3cb39cc5d1303f55",
     "check_actions": "640d695b3edece7c",
     "check_actionlint": "8a638536da1ae4e0",

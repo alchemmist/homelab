@@ -20,6 +20,15 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # execution site every ci tool routes through (fixed argv, no shell, bounded,
 # failure output never published). All other modules must use command()/spawn().
 "ci/quality/common.py" = ["S603"]
+# The checksum-locked tool fetcher: it must stream the raw binary payload out
+# of curl, which the str-only command() dispatcher and DEVNULL-based spawn()
+# cannot carry; the argv below stays fixed (/usr/bin/curl, https-only,
+# bounded size/time) and every archive is sha256-verified before use.
+"ci/quality/install_tools.py" = ["S603"]
+# The npm consumer-parity smoke: its reviewed function is running the same
+# npm/node binaries the consumer runs, in the consumer's isolated HOME/PATH
+# sandbox, so the audited dispatcher (fixed cwd/env) cannot reproduce it.
+"ci/quality/npm_smoke.py" = ["S603", "S607"]
 # Copy-deployed VPN operational programs (persist() ships these single files
 # to hosts without a repo checkout): reviewed fixed-operand subprocess calls
 # are their documented function, and routing them through ci.quality.common

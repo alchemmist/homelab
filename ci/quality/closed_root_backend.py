@@ -5,6 +5,7 @@ public listener, API client, endpoint discovery grant or executable CLI.
 """
 
 from ipaddress import IPv4Address, IPv4Network
+from typing import TypedDict
 
 Obj = dict[str, object]
 
@@ -99,20 +100,25 @@ def servers(
     ):
         scope_error = "unreviewed backend protocol or target"
         raise ValueError(scope_error)
-    return verified_pod_servers(ns, name, uid, selector, target, slices, pods, pod_network)
+    ctx = _BackendCtx(
+        ns=ns, name=name, uid=uid, selector=selector, target=target, pod_network=pod_network
+    )
+    return verified_pod_servers(ctx, slices, pods)
 
 
-def verified_pod_servers(
-    ns: str,
-    name: str,
-    uid: object,
-    selector: object,
-    target: int,
-    slices: list[Obj],
-    pods: list[Obj],
-    pod_network: IPv4Network,
-) -> list[Obj]:
-    """Verify every presented slice endpoint against a ready Pod of the Service."""
+class _BackendCtx(TypedDict):
+    """The reviewed Service facts every slice endpoint is verified against."""
+
+    ns: str
+    name: str
+    uid: object
+    selector: object
+    target: int
+    pod_network: IPv4Network
+
+
+def _pod_uid_index(pods: list[Obj], ns: str) -> dict[object, Obj]:
+    """Index the observed Pods of one namespace, refusing duplicate UIDs."""
     by_uid: dict[object, Obj] = {}
     for pod in pods:
         pm = view(pod["metadata"])
@@ -122,87 +128,103 @@ def verified_pod_servers(
             duplicate_pod = "duplicate Pod UID in backend observations"
             raise ValueError(duplicate_pod)
         by_uid[pm["uid"]] = pod
-    urls: set[str] = set()
-    for sl in slices:
-        sm = view(sl["metadata"])
-        labels = view(sm.get("labels", {}))
-        if sm.get("namespace") != ns or labels.get("kubernetes.io/service-name") != name:
-            foreign_slice = "unexpected slice in scoped Service observations"
-            raise ValueError(foreign_slice)
-        controllers = [
-            (
-                view(r).get("apiVersion"),
-                view(r).get("kind"),
-                view(r).get("name"),
-                view(r).get("uid"),
-            )
-            for r in entries(sm.get("ownerReferences", []))
-            if view(r).get("controller") is True
-        ]
-        if (
-            sl.get("kind") != "EndpointSlice"
-            or sl.get("addressType") != "IPv4"
-            or controllers != [("v1", "Service", name, uid)]
-            or labels.get("endpointslice.kubernetes.io/managed-by")
-            != "endpointslice-controller.k8s.io"
-        ):
-            bad_provenance = "unverified EndpointSlice provenance"
-            raise ValueError(bad_provenance)
-        matches = [
-            view(p)
-            for p in entries(sl.get("ports", []))
-            if view(p).get("name") == "http" and view(p).get("protocol", "TCP") == "TCP"
-        ]
-        if len(matches) != 1 or matches[0].get("port") != target:
-            bad_port = "unexpected EndpointSlice port"
-            raise ValueError(bad_port)
-        for node in entries(sl.get("endpoints", [])):
-            ep = view(node)
-            conditions = view(ep.get("conditions", {}))
-            if conditions.get("ready") is not True or conditions.get("terminating") is True:
-                continue
-            ref = view(ep.get("targetRef", {}))
-            p = by_uid.get(ref.get("uid"))
-            if (
-                not p
-                or ref.get("kind") != "Pod"
-                or ref.get("namespace") != ns
-                or ref.get("name") != view(p["metadata"]).get("name")
-            ):
-                bad_target = "unverified endpoint target"
-                raise ValueError(bad_target)
-            pm = view(p["metadata"])
-            status = view(p.get("status", {}))
-            if (
-                status.get("phase") != "Running"
-                or pm.get("deletionTimestamp")
-                or view(p["spec"]).get("hostNetwork")
-                or any(view(pm.get("labels", {})).get(k) != v for k, v in view(selector).items())
-                or not any(
-                    view(c).get("type") == "Ready" and view(c).get("status") == "True"
-                    for c in entries(status.get("conditions", []))
-                )
-            ):
-                nonready = "endpoint does not match an admitted ready Pod"
-                raise ValueError(nonready)
-            addresses = entries(ep.get("addresses", []))
-            if not status.get("podIP"):
-                no_ip = "missing observed Pod IP"
-                raise ValueError(no_ip)
-            if len(addresses) != 1 or addresses[0] != status["podIP"]:
-                ip_conflict = "endpoint and Pod IP disagree"
-                raise ValueError(ip_conflict)
-            ip = IPv4Address(plain(addresses[0]))
-            if (
-                ip not in pod_network
-                or ip.is_loopback
-                or ip.is_multicast
-                or ip.is_unspecified
-                or ip.is_link_local
-            ):
-                bad_range = "endpoint outside approved Pod address range"
-                raise ValueError(bad_range)
-            urls.add(f"http://{ip}:{target}")
+    return by_uid
+
+
+def _endpoint_url(ctx: _BackendCtx, ep: Obj, by_uid: dict[object, Obj]) -> str | None:
+    """Verify one slice endpoint against a ready Pod, returning its URL or None."""
+    conditions = view(ep.get("conditions", {}))
+    if conditions.get("ready") is not True or conditions.get("terminating") is True:
+        return None
+    ref = view(ep.get("targetRef", {}))
+    p = by_uid.get(ref.get("uid"))
+    if (
+        not p
+        or ref.get("kind") != "Pod"
+        or ref.get("namespace") != ctx["ns"]
+        or ref.get("name") != view(p["metadata"]).get("name")
+    ):
+        bad_target = "unverified endpoint target"
+        raise ValueError(bad_target)
+    pm = view(p["metadata"])
+    status = view(p.get("status", {}))
+    if (
+        status.get("phase") != "Running"
+        or pm.get("deletionTimestamp")
+        or view(p["spec"]).get("hostNetwork")
+        or any(view(pm.get("labels", {})).get(k) != v for k, v in view(ctx["selector"]).items())
+        or not any(
+            view(c).get("type") == "Ready" and view(c).get("status") == "True"
+            for c in entries(status.get("conditions", []))
+        )
+    ):
+        nonready = "endpoint does not match an admitted ready Pod"
+        raise ValueError(nonready)
+    addresses = entries(ep.get("addresses", []))
+    if not status.get("podIP"):
+        no_ip = "missing observed Pod IP"
+        raise ValueError(no_ip)
+    if len(addresses) != 1 or addresses[0] != status["podIP"]:
+        ip_conflict = "endpoint and Pod IP disagree"
+        raise ValueError(ip_conflict)
+    ip = IPv4Address(plain(addresses[0]))
+    if (
+        ip not in ctx["pod_network"]
+        or ip.is_loopback
+        or ip.is_multicast
+        or ip.is_unspecified
+        or ip.is_link_local
+    ):
+        bad_range = "endpoint outside approved Pod address range"
+        raise ValueError(bad_range)
+    return f"http://{ip}:{ctx['target']}"
+
+
+def _slice_servers(ctx: _BackendCtx, sl: Obj, by_uid: dict[object, Obj]) -> list[str]:
+    """Verify one EndpointSlice and return the verified endpoint URLs it carries."""
+    sm = view(sl["metadata"])
+    labels = view(sm.get("labels", {}))
+    if sm.get("namespace") != ctx["ns"] or labels.get("kubernetes.io/service-name") != ctx["name"]:
+        foreign_slice = "unexpected slice in scoped Service observations"
+        raise ValueError(foreign_slice)
+    controllers = [
+        (
+            view(r).get("apiVersion"),
+            view(r).get("kind"),
+            view(r).get("name"),
+            view(r).get("uid"),
+        )
+        for r in entries(sm.get("ownerReferences", []))
+        if view(r).get("controller") is True
+    ]
+    if (
+        sl.get("kind") != "EndpointSlice"
+        or sl.get("addressType") != "IPv4"
+        or controllers != [("v1", "Service", ctx["name"], ctx["uid"])]
+        or labels.get("endpointslice.kubernetes.io/managed-by") != "endpointslice-controller.k8s.io"
+    ):
+        bad_provenance = "unverified EndpointSlice provenance"
+        raise ValueError(bad_provenance)
+    matches = [
+        view(p)
+        for p in entries(sl.get("ports", []))
+        if view(p).get("name") == "http" and view(p).get("protocol", "TCP") == "TCP"
+    ]
+    if len(matches) != 1 or matches[0].get("port") != ctx["target"]:
+        bad_port = "unexpected EndpointSlice port"
+        raise ValueError(bad_port)
+    urls: list[str] = []
+    for node in entries(sl.get("endpoints", [])):
+        url = _endpoint_url(ctx, view(node), by_uid)
+        if url:
+            urls.append(url)
+    return urls
+
+
+def verified_pod_servers(ctx: _BackendCtx, slices: list[Obj], pods: list[Obj]) -> list[Obj]:
+    """Verify every presented slice endpoint against a ready Pod of the Service."""
+    by_uid = _pod_uid_index(pods, ctx["ns"])
+    urls = {url for sl in slices for url in _slice_servers(ctx, view(sl), by_uid)}
     if not urls:
         empty_backend = "no verified ready Pod endpoints"
         raise ValueError(empty_backend)

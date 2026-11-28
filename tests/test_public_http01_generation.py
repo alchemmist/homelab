@@ -130,9 +130,7 @@ def fixture(uid: str) -> tuple[Ref, Doc, Doc, Doc, Doc]:
                         {
                             "path": "/.well-known/acme-challenge/" + token,
                             "pathType": "ImplementationSpecific",
-                            "backend": {
-                                "service": {"name": "svc", "port": {"number": 8089}}
-                            },
+                            "backend": {"service": {"name": "svc", "port": {"number": 8089}}},
                         }
                     ]
                 },
@@ -277,9 +275,7 @@ def destination_fixture(
     selector = {
         "acme.cert-manager.io/http01-solver": "true",
         "acme.cert-manager.io/http-domain": str(adler32(host.encode())),
-        "acme.cert-manager.io/http-token": str(
-            adler32(text(ch, "spec", "token").encode())
-        ),
+        "acme.cert-manager.io/http-token": str(adler32(text(ch, "spec", "token").encode())),
     }
     for child in (ing, svc, pod):
         assert isinstance(child["metadata"], dict)
@@ -290,9 +286,7 @@ def destination_fixture(
     svc["spec"] = {
         "type": "NodePort",
         "clusterIP": "10.43.22.11",
-        "ports": [
-            {"name": "http", "port": 8089, "targetPort": 8089, "nodePort": 32123}
-        ],
+        "ports": [{"name": "http", "port": 8089, "targetPort": 8089, "nodePort": 32123}],
         "selector": selector,
     }
     pod["spec"] = {}
@@ -340,15 +334,11 @@ def destination_fixture(
     return expected, ch, ing, svc, pod, [sl]
 
 
-def _admit_no_override(
-    _ch: Doc, _ing: Doc, _svc: Doc, _pod: Doc, _slices: list[Doc]
-) -> None:
+def _admit_no_override(_ch: Doc, _ing: Doc, _svc: Doc, _pod: Doc, _slices: list[Doc]) -> None:
     return None
 
 
-def _reject_stale_slice_owner(
-    _ch: Doc, _ing: Doc, _svc: Doc, _pod: Doc, slices: list[Doc]
-) -> None:
+def _reject_stale_slice_owner(_ch: Doc, _ing: Doc, _svc: Doc, _pod: Doc, slices: list[Doc]) -> None:
     poke(container(slices[0], "metadata"), ("ownerReferences", 0, "uid"), value="old")
 
 
@@ -364,28 +354,20 @@ def _reject_substituted_pod_ip(
     container(slices[0], "endpoints", 0)["addresses"] = ["10.42.2.8"]
 
 
-def _reject_node_network_ip(
-    _ch: Doc, _ing: Doc, _svc: Doc, pod: Doc, slices: list[Doc]
-) -> None:
+def _reject_node_network_ip(_ch: Doc, _ing: Doc, _svc: Doc, pod: Doc, slices: list[Doc]) -> None:
     container(slices[0], "endpoints", 0)["addresses"] = ["10.250.0.2"]
     container(pod, "status")["podIP"] = "10.250.0.2"
 
 
-def _reject_host_network_pod(
-    _ch: Doc, _ing: Doc, _svc: Doc, pod: Doc, _slices: list[Doc]
-) -> None:
+def _reject_host_network_pod(_ch: Doc, _ing: Doc, _svc: Doc, pod: Doc, _slices: list[Doc]) -> None:
     pod["spec"] = {"hostNetwork": True}
 
 
-def _reject_deleting_slice(
-    _ch: Doc, _ing: Doc, _svc: Doc, _pod: Doc, slices: list[Doc]
-) -> None:
+def _reject_deleting_slice(_ch: Doc, _ing: Doc, _svc: Doc, _pod: Doc, slices: list[Doc]) -> None:
     container(slices[0], "metadata")["deletionTimestamp"] = "now"
 
 
-def _reject_duplicate_slice(
-    _ch: Doc, _ing: Doc, _svc: Doc, _pod: Doc, slices: list[Doc]
-) -> None:
+def _reject_duplicate_slice(_ch: Doc, _ing: Doc, _svc: Doc, _pod: Doc, slices: list[Doc]) -> None:
     slices.append(slices[0])
 
 
@@ -401,35 +383,23 @@ def _reject_wrong_solver_label(
     poke(pod, ("metadata", "labels", "acme.cert-manager.io/http-token"), value="other")
 
 
-def _reject_not_serving(
-    _ch: Doc, _ing: Doc, _svc: Doc, _pod: Doc, slices: list[Doc]
-) -> None:
+def _reject_not_serving(_ch: Doc, _ing: Doc, _svc: Doc, _pod: Doc, slices: list[Doc]) -> None:
     poke(container(slices[0], "endpoints", 0), ("conditions", "serving"), value=False)
 
 
-def _reject_terminating(
-    _ch: Doc, _ing: Doc, _svc: Doc, _pod: Doc, slices: list[Doc]
-) -> None:
-    poke(
-        container(slices[0], "endpoints", 0), ("conditions", "terminating"), value=True
-    )
+def _reject_terminating(_ch: Doc, _ing: Doc, _svc: Doc, _pod: Doc, slices: list[Doc]) -> None:
+    poke(container(slices[0], "endpoints", 0), ("conditions", "terminating"), value=True)
 
 
-def _reject_udp_port(
-    _ch: Doc, _ing: Doc, _svc: Doc, _pod: Doc, slices: list[Doc]
-) -> None:
+def _reject_udp_port(_ch: Doc, _ing: Doc, _svc: Doc, _pod: Doc, slices: list[Doc]) -> None:
     container(slices[0], "ports", 0)["protocol"] = "UDP"
 
 
-def _reject_newer_generation(
-    ch: Doc, _ing: Doc, _svc: Doc, _pod: Doc, _slices: list[Doc]
-) -> None:
+def _reject_newer_generation(ch: Doc, _ing: Doc, _svc: Doc, _pod: Doc, _slices: list[Doc]) -> None:
     container(ch, "metadata")["uid"] = "next"
 
 
-def _reject_not_ready_pod(
-    _ch: Doc, _ing: Doc, _svc: Doc, pod: Doc, _slices: list[Doc]
-) -> None:
+def _reject_not_ready_pod(_ch: Doc, _ing: Doc, _svc: Doc, pod: Doc, _slices: list[Doc]) -> None:
     container(pod, "status")["conditions"] = []
 
 
@@ -459,7 +429,7 @@ def test_only_verified_solver_pod_address_is_admitted(fault: str) -> None:
     expected, ch, ing, svc, pod, slices = destination_fixture()
     DESTINATION_FAULTS[fault](ch, ing, svc, pod, slices)
     destination = solver_destination(
-        expected, ch, ing, svc, pod, slices, IPv4Network(POD_NETWORK)
+        (expected, ch, ing, svc, pod, slices), pod_network=IPv4Network(POD_NETWORK)
     )
     assert destination == (SOLVER_URL if fault == "none" else None)
 
@@ -469,7 +439,7 @@ def test_closed_snapshot_never_encodes_empty_services_on_withdrawal() -> None:
 
     expected, ch, ing, svc, pod, slices = destination_fixture()
     network = IPv4Network(POD_NETWORK)
-    baseline = closed_solver_snapshot(expected, ch, ing, svc, pod, slices, network)
+    baseline = closed_solver_snapshot((expected, ch, ing, svc, pod, slices), pod_network=network)
     http = container(baseline, "http")
     services = http["services"]
     assert services == {"solver": {"loadBalancer": {"servers": [{"url": SOLVER_URL}]}}}
@@ -480,7 +450,7 @@ def test_closed_snapshot_never_encodes_empty_services_on_withdrawal() -> None:
     )
     assert proof["observability"] == {"accessLogs": False, "tracing": False}
     poke(container(slices[0], "endpoints", 0), ("targetRef", "uid"), value="stale")
-    withdrawn = closed_solver_snapshot(expected, ch, ing, svc, pod, slices, network)
+    withdrawn = closed_solver_snapshot((expected, ch, ing, svc, pod, slices), pod_network=network)
     assert withdrawn == {
         "http": {
             "routers": {
@@ -495,7 +465,7 @@ def test_closed_snapshot_never_encodes_empty_services_on_withdrawal() -> None:
     routers = container(baseline, "http", "routers")
     assert routers.keys() == {"proof", "sentinel"}
     assert (
-        closed_solver_snapshot(expected, None, ing, svc, pod, slices, network)
+        closed_solver_snapshot((expected, None, ing, svc, pod, slices), pod_network=network)
         == withdrawn
     )
 
@@ -535,9 +505,7 @@ def list_page(
     }
 
 
-def test_scan_completes_pagination_before_resolving_children_or_emitting_empty_file() -> (
-    None
-):
+def test_scan_completes_pagination_before_resolving_children_or_emitting_empty_file() -> None:
     a = destination_fixture("a", "A" * 43)
     b = destination_fixture("b", "B" * 43)
     calls: list[object] = []
@@ -674,9 +642,7 @@ def test_namespace_scan_renews_only_original_slot_after_terminal_page(
     monkeypatch.setattr(time, "monotonic_ns", lambda: tick[0])
     expected, ch, ing, svc, pod, slices = destination_fixture()
     ns, _, uid, host = expected
-    slot = ScannedSlot(
-        ns, host, uid, text(ch, "spec", "token"), SOLVER_URL, RENEWAL_WINDOW
-    )
+    slot = ScannedSlot(ns, host, uid, text(ch, "spec", "token"), SOLVER_URL, RENEWAL_WINDOW)
     net = IPv4Network(POD_NETWORK)
 
     def run(final: Callable[[], Page], child: ReadChildren | None = None) -> bool:
@@ -720,9 +686,7 @@ def test_namespace_scan_renews_only_original_slot_after_terminal_page(
 def test_new_verified_address_cannot_renew_a_slot_for_an_old_backend() -> None:
     expected, ch, ing, svc, pod, slices = destination_fixture()
     ns, _, uid, host = expected
-    slot = ScannedSlot(
-        ns, host, uid, text(ch, "spec", "token"), SOLVER_URL, ADDRESS_WINDOW
-    )
+    slot = ScannedSlot(ns, host, uid, text(ch, "spec", "token"), SOLVER_URL, ADDRESS_WINDOW)
 
     def run() -> bool:
         return slot.refresh(

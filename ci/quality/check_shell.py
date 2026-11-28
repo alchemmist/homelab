@@ -12,14 +12,15 @@ import json
 import re
 from pathlib import Path
 
+from ci.quality.closed_root_backend import entries, plain, view
 from ci.quality.common import ROOT, command, finding
 from ci.quality.lint_support import workflow_script_findings
 from ci.quality.runner import run
 
 
-def shell_targets(names):
+def shell_targets(names: list[str]) -> list[str]:
     """Execute shell_targets."""
-    result = []
+    result: list[str] = []
     for name in names:
         if "/templates/" in name or name.endswith(".j2"):
             continue
@@ -37,7 +38,7 @@ def shell_targets(names):
     return result
 
 
-def shellcheck_files(files):
+def shellcheck_files(files: list[str]) -> list[Finding]:
     """Execute shellcheck_files."""
     if not files:
         return []
@@ -46,10 +47,15 @@ def shellcheck_files(files):
         allowed=(0, 1),
         timeout=180,
     )
-    data = json.loads(process.stdout.strip() or "[]")
+    rows = entries(json.loads(process.stdout.strip() or "[]"))
     return [
-        finding("SC" + str(item["code"]), item["file"], item["line"], item["message"])
-        for item in data
+        finding(
+            "SC" + str(view(item)["code"]),
+            plain(view(item)["file"]),
+            int(view(item)["line"]),
+            plain(view(item)["message"]),
+        )
+        for item in rows
     ]
 
 

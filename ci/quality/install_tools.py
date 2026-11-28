@@ -9,13 +9,18 @@ import platform
 import subprocess
 import tarfile
 from pathlib import Path
+from typing import cast
+
+from ci.quality.closed_root_backend import entries, plain, view
 
 ROOT = Path(__file__).resolve().parents[2]
+MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
 
 
-def install(record, destination) -> None:
-    """Execute install."""
-    if record["name"] not in {
+def install(record: dict[str, object], destination: Path) -> None:
+    """Fetch and place one checksum-locked tool binary; never execute an installer."""
+    name = plain(record["name"])
+    if name not in {
         "trivy",
         "promtool",
         "kubectl",
@@ -27,8 +32,8 @@ def install(record, destination) -> None:
         "shellcheck",
         "kube-linter",
     }:
-        msg = "Unknown or escaping tool name"
-        raise ValueError(msg)
+        reason = "Unknown or escaping tool name"
+        raise ValueError(reason)
     process = subprocess.run(
         [
             "/usr/bin/curl",
@@ -48,53 +53,59 @@ def install(record, destination) -> None:
             "10",
             "--max-time",
             "600",
-            record["url"],
+            plain(record["url"]),
         ],
         capture_output=True,
         timeout=1820,
         check=True,
     )
     data = process.stdout
-    if len(data) > 256 * 1024 * 1024:
-        msg = "Tool archive exceeds limit"
-        raise ValueError(msg)
+    if len(data) > MAX_ARCHIVE_BYTES:
+        reason = "Tool archive exceeds limit"
+        raise ValueError(reason)
     if hashlib.sha256(data).hexdigest() != record["sha256"]:
-        msg = "Tool checksum mismatch"
-        raise ValueError(msg)
+        reason = "Tool checksum mismatch"
+        raise ValueError(reason)
     if record["member"]:
         with tarfile.open(fileobj=io.BytesIO(data)) as archive:
-            member = archive.getmember(record["member"])
-            if not member.isfile() or member.size > 256 * 1024 * 1024:
-                msg = "Unsafe tool archive member"
-                raise ValueError(msg)
-            data = archive.extractfile(member).read()
-    target = destination / record["name"]
+            member = archive.getmember(plain(record["member"]))
+            if not member.isfile() or member.size > MAX_ARCHIVE_BYTES:
+                reason = "Unsafe tool archive member"
+                raise ValueError(reason)
+            extraction = archive.extractfile(member)
+            if extraction is None:
+                reason = "Unsafe tool archive member"
+                raise ValueError(reason)
+            data = extraction.read()
+    target = destination / name
     target.write_bytes(data)
     target.chmod(0o755)
 
 
 def main() -> None:
-    """Execute main."""
+    """Install the requested checksum-locked tools for this platform."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--tools", nargs="+")
     args = parser.parse_args()
     key = f"{platform.system().lower()}-{platform.machine()}"
-    lock = json.loads((ROOT / "ci/quality/tools.lock.json").read_text())
-    if key not in lock["platforms"]:
-        msg = f"Unsupported tool platform: {key}"
-        raise ValueError(msg)
+    lock: object = json.loads((ROOT / "ci/quality/tools.lock.json").read_text())
+    platforms = view(lock)["platforms"]
+    if key not in view(platforms):
+        reason = f"Unsupported tool platform: {key}"
+        raise ValueError(reason)
     destination = ROOT / ".quality-tools/bin"
     destination.mkdir(parents=True, exist_ok=True)
-    records = lock["platforms"][key]
+    records = cast("list[dict[str, object]]", entries(view(platforms)[key]))
     if args.tools:
-        if set(args.tools) - {r["name"] for r in records}:
-            msg = "Unknown tool requested"
-            raise ValueError(msg)
-        records = [r for r in records if r["name"] in args.tools]
+        requested = set(args.tools)
+        if requested - {plain(record["name"]) for record in records}:
+            reason = "Unknown tool requested"
+            raise ValueError(reason)
+        records = [record for record in records if plain(record["name"]) in requested]
     for record in records:
         install(record, destination)
     if os.environ.get("GITHUB_PATH"):
-        with open(os.environ["GITHUB_PATH"], "a") as stream:
+        with Path(os.environ["GITHUB_PATH"]).open("a") as stream:
             stream.write(str(destination) + "\n")
     print(f"Installed {len(records)} checksum-locked tools in {destination}")
 
