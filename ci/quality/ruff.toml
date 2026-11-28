@@ -153,6 +153,12 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # its RuntimeError guards must stay inline inside that boundary so the
 # sanitized failure path stays the single exit, hence TRY301 stays local.
 "scripts/identity-xui-gateway-smoke.py" = ["TRY301"]
+# The one-shot transfer builds its SQL from immutable reviewed literals:
+# the only interpolated pieces are quoted identifiers already guarded by
+# the identifier regex in q() and psycopg placeholders (%s), so the four
+# S608 hits are false positives. The broad conversion except folds every
+# possible cell failure into one operational ValueError diagnostic.
+"scripts/netbird-critical-transfer.py" = ["S608", "BLE001"]
 
 "services/spi/backend/service.py" = ["PLC0415", "T201", "PLR0913", "TRY301"]
 "deploy/**" = ["INP001", "T201", "S603", "S607", "S310", "PLC0415", "E402", "PLR0913", "PLR0915"]
