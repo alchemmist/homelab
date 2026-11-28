@@ -169,6 +169,9 @@
         "T201",
         "PLR0913"
       ],
+      "scripts/identity-nature-smoke.py": [
+        "PLR2004"
+      ],
       "services/spi/backend/service.py": [
         "PLC0415",
         "T201",
