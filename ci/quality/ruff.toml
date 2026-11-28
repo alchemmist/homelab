@@ -126,4 +126,18 @@ ignore = ["D203", "D213", "ISC001", "COM812"]
 # except Exception stays part of the pinned contract.
 "charts/spi-triage/files/storage_runtime.py" = ["BLE001"]
 "services/spi/legacy/backend/storage_runtime.py" = ["BLE001"]
+# The GitHub App token broker runs as a copy-deployed CronJob entrypoint: its
+# reviewed function is emitting the operational log/exit-status lines and
+# calling the four fixed https API origins, and any failure must become the
+# one logged refresh_failed line plus exit 1, so the outer except Exception
+# stays part of the pinned contract (T201/S310 where charts/** does not
+# already cover them).
+"charts/spi-triage/files/github_broker.py" = ["BLE001"]
+"services/spi/legacy/backend/github_broker.py" = ["T201", "S310", "BLE001"]
+# The queue operator DTO composes its IN-clause from the fixed "?"
+# placeholder set only (never interpolated values), which S608 cannot see;
+# the projection stays exactly the reviewed column list pinned by the
+# spi_triage queue_admin suite.
+"charts/spi-triage/files/queue_admin.py" = ["S608"]
+"services/spi/legacy/backend/queue_admin.py" = ["S608"]
 "services/**" = ["INP001"]

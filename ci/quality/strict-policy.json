@@ -192,6 +192,20 @@
       ],
       "services/spi/legacy/backend/storage_runtime.py": [
         "BLE001"
+      ],
+      "charts/spi-triage/files/github_broker.py": [
+        "BLE001"
+      ],
+      "services/spi/legacy/backend/github_broker.py": [
+        "T201",
+        "S310",
+        "BLE001"
+      ],
+      "charts/spi-triage/files/queue_admin.py": [
+        "S608"
+      ],
+      "services/spi/legacy/backend/queue_admin.py": [
+        "S608"
       ]
     },
     "ignoreReasons": {
@@ -443,7 +457,7 @@
   "reviewedExceptionDigest": "fdbf4b83755f7ce568da4b53a20b5d23dfb4fa882728e8c1a5def79055935481",
   "frozenCompatibility": {
     "manifest": "charts/spi-triage/LEGACY-SOURCE-MANIFEST.json",
-    "sha256": "9b6fcea6978bd8ffb0aef427fb8c7d86c97139ca950aeba532f4c9b6b666c3d5",
+    "sha256": "d5b269594d4a4139d6522f74baa122d7ad2687cef3ac7a8a7e8af1258eb2e80d",
     "canonicalRepository": "https://github.com/alchemmist/spi-triage",
     "directory": "charts/spi-triage/files",
     "count": 17
