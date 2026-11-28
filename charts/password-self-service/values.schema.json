@@ -1,6 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["allowPublicEntryPeer"],
-  "properties": {"allowPublicEntryPeer": {"type": "boolean"}}
+  "required": [
+    "allowPublicEntryPeer",
+    "allowNlFlannelPeer"
+  ],
+  "properties": {
+    "allowPublicEntryPeer": {
+      "type": "boolean"
+    },
+    "allowNlFlannelPeer": {
+      "type": "boolean"
+    }
+  }
 }

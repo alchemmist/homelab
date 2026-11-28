@@ -1,0 +1,18 @@
+# Always render the policy: with Argo prune disabled, opt-out must withdraw
+# the grant rather than just omit a previously active object.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: password-self-service-nl-peer
+  namespace: identity
+spec:
+  podSelector: {matchLabels: {app: password-self-service}}
+  policyTypes: [Ingress]
+{{- if .Values.allowNlFlannelPeer }}
+  # Node-scoped, NOT a process identity. The application still checks sessions.
+  ingress:
+    - from: [{ipBlock: {cidr: 10.42.0.0/32}}]
+      ports: [{protocol: TCP, port: 8080}]
+{{- else }}
+  ingress: []
+{{- end }}
