@@ -171,3 +171,31 @@ def test_anonymous_password_path_witness(monkeypatch, path, status, location, re
 
     monkeypatch.setattr(subprocess, "run", run)
     assert probe.sample(path, ip="192.0.2.1") == result
+
+
+@pytest.mark.parametrize(
+    "last", [{}, {"publicIP": "::1"}, {"publicIP": "192.0.2.1"}, {"publicIP": 123}]
+)
+def test_password_probe_rejects_whole_invalid_inventory_before_network(
+    tmp_path, monkeypatch, capsys, last
+):
+    from ci.quality import password_route_probe as probe
+
+    catalog = tmp_path / "sites.yaml"
+    catalog.write_text(
+        yaml.safe_dump(
+            {
+                "replicas": {
+                    "home": {"publicIP": "192.0.2.1"},
+                    "nl": {"publicIP": "192.0.2.2"},
+                    "moscow": last,
+                }
+            }
+        )
+    )
+    monkeypatch.setattr(probe, "CATALOG", catalog)
+    monkeypatch.setattr(
+        probe, "sample", lambda *a, **kw: pytest.fail("unexpected network request")
+    )
+    assert probe.main() == 1
+    assert "invalid-entrance-inventory" in capsys.readouterr().out

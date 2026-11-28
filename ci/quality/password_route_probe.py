@@ -63,11 +63,21 @@ def sample(path, *, ip=None, local_port=None):
 
 
 def main():
-    sites = yaml.safe_load(CATALOG.read_text())["replicas"]
-    assert set(sites) == {"home", "nl", "moscow"}
-    results = {
-        s: {path: sample(path, ip=d["publicIP"]) for path in PATHS} for s, d in sites.items()
-    }
+    try:
+        sites = yaml.safe_load(CATALOG.read_text())["replicas"]
+        if not isinstance(sites, dict) or set(sites) != {"home", "nl", "moscow"}:
+            raise ValueError
+        ips = {
+            s: str(ipaddress.IPv4Address(d["publicIP"]))
+            for s, d in sites.items()
+            if isinstance(d, dict) and isinstance(d.get("publicIP"), str)
+        }
+        if len(set(ips.values())) != 3:
+            raise ValueError
+    except (OSError, yaml.YAMLError, KeyError, TypeError, ValueError):
+        print(json.dumps({"error": "invalid-entrance-inventory"}))
+        return 1
+    results = {s: {path: sample(path, ip=ip) for path in PATHS} for s, ip in ips.items()}
     print(json.dumps(results, sort_keys=True))
     return int(any(v != "matched" for row in results.values() for v in row.values()))
 
