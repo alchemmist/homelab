@@ -1,17 +1,12 @@
-"""Advertised-route bracketing: only fixed peers, never DNS-learned destinations."""
-
 import subprocess
-from collections.abc import Sequence
 
 import pytest
-import yaml
 
 from ci.quality import public_advertised_routes as checks
-from ci.quality.public_web import CATALOG
 
 
 @pytest.mark.parametrize(
-    ("host", "status", "body", "want"),
+    "host,status,body,want",
     [
         (
             checks.BLOG,
@@ -53,67 +48,57 @@ from ci.quality.public_web import CATALOG
         (checks.VENICE, "401 text/html", b"<html/>", "unexpected-application-response"),
     ],
 )
-def test_fresh_anonymous_fixed_peer(
-    monkeypatch: pytest.MonkeyPatch,
-    host: str,
-    status: str,
-    body: bytes,
-    want: str,
-) -> None:
-    def run(args: Sequence[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
-        assert list(args)[:4] == ["curl", "--disable", "--noproxy", "*"]
-        assert "-k" not in args
-        assert "--location" not in args
-        assert args[args.index("--resolve") + 1] == host + ":443:192.0.2.1"
-        assert args[-1] == "https://" + host + checks.PATHS[host]
-        return subprocess.CompletedProcess(args, 0, body.decode() + "\n" + status, "")
+def test_fresh_anonymous_fixed_peer(monkeypatch, host, status, body, want):
+    def run(args, **kwargs):
+        assert (
+            args[:4] == ["curl", "--disable", "--noproxy", "*"]
+            and "-k" not in args
+            and "--location" not in args
+        )
+        assert (
+            args[args.index("--resolve") + 1] == host + ":443:192.0.2.1"
+            and args[-1] == "https://" + host + checks.PATHS[host]
+        )
+        return subprocess.CompletedProcess(args, 0, body + b"\n" + status.encode(), b"")
 
     monkeypatch.setattr(subprocess, "run", run)
     assert checks.check(host, "192.0.2.1") == want
 
 
-def test_no_dns_derived_connection_or_partial_acceptance() -> None:
+def test_no_dns_derived_connection_or_partial_acceptance():
     routes = {"192.0.2.1": "matched", "192.0.2.2": "tls-handshake-failed"}
-    good: dict[str, object] = {"A": ["192.0.2.1"], "AAAA": []}
-    bad: dict[str, object] = {"A": list(routes), "AAAA": []}
+    good = {"A": ["192.0.2.1"], "AAAA": []}
+    bad = {"A": list(routes), "AAAA": []}
     assert checks.verdict(good, good, routes) == "advertised-paths-matched"
     assert checks.verdict(bad, bad, routes) == "advertised-path-not-verified"
     assert checks.verdict(bad, good, routes) == "dns-changed"
-    strainers: tuple[dict[str, object], ...] = (
+    for d in (
         {"A": None, "AAAA": []},
         {"A": [], "AAAA": []},
         {"A": ["192.0.2.1"], "AAAA": None},
         {"A": ["192.0.2.1"], "AAAA": ["::1"]},
         {"A": ["192.0.2.4"], "AAAA": []},
-    )
-    for strained in strainers:
-        assert checks.verdict(strained, strained, routes) != "advertised-paths-matched"
+    ):
+        assert checks.verdict(d, d, routes) != "advertised-paths-matched"
 
 
-def test_legacy_home_only_dns_must_not_skip_direct_monori_checks(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_legacy_home_only_dns_must_not_skip_direct_monori_checks(monkeypatch, capsys):
     import json
 
-    catalog: object = yaml.safe_load(CATALOG.read_text())
-    assert isinstance(catalog, dict)
-    replicas: object = catalog["replicas"]
-    assert isinstance(replicas, dict)
-    ips: set[object] = set()
-    for replica in replicas.values():
-        assert isinstance(replica, dict)
-        ips.add(replica["publicIP"])
-    called: list[tuple[str, str]] = []
+    import yaml
 
-    def check_stub(host: str, ip: str) -> str:
-        called.append((host, ip))
-        return "matched"
-
-    monkeypatch.setattr(checks, "check", check_stub)
+    ips = {
+        v["publicIP"]
+        for v in yaml.safe_load(checks.CATALOG.read_text())["replicas"].values()
+    }
+    called = []
+    monkeypatch.setattr(
+        checks, "check", lambda host, ip: called.append((host, ip)) or "matched"
+    )
     monkeypatch.setattr(
         checks,
         "observe",
-        lambda site, _ip, hosts: (
+        lambda site, ip, hosts: (
             site,
             {
                 h + "/" + p: {"A": ["109.173.40.247"], "AAAA": []}
@@ -128,7 +113,7 @@ def test_legacy_home_only_dns_must_not_skip_direct_monori_checks(
 
 
 @pytest.mark.parametrize(
-    ("body", "expected"),
+    "body,expected",
     [
         (b'{"user":null,"writable":false,"bootstrap_required":false}', "matched"),
         (
@@ -145,42 +130,48 @@ def test_legacy_home_only_dns_must_not_skip_direct_monori_checks(
         ),
     ],
 )
-def test_wiki_anonymous_contract(
-    monkeypatch: pytest.MonkeyPatch, body: bytes, expected: str
-) -> None:
-    def run(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
-        payload = body.decode() + "\n200 application/json"
-        return subprocess.CompletedProcess(["curl"], 0, payload, "")
-
-    monkeypatch.setattr(subprocess, "run", run)
+def test_wiki_anonymous_contract(monkeypatch, body, expected):
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *a, **kw: subprocess.CompletedProcess(
+            [], 0, body + b"\n200 application/json", b""
+        ),
+    )
     assert checks.check(checks.WIKI, "192.0.2.1") == expected
 
 
 @pytest.mark.parametrize("broken", [False, True])
-def test_selfip_requires_all_direct_routes(
-    monkeypatch: pytest.MonkeyPatch, *, broken: bool
-) -> None:
+def test_selfip_requires_all_direct_routes(monkeypatch, broken):
     monkeypatch.setattr(
         checks,
         "check",
-        lambda host, _ip: "tls-handshake-failed" if broken and host == checks.WIKI else "matched",
+        lambda host, ip: (
+            "tls-handshake-failed" if broken and host == checks.WIKI else "matched"
+        ),
     )
     monkeypatch.setattr(
         checks,
         "observe",
         lambda site, ip, hosts: (
             site,
-            {h + "/" + p: {"A": [ip], "AAAA": []} for h in hosts for p in ("tcp", "udp")},
+            {
+                h + "/" + p: {"A": [ip], "AAAA": []}
+                for h in hosts
+                for p in ("tcp", "udp")
+            },
         ),
     )
     assert checks.main() == int(broken)
 
 
-@pytest.mark.parametrize("fault", [None, "same", "cross", "ambiguous", "missing", "unknown"])
-def test_tls_domain_requires_positive_and_negative_controls(fault: None | str) -> None:
+@pytest.mark.parametrize(
+    "fault", [None, "same", "cross", "ambiguous", "missing", "unknown"]
+)
+def test_tls_domain_requires_positive_and_negative_controls(fault):
     from ci.quality.blog_tls_path import correlated
 
-    rows: dict[str, dict[str, str]] = {
+    rows = {
         "a": {"a": "resumed", "b": "full-handshake"},
         "b": {"a": "full-handshake", "b": "resumed"},
         "s": {"a": "resumed", "b": "full-handshake"},
